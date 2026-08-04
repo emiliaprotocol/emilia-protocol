@@ -1,71 +1,82 @@
 // SPDX-License-Identifier: Apache-2.0
-// /standards - EMILIA in the IETF landscape. Frames EP as a COMPLEMENT, not a
-// competitor, to the accepted standards the ecosystem already runs: the
-// human-authorization-receipt layer that Step-Up triggers, RATS/EAT sits beside,
-// and SCITT logs. Content is verified IETF research presented cleanly - no
-// re-research. Internal links use next/link <Link> (lint rule).
+// /standards - product outcome first, then the canonical four-document evidence
+// path, followed by the adjacent IETF landscape. Internal links use next/link
+// <Link> (lint rule).
 
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, cta, color, font } from '@/lib/tokens';
+import { styles, cta, color, font, radius } from '@/lib/tokens';
+import standardsStatus from '@/standards/STATUS.json';
 
 export const metadata = {
-  title: 'EMILIA in the IETF landscape - a complement, not a competitor | EMILIA',
+  title: 'Let agents act within limits you approve in advance | EMILIA',
   description:
-    'EMILIA Protocol is the human-authorization-receipt layer. It composes with the accepted standards the ecosystem already runs - OAuth Step-Up triggers it, RATS/EAT sits beside it, SCITT logs it - rather than replacing them.',
+    'EMILIA Gate is designed to control configured action paths when a deployment provides complete mediation. Four individual Internet-Drafts define the portable evidence path beneath that product boundary.',
 };
 
-// The three-pillar story.
+const ADOPTION_ROLES: Record<string, string> = {
+  'draft-schrock-ep-authorization-receipts': 'Create the evidence',
+  'draft-schrock-human-authorization-binding': 'Attach it to the action record',
+  'draft-schrock-ep-authority-introduction': 'Establish scoped authority',
+  'draft-schrock-ep-authorization-evidence-chain': 'Evaluate the evidence requirement',
+};
+
+const ADOPTION_PATH = standardsStatus.canonical_four_document_surface.documents.map((document) => ({
+  step: String(document.order).padStart(2, '0'),
+  title: document.label,
+  revision: `${document.draft}-${document.revision}`,
+  role: ADOPTION_ROLES[document.draft] ?? 'Read this layer',
+  body: document.canonical_question,
+  result: document.boundary,
+  href: document.datatracker,
+}));
+
+// Three interfaces with adjacent standards. These are composition points, not
+// claims that another standards body has adopted EMILIA.
 const PILLARS = [
   {
-    role: 'TRIGGER',
-    status: 'deployed',
+    role: 'AUTHENTICATION TRIGGER',
+    status: 'published RFC',
     title: 'OAuth Step-Up Authentication - RFC 9470 (Proposed Standard)',
     body:
-      'Step-Up demands a fresh human challenge for a sensitive action, but produces no durable artifact. ' +
-      'EMILIA is the offline, verifiable receipt of that step-up - the proof that survives after the challenge passes.',
+      'Step-Up can require a stronger authentication event for a sensitive action. An EMILIA integration can request separate, durable approval evidence after that trigger; the receipt proves only its own signed fields and bindings.',
   },
   {
-    role: 'ORTHOGONAL TRUST ROOT',
-    status: 'deployed',
+    role: 'MACHINE EVIDENCE',
+    status: 'published / active work',
     title: 'Machine attestation - RATS (RFC 9334) + EAT (RFC 9711), SPIFFE/SPIRE, WIMSE',
     body:
-      'Attestation answers "is this agent platform trustworthy / which workload is this." ' +
-      'EMILIA answers the orthogonal question: "did the DIRECTORY-BOUND APPROVER authorize THIS exact irreversible action." ' +
-      'Same evidence bundle, different trust root.',
+      'Machine attestation and workload identity describe the platform or workload. EMILIA authorization evidence remains a distinct input: it records an approval claim bound to the action and is evaluated under relying-party-pinned enrollment and authority roots.',
   },
   {
-    role: 'ACCOUNTABILITY RAIL',
-    status: 'standardizing now',
+    role: 'TRANSPARENCY RAIL',
+    status: 'active drafts',
     title: 'SCITT - RFC 9943 + SCRAPI',
     body:
-      'A SCITT "Receipt" is a transparency / INCLUSION proof: it proves a statement was logged in an append-only ledger. ' +
-      'SCITT is deliberately AGNOSTIC about who authorized anything - that delegated-away question is exactly EMILIA payload. ' +
-      'An EMILIA authorization receipt rides AS a SCITT Signed Statement; SCITT returns a transparency receipt that it was logged. ' +
-      'Defuse the shared word: "authorization receipt" (EMILIA) vs "transparency / inclusion receipt" (SCITT).',
+      'A SCITT receipt is transparency or inclusion evidence: it shows that a statement was registered. An EMILIA authorization receipt can be carried as a SCITT Signed Statement, while SCITT returns the separate proof that it was logged.',
   },
 ];
 
 // Tier 1 - published RFCs / deployed. Anchor here.
 const TIER1 = [
-  ['OAuth 2.0 / OIDC - RFC 6749', 'Published - ubiquitous', 'Grants access. EMILIA proves an enrolled approver authorized the exact act under the relying party pinned directory.'],
-  ['Step-Up Authentication - RFC 9470', 'Proposed Standard', 'The trigger. EMILIA is the durable proof that the step-up happened.'],
-  ['Rich Authorization Requests (RAR) - RFC 9396', 'Proposed Standard', 'EMILIA signs the human approval of the same authorization_details (RAR = request schema; EMILIA = evidence over it).'],
-  ['RATS - RFC 9334 + EAT - RFC 9711', 'Published', 'Machine attestation (platform / workload). EMILIA = human authorization. Orthogonal trust roots, same bundle.'],
-  ['HTTP Message Signatures - RFC 9421', 'Proposed Standard', 'EMILIA rides inside a signed request.'],
-  ['JWS - RFC 7515 / COSE - RFC 9052 / CWT - RFC 8392', 'Published', 'Interop serializations EMILIA receipts express in.'],
-  ['Token Exchange - RFC 8693', 'Proposed Standard', 'Delegates authority between services. EMILIA proves the human authorized the irreversible act at the chain end.'],
-  ['SPIFFE / SPIRE', 'CNCF graduated', 'Agent identity. EMILIA adds who approved what it does.'],
-  ['Trusted timestamp - RFC 3161 - Evidence Record Syntax (ERS) - RFC 4998 - JCS - RFC 8785', 'Published', 'RFC 3161 trusted time; RFC 4998 ERS is the lineage for EMILIA evidence-record renewal; JCS is EMILIA canonical base.'],
+  ['OAuth 2.0 / OIDC - RFC 6749', 'Published - ubiquitous', 'Grants access. EMILIA can add separate, exact-action approval evidence evaluated against the relying party\'s pinned trust inputs.'],
+  ['Step-Up Authentication - RFC 9470', 'Proposed Standard', 'Can trigger stronger authentication. An EMILIA receipt is a separate artifact and does not prove a Step-Up event unless the integration explicitly binds the two.'],
+  ['Rich Authorization Requests (RAR) - RFC 9396', 'Proposed Standard', 'An EMILIA profile can bind approval evidence to the same authorization_details under an explicit action mapping.'],
+  ['RATS - RFC 9334 + EAT - RFC 9711', 'Published', 'Supplies platform or workload attestation. EMILIA authorization evidence stays separate, with its own native verifier and trust inputs.'],
+  ['HTTP Message Signatures - RFC 9421', 'Proposed Standard', 'An authorization receipt can accompany a signed request; the message signature does not itself create authority.'],
+  ['JWS - RFC 7515 / COSE - RFC 9052 / CWT - RFC 8392', 'Published', 'Serialization options in which EMILIA receipt claims can be expressed.'],
+  ['Token Exchange - RFC 8693', 'Proposed Standard', 'Delegates authority between services. Exact-action approval evidence remains a separate input at the consequence boundary.'],
+  ['SPIFFE / SPIRE', 'CNCF graduated', 'Identifies a workload. EMILIA adds separately verified evidence about the approval and action, not proof of a natural person.'],
+  ['Trusted timestamp - RFC 3161 - Evidence Record Syntax (ERS) - RFC 4998 - JCS - RFC 8785', 'Published', 'RFC 3161 can supply trusted time, RFC 4998 informs long-term renewal, and JCS is the EMILIA canonical base.'],
 ];
 
 // Tier 2 - active drafts. Position relative to; do not anchor.
 const TIER2 = [
-  ['SCITT - architecture + SCRAPI + COSE Receipts', 'Active drafts', 'EMILIA authorization receipts ride as SCITT Signed Statements; SCITT logs them and returns transparency receipts.'],
-  ['OAuth Transaction Tokens (Txn-Tokens)', 'Active draft', 'Short-lived call-chain context. EMILIA is the human-authorization evidence over the irreversible act, not the transport token.'],
-  ['WIMSE (Workload Identity in Multi-System Environments)', 'Active drafts', 'Workload identity. EMILIA adds the human-authorization layer above the workload trust root.'],
-  ['SD-JWT-VC / EUDI', 'Active drafts', 'Selective-disclosure credentials. EMILIA receipts can be carried / referenced; the authorization claim is EMILIA.'],
+  ['SCITT - architecture + SCRAPI + COSE Receipts', 'Active drafts', 'EMILIA authorization receipts can be registered as Signed Statements; SCITT can return a distinct transparency receipt.'],
+  ['OAuth Transaction Tokens (Txn-Tokens)', 'Active draft', 'Carries short-lived call-chain context. EMILIA supplies separate exact-action authorization evidence, not a transport token.'],
+  ['WIMSE (Workload Identity in Multi-System Environments)', 'Active drafts', 'Supplies workload identity. EMILIA authorization evidence remains an independently verified input above that trust root.'],
+  ['SD-JWT-VC / EUDI', 'Active drafts', 'Selective-disclosure credentials can be carried or referenced as native evidence without being treated as authorization by default.'],
 ];
 
 interface StatusPillProps {
@@ -117,34 +128,133 @@ export default function StandardsPage() {
       <SiteNav activePage="Standards" />
       <main style={styles.page}>
         {/* HERO */}
-        <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 24 }}>
-          <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>IETF LANDSCAPE · COMPLEMENT, NOT COMPETITOR</div>
-            <h1 style={{ ...styles.h1, marginTop: 14 }}>
-              EMILIA in the IETF landscape — a complement, not a competitor.
-            </h1>
-            <p style={{ ...styles.body, maxWidth: 760, marginTop: 16 }}>
-              EMILIA Protocol is the <b>human-authorization-receipt layer</b>. It composes with the accepted standards the
-              ecosystem already runs — it rides inside them, sits beside them, and is logged by them — rather
-              than replacing any of them. The receipt EMILIA produces is the one durable artifact none of these standards
-              emit on their own: portable, offline-verifiable proof that a directory-bound approver authorized one exact
-              irreversible action. Attribution to a real-world person is only as strong as the independently trusted
-              enrollment and directory binding.
-            </p>
-            <div style={{ display: 'flex', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
-              <Link href="/fire-drill/rr-1" style={cta.primary}>See it on a real action</Link>
-              <Link href="/spec" style={cta.secondary}>Read the spec</Link>
+        <section
+          style={{
+            borderBottom: `1px solid ${color.border}`,
+            background: `linear-gradient(135deg, ${color.card} 0%, ${color.bg} 58%, ${color.cardHover} 100%)`,
+          }}
+        >
+          <div
+            style={{
+              ...styles.sectionWide,
+              paddingTop: 80,
+              paddingBottom: 64,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 390px), 1fr))',
+              gap: 48,
+              alignItems: 'center',
+            }}
+          >
+            <div>
+              <div style={{ ...styles.eyebrow, color: color.gold }}>PRODUCT BOUNDARY · OPEN EVIDENCE</div>
+              <h1 style={{ ...styles.h1Large, maxWidth: 760 }}>
+                Let agents act within limits you approve in advance.
+              </h1>
+              <p style={{ ...styles.body, maxWidth: 700, marginTop: 24, marginBottom: 0, fontSize: 18 }}>
+                EMILIA Gate puts a decision point before configured consequential actions. Local policy decides whether
+                the required exact-action authority is present; the open protocol makes the supporting evidence portable
+                and independently verifiable.
+              </p>
+              <div style={{ display: 'flex', gap: 12, marginTop: 28, flexWrap: 'wrap' }}>
+                <Link href="/agent-guard" style={cta.primary}>See the product boundary</Link>
+                <Link href="#four-document-path" style={cta.secondary}>Follow the four-document path</Link>
+              </div>
             </div>
+
+            <aside
+              aria-label="Prevention boundary"
+              style={{
+                ...styles.card,
+                borderTop: `3px solid ${color.gold}`,
+                padding: '28px 30px',
+              }}
+            >
+              <div style={{ ...styles.eyebrow, color: color.gold, marginBottom: 12 }}>PREVENTION BOUNDARY</div>
+              <div style={{ ...styles.h3, fontSize: 22, lineHeight: 1.3, marginBottom: 12 }}>
+                Configured paths. Complete mediation.
+              </div>
+              <p style={{ ...styles.body, margin: 0, fontSize: 15 }}>
+                Prevention applies only to configured action paths under complete mediation. Complete mediation is a
+                deployment property to verify with bypass inventory and live architecture testing; neither the protocol
+                nor this repository can prove that a deployment has no alternate route.
+              </p>
+            </aside>
           </div>
         </section>
 
-        {/* THE 3-PILLAR STORY */}
-        <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 18 }}>
+        {/* CANONICAL FOUR-DOCUMENT PATH */}
+        <section id="four-document-path" style={{ ...styles.sectionWide, paddingTop: 72, paddingBottom: 56 }}>
+          <div style={{ ...styles.eyebrow, color: color.gold }}>OPEN STANDARDS · ONE BEAT BEHIND THE PRODUCT</div>
+          <h2 style={{ ...styles.h2, fontSize: 30, maxWidth: 760 }}>The canonical four-document adoption path</h2>
+          <p style={{ ...styles.body, maxWidth: 760, marginTop: 8 }}>
+            The product is designed to control a configured execution path. These four individual Internet-Drafts define
+            the evidence path beneath that decision: create the approval artifact, attach it to the action record,
+            establish scoped authority, then evaluate the resulting evidence bundle.
+          </p>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: 14,
+              marginTop: 28,
+            }}
+          >
+            {ADOPTION_PATH.map((document) => (
+              <a
+                key={document.step}
+                href={document.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: 330,
+                  padding: '24px 22px',
+                  border: `1px solid ${color.border}`,
+                  borderRadius: radius.base,
+                  background: color.card,
+                  color: color.t1,
+                  textDecoration: 'none',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 12, color: color.gold }}>{document.step}</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, textTransform: 'uppercase' }}>
+                    Individual I-D
+                  </span>
+                </div>
+                <div style={{ ...styles.h3, fontSize: 20, lineHeight: 1.25, marginTop: 28, marginBottom: 8 }}>
+                  {document.title}
+                </div>
+                <div style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+                  {document.revision}
+                </div>
+                <div style={{ ...styles.eyebrow, color: color.gold, marginTop: 22, marginBottom: 8 }}>
+                  {document.role}
+                </div>
+                <p style={{ ...styles.cardBody, margin: 0 }}>{document.body}</p>
+                <p style={{ ...styles.cardBody, color: color.t1, fontWeight: 600, marginTop: 'auto', paddingTop: 20, marginBottom: 0 }}>
+                  {document.result}
+                </p>
+              </a>
+            ))}
+          </div>
+
+          <p style={{ ...styles.body, fontSize: 13, color: color.t3, maxWidth: 860, marginTop: 20, marginBottom: 0 }}>
+            This is EMILIA&rsquo;s reader-facing implementation sequence. It is not a claim of working-group adoption,
+            endorsement, production deployment, or consolidation of the wider draft portfolio. Verification, evidence
+            satisfaction, local authorization, and observed execution remain separate decisions.
+          </p>
+        </section>
+
+        {/* ADJACENT-STANDARD INTERFACES */}
+        <section style={{ ...styles.section, paddingTop: 28, paddingBottom: 18 }}>
           <div style={styles.container}>
-            <h2 style={styles.h2}>The three-pillar story</h2>
+            <h2 style={styles.h2}>Three interfaces with adjacent standards</h2>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 12 }}>
-              EMILIA is the human-authorization receipt that <b>Step-Up triggers</b>, <b>RATS/EAT sits beside</b>, and{' '}
-              <b>SCITT logs</b>.
+              Authentication can trigger the flow, machine evidence can sit beside it, and a transparency service can
+              log it. These are composition points, not claims that another standard or working group has adopted EMILIA.
             </p>
             <div style={{ marginTop: 10 }}>
               {PILLARS.map((p) => (
@@ -165,10 +275,10 @@ export default function StandardsPage() {
         <section style={{ ...styles.sectionWide, paddingTop: 24, paddingBottom: 18 }}>
           <div style={styles.container}>
             <div style={{ ...styles.eyebrow, color: color.gold }}>TIER 1 · PUBLISHED RFCs / DEPLOYED — ANCHOR HERE</div>
-            <h2 style={styles.h2}>Where EMILIA composes today</h2>
+            <h2 style={styles.h2}>Published standards to compose with</h2>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 4 }}>
-              These are shipped, widely-deployed standards. EMILIA does not compete with any of them; it supplies the
-              human-authorization evidence that sits on top.
+              These are published or widely deployed standards and projects. EMILIA&rsquo;s specifications define possible
+              complement relationships; they do not imply integration or adoption by those communities.
             </p>
             <ComplementTable rows={TIER1} />
           </div>
@@ -194,10 +304,10 @@ export default function StandardsPage() {
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 4 }}>
               EMILIA keeps <b>JCS (RFC 8785)</b> as its canonical base and offers receipts as <b>JWS (RFC 7515)</b> for
               universal web reach and <b>COSE_Sign1 / CWT (RFC 9052 / RFC 8392)</b> CBOR-native form for SCITT interop. The
-              same authorization claim travels across all three — no lock-in to a wire format.
+              same receipt claims can travel across all three — no lock-in to a wire format.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
-              <Link href="/fire-drill/rr-1" style={cta.secondary}>Receipt on a real action</Link>
+              <Link href="/fire-drill/rr-1" style={cta.secondary}>Inspect an example receipt</Link>
               <Link href="/spec" style={cta.secondary}>draft-schrock-ep-authorization-receipts</Link>
             </div>
           </div>
@@ -206,11 +316,11 @@ export default function StandardsPage() {
         {/* RATS + SCITT MAPPING DETAIL */}
         <section style={{ ...styles.sectionWide, paddingTop: 24, paddingBottom: 18 }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>MAPPING DETAIL · RATS + SCITT PROFILES</div>
-            <h2 style={styles.h2}>How EMILIA expresses as RATS and SCITT profiles</h2>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>MAPPING DETAIL · RATS + SCITT</div>
+            <h2 style={styles.h2}>How the evidence can sit beside RATS and inside SCITT</h2>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 4 }}>
-              Two narrow profiles on accepted work — not a new framework. Machine attestation (RATS) and the
-              human-authorization receipt (EMILIA) are orthogonal and meet at the relying party.
+              These are narrow composition mappings, not adoption claims. Machine attestation and EMILIA authorization
+              evidence remain orthogonal inputs that can meet at the relying party.
             </p>
 
             <div style={{ ...styles.h3, marginTop: 22 }}>The attest loop as a RATS profile (RFC&nbsp;9334)</div>
@@ -225,8 +335,9 @@ export default function StandardsPage() {
               </div>
             ))}
             <p style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 10, maxWidth: 760 }}>
-              The EMILIA receipt is <b>not</b> RATS Evidence — RATS attests the platform; EMILIA attests the human.
-              Different trust roots (platform root-of-trust vs the human&rsquo;s device key), composed at the relying party.
+              The EMILIA receipt is <b>not</b> RATS Evidence. RATS can attest the platform or workload; EMILIA verifies an
+              authorization artifact and its action binding under relying-party-pinned trust inputs. A named-human claim
+              is only as strong as its independent enrollment and authority evidence; EMILIA does not prove a natural person.
             </p>
 
             <div style={{ ...styles.h3, marginTop: 24 }}>Statements &amp; lineage as SCITT Signed Statements (draft-ietf-scitt)</div>
@@ -242,9 +353,9 @@ export default function StandardsPage() {
               </div>
             ))}
             <p style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 10, maxWidth: 760 }}>
-              Keep the two &ldquo;receipts&rdquo; distinct: <b>authorization receipt</b> (EMILIA — who authorized what)
-              vs <b>transparency / inclusion receipt</b> (SCITT — proof it was logged). EMILIA supplies the lineage
-              link and the human authorization; SCITT supplies the tamper-evident log.
+              Keep the two &ldquo;receipts&rdquo; distinct: <b>authorization receipt</b> (EMILIA — authorization evidence bound to an action)
+              vs <b>transparency / inclusion receipt</b> (SCITT — proof it was logged). An EMILIA profile can supply the
+              lineage link and authorization evidence; SCITT can supply the tamper-evident log.
             </p>
           </div>
         </section>
@@ -253,7 +364,9 @@ export default function StandardsPage() {
         <section style={{ ...styles.section, paddingTop: 0 }}>
           <div style={styles.container}>
             <p style={{ ...styles.body, fontSize: 13, color: color.t3, maxWidth: 760 }}>
-              <b>Honest framing.</b> The repository tracks 22 active Datatracker records as of August 3, 2026.
+              <b>Honest framing.</b> The four-document path above is the repository&rsquo;s canonical reader-facing surface,
+              not a Datatracker consolidation or external adoption claim. The repository tracks 22 active Datatracker
+              records as of August 3, 2026.
               The latest six filings are{' '}
               <a href="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/" style={{ color: color.gold }}>AEB -03</a>,{' '}
               <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" style={{ color: color.gold }}>AEC -05</a>,{' '}

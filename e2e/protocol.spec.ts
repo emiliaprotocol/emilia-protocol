@@ -1,48 +1,58 @@
 /**
- * EP E2E — Protocol page smoke test
+ * EP E2E — Gate-first protocol hub
  * @license Apache-2.0
  */
 
 import { test, expect } from '@playwright/test';
 
 test.describe('Protocol Page', () => {
-  test('loads and renders protocol overview', async ({ page }) => {
+  test('leads with Gate and renders the canonical four-document path', async ({ page }) => {
     await page.goto('/protocol');
 
-    // Main heading present
-    const h1 = page.locator('h1').first();
-    await expect(h1).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Gate exact actions before consequences.' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Four documents. One evidence path.' })).toBeVisible();
+
+    const expectedDocuments = [
+      ['canonical-document-1', 'Authorization Receipts', 'draft-schrock-ep-authorization-receipts-08'],
+      ['canonical-document-2', 'Human Authorization Binding', 'draft-schrock-human-authorization-binding-00'],
+      ['canonical-document-3', 'Authority Introduction', 'draft-schrock-ep-authority-introduction-02'],
+      ['canonical-document-4', 'Authorization Evidence Chain', 'draft-schrock-ep-authorization-evidence-chain-05'],
+    ] as const;
+
+    for (const [testId, label, revision] of expectedDocuments) {
+      const document = page.getByTestId(testId);
+      await expect(document).toContainText(label);
+      await expect(document).toContainText(revision);
+    }
   });
 
-  test('PIP governance section is visible', async ({ page }) => {
+  test('links the canonical path to the two local explainers', async ({ page }) => {
     await page.goto('/protocol');
 
-    // Protocol Governance section with PIP table
-    const govSection = page.locator('text=Protocol Governance');
-    await expect(govSection.first()).toBeVisible({ timeout: 10_000 });
-
-    // PIP table should have entries. PIP-001 ("Core Freeze") is the first
-    // accepted PIP — there is no PIP-000, so check for PIP-001 instead.
-    const pip001 = page.locator('text=PIP-001');
-    await expect(pip001.first()).toBeVisible();
+    await expect(page.getByTestId('canonical-document-1').getByRole('link')).toHaveAttribute('href', '/spec');
+    await expect(page.getByTestId('canonical-document-4').getByRole('link')).toHaveAttribute('href', '/evidence-chain');
   });
 
-  test('compliance section renders', async ({ page }) => {
+  test('keeps complete-mediation and evidence-decision boundaries visible', async ({ page }) => {
     await page.goto('/protocol');
 
-    // Compliance & Standards section
-    const compliance = page.locator('text=Compliance');
-    await expect(compliance.first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'Evidence is an input to authorization, not a synonym for it.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'A protected path is not proof of complete mediation.' })).toBeVisible();
+    await expect(page.getByText(/verified bypass overrides a successful blocked-path demonstration/i)).toBeVisible();
+  });
 
-    // NIST mapping mentioned
-    const nist = page.locator('text=NIST');
-    await expect(nist.first()).toBeVisible();
+  test('does not add the canonical document set to the top navigation', async ({ page }) => {
+    await page.goto('/protocol');
+
+    const topNav = page.locator('header nav');
+    await expect(topNav.getByText('Human Authorization Binding')).toHaveCount(0);
+    await expect(topNav.getByText('Authority Introduction')).toHaveCount(0);
+    await expect(topNav.getByText('Authorization Evidence Chain')).toHaveCount(0);
   });
 
   test('navigation back to homepage works', async ({ page }) => {
     await page.goto('/protocol');
 
-    // Click logo/home link
     const logo = page.locator('a[href="/"]').first();
     await logo.click();
     await expect(page).toHaveURL('/');

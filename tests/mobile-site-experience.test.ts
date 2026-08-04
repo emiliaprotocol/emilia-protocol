@@ -19,20 +19,13 @@ describe('mobile public-site experience contract', () => {
     expect(css).toContain('min-height: calc(100dvh - 60px)');
   });
 
-  it('stacks every protocol grid instead of leaking desktop columns off-screen', () => {
+  it('keeps the protocol hub fluid instead of leaking fixed desktop columns off-screen', () => {
     const protocol = read('app/protocol/page.tsx');
     const css = read('app/ep.css');
 
-    for (const className of [
-      'ep-protocol-binding-grid',
-      'ep-protocol-rollout-grid',
-      'ep-protocol-compliance-grid',
-      'ep-protocol-profile-row',
-    ]) {
-      expect(protocol).toContain(className);
-      expect(css).toContain(className);
-    }
-    expect(css).toContain('grid-template-columns: minmax(0, 1fr) !important');
+    expect(protocol.match(/repeat\(auto-fit, minmax\(260px, 1fr\)\)/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(protocol).toContain('ep-protocol-detail-row');
+    expect(css).toContain('.ep-protocol-detail-row');
   });
 
   it('keeps the category and auth-to-consequence handoff visible on phones', () => {

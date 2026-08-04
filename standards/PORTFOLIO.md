@@ -1,6 +1,6 @@
 # EMILIA Standards Portfolio
 
-Updated: 2026-08-01
+Updated: 2026-08-03
 
 ## One story
 
@@ -77,6 +77,67 @@ The center is intentionally narrow. CAID correlates content; AEC evaluates an
 evidence requirement; neither takes the authorization decision away from the
 executor.
 
+## Canonical four-document PRESENTATION surface
+
+For presentation and navigation, the current portfolio has one canonical
+four-document surface. It follows the evidence from the approval artifact,
+through host-record binding and scoped authority, to relying-party evidence
+satisfaction:
+
+1. **Authorization Receipts** —
+   [`draft-schrock-ep-authorization-receipts-08`](posted/draft-schrock-ep-authorization-receipts-08.xml)
+   defines one action-bound organizational approval-evidence profile and its
+   extension seam. Snapshot SHA-256:
+   `30c1a9f1f9c918443ff89d5271e079be5a4d121233a47294f5425e050f5b9657`.
+2. **Human Authorization Binding** —
+   [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml)
+   binds a named-human authorization artifact by value or reference into an
+   adjacent host record without redefining either artifact. Snapshot SHA-256:
+   `28574a050312837c96189561b2f0776da6cfdb1fe2720dab575fcb99a6811a0e`.
+3. **Authority Introduction** —
+   [`draft-schrock-ep-authority-introduction-02`](posted/draft-schrock-ep-authority-introduction-02.xml)
+   establishes the relying-party-pinned trust root and scoped authority used
+   to decide whether a verified key had the relevant authority. Snapshot
+   SHA-256:
+   `11e3a33a8f113691c0188e0b264b5428ee378ca42aefad89690377bc697a7c6e`.
+4. **Authorization Evidence Chain (AEC)** —
+   [`draft-schrock-ep-authorization-evidence-chain-05`](posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
+   composes natively verified, action-matched evidence against a
+   relying-party-pinned requirement and returns `SATISFIED` or `UNSATISFIED`,
+   never `AUTHORIZED`. Snapshot SHA-256:
+   `1ae4783a0c8e6e68b247191732d8b372c4032416b447a98f0b1040d54faad220`.
+
+This is a presentation surface, not a consolidation or Datatracker
+relationship. It does not retire, merge, replace, update, obsolete, or
+subordinate any active draft. Every entry in `STATUS.json.active_datatracker`
+retains its own scope, revision history, and active status, and the distinct
+profile and lifecycle portfolio remains intact.
+
+## Portfolio views that must not collapse
+
+The canonical presentation surface is not the active profile portfolio. The
+complete active portfolio remains the 22-entry `STATUS.json.active_datatracker`
+inventory, including its distinct evidence profiles and lifecycle drafts; all
+20 active `draft-schrock-*` records and both coauthored records retain their
+individual status. Neither presentation order nor appearance in another view
+retires, merges, replaces, or demotes an active draft.
+
+Separately, the **runtime execution spine** is:
+
+1. **Architecture-02** defines the system boundaries and non-collapsing
+   decision vocabulary.
+2. **CAID-01** identifies and matches the exact material action.
+3. **AEC-05** verifies and composes action-matched evidence into a relying-party
+   satisfaction result.
+4. **AEB-03** applies the executor-side admission boundary, including authority
+   separation and one-time consequence custody.
+
+This spine names the runtime path; it is not the four-document presentation
+surface or a replacement portfolio. AEC appears in both views because evidence
+satisfaction feeds runtime admission, not because the views are equivalent.
+Exact revisions, source paths, Datatracker URLs, and snapshot digests for both
+views are recorded in `STATUS.json`.
+
 ## The matching claim
 
 Direct digest equality works only when two formats emit identical canonical
@@ -93,7 +154,7 @@ content. The CAID Action-Mapping Profile handles the harder case:
 This is content correlation, not authorization. The current implementation and
 shared vectors are in [`../caid`](../caid).
 
-## Current published line and next revision wave
+## Current published line
 
 The July 19 wave established the initial protocol line. On **Tuesday, July 21,
 2026**, seven additional or successor revisions were published, and their local
@@ -119,7 +180,9 @@ AE Challenge-01, Revocation Statement-01, Authority Introduction-02, Agent
 Qualification Statements-00, and Action Remedy Receipts-00 were subsequently
 published on July 29-30. Their current XML snapshots are in `posted/`.
 
-Six sources are staged but **not filed** as of August 1:
+On **August 3, 2026**, the following six revisions were published as active
+individual Internet-Drafts and verified byte-for-byte against the immutable
+IETF archive:
 
 1. AEC-05 adds verifier-derived distinct-subject requirement semantics while
    retaining the boundary between SATISFIED and AUTHORIZED. The new requirement
@@ -140,8 +203,8 @@ Six sources are staged but **not filed** as of August 1:
    reachability, occurrence ceilings, and aggregate budgets are enforced in the
    same atomic domain as one-time Gate admission.
 
-The published line also retains Authority Introduction-01, Quorum-03, Bounded
-Capability Receipts-00, and the other current individual drafts listed in
+The published line also retains Authority Introduction-02, Quorum-03, Bounded
+Capability Receipts-01, and the other current individual drafts listed in
 `STATUS.json`. Model-to-Matter remains deliberately separate: publication does
 not claim a wet-lab deployment, screening capability, scientific-safety
 judgment, physical truth, or external endorsement.
@@ -151,9 +214,21 @@ disposition, is in [`STATUS.json`](STATUS.json). A published individual
 Internet-Draft is a proposal, not an RFC, a working-group adoption, or IETF
 endorsement.
 
-The exact upload packet is in `staged/UPLOAD-THIS/`. Public filing status changes
-only when a submission is published and its immutable snapshot is moved to
-`posted/`.
+The exact submitted-byte packet remains in `staged/UPLOAD-THIS/` as retained
+publication provenance, with its checksums and review renders. It is not an
+upload queue. Canonical current snapshots are in `posted/`; the IETF archive
+remains authoritative for rendered forms and live status.
+
+## New-filing freeze
+
+A 90-day freeze on new Internet-Draft names and `-00` filings is in effect from
+2026-08-03 through 2026-11-01, inclusive. Maintenance revisions under an
+existing active draft name remain allowed. The only exception requires all of
+the following: a wire-level gap, demonstration by a named external implementer
+or named external deployment, recorded evidence of that demonstration, and a
+recorded overlap review showing that the gap is not already owned by an active
+draft or adjacent specification. No active draft is retired or merged by this
+freeze, and the distinct active profile portfolio remains intact.
 
 ## Disposition ledger
 
@@ -162,12 +237,12 @@ These are decisions, not an indefinite waiting room:
 | Candidate | Disposition | Canonical owner or trigger |
 | --- | --- | --- |
 | Assurance Classes | Retired before filing | Verifier-visible proof predicates and profile-local aliases |
-| Authority Registry | Retired and absorbed | Authority Introduction-01 |
+| Authority Registry | Retired and absorbed | Authority Introduction-02 |
 | Agent Trust Stack | Retired and absorbed | Architecture-02 |
 | PQC | Retired as a standalone draft | Evidence Record crypto agility and anti-stripping |
-| Model-to-Matter | Published July 19 as an Experimental profile | Name and open executor profile established; deployment claims require a real executor |
+| Model-to-Matter | Active Experimental profile; current -03 published August 3 | Name and open executor profile established; deployment claims require a real executor |
 | Human Oversight | Partner-triggered profile | A regulator or management-system standards partner validates the mapping |
-| Reliance Agreement | Submission-ready individual draft | Narrow signed terms and reliance-event wire format; legal and insurance outcomes remain out of scope |
+| Reliance Agreement | Active individual draft; -00 published August 3 | Narrow signed terms and reliance-event wire format; legal and insurance outcomes remain out of scope |
 
 Retired sources remain in `archive/`; held application profiles live in
 `profiles/`. Neither directory is a filing queue.

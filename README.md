@@ -74,6 +74,17 @@ It is format-neutral and self-run. A passing report is self-attested
 conformance evidence—not an audit, certification, production-deployment claim,
 or permission to execute an action.
 
+For a focused executable proof of the repository's Gate path, run:
+
+```bash
+npm run proof:gate:reference
+```
+
+This command exercises local examples and focused service boundaries with
+generated keys, in-memory state, and mock provider behavior. It is useful local
+proof, not evidence of a real human, external bank, production deployment, or
+one end-to-end production integration.
+
 ## The engine without brakes
 
 For fifty years, software security answered one question: *who is allowed in?* Firewalls, OAuth, and passwords — all built to verify a human identity at the door.
@@ -208,11 +219,51 @@ The managed layer (**GovGuard / FinGuard**) extends the open standard with secto
 
 ## The standard
 
-EMILIA is an open standard, not a product moat. The core is Apache-2.0 and tracked as an IETF Internet-Draft.
+EMILIA Protocol is open and Apache-2.0. Its standards work is published as a
+portfolio of individual Internet-Drafts. A published Internet-Draft is not an
+RFC, an adopted working-group item, or IETF endorsement; Datatracker is
+authoritative for revision and status.
+
+### Canonical four-document presentation surface
+
+For reader navigation, the canonical evidence path is:
+
+1. [Authorization Receipts-08](standards/posted/draft-schrock-ep-authorization-receipts-08.xml)
+   defines the action-bound approval-evidence profile. **The current posted
+   revision is -08; this documentation does not present -09 as published.**
+2. [Human Authorization Binding-00](standards/posted/draft-schrock-human-authorization-binding-00.xml)
+   binds a named-human authorization artifact into an adjacent host record.
+3. [Authority Introduction-02](standards/posted/draft-schrock-ep-authority-introduction-02.xml)
+   establishes relying-party-pinned trust roots and scoped authority.
+4. [Authorization Evidence Chain-05](standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
+   evaluates whether natively verified, action-matched evidence satisfies the
+   relying party's requirement; it returns `SATISFIED` or `UNSATISFIED`, never
+   `AUTHORIZED`.
+
+This four-document surface is presentation only. It does not merge, retire,
+replace, update, obsolete, subordinate, or demote any draft in the active
+portfolio.
+
+### Separate runtime execution spine
+
+The runtime path is [Architecture-02](standards/posted/draft-schrock-ep-architecture-02.xml)
+→ [CAID-01](standards/posted/draft-schrock-canonical-action-identifier-01.xml)
+→ [AEC-05](standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
+→ [AEB-03](standards/posted/draft-schrock-action-evidence-boundary-03.xml):
+system boundaries, exact material-action matching, evidence satisfaction, then
+executor-side admission and one-time consequence custody. AEC appears in both
+views because evidence satisfaction feeds runtime admission, not because the
+views are equivalent.
+
+The complete active portfolio remains 22 Datatracker records: 20 active
+`draft-schrock-*` records and two coauthored records, each with its own scope
+and revision history. See the [standards guide](standards/README.md),
+[portfolio](standards/PORTFOLIO.md), and machine-readable
+[status inventory](standards/STATUS.json).
 
 | | |
 |---|---|
-| **IETF Internet-Drafts** | Posted: [authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) · [quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/) · [authorization-evidence-chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/) · [authorization-evidence-challenge](https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/) · [evidence-record](https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/). |
+| **IETF Internet-Drafts** | Current local snapshots: [posted inventory](standards/posted/README.md) · authoritative live status: [IETF Datatracker](https://datatracker.ietf.org/) |
 | **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). A consistency check across one team's ports, not clean-room independent implementations. Separately, an externally authored from-spec Rust implementation ([source public](https://github.com/jdieselny/ecr-wg/tree/main/rust/ep-cleanroom-verifier)) passes the pinned 16-suite/164-vector bundle and the pinned 359-case hostility campaign under an evaluator-controlled rebuild from an immutable source tree. Its checked-in construction evidence remains implementer-signed, not third-party-attested ([signed statement](examples/external-verification/statements/rust-cleanroom/)); strict clean-room acceptance waits for the corrected third-party-attested manifest and independently pinned attestor key. |
 | **Formal-model evidence** | 26 bounded TLA+ safety properties held in their configured state spaces; this is not implementation refinement or an unbounded proof · 35 Alloy facts, 32 assertions across four models · two composed symbolic Dolev-Yao models covering challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, execution, and six dedicated claim boundaries. Twenty Tamarin lemmas verify — 17 all-traces obligations and 3 exists-trace witnesses; eight deliberately weakened variants produce concrete attack traces when load-bearing checks are removed ([formal/tamarin/](formal/tamarin/)). |
 | **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |

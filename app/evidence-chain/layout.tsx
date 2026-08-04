@@ -1,22 +1,18 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Authorization Evidence Chains — Compose Agent Receipts into One Verdict',
+  title: 'Authorization Evidence Chain -05 — Evidence Satisfaction for One Exact Action',
   description:
-    'A dozen IETF drafts define receipts for an AI agent’s action — delegation, '
-    + 'policy/permit, decision, and human-authorization receipts — all on the same '
-    + 'canonical substrate. EP-AEC defines the missing layer: how a relying party verifies '
-    + 'that several heterogeneous receipts all bind the same action and each verify under '
-    + 'their own rules, yielding a single offline, fail-closed SATISFIED or UNSATISFIED evidence verdict. The executor authorizes separately. Open protocol, '
-    + 'tri-language verifiers, filed Internet-Draft.',
+    'Document 04 in the EMILIA canonical path. EP-AEC -05 evaluates whether natively verified, '
+    + 'action-matched evidence satisfies a relying party’s explicit requirement for one exact '
+    + 'material action. SATISFIED is evidence, not local authorization, execution, or proof of complete mediation.',
   alternates: { canonical: '/evidence-chain' },
   openGraph: {
-    title: 'EP-AEC — the layer that composes agent-authorization receipts',
+    title: 'EP-AEC -05 — evidence satisfaction for one exact action',
     description:
-      'Not a 13th receipt format. The composition object and verifier that takes the '
-      + 'delegation, policy, and human-authorization receipts for one action and returns a '
-      + 'single offline SATISFIED/UNSATISFIED evidence verdict — the verifier-side convergence point for the agent '
-      + 'authorization field.',
+      'The composition object and verifier that checks required artifacts under their native '
+      + 'rules, matches them to one exact material action, and returns SATISFIED or UNSATISFIED. '
+      + 'The executor authorizes separately.',
     url: 'https://www.emiliaprotocol.ai/evidence-chain',
     type: 'article',
   },

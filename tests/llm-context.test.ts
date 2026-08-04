@@ -68,6 +68,34 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
     expect(llmsFull).toContain('No biological screening, scientific-safety, physical-truth, deployment, or endorsement claim is made.');
   });
 
+  it('publishes the canonical four-document reading path from standards status', () => {
+    expect(context.standards_portfolio.source).toBe('standards/STATUS.json');
+    expect(context.standards_portfolio.canonical_reading_path)
+      .toEqual(standardsStatus.canonical_four_document_surface);
+    expect(context.standards_portfolio.canonical_reading_path).toMatchObject({
+      status: 'presentation_only_no_consolidation',
+      document_count: 4,
+      documents: [
+        { order: 1, draft: 'draft-schrock-ep-authorization-receipts', revision: '08' },
+        { order: 2, draft: 'draft-schrock-human-authorization-binding', revision: '00' },
+        { order: 3, draft: 'draft-schrock-ep-authority-introduction', revision: '02' },
+        { order: 4, draft: 'draft-schrock-ep-authorization-evidence-chain', revision: '05' },
+      ],
+    });
+    expect(llmsFull).toContain('## Canonical Four-Document Reading Path');
+  });
+
+  it('keeps Gate first and scopes prevention to complete mediation', () => {
+    const gatePosition = llms.indexOf('EMILIA Gate');
+    const specificationsPosition = llms.indexOf('## Specifications');
+
+    expect(gatePosition).toBeGreaterThanOrEqual(0);
+    expect(gatePosition).toBeLessThan(specificationsPosition);
+    expect(llms).toContain(context.identity.commercial_product.claim_boundary);
+    expect(llmsFull).toContain('Enforcement is non-bypassable only when every protected action path');
+    expect(llmsFull).toContain('cannot constrain an operator who controls an alternate execution path');
+  });
+
   it('surfaces the executable CAID mapping boundary', () => {
     expect(context.current_evidence.caid).toMatchObject({
       core_vectors: 48,

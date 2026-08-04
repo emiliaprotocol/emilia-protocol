@@ -6,394 +6,297 @@ import SiteFooter from '@/components/SiteFooter';
 import EmailCapture from '@/components/EmailCapture';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
-const ENDPOINTS = [
-  { name: '/initiate', desc: 'Client requests a trust ceremony by describing the high-risk action, actor identity, and context.' },
-  { name: '/evaluate', desc: 'EP engine evaluates the request against bound policy, authority chain, and environmental conditions.' },
-  { name: '/signoff',  desc: 'When policy requires human accountability, a named responsible party explicitly assumes ownership.' },
-  { name: '/execute',  desc: 'One-time ceremony token is consumed. The action proceeds with full cryptographic binding.' },
-  { name: '/audit',    desc: 'Immutable event record links every authorization to its outcome in an append-only trail.' },
+// Canonical presentation path from standards/STATUS.json. Keep these visible
+// revisions aligned with that file. Authorization Receipts intentionally stays
+// at -08 until the newer revision is successfully filed and main is updated.
+const CANONICAL_DOCUMENTS = [
+  {
+    order: '01',
+    label: 'Authorization Receipts',
+    draft: 'draft-schrock-ep-authorization-receipts-08',
+    question: 'What action-bound organizational approval evidence was produced under the receipt profile?',
+    boundary: 'One approval-evidence profile. It does not establish scoped authority or evidence satisfaction by itself.',
+    href: '/spec',
+    linkLabel: 'Read Receipts -08',
+    external: false,
+  },
+  {
+    order: '02',
+    label: 'Human Authorization Binding',
+    draft: 'draft-schrock-human-authorization-binding-00',
+    question: 'How is named-human authorization evidence bound into an adjacent host record?',
+    boundary: 'A host-agnostic by-value or by-reference binding. It does not redefine the authorization artifact or host format.',
+    href: 'https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/',
+    linkLabel: 'Read Binding -00',
+    external: true,
+  },
+  {
+    order: '03',
+    label: 'Authority Introduction',
+    draft: 'draft-schrock-ep-authority-introduction-02',
+    question: "Under the relying party's trust roots, did the verified key have authority for this scope?",
+    boundary: 'Trust-root introduction and scoped authority. Signature verification alone does not create authority.',
+    href: 'https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/',
+    linkLabel: 'Read Authority -02',
+    external: true,
+  },
+  {
+    order: '04',
+    label: 'Authorization Evidence Chain',
+    draft: 'draft-schrock-ep-authorization-evidence-chain-05',
+    question: "Does the natively verified, action-matched bundle satisfy the relying party's evidence requirement?",
+    boundary: 'Returns SATISFIED or UNSATISFIED. It never returns a universal authorization verdict.',
+    href: '/evidence-chain',
+    linkLabel: 'Read AEC -05',
+    external: false,
+  },
 ];
 
-const STATES = [
-  { state: 'INITIATED',       desc: 'Ceremony request received and validated.',               color: color.blue  },
-  { state: 'EVALUATING',      desc: 'Policy engine processing bindings and constraints.',      color: color.gold  },
-  { state: 'PENDING_SIGNOFF', desc: 'Awaiting human accountability signoff.',                  color: color.gold  },
-  { state: 'APPROVED',        desc: 'All bindings satisfied. One-time token issued.',          color: color.green },
-  { state: 'EXECUTED',        desc: 'Token consumed. Action completed.',                       color: color.green },
-  { state: 'DENIED',          desc: 'Policy evaluation failed. Action blocked.',               color: '#DC2626'   },
-  { state: 'EXPIRED',         desc: 'Ceremony token exceeded temporal bounds.',                color: color.t3    },
+const DECISIONS = [
+  { term: 'VERIFIED', definition: 'One artifact passed its native verifier under relying-party-selected trust inputs.' },
+  { term: 'MATCH', definition: 'Independently verified artifacts denote the same exact material action under pinned mapping rules.' },
+  { term: 'SATISFIED', definition: "Verified, matched evidence fills every slot in the relying party's evidence requirement." },
+  { term: 'AUTHORIZED', definition: "The relying party's separate local policy permits execution." },
+  { term: 'EXECUTED', definition: 'An executor asserts or attests that an effect occurred; evidence satisfaction does not prove the effect.' },
 ];
 
-// Every entry must correspond to a file under PIPs/. Engineering
-// reviewers run `ls PIPs/` against this list — listing a PIP without
-// its file creates a discoverable contradiction. PIP-006 was restored
-// once PIPs/PIP-006-federation.md was authored.
-const PIPS = [
-  { pip: 'PIP-001', title: 'Core Freeze',           status: 'Accepted' },
-  { pip: 'PIP-002', title: 'Handshake',             status: 'Accepted' },
-  { pip: 'PIP-003', title: 'Accountable Signoff',   status: 'Accepted' },
-  { pip: 'PIP-004', title: 'EP Commit',             status: 'Accepted' },
-  { pip: 'PIP-005', title: 'Emilia Eye',            status: 'Accepted' },
-  { pip: 'PIP-006', title: 'Federation',            status: 'Draft'    },
-  { pip: 'PIP-007', title: 'Initiator Escalation Attestation', status: 'Draft' },
-  { pip: 'PIP-008', title: 'Authorization Receipt rename',     status: 'Draft' },
-  { pip: 'PIP-009', title: 'Provenance Chain',                 status: 'Draft' },
-  { pip: 'PIP-010', title: 'WYSIWYS / Execution Integrity',    status: 'Draft' },
-  { pip: 'PIP-011', title: 'Instant Revocation + Continuous-Eval', status: 'Draft' },
+const GATE_STEPS = [
+  {
+    order: '01',
+    title: 'Describe one exact action',
+    body: 'Bind the operation, target, material parameters, actor, and context before asking for authority. A receipt for a different payload does not transfer.',
+  },
+  {
+    order: '02',
+    title: 'Verify the required evidence',
+    body: 'Check each artifact under its native rules and relying-party-pinned trust inputs, then match every required leg to the same material action.',
+  },
+  {
+    order: '03',
+    title: 'Authorize and reserve before invocation',
+    body: 'AEC satisfaction is evidence, not permission. Gate applies local policy and current-status checks, then reserves one-time admission at the protected boundary before the provider call begins.',
+  },
+  {
+    order: '04',
+    title: 'Record the outcome without inventing certainty',
+    body: 'Preserve refusal, consumption, and outcome evidence. An indeterminate provider result enters authenticated reconciliation; it is not fresh authority to retry.',
+  },
 ];
 
-// Compliance numbers must match the underlying mapping documents exactly.
-// "38/38" with "all subcategories mapped" implied 100% framework coverage,
-// but NIST AI RMF 1.0 has ~72+ subcategories and the mapping doc covers
-// 38 selectively across all four functions. Federal procurement teams will
-// cross-check against the published framework.
-const COMPLIANCE = [
-  { framework: 'NIST AI RMF', coverage: '38 mapped',    detail: 'Across GOVERN, MAP, MEASURE, MANAGE — see docs/compliance/NIST-AI-RMF-MAPPING.md', accent: color.green },
-  { framework: 'EU AI Act',   coverage: 'Articles 9-15, 26', detail: 'High-risk AI systems (Title III, Chapter 2) — see docs/compliance/EU-AI-ACT-MAPPING.md', accent: color.blue },
-  { framework: 'SOC 2 II',    coverage: 'Preparing',    detail: 'Auditor selection in progress', accent: color.gold },
-];
-
-// ─── Eight binding properties (Core 01–07 + Signoff extension 08) ─────────
-// Visual grid moved here from the homepage so the buyer-facing page stays
-// 30-second readable and the technical depth lives one click away.
-const BINDINGS = [
-  { num: '01', title: 'Actor identity',                     body: 'Cryptographically verified identity of the entity requesting the action.',                  code: 'verify(entity.keyId)' },
-  { num: '02', title: 'Authority chain',                    body: 'Complete delegation path from root authority to the acting principal.',                     code: '∀d ∈ D: d(root→actor)' },
-  { num: '03', title: 'Exact action context',               body: 'The precise operation, target, parameters, and environmental conditions.',                  code: 'bind(action, params)' },
-  { num: '04', title: 'Policy version and hash',            body: 'Immutable reference to the exact policy version that authorized this action.',              code: 'pin(policy.sha256)' },
-  { num: '05', title: 'Nonce and expiry',                   body: 'One-time cryptographic nonce and strict temporal bounds on authorization.',                 code: 'N_{t} ≠ N_{t-1}' },
-  { num: '06', title: 'One-time consumption',               body: 'Each ceremony token is consumed on use — no replay, no reuse, no ambiguity.',               code: 'consume(token_id, lock)' },
-  { num: '07', title: 'Immutable event traceability',       body: 'Append-only audit trail linking every authorization to its outcome.',                       code: 'Append(Log, Hash(E))' },
-  { num: '08', title: 'Accountable signoff (extension)',    body: 'Named human responsibility for the exact action, cryptographically bound to the ceremony.', code: 'attest(actor, action)' },
-];
-
-// Four-step phased rollout (OBSERVE → SHADOW → ENFORCE-with-handshake →
-// SEAL). Same content the homepage used to render.
-const ROLLOUT = [
-  { step: '01', accent: color.green, label: 'Start with Eye',         body: 'Observe, shadow, then enforce. Eye runs alongside existing workflows — logging first, flagging without blocking, then enforcing full ceremony when ready.', filled: true  },
-  { step: '02', accent: color.blue,  label: 'Enforce with Handshake', body: 'Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption. Seven properties verified before execution proceeds.', filled: false },
-  { step: '03', accent: color.gold,  label: 'Own with Signoff',       body: 'Named human ownership when policy requires it. Not MFA. Cryptographically bound, action-specific accountability before execution.',                          filled: false },
-  { step: '04', accent: color.t2,    label: 'Seal with Commit',       body: 'Atomic write to the immutable audit chain. Handshake consumed, signoff consumed, event chain sealed. Execution released. Cannot be undone.',                  filled: false },
-];
-
-// The protocol family — every consequential-action check is the same shape (a
-// signed receipt over one envelope, EP-ENVELOPE-v1) dispatched by a profile URN.
-// Mirrors lib/envelope/descriptors.js (PROFILE_DESCRIPTORS) and the published
-// registry at public/.well-known/ep-profiles.json. A profile is data + a small
-// validateBody bridge; a third party ships one in the reserved
-// urn:ep:profile:x-<vendor>:* space without asking permission.
-const PROFILES = [
-  { tag: 'EP-REVOCATION-v1',          urn: 'revocation:v1',          desc: 'Portable, offline-verifiable revocation of a prior authorization.' },
-  { tag: 'EP-EYE-SET-v1',             urn: 'eye-set:v1',             desc: 'Continuous-eval posture as a signed RFC 8417 Security Event Token — never a gate.' },
-  { tag: 'EP-EXECUTION-INTEGRITY-v1', urn: 'execution-integrity:v1', desc: 'What executed equals what was approved — drift detection.' },
-  { tag: 'EP-DISPLAY-ATTESTATION-v1', urn: 'wysiwys:v1',             desc: 'What the approver saw equals what they signed — display attestation.' },
-  { tag: 'EP-PROVENANCE-CHAIN-v1',    urn: 'provenance-chain:v1',    desc: 'Root human signoff → bound delegation chain → per-action approval → execution.' },
+const COVERAGE_CONTROLS = [
+  'Inventory every effect-capable route and credential in the declared deployment scope.',
+  'Put admission at each executor or system-of-record boundary where the consequence can still be stopped.',
+  'Probe protected and alternate paths; a verified bypass overrides a successful blocked-path demonstration.',
+  'Classify coverage as gated, ungated, stale, or unknown, and re-evaluate it when routes or credentials change.',
 ];
 
 export default function ProtocolPage() {
   useEffect(() => {
-    const els = document.querySelectorAll('.ep-reveal');
-    const obs = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-visible'); obs.unobserve(e.target); } }),
-      { threshold: 0.12 }
+    const elements = document.querySelectorAll('.ep-reveal');
+    const observer = new IntersectionObserver(
+      entries => entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      }),
+      { threshold: 0.12 },
     );
-    els.forEach(el => obs.observe(el));
-    return () => obs.disconnect();
+
+    elements.forEach(element => observer.observe(element));
+    return () => observer.disconnect();
   }, []);
 
   return (
     <div style={styles.page}>
       <SiteNav activePage="Protocol" />
 
-      {/* Hero */}
-      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
-        <div className="ep-tag ep-hero-badge">EMILIA Protocol</div>
-        <h1 className="ep-hero-text" style={styles.h1}>The open evidence layer behind the Consequence Firewall</h1>
-        <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 600 }}>
-          Identity and policy systems can remain in place. EMILIA Protocol defines how a relying
-          party requests exact-action evidence, verifies it under pinned rules, and carries
-          portable proof across approval, execution, uncertainty, and remedy.
-        </p>
-        <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 600 }}>
-          The Protocol proves. EMILIA Gate is the commercial product that prevents the consequence
-          at the executor or system-of-record boundary.
-        </p>
-      </section>
-
-      {/* 5-endpoint story */}
-      <section style={styles.sectionAlt}>
-        <div style={styles.section}>
-          <div className="ep-reveal" style={{ marginBottom: 40 }}>
-            <div style={styles.eyebrow}>The 5-Endpoint Story</div>
-            <h2 style={styles.h2}>One ceremony, five steps</h2>
-            <p style={styles.body}>Every EP ceremony follows the same disciplined flow.</p>
+      <main>
+        <section style={{ ...styles.sectionWide, paddingTop: 104, paddingBottom: 72 }}>
+          <div className="ep-tag ep-hero-badge">Gate first · Open protocol</div>
+          <h1 className="ep-hero-text" style={{ ...styles.h1Large, maxWidth: 860 }}>
+            Gate exact actions before consequences.
+          </h1>
+          <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 740, marginTop: 24, fontSize: 18 }}>
+            EMILIA Gate sits on a configured executor or system-of-record path where an action can
+            still be refused. For one exact material action, it verifies the required evidence under
+            relying-party-pinned trust, applies local authorization policy, and reserves admission
+            before invocation.
+          </p>
+          <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 740 }}>
+            The four-document path below explains the evidence Gate can consume. It does not turn a
+            <strong> SATISFIED</strong> evidence result into an <strong>AUTHORIZED</strong> decision,
+            prove execution, or establish complete mediation across routes a deployment has not put
+            behind Gate.
+          </p>
+          <div className="ep-hero-text" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 28 }}>
+            <a href="#canonical-path" className="ep-cta" style={cta.primary}>Follow the four-document path</a>
+            <a href="/gate" className="ep-cta-secondary" style={cta.secondary}>See EMILIA Gate</a>
           </div>
-          <div style={{
-            borderTop: `1px solid ${color.border}`,
-            borderLeft: `1px solid ${color.border}`,
-          }}>
-            {ENDPOINTS.map((ep, i) => (
-              <div key={ep.name} className="ep-row-hover ep-reveal ep-protocol-detail-row" style={{
-                display: 'flex', gap: 24, alignItems: 'flex-start',
-                padding: '20px 24px',
-                borderRight: `1px solid ${color.border}`,
-                borderBottom: `1px solid ${color.border}`,
-              }}>
-                <span style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: color.green, minWidth: 100, flexShrink: 0, paddingTop: 1 }}>{ep.name}</span>
-                <span style={{ fontSize: 14, color: color.t2, lineHeight: 1.65 }}>{ep.desc}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* State machine */}
-      <section style={styles.section}>
-        <div className="ep-reveal" style={{ marginBottom: 40 }}>
-          <div style={styles.eyebrow}>State Machine</div>
-          <h2 style={styles.h2}>Ceremony lifecycle</h2>
-          <p style={styles.body}>Each ceremony transitions through a deterministic set of states. No ambiguity, no undefined behavior.</p>
-        </div>
-        <div style={{
-          borderTop: `1px solid ${color.border}`,
-          borderLeft: `1px solid ${color.border}`,
-        }}>
-          {STATES.map((st, i) => (
-            <div key={st.state} className="ep-row-hover ep-reveal ep-protocol-detail-row" style={{
-              display: 'flex', gap: 24, alignItems: 'center',
-              padding: '14px 24px',
-              borderRight: `1px solid ${color.border}`,
-              borderBottom: `1px solid ${color.border}`,
-            }}>
-              <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: st.color, minWidth: 140, flexShrink: 0, letterSpacing: 0.5 }}>{st.state}</span>
-              <span style={{ fontSize: 14, color: color.t2, lineHeight: 1.6 }}>{st.desc}</span>
+        <section id="canonical-path" style={styles.sectionAlt}>
+          <div style={styles.sectionWide}>
+            <div className="ep-reveal" style={{ marginBottom: 36 }}>
+              <div style={styles.eyebrow}>Canonical presentation path</div>
+              <h2 style={{ ...styles.h2, fontSize: 30, maxWidth: 720 }}>Four documents. One evidence path.</h2>
+              <p style={{ ...styles.body, maxWidth: 780 }}>
+                Start with the approval artifact, carry it into the host record, establish scoped
+                authority under the relying party&apos;s trust roots, then evaluate whether the verified,
+                action-matched bundle satisfies that party&apos;s evidence requirement.
+              </p>
+              <p style={{ ...styles.body, maxWidth: 780, fontSize: 14, color: color.t3, marginBottom: 0 }}>
+                This is a reader-facing path over four active individual Internet-Drafts. It does not
+                merge, replace, retire, or subordinate the rest of the protocol portfolio.
+              </p>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* Seven binding guarantees + signoff extension — visual grid */}
-      <section style={styles.sectionAlt}>
-        <div style={styles.section}>
-          <div className="ep-reveal" style={{ marginBottom: 40 }}>
-            <div style={styles.eyebrow}>Seven Binding Guarantees</div>
-            <h2 style={styles.h2}>What EP binds, every ceremony</h2>
-            <p style={styles.body}>
-              Actor identity. Authority chain. Exact action context. Policy version and hash. Nonce and expiry.
-              One-time consumption. Immutable event traceability. Every ceremony. No exceptions. The
-              eighth property — accountable signoff — applies whenever policy requires named human ownership.
-            </p>
-          </div>
-
-          {/* Border-collapse grid — same pattern the homepage used to render */}
-          <div className="ep-reveal ep-stagger-1 ep-protocol-binding-grid" style={{
-            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-            borderTop: `1px solid ${color.border}`,
-            borderLeft: `1px solid ${color.border}`,
-            background: '#F5F4F0',
-            marginBottom: 32,
-          }}>
-            {BINDINGS.map((b, i) => (
-              <div key={i} className="ep-card-lift" style={{
-                position: 'relative', overflow: 'hidden',
-                background: color.card,
-                borderRight: `1px solid ${color.border}`,
-                borderBottom: `1px solid ${color.border}`,
-                padding: '24px',
-              }}>
-                {/* Ghost number */}
-                <div aria-hidden style={{
-                  position: 'absolute', right: -8, top: -16,
-                  fontFamily: font.mono, fontWeight: 700, fontSize: 80,
-                  color: 'rgba(232,229,225,0.6)', pointerEvents: 'none',
-                  lineHeight: 1, userSelect: 'none',
-                }}>{b.num}</div>
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                  <div style={{ fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 14 }}>
-                    Property_{b.num}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+              {CANONICAL_DOCUMENTS.map((document, index) => (
+                <article
+                  key={document.draft}
+                  data-testid={`canonical-document-${index + 1}`}
+                  className={`ep-card-lift ep-reveal ep-stagger-${index + 1}`}
+                  style={{
+                    ...styles.card,
+                    display: 'flex',
+                    minHeight: 340,
+                    flexDirection: 'column',
+                    borderTop: `3px solid ${index === 0 ? color.gold : color.borderHover}`,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1.5 }}>
+                      {document.order} / 04
+                    </span>
+                    <span style={{ fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                      Internet-Draft
+                    </span>
                   </div>
-                  <h4 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 13, marginBottom: 6, color: color.t1 }}>{b.title}</h4>
-                  <p style={{ fontSize: 12, color: color.t2, lineHeight: 1.55, marginBottom: 14 }}>{b.body}</p>
-                  <div style={{
-                    fontFamily: font.mono, fontSize: 9,
-                    background: '#F5F4F0', border: `1px solid ${color.border}`,
-                    padding: '6px 10px', textAlign: 'center', color: color.t3,
-                  }}>{b.code}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="ep-reveal" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="/spec" className="ep-cta-secondary" style={cta.secondary}>Read the Full Spec</a>
-            <a href="/partners" className="ep-cta-ghost" style={cta.ghost}>Request Pilot</a>
-          </div>
-        </div>
-      </section>
-
-      {/* Protocol governance */}
-      <section style={styles.section}>
-        <div className="ep-reveal" style={{ marginBottom: 40 }}>
-          <div style={styles.eyebrow}>Protocol Governance</div>
-          <h2 style={styles.h2}>Immutable core, extensible edges</h2>
-          <p style={styles.body}>
-            EP Core v1.0 (authorization receipt, Trust Profile, Trust Decision) is frozen. Changes require a Protocol Improvement Proposal, 90-day review, and major version bump with 24-month deprecation. Extensions are added without touching Core.
-          </p>
-        </div>
-        <div className="ep-reveal" style={{
-          borderTop: `1px solid ${color.border}`,
-          borderLeft: `1px solid ${color.border}`,
-        }}>
-          {PIPS.map((p, i) => (
-            <div key={i} className="ep-row-hover ep-protocol-pip-row" style={{
-              display: 'flex', gap: 24, alignItems: 'center',
-              padding: '12px 24px',
-              borderRight: `1px solid ${color.border}`,
-              borderBottom: `1px solid ${color.border}`,
-            }}>
-              <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, color: color.blue, minWidth: 72, flexShrink: 0 }}>{p.pip}</span>
-              <span style={{ fontSize: 14, color: color.t1, flex: 1 }}>{p.title}</span>
-              <span style={{ fontFamily: font.mono, fontSize: 10, color: p.status === 'Accepted' ? color.green : color.gold, letterSpacing: 1.5, textTransform: 'uppercase' }}>{p.status}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* The protocol family — one envelope, a registry of profiles */}
-      <section style={styles.section}>
-        <div className="ep-reveal" style={{ marginBottom: 40 }}>
-          <div style={styles.eyebrow}>The Protocol Family</div>
-          <h2 style={styles.h2}>One envelope. A registry of profiles.</h2>
-          <p style={styles.body}>
-            Every consequential-action check EP makes is the <strong>same shape</strong>: a signed,
-            offline-verifiable receipt carried in one envelope (<code style={{ fontFamily: font.mono, fontSize: 13 }}>EP-ENVELOPE-v1</code>),
-            dispatched by a <strong>profile</strong>. A single verifier handles them all — and a profile
-            can only <em>add</em> a rejection, never weaken a shared check. Adding a new high-stakes action
-            isn&rsquo;t a new product; it&rsquo;s a new row in the registry.
-          </p>
-        </div>
-
-        <div className="ep-reveal" style={{
-          borderTop: `1px solid ${color.border}`,
-          borderLeft: `1px solid ${color.border}`,
-          marginBottom: 28,
-        }}>
-          {PROFILES.map((p, i) => (
-            <div key={i} className="ep-row-hover ep-protocol-profile-row" style={{
-              display: 'flex', gap: 24, alignItems: 'flex-start',
-              padding: '16px 24px',
-              borderRight: `1px solid ${color.border}`,
-              borderBottom: `1px solid ${color.border}`,
-            }}>
-              <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: color.blue, minWidth: 210, flexShrink: 0, letterSpacing: 0.3, paddingTop: 1 }}>{p.tag}</span>
-              <span style={{ fontSize: 14, color: color.t2, lineHeight: 1.6 }}>{p.desc}</span>
-            </div>
-          ))}
-        </div>
-
-        <p className="ep-reveal" style={{ ...styles.body, maxWidth: 720 }}>
-          The registry is content-addressed and published at{' '}
-          <code style={{ fontFamily: font.mono, fontSize: 13 }}>/.well-known/ep-profiles.json</code> — verifiable
-          offline, no call home. EMILIA hosts a <strong>mirror</strong>, not a trust root: the reserved
-          private-use namespace <code style={{ fontFamily: font.mono, fontSize: 13 }}>urn:ep:profile:x-&lt;vendor&gt;:*</code>{' '}
-          lets anyone publish a profile without asking permission. That is how a toolbox becomes a
-          standard — COSE did it for signing, MIME for content, Sigstore for trust.
-        </p>
-      </section>
-
-      {/* Phased rollout — Eye → Handshake → Signoff → Commit */}
-      <section style={styles.sectionAlt}>
-        <div style={styles.section}>
-          <div className="ep-reveal" style={{ marginBottom: 40 }}>
-            <div style={styles.eyebrow}>Rollout Schematics</div>
-            <h2 style={styles.h2}>Progressive phased deployment</h2>
-            <p style={styles.body}>
-              EP rolls out in four phases. Most pilots begin in <strong>OBSERVE</strong> for 2–4 weeks
-              to generate the &ldquo;what would have been blocked&rdquo; report before flipping to enforce.
-            </p>
-          </div>
-          <div style={{ position: 'relative' }}>
-            {/* Connecting line */}
-            <div className="ep-protocol-rollout-line" aria-hidden style={{
-              position: 'absolute', top: 20, left: 36, right: 36,
-              height: 1, background: color.border, zIndex: 0,
-            }} />
-            <div className="ep-protocol-rollout-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, position: 'relative', zIndex: 1 }}>
-              {ROLLOUT.map((item, i) => (
-                <div key={i} className="ep-card-lift ep-reveal" style={{
-                  background: color.card,
-                  border: `1px solid ${color.border}`,
-                  borderRadius: radius.base,
-                  padding: '28px',
-                }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 2,
-                    background: item.filled ? color.t1 : '#F5F4F0',
-                    border: item.filled ? 'none' : `1px solid ${color.border}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: 20,
-                    fontFamily: font.mono, fontSize: 12, fontWeight: 600,
-                    color: item.filled ? color.gold : color.t2,
-                  }}>{item.step}</div>
-                  <div style={{
-                    fontFamily: font.mono, fontSize: 10, fontWeight: 500,
-                    color: item.accent, letterSpacing: 1.5,
-                    textTransform: 'uppercase', marginBottom: 10,
-                  }}>{item.label}</div>
-                  <p style={{ fontSize: 13, color: color.t2, lineHeight: 1.65 }}>{item.body}</p>
-                </div>
+                  <h3 style={{ ...styles.h3, fontSize: 21 }}>{document.label}</h3>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, lineHeight: 1.5, overflowWrap: 'anywhere', marginBottom: 18 }}>
+                    {document.draft}
+                  </div>
+                  <p style={{ ...styles.cardBody, fontSize: 15, marginBottom: 14 }}><strong>{document.question}</strong></p>
+                  <p style={{ ...styles.cardBody, marginBottom: 24 }}>{document.boundary}</p>
+                  <a
+                    href={document.href}
+                    target={document.external ? '_blank' : undefined}
+                    rel={document.external ? 'noopener noreferrer' : undefined}
+                    aria-label={`${document.linkLabel}: ${document.label}`}
+                    style={{ ...cta.ghost, marginTop: 'auto', color: color.gold }}
+                  >
+                    {document.linkLabel}{document.external ? ' ↗' : ' →'}
+                  </a>
+                </article>
               ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Compliance */}
-      <section style={styles.sectionAlt}>
-        <div style={styles.section}>
-          <div className="ep-reveal" style={{ marginBottom: 40 }}>
-            <div style={styles.eyebrow}>Compliance & Standards</div>
-            <h2 style={styles.h2}>Built for regulated adoption</h2>
-            <p style={styles.body}>
-              EP has formal compliance mappings for 38 NIST AI RMF subcategories across all four functions (GOVERN, MAP, MEASURE, MANAGE) and EU AI Act Articles 9–15 + 26. SOC 2 Type II preparation is underway. Every mapping cites specific EP primitives — not aspirational claims.
+        <section style={styles.sectionWide}>
+          <div className="ep-reveal" style={{ marginBottom: 36 }}>
+            <div style={styles.eyebrow}>Terms that do not collapse</div>
+            <h2 style={{ ...styles.h2, fontSize: 30, maxWidth: 760 }}>
+              Evidence is an input to authorization, not a synonym for it.
+            </h2>
+            <p style={{ ...styles.body, maxWidth: 760 }}>
+              Each result has a separate owner and claim. Passing one stage never silently proves a later one.
             </p>
           </div>
-          <div className="ep-protocol-compliance-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            {COMPLIANCE.map((c, i) => (
-              <div key={i} className={`ep-card-lift ep-reveal ep-stagger-${i + 1}`} style={{
-                border: `1px solid ${color.border}`,
-                borderTop: `2px solid ${c.accent}`,
-                borderRadius: radius.base,
-                padding: '24px',
-                background: '#FAFAF9',
-              }}>
-                <div style={{ fontFamily: font.mono, fontSize: 10, color: c.accent, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>{c.framework}</div>
-                <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 26, color: color.t1, marginBottom: 8 }}>{c.coverage}</div>
-                <p style={{ fontSize: 13, color: color.t2, lineHeight: 1.55 }}>{c.detail}</p>
+          <div className="ep-reveal" style={{ borderTop: `1px solid ${color.border}`, borderLeft: `1px solid ${color.border}` }}>
+            {DECISIONS.map(decision => (
+              <div
+                key={decision.term}
+                className="ep-row-hover ep-protocol-detail-row"
+                style={{
+                  display: 'flex',
+                  gap: 28,
+                  alignItems: 'flex-start',
+                  padding: '18px 24px',
+                  borderRight: `1px solid ${color.border}`,
+                  borderBottom: `1px solid ${color.border}`,
+                }}
+              >
+                <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: color.gold, minWidth: 110, paddingTop: 3 }}>
+                  {decision.term}
+                </span>
+                <span style={{ fontSize: 14, color: color.t2, lineHeight: 1.7 }}>{decision.definition}</span>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Dark CTA */}
-      <section style={{ borderTop: `4px solid ${color.gold}`, background: '#1C1917', padding: '80px 0', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.04) 0%, transparent 70%)' }} />
-        <div style={{ ...styles.section, position: 'relative', zIndex: 1 }}>
-          <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 }}>Open Protocol</div>
-          <h2 style={{ fontFamily: font.sans, fontSize: 32, fontWeight: 700, color: '#FAFAF9', marginBottom: 16, lineHeight: 1.2, maxWidth: 560 }}>
-            Read the spec. Run the reference implementation. Request a pilot.
-          </h2>
-          <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', maxWidth: 520, lineHeight: 1.7, marginBottom: 32 }}>
-            EP is Apache 2.0 licensed. The spec, the formal verification, and the reference runtime are all public.
-          </p>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="/spec" className="ep-cta" style={cta.primary}>Read the Full Spec</a>
-            <a href="/conformance" className="ep-cta-secondary" style={{ ...cta.secondary, borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(250,250,249,0.7)' }}>Run AEB-1 →</a>
-            <a href="/partners" className="ep-cta-secondary" style={{ ...cta.secondary, borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(250,250,249,0.7)' }}>Request Pilot →</a>
+        <section style={styles.sectionAlt}>
+          <div style={styles.sectionWide}>
+            <div className="ep-reveal" style={{ marginBottom: 36 }}>
+              <div style={styles.eyebrow}>Gate execution path</div>
+              <h2 style={{ ...styles.h2, fontSize: 30, maxWidth: 760 }}>
+                Put the decision where the consequence can still be stopped.
+              </h2>
+              <p style={{ ...styles.body, maxWidth: 780 }}>
+                The protocol keeps evidence portable. Gate joins that evidence to local authority
+                and one-time admission at the protected effect boundary.
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+              {GATE_STEPS.map((step, index) => (
+                <article key={step.order} className={`ep-card-lift ep-reveal ep-stagger-${index + 1}`} style={{ ...styles.card, padding: 24 }}>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.5, marginBottom: 14 }}>
+                    STEP {step.order}
+                  </div>
+                  <h3 style={styles.h3}>{step.title}</h3>
+                  <p style={{ ...styles.cardBody, margin: 0 }}>{step.body}</p>
+                </article>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <section style={{ background: '#1C1917', borderTop: `4px solid ${color.gold}` }}>
+          <div style={{ ...styles.sectionWide, paddingTop: 76, paddingBottom: 76 }}>
+            <div className="ep-reveal" style={{ maxWidth: 840 }}>
+              <div style={{ ...styles.eyebrow, color: color.gold }}>Deployment boundary</div>
+              <h2 style={{ ...styles.h2, color: '#FAFAF9', fontSize: 32, lineHeight: 1.2 }}>
+                A protected path is not proof of complete mediation.
+              </h2>
+              <p style={{ fontSize: 16, lineHeight: 1.75, color: 'rgba(250,250,249,0.7)', maxWidth: 760, marginBottom: 28 }}>
+                The four documents define portable evidence semantics. Gate enforces only on the
+                configured effect-capable boundaries a deployment actually controls. A complete-mediation
+                claim needs current deployment evidence that every in-scope route is covered.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                {COVERAGE_CONTROLS.map((control, index) => (
+                  <div key={control} style={{ display: 'flex', gap: 12, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: radius.base }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, paddingTop: 3 }}>{String(index + 1).padStart(2, '0')}</span>
+                    <span style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(250,250,249,0.72)' }}>{control}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 32 }}>
+                <a href="/gate" className="ep-cta" style={{ ...cta.primary, background: '#FAFAF9', color: '#1C1917' }}>See the Gate product</a>
+                <a href="/proof" className="ep-cta-secondary" style={{ ...cta.secondary, color: '#FAFAF9', borderColor: 'rgba(255,255,255,0.2)' }}>Inspect the evidence</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section style={styles.sectionWide}>
+          <div className="ep-reveal" style={{ ...styles.card, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 28, alignItems: 'center', padding: '32px 36px' }}>
+            <div>
+              <div style={styles.eyebrow}>Start with document 01</div>
+              <h2 style={{ ...styles.h2, marginBottom: 10 }}>Authorization Receipts -08</h2>
+              <p style={{ ...styles.cardBody, fontSize: 15, margin: 0 }}>
+                Read the current posted receipt profile, then continue through binding, authority, and AEC.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <a href="/spec" className="ep-cta" style={cta.primary}>Read Receipts -08</a>
+              <a href="/standards" className="ep-cta-secondary" style={cta.secondary}>View the full portfolio</a>
+            </div>
+          </div>
+        </section>
+      </main>
 
       <EmailCapture
         eyebrow="Track the standard"

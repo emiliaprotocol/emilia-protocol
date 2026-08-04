@@ -798,7 +798,8 @@ export default async function ProofPage() {
                   lineHeight: 1.8,
                 }}
               >
-                {`npm run check:security-case
+                {`npm run proof:gate:reference
+npm run check:security-case
 curl -fsSLo /tmp/tla2tools.jar https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
 echo "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  /tmp/tla2tools.jar" | shasum -a 256 -c -
 TLA2TOOLS_JAR=/tmp/tla2tools.jar npm run check:formal-traces
@@ -807,6 +808,11 @@ npm run conformance
 npm run check:proof-stats
 npm run check:llm-context`}
               </pre>
+              <p style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 16, marginBottom: 0 }}>
+                The Gate reference proof joins local examples and focused service-boundary tests. It uses generated keys,
+                in-memory state, and mock provider behavior; it is not evidence of a real human, external bank,
+                production deployment, or one end-to-end production integration.
+              </p>
               <div
                 style={{
                   display: 'flex',
