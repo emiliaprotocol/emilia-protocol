@@ -654,6 +654,14 @@ export interface ExecutionProgramAdmissionStore extends AdmissionStore {
     input: ExecutionProgramReserveInput,
   ): Promise<ExecutionProgramReserveResult>;
   beginExecutionProgramInvocation(input: AdmissionCas): Promise<AdmissionBeginResult>;
+  /**
+   * Program-aware provider entry using an invocation token durably custodied
+   * before the atomic state transition. This closes the crash window between
+   * consuming bounded authority and persisting the only reconciliation secret.
+   */
+  beginExecutionProgramInvocationWithPreparedToken(
+    input: AdmissionPreparedBeginInput,
+  ): Promise<AdmissionBeginResult>;
   releaseExecutionProgramAdmission(
     input: AdmissionCas,
     reason?: string,
@@ -2461,6 +2469,10 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
 
     beginExecutionProgramInvocation(input) {
       return beginInvocationCore(input, true);
+    },
+
+    beginExecutionProgramInvocationWithPreparedToken(input) {
+      return beginInvocationCore(input, true, input.invocation_token);
     },
 
     releaseExecutionProgramAdmission(input, reason = 'program_released_before_invocation') {

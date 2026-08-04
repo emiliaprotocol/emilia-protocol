@@ -186,6 +186,14 @@ Anything at `INVOKING` or later remains frozen for indeterminate recovery and
 cannot be reaped. Grant EXECUTE on the recovery RPC only to a narrowly scoped
 reaper role; ordinary runtime roles do not need it.
 
+Bounded-program callers that must survive a process death at provider entry
+SHOULD generate and durably custody an invocation token before consumption,
+then call `beginExecutionProgramInvocationWithPreparedToken()`. The store
+atomically binds that token digest while preserving the same current-status,
+reachability, occurrence, concurrency, and budget checks as
+`beginExecutionProgramInvocation()`. The plaintext token never enters the
+database and remains the caller's reconciliation authority.
+
 A `QUALIFIED` verifier result by itself is non-authorizing. It does not grant
 permission, reserve or consume authority, invoke a provider, or establish
 legality or business suitability.

@@ -212,6 +212,7 @@ test('PostgreSQL adapter exposes the complete durable execution-program surface'
     'registerExecutionProgram',
     'reserveExecutionProgramAdmission',
     'beginExecutionProgramInvocation',
+    'beginExecutionProgramInvocationWithPreparedToken',
     'releaseExecutionProgramAdmission',
     'expireExecutionProgramAdmission',
     'supersedeExecutionProgram',
@@ -861,9 +862,14 @@ test('real PostgreSQL proves the complete execution-program lifecycle atomically
       ok: false,
       reason: 'program_required',
     });
-    const begun = await store.beginExecutionProgramInvocation(cas(inspectReserved));
+    const preparedInvocationToken = `admission-invocation:v2:${Buffer.alloc(32, 29).toString('base64url')}`;
+    const begun = await store.beginExecutionProgramInvocationWithPreparedToken({
+      ...cas(inspectReserved),
+      invocation_token: preparedInvocationToken,
+    });
     assert.equal(begun.ok, true);
     if (!begun.ok) assert.fail(begun.reason);
+    assert.equal(begun.invocation_token, preparedInvocationToken);
     assert.equal(begun.record.state, 'INVOKING');
     assert.equal((await store.readExecutionProgramOccurrence({
       tenant_id: 'tenant:gate-v2', program_digest: programDigest, occurrence_id: 'occurrence:inspect',
