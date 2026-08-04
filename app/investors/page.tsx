@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { GATE_QUALIFICATION, PRODUCTION_GATE } from '@/lib/commercial-offer';
+import {
+  PROTECTED_WORKFLOW_PILOT as PILOT_OFFER,
+  GATE_IMPLEMENTATION as IMPLEMENTATION_OFFER,
+  PRODUCTION_GATE,
+} from '@/lib/commercial-offer';
 import { styles, color, font, radius } from '@/lib/tokens';
 
 // Public investor-contact surface only. Business model, moat, revenue, and
@@ -53,54 +57,36 @@ export default function InvestorsPage() {
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56, maxWidth: 640 }}>
         <div className="ep-tag" style={{ color: color.gold, fontFamily: font.mono || font.sans, fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 20 }}>Investor Inquiries</div>
         <h1 style={{ fontFamily: font.sans, fontSize: 40, fontWeight: 700, color: '#0C0A09', lineHeight: 1.1, marginBottom: 20, maxWidth: 560 }}>
-          The consequence firewall—and first operating kernel of a Distributed Trust Computer.
+          Let agents run. Keep their authority finite.
         </h1>
         <p style={{ fontFamily: font.sans, fontSize: 17, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
-          AI systems are moving from recommendations to actions that change money, code,
-          permissions, regulated records, infrastructure, and physical state. EMILIA Gate sits at
-          the protected executor: without valid authority for the exact action, the protected
-          effect does not run.
+          EMILIA Gate is the Consequence Firewall for autonomous software. It sits at the system
+          that can actually change money, code, permissions, records, or infrastructure and asks
+          one concrete question: may this exact action enter now?
         </p>
-        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
-          The open EMILIA Protocol supplies portable formats, verifiers, and conformance material.
-          The company packages Gate, Approver, and the Assurance Plane for customer-specific
-          implementations. CAID names the material
-          action; AEB joins independently verified evidence under relying-party-pinned mappings and
-          requirements. Neither authorizes. Gate applies local policy, reserves bounded authority,
-          owns the effect call, and records executed or indeterminate outcome evidence. It refuses
-          blind replay after uncertain provider entry, reconciles only authenticated same-operation
-          evidence, and treats refunds, returns, reversals, or other remedies as separately
-          authorized actions rather than rewriting history.
-        </p>
-        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 10 }}>
-          Gate Qualification v2 converts accepted evaluation evidence into a portable, time-bounded
-          qualification for one exact measured candidate and assignment. The relying party can require
-          that evidence beside AEB, AEC, and local policy without turning an evaluation result into
-          permission. {GATE_QUALIFICATION.disclaimer}
-        </p>
-        <p style={{ fontFamily: font.mono || font.sans, fontSize: 13, lineHeight: 1.55, color: color.gold, maxWidth: 560, marginBottom: 12 }}>
-          {GATE_QUALIFICATION.boundaryLine}
-        </p>
-        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
-          Complex authority can be staged or parallel. The public experimental Trust Program
-          profile binds each stage to its predecessors and fences one downstream effect owner.
-          Action Escrow, GRACE, and Program Integrity are inspectable reference surfaces—not claims
-          of custody, live grid operation, state deployment, or customer funds.
-        </p>
+        <div style={{ display: 'grid', gap: 18, marginTop: 32, marginBottom: 24 }}>
+          {[
+            ['The problem', 'Identity proves who or what is present. Policy describes a rule. Neither proves that one exact consequential action may proceed now, once, under current limits.'],
+            ['The product', 'Gate verifies the buyer\'s chosen evidence, applies local policy, reserves bounded authority, and owns the call into the protected provider. It may execute once, refuse, or preserve an unknown outcome without blindly retrying.'],
+            ['The adoption loop', 'Start free: scan locally, protect one tool, and publish a factual Agent Record if desired. Convert one real workflow into a paid pilot, then expand Gate across the enterprise.'],
+            ['The first paid wedge', `A ${PILOT_OFFER.durationLabel.toLowerCase()} ${PILOT_OFFER.priceLabel} pilot protects one buyer-selected payer workflow. ${IMPLEMENTATION_OFFER.priceLabel} implementation and ${PRODUCTION_GATE.priceLabel} operated Gate follow only after the boundary is accepted.`],
+            ['Why this can compound', 'The Protocol stays open and portable. Every identity system, policy engine, approval method, agent rail, and evidence source can feed the same neutral consequence boundary instead of being replaced by it.'],
+          ].map(([title, body]) => (
+            <div key={title} style={{ borderLeft: `2px solid ${color.gold}`, paddingLeft: 16 }}>
+              <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 15, color: '#0C0A09', marginBottom: 5 }}>{title}</div>
+              <div style={{ fontFamily: font.sans, fontSize: 14, lineHeight: 1.55, color: '#57534E' }}>{body}</div>
+            </div>
+          ))}
+        </div>
         <p style={{ fontFamily: font.sans, fontSize: 14, lineHeight: 1.55, color: '#78716C', maxWidth: 560, marginBottom: 12 }}>
-          {PRODUCTION_GATE.name} is {PRODUCTION_GATE.availabilityLabel.toLowerCase()} and is quoted for
-          a defined protected workflow and operating boundary.
-        </p>
-        <p style={{ fontFamily: font.sans, fontSize: 14, lineHeight: 1.55, color: '#78716C', maxWidth: 560, marginBottom: 12 }}>
-          The repository tracks 22 active Datatracker records. Six new or revised individual
-          Internet-Drafts were filed on August 3, 2026: AEB -03, AEC -05, Model-to-Matter -03,
-          Reliance Agreement -00, Bounded Capability Receipts -01, and Bounded Execution Program
-          -00. They are not RFCs, working-group items, adopted standards, or IETF endorsement. No
-          production hardware-attestation fleet or independently operated witness network is
-          claimed today.
+          The engineering asset is public and falsifiable. The customer evidence is not yet: EMILIA
+          currently claims no customer traction, recurring revenue, live payer integration,
+          certification, RFC status, or standards-body endorsement. The financing converts software
+          proof into the first external reliance event and repeatable operated deployment.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 560 }}>
-          The round materials, business model, and commercial detail are shared directly under NDA. Tell us a little below, or reach us at <a href="mailto:team@emiliaprotocol.ai" style={{ color: color.gold, textDecoration: 'none' }}>team@emiliaprotocol.ai</a>.
+          The technical and narrative investor materials are shared directly. Tell us a little below,
+          or reach us at <a href="mailto:team@emiliaprotocol.ai" style={{ color: color.gold, textDecoration: 'none' }}>team@emiliaprotocol.ai</a>.
         </p>
       </section>
 
