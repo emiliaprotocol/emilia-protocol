@@ -400,7 +400,7 @@ function allowanceActionFenceDigest(action, operationIdField) {
 /**
  * Execute one typed, in-envelope action through the existing capability ledger.
  */
-export async function executeWithGateAllowance({ allowance, capabilityReceipt, secret, action, operationId, store, executeAction, verifyAuthorizationReceipt, verifyAllowanceStatus, trustedAllowanceKeys, trustedCapabilityIssuerKeys = [], expected, now = Date.now, } = {}) {
+export async function executeWithGateAllowance({ allowance, capabilityReceipt, secret, action, operationId, store, executeAction, verifyAuthorizationReceipt, verifyAllowanceStatus, trustedAllowanceKeys, trustedCapabilityIssuerKeys = [], expected, providerEntryGuard = null, now = Date.now, } = {}) {
     if (!expected)
         return { ok: false, reason: 'allowance_expected_context_required' };
     const verifiedAllowance = verifyGateAllowance(allowance, {
@@ -519,6 +519,7 @@ export async function executeWithGateAllowance({ allowance, capabilityReceipt, s
             status_epoch: statusVerification.status_epoch,
             status_head_digest: statusVerification.status_head_digest,
         },
+        providerEntryGuard,
         trustedIssuerKeys: trustedCapabilityIssuerKeys,
         now,
     });

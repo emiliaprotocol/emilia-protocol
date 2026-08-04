@@ -529,6 +529,7 @@ export async function executeWithGateAllowance({
   trustedAllowanceKeys,
   trustedCapabilityIssuerKeys = [],
   expected,
+  providerEntryGuard = null,
   now = Date.now,
 }: {
   allowance?: RiskRecord;
@@ -557,6 +558,7 @@ export async function executeWithGateAllowance({
   trustedAllowanceKeys?: TrustedRiskKeys;
   trustedCapabilityIssuerKeys?: string[];
   expected?: ExpectedAllowanceContext;
+  providerEntryGuard?: ((context: RiskRecord) => any) | null;
   now?: number | (() => number);
 } = {}): Promise<RiskRecord> {
   if (!expected) return { ok: false, reason: 'allowance_expected_context_required' };
@@ -683,6 +685,7 @@ export async function executeWithGateAllowance({
       status_epoch: statusVerification.status_epoch,
       status_head_digest: statusVerification.status_head_digest,
     },
+    providerEntryGuard,
     trustedIssuerKeys: trustedCapabilityIssuerKeys,
     now,
   });

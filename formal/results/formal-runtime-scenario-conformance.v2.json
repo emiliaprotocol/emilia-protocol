@@ -567,7 +567,7 @@
     },
     {
       "path": "packages/gate/dist/allowance.js",
-      "sha256": "6b17750f7712d52e6b2c5488825404e9f69c19d03ad9cee189da20b3f00c4748"
+      "sha256": "10d02561681a23e7bfb6b69271b221d3759c8779108db17175a50b09476b8c28"
     },
     {
       "path": "packages/gate/dist/authority-allocation.js",

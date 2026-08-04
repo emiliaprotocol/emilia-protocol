@@ -454,6 +454,7 @@ packages/gate/control-plane.test.js linguist-generated=true
 packages/gate/coverage-reconciliation-attestation.test.js linguist-generated=true
 packages/gate/coverage-reconciliation-runner.test.js linguist-generated=true
 packages/gate/coverage.test.js linguist-generated=true
+packages/gate/cross-rail-authority.test.js linguist-generated=true
 packages/gate/custody.test.js linguist-generated=true
 packages/gate/deployment-attestation.test.js linguist-generated=true
 packages/gate/discovery-permit-resolver.hostile.test.js linguist-generated=true

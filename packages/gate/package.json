@@ -394,6 +394,10 @@
       "types": "./dist/loss-experience-feed.d.ts",
       "import": "./loss-experience-feed.js"
     },
+    "./cross-rail-authority": {
+      "types": "./dist/cross-rail-authority.d.ts",
+      "import": "./cross-rail-authority.js"
+    },
     "./zk-range-proof": {
       "types": "./dist/zk-range-proof.d.ts",
       "import": "./zk-range-proof.js"
@@ -482,6 +486,7 @@
     "coverage-reconciliation-runner.js",
     "receipt-census.js",
     "loss-experience-feed.js",
+    "cross-rail-authority.js",
     "zk-range-proof.js",
     "trusted-context.js",
     "apertomemory-context.js",
