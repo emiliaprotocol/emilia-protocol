@@ -63,6 +63,7 @@ const proof = signAuthorityProof({
   authority_id: cfo.authority_id, subject: 'ada-cfo', organization_id: 'acme', role: cfo.role,
   scope: cfo.scope, limits: { max_amount_usd: cfo.max_amount_usd, currency: 'USD' },
   validity: { from: '2026-01-01T00:00:00.000Z', to: '2027-01-01T00:00:00.000Z' },
+  revocation: { status: 'not_revoked', checked_at: AT },
   registry_head: cfoBinding.authority_registry_head, registry_epoch: 17, policy_hash: POLICY_HASH, issued_at: AT,
 }, registryKey);
 const accepted = verifyAuthorityProof(proof, {

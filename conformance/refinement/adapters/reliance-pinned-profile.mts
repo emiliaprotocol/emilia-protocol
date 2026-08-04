@@ -289,7 +289,7 @@ function assembleRuntimeInput(obligation: string | null) {
       "consumption_proof",
     ],
   };
-  const proofArgs: Record<string, any> = {
+  const proofArgs = {
     authority_id: "auth_cfo",
     subject: "ep:approver:scenario-cfo",
     organization_id: "acme",
@@ -301,7 +301,7 @@ function assembleRuntimeInput(obligation: string | null) {
       to: "2027-01-01T00:00:00.000Z",
     },
     revocation: {
-      status: "not_revoked",
+      status: "not_revoked" as const,
       checked_at: "2026-07-06T23:59:00.000Z",
     },
     registry_head: REGISTRY_HEAD,

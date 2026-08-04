@@ -1,0 +1,3 @@
+1e9ac4a6b1b480fcec389a6bb42da386d9e394648c1ea6e709b966481247ea9f  UPLOAD-THIS/draft-schrock-ep-authority-introduction-03.xml
+ba16f795ca869e06d3f9307e4d5abcf546ef6db661652cf598b56cdbe4f5d64a  RENDERS/draft-schrock-ep-authority-introduction-03.html
+b04b1293d25d00a42447a54a0eff7e482835a52c0922e5ff3ad71004e8d53549  RENDERS/draft-schrock-ep-authority-introduction-03.txt

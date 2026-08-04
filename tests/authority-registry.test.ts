@@ -141,6 +141,29 @@ describe('EP-AUTHORITY-REGISTRY-v1 conformance suite', () => {
 });
 
 describe('EP-AUTHORITY-REGISTRY-v1 unit invariants', () => {
+  it('does not manufacture revocation freshness from the proof issuance time', () => {
+    const priv = keyFromSeedHex('d3'.repeat(32));
+    const base = {
+      authority_id: 'auth_cfo',
+      subject: 'ep:approver:cfo',
+      role: 'cfo',
+      scope: ['wire.release'],
+      registry_head: `sha256:${'11'.repeat(32)}`,
+      registry_epoch: 1,
+      issued_at: '2026-07-07T00:00:00.000Z',
+    };
+
+    const unobserved = signAuthorityProof(base, priv);
+    expect(unobserved.revocation).toBeNull();
+    expect(() => signAuthorityProof({
+      ...base,
+      revocation: {
+        status: 'not_revoked',
+        checked_at: 'not-an-instant',
+      },
+    }, priv)).toThrow(/explicit status and checked_at/i);
+  });
+
   it('does not let a key pinned for one issuer authenticate another issuer', () => {
     const priv = keyFromSeedHex('d4'.repeat(32));
     const proof = signAuthorityProof({
@@ -150,6 +173,7 @@ describe('EP-AUTHORITY-REGISTRY-v1 unit invariants', () => {
       scope: ['wire.release'],
       registry_head: `sha256:${'11'.repeat(32)}`,
       registry_epoch: 1,
+      revocation: { status: 'not_revoked', checked_at: '2026-07-07T00:00:00.000Z' },
       issued_at: '2026-07-07T00:00:00.000Z',
     }, priv);
     const result = verifyAuthorityProof(proof, {
@@ -170,6 +194,7 @@ describe('EP-AUTHORITY-REGISTRY-v1 unit invariants', () => {
       scope: ['wire.release'],
       registry_head: `sha256:${'11'.repeat(32)}`,
       registry_epoch: 1,
+      revocation: { status: 'not_revoked', checked_at: '2026-07-07T00:00:00.000Z' },
       issued_at: '2026-07-07T00:00:00.000Z',
     }, priv);
     const result = verifyAuthorityProof(proof, {

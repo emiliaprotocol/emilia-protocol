@@ -22,6 +22,7 @@
  */
 import crypto from 'node:crypto';
 import { canonicalize } from '../canonical-json.js';
+import { authorityInstantMs } from './authority-doc.js';
 
 export const AUTHORITY_PROOF_VERSION = 'EP-AUTHORITY-PROOF-v1';
 export const AUTHORITY_PROOF_DOMAIN = 'EP-AUTHORITY-PROOF-v1\0';
@@ -67,8 +68,10 @@ export interface AuthorityProofValidity {
 }
 
 export interface AuthorityProofRevocation {
-  status?: 'not_revoked' | 'revoked';
-  checked_at?: string;
+  /** Status actually observed by the authority source. */
+  status: 'not_revoked' | 'revoked' | 'unknown';
+  /** Source-observation time, not proof issuance time. */
+  checked_at: string;
   revoked_at?: string;
 }
 
@@ -85,7 +88,8 @@ export interface SignAuthorityProofArgs {
   scope?: string[];
   limits?: AuthorityProofLimits;
   validity?: AuthorityProofValidity;
-  revocation?: AuthorityProofRevocation;
+  /** Omit when no revocation observation was made; absence never means not revoked. */
+  revocation?: AuthorityProofRevocation | null;
   /** 'sha256:...' */
   registry_head?: string | null;
   /** safe integer */
@@ -116,7 +120,7 @@ export type SignedAuthorityProof = {
   scope: string[];
   limits: { max_amount_usd: number | null; currency: string };
   validity: { from: string | null; to: string | null };
-  revocation: { status: string; checked_at: string; revoked_at?: string };
+  revocation: { status: string; checked_at: string; revoked_at?: string } | null;
   registry_head: string | null;
   registry_epoch: number | null;
   policy_hash?: string;
@@ -209,12 +213,24 @@ export function authorityProofDigest(proof: AuthorityProof | Record<string, unkn
 /**
  * Build and sign an EP-AUTHORITY-PROOF-v1.
  *
+ * Issuing a new proof cannot manufacture a fresh `not_revoked` result. When
+ * supplied, `checked_at` names when the authority source was actually
+ * observed. When omitted, the signed proof carries `revocation: null` and
+ * cannot satisfy a relying party's revocation-freshness requirement.
+ *
  * @param args
  * @param privateKey  registry issuer Ed25519 private key
  */
 export function signAuthorityProof(args: SignAuthorityProofArgs, privateKey: crypto.KeyObject): SignedAuthorityProof {
   if (!privateKey) throw new Error('privateKey is required');
   const issuedAt = args?.issued_at !== undefined ? new Date(args.issued_at).toISOString() : new Date().toISOString();
+  if (args?.revocation !== undefined && args.revocation !== null
+      && ((args.revocation.status !== 'not_revoked'
+        && args.revocation.status !== 'revoked'
+        && args.revocation.status !== 'unknown')
+        || !Number.isFinite(authorityInstantMs(args.revocation.checked_at)))) {
+    throw new TypeError('revocation observation must carry an explicit status and checked_at instant');
+  }
   const publicKey = publicKeyToB64u(privateKey);
   const body: Omit<SignedAuthorityProof, 'signature'> = {
     '@type': AUTHORITY_PROOF_VERSION,
@@ -239,10 +255,10 @@ export function signAuthorityProof(args: SignAuthorityProofArgs, privateKey: cry
       from: args?.validity?.from ?? null,
       to: args?.validity?.to ?? null,
     },
-    revocation: {
-      status: args?.revocation?.status ?? 'not_revoked',
-      checked_at: args?.revocation?.checked_at ?? issuedAt,
-      ...(args?.revocation?.revoked_at ? { revoked_at: args.revocation.revoked_at } : {}),
+    revocation: args.revocation === undefined || args.revocation === null ? null : {
+      status: args.revocation.status,
+      checked_at: args.revocation.checked_at,
+      ...(args.revocation.revoked_at ? { revoked_at: args.revocation.revoked_at } : {}),
     },
     registry_head: args?.registry_head ?? null,
     registry_epoch: Number.isSafeInteger(args?.registry_epoch) ? (args.registry_epoch as number) : null,

@@ -147,7 +147,7 @@
     },
     {
       "path": "conformance/refinement/adapters/reliance-pinned-profile.mts",
-      "sha256": "63cee7cbdb0a38f8ae7c7b8ede9bee51797e4aafc4a97bdcf0bd9deac6ce328e"
+      "sha256": "cf0025259975fe51a7fe027a9e8fd7d4dbf3507eec9bcc9d7957ddb24c933fa0"
     },
     {
       "path": "conformance/refinement/adapters/revocation.mjs",
@@ -159,11 +159,11 @@
     },
     {
       "path": "conformance/refinement/adapters/two-claim-assurance.mjs",
-      "sha256": "e0478fbb3d6039fb64a50b5530325bfc71574d4e0aa95329d823561148e2cc5a"
+      "sha256": "8812c0dd9eab17497c4bb294d92058347fbc7be1fd226b0c14ad9f81bd40e6a4"
     },
     {
       "path": "conformance/refinement/adapters/two-claim-assurance.mts",
-      "sha256": "11f79d7fc236caae419ee09e8694e83b1fded4762dbd12052b85647ecbeb352d"
+      "sha256": "fa5d5fd96de3777a33e9668b1e4ea8e9f9d2d6a7518755c782dea2b7db5e30dd"
     },
     {
       "path": "conformance/refinement/harness.mjs",
@@ -347,11 +347,11 @@
     },
     {
       "path": "lib/authority/proof.js",
-      "sha256": "61c7d69e022f4f6bda056b2075c312b6aab91a71183d16f3bef63f6c335ad65f"
+      "sha256": "9ba5f736611ede506904654240b678a682a7c514bf9c721e2f40a271ad450387"
     },
     {
       "path": "lib/authority/proof.ts",
-      "sha256": "0404bb2dca5d2bfd01c53d7b169997cca433da062aebdc122402b9673197156c"
+      "sha256": "f9bffa126b7a3c04a36028ac5d34bb7a3c507bdf784fcccf532608a739176c3e"
     },
     {
       "path": "lib/authority/resolver.js",

@@ -164,6 +164,10 @@ export function runScopedAuthorityRuntimeScenarios() {
             from: "2026-02-01T00:00:00.000Z",
             to: "2026-12-01T00:00:00.000Z",
         },
+        revocation: {
+            status: "not_revoked",
+            checked_at: EVALUATED_AT,
+        },
         registry_head: SNAPSHOT.head,
         registry_epoch: SNAPSHOT.epoch,
         policy_hash: POLICY,

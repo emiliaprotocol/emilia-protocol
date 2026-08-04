@@ -6,6 +6,18 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 
 ## [Unreleased] — main as of 2026-06-11
 
+### Authority evidence resolution boundary
+
+- **No synthetic revocation freshness** — authority-proof issuance no longer
+  turns an omitted revocation observation into `not_revoked` at the issuance
+  time. An unobserved status is signed as `null`; an observed status must carry
+  its actual source-observation time, so re-signing cannot launder stale source
+  data into a fresh authority claim.
+- **Authority Introduction -03 staged** — the revision distinguishes effective,
+  observation, issuance, and evaluation times and requires relying parties to
+  refuse authority evidence whose source resolution or age cannot satisfy the
+  local acceptance rule.
+
 ### Receipt release hardening
 
 - **Closed canonical signing domain** — Verify, Issue, Require Receipt, Gate,
