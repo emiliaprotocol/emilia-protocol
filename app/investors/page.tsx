@@ -67,10 +67,11 @@ export default function InvestorsPage() {
         <div style={{ display: 'grid', gap: 18, marginTop: 32, marginBottom: 24 }}>
           {[
             ['The problem', 'Identity proves who or what is present. Policy describes a rule. Neither proves that one exact consequential action may proceed now, once, under current limits.'],
-            ['The product', 'Gate verifies the buyer\'s chosen evidence, applies local policy, reserves bounded authority, and owns the call into the protected provider. It may execute once, refuse, or preserve an unknown outcome without blindly retrying.'],
+            ['The product', 'Gate verifies the buyer\'s chosen evidence, applies local policy, reserves bounded authority, and controls provider entry through a customer- or partner-controlled executor adapter. The private Local Authority Engine lets a human authorize one finite mission while local risk signals may only tighten, review, suspend, or refuse—never expand it.'],
             ['The adoption loop', 'Start free: scan locally, protect one tool, and publish a factual Agent Record if desired. Convert one real workflow into a paid pilot, then expand Gate across the enterprise.'],
             ['The first paid wedge', `A ${PILOT_OFFER.durationLabel.toLowerCase()} ${PILOT_OFFER.priceLabel} pilot protects one buyer-selected payer workflow. ${IMPLEMENTATION_OFFER.priceLabel} implementation and ${PRODUCTION_GATE.priceLabel} operated Gate follow only after the boundary is accepted.`],
             ['Why this can compound', 'The Protocol stays open and portable. Every identity system, policy engine, approval method, agent rail, and evidence source can feed the same neutral consequence boundary instead of being replaced by it.'],
+            ['What the round proves', 'One paid protected-workflow pilot, one limited-production boundary, independent operation, and repeatable deployment evidence. Public tests and outside citations are technical validation—not customer adoption.'],
           ].map(([title, body]) => (
             <div key={title} style={{ borderLeft: `2px solid ${color.gold}`, paddingLeft: 16 }}>
               <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 15, color: '#0C0A09', marginBottom: 5 }}>{title}</div>

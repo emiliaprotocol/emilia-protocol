@@ -438,6 +438,41 @@ export default function GatePage() {
           </div>
         </section>
 
+        {/* Local Authority Engine */}
+        <section style={styles.section}>
+          <div style={styles.container}>
+            <div style={styles.eyebrow}>LOCAL AUTHORITY ENGINE · PRIVATE ALPHA</div>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 820 }}>
+              Authorize a bounded mission once. Let agents operate locally inside it.
+            </h2>
+            <p style={{ ...styles.lead, maxWidth: 820, marginTop: 18 }}>
+              A human signs the permitted action classes, targets, time window, and typed limits.
+              The local engine checks each exact action against that program before the
+              credential-owning adapter can act.
+            </p>
+            <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 }}>
+              {[
+                ['Finite by construction', 'Child authority transfers from the signed root; it is never copied into an unlimited fleet credential.'],
+                ['AI can only tighten', 'Risk signals may reduce budgets, require review, suspend, or refuse. They cannot widen human-granted authority.'],
+                ['No blind retry', 'A lost provider result becomes INDETERMINATE and stays closed until authenticated reconciliation.'],
+              ].map(([title, body]) => (
+                <div key={title} style={{ ...styles.card, padding: 24 }}>
+                  <div style={{ ...styles.h3, fontSize: 17 }}>{title}</div>
+                  <p style={{ ...styles.body, fontSize: 14, color: color.t2, marginTop: 10 }}>{body}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{ ...styles.body, maxWidth: 780, marginTop: 24, fontSize: 14, color: color.t2 }}>
+              Current boundary: a private, single-host alpha for governed pilots. It makes no
+              complete-mediation or customer-deployment claim; only actions forced through its
+              adapter receive this control.
+            </p>
+            <a href="/pilot?v=gate" className="ep-cta" style={{ ...cta.primary, display: 'inline-flex', marginTop: 22 }}>
+              Design a bounded-authority pilot &rarr;
+            </a>
+          </div>
+        </section>
+
         {/* Receipt programs */}
         <section style={{ ...styles.section, background: 'rgba(245,244,240,0.45)', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
           <div style={styles.container}>
