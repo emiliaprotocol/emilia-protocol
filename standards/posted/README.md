@@ -127,5 +127,5 @@ immutable IETF archive before promotion into this directory:
 - `draft-schrock-model-to-matter-03`
 
 Their exact submitted bytes remain in `../staged/UPLOAD-THIS/` as publication
-provenance, not as upload candidates. Authorization Receipts-08 remains the
-current posted receipt revision in this inventory.
+provenance, not as upload candidates. Authorization Receipts-09 is the current
+posted receipt revision in this inventory.
