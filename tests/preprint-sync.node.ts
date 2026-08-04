@@ -38,9 +38,9 @@ const evidence = {
     hostilityCases: 359,
   },
   drafts: {
-    'draft-schrock-ep-authorization-receipts': '08',
+    'draft-schrock-ep-authorization-receipts': '09',
     'draft-schrock-ep-quorum': '03',
-    'draft-schrock-ep-authorization-evidence-chain': '04',
+    'draft-schrock-ep-authorization-evidence-chain': '05',
     'draft-schrock-ep-evidence-record': '01',
   },
 };
@@ -87,9 +87,9 @@ Pinned commit 7faba36010e7590727bebbc5b9dcceee60539b9b.
 The pinned 16-suite/164-vector clean-room bundle.
 353 structured attacks plus 6 raw-parser refusals.
 The 359-case hostility campaign.
-draft-schrock-ep-authorization-receipts-08
+draft-schrock-ep-authorization-receipts-09
 draft-schrock-ep-quorum-03
-draft-schrock-ep-authorization-evidence-chain-04
+draft-schrock-ep-authorization-evidence-chain-05
 draft-schrock-ep-evidence-record-01
 ${composedBlock}
 `;
@@ -137,11 +137,11 @@ describe('preprint evidence synchronization guard', () => {
   it('rejects a stale standards revision even when the other claims are current', () => {
     assert.ok(audit({
       tex: tex.replaceAll(
-        'draft-schrock-ep-authorization-receipts-08',
+        'draft-schrock-ep-authorization-receipts-09',
         'draft-schrock-ep-authorization-receipts-06',
       ),
     }).includes(
-      'main.tex cites stale draft-schrock-ep-authorization-receipts-06; evidence is draft-schrock-ep-authorization-receipts-08',
+      'main.tex cites stale draft-schrock-ep-authorization-receipts-06; evidence is draft-schrock-ep-authorization-receipts-09',
     ));
   });
 

@@ -113,7 +113,7 @@ draft author until then)
 ## 2. application/ep-receipt+json
 
 **Status: PREPARED / NOT SUBMITTED.** The active
-`draft-schrock-ep-authorization-receipts-08` IANA Considerations say that the
+`draft-schrock-ep-authorization-receipts-09` IANA Considerations say that the
 document has no IANA actions and that a future version may register
 `application/ep-receipt+json`. That is not a registration request. Do **not**
 file this template until a later draft revision explicitly requests the media
@@ -137,7 +137,7 @@ canonicalization of an I-JSON value subset) as specified by the defining
 draft, so byte-exact transport of the canonical payload matters to verifiers.
 
 **Security considerations:** See Section 11 of
-draft-schrock-ep-authorization-receipts-08. A receipt is offline-verifiable
+draft-schrock-ep-authorization-receipts-09. A receipt is offline-verifiable
 authorization evidence: Ed25519 signatures over canonical JSON, bound to a
 specific action, with one-time consumption against replay. Verification
 proves signature, binding, and (where a log is used) log-inclusion integrity —
@@ -153,9 +153,9 @@ the defining draft before checking signatures, since divergent
 canonicalization produces divergent verdicts on identical documents.
 
 **Published specification:** draft-schrock-ep-authorization-receipts
-(a future revision carrying registration text; -08 is the current revision:
+(a future revision carrying registration text; -09 is the current revision:
 "Authorization Receipts for High-Risk Agent Actions" — an active individual
-Internet-Draft, not IETF-adopted or endorsed; intended status Informational).
+Internet-Draft, not IETF-adopted or endorsed; intended status Standards Track).
 
 **Applications that use this media type:** Enforcement points that require an
 authorization receipt before executing a high-consequence agent action;
