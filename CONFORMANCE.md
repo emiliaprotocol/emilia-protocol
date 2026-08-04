@@ -100,7 +100,7 @@ not only Ed25519 authorization **receipts**, but Class-A WebAuthn device
 **signoffs**, **EP-QUORUM-v1 multi-party approval** (M-of-N / ordered — the
 "two-person rule," with a strong cryptographic ordering chain and distinct-key
 checks, fail-closed), portable **revocation** statements, typed semantic and
-real-crypto **Outcome Binding**, document-anchored **Authority Proof issuer
+real-crypto **Outcome Binding** (see the scope note below), document-anchored **Authority Proof issuer
 joins**, **trusted-time
 attestations**, the full **§6.2 Trust Receipt** (signoff signatures + Merkle
 inclusion + Ed25519-signed checkpoint), **provenance chains** (human-authority
@@ -116,6 +116,28 @@ proof of WHEN: a pinned external TSA's TimeStampToken over the caller's expected
 digest, fail-closed on any refusal). Publishing a public, cross-language
 conformance suite of this breadth, re-proven on every push (CI job
 `conformance`), is itself uncommon.
+
+**Scope note on Outcome Binding: 24 of its 35 vectors are library-to-library
+agreement; 11 are not.** Python and Go both ship an outcome-binding
+implementation (`emilia_verify/outcome_binding.py`, `outcome_binding.go`), and
+the 24 `kind: predicate` vectors exercise those libraries in all three
+languages. The 11 `kind: graph` vectors do not: neither package ships an
+evidence-graph evaluator, so JavaScript calls the shipped
+`evaluateEvidenceGraph` while the Python and Go paths are evaluated by logic
+hand-written inside the conformance runners themselves
+(`conformance/runners/run_py.py`, `packages/go-verify/cmd/conformance/main.go`).
+Those 11 rows are therefore runner-local ports, not agreement between three
+libraries, and this document should not be read as claiming otherwise.
+
+The two ports are also not equivalent today. On a malformed
+`approved.predicted_effects`, JavaScript and Python report
+`effect_commitment_missing` while Go reports `effect_incomparable`. Verdict
+parity holds — all three return `conflicted`, and the shipped primitive is
+fail-closed on every malformed input, so this cannot turn a refusal into an
+acceptance — but a relying party that branches on the reason code gets a
+different answer from Go. Promoting the evaluator into the Python and Go
+packages (or marking the graph vectors JavaScript-only, as WYSIWYS,
+execution-integrity and the JWS profile already are) is the durable fix.
 
 **timestamp-proof (RFC 3161) is now cross-language.** It began as a JavaScript-only
 reference verifier (a purpose-built minimal DER/CMS reader in pure `node:crypto`)
