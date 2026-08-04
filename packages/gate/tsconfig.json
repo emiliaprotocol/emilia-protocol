@@ -125,6 +125,7 @@
     "src/coverage-reconciliation-runner.ts",
     "src/receipt-census.ts",
     "src/loss-experience-feed.ts",
+    "src/cross-rail-authority.ts",
     "src/trusted-context.ts",
     "src/apertomemory-context.ts"
   ]

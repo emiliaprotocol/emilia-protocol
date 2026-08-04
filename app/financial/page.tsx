@@ -4,26 +4,26 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, grid, font, radius } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'Financial Infrastructure Controls | EMILIA Protocol',
-  description: 'EP for beneficiary changes, payout controls, treasury approvals, and other high-risk financial workflows.',
+  title: 'Cross-Rail Authority for Agentic Commerce | EMILIA Protocol',
+  description: 'Payment partners move money. EMILIA determines whether an exact agent transaction is authorized to reach them.',
 };
 
 export default function FinancialPage() {
   const cards = [
-    ['Beneficiary changes', 'Bind the beneficiary record, requested change, approving authority, and policy before modification.'],
-    ['Payout destination changes', 'Require exact transaction binding, replay resistance, and accountable human ownership for destination edits.'],
-    ['Treasury approvals', 'Constrain high-risk disbursements and exception approvals with one-time authorization and full evidence traceability.'],
-    ['Vendor remittance controls', 'Protect remittance updates against thread hijacking, social engineering, and approved-looking workflow abuse.'],
+    ['Exact transaction admission', 'Bind amount, currency, counterparty, instrument, operation, and partner request before the rail is entered.'],
+    ['Human interruption when needed', 'Let an external policy or risk service select when standing authority is insufficient, then bind the human decision to the same action.'],
+    ['Single-use rail entry', 'Mint one opaque, short-lived permit only after current authority and an atomic budget reservation have passed.'],
+    ['Uncertain outcomes stay uncertain', 'A lost provider response is fenced for authenticated reconciliation—not converted into a blind retry.'],
   ];
 
   return (
     <div style={styles.page}>
       <SiteNav activePage="Financial" />
       <section style={{ ...styles.sectionWide, paddingTop: 96 }}>
-        <div style={styles.eyebrowBlue}>Financial Infrastructure</div>
-        <h1 style={styles.h1Large}>Control high-risk financial actions before execution</h1>
+        <div style={styles.eyebrowBlue}>Cross-Rail Authority</div>
+        <h1 style={styles.h1Large}>Let agents transact without giving them the keys</h1>
         <p style={{ ...styles.body, maxWidth: 760 }}>
-          EMILIA Protocol is infrastructure for beneficiary changes, payout destination controls, treasury approvals, remittance updates, and other high-risk financial workflows that fail when authentication is treated as enough.
+          Payment partners move the money. EMILIA determines whether the exact transaction is authorized to reach them—under a current allowance, within a durable budget, and with accountable human approval when policy requires it.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
           <a href="mailto:team@emiliaprotocol.ai?subject=Financial%20pilot%20request" className="ep-cta" style={cta.primaryBlue}>Request Financial Pilot</a>
@@ -33,7 +33,7 @@ export default function FinancialPage() {
 
       <section style={styles.sectionAlt}>
         <div style={styles.sectionWide}>
-          <h2 style={styles.h2}>Best first workflows</h2>
+          <h2 style={styles.h2}>One authority layer across payment partners</h2>
           <div style={grid.auto(240)}>
             {cards.map(([title, body]) => (
               <div key={title} className="ep-card-hover" style={styles.card}>
@@ -46,25 +46,25 @@ export default function FinancialPage() {
       </section>
 
       <section style={styles.sectionWide}>
-        <h2 style={styles.h2}>What Gate can establish before a protected financial action executes</h2>
+        <h2 style={styles.h2}>What Gate establishes before a transaction reaches a partner</h2>
         <ul style={styles.list}>
-          <li>Actor identity -- cryptographically verified, never self-asserted</li>
-          <li>Authority chain -- complete delegation path from root to acting principal</li>
-          <li>Exact transaction binding -- precise operation, target, parameters, and conditions</li>
-          <li>Policy version and hash -- content-addressed reference to the governing policy at decision time</li>
-          <li>Replay resistance -- one-time nonce and strict temporal bounds</li>
-          <li>One-time consumption -- each ceremony token consumed on use, no reuse</li>
-          <li>Accountable signoff when required -- named human responsibility bound to the exact action</li>
+          <li>Who or what is acting, under which bounded authority</li>
+          <li>The exact amount, currency, counterparty, instrument, operation, and provider request</li>
+          <li>Which current policy and allowance permitted the action</li>
+          <li>Why a human was—or was not—interrupted</li>
+          <li>A separately verified, action-bound human decision when required</li>
+          <li>An atomic budget reservation and one-use connector permit</li>
+          <li>A durable distinction between executed, refused, and indeterminate</li>
         </ul>
       </section>
 
       <section style={styles.sectionWide}>
         <div style={{ ...styles.card, borderLeft: `3px solid ${color.green}`, padding: '28px 32px' }}>
-          <h3 style={styles.h3}>Start with one consequence boundary</h3>
+          <h3 style={styles.h3}>Authority, not custody</h3>
           <p style={styles.cardBody}>
-            Begin in observe mode around one system-of-record action, such as a beneficiary change,
-            payment release, or remittance update. Move that path to Gate enforcement after the
-            policy, authority, and approval requirements are validated.
+            EMILIA is not a bank, escrow service, custodian, or settlement rail. Native payment
+            partners remain authoritative for authentication, mandates, funds, KYC/AML, settlement,
+            refunds, and disputes. Gate controls only whether one exact action may enter a configured connector.
           </p>
           <a href="/gate" style={{ fontFamily: font.mono, fontSize: 12, color: color.green, textDecoration: 'none', marginTop: 12, display: 'inline-block', letterSpacing: 1 }}>See EMILIA Gate &#8594;</a>
           <a href="/eye" style={{ fontFamily: font.mono, fontSize: 12, color: color.green, textDecoration: 'none', marginTop: 12, display: 'inline-block', letterSpacing: 1 }}>See Emilia Eye &#8594;</a>
@@ -74,12 +74,12 @@ export default function FinancialPage() {
       <section style={styles.sectionAlt}>
         <div style={styles.sectionWide}>
           <h2 style={styles.h2}>Best first pilot</h2>
-          <p style={styles.body}>Start with one high-risk workflow and expand from there.</p>
+          <p style={styles.body}>Put one customer-owned Gate in front of one typed partner action.</p>
           <ul style={{ ...styles.list, marginTop: 16 }}>
-            <li>Beneficiary change</li>
-            <li>Payout destination change</li>
-            <li>Remittance update</li>
-            <li>Treasury release approval</li>
+            <li>Define one bounded operating allowance</li>
+            <li>Pin one external policy or risk decision source</li>
+            <li>Require human interruption above an agreed threshold</li>
+            <li>Measure refused, admitted, and indeterminate transactions without exposing payment details</li>
           </ul>
           <div style={{ marginTop: 24 }}>
             <a href="mailto:team@emiliaprotocol.ai?subject=Financial%20pilot%20request" className="ep-cta" style={cta.primaryBlue}>Request Financial Pilot</a>

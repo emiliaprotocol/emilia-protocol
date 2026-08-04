@@ -1045,6 +1045,29 @@ credentials stay in the caller's process. See
 `docs/protocol/GATE-ALLOWANCES-v1.md` and the runnable
 `examples/gate-allowance/` demonstration.
 
+### Cross-rail authority admission
+
+`@emilia-protocol/gate/cross-rail-authority` adds the missing join between a
+current allowance and a payment connector. A trusted connector projects the
+exact action, provider request digest, and CAID. A signed interruption decision
+states whether standing policy is enough or an exact human authorization is
+required. Only after allowance verification and atomic reservation does Gate
+mint an opaque, short-lived permit that the connector consumes once before
+calling the provider.
+
+The caller never receives the permit artifact or a provider credential.
+Payment partners retain custody, settlement, refunds, and disputes. The module
+does not claim funds availability or payment success. Provider uncertainty is
+recorded as `indeterminate` and cannot be blindly retried. See
+`docs/protocol/cross-rail-authority-loop-v1.md`.
+
+Authenticated tenant-scoped approval queues and receipt lists remain part of
+normal Gate operation; the neutrality boundary is no public, unauthenticated,
+cross-tenant enumeration. Private records are unlisted by default. A tenant may
+explicitly publish a governed aggregate and anchor that public artifact in an
+independent transparency service. Raw cross-rail events and opaque permits are
+never published automatically.
+
 ## Receipt programs
 
 `createReceiptProgramKernel()` composes CAID, the Gate capability path, and the
