@@ -10,19 +10,18 @@ describe('public product naming and navigation contract', () => {
   it('keeps every top-navigation destination with a slash-form label', () => {
     const navigation = read('components/SiteNav.tsx');
     const expectedLinks = [
-      ['/signal', '/signal'],
       ['/gate', '/gate'],
       ['/use-cases', '/solutions'],
-      ['/assurance', '/assurance'],
-      ['/grace', '/grace'],
-      ['/model-to-matter', '/model-to-matter'],
+      ['/docs', '/developers'],
       ['/protocol', '/protocol'],
       ['/proof', '/proof'],
-      ['/docs', '/docs'],
       ['/pricing', '/pricing'],
     ];
     for (const [href, label] of expectedLinks) {
       expect(navigation).toContain(`[\'${href}\', \'${label}\']`);
+    }
+    for (const promotedExperiment of ['/signal', '/assurance', '/grace', '/model-to-matter']) {
+      expect(navigation).not.toContain(`[\'${promotedExperiment}\', \'${promotedExperiment}\']`);
     }
   });
 

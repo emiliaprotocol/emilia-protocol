@@ -16,7 +16,6 @@ describe('Gate Qualification v2 public product boundary', () => {
       'app/HomePageClient.tsx',
       'app/gate/page.tsx',
       'app/pricing/page.tsx',
-      'app/investors/page.tsx',
       'app/proof/page.tsx',
     ].map(read);
 
@@ -56,7 +55,8 @@ describe('Gate Qualification v2 public product boundary', () => {
     expect(pricing).toContain('PRODUCTION_GATE.scopeLabel');
     expect(pricing).toContain('PRODUCTION_GATE.availabilityLabel');
     expect(pricing).toContain("cta: { label: 'Scope a deployment'");
-    expect(investors).toContain('PRODUCTION_GATE.availabilityLabel');
+    expect(investors).toContain('PRODUCTION_GATE.priceLabel');
+    expect(investors).toContain('operated Gate follow only after the boundary is accepted');
     expect(homepage).not.toContain('Open the live Gate');
     expect(gate).not.toContain('Open live Gate');
   });

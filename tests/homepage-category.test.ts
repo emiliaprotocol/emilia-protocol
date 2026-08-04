@@ -112,10 +112,10 @@ describe('homepage category contract', () => {
     expect(gate).toContain('RECEIPT PROGRAMS');
     expect(gate).toContain('npm run demo:receipt-program');
     expect(gate).toContain('It is not a ZK proof, consensus result, provider attestation');
-    expect(investors).toContain('CAID names the material action; AEB joins independently verified evidence');
-    expect(investors).toContain('Neither authorizes. Gate applies local policy');
-    expect(investors).toContain('They are not RFCs, working-group items, adopted standards, or IETF endorsement.');
-    expect(investors).toContain('No production hardware-attestation fleet or independently operated witness network is claimed today.');
+    expect(investors).toContain('EMILIA Gate is the Consequence Firewall for autonomous software.');
+    expect(investors).toContain('Identity proves who or what is present. Policy describes a rule. Neither proves that one exact consequential action may proceed now, once, under current limits.');
+    expect(investors).toContain('currently claims no customer traction, recurring revenue, live payer integration');
+    expect(investors).toContain('certification, RFC status, or standards-body endorsement.');
     expect(productBrief).toContain('No independently administered operator has produced external witness evidence');
     expect(productBrief).toContain('they do not prove the deployed service, provider, or physical world.');
   });
