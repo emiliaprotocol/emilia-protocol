@@ -67,7 +67,7 @@ export default function InvestorsPage() {
         <div style={{ display: 'grid', gap: 18, marginTop: 32, marginBottom: 24 }}>
           {[
             ['The problem', 'Identity proves who or what is present. Policy describes a rule. Neither proves that one exact consequential action may proceed now, once, under current limits.'],
-            ['The product', 'Gate verifies the buyer\'s chosen evidence, applies local policy, reserves bounded authority, and owns the call into the protected provider. It may execute once, refuse, or preserve an unknown outcome without blindly retrying.'],
+            ['The product', 'Gate verifies the buyer\'s chosen evidence, applies local policy, reserves bounded authority, and owns the call into the protected provider. The private Local Authority Engine lets a human authorize one finite mission while local risk signals may only tighten, review, suspend, or refuse—never expand it.'],
             ['The adoption loop', 'Start free: scan locally, protect one tool, and publish a factual Agent Record if desired. Convert one real workflow into a paid pilot, then expand Gate across the enterprise.'],
             ['The first paid wedge', `A ${PILOT_OFFER.durationLabel.toLowerCase()} ${PILOT_OFFER.priceLabel} pilot protects one buyer-selected payer workflow. ${IMPLEMENTATION_OFFER.priceLabel} implementation and ${PRODUCTION_GATE.priceLabel} operated Gate follow only after the boundary is accepted.`],
             ['Why this can compound', 'The Protocol stays open and portable. Every identity system, policy engine, approval method, agent rail, and evidence source can feed the same neutral consequence boundary instead of being replaced by it.'],
