@@ -1,6 +1,14 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## 0.23.11
+
+- Publish the crash-safe bounded-program provider-entry path from 0.23.10 under
+  a fresh immutable tag after the original protected tag stopped before npm
+  publication.
+- Regenerate package-bound formal, security-case, and proof evidence against
+  the exact release bytes. There is no additional API change from 0.23.10.
+
 ## 0.23.10
 
 - Add crash-safe, program-aware provider entry with a caller-prepared invocation token.
