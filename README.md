@@ -186,9 +186,12 @@ npx -y @emilia-protocol/mcp-server
 
 For enterprise deployments, Gate can additionally require an independently
 verified Authorization Server confirmation bound to that exact human evidence,
-the same exact action, the customer identity-directory state, and the intended
-Resource Server key. The AS leg is evidence under customer-pinned trust; it
-never authorizes by itself or turns the agent orchestrator into an authority.
+the same exact action, the identity snapshot the AS actually observed, and the
+intended Resource Server key. The snapshot time and relying-party maximum age
+are explicit: a fresh token cannot make stale directory data current. The AS
+leg is evidence under customer-pinned trust; it never authorizes by itself,
+proves instantaneous employment standing, or turns the agent orchestrator into
+an authority.
 
 **Act IV — The receipt (the evidence).** The result is a **signed authorization receipt** that anyone can verify **offline, with open-source code, no backend, no vendor trust.** Tamper it and verification fails by construction. Optionally anchor it for public timestamping — the core needs no blockchain.
 

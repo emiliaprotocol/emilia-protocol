@@ -61,13 +61,15 @@ const CLAIM_KEYS = new Set([
   'ep_version', 'iss', 'sub', 'aud', 'iat', 'nbf', 'exp', 'jti',
   'authorization_server_decision', 'action', 'action_digest',
   'human_evidence_digest', 'policy_digest', 'directory_digest',
+  'directory_observation_basis', 'directory_observed_at',
   'resource_server_key_id', 'resource_server_key_digest',
 ]);
 const ARTIFACT_KEYS = new Set(['@version', 'grant', 'human_evidence']);
 const CONFIG_KEYS = new Set([
   '@version', 'evidence_role', 'human_evidence_role', 'issuer', 'audience',
   'resource_server_key_id', 'action_type', 'clock_skew_seconds',
-  'max_token_age_seconds', 'resource_server_key_digest',
+  'max_token_age_seconds', 'max_directory_snapshot_age_seconds',
+  'resource_server_key_digest',
 ]);
 const ROOT_KEYS = new Set([
   '@version', 'use', 'issuer', 'key_id', 'algorithm', 'public_key',
@@ -93,6 +95,10 @@ export interface AuthorizationServerConfirmationClaims {
   policy_digest: AebDigest;
   /** Customer-owned identity-directory state used for this decision. */
   directory_digest: AebDigest;
+  /** What the timestamp below actually means; it is not instantaneous HR truth. */
+  directory_observation_basis: 'AUTHORIZATION_SERVER_OBSERVED_SNAPSHOT';
+  /** Unix time when the AS observed the directory snapshot it used. */
+  directory_observed_at: number;
   /** Pins the intended resource-server verification key or KMS identity. */
   resource_server_key_id: string;
   resource_server_key_digest: AebDigest;
@@ -115,6 +121,7 @@ export interface AuthorizationServerConfirmationAdapterConfig {
   action_type: string;
   clock_skew_seconds: number;
   max_token_age_seconds: number;
+  max_directory_snapshot_age_seconds: number;
 }
 
 export interface AuthorizationServerConfirmationTrustRoot {
@@ -258,7 +265,10 @@ function parseConfig(value: unknown): AuthorizationServerConfirmationAdapterConf
       || typeof value.action_type !== 'string' || !ACTION_TYPE_RE.test(value.action_type)
       || !safeInteger(value.clock_skew_seconds) || value.clock_skew_seconds > 300
       || !safeInteger(value.max_token_age_seconds) || value.max_token_age_seconds < 1
-      || value.max_token_age_seconds > 86_400) return null;
+      || value.max_token_age_seconds > 86_400
+      || !safeInteger(value.max_directory_snapshot_age_seconds)
+      || value.max_directory_snapshot_age_seconds < 1
+      || value.max_directory_snapshot_age_seconds > 604_800) return null;
   return structuredClone(value) as unknown as AuthorizationServerConfirmationAdapterConfig;
 }
 
@@ -317,6 +327,8 @@ function parseClaims(value: Obj, config: AuthorizationServerConfirmationAdapterC
       || !safeInteger(value.iat) || !safeInteger(value.nbf) || !safeInteger(value.exp)
       || !validDigest(value.action_digest) || !validDigest(value.human_evidence_digest)
       || !validDigest(value.policy_digest) || !validDigest(value.directory_digest)
+      || value.directory_observation_basis !== 'AUTHORIZATION_SERVER_OBSERVED_SNAPSHOT'
+      || !safeInteger(value.directory_observed_at)
       || value.resource_server_key_id !== config.resource_server_key_id
       || value.resource_server_key_digest !== config.resource_server_key_digest
       || parseAction(value.action, config.action_type) === null) return null;
@@ -415,6 +427,41 @@ function statusDisposition(status: AebStatusInput, now: string): { acceptance: A
     : { acceptance: 'INDETERMINATE', reasons: unique };
 }
 
+function directorySnapshotDisposition(
+  claims: AuthorizationServerConfirmationClaims,
+  config: AuthorizationServerConfirmationAdapterConfig,
+  now: string,
+): { acceptance: Acceptance; reasons: string[] } {
+  const nowMs = Date.parse(now);
+  if (!Number.isFinite(nowMs)) {
+    return { acceptance: 'INDETERMINATE', reasons: ['as-confirmation:now_invalid'] };
+  }
+  const nowSeconds = Math.floor(nowMs / 1000);
+  if (claims.directory_observed_at > claims.iat) {
+    return { acceptance: 'REJECTED', reasons: ['as-confirmation:directory_snapshot_after_issuance'] };
+  }
+  if (claims.directory_observed_at > nowSeconds + config.clock_skew_seconds) {
+    return { acceptance: 'INDETERMINATE', reasons: ['as-confirmation:directory_snapshot_in_future'] };
+  }
+  if (nowSeconds - claims.directory_observed_at
+      > config.max_directory_snapshot_age_seconds + config.clock_skew_seconds) {
+    return { acceptance: 'INDETERMINATE', reasons: ['as-confirmation:directory_snapshot_too_old'] };
+  }
+  return { acceptance: 'ACCEPTED', reasons: [] };
+}
+
+function combineAcceptance(
+  first: { acceptance: Acceptance; reasons: string[] },
+  second: { acceptance: Acceptance; reasons: string[] },
+): { acceptance: Acceptance; reasons: string[] } {
+  const acceptance: Acceptance = first.acceptance === 'REJECTED' || second.acceptance === 'REJECTED'
+    ? 'REJECTED'
+    : first.acceptance === 'INDETERMINATE' || second.acceptance === 'INDETERMINATE'
+      ? 'INDETERMINATE'
+      : 'ACCEPTED';
+  return { acceptance, reasons: [...new Set([...first.reasons, ...second.reasons])].sort() };
+}
+
 function fallbackNative(input: Omit<AebAdapterInput, 'profile'>, pins: ParsedPins): AebNativeResult {
   const evidenceDigest = safeDigest(input?.artifact);
   const subject: AebEvidenceSubject = { id: 'unknown:authorization-server-subject', kind: 'human' };
@@ -451,9 +498,12 @@ function verifyNative(input: Omit<AebAdapterInput, 'profile'>, pins: ParsedPins)
     role: pins.config.human_evidence_role,
     evidence_digest: grant.value.claims.human_evidence_digest,
   }];
-  const status = statusDisposition(input.status, input.now);
-  result.acceptance = status.acceptance;
-  result.reasons = status.reasons;
+  const disposition = combineAcceptance(
+    directorySnapshotDisposition(grant.value.claims, pins.config, input.now),
+    statusDisposition(input.status, input.now),
+  );
+  result.acceptance = disposition.acceptance;
+  result.reasons = disposition.reasons;
   // Keep the parsed artifact load-bearing; this prevents a future refactor from
   // accepting a token while silently dropping the human evidence envelope.
   if (safeDigest(artifact.human_evidence) !== grant.value.claims.human_evidence_digest) {
@@ -547,6 +597,8 @@ function signableClaims(value: unknown): value is AuthorizationServerConfirmatio
       || value.exp <= value.iat || value.exp <= value.nbf
       || !validDigest(value.action_digest) || !validDigest(value.human_evidence_digest)
       || !validDigest(value.policy_digest) || !validDigest(value.directory_digest)
+      || value.directory_observation_basis !== 'AUTHORIZATION_SERVER_OBSERVED_SNAPSHOT'
+      || !safeInteger(value.directory_observed_at) || value.directory_observed_at > value.iat
       || !nonEmptyIdentifier(value.resource_server_key_id)
       || !validDigest(value.resource_server_key_digest)
       || !isRecord(value.action) || typeof value.action.action_type !== 'string'

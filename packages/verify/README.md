@@ -108,13 +108,18 @@ native `ALLOW`.
 
 `@emilia-protocol/verify/authorization-server-confirmation` verifies a closed
 EdDSA Authorization Server grant under relying-party-pinned issuer, key,
-audience, Resource Server key, policy, directory, time, exact-action and human
-evidence bindings. It emits the separate
+audience, Resource Server key and freshness limits, while preserving signed
+policy, directory-snapshot, exact-action and human-evidence commitments. It
+emits the separate
 `authorization-server-confirmation` role. An AEB `evidence-binding` term then
 requires its signed human-evidence digest and human subject to match a
 separately verified `human-authorization` leg. A valid AS signature is evidence
 only: it never emits `SATISFIED` or `AUTHORIZED`, and an agent-orchestrator
-signature cannot substitute for the AS.
+signature cannot substitute for the AS. The signed grant distinguishes token
+issuance time from the time the AS observed its directory snapshot, and the
+relying party pins the maximum acceptable snapshot age. This prevents a fresh
+token from laundering stale directory state into a claim of current standing;
+it does not prove HR-system freshness or instantaneous employment status.
 
 `@emilia-protocol/verify/aeb-psea-adapter` adds an optional, revision-pinned
 adapter for `draft-yossif-psea-02`. It verifies strict ES256 compact JWS/EAT

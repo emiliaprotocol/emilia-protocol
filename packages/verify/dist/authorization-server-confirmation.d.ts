@@ -45,6 +45,10 @@ export interface AuthorizationServerConfirmationClaims {
     policy_digest: AebDigest;
     /** Customer-owned identity-directory state used for this decision. */
     directory_digest: AebDigest;
+    /** What the timestamp below actually means; it is not instantaneous HR truth. */
+    directory_observation_basis: 'AUTHORIZATION_SERVER_OBSERVED_SNAPSHOT';
+    /** Unix time when the AS observed the directory snapshot it used. */
+    directory_observed_at: number;
     /** Pins the intended resource-server verification key or KMS identity. */
     resource_server_key_id: string;
     resource_server_key_digest: AebDigest;
@@ -65,6 +69,7 @@ export interface AuthorizationServerConfirmationAdapterConfig {
     action_type: string;
     clock_skew_seconds: number;
     max_token_age_seconds: number;
+    max_directory_snapshot_age_seconds: number;
 }
 export interface AuthorizationServerConfirmationTrustRoot {
     '@version': typeof AUTHORIZATION_SERVER_CONFIRMATION_TRUST_ROOT_VERSION;

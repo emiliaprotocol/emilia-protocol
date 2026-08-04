@@ -23,8 +23,8 @@ test('Authorization Server confirmation profile publishes the hostile case inven
     assert.equal(cases['@version'], 'EP-AUTHORIZATION-SERVER-CONFIRMATION-CASES-v1');
     assert.equal(cases.status, 'implementation-profile-cases');
     assert.match(cases.claim_boundary, /not an independent implementation/i);
-    assert.equal(cases.cases.length, 14);
-    assert.equal(new Set(cases.cases.map((entry) => entry.id)).size, 14);
+    assert.equal(cases.cases.length, 15);
+    assert.equal(new Set(cases.cases.map((entry) => entry.id)).size, 15);
 });
 function spki(key) {
     return key.export({ type: 'spki', format: 'der' }).toString('base64url');
@@ -50,7 +50,8 @@ function profile() {
             omitted_material_fields: [],
             omitted_nonmaterial_fields: [
                 'iss', 'aud', 'iat', 'nbf', 'exp', 'jti', 'policy_digest',
-                'directory_digest', 'resource_server_key_id', 'resource_server_key_digest',
+                'directory_digest', 'directory_observation_basis', 'directory_observed_at',
+                'resource_server_key_id', 'resource_server_key_digest',
                 'human_evidence_digest',
             ],
         },
@@ -71,6 +72,7 @@ function makeFixture(overrides = {}) {
         action_type: ACTION_TYPE,
         clock_skew_seconds: 2,
         max_token_age_seconds: 300,
+        max_directory_snapshot_age_seconds: 300,
     };
     const root = {
         '@version': AUTHORIZATION_SERVER_CONFIRMATION_TRUST_ROOT_VERSION,
@@ -108,6 +110,8 @@ function makeFixture(overrides = {}) {
         human_evidence_digest: digestAeb(humanEvidence),
         policy_digest: digestAeb({ policy: 'payments-v4' }),
         directory_digest: digestAeb({ epoch: 42, subject: HUMAN_ID }),
+        directory_observation_basis: 'AUTHORIZATION_SERVER_OBSERVED_SNAPSHOT',
+        directory_observed_at: NOW_SECONDS - 30,
         resource_server_key_id: RESOURCE_SERVER_KEY_ID,
         resource_server_key_digest: RESOURCE_SERVER_KEY_DIGEST,
         ...overrides,
@@ -199,6 +203,31 @@ test('confirmation fails closed for a different human artifact, audience, resour
         assert.notEqual(native.acceptance, 'ACCEPTED', label);
     }
 });
+test('fresh AS token cannot launder an old directory snapshot into current standing', () => {
+    const fixture = makeFixture();
+    const config = { ...fixture.config };
+    const claims = {
+        ...fixture.claims,
+        directory_observation_basis: 'AUTHORIZATION_SERVER_OBSERVED_SNAPSHOT',
+        directory_observed_at: NOW_SECONDS - 3_600,
+    };
+    const grant = signAuthorizationServerConfirmation(claims, {
+        key_id: fixture.root.key_id,
+        private_key: fixture.asKey.privateKey,
+    });
+    const adapter = createAuthorizationServerConfirmationAdapter({
+        config: config,
+        trust_roots: [fixture.root],
+    });
+    const native = adapter.verifyNative({
+        ...fixture.input,
+        artifact: { ...fixture.artifact, grant },
+        adapter_config: config,
+    });
+    assert.equal(native.native_verification, 'VERIFIED');
+    assert.equal(native.acceptance, 'INDETERMINATE');
+    assert.deepEqual(native.reasons, ['as-confirmation:directory_snapshot_too_old']);
+});
 test('a valid AS signature over a different action is accepted only as native evidence and fails exact-action mapping', () => {
     const fixture = makeFixture();
     const expectedAction = {
@@ -251,6 +280,13 @@ test('reference AS signer refuses open or internally inconsistent claims before 
     assert.throws(() => signAuthorizationServerConfirmation({
         ...fixture.claims,
         presenter_override: true,
+    }, {
+        key_id: fixture.root.key_id,
+        private_key: fixture.asKey.privateKey,
+    }), /valid closed confirmation claims/);
+    assert.throws(() => signAuthorizationServerConfirmation({
+        ...fixture.claims,
+        directory_observed_at: fixture.claims.iat + 1,
     }, {
         key_id: fixture.root.key_id,
         private_key: fixture.asKey.privateKey,
