@@ -344,13 +344,13 @@ reference vectors, not independent or cross-language conformance evidence.
 
 ### Install the Gate Qualification v2 SQL artifact
 
-Pin the package artifact to `@emilia-protocol/gate@0.23.12` and verify the exact
+Pin the package artifact to `@emilia-protocol/gate@0.23.13` and verify the exact
 shipped migration before applying it. The SHA-256 below identifies this source
 artifact; it is not a statement that the migration is already deployed:
 
 ```bash
 GATE_SQL_PATH=node_modules/@emilia-protocol/gate/sql/gate-qualification-v2.sql
-test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.23.12"
+test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.23.13"
 printf '%s  %s\n' \
   'e9b55e29c90cf7061bd62a8afd7c97402927e1eeb87649d4a38952a4b08df6b3' \
   "$GATE_SQL_PATH" | shasum -a 256 -c -
