@@ -106,6 +106,16 @@ permit and exposes its native replay unit, while the Gate atomically fences
 that replay unit before any effect. Inspection is never reported as a final
 native `ALLOW`.
 
+`@emilia-protocol/verify/authorization-server-confirmation` verifies a closed
+EdDSA Authorization Server grant under relying-party-pinned issuer, key,
+audience, Resource Server key, policy, directory, time, exact-action and human
+evidence bindings. It emits the separate
+`authorization-server-confirmation` role. An AEB `evidence-binding` term then
+requires its signed human-evidence digest and human subject to match a
+separately verified `human-authorization` leg. A valid AS signature is evidence
+only: it never emits `SATISFIED` or `AUTHORIZED`, and an agent-orchestrator
+signature cannot substitute for the AS.
+
 `@emilia-protocol/verify/aeb-psea-adapter` adds an optional, revision-pinned
 adapter for `draft-yossif-psea-02`. It verifies strict ES256 compact JWS/EAT
 proofs against enrolled P-256 keys; rejects unknown headers and claims; binds

@@ -3,6 +3,19 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- Authorization Server confirmation evidence adapter with relying-party-pinned
+  Ed25519 trust, exact-action and Resource Server binding, signed policy and
+  identity-directory commitments, current-status separation, and a closed
+  human-evidence digest link.
+- AEB `evidence-binding` requirement terms. A source leg can satisfy the term
+  only by binding the exact digest and, when required, subject of a separately
+  verified target leg. The source artifact never satisfies or authorizes the
+  target role by itself.
+
 ## 3.20.1 (2026-08-01)
 
 ### Release

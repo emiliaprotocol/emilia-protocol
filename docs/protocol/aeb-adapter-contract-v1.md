@@ -44,8 +44,12 @@ recomputed.
 
 `AEB-REQUIREMENT-v1` makes the authority predicates explicit. `all_of` and
 `any_of` are role expressions. Its typed `terms` array carries
-`distinct-human-quorum`, `initiator-exclusion`, `executor-exclusion`, and the mandatory
-`one-time-consumption` execution predicate. A requirement with an unknown
+`distinct-human-quorum`, `initiator-exclusion`, `executor-exclusion`,
+`evidence-binding`, and the mandatory `one-time-consumption` execution
+predicate. `evidence-binding` joins a signature-verified digest claim from one
+role to the exact `evidence_digest` of a separately verified target role and
+can require the two legs to identify the same subject. A linked digest never
+satisfies the target role by itself. A requirement with an unknown
 term, duplicate quorum role, duplicate exclusion term of either kind, or anything other than
 exactly one one-time-consumption term is invalid. Composition is delegated to
 the existing
@@ -81,6 +85,12 @@ Several native artifacts may satisfy one requirement when their adapters
 produce the same CAID. The requirement is expressed as pinned role predicates
 (`all_of` and optional `any_of` groups). A CAID match is a content join, not an
 authorization claim.
+
+The Authorization Server confirmation profile uses `evidence-binding` to join
+an enterprise AS grant to the exact human-authorization artifact it confirms.
+The human verifier and AS verifier remain independent, and Gate still owns the
+final local admission decision. See
+[`Authorization Server Confirmation Profile v1`](authorization-server-confirmation-profile-v1.md).
 
 The package includes a concrete signed-native bridge for protocols whose native
 verifier runs at a workload gateway or another trust boundary.

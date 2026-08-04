@@ -184,6 +184,12 @@ npx -y @emilia-protocol/mcp-server
 
 **Act III — The ceremony (device-bound human signoff).** When policy requires a human, EMILIA runs a **WebAuthn / passkey signoff bound to the exact action and its deterministic display hash** — Face ID / Touch ID on the operator's own device. Class-A approvals also bind a server-measured review interval and an action-specific confirmation phrase, with a durable per-approver velocity limit. This narrows the "what you saw is what you signed" gap; it does not prove comprehension. A correctly installed protected path cannot skip the ceremony.
 
+For enterprise deployments, Gate can additionally require an independently
+verified Authorization Server confirmation bound to that exact human evidence,
+the same exact action, the customer identity-directory state, and the intended
+Resource Server key. The AS leg is evidence under customer-pinned trust; it
+never authorizes by itself or turns the agent orchestrator into an authority.
+
 **Act IV — The receipt (the evidence).** The result is a **signed authorization receipt** that anyone can verify **offline, with open-source code, no backend, no vendor trust.** Tamper it and verification fails by construction. Optionally anchor it for public timestamping — the core needs no blockchain.
 
 ---
