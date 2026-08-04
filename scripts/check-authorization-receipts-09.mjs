@@ -29,7 +29,7 @@ invariant(
 const xml = readFileSync(new URL(`UPLOAD-THIS/${basename}.xml`, root), 'utf8');
 invariant(xml.includes(`docName="${basename}"`), 'docName must match the -09 filename');
 invariant(xml.includes('category="std"'), 'The -09 candidate must be Standards Track');
-invariant(xml.includes('submissionType="IETF"'), 'submissionType must be IETF');
+invariant(!xml.includes('submissionType='), 'An individual draft must not claim an adopted document stream');
 invariant(xml.includes('<xref target="EP-CAID"/>'), 'CAID must be cited in the text');
 invariant(xml.includes('<xref target="EP-QUORUM"/>'), 'EP-QUORUM must be cited in the text');
 

@@ -2,7 +2,7 @@
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      docName="draft-schrock-ep-authorization-receipts-09"
      category="std" ipr="trust200902"
-     submissionType="IETF" version="3" tocInclude="true" sortRefs="true" symRefs="true">
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="EP Authorization Receipts">Authorization Receipts for High-Risk Agent Actions</title>
     <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-09"/>
