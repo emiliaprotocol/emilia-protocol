@@ -138,6 +138,10 @@ export { verifyConsumptionProof, ReferenceConsumptionTree, CONSUMPTION_PROFILE, 
 // does NOT prove the software behaved (labels are self-asserted).
 import { validateInitiatorAttestation } from './initiator-attestation.js';
 export { validateInitiatorAttestation, neutralizeStatement, normalizeDigest, bindInto as bindInitiatorAttestation, INITIATOR_ATTESTATION_VERSION, INITIATOR_ATTESTATION_FIELD, INITIATOR_STATEMENT_MAX, } from './initiator-attestation.js';
+// Shared presentation-attack codepoint classification. One implementation for
+// every surface that puts attacker-influenced bytes in front of a human: the
+// free-text initiator statement escapes them, action fields refuse them.
+export { BIDI_CODEPOINTS, INVISIBLE_CODEPOINTS, isControlCodepoint, isHostileCodepoint, escapeCodepoint, scanHostileText, hasHostileText, scanHostileDeep, formatCodepoints, } from './hostile-text.js';
 // EP-SURFACE-BINDING-v1: the possession-row join. The signed action object
 // references the approval-surface evidence (condition-bounded credential
 // presentation, platform attestation) as an opaque digest, so the possession

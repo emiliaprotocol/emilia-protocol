@@ -6,6 +6,7 @@ import {
   ENFORCEMENT_MODES,
   hashCanonicalAction,
 } from './guard-policies.js';
+import { hostileRenderedFieldRefusal } from './wysiwys/neutralize.js';
 
 type GuardActionType = (typeof GUARD_ACTION_TYPES)[keyof typeof GUARD_ACTION_TYPES];
 
@@ -156,6 +157,15 @@ export function validateGuardActionInput(
       detail: 'target_changed_fields/changed_fields must be an array of strings',
     };
   }
+
+  // Presentation-attack refusal, before anything is minted. A bidi override or
+  // zero-width character inside a field the WYSIWYS profile renders can make the
+  // approver read one action and sign another, and both hashes would cover the
+  // hostile bytes, so verification would pass on a display the human never saw.
+  // Refusing here keeps the frozen render profile byte-identical; see
+  // lib/wysiwys/neutralize.ts for why refusal rather than neutralization.
+  const hostileRefusal = hostileRenderedFieldRefusal(body);
+  if (hostileRefusal) return hostileRefusal;
 
   if (body.amount !== undefined && !isFiniteNumber(body.amount)) {
     return { status: 400, code: 'invalid_amount', detail: 'amount must be a finite JSON number' };

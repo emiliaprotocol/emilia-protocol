@@ -1,0 +1,64 @@
+{
+  "@version": "EP-WYSIWYS-HOSTILE-TEXT-v1",
+  "wire_tag": "EP-WYSIWYS-HOSTILE-TEXT-v1",
+  "spdx": "Apache-2.0",
+  "spec": "docs/EP-WYSIWYS-SPEC.md",
+  "implementation": "lib/wysiwys/neutralize.ts (classification: packages/verify/src/hostile-text.ts)",
+  "description": "Input refusal for codepoints that make a WYSIWYS rendering misrepresent the signed action to a human approver. This is NOT the EP-DISPLAY-ATTESTATION-v1 wire format: no artifact is produced, an action carrying these codepoints is refused before any receipt is minted. Refusal rather than in-renderer neutralization keeps the frozen EP-WYSIWYS-RENDER-v1 profile and every existing display_hash byte-identical.",
+  "residual_risk": "Homoglyph substitution (Cyrillic a for Latin a) is NOT refused here: it has legitimate uses and no bright-line test, so it remains an operational and directory-level control. This guard covers only codepoints with no legitimate reading inside a rendered identifier: bidi overrides, zero-width/BOM, and C0/C1 controls.",
+  "must_reject": [
+    {
+      "id": "e_bidi_override_in_target_resource_id",
+      "title": "Bidirectional override inside a rendered action field spoofs the approver's display",
+      "attack": "target_resource_id is 'acct-9931' followed by U+202E RIGHT-TO-LEFT OVERRIDE and then 'live'. The renderer passed the codepoint through, so the approver read 'acct-9931evil' while the signed bytes said otherwise. action_hash and display_hash BOTH cover the hostile bytes, so the display attestation verifies and the rendering is faithful to the signed action: the deception is purely visual, aimed at the human at the moment of decision.",
+      "expected": {
+        "valid": false,
+        "failing_check": "hostile_display_codepoints"
+      }
+    },
+    {
+      "id": "f_zero_width_and_control_in_rendered_fields",
+      "title": "Zero-width and C0/C1 control characters in rendered action fields",
+      "attack": "actor_id or policy_id carries U+200B ZERO WIDTH SPACE, a C0 control (U+0000) or a C1 control (U+0085). These hide or fuse content in the rendering without changing what the signature covers.",
+      "expected": {
+        "valid": false,
+        "failing_check": "hostile_display_codepoints"
+      }
+    },
+    {
+      "id": "g_hostile_codepoint_nested_in_structured_field",
+      "title": "Hostile codepoint nested inside a structured rendered field, including an object key",
+      "attack": "risk_flags array members and rollout_metadata values are rendered via the canonical serializer, and object KEYS render alongside values. A hostile codepoint in either is refused, so nesting is not an escape hatch.",
+      "expected": {
+        "valid": false,
+        "failing_check": "hostile_display_codepoints"
+      }
+    }
+  ],
+  "must_accept": [
+    {
+      "id": "z_legitimate_rtl_script_is_not_an_attack",
+      "title": "Arabic and Hebrew content renders normally; the script is not the attack",
+      "shape": "target_resource_id and actor_id carry ordinary Arabic and Hebrew text with no override codepoints. The guard classifies override/zero-width/control codepoints, never scripts. Negative control proving the refusal is not a blanket non-ASCII ban.",
+      "expected": {
+        "valid": true
+      }
+    },
+    {
+      "id": "z2_everyday_whitespace_passes",
+      "title": "Tab, newline and carriage return are not control-character attacks",
+      "shape": "policy_id contains tab and newline. These are everyday whitespace, explicitly excluded from the C0 refusal set, and must keep passing.",
+      "expected": {
+        "valid": true
+      }
+    },
+    {
+      "id": "z3_unrendered_field_is_not_guarded",
+      "title": "Hostile bytes in a field the renderer never displays are ignored",
+      "shape": "A non-rendered field carries U+202E. It cannot deceive an approver because it is never displayed, so refusing it would reject legitimate payloads for no security gain. The guard is scoped to what a human actually sees.",
+      "expected": {
+        "valid": true
+      }
+    }
+  ]
+}
