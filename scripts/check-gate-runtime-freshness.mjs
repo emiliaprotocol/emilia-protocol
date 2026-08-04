@@ -36,37 +36,47 @@ try {
   });
 
   if (build.error) throw build.error;
-  if (build.status !== 0) process.exit(build.status ?? 1);
+  if (build.status !== 0) {
+    process.exitCode = build.status ?? 1;
+  } else {
+    const stale = [];
+    const freshFiles = runtimeFiles(freshDist);
+    const committedFiles = runtimeFiles(committedDist);
+    const files = [...new Set([...freshFiles, ...committedFiles])].sort();
+    for (const path of files) {
+      let expected = null;
+      try {
+        expected = readFileSync(resolve(freshDist, path), 'utf8');
+      } catch (error) {
+        if (error?.code !== 'ENOENT') throw error;
+      }
 
-  const stale = [];
-  const files = runtimeFiles(freshDist);
-  for (const path of files) {
-    let expected = readFileSync(resolve(freshDist, path), 'utf8');
-    // packages/gate/postbuild-ts-nocheck.mjs applies this pragma only to
-    // top-level runtime files. Reproduce that transform in memory so this
-    // check remains read-only.
-    if (!path.includes('/') && !expected.startsWith('// @ts-nocheck\n')) {
-      expected = `// @ts-nocheck\n${expected}`;
+      // packages/gate/postbuild-ts-nocheck.mjs applies this pragma only to
+      // top-level runtime files. Reproduce that transform in memory so this
+      // check remains read-only and portable across path separators.
+      if (expected !== null && !/[\\/]/.test(path) && !expected.startsWith('// @ts-nocheck\n')) {
+        expected = `// @ts-nocheck\n${expected}`;
+      }
+
+      let actual = null;
+      try {
+        actual = readFileSync(resolve(committedDist, path), 'utf8');
+      } catch (error) {
+        if (error?.code !== 'ENOENT') throw error;
+      }
+      if (actual !== expected) stale.push(path);
     }
 
-    let actual = null;
-    try {
-      actual = readFileSync(resolve(committedDist, path), 'utf8');
-    } catch (error) {
-      if (error?.code !== 'ENOENT') throw error;
+    if (stale.length > 0) {
+      console.error('GATE RUNTIME FRESHNESS: FAIL');
+      for (const path of stale.slice(0, 20)) console.error(`- ${path}`);
+      if (stale.length > 20) console.error(`- and ${stale.length - 20} more`);
+      console.error('Run npm --prefix packages/gate run build and review the generated runtime changes.');
+      process.exitCode = 1;
+    } else {
+      console.log(`GATE RUNTIME FRESHNESS: PASS (${freshFiles.length} compiled runtime files)`);
     }
-    if (actual !== expected) stale.push(path);
   }
-
-  if (stale.length > 0) {
-    console.error('GATE RUNTIME FRESHNESS: FAIL');
-    for (const path of stale.slice(0, 20)) console.error(`- ${path}`);
-    if (stale.length > 20) console.error(`- and ${stale.length - 20} more`);
-    console.error('Run npm --prefix packages/gate run build and review the generated runtime changes.');
-    process.exit(1);
-  }
-
-  console.log(`GATE RUNTIME FRESHNESS: PASS (${files.length} compiled runtime files)`);
 } finally {
   rmSync(scratch, { recursive: true, force: true });
 }

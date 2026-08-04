@@ -10,6 +10,15 @@ const freshness = read('scripts/check-gate-runtime-freshness.mjs');
 const workflow = read('.github/workflows/ci.yml');
 const packageJson = JSON.parse(read('package.json'));
 
+function workflowJob(name: string): string {
+  const marker = `\n  ${name}:\n`;
+  const start = workflow.indexOf(marker);
+  if (start < 0) return '';
+  const bodyStart = start + marker.length;
+  const next = workflow.slice(bodyStart).search(/\n  [a-zA-Z0-9_-]+:\n/);
+  return workflow.slice(start, next < 0 ? undefined : bodyStart + next);
+}
+
 describe('Gate reference proof release contract', () => {
   it('refuses stale compiled and standalone runtimes before running examples', () => {
     const compiled = runner.indexOf("label: 'Gate compiled-runtime freshness'");
@@ -32,7 +41,9 @@ describe('Gate reference proof release contract', () => {
 
   it('is a public npm command exercised by the Node 20 Gate product job', () => {
     expect(packageJson.scripts['proof:gate:reference']).toBe('node scripts/run-gate-reference-proof.mjs');
-    expect(workflow).toMatch(/gate-product:[\s\S]+node-version: 20[\s\S]+npm run proof:gate:reference/);
+    const gateProduct = workflowJob('gate-product');
+    expect(gateProduct).toContain('node-version: 20');
+    expect(gateProduct).toContain('npm run proof:gate:reference');
   });
 
   it('states the local and mock scope instead of calling randomized evidence deterministic', () => {

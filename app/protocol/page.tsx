@@ -6,6 +6,8 @@ import SiteFooter from '@/components/SiteFooter';
 import EmailCapture from '@/components/EmailCapture';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
+const goldText = '#765A13';
+
 // Canonical presentation path from standards/STATUS.json. Keep these visible
 // revisions aligned with that file. Authorization Receipts intentionally stays
 // at -08 until the newer revision is successfully filed and main is updated.
@@ -166,7 +168,7 @@ export default function ProtocolPage() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1.5 }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: goldText, letterSpacing: 1.5 }}>
                       {document.order} / 04
                     </span>
                     <span style={{ fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>
@@ -184,7 +186,7 @@ export default function ProtocolPage() {
                     target={document.external ? '_blank' : undefined}
                     rel={document.external ? 'noopener noreferrer' : undefined}
                     aria-label={`${document.linkLabel}: ${document.label}`}
-                    style={{ ...cta.ghost, marginTop: 'auto', color: color.gold }}
+                    style={{ ...cta.ghost, marginTop: 'auto', color: goldText }}
                   >
                     {document.linkLabel}{document.external ? ' ↗' : ' →'}
                   </a>
@@ -218,7 +220,7 @@ export default function ProtocolPage() {
                   borderBottom: `1px solid ${color.border}`,
                 }}
               >
-                <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: color.gold, minWidth: 110, paddingTop: 3 }}>
+                <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: goldText, minWidth: 110, paddingTop: 3 }}>
                   {decision.term}
                 </span>
                 <span style={{ fontSize: 14, color: color.t2, lineHeight: 1.7 }}>{decision.definition}</span>
@@ -242,7 +244,7 @@ export default function ProtocolPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
               {GATE_STEPS.map((step, index) => (
                 <article key={step.order} className={`ep-card-lift ep-reveal ep-stagger-${index + 1}`} style={{ ...styles.card, padding: 24 }}>
-                  <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.5, marginBottom: 14 }}>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: goldText, letterSpacing: 1.5, marginBottom: 14 }}>
                     STEP {step.order}
                   </div>
                   <h3 style={styles.h3}>{step.title}</h3>
@@ -256,7 +258,7 @@ export default function ProtocolPage() {
         <section style={{ background: '#1C1917', borderTop: `4px solid ${color.gold}` }}>
           <div style={{ ...styles.sectionWide, paddingTop: 76, paddingBottom: 76 }}>
             <div className="ep-reveal" style={{ maxWidth: 840 }}>
-              <div style={{ ...styles.eyebrow, color: color.gold }}>Deployment boundary</div>
+              <div style={{ ...styles.eyebrow, color: goldText }}>Deployment boundary</div>
               <h2 style={{ ...styles.h2, color: '#FAFAF9', fontSize: 32, lineHeight: 1.2 }}>
                 A protected path is not proof of complete mediation.
               </h2>
@@ -268,7 +270,7 @@ export default function ProtocolPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
                 {COVERAGE_CONTROLS.map((control, index) => (
                   <div key={control} style={{ display: 'flex', gap: 12, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: radius.base }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, paddingTop: 3 }}>{String(index + 1).padStart(2, '0')}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: goldText, paddingTop: 3 }}>{String(index + 1).padStart(2, '0')}</span>
                     <span style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(250,250,249,0.72)' }}>{control}</span>
                   </div>
                 ))}

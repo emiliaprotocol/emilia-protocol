@@ -43,7 +43,7 @@ describe('canonical standards presentation surface', () => {
   it('freezes new names while allowing maintenance of active drafts', () => {
     expect(status.new_filing_freeze).toMatchObject({
       state: 'in_effect',
-      start_date: '2026-08-03',
+      start_date: '2026-08-04',
       through_date: '2026-11-01',
       through_date_inclusive: true,
     });

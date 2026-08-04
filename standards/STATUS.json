@@ -133,7 +133,7 @@
   },
   "new_filing_freeze": {
     "state": "in_effect",
-    "start_date": "2026-08-03",
+    "start_date": "2026-08-04",
     "through_date": "2026-11-01",
     "through_date_inclusive": true,
     "duration": "90 days",

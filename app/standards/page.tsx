@@ -9,6 +9,8 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 import standardsStatus from '@/standards/STATUS.json';
 
+const goldText = '#765A13';
+
 export const metadata = {
   title: 'Let agents act within limits you approve in advance | EMILIA',
   description:
@@ -146,7 +148,7 @@ export default function StandardsPage() {
             }}
           >
             <div>
-              <div style={{ ...styles.eyebrow, color: color.gold }}>PRODUCT BOUNDARY · OPEN EVIDENCE</div>
+              <div style={{ ...styles.eyebrow, color: goldText }}>PRODUCT BOUNDARY · OPEN EVIDENCE</div>
               <h1 style={{ ...styles.h1Large, maxWidth: 760 }}>
                 Let agents act within limits you approve in advance.
               </h1>
@@ -169,7 +171,7 @@ export default function StandardsPage() {
                 padding: '28px 30px',
               }}
             >
-              <div style={{ ...styles.eyebrow, color: color.gold, marginBottom: 12 }}>PREVENTION BOUNDARY</div>
+              <div style={{ ...styles.eyebrow, color: goldText, marginBottom: 12 }}>PREVENTION BOUNDARY</div>
               <div style={{ ...styles.h3, fontSize: 22, lineHeight: 1.3, marginBottom: 12 }}>
                 Configured paths. Complete mediation.
               </div>
@@ -184,7 +186,7 @@ export default function StandardsPage() {
 
         {/* CANONICAL FOUR-DOCUMENT PATH */}
         <section id="four-document-path" style={{ ...styles.sectionWide, paddingTop: 72, paddingBottom: 56 }}>
-          <div style={{ ...styles.eyebrow, color: color.gold }}>OPEN STANDARDS · ONE BEAT BEHIND THE PRODUCT</div>
+          <div style={{ ...styles.eyebrow, color: goldText }}>OPEN STANDARDS · ONE BEAT BEHIND THE PRODUCT</div>
           <h2 style={{ ...styles.h2, fontSize: 30, maxWidth: 760 }}>The canonical four-document adoption path</h2>
           <p style={{ ...styles.body, maxWidth: 760, marginTop: 8 }}>
             The product is designed to control a configured execution path. These four individual Internet-Drafts define
@@ -219,7 +221,7 @@ export default function StandardsPage() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-                  <span style={{ fontFamily: font.mono, fontSize: 12, color: color.gold }}>{document.step}</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 12, color: goldText }}>{document.step}</span>
                   <span style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, textTransform: 'uppercase' }}>
                     Individual I-D
                   </span>
@@ -230,7 +232,7 @@ export default function StandardsPage() {
                 <div style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
                   {document.revision}
                 </div>
-                <div style={{ ...styles.eyebrow, color: color.gold, marginTop: 22, marginBottom: 8 }}>
+                <div style={{ ...styles.eyebrow, color: goldText, marginTop: 22, marginBottom: 8 }}>
                   {document.role}
                 </div>
                 <p style={{ ...styles.cardBody, margin: 0 }}>{document.body}</p>
@@ -260,7 +262,7 @@ export default function StandardsPage() {
               {PILLARS.map((p) => (
                 <div key={p.role} style={{ padding: '18px 0', borderTop: `1px solid ${color.border}` }}>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ ...styles.eyebrow, color: color.gold, marginBottom: 0 }}>{p.role}</span>
+                    <span style={{ ...styles.eyebrow, color: goldText, marginBottom: 0 }}>{p.role}</span>
                     <StatusPill>{p.status}</StatusPill>
                   </div>
                   <div style={{ ...styles.h3, marginTop: 10 }}>{p.title}</div>
@@ -274,7 +276,7 @@ export default function StandardsPage() {
         {/* TIER 1 TABLE */}
         <section style={{ ...styles.sectionWide, paddingTop: 24, paddingBottom: 18 }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>TIER 1 · PUBLISHED RFCs / DEPLOYED — ANCHOR HERE</div>
+            <div style={{ ...styles.eyebrow, color: goldText }}>TIER 1 · PUBLISHED RFCs / DEPLOYED — ANCHOR HERE</div>
             <h2 style={styles.h2}>Published standards to compose with</h2>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 4 }}>
               These are published or widely deployed standards and projects. EMILIA&rsquo;s specifications define possible
@@ -316,7 +318,7 @@ export default function StandardsPage() {
         {/* RATS + SCITT MAPPING DETAIL */}
         <section style={{ ...styles.sectionWide, paddingTop: 24, paddingBottom: 18 }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>MAPPING DETAIL · RATS + SCITT</div>
+            <div style={{ ...styles.eyebrow, color: goldText }}>MAPPING DETAIL · RATS + SCITT</div>
             <h2 style={styles.h2}>How the evidence can sit beside RATS and inside SCITT</h2>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 4 }}>
               These are narrow composition mappings, not adoption claims. Machine attestation and EMILIA authorization
@@ -330,7 +332,7 @@ export default function StandardsPage() {
               ['Relying Party', 'the gateway / substrate — consumes the Attestation Result AND the EMILIA authorization receipt'],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', gap: 14, padding: '9px 0', borderTop: `1px solid ${color.border}`, flexWrap: 'wrap' }}>
-                <span style={{ flex: '0 0 130px', fontFamily: font.mono, fontSize: 13, color: color.gold }}>{k}</span>
+                <span style={{ flex: '0 0 130px', fontFamily: font.mono, fontSize: 13, color: goldText }}>{k}</span>
                 <span style={{ flex: 1, ...styles.body, fontSize: 14, margin: 0 }}>{v}</span>
               </div>
             ))}
@@ -348,7 +350,7 @@ export default function StandardsPage() {
               ['Lineage chain', 'EMILIA/COSA content: each hop carries a prev-state hash; SCITT logs the order, EMILIA supplies the link'],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', gap: 14, padding: '9px 0', borderTop: `1px solid ${color.border}`, flexWrap: 'wrap' }}>
-                <span style={{ flex: '0 0 130px', fontFamily: font.mono, fontSize: 13, color: color.gold }}>{k}</span>
+                <span style={{ flex: '0 0 130px', fontFamily: font.mono, fontSize: 13, color: goldText }}>{k}</span>
                 <span style={{ flex: 1, ...styles.body, fontSize: 14, margin: 0 }}>{v}</span>
               </div>
             ))}
@@ -368,12 +370,12 @@ export default function StandardsPage() {
               not a Datatracker consolidation or external adoption claim. The repository tracks 22 active Datatracker
               records as of August 3, 2026.
               The latest six filings are{' '}
-              <a href="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/" style={{ color: color.gold }}>AEB -03</a>,{' '}
-              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" style={{ color: color.gold }}>AEC -05</a>,{' '}
-              <a href="https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/" style={{ color: color.gold }}>Model-to-Matter -03</a>,{' '}
-              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-reliance-agreement/" style={{ color: color.gold }}>Reliance Agreement -00</a>,{' '}
-              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/" style={{ color: color.gold }}>Bounded Capability Receipts -01</a>, and{' '}
-              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-execution-program/" style={{ color: color.gold }}>Bounded Execution Program -00</a>.
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/" style={{ color: goldText }}>AEB -03</a>,{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" style={{ color: goldText }}>AEC -05</a>,{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/" style={{ color: goldText }}>Model-to-Matter -03</a>,{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-reliance-agreement/" style={{ color: goldText }}>Reliance Agreement -00</a>,{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/" style={{ color: goldText }}>Bounded Capability Receipts -01</a>, and{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-execution-program/" style={{ color: goldText }}>Bounded Execution Program -00</a>.
               They are licensed Apache-2.0 where applicable, are <b>not</b> IETF standards, and do <b>not</b> imply
               endorsement by any working group. The relationships above are <b>complement relationships</b> — how
               EMILIA composes with these standards — not claims of adoption by the OAuth, RATS, SCITT, WIMSE, or
