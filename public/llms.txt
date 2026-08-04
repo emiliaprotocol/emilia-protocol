@@ -4,6 +4,8 @@
 
 This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-08-04T06:03:35.816Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
+Prevention boundary: Gate prevents only on action paths under complete mediation. It does not constrain a path that bypasses the deployed enforcement point.
+
 ## Engineering Evidence
 
 EMILIA is implemented security infrastructure, not architecture-only: 8,659 automated tests across 509 files; 35 executable security claims over 255 hashed evidence files; 20 verified obligations across 2 composed Tamarin models, with 8 deliberately weakened variants producing concrete attack traces; and 78 content-addressed selected model/runtime scenarios across 14 bounded models and 21 claims, including 51 paired formal-counterexample/runtime-refusal controls.
@@ -14,6 +16,7 @@ Interoperability evidence: 21 conformance suites and 331 current vectors across 
 
 - [Full LLM context](https://www.emiliaprotocol.ai/llms-full.txt): Definitions, layer map, current evidence, non-claims, source precedence, standards, and code entry points.
 - [Machine-readable repository context](https://www.emiliaprotocol.ai/.well-known/emilia-context.json): EMILIA-REPO-CONTEXT-v1 with input hashes, evidence counts, security claims, assumptions, and freshness metadata.
+- [Canonical four-document reading path](https://www.emiliaprotocol.ai/llms-full.txt#canonical-four-document-reading-path): Authorization Receipts -> Human Authorization Binding -> Authority Introduction -> Authorization Evidence Chain.
 - [Standards Observatory](https://www.emiliaprotocol.ai/observatory): Revision-aware guarantee map, standards movement, and open interoperability frontiers.
 - [Machine-readable standards snapshot](https://www.emiliaprotocol.ai/.well-known/standards-observatory.json): Source locks, operative-status rationale, exact quotes, and the correlated-recon boundary.
 - [Repository AI context](https://github.com/emiliaprotocol/emilia-protocol/blob/main/AI_CONTEXT.md): The same generated context beside the source code.
@@ -29,7 +32,7 @@ Interoperability evidence: 21 conformance suites and 331 current vectors across 
 - [draft-schrock-ep-architecture](https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/): Portfolio architecture; snapshot revision -02, check Datatracker for current status.
 - [draft-schrock-ep-authority-introduction](https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/): Authority introduction and trust-root boundary; snapshot revision -02, check Datatracker for current status.
 - [draft-schrock-ep-authorization-evidence-chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/): Heterogeneous evidence composition; snapshot revision -05, check Datatracker for current status.
-- [draft-schrock-ep-authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/): One action-bound organizational approval evidence profile; snapshot revision -08, check Datatracker for current status.
+- [draft-schrock-ep-authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/): One action-bound organizational approval evidence profile; snapshot revision -09, check Datatracker for current status.
 - [draft-schrock-ep-bounded-capability-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/): Action-bound capability budget and spend evidence; snapshot revision -01, check Datatracker for current status.
 - [draft-schrock-ep-bounded-execution-program](https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-execution-program/): Reachability-, occurrence-, concurrency-, and budget-bounded runtime program for consequential action admission; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-ep-evidence-record](https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/): Long-term crypto-agile evidence preservation; snapshot revision -01, check Datatracker for current status.

@@ -2,8 +2,8 @@
   "@version": "EMILIA-REPO-CONTEXT-v1",
   "evidence_snapshot_at": "2026-08-04T06:03:35.816Z",
   "provenance": {
-    "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "d74a2ad3c08ee80666053b387a169dafb53a33708f168e24268e0bab28f15eaa",
+    "generator": "scripts/generate-llm-context.mts",
+    "input_digest_sha256": "64344e4c8efc34ed44be196b37a1f2f214d3949cd9318d4b11a7589bafa6399a",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -11,9 +11,9 @@
         "bytes": 43032
       },
       {
-        "path": "scripts/generate-llm-context.mjs",
-        "sha256": "7a4edd2dda87bae0c085f937eda6b39c28c3ee356c1687629d64cf5e92cde8ad",
-        "bytes": 29285
+        "path": "scripts/generate-llm-context.mts",
+        "sha256": "f9832ae9295df300d914b82f502c4b2dc68445ade4351c58693fd16014297c03",
+        "bytes": 30788
       },
       {
         "path": "lib/proof-stats.json",
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "1d8e8e4521cb816a0c1ea171d8819d565f8110d09151f6f5a791338d21bae1e6",
+        "sha256": "0bbff28b50fb19114ab31ace546dd4d72676abcdf30b863165e6c226f7ab4112",
         "bytes": 381400
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "0cc0ae265382a574dd358bf511e507e41c52aed9130538423409c5792f2ca972",
-        "bytes": 26129
+        "sha256": "237e6462b05734eed8c3970734602e9ba6d67e604cbb917149a5f220dc96192d",
+        "bytes": 35715
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -384,7 +384,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 255,
-      "evidence_bundle_sha256": "fe4d2cffe51fd9d913f4ea8d13480e55d00185a024d72d0ecd923bc972a82f1e"
+      "evidence_bundle_sha256": "17ffdab6b42284c62bdf2120605535b68970ecdba289eaab71df1429957ad1d4"
     },
     "caid": {
       "core_vectors": 48,
@@ -4548,9 +4548,9 @@
     },
     {
       "identifier": "draft-schrock-ep-authorization-receipts",
-      "revision_at_snapshot": "08",
+      "revision_at_snapshot": "09",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published July 21; use -08 as the current receipt and extension baseline",
+      "next_action": "Published August 3; use -09 as the current Standards Track candidate for the receipt and extension baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4659,6 +4659,59 @@
       "SATISFIED": "Verified and matched evidence fills every slot in the relying party's evidence requirement.",
       "AUTHORIZED": "The relying party's local policy permits execution.",
       "EXECUTED": "An executor asserts or attests that an effect occurred."
+    },
+    "canonical_reading_path": {
+      "status": "presentation_only_no_consolidation",
+      "surface_name": "PRESENTATION",
+      "document_count": 4,
+      "purpose": "Canonical reader-facing path from an approval artifact, through host-record binding and scoped authority, to relying-party evidence satisfaction.",
+      "portfolio_preservation": "No active draft is retired, merged, replaced, updated, obsoleted, or subordinated by this surface. Every active_datatracker entry retains its own scope, revision history, and active status; the distinct active profile and lifecycle portfolio remains intact.",
+      "documents": [
+        {
+          "order": 1,
+          "label": "Authorization Receipts",
+          "draft": "draft-schrock-ep-authorization-receipts",
+          "revision": "09",
+          "source": "standards/posted/draft-schrock-ep-authorization-receipts-09.xml",
+          "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
+          "snapshot_sha256": "c4d430e4257fc6ff8a77d7eb8b6a40de3a3159f6eefa83f7df439ebbe42008b9",
+          "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
+          "boundary": "One approval-evidence profile and extension seam; it does not establish scoped authority or evidence satisfaction by itself."
+        },
+        {
+          "order": 2,
+          "label": "Human Authorization Binding",
+          "draft": "draft-schrock-human-authorization-binding",
+          "revision": "00",
+          "source": "standards/posted/draft-schrock-human-authorization-binding-00.xml",
+          "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/",
+          "snapshot_sha256": "28574a050312837c96189561b2f0776da6cfdb1fe2720dab575fcb99a6811a0e",
+          "canonical_question": "How is named-human authorization evidence bound into an adjacent host record?",
+          "boundary": "Host-agnostic by-value or by-reference binding; it does not redefine the authorization artifact or host format."
+        },
+        {
+          "order": 3,
+          "label": "Authority Introduction",
+          "draft": "draft-schrock-ep-authority-introduction",
+          "revision": "02",
+          "source": "standards/posted/draft-schrock-ep-authority-introduction-02.xml",
+          "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/",
+          "snapshot_sha256": "11e3a33a8f113691c0188e0b264b5428ee378ca42aefad89690377bc697a7c6e",
+          "canonical_question": "Under the relying party's trust roots, did the verified key have authority for this scope?",
+          "boundary": "Trust-root introduction and scoped authority; signature verification alone does not create authority."
+        },
+        {
+          "order": 4,
+          "label": "Authorization Evidence Chain",
+          "draft": "draft-schrock-ep-authorization-evidence-chain",
+          "revision": "05",
+          "source": "standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml",
+          "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
+          "snapshot_sha256": "1ae4783a0c8e6e68b247191732d8b372c4032416b447a98f0b1040d54faad220",
+          "canonical_question": "Does the natively verified, action-matched bundle satisfy the relying party's evidence requirement?",
+          "boundary": "Returns SATISFIED or UNSATISFIED; it never returns a universal authorization verdict."
+        }
+      ]
     },
     "layers": [
       {
@@ -4772,8 +4825,16 @@
     },
     "august_3_2026_wave": {
       "filing_date": "2026-08-03",
+      "item_count": 6,
       "publication_status": "published_and_ietf_archive_verified_2026_08_03",
+      "packet_status": "published_and_provenance_retained_not_unfiled",
       "verification": "Each listed XML is byte-for-byte identical to its immutable IETF archive artifact.",
+      "provenance_packet": {
+        "path": "standards/staged/UPLOAD-THIS",
+        "state": "retained_exact_submitted_bytes_not_upload_candidates",
+        "checksum_manifest": "standards/staged/SHA256SUMS.txt",
+        "verification": "The six retained XML files match their canonical standards/posted snapshots byte-for-byte; retained renders and checksums preserve publication review provenance."
+      },
       "items": [
         {
           "draft": "draft-schrock-ep-reliance-agreement-00",
@@ -4854,7 +4915,7 @@
       },
       {
         "draft": "draft-schrock-ep-authority-registry-00",
-        "canonical_owner": "draft-schrock-ep-authority-introduction-01",
+        "canonical_owner": "draft-schrock-ep-authority-introduction-02",
         "reason": "The active Authority Introduction draft owns trust-root introduction and scoped authority."
       },
       {
