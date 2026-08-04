@@ -71,6 +71,8 @@ export interface AdmissionRelation {
     admission_id: string;
     operation_id: string;
     snapshot_digest: AdmissionDigest;
+    caid?: string;
+    action_digest?: AdmissionDigest;
 }
 export interface AdmissionSnapshotInput {
     tenant_id: string;

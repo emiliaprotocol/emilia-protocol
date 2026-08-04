@@ -390,12 +390,15 @@ async function assertWrongDigestRefused(store, storeKind, path) {
         return;
     }
     const evidenceProfile = 'urn:test:negative-provider-entry:v1';
+    const evidenceObservedAt = new Date(NOW + PROVIDER_ENTRY_TIMEOUT_MS).toISOString();
     assert.deepEqual(await store.reconcileSpend({
         capabilityId,
         operationId,
         actionDigest: wrongDigest,
         evidenceDigest,
         evidenceProfile,
+        evidenceFinal: true,
+        evidenceObservedAt,
         outcome: 'not_entered',
         now: NOW + PROVIDER_ENTRY_TIMEOUT_MS,
     }), { ok: false, reason: 'capability_reconciliation_action_mismatch' });
@@ -405,6 +408,8 @@ async function assertWrongDigestRefused(store, storeKind, path) {
         actionDigest: exactDigest,
         evidenceDigest,
         evidenceProfile,
+        evidenceFinal: true,
+        evidenceObservedAt,
         outcome: 'not_entered',
         now: NOW + PROVIDER_ENTRY_TIMEOUT_MS,
     })).ok, true, 'the wrong digest must not consume the valid not-entered reconciliation');

@@ -413,12 +413,12 @@ export default function GatePage() {
               pre-mutation failure, and returns the reliance packet.
             </p>
             <p style={{ ...styles.body, maxWidth: 720, marginTop: 12 }}>
-              When an action carries a bounded capability, Gate reserves exact-action or
-              CAID-scoped spend before provider entry, refuses overspend and replay, and commits
-              after success. If provider entry occurred but the result cannot be established, Gate
-              consumes the reservation as indeterminate: no blind retry or refund, and
-              reconciliation only from authenticated evidence bound to the same provider,
-              operation, and action.
+              Gate&apos;s experimental recovery developer surface follows buyer policy before execution.
+              The reference executor covers one locally contained PostgreSQL transaction. After a
+              provider may have acted but the result cannot be established, Gate consumes the
+              reservation as indeterminate: no blind retry or refund. Any remedy is a new,
+              separately authorized action. Remote compensation is a reserved-capacity building
+              block, not a guarantee that an external effect can be reversed.
             </p>
             <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.75, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 22, margin: '28px 0 0', overflowX: 'auto', whiteSpace: 'pre' }}>{CODE}</pre>
             <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>

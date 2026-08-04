@@ -169,20 +169,72 @@ test('gate capability path refuses overspend before the effect', async () => {
     assert.equal(f.capabilityStore.getState('cap_30').consumed_amount, 0);
     assert.equal(f.runtimeMonitor.getMode(), 'normal');
 });
-test('gate capability path rechecks the provider-entry guard after budget reservation and before the effect', async () => {
+test('gate capability path honors release, burn, and hold suspension dispositions', async (t) => {
+    const cases = [
+        { name: 'default release', reservation: undefined, status: 'released', outcome: 'not_entered', consumed: 0, reserved: 0 },
+        { name: 'explicit release', reservation: 'release', status: 'released', outcome: 'not_entered', consumed: 0, reserved: 0 },
+        { name: 'burn', reservation: 'burn', status: 'committed', outcome: 'refused', consumed: 40, reserved: 0 },
+        { name: 'hold', reservation: 'hold', status: 'reserved', outcome: undefined, consumed: 0, reserved: 40 },
+    ];
+    for (const expected of cases) {
+        await t.test(expected.name, async () => {
+            const f = fixture({
+                providerEntryGuard: async () => ({
+                    ok: false,
+                    reason: 'organization_suspended',
+                    status: 423,
+                    ...(expected.reservation === undefined ? {} : { reservation: expected.reservation }),
+                }),
+            });
+            let effects = 0;
+            const out = await f.gate.run(request(f, { operationId: ACTION.payment_instruction_id }), async () => {
+                effects += 1;
+            });
+            assert.equal(out.ok, false);
+            assert.equal(out.capability.reason, 'organization_suspended');
+            assert.equal(effects, 0);
+            const operation = f.capabilityStore.getOperation(ACTION.payment_instruction_id);
+            assert.equal(operation.status, expected.status);
+            assert.equal(operation.outcome, expected.outcome);
+            assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, expected.consumed);
+            assert.equal(f.capabilityStore.getState('cap_100').reserved_amount, expected.reserved);
+        });
+    }
+});
+test('a burned capability refusal remains consumed and replay-fenced across run and route', async () => {
     const f = fixture({
-        providerEntryGuard: async () => ({ ok: false, reason: 'organization_suspended', status: 423 }),
+        providerEntryGuard: async () => ({
+            ok: false,
+            reason: 'organization_suspended',
+            status: 423,
+            reservation: 'burn',
+        }),
     });
     let effects = 0;
-    const out = await f.gate.run(request(f, { operationId: ACTION.payment_instruction_id }), async () => {
+    const first = await f.gate.run(request(f, { operationId: ACTION.payment_instruction_id }), async () => {
         effects += 1;
     });
-    assert.equal(out.ok, false);
-    assert.equal(out.capability.reason, 'organization_suspended');
+    assert.equal(first.ok, false);
+    assert.equal(first.capability.reason, 'organization_suspended');
+    let statusCode = null;
+    const response = {
+        status(code) { statusCode = code; return this; },
+        json(body) { return body; },
+        setHeader() { },
+    };
+    const guardedRoute = f.gate.route(async () => {
+        effects += 1;
+    }, {
+        selector: SELECTOR,
+        observedAction: f.action,
+        capability: request(f, { operationId: ACTION.payment_instruction_id }).capability,
+    });
+    await guardedRoute({ headers: {}, body: {} }, response);
+    assert.equal(statusCode, 409);
     assert.equal(effects, 0);
-    assert.equal(f.capabilityStore.getOperation(ACTION.payment_instruction_id).status, 'reserved');
-    assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 0);
-    assert.equal(f.capabilityStore.getState('cap_100').reserved_amount, 40);
+    assert.equal(f.capabilityStore.getOperation(ACTION.payment_instruction_id).status, 'committed');
+    assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 40);
+    assert.equal(f.capabilityStore.getState('cap_100').reserved_amount, 0);
 });
 test('gate capability path refuses a missing stable operation id before the effect', async () => {
     const f = fixture();

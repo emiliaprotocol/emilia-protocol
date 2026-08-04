@@ -143,6 +143,8 @@ export interface AdmissionRelation {
   admission_id: string;
   operation_id: string;
   snapshot_digest: AdmissionDigest;
+  caid?: string;
+  action_digest?: AdmissionDigest;
 }
 
 export interface AdmissionSnapshotInput {
@@ -943,6 +945,14 @@ function normalizeRelation(raw: unknown): AdmissionRelation | null {
     admission_id: identifier(raw.admission_id, 'relation.admission_id'),
     operation_id: identifier(raw.operation_id, 'relation.operation_id'),
     snapshot_digest: digest(raw.snapshot_digest, 'relation.snapshot_digest'),
+    ...(raw.caid === undefined ? {} : {
+      caid: typeof raw.caid === 'string' && CAID.test(raw.caid)
+        ? raw.caid
+        : fail('invalid_relation', 'relation.caid is invalid'),
+    }),
+    ...(raw.action_digest === undefined ? {} : {
+      action_digest: digest(raw.action_digest, 'relation.action_digest'),
+    }),
   };
 }
 
@@ -1626,11 +1636,22 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
     const now = currentMs(options.now);
     if (Date.parse(body.expires_at) <= now) return { ok: false, reason: 'admission_expired' };
     if (body.remedy_for !== null) {
+      if (body.remedy_for.tenant_id !== body.tenant_id) return { ok: false, reason: 'relation_conflict' };
       const target = records.get(admissionKey(body.remedy_for.tenant_id, body.remedy_for.admission_id));
       if (!target || target.record.snapshot_digest !== body.remedy_for.snapshot_digest) return { ok: false, reason: 'relation_not_found' };
       if (!['INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED'].includes(target.record.state)) return { ok: false, reason: 'relation_conflict' };
       const targetSnapshot = snapshots.get(target.record.snapshot_digest);
-      if (!targetSnapshot || targetSnapshot.body.operation_id === body.operation_id || targetSnapshot.body.caid === body.caid) return { ok: false, reason: 'relation_conflict' };
+      if (!targetSnapshot
+          || target.record.tenant_id !== body.tenant_id
+          || target.record.operation_id !== body.remedy_for.operation_id
+          || targetSnapshot.body.tenant_id !== body.tenant_id
+          || targetSnapshot.body.admission_id !== body.remedy_for.admission_id
+          || targetSnapshot.body.operation_id !== body.remedy_for.operation_id
+          || (body.remedy_for.caid !== undefined && targetSnapshot.body.caid !== body.remedy_for.caid)
+          || (body.remedy_for.action_digest !== undefined
+            && targetSnapshot.body.action_digest !== body.remedy_for.action_digest)
+          || targetSnapshot.body.operation_id === body.operation_id
+          || targetSnapshot.body.caid === body.caid) return { ok: false, reason: 'relation_conflict' };
     }
     if (!resourcesAvailable(snapshot)) return { ok: false, reason: 'resource_conflict' };
     const owner = validateOwner(ownerFactory());

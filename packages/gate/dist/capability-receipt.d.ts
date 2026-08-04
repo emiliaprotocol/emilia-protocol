@@ -69,6 +69,8 @@ type RecoverPreEntrySpendOptions = {
     operationNamespace?: string;
     operationId?: string;
     actionDigest?: string;
+    reservationToken?: string;
+    disposition?: 'release' | 'burn';
     now?: number | (() => number);
 };
 type ReconcileSpendOptions = {
@@ -78,6 +80,8 @@ type ReconcileSpendOptions = {
     actionDigest?: string;
     evidenceDigest?: string;
     evidenceProfile?: string;
+    evidenceFinal?: boolean;
+    evidenceObservedAt?: string;
     outcome?: string;
     now?: number | (() => number);
 };
@@ -285,6 +289,7 @@ export declare function createMemoryCapabilityStore({ providerEntryTimeoutMs, }?
     durable: boolean;
     reconciliationCapable: boolean;
     allowanceCurrentnessCapable: boolean;
+    providerEntryDispositionCapable: boolean;
     registerCapability(capabilityReceipt: any): boolean;
     advanceAllowanceStatus(options: AdvanceAllowanceStatusOptions): {
         ok: boolean;
@@ -341,13 +346,46 @@ export declare function createMemoryCapabilityStore({ providerEntryTimeoutMs, }?
         remaining: number;
         reason?: undefined;
     }>;
-    recoverPreEntrySpend({ capabilityId, operationNamespace, operationId, actionDigest, now }?: RecoverPreEntrySpendOptions): Promise<{
+    recoverPreEntrySpend({ capabilityId, operationNamespace, operationId, actionDigest, reservationToken, disposition, now }?: RecoverPreEntrySpendOptions): Promise<{
         ok: boolean;
         reason: string;
         idempotent?: undefined;
         outcome?: undefined;
         released?: undefined;
+        consumed?: undefined;
         remaining?: undefined;
+    } | {
+        ok: boolean;
+        idempotent: boolean;
+        outcome: string;
+        released: any;
+        reason?: undefined;
+        consumed?: undefined;
+        remaining?: undefined;
+    } | {
+        ok: boolean;
+        idempotent: boolean;
+        outcome: string;
+        consumed: any;
+        reason?: undefined;
+        released?: undefined;
+        remaining?: undefined;
+    } | {
+        ok: boolean;
+        outcome: string;
+        consumed: any;
+        remaining: number;
+        reason?: undefined;
+        idempotent?: undefined;
+        released?: undefined;
+    } | {
+        ok: boolean;
+        outcome: string;
+        released: any;
+        remaining: number;
+        reason?: undefined;
+        idempotent?: undefined;
+        consumed?: undefined;
     } | {
         ok: boolean;
         idempotent: boolean;
@@ -355,13 +393,7 @@ export declare function createMemoryCapabilityStore({ providerEntryTimeoutMs, }?
         released: any;
         remaining: number;
         reason?: undefined;
-    } | {
-        ok: boolean;
-        outcome: string;
-        released: any;
-        remaining: number;
-        reason?: undefined;
-        idempotent?: undefined;
+        consumed?: undefined;
     }>;
     commitSpend({ capabilityId, operationNamespace, operationId, reservationToken, outcome, now }?: CommitSpendOptions): Promise<{
         ok: boolean;
@@ -376,7 +408,7 @@ export declare function createMemoryCapabilityStore({ providerEntryTimeoutMs, }?
         remaining: number;
         reason?: undefined;
     }>;
-    reconcileSpend({ capabilityId, operationNamespace, operationId, actionDigest, evidenceDigest, evidenceProfile, outcome, now }?: ReconcileSpendOptions): Promise<{
+    reconcileSpend({ capabilityId, operationNamespace, operationId, actionDigest, evidenceDigest, evidenceProfile, evidenceFinal, evidenceObservedAt, outcome, now }?: ReconcileSpendOptions): Promise<{
         ok: boolean;
         reason: string;
         idempotent?: undefined;
@@ -409,10 +441,10 @@ export declare const CAPABILITY_SQL: Readonly<{
     commitOperation: "UPDATE ep_capability_operations SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6";
     reconcileOperation: "UPDATE ep_capability_operations SET reconciliation_outcome = $4, reconciliation_evidence_digest = $5, reconciled_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'committed' AND outcome = 'indeterminate' AND reconciliation_outcome IS NULL";
     recoverPreEntryOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'pre_entry_deadline_elapsed', released_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND status = 'reserved' AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $5";
-    releaseEnteredOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'authenticated_provider_non_entry', release_evidence_profile = $5, release_evidence_digest = $6, released_at = $7 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $7 AND (status = 'provider_entered' OR (status = 'committed' AND outcome = 'indeterminate'))";
+    releaseGuardRefusedOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'provider_entry_guard_release', released_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND reservation_token = $5 AND status = 'reserved'";
+    releaseReservedOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'authenticated_final_provider_non_entry', release_evidence_profile = $5, release_evidence_digest = $6, released_at = $8 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $7 AND $7 <= $8 AND status = 'reserved'";
     commitState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount - $2, consumed_amount = consumed_amount + $2 WHERE capability_id = $1 AND reserved_amount >= $2";
     releaseReservedState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount - $2 WHERE capability_id = $1 AND reserved_amount >= $2";
-    releaseConsumedState: "UPDATE ep_capability_state SET consumed_amount = consumed_amount - $2 WHERE capability_id = $1 AND consumed_amount >= $2";
 }>;
 /**
  * Production adapter. `transaction` MUST run the callback on one database
@@ -430,13 +462,14 @@ export declare function createPostgresCapabilityStore({ transaction, providerEnt
     durable: boolean;
     reconciliationCapable: boolean;
     allowanceCurrentnessCapable: boolean;
+    providerEntryDispositionCapable: boolean;
     registerCapability(capabilityReceipt: any): Promise<any>;
     advanceAllowanceStatus(options: AdvanceAllowanceStatusOptions): Promise<any>;
     reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace, operationId, actionDigest, actionFenceDigest, amount, currency, allowanceStatus, now }: ReserveSpendOptions): Promise<any>;
     beginProviderEntry({ capabilityId, operationNamespace, operationId, reservationToken, now }?: BeginProviderEntryOptions): Promise<any>;
-    recoverPreEntrySpend({ capabilityId, operationNamespace, operationId, actionDigest, now }?: RecoverPreEntrySpendOptions): Promise<any>;
+    recoverPreEntrySpend({ capabilityId, operationNamespace, operationId, actionDigest, reservationToken, disposition, now }?: RecoverPreEntrySpendOptions): Promise<any>;
     commitSpend({ capabilityId, operationNamespace, operationId, reservationToken, outcome, now }?: CommitSpendOptions): Promise<any>;
-    reconcileSpend({ capabilityId, operationNamespace, operationId, actionDigest, evidenceDigest, evidenceProfile, outcome, now }?: ReconcileSpendOptions): Promise<any>;
+    reconcileSpend({ capabilityId, operationNamespace, operationId, actionDigest, evidenceDigest, evidenceProfile, evidenceFinal, evidenceObservedAt, outcome, now }?: ReconcileSpendOptions): Promise<any>;
 };
 /**
  * Execute one spend under a capability. The base EP receipt is checked on
@@ -462,8 +495,8 @@ export declare function createPostgresCapabilityStore({ transaction, providerEnt
  * @param {Function|null} [options.verifyActionProfile]
  * @param {Function|null} [options.providerEntryGuard] final relying-party check
  *   after the atomic budget reservation and immediately before provider entry.
- *   A refusal leaves the pre-entry reservation fenced for deadline recovery;
- *   it never invokes the provider.
+ *   A refusal atomically releases, burns, or holds the pre-entry reservation
+ *   according to the guard's closed disposition; it never invokes the provider.
  * @param {string|null} [options.operationId]
  * @param {number|(() => number)} [options.now]
  * @param {boolean} [options.thresholdSecretVerified]
@@ -478,9 +511,10 @@ export declare function executeWithThreshold({ capabilityReceipt, shares, ...opt
 }): Promise<ExecuteWithCapabilityResult>;
 /**
  * Authentically reconcile a capability operation. Positive evidence records an
- * executed outcome without restoring budget. A post-entry release additionally
- * requires an authenticated, action-specific negative-evidence profile and is
- * still gated by the reservation's durable provider-entry deadline.
+ * executed outcome without restoring budget. Final authenticated negative
+ * evidence may release only a still-reserved operation after its durable
+ * provider-entry deadline. Once provider entry consumes authority, negative
+ * evidence records the reconciled outcome but never restores authority.
  *
  * @param {object} [options]
  * @param {any} [options.store]
@@ -628,10 +662,10 @@ declare const _default: {
         commitOperation: "UPDATE ep_capability_operations SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6";
         reconcileOperation: "UPDATE ep_capability_operations SET reconciliation_outcome = $4, reconciliation_evidence_digest = $5, reconciled_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'committed' AND outcome = 'indeterminate' AND reconciliation_outcome IS NULL";
         recoverPreEntryOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'pre_entry_deadline_elapsed', released_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND status = 'reserved' AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $5";
-        releaseEnteredOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'authenticated_provider_non_entry', release_evidence_profile = $5, release_evidence_digest = $6, released_at = $7 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $7 AND (status = 'provider_entered' OR (status = 'committed' AND outcome = 'indeterminate'))";
+        releaseGuardRefusedOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'provider_entry_guard_release', released_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND reservation_token = $5 AND status = 'reserved'";
+        releaseReservedOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'authenticated_final_provider_non_entry', release_evidence_profile = $5, release_evidence_digest = $6, released_at = $8 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $7 AND $7 <= $8 AND status = 'reserved'";
         commitState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount - $2, consumed_amount = consumed_amount + $2 WHERE capability_id = $1 AND reserved_amount >= $2";
         releaseReservedState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount - $2 WHERE capability_id = $1 AND reserved_amount >= $2";
-        releaseConsumedState: "UPDATE ep_capability_state SET consumed_amount = consumed_amount - $2 WHERE capability_id = $1 AND consumed_amount >= $2";
     }>;
     capabilityBaseReceiptDigest: typeof capabilityBaseReceiptDigest;
     capabilityActionDigest: typeof capabilityActionDigest;
