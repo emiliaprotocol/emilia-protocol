@@ -163,6 +163,7 @@
     "currency.js",
     "consumption-proof.js",
     "initiator-attestation.js",
+    "hostile-text.js",
     "surface-binding.js",
     "consent-grant.js",
     "resolution.js",

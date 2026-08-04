@@ -66,6 +66,7 @@ export { verifyTimestampProof, TIMESTAMP_PROOF_ALG } from './timestamp-proof.js'
 export { evaluateCurrency, CURRENCY_VERSION, CURRENCY_STATUS, CURRENCY_REASON, } from './currency.js';
 export { verifyConsumptionProof, ReferenceConsumptionTree, CONSUMPTION_PROFILE, CONSUMPTION_LEAF_DOMAIN, SMT_DEPTH, } from './consumption-proof.js';
 export { validateInitiatorAttestation, neutralizeStatement, normalizeDigest, bindInto as bindInitiatorAttestation, INITIATOR_ATTESTATION_VERSION, INITIATOR_ATTESTATION_FIELD, INITIATOR_STATEMENT_MAX, } from './initiator-attestation.js';
+export { BIDI_CODEPOINTS, INVISIBLE_CODEPOINTS, isControlCodepoint, isHostileCodepoint, escapeCodepoint, scanHostileText, hasHostileText, scanHostileDeep, formatCodepoints, } from './hostile-text.js';
 export { validateSurfaceBinding, bindSurfaceInto, receiptSurfaceBinding, verifySurfaceBinding, normalizeSurfaceDigest, SURFACE_BINDING_VERSION, SURFACE_BINDING_FIELD, } from './surface-binding.js';
 export declare const MERKLE_V2_ALG = "EP-MERKLE-v2";
 /**

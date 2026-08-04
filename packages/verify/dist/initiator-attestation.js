@@ -36,16 +36,18 @@
  * C0/C1 controls that hide or spoof content, homoglyphs that impersonate a
  * trusted string). It MUST be neutralized before it reaches a human.
  *
- * NOTE ON REUSE. The frozen WYSIWYS render profile (lib/wysiwys/render.js)
- * neutralizes presentation attacks by making its rendering a PURE, DETERMINISTIC
- * function of a CLOSED set of action fields — it never renders free text, so it
- * carries no bidi/control/homoglyph neutralizer to import. There is no exported
- * hostile-text neutralizer anywhere in the WYSIWYS layer to reuse. That neutralizer
- * SHOULD be factored out and exported (e.g. lib/wysiwys/neutralize.js) so a
- * single implementation covers every free-text surface. Until it is, this module
- * implements the minimal equivalent below: it strips/escapes bidi controls and
- * C0/C1 controls and FLAGS homoglyph risk. neutralizeStatement() is the single
- * entry point; when a shared neutralizer lands, replace the body, not the API.
+ * SHARED CLASSIFICATION. The codepoint classification is factored out into
+ * ./hostile-text.js and is used by every surface that shows attacker-influenced
+ * bytes to a human. An earlier version of this note claimed the WYSIWYS render
+ * profile needed no neutralizer because it renders a CLOSED set of action fields.
+ * That was wrong, and the correction is worth keeping visible: a closed set of
+ * FIELD NAMES says nothing about the bytes inside those fields, and
+ * `target_resource_id`, `actor_id` and `policy_id` are initiator-supplied
+ * strings. Those fields are now refused at input when they carry hostile
+ * codepoints (lib/wysiwys/neutralize.ts, wired into validateGuardActionInput),
+ * which keeps the frozen render profile byte-identical while closing the spoof.
+ * This module keeps the ESCAPING policy because free text must still be shown;
+ * neutralizeStatement() remains the single entry point for that surface.
  *
  * FAIL CLOSED. validateInitiatorAttestation() refuses on any missing required
  * field, any wrong type, any unknown member, and any malformed tool_chain_digest.
@@ -57,6 +59,7 @@
  */
 import crypto from 'node:crypto';
 import { canonicalize } from './index.js';
+import { isHostileCodepoint, escapeCodepoint } from './hostile-text.js';
 export const INITIATOR_ATTESTATION_VERSION = 'EP-INITIATOR-ATTESTATION-v1';
 /** The action-object member under which a bound attestation is placed (bindInto). */
 export const INITIATOR_ATTESTATION_FIELD = 'initiator_software';
@@ -90,24 +93,13 @@ export function normalizeDigest(h) {
 }
 // ── hostile-text neutralization ──────────────────────────────────────────────
 //
-// Minimal, self-contained equivalent of the neutralizer the WYSIWYS layer SHOULD
-// export. Handles the three presentation-attack classes called out above. Every
-// codepoint it acts on is REPLACED with a visible, unambiguous escape rather than
-// deleted, so the neutralized form is lossless-enough for a human to see that
-// something was there, and an attacker cannot smuggle content by relying on a
-// silent drop.
-// Bidi controls (Unicode Bidirectional Algorithm formatting + isolate chars):
-// LRE LRO RLE RLO PDF (202A–202E), LRI RLI FSI PDI (2066–2069), and the marks
-// LRM RLM ALM (200E, 200F, 061C). These reorder the VISIBLE glyph run relative
-// to logical order — the canonical "amount: 100 USD" that displays as a refund.
-const BIDI_CODEPOINTS = new Set([
-    0x202a, 0x202b, 0x202c, 0x202d, 0x202e, // LRE RLE PDF LRO RLO
-    0x2066, 0x2067, 0x2068, 0x2069, // LRI RLI FSI PDI
-    0x200e, 0x200f, 0x061c, // LRM RLM ALM
-]);
-// Zero-width / joiners / BOM that hide or fuse content: ZWSP ZWNJ ZWJ (200B–200D),
-// WORD JOINER (2060), and BOM/ZWNBSP (FEFF).
-const INVISIBLE_CODEPOINTS = new Set([0x200b, 0x200c, 0x200d, 0x2060, 0xfeff]);
+// The codepoint classification now lives in ./hostile-text.js so this module and
+// the WYSIWYS action-field surface cannot drift apart. This module keeps the
+// ESCAPING policy (free text must still be shown, so dangerous codepoints are
+// replaced with a visible marker rather than deleted, and an attacker cannot
+// smuggle content by relying on a silent drop). The action-field surface keeps
+// the REFUSAL policy, because a bidi override inside an account identifier has
+// no legitimate reading.
 // Homoglyph risk: any codepoint outside Basic Latin + Latin-1 that has a
 // confusable Latin lookalike is a spoofing risk (Cyrillic а/е/о, Greek ο/ν, …).
 // We do not attempt a full confusables map here (that belongs in the shared
@@ -163,16 +155,10 @@ export function neutralizeStatement(statement) {
             hasNonAsciiLetter = true;
         if (CYRILLIC_RE.test(ch) || GREEK_RE.test(ch))
             hasConfusableScript = true;
-        const isBidi = BIDI_CODEPOINTS.has(cp);
-        const isInvisible = INVISIBLE_CODEPOINTS.has(cp);
-        // C0 controls 0x00–0x1F and C1 controls 0x80–0x9F, minus the everyday
-        // whitespace we allow to pass (tab, newline, carriage return).
-        const isControl = ((cp <= 0x1f && cp !== 0x09 && cp !== 0x0a && cp !== 0x0d) ||
-            (cp >= 0x7f && cp <= 0x9f));
-        if (isBidi || isInvisible || isControl) {
+        if (isHostileCodepoint(cp)) {
             changed = true;
             escaped.push(cp);
-            return `<U+${cp.toString(16).toUpperCase().padStart(4, '0')}>`;
+            return escapeCodepoint(cp);
         }
         return ch;
     });

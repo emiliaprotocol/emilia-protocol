@@ -35,16 +35,18 @@
  * C0/C1 controls that hide or spoof content, homoglyphs that impersonate a
  * trusted string). It MUST be neutralized before it reaches a human.
  *
- * NOTE ON REUSE. The frozen WYSIWYS render profile (lib/wysiwys/render.js)
- * neutralizes presentation attacks by making its rendering a PURE, DETERMINISTIC
- * function of a CLOSED set of action fields — it never renders free text, so it
- * carries no bidi/control/homoglyph neutralizer to import. There is no exported
- * hostile-text neutralizer anywhere in the WYSIWYS layer to reuse. That neutralizer
- * SHOULD be factored out and exported (e.g. lib/wysiwys/neutralize.js) so a
- * single implementation covers every free-text surface. Until it is, this module
- * implements the minimal equivalent below: it strips/escapes bidi controls and
- * C0/C1 controls and FLAGS homoglyph risk. neutralizeStatement() is the single
- * entry point; when a shared neutralizer lands, replace the body, not the API.
+ * SHARED CLASSIFICATION. The codepoint classification is factored out into
+ * ./hostile-text.js and is used by every surface that shows attacker-influenced
+ * bytes to a human. An earlier version of this note claimed the WYSIWYS render
+ * profile needed no neutralizer because it renders a CLOSED set of action fields.
+ * That was wrong, and the correction is worth keeping visible: a closed set of
+ * FIELD NAMES says nothing about the bytes inside those fields, and
+ * `target_resource_id`, `actor_id` and `policy_id` are initiator-supplied
+ * strings. Those fields are now refused at input when they carry hostile
+ * codepoints (lib/wysiwys/neutralize.ts, wired into validateGuardActionInput),
+ * which keeps the frozen render profile byte-identical while closing the spoof.
+ * This module keeps the ESCAPING policy because free text must still be shown;
+ * neutralizeStatement() remains the single entry point for that surface.
  *
  * FAIL CLOSED. validateInitiatorAttestation() refuses on any missing required
  * field, any wrong type, any unknown member, and any malformed tool_chain_digest.
