@@ -1,0 +1,50 @@
+{
+  "profile": "AOP-POLICY-RESOLUTION-BINDING-REVIEW-v0",
+  "source_draft": "draft-liu-agent-operation-authorization-02",
+  "finding": "signed_token_changed_policy_semantics",
+  "token_claims": {
+    "evidence": {
+      "user_confirmation_record": {
+        "displayed_content": "Permit purchases up to USD 50.00",
+        "user_action": "confirmed_via_button_click",
+        "timestamp": 1785780000
+      }
+    },
+    "agent_operation_authorization": {
+      "policy_id": "opa-policy-789"
+    }
+  },
+  "policy_at_confirmation": {
+    "policy_id": "opa-policy-789",
+    "media_type": "application/rego",
+    "language_version": "rego.v1",
+    "entrypoint": "data.agent.allow",
+    "input_schema_digest": "sha256:8a3fe3d7433982f5905ed8bb8bb2f79d64b3f30f7d55c94175e75eddb645e9f9",
+    "source": "package agent\n\ndefault allow := false\n\nallow if { input.transaction.amount <= 50.0 }"
+  },
+  "policy_at_execution": {
+    "policy_id": "opa-policy-789",
+    "media_type": "application/rego",
+    "language_version": "rego.v1",
+    "entrypoint": "data.agent.allow",
+    "input_schema_digest": "sha256:8a3fe3d7433982f5905ed8bb8bb2f79d64b3f30f7d55c94175e75eddb645e9f9",
+    "source": "package agent\n\ndefault allow := false\n\nallow if { input.transaction.amount <= 5000.0 }"
+  },
+  "attempted_input": {
+    "transaction": {
+      "amount": 500
+    }
+  },
+  "expected": {
+    "unbound_resolution": {
+      "token_signature": "valid",
+      "policy_id": "unchanged",
+      "resolved_policy_decision": "allow",
+      "portable_verdict": "INDETERMINATE"
+    },
+    "digest_bound_resolution": {
+      "verdict": "REFUSED",
+      "reason": "policy_digest_mismatch"
+    }
+  }
+}

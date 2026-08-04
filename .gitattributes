@@ -215,6 +215,7 @@ examples/action-escrow/scenario.test.mjs linguist-generated=true
 examples/action-escrow/standalone.test.mjs linguist-generated=true
 examples/admissibility/admissibility-vector.mjs linguist-generated=true
 examples/adverse-determination.mjs linguist-generated=true
+examples/agent-operation-authorization/policy-binding.mjs linguist-generated=true
 examples/async-signoff.mjs linguist-generated=true
 examples/audit/agentic-audit-trail-demo.mjs linguist-generated=true
 examples/authority/authority-closure-vector.mjs linguist-generated=true
