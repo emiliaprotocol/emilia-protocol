@@ -111,6 +111,26 @@ test('ORPRG records the author-confirmed narrow finding without claiming native 
   assert.equal(orprg.author_review.endorsement_claimed, false);
 });
 
+test('APS records the author-confirmed composition boundary without inheriting native trust', async () => {
+  const manifest = await readJson('manifest.json');
+  const aps = manifest.mappings.find(
+    ({ draft }) => draft === 'draft-pidlisnyi-aps',
+  );
+
+  assert.ok(aps);
+  assert.equal(aps.native_binding, 'COMPLETE');
+  assert.equal(aps.native_verdict, 'INDETERMINATE');
+  assert.equal(aps.author_review.status, 'AUTHOR_FEEDBACK_RECORDED');
+  assert.equal(aps.author_review.confirmed_at, '2026-08-03');
+  assert.match(aps.author_review.finding, /APS defines what a native APS record establishes/);
+  assert.match(aps.author_review.finding, /must verify the APS artifact under those native rules/);
+  assert.match(aps.author_review.finding, /independently decide whether the verified artifact is accepted and sufficient/);
+  assert.match(aps.author_review.finding, /Native APS verification is not inherited as trust/);
+  assert.match(aps.author_review.scope, /not validation/);
+  assert.match(aps.author_review.scope, /not implementation, adoption, or endorsement/);
+  assert.equal(aps.author_review.endorsement_claimed, false);
+});
+
 test('selection policy contains only the approved targets and requires Linda Dunbar DMSC', async () => {
   const manifest = await readJson('manifest.json');
   const approved = [

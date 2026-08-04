@@ -335,7 +335,13 @@ export const targets = [
       { source_path: '/action_ref', reason: 'Receipt field is a scalar digest of ActionRefV2, not the decomposed action.' },
     ],
     evidence: ['Section 4.1, pages 14-15', 'ActionRefV2 contains exactly profile, agent_id, action_type, target, payload_ref, scope_required, issued_at, and nonce; payload_ref is a domain-separated SHA-256 commitment and the native action identity deliberately includes actor, authority, freshness, and replay context.'],
-    request: 'Please confirm this declared-loss result: action_type, target, and payload_ref correlate to CAID content, while profile, agent_id, scope_required, issued_at, and nonce remain authenticated APS context and prevent identifier equivalence.',
+    request: 'Closed: the author confirmed the pinned revision -03 composition boundary and the record preserves the declared-loss result without claiming implementation, adoption, endorsement, or broader validation.',
+    author_review: {
+      status: 'AUTHOR_FEEDBACK_RECORDED',
+      confirmed_at: '2026-08-03',
+      scope: 'Revision -03 and this narrow composition boundary only; not validation of the CAID harness or broader interoperability pack, and not implementation, adoption, or endorsement.',
+      finding: 'APS defines what a native APS record establishes and how it verifies. An AEB/AEC relying mechanism must verify the APS artifact under those native rules, then independently decide whether the verified artifact is accepted and sufficient for its own evidence graph or verdict. Native APS verification is not inherited as trust.',
+    },
   },
   {
     draft: 'draft-howe-vcon-agent-session',
