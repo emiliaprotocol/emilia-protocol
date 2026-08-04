@@ -10,6 +10,7 @@
     { "id": "wrong_resource_server_audience", "expected": "FAILED" },
     { "id": "wrong_resource_server_key", "expected": "FAILED" },
     { "id": "stale_or_expired_grant", "expected": "NOT_ACCEPTED" },
+    { "id": "fresh_token_stale_directory_snapshot", "expected": "VERIFIED_BUT_INDETERMINATE" },
     { "id": "human_evidence_digest_mismatch", "expected": "FAILED" },
     { "id": "valid_signature_wrong_exact_action", "expected": "ACCEPTED_AND_MISMATCH" },
     { "id": "as_leg_never_authorizes_by_itself", "expected": "EVIDENCE_ONLY" },

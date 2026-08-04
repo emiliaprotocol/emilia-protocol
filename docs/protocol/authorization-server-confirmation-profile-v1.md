@@ -8,15 +8,18 @@ receipt from `VERIFIED` to `AUTHORIZED`.
 The security objective is narrower and stronger: the relying party can require
 proof that its own identity and authorization system vouched for the named
 human, the exact human evidence, the exact action, the applicable policy and
-directory state, and the intended Resource Server before Gate admission.
+directory snapshot it actually observed, and the intended Resource Server
+before Gate admission. It does not convert token freshness into a claim that
+the underlying HR or entitlement source was current.
 
 ## Three separate decisions
 
 1. The human verifier decides whether the human signoff is cryptographically
    valid under the relying party's pinned approver keys and ceremony policy.
 2. The AS adapter decides whether the AS grant is valid under the relying
-   party's pinned AS key, issuer, audience, time, policy, directory and
-   Resource Server bindings.
+   party's pinned AS key, issuer, audience, Resource Server binding and
+   freshness limits, while preserving the AS-signed policy and directory
+   commitments as evidence.
 3. AEB/AEC decides whether both independently verified legs satisfy the local
    evidence requirement for the same exact action. Gate alone decides whether
    the action may be admitted and consumed.
@@ -34,13 +37,23 @@ header and a closed claim set. The signed claims bind:
 - issued-at, not-before, expiry and native grant identifier;
 - the closed `{ action_type, parameters }` exact-action projection and digest;
 - the digest of the exact human-evidence artifact carried with the grant;
-- the AS policy digest and customer identity-directory digest; and
+- the AS policy digest, customer identity-directory digest, fixed observation
+  basis, and the time the AS observed that snapshot; and
 - the intended Resource Server key or KMS identity and its public-key digest.
 
 The artifact cannot nominate its own key, issuer, algorithm, audience, action
 type, mapper, status source, or evidence requirement. Those values are pinned
-by the relying party. Current revocation and consumption status remains a
-separate authenticated input; token expiry alone is not current status.
+by the relying party. The relying party also pins a maximum directory-snapshot
+age. A signed token issued now over an older snapshot remains cryptographically
+`VERIFIED` but is `INDETERMINATE`, never `ACCEPTED`. Current revocation and
+consumption status remains a separate authenticated input; token expiry alone
+is not current status.
+
+`directory_observed_at` means only when the Authorization Server observed the
+state represented by `directory_digest`. It does not assert when an HR decision
+occurred, when an upstream system synchronized, or that the named human still
+holds a role at some finer resolution. A signature cannot manufacture source
+precision the underlying record does not possess.
 
 ## Evidence binding
 
@@ -86,6 +99,8 @@ implementation and author review rather than precede it.
 ## Deliberate limits
 
 - It does not prove the human understood the display.
+- It does not prove instantaneous employment, entitlement or role standing.
+- It does not prove how fresh an upstream HR record was when the AS observed it.
 - It does not prove the AS policy was legally or substantively correct.
 - It does not make the AS a relying-party administrator or trust federation.
 - It does not prove execution or observed effect.

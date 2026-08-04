@@ -1007,7 +1007,7 @@
     },
     {
       "path": "packages/verify/dist/authorization-server-confirmation.js",
-      "sha256": "95f3dc5ebb9ecdae3a1a64a8227bbe4dee9a4e5d5b94aed00e8eb511b6b50c23"
+      "sha256": "42c6af1a7b50d3259d738c17909d113db3257cd7c37dd08da96d03b56516c19f"
     },
     {
       "path": "packages/verify/dist/consistency.js",
