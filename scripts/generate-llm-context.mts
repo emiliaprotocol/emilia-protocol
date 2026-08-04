@@ -23,7 +23,7 @@ if (write === check) {
 
 const PATHS = {
   source: 'docs/ai/context-source.v1.json',
-  generator: 'scripts/generate-llm-context.mjs',
+  generator: 'scripts/generate-llm-context.mts',
   proofStats: 'lib/proof-stats.json',
   conformance: 'conformance/conformance-manifest.json',
   external: 'conformance/external/rust-cleanroom-jdieselny.v1.json',
@@ -121,6 +121,22 @@ assert(external.construction_evidence?.strict_clean_room_acceptance === false, '
 assert(observatory.metrics?.primary_sources_verified > 0, 'standards observatory has no verified primary sources');
 assert(observatory.recon?.review_model === 'correlated_agent_assisted_discovery', 'standards recon independence boundary changed');
 
+const canonicalReadingPath = standardsStatus.canonical_four_document_surface;
+assert(canonicalReadingPath?.status === 'presentation_only_no_consolidation', 'canonical reading path status is missing or unsupported');
+assert(canonicalReadingPath?.document_count === 4, 'canonical reading path must declare exactly four documents');
+assert(canonicalReadingPath.documents?.length === canonicalReadingPath.document_count, 'canonical reading path document count differs from its inventory');
+for (const [index, document] of canonicalReadingPath.documents.entries()) {
+  assert(document.order === index + 1, `canonical reading path order is not contiguous at ${document.draft}`);
+  assert(fs.existsSync(absolute(document.source)), `missing canonical reading path source: ${document.source}`);
+  assert(sha256(fs.readFileSync(absolute(document.source))) === document.snapshot_sha256, `canonical reading path digest differs for ${document.source}`);
+  assert(
+    standardsStatus.active_datatracker.some(
+      (standard: any) => standard.draft === document.draft && standard.revision === document.revision,
+    ),
+    `canonical reading path revision is not active: ${document.draft}-${document.revision}`,
+  );
+}
+
 for (const entry of source.code_entry_points || []) {
   assert(fs.existsSync(absolute(entry.path)), `missing code entry point: ${entry.path}`);
 }
@@ -168,7 +184,7 @@ const context: any = {
   '@version': 'EMILIA-REPO-CONTEXT-v1',
   evidence_snapshot_at: proofStats.generatedAt,
   provenance: {
-    generator: 'scripts/generate-llm-context.mjs',
+    generator: PATHS.generator,
     input_digest_sha256: inputDigest,
     generated_from: generatedFrom,
     freshness_command: 'npm run check:llm-context',
@@ -251,6 +267,7 @@ const context: any = {
   standards_portfolio: {
     updated: standardsStatus.updated,
     decision_vocabulary: standardsStatus.decision_vocabulary,
+    canonical_reading_path: canonicalReadingPath,
     layers: standardsStatus.portfolio_layers,
     july_19_2026_core_wave: standardsStatus.july_19_2026_core_wave,
     august_3_2026_wave: standardsStatus.august_3_2026_wave,
@@ -363,6 +380,16 @@ function renderFull(web: boolean = false): string {
   lines.push('');
   for (const item of source.excluded_as_current_authority) lines.push(`- ${item}`);
   lines.push('');
+  lines.push('## Canonical Four-Document Reading Path');
+  lines.push('');
+  lines.push(canonicalReadingPath.purpose);
+  lines.push('');
+  for (const document of canonicalReadingPath.documents) {
+    lines.push(`${document.order}. **${document.label}:** [${document.draft}-${document.revision}](${document.datatracker}) - ${document.canonical_question} Boundary: ${document.boundary}`);
+  }
+  lines.push('');
+  lines.push(canonicalReadingPath.portfolio_preservation);
+  lines.push('');
   lines.push('## Internet-Draft Entry Points');
   lines.push('');
   lines.push('These URLs resolve to the current Datatracker revision. The documents are individual Internet-Drafts unless the live page states a stronger status.');
@@ -417,6 +444,8 @@ function renderIndex(): string {
     '',
     `This is a generated discovery index following the llms.txt proposal. Evidence snapshot: ${proofStats.generatedAt}. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.`,
     '',
+    `Prevention boundary: ${source.identity.commercial_product.claim_boundary}`,
+    '',
     '## Engineering Evidence',
     '',
     `EMILIA is implemented security infrastructure, not architecture-only: ${comma(proofStats.tests.total)} automated tests across ${comma(proofStats.tests.files)} files; ${securityCase.claim_count} executable security claims over ${securityCase.evidence_file_count} hashed evidence files; ${proofStats.tamarin.verifiedObligations} verified obligations across ${proofStats.tamarin.models} composed Tamarin models, with ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately weakened variants producing concrete attack traces; and ${proofStats.formalScenarioConformance.scenarios} content-addressed selected model/runtime scenarios across ${proofStats.formalScenarioConformance.models} bounded models and ${proofStats.formalScenarioConformance.claims} claims, including ${proofStats.formalScenarioConformance.pairedNegativeControls} paired formal-counterexample/runtime-refusal controls.`,
@@ -427,6 +456,7 @@ function renderIndex(): string {
     '',
     `- [Full LLM context](${BASE_URL}/llms-full.txt): Definitions, layer map, current evidence, non-claims, source precedence, standards, and code entry points.`,
     `- [Machine-readable repository context](${BASE_URL}/.well-known/emilia-context.json): EMILIA-REPO-CONTEXT-v1 with input hashes, evidence counts, security claims, assumptions, and freshness metadata.`,
+    `- [Canonical four-document reading path](${BASE_URL}/llms-full.txt#canonical-four-document-reading-path): ${canonicalReadingPath.documents.map((document: any) => document.label).join(' -> ')}.`,
     `- [Standards Observatory](${BASE_URL}/observatory): Revision-aware guarantee map, standards movement, and open interoperability frontiers.`,
     `- [Machine-readable standards snapshot](${BASE_URL}/.well-known/standards-observatory.json): Source locks, operative-status rationale, exact quotes, and the correlated-recon boundary.`,
     `- [Repository AI context](${REPO_URL}/blob/main/AI_CONTEXT.md): The same generated context beside the source code.`,

@@ -122,14 +122,12 @@ jobs:
         run: |
           npm run check:standalone-runtimes
           node --test examples/action-escrow/scenario.test.mjs examples/action-escrow/standalone.test.mjs
-      # The allowance demo is the only executable end-to-end account of bounded
-      # spend: reserve, deplete, refuse a disallowed target, refuse an oversized
-      # payout, hold an indeterminate provider outcome, and rotate to a successor.
-      # It asserts its own outcomes and exits non-zero on any drift, but nothing
-      # ran it, so PR #469 could add a required allowance-status assertion and
-      # leave it broken on main undetected. It runs here now.
-      - name: Run the documented Gate allowance demo end to end
-        run: node examples/gate-allowance/demo.mjs
+      # Runs the public Gate proof command on the repository's minimum Node
+      # version. The command refuses stale compiled or standalone runtimes
+      # before exercising allowance, indeterminate reconciliation, HTTP Gate,
+      # control-to-actuator, and split-boundary behavior.
+      - name: Run the Gate reference proof on minimum Node
+        run: npm run proof:gate:reference
       - name: Verify the SYNC interoperability fixture and fail-closed chain boundary
         run: npm run test:sync-interop
       - name: Install the PostgreSQL client used by the live isolation test
