@@ -1,0 +1,20 @@
+{
+  "draft-schrock-ep-authorization-receipts-09": [
+    {
+      "tag": "github_repo",
+      "url": "https://github.com/emiliaprotocol/emilia-protocol"
+    },
+    {
+      "tag": "related_implementations",
+      "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/verify/src/index.ts"
+    },
+    {
+      "tag": "related_implementations",
+      "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/issue/src/index.ts"
+    },
+    {
+      "tag": "related_implementations",
+      "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/external/rust-cleanroom-jdieselny.v1.json"
+    }
+  ]
+}

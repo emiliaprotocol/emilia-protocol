@@ -2,7 +2,7 @@
   "@version": "EP-FIRE-DRILL-CORPUS-v1",
   "note": "Real MCP-registry servers that ADVERTISE a high-risk capability (name+description signal) AND publish a repo. Registry-level signal, not a tool-level scan.",
   "source": "registry.modelcontextprotocol.io",
-  "count": 500,
+  "count": 499,
   "servers": [
     {
       "name": "ai.agenticterminal/directory",
@@ -584,13 +584,6 @@
       "repo": "https://github.com/getonbrd/getonbrd",
       "family": "permission_change",
       "description": "Recruiter-scoped search across Latin America's largest tech talent pool. OAuth-authenticated."
-    },
-    {
-      "name": "com.hauntapi/haunt",
-      "slug": "com-hauntapi-haunt",
-      "repo": "https://github.com/Darko893/mcp-server",
-      "family": "data_export",
-      "description": "Extract public web pages to clean JSON or Markdown via MCP. No-key demo; failed calls not billed."
     },
     {
       "name": "com.ifthenpay/payments",
