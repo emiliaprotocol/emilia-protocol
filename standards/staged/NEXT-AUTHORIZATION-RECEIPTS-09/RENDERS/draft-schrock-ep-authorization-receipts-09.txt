@@ -120,24 +120,24 @@ Internet-Draft          EP Authorization Receipts            August 2026
    12. Security Considerations . . . . . . . . . . . . . . . . . . .  27
      12.1.  Operator Compromise  . . . . . . . . . . . . . . . . . .  27
      12.2.  Approver Device Compromise . . . . . . . . . . . . . . .  27
-     12.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  28
+     12.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  27
      12.4.  Log Equivocation . . . . . . . . . . . . . . . . . . . .  28
-     12.5.  What the Formal Models Do and Do Not Prove . . . . . . .  29
+     12.5.  What the Formal Models Do and Do Not Prove . . . . . . .  28
      12.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  30
      12.7.  What Separation of Duties Does and Does Not Provide  . .  30
-     12.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  31
+     12.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  30
      12.9.  Initiator Attestation as an Attack Surface . . . . . . .  31
      12.10. No symmetric key on the verification trust path  . . . .  32
-     12.11. Canonicalization Robustness  . . . . . . . . . . . . . .  33
+     12.11. Canonicalization Robustness  . . . . . . . . . . . . . .  32
    13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  33
    14. Normative References  . . . . . . . . . . . . . . . . . . . .  33
-   15. Informative References  . . . . . . . . . . . . . . . . . . .  34
-   Appendix A.  Changes since -08  . . . . . . . . . . . . . . . . .  35
+   15. Informative References  . . . . . . . . . . . . . . . . . . .  33
+   Appendix A.  Changes since -08  . . . . . . . . . . . . . . . . .  34
    Appendix B.  Changes since -07  . . . . . . . . . . . . . . . . .  35
-   Appendix C.  Changes since -06  . . . . . . . . . . . . . . . . .  36
+   Appendix C.  Changes since -06  . . . . . . . . . . . . . . . . .  35
    Appendix D.  Changes since -04  . . . . . . . . . . . . . . . . .  36
-   Appendix E.  Changes since -00 (through -04)  . . . . . . . . . .  37
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  38
+   Appendix E.  Changes since -00 (through -04)  . . . . . . . . . .  36
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  37
 
 1.  Introduction
 
@@ -418,11 +418,11 @@ Internet-Draft          EP Authorization Receipts            August 2026
    The action hash is this receipt format's native integrity identifier.
    It is not assumed to equal an action digest from a different
    protocol.  A composition layer MAY project the verified Action Object
-   into a Canonical Action IDentifier action type ([EP-CAID]) using an
-   exact mapping profile pinned by the relying party.  Such mapping
-   occurs only after receipt verification and does not change this
-   document's signature input.  A failed, lossy, or unpinned mapping is
-   indeterminate and MUST NOT be treated as an action match.
+   into a Canonical Action IDentifier action type as defined by CAID
+   [EP-CAID] using an exact mapping profile pinned by the relying party.
+   Such mapping occurs only after receipt verification and does not
+   change this document's signature input.  A failed, lossy, or unpinned
+   mapping is indeterminate and MUST NOT be treated as an action match.
 
 4.  The Authorization Context
 
@@ -1333,11 +1333,11 @@ Internet-Draft          EP Authorization Receipts            August 2026
    is issued, verified, and consumed under this specification alone.  A
    family of separately published companion documents composes with it
    without altering its semantics, grouped by function: action identity
-   and comparison across independently issued artifacts ([EP-CAID]);
-   multi-approver policies ([EP-QUORUM]) and display binding;
-   enforcement-side ordering and bounded multi-action execution
-   (including [EP-BOUNDED-CAP]); post-execution outcome observation,
-   revocation statements, and compensating remedies; and evidence
+   and comparison across independently issued artifacts as defined by
+   CAID [EP-CAID]; multi-approver policies as defined by EP-QUORUM
+   [EP-QUORUM] and display binding; enforcement-side ordering and
+   bounded multi-action execution (including [EP-BOUNDED-CAP]); post-
+   execution outcome observation, revocation statements, and
 
 
 
@@ -1346,9 +1346,10 @@ Schrock                  Expires 4 February 2027               [Page 24]
 Internet-Draft          EP Authorization Receipts            August 2026
 
 
-   composition, challenge, and reliance records.  Each companion
-   consumes this document's digests or supplies relying-party trust
-   inputs; none is required for conformance to this document.
+   compensating remedies; and evidence composition, challenge, and
+   reliance records.  Each companion consumes this document's digests or
+   supplies relying-party trust inputs; none is required for conformance
+   to this document.
 
    *DRP* ([I-D.nelson-agent-delegation-receipts]) binds a _user's_
    delegation to an _operator's_ instructions -- upstream consumer
@@ -1388,12 +1389,11 @@ Internet-Draft          EP Authorization Receipts            August 2026
    carry the Authorization Context or Trust Receipt digest in
    transaction context without redefining transaction-token semantics.
 
-
-
-
-
-
-
+   *Mastercard Verifiable Intent* [FIDO-VI], co-developed with Google
+   and contributed to the FIDO Alliance, describes portable, verifiable
+   evidence of user intent.  The cited page describes a contribution and
+   prospective standardization, not a final FIDO specification.  EP does
+   not claim portable human evidence is absent.  Its receipt profile
 
 
 
@@ -1402,11 +1402,6 @@ Schrock                  Expires 4 February 2027               [Page 25]
 Internet-Draft          EP Authorization Receipts            August 2026
 
 
-   *Mastercard Verifiable Intent* [FIDO-VI], co-developed with Google
-   and contributed to the FIDO Alliance, describes portable, verifiable
-   evidence of user intent.  The cited page describes a contribution and
-   prospective standardization, not a final FIDO specification.  EP does
-   not claim portable human evidence is absent.  Its receipt profile
    separately specifies an enrolled organizational approver directory,
    exact Authorization Context, initiator exclusion, terminal
    consumption record, and optional distinct-human quorum.
@@ -1450,6 +1445,11 @@ Internet-Draft          EP Authorization Receipts            August 2026
    composable: an EAT says the machine is what it claims; an EP receipt
    says a named person approved the exact action.
 
+   *Transaction Tokens (draft-ietf-oauth-transaction-tokens)* propagate
+   workload and agent authorization context across a machine call chain;
+   an EP receipt can be one referenced approval artifact when a relying
+   party requires that profile.
+
 
 
 
@@ -1457,11 +1457,6 @@ Schrock                  Expires 4 February 2027               [Page 26]
 
 Internet-Draft          EP Authorization Receipts            August 2026
 
-
-   *Transaction Tokens (draft-ietf-oauth-transaction-tokens)* propagate
-   workload and agent authorization context across a machine call chain;
-   an EP receipt can be one referenced approval artifact when a relying
-   party requires that profile.
 
    *Evidence Record Syntax (RFC 4998)* preserves signed evidence across
    algorithm aging by periodic re-timestamping.  EP applies the same
@@ -1499,21 +1494,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    value policies and SHOULD pair approval with out-of-band action
    rendering (the approver sees the wire details on a second surface).
 
-
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 4 February 2027               [Page 27]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
 12.3.  Presentation Attacks
 
    The gravest risk in this protocol, stated without minimization: the
@@ -1526,6 +1506,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
    description; (2) for high-value policies, render templates MUST be
    registered with the policy and committed by policy_hash, so the
    display logic is part of what the approver's signature covers; (3)
+
+
+
+Schrock                  Expires 4 February 2027               [Page 27]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    for policies above an organization-designated threshold, the material
    action parameters (amount, beneficiary identifiers) MUST additionally
    be rendered on a second surface not authored by the orchestrating
@@ -1561,15 +1549,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    completeness, or that every relying party received the latest
    checkpoint.
 
-
-
-
-
-Schrock                  Expires 4 February 2027               [Page 28]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
 12.5.  What the Formal Models Do and Do Not Prove
 
    The TLA+/Alloy models prove safety of the authorization state
@@ -1583,6 +1562,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
    exercised by it or by conformance vectors -- the operator-signed-
    directory assurance downgrade (Section 5.2), delegation records in
    approver_key_proofs and the DelegateCannotExceedPrincipal check
+
+
+
+Schrock                  Expires 4 February 2027               [Page 28]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    (Section 8), and enforcement_class emission (Section 9).
    Implementers MUST treat the text as normative and the reference
    implementation as incomplete on these three points, not the reverse.
@@ -1612,20 +1599,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    policy authorship, clock freshness, transparency-log completeness,
    collusion resistance, or downstream exactly-once physical effects.
 
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 4 February 2027               [Page 29]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    The quorum abstraction in the standalone symbolic model is a fixed
    2-of-2 instance.  Its checked result is evidence for that instance,
    not a proof of the arbitrary k-of-n construction defined by the
@@ -1645,6 +1618,13 @@ Internet-Draft          EP Authorization Receipts            August 2026
    evaluated hardening commit.  It is therefore evidence of external
    implementation and execution for that bundle, not yet strict clean-
    room construction acceptance for the current specification.
+
+
+
+Schrock                  Expires 4 February 2027               [Page 29]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
 12.6.  Directory Authority
 
@@ -1670,18 +1650,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    fraud; they do not make it impossible, and implementations MUST NOT
    claim otherwise.
 
-
-
-
-
-
-
-
-Schrock                  Expires 4 February 2027               [Page 30]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
 12.8.  Approver Fatigue
 
    A gate that humans route around protects nothing; rubber-stamping is
@@ -1699,6 +1667,20 @@ Internet-Draft          EP Authorization Receipts            August 2026
    protocol's guarantees are only as strong as the attention of the
    human at its center, and implementations SHOULD say so to their
    customers.
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 4 February 2027               [Page 30]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
 12.9.  Initiator Attestation as an Attack Surface
 
@@ -1728,16 +1710,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    still verifies -- the rule is a conformance check, not a signature
    property.
 
-
-
-
-
-
-Schrock                  Expires 4 February 2027               [Page 31]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    Privacy: statements written by an agent mid-task can leak sensitive
    operational context -- counterparty details, internal findings,
    fragments of prompts -- into receipts that are long-lived and
@@ -1756,6 +1728,15 @@ Internet-Draft          EP Authorization Receipts            August 2026
    policy gates on signoff, the absence of any valid receipt at all
    remains evidence that the control was bypassed -- that property comes
    from the gate, not from this member.)
+
+
+
+
+
+Schrock                  Expires 4 February 2027               [Page 31]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    No trust feedback: policy engines MUST NOT use initiator_attestation
    content to relax thresholds, skip approvers, or raise any trust
@@ -1785,15 +1766,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    calls -- provided it is never a link in the chain a third party
    verifies.)
 
-
-
-
-
-Schrock                  Expires 4 February 2027               [Page 32]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
 12.11.  Canonicalization Robustness
 
    Every signed EP artifact is verified over its canonical JSON form
@@ -1814,6 +1786,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
    surrogate, and depth gates are applied at the parse boundary by the
    conformance runners, since the verifier packages receive already-
    parsed values; the profile predicate, canonical serialization, and
+
+
+
+Schrock                  Expires 4 February 2027               [Page 32]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    digests exercise the verifier packages themselves.)
 
 13.  IANA Considerations
@@ -1839,17 +1819,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
-
-
-
-
-
-
-Schrock                  Expires 4 February 2027               [Page 33]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
               Canonicalization Scheme (JCS)", RFC 8785,
               DOI 10.17487/RFC8785, June 2020,
@@ -1873,6 +1842,13 @@ Internet-Draft          EP Authorization Receipts            August 2026
               Internet-Draft, draft-schrock-ep-bounded-capability-
               receipts-00, July 2026, <https://datatracker.ietf.org/doc/
               draft-schrock-ep-bounded-capability-receipts/>.
+
+
+
+Schrock                  Expires 4 February 2027               [Page 33]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    [EP-CAID]  Schrock, I., "The Canonical Action Identifier (CAID)",
               Work in Progress, Internet-Draft, draft-schrock-canonical-
@@ -1899,13 +1875,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
               <https://fidoalliance.org/building-the-trust-layer-for-
               agentic-payments-with-ap2-and-verifiable-intent/>.
 
-
-
-Schrock                  Expires 4 February 2027               [Page 34]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    [FORMAL-STATUS]
               EMILIA Protocol, "EMILIA Formal Proof Status and Scope",
               10 July 2026, <https://github.com/emiliaprotocol/emilia-
@@ -1928,6 +1897,15 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
 Appendix A.  Changes since -08
 
+
+
+
+
+Schrock                  Expires 4 February 2027               [Page 34]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    *  Changed the intended status from Informational to Standards Track;
       the wire format, canonicalization, signature inputs, and
       consumption rules are unchanged.
@@ -1948,19 +1926,6 @@ Appendix B.  Changes since -07
 
    *  Defined one common base action, base receipt, operation, and
       consequence seam for companion artifacts.
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 4 February 2027               [Page 35]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
 
    *  Added informative, non-exhaustive lifecycle examples including
       revocation, outcome binding, action remedy, evidence challenge,
@@ -1990,6 +1955,13 @@ Appendix C.  Changes since -06
    *  Added the CAID Action-Mapping composition boundary without
       changing the EP v1 signature input.
 
+
+
+Schrock                  Expires 4 February 2027               [Page 35]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    *  Added Mastercard Verifiable Intent and AuthZEN AARP as adjacent,
       composable work.
 
@@ -2009,15 +1981,6 @@ Appendix D.  Changes since -04
    now Alloy-checked) and states plainly which three normative
    mechanisms the reference implementation does not yet cover.
 
-
-
-
-
-Schrock                  Expires 4 February 2027               [Page 36]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
 Appendix E.  Changes since -00 (through -04)
 
    This summary covers -00 through -04.  Section numbering is stable;
@@ -2036,6 +1999,24 @@ Appendix E.  Changes since -00 (through -04)
        trusted -- not proof of the initiator's internal state.  A
        terminology entry and a step-2 note in Section 6.3 were added
        accordingly.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 4 February 2027               [Page 36]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    2.  Security Considerations additions (new Section 12.9): the
        statement is attacker-influenceable text presented to a human
@@ -2066,14 +2047,6 @@ Appendix E.  Changes since -00 (through -04)
        statement.  Like initiator_attestation, it is OPTIONAL, covered
        by the context hash via the JCS canonicalization already
        normative in Section 4, verifies under the existing Section 6.3
-
-
-
-Schrock                  Expires 4 February 2027               [Page 37]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
        verifiers unmodified, and is a claim -- identified but never
        trusted -- not proof of the agent's identity or the delegation's
        validity.  The OPTIONAL delegation.observed_at records when the
@@ -2096,33 +2069,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 4 February 2027               [Page 38]
+Schrock                  Expires 4 February 2027               [Page 37]

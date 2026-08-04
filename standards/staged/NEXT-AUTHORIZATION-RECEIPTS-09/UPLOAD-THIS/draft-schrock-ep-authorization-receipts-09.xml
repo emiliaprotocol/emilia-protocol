@@ -280,7 +280,7 @@
       identifier. It is not assumed to equal an action digest from a
       different protocol. A composition layer MAY project the verified
       Action Object into a Canonical Action IDentifier action type
-      (<xref target="EP-CAID"/>) using
+      as defined by CAID <xref target="EP-CAID"/> using
       an exact mapping profile pinned by the relying party. Such mapping
       occurs only after receipt verification and does not change this
       document's signature input. A failed, lossy, or unpinned mapping is
@@ -1077,8 +1077,9 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
       this specification alone. A family of separately published
       companion documents composes with it without altering its
       semantics, grouped by function: action identity and comparison
-      across independently issued artifacts (<xref target="EP-CAID"/>);
-      multi-approver policies (<xref target="EP-QUORUM"/>) and display
+      across independently issued artifacts as defined by CAID
+      <xref target="EP-CAID"/>; multi-approver policies as defined by
+      EP-QUORUM <xref target="EP-QUORUM"/> and display
       binding; enforcement-side ordering and bounded multi-action
       execution (including <xref target="EP-BOUNDED-CAP"/>);
       post-execution outcome observation, revocation statements, and
