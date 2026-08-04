@@ -548,6 +548,7 @@ packages/verify/agent-binding.test.js linguist-generated=true
 packages/verify/agent-edge-continuity.test.js linguist-generated=true
 packages/verify/agentroa.test.js linguist-generated=true
 packages/verify/authority-program.test.js linguist-generated=true
+packages/verify/authorization-server-confirmation.test.js linguist-generated=true
 packages/verify/cli.test.js linguist-generated=true
 packages/verify/consent-grant.test.js linguist-generated=true
 packages/verify/consistency.test.js linguist-generated=true

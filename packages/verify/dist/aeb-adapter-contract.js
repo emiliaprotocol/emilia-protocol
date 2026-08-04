@@ -419,6 +419,12 @@ function freshnessReasons(freshness, status, maxAgeSec, now) {
 function validRole(value) {
     return typeof value === 'string' && ROLE_RE.test(value);
 }
+function validEvidenceBindings(value) {
+    return Array.isArray(value) && value.length > 0 && value.length <= 64
+        && value.every((binding) => isObject(binding) && exactKeys(binding, EVIDENCE_BINDING_KEYS)
+            && validRole(binding.role) && validDigest(binding.evidence_digest))
+        && new Set(value.map((binding) => `${binding.role}\0${binding.evidence_digest}`)).size === value.length;
+}
 function validTextList(value) {
     return Array.isArray(value) && value.every((item) => typeof item === 'string' && item.length > 0 && item.length <= 512)
         && new Set(value).size === value.length;
@@ -447,6 +453,8 @@ const EQUIVALENCE_KEYS = new Set(['assertion', 'loss_policy', 'omitted_material_
 const REQUIREMENT_KEYS = new Set(['@version', 'all_of', 'any_of', 'terms']);
 const QUORUM_TERM_KEYS = new Set(['type', 'role', 'threshold']);
 const EXCLUSION_TERM_KEYS = new Set(['type', 'roles']);
+const EVIDENCE_BINDING_TERM_KEYS = new Set(['type', 'source_role', 'target_role', 'require_same_subject']);
+const EVIDENCE_BINDING_KEYS = new Set(['role', 'evidence_digest']);
 const ONE_TIME_TERM_KEYS = new Set(['type']);
 const EVALUATOR_KEY_KEYS = new Set(['public_key']);
 function validConfig(config) {
@@ -552,6 +560,7 @@ function validConfig(config) {
         const quorumRules = rawTerms.filter((term) => isObject(term) && term.type === 'distinct-human-quorum');
         const exclusionRules = rawTerms.filter((term) => isObject(term) && term.type === 'initiator-exclusion');
         const executorExclusionRules = rawTerms.filter((term) => isObject(term) && term.type === 'executor-exclusion');
+        const evidenceBindingRules = rawTerms.filter((term) => isObject(term) && term.type === 'evidence-binding');
         const oneTimeRules = rawTerms.filter((term) => isObject(term) && term.type === 'one-time-consumption');
         const termsValid = Array.isArray(requirement.terms) && requirement.terms.length > 0
             && requirement.terms.every((term) => {
@@ -565,11 +574,17 @@ function validConfig(config) {
                     return exactKeys(term, EXCLUSION_TERM_KEYS) && Array.isArray(term.roles) && term.roles.length > 0
                         && term.roles.every(validRole) && new Set(term.roles).size === term.roles.length;
                 }
+                if (term.type === 'evidence-binding') {
+                    return exactKeys(term, EVIDENCE_BINDING_TERM_KEYS)
+                        && validRole(term.source_role) && validRole(term.target_role)
+                        && term.source_role !== term.target_role && term.require_same_subject === true;
+                }
                 return term.type === 'one-time-consumption' && exactKeys(term, ONE_TIME_TERM_KEYS);
             })
             && new Set(quorumRules.map((term) => term.role)).size === quorumRules.length
             && exclusionRules.length <= 1
             && executorExclusionRules.length <= 1
+            && new Set(evidenceBindingRules.map((term) => `${String(term.source_role)}\0${String(term.target_role)}`)).size === evidenceBindingRules.length
             && oneTimeRules.length === 1;
         const hasRequirement = (allOfValid && requirement.all_of.length > 0)
             || (Array.isArray(requirement.any_of) && requirement.any_of.length > 0)
@@ -584,6 +599,7 @@ function validConfig(config) {
             ...quorumRules.map((rule) => String(rule.role)),
             ...exclusionRules.flatMap((rule) => Array.isArray(rule.roles) ? rule.roles.map(String) : []),
             ...executorExclusionRules.flatMap((rule) => Array.isArray(rule.roles) ? rule.roles.map(String) : []),
+            ...evidenceBindingRules.flatMap((rule) => [String(rule.source_role), String(rule.target_role)]),
         ]);
         for (const role of roles)
             if (!roleRegistryEntry(config, role))
@@ -608,11 +624,15 @@ function executorExclusionTerm(requirement) {
 function requiresOneTimeConsumption(requirement) {
     return requirement.terms.some((term) => term.type === 'one-time-consumption');
 }
+function evidenceBindingTerms(requirement) {
+    return requirement.terms.filter((term) => term.type === 'evidence-binding');
+}
 function requiredRoles(requirement) {
     return new Set([
         ...requirement.all_of,
         ...(requirement.any_of ?? []).flat(),
         ...distinctHumanQuorumTerms(requirement).map((rule) => rule.role),
+        ...evidenceBindingTerms(requirement).flatMap((rule) => [rule.source_role, rule.target_role]),
     ]);
 }
 function aecRequirementExpression(requirement) {
@@ -620,6 +640,7 @@ function aecRequirementExpression(requirement) {
         ...sortedUnique(requirement.all_of),
         ...(requirement.any_of ?? []).map((group) => `(${sortedUnique(group).join(' OR ')})`),
         ...sortedUnique(distinctHumanQuorumTerms(requirement).map((rule) => rule.role)),
+        ...sortedUnique(evidenceBindingTerms(requirement).flatMap((rule) => [rule.source_role, rule.target_role])),
     ];
     return sortedUnique(terms).join(' AND ');
 }
@@ -696,6 +717,25 @@ function evaluateAuthorityConstraints(requirement, legs, initiatorId, executorId
                 indeterminate = true;
         }
     }
+    let evidenceBindingsSatisfied = true;
+    for (const rule of evidenceBindingTerms(requirement)) {
+        const sourceLegs = legs.filter((leg) => leg.evidence_role === rule.source_role);
+        const targetLegs = legs.filter((leg) => leg.evidence_role === rule.target_role);
+        const satisfiedSources = sourceLegs.filter((leg) => leg.verdict === 'SATISFIED');
+        const satisfiedTargets = targetLegs.filter((leg) => leg.verdict === 'SATISFIED');
+        const matched = satisfiedSources.some((source) => source.evidence_bindings?.some((binding) => (binding.role === rule.target_role
+            && satisfiedTargets.some((target) => target.evidence_digest === binding.evidence_digest
+                && (!rule.require_same_subject
+                    || (source.subject !== null && target.subject !== null
+                        && source.subject.kind === target.subject.kind && source.subject.id === target.subject.id))))));
+        if (!matched) {
+            evidenceBindingsSatisfied = false;
+            reasons.push(`evidence_binding_not_met:${rule.source_role}:${rule.target_role}`);
+            if (sourceLegs.some((leg) => leg.verdict === 'INDETERMINATE')
+                || targetLegs.some((leg) => leg.verdict === 'INDETERMINATE'))
+                indeterminate = true;
+        }
+    }
     const excludedRoles = new Set(initiatorExclusionTerm(requirement)?.roles ?? []);
     const selfApprovedRoles = new Set(legs
         .filter((leg) => leg.verdict === 'SATISFIED'
@@ -726,7 +766,8 @@ function evaluateAuthorityConstraints(requirement, legs, initiatorId, executorId
     if (!oneTime)
         reasons.push('one_time_consumption_not_required');
     const verdict = indeterminate ? 'INDETERMINATE'
-        : quorumSatisfied && !selfApproval && executorExcluded && oneTime ? 'SATISFIED' : 'UNSATISFIED';
+        : quorumSatisfied && evidenceBindingsSatisfied && !selfApproval && executorExcluded && oneTime
+            ? 'SATISFIED' : 'UNSATISFIED';
     return {
         verdict,
         distinct_human_quorum: quorumSatisfied,
@@ -838,6 +879,7 @@ function deriveEvaluation(options) {
                 || !['ACCEPTED', 'REJECTED', 'INDETERMINATE'].includes(native.acceptance)
                 || !validRole(native.evidence_role) || !isObject(native.subject) || !exactString(native.subject.id)
                 || !['human', 'workload', 'organization', 'system'].includes(String(native.subject.kind))
+                || (native.evidence_bindings !== undefined && !validEvidenceBindings(native.evidence_bindings))
                 || !Array.isArray(native.reasons)) {
                 base.reasons = ['malformed_native_result'];
                 legs.push(base);
@@ -848,6 +890,12 @@ function deriveEvaluation(options) {
             base.evidence_role = native.evidence_role;
             base.subject = { id: native.subject.id, kind: native.subject.kind };
             base.replay_unit = native.replay_unit;
+            if (native.evidence_bindings !== undefined) {
+                base.evidence_bindings = native.evidence_bindings.map((binding) => ({
+                    role: binding.role,
+                    evidence_digest: binding.evidence_digest,
+                }));
+            }
             base.reasons.push(...native.reasons);
             const roleEntry = roleRegistryEntry(options.config, native.evidence_role);
             const allowedSubjectKinds = roleEntry && isObject(roleEntry.definition) && Array.isArray(roleEntry.definition.subject_kinds)

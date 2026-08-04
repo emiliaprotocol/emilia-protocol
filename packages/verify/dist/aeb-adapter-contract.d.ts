@@ -54,7 +54,17 @@ export interface AebNativeResult {
     subject: AebEvidenceSubject;
     /** Stable native authorization identity, independent of an AEB operation wrapper. */
     replay_unit: AebDigest;
+    /**
+     * Native, signature-verified links to other evidence roles. These links do
+     * not satisfy those roles; an `evidence-binding` requirement must still
+     * match them to independently verified AEB legs.
+     */
+    evidence_bindings?: readonly AebEvidenceBinding[];
     reasons: string[];
+}
+export interface AebEvidenceBinding {
+    role: string;
+    evidence_digest: AebDigest;
 }
 export interface AebEvidenceSubject {
     id: string;
@@ -163,7 +173,13 @@ export interface AebExecutorExclusionTerm {
 export interface AebOneTimeConsumptionTerm {
     type: 'one-time-consumption';
 }
-export type AebRequirementTerm = AebDistinctHumanQuorumTerm | AebInitiatorExclusionTerm | AebExecutorExclusionTerm | AebOneTimeConsumptionTerm;
+export interface AebEvidenceBindingTerm {
+    type: 'evidence-binding';
+    source_role: string;
+    target_role: string;
+    require_same_subject: true;
+}
+export type AebRequirementTerm = AebDistinctHumanQuorumTerm | AebInitiatorExclusionTerm | AebExecutorExclusionTerm | AebEvidenceBindingTerm | AebOneTimeConsumptionTerm;
 export interface AebRequirement {
     '@version': typeof AEB_REQUIREMENT_VERSION;
     /** Every listed role must have a satisfied leg. */
@@ -222,6 +238,7 @@ export interface AebEvaluationLeg {
     evidence_digest: AebDigest;
     status_digest: AebDigest;
     replay_unit: AebDigest;
+    evidence_bindings?: AebEvidenceBinding[];
     evidence_role: string;
     subject: AebEvidenceSubject | null;
     mapper_id: string;

@@ -17,6 +17,7 @@ export * from './aeb-adapter-contract.js';
 export * from './aeb-consequence-conformance.js';
 export * from './aeb-discovery-permit-adapter.js';
 export * from './aeb-wimse-oauth-adapter.js';
+export * from './authorization-server-confirmation.js';
 export * from './aeb-native-adapters.js';
 export * from './aeb-psea-adapter.js';
 export * from './fido-ap2-bridge.js';

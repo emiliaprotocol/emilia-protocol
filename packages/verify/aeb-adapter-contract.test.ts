@@ -195,6 +195,7 @@ function makeAdapter() {
         evidence_role: artifact.role,
         subject: artifact.subject,
         replay_unit: digestAeb({ adapter: 'test:operator', replay_id: artifact.replay_id }),
+        ...(artifact.evidence_bindings === undefined ? {} : { evidence_bindings: artifact.evidence_bindings }),
         reasons: trusted ? [] : ['native_trust_root_not_pinned'],
       };
     },
@@ -248,6 +249,7 @@ function setup(requirement = {
     'mapping:test:order': registryEntry('mapping:test:order', 'mapping-profile', '1', { profile_digest: profile.profile_digest }),
     'role:operator-of-record': registryEntry('role:operator-of-record', 'evidence-role', '1', { role: 'operator-of-record', subject_kinds: ['workload'] }),
     'role:human-authorization': registryEntry('role:human-authorization', 'evidence-role', '1', { role: 'human-authorization', subject_kinds: ['human'] }),
+    'role:authorization-server-confirmation': registryEntry('role:authorization-server-confirmation', 'evidence-role', '1', { role: 'authorization-server-confirmation', subject_kinds: ['human'] }),
     'extension:receipt-lifecycle': registryEntry('extension:receipt-lifecycle', 'receipt-extension', '1', { extension: 'receipt-lifecycle' }),
   };
   const registry = {
@@ -272,6 +274,48 @@ function setup(requirement = {
   };
   return { adapter, config, keyPair };
 }
+
+test('AEB evidence-binding term requires the AS leg to bind the exact verified human artifact and subject', () => {
+  const requirement = {
+    '@version': 'AEB-REQUIREMENT-v1',
+    all_of: ['human-authorization', 'authorization-server-confirmation'],
+    terms: [
+      {
+        type: 'evidence-binding',
+        source_role: 'authorization-server-confirmation',
+        target_role: 'human-authorization',
+        require_same_subject: true,
+      },
+      { type: 'initiator-exclusion', roles: ['human-authorization'] },
+      { type: 'executor-exclusion', roles: ['human-authorization'] },
+      { type: 'one-time-consumption' },
+    ],
+  };
+  const fixture = setup(requirement);
+  const human = leg('human-authorization', CAID, 'artifact:human-alice', { id: 'human:alice', kind: 'human' });
+  const humanDigest = digestAeb(human.artifact);
+  const asLeg = leg('authorization-server-confirmation', CAID, 'artifact:as-alice', { id: 'human:alice', kind: 'human' });
+  asLeg.artifact.evidence_bindings = [{ role: 'human-authorization', evidence_digest: humanDigest }];
+
+  const valid = evaluate(fixture, [human, asLeg]);
+  assert.equal(valid.valid, true);
+  assert.equal(valid.record.verdict, 'SATISFIED');
+  assert.deepEqual(valid.record.legs[1].evidence_bindings, [
+    { role: 'human-authorization', evidence_digest: humanDigest },
+  ]);
+
+  const wrongDigestLeg = structuredClone(asLeg);
+  wrongDigestLeg.artifact.evidence_bindings[0].evidence_digest = digestAeb({ different: true });
+  const wrongDigest = evaluate(fixture, [human, wrongDigestLeg]);
+  assert.equal(wrongDigest.record.verdict, 'UNSATISFIED');
+  assert.match(wrongDigest.record.reasons.join('\n'), /evidence_binding_not_met/);
+
+  const wrongSubjectLeg = structuredClone(asLeg);
+  wrongSubjectLeg.artifact.subject.id = 'human:mallory';
+  const wrongSubject = evaluate(fixture, [human, wrongSubjectLeg]);
+  assert.equal(wrongSubject.record.verdict, 'UNSATISFIED');
+  assert.match(wrongSubject.record.reasons.join('\n'), /evidence_binding_not_met/);
+});
 
 function leg(role, caid = CAID, ref = `artifact:${role}`, subject = { id: role === 'human-authorization' ? 'human:alice' : 'workload:operator', kind: role === 'human-authorization' ? 'human' : 'workload' }) {
   return {
@@ -870,6 +914,15 @@ test('AEB fails closed on unknown, duplicate, or weakened authority terms', () =
     [{ type: 'one-time-consumption' }, { type: 'presenter-override' }],
     [{ type: 'one-time-consumption' }, { type: 'one-time-consumption' }],
     [{ type: 'initiator-exclusion', roles: ['human-authorization'] }],
+    [
+      { type: 'evidence-binding', source_role: 'operator-of-record', target_role: 'human-authorization', require_same_subject: false },
+      { type: 'one-time-consumption' },
+    ],
+    [
+      { type: 'evidence-binding', source_role: 'operator-of-record', target_role: 'human-authorization', require_same_subject: true },
+      { type: 'evidence-binding', source_role: 'operator-of-record', target_role: 'human-authorization', require_same_subject: true },
+      { type: 'one-time-consumption' },
+    ],
   ]) {
     const s = setup({
       '@version': 'AEB-REQUIREMENT-v1',

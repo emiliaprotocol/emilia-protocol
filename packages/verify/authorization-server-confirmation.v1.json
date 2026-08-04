@@ -1,0 +1,21 @@
+{
+  "@version": "EP-AUTHORIZATION-SERVER-CONFIRMATION-CASES-v1",
+  "status": "implementation-profile-cases",
+  "claim_boundary": "These cases exercise the EMILIA reference adapter. They are not an independent implementation or a claim of interoperability with an external draft.",
+  "cases": [
+    { "id": "pinned_as_exact_action_and_human_evidence", "expected": "ACCEPTED_AND_MATCH" },
+    { "id": "untrusted_as_key", "expected": "FAILED" },
+    { "id": "orchestrator_cannot_substitute_for_as", "expected": "FAILED" },
+    { "id": "algorithm_downgrade", "expected": "FAILED" },
+    { "id": "wrong_resource_server_audience", "expected": "FAILED" },
+    { "id": "wrong_resource_server_key", "expected": "FAILED" },
+    { "id": "stale_or_expired_grant", "expected": "NOT_ACCEPTED" },
+    { "id": "human_evidence_digest_mismatch", "expected": "FAILED" },
+    { "id": "valid_signature_wrong_exact_action", "expected": "ACCEPTED_AND_MISMATCH" },
+    { "id": "as_leg_never_authorizes_by_itself", "expected": "EVIDENCE_ONLY" },
+    { "id": "aec_requires_independent_human_leg", "expected": "UNSATISFIED_WITHOUT_TARGET" },
+    { "id": "aec_requires_same_human_subject", "expected": "UNSATISFIED_ON_SUBJECT_MISMATCH" },
+    { "id": "aec_requires_exact_human_evidence_digest", "expected": "UNSATISFIED_ON_DIGEST_MISMATCH" },
+    { "id": "gate_one_time_consumption_remains_separate", "expected": "REQUIRED_BY_AEB" }
+  ]
+}
