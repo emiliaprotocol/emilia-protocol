@@ -1,0 +1,3 @@
+faf903228a7b7914e8be98833987a0bf25a07867d33d4576c86bdb7560f489c8  draft-ferro-schrock-memory-projection-record-01.html
+64cc695489ff749cb9e1a33c9d877b8a9df16862e4c20b1efdd7ba486d78864a  draft-ferro-schrock-memory-projection-record-01.txt
+054684260bb90957ad9277436eccab7b7fd47a5e999c2e889051e1f89f314af3  draft-ferro-schrock-memory-projection-record-01.xml
