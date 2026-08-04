@@ -1,6 +1,12 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## 0.23.13 (2026-08-04)
+
+- Reissues the recoverable prepared-reservation release from the exact protected
+  `main` commit after the immutable `0.23.12` tag was correctly refused by the
+  publication gate when `main` advanced before dispatch.
+
 ## 0.23.12 (2026-08-04)
 
 ### Security
