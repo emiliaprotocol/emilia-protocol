@@ -1,6 +1,24 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # EMILIA ↔ Agent Action Capsule — the who → what seam
 
+## Runnable CAID → AEC → AEB → Capsule profile
+
+The original seam below proves the byte binding between WHO and WHAT. The
+candidate composition profile now executes the larger consequence path:
+
+- [runner](../examples/composition/caid-aec-aeb-capsule-v1/run.mjs)
+- [frozen bundle](../examples/composition/caid-aec-aeb-capsule-v1/bundle.json)
+- [EMILIA run report](../examples/composition/caid-aec-aeb-capsule-v1/report.emilia-js.json)
+- [independent report template](../examples/composition/caid-aec-aeb-capsule-v1/external-report.template.json)
+
+It preserves the Capsule's native result, recomputes CAID, evaluates AEC,
+runs AEB admission and consequence handling, and emits separate action,
+principal, sufficiency, decision, admission, and outcome axes. Eight cases
+cover the positive path, splice, stale evidence, consumed replay, both timeout
+sides of dispatch, observer contradiction, and a verifier-level structured
+refusal. The vector remains a candidate until a second independent
+implementation reproduces the frozen bytes.
+
 A shared, byte-reproducible interop vector that threads **one action's digest**
 through the seam between an EMILIA authorization receipt (**WHO** approved) and
 Steven Mih's Agent Action Capsule (**WHAT** was done). The linkage is

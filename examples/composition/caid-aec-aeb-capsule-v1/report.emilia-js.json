@@ -1,0 +1,1813 @@
+{
+  "@version": "EP-COMPOSITION-VECTOR-RUN-REPORT-v1",
+  "implementation": "emilia-js-candidate",
+  "implementation_owner": "EMILIA Protocol",
+  "generated_at": "2026-08-04T20:00:00Z",
+  "manifest_digest": "sha256:fa225afe517f8a437009b92d6eebfab54ac0ac35715bf674c2d15a1883b235a9",
+  "bundle_digest": "sha256:0f1674a23e44ffd53cbf97bbd6e0b58568ed4970c119685dc060d2fc2202abd2",
+  "passed": true,
+  "case_count": 8,
+  "checks": [
+    {
+      "id": "positive_observed",
+      "passed": true,
+      "axes_match": true,
+      "reasons_match": true,
+      "no_crash": true,
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "CONSUMED",
+        "outcome": "OBSERVED_AS_REQUESTED",
+        "verifier_status": "PASS",
+        "reason_codes_include": []
+      },
+      "actual": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "CONSUMED",
+        "outcome": "OBSERVED_AS_REQUESTED",
+        "verifier_status": "PASS"
+      },
+      "reason_codes": [
+        "provider_committed_effect_observed"
+      ]
+    },
+    {
+      "id": "different_action_splice",
+      "passed": true,
+      "axes_match": true,
+      "reasons_match": true,
+      "no_crash": true,
+      "expected": {
+        "action_linkage": "MISMATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "UNSATISFIED",
+        "decision": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "outcome": "NONE",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "exact_action_mismatch"
+        ]
+      },
+      "actual": {
+        "action_linkage": "MISMATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "UNSATISFIED",
+        "decision": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "outcome": "NONE",
+        "verifier_status": "PASS"
+      },
+      "reason_codes": [
+        "exact_action_mismatch",
+        "normalized_action_mismatch"
+      ]
+    },
+    {
+      "id": "stale_evidence",
+      "passed": true,
+      "axes_match": true,
+      "reasons_match": true,
+      "no_crash": true,
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "UNSATISFIED",
+        "decision": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "outcome": "NONE",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "evidence_stale"
+        ]
+      },
+      "actual": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "UNSATISFIED",
+        "decision": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "outcome": "NONE",
+        "verifier_status": "PASS"
+      },
+      "reason_codes": [
+        "evidence_stale"
+      ]
+    },
+    {
+      "id": "already_consumed_replay",
+      "passed": true,
+      "axes_match": true,
+      "reasons_match": true,
+      "no_crash": true,
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "REFUSED_ALREADY_CONSUMED",
+        "outcome": "NONE",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "operation_replay"
+        ]
+      },
+      "actual": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "REFUSED_ALREADY_CONSUMED",
+        "outcome": "NONE",
+        "verifier_status": "PASS"
+      },
+      "reason_codes": [
+        "operation_replay"
+      ]
+    },
+    {
+      "id": "timeout_before_dispatch",
+      "passed": true,
+      "axes_match": true,
+      "reasons_match": true,
+      "no_crash": true,
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "NOT_AUTHORIZED",
+        "admission": "REFUSED_TIMEOUT_BEFORE_DISPATCH",
+        "outcome": "NONE",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "timeout_before_dispatch"
+        ]
+      },
+      "actual": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "NOT_AUTHORIZED",
+        "admission": "REFUSED_TIMEOUT_BEFORE_DISPATCH",
+        "outcome": "NONE",
+        "verifier_status": "PASS"
+      },
+      "reason_codes": [
+        "local_policy_denied",
+        "timeout_before_dispatch"
+      ]
+    },
+    {
+      "id": "timeout_after_dispatch",
+      "passed": true,
+      "axes_match": true,
+      "reasons_match": true,
+      "no_crash": true,
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "CONSUMED",
+        "outcome": "INDETERMINATE",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "timeout_after_dispatch"
+        ]
+      },
+      "actual": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "CONSUMED",
+        "outcome": "INDETERMINATE",
+        "verifier_status": "PASS"
+      },
+      "reason_codes": [
+        "timeout_after_dispatch"
+      ]
+    },
+    {
+      "id": "independent_observer_contradiction",
+      "passed": true,
+      "axes_match": true,
+      "reasons_match": true,
+      "no_crash": true,
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "CONSUMED",
+        "outcome": "DIVERGENT",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "provider_committed_effect_diverged",
+          "independent_observer_contradiction"
+        ]
+      },
+      "actual": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "CONSUMED",
+        "outcome": "DIVERGENT",
+        "verifier_status": "PASS"
+      },
+      "reason_codes": [
+        "independent_observer_contradiction",
+        "provider_committed_effect_diverged"
+      ]
+    },
+    {
+      "id": "unsupported_required_binding",
+      "passed": true,
+      "axes_match": true,
+      "reasons_match": true,
+      "no_crash": true,
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "INDETERMINATE",
+        "decision": "INDETERMINATE",
+        "admission": "REFUSED",
+        "outcome": "NONE",
+        "verifier_status": "REFUSED",
+        "reason_codes_include": [
+          "unsupported_required_binding:capsule.class3"
+        ]
+      },
+      "actual": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "INDETERMINATE",
+        "decision": "INDETERMINATE",
+        "admission": "REFUSED",
+        "outcome": "NONE",
+        "verifier_status": "REFUSED"
+      },
+      "reason_codes": [
+        "unsupported_required_binding:capsule.class3"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "@version": "EP-ACCOUNTABILITY-ATTEMPT-RESULT-v1",
+      "attempt_id": "positive_observed",
+      "native_results": [
+        {
+          "profile": "CAID",
+          "status": "VERIFIED",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "reasons": []
+        },
+        {
+          "profile": "human_authorization",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "human:jane.doe"
+        },
+        {
+          "profile": "machine_policy",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "organization:treasury-policy"
+        },
+        {
+          "profile": "AEC",
+          "status": "SATISFIED",
+          "action_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "expected_action_bound": true,
+          "reasons": []
+        },
+        {
+          "profile": "AEB",
+          "status": "RECORDED",
+          "case_digest": "sha256:e1a8b0e2ed8a998d8e7d0c0a193dda5cb03af89ff46cc7db8f43b2d228e76cf4",
+          "result": {
+            "verification": "VERIFIED",
+            "acceptance": "ACCEPTED",
+            "action_match": "MATCH",
+            "satisfaction": "SATISFIED",
+            "authorization": "AUTHORIZED",
+            "reservation": "CONSUMED",
+            "custody": "TERMINAL",
+            "provider_outcome": "COMMITTED",
+            "effect_relation": "OBSERVED_AS_REQUESTED",
+            "retry": "REFUSED",
+            "reconciliation": "NOT_REQUIRED",
+            "decision": "RECORDED",
+            "reasons": [
+              "provider_committed_effect_observed"
+            ]
+          }
+        },
+        {
+          "profile": "draft-mih-scitt-agent-action-capsule-00",
+          "status": "VERIFIED",
+          "class_1": {
+            "profile": "draft-mih-scitt-agent-action-capsule-00",
+            "class": "CLASS_1_CANDIDATE",
+            "ok": true,
+            "findings": [
+              {
+                "id": "class1.substrate",
+                "status": "PASS",
+                "detail": "COSE_Sign1 and protected claims"
+              },
+              {
+                "id": "class1.structure",
+                "status": "PASS",
+                "detail": "required fields, types, and integer-only JSON numbers"
+              },
+              {
+                "id": "class1.capsule_id",
+                "status": "PASS",
+                "detail": "recomputed normalized Capsule content address"
+              },
+              {
+                "id": "class1.confirmed_effect",
+                "status": "PASS",
+                "detail": "confirmed requires response_digest"
+              },
+              {
+                "id": "class1.verdict_effect",
+                "status": "PASS",
+                "detail": "non-dispatch verdicts require not_applicable"
+              },
+              {
+                "id": "class1.effect_attestation",
+                "status": "PASS",
+                "detail": "attestation matrix including planned carve"
+              },
+              {
+                "id": "class1.chain",
+                "status": "PASS",
+                "detail": "standalone fixture carries no unresolved parent"
+              },
+              {
+                "id": "class1.assurance",
+                "status": "PASS",
+                "detail": "assurance modes rederived from verified bytes"
+              },
+              {
+                "id": "class1.disposition_honesty",
+                "status": "PASS",
+                "detail": "human_disposed is consistent with approver"
+              },
+              {
+                "id": "class1.registry",
+                "status": "PASS",
+                "detail": "fixture registry values are recognized"
+              }
+            ],
+            "capsule_id": "d4618468aebe8849b625c98a27eb173b3a4f3bf11fd38a629e7d1cb667d27f0a",
+            "statement_digest": "sha256:dfcd1475ada1c94c0dfd21fb21cfa3ba96a0b2d5a667c3b794d9d5f0de577e4f",
+            "class_2": {
+              "status": "NOT_EVALUATED",
+              "reason": "constraint_manifest_and_private_evidence_not_supplied"
+            },
+            "nonclaim": "Bounded independent fixture verifier; not general Capsule conformance."
+          },
+          "class_2": {
+            "status": "NOT_EVALUATED",
+            "reason": "constraint_manifest_and_private_evidence_not_supplied"
+          },
+          "signed_statement": {
+            "media_type": "application/agent-action-capsule+json",
+            "anchoring": "unregistered_signed_statement",
+            "cose_sign1_b64u": "0oRZATGkAScDeCVhcHBsaWNhdGlvbi9hZ2VudC1hY3Rpb24tY2Fwc3VsZStqc29uBFglZW1pbGlhLWNvbXBvc2l0aW9uLXZlY3Rvci1jYXBzdWxlLWtleQ-lAXVhZ2VudDp0cmVhc3VyeS1ib3Q6djFzY2Fwc3VsZV9kZWNpc2lvbl9pZHgbb3BlcmF0aW9uOnBvc2l0aXZlX29ic2VydmVkAnhSdXJuOmFnZW50LWFjdGlvbi1jYXBzdWxlOm9yZ2FuaXphdGlvbjpleGFtcGxlLXRyZWFzdXJ5Om9wZXJhdGlvbjpwb3NpdGl2ZV9vYnNlcnZlZHZjYXBzdWxlX3N0YXRlbWVudF90eXBlbGFnZW50X2FjdGlvbnNjYXBzdWxlX2FjdGlvbl90eXBlZmRlY2lkZaBZBZZ7ImFjdGlvbl9pZCI6Im9wZXJhdGlvbjpwb3NpdGl2ZV9vYnNlcnZlZCIsImFjdGlvbl90eXBlIjoiZGVjaWRlIiwiYXNzdXJhbmNlIjp7ImF0dGVzdGF0aW9uX21vZGUiOiJzZWxmX2F0dGVzdGVkIiwiZWZmZWN0X21vZGUiOiJjb25maXJtZWQiLCJsZWRnZXJfbW9kZSI6InN0YW5kYWxvbmUifSwiY2Fwc3VsZV9pZCI6ImQ0NjE4NDY4YWViZTg4NDliNjI1Yzk4YTI3ZWIxNzNiM2E0ZjNiZjExZmQzOGE2MjllN2QxY2I2NjdkMjdmMGEiLCJjb25zdHJhaW50cyI6W3siYmxvY2tpbmciOnRydWUsImV2aWRlbmNlX2RpZ2VzdCI6IjViNzY0NTA1YTZiYzEyZTc1OTljZmI2YmRjODY2Nzg2NGJmZDgxNGU0OWY1MjFhYzhiYzU3NGEyMTZmODdiYjkiLCJpZCI6ImFpLmVtaWxpYXByb3RvY29sLmV4YWN0X2FjdGlvbiIsInJlc3VsdCI6InBhc3MiLCJzZXZlcml0eSI6ImNyaXRpY2FsIn0seyJibG9ja2luZyI6dHJ1ZSwiZXZpZGVuY2VfZGlnZXN0IjoiYWM2MjRkYWVlNzdmNjExZDY0YzdjY2M4ZGRkMjBiZWI1NDI1YWMyOTM3N2FjNjk5ZWE0Y2E1NzRjZWRiMDY2NyIsImlkIjoiYWkuZW1pbGlhcHJvdG9jb2wuYWRtaXNzaW9uIiwicmVzdWx0IjoicGFzcyIsInNldmVyaXR5IjoiY3JpdGljYWwifV0sImRldmVsb3BlciI6ImFnZW50OnRyZWFzdXJ5LWJvdDp2MSIsImRpc3Bvc2l0aW9uIjp7ImFwcHJvdmVyIjoiaHVtYW4iLCJhdXRob3JpdHkiOiJlcC1jYWlkOmNhaWQ6MTpwYXltZW50LnJlbGVhc2UuMTpqY3Mtc2hhMjU2OlczWkZCYWE4RXVkWm5QdHIzSVpuaGt2OWdVNUo5U0dzaThWMG9oYjRlN2siLCJkZWNpc2lvbiI6ImFjY2VwdCIsImh1bWFuX2Rpc3Bvc2VkIjp0cnVlLCJ2ZXJkaWN0X2NsYXNzIjoiZXhlY3V0ZWQifSwiZG9tYWluIjoiYWN0aW9uIiwiZWZmZWN0Ijp7ImVmZmVjdF9hdHRlc3RhdGlvbiI6ImdhdGVfZXhlY3V0ZWQiLCJleHRlcm5hbF9yZWYiOiJwYXltZW50OmFjbWU6MjAyNi0wOC0wNDowMDAxIiwiaXJyZXZlcnNpYmlsaXR5X2NsYXNzIjoib25lX3dheV9jb25zZXF1ZW50aWFsIiwicmVxdWVzdF9kaWdlc3QiOiI5NDU3ZDY5Y2NjZDFkMTMxZTE2ZGZmYzE3YTZjZTIxMjY5Mzk1MWY1NDI2YmJkY2QxMDAwYzI1MGRkYzQ3YmZjIiwicmVzcG9uc2VfZGlnZXN0IjoiNTcwYTE4MWVjYjJmNzJlY2YyOTM4YjZmNDU5ODI0OTIyNzg1M2MxNzgwM2JjY2NkNmY4YWIyMzU3ZDY5YzhiZiIsInN0YXR1cyI6ImNvbmZpcm1lZCIsInR5cGUiOiJhaS5lbWlsaWFwcm90b2NvbC5wYXltZW50X3JlbGVhc2UifSwiZm9ybWF0X3ZlcnNpb24iOiIyIiwib3BlcmF0b3IiOiJvcmdhbml6YXRpb246ZXhhbXBsZS10cmVhc3VyeSIsInByb3ZlbmFuY2UiOiJnYXRlIiwic3BlY192ZXJzaW9uIjoiZHJhZnQtbWloLXNjaXR0LWFnZW50LWFjdGlvbi1jYXBzdWxlLTAwIiwidGltZXN0YW1wIjoiMjAyNi0wOC0wNFQyMDowMDowMFoifVhAwxwnEAeXSFkjasEhURYjkagYfXjjTVIS4wk3mdfRZYO-Gl64E1HeKDTVWYg6k9ZgD7oNz5iOTH69KfHa3CWEDA",
+            "statement_digest": "sha256:dfcd1475ada1c94c0dfd21fb21cfa3ba96a0b2d5a667c3b794d9d5f0de577e4f",
+            "capsule": {
+              "spec_version": "draft-mih-scitt-agent-action-capsule-00",
+              "format_version": "2",
+              "capsule_id": "d4618468aebe8849b625c98a27eb173b3a4f3bf11fd38a629e7d1cb667d27f0a",
+              "action_id": "operation:positive_observed",
+              "action_type": "decide",
+              "operator": "organization:example-treasury",
+              "developer": "agent:treasury-bot:v1",
+              "timestamp": "2026-08-04T20:00:00Z",
+              "domain": "action",
+              "provenance": "gate",
+              "effect": {
+                "type": "ai.emiliaprotocol.payment_release",
+                "external_ref": "payment:acme:2026-08-04:0001",
+                "irreversibility_class": "one_way_consequential",
+                "status": "confirmed",
+                "request_digest": "9457d69cccd1d131e16dffc17a6ce212693951f5426bbdcd1000c250ddc47bfc",
+                "response_digest": "570a181ecb2f72ecf2938b6f4598249227853c17803bcccd6f8ab2357d69c8bf",
+                "effect_attestation": "gate_executed"
+              },
+              "assurance": {
+                "attestation_mode": "self_attested",
+                "effect_mode": "confirmed",
+                "ledger_mode": "standalone"
+              },
+              "disposition": {
+                "decision": "accept",
+                "approver": "human",
+                "human_disposed": true,
+                "authority": "ep-caid:caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+                "verdict_class": "executed"
+              },
+              "constraints": [
+                {
+                  "id": "ai.emiliaprotocol.exact_action",
+                  "result": "pass",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9"
+                },
+                {
+                  "id": "ai.emiliaprotocol.admission",
+                  "result": "pass",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "ac624daee77f611d64c7ccc8ddd20beb5425ac29377ac699ea4ca574cedb0667"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "action_linkage": "MATCH",
+      "principal_linkage": "RESOLVED",
+      "evidence_satisfaction": "SATISFIED",
+      "decision": "AUTHORIZED",
+      "admission": "CONSUMED",
+      "outcome": "OBSERVED_AS_REQUESTED",
+      "reason_codes": [
+        "provider_committed_effect_observed"
+      ],
+      "verifier": {
+        "status": "PASS",
+        "crashed": false
+      }
+    },
+    {
+      "@version": "EP-ACCOUNTABILITY-ATTEMPT-RESULT-v1",
+      "attempt_id": "different_action_splice",
+      "native_results": [
+        {
+          "profile": "CAID",
+          "status": "VERIFIED",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "reasons": []
+        },
+        {
+          "profile": "human_authorization",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:84a97c55d3e9041b94e59366863a333486530f393ebfcb238c8569817c72d1cc",
+          "principal_id": "human:jane.doe"
+        },
+        {
+          "profile": "machine_policy",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "organization:treasury-policy"
+        },
+        {
+          "profile": "AEC",
+          "status": "UNSATISFIED",
+          "action_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "expected_action_bound": true,
+          "reasons": [
+            "requirement not satisfied: \"human_authorization AND machine_policy\" over {machine_policy}"
+          ]
+        },
+        {
+          "profile": "AEB",
+          "status": "REFUSE",
+          "case_digest": "sha256:712497b17bd33109a6b9f55841428dbbf63ab37528fb13f171736b4aefb2e53a",
+          "result": {
+            "verification": "VERIFIED",
+            "acceptance": "ACCEPTED",
+            "action_match": "MISMATCH",
+            "satisfaction": "UNSATISFIED",
+            "authorization": "NOT_AUTHORIZED",
+            "reservation": "NOT_ATTEMPTED",
+            "custody": "UNRESERVED",
+            "provider_outcome": "NOT_INVOKED",
+            "effect_relation": "NOT_OBSERVED",
+            "retry": "NOT_APPLICABLE",
+            "reconciliation": "NOT_APPLICABLE",
+            "decision": "REFUSE",
+            "reasons": [
+              "exact_action_mismatch",
+              "normalized_action_mismatch"
+            ]
+          }
+        },
+        {
+          "profile": "draft-mih-scitt-agent-action-capsule-00",
+          "status": "VERIFIED",
+          "class_1": {
+            "profile": "draft-mih-scitt-agent-action-capsule-00",
+            "class": "CLASS_1_CANDIDATE",
+            "ok": true,
+            "findings": [
+              {
+                "id": "class1.substrate",
+                "status": "PASS",
+                "detail": "COSE_Sign1 and protected claims"
+              },
+              {
+                "id": "class1.structure",
+                "status": "PASS",
+                "detail": "required fields, types, and integer-only JSON numbers"
+              },
+              {
+                "id": "class1.capsule_id",
+                "status": "PASS",
+                "detail": "recomputed normalized Capsule content address"
+              },
+              {
+                "id": "class1.confirmed_effect",
+                "status": "PASS",
+                "detail": "confirmed requires response_digest"
+              },
+              {
+                "id": "class1.verdict_effect",
+                "status": "PASS",
+                "detail": "non-dispatch verdicts require not_applicable"
+              },
+              {
+                "id": "class1.effect_attestation",
+                "status": "PASS",
+                "detail": "attestation matrix including planned carve"
+              },
+              {
+                "id": "class1.chain",
+                "status": "PASS",
+                "detail": "standalone fixture carries no unresolved parent"
+              },
+              {
+                "id": "class1.assurance",
+                "status": "PASS",
+                "detail": "assurance modes rederived from verified bytes"
+              },
+              {
+                "id": "class1.disposition_honesty",
+                "status": "PASS",
+                "detail": "human_disposed is consistent with approver"
+              },
+              {
+                "id": "class1.registry",
+                "status": "PASS",
+                "detail": "fixture registry values are recognized"
+              }
+            ],
+            "capsule_id": "b2496b06aeab264f414823e157bfc3574f3795001254c86fc4415006d6d758e4",
+            "statement_digest": "sha256:47d272bf94061c10fc1436aded6e947769345ee3d02847b8b6737cc8fc4e3bfc",
+            "class_2": {
+              "status": "NOT_EVALUATED",
+              "reason": "constraint_manifest_and_private_evidence_not_supplied"
+            },
+            "nonclaim": "Bounded independent fixture verifier; not general Capsule conformance."
+          },
+          "class_2": {
+            "status": "NOT_EVALUATED",
+            "reason": "constraint_manifest_and_private_evidence_not_supplied"
+          },
+          "signed_statement": {
+            "media_type": "application/agent-action-capsule+json",
+            "anchoring": "unregistered_signed_statement",
+            "cose_sign1_b64u": "0oRZAT2kAScDeCVhcHBsaWNhdGlvbi9hZ2VudC1hY3Rpb24tY2Fwc3VsZStqc29uBFglZW1pbGlhLWNvbXBvc2l0aW9uLXZlY3Rvci1jYXBzdWxlLWtleQ-lAXVhZ2VudDp0cmVhc3VyeS1ib3Q6djFzY2Fwc3VsZV9kZWNpc2lvbl9pZHghb3BlcmF0aW9uOmRpZmZlcmVudF9hY3Rpb25fc3BsaWNlAnhYdXJuOmFnZW50LWFjdGlvbi1jYXBzdWxlOm9yZ2FuaXphdGlvbjpleGFtcGxlLXRyZWFzdXJ5Om9wZXJhdGlvbjpkaWZmZXJlbnRfYWN0aW9uX3NwbGljZXZjYXBzdWxlX3N0YXRlbWVudF90eXBlbGFnZW50X2FjdGlvbnNjYXBzdWxlX2FjdGlvbl90eXBlZmRlY2lkZaBZBSR7ImFjdGlvbl9pZCI6Im9wZXJhdGlvbjpkaWZmZXJlbnRfYWN0aW9uX3NwbGljZSIsImFjdGlvbl90eXBlIjoiZGVjaWRlIiwiYXNzdXJhbmNlIjp7ImF0dGVzdGF0aW9uX21vZGUiOiJzZWxmX2F0dGVzdGVkIiwiZWZmZWN0X21vZGUiOiJub3RfYXBwbGljYWJsZSIsImxlZGdlcl9tb2RlIjoic3RhbmRhbG9uZSJ9LCJjYXBzdWxlX2lkIjoiYjI0OTZiMDZhZWFiMjY0ZjQxNDgyM2UxNTdiZmMzNTc0ZjM3OTUwMDEyNTRjODZmYzQ0MTUwMDZkNmQ3NThlNCIsImNvbnN0cmFpbnRzIjpbeyJibG9ja2luZyI6dHJ1ZSwiZXZpZGVuY2VfZGlnZXN0IjoiNWI3NjQ1MDVhNmJjMTJlNzU5OWNmYjZiZGM4NjY3ODY0YmZkODE0ZTQ5ZjUyMWFjOGJjNTc0YTIxNmY4N2JiOSIsImlkIjoiYWkuZW1pbGlhcHJvdG9jb2wuZXhhY3RfYWN0aW9uIiwicmVzdWx0IjoiZmFpbCIsInNldmVyaXR5IjoiY3JpdGljYWwifSx7ImJsb2NraW5nIjp0cnVlLCJldmlkZW5jZV9kaWdlc3QiOiJmMzQzZDBlYjRmNzNmZmZmMjY2N2U3YWQwZDI3NzdhOWQ2ZWU0OTFmZWIwMDU0NzliYTFlMGFkYjY1MjQ1ODIxIiwiaWQiOiJhaS5lbWlsaWFwcm90b2NvbC5hZG1pc3Npb24iLCJyZXN1bHQiOiJmYWlsIiwic2V2ZXJpdHkiOiJjcml0aWNhbCJ9XSwiZGV2ZWxvcGVyIjoiYWdlbnQ6dHJlYXN1cnktYm90OnYxIiwiZGlzcG9zaXRpb24iOnsiYXBwcm92ZXIiOiJwb2xpY3kiLCJhdXRob3JpdHkiOiJlcC1jYWlkOmNhaWQ6MTpwYXltZW50LnJlbGVhc2UuMTpqY3Mtc2hhMjU2OlczWkZCYWE4RXVkWm5QdHIzSVpuaGt2OWdVNUo5U0dzaThWMG9oYjRlN2siLCJkZWNpc2lvbiI6InJlamVjdCIsImh1bWFuX2Rpc3Bvc2VkIjpmYWxzZSwicmVhc29uX2RpZ2VzdCI6Ijc3NWYyYjQyMDg4YThhNTY5OWZhNjdhYTg5NmM1ZWI1ZDIyYjljMzJmMDI3MTY1YmE4YTllY2E4MTc3ZmIzYjgiLCJ2ZXJkaWN0X2NsYXNzIjoiZGVuaWVkIn0sImRvbWFpbiI6ImFjdGlvbiIsImVmZmVjdCI6eyJleHRlcm5hbF9yZWYiOiJwYXltZW50OmFjbWU6MjAyNi0wOC0wNDowMDAxIiwiaXJyZXZlcnNpYmlsaXR5X2NsYXNzIjoib25lX3dheV9jb25zZXF1ZW50aWFsIiwic3RhdHVzIjoicGxhbm5lZCIsInR5cGUiOiJhaS5lbWlsaWFwcm90b2NvbC5wYXltZW50X3JlbGVhc2UifSwiZm9ybWF0X3ZlcnNpb24iOiIyIiwib3BlcmF0b3IiOiJvcmdhbml6YXRpb246ZXhhbXBsZS10cmVhc3VyeSIsInByb3ZlbmFuY2UiOiJnYXRlIiwic3BlY192ZXJzaW9uIjoiZHJhZnQtbWloLXNjaXR0LWFnZW50LWFjdGlvbi1jYXBzdWxlLTAwIiwidGltZXN0YW1wIjoiMjAyNi0wOC0wNFQyMDowMDowMFoifVhAX1x4IyPUO0D_V7Lx-IOq8kAUZZOL2-cuThEhabih1w2ieKKz01q7hOltGORmEX3Cb9JqIpsW7Ji1ZVY2WPASCA",
+            "statement_digest": "sha256:47d272bf94061c10fc1436aded6e947769345ee3d02847b8b6737cc8fc4e3bfc",
+            "capsule": {
+              "spec_version": "draft-mih-scitt-agent-action-capsule-00",
+              "format_version": "2",
+              "capsule_id": "b2496b06aeab264f414823e157bfc3574f3795001254c86fc4415006d6d758e4",
+              "action_id": "operation:different_action_splice",
+              "action_type": "decide",
+              "operator": "organization:example-treasury",
+              "developer": "agent:treasury-bot:v1",
+              "timestamp": "2026-08-04T20:00:00Z",
+              "domain": "action",
+              "provenance": "gate",
+              "effect": {
+                "type": "ai.emiliaprotocol.payment_release",
+                "external_ref": "payment:acme:2026-08-04:0001",
+                "irreversibility_class": "one_way_consequential",
+                "status": "planned"
+              },
+              "assurance": {
+                "attestation_mode": "self_attested",
+                "effect_mode": "not_applicable",
+                "ledger_mode": "standalone"
+              },
+              "disposition": {
+                "decision": "reject",
+                "approver": "policy",
+                "human_disposed": false,
+                "authority": "ep-caid:caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+                "verdict_class": "denied",
+                "reason_digest": "775f2b42088a8a5699fa67aa896c5eb5d22b9c32f027165ba8a9eca8177fb3b8"
+              },
+              "constraints": [
+                {
+                  "id": "ai.emiliaprotocol.exact_action",
+                  "result": "fail",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9"
+                },
+                {
+                  "id": "ai.emiliaprotocol.admission",
+                  "result": "fail",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "f343d0eb4f73ffff2667e7ad0d2777a9d6ee491feb005479ba1e0adb65245821"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "action_linkage": "MISMATCH",
+      "principal_linkage": "RESOLVED",
+      "evidence_satisfaction": "UNSATISFIED",
+      "decision": "NOT_AUTHORIZED",
+      "admission": "REFUSED",
+      "outcome": "NONE",
+      "reason_codes": [
+        "exact_action_mismatch",
+        "normalized_action_mismatch"
+      ],
+      "verifier": {
+        "status": "PASS",
+        "crashed": false
+      }
+    },
+    {
+      "@version": "EP-ACCOUNTABILITY-ATTEMPT-RESULT-v1",
+      "attempt_id": "stale_evidence",
+      "native_results": [
+        {
+          "profile": "CAID",
+          "status": "VERIFIED",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "reasons": []
+        },
+        {
+          "profile": "human_authorization",
+          "status": "VERIFIED",
+          "profile_acceptance": "STALE",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "human:jane.doe"
+        },
+        {
+          "profile": "machine_policy",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "organization:treasury-policy"
+        },
+        {
+          "profile": "AEC",
+          "status": "UNSATISFIED",
+          "action_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "expected_action_bound": true,
+          "reasons": [
+            "requirement not satisfied: \"human_authorization AND machine_policy\" over {machine_policy}"
+          ]
+        },
+        {
+          "profile": "AEB",
+          "status": "INDETERMINATE",
+          "case_digest": "sha256:8a6b9358741059101376aa191f4caa33e35cbd50e03c3abf772e2112fa0f6de6",
+          "result": {
+            "verification": "VERIFIED",
+            "acceptance": "INDETERMINATE",
+            "action_match": "MATCH",
+            "satisfaction": "INDETERMINATE",
+            "authorization": "INDETERMINATE",
+            "reservation": "NOT_ATTEMPTED",
+            "custody": "UNRESERVED",
+            "provider_outcome": "NOT_INVOKED",
+            "effect_relation": "NOT_OBSERVED",
+            "retry": "NOT_APPLICABLE",
+            "reconciliation": "NOT_APPLICABLE",
+            "decision": "INDETERMINATE",
+            "reasons": [
+              "evidence_stale"
+            ]
+          }
+        },
+        {
+          "profile": "draft-mih-scitt-agent-action-capsule-00",
+          "status": "VERIFIED",
+          "class_1": {
+            "profile": "draft-mih-scitt-agent-action-capsule-00",
+            "class": "CLASS_1_CANDIDATE",
+            "ok": true,
+            "findings": [
+              {
+                "id": "class1.substrate",
+                "status": "PASS",
+                "detail": "COSE_Sign1 and protected claims"
+              },
+              {
+                "id": "class1.structure",
+                "status": "PASS",
+                "detail": "required fields, types, and integer-only JSON numbers"
+              },
+              {
+                "id": "class1.capsule_id",
+                "status": "PASS",
+                "detail": "recomputed normalized Capsule content address"
+              },
+              {
+                "id": "class1.confirmed_effect",
+                "status": "PASS",
+                "detail": "confirmed requires response_digest"
+              },
+              {
+                "id": "class1.verdict_effect",
+                "status": "PASS",
+                "detail": "non-dispatch verdicts require not_applicable"
+              },
+              {
+                "id": "class1.effect_attestation",
+                "status": "PASS",
+                "detail": "attestation matrix including planned carve"
+              },
+              {
+                "id": "class1.chain",
+                "status": "PASS",
+                "detail": "standalone fixture carries no unresolved parent"
+              },
+              {
+                "id": "class1.assurance",
+                "status": "PASS",
+                "detail": "assurance modes rederived from verified bytes"
+              },
+              {
+                "id": "class1.disposition_honesty",
+                "status": "PASS",
+                "detail": "human_disposed is consistent with approver"
+              },
+              {
+                "id": "class1.registry",
+                "status": "PASS",
+                "detail": "fixture registry values are recognized"
+              }
+            ],
+            "capsule_id": "cba6bb7dd53ca30056d69d7f46c15d0173f0b1dee12ef50d23f98f1202eab5fc",
+            "statement_digest": "sha256:a9c83e8ce4803b0a171129c99123f15b094aafcc79f850f4029bfd67ee5636f0",
+            "class_2": {
+              "status": "NOT_EVALUATED",
+              "reason": "constraint_manifest_and_private_evidence_not_supplied"
+            },
+            "nonclaim": "Bounded independent fixture verifier; not general Capsule conformance."
+          },
+          "class_2": {
+            "status": "NOT_EVALUATED",
+            "reason": "constraint_manifest_and_private_evidence_not_supplied"
+          },
+          "signed_statement": {
+            "media_type": "application/agent-action-capsule+json",
+            "anchoring": "unregistered_signed_statement",
+            "cose_sign1_b64u": "0oRZASukAScDeCVhcHBsaWNhdGlvbi9hZ2VudC1hY3Rpb24tY2Fwc3VsZStqc29uBFglZW1pbGlhLWNvbXBvc2l0aW9uLXZlY3Rvci1jYXBzdWxlLWtleQ-lAXVhZ2VudDp0cmVhc3VyeS1ib3Q6djFzY2Fwc3VsZV9kZWNpc2lvbl9pZHgYb3BlcmF0aW9uOnN0YWxlX2V2aWRlbmNlAnhPdXJuOmFnZW50LWFjdGlvbi1jYXBzdWxlOm9yZ2FuaXphdGlvbjpleGFtcGxlLXRyZWFzdXJ5Om9wZXJhdGlvbjpzdGFsZV9ldmlkZW5jZXZjYXBzdWxlX3N0YXRlbWVudF90eXBlbGFnZW50X2FjdGlvbnNjYXBzdWxlX2FjdGlvbl90eXBlZmRlY2lkZaBZBRt7ImFjdGlvbl9pZCI6Im9wZXJhdGlvbjpzdGFsZV9ldmlkZW5jZSIsImFjdGlvbl90eXBlIjoiZGVjaWRlIiwiYXNzdXJhbmNlIjp7ImF0dGVzdGF0aW9uX21vZGUiOiJzZWxmX2F0dGVzdGVkIiwiZWZmZWN0X21vZGUiOiJub3RfYXBwbGljYWJsZSIsImxlZGdlcl9tb2RlIjoic3RhbmRhbG9uZSJ9LCJjYXBzdWxlX2lkIjoiY2JhNmJiN2RkNTNjYTMwMDU2ZDY5ZDdmNDZjMTVkMDE3M2YwYjFkZWUxMmVmNTBkMjNmOThmMTIwMmVhYjVmYyIsImNvbnN0cmFpbnRzIjpbeyJibG9ja2luZyI6dHJ1ZSwiZXZpZGVuY2VfZGlnZXN0IjoiNWI3NjQ1MDVhNmJjMTJlNzU5OWNmYjZiZGM4NjY3ODY0YmZkODE0ZTQ5ZjUyMWFjOGJjNTc0YTIxNmY4N2JiOSIsImlkIjoiYWkuZW1pbGlhcHJvdG9jb2wuZXhhY3RfYWN0aW9uIiwicmVzdWx0IjoicGFzcyIsInNldmVyaXR5IjoiY3JpdGljYWwifSx7ImJsb2NraW5nIjp0cnVlLCJldmlkZW5jZV9kaWdlc3QiOiIzMGFhY2Q1ODVmMjk2Y2MyMWRjMmNlZTM1NzY5Y2Y1MjE3Njg0NGU5MTliYjlhMjRiZjA1ZjgwYzVhYjViN2I5IiwiaWQiOiJhaS5lbWlsaWFwcm90b2NvbC5hZG1pc3Npb24iLCJyZXN1bHQiOiJmYWlsIiwic2V2ZXJpdHkiOiJjcml0aWNhbCJ9XSwiZGV2ZWxvcGVyIjoiYWdlbnQ6dHJlYXN1cnktYm90OnYxIiwiZGlzcG9zaXRpb24iOnsiYXBwcm92ZXIiOiJwb2xpY3kiLCJhdXRob3JpdHkiOiJlcC1jYWlkOmNhaWQ6MTpwYXltZW50LnJlbGVhc2UuMTpqY3Mtc2hhMjU2OlczWkZCYWE4RXVkWm5QdHIzSVpuaGt2OWdVNUo5U0dzaThWMG9oYjRlN2siLCJkZWNpc2lvbiI6InJlamVjdCIsImh1bWFuX2Rpc3Bvc2VkIjpmYWxzZSwicmVhc29uX2RpZ2VzdCI6ImJlNGQ3M2U0YTE5MGFmMWY5YzRhY2ViYTRkZWFjOWVmOTY4ZDRkNTBjMDY0OGFmMTFmMTJlODJmOGM5NzA3NWIiLCJ2ZXJkaWN0X2NsYXNzIjoiZGVuaWVkIn0sImRvbWFpbiI6ImFjdGlvbiIsImVmZmVjdCI6eyJleHRlcm5hbF9yZWYiOiJwYXltZW50OmFjbWU6MjAyNi0wOC0wNDowMDAxIiwiaXJyZXZlcnNpYmlsaXR5X2NsYXNzIjoib25lX3dheV9jb25zZXF1ZW50aWFsIiwic3RhdHVzIjoicGxhbm5lZCIsInR5cGUiOiJhaS5lbWlsaWFwcm90b2NvbC5wYXltZW50X3JlbGVhc2UifSwiZm9ybWF0X3ZlcnNpb24iOiIyIiwib3BlcmF0b3IiOiJvcmdhbml6YXRpb246ZXhhbXBsZS10cmVhc3VyeSIsInByb3ZlbmFuY2UiOiJnYXRlIiwic3BlY192ZXJzaW9uIjoiZHJhZnQtbWloLXNjaXR0LWFnZW50LWFjdGlvbi1jYXBzdWxlLTAwIiwidGltZXN0YW1wIjoiMjAyNi0wOC0wNFQyMDowMDowMFoifVhACWURHGl7ROu3csm4LBUs1zvpcl61XmC4DwlBZKhdvCAqfIU1NRCfXFw03zP8FGeleB-KXRo4SdR-r52VSrhVBw",
+            "statement_digest": "sha256:a9c83e8ce4803b0a171129c99123f15b094aafcc79f850f4029bfd67ee5636f0",
+            "capsule": {
+              "spec_version": "draft-mih-scitt-agent-action-capsule-00",
+              "format_version": "2",
+              "capsule_id": "cba6bb7dd53ca30056d69d7f46c15d0173f0b1dee12ef50d23f98f1202eab5fc",
+              "action_id": "operation:stale_evidence",
+              "action_type": "decide",
+              "operator": "organization:example-treasury",
+              "developer": "agent:treasury-bot:v1",
+              "timestamp": "2026-08-04T20:00:00Z",
+              "domain": "action",
+              "provenance": "gate",
+              "effect": {
+                "type": "ai.emiliaprotocol.payment_release",
+                "external_ref": "payment:acme:2026-08-04:0001",
+                "irreversibility_class": "one_way_consequential",
+                "status": "planned"
+              },
+              "assurance": {
+                "attestation_mode": "self_attested",
+                "effect_mode": "not_applicable",
+                "ledger_mode": "standalone"
+              },
+              "disposition": {
+                "decision": "reject",
+                "approver": "policy",
+                "human_disposed": false,
+                "authority": "ep-caid:caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+                "verdict_class": "denied",
+                "reason_digest": "be4d73e4a190af1f9c4aceba4deac9ef968d4d50c0648af11f12e82f8c97075b"
+              },
+              "constraints": [
+                {
+                  "id": "ai.emiliaprotocol.exact_action",
+                  "result": "pass",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9"
+                },
+                {
+                  "id": "ai.emiliaprotocol.admission",
+                  "result": "fail",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "30aacd585f296cc21dc2cee35769cf52176844e919bb9a24bf05f80c5ab5b7b9"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "action_linkage": "MATCH",
+      "principal_linkage": "RESOLVED",
+      "evidence_satisfaction": "UNSATISFIED",
+      "decision": "NOT_AUTHORIZED",
+      "admission": "REFUSED",
+      "outcome": "NONE",
+      "reason_codes": [
+        "evidence_stale"
+      ],
+      "verifier": {
+        "status": "PASS",
+        "crashed": false
+      }
+    },
+    {
+      "@version": "EP-ACCOUNTABILITY-ATTEMPT-RESULT-v1",
+      "attempt_id": "already_consumed_replay",
+      "native_results": [
+        {
+          "profile": "CAID",
+          "status": "VERIFIED",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "reasons": []
+        },
+        {
+          "profile": "human_authorization",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "human:jane.doe"
+        },
+        {
+          "profile": "machine_policy",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "organization:treasury-policy"
+        },
+        {
+          "profile": "AEC",
+          "status": "SATISFIED",
+          "action_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "expected_action_bound": true,
+          "reasons": []
+        },
+        {
+          "profile": "AEB",
+          "status": "REFUSE",
+          "case_digest": "sha256:61d997a82bab39b5f630611bd8714150d80dc321ec3f5ef86f2c0eefa7db0b81",
+          "result": {
+            "verification": "VERIFIED",
+            "acceptance": "ACCEPTED",
+            "action_match": "MATCH",
+            "satisfaction": "SATISFIED",
+            "authorization": "AUTHORIZED",
+            "reservation": "OPERATION_REPLAY",
+            "custody": "TERMINAL",
+            "provider_outcome": "COMMITTED",
+            "effect_relation": "OBSERVED_AS_REQUESTED",
+            "retry": "REFUSED",
+            "reconciliation": "NOT_REQUIRED",
+            "decision": "REFUSE",
+            "reasons": [
+              "operation_replay"
+            ]
+          }
+        },
+        {
+          "profile": "draft-mih-scitt-agent-action-capsule-00",
+          "status": "VERIFIED",
+          "class_1": {
+            "profile": "draft-mih-scitt-agent-action-capsule-00",
+            "class": "CLASS_1_CANDIDATE",
+            "ok": true,
+            "findings": [
+              {
+                "id": "class1.substrate",
+                "status": "PASS",
+                "detail": "COSE_Sign1 and protected claims"
+              },
+              {
+                "id": "class1.structure",
+                "status": "PASS",
+                "detail": "required fields, types, and integer-only JSON numbers"
+              },
+              {
+                "id": "class1.capsule_id",
+                "status": "PASS",
+                "detail": "recomputed normalized Capsule content address"
+              },
+              {
+                "id": "class1.confirmed_effect",
+                "status": "PASS",
+                "detail": "confirmed requires response_digest"
+              },
+              {
+                "id": "class1.verdict_effect",
+                "status": "PASS",
+                "detail": "non-dispatch verdicts require not_applicable"
+              },
+              {
+                "id": "class1.effect_attestation",
+                "status": "PASS",
+                "detail": "attestation matrix including planned carve"
+              },
+              {
+                "id": "class1.chain",
+                "status": "PASS",
+                "detail": "standalone fixture carries no unresolved parent"
+              },
+              {
+                "id": "class1.assurance",
+                "status": "PASS",
+                "detail": "assurance modes rederived from verified bytes"
+              },
+              {
+                "id": "class1.disposition_honesty",
+                "status": "PASS",
+                "detail": "human_disposed is consistent with approver"
+              },
+              {
+                "id": "class1.registry",
+                "status": "PASS",
+                "detail": "fixture registry values are recognized"
+              }
+            ],
+            "capsule_id": "3c61cce446e2bbeeec62aede9bea0701e875600d70f649fcd7cfd6f7cb3ae97d",
+            "statement_digest": "sha256:654946c8875740abb67adb8a311924540ac5c2f7afa44c552cd96f0ba23dbb8e",
+            "class_2": {
+              "status": "NOT_EVALUATED",
+              "reason": "constraint_manifest_and_private_evidence_not_supplied"
+            },
+            "nonclaim": "Bounded independent fixture verifier; not general Capsule conformance."
+          },
+          "class_2": {
+            "status": "NOT_EVALUATED",
+            "reason": "constraint_manifest_and_private_evidence_not_supplied"
+          },
+          "signed_statement": {
+            "media_type": "application/agent-action-capsule+json",
+            "anchoring": "unregistered_signed_statement",
+            "cose_sign1_b64u": "0oRZAT2kAScDeCVhcHBsaWNhdGlvbi9hZ2VudC1hY3Rpb24tY2Fwc3VsZStqc29uBFglZW1pbGlhLWNvbXBvc2l0aW9uLXZlY3Rvci1jYXBzdWxlLWtleQ-lAXVhZ2VudDp0cmVhc3VyeS1ib3Q6djFzY2Fwc3VsZV9kZWNpc2lvbl9pZHghb3BlcmF0aW9uOmFscmVhZHlfY29uc3VtZWRfcmVwbGF5AnhYdXJuOmFnZW50LWFjdGlvbi1jYXBzdWxlOm9yZ2FuaXphdGlvbjpleGFtcGxlLXRyZWFzdXJ5Om9wZXJhdGlvbjphbHJlYWR5X2NvbnN1bWVkX3JlcGxheXZjYXBzdWxlX3N0YXRlbWVudF90eXBlbGFnZW50X2FjdGlvbnNjYXBzdWxlX2FjdGlvbl90eXBlZmRlY2lkZaBZBSV7ImFjdGlvbl9pZCI6Im9wZXJhdGlvbjphbHJlYWR5X2NvbnN1bWVkX3JlcGxheSIsImFjdGlvbl90eXBlIjoiZGVjaWRlIiwiYXNzdXJhbmNlIjp7ImF0dGVzdGF0aW9uX21vZGUiOiJzZWxmX2F0dGVzdGVkIiwiZWZmZWN0X21vZGUiOiJub3RfYXBwbGljYWJsZSIsImxlZGdlcl9tb2RlIjoic3RhbmRhbG9uZSJ9LCJjYXBzdWxlX2lkIjoiM2M2MWNjZTQ0NmUyYmJlZWVjNjJhZWRlOWJlYTA3MDFlODc1NjAwZDcwZjY0OWZjZDdjZmQ2ZjdjYjNhZTk3ZCIsImNvbnN0cmFpbnRzIjpbeyJibG9ja2luZyI6dHJ1ZSwiZXZpZGVuY2VfZGlnZXN0IjoiNWI3NjQ1MDVhNmJjMTJlNzU5OWNmYjZiZGM4NjY3ODY0YmZkODE0ZTQ5ZjUyMWFjOGJjNTc0YTIxNmY4N2JiOSIsImlkIjoiYWkuZW1pbGlhcHJvdG9jb2wuZXhhY3RfYWN0aW9uIiwicmVzdWx0IjoicGFzcyIsInNldmVyaXR5IjoiY3JpdGljYWwifSx7ImJsb2NraW5nIjp0cnVlLCJldmlkZW5jZV9kaWdlc3QiOiIzNTQxYjQ1OGFiMTE4OGU2MTdjYjk5NzY2ZTRkMzgxNzJhYWE1YjRiN2YzNWM0NDI5ZjFhZDZhMWQ4NDIzZTkxIiwiaWQiOiJhaS5lbWlsaWFwcm90b2NvbC5hZG1pc3Npb24iLCJyZXN1bHQiOiJmYWlsIiwic2V2ZXJpdHkiOiJjcml0aWNhbCJ9XSwiZGV2ZWxvcGVyIjoiYWdlbnQ6dHJlYXN1cnktYm90OnYxIiwiZGlzcG9zaXRpb24iOnsiYXBwcm92ZXIiOiJwb2xpY3kiLCJhdXRob3JpdHkiOiJlcC1jYWlkOmNhaWQ6MTpwYXltZW50LnJlbGVhc2UuMTpqY3Mtc2hhMjU2OlczWkZCYWE4RXVkWm5QdHIzSVpuaGt2OWdVNUo5U0dzaThWMG9oYjRlN2siLCJkZWNpc2lvbiI6InJlamVjdCIsImh1bWFuX2Rpc3Bvc2VkIjpmYWxzZSwicmVhc29uX2RpZ2VzdCI6IjVjMTFjMzg0NzBiMWE0YWYwOTQzOGY0N2ExMWJiODI4ODNlYTkzZTkzMWMzZjEwMDhlMTdhZTQ1NmNhOTE3OWYiLCJ2ZXJkaWN0X2NsYXNzIjoiYmxvY2tlZCJ9LCJkb21haW4iOiJhY3Rpb24iLCJlZmZlY3QiOnsiZXh0ZXJuYWxfcmVmIjoicGF5bWVudDphY21lOjIwMjYtMDgtMDQ6MDAwMSIsImlycmV2ZXJzaWJpbGl0eV9jbGFzcyI6Im9uZV93YXlfY29uc2VxdWVudGlhbCIsInN0YXR1cyI6InBsYW5uZWQiLCJ0eXBlIjoiYWkuZW1pbGlhcHJvdG9jb2wucGF5bWVudF9yZWxlYXNlIn0sImZvcm1hdF92ZXJzaW9uIjoiMiIsIm9wZXJhdG9yIjoib3JnYW5pemF0aW9uOmV4YW1wbGUtdHJlYXN1cnkiLCJwcm92ZW5hbmNlIjoiZ2F0ZSIsInNwZWNfdmVyc2lvbiI6ImRyYWZ0LW1paC1zY2l0dC1hZ2VudC1hY3Rpb24tY2Fwc3VsZS0wMCIsInRpbWVzdGFtcCI6IjIwMjYtMDgtMDRUMjA6MDA6MDBaIn1YQOjLDUwrt9ZNRbVrlKbBs1dFL5J0FroR5mhLgpalNmv3dcjfjCndN-1TBmajNn8R5YFPeMu60-8ZG07rBr1zLAI",
+            "statement_digest": "sha256:654946c8875740abb67adb8a311924540ac5c2f7afa44c552cd96f0ba23dbb8e",
+            "capsule": {
+              "spec_version": "draft-mih-scitt-agent-action-capsule-00",
+              "format_version": "2",
+              "capsule_id": "3c61cce446e2bbeeec62aede9bea0701e875600d70f649fcd7cfd6f7cb3ae97d",
+              "action_id": "operation:already_consumed_replay",
+              "action_type": "decide",
+              "operator": "organization:example-treasury",
+              "developer": "agent:treasury-bot:v1",
+              "timestamp": "2026-08-04T20:00:00Z",
+              "domain": "action",
+              "provenance": "gate",
+              "effect": {
+                "type": "ai.emiliaprotocol.payment_release",
+                "external_ref": "payment:acme:2026-08-04:0001",
+                "irreversibility_class": "one_way_consequential",
+                "status": "planned"
+              },
+              "assurance": {
+                "attestation_mode": "self_attested",
+                "effect_mode": "not_applicable",
+                "ledger_mode": "standalone"
+              },
+              "disposition": {
+                "decision": "reject",
+                "approver": "policy",
+                "human_disposed": false,
+                "authority": "ep-caid:caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+                "verdict_class": "blocked",
+                "reason_digest": "5c11c38470b1a4af09438f47a11bb82883ea93e931c3f1008e17ae456ca9179f"
+              },
+              "constraints": [
+                {
+                  "id": "ai.emiliaprotocol.exact_action",
+                  "result": "pass",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9"
+                },
+                {
+                  "id": "ai.emiliaprotocol.admission",
+                  "result": "fail",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "3541b458ab1188e617cb99766e4d38172aaa5b4b7f35c4429f1ad6a1d8423e91"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "action_linkage": "MATCH",
+      "principal_linkage": "RESOLVED",
+      "evidence_satisfaction": "SATISFIED",
+      "decision": "AUTHORIZED",
+      "admission": "REFUSED_ALREADY_CONSUMED",
+      "outcome": "NONE",
+      "reason_codes": [
+        "operation_replay"
+      ],
+      "verifier": {
+        "status": "PASS",
+        "crashed": false
+      }
+    },
+    {
+      "@version": "EP-ACCOUNTABILITY-ATTEMPT-RESULT-v1",
+      "attempt_id": "timeout_before_dispatch",
+      "native_results": [
+        {
+          "profile": "CAID",
+          "status": "VERIFIED",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "reasons": []
+        },
+        {
+          "profile": "human_authorization",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "human:jane.doe"
+        },
+        {
+          "profile": "machine_policy",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "organization:treasury-policy"
+        },
+        {
+          "profile": "AEC",
+          "status": "SATISFIED",
+          "action_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "expected_action_bound": true,
+          "reasons": []
+        },
+        {
+          "profile": "AEB",
+          "status": "REFUSE",
+          "case_digest": "sha256:67bf3dfca689505724375e86ca0988b3de31dcd1c0659982b4468e21fb3a0553",
+          "result": {
+            "verification": "VERIFIED",
+            "acceptance": "ACCEPTED",
+            "action_match": "MATCH",
+            "satisfaction": "SATISFIED",
+            "authorization": "NOT_AUTHORIZED",
+            "reservation": "NOT_ATTEMPTED",
+            "custody": "UNRESERVED",
+            "provider_outcome": "NOT_INVOKED",
+            "effect_relation": "NOT_OBSERVED",
+            "retry": "NOT_APPLICABLE",
+            "reconciliation": "NOT_APPLICABLE",
+            "decision": "REFUSE",
+            "reasons": [
+              "local_policy_denied"
+            ]
+          }
+        },
+        {
+          "profile": "draft-mih-scitt-agent-action-capsule-00",
+          "status": "VERIFIED",
+          "class_1": {
+            "profile": "draft-mih-scitt-agent-action-capsule-00",
+            "class": "CLASS_1_CANDIDATE",
+            "ok": true,
+            "findings": [
+              {
+                "id": "class1.substrate",
+                "status": "PASS",
+                "detail": "COSE_Sign1 and protected claims"
+              },
+              {
+                "id": "class1.structure",
+                "status": "PASS",
+                "detail": "required fields, types, and integer-only JSON numbers"
+              },
+              {
+                "id": "class1.capsule_id",
+                "status": "PASS",
+                "detail": "recomputed normalized Capsule content address"
+              },
+              {
+                "id": "class1.confirmed_effect",
+                "status": "PASS",
+                "detail": "confirmed requires response_digest"
+              },
+              {
+                "id": "class1.verdict_effect",
+                "status": "PASS",
+                "detail": "non-dispatch verdicts require not_applicable"
+              },
+              {
+                "id": "class1.effect_attestation",
+                "status": "PASS",
+                "detail": "attestation matrix including planned carve"
+              },
+              {
+                "id": "class1.chain",
+                "status": "PASS",
+                "detail": "standalone fixture carries no unresolved parent"
+              },
+              {
+                "id": "class1.assurance",
+                "status": "PASS",
+                "detail": "assurance modes rederived from verified bytes"
+              },
+              {
+                "id": "class1.disposition_honesty",
+                "status": "PASS",
+                "detail": "human_disposed is consistent with approver"
+              },
+              {
+                "id": "class1.registry",
+                "status": "PASS",
+                "detail": "fixture registry values are recognized"
+              }
+            ],
+            "capsule_id": "a31ade8d5cf9f14d6e2b75a2fe053d1f054883b7e08c4efd9a8f1fcaeceb17bf",
+            "statement_digest": "sha256:64ada5beef85c3366870b60609aeadd6b4f6d57d824dbeb3944d355687ec8398",
+            "class_2": {
+              "status": "NOT_EVALUATED",
+              "reason": "constraint_manifest_and_private_evidence_not_supplied"
+            },
+            "nonclaim": "Bounded independent fixture verifier; not general Capsule conformance."
+          },
+          "class_2": {
+            "status": "NOT_EVALUATED",
+            "reason": "constraint_manifest_and_private_evidence_not_supplied"
+          },
+          "signed_statement": {
+            "media_type": "application/agent-action-capsule+json",
+            "anchoring": "unregistered_signed_statement",
+            "cose_sign1_b64u": "0oRZAT2kAScDeCVhcHBsaWNhdGlvbi9hZ2VudC1hY3Rpb24tY2Fwc3VsZStqc29uBFglZW1pbGlhLWNvbXBvc2l0aW9uLXZlY3Rvci1jYXBzdWxlLWtleQ-lAXVhZ2VudDp0cmVhc3VyeS1ib3Q6djFzY2Fwc3VsZV9kZWNpc2lvbl9pZHghb3BlcmF0aW9uOnRpbWVvdXRfYmVmb3JlX2Rpc3BhdGNoAnhYdXJuOmFnZW50LWFjdGlvbi1jYXBzdWxlOm9yZ2FuaXphdGlvbjpleGFtcGxlLXRyZWFzdXJ5Om9wZXJhdGlvbjp0aW1lb3V0X2JlZm9yZV9kaXNwYXRjaHZjYXBzdWxlX3N0YXRlbWVudF90eXBlbGFnZW50X2FjdGlvbnNjYXBzdWxlX2FjdGlvbl90eXBlZmRlY2lkZaBZBSV7ImFjdGlvbl9pZCI6Im9wZXJhdGlvbjp0aW1lb3V0X2JlZm9yZV9kaXNwYXRjaCIsImFjdGlvbl90eXBlIjoiZGVjaWRlIiwiYXNzdXJhbmNlIjp7ImF0dGVzdGF0aW9uX21vZGUiOiJzZWxmX2F0dGVzdGVkIiwiZWZmZWN0X21vZGUiOiJub3RfYXBwbGljYWJsZSIsImxlZGdlcl9tb2RlIjoic3RhbmRhbG9uZSJ9LCJjYXBzdWxlX2lkIjoiYTMxYWRlOGQ1Y2Y5ZjE0ZDZlMmI3NWEyZmUwNTNkMWYwNTQ4ODNiN2UwOGM0ZWZkOWE4ZjFmY2FlY2ViMTdiZiIsImNvbnN0cmFpbnRzIjpbeyJibG9ja2luZyI6dHJ1ZSwiZXZpZGVuY2VfZGlnZXN0IjoiNWI3NjQ1MDVhNmJjMTJlNzU5OWNmYjZiZGM4NjY3ODY0YmZkODE0ZTQ5ZjUyMWFjOGJjNTc0YTIxNmY4N2JiOSIsImlkIjoiYWkuZW1pbGlhcHJvdG9jb2wuZXhhY3RfYWN0aW9uIiwicmVzdWx0IjoicGFzcyIsInNldmVyaXR5IjoiY3JpdGljYWwifSx7ImJsb2NraW5nIjp0cnVlLCJldmlkZW5jZV9kaWdlc3QiOiI3ZmJmNzcwYjNkNGI4NDU3ZTM2Yzk5MzEwNzgzMGU1MDBmZGMyMzU0NzA2M2QxY2UzZGFmNDBkMDljODJmNmEwIiwiaWQiOiJhaS5lbWlsaWFwcm90b2NvbC5hZG1pc3Npb24iLCJyZXN1bHQiOiJmYWlsIiwic2V2ZXJpdHkiOiJjcml0aWNhbCJ9XSwiZGV2ZWxvcGVyIjoiYWdlbnQ6dHJlYXN1cnktYm90OnYxIiwiZGlzcG9zaXRpb24iOnsiYXBwcm92ZXIiOiJwb2xpY3kiLCJhdXRob3JpdHkiOiJlcC1jYWlkOmNhaWQ6MTpwYXltZW50LnJlbGVhc2UuMTpqY3Mtc2hhMjU2OlczWkZCYWE4RXVkWm5QdHIzSVpuaGt2OWdVNUo5U0dzaThWMG9oYjRlN2siLCJkZWNpc2lvbiI6InJlamVjdCIsImh1bWFuX2Rpc3Bvc2VkIjpmYWxzZSwicmVhc29uX2RpZ2VzdCI6IjQ3MDcxYmJiMzkwNjU5Mzk4MDRlMTkwYzc0YmI0NmI4ZDdlMDdhOGJjZDNhZDViNmYzNmVmZmQ2YjllMzU4ODYiLCJ2ZXJkaWN0X2NsYXNzIjoidGltZW91dCJ9LCJkb21haW4iOiJhY3Rpb24iLCJlZmZlY3QiOnsiZXh0ZXJuYWxfcmVmIjoicGF5bWVudDphY21lOjIwMjYtMDgtMDQ6MDAwMSIsImlycmV2ZXJzaWJpbGl0eV9jbGFzcyI6Im9uZV93YXlfY29uc2VxdWVudGlhbCIsInN0YXR1cyI6InBsYW5uZWQiLCJ0eXBlIjoiYWkuZW1pbGlhcHJvdG9jb2wucGF5bWVudF9yZWxlYXNlIn0sImZvcm1hdF92ZXJzaW9uIjoiMiIsIm9wZXJhdG9yIjoib3JnYW5pemF0aW9uOmV4YW1wbGUtdHJlYXN1cnkiLCJwcm92ZW5hbmNlIjoiZ2F0ZSIsInNwZWNfdmVyc2lvbiI6ImRyYWZ0LW1paC1zY2l0dC1hZ2VudC1hY3Rpb24tY2Fwc3VsZS0wMCIsInRpbWVzdGFtcCI6IjIwMjYtMDgtMDRUMjA6MDA6MDBaIn1YQIn3KsscPcvzDDaxnZo2A0tErakx0vVulhLLkrrbvUuGTwx8-60vgfaW1fEE7PjgEKvLOBET2PXHFvR8eqNqngc",
+            "statement_digest": "sha256:64ada5beef85c3366870b60609aeadd6b4f6d57d824dbeb3944d355687ec8398",
+            "capsule": {
+              "spec_version": "draft-mih-scitt-agent-action-capsule-00",
+              "format_version": "2",
+              "capsule_id": "a31ade8d5cf9f14d6e2b75a2fe053d1f054883b7e08c4efd9a8f1fcaeceb17bf",
+              "action_id": "operation:timeout_before_dispatch",
+              "action_type": "decide",
+              "operator": "organization:example-treasury",
+              "developer": "agent:treasury-bot:v1",
+              "timestamp": "2026-08-04T20:00:00Z",
+              "domain": "action",
+              "provenance": "gate",
+              "effect": {
+                "type": "ai.emiliaprotocol.payment_release",
+                "external_ref": "payment:acme:2026-08-04:0001",
+                "irreversibility_class": "one_way_consequential",
+                "status": "planned"
+              },
+              "assurance": {
+                "attestation_mode": "self_attested",
+                "effect_mode": "not_applicable",
+                "ledger_mode": "standalone"
+              },
+              "disposition": {
+                "decision": "reject",
+                "approver": "policy",
+                "human_disposed": false,
+                "authority": "ep-caid:caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+                "verdict_class": "timeout",
+                "reason_digest": "47071bbb39065939804e190c74bb46b8d7e07a8bcd3ad5b6f36effd6b9e35886"
+              },
+              "constraints": [
+                {
+                  "id": "ai.emiliaprotocol.exact_action",
+                  "result": "pass",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9"
+                },
+                {
+                  "id": "ai.emiliaprotocol.admission",
+                  "result": "fail",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "7fbf770b3d4b8457e36c993107830e500fdc23547063d1ce3daf40d09c82f6a0"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "action_linkage": "MATCH",
+      "principal_linkage": "RESOLVED",
+      "evidence_satisfaction": "SATISFIED",
+      "decision": "NOT_AUTHORIZED",
+      "admission": "REFUSED_TIMEOUT_BEFORE_DISPATCH",
+      "outcome": "NONE",
+      "reason_codes": [
+        "local_policy_denied",
+        "timeout_before_dispatch"
+      ],
+      "verifier": {
+        "status": "PASS",
+        "crashed": false
+      }
+    },
+    {
+      "@version": "EP-ACCOUNTABILITY-ATTEMPT-RESULT-v1",
+      "attempt_id": "timeout_after_dispatch",
+      "native_results": [
+        {
+          "profile": "CAID",
+          "status": "VERIFIED",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "reasons": []
+        },
+        {
+          "profile": "human_authorization",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "human:jane.doe"
+        },
+        {
+          "profile": "machine_policy",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "organization:treasury-policy"
+        },
+        {
+          "profile": "AEC",
+          "status": "SATISFIED",
+          "action_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "expected_action_bound": true,
+          "reasons": []
+        },
+        {
+          "profile": "AEB",
+          "status": "INDETERMINATE",
+          "case_digest": "sha256:1f6cea91d24cdae617761861639909ddd27bf78173456812edf8304e3ea91805",
+          "result": {
+            "verification": "VERIFIED",
+            "acceptance": "ACCEPTED",
+            "action_match": "MATCH",
+            "satisfaction": "SATISFIED",
+            "authorization": "AUTHORIZED",
+            "reservation": "CONSUMED",
+            "custody": "INVOKING",
+            "provider_outcome": "INDETERMINATE",
+            "effect_relation": "INDETERMINATE",
+            "retry": "REFUSED",
+            "reconciliation": "REQUIRED",
+            "decision": "INDETERMINATE",
+            "reasons": [
+              "timeout_after_dispatch"
+            ]
+          }
+        },
+        {
+          "profile": "draft-mih-scitt-agent-action-capsule-00",
+          "status": "VERIFIED",
+          "class_1": {
+            "profile": "draft-mih-scitt-agent-action-capsule-00",
+            "class": "CLASS_1_CANDIDATE",
+            "ok": true,
+            "findings": [
+              {
+                "id": "class1.substrate",
+                "status": "PASS",
+                "detail": "COSE_Sign1 and protected claims"
+              },
+              {
+                "id": "class1.structure",
+                "status": "PASS",
+                "detail": "required fields, types, and integer-only JSON numbers"
+              },
+              {
+                "id": "class1.capsule_id",
+                "status": "PASS",
+                "detail": "recomputed normalized Capsule content address"
+              },
+              {
+                "id": "class1.confirmed_effect",
+                "status": "PASS",
+                "detail": "confirmed requires response_digest"
+              },
+              {
+                "id": "class1.verdict_effect",
+                "status": "PASS",
+                "detail": "non-dispatch verdicts require not_applicable"
+              },
+              {
+                "id": "class1.effect_attestation",
+                "status": "PASS",
+                "detail": "attestation matrix including planned carve"
+              },
+              {
+                "id": "class1.chain",
+                "status": "PASS",
+                "detail": "standalone fixture carries no unresolved parent"
+              },
+              {
+                "id": "class1.assurance",
+                "status": "PASS",
+                "detail": "assurance modes rederived from verified bytes"
+              },
+              {
+                "id": "class1.disposition_honesty",
+                "status": "PASS",
+                "detail": "human_disposed is consistent with approver"
+              },
+              {
+                "id": "class1.registry",
+                "status": "PASS",
+                "detail": "fixture registry values are recognized"
+              }
+            ],
+            "capsule_id": "44859e46037fbb2dc6f38a9c2b0544609e7bf73e5ffb9ad5f86a504d6331681b",
+            "statement_digest": "sha256:8fc2f0b3c86e7af2bb101c0cb4272f3f13f672bf2158edabab281e2f12bad49c",
+            "class_2": {
+              "status": "NOT_EVALUATED",
+              "reason": "constraint_manifest_and_private_evidence_not_supplied"
+            },
+            "nonclaim": "Bounded independent fixture verifier; not general Capsule conformance."
+          },
+          "class_2": {
+            "status": "NOT_EVALUATED",
+            "reason": "constraint_manifest_and_private_evidence_not_supplied"
+          },
+          "signed_statement": {
+            "media_type": "application/agent-action-capsule+json",
+            "anchoring": "unregistered_signed_statement",
+            "cose_sign1_b64u": "0oRZATukAScDeCVhcHBsaWNhdGlvbi9hZ2VudC1hY3Rpb24tY2Fwc3VsZStqc29uBFglZW1pbGlhLWNvbXBvc2l0aW9uLXZlY3Rvci1jYXBzdWxlLWtleQ-lAXVhZ2VudDp0cmVhc3VyeS1ib3Q6djFzY2Fwc3VsZV9kZWNpc2lvbl9pZHggb3BlcmF0aW9uOnRpbWVvdXRfYWZ0ZXJfZGlzcGF0Y2gCeFd1cm46YWdlbnQtYWN0aW9uLWNhcHN1bGU6b3JnYW5pemF0aW9uOmV4YW1wbGUtdHJlYXN1cnk6b3BlcmF0aW9uOnRpbWVvdXRfYWZ0ZXJfZGlzcGF0Y2h2Y2Fwc3VsZV9zdGF0ZW1lbnRfdHlwZWxhZ2VudF9hY3Rpb25zY2Fwc3VsZV9hY3Rpb25fdHlwZWZkZWNpZGWgWQWqeyJhY3Rpb25faWQiOiJvcGVyYXRpb246dGltZW91dF9hZnRlcl9kaXNwYXRjaCIsImFjdGlvbl90eXBlIjoiZGVjaWRlIiwiYXNzdXJhbmNlIjp7ImF0dGVzdGF0aW9uX21vZGUiOiJzZWxmX2F0dGVzdGVkIiwiZWZmZWN0X21vZGUiOiJkaXNwYXRjaGVkX3VuY29uZmlybWVkIiwibGVkZ2VyX21vZGUiOiJzdGFuZGFsb25lIn0sImNhcHN1bGVfaWQiOiI0NDg1OWU0NjAzN2ZiYjJkYzZmMzhhOWMyYjA1NDQ2MDllN2JmNzNlNWZmYjlhZDVmODZhNTA0ZDYzMzE2ODFiIiwiY29uc3RyYWludHMiOlt7ImJsb2NraW5nIjp0cnVlLCJldmlkZW5jZV9kaWdlc3QiOiI1Yjc2NDUwNWE2YmMxMmU3NTk5Y2ZiNmJkYzg2Njc4NjRiZmQ4MTRlNDlmNTIxYWM4YmM1NzRhMjE2Zjg3YmI5IiwiaWQiOiJhaS5lbWlsaWFwcm90b2NvbC5leGFjdF9hY3Rpb24iLCJyZXN1bHQiOiJwYXNzIiwic2V2ZXJpdHkiOiJjcml0aWNhbCJ9LHsiYmxvY2tpbmciOnRydWUsImV2aWRlbmNlX2RpZ2VzdCI6IjA3ODYxZjZhZWRhN2FhOWU2NzA2ZGNlNDQ2ZDFiNDk0NTYyNGMzNWRhOTExOTE0MjY2OWIwOTk2ODgzOTkxZmYiLCJpZCI6ImFpLmVtaWxpYXByb3RvY29sLmFkbWlzc2lvbiIsInJlc3VsdCI6InBhc3MiLCJzZXZlcml0eSI6ImNyaXRpY2FsIn1dLCJkZXZlbG9wZXIiOiJhZ2VudDp0cmVhc3VyeS1ib3Q6djEiLCJkaXNwb3NpdGlvbiI6eyJhcHByb3ZlciI6InBvbGljeSIsImF1dGhvcml0eSI6ImVwLWNhaWQ6Y2FpZDoxOnBheW1lbnQucmVsZWFzZS4xOmpjcy1zaGEyNTY6VzNaRkJhYThFdWRablB0cjNJWm5oa3Y5Z1U1SjlTR3NpOFYwb2hiNGU3ayIsImRlY2lzaW9uIjoicmVqZWN0IiwiaHVtYW5fZGlzcG9zZWQiOmZhbHNlLCJyZWFzb25fZGlnZXN0IjoiYzRhYTdlNGYyZTZmMmY1N2RmNWI0ZmIxZWRiOGM1ZDRjZDJjOTBhZDEzMDY5MzVmNTQxY2FlN2I0Y2FjMTY0NiIsInZlcmRpY3RfY2xhc3MiOiJ0aW1lb3V0In0sImRvbWFpbiI6ImFjdGlvbiIsImVmZmVjdCI6eyJlZmZlY3RfYXR0ZXN0YXRpb24iOiJydW50aW1lX2NsYWltZWQiLCJleHRlcm5hbF9yZWYiOiJwYXltZW50OmFjbWU6MjAyNi0wOC0wNDowMDAxIiwiaXJyZXZlcnNpYmlsaXR5X2NsYXNzIjoib25lX3dheV9jb25zZXF1ZW50aWFsIiwicmVxdWVzdF9kaWdlc3QiOiI5NDU3ZDY5Y2NjZDFkMTMxZTE2ZGZmYzE3YTZjZTIxMjY5Mzk1MWY1NDI2YmJkY2QxMDAwYzI1MGRkYzQ3YmZjIiwic3RhdHVzIjoiZGlzcGF0Y2hlZCIsInR5cGUiOiJhaS5lbWlsaWFwcm90b2NvbC5wYXltZW50X3JlbGVhc2UifSwiZm9ybWF0X3ZlcnNpb24iOiIyIiwib3BlcmF0b3IiOiJvcmdhbml6YXRpb246ZXhhbXBsZS10cmVhc3VyeSIsInByb3ZlbmFuY2UiOiJnYXRlIiwic3BlY192ZXJzaW9uIjoiZHJhZnQtbWloLXNjaXR0LWFnZW50LWFjdGlvbi1jYXBzdWxlLTAwIiwidGltZXN0YW1wIjoiMjAyNi0wOC0wNFQyMDowMDowMFoifVhA9e0elkHyqmqIjEODAs0mwFQYxoOqa0CUrbe4WTmonCsKonFJ5OUUKSQVVQjdYwz9eryXpJJrniyOZ0yXoTPrBg",
+            "statement_digest": "sha256:8fc2f0b3c86e7af2bb101c0cb4272f3f13f672bf2158edabab281e2f12bad49c",
+            "capsule": {
+              "spec_version": "draft-mih-scitt-agent-action-capsule-00",
+              "format_version": "2",
+              "capsule_id": "44859e46037fbb2dc6f38a9c2b0544609e7bf73e5ffb9ad5f86a504d6331681b",
+              "action_id": "operation:timeout_after_dispatch",
+              "action_type": "decide",
+              "operator": "organization:example-treasury",
+              "developer": "agent:treasury-bot:v1",
+              "timestamp": "2026-08-04T20:00:00Z",
+              "domain": "action",
+              "provenance": "gate",
+              "effect": {
+                "type": "ai.emiliaprotocol.payment_release",
+                "external_ref": "payment:acme:2026-08-04:0001",
+                "irreversibility_class": "one_way_consequential",
+                "status": "dispatched",
+                "request_digest": "9457d69cccd1d131e16dffc17a6ce212693951f5426bbdcd1000c250ddc47bfc",
+                "effect_attestation": "runtime_claimed"
+              },
+              "assurance": {
+                "attestation_mode": "self_attested",
+                "effect_mode": "dispatched_unconfirmed",
+                "ledger_mode": "standalone"
+              },
+              "disposition": {
+                "decision": "reject",
+                "approver": "policy",
+                "human_disposed": false,
+                "authority": "ep-caid:caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+                "verdict_class": "timeout",
+                "reason_digest": "c4aa7e4f2e6f2f57df5b4fb1edb8c5d4cd2c90ad1306935f541cae7b4cac1646"
+              },
+              "constraints": [
+                {
+                  "id": "ai.emiliaprotocol.exact_action",
+                  "result": "pass",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9"
+                },
+                {
+                  "id": "ai.emiliaprotocol.admission",
+                  "result": "pass",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "07861f6aeda7aa9e6706dce446d1b4945624c35da9119142669b0996883991ff"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "action_linkage": "MATCH",
+      "principal_linkage": "RESOLVED",
+      "evidence_satisfaction": "SATISFIED",
+      "decision": "AUTHORIZED",
+      "admission": "CONSUMED",
+      "outcome": "INDETERMINATE",
+      "reason_codes": [
+        "timeout_after_dispatch"
+      ],
+      "verifier": {
+        "status": "PASS",
+        "crashed": false
+      }
+    },
+    {
+      "@version": "EP-ACCOUNTABILITY-ATTEMPT-RESULT-v1",
+      "attempt_id": "independent_observer_contradiction",
+      "native_results": [
+        {
+          "profile": "CAID",
+          "status": "VERIFIED",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "reasons": []
+        },
+        {
+          "profile": "human_authorization",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "human:jane.doe"
+        },
+        {
+          "profile": "machine_policy",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "organization:treasury-policy"
+        },
+        {
+          "profile": "AEC",
+          "status": "SATISFIED",
+          "action_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "expected_action_bound": true,
+          "reasons": []
+        },
+        {
+          "profile": "AEB",
+          "status": "RECORDED",
+          "case_digest": "sha256:11fe0730850b69fd0338fa4f67b731cfb2e019d4cb83a349cb79129c732fe850",
+          "result": {
+            "verification": "VERIFIED",
+            "acceptance": "ACCEPTED",
+            "action_match": "MATCH",
+            "satisfaction": "SATISFIED",
+            "authorization": "AUTHORIZED",
+            "reservation": "CONSUMED",
+            "custody": "TERMINAL",
+            "provider_outcome": "COMMITTED",
+            "effect_relation": "DIVERGED",
+            "retry": "REFUSED",
+            "reconciliation": "NOT_REQUIRED",
+            "decision": "RECORDED",
+            "reasons": [
+              "provider_committed_effect_diverged"
+            ]
+          }
+        },
+        {
+          "profile": "draft-mih-scitt-agent-action-capsule-00",
+          "status": "VERIFIED",
+          "class_1": {
+            "profile": "draft-mih-scitt-agent-action-capsule-00",
+            "class": "CLASS_1_CANDIDATE",
+            "ok": true,
+            "findings": [
+              {
+                "id": "class1.substrate",
+                "status": "PASS",
+                "detail": "COSE_Sign1 and protected claims"
+              },
+              {
+                "id": "class1.structure",
+                "status": "PASS",
+                "detail": "required fields, types, and integer-only JSON numbers"
+              },
+              {
+                "id": "class1.capsule_id",
+                "status": "PASS",
+                "detail": "recomputed normalized Capsule content address"
+              },
+              {
+                "id": "class1.confirmed_effect",
+                "status": "PASS",
+                "detail": "confirmed requires response_digest"
+              },
+              {
+                "id": "class1.verdict_effect",
+                "status": "PASS",
+                "detail": "non-dispatch verdicts require not_applicable"
+              },
+              {
+                "id": "class1.effect_attestation",
+                "status": "PASS",
+                "detail": "attestation matrix including planned carve"
+              },
+              {
+                "id": "class1.chain",
+                "status": "PASS",
+                "detail": "standalone fixture carries no unresolved parent"
+              },
+              {
+                "id": "class1.assurance",
+                "status": "PASS",
+                "detail": "assurance modes rederived from verified bytes"
+              },
+              {
+                "id": "class1.disposition_honesty",
+                "status": "PASS",
+                "detail": "human_disposed is consistent with approver"
+              },
+              {
+                "id": "class1.registry",
+                "status": "PASS",
+                "detail": "fixture registry values are recognized"
+              }
+            ],
+            "capsule_id": "21815bee9fe1ae866ed5f4a7cd04904fa920dd4a5d86af2728331c6ddf0efca4",
+            "statement_digest": "sha256:fec07249218e16dcaa3ae7c63e583cf3e79cc2031363d23aefeb2e4f07cc0e75",
+            "class_2": {
+              "status": "NOT_EVALUATED",
+              "reason": "constraint_manifest_and_private_evidence_not_supplied"
+            },
+            "nonclaim": "Bounded independent fixture verifier; not general Capsule conformance."
+          },
+          "class_2": {
+            "status": "NOT_EVALUATED",
+            "reason": "constraint_manifest_and_private_evidence_not_supplied"
+          },
+          "signed_statement": {
+            "media_type": "application/agent-action-capsule+json",
+            "anchoring": "unregistered_signed_statement",
+            "cose_sign1_b64u": "0oRZAVOkAScDeCVhcHBsaWNhdGlvbi9hZ2VudC1hY3Rpb24tY2Fwc3VsZStqc29uBFglZW1pbGlhLWNvbXBvc2l0aW9uLXZlY3Rvci1jYXBzdWxlLWtleQ-lAXVhZ2VudDp0cmVhc3VyeS1ib3Q6djFzY2Fwc3VsZV9kZWNpc2lvbl9pZHgsb3BlcmF0aW9uOmluZGVwZW5kZW50X29ic2VydmVyX2NvbnRyYWRpY3Rpb24CeGN1cm46YWdlbnQtYWN0aW9uLWNhcHN1bGU6b3JnYW5pemF0aW9uOmV4YW1wbGUtdHJlYXN1cnk6b3BlcmF0aW9uOmluZGVwZW5kZW50X29ic2VydmVyX2NvbnRyYWRpY3Rpb252Y2Fwc3VsZV9zdGF0ZW1lbnRfdHlwZWxhZ2VudF9hY3Rpb25zY2Fwc3VsZV9hY3Rpb25fdHlwZWZkZWNpZGWgWQWneyJhY3Rpb25faWQiOiJvcGVyYXRpb246aW5kZXBlbmRlbnRfb2JzZXJ2ZXJfY29udHJhZGljdGlvbiIsImFjdGlvbl90eXBlIjoiZGVjaWRlIiwiYXNzdXJhbmNlIjp7ImF0dGVzdGF0aW9uX21vZGUiOiJzZWxmX2F0dGVzdGVkIiwiZWZmZWN0X21vZGUiOiJjb25maXJtZWQiLCJsZWRnZXJfbW9kZSI6InN0YW5kYWxvbmUifSwiY2Fwc3VsZV9pZCI6IjIxODE1YmVlOWZlMWFlODY2ZWQ1ZjRhN2NkMDQ5MDRmYTkyMGRkNGE1ZDg2YWYyNzI4MzMxYzZkZGYwZWZjYTQiLCJjb25zdHJhaW50cyI6W3siYmxvY2tpbmciOnRydWUsImV2aWRlbmNlX2RpZ2VzdCI6IjViNzY0NTA1YTZiYzEyZTc1OTljZmI2YmRjODY2Nzg2NGJmZDgxNGU0OWY1MjFhYzhiYzU3NGEyMTZmODdiYjkiLCJpZCI6ImFpLmVtaWxpYXByb3RvY29sLmV4YWN0X2FjdGlvbiIsInJlc3VsdCI6InBhc3MiLCJzZXZlcml0eSI6ImNyaXRpY2FsIn0seyJibG9ja2luZyI6dHJ1ZSwiZXZpZGVuY2VfZGlnZXN0IjoiOWMzODZjYjhlYWU2YTgyOTcwNDM3ZWYwMmYyNDdmMDg4ZDRhYmU3NmNjNzU3MDIwOTU2OWIyNjJiNGVhYzlmNCIsImlkIjoiYWkuZW1pbGlhcHJvdG9jb2wuYWRtaXNzaW9uIiwicmVzdWx0IjoicGFzcyIsInNldmVyaXR5IjoiY3JpdGljYWwifV0sImRldmVsb3BlciI6ImFnZW50OnRyZWFzdXJ5LWJvdDp2MSIsImRpc3Bvc2l0aW9uIjp7ImFwcHJvdmVyIjoiaHVtYW4iLCJhdXRob3JpdHkiOiJlcC1jYWlkOmNhaWQ6MTpwYXltZW50LnJlbGVhc2UuMTpqY3Mtc2hhMjU2OlczWkZCYWE4RXVkWm5QdHIzSVpuaGt2OWdVNUo5U0dzaThWMG9oYjRlN2siLCJkZWNpc2lvbiI6ImFjY2VwdCIsImh1bWFuX2Rpc3Bvc2VkIjp0cnVlLCJ2ZXJkaWN0X2NsYXNzIjoiZXhlY3V0ZWQifSwiZG9tYWluIjoiYWN0aW9uIiwiZWZmZWN0Ijp7ImVmZmVjdF9hdHRlc3RhdGlvbiI6ImdhdGVfZXhlY3V0ZWQiLCJleHRlcm5hbF9yZWYiOiJwYXltZW50OmFjbWU6MjAyNi0wOC0wNDowMDAxIiwiaXJyZXZlcnNpYmlsaXR5X2NsYXNzIjoib25lX3dheV9jb25zZXF1ZW50aWFsIiwicmVxdWVzdF9kaWdlc3QiOiI5NDU3ZDY5Y2NjZDFkMTMxZTE2ZGZmYzE3YTZjZTIxMjY5Mzk1MWY1NDI2YmJkY2QxMDAwYzI1MGRkYzQ3YmZjIiwicmVzcG9uc2VfZGlnZXN0IjoiNTcwYTE4MWVjYjJmNzJlY2YyOTM4YjZmNDU5ODI0OTIyNzg1M2MxNzgwM2JjY2NkNmY4YWIyMzU3ZDY5YzhiZiIsInN0YXR1cyI6ImNvbmZpcm1lZCIsInR5cGUiOiJhaS5lbWlsaWFwcm90b2NvbC5wYXltZW50X3JlbGVhc2UifSwiZm9ybWF0X3ZlcnNpb24iOiIyIiwib3BlcmF0b3IiOiJvcmdhbml6YXRpb246ZXhhbXBsZS10cmVhc3VyeSIsInByb3ZlbmFuY2UiOiJnYXRlIiwic3BlY192ZXJzaW9uIjoiZHJhZnQtbWloLXNjaXR0LWFnZW50LWFjdGlvbi1jYXBzdWxlLTAwIiwidGltZXN0YW1wIjoiMjAyNi0wOC0wNFQyMDowMDowMFoifVhAfwI41E3S661IO5DNwmR1ugonnm0Mgpb9V8EK5vbb8tfGGHeqmLObJ9q8kMEy8TYvZ7ncMg4BxnexrYI8NePeDQ",
+            "statement_digest": "sha256:fec07249218e16dcaa3ae7c63e583cf3e79cc2031363d23aefeb2e4f07cc0e75",
+            "capsule": {
+              "spec_version": "draft-mih-scitt-agent-action-capsule-00",
+              "format_version": "2",
+              "capsule_id": "21815bee9fe1ae866ed5f4a7cd04904fa920dd4a5d86af2728331c6ddf0efca4",
+              "action_id": "operation:independent_observer_contradiction",
+              "action_type": "decide",
+              "operator": "organization:example-treasury",
+              "developer": "agent:treasury-bot:v1",
+              "timestamp": "2026-08-04T20:00:00Z",
+              "domain": "action",
+              "provenance": "gate",
+              "effect": {
+                "type": "ai.emiliaprotocol.payment_release",
+                "external_ref": "payment:acme:2026-08-04:0001",
+                "irreversibility_class": "one_way_consequential",
+                "status": "confirmed",
+                "request_digest": "9457d69cccd1d131e16dffc17a6ce212693951f5426bbdcd1000c250ddc47bfc",
+                "response_digest": "570a181ecb2f72ecf2938b6f4598249227853c17803bcccd6f8ab2357d69c8bf",
+                "effect_attestation": "gate_executed"
+              },
+              "assurance": {
+                "attestation_mode": "self_attested",
+                "effect_mode": "confirmed",
+                "ledger_mode": "standalone"
+              },
+              "disposition": {
+                "decision": "accept",
+                "approver": "human",
+                "human_disposed": true,
+                "authority": "ep-caid:caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+                "verdict_class": "executed"
+              },
+              "constraints": [
+                {
+                  "id": "ai.emiliaprotocol.exact_action",
+                  "result": "pass",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9"
+                },
+                {
+                  "id": "ai.emiliaprotocol.admission",
+                  "result": "pass",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "9c386cb8eae6a82970437ef02f247f088d4abe76cc7570209569b262b4eac9f4"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "action_linkage": "MATCH",
+      "principal_linkage": "RESOLVED",
+      "evidence_satisfaction": "SATISFIED",
+      "decision": "AUTHORIZED",
+      "admission": "CONSUMED",
+      "outcome": "DIVERGENT",
+      "reason_codes": [
+        "independent_observer_contradiction",
+        "provider_committed_effect_diverged"
+      ],
+      "verifier": {
+        "status": "PASS",
+        "crashed": false
+      }
+    },
+    {
+      "@version": "EP-ACCOUNTABILITY-ATTEMPT-RESULT-v1",
+      "attempt_id": "unsupported_required_binding",
+      "native_results": [
+        {
+          "profile": "CAID",
+          "status": "VERIFIED",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "reasons": []
+        },
+        {
+          "profile": "human_authorization",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "human:jane.doe"
+        },
+        {
+          "profile": "machine_policy",
+          "status": "VERIFIED",
+          "profile_acceptance": "CURRENT",
+          "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "principal_id": "organization:treasury-policy"
+        },
+        {
+          "profile": "AEC",
+          "status": "SATISFIED",
+          "action_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "expected_action_bound": true,
+          "reasons": []
+        },
+        {
+          "profile": "draft-mih-scitt-agent-action-capsule-00",
+          "status": "VERIFIED",
+          "class_1": {
+            "profile": "draft-mih-scitt-agent-action-capsule-00",
+            "class": "CLASS_1_CANDIDATE",
+            "ok": true,
+            "findings": [
+              {
+                "id": "class1.substrate",
+                "status": "PASS",
+                "detail": "COSE_Sign1 and protected claims"
+              },
+              {
+                "id": "class1.structure",
+                "status": "PASS",
+                "detail": "required fields, types, and integer-only JSON numbers"
+              },
+              {
+                "id": "class1.capsule_id",
+                "status": "PASS",
+                "detail": "recomputed normalized Capsule content address"
+              },
+              {
+                "id": "class1.confirmed_effect",
+                "status": "PASS",
+                "detail": "confirmed requires response_digest"
+              },
+              {
+                "id": "class1.verdict_effect",
+                "status": "PASS",
+                "detail": "non-dispatch verdicts require not_applicable"
+              },
+              {
+                "id": "class1.effect_attestation",
+                "status": "PASS",
+                "detail": "attestation matrix including planned carve"
+              },
+              {
+                "id": "class1.chain",
+                "status": "PASS",
+                "detail": "standalone fixture carries no unresolved parent"
+              },
+              {
+                "id": "class1.assurance",
+                "status": "PASS",
+                "detail": "assurance modes rederived from verified bytes"
+              },
+              {
+                "id": "class1.disposition_honesty",
+                "status": "PASS",
+                "detail": "human_disposed is consistent with approver"
+              },
+              {
+                "id": "class1.registry",
+                "status": "PASS",
+                "detail": "fixture registry values are recognized"
+              }
+            ],
+            "capsule_id": "cebd13d407fa3f8ac8ec05ff34217e377968be148f7721adced0180cd9b221dc",
+            "statement_digest": "sha256:7dd6d14d7d0f21c3acc131655c6c7e2eb0557fbf93916dffddff08b259aa0b89",
+            "class_2": {
+              "status": "NOT_EVALUATED",
+              "reason": "constraint_manifest_and_private_evidence_not_supplied"
+            },
+            "nonclaim": "Bounded independent fixture verifier; not general Capsule conformance."
+          },
+          "class_2": {
+            "status": "NOT_EVALUATED",
+            "reason": "constraint_manifest_and_private_evidence_not_supplied"
+          },
+          "signed_statement": {
+            "media_type": "application/agent-action-capsule+json",
+            "anchoring": "unregistered_signed_statement",
+            "cose_sign1_b64u": "0oRZAUekAScDeCVhcHBsaWNhdGlvbi9hZ2VudC1hY3Rpb24tY2Fwc3VsZStqc29uBFglZW1pbGlhLWNvbXBvc2l0aW9uLXZlY3Rvci1jYXBzdWxlLWtleQ-lAXVhZ2VudDp0cmVhc3VyeS1ib3Q6djFzY2Fwc3VsZV9kZWNpc2lvbl9pZHgmb3BlcmF0aW9uOnVuc3VwcG9ydGVkX3JlcXVpcmVkX2JpbmRpbmcCeF11cm46YWdlbnQtYWN0aW9uLWNhcHN1bGU6b3JnYW5pemF0aW9uOmV4YW1wbGUtdHJlYXN1cnk6b3BlcmF0aW9uOnVuc3VwcG9ydGVkX3JlcXVpcmVkX2JpbmRpbmd2Y2Fwc3VsZV9zdGF0ZW1lbnRfdHlwZWxhZ2VudF9hY3Rpb25zY2Fwc3VsZV9hY3Rpb25fdHlwZWZkZWNpZGWgWQUpeyJhY3Rpb25faWQiOiJvcGVyYXRpb246dW5zdXBwb3J0ZWRfcmVxdWlyZWRfYmluZGluZyIsImFjdGlvbl90eXBlIjoiZGVjaWRlIiwiYXNzdXJhbmNlIjp7ImF0dGVzdGF0aW9uX21vZGUiOiJzZWxmX2F0dGVzdGVkIiwiZWZmZWN0X21vZGUiOiJub3RfYXBwbGljYWJsZSIsImxlZGdlcl9tb2RlIjoic3RhbmRhbG9uZSJ9LCJjYXBzdWxlX2lkIjoiY2ViZDEzZDQwN2ZhM2Y4YWM4ZWMwNWZmMzQyMTdlMzc3OTY4YmUxNDhmNzcyMWFkY2VkMDE4MGNkOWIyMjFkYyIsImNvbnN0cmFpbnRzIjpbeyJibG9ja2luZyI6dHJ1ZSwiZXZpZGVuY2VfZGlnZXN0IjoiNWI3NjQ1MDVhNmJjMTJlNzU5OWNmYjZiZGM4NjY3ODY0YmZkODE0ZTQ5ZjUyMWFjOGJjNTc0YTIxNmY4N2JiOSIsImlkIjoiYWkuZW1pbGlhcHJvdG9jb2wuZXhhY3RfYWN0aW9uIiwicmVzdWx0IjoicGFzcyIsInNldmVyaXR5IjoiY3JpdGljYWwifSx7ImJsb2NraW5nIjp0cnVlLCJldmlkZW5jZV9kaWdlc3QiOiI4MGI5YzFiZjJjYzc2YzM1NGNhOTljODA1NDkyMDE4NmI2ZjljMGY5MmM1NDVhZDgzY2IwYmViZDgxYWY5YWYwIiwiaWQiOiJhaS5lbWlsaWFwcm90b2NvbC5hZG1pc3Npb24iLCJyZXN1bHQiOiJmYWlsIiwic2V2ZXJpdHkiOiJjcml0aWNhbCJ9XSwiZGV2ZWxvcGVyIjoiYWdlbnQ6dHJlYXN1cnktYm90OnYxIiwiZGlzcG9zaXRpb24iOnsiYXBwcm92ZXIiOiJwb2xpY3kiLCJhdXRob3JpdHkiOiJlcC1jYWlkOmNhaWQ6MTpwYXltZW50LnJlbGVhc2UuMTpqY3Mtc2hhMjU2OlczWkZCYWE4RXVkWm5QdHIzSVpuaGt2OWdVNUo5U0dzaThWMG9oYjRlN2siLCJkZWNpc2lvbiI6InJlamVjdCIsImh1bWFuX2Rpc3Bvc2VkIjpmYWxzZSwicmVhc29uX2RpZ2VzdCI6ImE0NWY1MzQyNzUxNDY3YjMwM2IwY2Q4ODdiODZmMjMxNGQ5MjlhYTM3ZjM5YTBmYTI2YTNkNzg5YjgyNTAxOGEiLCJ2ZXJkaWN0X2NsYXNzIjoiZGVuaWVkIn0sImRvbWFpbiI6ImFjdGlvbiIsImVmZmVjdCI6eyJleHRlcm5hbF9yZWYiOiJwYXltZW50OmFjbWU6MjAyNi0wOC0wNDowMDAxIiwiaXJyZXZlcnNpYmlsaXR5X2NsYXNzIjoib25lX3dheV9jb25zZXF1ZW50aWFsIiwic3RhdHVzIjoicGxhbm5lZCIsInR5cGUiOiJhaS5lbWlsaWFwcm90b2NvbC5wYXltZW50X3JlbGVhc2UifSwiZm9ybWF0X3ZlcnNpb24iOiIyIiwib3BlcmF0b3IiOiJvcmdhbml6YXRpb246ZXhhbXBsZS10cmVhc3VyeSIsInByb3ZlbmFuY2UiOiJnYXRlIiwic3BlY192ZXJzaW9uIjoiZHJhZnQtbWloLXNjaXR0LWFnZW50LWFjdGlvbi1jYXBzdWxlLTAwIiwidGltZXN0YW1wIjoiMjAyNi0wOC0wNFQyMDowMDowMFoifVhAt-hEuvXBjrmOnA_tG6BOuHiUWZlcMUQUcdGwuBKjnBtEJU92FlFNg7mxE5YjZNmjREuWTS9luIVRo_cBGmJqDA",
+            "statement_digest": "sha256:7dd6d14d7d0f21c3acc131655c6c7e2eb0557fbf93916dffddff08b259aa0b89",
+            "capsule": {
+              "spec_version": "draft-mih-scitt-agent-action-capsule-00",
+              "format_version": "2",
+              "capsule_id": "cebd13d407fa3f8ac8ec05ff34217e377968be148f7721adced0180cd9b221dc",
+              "action_id": "operation:unsupported_required_binding",
+              "action_type": "decide",
+              "operator": "organization:example-treasury",
+              "developer": "agent:treasury-bot:v1",
+              "timestamp": "2026-08-04T20:00:00Z",
+              "domain": "action",
+              "provenance": "gate",
+              "effect": {
+                "type": "ai.emiliaprotocol.payment_release",
+                "external_ref": "payment:acme:2026-08-04:0001",
+                "irreversibility_class": "one_way_consequential",
+                "status": "planned"
+              },
+              "assurance": {
+                "attestation_mode": "self_attested",
+                "effect_mode": "not_applicable",
+                "ledger_mode": "standalone"
+              },
+              "disposition": {
+                "decision": "reject",
+                "approver": "policy",
+                "human_disposed": false,
+                "authority": "ep-caid:caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+                "verdict_class": "denied",
+                "reason_digest": "a45f5342751467b303b0cd887b86f2314d929aa37f39a0fa26a3d789b825018a"
+              },
+              "constraints": [
+                {
+                  "id": "ai.emiliaprotocol.exact_action",
+                  "result": "pass",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9"
+                },
+                {
+                  "id": "ai.emiliaprotocol.admission",
+                  "result": "fail",
+                  "severity": "critical",
+                  "blocking": true,
+                  "evidence_digest": "80b9c1bf2cc76c354ca99c8054920186b6f9c0f92c545ad83cb0bebd81af9af0"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "action_linkage": "MATCH",
+      "principal_linkage": "RESOLVED",
+      "evidence_satisfaction": "INDETERMINATE",
+      "decision": "INDETERMINATE",
+      "admission": "REFUSED",
+      "outcome": "NONE",
+      "reason_codes": [
+        "unsupported_required_binding:capsule.class3"
+      ],
+      "verifier": {
+        "status": "REFUSED",
+        "crashed": false
+      }
+    }
+  ],
+  "independence": {
+    "same_team": true,
+    "external_confirmation": false,
+    "claim": "candidate vector execution, not independent interoperability"
+  }
+}
