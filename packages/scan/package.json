@@ -35,6 +35,7 @@
     "risk-packs.js",
     "risk-packs.d.ts",
     "cli.mjs",
+    "brain.mjs",
     "codemod.mjs",
     "safe-file.mjs",
     "CHANGELOG.md",
@@ -44,7 +45,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "pretest": "npm run build",
-    "test": "node --test test.js authority.test.mjs classification.test.mjs packed-consumer.test.mjs"
+    "test": "node --test test.js authority.test.mjs classification.test.mjs brain.test.mjs packed-consumer.test.mjs"
   },
   "dependencies": {
     "@emilia-protocol/verify": "^3.10.0"

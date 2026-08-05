@@ -6,6 +6,9 @@ consequential actions. Point it at what your agent can do; it tells you what
 should require authorization evidence, and hands you proposed config to review.
 
 ```bash
+npx @emilia-protocol/scan brain ./tools.json       # local, interactive Authority Map
+npx @emilia-protocol/scan brain --sample           # generate the built-in demonstration
+
 npx @emilia-protocol/scan authority               # local config-derived authority inventory
 npx @emilia-protocol/scan --sample                 # classify the built-in surface
 npx @emilia-protocol/scan ./tools.json             # classify your MCP tool list
@@ -16,9 +19,61 @@ npx @emilia-protocol/scan protect ./tools.json
 npx @emilia-protocol/scan protect ./tools.json --apply
 node emilia/verify-setup.mjs                       # synthetic local refusal check
 node emilia/verify-setup.mjs --emit-handoff \
-  --reviewed-manifest-digest sha256:<reviewed-digest> \
-  --action <reviewed-tool-name>                    # explicit owner-only JSON handoff
+  --reviewed-manifest-digest 'sha256:<reviewed-digest>' \
+  --action '<reviewed-tool-name>'                  # replace placeholders after review
 ```
+
+## Local Authority Brain
+
+**See where your AI can act. Put a human in control before it matters.**
+
+`scan brain` runs the real static scanner and writes
+`emilia-authority-brain.html`, a responsive, interactive Authority Map that
+opens directly in a browser. It shows the declared source type, visible action
+counts, proposed classifications, confidence, reasons, material fields, and
+blind spots across the **Discover → Map → Protect → Prove** loop.
+
+The HTML is one self-contained local file. It contains no remote font, script,
+image, account flow, telemetry, upload, or network request. Dynamic values are
+rendered as text from an inert, HTML-escaped JSON model; arbitrary tool fields
+such as credential and argument objects are not copied into the dashboard.
+
+```bash
+# Default: owner-only ./emilia-authority-brain.html; refuses overwrite
+npx @emilia-protocol/scan brain ./tools.json
+
+# The output must remain one direct-child .html file in the current directory
+npx @emilia-protocol/scan brain ./tools.json --out authority-map.html
+
+# Explicit replacement of one existing regular, single-link output file
+npx @emilia-protocol/scan brain ./tools.json --out authority-map.html --force
+```
+
+Output is staged completely before installation and created with mode `0600`.
+Non-`.html`, nested, escaping, source-confusing, symlinked, hard-linked, and
+non-regular output paths are refused, as is silent overwrite. Forced replacement
+uses a no-replace install; if another file appears during replacement, it is not
+overwritten and the displaced original remains recoverable as a named backup.
+
+For a consequential MCP action, **Protect this action** selects the action and
+offers copyable versions of the existing `scan protect <input> --apply` and
+reviewed-action handoff commands, with the synthetic local refusal check between
+them. The action name is needed only by the handoff command; supported action
+names and input paths are POSIX-quoted as hostile values. Source-confusing
+control and bidirectional characters are refused. A leading-dash input filename
+is normalized to a relative path; a leading-dash action name remains visible but
+its unusable handoff command is withheld until the tool is renamed. The
+interaction does not edit the input or install a control. Review and place the
+generated Gate at the credential-owning dispatch boundary before making an
+enforcement claim.
+
+OpenAPI dashboards are deliberately passive-only until a durable, one-use HTTP
+admission edge is wired. They show the route-level proposal and the limitation;
+they do not emit a verification-only middleware or a protection command.
+
+**The scanner proposes. The owner reviews. Gate enforces.** A dashboard is a
+proposal, not an owner review, protected deployment, certification, or proof of
+complete mediation.
 
 `scan protect` (also available as the legacy `emilia-harden` bin) currently
 accepts MCP tool lists and generates a `withMcpGuard` wrap. OpenAPI remains a

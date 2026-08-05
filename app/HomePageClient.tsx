@@ -37,7 +37,7 @@ const PROBLEMS = [
 ];
 
 const SURFACES = [
-  { title: 'MCP and privileged tool-call profile', body: 'Scan the declared tool surface, choose one consequential action, then mediate its real executor path so it returns Receipt Required before mutation.', href: '/scan', accent: color.t2, tags: ['MCP', 'DEVELOPER ON-RAMP'] },
+  { title: 'Authority Brain for MCP and privileged tools', body: 'Map the declared tool surface locally, name what the scanner cannot see, choose one consequential action, then mediate its real executor path.', href: '/authority-brain', accent: color.t2, tags: ['LOCAL MAP', 'DEVELOPER ON-RAMP'] },
   { title: 'Government action profile', body: 'Apply Gate to disbursements, benefit-routing changes, provider enrollment, and accountable overrides at the system-of-record boundary.', href: '/govguard', accent: color.green, tags: ['GATE PROFILE', 'GOVERNMENT'] },
   { title: 'Financial action profile', body: 'Apply the same Gate to wire releases, beneficiary changes, account modifications, and privileged treasury operations before funds move.', href: '/finguard', accent: color.blue, tags: ['GATE PROFILE', 'FINANCIAL'] },
   { title: 'Energy action profile — GRACE', body: 'Apply Gate to bounded curtailment commands and preserve authorization, execution acknowledgment, and effect evidence without claiming meter truth.', href: '/grace', accent: color.green, tags: ['GATE PROFILE', 'ENERGY'] },
@@ -151,28 +151,27 @@ export default function HomePage() {
         <C>
           <motion.div className="ep-home-calm-copy" {...heroIn(0)}>
             <div className="ep-home-calm-kicker">
-              EMILIA Gate <span>· The Consequence Firewall</span>
+              EMILIA Authority Brain <span>· Local consequence control</span>
             </div>
-            <h1 id="home-trust-thesis">Stop consequential machine actions before they become irreversible.</h1>
+            <h1 id="home-trust-thesis">See where your AI can act. Put a human in control before it matters.</h1>
             <p style={{ fontFamily: font.mono, fontSize: 14, fontWeight: 600, color: color.gold, margin: '22px 0 0' }}>
               Protocol proves. Gate prevents.
             </p>
             <p className="ep-home-calm-lede ep-home-lede-desktop">
-              EMILIA Gate sits immediately before money moves, infrastructure changes, regulated
-              records update, or irreversible state changes. It verifies the exact authority and
-              evidence the resource owner requires, then consumes accepted authorization once.
+              Run the Authority Brain locally to map consequential declared actions the scanner can
+              see, review where exact authority is unresolved, and place EMILIA Gate in front of
+              one workflow before money, code, permissions, or regulated records change.
             </p>
             <p className="ep-home-calm-lede ep-home-lede-mobile">
-              Agents can have valid access and still do the wrong thing. Gate verifies exact-action
-              authority where money, code, or regulated records actually change—then lets the action run once.
+              See the consequential declared actions the scanner can see. Review the blind spots. Protect
+              one action with exact authority where money, code, or regulated records actually change.
             </p>
             <p className="ep-home-calm-detail">
-              On every protected path the resource owner fully mediates: no valid evidence, no
-              mutation.
+              The scanner proposes. You review. On a completely mediated protected path, Gate enforces.
             </p>
             <div className="ep-home-calm-actions">
-              <Link href="/scan" className="ep-home-hero-primary">Scan what your agents can reach</Link>
-              <Link href="/agent-guard" className="ep-home-hero-secondary">Protect one flagged tool →</Link>
+              <Link href="/authority-brain" className="ep-home-hero-primary">Open the Authority Brain</Link>
+              <Link href="/scan" className="ep-home-hero-secondary">Run the local scan →</Link>
               <Link href="/gate/live" className="ep-home-hero-secondary">Open the live reference →</Link>
             </div>
           </motion.div>
@@ -657,7 +656,7 @@ export default function HomePage() {
               borderRadius: radius.base, padding: '24px 26px', color: 'rgba(250,250,249,0.92)', overflowX: 'auto',
             }}>
               <div style={{ color: 'rgba(250,250,249,0.45)' }}>{'// scan first; dry-run by default'}</div>
-              <div>$ npx @emilia-protocol/scan authority</div>
+              <div>$ npx @emilia-protocol/scan brain ./tools.json</div>
               <div>$ npx @emilia-protocol/scan protect ./tools.json</div>
               <div style={{ height: 12 }} />
               <div style={{ color: 'rgba(250,250,249,0.45)' }}>{'// review, create, and run the local refusal check'}</div>

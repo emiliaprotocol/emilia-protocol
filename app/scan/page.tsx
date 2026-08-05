@@ -170,7 +170,7 @@ export default function AuthorityScanPage(): React.ReactElement {
                 operations may need action-bound evidence. Review that proposal yourself. Nothing is
                 enforced until a guard completely mediates the real executor path under your pinned policy and keys.
               </p>
-              <pre style={codeBox}>{`# inspect the declared action surface\nnpx @emilia-protocol/scan ./tools.json\n\n# generate a reviewed protection scaffold (dry-run)\nnpx @emilia-protocol/scan protect ./tools.json\n\n# create it, then run the synthetic refusal check\nnpx @emilia-protocol/scan protect ./tools.json --apply\nnode emilia/verify-setup.mjs`}</pre>
+              <pre style={codeBox}>{`# generate the local visual Authority Map\nnpx @emilia-protocol/scan brain ./tools.json\n\n# inspect the declared action surface in the terminal\nnpx @emilia-protocol/scan ./tools.json\n\n# generate a reviewed protection scaffold (dry-run)\nnpx @emilia-protocol/scan protect ./tools.json\n\n# create it, then run the synthetic refusal check\nnpx @emilia-protocol/scan protect ./tools.json --apply\nnode emilia/verify-setup.mjs`}</pre>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: 12, marginTop: 24 }}>
                 {[
                   ['01', 'Scan locally'],
@@ -184,7 +184,8 @@ export default function AuthorityScanPage(): React.ReactElement {
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 28 }}>
-                <Link href="/agent-guard" style={cta.primary}>Protect a flagged MCP tool</Link>
+                <Link href="/authority-brain" style={cta.primary}>Open the Authority Brain</Link>
+                <Link href="/agent-guard" style={cta.secondary}>Protect a flagged MCP tool</Link>
                 <Link href="/mcp" style={cta.secondary}>See the MCP integration</Link>
               </div>
             </div>

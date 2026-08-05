@@ -10,11 +10,11 @@ describe('public product naming and navigation contract', () => {
   it('keeps every top-navigation destination with a slash-form label', () => {
     const navigation = read('components/SiteNav.tsx');
     const expectedLinks = [
+      ['/authority-brain', '/brain'],
       ['/gate', '/gate'],
       ['/use-cases', '/solutions'],
       ['/docs', '/developers'],
       ['/protocol', '/protocol'],
-      ['/proof', '/proof'],
       ['/pricing', '/pricing'],
     ];
     for (const [href, label] of expectedLinks) {
