@@ -19,6 +19,12 @@ sides of dispatch, observer contradiction, and a verifier-level structured
 refusal. The vector remains a candidate until a second independent
 implementation reproduces the frozen bytes.
 
+The profile is exercised inside the broader
+[cross-slot Composition conformance mechanism](./COMPOSITION-CONFORMANCE-MECHANISM.md),
+which supplies one four-slot positive vector and thirteen paired
+negative/condition-removed controls without absorbing native slot
+conformance.
+
 A shared, byte-reproducible interop vector that threads **one action's digest**
 through the seam between an EMILIA authorization receipt (**WHO** approved) and
 Steven Mih's Agent Action Capsule (**WHAT** was done). The linkage is

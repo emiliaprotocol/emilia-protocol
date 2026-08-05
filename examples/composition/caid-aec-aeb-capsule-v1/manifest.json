@@ -25,9 +25,9 @@
     },
     {
       "role": "Capsule WHAT",
-      "revision": "draft-mih-scitt-agent-action-capsule-00",
-      "url": "https://www.ietf.org/archive/id/draft-mih-scitt-agent-action-capsule-00.txt",
-      "sha256": "sha256:c27df449cb57fba4248cf8f2b27eaed555b363cb78e581d809285777c090deb1"
+      "revision": "draft-mih-scitt-agent-action-capsule-02",
+      "url": "https://www.ietf.org/archive/id/draft-mih-scitt-agent-action-capsule-02.txt",
+      "sha256": "sha256:493428486c85e03624bc1d90e8265b072b98265b93b7bd50d55824688a1802d8"
     },
     {
       "role": "Composition",
@@ -55,7 +55,7 @@
     },
     {
       "path": "examples/composition/caid-aec-aeb-capsule-v1/run.mts",
-      "sha256": "sha256:dfe2893c5cfc398f495b310d1178ac0bda8c3deff7ec596f2af652675c80c58d"
+      "sha256": "sha256:ca120a51518c61c0bbdc3c30dfde5f4bd86cc6278ff090bead6a1be97b50cfc5"
     }
   ],
   "capsule_verifier_scope": {

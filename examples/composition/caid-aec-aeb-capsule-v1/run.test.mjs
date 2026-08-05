@@ -4,6 +4,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildCases, evaluateCase, runSuite } from './run.mjs';
+test('profile pins the active Capsule -02 revision', () => {
+    const run = runSuite();
+    const capsule = run.manifest.drafts.find((entry) => entry.role === 'Capsule WHAT');
+    assert.ok(capsule);
+    assert.equal(capsule.revision, 'draft-mih-scitt-agent-action-capsule-02');
+    assert.equal(capsule.sha256, 'sha256:493428486c85e03624bc1d90e8265b072b98265b93b7bd50d55824688a1802d8');
+});
 test('all eight composition attempts reproduce their expected axes', () => {
     const run = runSuite();
     assert.equal(run.report.case_count, 8);

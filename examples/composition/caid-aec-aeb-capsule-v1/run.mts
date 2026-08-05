@@ -38,7 +38,7 @@ import {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
 const FIXED_AT = '2026-08-04T20:00:00Z';
-const CAPSULE_SPEC = 'draft-mih-scitt-agent-action-capsule-00';
+const CAPSULE_SPEC = 'draft-mih-scitt-agent-action-capsule-02';
 const CAPSULE_FORMAT = '2';
 const CAPSULE_KEY_ID = 'emilia-composition-vector-capsule-key';
 const SUITE_VERSION = 'EP-CAID-AEC-AEB-CAPSULE-COMPOSITION-v1';
@@ -884,8 +884,8 @@ function sourceManifest(): RecordValue {
       {
         role: 'Capsule WHAT',
         revision: CAPSULE_SPEC,
-        url: 'https://www.ietf.org/archive/id/draft-mih-scitt-agent-action-capsule-00.txt',
-        sha256: 'sha256:c27df449cb57fba4248cf8f2b27eaed555b363cb78e581d809285777c090deb1',
+        url: 'https://www.ietf.org/archive/id/draft-mih-scitt-agent-action-capsule-02.txt',
+        sha256: 'sha256:493428486c85e03624bc1d90e8265b072b98265b93b7bd50d55824688a1802d8',
       },
       {
         role: 'Composition',

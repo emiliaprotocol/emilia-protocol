@@ -1,0 +1,15 @@
+{
+  "@version": "EP-COMPOSITION-CROSS-SLOT-EXTERNAL-REPORT-v1",
+  "status": "AWAITING_INDEPENDENT_RUN",
+  "implementation": null,
+  "implementation_owner": null,
+  "implementation_revision": null,
+  "manifest_digest": "sha256:f2cdeb77e2337d25d387c5468e3b69c1cc7541aa0340c91a7a91ba063cc22575",
+  "bundle_digest": "sha256:a1c28295a87882a32360b5a5d3c00583c25b8627c0628a7fe0707f1c17aa9470",
+  "report_digest": null,
+  "per_case_results": null,
+  "known_shared_dependencies": null,
+  "execution_date": null,
+  "toolchain": null,
+  "signed_by": null
+}
