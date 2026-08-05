@@ -151,7 +151,7 @@ export function encryptPollToken(token: string, scope: ApprovalTokenScope): Seal
   const key = keys.get(activeKeyId);
   if (!key) throw new Error('approval_token_encryption_key_unavailable');
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
   cipher.setAAD(aad(scope, activeKeyId));
   const ciphertext = Buffer.concat([cipher.update(token, 'utf8'), cipher.final()]);
   return {
@@ -197,7 +197,7 @@ export function decryptPollToken(sealed: SealedPollToken, scope: ApprovalTokenSc
   const key = encryptionKey(embeddedKeyId);
   let token: string;
   try {
-    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
     decipher.setAAD(authenticatedData);
     decipher.setAuthTag(tag);
     token = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
