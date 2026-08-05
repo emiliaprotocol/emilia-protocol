@@ -1,0 +1,105 @@
+/*
+ * Split-domain replay model for the focused ePrint manuscript.
+ *
+ * The model keeps the action-binding and user-verification structure of
+ * formal/tamarin/ep_receipt_core.spthy, but replaces its single global
+ * ConsumeOnce restriction with one restriction per consumption domain.
+ * It therefore asks a different question: does one-time consumption inside
+ * each isolated domain imply one-time acceptance across domains? It does not.
+ */
+
+theory ep_receipt_split_domains
+begin
+
+builtins: signing, hashing
+
+rule Register_Human_Key:
+    [ Fr(~ltk) ]
+  --[ RegisterKey($H) ]->
+    [ !HumanLtk($H, ~ltk)
+    , !HumanPk($H, pk(~ltk))
+    , Out(pk(~ltk))
+    ]
+
+rule RP_Pin_Key:
+    [ !HumanPk($H, pkH) ]
+  --[ PinKey($RP, $H, pkH) ]->
+    [ !PinnedKey($RP, $H, pkH) ]
+
+rule Request_Signoff:
+    [ In(a), Fr(~n) ]
+  --[ Requested($H, a, ~n) ]->
+    [ SignRequest($H, a, ~n) ]
+
+rule Human_UserVerify:
+    [ SignRequest(H, a, n) ]
+  --[ UV(H, a, n) ]->
+    [ UVDone(H, a, n) ]
+
+rule Human_Sign_Receipt:
+    [ UVDone(H, a, n)
+    , !HumanLtk(H, ltk)
+    ]
+  --[ Signed(H, a, n) ]->
+    [ Out(<a, n, sign(<'ep_signoff_v1', h(a), n>, ltk)>) ]
+
+rule Reveal_Human_Ltk:
+    [ !HumanLtk(H, ltk) ]
+  --[ RevealLtk(H) ]->
+    [ Out(ltk) ]
+
+/* D is the authoritative consumption domain. Each domain is locally atomic,
+ * but no rule coordinates D with any other domain. */
+rule RP_Accept_Local:
+    [ In(D)
+    , In(<a, n, sig>)
+    , !PinnedKey(RP, H, pkH)
+    ]
+  --[ AcceptLocal(D, RP, H, a, n)
+    , ConsumeLocal(D, <H, n>)
+    , Eq(verify(sig, <'ep_signoff_v1', h(a), n>, pkH), true)
+    ]->
+    [ ]
+
+restriction Equality:
+  "All x y #i. Eq(x, y) @ #i ==> x = y"
+
+restriction ConsumeOncePerDomain:
+  "All D x #i #j.
+      ConsumeLocal(D, x) @ #i & ConsumeLocal(D, x) @ #j ==> #i = #j"
+
+lemma executable_honest_receipt:
+  exists-trace
+  "Ex D RP H a n #u #s #i.
+      UV(H, a, n) @ #u
+    & Signed(H, a, n) @ #s
+    & AcceptLocal(D, RP, H, a, n) @ #i
+    & #u < #s & #s < #i
+    & not (Ex #r. RevealLtk(H) @ #r)"
+
+lemma action_binding_survives_local_consumption:
+  "All D RP H a n #i.
+      AcceptLocal(D, RP, H, a, n) @ #i
+    & not (Ex #r. RevealLtk(H) @ #r & #r < #i)
+    ==> (Ex #u #s.
+          UV(H, a, n) @ #u
+        & Signed(H, a, n) @ #s
+        & #u < #s & #s < #i)"
+
+lemma acceptance_is_injective_within_one_domain:
+  "All D RP1 RP2 H a n #i #j.
+      AcceptLocal(D, RP1, H, a, n) @ #i
+    & AcceptLocal(D, RP2, H, a, n) @ #j
+    ==> #i = #j"
+
+/* Expected to be falsified: two isolated domains can each consume the same
+ * authentic receipt once. Local atomicity does not compose into global
+ * injectivity. */
+lemma acceptance_is_globally_injective_across_domains:
+  "All D1 D2 RP1 RP2 H a n #i #j.
+      AcceptLocal(D1, RP1, H, a, n) @ #i
+    & AcceptLocal(D2, RP2, H, a, n) @ #j
+    & not (Ex #r. RevealLtk(H) @ #r)
+    ==> #i = #j"
+
+end
