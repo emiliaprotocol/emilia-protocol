@@ -12,7 +12,11 @@ import { verifyGateAttemptPair } from './verify.mjs';
 export const SOURCE_REPOSITORY = 'https://github.com/MoltyCel/aae-conformance-vectors';
 export const SOURCE_COMMIT = 'e8c00e5014c52a4cb4ff51d24c360db5c82d599e';
 export const SOURCE_VECTOR_COMMIT = '48450505c05c7182962c166781354e88412581e7';
+export const LIVE_VECTOR_COMMIT = '27227b5c4944f57a033fb45851f9aae0659b9590';
+export const LIVE_VECTOR_FLIP_COMMIT = '9e4ab541fd79938676ec92cc0f230987a9bc4b08';
+export const WHO_CONFIRMATION_COMMIT = '8bed788b237d8aade36b26e443c1455f77ebaa5d';
 export const FIXTURE_PATH = 'fixtures/aae-psea-proof-exchange-v1';
+export const SOURCE_VECTOR_PATH = 'interop/psea/vectors/xp-1-aligned-principal.json';
 
 const SOURCE_PINS = Object.freeze({
   [`${FIXTURE_PATH}/aae-envelope.jws`]:
@@ -27,9 +31,23 @@ const SOURCE_PINS = Object.freeze({
     '11cd5c6ff281c5253f28248b230d90dbb198a3435bf78d7a7e1a7c8c2fe14af2',
   [`${FIXTURE_PATH}/README.md`]:
     'fcf699e7dffa2570c7b7f1868d670bb1e5a75aedaa969a582002092b447149eb',
-  'interop/psea/vectors/xp-1-aligned-principal.json':
+  [SOURCE_VECTOR_PATH]:
     '5405eff68026f02e8380d09075b07fbe6104448e2d1ec7c9be7d8c9085cc1d06',
 });
+
+const FIXTURE_PINS = Object.freeze(Object.fromEntries(
+  Object.entries(SOURCE_PINS).filter(([path]) => path.startsWith(`${FIXTURE_PATH}/`)),
+));
+
+const LIVE_PINS = Object.freeze({
+  ...FIXTURE_PINS,
+  [SOURCE_VECTOR_PATH]:
+    '7585368a327c4b33b03f0a8e5b2569c9aa21894bf6ba390fb07ddc64cbda63b2',
+});
+
+const HISTORICAL_WHO_STATUS = 'proposed convention, pending cross-run confirmation';
+const CONFIRMED_WHO_STATUS =
+  'confirmed at head 8bed788 (Mohamad Khalil-Yossif); WHO linkage established, PSEA conformance not established, kid-to-principal mapping supplied not derived';
 
 function fail(message) {
   throw new Error(message);
@@ -180,11 +198,11 @@ export function verifyActionBinding(payloadBytes, aaePayload) {
   return { hex: digestBytes.toString('hex'), b64u: digestBytes.toString('base64url') };
 }
 
-export async function fetchPinnedSource(fetchImpl = globalThis.fetch) {
+async function fetchSourceAt(commit, pins, fetchImpl) {
   if (typeof fetchImpl !== 'function') fail('fetch implementation is unavailable');
   const files = {};
-  for (const [path, expectedDigest] of Object.entries(SOURCE_PINS)) {
-    const url = `https://raw.githubusercontent.com/MoltyCel/aae-conformance-vectors/${SOURCE_COMMIT}/${path}`;
+  for (const [path, expectedDigest] of Object.entries(pins)) {
+    const url = `https://raw.githubusercontent.com/MoltyCel/aae-conformance-vectors/${commit}/${path}`;
     const response = await fetchImpl(url);
     if (!response.ok) fail(`source fetch failed for ${path}: HTTP ${response.status}`);
     const bytes = Buffer.from(await response.arrayBuffer());
@@ -192,6 +210,14 @@ export async function fetchPinnedSource(fetchImpl = globalThis.fetch) {
     files[path] = bytes;
   }
   return files;
+}
+
+export async function fetchPinnedSource(fetchImpl = globalThis.fetch) {
+  return fetchSourceAt(SOURCE_COMMIT, SOURCE_PINS, fetchImpl);
+}
+
+export async function fetchConfirmedLiveSource(fetchImpl = globalThis.fetch) {
+  return fetchSourceAt(LIVE_VECTOR_COMMIT, LIVE_PINS, fetchImpl);
 }
 
 export function verifyPinnedSource(files, gateRecord) {
@@ -204,11 +230,11 @@ export function verifyPinnedSource(files, gateRecord) {
   const expected = json(files[`${FIXTURE_PATH}/expected.json`], 'source expected result');
   const trust = json(files[`${FIXTURE_PATH}/issuer-trust.json`], 'issuer trust');
   const sourceVector = json(
-    files['interop/psea/vectors/xp-1-aligned-principal.json'],
+    files[SOURCE_VECTOR_PATH],
     'source vector',
   );
   exact(manifest.head_commit, SOURCE_VECTOR_COMMIT, 'source manifest head_commit');
-  exact(manifest.source_vector, 'interop/psea/vectors/xp-1-aligned-principal.json', 'source vector path');
+  exact(manifest.source_vector, SOURCE_VECTOR_PATH, 'source vector path');
   exact(manifest.jws_sha256, SOURCE_PINS[`${FIXTURE_PATH}/aae-envelope.jws`], 'manifest JWS digest');
   exact(
     manifest.action_payload_sha256,
@@ -273,6 +299,82 @@ export function verifyPinnedSource(files, gateRecord) {
   };
 }
 
+export function verifyConfirmedVectorDelta(historicalBytes, liveBytes) {
+  const historical = json(historicalBytes, 'historical source vector');
+  const live = json(liveBytes, 'confirmed live source vector');
+
+  exact(historical.status, 'proposed', 'historical vector status');
+  exact(historical.input?.join_who?.status, HISTORICAL_WHO_STATUS, 'historical WHO status');
+  exact(live.status, 'confirmed', 'live vector status');
+  exact(live.input?.join_who?.status, CONFIRMED_WHO_STATUS, 'live WHO status');
+  exact(live.expected?.stages?.action_linkage?.value, 'EQUIVALENT', 'live action linkage');
+  exact(live.expected?.stages?.principal_linkage?.value, 'SAME', 'live principal linkage');
+
+  const normalizedLive = JSON.parse(JSON.stringify(live));
+  normalizedLive.status = historical.status;
+  normalizedLive.input.join_who.status = historical.input.join_who.status;
+  exact(
+    canonicalize(normalizedLive),
+    canonicalize(historical),
+    'historical-to-live vector delta',
+  );
+
+  return {
+    action_linkage: live.expected.stages.action_linkage.value,
+    principal_linkage: live.expected.stages.principal_linkage.value,
+  };
+}
+
+export function verifyConfirmedLiveState(historicalFiles, liveFiles, gateRecord) {
+  const historicalReturn = verifyPinnedSource(historicalFiles, gateRecord);
+
+  for (const [path, expectedDigest] of Object.entries(LIVE_PINS)) {
+    if (!Buffer.isBuffer(liveFiles[path])) fail(`live source file is missing: ${path}`);
+    exact(sha256(liveFiles[path]), expectedDigest, `live ${path} sha256`);
+  }
+  for (const path of Object.keys(FIXTURE_PINS)) {
+    if (!historicalFiles[path].equals(liveFiles[path])) {
+      fail(`frozen fixture changed at live head: ${path}`);
+    }
+  }
+
+  const confirmed = verifyConfirmedVectorDelta(
+    historicalFiles[SOURCE_VECTOR_PATH],
+    liveFiles[SOURCE_VECTOR_PATH],
+  );
+
+  return {
+    '@version': 'EMILIA-AAE-PSEA-CONFIRMED-LIVE-STATE-v1',
+    historical_return: {
+      path: 'interop/aae-psea-gate/independent-return.v1.json',
+      source_commit: SOURCE_COMMIT,
+      source_vector_sha256: `sha256:${SOURCE_PINS[SOURCE_VECTOR_PATH]}`,
+      exact_source_bytes: historicalReturn.verification.exact_source_bytes,
+      principal_linkage_status: historicalReturn.accepted_result.principal_linkage,
+    },
+    live_vector: {
+      repository: SOURCE_REPOSITORY,
+      commit: LIVE_VECTOR_COMMIT,
+      vector_flip_commit: LIVE_VECTOR_FLIP_COMMIT,
+      confirmation_evidence_commit: WHO_CONFIRMATION_COMMIT,
+      path: SOURCE_VECTOR_PATH,
+      sha256: `sha256:${LIVE_PINS[SOURCE_VECTOR_PATH]}`,
+    },
+    verification: {
+      frozen_fixture_files: 'BYTE_IDENTICAL',
+      live_vector_bytes: 'VERIFIED',
+      historical_to_live_delta: 'TWO_STATUS_FIELDS_ONLY',
+    },
+    confirmed_state: {
+      action_linkage: confirmed.action_linkage,
+      principal_linkage: confirmed.principal_linkage,
+      principal_linkage_status: 'CONFIRMED',
+      principal_mapping_basis: 'SUPPLIED_NOT_DERIVED',
+      psea_conformance: 'NOT_ESTABLISHED',
+    },
+  };
+}
+
 export async function performIndependentReturn(fetchImpl = globalThis.fetch) {
   const files = await fetchPinnedSource(fetchImpl);
   const gatePath = fileURLToPath(new URL('./gate-attempt-pair.v1.json', import.meta.url));
@@ -280,7 +382,19 @@ export async function performIndependentReturn(fetchImpl = globalThis.fetch) {
   return verifyPinnedSource(files, gateRecord);
 }
 
+export async function performConfirmedLiveState(fetchImpl = globalThis.fetch) {
+  const [historicalFiles, liveFiles] = await Promise.all([
+    fetchPinnedSource(fetchImpl),
+    fetchConfirmedLiveSource(fetchImpl),
+  ]);
+  const gatePath = fileURLToPath(new URL('./gate-attempt-pair.v1.json', import.meta.url));
+  const gateRecord = JSON.parse(await readFile(gatePath, 'utf8'));
+  return verifyConfirmedLiveState(historicalFiles, liveFiles, gateRecord);
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const result = await performIndependentReturn();
+  const result = process.argv.includes('--confirmed-live-state')
+    ? await performConfirmedLiveState()
+    : await performIndependentReturn();
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }

@@ -1,0 +1,30 @@
+{
+  "@version": "EMILIA-AAE-PSEA-CONFIRMED-LIVE-STATE-v1",
+  "historical_return": {
+    "path": "interop/aae-psea-gate/independent-return.v1.json",
+    "source_commit": "e8c00e5014c52a4cb4ff51d24c360db5c82d599e",
+    "source_vector_sha256": "sha256:5405eff68026f02e8380d09075b07fbe6104448e2d1ec7c9be7d8c9085cc1d06",
+    "exact_source_bytes": "VERIFIED",
+    "principal_linkage_status": "PROPOSED"
+  },
+  "live_vector": {
+    "repository": "https://github.com/MoltyCel/aae-conformance-vectors",
+    "commit": "27227b5c4944f57a033fb45851f9aae0659b9590",
+    "vector_flip_commit": "9e4ab541fd79938676ec92cc0f230987a9bc4b08",
+    "confirmation_evidence_commit": "8bed788b237d8aade36b26e443c1455f77ebaa5d",
+    "path": "interop/psea/vectors/xp-1-aligned-principal.json",
+    "sha256": "sha256:7585368a327c4b33b03f0a8e5b2569c9aa21894bf6ba390fb07ddc64cbda63b2"
+  },
+  "verification": {
+    "frozen_fixture_files": "BYTE_IDENTICAL",
+    "live_vector_bytes": "VERIFIED",
+    "historical_to_live_delta": "TWO_STATUS_FIELDS_ONLY"
+  },
+  "confirmed_state": {
+    "action_linkage": "EQUIVALENT",
+    "principal_linkage": "SAME",
+    "principal_linkage_status": "CONFIRMED",
+    "principal_mapping_basis": "SUPPLIED_NOT_DERIVED",
+    "psea_conformance": "NOT_ESTABLISHED"
+  }
+}

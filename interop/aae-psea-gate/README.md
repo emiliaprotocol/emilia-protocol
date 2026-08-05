@@ -8,9 +8,13 @@ while Gate withholds admission as `NONE / already_consumed`.
 The committed vector pins the current AAE proof-exchange fixture at
 `MoltyCel/aae-conformance-vectors` PR 6, commit
 `e8c00e5014c52a4cb4ff51d24c360db5c82d599e`. That upstream fixture still marks
-the WHO axis `PROPOSED`; this directory does not promote it to confirmed and
-does not claim PSEA conformance. The vector also carries the exact upstream JWS
-and action-payload SHA-256 commitments published by that fixture's manifest.
+the WHO axis `PROPOSED`, so `independent-return.v1.json` remains the historical
+return for those exact bytes. `confirmed-live-state.v1.json` separately pins the
+confirmed vector at `27227b5c4944f57a033fb45851f9aae0659b9590` without
+rewriting that provenance. It verifies that the six frozen fixture files are
+byte-identical and that the live vector differs only in its two WHO status
+fields. Confirmation establishes WHO linkage under the supplied mapping. It
+does not establish PSEA conformance or derive the kid-to-principal mapping.
 
 ## Attempt pair
 
@@ -36,6 +40,7 @@ The verifier enforces four cross-run constraints:
 ```sh
 node --test interop/aae-psea-gate/verify.test.mjs
 node interop/aae-psea-gate/reperform.mjs
+node interop/aae-psea-gate/reperform.mjs --confirmed-live-state
 ```
 
 `reperform.mjs` is the independent return package. It fetches every source
@@ -47,6 +52,13 @@ the authenticated `action_binding`, and only then joins the result to the Gate
 attempt pair. Its JSON output is checked in as
 `independent-return.v1.json`.
 
-The vector deliberately does **not** establish named-human WHO confirmation,
-PSEA conformance, execution order or a provider effect. Those remain external
-facts requiring their own evidence.
+The `--confirmed-live-state` run fetches both immutable heads, re-performs the
+historical return, verifies the six fixture files at the new head against their
+original byte pins, and refuses any live-vector change beyond `status` and
+`input.join_who.status`. Its JSON output is checked in as
+`confirmed-live-state.v1.json`.
+
+The historical return deliberately does **not** establish named-human WHO
+confirmation. The separate live-state artifact records the later supplied WHO
+mapping confirmation, while continuing to make no claim of PSEA conformance,
+execution order or a provider effect.
