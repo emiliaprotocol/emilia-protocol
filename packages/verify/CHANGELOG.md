@@ -32,6 +32,9 @@ This package follows [Semantic Versioning](https://semver.org/).
   The existing synchronous and durable AEB authorization paths accept this
   local result as a pre-reservation condition and fail closed on every outcome
   other than `ADMIT`.
+- Signed OPA/Cerbos policy-decision evidence with exact-action and policy-digest
+  binding, relying-party-pinned bridge keys, explicit deny/indeterminate
+  handling, and an AEB role that cannot substitute for human authorization.
 - Authorization Server confirmation evidence adapter with relying-party-pinned
   Ed25519 trust, exact-action and Resource Server binding, signed policy and
   identity-directory commitments, explicit directory observation time and
