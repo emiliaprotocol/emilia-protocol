@@ -98,7 +98,7 @@ describe('homepage category contract', () => {
 
   it('keeps the technical composition hierarchy off the buyer homepage and bounded on diligence surfaces', () => {
     const hierarchy =
-      'AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact authorization by an enrolled approver under the relying party’s pinned directory, then safely controls consequential outcomes.';
+      'AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA verifies the exact authority and any required approver evidence under the relying party’s pinned rules, then controls admission at covered consequence boundaries.';
     const homepage = compact(read('app/HomePageClient.js'));
     const gate = compact(read('app/gate/page.js'));
     const investors = compact(read('app/investors/page.js'));

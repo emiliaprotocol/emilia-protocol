@@ -25,18 +25,19 @@ reject systems that lack the control.
 Firewalls ask "is this packet allowed?" WAFs ask "is this request malicious?" EDR asks "is this
 process behaving badly?" **EMILIA Gate asks a question none of them do:**
 
-> *Is this action allowed to happen, and can you prove who authorized it — before it mutates the world?*
+> *Is this action inside current authority, and can you prove that before it mutates the world?*
 
-It is a **policy-enforcement point for consequential machine action**: deny by default, allow only
-on proof that a named, accountable human (or quorum) authorized *this exact action*. Not
-authentication, not permissions, not anomaly detection — **pre-execution authorization proof.** No
-model, no signatures-of-badness, no false positives: receipt or no execution.
+It is a **policy-enforcement point for consequential machine action**: deny by default and allow only
+on verifiable authority for *this exact action*, whether that authority comes from a bounded mandate,
+a required human decision, or a quorum. Not authentication, not permissions, not anomaly detection —
+**pre-execution authority at the protected boundary.** The decision follows explicit evidence and
+policy rather than an anomaly score; its prevention claim remains limited to covered Gate paths.
 
 ## How it composes with the authorization stack
 
-> **AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact authorization
-> by an enrolled approver under the relying party’s pinned directory, then safely controls
-> consequential outcomes.**
+> **AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA verifies the exact
+> authority and any required approver evidence under the relying party’s pinned rules, then controls
+> admission at covered consequence boundaries.**
 
 This is an interoperability position, not a replacement claim. EMILIA verifies
 AgentROA and the concrete `ORPRG-JSON-JCS-ED25519-v1` profile under separate
@@ -111,23 +112,27 @@ proof do I emit after I act?" That is the EP-Gate handshake, and it's the full f
 
 ```
 request action → 428 challenge → human/quorum signs exact action → verify
-  (authority · policy · freshness · WYSIWYS · tenant · quorum · replay) → execute → execution receipt
+  (authority · policy · freshness · WYSIWYS · tenant · quorum · replay) → invoke → bound execution record
 ```
 
 The two halves both ship in `@emilia-protocol/gate`: `check()` does the pre-execution authorization
-(challenge → verify, deny-by-default); `recordExecution()` emits the **execution receipt** — proof,
-bound to the exact authorization decision, that the action actually ran (maps onto EP execution
-evidence and a SCITT seal). `guard()` runs the whole loop around any function. This is what lets EP-aware systems
-prefer each other: they can challenge, verify, and emit — machines that speak receipts.
+(challenge → verify, deny-by-default); `recordExecution()` emits an execution-evidence record bound
+to the exact authorization decision and the wrapper's stated outcome. That binding preserves what
+the local runtime reported and detects action substitution. It does not by itself prove provider
+entry, provider commitment, or external effect; those claims require evidence accepted under a
+relying-party-pinned provider or effect profile. `guard()` runs the loop around any function. This
+is what lets EP-aware systems challenge, verify, and emit compatible evidence without collapsing
+authorization into outcome truth.
 
 ## It's deployed by the defender (this is the key framing)
 
 The Gate is installed by the **resource owner** — the bank, the cloud API, the database, the robot
 controller, the grid operator — in front of what can be mutated. An agent wanting to act must
 **bring a receipt** the gate verifies. There is no "EP must talk to EP everywhere" mandate. The
-network effect emerges: once consequential rails require receipts, every legitimate agent adopts EP
-issuance to be able to act at all — exactly how TLS won (servers required certs, so everyone got
-certs).
+first deployment protects its resource owner without ecosystem-wide adoption. An acceptance effect
+may emerge later if consequential rails require compatible evidence and agents adopt issuance to
+reach them. That is a future adoption hypothesis analogous to TLS acceptance, not a present network,
+central transaction rail, or proof of external adoption.
 
 ## What's built (this is assembly, not green-field)
 
@@ -151,9 +156,11 @@ certs).
 
 **Commercial layer:** managed policy, approver-directory integrations, evidence export, deployment
 operations, continuous conformance, and warranties. The open verifier and enforcement semantics
-remain reproducible. Operated Gate is scoped and quoted for a defined customer deployment after
-implementation acceptance; the public repository does not establish a generally available live
-service.
+remain reproducible. Customer-operated and EMILIA-managed Gate are parallel deployment choices. In
+either mode, the customer controls authority, trust roots, policy, provider-credential custody,
+acceptance rules, and portable evidence. Managed Gate is scoped and quoted for a defined customer
+deployment after implementation acceptance; the public repository does not establish a generally
+available live service.
 
 ## Gate deployment surfaces (the land-grab order)
 
