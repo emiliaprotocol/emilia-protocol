@@ -24,9 +24,12 @@ const OPENAPI_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'hea
 const TERMINAL_CONTROLS = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/gu;
 
 function terminalSafe(value) {
-  return String(value).replace(TERMINAL_CONTROLS, (character) => (
-    `\\u{${character.codePointAt(0).toString(16).padStart(4, '0')}}`
-  ));
+  return String(value).replace(TERMINAL_CONTROLS, (character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint === undefined
+      ? '\\u{fffd}'
+      : `\\u{${codePoint.toString(16).padStart(4, '0')}}`;
+  });
 }
 
 function isRecord(value) {
