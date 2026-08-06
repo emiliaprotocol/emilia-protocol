@@ -1,0 +1,4278 @@
+{
+  "@version": "EP-COMPOSITION-CROSS-SLOT-RUN-REPORT-v1",
+  "implementation": "emilia-js-cross-slot-candidate",
+  "implementation_version": "1.0.0",
+  "implementation_revision": "sha256:9d0d3d2feddb88af8058d116daf9d628ca5727ddf2cfb30596c48749af2116eb",
+  "implementation_owner": "EMILIA Protocol",
+  "generated_at": "2026-08-04T22:00:00Z",
+  "manifest_digest": "sha256:f2cdeb77e2337d25d387c5468e3b69c1cc7541aa0340c91a7a91ba063cc22575",
+  "bundle_digest": "sha256:a1c28295a87882a32360b5a5d3c00583c25b8627c0628a7fe0707f1c17aa9470",
+  "passed": true,
+  "case_count": 27,
+  "negative_pair_count": 13,
+  "checks": [
+    {
+      "id": "COMP-POSITIVE-01",
+      "pair_id": null,
+      "variant": "positive",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-01",
+      "pair_id": "COMP-BIND-01",
+      "variant": "negative",
+      "expected_terminal": "fail",
+      "expected_check": "subject.action_bytes",
+      "actual_terminal": "fail",
+      "actual_check": "subject.action_bytes",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-01.condition_removed",
+      "pair_id": "COMP-BIND-01",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-02",
+      "pair_id": "COMP-BIND-02",
+      "variant": "negative",
+      "expected_terminal": "indeterminate",
+      "expected_check": "join.digest_context",
+      "actual_terminal": "indeterminate",
+      "actual_check": "join.digest_context",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-02.condition_removed",
+      "pair_id": "COMP-BIND-02",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-03",
+      "pair_id": "COMP-BIND-03",
+      "variant": "negative",
+      "expected_terminal": "fail",
+      "expected_check": "join.digest_representation",
+      "actual_terminal": "fail",
+      "actual_check": "join.digest_representation",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-03.condition_removed",
+      "pair_id": "COMP-BIND-03",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-04",
+      "pair_id": "COMP-BIND-04",
+      "variant": "negative",
+      "expected_terminal": "fail",
+      "expected_check": "join.protected_cross_reference",
+      "actual_terminal": "fail",
+      "actual_check": "join.protected_cross_reference",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-04.condition_removed",
+      "pair_id": "COMP-BIND-04",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-05",
+      "pair_id": "COMP-BIND-05",
+      "variant": "negative",
+      "expected_terminal": "fail",
+      "expected_check": "join.additional_binding_context",
+      "actual_terminal": "fail",
+      "actual_check": "join.additional_binding_context",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-05.condition_removed",
+      "pair_id": "COMP-BIND-05",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-06",
+      "pair_id": "COMP-BIND-06",
+      "variant": "negative",
+      "expected_terminal": "unsupported",
+      "expected_check": "policy.binding_semantics",
+      "actual_terminal": "unsupported",
+      "actual_check": "policy.binding_semantics",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BIND-06.condition_removed",
+      "pair_id": "COMP-BIND-06",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BASIS-01",
+      "pair_id": "COMP-BASIS-01",
+      "variant": "negative",
+      "expected_terminal": "indeterminate",
+      "expected_check": "join.field_basis",
+      "actual_terminal": "indeterminate",
+      "actual_check": "join.field_basis",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BASIS-01.condition_removed",
+      "pair_id": "COMP-BASIS-01",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BASIS-02",
+      "pair_id": "COMP-BASIS-02",
+      "variant": "negative",
+      "expected_terminal": "indeterminate",
+      "expected_check": "join.field_mapping",
+      "actual_terminal": "indeterminate",
+      "actual_check": "join.field_mapping",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-BASIS-02.condition_removed",
+      "pair_id": "COMP-BASIS-02",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-RESULT-01",
+      "pair_id": "COMP-RESULT-01",
+      "variant": "negative",
+      "expected_terminal": "fail",
+      "expected_check": "report.result_separation",
+      "actual_terminal": "fail",
+      "actual_check": "report.result_separation",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-RESULT-01.condition_removed",
+      "pair_id": "COMP-RESULT-01",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-RESULT-02",
+      "pair_id": "COMP-RESULT-02",
+      "variant": "negative",
+      "expected_terminal": "fail",
+      "expected_check": "report.result_preservation",
+      "actual_terminal": "fail",
+      "actual_check": "report.result_preservation",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-RESULT-02.condition_removed",
+      "pair_id": "COMP-RESULT-02",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-JOIN-01",
+      "pair_id": "COMP-JOIN-01",
+      "variant": "negative",
+      "expected_terminal": "fail",
+      "expected_check": "join.exact_action",
+      "actual_terminal": "fail",
+      "actual_check": "join.exact_action",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-JOIN-01.condition_removed",
+      "pair_id": "COMP-JOIN-01",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-JOIN-02",
+      "pair_id": "COMP-JOIN-02",
+      "variant": "negative",
+      "expected_terminal": "fail",
+      "expected_check": "report.not_evaluated_preservation",
+      "actual_terminal": "fail",
+      "actual_check": "report.not_evaluated_preservation",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-JOIN-02.condition_removed",
+      "pair_id": "COMP-JOIN-02",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-UNKNOWN-01",
+      "pair_id": "COMP-UNKNOWN-01",
+      "variant": "negative",
+      "expected_terminal": "unsupported",
+      "expected_check": "policy.required_profile",
+      "actual_terminal": "unsupported",
+      "actual_check": "policy.required_profile",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    },
+    {
+      "id": "COMP-UNKNOWN-01.condition_removed",
+      "pair_id": "COMP-UNKNOWN-01",
+      "variant": "condition_removed",
+      "expected_terminal": "pass",
+      "expected_check": "composition.complete",
+      "actual_terminal": "pass",
+      "actual_check": "composition.complete",
+      "terminal_match": true,
+      "check_match": true,
+      "native_results_match": true,
+      "join_results_match": true,
+      "no_crash": true,
+      "passed": true
+    }
+  ],
+  "results": [
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-POSITIVE-01",
+      "pair_id": null,
+      "variant": "positive",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-01",
+      "pair_id": "COMP-BIND-01",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "fail",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "divergence": {
+            "field": "subject.action_digest",
+            "expected": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+            "actual": "sha256:0feebb83a45b15c564507d58a4266cdc5229cdfaffe1752fdd4c60c68804ca6e",
+            "expected_basis": "{\"action_type\":\"payment.release.1\",\"canonicalization\":\"RFC8785\",\"hash\":\"sha-256\",\"profile\":\"draft-schrock-canonical-action-identifier-01\",\"projection\":\"caid.payment.release.1\",\"representation\":\"lowercase-hex\"}",
+            "actual_basis": "{\"action_type\":\"payment.release.1\",\"canonicalization\":\"RFC8785\",\"hash\":\"sha-256\",\"profile\":\"draft-schrock-canonical-action-identifier-01\",\"projection\":\"caid.payment.release.1\",\"representation\":\"lowercase-hex\"}"
+          },
+          "expected_result": "fail"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "subject.action_bytes",
+      "terminal": "fail",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:0feebb83a45b15c564507d58a4266cdc5229cdfaffe1752fdd4c60c68804ca6e",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-01.condition_removed",
+      "pair_id": "COMP-BIND-01",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-02",
+      "pair_id": "COMP-BIND-02",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "indeterminate",
+          "detail": "at least one slot uses an incompatible profile or action projection",
+          "divergence": {
+            "field": "slots.who.subject.digest_context",
+            "expected": {
+              "profile": "draft-schrock-canonical-action-identifier-01",
+              "action_type": "payment.release.1",
+              "canonicalization": "RFC8785",
+              "hash": "sha-256",
+              "representation": "lowercase-hex",
+              "projection": "caid.payment.release.1"
+            },
+            "actual": {
+              "profile": "draft-schrock-canonical-action-identifier-01",
+              "action_type": "payment.release.1",
+              "canonicalization": "RFC8785",
+              "hash": "sha-256",
+              "representation": "lowercase-hex",
+              "projection": "vendor-private-payment-v9"
+            },
+            "expected_basis": "subject digest context",
+            "actual_basis": "slot digest context"
+          },
+          "expected_result": "indeterminate"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "join.digest_context",
+      "terminal": "indeterminate",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-02.condition_removed",
+      "pair_id": "COMP-BIND-02",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-03",
+      "pair_id": "COMP-BIND-03",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "fail",
+          "detail": "declared digest representations differ",
+          "divergence": {
+            "field": "slots.what.subject.digest_context.representation",
+            "expected": "lowercase-hex",
+            "actual": "raw-bytes",
+            "expected_basis": "subject digest representation",
+            "actual_basis": "slot digest representation"
+          },
+          "expected_result": "fail"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "join.digest_representation",
+      "terminal": "fail",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-03.condition_removed",
+      "pair_id": "COMP-BIND-03",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-04",
+      "pair_id": "COMP-BIND-04",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "fail",
+          "detail": "protected cross-reference does not identify supplied target bytes",
+          "divergence": {
+            "field": "slots.audit.protected_cross_reference.artifact_digest",
+            "expected": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+            "actual": "sha256:0feebb83a45b15c564507d58a4266cdc5229cdfaffe1752fdd4c60c68804ca6e",
+            "expected_basis": "supplied target artifact bytes",
+            "actual_basis": "protected reference to can"
+          },
+          "expected_result": "fail"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "join.protected_cross_reference",
+      "terminal": "fail",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-04.condition_removed",
+      "pair_id": "COMP-BIND-04",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-05",
+      "pair_id": "COMP-BIND-05",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "fail",
+          "detail": "an additional binding is missing purpose, context, or digest",
+          "divergence": {
+            "field": "slots.can.additional_bindings",
+            "expected": [
+              "purpose",
+              "context",
+              "digest"
+            ],
+            "actual": {
+              "purpose": "exact_action",
+              "digest": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+              "understood": true,
+              "required": true
+            },
+            "expected_basis": "required binding members",
+            "actual_basis": "supplied binding members"
+          },
+          "expected_result": "fail"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "join.additional_binding_context",
+      "terminal": "fail",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-05.condition_removed",
+      "pair_id": "COMP-BIND-05",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-06",
+      "pair_id": "COMP-BIND-06",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "unsupported",
+          "detail": "binding is structurally readable but cannot satisfy policy requiring understood semantics",
+          "binding_state": "present_uninterpreted",
+          "divergence": {
+            "field": "policy.required_binding_purposes",
+            "expected": "understood semantics",
+            "actual": "present_uninterpreted",
+            "expected_basis": "vendor_future_binding",
+            "actual_basis": "vendor_future_binding"
+          },
+          "expected_result": "unsupported"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "policy.binding_semantics",
+      "terminal": "unsupported",
+      "binding_state": "present_uninterpreted",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BIND-06.condition_removed",
+      "pair_id": "COMP-BIND-06",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BASIS-01",
+      "pair_id": "COMP-BASIS-01",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "indeterminate",
+          "detail": "joined field basis is absent",
+          "divergence": {
+            "field": "slots.audit.fields.amount.basis",
+            "expected": "declared basis",
+            "actual": null,
+            "expected_basis": "comparison prerequisite",
+            "actual_basis": null
+          },
+          "expected_result": "indeterminate"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "not_evaluated",
+          "detail": "field mapping was not evaluated because a joined field lacks a declared basis",
+          "expected_result": "not_evaluated"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "join.field_basis",
+      "terminal": "indeterminate",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BASIS-01.condition_removed",
+      "pair_id": "COMP-BASIS-01",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BASIS-02",
+      "pair_id": "COMP-BASIS-02",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "indeterminate",
+          "detail": "incompatible bases lack a pinned mapping",
+          "divergence": {
+            "field": "slots.*.fields.amount.basis",
+            "expected": "same basis or digest-pinned mapping",
+            "actual": {
+              "can": "USD-major-units",
+              "who": "USD-minor-units",
+              "what": "USD-major-units",
+              "audit": "USD-major-units"
+            },
+            "expected_basis": "declared comparison basis",
+            "actual_basis": "supplied per-slot bases"
+          },
+          "expected_result": "indeterminate"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "join.field_mapping",
+      "terminal": "indeterminate",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-BASIS-02.condition_removed",
+      "pair_id": "COMP-BASIS-02",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-RESULT-01",
+      "pair_id": "COMP-RESULT-01",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "fail",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "divergence": {
+            "field": "reporting.native_results_separate",
+            "expected": true,
+            "actual": false,
+            "expected_basis": null,
+            "actual_basis": null
+          },
+          "expected_result": "fail"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "report.result_separation",
+      "terminal": "fail",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-RESULT-01.condition_removed",
+      "pair_id": "COMP-RESULT-01",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-RESULT-02",
+      "pair_id": "COMP-RESULT-02",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "fail",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "divergence": {
+            "field": "reporting.composition_overrides_native",
+            "expected": false,
+            "actual": true,
+            "expected_basis": null,
+            "actual_basis": null
+          },
+          "expected_result": "fail"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "report.result_preservation",
+      "terminal": "fail",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-RESULT-02.condition_removed",
+      "pair_id": "COMP-RESULT-02",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-JOIN-01",
+      "pair_id": "COMP-JOIN-01",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "fail",
+          "detail": "populated slots do not identify the same exact action",
+          "divergence": {
+            "field": "slots.who.subject.action_digest",
+            "expected": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+            "actual": "sha256:0feebb83a45b15c564507d58a4266cdc5229cdfaffe1752fdd4c60c68804ca6e",
+            "expected_basis": "{\"action_type\":\"payment.release.1\",\"canonicalization\":\"RFC8785\",\"hash\":\"sha-256\",\"profile\":\"draft-schrock-canonical-action-identifier-01\",\"projection\":\"caid.payment.release.1\",\"representation\":\"lowercase-hex\"}",
+            "actual_basis": "{\"action_type\":\"payment.release.1\",\"canonicalization\":\"RFC8785\",\"hash\":\"sha-256\",\"profile\":\"draft-schrock-canonical-action-identifier-01\",\"projection\":\"caid.payment.release.1\",\"representation\":\"lowercase-hex\"}"
+          },
+          "expected_result": "fail"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "join.exact_action",
+      "terminal": "fail",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-JOIN-01.condition_removed",
+      "pair_id": "COMP-JOIN-01",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-JOIN-02",
+      "pair_id": "COMP-JOIN-02",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "not_evaluated",
+          "reported_result": "fail",
+          "expected_result": "not_evaluated"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "fail",
+          "detail": "not_evaluated native result was relabeled as a verifier failure",
+          "divergence": {
+            "field": "reporting.reported_native_results.what",
+            "expected": "not_evaluated",
+            "actual": "fail",
+            "expected_basis": "native slot result",
+            "actual_basis": "composition report"
+          },
+          "expected_result": "fail"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "report.not_evaluated_preservation",
+      "terminal": "fail",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-JOIN-02.condition_removed",
+      "pair_id": "COMP-JOIN-02",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "not_evaluated",
+          "reported_result": "not_evaluated",
+          "expected_result": "not_evaluated"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-UNKNOWN-01",
+      "pair_id": "COMP-UNKNOWN-01",
+      "variant": "negative",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "unsupported",
+          "detail": "unsupported required profiles: urn:example:unknown-required-profile",
+          "divergence": {
+            "field": "policy.required_profiles",
+            "expected": [
+              "draft-schrock-action-evidence-boundary-03",
+              "draft-schrock-ep-authorization-evidence-chain-05",
+              "draft-mih-scitt-agent-action-capsule-02",
+              "draft-schrock-ep-outcome-binding-00"
+            ],
+            "actual": "urn:example:unknown-required-profile",
+            "expected_basis": "implementation-supported profiles",
+            "actual_basis": "required profile"
+          },
+          "expected_result": "unsupported"
+        }
+      ],
+      "primary_check": "policy.required_profile",
+      "terminal": "unsupported",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    },
+    {
+      "@version": "EP-COMPOSITION-CROSS-SLOT-RESULT-v1",
+      "case_id": "COMP-UNKNOWN-01.condition_removed",
+      "pair_id": "COMP-UNKNOWN-01",
+      "variant": "condition_removed",
+      "native_results": [
+        {
+          "slot": "can",
+          "profile": "draft-schrock-action-evidence-boundary-03",
+          "artifact_digest": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "who",
+          "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+          "artifact_digest": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "what",
+          "profile": "draft-mih-scitt-agent-action-capsule-02",
+          "artifact_digest": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        },
+        {
+          "slot": "audit",
+          "profile": "draft-schrock-ep-outcome-binding-00",
+          "artifact_digest": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334",
+          "native_result": "pass",
+          "reported_result": "pass",
+          "expected_result": "pass"
+        }
+      ],
+      "join_results": [
+        {
+          "id": "bundle.artifact_bytes",
+          "status": "pass",
+          "detail": "all native artifact bytes match their pinned digests",
+          "expected_result": "pass"
+        },
+        {
+          "id": "subject.action_bytes",
+          "status": "pass",
+          "detail": "supplied action bytes must match both the visible action and pinned digest",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_context",
+          "status": "pass",
+          "detail": "all slots declare the same digest context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.digest_representation",
+          "status": "pass",
+          "detail": "digest representation matches",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.protected_cross_reference",
+          "status": "pass",
+          "detail": "all protected cross-references match supplied target bytes",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.additional_binding_context",
+          "status": "pass",
+          "detail": "additional bindings carry complete declared context",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.binding_semantics",
+          "status": "pass",
+          "detail": "every policy-required binding purpose has understood semantics",
+          "binding_state": "understood",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_basis",
+          "status": "pass",
+          "detail": "joined fields declare their bases",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.field_mapping",
+          "status": "pass",
+          "detail": "joined amount bases match",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_separation",
+          "status": "pass",
+          "detail": "native slot and cross-slot results must remain separately named",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.result_preservation",
+          "status": "pass",
+          "detail": "composition must not upgrade, weaken, or overwrite a native result",
+          "expected_result": "pass"
+        },
+        {
+          "id": "join.exact_action",
+          "status": "pass",
+          "detail": "all populated slots identify the same exact action",
+          "expected_result": "pass"
+        },
+        {
+          "id": "report.not_evaluated_preservation",
+          "status": "pass",
+          "detail": "not_evaluated native results remain not_evaluated",
+          "expected_result": "pass"
+        },
+        {
+          "id": "policy.required_profile",
+          "status": "pass",
+          "detail": "all required profiles are supported",
+          "expected_result": "pass"
+        }
+      ],
+      "primary_check": "composition.complete",
+      "terminal": "pass",
+      "binding_state": "understood",
+      "crashed": false,
+      "input_artifact_digests": {
+        "action": "sha256:6ad5138447a6bd8f0ed32c92be5ced9ea53fba0a336550225554b9b41e57f699",
+        "can": "sha256:20c66cde95c11f3595c4961db1ee52092dc65e292de979937129324d244de975",
+        "who": "sha256:d4bccdd9abc74ebdcd8d2742348282df21b0cdec529b2c8e9970554d42af2e69",
+        "what": "sha256:8a6f85dfe1a7c050322b4dcfe42d3cde527a84fc38ec90d770014486461a7b16",
+        "audit": "sha256:6f02811f4ba06fc8e0a64835c796c0a35ffbf5144ab21e270470c5e40a39b334"
+      }
+    }
+  ],
+  "independence": {
+    "same_team": true,
+    "external_confirmation": false,
+    "claim": "candidate cross-slot conformance execution, not an independent freeze"
+  },
+  "report_digest": "sha256:b274add52906fb38b7ace24b345dd60d0c5f9a4c64e7c65a054f86bccceafce4"
+}

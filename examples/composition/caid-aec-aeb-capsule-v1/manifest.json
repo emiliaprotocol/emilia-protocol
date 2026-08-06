@@ -1,0 +1,67 @@
+{
+  "@version": "EP-COMPOSITION-VECTOR-MANIFEST-v1",
+  "suite": "EP-CAID-AEC-AEB-CAPSULE-COMPOSITION-v1",
+  "status": "candidate-emilia-owned-composition-vector",
+  "source_tree_parent": "4b159115bae7aa4273783c9340f9729a08377992",
+  "generated_at": "2026-08-04T20:00:00Z",
+  "drafts": [
+    {
+      "role": "CAID",
+      "revision": "draft-schrock-canonical-action-identifier-01",
+      "url": "https://www.ietf.org/archive/id/draft-schrock-canonical-action-identifier-01.txt",
+      "sha256": "sha256:067fe16bcb6026794306c916d92ca5f9229aba2d2ff9e678a1f380e0315bb73d"
+    },
+    {
+      "role": "AEC",
+      "revision": "draft-schrock-ep-authorization-evidence-chain-05",
+      "url": "https://www.ietf.org/archive/id/draft-schrock-ep-authorization-evidence-chain-05.txt",
+      "sha256": "sha256:ea906a245e5e193d6edf3ae52e77810ea1ffa6d06bdfd3ab962be602d91662b7"
+    },
+    {
+      "role": "AEB",
+      "revision": "draft-schrock-action-evidence-boundary-03",
+      "url": "https://www.ietf.org/archive/id/draft-schrock-action-evidence-boundary-03.txt",
+      "sha256": "sha256:f25af52c9f88f82777f26accdb9205ba242219d66f2ac16e5bfc8d276b441fde"
+    },
+    {
+      "role": "Capsule WHAT",
+      "revision": "draft-mih-scitt-agent-action-capsule-02",
+      "url": "https://www.ietf.org/archive/id/draft-mih-scitt-agent-action-capsule-02.txt",
+      "sha256": "sha256:493428486c85e03624bc1d90e8265b072b98265b93b7bd50d55824688a1802d8"
+    },
+    {
+      "role": "Composition",
+      "revision": "draft-mih-sato-agent-accountability-composition-00",
+      "url": "https://www.ietf.org/archive/id/draft-mih-sato-agent-accountability-composition-00.txt",
+      "sha256": "sha256:3649831a2908fdee5cf11015965d24711f67e89bffdce193220d2bd50925919f"
+    }
+  ],
+  "implementation_sources": [
+    {
+      "path": "caid/registry/action-types.json",
+      "sha256": "sha256:8352b1d5e33d608999d6e285cf67fa3bdd7ac5b818d54700193b09ad49daf9d6"
+    },
+    {
+      "path": "packages/verify/evidence-chain.js",
+      "sha256": "sha256:754e43ca6f6e57c5d86f607d751d000086fe4e8e3124037bfc3fbed96166d0ce"
+    },
+    {
+      "path": "packages/verify/aeb-consequence-conformance.js",
+      "sha256": "sha256:f4120f62724a0d2d1204960ab2d3de15a104e631b5219900a5d43a25ceca5c44"
+    },
+    {
+      "path": "lib/grace/mobile-grid.js",
+      "sha256": "sha256:59e8e6560c3ab5ed3facb8fc2bc3e2039692402e73994f8b3060579728229d72"
+    },
+    {
+      "path": "examples/composition/caid-aec-aeb-capsule-v1/run.mts",
+      "sha256": "sha256:ca120a51518c61c0bbdc3c30dfde5f4bd86cc6278ff090bead6a1be97b50cfc5"
+    }
+  ],
+  "capsule_verifier_scope": {
+    "class_1": "independent candidate verifier bounded to these fixtures",
+    "class_2": "not evaluated without producer manifest and private evidence",
+    "general_conformance_claim": false
+  },
+  "freeze_rule": "candidate freezes only after a second independent implementation reproduces the exact bundle"
+}

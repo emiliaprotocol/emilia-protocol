@@ -8,11 +8,11 @@ import { color, font, radius, cta } from '@/lib/tokens';
 type NavLink = [string, string];
 
 const NAV_LINKS: NavLink[] = [
+  ['/authority-brain', '/brain'],
   ['/gate', '/gate'],
   ['/use-cases', '/solutions'],
   ['/docs', '/developers'],
   ['/protocol', '/protocol'],
-  ['/proof', '/proof'],
   ['/pricing', '/pricing'],
 ];
 

@@ -1,0 +1,994 @@
+{
+  "@version": "EP-CAID-AEC-AEB-CAPSULE-COMPOSITION-v1",
+  "manifest_digest": "sha256:d3d39b73a9626265459714cba4cd6bdef8ba1d313993aface799b7c1eea26bb1",
+  "action": {
+    "action_type": "payment.release.1",
+    "amount": "250000.00",
+    "currency": "USD",
+    "beneficiary_account": "sha256:4242424242424242424242424242424242424242424242424242424242424242",
+    "payment_instruction_id": "payment:acme:2026-08-04:0001",
+    "memo": "Approved supplier settlement"
+  },
+  "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+  "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+  "capsule_public_key_spki_b64u": "MCowBQYDK2VwAyEAixxktU0aJ-0D4bdTk1WWzN9gRMlrPXx-oeiPCUrZpCM",
+  "capsule_key_id": "emilia-composition-vector-capsule-key",
+  "cases": [
+    {
+      "id": "positive_observed",
+      "title": "Exact action admitted once and independently observed as requested",
+      "native_evidence": [
+        {
+          "type": "human_authorization",
+          "evidence": {
+            "evidence_id": "human:positive_observed",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "human:jane.doe"
+          }
+        },
+        {
+          "type": "machine_policy",
+          "evidence": {
+            "evidence_id": "policy:positive_observed",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "organization:treasury-policy"
+          }
+        }
+      ],
+      "aeb_case": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "positive_observed",
+        "mode": "INVOCATION_OBSERVATION",
+        "evaluated_at": "2026-08-04T20:00:00Z",
+        "operation": {
+          "operation_id": "operation:positive_observed",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:treasury-bot",
+          "executor_id": "executor:payment-rail",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            },
+            {
+              "role": "machine-policy",
+              "principal_kind": "ORGANIZATION",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:af387df5a70da0519f385f3ea9e0b2eeee81ac7e6c9c15b81de68d91d73b9161",
+            "native_replay_unit": "sha256:bced830cbaa1f63075177bc6122f9bf5522acb44b84f990759a5a0c49c731baf",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:jane.doe",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          },
+          {
+            "wrapper_digest": "sha256:02d0c0d586b9df8b9056ff1eef5babd0a0368c768ad5f421569624036274eb8f",
+            "native_replay_unit": "sha256:da6960d0a98c06607d5e159818102a2a29079f1e857c1c45b219bc504fac65c6",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "machine-policy",
+            "principal_kind": "ORGANIZATION",
+            "principal_id": "organization:treasury-policy",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:positive_observed",
+              "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+              "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+              "custody": "INVOKING",
+              "provider_outcome": "INDETERMINATE",
+              "effect_relation": "INDETERMINATE"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": {
+          "source": "PROVIDER_EVIDENCE",
+          "provider_outcome": "COMMITTED",
+          "effect_relation": "OBSERVED_AS_REQUESTED"
+        },
+        "reconciliation": null
+      },
+      "required_bindings": [
+        "capsule.class1"
+      ],
+      "capsule_kind": "confirmed",
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "CONSUMED",
+        "outcome": "OBSERVED_AS_REQUESTED",
+        "verifier_status": "PASS",
+        "reason_codes_include": []
+      }
+    },
+    {
+      "id": "different_action_splice",
+      "title": "Human evidence for a different payment is refused before admission",
+      "native_evidence": [
+        {
+          "type": "human_authorization",
+          "evidence": {
+            "evidence_id": "human:different_action_splice",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:84a97c55d3e9041b94e59366863a333486530f393ebfcb238c8569817c72d1cc",
+            "principal_id": "human:jane.doe"
+          }
+        },
+        {
+          "type": "machine_policy",
+          "evidence": {
+            "evidence_id": "policy:different_action_splice",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "organization:treasury-policy"
+          }
+        }
+      ],
+      "aeb_case": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "different_action_splice",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-08-04T20:00:00Z",
+        "operation": {
+          "operation_id": "operation:different_action_splice",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:treasury-bot",
+          "executor_id": "executor:payment-rail",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            },
+            {
+              "role": "machine-policy",
+              "principal_kind": "ORGANIZATION",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:be76b5fbd149d241364abbdf3bf664a2532352251278b81210d7d9b77e9dcebe",
+            "native_replay_unit": "sha256:0497868c76344d747d9b4a9f63ff5533c252a085bac39706fbdedb9a660039da",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:hKl8VdPpBBuU5ZNmhjozNIZTDzk-v8sjjIVpgXxy0cw",
+            "mapped_action_digest": "sha256:84a97c55d3e9041b94e59366863a333486530f393ebfcb238c8569817c72d1cc",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:jane.doe",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          },
+          {
+            "wrapper_digest": "sha256:644aeb6234534d5d8979afe8cfc09f0c4d7b954d03b58aba56d69895e89bd283",
+            "native_replay_unit": "sha256:f38679f8c81aa0d290ac710b90ee477f9c92001ad746cd7d3a5f8a9393a494e7",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "machine-policy",
+            "principal_kind": "ORGANIZATION",
+            "principal_id": "organization:treasury-policy",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "required_bindings": [
+        "capsule.class1"
+      ],
+      "capsule_kind": "planned",
+      "expected": {
+        "action_linkage": "MISMATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "UNSATISFIED",
+        "decision": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "outcome": "NONE",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "exact_action_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "stale_evidence",
+      "title": "Cryptographically valid but stale authority cannot satisfy AEC",
+      "native_evidence": [
+        {
+          "type": "human_authorization",
+          "evidence": {
+            "evidence_id": "human:stale_evidence",
+            "signature_valid": true,
+            "acceptance": "STALE",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "human:jane.doe"
+          }
+        },
+        {
+          "type": "machine_policy",
+          "evidence": {
+            "evidence_id": "policy:stale_evidence",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "organization:treasury-policy"
+          }
+        }
+      ],
+      "aeb_case": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "stale_evidence",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-08-04T20:00:00Z",
+        "operation": {
+          "operation_id": "operation:stale_evidence",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:treasury-bot",
+          "executor_id": "executor:payment-rail",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            },
+            {
+              "role": "machine-policy",
+              "principal_kind": "ORGANIZATION",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:5273a61f7dcd640330332e0ae65a6831897f9ebdc6906224c719224a5fd9ba6c",
+            "native_replay_unit": "sha256:19b5762ffb2af7e782a0ca7fcc18133a23acd0e20866c8992e20309f60a3d058",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:jane.doe",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T20:00:00Z"
+            }
+          },
+          {
+            "wrapper_digest": "sha256:9b03cbc5e3570bcc2014d69dbd66e050ab794fdb781ab6dc71a61bf80281a8f9",
+            "native_replay_unit": "sha256:86e96638cfcd193292c3bd2de8cb303684d11d76bbe687a051b10a1c27db82e3",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "machine-policy",
+            "principal_kind": "ORGANIZATION",
+            "principal_id": "organization:treasury-policy",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "required_bindings": [
+        "capsule.class1"
+      ],
+      "capsule_kind": "planned",
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "UNSATISFIED",
+        "decision": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "outcome": "NONE",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "evidence_stale"
+        ]
+      }
+    },
+    {
+      "id": "already_consumed_replay",
+      "title": "A second attempt is refused even though evidence remains valid",
+      "native_evidence": [
+        {
+          "type": "human_authorization",
+          "evidence": {
+            "evidence_id": "human:already_consumed_replay",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "human:jane.doe"
+          }
+        },
+        {
+          "type": "machine_policy",
+          "evidence": {
+            "evidence_id": "policy:already_consumed_replay",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "organization:treasury-policy"
+          }
+        }
+      ],
+      "aeb_case": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "already_consumed_replay",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-08-04T20:00:00Z",
+        "operation": {
+          "operation_id": "operation:already_consumed_replay",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:treasury-bot",
+          "executor_id": "executor:payment-rail",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            },
+            {
+              "role": "machine-policy",
+              "principal_kind": "ORGANIZATION",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:60b63389099470cbfa78abdcca2d13b81a70eeba3770b7fad4dba3d61bd24b83",
+            "native_replay_unit": "sha256:bf54d8487c52f670d11cccb41874603a854da3e75c7f78ed432db3f1f7b21e06",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:jane.doe",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          },
+          {
+            "wrapper_digest": "sha256:a57edad5b973ca5e3a9bdd9acd40ed5934ba6285a133c96caefeb0fbb86cac1c",
+            "native_replay_unit": "sha256:f4e0eed171afbb274511aba5b38b1b10ca5164c6a36a67839ab95770081e17ea",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "machine-policy",
+            "principal_kind": "ORGANIZATION",
+            "principal_id": "organization:treasury-policy",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:already_consumed_replay",
+              "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+              "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+              "custody": "TERMINAL",
+              "provider_outcome": "COMMITTED",
+              "effect_relation": "OBSERVED_AS_REQUESTED"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "required_bindings": [
+        "capsule.class1"
+      ],
+      "capsule_kind": "planned",
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "REFUSED_ALREADY_CONSUMED",
+        "outcome": "NONE",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "operation_replay"
+        ]
+      }
+    },
+    {
+      "id": "timeout_before_dispatch",
+      "title": "A pre-dispatch timeout produces no invocation and no outcome",
+      "native_evidence": [
+        {
+          "type": "human_authorization",
+          "evidence": {
+            "evidence_id": "human:timeout_before_dispatch",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "human:jane.doe"
+          }
+        },
+        {
+          "type": "machine_policy",
+          "evidence": {
+            "evidence_id": "policy:timeout_before_dispatch",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "organization:treasury-policy"
+          }
+        }
+      ],
+      "aeb_case": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "timeout_before_dispatch",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-08-04T20:00:00Z",
+        "operation": {
+          "operation_id": "operation:timeout_before_dispatch",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:treasury-bot",
+          "executor_id": "executor:payment-rail",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            },
+            {
+              "role": "machine-policy",
+              "principal_kind": "ORGANIZATION",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:f0787b41136f1b8f56830e7f8cb918c52e2ad7f47b4e9ccddf6d7887d4456a74",
+            "native_replay_unit": "sha256:dcf52262154586a8b9ab8f36c1447ff94cd216a4b45e215a59429843e85621c6",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:jane.doe",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          },
+          {
+            "wrapper_digest": "sha256:3c1c22d17548d70dd4f4083331ffa3546096b411cec57ffc6481c17a01974eb1",
+            "native_replay_unit": "sha256:d84dd893eae67a987198b378809b084ce6d867ad8a8b18159a0f93ede63249cc",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "machine-policy",
+            "principal_kind": "ORGANIZATION",
+            "principal_id": "organization:treasury-policy",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "DENY",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "required_bindings": [
+        "capsule.class1"
+      ],
+      "capsule_kind": "planned",
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "NOT_AUTHORIZED",
+        "admission": "REFUSED_TIMEOUT_BEFORE_DISPATCH",
+        "outcome": "NONE",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "timeout_before_dispatch"
+        ]
+      }
+    },
+    {
+      "id": "timeout_after_dispatch",
+      "title": "A post-dispatch timeout is indeterminate and forbids blind retry",
+      "native_evidence": [
+        {
+          "type": "human_authorization",
+          "evidence": {
+            "evidence_id": "human:timeout_after_dispatch",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "human:jane.doe"
+          }
+        },
+        {
+          "type": "machine_policy",
+          "evidence": {
+            "evidence_id": "policy:timeout_after_dispatch",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "organization:treasury-policy"
+          }
+        }
+      ],
+      "aeb_case": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "timeout_after_dispatch",
+        "mode": "INVOCATION_OBSERVATION",
+        "evaluated_at": "2026-08-04T20:00:00Z",
+        "operation": {
+          "operation_id": "operation:timeout_after_dispatch",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:treasury-bot",
+          "executor_id": "executor:payment-rail",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            },
+            {
+              "role": "machine-policy",
+              "principal_kind": "ORGANIZATION",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:58b94fc808f985771dee99148be4b83b30a46d4b4821955a3b4c8157a4c6dc88",
+            "native_replay_unit": "sha256:4c7aaab0e51cf59603d22f15ac92af15675dd6c87f98deabb4382d1764087663",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:jane.doe",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          },
+          {
+            "wrapper_digest": "sha256:e73b6706ccbc6bfbe95443f21e7daf68f5177e4a2a5503e33fefc3367471045b",
+            "native_replay_unit": "sha256:159e5708b9250db04abc6ee021d9fd6035a9e8304611439863c8a23e234d449f",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "machine-policy",
+            "principal_kind": "ORGANIZATION",
+            "principal_id": "organization:treasury-policy",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:timeout_after_dispatch",
+              "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+              "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+              "custody": "INVOKING",
+              "provider_outcome": "INDETERMINATE",
+              "effect_relation": "INDETERMINATE"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": {
+          "source": "TIMEOUT_AFTER_DISPATCH",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE"
+        },
+        "reconciliation": null
+      },
+      "required_bindings": [
+        "capsule.class1"
+      ],
+      "capsule_kind": "dispatched",
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "CONSUMED",
+        "outcome": "INDETERMINATE",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "timeout_after_dispatch"
+        ]
+      }
+    },
+    {
+      "id": "independent_observer_contradiction",
+      "title": "Capsule runtime claim is preserved while an independent observer records divergence",
+      "native_evidence": [
+        {
+          "type": "human_authorization",
+          "evidence": {
+            "evidence_id": "human:independent_observer_contradiction",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "human:jane.doe"
+          }
+        },
+        {
+          "type": "machine_policy",
+          "evidence": {
+            "evidence_id": "policy:independent_observer_contradiction",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "organization:treasury-policy"
+          }
+        }
+      ],
+      "aeb_case": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "independent_observer_contradiction",
+        "mode": "INVOCATION_OBSERVATION",
+        "evaluated_at": "2026-08-04T20:00:00Z",
+        "operation": {
+          "operation_id": "operation:independent_observer_contradiction",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:treasury-bot",
+          "executor_id": "executor:payment-rail",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            },
+            {
+              "role": "machine-policy",
+              "principal_kind": "ORGANIZATION",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:fd20d4f93199c0b4d29acdf21e9bf57e34f6287ac07b976afdbd44cde2adfeb6",
+            "native_replay_unit": "sha256:f637a2ef53b749c2928104f86da8fd7e17e2638309f59ca024f8a04e0db36909",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:jane.doe",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          },
+          {
+            "wrapper_digest": "sha256:a83f429e5fc1432bc3562484dbac4741a1eb315d2de590f1d956e37837050576",
+            "native_replay_unit": "sha256:4480eedbfac24e23a279d458a3f1a781253add443fc3582e729ea12a5552b024",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "machine-policy",
+            "principal_kind": "ORGANIZATION",
+            "principal_id": "organization:treasury-policy",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:independent_observer_contradiction",
+              "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+              "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+              "custody": "INVOKING",
+              "provider_outcome": "INDETERMINATE",
+              "effect_relation": "INDETERMINATE"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": {
+          "source": "PROVIDER_EVIDENCE",
+          "provider_outcome": "COMMITTED",
+          "effect_relation": "DIVERGED"
+        },
+        "reconciliation": null
+      },
+      "required_bindings": [
+        "capsule.class1"
+      ],
+      "capsule_kind": "confirmed",
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "SATISFIED",
+        "decision": "AUTHORIZED",
+        "admission": "CONSUMED",
+        "outcome": "DIVERGENT",
+        "verifier_status": "PASS",
+        "reason_codes_include": [
+          "provider_committed_effect_diverged",
+          "independent_observer_contradiction"
+        ]
+      }
+    },
+    {
+      "id": "unsupported_required_binding",
+      "title": "An unknown required binding returns a structured refusal, never pass or crash",
+      "native_evidence": [
+        {
+          "type": "human_authorization",
+          "evidence": {
+            "evidence_id": "human:unsupported_required_binding",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "human:jane.doe"
+          }
+        },
+        {
+          "type": "machine_policy",
+          "evidence": {
+            "evidence_id": "policy:unsupported_required_binding",
+            "signature_valid": true,
+            "acceptance": "CURRENT",
+            "action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "principal_id": "organization:treasury-policy"
+          }
+        }
+      ],
+      "aeb_case": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "unsupported_required_binding",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-08-04T20:00:00Z",
+        "operation": {
+          "operation_id": "operation:unsupported_required_binding",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:treasury-bot",
+          "executor_id": "executor:payment-rail",
+          "caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+          "normalized_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            },
+            {
+              "role": "machine-policy",
+              "principal_kind": "ORGANIZATION",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:2a5bf5fc47c1f672e140741b3558de3280e8b01ea86cc0b8fefa17278ba6def3",
+            "native_replay_unit": "sha256:ed8e7d494f1d806dbee7c659849a761e9e19d0d86ed2e7a793aadd5f6bde84a0",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:jane.doe",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          },
+          {
+            "wrapper_digest": "sha256:f81a5cecb23e511582baf8e7bf8d4378034f6d5dc75d8da7853a4e88796df9bd",
+            "native_replay_unit": "sha256:ea1937bb1d84fd322b94dfb2e67b724ee53c8bc593dde940e61303412bc548b8",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:payment.release.1:jcs-sha256:W3ZFBaa8EudZnPtr3IZnhkv9gU5J9SGsi8V0ohb4e7k",
+            "mapped_action_digest": "sha256:5b764505a6bc12e7599cfb6bdc8667864bfd814e49f521ac8bc574a216f87bb9",
+            "role": "machine-policy",
+            "principal_kind": "ORGANIZATION",
+            "principal_id": "organization:treasury-policy",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-08-04T19:59:00Z",
+              "valid_until": "2026-08-04T21:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "required_bindings": [
+        "capsule.class1",
+        "capsule.class3"
+      ],
+      "capsule_kind": "planned",
+      "expected": {
+        "action_linkage": "MATCH",
+        "principal_linkage": "RESOLVED",
+        "evidence_satisfaction": "INDETERMINATE",
+        "decision": "INDETERMINATE",
+        "admission": "REFUSED",
+        "outcome": "NONE",
+        "verifier_status": "REFUSED",
+        "reason_codes_include": [
+          "unsupported_required_binding:capsule.class3"
+        ]
+      }
+    }
+  ]
+}

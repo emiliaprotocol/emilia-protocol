@@ -75,6 +75,7 @@ export const CLASSIFICATION_POLICY = Object.freeze({
   readOnlyLeadingSignals: Object.freeze([
     'get', 'list', 'read', 'search', 'lookup', 'fetch', 'query', 'describe',
     'view', 'count', 'status', 'summary', 'summarize', 'preview', 'health', 'ping',
+    'retrieve', 'find', 'show', 'inspect', 'browse',
   ]),
   stateChangeSignals: Object.freeze([
     'create', 'update', 'set', 'write', 'post', 'put', 'patch', 'modify', 'edit',

@@ -60,3 +60,39 @@ test('inflected mutation verbs fail closed instead of hiding behind a read-shape
     assert.match(classification.reason, new RegExp(expectedSignal, 'i'), description);
   }
 });
+
+test('newly admitted read verbs classify plain reads as pass-through', () => {
+  for (const name of [
+    'retrieve_balance',
+    'findCustomerByEmail',
+    'showInvoice',
+    'inspectContainer',
+    'browseCatalog',
+  ]) {
+    const classification = classifyAction({ name, description: 'Returns existing data.' });
+    assert.equal(classification.decision, 'pass_through', name);
+    assert.equal(classification.receipt_required, false, name);
+  }
+});
+
+test('a leading read verb never launders a higher-precedence risk signal', () => {
+  // Every case below leads with a read verb admitted above. Each must still be
+  // caught, because risk category, destructive annotation, state change, and
+  // hybrid-operation markers all outrank the read verb.
+  const mustNotPassThrough = [
+    { name: 'retrieveAndDeleteCustomer', description: 'Read the record, then delete it' },
+    { name: 'findAndRefundCharge', description: 'Locate the charge and refund it' },
+    { name: 'showThenGrantAdminRole', description: 'Display the user, then grant admin' },
+    { name: 'inspectAndTerminateInstance', description: 'Inspect the host before terminating it' },
+    { name: 'browseAndExportCustomerPII', description: 'Browse records and export them in bulk' },
+    { name: 'retrieveInvoice', description: 'Retrieve the invoice, then send the wire' },
+    { name: 'findUser', description: 'Finds the user and updates their bank details' },
+    { name: 'showRecord', annotations: { destructiveHint: true }, description: 'Displays a record' },
+  ];
+
+  for (const action of mustNotPassThrough) {
+    const classification = classifyAction(action);
+    assert.notEqual(classification.decision, 'pass_through', action.name);
+    assert.equal(classification.receipt_required, true, action.name);
+  }
+});

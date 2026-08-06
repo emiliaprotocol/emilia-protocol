@@ -1,0 +1,14 @@
+{
+  "@version": "EP-COMPOSITION-VECTOR-EXTERNAL-REPORT-v1",
+  "status": "AWAITING_INDEPENDENT_RUN",
+  "implementation": null,
+  "implementation_owner": null,
+  "manifest_digest": "sha256:d3d39b73a9626265459714cba4cd6bdef8ba1d313993aface799b7c1eea26bb1",
+  "bundle_digest": "sha256:bfcce4dfae5d49134c03352b612799d41adfe88fb584d2db886ed60e2dedcd89",
+  "capsule_profile": "draft-mih-scitt-agent-action-capsule-02",
+  "class_1": null,
+  "class_2": null,
+  "per_case_results": null,
+  "signed_by": null,
+  "generated_at": null
+}

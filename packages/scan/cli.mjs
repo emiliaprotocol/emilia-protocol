@@ -3,6 +3,8 @@
 //
 //   node packages/scan/cli.mjs <actions.json | openapi.json>  [--emit manifest.json]
 //   node packages/scan/cli.mjs --sample
+//   node packages/scan/cli.mjs brain <actions.json | openapi.json>
+//   node packages/scan/cli.mjs brain --sample
 //   node packages/scan/cli.mjs protect <actions.json | openapi.json> [--apply]
 //
 // Ingests MCP tool lists ([{name, description, annotations}] or {tools:[...]}) or
@@ -12,12 +14,23 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { scanActions, KNOWN_CATEGORIES } from './index.js';
 import { readBoundedRegularFile } from './safe-file.mjs';
+import { renderAuthorityBrain, writeAuthorityBrain } from './brain.mjs';
 
 let strictJsonGate;
 try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
 catch { ({ strictJsonGate } = await import('../verify/strict-json.js')); }
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 const OPENAPI_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
+const TERMINAL_CONTROLS = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/gu;
+
+function terminalSafe(value) {
+  return String(value).replace(TERMINAL_CONTROLS, (character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint === undefined
+      ? '\\u{fffd}'
+      : `\\u{${codePoint.toString(16).padStart(4, '0')}}`;
+  });
+}
 
 function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -79,6 +92,80 @@ if (args[0] === 'authority') {
   // --apply, creates a reviewed scaffold under the selected output directory.
   process.argv = [process.argv[0], fileURLToPath(new URL('./codemod.mjs', import.meta.url)), ...args.slice(1)];
   await import('./codemod.mjs');
+} else if (args[0] === 'brain') {
+  let outPath = 'emilia-authority-brain.html';
+  let outSeen = false;
+  let force = false;
+  let sample = false;
+  const positionals = [];
+  const brainArgs = args.slice(1);
+  for (let index = 0; index < brainArgs.length; index += 1) {
+    const arg = brainArgs[index];
+    if (arg === '--out') {
+      const value = brainArgs[index + 1];
+      if (!value || value.startsWith('-')) {
+        console.error('--out requires a value');
+        process.exit(2);
+      }
+      if (outSeen) { console.error('duplicate option: --out'); process.exit(64); }
+      outSeen = true;
+      outPath = value;
+      index += 1;
+      continue;
+    }
+    if (arg === '--sample' || arg === '--force') {
+      if ((arg === '--sample' && sample) || (arg === '--force' && force)) {
+        console.error(`duplicate option: ${arg}`);
+        process.exit(64);
+      }
+      if (arg === '--sample') sample = true;
+      if (arg === '--force') force = true;
+      continue;
+    }
+    if (arg.startsWith('-')) {
+      console.error(`unknown option: ${arg}`);
+      process.exit(64);
+    }
+    positionals.push(arg);
+  }
+  if (positionals.length > 1 || (sample && positionals.length > 0)) {
+    console.error('provide exactly one input file or --sample, not both');
+    process.exit(64);
+  }
+
+  try {
+    let input;
+    let inputReference;
+    if (sample) {
+      input = {
+        actions: SAMPLE,
+        source: 'mcp',
+        blindSpots: ['This is the built-in sample. Real scans see only statically-listed tools; runtime-registered tools and value-dependent risk are invisible.'],
+      };
+      inputReference = '--sample';
+    } else {
+      const file = positionals[0];
+      if (!file) {
+        console.error('usage: cli.mjs brain <actions.json|openapi.json> [--out dashboard.html] [--force] | brain --sample [--out dashboard.html] [--force]');
+        process.exit(2);
+      }
+      const raw = readBoundedRegularFile(file, MAX_INPUT_BYTES);
+      input = ingest(raw.toString('utf8'));
+      inputReference = file;
+    }
+    const report = scanActions(
+      input.actions,
+      /** @type {any} */ ({ source: input.source, blindSpots: input.blindSpots }),
+    );
+    const html = renderAuthorityBrain(report, { inputReference });
+    const written = writeAuthorityBrain(html, { outPath, force });
+    console.log(`\nEMILIA Authority Brain written: ${terminalSafe(written)}`);
+    console.log('Local artifact only. The scanner proposes; the owner reviews; Gate enforces after integration.\n');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Authority Brain refused: ${terminalSafe(message)}`);
+    process.exitCode = 1;
+  }
 } else {
   let emitPath = null;
   let sample = false;
@@ -116,7 +203,7 @@ if (args[0] === 'authority') {
     input = { actions: SAMPLE, source: 'mcp', blindSpots: ['This is the built-in sample. Real scans see only statically-listed tools; runtime-registered tools and value-dependent risk are invisible.'] };
   } else {
     const file = positionals[0];
-    if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample | protect <input> [--apply]'); process.exit(2); }
+    if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample | brain <input|--sample> | protect <input> [--apply]'); process.exit(2); }
     const raw = readBoundedRegularFile(file, MAX_INPUT_BYTES);
     input = ingest(raw.toString('utf8'));
   }

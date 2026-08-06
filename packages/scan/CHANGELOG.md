@@ -3,6 +3,20 @@
 
 All notable changes to `@emilia-protocol/scan` are documented here.
 
+## 0.3.9 (2026-08-05)
+
+### Fixed
+
+- Admit `retrieve`, `find`, `show`, `inspect`, and `browse` as leading read verbs.
+  Common read-only tools (`retrieve_balance`, `findCustomerByEmail`, `showInvoice`)
+  previously had no recognized read signal and were defaulted fail-closed, which
+  reported plain reads as needing authorization and made real scan output harder to
+  trust. Precedence is unchanged and was mutation-tested against the loosening:
+  risk category, destructive annotation, state-change signals, write methods, and
+  hybrid-operation markers all still outrank the read verb, so
+  `retrieveAndDeleteCustomer`, `findAndRefundCharge`, and a `showRecord` carrying
+  `destructiveHint` continue to require a receipt.
+
 ## 0.3.8 (2026-08-03)
 
 ### Added

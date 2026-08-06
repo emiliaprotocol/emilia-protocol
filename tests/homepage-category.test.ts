@@ -25,29 +25,30 @@ function compact(value) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with the Consequence Firewall product and keeps technical proof in a restrained band', () => {
+  it('leads with the Authority Brain adoption product and keeps technical proof in a restrained band', () => {
     const page = read('app/HomePageClient.js');
-    const layout = read('app/layout.js');
+    const route = read('app/page.js');
     const css = read('app/ep.css');
 
-    expect(layout).toContain('The Consequence Firewall for AI Agents');
-    expect(layout).toContain('secure agent actions');
-    expect(layout).toContain('AI agent firewall');
-    expect(page).toContain('EMILIA Gate <span>· The Consequence Firewall</span>');
-    expect(page).toContain('Stop consequential machine actions before they become irreversible.');
+    expect(route).toContain('EMILIA Authority Brain — See and Control Consequential AI Actions');
+    expect(route).toContain('Run a local Authority Map of visible AI-agent actions');
+    expect(page).toContain('EMILIA Authority Brain <span>· Local consequence control</span>');
+    expect(page).toContain('See where your AI can act. Put a human in control before it matters.');
+    expect(page).toContain('The scanner proposes. You review. On a completely mediated protected path, Gate enforces.');
     expect(page).toContain('Protocol proves. Gate prevents.');
     expect(page).toContain('Auth opens the door. EMILIA controls what crosses it.');
     expect(page).toContain('Existing authorization stack');
     expect(page).toContain('EMILIA Consequence Firewall');
     expect(page).toContain('Run once, reconcile uncertainty, authorize remedy');
-    expect(page).toContain('On every protected path the resource owner fully mediates: no valid evidence, no');
+    expect(page).toContain('On the mediated path: no receipt, no irreversible action.');
     expect(css).toContain('hero-human-machine-shoreline-v1.webp');
     expect(page).toContain('Proof, not promises');
     expect(page).toContain('IETF Internet-Drafts');
     expect(page).toContain('verified lemmas');
     expect(page).toContain('counterexample traces');
+    expect(page).toContain('href="/authority-brain"');
+    expect(page).toContain('href="/scan"');
     expect(page).toContain('href="/gate/live"');
-    expect(page).toContain('href="/agent-guard"');
     expect(page).toContain("href: '/gate'");
     expect(page).toContain('href="/proof"');
     expect(page).not.toContain('<CrashTestDemo />');

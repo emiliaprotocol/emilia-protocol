@@ -14,6 +14,7 @@
 
 | Surface | Role | Commercial status |
 | --- | --- | --- |
+| **EMILIA Authority Brain / Authority Map** | Free local product experience that discovers visible agent-action surfaces, proposes consequence classifications, names blind spots, and routes the owner to protect one action | Apache-2.0 acquisition surface; scanner proposes and never claims enforcement |
 | **EMILIA Gate** | Commercial enforcement product at the executor or system-of-record boundary | Primary product |
 | **EMILIA Protocol** | Open verification and evidence substrate: formats, exact-action binding, verifier, conformance, and interoperability | Apache-2.0 public infrastructure |
 | **EMILIA Approver** | Native apps and embeddable SDKs that capture a device-bound human decision over the exact action | Included capture surface for Gate deployments |
@@ -45,15 +46,15 @@ Do not lead a buyer or a language model with the draft portfolio, formal-method 
 
 ## Target Audience
 
-### Free adoption wedge: scan, protect, and publish a factual Agent Record
+### Free adoption wedge: Authority Brain — discover, map, protect, and prove
 
 **Target companies:** Teams deploying agents that can call administrative, production, financial, data, or infrastructure tools.
 
 **Primary users:** AI platform engineers, security engineers, MCP server maintainers, and developer-tool teams.
 
-**Job to be done:** Passively inspect what connected agent tools can reach, place a deny-by-default check in front of one consequential call, and publish a factual record of the completed local setup without replacing the agent framework or joining a standards process.
+**Job to be done:** Run the local Authority Brain to discover the declared actions the scanner can actually see, review its proposed Authority Map and blind spots, place a deny-by-default check in front of one consequential call, and preserve a factual record of the completed local setup without replacing the agent framework or joining a standards process.
 
-**Adoption promise:** The scan launches nothing and makes no prevention claim. The protect step requires action-bound evidence for one selected tool, and the optional Agent Record reports completed checks without claiming certification, deployment security, or complete mediation.
+**Adoption promise:** `npx @emilia-protocol/scan brain ./tools.json` creates a self-contained local Authority Map without an account, upload, telemetry, or remote asset. The scan launches no configured server and makes no prevention claim. The owner reviews the proposal; the protect step requires action-bound evidence for one selected tool; and the optional factual handoff reports completed local checks without claiming certification, deployment security, or complete mediation.
 
 **Commercial role:** Public distribution and proof of demand. The conversion event is a buyer-selected $25K protected-workflow pilot, not a vanity scan or certification sale.
 
@@ -165,6 +166,8 @@ Payments, government disbursement, code and cloud administration, grid operation
 
 **Canonical EMILIA language:**
 
+- "See where your AI can act. Put a human in control before it matters."
+- "The scanner proposes. The owner reviews. Gate enforces."
 - "Protocol proves. Gate prevents."
 - "The Consequence Firewall for machine action."
 - "No valid receipt, no mutation."
@@ -203,7 +206,7 @@ Quantitative proof changes as the repository evolves. Never copy counts into new
 
 **Primary business goal:** Land one leverage-bearing, production-adjacent Gate deployment that controls a real consequential rail.
 
-**Adoption goal:** Make scan → protect one tool → factual Agent Record the fastest free path into the product.
+**Adoption goal:** Make local Authority Brain → review the Authority Map → protect one tool → factual handoff the fastest free path into the product.
 
 **Revenue goal:** Sell a payer or utilization-management pilot that enforces and evidences licensed review before an adverse medical-necessity determination.
 

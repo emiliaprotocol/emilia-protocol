@@ -4,6 +4,8 @@ import { ENTITY } from '@/lib/site-config';
 type FooterLink = [string, string];
 
 const COL_PRODUCT: FooterLink[] = [
+  ['/authority-brain', 'Authority Brain'],
+  ['/scan', 'Free Local Scan'],
   ['/gate', 'EMILIA Gate'],
   ['/gate/live', 'Live Gate'],
   ['/product/accountable-signoff', 'Approver Apps'],
@@ -26,6 +28,7 @@ const COL_SOLUTIONS: FooterLink[] = [
 
 const COL_DEVELOPERS: FooterLink[] = [
   ['/docs', 'Docs'],
+  ['/authority-brain', 'Authority Brain Demo'],
   ['/quickstart', 'Gate Quickstart'],
   ['/guides/require-receipt', 'Receipt Required Guide'],
   ['/verify', 'Open Verifier'],
