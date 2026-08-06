@@ -1,9 +1,9 @@
 # Preprint staging: Authorization Receipts
 
-**Status: LOCALLY REPRODUCIBLE; NOT APPROVED TO POST. NOTHING has been
-posted.** The source, PDF, and repository evidence claims are checker-gated.
-Publication remains the lead's call (venue account, author metadata, license,
-final review, and upload).
+**Status: SUBMITTED AND EMAIL-CONFIRMED AT IACR; AWAITING EDITORIAL REVIEW.**
+Submission `xxxx/110952` was received and confirmed on 5 August 2026 PT. The
+source, PDF, and repository evidence claims are checker-gated. No public ePrint
+number has been assigned yet.
 
 **Venue:** arXiv (cs.CR) is locked for this topic for us and requires an
 endorsement we do not have, so this package targets the **IACR Cryptology ePrint
@@ -19,7 +19,7 @@ mints a DOI, no scope moderation).
 | File | What it is | State |
 |---|---|---|
 | `main.tex` | Full LaTeX source carrying the canonical Markdown fingerprint and current repo evidence claims | Rebuilt locally; claim-checker gated |
-| `main.pdf` | Compiled PDF (~22 pages), built from `main.tex` with `tectonic` | Rebuilt locally; claim-checker gated |
+| `main.pdf` | Compiled PDF (23 pages), built from `main.tex` with `tectonic` | Submitted as `xxxx/110952`; claim-checker gated |
 | `STAGING.md` | This checklist | — |
 
 The PDF is the artifact IACR ePrint and Zenodo both host directly (they do not
@@ -58,15 +58,16 @@ source with the same Tectonic toolchain are byte-identical.
 - **Moderation:** light human moderation for scope, no peer review; posting is
   typically same/next business day.
 
-**Submission steps (for the lead — DO NOT auto-run):**
-1. Log in / create an IACR ePrint submitter account (free, no endorsement).
-2. Title + abstract: copy from `main.tex` (`\title{...}` and the abstract env).
-3. Category: `Cryptographic protocols` (primary), optionally `Applications`.
-   Keywords: authorization receipts, human oversight, transparency log, Tamarin,
-   TLA+, formal verification, agent authorization.
-4. Publication status: preprint / not published elsewhere.
-5. Upload `main.pdf`. License: CC BY 4.0 (matches the source SPDX header).
-6. Submit → permanent `eprint.iacr.org/2026/NNNN` id + stable citation.
+**Submitted metadata:**
+1. Author: Iman Schrock; ORCID `0009-0004-0290-5433`; affiliation EMILIA
+   Protocol, Inc.; public contact `team@emiliaprotocol.ai`.
+2. Category: `Cryptographic protocols`.
+3. Publication history: major revision of the earlier Zenodo preprint,
+   DOI `10.5281/zenodo.21520973`.
+4. License: CC BY.
+5. PDF: the checker-gated 23-page `main.pdf` in this directory.
+6. State: email ownership confirmed; awaiting editor review. The private
+   confirmation code is retained only in the author's IACR email, not this repo.
 
 ## Fallback venue — Zenodo (zenodo.org)
 
@@ -97,10 +98,10 @@ DOI. Other options if ever needed: TechRxiv (IEEE), HAL, OSF Preprints.
   strict independently-attested clean-room acceptances); no "IETF-adopted";
   fail-closed = refuse-with-reason; symbolic scope exclusions stated exactly.
 
-## What was NOT done (honest boundaries)
+## Current publication boundary
 
-- **Nothing posted.** No IACR / Zenodo account touched, no upload, no email.
-- No co-author list, ORCID, or license *decision* made — the lead's call. Paper is
-  currently single-author "Iman Schrock, EMILIA Protocol, Inc."; confirm whether the
-  external Rust verifier author is a co-author vs. an acknowledged external party
-  (currently the latter).
+- The paper has been received and confirmed by IACR but is not public and has not
+  yet received a permanent `eprint.iacr.org/2026/NNNN` identifier.
+- The paper remains single-author: Iman Schrock, EMILIA Protocol, Inc. The
+  external Rust verifier author remains an acknowledged external implementation
+  party, not a co-author.
