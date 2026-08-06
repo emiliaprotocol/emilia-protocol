@@ -60,6 +60,7 @@ const expectedPaths = new Set([sourceRel, textRel, htmlRel]);
 for (const line of sums) {
   const match = line.match(/^([0-9a-f]{64})  (.+)$/);
   assert(match, `malformed checksum line ${line}`);
+  if (!match) continue;
   const [, expectedHash, relative] = match;
   assert(expectedPaths.delete(relative), `unexpected or duplicate checksum path ${relative}`);
   const actual = createHash('sha256').update(readFileSync(path.join(packet, relative))).digest('hex');
