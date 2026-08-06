@@ -791,8 +791,16 @@ remaining = total - consumed - reserved
       event, production transaction history, post-quantum profile, or
       zero-knowledge implementation. The executor-domain participant binding
       and per-action human-authorization composition added in -02 are protocol
-      requirements and composition rules; the reference implementation does
-      not claim to implement those integrations.</t>
+      requirements and composition rules. The reference execution path now
+      implements those two integrations: an aggregate budget claim requires an
+      exact match to a relying-party-pinned atomic state-domain digest; a
+      mismatch may fall back only to an explicitly pinned single executor; and
+      a required per-action human authorization must pass a native verifier
+      under relying-party pins and bind the exact exercise-action digest. Calls
+      without an executor-domain binding are labeled local_store_only and do
+      not claim aggregate enforcement. A configured state-domain digest is a
+      deployment trust binding; the code cannot by itself prove that two
+      processes connect to the same physical database.</t>
       <t>The reference implementation does reject repeated delegation identifiers,
       repeated parent capability identifiers, a leaf named as its own parent,
       and increasing amounts within the delegation chain presented at mint or

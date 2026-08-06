@@ -13,5 +13,14 @@ composition through the exact exercise-action digest and cites Walter Hawkins's
 adjacent attested-payment draft without importing its attestation or SCITT
 trust model.
 
+The TypeScript reference execution path now implements both -02 composition
+rules. Aggregate accounting is reported only when the relying-party-pinned
+state-domain digest matches an atomic-capable store; otherwise only an
+explicitly pinned single-executor fallback is available. Optional per-action
+human authorization is independently verified under relying-party pins and
+must bind the exact exercise-action digest. Legacy calls are labeled
+`local_store_only`, not aggregate. These integrations do not close the older
+wire-format and complete-lineage conformance gaps listed in the draft.
+
 The source is the authoritative working artifact. TXT and HTML renders are
 generated locally for review. Filing remains a separate human decision.

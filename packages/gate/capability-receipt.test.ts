@@ -2713,3 +2713,238 @@ test('two distinct capabilities may each hold one action, so quorum stays possib
   assert.equal((await reserve(a)).ok, true);
   assert.equal((await reserve(b)).ok, true);
 });
+
+test('aggregate capability accounting refuses a second executor on a different atomic state domain', async () => {
+  const keys = issuer();
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'aggregate-domain-fence',
+  }));
+  const authoritativeStore = createMemoryCapabilityStore();
+  const forkedStore = createMemoryCapabilityStore();
+  assert.equal(authoritativeStore.registerCapability(minted.capabilityReceipt), true);
+  assert.equal(forkedStore.registerCapability(minted.capabilityReceipt), true);
+  assert.notEqual(authoritativeStore.stateDomainDigest, forkedStore.stateDomainDigest);
+
+  let effects = 0;
+  const common = {
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => true,
+    executeAction: async () => { effects += 1; return 'executed'; },
+    now: NOW,
+    executionDomain: {
+      executor_id: 'executor:primary',
+      expected_state_domain_digest: authoritativeStore.stateDomainDigest,
+      require_aggregate: true,
+    },
+  };
+
+  const first = await executeWithCapability({
+    ...common,
+    store: authoritativeStore,
+    operationId: 'op_1',
+    action: scopedAction('op_1', { amount: 30, destination: 'acct_a' }),
+  });
+  assert.equal(first.ok, true);
+  assert.deepEqual(first.budget_guarantee, {
+    mode: 'aggregate_atomic_domain',
+    executor_id: 'executor:primary',
+    state_domain_digest: authoritativeStore.stateDomainDigest,
+  });
+
+  const forked = await executeWithCapability({
+    ...common,
+    store: forkedStore,
+    operationId: 'op_2',
+    action: scopedAction('op_2', { amount: 60 }),
+    executionDomain: {
+      ...common.executionDomain,
+      executor_id: 'executor:fork',
+    },
+  });
+  assert.equal(forked.ok, false);
+  assert.equal(forked.reason, 'capability_state_domain_mismatch');
+  assert.equal(effects, 1);
+  assert.equal(forkedStore.getState(minted.capabilityReceipt.capability.id).reserved_amount, 0);
+  assert.equal(forkedStore.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
+});
+
+test('state-domain mismatch may fall back only to the relying-party-pinned single executor', async () => {
+  const keys = issuer();
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'single-executor-fallback',
+  }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+  const mismatchedDomain = `sha256:${'d'.repeat(64)}`;
+  assert.notEqual(store.stateDomainDigest, mismatchedDomain);
+
+  const common = {
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => true,
+    executeAction: async () => 'executed',
+    now: NOW,
+    executionDomain: {
+      executor_id: 'executor:only',
+      expected_state_domain_digest: mismatchedDomain,
+      single_executor_id: 'executor:only',
+      require_aggregate: false,
+    },
+  };
+
+  const accepted = await executeWithCapability({
+    ...common,
+    operationId: 'op_1',
+    action: scopedAction('op_1', { amount: 30, destination: 'acct_a' }),
+  });
+  assert.equal(accepted.ok, true);
+  assert.deepEqual(accepted.budget_guarantee, {
+    mode: 'single_executor',
+    executor_id: 'executor:only',
+    state_domain_digest: null,
+  });
+
+  const refused = await executeWithCapability({
+    ...common,
+    operationId: 'op_2',
+    action: scopedAction('op_2', { amount: 60 }),
+    executionDomain: {
+      ...common.executionDomain,
+      executor_id: 'executor:other',
+    },
+  });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.reason, 'capability_executor_mismatch');
+});
+
+test('per-action human authorization cannot be substituted by a policy allow or wrong-action proof', async () => {
+  const keys = issuer();
+  const action = scopedAction('op_1', { amount: 30, destination: 'acct_a' });
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'human-authorization-fail-closed',
+  }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+  let effects = 0;
+  const common = {
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    action,
+    operationId: action.operation_id,
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => ({ ok: true, allow: true, decision: 'policy_allow' }),
+    executeAction: async () => { effects += 1; },
+    now: NOW,
+    executionDomain: {
+      executor_id: 'executor:human',
+      expected_state_domain_digest: store.stateDomainDigest,
+      require_aggregate: true,
+    },
+    requireHumanAuthorization: true,
+    humanAuthorizationPins: { verifier_profile: 'ep-human-authorization:v1' },
+  };
+
+  const missing = await executeWithCapability(common);
+  assert.equal(missing.ok, false);
+  assert.equal(missing.reason, 'capability_human_authorization_required');
+
+  const policyShaped = await executeWithCapability({
+    ...common,
+    humanAuthorization: { receipt_id: 'human_policy_shape' },
+    verifyHumanAuthorization: () => ({ ok: true, allow: true }),
+  });
+  assert.equal(policyShaped.ok, false);
+  assert.equal(policyShaped.reason, 'capability_human_authorization_invalid');
+
+  const wrongAction = await executeWithCapability({
+    ...common,
+    humanAuthorization: { receipt_id: 'human_wrong_action' },
+    verifyHumanAuthorization: () => ({
+      native_verification: 'VERIFIED',
+      acceptance: 'ACCEPTED',
+      evidence_type: 'human_authorization',
+      action_digest: `sha256:${'f'.repeat(64)}`,
+      evidence_digest: `sha256:${'e'.repeat(64)}`,
+    }),
+  });
+  assert.equal(wrongAction.ok, false);
+  assert.equal(wrongAction.reason, 'capability_human_authorization_action_mismatch');
+  assert.equal(effects, 0);
+  assert.equal(store.getState(minted.capabilityReceipt.capability.id).reserved_amount, 0);
+});
+
+test('matching atomic domain and native exact-action human authorization admit one valid exercise', async () => {
+  const keys = issuer();
+  const action = scopedAction('op_1', { amount: 30, destination: 'acct_a' });
+  const actionDigest = capabilityActionDigest(action);
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'bounded-composition-valid',
+  }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+  const artifact = { receipt_id: 'human_valid', action_digest: actionDigest };
+  const pins = {
+    verifier_profile: 'ep-human-authorization:v1',
+    issuer_key_digests: [`sha256:${'a'.repeat(64)}`],
+  };
+  let effects = 0;
+
+  const result = await executeWithCapability({
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    action,
+    operationId: action.operation_id,
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => ({ ok: true, allow: true, decision: 'policy_allow' }),
+    executeAction: async (_executed, context) => {
+      effects += 1;
+      assert.equal(context.action_digest, actionDigest);
+      assert.equal(context.human_authorization.evidence_digest, `sha256:${'b'.repeat(64)}`);
+      assert.equal(context.budget_guarantee.mode, 'aggregate_atomic_domain');
+      return 'executed';
+    },
+    now: NOW,
+    executionDomain: {
+      executor_id: 'executor:human',
+      expected_state_domain_digest: store.stateDomainDigest,
+      require_aggregate: true,
+    },
+    requireHumanAuthorization: true,
+    humanAuthorization: artifact,
+    humanAuthorizationPins: pins,
+    verifyHumanAuthorization: (candidate, context) => {
+      assert.deepEqual(candidate, artifact);
+      assert.equal(context.action_digest, actionDigest);
+      assert.deepEqual(context.pins, pins);
+      assert.equal(Object.isFrozen(context.action), true);
+      assert.equal(Object.isFrozen(context.pins), true);
+      return {
+        native_verification: 'VERIFIED',
+        acceptance: 'ACCEPTED',
+        evidence_type: 'human_authorization',
+        action_digest: context.action_digest,
+        evidence_digest: `sha256:${'b'.repeat(64)}`,
+      };
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(effects, 1);
+  assert.equal(result.human_authorization.native_verification, 'VERIFIED');
+  assert.equal(result.human_authorization.action_digest, actionDigest);
+  assert.deepEqual(result.budget_guarantee, {
+    mode: 'aggregate_atomic_domain',
+    executor_id: 'executor:human',
+    state_domain_digest: store.stateDomainDigest,
+  });
+});

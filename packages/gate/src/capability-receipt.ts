@@ -114,6 +114,17 @@ type ReconcileSpendOptions = {
   outcome?: string;
   now?: number | (() => number);
 };
+type CapabilityExecutionDomain = {
+  executor_id: string;
+  expected_state_domain_digest?: string | null;
+  single_executor_id?: string | null;
+  require_aggregate?: boolean;
+};
+type HumanAuthorizationVerificationContext = {
+  action: Readonly<Record<string, any>>;
+  action_digest: string;
+  pins: Readonly<Record<string, any>>;
+};
 type ExecuteWithCapabilityOptions = {
   capabilityReceipt?: Record<string, any>;
   secret?: Buffer | string;
@@ -127,6 +138,11 @@ type ExecuteWithCapabilityOptions = {
   verifyBaseReceipt?: ((...args: any[]) => any) | null;
   resolveCaid?: ((action: any) => any) | null;
   verifyActionProfile?: ((action: any, profile: { profile_id: string; profile_digest: string }) => any) | null;
+  executionDomain?: CapabilityExecutionDomain | null;
+  requireHumanAuthorization?: boolean;
+  humanAuthorization?: unknown;
+  humanAuthorizationPins?: Record<string, any> | null;
+  verifyHumanAuthorization?: ((artifact: unknown, context: HumanAuthorizationVerificationContext) => any) | null;
   allowanceStatus?: AllowanceStatusAssertion;
   operationId?: string | null;
   now?: number | (() => number);
@@ -139,6 +155,8 @@ type ExecuteWithCapabilityResult = {
   result?: any;
   scope?: any;
   authorization?: any;
+  human_authorization?: any;
+  budget_guarantee?: any;
   operation_id?: string | null;
   action_digest?: string;
   action_fence_digest?: string;
@@ -169,6 +187,13 @@ function nowMs(now) {
   const value = typeof now === 'function' ? now() : now;
   if (!Number.isSafeInteger(value) || value < 0) throw new TypeError('capability clock must return a non-negative safe integer');
   return value;
+}
+
+function boundedIdentifier(value: unknown): value is string {
+  return typeof value === 'string'
+    && value.length > 0
+    && Buffer.byteLength(value, 'utf8') <= 512
+    && /^[A-Za-z0-9][A-Za-z0-9:_.@/+\-]{0,511}$/.test(value);
 }
 
 function base64u(bytes) {
@@ -274,6 +299,158 @@ function validateActionDigest(actionDigest) {
     throw new TypeError('action_digest must be SHA-256');
   }
   return actionDigest;
+}
+
+function capabilityStateDomainDigest(): string {
+  return `sha256:${sha256Hex(Buffer.concat([
+    Buffer.from('EP-CAPABILITY-STATE-DOMAIN-v1\0', 'utf8'),
+    randomBytes(32),
+  ]))}`;
+}
+
+function normalizeOptionalStateDomainDigest(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  return validateActionDigest(value);
+}
+
+function capabilityBudgetGuarantee(store: Record<string, any>, binding: CapabilityExecutionDomain | null | undefined) {
+  if (binding === undefined || binding === null) {
+    return {
+      ok: true,
+      guarantee: Object.freeze({
+        mode: 'local_store_only',
+        executor_id: null,
+        state_domain_digest: null,
+      }),
+    };
+  }
+  if (!isRecord(binding)) return { ok: false, reason: 'capability_execution_domain_invalid' };
+  const allowed = new Set([
+    'executor_id',
+    'expected_state_domain_digest',
+    'single_executor_id',
+    'require_aggregate',
+  ]);
+  if (Object.keys(binding).some((key) => !allowed.has(key))
+      || !boundedIdentifier(binding.executor_id)
+      || (binding.require_aggregate !== undefined && typeof binding.require_aggregate !== 'boolean')
+      || (binding.single_executor_id !== undefined
+        && binding.single_executor_id !== null
+        && !boundedIdentifier(binding.single_executor_id))) {
+    return { ok: false, reason: 'capability_execution_domain_invalid' };
+  }
+  let expectedStateDomainDigest: string | null;
+  try {
+    expectedStateDomainDigest = normalizeOptionalStateDomainDigest(
+      binding.expected_state_domain_digest,
+    );
+  } catch {
+    return { ok: false, reason: 'capability_execution_domain_invalid' };
+  }
+  const singleExecutorId = binding.single_executor_id ?? null;
+  const singleExecutorMatches = singleExecutorId !== null
+    && singleExecutorId === binding.executor_id;
+
+  if (expectedStateDomainDigest !== null
+      && store.atomicStateDomainCapable === true
+      && store.stateDomainDigest === expectedStateDomainDigest) {
+    return {
+      ok: true,
+      guarantee: Object.freeze({
+        mode: 'aggregate_atomic_domain',
+        executor_id: binding.executor_id,
+        state_domain_digest: expectedStateDomainDigest,
+      }),
+    };
+  }
+  if (singleExecutorMatches && binding.require_aggregate !== true) {
+    return {
+      ok: true,
+      guarantee: Object.freeze({
+        mode: 'single_executor',
+        executor_id: binding.executor_id,
+        state_domain_digest: null,
+      }),
+    };
+  }
+  if (singleExecutorId !== null && !singleExecutorMatches) {
+    return { ok: false, reason: 'capability_executor_mismatch' };
+  }
+  if (expectedStateDomainDigest === null) {
+    return {
+      ok: false,
+      reason: binding.require_aggregate === true
+        ? 'capability_state_domain_required'
+        : 'capability_execution_domain_required',
+    };
+  }
+  return { ok: false, reason: 'capability_state_domain_mismatch' };
+}
+
+async function verifyPerActionHumanAuthorization({
+  required,
+  artifact,
+  pins,
+  verifier,
+  action,
+  actionDigest,
+}: {
+  required: boolean;
+  artifact: unknown;
+  pins: Record<string, any> | null | undefined;
+  verifier: ((artifact: unknown, context: HumanAuthorizationVerificationContext) => any) | null | undefined;
+  action: Readonly<Record<string, any>>;
+  actionDigest: string;
+}) {
+  const enabled = required
+    || artifact !== undefined
+    || pins !== undefined
+    || verifier !== undefined;
+  if (!enabled) return { ok: true, result: null };
+  if (artifact === undefined || artifact === null) {
+    return { ok: false, reason: 'capability_human_authorization_required' };
+  }
+  if (!isRecord(pins) || Object.keys(pins).length === 0) {
+    return { ok: false, reason: 'capability_human_authorization_pins_required' };
+  }
+  if (typeof verifier !== 'function') {
+    return { ok: false, reason: 'capability_human_authorization_verifier_required' };
+  }
+  const frozenPins = deepFreeze(structuredClone(pins));
+  let result;
+  try {
+    result = await verifier(structuredClone(artifact), Object.freeze({
+      action,
+      action_digest: actionDigest,
+      pins: frozenPins,
+    }));
+  } catch {
+    return { ok: false, reason: 'capability_human_authorization_unavailable' };
+  }
+  if (!isRecord(result)
+      || Object.keys(result).length !== 5
+      || result.native_verification !== 'VERIFIED'
+      || result.acceptance !== 'ACCEPTED'
+      || result.evidence_type !== 'human_authorization'
+      || typeof result.action_digest !== 'string'
+      || typeof result.evidence_digest !== 'string'
+      || !ACTION_DIGEST_RE.test(result.action_digest)
+      || !ACTION_DIGEST_RE.test(result.evidence_digest)) {
+    return { ok: false, reason: 'capability_human_authorization_invalid' };
+  }
+  if (result.action_digest !== actionDigest) {
+    return { ok: false, reason: 'capability_human_authorization_action_mismatch' };
+  }
+  return {
+    ok: true,
+    result: deepFreeze({
+      native_verification: result.native_verification,
+      acceptance: result.acceptance,
+      evidence_type: result.evidence_type,
+      action_digest: result.action_digest,
+      evidence_digest: result.evidence_digest,
+    }),
+  };
 }
 
 function validateEvidenceProfile(evidenceProfile) {
@@ -1024,6 +1201,7 @@ export function createMemoryCapabilityStore({
   providerEntryTimeoutMs = DEFAULT_PROVIDER_ENTRY_TIMEOUT_MS,
 }: { providerEntryTimeoutMs?: number } = {}) {
   const entryTimeoutMs = validateProviderEntryTimeoutMs(providerEntryTimeoutMs);
+  const stateDomainDigest = capabilityStateDomainDigest();
   const states = new Map();
   const operations = new Map();
   const allowanceStatuses = new Map();
@@ -1039,6 +1217,8 @@ export function createMemoryCapabilityStore({
   const actionHolders = new Map();
   return {
     durable: false,
+    atomicStateDomainCapable: true,
+    stateDomainDigest,
     reconciliationCapable: true,
     allowanceCurrentnessCapable: true,
     providerEntryDispositionCapable: true,
@@ -1863,14 +2043,19 @@ export const CAPABILITY_SQL = Object.freeze({
 export function createPostgresCapabilityStore({
   transaction,
   providerEntryTimeoutMs = DEFAULT_PROVIDER_ENTRY_TIMEOUT_MS,
+  stateDomainDigest = null,
 }: {
   transaction?: (callback: (query: Function) => any) => any;
   providerEntryTimeoutMs?: number;
+  stateDomainDigest?: string | null;
 } = {}) {
   if (typeof transaction !== 'function') throw new TypeError('createPostgresCapabilityStore requires a transaction(callback) function');
   const entryTimeoutMs = validateProviderEntryTimeoutMs(providerEntryTimeoutMs);
+  const configuredStateDomainDigest = normalizeOptionalStateDomainDigest(stateDomainDigest);
   return {
     durable: true,
+    atomicStateDomainCapable: true,
+    stateDomainDigest: configuredStateDomainDigest,
     reconciliationCapable: true,
     allowanceCurrentnessCapable: true,
     providerEntryDispositionCapable: true,
@@ -2401,6 +2586,14 @@ function capabilityAmount(action, capability, verifiedAction = action) {
  * @param {Function|null} [options.verifyBaseReceipt]
  * @param {Function|null} [options.resolveCaid]
  * @param {Function|null} [options.verifyActionProfile]
+ * @param {object|null} [options.executionDomain] relying-party executor and
+ *   atomic state-domain binding. Aggregate accounting is claimed only when
+ *   the pinned digest matches an atomic-capable store; otherwise an explicit
+ *   single-executor binding is required for fallback.
+ * @param {boolean} [options.requireHumanAuthorization]
+ * @param {unknown} [options.humanAuthorization] native per-action artifact
+ * @param {object|null} [options.humanAuthorizationPins] relying-party trust inputs
+ * @param {Function|null} [options.verifyHumanAuthorization] native verifier
  * @param {Function|null} [options.providerEntryGuard] final relying-party check
  *   after the atomic budget reservation and immediately before provider entry.
  *   A refusal atomically releases, burns, or holds the pre-entry reservation
@@ -2422,6 +2615,11 @@ export async function executeWithCapability({
   verifyBaseReceipt = null,
   resolveCaid = null,
   verifyActionProfile = null,
+  executionDomain = null,
+  requireHumanAuthorization = false,
+  humanAuthorization = undefined,
+  humanAuthorizationPins = undefined,
+  verifyHumanAuthorization = undefined,
   providerEntryGuard = null,
   allowanceStatus,
   operationId = null,
@@ -2441,6 +2639,9 @@ export async function executeWithCapability({
   if (typeof executeAction !== 'function') throw new TypeError('executeWithCapability requires executeAction');
   if (providerEntryGuard !== null && typeof providerEntryGuard !== 'function') {
     throw new TypeError('providerEntryGuard must be a function when configured');
+  }
+  if (typeof requireHumanAuthorization !== 'boolean') {
+    return { ok: false, reason: 'capability_human_authorization_configuration_invalid' };
   }
   if (providerEntryGuard !== null
       && (store.providerEntryDispositionCapable !== true
@@ -2464,6 +2665,32 @@ export async function executeWithCapability({
     return { ok: false, reason: 'capability_action_invalid' };
   }
   if (!scope.ok) return { ok: false, reason: scope.reason, scope };
+  const domain = capabilityBudgetGuarantee(store, executionDomain);
+  if (!domain.ok) return { ok: false, reason: domain.reason };
+  const budgetGuarantee = domain.guarantee;
+  const human = await verifyPerActionHumanAuthorization({
+    required: requireHumanAuthorization,
+    artifact: humanAuthorization,
+    pins: humanAuthorizationPins,
+    verifier: verifyHumanAuthorization,
+    action: immutableAction,
+    actionDigest: scope.action_digest,
+  });
+  if (!human.ok) {
+    return {
+      ok: false,
+      reason: human.reason,
+      budget_guarantee: budgetGuarantee,
+      action_digest: scope.action_digest,
+    };
+  }
+  const humanAuthorizationResult = human.result;
+  const composition = {
+    budget_guarantee: budgetGuarantee,
+    ...(humanAuthorizationResult
+      ? { human_authorization: humanAuthorizationResult }
+      : {}),
+  };
   let authorization: Record<string, any> | null = null;
   if (gate && typeof gate.check === 'function') {
     authorization = await gate.check({
@@ -2473,7 +2700,12 @@ export async function executeWithCapability({
       consumptionMode: 'none',
       capability: { capabilityReceipt, action: immutableAction, operationId },
     });
-    if (!authorization?.allow) return { ok: false, reason: 'base_receipt_rejected', authorization };
+    if (!authorization?.allow) return {
+      ok: false,
+      reason: 'base_receipt_rejected',
+      authorization,
+      ...composition,
+    };
   } else if (typeof verifyBaseReceipt === 'function') {
     const result = await verifyBaseReceipt(verified.receipt, {
       action: immutableAction,
@@ -2481,9 +2713,14 @@ export async function executeWithCapability({
       observedAction: immutableAction,
       scope,
     });
-    if (result !== true && result?.ok !== true) return { ok: false, reason: 'base_receipt_rejected', authorization: result };
+    if (result !== true && result?.ok !== true) return {
+      ok: false,
+      reason: 'base_receipt_rejected',
+      authorization: result,
+      ...composition,
+    };
   } else {
-    return { ok: false, reason: 'base_receipt_verifier_required' };
+    return { ok: false, reason: 'base_receipt_verifier_required', ...composition };
   }
   let spend;
   try {
@@ -2491,7 +2728,12 @@ export async function executeWithCapability({
     // match the verified action and can never reach the effect.
     spend = capabilityAmount(action, verified.capability, immutableAction);
   } catch (error) {
-    return { ok: false, reason: (error as Error)?.message || 'capability_action_invalid', authorization };
+    return {
+      ok: false,
+      reason: (error as Error)?.message || 'capability_action_invalid',
+      authorization,
+      ...composition,
+    };
   }
   const reserved = await store.reserveSpend({
     capabilityId: verified.capability.id,
@@ -2510,6 +2752,7 @@ export async function executeWithCapability({
       ok: false,
       reason: reserved?.reason || 'capability_reservation_refused',
       authorization,
+      ...composition,
       operation_id: operationId,
       action_digest: reserved?.action_digest ?? scope.action_digest,
       action_fence_digest: reserved?.action_fence_digest ?? scope.action_fence_digest,
@@ -2524,6 +2767,10 @@ export async function executeWithCapability({
     try {
       entryVerdict = await providerEntryGuard(Object.freeze({
         authorization: structuredClone(authorization),
+        human_authorization: humanAuthorizationResult
+          ? structuredClone(humanAuthorizationResult)
+          : null,
+        budget_guarantee: structuredClone(budgetGuarantee),
         selector: structuredClone(selector),
         observed_action: structuredClone(immutableAction),
         capability: structuredClone({
@@ -2550,6 +2797,7 @@ export async function executeWithCapability({
           ok: false,
           reason: 'capability_provider_entry_disposition_invalid',
           authorization,
+          ...composition,
           operation_id: operationId,
           action_digest: scope.action_digest,
           action_fence_digest: scope.action_fence_digest,
@@ -2571,6 +2819,7 @@ export async function executeWithCapability({
             ok: false,
             reason: 'capability_provider_entry_reservation_transition_indeterminate',
             authorization,
+            ...composition,
             operation_id: operationId,
             action_digest: scope.action_digest,
             action_fence_digest: scope.action_fence_digest,
@@ -2584,6 +2833,7 @@ export async function executeWithCapability({
           ? entryVerdict.reason
           : 'provider_entry_guard_refused',
         authorization,
+        ...composition,
         operation_id: operationId,
         action_digest: scope.action_digest,
         action_fence_digest: scope.action_fence_digest,
@@ -2603,6 +2853,7 @@ export async function executeWithCapability({
       ok: false,
       reason: providerEntry?.reason || 'capability_provider_entry_indeterminate',
       authorization,
+      ...composition,
       operation_id: operationId,
       action_digest: scope.action_digest,
       action_fence_digest: scope.action_fence_digest,
@@ -2613,6 +2864,8 @@ export async function executeWithCapability({
     const result = await executeAction(structuredClone(immutableAction), {
       capabilityReceipt,
       authorization,
+      human_authorization: humanAuthorizationResult,
+      budget_guarantee: budgetGuarantee,
       operation_id: operationId,
       action_digest: scope.action_digest,
       action_fence_digest: scope.action_fence_digest,
@@ -2627,6 +2880,7 @@ export async function executeWithCapability({
         ok: false,
         reason: 'capability_commit_indeterminate',
         authorization,
+        ...composition,
         result,
         operation_id: operationId,
         action_digest: scope.action_digest,
@@ -2638,6 +2892,7 @@ export async function executeWithCapability({
       ok: true,
       result,
       authorization,
+      ...composition,
       operation_id: operationId,
       action_digest: scope.action_digest,
       action_fence_digest: scope.action_fence_digest,
@@ -2650,6 +2905,7 @@ export async function executeWithCapability({
       ok: false,
       reason: committed.ok ? 'effect_indeterminate' : 'capability_commit_indeterminate',
       authorization,
+      ...composition,
       operation_id: operationId,
       action_digest: scope.action_digest,
       action_fence_digest: scope.action_fence_digest,

@@ -85,6 +85,17 @@ type ReconcileSpendOptions = {
     outcome?: string;
     now?: number | (() => number);
 };
+type CapabilityExecutionDomain = {
+    executor_id: string;
+    expected_state_domain_digest?: string | null;
+    single_executor_id?: string | null;
+    require_aggregate?: boolean;
+};
+type HumanAuthorizationVerificationContext = {
+    action: Readonly<Record<string, any>>;
+    action_digest: string;
+    pins: Readonly<Record<string, any>>;
+};
 type ExecuteWithCapabilityOptions = {
     capabilityReceipt?: Record<string, any>;
     secret?: Buffer | string;
@@ -101,6 +112,11 @@ type ExecuteWithCapabilityOptions = {
         profile_id: string;
         profile_digest: string;
     }) => any) | null;
+    executionDomain?: CapabilityExecutionDomain | null;
+    requireHumanAuthorization?: boolean;
+    humanAuthorization?: unknown;
+    humanAuthorizationPins?: Record<string, any> | null;
+    verifyHumanAuthorization?: ((artifact: unknown, context: HumanAuthorizationVerificationContext) => any) | null;
     allowanceStatus?: AllowanceStatusAssertion;
     operationId?: string | null;
     now?: number | (() => number);
@@ -113,6 +129,8 @@ type ExecuteWithCapabilityResult = {
     result?: any;
     scope?: any;
     authorization?: any;
+    human_authorization?: any;
+    budget_guarantee?: any;
     operation_id?: string | null;
     action_digest?: string;
     action_fence_digest?: string;
@@ -287,6 +305,8 @@ export declare function createMemoryCapabilityStore({ providerEntryTimeoutMs, }?
     providerEntryTimeoutMs?: number;
 }): {
     durable: boolean;
+    atomicStateDomainCapable: boolean;
+    stateDomainDigest: string;
     reconciliationCapable: boolean;
     allowanceCurrentnessCapable: boolean;
     providerEntryDispositionCapable: boolean;
@@ -455,11 +475,14 @@ export declare const CAPABILITY_SQL: Readonly<{
  * @param {object} [options]
  * @param {(callback: (query: Function) => any) => any} [options.transaction]
  */
-export declare function createPostgresCapabilityStore({ transaction, providerEntryTimeoutMs, }?: {
+export declare function createPostgresCapabilityStore({ transaction, providerEntryTimeoutMs, stateDomainDigest, }?: {
     transaction?: (callback: (query: Function) => any) => any;
     providerEntryTimeoutMs?: number;
+    stateDomainDigest?: string | null;
 }): {
     durable: boolean;
+    atomicStateDomainCapable: boolean;
+    stateDomainDigest: string | null;
     reconciliationCapable: boolean;
     allowanceCurrentnessCapable: boolean;
     providerEntryDispositionCapable: boolean;
@@ -493,6 +516,14 @@ export declare function createPostgresCapabilityStore({ transaction, providerEnt
  * @param {Function|null} [options.verifyBaseReceipt]
  * @param {Function|null} [options.resolveCaid]
  * @param {Function|null} [options.verifyActionProfile]
+ * @param {object|null} [options.executionDomain] relying-party executor and
+ *   atomic state-domain binding. Aggregate accounting is claimed only when
+ *   the pinned digest matches an atomic-capable store; otherwise an explicit
+ *   single-executor binding is required for fallback.
+ * @param {boolean} [options.requireHumanAuthorization]
+ * @param {unknown} [options.humanAuthorization] native per-action artifact
+ * @param {object|null} [options.humanAuthorizationPins] relying-party trust inputs
+ * @param {Function|null} [options.verifyHumanAuthorization] native verifier
  * @param {Function|null} [options.providerEntryGuard] final relying-party check
  *   after the atomic budget reservation and immediately before provider entry.
  *   A refusal atomically releases, burns, or holds the pre-entry reservation
@@ -501,7 +532,7 @@ export declare function createPostgresCapabilityStore({ transaction, providerEnt
  * @param {number|(() => number)} [options.now]
  * @param {boolean} [options.thresholdSecretVerified]
  */
-export declare function executeWithCapability({ capabilityReceipt, secret, action, store, executeAction, gate, selector, observedAction, trustedIssuerKeys, verifyBaseReceipt, resolveCaid, verifyActionProfile, providerEntryGuard, allowanceStatus, operationId, now, thresholdSecretVerified, }?: ExecuteWithCapabilityOptions): Promise<ExecuteWithCapabilityResult>;
+export declare function executeWithCapability({ capabilityReceipt, secret, action, store, executeAction, gate, selector, observedAction, trustedIssuerKeys, verifyBaseReceipt, resolveCaid, verifyActionProfile, executionDomain, requireHumanAuthorization, humanAuthorization, humanAuthorizationPins, verifyHumanAuthorization, providerEntryGuard, allowanceStatus, operationId, now, thresholdSecretVerified, }?: ExecuteWithCapabilityOptions): Promise<ExecuteWithCapabilityResult>;
 /**
  * Execute a capability requiring m-of-n Shamir shares.
  * @param {Record<string, any>} [args] capabilityReceipt, shares, and executeWithCapability passthrough options
