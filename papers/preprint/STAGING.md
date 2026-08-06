@@ -1,11 +1,14 @@
-# Preprint staging: Authorization Receipts
+# Preprint staging: Action-Bound Injective Authorization
 
-**Status: REJECTED BY IACR EDITORIAL REVIEW; REVISION IN PROGRESS.**
+**Status: REJECTED BY IACR EDITORIAL REVIEW; REVISION BUILT, NOT RESUBMITTED.**
 Submission `xxxx/110952` was received on 5 August 2026 PT and rejected on 6
 August 2026 with the editor's note: "Unclear or insufficient contribution to the
-field of cryptology." No public ePrint number was assigned. The revision narrows
-the paper around its explicit protocol/security result and records the rejection
-as a venue decision, not as a peer-review finding.
+field of cryptology." No public ePrint number was assigned. The revision now
+foregrounds the named Action-Bound Injective Authorization (ABIA) security
+definition, its signer-harvesting adversary, its symbolic theorem, and the
+counterexample separations that distinguish protocol authorization from ordinary
+signature authenticity. The rejection remains recorded as a venue decision, not
+as a peer-review finding.
 
 **Venue:** arXiv (cs.CR) is locked for this topic for us and requires an
 endorsement we do not have, so this package targets the **IACR Cryptology ePrint
@@ -21,7 +24,7 @@ mints a DOI, no scope moderation).
 | File | What it is | State |
 |---|---|---|
 | `main.tex` | Full LaTeX source carrying the canonical Markdown fingerprint and current repo evidence claims | Rebuilt locally; claim-checker gated |
-| `main.pdf` | Compiled PDF (23 pages), built from `main.tex` with `tectonic` | Submitted as `xxxx/110952`; claim-checker gated |
+| `main.pdf` | Compiled PDF (25 pages), built from `main.tex` with `tectonic` | Revised build; not resubmitted; claim-checker gated |
 | `STAGING.md` | This checklist | — |
 
 The PDF is the artifact IACR ePrint and Zenodo both host directly (they do not
@@ -60,16 +63,16 @@ source with the same Tectonic toolchain are byte-identical.
 - **Moderation:** light human moderation for scope and contribution, no peer
   review; posting is not guaranteed by a conformance or implementation record.
 
-**Submitted metadata:**
+**Resubmission metadata:**
 1. Author: Iman Schrock; ORCID `0009-0004-0290-5433`; affiliation EMILIA
    Protocol, Inc.; public contact `team@emiliaprotocol.ai`.
 2. Category: `Cryptographic protocols`.
 3. Publication history: major revision of the earlier Zenodo preprint,
    DOI `10.5281/zenodo.21520973`.
 4. License: CC BY.
-5. PDF: the checker-gated 23-page `main.pdf` in this directory.
-6. State: email ownership confirmed; awaiting editor review. The private
-   confirmation code is retained only in the author's IACR email, not this repo.
+5. PDF: the checker-gated 25-page `main.pdf` in this directory.
+6. State: not resubmitted. The rejected submission's private confirmation code
+   remains only in the author's IACR email, not this repo.
 
 ## Fallback venue — Zenodo (zenodo.org)
 

@@ -1,4 +1,4 @@
-# Action-Bound Human-Approval Receipts: A Symbolic Security Analysis under an Operator-Untrusted Signing Service
+# Action-Bound Injective Authorization under Signer Harvesting: A Symbolic Security Analysis
 
 **Iman Schrock**
 EMILIA Protocol, Inc.
@@ -13,7 +13,7 @@ ORCID: [0009-0004-0290-5433](https://orcid.org/0009-0004-0290-5433)
 
 ## Abstract
 
-Cryptographic approval protocols often assume that the service rendering a request, routing a signoff, and retaining the evidence is honest. This paper removes that assumption. We define an action-bound human-approval receipt: an approver key signs a canonical context binding one exact action, a policy commitment, an initiator, and a fresh nonce, and an enforcement point consumes that authorization at most once within one shared atomic domain. The receipt can carry a signed transparency-log inclusion proof and can therefore be checked without access to the operator or its API. The cryptographic primitives are standard; the contribution is the protocol-security result under an operator-untrusted, signer-harvesting adversary that controls the network and may obtain honest signatures over attacker-chosen actions. We formalize three load-bearing properties: action non-transplantability, injective terminal acceptance within the shared consumption domain, and quorum integrity when the initiator is bound inside each approval. Four Tamarin models verify 17 all-traces properties and three executable witnesses; deliberately removing consumption, initiator, or exact registry-view binding produces concrete attack traces. Complementary TLA+ and Alloy models check the surrounding state machine, while a cross-language implementation and conformance suite validate the protocol encoding rather than replace the security argument. The result is conditional on perfect cryptography, injective canonical encoding, pinned relying-party trust material, and the stated state-domain boundary. It does not prove natural-person identity, presentation fidelity, policy correctness, log completeness, or downstream effects. Agent-action profiles and evidence-sufficiency graphs are presented as secondary compositions around this cryptographic core, not as new primitives.
+Digital signatures authenticate messages, but signature authenticity alone does not imply that an authorization is non-transplantable to another action or injectively consumable at an enforcement point. We study this protocol-composition problem when the service that renders requests, routes signoffs, and retains records is untrusted. We define **Action-Bound Injective Authorization (ABIA)**: an approver-held key signs an injectively encoded authorization context naming one exact action, and a relying party accepts only after verifying that context and atomically consuming its authorization within a stated domain. The adversary controls the network and may obtain valid signatures on contexts of its choice, which models signer harvesting by a malicious operator, but does not compromise the approver keys. In the symbolic trace model, the receipt core establishes action non-transplantability and user-verification-gated authenticity; the consumption rule establishes injective terminal acceptance within one shared domain; and the 2-of-2 quorum model establishes signer distinctness and initiator exclusion when those values are signed. Removing consumption, initiator binding, or exact registry-view binding yields concrete traces while leaving the signature primitive ideal. Four Tamarin models verify 17 all-traces properties and three executable witnesses; eight deliberately weakened comparisons are falsified. The result is a protocol-security theorem under Dolev--Yao assumptions, not a new signature primitive or a computational reduction. TLA+, Alloy, implementation, and conformance artifacts validate the surrounding construction but do not replace the symbolic result. The analysis does not prove natural-person identity, presentation fidelity, policy correctness, log completeness, or downstream effects.
 
 ---
 
@@ -33,29 +33,97 @@ Existing authorization infrastructure does not change this, because it answers a
 
 The authorization receipt is a narrow construction aimed at exactly these gaps: before an irreversible action executes, an enrolled approver key signs a canonical context binding the exact action; the authorization reaches a terminal state at most once within the executor's shared atomic consumption domain; and the resulting receipt is verifiable offline for as long as its algorithms and independently selected trust material remain acceptable or are renewed.
 
-### 1.2 Security claim and boundary
+### 1.2 The security question and boundary
 
 The claim is deliberately limited. A receipt is evidence that a key enrolled under an approver identifier signed a canonical context binding one action, a committed policy version, and a validity window, and that the authorization reached a terminal state once within a shared atomic consumption domain. It is not evidence that the enrolled key holder is a particular natural person, that the action was a good idea, that the approver understood the business context, that an independent executor did not accept a replay, or that the surrounding deployment cannot be bypassed. Verification proves signature, binding, and log-inclusion integrity; it never proves business correctness or a downstream effect. The organization publishing this work is not an auditor, regulator, or insurer; the artifacts described here support the judgments of such parties and conclude nothing on their own.
 
-### 1.3 Contributions
+### 1.3 What standard signature security does not provide
 
-- **A protocol abstraction and security definitions.** We isolate the action-bound receipt from its agent and workflow integrations, define the signed context, terminal acceptance relation, shared consumption domain, and relying-party key pinning, and state non-transplantability and injective-acceptance properties against that abstraction.
-- **An operator-untrusted signer-harvesting adversary.** The party that renders the action, routes approval, and keeps the record may drive an honest approver to sign any action chosen by the attacker. This removes the usual honest-renderer assumption and makes the result about evidence rather than ordinary session authorization.
-- **A counterexample-guided composition result.** Four Tamarin models derive the receipt and quorum properties rather than assuming signature validity. The strict models verify 17 all-traces properties and three executable witnesses; weakened models produce concrete replay, initiator-binding, and stale-registry-view attacks. The falsifications identify which protocol bindings carry which properties.
-- **A bounded implementation validation.** The reference implementation, 21-suite/331-vector conformance battery, and separately authored Rust verifier validate the encoding and interoperability boundary. They are not presented as independent security proofs.
-- **Secondary compositions.** A host-record binding profile and an evidence-sufficiency graph are included to show how the receipt composes with agent-action artifacts. Neither is claimed as a new cryptographic primitive.
+The contribution is not the claim that a signature can authenticate a byte
+string. That is the primitive assumption. The cryptographic question is what
+must be added around that primitive before a relying party may treat a signed
+authorization as evidence for one exact action and one terminal admission.
 
-The paper does not claim a new signature, hash, or transparency-log primitive. Its cryptology contribution is the formal protocol/security boundary: what an action-bound approval receipt proves against an operator-untrusted signer-harvesting adversary, which state and context bindings are necessary, and which attacks appear when those bindings are removed.
+Let `Sign_H(x)` be an honest approver's signing operation on authorization
+context `x`, and let `Accept_D(x)` be terminal acceptance in atomic domain `D`.
+The signer-harvesting adversary may choose `x` and obtain `Sign_H(x)` for
+arbitrary actions, then replay, splice, or reorder the resulting artifacts. It
+wins one of three protocol games if:
 
-### 1.4 The result in one statement
+1. **Transplantation:** `Accept_D(x)` occurs without an honest signature on the
+   same canonical context `x` (an approval for one action is used for another).
+2. **Non-injective acceptance:** two terminal acceptances in the same `D`
+   consume the same authorization context (the same valid receipt is replayed).
+3. **Quorum substitution:** a quorum commits an action without distinct enrolled
+   approvers signing the same action and initiator, or allows the initiator to
+   occupy an approver slot.
 
-Let `x = (a, p, i, n, w, v)` be the injectively encoded authorization context, where `a` is the canonical action, `p` the policy commitment, `i` the initiator, `n` the one-time nonce, `w` the validity window, and `v` the approver slot. Let `D` be the executor's shared atomic consumption domain. A relying party accepts only when the approver signature verifies over `x` under pinned key material and `Consume_D(H(x), n)` succeeds. Under the symbolic assumptions stated in Section 7, and while the signing key is uncompromised, three consequences follow:
+For the 2-of-2 profile analyzed here, we call the conjunction of these properties
+**ABIA security**. This is a
+protocol-level security notion, not a replacement for standard signature
+security: a scheme may remain perfectly unforgeable while a verifier that omits
+consumption or leaves the initiator outside the signed context loses ABIA. The
+negative traces in Section 7 are therefore separation results. They show that
+the missing checks are not editorial detail and that a valid signature, a log
+inclusion proof, or a quorum count does not supply the omitted protocol
+property by itself.
 
-- **Action non-transplantability:** an accepted receipt for `a` cannot be produced from an honest signature over a different action `a'`.
-- **Injective terminal acceptance:** within `D`, two terminal acceptances cannot consume the same `(H(x), n)` authorization. This guarantee is not portable across independent executors that do not share `D`.
-- **Quorum integrity:** a 2-of-2 commitment requires two distinct enrolled approver identities, each signing a context that binds the same action and initiator; the initiator cannot fill an approver slot.
+### 1.4 Contributions
 
-The counterexamples are part of the result. Removing the consumption check admits a replay trace; removing the initiator from the signed context admits a quorum/separation-of-duties trace; and omitting the exact pinned registry view admits a stale-view trace. These are protocol failures, not failures of the underlying signature primitive. The remainder of the paper explains the construction, the models, and the implementation boundary supporting this statement.
+- **A protocol abstraction and ABIA security definition.** We isolate action-bound authorization from its agent and workflow integrations, define the signer-harvesting games, terminal acceptance relation, shared consumption domain, quorum condition, and relying-party key pinning, and state the exact properties a relying party is entitled to infer.
+- **A symbolic security theorem and separations.** Four Tamarin models derive the receipt and quorum properties rather than assuming that an accepted signature is enough. The strict models verify 17 all-traces properties and three executable witnesses; weakened models produce concrete replay, initiator-binding, and stale-registry-view attacks while the signature algebra remains ideal.
+- **An operator-untrusted adversary model.** The party that renders the action, routes approval, and keeps the record may drive an honest approver to sign any action chosen by the attacker. This removes the honest-renderer assumption and makes the result about protocol evidence rather than ordinary session authorization.
+- **A precise construction boundary.** Canonical action bytes, approver-held keys, atomic terminal consumption, and offline verification are the analyzed core. A host-record binding profile and evidence-sufficiency graph are secondary compositions and are not claimed as new cryptographic primitives.
+- **Bounded validation.** The reference implementation, 21-suite/331-vector conformance battery, and separately authored Rust verifier validate encoding and interoperability. They are not presented as independent security proofs.
+
+The paper does not claim a new signature, hash, or transparency-log primitive.
+Its cryptology contribution is the ABIA protocol result: under a
+signer-harvesting adversary, exact action binding and terminal injectivity are
+separate obligations, the state and context bindings needed for them can be
+machine-checked, and removing those bindings produces attacks without forging
+the underlying signatures.
+
+### 1.5 The result in one statement
+
+**Theorem 1 (symbolic ABIA result).** Let `x = (a, p, i, n, w, v)` be the
+injectively encoded authorization context, where `a` is the canonical action,
+`p` the policy commitment, `i` the initiator, `n` the one-time nonce, `w` the
+validity window, and `v` the approver slot. Let `D` be the executor's shared
+atomic consumption domain. In the trace semantics of the models in Section 7,
+with pinned key material, uncompromised signing keys, and the stated injective
+encoding assumption:
+
+- **Receipt core:** an accepted receipt implies a prior user-verification-gated
+  signature over the exact `(a, n)` context; an honest signature over another
+  action cannot be transplanted.
+- **Terminal injectivity:** within `D`, two terminal acceptances cannot consume
+  the same `(H(x), n)` authorization. This guarantee is not portable across
+  independent executors that do not share `D`.
+- **Quorum integrity:** the 2-of-2 model requires two distinct enrolled
+  approver identities, each signing the same action and initiator; the initiator
+  cannot fill an approver slot.
+
+The counterexamples are part of the theorem's boundary. Removing the
+consumption check admits a replay trace; removing the initiator from the signed
+context admits a quorum/separation-of-duties trace; and omitting the exact
+pinned registry view admits a stale-view trace. These are protocol failures,
+not failures of the underlying signature primitive. The composed models extend
+the same reasoning to challenge registration, authority scope, reliance
+configuration, and action-keyed execution; they do not silently promote those
+additional fields into the focused receipt theorem.
+
+**Proof sketch.** In `ep_receipt_core.spthy`, the only rule that emits an honest
+signature consumes a linear user-verification fact for the same action and
+nonce. The acceptance rules can fire only when Tamarin's signature equation
+holds under the pinned key, so the equality restriction yields the exact signed
+context. The `ConsumeOnce` restriction makes two checked acceptances of the same
+authorization impossible. In `ep_quorum_core.spthy`, the commit rule requires
+two verification equations under distinct pinned keys and explicitly excludes
+the initiator; removing the initiator field from the signed term makes the
+corresponding separation-of-duties query falsifiable. The composed models apply
+the same derivation to the pinned registry view and challenge/action key. Thus
+the positive result and the negative traces use the same symbolic signature
+theory; only the protocol rules and restrictions differ.
 
 ## 2. Threat Model
 
@@ -99,7 +167,28 @@ The context may optionally carry two further members, both claims by parties the
 
 The signoff itself carries the context hash, the signature, the key custody class, the approver key identifier, and, for device-bound keys, the WebAuthn assertion material. For device-bound keys the WebAuthn challenge must equal the context hash and the authenticator's user-verification flag must be set, so the signature attests both possession of the enrolled authenticator and a local user-verification event. In the symbolic models this user-verification requirement is modeled structurally as a linear precondition that only a user-verification step can satisfy, so no trace contains a signature without a preceding user-verification event over exactly that action and nonce (Section 7.2); the model assumes the authenticator enforces user verification and does not itself prove WebAuthn internals. Denials are signed over the same context hash with a denial envelope, so refusals are equally attributable to the enrolled key and equally terminal: "the enrolled approver key signed a refusal of this action" is a positive, verifiable fact, not an absence.
 
-### 3.3 One-time consumption as enforcement-point state
+### 3.3 Core protocol interface and adversarial queries
+
+The cryptographic core has four roles: an approver key holder, an operator that
+may be malicious, a relying party, and an enforcement domain `D`. The operator
+constructs a canonical context `x`, obtains an approver signature, and returns
+the resulting artifact to the network. The relying party runs `Verify(x,
+sig, K)` against independently pinned key material, then runs the atomic
+operation `Consume_D(H(x), n)` before terminally admitting the action. A receipt
+may include a transparency-log inclusion proof, but that proof authenticates
+publication; it does not replace either the signature check or the consume
+operation.
+
+The formal adversary is allowed to call the honest signing rule on arbitrary
+actions and initiators. This models an operator that can make a genuine signing
+request look legitimate to the signing client. The models do not grant the
+adversary the signing key: `RevealLtk` is an explicit compromise event, and
+each authenticity lemma is conditioned on its absence before acceptance. This
+separation is important. The theorem addresses misuse of valid signatures; it
+does not claim resilience after key extraction or against a compromised trusted
+display path.
+
+### 3.4 One-time consumption as enforcement-point state
 
 An authorization attempt moves through a small state machine:
 
@@ -121,7 +210,7 @@ The consumption record is enforcement-point state, not log decoration, and its n
 
 Deployment topology is graded honestly rather than assumed. In the strongest conformance class, the system of record itself (payment switch, registry, deployment controller) verifies the authorization bundle before executing and refuses otherwise. A middleware class intercepts between the agent and the executing credential, which defends against agent error and prompt injection but can be bypassed by an operator with code control. An evidence-only class makes no enforcement claim at all. Implementations must declare their class in the receipts they produce and must not state a stronger class than deployed; the distance between "the construction has these properties" and "your deployment is unbypassable" is the most common overclaim in this category.
 
-### 3.4 The trust receipt and offline verification
+### 3.5 The trust receipt and offline verification
 
 Upon commitment, the orchestrator assembles the Trust Receipt: the full Action Object and its hash, every authorization context, every signoff, the consumption record, a Merkle inclusion proof for the receipt leaf against a signed log checkpoint (tree size, root hash, log signature, log key identifier), and inclusion proofs for the approver key entries in the approver directory. Operator-produced commitments and receipt-log material are signed with Ed25519; approver signoffs under the device-bound class are ES256 (P-256) or Ed25519 where the authenticator supports it.
 
@@ -133,7 +222,7 @@ One further property is deliberate and load-bearing: no step of offline verifica
 
 Equally important is what offline verification does *not* establish, and the specification requires implementations to say so. It establishes authenticity as of commit time, not currency: a receipt whose approver key was revoked an hour after commitment still verifies, because the artifact is evidence of validity at commit time. And it establishes inclusion in *a* tree whose head the log operator signed, not that this tree is the only tree the operator has shown the world; split-view detection requires online activity such as gossip or witness cosigning. A relying party with freshness or revocation requirements must additionally consult a current directory head and checkpoint online. Implementations must not describe offline verification as establishing that a receipt is "currently valid."
 
-### 3.5 Key custody and the approver directory
+### 3.6 Key custody and the approver directory
 
 Key classes classify custody of the approver's signing key and nothing else. Class A keys are generated and held in a platform authenticator or security key and exercised via WebAuthn with user verification required; this is the recommended class and the one the symbolic models take as their setting. Class B keys are software keys in the approver's client environment, acceptable where WebAuthn is impractical, with the reduced assurance noted in receipts. Class C, in which the operator signs on the approver's behalf after authenticating them, exists only to describe pre-existing deployments; receipts produced under it must be labeled as such, and relying parties should treat them as operator assertion, not approver signature.
 
@@ -333,7 +422,7 @@ Two consequences follow and are stated normatively. First, several parts of the 
 
 ## 8. Implementation and Conformance
 
-A reference implementation of the receipt, quorum, evidence-chain, binding, and evidence-graph layers is published under Apache-2.0. The conformance battery (21 suites, 331 vectors), that is, the conformance battery of 21 suites comprising 331 vectors, is self-contained (each vector carries its own public key and document, requiring no server or shared state), adversarial (reject vectors each pin one invariant: tampered bytes, wrong key, replay, malformed signature, broken Merkle anchor), and deterministic (regenerable byte-identically from fixed seeds). Further suites cover quorum semantics, device signoffs, revocation timing, trusted-time attestation, the full trust receipt with Merkle inclusion and signed checkpoint (including a transparency-statement digest profile), provenance chains, evidence records, a canonicalization-malleability battery, the offline-verification boundary, currency (authentic-as-of-commit versus current validity), initiator-attestation field validation, sparse-Merkle one-time-consumption transitions, witness cosignatures over a checkpoint head, and an independent RFC 3161 timestamp-proof profile.
+A reference implementation of the receipt, quorum, evidence-chain, binding, and evidence-graph layers is published under Apache-2.0. The conformance battery (21 suites, 331 vectors) is self-contained: each vector carries its own public key and document, requiring no server or shared state. The conformance battery of 21 suites comprising 331 vectors is adversarial (reject vectors each pin one invariant: tampered bytes, wrong key, replay, malformed signature, broken Merkle anchor) and deterministic (regenerable byte-identically from fixed seeds). Further suites cover quorum semantics, device signoffs, revocation timing, trusted-time attestation, the full trust receipt with Merkle inclusion and signed checkpoint (including a transparency-statement digest profile), provenance chains, evidence records, a canonicalization-malleability battery, the offline-verification boundary, currency (authentic-as-of-commit versus current validity), initiator-attestation field validation, sparse-Merkle one-time-consumption transitions, witness cosignatures over a checkpoint head, and an independent RFC 3161 timestamp-proof profile.
 
 The implementation status is stated precisely, because it is the most tempting place to overclaim. The JavaScript, Python, and Go reference verifiers live in *one repository*: they are same-team ports whose agreement across all 331 current vectors is cross-language consistency evidence, not three independent implementations. A historical Ed25519-signed `EP-EXTERNAL-VERIFICATION-STATEMENT-v1` from COSA / J Diesel NY records external reproduction of 158 vectors against a pinned commit using this project's own `emilia-verify` package; it remains exactly that historical reproduction result.
 
@@ -353,11 +442,21 @@ The receipt is positioned as a composition with adjacent layers, not a replaceme
 
 **Formal methods for authorization protocols.** Symbolic protocol analysis under a Dolev-Yao attacker with tools such as Tamarin and ProVerif is a mature body of work; it has been applied to key-exchange and authentication protocols and, more recently, to WebAuthn and FIDO ceremonies. The contribution here is not the method but its application to action-bound human-approval evidence: deriving, rather than assuming, that acceptance of an authorization implies a prior user-verification-gated signature under a pinned enrolled key over exactly the accepted action, that quorum requires distinct enrolled identities with no self-approval, and that the one-time-consumption and initiator bindings the design depends on are the bindings that carry the properties. The complementary use of TLA+ for the state machine and Alloy for the relational structure follows their conventional strengths.
 
+**Separation from signature security.** The result should not be confused with a
+new claim about the underlying signature scheme. Standard signature security
+addresses whether an adversary can produce a valid signature on a message that
+was never signed; it does not specify whether a verifier accepts that message
+twice, accepts it under a different action label, or counts the same identity
+in two quorum slots. ABIA makes those verifier-side obligations explicit. The
+Tamarin falsifications are consequently separations between primitive
+authenticity and protocol authorization: the same ideal signing algebra is used
+in the safe and unsafe models, and only the omitted protocol binding changes.
+
 ## 10. Limitations
 
 ### 10.1 What a receipt does not prove
 
-A receipt proves that a key enrolled under an approver identifier signed a canonical context binding one action and that the authorization reached a recorded terminal state within the relevant consumption domain. It does not prove that a particular natural person exercised the key: identifier-to-person binding is the directory and identity-proofing layer's property (Section 3.5), and possession of the enrolled device plus its user-verification factor is the practical proxy the artifact rests on. A coerced approver, a shoulder-surfed PIN, or a human who has enrolled multiple identities all produce receipts that verify. Distinctness checking operates over enrolled identities; whether two identities are two humans is an enrollment control, and the symbolic quorum model is explicit that it proves the distinct-identity property and nothing about independent wills (Section 7.4). Receipts make insider events attributable to enrolled identities and evidenced, which raises their cost; they do not make them impossible, and conforming implementations are prohibited from claiming otherwise.
+A receipt proves that a key enrolled under an approver identifier signed a canonical context binding one action and that the authorization reached a recorded terminal state within the relevant consumption domain. It does not prove that a particular natural person exercised the key: identifier-to-person binding is the directory and identity-proofing layer's property (Section 3.6), and possession of the enrolled device plus its user-verification factor is the practical proxy the artifact rests on. A coerced approver, a shoulder-surfed PIN, or a human who has enrolled multiple identities all produce receipts that verify. Distinctness checking operates over enrolled identities; whether two identities are two humans is an enrollment control, and the symbolic quorum model is explicit that it proves the distinct-identity property and nothing about independent wills (Section 7.4). Receipts make insider events attributable to enrolled identities and evidenced, which raises their cost; they do not make them impossible, and conforming implementations are prohibited from claiming otherwise.
 
 ### 10.2 Presentation attacks: narrowed, not solved
 
@@ -396,6 +495,7 @@ The following are published under the Apache-2.0 license in the EMILIA Protocol 
 - I. Schrock, "Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)," Internet-Draft draft-schrock-ep-authorization-evidence-chain-05, work in progress, August 2026.
 - I. Schrock, "Long-Term Evidence Records for Authorization Receipts (EP-EVIDENCE-RECORD)," Internet-Draft draft-schrock-ep-evidence-record-01, work in progress, July 2026.
 - S. Meier, B. Schmidt, C. Cremers, D. Basin, "The TAMARIN Prover for the Symbolic Analysis of Security Protocols," CAV 2013.
+- S. Goldwasser, S. Micali, R. Rivest, "A Digital Signature Scheme Secure Against Adaptive Chosen-Message Attacks," SIAM Journal on Computing 17(2), 1988.
 - D. Dolev, A. C. Yao, "On the Security of Public Key Protocols," IEEE Transactions on Information Theory, 1983.
 - L. Lamport, "Specifying Systems: The TLA+ Language and Tools for Hardware and Software Engineers," Addison-Wesley, 2002.
 - D. Jackson, "Software Abstractions: Logic, Language, and Analysis," MIT Press, revised edition, 2012.
