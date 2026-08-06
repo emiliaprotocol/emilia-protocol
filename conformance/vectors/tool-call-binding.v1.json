@@ -1,0 +1,82 @@
+{
+  "@version": "EP-TOOL-CALL-BINDING-v1",
+  "purpose": "Cross-implementation agreement on the canonical tool-call action material. The material is {\"tool\":<name>,\"args\":<arguments>} canonicalized per JCS (RFC 8785). Every EMILIA framework adapter, in every language, MUST produce byte-identical action digests for these inputs.",
+  "material_shape": {
+    "tool": "<tool name>",
+    "args": "<complete argument object>"
+  },
+  "excluded": "A semantic selector or routing hint is NOT material: it is derived from arguments already inside the digest.",
+  "why_this_exists": "Two shipped adapters diverged. The TypeScript binder in packages/require-receipt hashed the member as \"args\"; the CrewAI Python adapter hashed it as \"arguments\" and additionally hashed an optional selector the TypeScript binder excludes. The same logical call produced two different action digests, so a receipt minted through one adapter could never verify against the other. No test caught it because no conformance suite covered a framework adapter. Nothing in CAID, AEB or the receipts draft fixed the member name, so neither implementation was wrong: the specification was silent.",
+  "vectors": [
+    {
+      "id": "simple-payment",
+      "base_action": "payment.release",
+      "tool": "payment.release",
+      "args": {
+        "amount_usd": 4000,
+        "beneficiary": "vendor@example.com",
+        "memo": "invoice 7781"
+      },
+      "expected_caid": "payment.release:sha256:d0dfcc51d63932b0ca708ba87af799a97cc963d404d63e459c5fab9498845174"
+    },
+    {
+      "id": "empty-args",
+      "base_action": "record.delete",
+      "tool": "record.delete",
+      "args": {},
+      "expected_caid": "record.delete:sha256:7150e456bccad54f776f10c3141b67688dca0ba8d0cdda5b0daa51fd185f0730"
+    },
+    {
+      "id": "nested-object",
+      "base_action": "db.migrate",
+      "tool": "db.migrate",
+      "args": {
+        "plan": {
+          "steps": [
+            "drop",
+            "create"
+          ],
+          "dry_run": false
+        },
+        "env": "prod"
+      },
+      "expected_caid": "db.migrate:sha256:958ecc4a5544838e72665d16d1796e23f9ae77cad7051f5eef9eec9ca432676d"
+    },
+    {
+      "id": "unicode-and-key-order",
+      "base_action": "notify.send",
+      "tool": "notify.send",
+      "args": {
+        "z_last": "ü",
+        "a_first": 1,
+        "m_mid": [
+          3,
+          2,
+          1
+        ]
+      },
+      "expected_caid": "notify.send:sha256:e156ee4ef8eb9a82474c9233e17bfe4ccf12fc0eeb997536141164a702827904"
+    },
+    {
+      "id": "numeric-forms",
+      "base_action": "ledger.post",
+      "tool": "ledger.post",
+      "args": {
+        "amount": 0,
+        "rate": 1.5,
+        "count": -7
+      },
+      "expected_caid": "ledger.post:sha256:3f6b9dbfc4b2127ad2b683986d84c0ecb29dd79b0d25d6b20490149f262deab4"
+    },
+    {
+      "id": "null-and-bool",
+      "base_action": "flag.set",
+      "tool": "flag.set",
+      "args": {
+        "enabled": true,
+        "note": null
+      },
+      "expected_caid": "flag.set:sha256:ce7b1bed325f8b7a684305fc6d6a93bd0866eb3aa08b342915f41d0acfd9e28d"
+    }
+  ]
+}

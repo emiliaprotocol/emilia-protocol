@@ -156,16 +156,30 @@ def bind_call_action(
     arguments: dict,
     selector: Any = None,
 ) -> str:
-    """Bind a semantic base action to one complete executor-side call."""
+    """Bind a semantic base action to one complete executor-side call.
+
+    The canonical material is ``{"tool": <name>, "args": <arguments>}`` and MUST stay
+    byte-identical to the TypeScript binder in ``packages/require-receipt``. Two shipped
+    adapters previously disagreed here: this module hashed the member under the name
+    ``arguments`` while every TypeScript adapter hashed it under ``args``, so the same
+    logical call produced two different action digests and a receipt minted through one
+    adapter could never verify against the other. Nothing in CAID, AEB or the receipts
+    draft fixed the member name, so neither side was wrong; the specification was silent.
+    Cross-implementation agreement is now pinned by
+    ``conformance/vectors/tool-call-binding.v1.json``.
+
+    ``selector`` is deliberately NOT part of the material. It is a semantic routing hint
+    derived from the arguments already inside the digest, so hashing it adds nothing and
+    diverges from the TypeScript binder, which treats selectors as a verification-time
+    concern rather than binding material.
+    """
     if not isinstance(base_action, str) or not base_action or len(base_action) > 512:
         raise ValueError("action_binding_invalid")
     if not isinstance(tool_name, str) or not tool_name or len(tool_name) > 512:
         raise ValueError("action_binding_invalid")
     if not isinstance(arguments, dict):
         raise ValueError("action_binding_invalid")
-    material = {"tool": tool_name, "arguments": arguments}
-    if selector is not None:
-        material["selector"] = selector
+    material = {"tool": tool_name, "args": arguments}
     try:
         encoded = canonicalize(material).encode("utf-8")
     except Exception as error:
