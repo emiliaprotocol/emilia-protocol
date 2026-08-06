@@ -13,7 +13,7 @@ Validated on 2026-08-06:
 - `node scripts/check-authorization-receipts-10.mjs` verifies the isolated
   source, renderings, metadata, profile split, normative CAID placement, stable
   display refusal names, and checksums.
-- `npx vitest run tests/presentation-binding.test.ts` executes eight cases,
+- `npx vitest run tests/presentation-binding.test.ts` executes sixteen cases,
   including positive binding, unbound and mismatch refusals, independent
   action-hash re-derivation, malformed-input failure closure, untrusted-native
   handling, and OASNT cross-profile composition.
