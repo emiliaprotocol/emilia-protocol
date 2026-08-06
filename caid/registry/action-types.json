@@ -1,8 +1,8 @@
 {
   "meta": {
     "registry": "caid-action-types",
-    "registry_version": 1,
-    "updated": "2026-07-20",
+    "registry_version": 2,
+    "updated": "2026-08-06",
     "license": "CC0-1.0",
     "trust_note": "CAID carries no trust semantics. A registered type defines WHAT must be inside the digested content, never whether the action was authorized, executed, safe, or wise. See GOVERNANCE.md.",
     "entry_schema_note": "Each entry in 'types' conforms to the normative type entry schema in DESIGN.md section 3. Local (private) definition files MUST use the same entry schema; there is no reserved private-use syntax. Field types are the closed v1 set: string, amount-string, digest, enum, timestamp, integer, boolean, object, array. 'values_ref' on an enum either names an external code set or is an inline pipe-separated list prefixed 'inline:'. Date-only values use type string with an ISO 8601 date note; type timestamp is always full RFC 3339 UTC with Z.",
@@ -12,7 +12,8 @@
       "irreversible-access": "Access control, credentials, or key material change in a way that is hard to fully claw back.",
       "external-communication": "Content is transmitted or published to parties outside the operator's control.",
       "safety-critical": "Direct impact on human health, safety, or live critical service delivery.",
-      "legal-effect": "Creates, releases, or submits a legally binding obligation or record."
+      "legal-effect": "Creates, releases, or submits a legally binding obligation or record.",
+      "varies-by-tool": "The consequence class is determined by the named tool and complete arguments; registration does not classify or authorize the tool."
     }
   },
   "types": [
@@ -1000,6 +1001,24 @@
       "optional_fields": [],
       "digest_notes": "All nested object members are material. The Model-to-Matter closed-shape validator runs before CAID computation.",
       "references": ["draft-schrock-model-to-matter-00"]
+    },
+    {
+      "action_type": "tool.call.1",
+      "status": "active",
+      "risk_class": "varies-by-tool",
+      "summary": "Invocation of a named agent-framework tool with a complete argument object.",
+      "required_fields": [
+        {"name": "tool", "type": "string",
+         "notes": "tool name exactly as the invoking framework declares it"},
+        {"name": "args", "type": "object",
+         "notes": "complete argument object handed to the tool after framework defaults; all nested values remain subject to the CAID numeric profile"}
+      ],
+      "optional_fields": [
+        {"name": "occurrence_id", "type": "string",
+         "notes": "executor occurrence identity when the relying profile requires two otherwise identical invocations to remain distinct"}
+      ],
+      "digest_notes": "The CAID Action Object includes action_type, tool, args, and occurrence_id when present. Framework-local selector or routing hints derived from args are not separate members. Existing base:sha256:<hex> executor-binding strings are a different profile and are not CAIDs.",
+      "references": []
     },
     {
       "action_type": "emilia.mobile.authorized-action.1",
