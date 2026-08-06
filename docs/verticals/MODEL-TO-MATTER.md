@@ -1,6 +1,6 @@
 # Model-to-Matter: Verifiable clearance for AI-designed experiments
 
-Status: reference profile and adversarial demonstration, July 2026
+Status: reference profile and adversarial demonstration, August 2026
 
 ## The missing boundary
 
@@ -142,7 +142,7 @@ npm run test:mutation:model-to-matter
 ```
 
 The current published Experimental Internet-Draft source is archived locally at
-`standards/posted/draft-schrock-model-to-matter-02.xml`. It specifies the
+`standards/posted/draft-schrock-model-to-matter-03.xml`. It specifies the
 executor-side lifecycle, Outcome Binding, and explicit non-goals. Publication establishes the
 open Model-to-Matter name; it does not establish deployment, adoption,
 partnership, or endorsement.
