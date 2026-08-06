@@ -18,7 +18,7 @@
  * @emilia-protocol/verify. Zero network. Pin the issuer keys you trust.
  */
 import crypto from 'node:crypto';
-import { canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate, } from './strict-json.js';
+import { canonicalizeFiniteJson, canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate, } from './strict-json.js';
 export { EP_APPROVAL_FLOW, APPROVAL_REQUEST_ID_PATTERN, APPROVAL_POLL_TOKEN_PATTERN, APPROVAL_IDEMPOTENCY_KEY_PATTERN, APPROVAL_STATUSES, approvalActionHash, validateApprovalAuthorization, validateRequiredFields, validateCaidSelector, beginReceiptApproval, pollReceiptApproval, } from './acquisition.js';
 import { approvalActionHash, validateApprovalAuthorization, validateRequiredFields, validateCaidSelector, } from './acquisition.js';
 export const LEGACY_RECEIPT_REQUIRED_STATUS = 402;
@@ -131,6 +131,65 @@ function sha256Bytes(value) {
 }
 function sha256Hex(value) {
     return crypto.createHash('sha256').update(value).digest('hex');
+}
+/**
+ * Remove receipt transport fields before deriving executor-side action identity.
+ * They carry authorization evidence; they are not material tool arguments and
+ * must not let the proof change the action it is supposed to authorize.
+ */
+export function stripReceiptControlFields(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+        return value;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+        throw new TypeError('action_binding_invalid');
+    }
+    const material = {};
+    const controlFields = new Set(['__ep', 'emilia_receipt', 'emiliaReceipt']);
+    for (const key of Reflect.ownKeys(value)) {
+        if (typeof key !== 'string')
+            throw new TypeError('action_binding_invalid');
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+            throw new TypeError('action_binding_invalid');
+        }
+        if (!controlFields.has(key))
+            material[key] = descriptor.value;
+    }
+    return material;
+}
+/** Capture the finite-JSON executor input once for bind-then-execute safety. */
+export function snapshotToolArguments(value) {
+    return JSON.parse(canonicalizeFiniteJson(stripReceiptControlFields(value)));
+}
+/**
+ * Bind a base action name to the complete executor-side material payload.
+ * Framework adapters use this instead of asking integrators to remember to add
+ * an arguments hash themselves. Finite JSON numbers are accepted because tool
+ * arguments commonly contain decimal quantities; every non-JSON or ambiguous
+ * structure still fails closed in canonicalizeFiniteJson.
+ */
+export function bindExecutorAction(baseAction, material) {
+    if (typeof baseAction !== 'string' || baseAction.length === 0 || baseAction.length > 512) {
+        throw new TypeError('action_binding_invalid');
+    }
+    const digest = sha256Hex(canonicalizeFiniteJson(material));
+    return `${baseAction}:sha256:${digest}`;
+}
+/** Bind one concrete tool occurrence to its full argument object. */
+export function bindToolAction(toolName, args = {}, baseAction = toolName, occurrenceId) {
+    if (typeof toolName !== 'string' || toolName.length === 0 || toolName.length > 512) {
+        throw new TypeError('action_binding_invalid');
+    }
+    if (occurrenceId !== undefined && occurrenceId !== null
+        && (typeof occurrenceId !== 'string' || occurrenceId.length === 0 || occurrenceId.length > 512)) {
+        throw new TypeError('action_binding_invalid');
+    }
+    return bindExecutorAction(baseAction, {
+        tool: toolName,
+        args: snapshotToolArguments(args),
+        ...(occurrenceId == null ? {} : { occurrence_id: occurrenceId }),
+    });
 }
 function proofContext(doc) {
     return {
@@ -805,12 +864,16 @@ const requireReceiptExports = {
     validateActionRiskManifest,
     findActionRequirement,
     receiptRequiredConformance,
+    bindExecutorAction,
+    bindToolAction,
+    stripReceiptControlFields,
+    snapshotToolArguments,
 };
 export default requireReceiptExports;
 // Canonical hardened gate: target binding + consume-after-success + sanitized
 // rejections, in one reviewed place. Prefer this over hand-rolling a guard.
 export { makeReceiptGate } from './gate.js';
-export { canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate, } from './strict-json.js';
+export { canonicalizeFiniteJson, canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate, } from './strict-json.js';
 // EP-RECEIPT-JWS-PROFILE-v1: serialize/verify an EP receipt as a standard
 // compact JWS (RFC 7515, EdDSA per RFC 8037) so any JOSE verifier can consume
 // it. Parallel envelope over the SAME JCS canonical payload — not a replacement

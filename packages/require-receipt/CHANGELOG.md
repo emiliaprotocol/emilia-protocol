@@ -3,6 +3,15 @@
 
 All notable changes to `@emilia-protocol/require-receipt` are documented here.
 
+## 0.8.0 (2026-08-05)
+
+### Security
+
+- Add one shared executor-action binder over the complete canonical tool input,
+  with receipt transport fields excluded and optional occurrence identity.
+- Reject accessors, executable or non-JSON structures, malformed action names,
+  and ambiguous occurrence identifiers before deriving authority.
+
 ## 0.7.2 (2026-08-01)
 
 ### Packaging

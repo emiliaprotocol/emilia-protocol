@@ -6,7 +6,7 @@
 /** A single per-interruption decision. */
 export interface ReceiptDecision {
   decision: 'approve' | 'reject';
-  /** Canonical EP action_type this tool call maps to (via actionFor), or null. */
+  /** Exact EP action_type bound to tool, arguments, and OpenAI call ID, or null. */
   action: string | null;
   /** The OpenAI tool name from the interruption, or null. */
   toolName: string | null;
@@ -43,13 +43,10 @@ export interface RequireReceiptForOpenAIAgentOptions {
     release(id: string): boolean | Promise<boolean>;
   };
   /**
-   * REQUIRED. Map a tool call to the canonical EP action_type the receipt must
-   * bind. For per-target binding, incorporate the SPECIFIC resource the call
-   * acts on (e.g. `payment.release:${args.destination}`); to stop a receipt
-   * being reused across distinct calls, fold in the call identity (the
-   * interruption's callId or a stable hash of args).
+   * Optional semantic base-action mapper. Complete arguments and the OpenAI
+   * call ID are always hashed into the final receipt action automatically.
    */
-  actionFor: (toolName: string, args: unknown) => string;
+  actionFor?: (toolName: string, args: unknown) => string;
 }
 
 export interface OpenAIAgentReceiptGate {
@@ -66,7 +63,7 @@ export interface OpenAIAgentReceiptGate {
 }
 
 export function requireReceiptForOpenAIAgent(
-  opts: RequireReceiptForOpenAIAgentOptions,
+  opts?: RequireReceiptForOpenAIAgentOptions,
 ): OpenAIAgentReceiptGate;
 
 /** Reset the process-local consumed-receipt set. Test/ops helper. */

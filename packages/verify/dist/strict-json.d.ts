@@ -23,7 +23,8 @@ export declare function canonicalizeStrictJson(value: unknown, limits?: StrictCa
 /**
  * Canonical bytes for JSON records that intentionally carry finite decimal
  * measurements. This keeps every structural refusal of canonicalizeStrictJson
- * while allowing finite non-integer numbers. Protocol identities and signed
+ * while allowing finite non-integer numbers. Integer values remain restricted
+ * to the interoperable safe range. Protocol identities and signed
  * cross-language state should continue to use canonicalizeStrictJson.
  */
 export declare function canonicalizeFiniteJson(value: unknown, limits?: StrictCanonicalJsonLimits): string;

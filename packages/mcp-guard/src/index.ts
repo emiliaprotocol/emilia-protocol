@@ -43,6 +43,8 @@ import {
   receiptChallenge,
   evaluateReceiptAssurance,
   canonicalizeStrictJson,
+  bindToolAction as bindExecutorToolAction,
+  snapshotToolArguments,
   makeReceiptGate,
   parseReceiptCarrier,
 // Package specifier, not a relative path. '../../require-receipt/index.js'
@@ -79,11 +81,7 @@ export function hashObject(obj: any): string {
  * they transport the proof and are not tool inputs.
  */
 export function bindToolAction(name: string, args: AnyRecord = {}, baseAction: string = name): string {
-  if (typeof name !== 'string' || !name || typeof baseAction !== 'string' || !baseAction) {
-    throw new TypeError('action_binding_invalid');
-  }
-  const digest = hashObject({ tool: name, args: stripEpFields(args) });
-  return `${baseAction}:${digest}`;
+  return bindExecutorToolAction(name, args, baseAction);
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +238,121 @@ export function refusal(action: string, reason: string, extra: AnyRecord = {}): 
       retry_with: '__ep.receipt = <EP-RECEIPT-v1 JSON>  (or __ep.receipt_b64 = base64(JSON))',
     },
     ...extra,
+  };
+}
+
+/**
+ * Bounded identical-call circuit breaker for MCP dispatchers. It fingerprints
+ * the material tool name + arguments with the same binder as receipt authority,
+ * ignores receipt transport fields, and keeps only a bounded sliding window.
+ */
+export function createMcpLoopBreaker(options: AnyRecord = {}): AnyRecord {
+  const {
+    maxIdenticalCalls = 3,
+    windowMs = 10_000,
+    maxEntries = 2_048,
+    now = () => Date.now(),
+  } = options;
+  if (!Number.isSafeInteger(maxIdenticalCalls) || maxIdenticalCalls < 1 || maxIdenticalCalls > 100) {
+    throw new TypeError('createMcpLoopBreaker: maxIdenticalCalls must be a safe integer from 1 to 100');
+  }
+  if (!Number.isSafeInteger(windowMs) || windowMs < 1 || windowMs > 3_600_000) {
+    throw new TypeError('createMcpLoopBreaker: windowMs must be a safe integer from 1 to 3600000');
+  }
+  if (!Number.isSafeInteger(maxEntries) || maxEntries < 1 || maxEntries > 100_000) {
+    throw new TypeError('createMcpLoopBreaker: maxEntries must be a safe integer from 1 to 100000');
+  }
+  if (typeof now !== 'function') throw new TypeError('createMcpLoopBreaker: now must be a function');
+
+  const windows = new Map<string, number[]>();
+  let lastNow = Number.NEGATIVE_INFINITY;
+  const check = (name: string, args: AnyRecord = {}): AnyRecord => {
+    const at = now();
+    if (!Number.isFinite(at)) return { ok: false, reason: 'circuit_clock_invalid' };
+    if (at < lastNow) return { ok: false, reason: 'circuit_clock_rollback' };
+    lastNow = at;
+    let fingerprint: string;
+    try {
+      fingerprint = bindToolAction(name, args, 'mcp.tool.call');
+    } catch {
+      return { ok: false, reason: 'action_binding_invalid' };
+    }
+    const cutoff = at - windowMs;
+    // Expire old windows before enforcing capacity. Never evict a live
+    // fingerprint to admit attacker-controlled key churn: at capacity, new
+    // identities fail closed until a real window expires.
+    for (const [key, timestamps] of windows) {
+      const live = timestamps.filter((timestamp) => timestamp > cutoff && timestamp <= at);
+      if (live.length === 0) windows.delete(key);
+      else if (live.length !== timestamps.length) windows.set(key, live);
+    }
+    if (!windows.has(fingerprint) && windows.size >= maxEntries) {
+      return { ok: false, reason: 'circuit_capacity_exhausted' };
+    }
+    const recent = (windows.get(fingerprint) || []).filter((timestamp) => timestamp > cutoff && timestamp <= at);
+    if (recent.length >= maxIdenticalCalls) {
+      return {
+        ok: false,
+        reason: 'identical_tool_loop',
+        fingerprint,
+        retry_after_ms: Math.max(1, Math.ceil(recent[0] + windowMs - at)),
+      };
+    }
+    recent.push(at);
+    windows.delete(fingerprint);
+    windows.set(fingerprint, recent);
+    return { ok: true, fingerprint, remaining: maxIdenticalCalls - recent.length };
+  };
+  return {
+    check,
+    reset: () => { windows.clear(); lastNow = Number.NEGATIVE_INFINITY; },
+    get size() { return windows.size; },
+  };
+}
+
+/** Wrap any MCP dispatcher with the local Sentinel identical-call breaker. */
+export function withMcpLoopBreaker(handler: (...args: any[]) => any, options: AnyRecord = {}): any {
+  if (typeof handler !== 'function') throw new TypeError('withMcpLoopBreaker: handler must be a function');
+  const breaker = options.breaker || createMcpLoopBreaker(options);
+  if (!breaker || typeof breaker.check !== 'function') {
+    throw new TypeError('withMcpLoopBreaker: breaker must implement check(name, args)');
+  }
+  return async function loopGuardedDispatch(name: string, args: AnyRecord = {}, extra: AnyRecord = {}): Promise<any> {
+    const decision = breaker.check(name, args);
+    if (decision?.ok !== true) {
+      const code = decision?.reason === 'identical_tool_loop'
+        ? 'emilia_identical_tool_loop'
+        : decision?.reason === 'circuit_capacity_exhausted'
+          ? 'emilia_circuit_capacity_exhausted'
+          : 'emilia_circuit_breaker_invalid_input';
+      return {
+        ep_refused: true,
+        status: 429,
+        code,
+        title: 'EMILIA MCP Circuit Open',
+        detail: decision?.reason === 'identical_tool_loop'
+          ? 'An identical MCP tool call exceeded the local sliding-window limit.'
+          : decision?.reason === 'circuit_capacity_exhausted'
+            ? 'The bounded circuit-breaker table is full of live call windows; new calls fail closed.'
+            : 'The MCP tool call could not be safely fingerprinted.',
+        reason: decision?.reason || 'circuit_breaker_failed_closed',
+        retry_after_ms: decision?.retry_after_ms || null,
+      };
+    }
+    let materialArgs;
+    try { materialArgs = snapshotToolArguments(args); }
+    catch {
+      return {
+        ep_refused: true,
+        status: 429,
+        code: 'emilia_circuit_breaker_invalid_input',
+        title: 'EMILIA MCP Circuit Open',
+        detail: 'The MCP tool call could not be safely snapshotted.',
+        reason: 'action_binding_invalid',
+        retry_after_ms: null,
+      };
+    }
+    return handler(name, materialArgs, extra);
   };
 }
 
@@ -662,8 +775,10 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
 
   const resolveAction = (name: string, args: AnyRecord, extra: AnyRecord, ann: AnyRecord): string => {
     let a = ann && ann.action;
-    if (typeof a === 'function') a = a(args, extra);
-    if (!a && typeof globalAction === 'function') a = globalAction(name, args, extra);
+    if (typeof a === 'function') a = a(snapshotToolArguments(args), extra);
+    if (!a && typeof globalAction === 'function') {
+      a = globalAction(name, snapshotToolArguments(args), extra);
+    }
     return bindToolAction(name, args, a || name);
   };
 
@@ -694,8 +809,10 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
     if (!irreversible) return handler(name, args, extra);
 
     let action;
+    let materialArgs;
     try {
-      action = resolveAction(name, args, extra, ann);
+      materialArgs = snapshotToolArguments(args);
+      action = resolveAction(name, materialArgs, extra, ann);
     } catch {
       return refusal(String(name || 'mcp.tool'), 'Tool call cannot be bound to the EP canonical JSON profile.', {
         stage: 'bind',
@@ -704,7 +821,10 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
     }
     const requiredTier = ann.assuranceClass || ann.assurance_class || verifyOpts.assuranceClass || verifyOpts.assurance_class || 'class_a';
     const meta = (extra && (extra._meta || extra.meta)) || {};
-    const actionDigest = hashObject({ tool: name, action, args: stripEpFields(args) });
+    // `action` already contains the complete finite-JSON argument digest. Hash
+    // that closed string envelope for additive provenance instead of applying
+    // the stricter signed-record numeric profile to raw executor measurements.
+    const actionDigest = hashObject({ tool: name, action });
 
     // ---- Path A: a receipt was presented → demand hook verifies it offline.
     if (enforceDemand) {
@@ -725,7 +845,7 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
             agentClaim: ann.agent_claim || (args.__ep && args.__ep.agent_claim) || null,
             liability: ann.liability || (args.__ep && args.__ep.liability) || null,
           });
-          return handler(name, stripEpFields(args), extra);
+          return handler(name, materialArgs, extra);
         });
         if (!run.ok) {
           const reason = run.body?.rejected?.reason || 'receipt_required';
@@ -742,7 +862,7 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
       tool: name,
       action,
       action_digest: actionDigest,
-      args: stripEpFields(args),
+      args: materialArgs,
       meta,
       agent_claim: ann.agent_claim || (args.__ep && args.__ep.agent_claim) || null,
       liability: ann.liability || (args.__ep && args.__ep.liability) || null,
@@ -905,7 +1025,14 @@ export function withMcpReceiptGuard(handler: (...args: any[]) => any, options: A
 
     if (!irreversible) return handler(name, args, extra);
 
-    const cleanArgs = stripEpFields(args);
+    let cleanArgs;
+    try { cleanArgs = snapshotToolArguments(args); }
+    catch {
+      return refusal(String(name || 'mcp.tool'), 'Tool call cannot be bound to the executor JSON profile.', {
+        stage: 'bind',
+        rejected: { ok: false, reason: 'action_binding_invalid' },
+      });
+    }
     const rawBase = typeof receiptParams === 'function'
       ? await receiptParams({ name, args: cleanArgs, extra, annotation: ann })
       : (receiptParams || {});
@@ -945,17 +1072,6 @@ export function withMcpReceiptGuard(handler: (...args: any[]) => any, options: A
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Remove EP control fields so the underlying tool sees clean args.
- * @param {{__ep?:object, emilia_receipt?:object, [key:string]:any}} [args]
- * @returns {object}
- */
-function stripEpFields(args: AnyRecord = {}): AnyRecord {
-  if (!args || typeof args !== 'object') return args;
-  const { __ep, emilia_receipt, ...rest } = args;
-  return rest;
-}
-
 /** Content hash of a receipt DOCUMENT for the provenance reference (not a re-sign).
  * Fingerprints only the validated receipt fields. verifyEmiliaReceipt signs and
  * checks payload alone, so an unsigned, non-canonicalizable extra top-level field
@@ -992,6 +1108,8 @@ function readAnnotation(ann: AnyRecord, key: string, args: AnyRecord, extra: Any
 
 export default {
   withMcpGuard,
+  withMcpLoopBreaker,
+  createMcpLoopBreaker,
   withMcpReceiptGuard,
   demandReceipt,
   refusal,

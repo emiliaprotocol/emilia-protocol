@@ -491,11 +491,11 @@
     },
     {
       "path": "lib/strict-json.js",
-      "sha256": "7fedc776557e3155aed3c0eb2466ea52e0220584bcce116b20638ebafb56b180"
+      "sha256": "333e0dfcce807d97727f1a349258c7241295001389273f4010a5c88c42636d29"
     },
     {
       "path": "package-lock.json",
-      "sha256": "e1f93dbd8eb5b05608574b5c70927d3956bb036f6bdcb4fd380de673dffbab43"
+      "sha256": "5f6d4015bb6bef949768e13fc1b927639c0807bee8aa8c48508187e8b6dabde2"
     },
     {
       "path": "package.json",
@@ -779,7 +779,7 @@
     },
     {
       "path": "packages/gate/dist/strict-json.js",
-      "sha256": "48c4175c2998f24f94a57922277f0bfff4a9e63cacca6f8db839ed47dce8a223"
+      "sha256": "952f0dc36a04c5a70a163a37b2cbdeba26088f802b72db67a6df4dd8c180a58a"
     },
     {
       "path": "packages/gate/dist/trust-program-revocation.js",
@@ -915,7 +915,7 @@
     },
     {
       "path": "packages/mobile/dist/strict-json.js",
-      "sha256": "676f2dfef8d8108b61116d1e16cedbc1b5f2e683b8bf7c4217719815205c976c"
+      "sha256": "f90b238282b5b5b833ddc02ff991cb0cd8f206f1dd538000672c7a14ac686ecd"
     },
     {
       "path": "packages/mobile/enrollment.js",
@@ -943,7 +943,7 @@
     },
     {
       "path": "packages/require-receipt/dist/index.js",
-      "sha256": "cdbaa692aee0ce1f4998550e8a6f747a4e73cdd6fc011c70971a2d7200bf7524"
+      "sha256": "af4c7968409f969a890e3f1cdb712fd65293c96f649696b6edbf749022373cd0"
     },
     {
       "path": "packages/require-receipt/dist/jws.js",
@@ -951,7 +951,7 @@
     },
     {
       "path": "packages/require-receipt/dist/strict-json.js",
-      "sha256": "676f2dfef8d8108b61116d1e16cedbc1b5f2e683b8bf7c4217719815205c976c"
+      "sha256": "f90b238282b5b5b833ddc02ff991cb0cd8f206f1dd538000672c7a14ac686ecd"
     },
     {
       "path": "packages/require-receipt/index.js",
@@ -1107,7 +1107,7 @@
     },
     {
       "path": "packages/verify/dist/strict-json.js",
-      "sha256": "7fedc776557e3155aed3c0eb2466ea52e0220584bcce116b20638ebafb56b180"
+      "sha256": "333e0dfcce807d97727f1a349258c7241295001389273f4010a5c88c42636d29"
     },
     {
       "path": "packages/verify/dist/surface-binding.js",

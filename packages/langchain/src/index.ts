@@ -13,10 +13,10 @@
  *     no vendor in the loop. This is the lane that makes the approval *portable
  *     evidence* an auditor can check without trusting you.
  *
- *  2. guardAction / withGuard — the LEGACY hosted path. Calls a remote policy
- *     gate (POST /api/trust/gate) for an allow/deny/signoff decision. Convenient,
- *     but the decision is the operator's word, not offline-verifiable evidence.
- *     Kept for back-compat; prefer (1) for anything irreversible.
+ *  2. guardAction / withGuard — the LEGACY hosted precheck path. It can inspect
+ *     a remote policy decision, but withGuard always refuses execution because
+ *     a hosted boolean or callback is not exact-action authority. Kept only for
+ *     migration compatibility; use (1) for execution.
  *
  * Necessary-not-sufficient: the gate composes with — never replaces — the
  * resource owner's own checks.
@@ -29,6 +29,7 @@
 // npm, the published build resolves the bare "@emilia-protocol/require-receipt"
 // specifier; both point at the same canonical makeReceiptGate.
 import { makeReceiptGate } from '../../require-receipt/gate.js';
+import { bindToolAction, snapshotToolArguments } from '../../require-receipt/index.js';
 
 type Obj = Record<string, any>;
 type Tool = any;
@@ -87,11 +88,10 @@ function defaultGetReceipt(input: any, config: any): any {
  * @template {{invoke?: (input:any, config?:any, ...rest:any[]) => any}} T
  * @param {T} tool a tool exposing `.invoke(input, config?)`
  * @param {object} opts
- * @param {string} [opts.action] canonical action_type the receipt must bind
- *   (use this OR opts.actionFor).
- * @param {(input:any)=>string} [opts.actionFor] derive the bound action_type
- *   from the call input — RECOMMENDED so one receipt can't be reused across
- *   distinct calls (e.g. (input)=>`payment.release:${input.to}`).
+ * @param {string} [opts.action] canonical base action_type. The wrapper always
+ *   adds a digest of the actual tool name and complete executor-side input.
+ * @param {(input:any)=>string} [opts.actionFor] derive the base action_type from
+ *   the call input. Exact input binding remains automatic and cannot be disabled.
  * @param {string[]} [opts.trustedKeys] base64url SPKI-DER issuer keys you trust.
  * @param {boolean} [opts.allowInlineKey=false] also accept the receipt's own key
  *   (proves integrity, NOT issuer trust) — demo only.
@@ -141,23 +141,35 @@ export function requireReceiptForLangChainTool(tool: Tool, opts: Obj = {}): Tool
 
   const gatedInvoke = async (input: any, config: any, ...rest: any[]): Promise<any> => {
     const receipt = getReceipt(input, config);
+    let executionInput: any;
+    try {
+      executionInput = snapshotToolArguments(input);
+    } catch {
+      const err = new Error('EMILIA blocked tool call: action_binding_invalid') as Error & { emilia?: any };
+      err.emilia = { status: 428, reason: 'action_binding_invalid' };
+      throw err;
+    }
     /** @type {string | null | undefined} */
-    let boundAction = action;
+    let baseAction = action;
     if (actionFor) {
       try {
-        boundAction = actionFor(input);
+        baseAction = actionFor(snapshotToolArguments(executionInput));
       } catch {
-        boundAction = null;
+        baseAction = null;
       }
-      if (typeof boundAction !== 'string' || !boundAction) {
-        const err = new Error('EMILIA blocked tool call: action_binding_invalid') as Error & { emilia?: any };
-        err.emilia = { status: 428, reason: 'action_binding_invalid' };
-        throw err;
-      }
+    }
+    let boundAction: string;
+    try {
+      if (typeof baseAction !== 'string' || !baseAction) throw new TypeError('action_binding_invalid');
+      boundAction = bindToolAction(tool?.name || 'langchain.tool', executionInput, baseAction);
+    } catch {
+      const err = new Error('EMILIA blocked tool call: action_binding_invalid') as Error & { emilia?: any };
+      err.emilia = { status: 428, reason: 'action_binding_invalid' };
+      throw err;
     }
     const gate = gateFor(boundAction);
     const r = await gate.run(receipt, {}, async () =>
-      originalInvoke.call(tool, input, config, ...rest),
+      originalInvoke.call(tool, executionInput, config, ...rest),
     );
     if (!r.ok) {
       const reason = r.body?.rejected?.reason || (r.body?.required ? 'receipt_required' : 'refused');
@@ -179,11 +191,16 @@ export function requireReceiptForLangChainTool(tool: Tool, opts: Obj = {}): Tool
 
 /** Lower-level: get the underlying makeReceiptGate for advanced orchestration. */
 export function makeLangChainReceiptGate(opts: Obj = {}): Obj {
-  const { action, actionFor, store = sharedStore, ...gateOptions } = opts;
+  const { action, actionFor, toolName, input, store = sharedStore, ...gateOptions } = opts;
   if (typeof actionFor !== 'function' && (typeof action !== 'string' || !action)) {
     throw new TypeError('makeLangChainReceiptGate: provide opts.action or opts.actionFor');
   }
-  return makeReceiptGate({ action: actionFor || action, ...gateOptions, store });
+  if (typeof toolName !== 'string' || !toolName || !Object.prototype.hasOwnProperty.call(opts, 'input')) {
+    throw new TypeError('makeLangChainReceiptGate: opts.toolName and opts.input are required for exact binding');
+  }
+  const baseAction = typeof actionFor === 'function' ? actionFor(input) : action;
+  const boundAction = bindToolAction(toolName, input, baseAction);
+  return makeReceiptGate({ action: boundAction, ...gateOptions, store });
 }
 
 // ── (2) Legacy hosted policy gate — kept for back-compat ─────────────────────
@@ -232,7 +249,11 @@ export async function guardAction({ actor, action, context = {}, gateUrl = DEFAU
   return { allow, deny, signoffRequired, reason, raw };
 }
 
-/** LEGACY hosted-gate wrapper. Prefer requireReceiptForLangChainTool. */
+/**
+ * LEGACY hosted-gate wrapper. It is now precheck-only and always refuses
+ * execution because a hosted boolean or application callback is not portable,
+ * exact-action execution authority. Use requireReceiptForLangChainTool.
+ */
 export function withGuard(tool: Tool, opts: Obj = {}): Tool {
   const { action, actor, context, onSignoff, gateUrl, fetchImpl } = opts;
   if (!action) throw new Error('withGuard: opts.action is required');
@@ -248,19 +269,14 @@ export function withGuard(tool: Tool, opts: Obj = {}): Tool {
       gateUrl,
       fetchImpl,
     });
-    if (decision.deny) {
-      throw new Error(`EMILIA blocked action "${action}"${decision.reason ? `: ${decision.reason}` : ''}`);
-    }
     if (decision.signoffRequired) {
-      if (typeof onSignoff !== 'function') {
-        throw new Error(`EMILIA requires human signoff for "${action}" before it can run`);
+      if (typeof onSignoff === 'function') {
+        try { await onSignoff(decision, input); } catch { /* notification failure stays closed */ }
       }
-      const signoff = await onSignoff(decision, input);
-      if (signoff?.approved !== true) {
-        throw new Error(`EMILIA did not receive verified signoff for "${action}"`);
-      }
+      throw new Error(`EMILIA blocked legacy hosted signoff for "${action}": use requireReceiptForLangChainTool with an exact-action receipt`);
     }
-    return originalInvoke.call(tool, input, ...rest);
+    const suffix = decision.reason ? `: ${decision.reason}` : '';
+    throw new Error(`EMILIA blocked legacy hosted gate execution for "${action}"${suffix}; use requireReceiptForLangChainTool`);
   };
 
   return new Proxy(tool, {

@@ -79,6 +79,14 @@ export declare function classifyToolCall(name: string, args?: AnyRecord, opts?: 
  */
 export declare function refusal(action: string, reason: string, extra?: AnyRecord): AnyRecord;
 /**
+ * Bounded identical-call circuit breaker for MCP dispatchers. It fingerprints
+ * the material tool name + arguments with the same binder as receipt authority,
+ * ignores receipt transport fields, and keeps only a bounded sliding window.
+ */
+export declare function createMcpLoopBreaker(options?: AnyRecord): AnyRecord;
+/** Wrap any MCP dispatcher with the local Sentinel identical-call breaker. */
+export declare function withMcpLoopBreaker(handler: (...args: any[]) => any, options?: AnyRecord): any;
+/**
  * Verify "no irreversible tool call without a valid receipt".
  *
  * Verifies the presented receipt OFFLINE via require-receipt (pinned issuer
@@ -234,6 +242,8 @@ export declare function withMcpGuard(handler: (...args: any[]) => any, options?:
 export declare function withMcpReceiptGuard(handler: (...args: any[]) => any, options?: AnyRecord): any;
 declare const _default: {
     withMcpGuard: typeof withMcpGuard;
+    withMcpLoopBreaker: typeof withMcpLoopBreaker;
+    createMcpLoopBreaker: typeof createMcpLoopBreaker;
     withMcpReceiptGuard: typeof withMcpReceiptGuard;
     demandReceipt: typeof demandReceipt;
     refusal: typeof refusal;

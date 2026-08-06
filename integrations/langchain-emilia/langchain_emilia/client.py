@@ -13,6 +13,7 @@ unlike scheme-dispatching openers.
 from __future__ import annotations
 
 import http.client
+import hashlib
 import json
 import os
 import re
@@ -22,6 +23,7 @@ from typing import Any, Optional
 
 DEFAULT_BASE_URL = "https://www.emiliaprotocol.ai"
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_:.-]{1,128}$")
+_ACTION_HASH = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 # Production action_type enum (server-validated; learned from the live API).
 ACTION_TYPES = (
@@ -62,6 +64,10 @@ class GateResult:
     signoff_url: Optional[str] = None
     approved_by_human: bool = False
     reasons: list[str] = field(default_factory=list)
+    action_hash: Optional[str] = None
+    canonical_action: Optional[dict] = None
+    execution_reference_id: Optional[str] = None
+    consumed: bool = False
 
 
 def _safe_base_url(url: str) -> str:
@@ -127,6 +133,73 @@ class EmiliaGateClient:
 
     # -- gate flow ------------------------------------------------------------
 
+    @staticmethod
+    def _execution_reference(target: str) -> str:
+        digest = hashlib.sha256(target.encode("utf-8")).hexdigest()
+        return f"langchain-emilia:sha256:{digest}"
+
+    def _consume_allowed(
+        self,
+        mint: dict,
+        receipt_id: str,
+        target: str,
+        signoff_id: Optional[str] = None,
+        signoff_url: Optional[str] = None,
+        approved_by_human: bool = False,
+    ) -> GateResult:
+        action_hash = mint.get("action_hash")
+        canonical_action = mint.get("canonical_action")
+        if not isinstance(action_hash, str) or not _ACTION_HASH.fullmatch(action_hash):
+            return GateResult("deny", receipt_id or None, reasons=["receipt action hash is missing or malformed"])
+        if not isinstance(canonical_action, dict):
+            return GateResult("deny", receipt_id or None, reasons=["canonical action is missing; refusing consume"])
+        execution_reference_id = self._execution_reference(target)
+        consumed = self._request(
+            f"/api/v1/trust-receipts/{receipt_id}/consume",
+            {
+                "action_hash": action_hash,
+                "executing_system": "langchain-emilia",
+                "execution_reference_id": execution_reference_id,
+            },
+        )
+        if consumed.get("status") != "consumed" or consumed.get("receipt_id") != receipt_id:
+            return GateResult("deny", receipt_id, reasons=["receipt consumption was not confirmed"])
+        return GateResult(
+            "allow",
+            receipt_id,
+            signoff_id,
+            signoff_url,
+            approved_by_human=approved_by_human,
+            action_hash=action_hash,
+            canonical_action=canonical_action,
+            execution_reference_id=execution_reference_id,
+            consumed=True,
+        )
+
+    def attest_execution(self, result: GateResult) -> dict:
+        """Record the exact action after the wrapped tool returns.
+
+        This is deliberately separate from consume: consume must happen before
+        tool entry, while execution evidence can exist only after the call.
+        """
+        if not result.consumed or not result.receipt_id:
+            raise EmiliaUnreachable("execution attestation requires a consumed receipt")
+        if not isinstance(result.canonical_action, dict):
+            raise EmiliaUnreachable("execution attestation lacks the canonical action")
+        body = {
+            "executed_action": result.canonical_action,
+            "observed_action": result.canonical_action,
+            "executing_system": "langchain-emilia",
+            "execution_id": result.execution_reference_id,
+        }
+        attestation = self._request(
+            f"/api/v1/trust-receipts/{result.receipt_id}/execution",
+            body,
+        )
+        if attestation.get("status") != "executed" or attestation.get("binding_status") != "match":
+            raise EmiliaUnreachable("execution attestation was not confirmed as an exact match")
+        return attestation
+
     def gate(
         self,
         action_type: str,
@@ -156,13 +229,17 @@ class EmiliaGateClient:
         if mint.get("decision") == "deny":
             return GateResult("deny", receipt_id or None, reasons=list(mint.get("reasons") or ["denied by policy"]))
         if not mint.get("signoff_required"):
-            return GateResult("allow", receipt_id or None)
+            if not _SAFE_ID.match(receipt_id):
+                return GateResult("deny", reasons=["malformed receipt id from server; failing closed"])
+            return self._consume_allowed(mint, receipt_id, target)
         if not _SAFE_ID.match(receipt_id):
             return GateResult("deny", reasons=["malformed receipt id from server; failing closed"])
 
         sig = self._request("/api/v1/signoffs/request", {"receipt_id": receipt_id, "comment": comment[:500]})
         signoff_id = str(sig.get("signoff_id", ""))
-        signoff_url = f"{self.base_url}/signoff/{signoff_id}" if _SAFE_ID.match(signoff_id) else None
+        if not _SAFE_ID.match(signoff_id):
+            return GateResult("deny", receipt_id, reasons=["malformed signoff id from server; failing closed"])
+        signoff_url = f"{self.base_url}/signoff/{signoff_id}"
 
         if not wait_for_approval:
             return GateResult("pending", receipt_id, signoff_id or None, signoff_url)
@@ -172,9 +249,19 @@ class EmiliaGateClient:
             time.sleep(self.poll_interval_s)
             rec = self._request(f"/api/v1/trust-receipts/{receipt_id}")
             status = rec.get("receipt_status") or rec.get("status", "pending")
-            if status in ("approved_pending_consume", "approved", "consumed", "fulfilled"):
-                return GateResult("allow", receipt_id, signoff_id or None, signoff_url, approved_by_human=True)
-            if status in ("denied", "rejected", "revoked"):
+            if status in ("approved_pending_consume", "approved"):
+                return self._consume_allowed(
+                    mint,
+                    receipt_id,
+                    target,
+                    signoff_id,
+                    signoff_url,
+                    approved_by_human=True,
+                )
+            if status in ("consumed", "fulfilled"):
+                return GateResult("deny", receipt_id, signoff_id, signoff_url,
+                                  reasons=["receipt was already consumed by another executor"])
+            if status in ("denied", "rejected", "revoked", "expired"):
                 return GateResult("deny", receipt_id, signoff_id or None, signoff_url,
                                   reasons=["rejected by the named approver"])
         return GateResult("pending", receipt_id, signoff_id or None, signoff_url,

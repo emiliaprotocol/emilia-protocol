@@ -17,6 +17,31 @@ so a well-behaved agent knows exactly what to bring and retries on its own.
 npm install @emilia-protocol/mcp-guard @emilia-protocol/require-receipt
 ```
 
+## Sentinel loop breaker
+
+The package now includes a local, zero-network identical-call circuit breaker.
+It fingerprints the complete material tool call, ignores receipt carrier fields,
+and bounds both its time window and memory:
+
+```js
+import { withMcpLoopBreaker } from '@emilia-protocol/mcp-guard';
+
+const dispatch = withMcpLoopBreaker(handleTool, {
+  maxIdenticalCalls: 3,
+  windowMs: 10_000,
+  maxEntries: 2_048,
+});
+```
+
+The fourth identical call in the default ten-second window returns a truthful
+429 `emilia_identical_tool_loop` refusal. Different arguments have different
+fingerprints. This is a cost/safety circuit breaker, not execution authority;
+compose it outside `withMcpGuard` when both controls are required.
+
+Secret detection must block or quarantine the original call. This package does
+not silently redact an already-approved payload, because that would execute a
+different action than the one whose digest was authorized.
+
 ## What this is — and what it is NOT
 
 - **Reference implementation.** It exercises the control flow, the demand
@@ -135,8 +160,9 @@ action family **and** a strict-canonical digest of the tool name and material
 arguments. For example, `payment.release` becomes
 `payment.release:sha256:<digest>`. Changing an amount, destination, or any other
 argument therefore produces a different required action. Values outside EP's
-cross-language canonical profile (including floats, unsafe integers, `NaN`,
-`undefined`, and cyclic objects) refuse before an adapter or tool executes.
+executor canonical profile (including unsafe integers, `NaN`, `undefined`, and
+cyclic objects) refuse before an adapter or tool executes. Finite decimal
+measurements are accepted and bound to their exact JSON representation.
 `issueReceipt(ctx)` must mint the exact `ctx.action` supplied by the guard.
 
 > **Do not edit the shared mcp-server in this repo to adopt this.** The exact,

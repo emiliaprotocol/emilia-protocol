@@ -13,10 +13,10 @@
  *     no vendor in the loop. This is the lane that makes the approval *portable
  *     evidence* an auditor can check without trusting you.
  *
- *  2. guardAction / withGuard — the LEGACY hosted path. Calls a remote policy
- *     gate (POST /api/trust/gate) for an allow/deny/signoff decision. Convenient,
- *     but the decision is the operator's word, not offline-verifiable evidence.
- *     Kept for back-compat; prefer (1) for anything irreversible.
+ *  2. guardAction / withGuard — the LEGACY hosted precheck path. It can inspect
+ *     a remote policy decision, but withGuard always refuses execution because
+ *     a hosted boolean or callback is not exact-action authority. Kept only for
+ *     migration compatibility; use (1) for execution.
  *
  * Necessary-not-sufficient: the gate composes with — never replaces — the
  * resource owner's own checks.
@@ -36,11 +36,10 @@ export declare function _resetConsumed(): void;
  * @template {{invoke?: (input:any, config?:any, ...rest:any[]) => any}} T
  * @param {T} tool a tool exposing `.invoke(input, config?)`
  * @param {object} opts
- * @param {string} [opts.action] canonical action_type the receipt must bind
- *   (use this OR opts.actionFor).
- * @param {(input:any)=>string} [opts.actionFor] derive the bound action_type
- *   from the call input — RECOMMENDED so one receipt can't be reused across
- *   distinct calls (e.g. (input)=>`payment.release:${input.to}`).
+ * @param {string} [opts.action] canonical base action_type. The wrapper always
+ *   adds a digest of the actual tool name and complete executor-side input.
+ * @param {(input:any)=>string} [opts.actionFor] derive the base action_type from
+ *   the call input. Exact input binding remains automatic and cannot be disabled.
  * @param {string[]} [opts.trustedKeys] base64url SPKI-DER issuer keys you trust.
  * @param {boolean} [opts.allowInlineKey=false] also accept the receipt's own key
  *   (proves integrity, NOT issuer trust) — demo only.
@@ -66,7 +65,11 @@ export declare function makeLangChainReceiptGate(opts?: Obj): Obj;
  * @param {typeof fetch} [opts.fetchImpl]
  */
 export declare function guardAction({ actor, action, context, gateUrl, fetchImpl }?: Obj): Promise<Obj>;
-/** LEGACY hosted-gate wrapper. Prefer requireReceiptForLangChainTool. */
+/**
+ * LEGACY hosted-gate wrapper. It is now precheck-only and always refuses
+ * execution because a hosted boolean or application callback is not portable,
+ * exact-action execution authority. Use requireReceiptForLangChainTool.
+ */
 export declare function withGuard(tool: Tool, opts?: Obj): Tool;
 declare const _default: {
     requireReceiptForLangChainTool: typeof requireReceiptForLangChainTool;

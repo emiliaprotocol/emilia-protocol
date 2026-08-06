@@ -16,6 +16,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { requireReceiptForLangChainTool, guardAction, withGuard, _resetConsumed, } from './index.js';
+import { bindToolAction } from '../require-receipt/index.js';
 function canonicalize(v) {
     if (v === null || v === undefined)
         return JSON.stringify(v);
@@ -57,6 +58,7 @@ function fakeTool(name = 'release_payment') {
     };
 }
 const cfg = (receipt) => ({ configurable: { emiliaReceipt: receipt } });
+const exact = (input, base = 'payment.release', toolName = 'release_payment') => bindToolAction(toolName, input, base);
 test('missing receipt -> refused (throws, tool never runs)', async () => {
     _resetConsumed();
     const tool = fakeTool();
@@ -68,7 +70,7 @@ test('valid action-bound receipt -> runs', async () => {
     _resetConsumed();
     const tool = fakeTool();
     const guarded = requireReceiptForLangChainTool(tool, { action: 'payment.release', trustedKeys: [TRUSTED_KEY] });
-    const r = mintReceipt({ action: 'payment.release' });
+    const r = mintReceipt({ action: exact({ to: 'acct_1' }) });
     const out = await guarded.invoke({ to: 'acct_1' }, cfg(r));
     assert.deepEqual(out, { ok: true, ran: { to: 'acct_1' } });
     assert.equal(tool.calls.length, 1);
@@ -77,7 +79,7 @@ test('replay of the same receipt -> refused (one-time consumption)', async () =>
     _resetConsumed();
     const tool = fakeTool();
     const guarded = requireReceiptForLangChainTool(tool, { action: 'payment.release', trustedKeys: [TRUSTED_KEY] });
-    const r = mintReceipt({ action: 'payment.release' });
+    const r = mintReceipt({ action: exact({ to: 'acct_1' }) });
     await guarded.invoke({ to: 'acct_1' }, cfg(r));
     await assert.rejects(() => guarded.invoke({ to: 'acct_1' }, cfg(r)), /EMILIA blocked/);
     assert.equal(tool.calls.length, 1);
@@ -86,8 +88,8 @@ test('forged receipt (action altered post-sign) -> refused', async () => {
     _resetConsumed();
     const tool = fakeTool();
     const guarded = requireReceiptForLangChainTool(tool, { action: 'payment.release', trustedKeys: [TRUSTED_KEY] });
-    const forged = mintReceipt({ action: 'payment.release' });
-    forged.payload.claim.action_type = 'payment.release.tampered';
+    const forged = mintReceipt({ action: exact({ to: 'acct_1' }) });
+    forged.payload.claim.action_type = exact({ to: 'acct_attacker' });
     await assert.rejects(() => guarded.invoke({ to: 'acct_1' }, cfg(forged)), /EMILIA blocked/);
     assert.equal(tool.calls.length, 0);
 });
@@ -105,15 +107,15 @@ test('per-call binding: receipt for target A cannot drive target B', async () =>
     _resetConsumed();
     const tool = fakeTool();
     const guarded = requireReceiptForLangChainTool(tool, {
-        actionFor: (input) => `payment.release:${input.to}`,
+        actionFor: () => 'payment.release',
         trustedKeys: [TRUSTED_KEY],
     });
-    const rA = mintReceipt({ action: 'payment.release:acct_A' });
+    const rA = mintReceipt({ action: exact({ to: 'acct_A' }) });
     // Correct target runs:
     const out = await guarded.invoke({ to: 'acct_A' }, cfg(rA));
     assert.deepEqual(out, { ok: true, ran: { to: 'acct_A' } });
     // Same receipt against a different target is refused:
-    const rA2 = mintReceipt({ action: 'payment.release:acct_A' });
+    const rA2 = mintReceipt({ action: exact({ to: 'acct_A' }) });
     await assert.rejects(() => guarded.invoke({ to: 'acct_B' }, cfg(rA2)), /EMILIA blocked/);
     assert.equal(tool.calls.length, 1);
 });
@@ -130,7 +132,7 @@ test('indeterminate tool failure consumes the receipt and blocks automatic retry
         },
     };
     const guarded = requireReceiptForLangChainTool(flaky, { action: 'payment.release', trustedKeys: [TRUSTED_KEY] });
-    const r = mintReceipt({ action: 'payment.release' });
+    const r = mintReceipt({ action: exact({ to: 'acct_1' }) });
     await assert.rejects(() => guarded.invoke({ to: 'acct_1' }, cfg(r)), /transient downstream error/);
     // The downstream may have applied the effect before losing its response. The
     // approval is burned, so the same receipt cannot duplicate the action.
@@ -150,11 +152,11 @@ test('actionFor is evaluated once and derivation failures block before tool exec
     const guarded = requireReceiptForLangChainTool(tool, {
         actionFor: () => {
             calls += 1;
-            return calls === 1 ? 'payment.release:acct_A' : 'payment.release:attacker';
+            return calls === 1 ? 'payment.release' : 'payment.release.attacker';
         },
         trustedKeys: [TRUSTED_KEY],
     });
-    await guarded.invoke({ to: 'acct_A' }, cfg(mintReceipt({ action: 'payment.release:acct_A' })));
+    await guarded.invoke({ to: 'acct_A' }, cfg(mintReceipt({ action: exact({ to: 'acct_A' }) })));
     assert.equal(calls, 1, 'a stateful mapper must not be re-evaluated after verification begins');
     const blockedTool = fakeTool();
     const blocked = requireReceiptForLangChainTool(blockedTool, {
@@ -163,6 +165,34 @@ test('actionFor is evaluated once and derivation failures block before tool exec
     });
     await assert.rejects(() => blocked.invoke({}, cfg(mintReceipt({ action: 'payment.release' }))), /action_binding_invalid/);
     assert.equal(blockedTool.calls.length, 0);
+});
+test('selector and caller mutation cannot change the bound executor snapshot', async () => {
+    _resetConsumed();
+    const input = { to: 'acct_A', nested: { amount: 10.5 } };
+    const tool = fakeTool();
+    const store = {
+        ownershipFenced: true,
+        async reserve() {
+            input.to = 'acct_B';
+            input.nested.amount = 999;
+            return true;
+        },
+        async commit() { return true; },
+        async release() { return true; },
+    };
+    const guarded = requireReceiptForLangChainTool(tool, {
+        actionFor: (candidate) => {
+            candidate.to = 'acct_selector_mutation';
+            return 'payment.release';
+        },
+        trustedKeys: [TRUSTED_KEY],
+        store,
+    });
+    const approved = { to: 'acct_A', nested: { amount: 10.5 } };
+    const receipt = mintReceipt({ action: exact(approved) });
+    const out = await guarded.invoke(input, cfg(receipt));
+    assert.deepEqual(out.ran, approved);
+    assert.deepEqual(tool.calls, [approved]);
 });
 function gateResponse(raw, { status = 200, ok = status >= 200 && status < 300 } = {}) {
     return { status, ok, async json() { return raw; } };
@@ -191,7 +221,7 @@ test('legacy hosted guard allows only an explicit successful allow verdict', asy
     assert.equal(review.allow, false);
     assert.equal(review.signoffRequired, true);
 });
-test('legacy withGuard requires explicit verified signoff callback success', async () => {
+test('legacy withGuard callbacks and hosted allow verdicts cannot authorize execution', async () => {
     const tool = fakeTool();
     const fetchImpl = async () => gateResponse({ decision: 'review' });
     const merelyNotified = withGuard(tool, {
@@ -199,13 +229,19 @@ test('legacy withGuard requires explicit verified signoff callback success', asy
         fetchImpl,
         onSignoff: async () => undefined,
     });
-    await assert.rejects(() => merelyNotified.invoke({ amount: 10 }), /did not receive verified signoff/);
+    await assert.rejects(() => merelyNotified.invoke({ amount: 10 }), /exact-action receipt/);
     assert.equal(tool.calls.length, 0);
     const approved = withGuard(tool, {
         action: 'payment.release',
         fetchImpl,
         onSignoff: async () => ({ approved: true }),
     });
-    await approved.invoke({ amount: 10 });
-    assert.equal(tool.calls.length, 1);
+    await assert.rejects(() => approved.invoke({ amount: 10 }), /exact-action receipt/);
+    assert.equal(tool.calls.length, 0);
+    const hostedAllow = withGuard(tool, {
+        action: 'payment.release',
+        fetchImpl: async () => gateResponse({ decision: 'allow' }),
+    });
+    await assert.rejects(() => hostedAllow.invoke({ amount: 10 }), /legacy hosted gate execution/);
+    assert.equal(tool.calls.length, 0);
 });

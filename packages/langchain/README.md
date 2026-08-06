@@ -33,7 +33,7 @@ npm install @emilia-protocol/langchain   # brings in @emilia-protocol/require-re
 import { requireReceiptForLangChainTool } from '@emilia-protocol/langchain';
 
 const guarded = requireReceiptForLangChainTool(wireTransferTool, {
-  action: 'payment.release',           // or actionFor: (input) => `payment.release:${input.to}`
+  action: 'payment.release',           // semantic base action
   trustedKeys: [ISSUER_SPKI_B64URL],   // pin the issuer keys you trust
   assuranceClass: 'class_a',
   approverKeys: ENROLLED_APPROVER_KEYS,
@@ -50,8 +50,10 @@ await guarded.invoke(
 // missing/invalid/replayed/forged -> throws; valid + action-bound -> runs.
 ```
 
-Per-call binding (recommended) means a receipt minted for one target cannot drive a
-different one. Once the underlying tool is invoked, an exception is an indeterminate
+Per-call binding is automatic: the wrapper hashes the tool name and complete actual
+input into the final action, so a receipt minted for one call cannot drive a different
+one. `actionFor` may choose a semantic base action but cannot disable the exact binding.
+Once the underlying tool is invoked, an exception is an indeterminate
 effect: the approval is consumed and automatic retry with the same receipt is refused.
 Only release a reservation when you can prove the external effect never began.
 
@@ -61,11 +63,10 @@ ownership-fenced store whose `reserve` is an atomic insert-if-absent and whose
 
 ## Legacy: hosted policy gate
 
-`guardAction` / `withGuard` call a hosted gate for an allow/deny/signoff decision.
-Convenient, but the decision is the operator's word, not offline-verifiable evidence —
-prefer the receipt gate above for anything irreversible. Unknown, malformed, and
-non-2xx responses deny. A `review`/signoff response runs the tool only when
-`onSignoff` returns `{ approved: true }`; merely sending a notification never proceeds.
+`guardAction` calls a hosted gate for a precheck-only allow/deny/signoff decision.
+`withGuard` is retained for compatibility but now always refuses execution: neither
+a hosted boolean nor an application callback is portable exact-action authority.
+Use `requireReceiptForLangChainTool` for execution.
 
 ## What it is / isn't
 

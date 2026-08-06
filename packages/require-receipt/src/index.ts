@@ -19,6 +19,7 @@
  */
 import crypto from 'node:crypto';
 import {
+  canonicalizeFiniteJson,
   canonicalizeStrictJson,
   isStrictCanonicalJson,
   strictJsonGate,
@@ -167,6 +168,71 @@ function sha256Bytes(value: any): Buffer {
 
 function sha256Hex(value: any): string {
   return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+/**
+ * Remove receipt transport fields before deriving executor-side action identity.
+ * They carry authorization evidence; they are not material tool arguments and
+ * must not let the proof change the action it is supposed to authorize.
+ */
+export function stripReceiptControlFields(value: any): any {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError('action_binding_invalid');
+  }
+  const material: AnyRecord = {};
+  const controlFields = new Set(['__ep', 'emilia_receipt', 'emiliaReceipt']);
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== 'string') throw new TypeError('action_binding_invalid');
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+      throw new TypeError('action_binding_invalid');
+    }
+    if (!controlFields.has(key)) material[key] = descriptor.value;
+  }
+  return material;
+}
+
+/** Capture the finite-JSON executor input once for bind-then-execute safety. */
+export function snapshotToolArguments(value: any): any {
+  return JSON.parse(canonicalizeFiniteJson(stripReceiptControlFields(value)));
+}
+
+/**
+ * Bind a base action name to the complete executor-side material payload.
+ * Framework adapters use this instead of asking integrators to remember to add
+ * an arguments hash themselves. Finite JSON numbers are accepted because tool
+ * arguments commonly contain decimal quantities; every non-JSON or ambiguous
+ * structure still fails closed in canonicalizeFiniteJson.
+ */
+export function bindExecutorAction(baseAction: string, material: any): string {
+  if (typeof baseAction !== 'string' || baseAction.length === 0 || baseAction.length > 512) {
+    throw new TypeError('action_binding_invalid');
+  }
+  const digest = sha256Hex(canonicalizeFiniteJson(material));
+  return `${baseAction}:sha256:${digest}`;
+}
+
+/** Bind one concrete tool occurrence to its full argument object. */
+export function bindToolAction(
+  toolName: string,
+  args: any = {},
+  baseAction: string = toolName,
+  occurrenceId?: string | null,
+): string {
+  if (typeof toolName !== 'string' || toolName.length === 0 || toolName.length > 512) {
+    throw new TypeError('action_binding_invalid');
+  }
+  if (occurrenceId !== undefined && occurrenceId !== null
+      && (typeof occurrenceId !== 'string' || occurrenceId.length === 0 || occurrenceId.length > 512)) {
+    throw new TypeError('action_binding_invalid');
+  }
+  return bindExecutorAction(baseAction, {
+    tool: toolName,
+    args: snapshotToolArguments(args),
+    ...(occurrenceId == null ? {} : { occurrence_id: occurrenceId }),
+  });
 }
 
 function proofContext(doc: AnyRecord): AnyRecord {
@@ -822,6 +888,10 @@ const requireReceiptExports = {
   validateActionRiskManifest,
   findActionRequirement,
   receiptRequiredConformance,
+  bindExecutorAction,
+  bindToolAction,
+  stripReceiptControlFields,
+  snapshotToolArguments,
 };
 
 export default requireReceiptExports;
@@ -830,6 +900,7 @@ export default requireReceiptExports;
 // rejections, in one reviewed place. Prefer this over hand-rolling a guard.
 export { makeReceiptGate } from './gate.js';
 export {
+  canonicalizeFiniteJson,
   canonicalizeStrictJson,
   isStrictCanonicalJson,
   strictJsonGate,

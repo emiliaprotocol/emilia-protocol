@@ -41,15 +41,15 @@ strictJson = strictJson.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
 acquisition = acquisition.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
 
 // Inline the strict JSON-domain implementation so the copy-in artifact stays
-// zero-dependency even as the package imports all three canonical helpers.
+// zero-dependency even as the package imports all four canonical helpers.
 const strictJsonImport =
-  /import \{\s*canonicalizeStrictJson,\s*isStrictCanonicalJson,\s*strictJsonGate,\s*\} from '\.\/strict-json\.js';\n/;
+  /import \{\s*canonicalizeFiniteJson,\s*canonicalizeStrictJson,\s*isStrictCanonicalJson,\s*strictJsonGate,\s*\} from '\.\/strict-json\.js';\n/;
 if (!strictJsonImport.test(index)) {
   throw new Error('build-drop-in: strict-json import not found in index.js — source changed; update the generator.');
 }
 index = index.replace(strictJsonImport, '');
 const strictJsonExport =
-  /export \{\s*canonicalizeStrictJson,\s*isStrictCanonicalJson,\s*strictJsonGate,\s*\} from '\.\/strict-json\.js';\n/;
+  /export \{\s*canonicalizeFiniteJson,\s*canonicalizeStrictJson,\s*isStrictCanonicalJson,\s*strictJsonGate,\s*\} from '\.\/strict-json\.js';\n/;
 if (!strictJsonExport.test(index)) {
   throw new Error('build-drop-in: strict-json export not found in index.js — source changed; update the generator.');
 }

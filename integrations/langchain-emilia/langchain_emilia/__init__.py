@@ -18,13 +18,14 @@ from .guard import (
     DEFAULT_MATCH,
     EmiliaApprovalPending,
     EmiliaDenied,
+    EmiliaExecutionIndeterminate,
     EmiliaGuard,
     GuardedTool,
     guard_tools,
     wrap_tool,
 )
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 __all__ = [
     "ACTION_TYPES",
@@ -33,6 +34,7 @@ __all__ = [
     "EmiliaGateClient",
     "EmiliaConfigError",
     "EmiliaDenied",
+    "EmiliaExecutionIndeterminate",
     "EmiliaError",
     "EmiliaGuard",
     "EmiliaUnreachable",

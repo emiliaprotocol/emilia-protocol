@@ -11,10 +11,12 @@ import {
   classifyToolCall,
   bindToolAction,
   createPostgresProvenanceLedgerStore,
+  createMcpLoopBreaker,
   demandReceipt,
   PROVENANCE_POSTGRES_SQL,
   ProvenanceLedger,
   withMcpGuard as createMcpGuard,
+  withMcpLoopBreaker,
 } from '../packages/mcp-guard/index.js';
 
 const withMcpGuard = (handler: (...args: any[]) => any, options: any = {}) =>
@@ -51,6 +53,59 @@ function fixtureAssurance(doc) {
 
 describe('@emilia-protocol/mcp-guard boundary hardening', () => {
   const bound = (tool, args, family) => bindToolAction(tool, args, family);
+
+  it('opens the local circuit after the configured identical-call budget', async () => {
+    let at = 1_000;
+    let runs = 0;
+    const breaker = createMcpLoopBreaker({
+      maxIdenticalCalls: 3,
+      windowMs: 10_000,
+      now: () => at,
+    });
+    const guarded = withMcpLoopBreaker(async (_name, args) => {
+      runs += 1;
+      return args;
+    }, { breaker });
+
+    await guarded('aws.create_instance', { size: 'large' });
+    await guarded('aws.create_instance', { size: 'large' });
+    await guarded('aws.create_instance', { size: 'large' });
+    const blocked = await guarded('aws.create_instance', { size: 'large' });
+    expect(blocked.status).toBe(429);
+    expect(blocked.code).toBe('emilia_identical_tool_loop');
+    expect(runs).toBe(3);
+
+    at += 10_001;
+    await guarded('aws.create_instance', { size: 'large' });
+    expect(runs).toBe(4);
+  });
+
+  it('does not let receipt carriers or argument substitution evade the circuit', async () => {
+    let runs = 0;
+    const guarded = withMcpLoopBreaker(async () => { runs += 1; }, {
+      maxIdenticalCalls: 1,
+      windowMs: 10_000,
+      now: () => 1_000,
+    });
+    await guarded('wire', { amount: 10, __ep: { receipt: 'first' } });
+    const same = await guarded('wire', { amount: 10, __ep: { receipt: 'second' } });
+    expect(same.code).toBe('emilia_identical_tool_loop');
+    await guarded('wire', { amount: 11 });
+    expect(runs).toBe(2);
+  });
+
+  it('fails closed at live-window capacity instead of evicting loop history', () => {
+    const breaker = createMcpLoopBreaker({
+      maxIdenticalCalls: 2,
+      windowMs: 10_000,
+      maxEntries: 1,
+      now: () => 1_000,
+    });
+    expect(breaker.check('wire', { destination: 'A' }).ok).toBe(true);
+    expect(breaker.check('wire', { destination: 'B' }).reason).toBe('circuit_capacity_exhausted');
+    expect(breaker.check('wire', { destination: 'A' }).ok).toBe(true);
+    expect(breaker.check('wire', { destination: 'A' }).reason).toBe('identical_tool_loop');
+  });
 
   it('reloads and verifies a durable provenance head after process restart', async () => {
     const persisted: any[] = [];
@@ -595,6 +650,26 @@ describe('@emilia-protocol/mcp-guard boundary hardening', () => {
     expect(substituted.ep_refused).toBe(true);
     expect(substituted.rejected.reason).toBe('action_mismatch');
     expect(runs).toBe(0);
+  });
+
+  it('action selectors cannot mutate the snapshotted arguments that execute', async () => {
+    let observed;
+    const args = { destination: 'acct:A', amount: 10.5 };
+    const guarded = withMcpGuard(async (_name, executedArgs) => { observed = executedArgs; }, {
+      annotations: {
+        wire: {
+          irreversible: true,
+          action: (candidate) => {
+            candidate.destination = 'acct:attacker';
+            return 'payment.release';
+          },
+        },
+      },
+      verifyOpts: { allowInlineKey: true, verifyAssurance: fixtureAssurance },
+    });
+    const receipt = mint(bound('wire', args, 'payment.release'));
+    await guarded('wire', { ...args, __ep: { receipt } });
+    expect(observed).toEqual(args);
   });
 
   it('refuses values outside the cross-language canonical profile before execution', async () => {

@@ -31,12 +31,15 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import functools
+import hashlib
+import inspect
+import json
 import re
 import threading
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterable, Optional
 
-from emilia_verify import verify_receipt
+from emilia_verify import canonicalize, verify_receipt
 
 __all__ = [
     "ReceiptGate",
@@ -46,6 +49,7 @@ __all__ = [
     "set_current_receipt",
     "using_receipt",
     "current_receipt",
+    "bind_call_action",
 ]
 
 DEFAULT_MAX_AGE_SEC = 900
@@ -144,6 +148,45 @@ def _parse_iso_epoch(s: Any) -> Optional[float]:
 
 def _now() -> float:
     return datetime.now(timezone.utc).timestamp()
+
+
+def bind_call_action(
+    base_action: str,
+    tool_name: str,
+    arguments: dict,
+    selector: Any = None,
+) -> str:
+    """Bind a semantic base action to one complete executor-side call."""
+    if not isinstance(base_action, str) or not base_action or len(base_action) > 512:
+        raise ValueError("action_binding_invalid")
+    if not isinstance(tool_name, str) or not tool_name or len(tool_name) > 512:
+        raise ValueError("action_binding_invalid")
+    if not isinstance(arguments, dict):
+        raise ValueError("action_binding_invalid")
+    material = {"tool": tool_name, "arguments": arguments}
+    if selector is not None:
+        material["selector"] = selector
+    try:
+        encoded = canonicalize(material).encode("utf-8")
+    except Exception as error:
+        raise ValueError("action_binding_invalid") from error
+    return f"{base_action}:sha256:{hashlib.sha256(encoded).hexdigest()}"
+
+
+def _snapshot_invocation(
+    fn: Callable[..., Any],
+    args: tuple,
+    kwargs: dict,
+) -> tuple[dict, tuple, dict]:
+    try:
+        bound = inspect.signature(fn).bind(*args, **kwargs)
+        bound.apply_defaults()
+        arguments = json.loads(canonicalize(dict(bound.arguments)))
+        for key in list(bound.arguments):
+            bound.arguments[key] = arguments[key]
+    except Exception as error:
+        raise ReceiptRequired("action_binding_invalid") from error
+    return arguments, bound.args, bound.kwargs
 
 
 class ReceiptGate:
@@ -342,27 +385,33 @@ def require_receipt(
     """Decorator: gate a tool function behind an offline EMILIA receipt.
 
     The receipt is taken from ``get_receipt(*args, **kwargs)`` if provided, else
-    from the current-receipt context variable (see ``using_receipt``). Pass
-    ``target_for(*args, **kwargs) -> str`` to bind per call (e.g. the recipient),
-    so one receipt cannot be reused across distinct calls.
+    from the current-receipt context variable (see ``using_receipt``). Complete
+    bound arguments are always hashed into the receipt action. ``target_for``
+    may add a semantic selector, but cannot disable exact argument binding.
     """
-    gate = ReceiptGate(
-        action,
-        trusted_keys=trusted_keys,
-        allow_inline_key=allow_inline_key,
-        max_age_sec=max_age_sec,
-        store=store,
-        assurance_class=assurance_class,
-        verify_assurance=verify_assurance,
-        max_future_skew_sec=max_future_skew_sec,
-    )
-
     def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
+        gate = ReceiptGate(
+            lambda target: target,
+            trusted_keys=trusted_keys,
+            allow_inline_key=allow_inline_key,
+            max_age_sec=max_age_sec,
+            store=store,
+            assurance_class=assurance_class,
+            verify_assurance=verify_assurance,
+            max_future_skew_sec=max_future_skew_sec,
+        )
+
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
-            receipt = get_receipt(*args, **kwargs) if get_receipt else _current_receipt.get()
-            target = target_for(*args, **kwargs) if target_for else None
-            return gate.run(receipt, lambda: fn(*args, **kwargs), target=target)
+            arguments, call_args, call_kwargs = _snapshot_invocation(fn, args, kwargs)
+            _, resolver_args, resolver_kwargs = _snapshot_invocation(fn, call_args, call_kwargs)
+            receipt = get_receipt(*resolver_args, **resolver_kwargs) if get_receipt else _current_receipt.get()
+            selector = None
+            if target_for:
+                _, selector_args, selector_kwargs = _snapshot_invocation(fn, call_args, call_kwargs)
+                selector = target_for(*selector_args, **selector_kwargs)
+            bound_action = bind_call_action(action, fn.__name__, arguments, selector)
+            return gate.run(receipt, lambda: fn(*call_args, **call_kwargs), target=bound_action)
 
         wrapper.emilia_gate = gate  # type: ignore[attr-defined]
         return wrapper
@@ -393,17 +442,30 @@ def guard_crewai_tool(
     original = getattr(tool, "_run", None)
     if not callable(original):
         raise TypeError("guard_crewai_tool: tool must expose a callable `_run`")
-    deco = require_receipt(
-        action,
-        target_for=target_for,
+    gate = ReceiptGate(
+        lambda target: target,
         trusted_keys=trusted_keys,
         allow_inline_key=allow_inline_key,
         max_age_sec=max_age_sec,
-        get_receipt=get_receipt,
         store=store,
         assurance_class=assurance_class,
         verify_assurance=verify_assurance,
         max_future_skew_sec=max_future_skew_sec,
     )
-    tool._run = deco(original)  # instance attribute shadows the class method
+
+    @functools.wraps(original)
+    def guarded(*args, **kwargs):
+        arguments, call_args, call_kwargs = _snapshot_invocation(original, args, kwargs)
+        _, resolver_args, resolver_kwargs = _snapshot_invocation(original, call_args, call_kwargs)
+        receipt = get_receipt(*resolver_args, **resolver_kwargs) if get_receipt else _current_receipt.get()
+        selector = None
+        if target_for:
+            _, selector_args, selector_kwargs = _snapshot_invocation(original, call_args, call_kwargs)
+            selector = target_for(*selector_args, **selector_kwargs)
+        tool_name = getattr(tool, "name", None) or original.__name__
+        bound_action = bind_call_action(action, str(tool_name), arguments, selector)
+        return gate.run(receipt, lambda: original(*call_args, **call_kwargs), target=bound_action)
+
+    guarded.emilia_gate = gate  # type: ignore[attr-defined]
+    tool._run = guarded  # instance attribute shadows the class method
     return tool

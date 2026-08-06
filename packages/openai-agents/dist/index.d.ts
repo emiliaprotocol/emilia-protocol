@@ -9,8 +9,9 @@ export declare function _resetConsumed(): void;
  * @param {boolean} [opts.allowInlineKey=false] also accept a receipt's own inline
  *   key (proves integrity, NOT trust — leave OFF in production).
  * @param {number} [opts.maxAgeSec=900] reject receipts older than this.
- * @param {(toolName:string, args:any)=>string} [opts.actionFor] REQUIRED — maps a
- *   tool call to the canonical EP action_type the receipt must be bound to.
+ * @param {(toolName:string, args:any)=>string} [opts.actionFor] optional base
+ *   action mapper. Complete arguments and the OpenAI callId are always hashed
+ *   into the final action binding; omission defaults to openai.tool.<toolName>.
  * @param {{reserve:(id:string)=>Promise<boolean>|boolean,
  *   commit:(id:string)=>Promise<boolean>|boolean,
  *   release:(id:string)=>Promise<boolean>|boolean}} [opts.store]

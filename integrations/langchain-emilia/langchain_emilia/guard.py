@@ -24,6 +24,7 @@ Modes:
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import time
 from typing import Any, Callable, Iterable, Optional
@@ -31,7 +32,7 @@ from typing import Any, Callable, Iterable, Optional
 from langchain_core.tools import BaseTool, ToolException
 
 from .client import EmiliaGateClient, EmiliaConfigError, EmiliaUnreachable, GateResult
-from .digest import action_digest
+from .digest import action_digest, canonicalize
 
 # Same irreversible-action heuristic as the Claude Agent SDK hook.
 DEFAULT_MATCH = re.compile(
@@ -58,6 +59,14 @@ class EmiliaApprovalPending(ToolException):
         super().__init__(message)
         self.result = result
         self.signoff_url = result.signoff_url if result else None
+
+
+class EmiliaExecutionIndeterminate(ToolException):
+    """The tool may have run, but post-execution evidence was not confirmed."""
+
+    def __init__(self, message: str, result: Optional[GateResult] = None) -> None:
+        super().__init__(message)
+        self.result = result
 
 
 class EmiliaGuard:
@@ -136,7 +145,7 @@ class EmiliaGuard:
         try:
             result = self.client.gate(
                 action_type=self._action_type_for(tool_name),
-                target=f"{tool_name}#{digest[:32]}",
+                target=f"{tool_name}#sha256:{digest}",
                 amount=self._amount_from(args),
                 comment=f"LangChain tool {tool_name}",
                 wait_for_approval=self.wait_for_approval,
@@ -172,6 +181,45 @@ class EmiliaGuard:
             result,
         )
 
+    def attest(self, tool_name: str, digest: str, result: Optional[GateResult]) -> None:
+        if result is None or self.mode != "enforce":
+            return
+        try:
+            attestation = self.client.attest_execution(result)
+        except EmiliaUnreachable as err:
+            self._emit({
+                "event": "indeterminate",
+                "tool": tool_name,
+                "digest": digest,
+                "receipt_id": result.receipt_id,
+                "reason": "execution_attestation_unconfirmed",
+                "error": str(err),
+            })
+            raise EmiliaExecutionIndeterminate(
+                "EMILIA — INDETERMINATE: the tool returned after authority was consumed, "
+                "but exact execution evidence was not confirmed. The action MAY have "
+                f"executed. DO NOT RETRY {tool_name}; reconcile receipt {result.receipt_id}.",
+                result,
+            ) from err
+        self._emit({
+            "event": "executed",
+            "tool": tool_name,
+            "digest": digest,
+            "receipt_id": result.receipt_id,
+            "binding_status": attestation.get("binding_status"),
+        })
+
+    def execution_failed(self, tool_name: str, digest: str, result: Optional[GateResult]) -> None:
+        if result is None or self.mode != "enforce":
+            return
+        self._emit({
+            "event": "indeterminate",
+            "tool": tool_name,
+            "digest": digest,
+            "receipt_id": result.receipt_id,
+            "reason": "tool_raised_after_consume",
+        })
+
 
 class GuardedTool(BaseTool):
     """A LangChain tool wrapped in the EMILIA precondition.
@@ -198,16 +246,39 @@ class GuardedTool(BaseTool):
         callbacks = run_manager.get_child() if run_manager is not None else None
         return await self.inner.arun(payload if payload != {} else "", callbacks=callbacks)
 
+    @staticmethod
+    def _snapshot(payload: Any) -> Any:
+        try:
+            return json.loads(canonicalize(payload))
+        except Exception as err:  # noqa: BLE001 — ambiguous executor input fails closed
+            raise EmiliaDenied(
+                "EMILIA — BLOCKED: tool arguments are not canonical JSON; tool was NOT executed."
+            ) from err
+
     def _run(self, *args: Any, run_manager: Any = None, **kwargs: Any) -> Any:
-        payload = self._payload(args, kwargs)
-        self.guard.check(self.name, payload)  # raises on deny/pending — fail closed
-        return self._forward(payload, run_manager)
+        payload = self._snapshot(self._payload(args, kwargs))
+        digest = action_digest(self.name, payload)
+        gate_result = self.guard.check(self.name, payload)  # raises on deny/pending — fail closed
+        try:
+            output = self._forward(payload, run_manager)
+        except BaseException:
+            self.guard.execution_failed(self.name, digest, gate_result)
+            raise
+        self.guard.attest(self.name, digest, gate_result)
+        return output
 
     async def _arun(self, *args: Any, run_manager: Any = None, **kwargs: Any) -> Any:
-        payload = self._payload(args, kwargs)
+        payload = self._snapshot(self._payload(args, kwargs))
+        digest = action_digest(self.name, payload)
         # The gate blocks (it may wait on a human); never stall the event loop.
-        await asyncio.to_thread(self.guard.check, self.name, payload)
-        return await self._aforward(payload, run_manager)
+        gate_result = await asyncio.to_thread(self.guard.check, self.name, payload)
+        try:
+            output = await self._aforward(payload, run_manager)
+        except BaseException:
+            self.guard.execution_failed(self.name, digest, gate_result)
+            raise
+        await asyncio.to_thread(self.guard.attest, self.name, digest, gate_result)
+        return output
 
 
 def wrap_tool(tool: BaseTool, guard: EmiliaGuard) -> BaseTool:

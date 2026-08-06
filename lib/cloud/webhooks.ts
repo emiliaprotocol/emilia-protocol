@@ -316,6 +316,62 @@ export async function deliverWebhook(endpointId: string, eventType: string, payl
   return result;
 }
 
+function endpointAcceptsEvent(events: unknown, eventType: string): boolean {
+  if (!Array.isArray(events)) return false;
+  return events.some((candidate) => {
+    if (candidate === '*' || candidate === eventType) return true;
+    return typeof candidate === 'string'
+      && candidate.endsWith('.*')
+      && eventType.startsWith(candidate.slice(0, -1));
+  });
+}
+
+/**
+ * Persist and attempt one tenant event against every subscribed active endpoint.
+ * A successful return means there is durable per-endpoint delivery state; it
+ * never treats endpoint registration or an in-memory acknowledgement as delivery.
+ */
+export async function deliverTenantEvent(
+  tenantId: string,
+  eventType: string,
+  payload: any,
+): Promise<any> {
+  const supabase = getServiceClient();
+  const { data: endpoints, error } = await supabase
+    .from('webhook_endpoints')
+    .select('endpoint_id, events')
+    .eq('tenant_id', tenantId)
+    .eq('status', 'active');
+
+  if (error) {
+    logger.error('[webhooks] tenant endpoint lookup failed:', error);
+    return { error: 'Failed to load webhook endpoints', status: 500 };
+  }
+
+  const subscribed = (endpoints || []).filter((endpoint) =>
+    endpointAcceptsEvent(endpoint.events, eventType));
+  if (subscribed.length === 0) {
+    return { error: 'No active webhook endpoint subscribes to this event', status: 409 };
+  }
+
+  const attempts = await Promise.all(subscribed.map(async (endpoint) => {
+    const result = await deliverWebhook(endpoint.endpoint_id, eventType, payload);
+    return {
+      endpoint_id: endpoint.endpoint_id,
+      delivery_id: result.delivery?.delivery_id || null,
+      status: result.delivery?.status || 'failed',
+      error: result.error || null,
+    };
+  }));
+
+  const deliveryState = attempts.every((attempt) => attempt.status === 'delivered')
+    ? 'delivered'
+    : attempts.some((attempt) => ['pending', 'retrying'].includes(attempt.status))
+      ? 'retrying'
+      : 'failed';
+  return { delivery_state: deliveryState, deliveries: attempts };
+}
+
 /**
  * Attempt to POST the signed payload to the endpoint URL.
  *

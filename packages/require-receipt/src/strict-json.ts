@@ -160,12 +160,14 @@ function canonicalizeValue(
   }
   if (typeof value === 'boolean') return value ? 'true' : 'false';
   if (typeof value === 'number') {
-    if (!Number.isFinite(value) || (state.safeIntegersOnly && !Number.isSafeInteger(value))) {
+    if (!Number.isFinite(value)
+        || (state.safeIntegersOnly && !Number.isSafeInteger(value))
+        || (!state.safeIntegersOnly && Number.isInteger(value) && !Number.isSafeInteger(value))) {
       throw canonicalDomainError(
         path,
         state.safeIntegersOnly
           ? 'numbers must be safe integers; encode other quantities as strings'
-          : 'numbers must be finite',
+          : 'numbers must be finite and integer values must be safe',
       );
     }
     return JSON.stringify(value);
@@ -248,7 +250,8 @@ export function canonicalizeStrictJson(value: unknown, limits: StrictCanonicalJs
 /**
  * Canonical bytes for JSON records that intentionally carry finite decimal
  * measurements. This keeps every structural refusal of canonicalizeStrictJson
- * while allowing finite non-integer numbers. Protocol identities and signed
+ * while allowing finite non-integer numbers. Integer values remain restricted
+ * to the interoperable safe range. Protocol identities and signed
  * cross-language state should continue to use canonicalizeStrictJson.
  */
 export function canonicalizeFiniteJson(value: unknown, limits: StrictCanonicalJsonLimits = {}): string {

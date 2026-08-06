@@ -47,15 +47,12 @@ const cancelOrder = tool({
 
 const agent = new Agent({ name: 'Ops', tools: [cancelOrder] });
 
-// One gate, configured once. actionFor maps a tool call -> the canonical EP
-// action_type the receipt must be bound to. For real safety, bind to the
-// SPECIFIC target the call acts on (not just the tool name) so a receipt for one
-// resource can't authorize another — and fold in the call identity so the same
-// receipt can't be reused across two different tool calls.
+// One gate, configured once. The adapter automatically binds the complete
+// arguments and OpenAI callId. actionFor only selects a semantic base action.
 const gate = requireReceiptForOpenAIAgent({
   trustedKeys: [process.env.EMILIA_ISSUER_KEY], // base64url SPKI-DER issuer key(s) you trust
   maxAgeSec: 900,
-  actionFor: (toolName, args) => `openai.tool.${toolName}:${args?.orderId ?? ''}`,
+  actionFor: (toolName) => `openai.tool.${toolName}`,
 });
 
 let result = await run(agent, 'Cancel order 4242');
@@ -97,7 +94,7 @@ For every pending tool-approval interruption:
 ## The six audit questions a receipt answers
 
 1. **Who approved it?** — `payload.subject` / `claim.approver` (a named, accountable human).
-2. **What exact action?** — `claim.action_type`, bound via `actionFor` to this specific tool call.
+2. **What exact action?** — `claim.action_type`, automatically bound to the tool, complete arguments, and OpenAI call ID.
 3. **Was it altered after approval?** — no: the receipt is Ed25519-signed over sorted-key canonical JSON; any change breaks the signature.
 4. **Was it replayed?** — no: one-time consumption by `receipt_id` in the configured atomic store.
 5. **Was it authorized for the right org / policy?** — pin `trustedKeys` to the issuers your policy accepts; only those verify.
@@ -106,7 +103,7 @@ For every pending tool-approval interruption:
 ## Production note
 
 - **Pin `trustedKeys`** to your real issuer key(s). **Drop `allowInlineKey`** (it only proves integrity, never trust).
-- **Bind to the target, not just the tool.** Make `actionFor` incorporate the specific resource the call touches (and ideally the `callId` / an args hash), so a receipt minted for one action can't be replayed against a different one.
+- **Exact binding is mandatory.** The adapter hashes the complete arguments and OpenAI call ID. `actionFor` may choose a semantic base but cannot weaken that binding.
 - Consumption is durably committed **before** `state.approve()` is called. If that commit fails, the runtime is rejected and the tool cannot run.
 - **Rejections are sanitized:** a reject decision carries only a machine-readable `reason` code, never the signer, the subject, or verifier internals.
 - The default store is process-local. Production fleets must pass a shared, ownership-fenced `{ reserve, commit, release }` store. `reserve` must be atomic insert-if-absent; an uncertain commit remains closed until operator reconciliation.

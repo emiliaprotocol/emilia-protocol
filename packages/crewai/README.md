@@ -39,7 +39,7 @@ guard_crewai_tool(
     my_wire_tool,
     action="payment.release",
     trusted_keys=[ISSUER_SPKI_B64URL],     # pin the issuer keys you trust
-    target_for=lambda to, amount: f"payment.release:{to}",  # optional per-call binding
+    target_for=lambda to, amount: to,  # optional semantic selector
     assurance_class="class_a",
     verify_assurance=verify_pinned_class_a_evidence,
 )
@@ -48,6 +48,10 @@ guard_crewai_tool(
 with using_receipt(receipt):
     crew.kickoff()        # my_wire_tool runs only with a valid, action-bound receipt
 ```
+
+The high-level wrappers always bind the tool name and complete bound arguments;
+`target_for` can add context but cannot weaken that binding. Use
+`bind_call_action()` when minting the exact receipt action.
 
 Or decorate a plain tool function:
 

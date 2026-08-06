@@ -70,6 +70,7 @@ import {
   disableEndpoint,
   computeSignature,
   deliverWebhook,
+  deliverTenantEvent,
   retryFailedDeliveries,
 } from '../lib/cloud/webhooks.js';
 import { getServiceClient } from '@/lib/supabase';
@@ -125,6 +126,24 @@ const DELIVERY = {
   attempts: 0,
   status: 'pending',
 };
+
+describe('deliverTenantEvent', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('does not claim a notification was queued when no endpoint subscribes', async () => {
+    const chain = makeChain({ data: [{ endpoint_id: 'ep-1', events: ['receipt.created'] }], error: null });
+    getServiceClient.mockReturnValue({ from: vi.fn(() => chain) });
+
+    const result = await deliverTenantEvent(
+      'tenant-1',
+      'signoff.challenge.notification_requested',
+      { challenge_id: 'challenge-1' },
+    );
+
+    expect(result.status).toBe(409);
+    expect(result.error).toMatch(/No active webhook endpoint/i);
+  });
+});
 
 // ── computeSignature ──────────────────────────────────────────────────────────
 

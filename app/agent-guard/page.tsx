@@ -52,20 +52,21 @@ curl -s https://www.emiliaprotocol.ai/api/trust/gate \\
 
 // The ergonomic wrapper — shipped today in @emilia-protocol/langchain (npm)
 // and langchain-emilia (pip). This is the package's real API, verbatim.
-const GUARD_SNIPPET = `import { withGuard } from '@emilia-protocol/langchain';
+const GUARD_SNIPPET = `import { requireReceiptForLangChainTool } from '@emilia-protocol/langchain';
 
-// Wrap anything irreversible. One wrapper.
-const guarded = withGuard(wireMoney, {
-  action:  'payment.release',
-  context: (input) => ({ amount: input.amount, destination: input.to }),
-  // Resolve once a named human approves — otherwise signoff throws:
-  onSignoff: async (decision) => waitForApproval(decision.raw),
+// Wrap anything irreversible. Complete arguments are bound automatically.
+const guarded = requireReceiptForLangChainTool(wireMoney, {
+  action: 'payment.release',
+  trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY],
+  store: durableAtomicReceiptStore,
 });
 
-// Give \`guarded\` to your agent instead of \`wireMoney\`.
-await guarded.invoke({ amount: 50000, to: 'acct_9f12' });
-// → throws "EMILIA requires human signoff" until a human approves.
-// Python: pip install langchain-emilia → guard_tools([…]) does the same.`;
+await guarded.invoke(
+  { amount: 50000, to: 'acct_9f12' },
+  { configurable: { emiliaReceipt: exactActionReceipt } },
+);
+// Missing, wrong-call, forged, or replayed receipt → tool never runs.
+// Python: langchain-emilia consumes before effect and attests after.`;
 
 // The demand side — published today in @emilia-protocol/require-receipt (npm).
 // This is the package's real middleware API, verbatim.
@@ -94,7 +95,7 @@ app.post('/release-payment', requireEmiliaReceipt({
 const FLOW = [
   {
     step: '01', accent: color.green, label: 'Intercept',
-    body: 'Your agent is about to do something it can’t take back. One withGuard() wrapper routes the exact action — actor, intent, parameters — to EMILIA before it touches the real world.',
+    body: 'Your agent is about to do something it can’t take back. One receipt-required wrapper binds the complete executor input before it touches the real world.',
   },
   {
     step: '02', accent: color.blue, label: 'Decide',

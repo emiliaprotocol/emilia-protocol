@@ -43,6 +43,7 @@
 // The canonical makeReceiptGate encodes verify + target binding + reserve→
 // commit/release replay safety + sanitized {reason} rejections in one place.
 import { makeReceiptGate } from '../../require-receipt/gate.js';
+import { bindToolAction, snapshotToolArguments } from '../../require-receipt/index.js';
 import { strictJsonGate } from '../../require-receipt/strict-json.js';
 
 type AnyRecord = Record<string, any>;
@@ -122,11 +123,20 @@ function interruptionCallId(interruption: AnyRecord): string | null {
   );
 }
 
-function deriveAction(actionFor: (toolName: string, args: any) => any, toolName: string | null, args: any): string | null {
+function deriveAction(
+  actionFor: ((toolName: string, args: any) => any) | undefined,
+  toolName: string | null,
+  args: any,
+  callId: string | null,
+): string | null {
   if (toolName == null) return null;
   try {
-    const action = actionFor(toolName, args);
-    return typeof action === 'string' && action.length > 0 ? action : null;
+    const materialArgs = snapshotToolArguments(args);
+    const baseAction = actionFor
+      ? actionFor(toolName, snapshotToolArguments(materialArgs))
+      : `openai.tool.${toolName}`;
+    if (typeof baseAction !== 'string' || baseAction.length === 0) return null;
+    return bindToolAction(toolName, materialArgs, baseAction, callId);
   } catch {
     return null;
   }
@@ -148,8 +158,9 @@ function isApprovalInterruption(interruption: AnyRecord): boolean {
  * @param {boolean} [opts.allowInlineKey=false] also accept a receipt's own inline
  *   key (proves integrity, NOT trust — leave OFF in production).
  * @param {number} [opts.maxAgeSec=900] reject receipts older than this.
- * @param {(toolName:string, args:any)=>string} [opts.actionFor] REQUIRED — maps a
- *   tool call to the canonical EP action_type the receipt must be bound to.
+ * @param {(toolName:string, args:any)=>string} [opts.actionFor] optional base
+ *   action mapper. Complete arguments and the OpenAI callId are always hashed
+ *   into the final action binding; omission defaults to openai.tool.<toolName>.
  * @param {{reserve:(id:string)=>Promise<boolean>|boolean,
  *   commit:(id:string)=>Promise<boolean>|boolean,
  *   release:(id:string)=>Promise<boolean>|boolean}} [opts.store]
@@ -165,8 +176,8 @@ export function requireReceiptForOpenAIAgent(opts: AnyRecord = {}): AnyRecord {
     ...gateOptions
   } = opts;
 
-  if (typeof actionFor !== 'function') {
-    throw new TypeError('requireReceiptForOpenAIAgent: opts.actionFor (toolName, args) => action_type is required');
+  if (actionFor !== undefined && typeof actionFor !== 'function') {
+    throw new TypeError('requireReceiptForOpenAIAgent: opts.actionFor must be a function when provided');
   }
 
   // One canonical gate per bound action. The action_type IS the binding (the
@@ -220,10 +231,10 @@ export function requireReceiptForOpenAIAgent(opts: AnyRecord = {}): AnyRecord {
     const toolName = interruptionToolName(interruption);
     const callId = interruptionCallId(interruption);
     const args = interruptionArgs(interruption);
-    // Bind the receipt to THIS tool call. actionFor SHOULD incorporate the
-    // specific call identity (callId or a hash of args) so a single receipt
-    // cannot be reused across distinct tool calls — see the README note.
-    const action = args === null ? null : deriveAction(actionFor, toolName, args);
+    // Bind automatically to the complete arguments and OpenAI call identity.
+    // An integrator-supplied mapper selects only the semantic base action; it
+    // cannot accidentally omit the executor payload or sibling-call identity.
+    const action = args === null ? null : deriveAction(actionFor, toolName, args, callId);
 
     const base = { action, toolName, callId };
 
@@ -311,7 +322,9 @@ export function requireReceiptForOpenAIAgent(opts: AnyRecord = {}): AnyRecord {
     }
     if (Array.isArray(receipts)) {
       const args = interruptionArgs(interruption);
-      const action = args === null ? null : deriveAction(actionFor, toolName, args);
+      const action = args === null ? null : deriveAction(
+        actionFor, toolName, args, interruptionCallId(interruption),
+      );
       if (!action) return null;
       return receipts.find((r: AnyRecord) => r?.payload?.claim?.action_type === action) ?? null;
     }

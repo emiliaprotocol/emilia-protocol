@@ -16,6 +16,7 @@ from emilia_verify import canonicalize
 from emilia_crewai import (
     ReceiptGate,
     ReceiptRequired,
+    bind_call_action,
     require_receipt,
     guard_crewai_tool,
     using_receipt,
@@ -256,8 +257,40 @@ def test_require_receipt_decorator_with_contextvar():
     except ReceiptRequired:
         pass
     # with a receipt bound in context -> runs
-    with using_receipt(mint("payment.release")):
+    exact = bind_call_action(
+        "payment.release", "send_payment", {"to": "acct_1", "amount": 100}
+    )
+    with using_receipt(mint(exact)):
         assert send_payment("acct_1", 100) == "sent 100 to acct_1"
+
+    wrong = bind_call_action(
+        "payment.release", "send_payment", {"to": "acct_2", "amount": 100}
+    )
+    with using_receipt(mint(wrong)):
+        try:
+            send_payment("acct_1", 100)
+            assert False, "approval for different arguments must be refused"
+        except ReceiptRequired as e:
+            assert e.reason == "action_mismatch"
+
+
+def test_selector_mutation_cannot_rewrite_the_bound_executor_snapshot():
+    def selector(payload):
+        payload["destination"] = "acct_attacker"
+        return "acct_A"
+
+    @require_receipt(
+        "payment.release",
+        target_for=selector,
+        trusted_keys=[TRUSTED_KEY],
+    )
+    def send(payload):
+        return payload
+
+    approved_args = {"payload": {"destination": "acct_A", "amount": 10.5}}
+    exact = bind_call_action("payment.release", "send", approved_args, "acct_A")
+    with using_receipt(mint(exact)):
+        assert send({"destination": "acct_A", "amount": 10.5}) == approved_args["payload"]
 
 
 # ── CrewAI BaseTool duck-typed wrapper ───────────────────────────────────────
@@ -283,7 +316,10 @@ def test_guard_crewai_tool_duck_typed():
     assert FakeTool.calls == 0
 
     # valid receipt -> runs once
-    with using_receipt(mint("payment.release")):
+    exact = bind_call_action(
+        "payment.release", "wire_transfer", {"to": "acct_1", "amount": 50}
+    )
+    with using_receipt(mint(exact)):
         out = tool._run("acct_1", 50)
     assert out == {"ok": True, "to": "acct_1", "amount": 50}
     assert FakeTool.calls == 1

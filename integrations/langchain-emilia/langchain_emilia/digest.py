@@ -21,12 +21,12 @@ def canonicalize(value: Any) -> str:
     """Recursive canonical JSON — depth-first key sort at every level."""
     if isinstance(value, dict):
         return "{" + ",".join(
-            json.dumps(k, ensure_ascii=False) + ":" + canonicalize(value[k])
+            json.dumps(k, ensure_ascii=False, allow_nan=False) + ":" + canonicalize(value[k])
             for k in sorted(value.keys())
         ) + "}"
     if isinstance(value, (list, tuple)):
         return "[" + ",".join(canonicalize(v) for v in value) + "]"
-    return json.dumps(value, ensure_ascii=False)
+    return json.dumps(value, ensure_ascii=False, allow_nan=False)
 
 
 def action_digest(tool: str, args: Any) -> str:

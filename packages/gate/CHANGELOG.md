@@ -1,6 +1,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## 0.23.14 (2026-08-05)
+
+- Carry `@emilia-protocol/require-receipt` 0.8.0 so Gate integrations can use
+  the same executor-side exact-action binder as the public framework adapters.
+
 ## 0.23.13 (2026-08-04)
 
 - Reissues the recoverable prepared-reservation release from the exact protected

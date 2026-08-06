@@ -22,6 +22,8 @@ class FakeGate(EmiliaGateClient):
         super().__init__(api_key="ep_test", org_id="org-test")
         self.results = list(results)
         self.gate_calls = []
+        self.attest_calls = []
+        self.attest_error = None
 
     def gate(self, action_type, target, amount=None, comment="", wait_for_approval=True):
         self.gate_calls.append({"action_type": action_type, "target": target, "amount": amount})
@@ -29,6 +31,23 @@ class FakeGate(EmiliaGateClient):
         if isinstance(step, Exception):
             raise step
         return step
+
+    def attest_execution(self, result):
+        self.attest_calls.append(result)
+        if self.attest_error:
+            raise self.attest_error
+        return {"status": "executed", "binding_status": "match"}
+
+
+def allowed(receipt_id):
+    return GateResult(
+        "allow",
+        receipt_id,
+        action_hash="sha256:" + "a" * 64,
+        canonical_action={"action_type": "ai_agent_payment_action"},
+        execution_reference_id="langchain-emilia:sha256:" + "b" * 64,
+        consumed=True,
+    )
 
 
 def make_transfer(executed):
@@ -41,18 +60,19 @@ def make_transfer(executed):
 
 def test_allow_executes_and_records_receipt():
     executed = []
-    fake = FakeGate([GateResult("allow", "tr_ok", approved_by_human=True)])
+    fake = FakeGate([allowed("tr_ok")])
     guard = EmiliaGuard(client=fake)
     wrapped = wrap_tool(make_transfer(executed), guard)
 
     out = wrapped.invoke({"amount": 82000.0, "beneficiary": "Northwind"})
     assert out == "sent $82000.0 to Northwind"
     assert executed == [(82000.0, "Northwind")]
-    assert guard.records[-1]["event"] == "allowed"
+    assert [record["event"] for record in guard.records[-2:]] == ["allowed", "executed"]
     assert guard.records[-1]["receipt_id"] == "tr_ok"
     # the gate saw the digest-bound target and the extracted amount
     assert fake.gate_calls[0]["target"].startswith("transfer_funds#")
     assert fake.gate_calls[0]["amount"] == 82000.0
+    assert [r.receipt_id for r in fake.attest_calls] == ["tr_ok"]
 
 
 def test_deny_blocks_execution_and_reports_to_model():
@@ -120,7 +140,7 @@ def test_schema_and_identity_preserved():
 
 def test_action_type_mapping_and_bankish_default():
     executed = []
-    fake = FakeGate([GateResult("allow", "tr_1"), GateResult("allow", "tr_2")])
+    fake = FakeGate([allowed("tr_1"), allowed("tr_2")])
     guard = EmiliaGuard(client=fake, action_types={"transfer_funds": "large_payment_release"})
     wrap_tool(make_transfer(executed), guard).invoke({"amount": 1.0, "beneficiary": "b"})
     assert fake.gate_calls[0]["action_type"] == "large_payment_release"
@@ -135,11 +155,12 @@ def test_action_type_mapping_and_bankish_default():
 
 def test_async_path_allow():
     executed = []
-    fake = FakeGate([GateResult("allow", "tr_async")])
+    fake = FakeGate([allowed("tr_async")])
     wrapped = wrap_tool(make_transfer(executed), EmiliaGuard(client=fake))
 
     out = asyncio.run(wrapped.ainvoke({"amount": 5.0, "beneficiary": "Async LLC"}))
     assert "Async LLC" in out and executed
+    assert [r.receipt_id for r in fake.attest_calls] == ["tr_async"]
 
 
 def test_async_path_deny_fails_closed():
@@ -152,7 +173,7 @@ def test_async_path_deny_fails_closed():
 
 
 def test_guard_tools_wraps_list_with_shared_guard():
-    fake = FakeGate([GateResult("allow", "tr_l")])
+    fake = FakeGate([allowed("tr_l")])
     guard = EmiliaGuard(client=fake)
 
     @tool
@@ -166,6 +187,28 @@ def test_guard_tools_wraps_list_with_shared_guard():
     tools[0].invoke({"amount": 2.0, "beneficiary": "Z"})
     tools[1].invoke({"a": 1, "b": 1})
     assert len(fake.gate_calls) == 1          # only the money tool hit the gate
+
+
+def test_attestation_failure_is_indeterminate_and_never_invokes_twice():
+    executed = []
+    fake = FakeGate([allowed("tr_uncertain")])
+    fake.attest_error = EmiliaUnreachable("evidence store unavailable")
+    wrapped = wrap_tool(make_transfer(executed), EmiliaGuard(client=fake))
+
+    out = wrapped.invoke({"amount": 9.0, "beneficiary": "Maybe LLC"})
+    assert executed == [(9.0, "Maybe LLC")]
+    assert "INDETERMINATE" in out and "DO NOT RETRY" in out
+    assert fake.gate_calls and len(fake.attest_calls) == 1
+
+
+def test_noncanonical_arguments_fail_before_gate_or_tool():
+    executed = []
+    fake = FakeGate([])
+    wrapped = wrap_tool(make_transfer(executed), EmiliaGuard(client=fake))
+
+    out = wrapped.invoke({"amount": float("nan"), "beneficiary": "X"})
+    assert "not canonical JSON" in out
+    assert executed == [] and fake.gate_calls == []
 
 
 def test_on_event_callback_fires_and_cannot_break_the_gate():

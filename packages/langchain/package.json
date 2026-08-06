@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/langchain",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Guard LangChain.js tools with EMILIA Protocol — require an offline-verifiable authorization receipt (EP-RECEIPT-v1) before an irreversible tool runs: missing -> refused, valid -> runs, replay -> refused, forged -> refused (RR-1). The approval becomes portable evidence an auditor can check without trusting the operator.",
   "type": "module",
   "main": "index.js",
@@ -34,7 +34,7 @@
     "agent-safety"
   ],
   "dependencies": {
-    "@emilia-protocol/require-receipt": "^0.6.0"
+    "@emilia-protocol/require-receipt": "^0.8.0"
   },
   "peerDependencies": {
     "@langchain/core": ">=0.1.0"

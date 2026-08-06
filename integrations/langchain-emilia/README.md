@@ -25,8 +25,11 @@ When the agent calls `transfer_funds(amount=82000, beneficiary="Northwind")`:
 2. **Signoff** — on `require_signoff`, a named human approves on their own
    device. The approval is cryptographically bound to the exact action
    parameters — change one digit and it is invalid.
-3. **Receipt** — execution releases only after approval; the signed,
-   Merkle-anchored receipt is permanent, offline-verifiable evidence.
+3. **Consume** — the exact receipt is atomically consumed before the tool body;
+   an already-consumed receipt cannot authorize another executor.
+4. **Attest** — after the tool returns, the adapter records the exact canonical
+   action as execution evidence. If that write cannot be confirmed, the result
+   is `INDETERMINATE` and the adapter says **DO NOT RETRY**.
 
 Denials and pending holds are returned to the model as the tool's output
 (`"EMILIA — BLOCKED … transfer_funds was NOT executed."`), so the agent loop
@@ -63,7 +66,7 @@ for r in guard.records:
 | `action_types` | auto | map tool name → EP `action_type` (see `ACTION_TYPES`) |
 | `wait_for_approval` | `True` | block (≤ timeout) while the human approves; `False` = surface the signoff URL immediately |
 | `return_errors` | `True` | denials become tool output for the model; `False` = raise `EmiliaDenied` / `EmiliaApprovalPending` |
-| `on_event` | `None` | callback for `observed/allowed/denied/pending/unreachable` events (SIEM hook) |
+| `on_event` | `None` | callback for `observed/allowed/executed/denied/pending/unreachable/indeterminate` events (SIEM hook) |
 
 `EmiliaGateClient(api_key, org_id, base_url, signoff_timeout_s=280, poll_interval_s=3)`
 reads `EP_API_KEY` / `EP_ORG_ID` / `EP_BASE_URL` from the environment by default.
@@ -76,6 +79,8 @@ reads `EP_API_KEY` / `EP_ORG_ID` / `EP_BASE_URL` from the environment by default
 | Human rejects on device | Tool **not executed**; receipt records the rejection |
 | Signoff window times out | Tool **not executed**; signoff URL surfaced for retry |
 | EMILIA unreachable / network error | Tool **not executed** — never fail open |
+| Consume is not confirmed | Tool **not executed** — never fail open |
+| Tool returns but execution attestation fails | Tool may have executed; `INDETERMINATE`, **do not retry** |
 | Tool name doesn't match `match` | Runs ungated (scope your `match` deliberately) |
 
 ## Verify the evidence

@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.7.2  ·  content-sha256:23d0db4e4cfd0a41
+//   source: @emilia-protocol/require-receipt@0.8.0  ·  content-sha256:eae832b0ecda685e
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -194,10 +194,12 @@ function canonicalizeValue(value, path, ancestors, depth, state) {
     if (typeof value === 'boolean')
         return value ? 'true' : 'false';
     if (typeof value === 'number') {
-        if (!Number.isFinite(value) || (state.safeIntegersOnly && !Number.isSafeInteger(value))) {
+        if (!Number.isFinite(value)
+            || (state.safeIntegersOnly && !Number.isSafeInteger(value))
+            || (!state.safeIntegersOnly && Number.isInteger(value) && !Number.isSafeInteger(value))) {
             throw canonicalDomainError(path, state.safeIntegersOnly
                 ? 'numbers must be safe integers; encode other quantities as strings'
-                : 'numbers must be finite');
+                : 'numbers must be finite and integer values must be safe');
         }
         return JSON.stringify(value);
     }
@@ -273,7 +275,8 @@ function canonicalizeStrictJson(value, limits = {}) {
 /**
  * Canonical bytes for JSON records that intentionally carry finite decimal
  * measurements. This keeps every structural refusal of canonicalizeStrictJson
- * while allowing finite non-integer numbers. Protocol identities and signed
+ * while allowing finite non-integer numbers. Integer values remain restricted
+ * to the interoperable safe range. Protocol identities and signed
  * cross-language state should continue to use canonicalizeStrictJson.
  */
 function canonicalizeFiniteJson(value, limits = {}) {
@@ -814,6 +817,65 @@ function sha256Bytes(value) {
 }
 function sha256Hex(value) {
     return crypto.createHash('sha256').update(value).digest('hex');
+}
+/**
+ * Remove receipt transport fields before deriving executor-side action identity.
+ * They carry authorization evidence; they are not material tool arguments and
+ * must not let the proof change the action it is supposed to authorize.
+ */
+export function stripReceiptControlFields(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+        return value;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+        throw new TypeError('action_binding_invalid');
+    }
+    const material = {};
+    const controlFields = new Set(['__ep', 'emilia_receipt', 'emiliaReceipt']);
+    for (const key of Reflect.ownKeys(value)) {
+        if (typeof key !== 'string')
+            throw new TypeError('action_binding_invalid');
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+            throw new TypeError('action_binding_invalid');
+        }
+        if (!controlFields.has(key))
+            material[key] = descriptor.value;
+    }
+    return material;
+}
+/** Capture the finite-JSON executor input once for bind-then-execute safety. */
+export function snapshotToolArguments(value) {
+    return JSON.parse(canonicalizeFiniteJson(stripReceiptControlFields(value)));
+}
+/**
+ * Bind a base action name to the complete executor-side material payload.
+ * Framework adapters use this instead of asking integrators to remember to add
+ * an arguments hash themselves. Finite JSON numbers are accepted because tool
+ * arguments commonly contain decimal quantities; every non-JSON or ambiguous
+ * structure still fails closed in canonicalizeFiniteJson.
+ */
+export function bindExecutorAction(baseAction, material) {
+    if (typeof baseAction !== 'string' || baseAction.length === 0 || baseAction.length > 512) {
+        throw new TypeError('action_binding_invalid');
+    }
+    const digest = sha256Hex(canonicalizeFiniteJson(material));
+    return `${baseAction}:sha256:${digest}`;
+}
+/** Bind one concrete tool occurrence to its full argument object. */
+export function bindToolAction(toolName, args = {}, baseAction = toolName, occurrenceId) {
+    if (typeof toolName !== 'string' || toolName.length === 0 || toolName.length > 512) {
+        throw new TypeError('action_binding_invalid');
+    }
+    if (occurrenceId !== undefined && occurrenceId !== null
+        && (typeof occurrenceId !== 'string' || occurrenceId.length === 0 || occurrenceId.length > 512)) {
+        throw new TypeError('action_binding_invalid');
+    }
+    return bindExecutorAction(baseAction, {
+        tool: toolName,
+        args: snapshotToolArguments(args),
+        ...(occurrenceId == null ? {} : { occurrence_id: occurrenceId }),
+    });
 }
 function proofContext(doc) {
     return {
@@ -1488,6 +1550,10 @@ const requireReceiptExports = {
     validateActionRiskManifest,
     findActionRequirement,
     receiptRequiredConformance,
+    bindExecutorAction,
+    bindToolAction,
+    stripReceiptControlFields,
+    snapshotToolArguments,
 };
 export default requireReceiptExports;
 

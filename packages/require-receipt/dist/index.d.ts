@@ -32,6 +32,24 @@ export declare function parseReceiptCarrier(value: unknown, { maxBytes }?: {
  */
 export declare function isCanonicalizable(value: any): boolean;
 /**
+ * Remove receipt transport fields before deriving executor-side action identity.
+ * They carry authorization evidence; they are not material tool arguments and
+ * must not let the proof change the action it is supposed to authorize.
+ */
+export declare function stripReceiptControlFields(value: any): any;
+/** Capture the finite-JSON executor input once for bind-then-execute safety. */
+export declare function snapshotToolArguments(value: any): any;
+/**
+ * Bind a base action name to the complete executor-side material payload.
+ * Framework adapters use this instead of asking integrators to remember to add
+ * an arguments hash themselves. Finite JSON numbers are accepted because tool
+ * arguments commonly contain decimal quantities; every non-JSON or ambiguous
+ * structure still fails closed in canonicalizeFiniteJson.
+ */
+export declare function bindExecutorAction(baseAction: string, material: any): string;
+/** Bind one concrete tool occurrence to its full argument object. */
+export declare function bindToolAction(toolName: string, args?: any, baseAction?: string, occurrenceId?: string | null): string;
+/**
  * Validate the quorum rule supplied by the relying party. The policy is a trust
  * input, not evidence: a receipt creator's own threshold or roster never
  * establishes the organization's actual two-person rule.
@@ -162,9 +180,13 @@ declare const requireReceiptExports: {
     validateActionRiskManifest: typeof validateActionRiskManifest;
     findActionRequirement: typeof findActionRequirement;
     receiptRequiredConformance: typeof receiptRequiredConformance;
+    bindExecutorAction: typeof bindExecutorAction;
+    bindToolAction: typeof bindToolAction;
+    stripReceiptControlFields: typeof stripReceiptControlFields;
+    snapshotToolArguments: typeof snapshotToolArguments;
 };
 export default requireReceiptExports;
 export { makeReceiptGate } from './gate.js';
-export { canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate, } from './strict-json.js';
+export { canonicalizeFiniteJson, canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate, } from './strict-json.js';
 export { serializeReceiptJws, verifyReceiptJws, deriveKid, JWS_PROFILE_VERSION, JWS_ALG, JWS_TYP, } from './jws.js';
 //# sourceMappingURL=index.d.ts.map

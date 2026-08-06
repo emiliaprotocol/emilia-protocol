@@ -3,6 +3,18 @@
 
 All notable changes to `@emilia-protocol/mcp-guard` are documented here.
 
+## 0.5.0 (2026-08-05)
+
+### Added
+
+- Add a bounded, exact-call MCP loop breaker that returns a truthful local 429
+  after the configured identical-call budget, without network or payload mutation.
+
+### Security
+
+- Reuse the shared executor-action binder so MCP, LangChain, CrewAI, and OpenAI
+  adapters derive exact call identity from the same canonical contract.
+
 ## 0.4.4 (2026-08-02)
 
 ### Fixed
