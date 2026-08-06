@@ -34,11 +34,16 @@ export {
   verifyAuthorityProgram,
 } from './authority-program.js';
 export * from './aeb-adapter-contract.js';
+export * from './aeb-acceptance-profile.js';
+export * from './aeb-aps-adapter.js';
 export * from './aeb-consequence-conformance.js';
+export * from './aeb-mcgraw-delegation-adapter.js';
+export * from './aeb-oauth-transaction-challenge-adapter.js';
 export * from './aeb-discovery-permit-adapter.js';
 export * from './aeb-wimse-oauth-adapter.js';
 export * from './authorization-server-confirmation.js';
 export * from './aeb-native-adapters.js';
+export * from './aeb-oasnt-adapter.js';
 export * from './aeb-psea-adapter.js';
 export * from './fido-ap2-bridge.js';
 export * from './memory-projection.js';

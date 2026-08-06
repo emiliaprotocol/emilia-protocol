@@ -503,13 +503,13 @@ test('AEB/AEC authorizes only when independently verified human and AS legs are 
   assert.equal(result.record.authority_constraints.one_time_consumption, true);
   const store = new InMemoryAebConsumptionStore();
   const admitted = authorizeAebExecution(result.record, {
-    verification: { valid: true, execution_authorizing: true },
+    verification: { valid: true, execution_authorizing: true, record_digest: digestAeb(result.record) },
     local_authorization: true,
     store,
   });
   assert.equal(admitted.invoke_allowed, true);
   const replay = authorizeAebExecution(result.record, {
-    verification: { valid: true, execution_authorizing: true },
+    verification: { valid: true, execution_authorizing: true, record_digest: digestAeb(result.record) },
     local_authorization: true,
     store,
   });

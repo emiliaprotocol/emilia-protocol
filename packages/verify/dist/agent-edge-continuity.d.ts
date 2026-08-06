@@ -209,7 +209,7 @@ type ExecutionVerifierOptions = Omit<ContinuityVerifyOptions, 'now' | 'expected_
 export interface ContinuityExecutionOptions {
     continuity: readonly unknown[];
     aeb_record: AebEvaluationRecord;
-    aeb_verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
+    aeb_verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
     expected_proposal_digest: AebDigest;
     local_authorization: boolean;
     store: AebConsumptionStore;

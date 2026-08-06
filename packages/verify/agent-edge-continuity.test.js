@@ -185,6 +185,13 @@ function aebRecord(overrides = {}) {
         ...overrides,
     };
 }
+function aebVerification(record, executionAuthorizing = true) {
+    return {
+        valid: true,
+        execution_authorizing: executionAuthorizing,
+        record_digest: digestAeb(record),
+    };
+}
 test('publishes the complete continuity refusal vector set', () => {
     assert.equal(vectors['@type'], AGENT_CONTINUITY_VERSION);
     assert.deepEqual(vectors.vectors.map((vector) => vector.id), [
@@ -285,10 +292,11 @@ test('revoked or stale signer authority is refused', () => {
 });
 test('execution derives CAID, action, and operation pins from the AEB record', () => {
     const chain = makeChain();
+    const record = aebRecord();
     const decision = authorizeAgentContinuityExecution({
         continuity: chain.envelopes,
-        aeb_record: aebRecord(),
-        aeb_verification: { valid: true, execution_authorizing: true },
+        aeb_record: record,
+        aeb_verification: aebVerification(record),
         expected_proposal_digest: digestAeb({ proposal: 'purchase-o-1' }),
         local_authorization: true,
         store: new InMemoryAebConsumptionStore(),
@@ -301,10 +309,11 @@ test('execution derives CAID, action, and operation pins from the AEB record', (
 test('historical AEB verification cannot authorize execution', () => {
     const chain = makeChain();
     const store = new InMemoryAebConsumptionStore();
+    const record = aebRecord();
     const decision = authorizeAgentContinuityExecution({
         continuity: chain.envelopes,
-        aeb_record: aebRecord(),
-        aeb_verification: { valid: true, execution_authorizing: false },
+        aeb_record: record,
+        aeb_verification: aebVerification(record, false),
         expected_proposal_digest: digestAeb({ proposal: 'purchase-o-1' }),
         local_authorization: true,
         store,
@@ -316,10 +325,11 @@ test('historical AEB verification cannot authorize execution', () => {
 });
 test('policy-required execution edge cannot be omitted', () => {
     const chain = makeChain();
+    const record = aebRecord();
     const decision = authorizeAgentContinuityExecution({
         continuity: chain.envelopes.slice(0, 3),
-        aeb_record: aebRecord(),
-        aeb_verification: { valid: true, execution_authorizing: true },
+        aeb_record: record,
+        aeb_verification: aebVerification(record),
         expected_proposal_digest: digestAeb({ proposal: 'purchase-o-1' }),
         local_authorization: true,
         store: new InMemoryAebConsumptionStore(),
@@ -334,30 +344,34 @@ test('continuity replay is fenced across newly wrapped AEB records', () => {
     const store = new InMemoryAebConsumptionStore();
     const base = {
         continuity: chain.envelopes,
-        aeb_verification: { valid: true, execution_authorizing: true },
         expected_proposal_digest: digestAeb({ proposal: 'purchase-o-1' }),
         local_authorization: true,
         store,
         verifier: verifier(chain),
         execution_now: NOW,
     };
+    const firstRecord = aebRecord();
     assert.equal(authorizeAgentContinuityExecution({
         ...base,
-        aeb_record: aebRecord(),
+        aeb_record: firstRecord,
+        aeb_verification: aebVerification(firstRecord),
     }).invoke_allowed, true);
+    const replayRecord = aebRecord({ consumption_nonce: 'aeb-consumption-2' });
     const replay = authorizeAgentContinuityExecution({
         ...base,
-        aeb_record: aebRecord({ consumption_nonce: 'aeb-consumption-2' }),
+        aeb_record: replayRecord,
+        aeb_verification: aebVerification(replayRecord),
     });
     assert.equal(replay.invoke_allowed, false);
     assert.equal(replay.reason, 'consumption_conflict');
 });
 test('effect evidence cannot be supplied before execution reservation', () => {
     const chain = makeChain({ includeEffect: true });
+    const record = aebRecord();
     const decision = authorizeAgentContinuityExecution({
         continuity: chain.envelopes,
-        aeb_record: aebRecord(),
-        aeb_verification: { valid: true, execution_authorizing: true },
+        aeb_record: record,
+        aeb_verification: aebVerification(record),
         expected_proposal_digest: digestAeb({ proposal: 'purchase-o-1' }),
         local_authorization: true,
         store: new InMemoryAebConsumptionStore(),
@@ -369,6 +383,7 @@ test('effect evidence cannot be supplied before execution reservation', () => {
 });
 test('malformed continuity never touches the reservation store', () => {
     const chain = makeChain();
+    const record = aebRecord();
     let reserveCalls = 0;
     const store = {
         reserve() { reserveCalls += 1; return true; },
@@ -378,8 +393,8 @@ test('malformed continuity never touches the reservation store', () => {
     };
     const decision = authorizeAgentContinuityExecution({
         continuity: [{ malicious: true }],
-        aeb_record: aebRecord(),
-        aeb_verification: { valid: true, execution_authorizing: true },
+        aeb_record: record,
+        aeb_verification: aebVerification(record),
         expected_proposal_digest: digestAeb({ proposal: 'purchase-o-1' }),
         local_authorization: true,
         store,
@@ -391,10 +406,11 @@ test('malformed continuity never touches the reservation store', () => {
 });
 test('production execution refuses a non-durable store', async () => {
     const chain = makeChain();
+    const record = aebRecord();
     const decision = await authorizeAgentContinuityExecutionDurable({
         continuity: chain.envelopes,
-        aeb_record: aebRecord(),
-        aeb_verification: { valid: true, execution_authorizing: true },
+        aeb_record: record,
+        aeb_verification: aebVerification(record),
         expected_proposal_digest: digestAeb({ proposal: 'purchase-o-1' }),
         local_authorization: true,
         store: new InMemoryAebConsumptionStore(),

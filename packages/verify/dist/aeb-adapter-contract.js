@@ -1110,6 +1110,11 @@ function shapeValid(record) {
     return true;
 }
 function verifyAebEvaluationInner(record, options) {
+    let recordDigest = null;
+    try {
+        recordDigest = digest(record);
+    }
+    catch { /* malformed values stay unbound */ }
     const mode = options.mode
         ?? (options.now !== undefined || options.current_statuses !== undefined ? 'execution' : 'historical');
     const checks = {
@@ -1122,10 +1127,10 @@ function verifyAebEvaluationInner(record, options) {
     };
     const reasons = [];
     if (!checks.schema) {
-        return { valid: false, execution_authorizing: false, checks, reasons: ['malformed_evaluation_record'] };
+        return { valid: false, execution_authorizing: false, record_digest: recordDigest, checks, reasons: ['malformed_evaluation_record'] };
     }
     if (mode !== 'execution' && mode !== 'historical') {
-        return { valid: false, execution_authorizing: false, checks, reasons: ['verification_mode_invalid'] };
+        return { valid: false, execution_authorizing: false, record_digest: recordDigest, checks, reasons: ['verification_mode_invalid'] };
     }
     const typed = record;
     if (mode === 'execution') {
@@ -1236,6 +1241,7 @@ function verifyAebEvaluationInner(record, options) {
     return {
         valid,
         execution_authorizing: valid && mode === 'execution',
+        record_digest: recordDigest,
         checks,
         reasons: sortedUnique(reasons),
     };
@@ -1248,6 +1254,7 @@ export function verifyAebEvaluation(record, options) {
         return {
             valid: false,
             execution_authorizing: false,
+            record_digest: null,
             checks: { schema: false, signature: false, pinned_config: false, rederived: false, current_status: false, verdict: false },
             reasons: ['evaluation_verification_error'],
         };
@@ -1285,6 +1292,14 @@ export function authorizeAebExecution(record, options) {
         return decision('REFUSED', 'evaluation_not_verified');
     if (options.verification.execution_authorizing !== true)
         return decision('REFUSED', 'execution_verification_required');
+    let recordDigest = null;
+    try {
+        recordDigest = digest(record);
+    }
+    catch { /* malformed values stay unbound */ }
+    if (recordDigest === null || options.verification.record_digest !== recordDigest) {
+        return decision('REFUSED', 'evaluation_verification_record_mismatch');
+    }
     if (record.verdict === 'INDETERMINATE')
         return decision('RECONCILIATION_REQUIRED', 'evidence_indeterminate');
     if (record.verdict !== 'SATISFIED')
@@ -1370,6 +1385,14 @@ export async function authorizeAebExecutionDurable(record, options) {
         return decision('REFUSED', 'evaluation_not_verified');
     if (options.verification.execution_authorizing !== true)
         return decision('REFUSED', 'execution_verification_required');
+    let recordDigest = null;
+    try {
+        recordDigest = digest(record);
+    }
+    catch { /* malformed values stay unbound */ }
+    if (recordDigest === null || options.verification.record_digest !== recordDigest) {
+        return decision('REFUSED', 'evaluation_verification_record_mismatch');
+    }
     if (record.verdict === 'INDETERMINATE')
         return decision('RECONCILIATION_REQUIRED', 'evidence_indeterminate');
     if (record.verdict !== 'SATISFIED')

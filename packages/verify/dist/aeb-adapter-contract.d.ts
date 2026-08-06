@@ -340,6 +340,8 @@ export interface AebEvaluationVerification {
     valid: boolean;
     /** True only for a complete, fresh execution-mode verification. */
     execution_authorizing: boolean;
+    /** Digest of the exact signed record this verification result covers. */
+    record_digest: AebDigest | null;
     checks: {
         schema: boolean;
         signature: boolean;
@@ -406,7 +408,7 @@ export declare function unifiedRegistryDigest(registry: AebUnifiedRegistry): Aeb
 export declare function evaluateAebEvidence(options: AebEvaluationOptions): AebEvaluationResult;
 export declare function verifyAebEvaluation(record: unknown, options: AebVerificationOptions): AebEvaluationVerification;
 export declare function authorizeAebExecution(record: AebEvaluationRecord, options: {
-    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
+    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
     local_authorization: boolean;
     store: AebConsumptionStore;
     /** Extra profile replay identities reserved atomically with native evidence. */
@@ -423,7 +425,7 @@ export declare function reconcileAebExecution(store: AebConsumptionStore, reserv
 };
 /** Production authorization path for shared Postgres/Redis/DynamoDB-backed custody. */
 export declare function authorizeAebExecutionDurable(record: AebEvaluationRecord, options: {
-    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
+    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
     local_authorization: boolean;
     store: unknown;
     /** Extra profile replay identities reserved atomically with native evidence. */

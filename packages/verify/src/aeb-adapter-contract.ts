@@ -375,6 +375,8 @@ export interface AebEvaluationVerification {
   valid: boolean;
   /** True only for a complete, fresh execution-mode verification. */
   execution_authorizing: boolean;
+  /** Digest of the exact signed record this verification result covers. */
+  record_digest: AebDigest | null;
   checks: {
     schema: boolean;
     signature: boolean;
@@ -1480,6 +1482,8 @@ function shapeValid(record: unknown): record is AebEvaluationRecord {
 }
 
 function verifyAebEvaluationInner(record: unknown, options: AebVerificationOptions): AebEvaluationVerification {
+  let recordDigest: AebDigest | null = null;
+  try { recordDigest = digest(record); } catch { /* malformed values stay unbound */ }
   const mode = options.mode
     ?? (options.now !== undefined || options.current_statuses !== undefined ? 'execution' : 'historical');
   const checks = {
@@ -1492,10 +1496,10 @@ function verifyAebEvaluationInner(record: unknown, options: AebVerificationOptio
   };
   const reasons: string[] = [];
   if (!checks.schema) {
-    return { valid: false, execution_authorizing: false, checks, reasons: ['malformed_evaluation_record'] };
+    return { valid: false, execution_authorizing: false, record_digest: recordDigest, checks, reasons: ['malformed_evaluation_record'] };
   }
   if (mode !== 'execution' && mode !== 'historical') {
-    return { valid: false, execution_authorizing: false, checks, reasons: ['verification_mode_invalid'] };
+    return { valid: false, execution_authorizing: false, record_digest: recordDigest, checks, reasons: ['verification_mode_invalid'] };
   }
   const typed = record as AebEvaluationRecord;
   if (mode === 'execution') {
@@ -1590,6 +1594,7 @@ function verifyAebEvaluationInner(record: unknown, options: AebVerificationOptio
   return {
     valid,
     execution_authorizing: valid && mode === 'execution',
+    record_digest: recordDigest,
     checks,
     reasons: sortedUnique(reasons),
   };
@@ -1602,6 +1607,7 @@ export function verifyAebEvaluation(record: unknown, options: AebVerificationOpt
     return {
       valid: false,
       execution_authorizing: false,
+      record_digest: null,
       checks: { schema: false, signature: false, pinned_config: false, rederived: false, current_status: false, verdict: false },
       reasons: ['evaluation_verification_error'],
     };
@@ -1611,7 +1617,7 @@ export function verifyAebEvaluation(record: unknown, options: AebVerificationOpt
 export function authorizeAebExecution(
   record: AebEvaluationRecord,
   options: {
-    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
+    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
     local_authorization: boolean;
     store: AebConsumptionStore;
     /** Extra profile replay identities reserved atomically with native evidence. */
@@ -1651,6 +1657,11 @@ export function authorizeAebExecution(
   const reservationKey = aebReservationKey(record);
   if (options.verification?.valid !== true) return decision('REFUSED', 'evaluation_not_verified');
   if (options.verification.execution_authorizing !== true) return decision('REFUSED', 'execution_verification_required');
+  let recordDigest: AebDigest | null = null;
+  try { recordDigest = digest(record); } catch { /* malformed values stay unbound */ }
+  if (recordDigest === null || options.verification.record_digest !== recordDigest) {
+    return decision('REFUSED', 'evaluation_verification_record_mismatch');
+  }
   if (record.verdict === 'INDETERMINATE') return decision('RECONCILIATION_REQUIRED', 'evidence_indeterminate');
   if (record.verdict !== 'SATISFIED') return decision('REFUSED', 'evidence_requirement_not_satisfied');
   if (record.authority_constraints?.one_time_consumption !== true) return decision('REFUSED', 'one_time_consumption_not_required');
@@ -1713,7 +1724,7 @@ function secureDurableStore(store: unknown): store is AebDurableConsumptionStore
 export async function authorizeAebExecutionDurable(
   record: AebEvaluationRecord,
   options: {
-    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
+    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
     local_authorization: boolean;
     store: unknown;
     /** Extra profile replay identities reserved atomically with native evidence. */
@@ -1753,6 +1764,11 @@ export async function authorizeAebExecutionDurable(
   const reservationKey = aebReservationKey(record);
   if (options.verification?.valid !== true) return decision('REFUSED', 'evaluation_not_verified');
   if (options.verification.execution_authorizing !== true) return decision('REFUSED', 'execution_verification_required');
+  let recordDigest: AebDigest | null = null;
+  try { recordDigest = digest(record); } catch { /* malformed values stay unbound */ }
+  if (recordDigest === null || options.verification.record_digest !== recordDigest) {
+    return decision('REFUSED', 'evaluation_verification_record_mismatch');
+  }
   if (record.verdict === 'INDETERMINATE') return decision('RECONCILIATION_REQUIRED', 'evidence_indeterminate');
   if (record.verdict !== 'SATISFIED') return decision('REFUSED', 'evidence_requirement_not_satisfied');
   if (record.authority_constraints?.one_time_consumption !== true) return decision('REFUSED', 'one_time_consumption_not_required');

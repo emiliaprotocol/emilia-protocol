@@ -7,6 +7,15 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Revision-pinned AEB adapters for OASNT-01, APS-03, McGraw HTTP Agent
+  Budget-03, and OAuth Transaction Challenge-00. Each verifies the native
+  artifact under constructor-pinned relying-party policy, projects an exact
+  action through a content-addressed mapping profile, and leaves evidence
+  sufficiency, local authorization, replay custody, and execution to AEB/Gate.
+- `EP-AEB-ACCEPTANCE-PROFILE-v1`, one content-addressed relying-party bar with
+  fixed monitor and enforce semantics. Monitor mode cannot authorize or
+  consume; enforce mode requires current execution verification, local
+  authorization, and atomic one-time consumption.
 - Authorization Server confirmation evidence adapter with relying-party-pinned
   Ed25519 trust, exact-action and Resource Server binding, signed policy and
   identity-directory commitments, explicit directory observation time and
@@ -16,6 +25,13 @@ This package follows [Semantic Versioning](https://semver.org/).
   only by binding the exact digest and, when required, subject of a separately
   verified target leg. The source artifact never satisfies or authorizes the
   target role by itself.
+
+### Security
+
+- Bind every AEB execution-verification result to the digest of the exact
+  signed evaluation record it verified. A positive result for one record can
+  no longer be reused after swapping an operation, nonce, leg, requirement, or
+  other signed field before consumption.
 
 ## 3.20.1 (2026-08-01)
 

@@ -383,6 +383,14 @@ function verificationInputs(legs = defaultLegs()) {
   };
 }
 
+function boundVerification(record, executionAuthorizing = true) {
+  return {
+    valid: true,
+    execution_authorizing: executionAuthorizing,
+    record_digest: digestAeb(record),
+  };
+}
+
 test('AEB evaluates and re-derives a multi-leg CAID join', () => {
   const s = setup();
   const result = evaluate(s);
@@ -724,14 +732,14 @@ test('AEB freezes indeterminate execution and consumes a satisfied authorization
     { ...leg('human-authorization', CAID, 'artifact:human-bob', { id: 'human:bob', kind: 'human' }), status: status({ unavailable: true }) },
   ]);
   const frozen = authorizeAebExecution(indeterminate.record, {
-    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
+    verification: boundVerification(indeterminate.record), local_authorization: true, store,
   });
   assert.equal(frozen.state, 'RECONCILIATION_REQUIRED');
   assert.equal(frozen.invoke_allowed, false);
 
   const satisfied = evaluate(s);
   const authorized = authorizeAebExecution(satisfied.record, {
-    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
+    verification: boundVerification(satisfied.record), local_authorization: true, store,
   });
   assert.equal(authorized.state, 'AUTHORIZED');
   assert.equal(authorized.invoke_allowed, true);
@@ -741,7 +749,7 @@ test('AEB freezes indeterminate execution and consumes a satisfied authorization
   );
   assert.equal(reconcileAebExecution(store, authorized.reservation_key, 'COMMITTED').state, 'CONSUMED');
   const replay = authorizeAebExecution(satisfied.record, {
-    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
+    verification: boundVerification(satisfied.record), local_authorization: true, store,
   });
   assert.equal(replay.reason, 'consumption_conflict');
   assert.equal(replay.program_digest, satisfied.record.evaluator.pinned_config_digest);
@@ -753,7 +761,7 @@ test('AEB refuses positive authorization when the relying-party program digest i
   missingProgram.evaluator.pinned_config_digest = '';
   const store = new InMemoryAebConsumptionStore();
   const result = authorizeAebExecution(missingProgram, {
-    verification: { valid: true, execution_authorizing: true },
+    verification: boundVerification(missingProgram),
     local_authorization: true,
     store,
   });
@@ -967,7 +975,7 @@ test('execution refuses a record that does not require one-time consumption', ()
   const weakened = structuredClone(result.record);
   weakened.authority_constraints.one_time_consumption = false;
   const decision = authorizeAebExecution(weakened, {
-    verification: { valid: true, execution_authorizing: true },
+    verification: boundVerification(weakened),
     local_authorization: true,
     store: new InMemoryAebConsumptionStore(),
   });
@@ -975,11 +983,36 @@ test('execution refuses a record that does not require one-time consumption', ()
   assert.equal(decision.reason, 'one_time_consumption_not_required');
 });
 
+test('execution verification is bound to the exact evaluation record consumed', () => {
+  const s = setup();
+  const original = evaluate(s);
+  const verification = verifyAebEvaluation(original.record, {
+    mode: 'execution',
+    config: s.config,
+    adapters: { 'test:operator': s.adapter },
+    artifacts: verificationInputs().artifacts,
+    expected_action: { action_type: 'order.purchase.1', order_id: 'o-1' },
+    current_statuses: verificationInputs().current_statuses,
+    now: NOW,
+  });
+  assert.equal(verification.valid, true, verification.reasons.join('; '));
+
+  const swapped = structuredClone(original.record);
+  swapped.operation_id = 'operation:presenter-swapped-after-verification';
+  const decision = authorizeAebExecution(swapped, {
+    verification,
+    local_authorization: true,
+    store: new InMemoryAebConsumptionStore(),
+  });
+  assert.equal(decision.invoke_allowed, false);
+  assert.equal(decision.reason, 'evaluation_verification_record_mismatch');
+});
+
 test('production execution requires durable ownership-fenced permanent custody', async () => {
   const s = setup();
   const result = evaluate(s);
   assert.equal((await authorizeAebExecutionDurable(result.record, {
-    verification: { valid: true, execution_authorizing: false },
+    verification: boundVerification(result.record, false),
     local_authorization: true,
     store: {},
   })).reason, 'execution_verification_required');
@@ -987,7 +1020,7 @@ test('production execution requires durable ownership-fenced permanent custody',
   otherTenant.evaluator.id = 'rp:other';
   assert.notEqual(aebReservationKey(result.record), aebReservationKey(otherTenant));
   const insecure = await authorizeAebExecutionDurable(result.record, {
-    verification: { valid: true, execution_authorizing: true },
+    verification: boundVerification(result.record),
     local_authorization: true,
     store: { reserve: async () => true, commit: async () => true, release: async () => true },
   });
@@ -1022,12 +1055,12 @@ test('production execution requires durable ownership-fenced permanent custody',
     },
   };
   const authorized = await authorizeAebExecutionDurable(result.record, {
-    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
+    verification: boundVerification(result.record), local_authorization: true, store,
   });
   assert.equal(authorized.state, 'AUTHORIZED');
   assert.equal((await reconcileAebExecutionDurable(store, authorized.reservation_key, 'COMMITTED')).state, 'CONSUMED');
   assert.equal((await authorizeAebExecutionDurable(result.record, {
-    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
+    verification: boundVerification(result.record), local_authorization: true, store,
   })).reason, 'consumption_conflict');
 
   const replayedUnderNewOperation = evaluate(s, defaultLegs(), {
@@ -1036,6 +1069,6 @@ test('production execution requires durable ownership-fenced permanent custody',
   });
   assert.equal(replayedUnderNewOperation.record.verdict, 'SATISFIED');
   assert.equal((await authorizeAebExecutionDurable(replayedUnderNewOperation.record, {
-    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
+    verification: boundVerification(replayedUnderNewOperation.record), local_authorization: true, store,
   })).reason, 'native_replay_conflict');
 });

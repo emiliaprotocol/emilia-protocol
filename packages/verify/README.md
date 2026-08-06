@@ -99,6 +99,38 @@ and unsigned gateway headers are not trusted.
 durable, ownership-fenced store contract implemented by
 `@emilia-protocol/gate`.
 
+`@emilia-protocol/verify/aeb-acceptance-profile` publishes the relying party's
+content-addressed foreign-proof allowlist, exact AEB configuration,
+requirement, registry, action type, and required evidence roles. The same
+profile has fixed `monitor` and `enforce` semantics: monitor can report that
+pre-consumption checks pass but cannot authorize or reserve evidence; enforce
+requires an execution-time verification bound to the exact evaluation record,
+local authorization, and atomic one-time consumption. An atomic replay
+conflict can be decided only in enforce mode.
+
+Four revision-pinned foreign-proof adapters are available:
+
+- `aeb-oasnt-adapter` verifies the OASNT-01 compact authorization token against
+  an enrolled hardware-attested P-256 key and recomputes its action, display,
+  and protected-request commitments. OASNT's native CAID namespace remains
+  distinct from the EMILIA CAID projection.
+- `aeb-aps-adapter` verifies the APS-03 signed ActionIntent and PolicyDecision
+  chain, preserves the complete `aps-action-ref-v2` material, recomputes the
+  decision reference, and delegates authority-chain semantics to a separately
+  pinned pure verifier.
+- `aeb-mcgraw-delegation-adapter` verifies deterministic COSE_Sign1 Budget
+  proof claims for the exact protected HTTP request. ML-DSA-65 verification and
+  delegation-chain semantics are supplied by separately pinned pure backends,
+  so the package retains its zero-runtime-dependency boundary.
+- `aeb-oauth-transaction-challenge-adapter` requires both the protected
+  resource's signed challenge and the authorization server's access token,
+  verifies their transaction and actor linkage, and delegates RAR narrowing to
+  a separately pinned pure verifier. A challenge or pending transaction ID is
+  never treated as approval, and the adapter does not infer a human approver.
+
+All four outputs remain evidence, not final authority. AEB composes the roles;
+the customer-owned local Gate decides whether the exact action may execute.
+
 `@emilia-protocol/verify/aeb-native-adapters` supplies concrete AgentROA and
 ORPRG adapters. Both use relying-party-pinned roots, profiles, status, and
 expected actions. ORPRG uses non-mutating native inspection: it verifies the
