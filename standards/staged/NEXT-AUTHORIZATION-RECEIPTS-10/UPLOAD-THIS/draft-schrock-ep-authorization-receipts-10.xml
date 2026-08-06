@@ -1689,9 +1689,9 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         <front>
           <title>Bounded Capability Receipts and Durable Spend Control for Agent Actions</title>
           <author fullname="Iman Schrock"/>
-          <date year="2026" month="July"/>
+          <date year="2026" month="August" day="3"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-capability-receipts-00"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-capability-receipts-01"/>
       </reference>
       <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
         <front>

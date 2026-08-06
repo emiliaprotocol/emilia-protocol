@@ -1,3 +1,3 @@
-ca50869aa2fd147aa17dfaa44d62bcd5dd47294843b112582dc4156503a7f404  UPLOAD-THIS/draft-schrock-ep-authorization-receipts-10.xml
-f89efa36fb7ebdd72e40656686f158576fbd0d490441ae122000a742e0a49053  RENDERS/draft-schrock-ep-authorization-receipts-10.html
-8546b100eab393f070deec47ccbb291fe3d11748d6cbcfdf68b6e16a1a7fb730  RENDERS/draft-schrock-ep-authorization-receipts-10.txt
+6db80034bbfb3495c5b7147ec42e0d2ad92847146b28bd6e0c49003ce3695477  UPLOAD-THIS/draft-schrock-ep-authorization-receipts-10.xml
+3b327ef2ee2b4975fa5c8dc2d1c1d16f6131305cea2fe0b9ce00832e4a35ccb5  RENDERS/draft-schrock-ep-authorization-receipts-10.html
+3b9322321f73de9008448a9eca292de4bfa5bbb115ef73d05f026019471d218c  RENDERS/draft-schrock-ep-authorization-receipts-10.txt
