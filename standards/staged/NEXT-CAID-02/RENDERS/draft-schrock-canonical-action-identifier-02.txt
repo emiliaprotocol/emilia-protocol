@@ -85,10 +85,10 @@ Table of Contents
      4.3.  Field Types . . . . . . . . . . . . . . . . . . . . . . .  10
      4.4.  Definition Sources and Unknown Types  . . . . . . . . . .  11
      4.5.  The tool.call.1 Type  . . . . . . . . . . . . . . . . . .  11
-   5.  Computation . . . . . . . . . . . . . . . . . . . . . . . . .  13
+   5.  Computation . . . . . . . . . . . . . . . . . . . . . . . . .  14
    6.  Verification  . . . . . . . . . . . . . . . . . . . . . . . .  14
    7.  Effect-Boundary Use . . . . . . . . . . . . . . . . . . . . .  15
-   8.  Action-Mapping Profile  . . . . . . . . . . . . . . . . . . .  15
+   8.  Action-Mapping Profile  . . . . . . . . . . . . . . . . . . .  16
      8.1.  Native Verification Boundary  . . . . . . . . . . . . . .  16
      8.2.  Mapping Profile Object  . . . . . . . . . . . . . . . . .  16
      8.3.  Mapping and Comparison Algorithm  . . . . . . . . . . . .  18
@@ -623,6 +623,12 @@ Internet-Draft                    CAID                       August 2026
      "status": "active",
      "risk_class": "varies-by-tool",
      "required_fields": [
+       {"name": "target",
+        "type": "string",
+        "notes": "stable service identity supplied by the governing
+          profile and compared case-sensitively. The literal \"local\"
+          only where execution occurs in the caller's own process. Never
+          inferred or omitted"},
        {"name": "tool",
         "type": "string",
         "notes": "the tool name as the invoking framework declares it"},
@@ -646,26 +652,20 @@ Internet-Draft                    CAID                       August 2026
    digest for an identical call, and two conforming-looking adapters
    then emit identifiers that never compare equal.
 
-   A framework-derived selector, target hint, or routing key MUST NOT be
-   added as a member when it is computed from values already present in
-   args.  Such a hint adds no material content and, being optional in
-   practice, makes the digest depend on whether a particular adapter
-   chose to compute it.
+   A framework-derived selector or routing key MUST NOT be added as a
+   member when it is computed from values already present in args.  Such
+   a hint adds no material content and, being optional in practice,
+   makes the digest depend on whether a particular adapter chose to
+   compute it.  This does not apply to target, which is material, is
+   REQUIRED, and is not derived from args.
 
-   The Action Object contains action_type, tool, and args, plus
-   occurrence_id when present.  The complete object is canonicalized and
-   encoded as the CAID string in Section 3.  Existing framework-local
-   strings such as base-action:sha256:<hex> are not CAIDs and MUST NOT
-   be compared with one.
-
-   For example, this Action Object:
-
-
-
-
-
-
-
+   The target field is REQUIRED because a tool name is not unique across
+   providers.  Where a caller can reach two services offering the same
+   tool name, an object omitting the callee yields one identifier for
+   two different executions, and a permit issued against one provider
+   recomputes equal against the other.  An issuer MUST NOT omit target
+   merely because its deployment currently reaches one provider: the
+   identifier can outlive that assumption.  The governing profile
 
 
 
@@ -674,8 +674,21 @@ Schrock                  Expires 7 February 2027               [Page 12]
 Internet-Draft                    CAID                       August 2026
 
 
+   defines the stable target identifier; implementations compare its
+   exact, case-sensitive string and MUST NOT infer it from ambient
+   connection state, a display label, or a derived routing hint.
+
+   The Action Object contains action_type, target, tool, and args, plus
+   occurrence_id when present.  The complete object is canonicalized and
+   encoded as the CAID string in Section 3.  Existing framework-local
+   strings such as base-action:sha256:<hex> are not CAIDs and MUST NOT
+   be compared with one.
+
+   For example, this Action Object:
+
    {
      "action_type": "tool.call.1",
+     "target": "https://payments.example",
      "tool": "payment.release",
      "args": {
        "amount_usd": 4000,
@@ -686,8 +699,8 @@ Internet-Draft                    CAID                       August 2026
 
    has the following CAID under jcs-sha256:
 
-   caid:1:tool.call.1:jcs-sha256:v7Rbw0z8-twT08DTzQs82ME2Tg1cJsFG
-   tH1gqgdeVjk
+   caid:1:tool.call.1:jcs-sha256:FdawgFwgN5tAtiZa-SCkVDrV3dS9w1ye
+   XVQaDaZLQQQ
 
    The identifier is shown wrapped for column width; it contains no
    whitespace.
@@ -706,6 +719,17 @@ Internet-Draft                    CAID                       August 2026
    a CAID type that carries the value as a string; it is not a
    conforming tool.call.1 CAID.
 
+
+
+
+
+
+
+Schrock                  Expires 7 February 2027               [Page 13]
+
+Internet-Draft                    CAID                       August 2026
+
+
 5.  Computation
 
    A conforming issuer computes a CAID from an action object, a suite,
@@ -721,14 +745,6 @@ Internet-Draft                    CAID                       August 2026
 
    3.  Every REQUIRED field of the type definition is present, else
        missing_material_field:<name> for each absent field.
-
-
-
-
-Schrock                  Expires 7 February 2027               [Page 13]
-
-Internet-Draft                    CAID                       August 2026
-
 
    4.  Every present field that the type definition declares is valid
        for its declared field type, else mistyped_field:<name> for each
@@ -760,6 +776,16 @@ Internet-Draft                    CAID                       August 2026
    1.  Strict-parse the CAID string per Section 3.4, else
        malformed_caid.
 
+
+
+
+
+
+Schrock                  Expires 7 February 2027               [Page 14]
+
+Internet-Draft                    CAID                       August 2026
+
+
    2.  The in-object action_type equals the action type carried in the
        CAID string, else action_type_mismatch.  This check is mandatory;
        see Section 3.2 and Section 10.
@@ -778,13 +804,6 @@ Internet-Draft                    CAID                       August 2026
    reasons in the same order, and any third party with the object, the
    identifier, and the definitions can replay the check without
    contacting anyone.
-
-
-
-Schrock                  Expires 7 February 2027               [Page 14]
-
-Internet-Draft                    CAID                       August 2026
-
 
 7.  Effect-Boundary Use
 
@@ -813,6 +832,16 @@ Internet-Draft                    CAID                       August 2026
    [I-D.schrock-ep-authorization-evidence-chain] are informative
    examples of specifications that keep those decisions separate.
 
+
+
+
+
+
+Schrock                  Expires 7 February 2027               [Page 15]
+
+Internet-Draft                    CAID                       August 2026
+
+
    A multi-stage authorization program MAY bind a root CAID and the
    digests of predecessor stage receipts in a separate program artifact.
    It MUST NOT reinterpret the root CAID as proof that any stage
@@ -832,15 +861,6 @@ Internet-Draft                    CAID                       August 2026
    A mapping result is content correlation only.  It does not establish
    identity, authority, authorization, provenance, execution, or legal
    reliance.
-
-
-
-
-
-Schrock                  Expires 7 February 2027               [Page 15]
-
-Internet-Draft                    CAID                       August 2026
-
 
 8.1.  Native Verification Boundary
 
@@ -868,26 +888,6 @@ Internet-Draft                    CAID                       August 2026
 8.2.  Mapping Profile Object
 
    A version 1 profile is a JSON object with the following shape:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

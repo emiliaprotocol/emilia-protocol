@@ -12,5 +12,5 @@ review. It has not been filed.
 - `VALIDATION.md` records the checks and the exact hold state.
 
 Revision -02 moves the small shared CAID profile to Standards Track, fixes the
-cross-profile comparison rule, registers `tool.call.1`, and distinguishes a
-real CAID from framework-local executor-binding strings.
+cross-profile comparison rule, registers a target-bound `tool.call.1`, and
+distinguishes a real CAID from framework-local executor-binding strings.

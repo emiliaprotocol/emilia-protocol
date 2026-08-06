@@ -465,6 +465,12 @@ lower-char    = %x61-7A          ; a-z
   "status": "active",
   "risk_class": "varies-by-tool",
   "required_fields": [
+    {"name": "target",
+     "type": "string",
+     "notes": "stable service identity supplied by the governing
+       profile and compared case-sensitively. The literal \"local\"
+       only where execution occurs in the caller's own process. Never
+       inferred or omitted"},
     {"name": "tool",
      "type": "string",
      "notes": "the tool name as the invoking framework declares it"},
@@ -488,14 +494,27 @@ lower-char    = %x61-7A          ; a-z
         inside the canonical bytes, so a rename produces a different
         digest for an identical call, and two conforming-looking
         adapters then emit identifiers that never compare equal.</t>
-        <t>A framework-derived selector, target hint, or routing key
+        <t>A framework-derived selector or routing key
         <bcp14>MUST NOT</bcp14> be added as a member when it is
         computed from values already present in <tt>args</tt>. Such a
         hint adds no material content and, being optional in practice,
         makes the digest depend on whether a particular adapter chose
-        to compute it.</t>
+        to compute it. This does not apply to <tt>target</tt>, which is
+        material, is REQUIRED, and is not derived from <tt>args</tt>.</t>
+        <t>The <tt>target</tt> field is REQUIRED because a tool name is
+        not unique across providers. Where a caller can reach two
+        services offering the same tool name, an object omitting the
+        callee yields one identifier for two different executions, and
+        a permit issued against one provider recomputes equal against
+        the other. An issuer <bcp14>MUST NOT</bcp14> omit
+        <tt>target</tt> merely because its deployment currently reaches
+        one provider: the identifier can outlive that assumption. The
+        governing profile defines the stable target identifier;
+        implementations compare its exact, case-sensitive string and
+        <bcp14>MUST NOT</bcp14> infer it from ambient connection state,
+        a display label, or a derived routing hint.</t>
         <t>The Action Object contains <tt>action_type</tt>,
-        <tt>tool</tt>, and <tt>args</tt>, plus
+        <tt>target</tt>, <tt>tool</tt>, and <tt>args</tt>, plus
         <tt>occurrence_id</tt> when present. The complete object is
         canonicalized and encoded as the CAID string in
         <xref target="identifier"/>. Existing framework-local strings
@@ -505,6 +524,7 @@ lower-char    = %x61-7A          ; a-z
         <sourcecode type="json"><![CDATA[
 {
   "action_type": "tool.call.1",
+  "target": "https://payments.example",
   "tool": "payment.release",
   "args": {
     "amount_usd": 4000,
@@ -515,8 +535,8 @@ lower-char    = %x61-7A          ; a-z
 ]]></sourcecode>
         <t>has the following CAID under <tt>jcs-sha256</tt>:</t>
         <sourcecode type=""><![CDATA[
-caid:1:tool.call.1:jcs-sha256:v7Rbw0z8-twT08DTzQs82ME2Tg1cJsFG
-tH1gqgdeVjk
+caid:1:tool.call.1:jcs-sha256:FdawgFwgN5tAtiZa-SCkVDrV3dS9w1ye
+XVQaDaZLQQQ
 ]]></sourcecode>
         <t>The identifier is shown wrapped for column width; it contains
         no whitespace.</t>

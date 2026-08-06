@@ -1008,6 +1008,8 @@
       "risk_class": "varies-by-tool",
       "summary": "Invocation of a named agent-framework tool with a complete argument object.",
       "required_fields": [
+        {"name": "target", "type": "string",
+         "notes": "stable identity of the service that will execute the call, supplied by the governing profile and compared case-sensitively; use the literal local only when execution occurs in the caller process; never infer this value from ambient routing metadata"},
         {"name": "tool", "type": "string",
          "notes": "tool name exactly as the invoking framework declares it"},
         {"name": "args", "type": "object",
@@ -1017,7 +1019,7 @@
         {"name": "occurrence_id", "type": "string",
          "notes": "executor occurrence identity when the relying profile requires two otherwise identical invocations to remain distinct"}
       ],
-      "digest_notes": "The CAID Action Object includes action_type, tool, args, and occurrence_id when present. Framework-local selector or routing hints derived from args are not separate members. Existing base:sha256:<hex> executor-binding strings are a different profile and are not CAIDs.",
+      "digest_notes": "The CAID Action Object includes action_type, target, tool, args, and occurrence_id when present. Framework-local selector or routing hints derived from args are not separate members. Existing base:sha256:<hex> executor-binding strings are a different profile and are not CAIDs.",
       "references": []
     },
     {

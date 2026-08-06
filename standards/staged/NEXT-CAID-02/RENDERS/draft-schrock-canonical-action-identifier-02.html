@@ -1993,6 +1993,12 @@ lower-char    = %x61-7A          ; a-z
   "status": "active",
   "risk_class": "varies-by-tool",
   "required_fields": [
+    {"name": "target",
+     "type": "string",
+     "notes": "stable service identity supplied by the governing
+       profile and compared case-sensitively. The literal \"local\"
+       only where execution occurs in the caller's own process. Never
+       inferred or omitted"},
     {"name": "tool",
      "type": "string",
      "notes": "the tool name as the invoking framework declares it"},
@@ -2017,24 +2023,38 @@ lower-char    = %x61-7A          ; a-z
         inside the canonical bytes, so a rename produces a different
         digest for an identical call, and two conforming-looking
         adapters then emit identifiers that never compare equal.<a href="#section-4.5-3" class="pilcrow">¶</a></p>
-<p id="section-4.5-4">A framework-derived selector, target hint, or routing key
+<p id="section-4.5-4">A framework-derived selector or routing key
         <span class="bcp14">MUST NOT</span> be added as a member when it is
         computed from values already present in <code>args</code>. Such a
         hint adds no material content and, being optional in practice,
         makes the digest depend on whether a particular adapter chose
-        to compute it.<a href="#section-4.5-4" class="pilcrow">¶</a></p>
-<p id="section-4.5-5">The Action Object contains <code>action_type</code>,
-        <code>tool</code>, and <code>args</code>, plus
+        to compute it. This does not apply to <code>target</code>, which is
+        material, is REQUIRED, and is not derived from <code>args</code>.<a href="#section-4.5-4" class="pilcrow">¶</a></p>
+<p id="section-4.5-5">The <code>target</code> field is REQUIRED because a tool name is
+        not unique across providers. Where a caller can reach two
+        services offering the same tool name, an object omitting the
+        callee yields one identifier for two different executions, and
+        a permit issued against one provider recomputes equal against
+        the other. An issuer <span class="bcp14">MUST NOT</span> omit
+        <code>target</code> merely because its deployment currently reaches
+        one provider: the identifier can outlive that assumption. The
+        governing profile defines the stable target identifier;
+        implementations compare its exact, case-sensitive string and
+        <span class="bcp14">MUST NOT</span> infer it from ambient connection state,
+        a display label, or a derived routing hint.<a href="#section-4.5-5" class="pilcrow">¶</a></p>
+<p id="section-4.5-6">The Action Object contains <code>action_type</code>,
+        <code>target</code>, <code>tool</code>, and <code>args</code>, plus
         <code>occurrence_id</code> when present. The complete object is
         canonicalized and encoded as the CAID string in
         <a href="#identifier" class="auto internal xref">Section 3</a>. Existing framework-local strings
         such as <code>base-action:sha256:&lt;hex&gt;</code> are not CAIDs and
-        <span class="bcp14">MUST NOT</span> be compared with one.<a href="#section-4.5-5" class="pilcrow">¶</a></p>
-<p id="section-4.5-6">For example, this Action Object:<a href="#section-4.5-6" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="section-4.5-7">
+        <span class="bcp14">MUST NOT</span> be compared with one.<a href="#section-4.5-6" class="pilcrow">¶</a></p>
+<p id="section-4.5-7">For example, this Action Object:<a href="#section-4.5-7" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4.5-8">
 <pre>
 {
   "action_type": "tool.call.1",
+  "target": "https://payments.example",
   "tool": "payment.release",
   "args": {
     "amount_usd": 4000,
@@ -2042,30 +2062,30 @@ lower-char    = %x61-7A          ; a-z
     "memo": "invoice 7781"
   }
 }
-</pre><a href="#section-4.5-7" class="pilcrow">¶</a>
+</pre><a href="#section-4.5-8" class="pilcrow">¶</a>
 </div>
-<p id="section-4.5-8">has the following CAID under <code>jcs-sha256</code>:<a href="#section-4.5-8" class="pilcrow">¶</a></p>
-<div class="sourcecode" id="section-4.5-9">
+<p id="section-4.5-9">has the following CAID under <code>jcs-sha256</code>:<a href="#section-4.5-9" class="pilcrow">¶</a></p>
+<div class="sourcecode" id="section-4.5-10">
 <pre>
-caid:1:tool.call.1:jcs-sha256:v7Rbw0z8-twT08DTzQs82ME2Tg1cJsFG
-tH1gqgdeVjk
-</pre><a href="#section-4.5-9" class="pilcrow">¶</a>
+caid:1:tool.call.1:jcs-sha256:FdawgFwgN5tAtiZa-SCkVDrV3dS9w1ye
+XVQaDaZLQQQ
+</pre><a href="#section-4.5-10" class="pilcrow">¶</a>
 </div>
-<p id="section-4.5-10">The identifier is shown wrapped for column width; it contains
-        no whitespace.<a href="#section-4.5-10" class="pilcrow">¶</a></p>
-<p id="section-4.5-11">This registration is motivated by observed divergence in one
+<p id="section-4.5-11">The identifier is shown wrapped for column width; it contains
+        no whitespace.<a href="#section-4.5-11" class="pilcrow">¶</a></p>
+<p id="section-4.5-12">This registration is motivated by observed divergence in one
         such framework-local binding profile: two adapters shipped by
         the same project hashed the same argument object under different
         member names, and one additionally hashed a derived selector.
         The resulting strings were not CAIDs, but the incident showed
         why a future cross-framework CAID profile cannot leave its
-        material member names to implementers.<a href="#section-4.5-11" class="pilcrow">¶</a></p>
-<p id="section-4.5-12">All nested members of <code>args</code> remain subject to the
+        material member names to implementers.<a href="#section-4.5-12" class="pilcrow">¶</a></p>
+<p id="section-4.5-13">All nested members of <code>args</code> remain subject to the
         number restriction in <a href="#object" class="auto internal xref">Section 2</a>. A framework call
         containing a fractional JSON number can use its own exact-action
         binding profile, or map the quantity to a CAID type that carries
         the value as a string; it is not a conforming
-        <code>tool.call.1</code> CAID.<a href="#section-4.5-12" class="pilcrow">¶</a></p>
+        <code>tool.call.1</code> CAID.<a href="#section-4.5-13" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>

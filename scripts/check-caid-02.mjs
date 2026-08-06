@@ -37,22 +37,29 @@ for (const stale of [
 ]) assert(!source.includes(stale), `stale reference ${stale}`);
 
 const toolCall = registry.types.find((entry) => entry.action_type === 'tool.call.1');
-assert(toolCall?.required_fields?.[0]?.name === 'tool', 'tool.call.1 does not require tool');
-assert(toolCall?.required_fields?.[1]?.name === 'args', 'tool.call.1 does not require args');
+assert(toolCall?.required_fields?.[0]?.name === 'target', 'tool.call.1 does not require target');
+assert(toolCall?.required_fields?.[1]?.name === 'tool', 'tool.call.1 does not require tool');
+assert(toolCall?.required_fields?.[2]?.name === 'args', 'tool.call.1 does not require args');
 assert(!toolCall.required_fields.some((field) => field.name === 'arguments'), 'tool.call.1 admits divergent arguments member');
 
 const example = {
   action_type: 'tool.call.1',
+  target: 'https://payments.example',
   tool: 'payment.release',
   args: { amount_usd: 4000, beneficiary: 'vendor@example.com', memo: 'invoice 7781' },
 };
 const computed = computeCaid(example, { suite: 'jcs-sha256', definitions: registry.types });
-const expected = 'caid:1:tool.call.1:jcs-sha256:v7Rbw0z8-twT08DTzQs82ME2Tg1cJsFGtH1gqgdeVjk';
+const expected = 'caid:1:tool.call.1:jcs-sha256:FdawgFwgN5tAtiZa-SCkVDrV3dS9w1yeXVQaDaZLQQQ';
 assert(computed.caid === expected, 'tool.call.1 example does not reproduce the draft CAID');
+const shadowed = computeCaid(
+  { ...example, target: 'https://shadow.example' },
+  { suite: 'jcs-sha256', definitions: registry.types },
+);
+assert(shadowed.caid !== expected, 'tool.call.1 target does not discriminate a shadow provider');
 const withoutWhitespace = (value) => value.replace(/\s+/g, '');
 assert(withoutWhitespace(source).includes(expected), 'example CAID missing from source');
 assert(withoutWhitespace(text).includes(expected), 'example CAID missing from TXT render');
-assert(html.includes('v7Rbw0z8-twT08DTzQs82ME2Tg1cJsFG') && html.includes('tH1gqgdeVjk'), 'example CAID missing from HTML render');
+assert(html.includes('FdawgFwgN5tAtiZa-SCkVDrV3dS9w1ye') && html.includes('XVQaDaZLQQQ'), 'example CAID missing from HTML render');
 assert(text.includes('Intended status: Standards Track'), 'TXT render has the wrong intended status');
 
 const sums = readFileSync(path.join(packet, 'SHA256SUMS.txt'), 'utf8').trim().split('\n');

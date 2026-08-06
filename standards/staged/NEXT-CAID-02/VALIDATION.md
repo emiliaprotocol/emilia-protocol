@@ -16,8 +16,8 @@ Validated on 2026-08-06 from the isolated CAID -02 working packet.
   vectors.
 - `node scripts/check-caid-02.mjs` verifies Standards Track metadata, current
   receipts/AEB/AEC/OASNT references, absence of stale revision strings, the
-  `tool.call.1` public registry shape, the independently recomputed example
-  CAID, render status, and all three checksums.
+  target-bound `tool.call.1` public registry shape, the independently
+  recomputed example CAID, render status, and all three checksums.
 - A fresh `xml2rfc 3.34.0` rebuild, followed by the same HTML whitespace
   normalization, produced TXT and HTML byte-identical to the staged renders.
 
