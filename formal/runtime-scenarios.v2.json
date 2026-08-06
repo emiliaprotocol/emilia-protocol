@@ -271,7 +271,7 @@
         "ReserveEscrowRelease": "ActionEscrowStep /\\ ReserveEscrowRelease",
         "ReleaseEscrow": "ActionEscrowStep /\\ ReleaseEscrow",
         "AttemptDuplicateEscrowRelease": "ActionEscrowStep /\\ AttemptDuplicateEscrowRelease",
-        "PresentSixExactLegs": "ModelToMatterStep /\\ PresentSixExactLegs",
+        "PresentSevenExactLegs": "ModelToMatterStep /\\ PresentSevenExactLegs",
         "ConsumeModelToMatterClearance": "ModelToMatterStep /\\ ConsumeModelToMatterClearance",
         "AttemptModelToMatterReplay": "ModelToMatterStep /\\ AttemptModelToMatterReplay",
         "PresentMismatchedLeg": "ModelToMatterStep /\\ PresentMismatchedLeg",
@@ -1991,13 +1991,13 @@
         "packages/gate/src/store.ts"
       ],
       "obligations": [
-        "ModelToMatterSixLegClearance",
+        "ModelToMatterSevenLegClearance",
         "ModelToMatterExactCaid",
         "ModelToMatterSingleConsumption"
       ],
       "steps": [
         {
-          "operator": "PresentSixExactLegs",
+          "operator": "PresentSevenExactLegs",
           "accepted": true,
           "projection": {
             "m2mState": "ready",

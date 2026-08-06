@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-06T16:56:52.671Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "c89cdf1849d33d08405cebbff32377b7f9302df78600c036b856028ddea09ab3",
+    "input_digest_sha256": "88f22518f808786260c6c95114937503c201f7646d07749b28406811938e72de",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -32,8 +32,8 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "422c609f0a4698071c717cd8a1be8329d2c1b450dcda1adb4f613739b4f1a3dc",
-        "bytes": 248404
+        "sha256": "4df4df1692fa3bd4205f43776868e5e45e630258e0b546598d8de71a1d46c23a",
+        "bytes": 248412
       },
       {
         "path": "security/security-case.json",
@@ -62,8 +62,8 @@
       },
       {
         "path": "conformance/vectors/model-to-matter.v1.json",
-        "sha256": "e27ce4282750d49ebbc0ca0f5664de9d4b15347a82c73b1034f2830dcc704260",
-        "bytes": 61393
+        "sha256": "409a60baf302f979b782c8a6fff024f8e0941d607e138fa1b2192da8a8e6a4c3",
+        "bytes": 136310
       }
     ],
     "freshness_command": "npm run check:llm-context"
@@ -403,7 +403,7 @@
     },
     "model_to_matter": {
       "profile": "EP-MODEL-TO-MATTER-v1",
-      "deterministic_vectors": 17,
+      "deterministic_vectors": 25,
       "implementation_languages": [
         "javascript"
       ],
@@ -3017,11 +3017,11 @@
           "runner": "formal/ep_effect_profiles.cfg",
           "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
           "obligations": [
-            "ModelToMatterSixLegClearance",
+            "ModelToMatterSevenLegClearance",
             "ModelToMatterExactCaid",
             "ModelToMatterSingleConsumption"
           ],
-          "scope": "Bounded same-team model and selected model/runtime scenarios cover six exact evidence legs, exact CAID binding, mismatch refusal, and one-time clearance consumption. This is not a refinement proof; adapter truth, cryptography, executor effect truth, and durable storage remain acceptance roots.",
+          "scope": "Bounded same-team model and selected model/runtime scenarios cover seven exact evidence legs, exact CAID binding, mismatch refusal, and one-time clearance consumption. This is not a refinement proof; adapter truth, cryptography, executor effect truth, and durable storage remain acceptance roots.",
           "scenario_evidence": "formal/runtime-scenarios.v2.json",
           "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
           "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
@@ -3030,13 +3030,13 @@
             "AttemptModelToMatterReplay",
             "ConsumeModelToMatterClearance",
             "PresentMismatchedLeg",
-            "PresentSixExactLegs",
+            "PresentSevenExactLegs",
             "RefuseModelToMatterClearance"
           ],
           "covered_obligations": [
             "ModelToMatterExactCaid",
             "ModelToMatterSingleConsumption",
-            "ModelToMatterSixLegClearance"
+            "ModelToMatterSevenLegClearance"
           ]
         }
       ],

@@ -61,7 +61,7 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
     expect(llmsFull).toContain('## July 19 Published Draft Set');
     expect(context.current_evidence.model_to_matter).toMatchObject({
       profile: 'EP-MODEL-TO-MATTER-v1',
-      deterministic_vectors: 15,
+      deterministic_vectors: 25,
       implementation_languages: ['javascript'],
       command: 'npm run m2m:conformance',
     });

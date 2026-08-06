@@ -2027,11 +2027,11 @@
           "runner": "formal/ep_effect_profiles.cfg",
           "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
           "obligations": [
-            "ModelToMatterSixLegClearance",
+            "ModelToMatterSevenLegClearance",
             "ModelToMatterExactCaid",
             "ModelToMatterSingleConsumption"
           ],
-          "scope": "Bounded same-team model and selected model/runtime scenarios cover six exact evidence legs, exact CAID binding, mismatch refusal, and one-time clearance consumption. This is not a refinement proof; adapter truth, cryptography, executor effect truth, and durable storage remain acceptance roots.",
+          "scope": "Bounded same-team model and selected model/runtime scenarios cover seven exact evidence legs, exact CAID binding, mismatch refusal, and one-time clearance consumption. This is not a refinement proof; adapter truth, cryptography, executor effect truth, and durable storage remain acceptance roots.",
           "scenario_evidence": "formal/runtime-scenarios.v2.json",
           "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
           "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
@@ -2040,13 +2040,13 @@
             "AttemptModelToMatterReplay",
             "ConsumeModelToMatterClearance",
             "PresentMismatchedLeg",
-            "PresentSixExactLegs",
+            "PresentSevenExactLegs",
             "RefuseModelToMatterClearance"
           ],
           "covered_obligations": [
             "ModelToMatterExactCaid",
             "ModelToMatterSingleConsumption",
-            "ModelToMatterSixLegClearance"
+            "ModelToMatterSevenLegClearance"
           ]
         }
       ],

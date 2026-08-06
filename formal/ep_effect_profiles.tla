@@ -8,7 +8,7 @@ EXTENDS Naturals, FiniteSets
 \* unchanged.  The finite instance intentionally contains:
 \*
 \*   - one Action Escrow milestone and release operation,
-\*   - one Model-to-Matter action with the six required evidence types,
+\*   - one Model-to-Matter action with the seven required evidence types,
 \*   - one AEC requirement with distinct machine-policy and human roles,
 \*   - one GRACE authorization, envelope, dispatch, meter, and settlement,
 \*   - one tenant-scoped mobile operation with one frozen executor, and
@@ -39,7 +39,8 @@ ModelToMatterEvidenceLegs == {
   "institutional_authority",
   "biosafety_review",
   "domain_screening",
-  "human_authorization"
+  "human_authorization",
+  "physical_state_attestation"
 }
 
 AecRequiredRoles == {"machine_policy", "human_authority"}
@@ -220,10 +221,10 @@ ActionEscrowStep ==
          MobileContinuityVars, MobileEnrollmentVars>>
 
 \* ---------------------------------------------------------------------
-\* Model-to-Matter: six fixed evidence legs, exact CAID, one consumption
+\* Model-to-Matter: seven fixed evidence legs, exact CAID, one consumption
 \* ---------------------------------------------------------------------
 
-PresentSixExactLegs ==
+PresentSevenExactLegs ==
   /\ m2mState = "collecting"
   /\ m2mState' = "ready"
   /\ m2mPresentedCaid' = ExactActionCaid
@@ -276,7 +277,7 @@ UnsafeAcceptMismatchedModelToMatter ==
          MobileContinuityVars, MobileEnrollmentVars>>
 
 ModelToMatterLocalStep ==
-  \/ PresentSixExactLegs
+  \/ PresentSevenExactLegs
   \/ PresentMismatchedLeg
   \/ ConsumeModelToMatterClearance
   \/ RefuseModelToMatterClearance
@@ -712,8 +713,8 @@ ActionEscrowSingleRelease ==
   /\ aeReleaseCount <= 1
   /\ (aeDuplicateRefused => aeReleaseCount = 1)
 
-ModelToMatterSixLegClearance ==
-  /\ Cardinality(ModelToMatterEvidenceLegs) = 6
+ModelToMatterSevenLegClearance ==
+  /\ Cardinality(ModelToMatterEvidenceLegs) = 7
   /\ (m2mConsumptionCount = 1 =>
        {leg \in ModelToMatterEvidenceLegs :
           m2mLegBindings[leg] # NoBinding}
