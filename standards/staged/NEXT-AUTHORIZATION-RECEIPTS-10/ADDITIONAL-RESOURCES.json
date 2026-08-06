@@ -1,0 +1,24 @@
+{
+  "draft-schrock-ep-authorization-receipts-10": [
+    {
+      "tag": "github_repo",
+      "url": "https://github.com/emiliaprotocol/emilia-protocol"
+    },
+    {
+      "tag": "related_implementations",
+      "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/verify/src/index.ts"
+    },
+    {
+      "tag": "related_implementations",
+      "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/issue/src/index.ts"
+    },
+    {
+      "tag": "related_implementations",
+      "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/lib/presentation-binding/profile.ts"
+    },
+    {
+      "tag": "related_implementations",
+      "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/vectors/presentation-binding.v1.json"
+    }
+  ]
+}

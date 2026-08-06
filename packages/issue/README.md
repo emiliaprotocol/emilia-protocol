@@ -2,7 +2,12 @@
 
 **Issue locally, verify anywhere.**
 
-The signing-side companion to [`@emilia-protocol/verify`](https://www.npmjs.com/package/@emilia-protocol/verify). It lets any external developer **mint** an EP authorization receipt (EP-RECEIPT-v1; I-D [draft-schrock-ep-authorization-receipts](https://www.emiliaprotocol.ai/spec/trust-receipt) §6.2) on their own machine, signed with their own keys — then anyone can verify it offline with `@emilia-protocol/verify`. No EMILIA backend. No account. No API key. Just `node:crypto`.
+The signing-side companion to [`@emilia-protocol/verify`](https://www.npmjs.com/package/@emilia-protocol/verify). It lets any external developer **mint** an EP authorization receipt (`EP-AUTHORIZATION-RECEIPT-v1`; I-D [draft-schrock-ep-authorization-receipts](https://www.emiliaprotocol.ai/spec/trust-receipt) §6.2) on their own machine, signed with their own keys — then anyone can verify it offline with `@emilia-protocol/verify`. No EMILIA backend. No account. No API key. Just `node:crypto`.
+
+`EP-AUTHORIZATION-RECEIPT-v1` is the detailed Section 6.2 profile accepted by
+`verifyTrustReceipt()`. It is not the frozen generic `EP-RECEIPT-v1`
+`{@version,payload,signature}` envelope accepted by `verifyReceipt()`; callers
+must not dispatch one format to the other's verifier.
 
 Zero runtime dependencies. The whole issuer is one small file you can read in an afternoon.
 

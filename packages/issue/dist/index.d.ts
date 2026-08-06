@@ -1,6 +1,7 @@
 /**
  * @emilia-protocol/issue — zero-dependency local issuance of EP authorization
- * receipts (EP-RECEIPT-v1; I-D draft-schrock-ep-authorization-receipts §6.2).
+ * receipts (EP-AUTHORIZATION-RECEIPT-v1; I-D
+ * draft-schrock-ep-authorization-receipts §6.2).
  *
  * The signing-side companion to @emilia-protocol/verify. It assembles and signs
  * the full authorization receipt — canonical Action Object + action hash,
@@ -32,6 +33,7 @@
 import crypto from 'node:crypto';
 import { canonicalizeStrictJson } from '../strict-json.js';
 type AnyRecord = Record<string, any>;
+export declare const AUTHORIZATION_RECEIPT_PROFILE = "EP-AUTHORIZATION-RECEIPT-v1";
 /** Recursive canonical JSON — depth-first key sort at every level (JCS-equivalent). */
 export declare const canonicalize: typeof canonicalizeStrictJson;
 export declare function isCanonicalizable(value: any): boolean;

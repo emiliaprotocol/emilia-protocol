@@ -1,6 +1,7 @@
 /**
  * @emilia-protocol/issue — zero-dependency local issuance of EP authorization
- * receipts (EP-RECEIPT-v1; I-D draft-schrock-ep-authorization-receipts §6.2).
+ * receipts (EP-AUTHORIZATION-RECEIPT-v1; I-D
+ * draft-schrock-ep-authorization-receipts §6.2).
  *
  * The signing-side companion to @emilia-protocol/verify. It assembles and signs
  * the full authorization receipt — canonical Action Object + action hash,
@@ -37,6 +38,11 @@ import {
 } from '../strict-json.js';
 
 type AnyRecord = Record<string, any>;
+
+// Out-of-band identifier for the detailed Section 6.2 receipt profile. This is
+// deliberately distinct from the frozen EP-RECEIPT-v1 generic
+// {@version,payload,signature} envelope verified by verifyReceipt().
+export const AUTHORIZATION_RECEIPT_PROFILE = 'EP-AUTHORIZATION-RECEIPT-v1';
 
 // ── canonicalization + hashing (byte-identical to packages/verify) ───────────
 

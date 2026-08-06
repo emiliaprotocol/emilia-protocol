@@ -1,0 +1,27 @@
+{
+  "@version": "EP-PRESENTATION-BINDING-VECTORS-v1",
+  "profile": "EP-PRESENTATION-BINDING-v1",
+  "description": "Cross-profile presentation-binding contract. A valid result means trusted evidence binds profile-defined disclosure bytes to the exact action. It does not prove comprehension, consent, or an uncompromised physical display path.",
+  "vectors": [
+    {
+      "id": "accept_mobile_signed_display_hash",
+      "kind": "mobile",
+      "expected": { "valid": true, "reason": null }
+    },
+    {
+      "id": "refuse_display_unbound",
+      "kind": "missing",
+      "expected": { "valid": false, "reason": "display-unbound" }
+    },
+    {
+      "id": "refuse_display_mismatch",
+      "kind": "mobile-mutated-presentation",
+      "expected": { "valid": false, "reason": "display-mismatch" }
+    },
+    {
+      "id": "accept_oasnt_dsp_cross_profile",
+      "kind": "oasnt-dsp",
+      "expected": { "valid": true, "reason": null }
+    }
+  ]
+}
