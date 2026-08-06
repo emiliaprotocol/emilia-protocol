@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-06T16:56:52.671Z",
+  "evidence_snapshot_at": "2026-08-06T22:10:31.054Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "88f22518f808786260c6c95114937503c201f7646d07749b28406811938e72de",
+    "input_digest_sha256": "f8316ec80b292f78853298918b959b688dea183b58356b6100b00d6e94eb13e2",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "86da324ebc72d70e0b3fb3c05feccda0d7fc634b79cd47368ecfaf3cc8a683ca",
+        "sha256": "db1aee5b7ccdc073d82b8a48d3ca8cef9a5cae078406a0ac7210d053345b3829",
         "bytes": 4298
       },
       {
@@ -37,8 +37,8 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "b456bfef3c3179579d87d6e393dc76078dec83e65e0794dcad935490a5af6876",
-        "bytes": 381402
+        "sha256": "992f66afdd4e37480a8411b99a7e8dd7abab3c84d23dc935301d9ab75d24b7e7",
+        "bytes": 381410
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -272,8 +272,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 8736,
-      "files": 520,
+      "total": 8741,
+      "files": 521,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -314,7 +314,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "116cd99646fca255324ac2a655e2de63588636ebe672490719af8c7b1234ec3f",
+        "evidenceSha256": "cb806231b0c9c0b74b2aee4628ba67fd7b9bf612b3c9205d3d7f285377c1af08",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -384,7 +384,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 255,
-      "evidence_bundle_sha256": "cd4f161cacfafc7dcdb9b713bbd54467c4786d60c8a16ee4ae3f9f2df84e9d55"
+      "evidence_bundle_sha256": "4db9bc6beb98cd51264c6f2fb72331e3323077130d4773646d10308109751537"
     },
     "caid": {
       "core_vectors": 48,
