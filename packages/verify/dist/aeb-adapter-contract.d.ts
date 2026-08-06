@@ -18,6 +18,7 @@
  */
 import { type KeyObject } from 'node:crypto';
 import { AEC_VERSION } from './evidence-chain.js';
+import type { AebExecutionConditionsResult } from './aeb-execution-conditions.js';
 export declare const AEB_ADAPTER_VERSION = "AEB-ADAPTER-v1";
 export declare const AEB_EVALUATION_VERSION = "AEB-EVALUATION-v1";
 export declare const AEB_EVALUATION_DOMAIN = "AEB-EVALUATION-v1\0";
@@ -411,6 +412,8 @@ export declare function authorizeAebExecution(record: AebEvaluationRecord, optio
     verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
     local_authorization: boolean;
     store: AebConsumptionStore;
+    /** Locally evaluated, relying-party-pinned execution conditions. */
+    execution_conditions?: AebExecutionConditionsResult;
     /** Extra profile replay identities reserved atomically with native evidence. */
     additional_replay_keys?: readonly string[];
 }): AebExecutionDecision;
@@ -428,6 +431,8 @@ export declare function authorizeAebExecutionDurable(record: AebEvaluationRecord
     verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
     local_authorization: boolean;
     store: unknown;
+    /** Locally evaluated, relying-party-pinned execution conditions. */
+    execution_conditions?: AebExecutionConditionsResult;
     /** Extra profile replay identities reserved atomically with native evidence. */
     additional_replay_keys?: readonly string[];
 }): Promise<AebExecutionDecision>;

@@ -755,6 +755,62 @@ test('AEB freezes indeterminate execution and consumes a satisfied authorization
   assert.equal(replay.program_digest, satisfied.record.evaluator.pinned_config_digest);
 });
 
+test('AEB execution conditions fail closed before authority is reserved', () => {
+  const satisfied = evaluate(setup());
+  const store = new InMemoryAebConsumptionStore();
+  const base = {
+    binding: 'MATCH' as const,
+    basis_status: 'CURRENT' as const,
+    resolution_status: 'MATCH' as const,
+    conditions_satisfied: true,
+    prevention_established: false,
+    authorization_established: false as const,
+    physical_truth_established: false as const,
+    decision_scope: 'execution_conditions_only' as const,
+    profile_digest: `sha256:${'a'.repeat(64)}` as const,
+    resolver_profile_digest: `sha256:${'b'.repeat(64)}` as const,
+    reasons: [],
+  };
+  const refused = authorizeAebExecution(satisfied.record, {
+    verification: boundVerification(satisfied.record),
+    local_authorization: true,
+    store,
+    execution_conditions: {
+      ...base,
+      outcome: 'PREDICATE_FAILED',
+      conditions_satisfied: false,
+      resolution_status: 'MISMATCH',
+      reasons: ['predicate_failed'],
+    },
+  });
+  assert.equal(refused.state, 'REFUSED');
+  assert.equal(refused.reason, 'execution_predicate_failed');
+
+  const indeterminate = authorizeAebExecution(satisfied.record, {
+    verification: boundVerification(satisfied.record),
+    local_authorization: true,
+    store,
+    execution_conditions: {
+      ...base,
+      outcome: 'INDETERMINATE',
+      conditions_satisfied: false,
+      resolution_status: 'INDETERMINATE',
+      reasons: ['resolution_unavailable'],
+    },
+  });
+  assert.equal(indeterminate.state, 'RECONCILIATION_REQUIRED');
+  assert.equal(indeterminate.reason, 'execution_conditions_indeterminate');
+
+  const admitted = authorizeAebExecution(satisfied.record, {
+    verification: boundVerification(satisfied.record),
+    local_authorization: true,
+    store,
+    execution_conditions: { ...base, outcome: 'ADMIT' },
+  });
+  assert.equal(admitted.state, 'AUTHORIZED');
+  assert.equal(admitted.reason, 'reserved_for_execution');
+});
+
 test('AEB refuses positive authorization when the relying-party program digest is absent', () => {
   const satisfied = evaluate(setup());
   const missingProgram = structuredClone(satisfied.record);

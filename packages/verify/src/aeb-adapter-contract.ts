@@ -20,6 +20,7 @@
 import crypto, { type KeyObject } from 'node:crypto';
 import { AEC_VERSION, actionDigest as aecActionDigest, verifyAuthorizationChain } from './evidence-chain.js';
 import { canonicalizeStrictJson } from './strict-json.js';
+import type { AebExecutionConditionsResult } from './aeb-execution-conditions.js';
 
 export const AEB_ADAPTER_VERSION = 'AEB-ADAPTER-v1';
 export const AEB_EVALUATION_VERSION = 'AEB-EVALUATION-v1';
@@ -396,6 +397,37 @@ export interface AebExecutionDecision {
   /** Relying-party-pinned AEB program/configuration that made the decision. */
   program_digest: AebDigest;
   reservation_key?: string;
+}
+
+function executionConditionsRefusal(
+  value: AebExecutionConditionsResult | undefined,
+): Pick<AebExecutionDecision, 'state' | 'reason'> | null {
+  if (value === undefined) return null;
+  if (value === null || typeof value !== 'object'
+      || value.decision_scope !== 'execution_conditions_only'
+      || value.authorization_established !== false
+      || value.physical_truth_established !== false
+      || typeof value.prevention_established !== 'boolean'
+      || !Array.isArray(value.reasons)
+      || !validDigest(value.profile_digest)
+      || !validDigest(value.resolver_profile_digest)) {
+    return { state: 'REFUSED', reason: 'execution_conditions_result_invalid' };
+  }
+  if (value.outcome === 'INDETERMINATE') {
+    return { state: 'RECONCILIATION_REQUIRED', reason: 'execution_conditions_indeterminate' };
+  }
+  if (value.outcome === 'PREDICATE_FAILED') {
+    return { state: 'REFUSED', reason: 'execution_predicate_failed' };
+  }
+  if (value.outcome !== 'ADMIT'
+      || value.conditions_satisfied !== true
+      || value.binding !== 'MATCH'
+      || value.basis_status !== 'CURRENT'
+      || value.resolution_status !== 'MATCH'
+      || value.reasons.length !== 0) {
+    return { state: 'REFUSED', reason: 'execution_conditions_invalid' };
+  }
+  return null;
 }
 
 export interface AebConsumptionStore {
@@ -1620,6 +1652,8 @@ export function authorizeAebExecution(
     verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
     local_authorization: boolean;
     store: AebConsumptionStore;
+    /** Locally evaluated, relying-party-pinned execution conditions. */
+    execution_conditions?: AebExecutionConditionsResult;
     /** Extra profile replay identities reserved atomically with native evidence. */
     additional_replay_keys?: readonly string[];
   },
@@ -1666,6 +1700,8 @@ export function authorizeAebExecution(
   if (record.verdict !== 'SATISFIED') return decision('REFUSED', 'evidence_requirement_not_satisfied');
   if (record.authority_constraints?.one_time_consumption !== true) return decision('REFUSED', 'one_time_consumption_not_required');
   if (!options.local_authorization) return decision('REFUSED', 'local_authorization_denied');
+  const conditionsRefusal = executionConditionsRefusal(options.execution_conditions);
+  if (conditionsRefusal) return decision(conditionsRefusal.state, conditionsRefusal.reason);
   if (!options.store.reserve(reservationKey, sortedUnique([
     ...aebNativeReplayKeys(record),
     ...(options.additional_replay_keys ?? []),
@@ -1727,6 +1763,8 @@ export async function authorizeAebExecutionDurable(
     verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
     local_authorization: boolean;
     store: unknown;
+    /** Locally evaluated, relying-party-pinned execution conditions. */
+    execution_conditions?: AebExecutionConditionsResult;
     /** Extra profile replay identities reserved atomically with native evidence. */
     additional_replay_keys?: readonly string[];
   },
@@ -1773,6 +1811,8 @@ export async function authorizeAebExecutionDurable(
   if (record.verdict !== 'SATISFIED') return decision('REFUSED', 'evidence_requirement_not_satisfied');
   if (record.authority_constraints?.one_time_consumption !== true) return decision('REFUSED', 'one_time_consumption_not_required');
   if (!options.local_authorization) return decision('REFUSED', 'local_authorization_denied');
+  const conditionsRefusal = executionConditionsRefusal(options.execution_conditions);
+  if (conditionsRefusal) return decision(conditionsRefusal.state, conditionsRefusal.reason);
   if (!secureDurableStore(options.store)) return decision('REFUSED', 'secure_consumption_store_required');
   try {
     const reservation = await options.store.reserve(reservationKey, sortedUnique([

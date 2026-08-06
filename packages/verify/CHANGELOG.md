@@ -16,6 +16,15 @@ This package follows [Semantic Versioning](https://semver.org/).
   fixed monitor and enforce semantics. Monitor mode cannot authorize or
   consume; enforce mode requires current execution verification, local
   authorization, and atomic one-time consumption.
+- `AEB-EXECUTION-CONDITIONS-v1`, an internal execution-boundary profile that
+  binds an exact action and human-approved opaque predicate set to an
+  RP-pinned resolver profile. Typed outcomes keep predicate failure, binding
+  invalidity, authorization expiry/revocation, and resolver uncertainty
+  distinct; only compare-and-set or provider-enforced evidence can support a
+  prevention claim.
+  The existing synchronous and durable AEB authorization paths accept this
+  local result as a pre-reservation condition and fail closed on every outcome
+  other than `ADMIT`.
 - Authorization Server confirmation evidence adapter with relying-party-pinned
   Ed25519 trust, exact-action and Resource Server binding, signed policy and
   identity-directory commitments, explicit directory observation time and

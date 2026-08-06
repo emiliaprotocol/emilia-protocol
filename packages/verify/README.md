@@ -108,6 +108,18 @@ requires an execution-time verification bound to the exact evaluation record,
 local authorization, and atomic one-time consumption. An atomic replay
 conflict can be decided only in enforce mode.
 
+`@emilia-protocol/verify/aeb-execution-conditions` evaluates an opaque,
+human-approved predicate-set commitment at the execution boundary. The exact
+action, approval evidence, basis, presentation, resolver profile, source trust,
+freshness, and enforcement strength are relying-party pinned. `observed` and
+`leased` resolutions can satisfy the conditions axis but cannot claim
+prevention; only `compare-and-set` and `provider-enforced` resolutions carrying
+enforcement evidence can do so. `ADMIT` is scoped to execution conditions and
+does not establish authorization or physical truth. When supplied to
+`authorizeAebExecution` or `authorizeAebExecutionDurable`, only a valid `ADMIT`
+result can reach the one-time reservation; predicate failure refuses, and
+uncertainty routes to reconciliation required before authority is reserved.
+
 Four revision-pinned foreign-proof adapters are available:
 
 - `aeb-oasnt-adapter` verifies the OASNT-01 compact authorization token against

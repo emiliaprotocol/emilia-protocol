@@ -550,6 +550,7 @@ packages/verify/aeb-adapter-contract.test.js linguist-generated=true
 packages/verify/aeb-aps-adapter.test.js linguist-generated=true
 packages/verify/aeb-consequence-conformance.test.js linguist-generated=true
 packages/verify/aeb-discovery-permit-adapter.test.js linguist-generated=true
+packages/verify/aeb-execution-conditions.test.js linguist-generated=true
 packages/verify/aeb-mcgraw-delegation-adapter.test.js linguist-generated=true
 packages/verify/aeb-native-adapters.test.js linguist-generated=true
 packages/verify/aeb-oasnt-adapter.test.js linguist-generated=true
