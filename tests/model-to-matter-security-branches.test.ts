@@ -26,6 +26,7 @@ import { createDurableConsumptionStore, createMemoryBackend } from '../packages/
 const NOW = '2026-07-11T16:00:00Z';
 const ISSUED_AT = '2026-07-11T15:59:00Z';
 const EXPIRES_AT = '2026-07-11T16:10:00Z';
+const PHYSICAL_STATE_EXPIRES = '2026-07-11T16:14:00Z';
 const CHALLENGE_EXPIRES = '2026-07-11T16:05:00Z';
 const evidenceKey = crypto.generateKeyPairSync('ed25519').privateKey;
 const executorKey = crypto.generateKeyPairSync('ed25519').privateKey;
@@ -101,15 +102,28 @@ function action(overrides = {}) {
   });
 }
 
+const PHYSICAL_STATE_POLICY = Object.freeze({
+  required_precondition_digest: digest('required-physical-preconditions'),
+  max_measurement_age_sec: 120,
+  max_validity_duration_sec: 900,
+  executor_control_domain: 'control:cloud-lab:example',
+  executor_public_keys: [publicKey(executorKey)],
+});
+
 const acceptedIssuers = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [type, [{
   issuer_id: `issuer:${type}`,
   public_key: publicKey(evidenceKey),
+  ...(type === 'physical_state_attestation' ? {
+    sensor_network_id: 'sensor-network:facility-safe-demo-01',
+    control_domain: 'control:independent-facility-sensors',
+  } : {}),
 }]]));
 
 function profile(overrides = {}) {
   return createModelToMatterProfile({
     profile_id: 'ep:m2m:security-branches:v1',
     accepted_issuers: acceptedIssuers,
+    physical_state_policy: PHYSICAL_STATE_POLICY,
     ...structuredClone(overrides),
   });
 }
@@ -154,6 +168,13 @@ function claimsFor(type, a) {
       decision: 'approve',
       assurance_class: 'class_a',
     },
+    physical_state_attestation: {
+      sensor_network_id: acceptedIssuers.physical_state_attestation[0].sensor_network_id,
+      required_precondition_digest: PHYSICAL_STATE_POLICY.required_precondition_digest,
+      measured_state_digest: digest('measured-room-state'),
+      measured_at: ISSUED_AT,
+      match: true,
+    },
   };
   return structuredClone(claims[type]);
 }
@@ -164,7 +185,7 @@ function signedEvidence(a, type, overrides = {}) {
     action_digest: modelToMatterActionDigest(a),
     issuer_id: `issuer:${type}`,
     issued_at: ISSUED_AT,
-    expires_at: EXPIRES_AT,
+    expires_at: type === 'physical_state_attestation' ? PHYSICAL_STATE_EXPIRES : EXPIRES_AT,
     claims: { ...claimsFor(type, a), ...(overrides.claims || {}) },
     ...Object.fromEntries(Object.entries(overrides).filter(([key]) => key !== 'claims')),
   }, evidenceKey);
@@ -431,6 +452,7 @@ describe('Model-to-Matter defensive branch contract', () => {
         challengeStore: registration.store,
         clearanceStore: clearanceStore(),
         revokedEvidenceDigests: new Set(),
+        retiredPhysicalMeasurementDigests: new Set(),
       });
       expect(result.verdict).not.toBe('clear_to_execute');
     }
@@ -453,6 +475,7 @@ describe('Model-to-Matter defensive branch contract', () => {
       as_of: NOW,
       challengeStore: missingStore.store,
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(withoutStore.verdict).toBe('do_not_execute_refused');
     expect(withoutStore.reasons.join(' ')).toMatch(/clearanceStore/i);
@@ -467,6 +490,7 @@ describe('Model-to-Matter defensive branch contract', () => {
       challengeStore: malformedRevocation.store,
       clearanceStore: clearanceStore(),
       revokedEvidenceDigests: new Set(['not-a-digest']),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(malformed.verdict).toBe('do_not_execute_malformed');
     expect(malformed.reasons.join(' ')).toMatch(/revocation state/i);
@@ -481,6 +505,7 @@ describe('Model-to-Matter defensive branch contract', () => {
       challengeStore: { consume: async () => { throw new Error('storage unavailable'); } },
       clearanceStore: clearanceStore(),
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(challengeFailure).toMatchObject({
       verdict: 'do_not_execute_refused',
@@ -499,6 +524,7 @@ describe('Model-to-Matter defensive branch contract', () => {
       challengeStore: unavailable.store,
       clearanceStore: { consume: async () => { throw new Error('storage unavailable'); } },
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(clearanceFailure).toMatchObject({
       verdict: 'do_not_execute_refused',
@@ -517,6 +543,7 @@ describe('Model-to-Matter defensive branch contract', () => {
       challengeStore: ambiguous.store,
       clearanceStore: { consume: async () => undefined },
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(ambiguousClearance).toMatchObject({
       verdict: 'do_not_execute_refused',

@@ -67,6 +67,13 @@ const claims = {
     decision: 'approve',
     assurance_class: 'class_a',
   },
+  physical_state_attestation: {
+    sensor_network_id: 'sensor-network-1',
+    required_precondition_digest: digest('a'),
+    measured_state_digest: digest('b'),
+    measured_at: '2026-07-12T12:00:00.000Z',
+    match: true,
+  },
 };
 
 describe('Model-to-Matter mutation oracles', () => {
@@ -166,6 +173,10 @@ describe('Model-to-Matter mutation oracles', () => {
       },
       human_authorization: {
         approver_id: '', decision: 'deny', assurance_class: 'software',
+      },
+      physical_state_attestation: {
+        sensor_network_id: '', required_precondition_digest: 'bad',
+        measured_state_digest: 'bad', measured_at: 'not-an-instant', match: 'true',
       },
     };
     for (const [type, fields] of Object.entries(mismatches)) {

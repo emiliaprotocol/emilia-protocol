@@ -48,10 +48,13 @@ for (const required of [
   'A second key under the executor',
   'control is not independent',
   'a new measurement is required',
+  'canonical validity window',
+  'all seven signed evidence roles',
+  'reliance_program_digest',
+  'evidence_requirement_digest',
   'does not establish physical truth',
   'correct sensor placement',
   'MUST NOT represent a cleared action as evidence',
-  'not yet implemented by the Model-to-Matter reference clearance path',
   '<name>Changes since -03</name>',
 ]) {
   invariant(xmlText.includes(required), `XML is missing required -04 text: ${required}`);
@@ -61,9 +64,12 @@ for (const required of [
   'maximum measurement age',
   'maximum validity duration',
   'control is not independent',
+  'canonical validity window',
+  'all seven signed evidence roles',
+  'reliance_program_digest',
+  'evidence_requirement_digest',
   'does not establish physical truth',
   'MUST NOT represent a cleared action as evidence',
-  'not yet implemented by the Model-to-Matter reference clearance path',
   'Changes since -03',
 ]) {
   invariant(txtText.includes(required), `TXT rendering is stale or missing: ${required}`);
@@ -73,7 +79,7 @@ for (const forbidden of [
   'physical preconditions are not met',
   'guarantee of safety',
   '<name>Changes since -02</name>',
-  'seven signed evidence adapters',
+  'not yet implemented by the Model-to-Matter reference clearance path',
 ]) {
   invariant(!xmlText.toLowerCase().includes(forbidden.toLowerCase()), `forbidden claim survived: ${forbidden}`);
   invariant(!txtText.toLowerCase().includes(forbidden.toLowerCase()), `forbidden rendered claim survived: ${forbidden}`);

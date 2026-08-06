@@ -5,11 +5,12 @@
 import crypto from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { M2M_CLEARANCE_VERSION, M2M_CAID_ACTION_TYPE, M2M_EVIDENCE_TYPES, createModelToMatterAction, createModelToMatterEvidenceRequirement, createModelToMatterProfile, modelToMatterActionDigest, modelToMatterCaid, signModelToMatterEffect, signModelToMatterEvidence, } from '../../lib/frontier/model-to-matter.js';
+import { M2M_CLEARANCE_VERSION, M2M_CAID_ACTION_TYPE, M2M_EVIDENCE_TYPES, createModelToMatterAction, createModelToMatterEvidenceRequirement, createModelToMatterProfile, modelToMatterActionDigest, modelToMatterCaid, physicalStateMeasurementDigest, signModelToMatterEffect, signModelToMatterEvidence, } from '../../lib/frontier/model-to-matter.js';
 import { RELIANCE_PROGRAM_SOURCE_VERSION, compileRelianceProgram, signRelianceProgram, } from '../../packages/gate/reliance-program.js';
 const ISSUED_AT = '2026-07-19T11:59:00Z';
 const AS_OF = '2026-07-19T12:00:00Z';
 const EXPIRES_AT = '2026-07-19T12:10:00Z';
+const PHYSICAL_STATE_EXPIRES_AT = '2026-07-19T12:14:00Z';
 const CHALLENGE_EXPIRES_AT = '2026-07-19T12:05:00Z';
 const PKCS8_ED25519_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
 function sha256(value) {
@@ -62,13 +63,26 @@ const action = createModelToMatterAction({
     max_executions: 1,
 });
 const issuerKeys = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [type, testPrivateKey(type)]));
+const executorKey = testPrivateKey('executor');
+const physicalStatePolicy = Object.freeze({
+    required_precondition_digest: digest('required-physical-preconditions'),
+    max_measurement_age_sec: 120,
+    max_validity_duration_sec: 900,
+    executor_control_domain: 'control:cloud-lab:example',
+    executor_public_keys: [publicKey(executorKey)],
+});
 const acceptedIssuers = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [type, [{
             issuer_id: `issuer:${type}`,
             public_key: publicKey(issuerKeys[type]),
+            ...(type === 'physical_state_attestation' ? {
+                sensor_network_id: 'sensor-network:facility-demo-01',
+                control_domain: 'control:independent-facility-sensors',
+            } : {}),
         }]]));
 const profile = createModelToMatterProfile({
     profile_id: 'ep:m2m:conformance:v1',
     accepted_issuers: acceptedIssuers,
+    physical_state_policy: physicalStatePolicy,
 });
 function compiledRelianceProgram(selectedProfile, programId) {
     const requirement = createModelToMatterEvidenceRequirement(selectedProfile);
@@ -119,6 +133,7 @@ const alternateProfile = createModelToMatterProfile({
     profile_id: profile.profile_id,
     accepted_issuers: acceptedIssuers,
     freshness_sec: { domain_screening: 299 },
+    physical_state_policy: physicalStatePolicy,
 });
 const mismatchedReliance = compiledRelianceProgram(alternateProfile, 'rp.m2m.conformance-mismatch:v1');
 function claimsFor(type, overrides = {}) {
@@ -161,6 +176,13 @@ function claimsFor(type, overrides = {}) {
             decision: 'approve',
             assurance_class: 'class_a',
         },
+        physical_state_attestation: {
+            sensor_network_id: acceptedIssuers.physical_state_attestation[0].sensor_network_id,
+            required_precondition_digest: physicalStatePolicy.required_precondition_digest,
+            measured_state_digest: digest('measured-room-state'),
+            measured_at: ISSUED_AT,
+            match: true,
+        },
     };
     return { ...claims[type], ...overrides };
 }
@@ -168,13 +190,14 @@ function claimsFor(type, overrides = {}) {
  * @param {string} type
  * @param {{ privateKey?: import('node:crypto').KeyObject, issuerId?: string, issuedAt?: string, expiresAt?: string, outcome?: string, claims?: object }} [params]
  */
-function signEvidence(type, { privateKey = issuerKeys[type], issuerId = `issuer:${type}`, issuedAt = ISSUED_AT, expiresAt = EXPIRES_AT, outcome, claims = {}, } = {}) {
+function signEvidence(type, { privateKey = issuerKeys[type], issuerId = `issuer:${type}`, issuedAt = ISSUED_AT, expiresAt, outcome, claims = {}, } = {}) {
     return signModelToMatterEvidence({
         evidence_type: type,
         action_digest: modelToMatterActionDigest(action),
         issuer_id: issuerId,
         issued_at: issuedAt,
-        expires_at: expiresAt,
+        expires_at: expiresAt
+            ?? (type === 'physical_state_attestation' ? PHYSICAL_STATE_EXPIRES_AT : EXPIRES_AT),
         claims: claimsFor(type, claims),
         ...(outcome === undefined ? {} : { outcome }),
     }, privateKey);
@@ -186,9 +209,14 @@ const alternateModelAttestation = signEvidence('model_attestation', {
 function replace(type, artifact) {
     return valid.map((candidate) => candidate.evidence_type === type ? artifact : candidate);
 }
+const originalPhysicalMeasurement = signEvidence('physical_state_attestation');
+const renewedPhysicalMeasurement = signEvidence('physical_state_attestation', {
+    expiresAt: '2026-07-19T12:09:00Z',
+});
 const evidenceSets = {
     valid,
     missing_domain_screening: valid.filter((artifact) => artifact.evidence_type !== 'domain_screening'),
+    missing_physical_state: valid.filter((artifact) => artifact.evidence_type !== 'physical_state_attestation'),
     unpinned_domain_screening: replace('domain_screening', signEvidence('domain_screening', {
         privateKey: testPrivateKey('attacker'),
     })),
@@ -203,13 +231,32 @@ const evidenceSets = {
     weak_human: replace('human_authorization', signEvidence('human_authorization', {
         claims: { assurance_class: 'software' },
     })),
+    false_physical_state: replace('physical_state_attestation', signEvidence('physical_state_attestation', {
+        claims: { match: false },
+    })),
+    wrong_physical_preconditions: replace('physical_state_attestation', signEvidence('physical_state_attestation', {
+        claims: { required_precondition_digest: digest('wrong-physical-preconditions') },
+    })),
+    stale_physical_measurement: replace('physical_state_attestation', signEvidence('physical_state_attestation', {
+        issuedAt: '2026-07-19T11:57:59Z',
+        expiresAt: '2026-07-19T12:12:59Z',
+        claims: { measured_at: '2026-07-19T11:57:59Z' },
+    })),
+    excessive_physical_validity: replace('physical_state_attestation', signEvidence('physical_state_attestation', {
+        expiresAt: '2026-07-19T12:20:00Z',
+    })),
     model_for_biosafety: [
         ...valid.filter((artifact) => artifact.evidence_type !== 'biosafety_review'),
         alternateModelAttestation,
     ],
+    screening_for_physical_state: [
+        ...valid.filter((artifact) => artifact.evidence_type !== 'physical_state_attestation'),
+        signEvidence('domain_screening', { issuedAt: '2026-07-19T11:59:02Z' }),
+    ],
+    retired_physical_measurement: replace('physical_state_attestation', originalPhysicalMeasurement),
+    renewed_physical_measurement: replace('physical_state_attestation', renewedPhysicalMeasurement),
 };
 const humanEvidence = valid.find((artifact) => artifact.evidence_type === 'human_authorization');
-const executorKey = testPrivateKey('executor');
 const effect = signModelToMatterEffect({
     action,
     clearance: {
@@ -254,13 +301,21 @@ const suite = {
                 evidence_requirement_digest: reliance.requirement.profile_hash,
             } },
         { id: 'refuse_missing_domain_screening', kind: 'presentation', evidence_set: 'missing_domain_screening', expect: { verdict: 'do_not_execute_missing_evidence' } },
+        { id: 'refuse_missing_physical_state_attestation', kind: 'presentation', evidence_set: 'missing_physical_state', expect: { verdict: 'do_not_execute_missing_evidence' } },
         { id: 'refuse_cross_role_model_for_biosafety', kind: 'role_substitution', evidence_set: 'model_for_biosafety', substitute_for: 'biosafety_review', expect: { verdict: 'do_not_execute_unverifiable' } },
+        { id: 'refuse_cross_role_screening_for_physical_state', kind: 'role_substitution', evidence_set: 'screening_for_physical_state', substitute_evidence_type: 'domain_screening', substitute_for: 'physical_state_attestation', expect: { verdict: 'do_not_execute_unverifiable' } },
         { id: 'refuse_mismatched_evidence_requirement_digest', kind: 'presentation', evidence_set: 'valid', reliance_program: 'mismatched', expect: { verdict: 'do_not_execute_refused' } },
         { id: 'refuse_unpinned_domain_screening', kind: 'presentation', evidence_set: 'unpinned_domain_screening', expect: { verdict: 'do_not_execute_unverifiable' } },
         { id: 'refuse_expired_domain_screening', kind: 'presentation', evidence_set: 'expired_domain_screening', expect: { verdict: 'do_not_execute_unverifiable' } },
         { id: 'refuse_revoked_human_authorization', kind: 'presentation', evidence_set: 'valid', revoked_evidence_digests: [humanEvidence.signature.evidence_digest], expect: { verdict: 'do_not_execute_stale_evidence' } },
         { id: 'refuse_denied_biosafety_review', kind: 'presentation', evidence_set: 'denied_biosafety', expect: { verdict: 'do_not_execute_unverifiable' } },
         { id: 'refuse_weak_human_authorization', kind: 'presentation', evidence_set: 'weak_human', expect: { verdict: 'do_not_execute_unverifiable' } },
+        { id: 'refuse_false_physical_state_match', kind: 'presentation', evidence_set: 'false_physical_state', expect: { verdict: 'do_not_execute_unverifiable' } },
+        { id: 'refuse_wrong_physical_preconditions', kind: 'presentation', evidence_set: 'wrong_physical_preconditions', expect: { verdict: 'do_not_execute_unverifiable' } },
+        { id: 'refuse_stale_physical_measurement', kind: 'presentation', evidence_set: 'stale_physical_measurement', expect: { verdict: 'do_not_execute_unverifiable' } },
+        { id: 'refuse_excessive_physical_validity', kind: 'presentation', evidence_set: 'excessive_physical_validity', expect: { verdict: 'do_not_execute_unverifiable' } },
+        { id: 'refuse_retired_physical_measurement', kind: 'presentation', evidence_set: 'retired_physical_measurement', retired_physical_measurement_digests: [physicalStateMeasurementDigest(originalPhysicalMeasurement)], expect: { verdict: 'do_not_execute_unverifiable' } },
+        { id: 'refuse_resigned_physical_measurement_window', kind: 'presentation', evidence_set: 'renewed_physical_measurement', expect: { verdict: 'do_not_execute_unverifiable' } },
         { id: 'refuse_action_mutation_after_challenge', kind: 'presentation', evidence_set: 'valid', action_overrides: { destination_digest: digest('mutated-destination') }, expect: { verdict: 'do_not_execute_action_mismatch' } },
         { id: 'refuse_indeterminate_clearance_storage', kind: 'presentation', evidence_set: 'valid', clearance_store: 'throw', expect: { verdict: 'do_not_execute_refused', reconciliation_required: true } },
         { id: 'refuse_same_challenge_replay', kind: 'same_challenge_replay', evidence_set: 'valid', expect: { verdicts: ['clear_to_execute', 'do_not_execute_refused'] } },

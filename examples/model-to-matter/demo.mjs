@@ -3,7 +3,7 @@
 /* eslint-disable */
 //
 // Model-to-Matter: a frontier-model proposal may reach a physical executor only
-// after six signed evidence legs satisfy the executor's profile.
+// after seven signed evidence legs satisfy the executor's profile.
 //
 //   node examples/model-to-matter/demo.mjs
 //
@@ -17,12 +17,20 @@ import { createDurableConsumptionStore, createMemoryBackend } from '../../packag
 import { RELIANCE_PROGRAM_SOURCE_VERSION, compileRelianceProgram, signRelianceProgram, } from '../../packages/gate/reliance-program.js';
 const NOW = '2026-07-11T16:00:00Z';
 const EVIDENCE_EXPIRES = '2026-07-11T16:10:00Z';
+const PHYSICAL_STATE_EXPIRES = '2026-07-11T16:14:00Z';
 const digest = (label) => `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 const keyPair = () => crypto.generateKeyPairSync('ed25519').privateKey;
 const publicKey = (privateKey) => crypto.createPublicKey(privateKey)
     .export({ type: 'spki', format: 'der' }).toString('base64url');
 const issuerKeys = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [type, keyPair()]));
 const executorKey = keyPair();
+const physicalStatePolicy = Object.freeze({
+    required_precondition_digest: digest('required-physical-preconditions'),
+    max_measurement_age_sec: 120,
+    max_validity_duration_sec: 900,
+    executor_control_domain: 'control:cloud-lab:example',
+    executor_public_keys: [publicKey(executorKey)],
+});
 const action = createModelToMatterAction({
     action_type: 'science.bio.experiment.execute.1',
     model: {
@@ -53,10 +61,15 @@ const action = createModelToMatterAction({
 const acceptedIssuers = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [type, [{
             issuer_id: `issuer:${type}`,
             public_key: publicKey(issuerKeys[type]),
+            ...(type === 'physical_state_attestation' ? {
+                sensor_network_id: 'sensor-network:facility-demo-01',
+                control_domain: 'control:independent-facility-sensors',
+            } : {}),
         }]]));
 const profile = createModelToMatterProfile({
     profile_id: 'ep:m2m:frontier-bio-research:v1',
     accepted_issuers: acceptedIssuers,
+    physical_state_policy: physicalStatePolicy,
 });
 const evidenceRequirement = createModelToMatterEvidenceRequirement(profile);
 const relianceProgramKey = keyPair();
@@ -137,6 +150,13 @@ function claimsFor(type) {
             decision: 'approve',
             assurance_class: 'class_a',
         },
+        physical_state_attestation: {
+            sensor_network_id: acceptedIssuers.physical_state_attestation[0].sensor_network_id,
+            required_precondition_digest: physicalStatePolicy.required_precondition_digest,
+            measured_state_digest: digest('measured-room-state'),
+            measured_at: '2026-07-11T15:59:00Z',
+            match: true,
+        },
     };
     return claims[type];
 }
@@ -146,7 +166,9 @@ function signEvidence(type, privateKey = issuerKeys[type]) {
         action_digest: modelToMatterActionDigest(action),
         issuer_id: `issuer:${type}`,
         issued_at: '2026-07-11T15:59:00Z',
-        expires_at: EVIDENCE_EXPIRES,
+        expires_at: type === 'physical_state_attestation'
+            ? PHYSICAL_STATE_EXPIRES
+            : EVIDENCE_EXPIRES,
         claims: claimsFor(type),
     }, privateKey);
 }
@@ -160,6 +182,7 @@ function executorFor(challengeStore, revokedEvidenceDigests = new Set()) {
         challengeStore,
         clearanceStore: createDurableConsumptionStore(actionClearanceBackend),
         revocationProvider: async () => new Set(revokedEvidenceDigests),
+        physicalMeasurementProvider: async () => new Set(),
         allowEphemeralState: true,
         now: () => Date.parse(NOW),
     });
@@ -179,7 +202,7 @@ async function evaluateOnce(label, artifacts, revokedEvidenceDigests = new Set()
 console.log('\nMODEL-TO-MATTER: frontier proposal -> physical executor\n');
 console.log(`STRUCTURE PASS  action is well-formed (${modelToMatterActionDigest(action).slice(0, 27)}...)`);
 console.log(`PROGRAM PASS    customer program ${relianceProgram.program_digest.slice(0, 27)}...`);
-console.log(`REQUIREMENT     exact six-role bar ${evidenceRequirement.profile_hash.slice(0, 27)}...`);
+console.log(`REQUIREMENT     exact seven-role bar ${evidenceRequirement.profile_hash.slice(0, 27)}...`);
 console.log('                Structural validity is not permission to execute.\n');
 const rows = [];
 const missing = await evaluateOnce('missing-screening', allEvidence().filter((artifact) => artifact.evidence_type !== 'domain_screening'));
@@ -260,5 +283,5 @@ for (const [label, actual] of rows) {
 }
 const ok = rows.every(([, actual, expected]) => actual === expected);
 console.log(`\n${ok ? 'OK' : 'FAILED'}: one exact action cleared once; every missing, substituted, revoked, mutated, replayed, or tampered path refused.`);
-console.log('Boundary: the effect receipt proves what the pinned executor signed, not independent physical truth.\n');
+console.log('Boundary: the physical-state leg and effect receipt prove signed claims, not independent physical truth.\n');
 process.exit(ok ? 0 : 1);

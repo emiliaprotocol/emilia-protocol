@@ -43,6 +43,7 @@ import { artifactDigest } from '../lib/evidence/evidence-graph.js';
 const NOW = '2026-07-11T16:00:00Z';
 const ISSUED_AT = '2026-07-11T15:59:00Z';
 const EVIDENCE_EXPIRES = '2026-07-11T16:10:00Z';
+const PHYSICAL_STATE_EXPIRES = '2026-07-11T16:14:00Z';
 const CHALLENGE_EXPIRES = '2026-07-11T16:05:00Z';
 
 const keys = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [
@@ -100,15 +101,28 @@ function action(overrides = {}) {
   });
 }
 
+const PHYSICAL_STATE_POLICY = Object.freeze({
+  required_precondition_digest: digest('required-physical-preconditions'),
+  max_measurement_age_sec: 120,
+  max_validity_duration_sec: 900,
+  executor_control_domain: 'control:cloud-lab:example',
+  executor_public_keys: [publicKey(executorKey)],
+});
+
 const issuerPins = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [type, [{
   issuer_id: `issuer:${type}`,
   public_key: publicKey(keys[type]),
+  ...(type === 'physical_state_attestation' ? {
+    sensor_network_id: 'sensor-network:facility-safe-demo-01',
+    control_domain: 'control:independent-facility-sensors',
+  } : {}),
 }]]));
 
 function profile(overrides = {}) {
   return createModelToMatterProfile({
     profile_id: 'ep:m2m:bio-research:v1',
     accepted_issuers: issuerPins,
+    physical_state_policy: PHYSICAL_STATE_POLICY,
     ...structuredClone(overrides),
   });
 }
@@ -164,6 +178,15 @@ function claimsFor(type, a) {
       assurance_class: 'class_a',
     };
   }
+  if (type === 'physical_state_attestation') {
+    return {
+      sensor_network_id: issuerPins.physical_state_attestation[0].sensor_network_id,
+      required_precondition_digest: PHYSICAL_STATE_POLICY.required_precondition_digest,
+      measured_state_digest: digest('measured-room-state'),
+      measured_at: ISSUED_AT,
+      match: true,
+    };
+  }
   throw new Error(`unknown evidence type ${type}`);
 }
 
@@ -173,7 +196,8 @@ function signedEvidence(a, type, overrides = {}, privateKey = keys[type]) {
     action_digest: modelToMatterActionDigest(a),
     issuer_id: overrides.issuer_id ?? `issuer:${type}`,
     issued_at: overrides.issued_at ?? ISSUED_AT,
-    expires_at: overrides.expires_at ?? EVIDENCE_EXPIRES,
+    expires_at: overrides.expires_at
+      ?? (type === 'physical_state_attestation' ? PHYSICAL_STATE_EXPIRES : EVIDENCE_EXPIRES),
     claims: { ...claimsFor(type, a), ...(overrides.claims || {}) },
     ...(overrides.outcome ? { outcome: overrides.outcome } : {}),
   }, privateKey);
@@ -397,6 +421,7 @@ describe('EP Model-to-Matter signed evidence', () => {
       expectedType: 'domain_screening', expectedAction: a, as_of: NOW,
       pinnedIssuerKeys: issuerPins.domain_screening,
       revokedEvidenceDigests: new Set([artifact.signature.evidence_digest]),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(revoked.verified).toBe(true);
     expect(revoked.accepted).toBe(false);
@@ -429,12 +454,14 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
         challengeStore: createDurableChallengeStore(backend),
         clearanceStore: actionStore(),
         revokedEvidenceDigests: new Set(),
+        retiredPhysicalMeasurementDigests: new Set(),
       }),
       evaluateRegisteredModelToMatterPresentation({
         action: a, challenge, graph, profile: p, as_of: NOW,
         challengeStore: createDurableChallengeStore(backend),
         clearanceStore: actionStore(),
         revokedEvidenceDigests: new Set(),
+        retiredPhysicalMeasurementDigests: new Set(),
       }),
     ]);
     expect(results.filter((result) => result.verdict === 'clear_to_execute')).toHaveLength(1);
@@ -469,6 +496,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
         challengeStore: createDurableChallengeStore(challengeBackend),
         clearanceStore: actionStore(clearanceBackend),
         revokedEvidenceDigests: new Set(),
+        retiredPhysicalMeasurementDigests: new Set(),
       })
     )));
     expect(results.filter((result) => result.verdict === 'clear_to_execute')).toHaveLength(1);
@@ -505,6 +533,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
       challengeStore: delayedStore,
       clearanceStore: actionStore(),
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     p.requirement = 'model_attestation';
     graph.nodes = graph.nodes.filter((node) => node.type === 'model_attestation');
@@ -533,6 +562,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const retried = await evaluateRegisteredModelToMatterPresentation({
       action: a, challenge, graph, profile: p, as_of: NOW, challengeStore, clearanceStore,
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(retried.verdict).toBe('clear_to_execute');
   });
@@ -550,6 +580,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
       next_nonce: 'm2m-followup-0001',
       clearanceStore: actionStore(),
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(result.verdict).toBe('do_not_execute_missing_evidence');
     expect(result.next_challenge.required_evidence.map((item) => item.type))
@@ -569,6 +600,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
       action: changed, challenge, graph, profile: p, as_of: NOW, challengeStore,
       clearanceStore: actionStore(),
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(swapped.verdict).toBe('do_not_execute_action_mismatch');
 
@@ -576,6 +608,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
       action: a, challenge, graph, profile: p, as_of: NOW, challengeStore,
       clearanceStore: actionStore(),
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(original.verdict).toBe('clear_to_execute');
   });
@@ -627,6 +660,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
         profile: p, as_of: NOW, challengeStore,
         clearanceStore: actionStore(),
         revokedEvidenceDigests: new Set(),
+        retiredPhysicalMeasurementDigests: new Set(),
       });
       expect(result.verdict, testCase.label).toBe(testCase.verdict);
     }
@@ -657,6 +691,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
         action: a, challenge, graph, profile: p, as_of: NOW, challengeStore,
         clearanceStore: actionStore(),
         revokedEvidenceDigests: new Set(),
+        retiredPhysicalMeasurementDigests: new Set(),
       });
       expect(result.verdict).not.toBe('clear_to_execute');
     }
@@ -671,6 +706,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
       challengeStore: store(),
       clearanceStore: actionStore(),
       revocationProvider: async () => new Set(),
+      physicalMeasurementProvider: async () => new Set(),
       allowEphemeralState: true,
       now: () => Date.parse(NOW),
       ...(a ? { relianceProgram: relianceProgram(a, p).compiled } : {}),
@@ -715,6 +751,17 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     expect(missing.verdict).toBe('do_not_execute_missing_evidence');
     expect(missing.evidence_requirement_digest).toBe(createModelToMatterEvidenceRequirement(p).profile_hash);
 
+    const missingPhysicalGate = executor({ profile: p, relianceProgram: compiled });
+    const missingPhysicalChallenge = await missingPhysicalGate.issueChallenge(a, {
+      nonce: 'm2m-program-missing-physical-state',
+    });
+    const missingPhysical = await missingPhysicalGate.evaluate({
+      action: a,
+      challenge: missingPhysicalChallenge,
+      graph: buildModelToMatterGraph(a, evidenceSet(a, ['physical_state_attestation'])),
+    });
+    expect(missingPhysical.verdict).toBe('do_not_execute_missing_evidence');
+
     const substitutionGate = executor({ profile: p, relianceProgram: compiled });
     const substitutionChallenge = await substitutionGate.issueChallenge(a, { nonce: 'm2m-program-role-swap' });
     const substitute = signedEvidence(a, 'model_attestation', { issued_at: '2026-07-11T15:59:01Z' });
@@ -731,6 +778,30 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     });
     expect(substituted.verdict).not.toBe('clear_to_execute');
     expect(substituted.reasons.join(' ')).toMatch(/biosafety_review/i);
+
+    const physicalSubstitutionGate = executor({ profile: p, relianceProgram: compiled });
+    const physicalSubstitutionChallenge = await physicalSubstitutionGate.issueChallenge(a, {
+      nonce: 'm2m-program-physical-role-swap',
+    });
+    const screeningSubstitute = signedEvidence(a, 'domain_screening', {
+      issued_at: '2026-07-11T15:59:02Z',
+    });
+    const physicalSubstitutionGraph = structuredClone(buildModelToMatterGraph(
+      a,
+      evidenceSet(a, ['physical_state_attestation']),
+    ));
+    physicalSubstitutionGraph.nodes.push({
+      id: artifactDigest(screeningSubstitute),
+      type: 'physical_state_attestation',
+      artifact: screeningSubstitute,
+    });
+    const physicalSubstitution = await physicalSubstitutionGate.evaluate({
+      action: a,
+      challenge: physicalSubstitutionChallenge,
+      graph: physicalSubstitutionGraph,
+    });
+    expect(physicalSubstitution.verdict).toBe('do_not_execute_unverifiable');
+    expect(physicalSubstitution.reasons.join(' ')).toMatch(/physical_state_attestation/i);
 
     const stricterProfile = profile({ freshness_sec: { domain_screening: 299 } });
     const mismatched = relianceProgram(a, stricterProfile).compiled;
@@ -815,6 +886,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
       challengeStore,
       clearanceStore: actionStore(),
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(malformedProgram).toMatchObject({
       verdict: 'do_not_execute_refused',
@@ -836,6 +908,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
       challengeStore,
       clearanceStore: actionStore(),
       revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(inactive).toMatchObject({
       verdict: 'do_not_execute_refused',
@@ -887,6 +960,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     for (const field of [
       'profile', 'challengeStore', 'clearanceStore', 'revokedEvidenceDigests',
       'revocationProvider', 'relianceProgram', 'requirementBinding',
+      'physicalMeasurementProvider', 'retiredPhysicalMeasurementDigests',
       'as_of', 'next_expires_at', 'next_nonce',
     ]) {
       const gate = executor();
@@ -902,7 +976,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     }
   });
 
-  it('fails closed when its pinned clock or revocation provider is unavailable', async () => {
+  it('fails closed when its pinned clock, revocation, or measurement-retirement provider is unavailable', async () => {
     const a = action();
     const badClock = executor({ now: () => { throw new Error('clock unavailable'); } });
     await expect(badClock.issueChallenge(a)).rejects.toThrow(/clock/i);
@@ -918,6 +992,21 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
       verdict: 'do_not_execute_refused',
       clear_to_execute: false,
       reasons: ['revocation state is unavailable or malformed'],
+    });
+
+    const badMeasurements = executor({ physicalMeasurementProvider: async () => null });
+    const measurementChallenge = await badMeasurements.issueChallenge(a, {
+      nonce: 'm2m-bad-physical-measurement-provider',
+    });
+    const measurementResult = await badMeasurements.evaluate({
+      action: a,
+      challenge: measurementChallenge,
+      graph: buildModelToMatterGraph(a, evidenceSet(a)),
+    });
+    expect(measurementResult).toMatchObject({
+      verdict: 'do_not_execute_refused',
+      clear_to_execute: false,
+      reasons: ['physical measurement retirement state is unavailable or malformed'],
     });
   });
 
@@ -960,11 +1049,13 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
   it('requires explicit durable custody in production mode', () => {
     const p = profile();
     const revocationProvider = async () => new Set();
+    const physicalMeasurementProvider = async () => new Set();
     expect(() => createModelToMatterExecutor({
       profile: p,
       challengeStore: store(),
       clearanceStore: actionStore(),
       revocationProvider,
+      physicalMeasurementProvider,
     })).toThrow(/durable body-bound atomic challenge custody/);
 
     const challengeBackend = Object.assign(createMemoryBackend(), { durable: true });
@@ -974,6 +1065,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
       challengeStore: createDurableChallengeStore(challengeBackend),
       clearanceStore: createDurableConsumptionStore(clearanceBackend),
       revocationProvider,
+      physicalMeasurementProvider,
     })).not.toThrow();
 
     for (const config of [
@@ -981,6 +1073,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
       { challengeStore: null },
       { clearanceStore: null },
       { revocationProvider: null },
+      { physicalMeasurementProvider: null },
       { challengeTtlSec: 0 },
       { challengeTtlSec: 86401 },
     ]) {

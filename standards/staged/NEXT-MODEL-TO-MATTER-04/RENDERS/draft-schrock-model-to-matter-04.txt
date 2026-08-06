@@ -73,12 +73,12 @@ Table of Contents
      1.1.  Requirements Language . . . . . . . . . . . . . . . . . .   3
    2.  Canonical Action  . . . . . . . . . . . . . . . . . . . . . .   3
    3.  Pre-Execution Evidence and Clearance  . . . . . . . . . . . .   3
-   4.  Effect Custody  . . . . . . . . . . . . . . . . . . . . . . .   4
+   4.  Effect Custody  . . . . . . . . . . . . . . . . . . . . . . .   5
    5.  Outcome Claims and Binding  . . . . . . . . . . . . . . . . .   5
    6.  Remedy and Subsequent Action  . . . . . . . . . . . . . . . .   6
    7.  Industrial Execution Profile  . . . . . . . . . . . . . . . .   6
    8.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
-     8.1.  Physical State Attestation  . . . . . . . . . . . . . . .   6
+     8.1.  Physical State Attestation  . . . . . . . . . . . . . . .   7
    9.  Privacy Considerations  . . . . . . . . . . . . . . . . . . .   7
    10. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
    11. Implementation Status . . . . . . . . . . . . . . . . . . . .   7
@@ -176,7 +176,12 @@ Internet-Draft               Model-to-Matter                 August 2026
    exceeds its corresponding pinned limit, when the required-
    precondition digest does not match, or when the match verdict is
    false.  An expired artifact MUST NOT be renewed by re-signing the
-   same measurement; a new measurement is required.
+   same measurement; a new measurement is required.  Profiles MUST
+   define a canonical validity window from the signed measurement
+   instant.  The reference profile sets issued_at equal to the
+   measurement instant and derives expires_at by adding the pinned
+   maximum validity duration, so changing only either window edge is a
+   refusal rather than a renewal.
 
    A deployment MAY express those evidence roles in a customer-owned,
    signed Reliance Program and compile that source into its execution-
@@ -206,15 +211,10 @@ Internet-Draft               Model-to-Matter                 August 2026
    indeterminate and freezes execution pending authenticated
    reconciliation.  It MUST NOT permit blind retry.
 
-4.  Effect Custody
 
-   After clearance consumption, the protected effect enters dispatch
-   custody.  The executor records a stable operation identifier and the
-   exact action digest, CAID, clearance replay digest, provider, and
-   facility.  A lost provider response after invocation is
-   indeterminate.  Reconciliation MUST query the authenticated provider
-   operation; it MUST NOT issue a new physical action under the consumed
-   clearance.
+
+
+
 
 
 
@@ -225,6 +225,16 @@ Schrock                  Expires 7 February 2027                [Page 4]
 
 Internet-Draft               Model-to-Matter                 August 2026
 
+
+4.  Effect Custody
+
+   After clearance consumption, the protected effect enters dispatch
+   custody.  The executor records a stable operation identifier and the
+   exact action digest, CAID, clearance replay digest, provider, and
+   facility.  A lost provider response after invocation is
+   indeterminate.  Reconciliation MUST query the authenticated provider
+   operation; it MUST NOT issue a new physical action under the consumed
+   clearance.
 
 5.  Outcome Claims and Binding
 
@@ -264,16 +274,6 @@ Internet-Draft               Model-to-Matter                 August 2026
    presenter.  A compromised at the attestation instant, retired outside
    its pinned historical validity interval, expired, not-yet-valid, non-
    distinct, late, or window-mismatched source cannot satisfy the
-   required evidence role.  Missing or unauthenticated evidence yields
-   lifecycle_state=indeterminate and outcome=null.  Authentic evidence
-   yields in_bounds, divergent, or incomparable under Outcome Binding.
-   An indeterminate state MUST NOT be mapped to incomparable.
-
-
-
-
-
-
 
 
 
@@ -281,6 +281,11 @@ Schrock                  Expires 7 February 2027                [Page 5]
 
 Internet-Draft               Model-to-Matter                 August 2026
 
+
+   required evidence role.  Missing or unauthenticated evidence yields
+   lifecycle_state=indeterminate and outcome=null.  Authentic evidence
+   yields in_bounds, divergent, or incomparable under Outcome Binding.
+   An indeterminate state MUST NOT be mapped to incomparable.
 
 6.  Remedy and Subsequent Action
 
@@ -321,6 +326,18 @@ Internet-Draft               Model-to-Matter                 August 2026
    and an Outcome Binding lifecycle of indeterminate prohibit blind
    retry.
 
+
+
+
+
+
+
+
+Schrock                  Expires 7 February 2027                [Page 6]
+
+Internet-Draft               Model-to-Matter                 August 2026
+
+
 8.1.  Physical State Attestation
 
    A physical_state_attestation establishes only that a network
@@ -330,14 +347,6 @@ Internet-Draft               Model-to-Matter                 August 2026
    hazards.  A miscalibrated or compromised sensor signs a false
    measurement as readily as a true one; the physical_state_attestation
    leg can pass and clearance can issue if all other requirements are
-
-
-
-Schrock                  Expires 7 February 2027                [Page 6]
-
-Internet-Draft               Model-to-Matter                 August 2026
-
-
    satisfied.
 
    This artifact bounds measurement staleness at clearance evaluation.
@@ -359,33 +368,24 @@ Internet-Draft               Model-to-Matter                 August 2026
 11.  Implementation Status
 
    An Apache-2.0 TypeScript implementation provides the closed Action
-   Object, CAID binding, the six pre-existing signed evidence adapters,
-   registered challenge, durable single-use clearance, effect
-   statements, source-routed Outcome Binding, independently signed
-   observation sets, canonical-key and control-domain separation, source
-   status and validity, observation-window policy, distinct-source
-   quorum, and adversarial tests.  Demonstrations are synthetic and
-   process no raw biological content.  No wet-lab deployment, scientific
-   validation, partner endorsement, or independent implementation is
-   claimed.  The repository also contains separate implementations of
-   customer-owned Reliance Programs, typed AEB boundary terms, and Agent
-   Qualification Statements.
+   Object, CAID binding, all seven signed evidence roles, registered
+   challenge, durable single-use clearance, effect statements, source-
+   routed Outcome Binding, independently signed observation sets,
+   canonical-key and control-domain separation, source status and
+   validity, observation-window policy, distinct-source quorum, and
+   adversarial tests.  Demonstrations are synthetic and process no raw
+   biological content.  No wet-lab deployment, scientific validation,
+   partner endorsement, or independent implementation is claimed.  The
+   repository also contains separate implementations of customer-owned
+   Reliance Programs, typed AEB boundary terms, and Agent Qualification
+   Statements.
 
-   The physical_state_attestation role specified by this revision is not
-   yet implemented by the Model-to-Matter reference clearance path.  The
-   program and requirement digests introduced in revision -03 are also
-   not yet wired into the reference clearance object.  These are
-   normative interoperability requirements, not claims that the current
-   reference implementation or a physical deployment already enforces
-   them.
-
-
-
-
-
-
-
-
+   The reference clearance path requires physical_state_attestation,
+   verifies its exact-action and executor-pinned precondition bindings,
+   enforces independent sensor key and declared control domain, uses the
+   canonical measurement-derived validity window, and refuses missing,
+   stale, negative, substituted, or replayed measurement state.  It also
+   binds the compiled reliance_program_digest and
 
 
 
@@ -393,6 +393,12 @@ Schrock                  Expires 7 February 2027                [Page 7]
 
 Internet-Draft               Model-to-Matter                 August 2026
 
+
+   evidence_requirement_digest into the clearance object and refuses a
+   mismatched compiled requirement.  This is reference implementation
+   and synthetic conformance evidence, not evidence of physical truth,
+   sensor quality, complete hazard coverage, or deployment in a
+   laboratory.
 
 12.  Changes since -03
 
@@ -403,9 +409,9 @@ Internet-Draft               Model-to-Matter                 August 2026
    absent, stale, mismatched, or negative artifacts.  It also states
    explicitly that a signed measurement is a source claim rather than
    physical truth and does not establish that conditions remain
-   unchanged through execution.  The implementation-status section
-   records that this new role is not yet implemented by the reference
-   clearance path.
+   unchanged through execution.  The reference implementation and
+   conformance vectors now exercise the seventh role and the -03 program
+   and requirement digest bindings.
 
 13.  Normative References
 
@@ -437,18 +443,16 @@ Internet-Draft               Model-to-Matter                 August 2026
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/info/rfc2119>.
 
-   [RFC7493]  Bray, T., Ed., "The I-JSON Message Format", RFC 7493,
-              DOI 10.17487/RFC7493, March 2015,
-              <https://www.rfc-editor.org/info/rfc7493>.
-
-
-
 
 
 Schrock                  Expires 7 February 2027                [Page 8]
 
 Internet-Draft               Model-to-Matter                 August 2026
 
+
+   [RFC7493]  Bray, T., Ed., "The I-JSON Message Format", RFC 7493,
+              DOI 10.17487/RFC7493, March 2015,
+              <https://www.rfc-editor.org/info/rfc7493>.
 
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
@@ -465,10 +469,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
 
 
 

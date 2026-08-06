@@ -19,10 +19,14 @@ Revision -04:
 - requires a sensor control domain distinct from the executor, not merely a
   second key;
 - refuses missing, stale, mismatched, or negative attestation state; and
+- fixes the signed validity window deterministically from the measurement
+  instant and the executor-pinned duration, preventing window-only renewal;
 - states that the signature evidences a source claim, not physical truth,
   calibration, placement, unchanged state through execution, or safety.
 
-The reference Model-to-Matter clearance path does not yet implement this
-seventh role. The draft says so explicitly. Filing remains a separate human
+The reference Model-to-Matter clearance path implements all seven roles and
+binds the compiled Reliance Program and evidence-requirement digests into each
+clearance. This is synthetic reference and conformance evidence, not a wet-lab
+deployment or a claim of physical truth. Filing remains a separate human
 decision and would publish an Experimental individual Internet-Draft, not an
 RFC, working-group document, IETF consensus, or IETF endorsement.

@@ -47,7 +47,8 @@ function graphFor(vector) {
     if (!byRole.has(artifact.evidence_type)) byRole.set(artifact.evidence_type, artifact);
   }
   const graph = structuredClone(buildModelToMatterGraph(suite.action, [...byRole.values()]));
-  const substitute = [...evidence].reverse().find((artifact) => artifact.evidence_type === 'model_attestation');
+  const substituteType = vector.substitute_evidence_type ?? 'model_attestation';
+  const substitute = [...evidence].reverse().find((artifact) => artifact.evidence_type === substituteType);
   graph.nodes.push({
     id: artifactDigest(substitute),
     type: vector.substitute_for,
@@ -66,6 +67,7 @@ function inputFor(vector, registeredChallenge, challengeStore, clearanceStore) {
     challengeStore,
     clearanceStore,
     revokedEvidenceDigests: new Set(vector.revoked_evidence_digests || []),
+    retiredPhysicalMeasurementDigests: new Set(vector.retired_physical_measurement_digests || []),
     relianceProgram: vector.reliance_program === 'mismatched'
       ? suite.mismatched_reliance_program
       : suite.reliance_program,

@@ -65,6 +65,7 @@ export const M2M_EVIDENCE_TYPES = Object.freeze([
   'biosafety_review',
   'domain_screening',
   'human_authorization',
+  'physical_state_attestation',
 ]);
 
 const EVIDENCE_DOMAIN = `${M2M_EVIDENCE_VERSION}\0`;
@@ -100,6 +101,10 @@ const CLAIM_KEYS = Object.freeze({
     'materials_commitment', 'destination_digest', 'screening_profile_digest', 'decision',
   ]),
   human_authorization: new Set(['approver_id', 'decision', 'assurance_class']),
+  physical_state_attestation: new Set([
+    'sensor_network_id', 'required_precondition_digest', 'measured_state_digest',
+    'measured_at', 'match',
+  ]),
 });
 
 const DEFAULT_FRESHNESS_SEC = Object.freeze({
@@ -109,6 +114,7 @@ const DEFAULT_FRESHNESS_SEC = Object.freeze({
   biosafety_review: 86400,
   domain_screening: 300,
   human_authorization: 300,
+  physical_state_attestation: 300,
 });
 
 function sha256hex(bytes: any): string {
@@ -309,21 +315,58 @@ export function verifyModelToMatterCaid(action: any, caid: any): any {
   return verifyCaid(action, caid, { definitions: [M2M_CAID_DEFINITION] });
 }
 
-function validatePin(pin: any, type: string): void {
-  if (!isObject(pin)) throw new Error(`accepted_issuers.${type} pin must be an object`);
-  assertOnlyKeys(pin, new Set(['issuer_id', 'public_key']), `accepted_issuers.${type} pin`);
-  assertString(pin.issuer_id, `accepted_issuers.${type}.issuer_id`);
-  assertString(pin.public_key, `accepted_issuers.${type}.public_key`);
+function validateEd25519PublicKey(value: any, field: string): void {
+  assertString(value, field);
   try {
     const key = crypto.createPublicKey({
-      key: Buffer.from(pin.public_key, 'base64url'), type: 'spki', format: 'der',
+      key: Buffer.from(value, 'base64url'), type: 'spki', format: 'der',
     });
     if (key.asymmetricKeyType !== 'ed25519') throw new Error('wrong key type');
     const canonical = key.export({ type: 'spki', format: 'der' }).toString('base64url');
-    if (canonical !== pin.public_key) throw new Error('non-canonical key encoding');
+    if (canonical !== value) throw new Error('non-canonical key encoding');
   } catch {
-    throw new Error(`accepted_issuers.${type}.public_key must be an Ed25519 SPKI key`);
+    throw new Error(`${field} must be an Ed25519 SPKI key`);
   }
+}
+
+function validatePin(pin: any, type: string): void {
+  if (!isObject(pin)) throw new Error(`accepted_issuers.${type} pin must be an object`);
+  const physical = type === 'physical_state_attestation';
+  assertOnlyKeys(pin, new Set(physical
+    ? ['issuer_id', 'public_key', 'sensor_network_id', 'control_domain']
+    : ['issuer_id', 'public_key']), `accepted_issuers.${type} pin`);
+  assertString(pin.issuer_id, `accepted_issuers.${type}.issuer_id`);
+  validateEd25519PublicKey(pin.public_key, `accepted_issuers.${type}.public_key`);
+  if (physical) {
+    assertString(pin.sensor_network_id, `accepted_issuers.${type}.sensor_network_id`);
+    assertString(pin.control_domain, `accepted_issuers.${type}.control_domain`);
+  }
+}
+
+function assertPhysicalStatePolicy(policy: any): any {
+  assertOnlyKeys(policy, new Set([
+    'required_precondition_digest', 'max_measurement_age_sec',
+    'max_validity_duration_sec', 'executor_control_domain', 'executor_public_keys',
+  ]), 'physical_state_policy');
+  assertDigest(policy.required_precondition_digest, 'physical_state_policy.required_precondition_digest');
+  for (const field of ['max_measurement_age_sec', 'max_validity_duration_sec']) {
+    if (!Number.isSafeInteger(policy[field]) || policy[field] < 1) {
+      throw new Error(`physical_state_policy.${field} must be a positive integer`);
+    }
+  }
+  assertString(policy.executor_control_domain, 'physical_state_policy.executor_control_domain');
+  if (!Array.isArray(policy.executor_public_keys) || policy.executor_public_keys.length === 0) {
+    throw new Error('physical_state_policy.executor_public_keys requires at least one key');
+  }
+  const uniqueKeys = new Set(policy.executor_public_keys);
+  if (uniqueKeys.size !== policy.executor_public_keys.length) {
+    throw new Error('physical_state_policy.executor_public_keys must not contain duplicates');
+  }
+  policy.executor_public_keys.forEach((key) => validateEd25519PublicKey(
+    key,
+    'physical_state_policy.executor_public_keys entry',
+  ));
+  return policy;
 }
 
 function assertProfile(profile: any): any {
@@ -334,6 +377,7 @@ function assertProfile(profile: any): any {
     '@version', 'profile_id', 'policy_id', 'reliance_purpose', 'requirement',
     'allowed_action_types', 'required_human_assurance', 'freshness_sec',
     'revocation_required', 'accepted_issuers', 'require_action_agreement',
+    'physical_state_policy',
   ]), 'profile');
   assertString(profile.profile_id, 'profile_id');
   if (profile.policy_id !== profile.profile_id) throw new Error('policy_id must equal profile_id');
@@ -349,6 +393,7 @@ function assertProfile(profile: any): any {
   if (!Object.hasOwn(ASSURANCE_RANK, profile.required_human_assurance)) throw new Error('required_human_assurance is invalid');
   if (profile.require_action_agreement !== true) throw new Error('profile action agreement cannot be weakened');
   if (!isObject(profile.accepted_issuers)) throw new Error('accepted_issuers must be an object');
+  assertPhysicalStatePolicy(profile.physical_state_policy);
   assertOnlyKeys(profile.accepted_issuers, new Set(M2M_EVIDENCE_TYPES), 'accepted_issuers');
   assertOnlyKeys(profile.freshness_sec, new Set(M2M_EVIDENCE_TYPES), 'freshness_sec');
   for (const type of M2M_EVIDENCE_TYPES) {
@@ -357,6 +402,15 @@ function assertProfile(profile: any): any {
     pins.forEach((pin) => validatePin(pin, type));
     if (!Number.isFinite(profile.freshness_sec?.[type]) || profile.freshness_sec[type] < 0) {
       throw new Error(`freshness_sec.${type} must be a non-negative number`);
+    }
+  }
+  const executorKeys = new Set(profile.physical_state_policy.executor_public_keys);
+  for (const pin of profile.accepted_issuers.physical_state_attestation) {
+    if (pin.control_domain === profile.physical_state_policy.executor_control_domain) {
+      throw new Error('physical-state sensor control domain must be independent from the executor control domain');
+    }
+    if (executorKeys.has(pin.public_key)) {
+      throw new Error('physical-state sensor key must be independent from every executor key');
     }
   }
   if (!Array.isArray(profile.revocation_required)
@@ -382,6 +436,7 @@ export function createModelToMatterProfile(input: any): any {
     revocation_required: clone(input.revocation_required ?? M2M_EVIDENCE_TYPES),
     accepted_issuers: clone(input.accepted_issuers ?? {}),
     require_action_agreement: true,
+    physical_state_policy: clone(input.physical_state_policy),
   };
   assertProfile(profile);
   return deepFreeze(profile);
@@ -390,7 +445,7 @@ export function createModelToMatterProfile(input: any): any {
 /**
  * Project the exact execution-time evidence bar into the content-addressed
  * profile shape accepted by the customer-owned Reliance Program compiler.
- * The v1 projection is deliberately fixed to all six roles; a customer-owned
+ * The v1 projection is deliberately fixed to all seven roles; a customer-owned
  * program selects and signs the bar but cannot weaken this profile version.
  */
 export function createModelToMatterEvidenceRequirement(profile: any): any {
@@ -413,6 +468,7 @@ export function createModelToMatterEvidenceRequirement(profile: any): any {
     })),
     required_human_assurance: pinned.required_human_assurance,
     require_action_agreement: pinned.require_action_agreement,
+    physical_state_policy: clone(pinned.physical_state_policy),
   };
   return deepFreeze({ ...body, profile_hash: canonicalDigest(body) });
 }
@@ -584,6 +640,15 @@ function assertEvidenceBody(body: any): void {
       assertString(claims.decision, 'claims.decision');
       if (!Object.hasOwn(ASSURANCE_RANK, claims.assurance_class)) throw new Error('claims.assurance_class is invalid');
       break;
+    case 'physical_state_attestation':
+      assertString(claims.sensor_network_id, 'claims.sensor_network_id');
+      assertDigest(claims.required_precondition_digest, 'claims.required_precondition_digest');
+      assertDigest(claims.measured_state_digest, 'claims.measured_state_digest');
+      if (Number.isNaN(strictInstantMs(claims.measured_at))) {
+        throw new Error('claims.measured_at must be a valid RFC 3339 instant');
+      }
+      if (typeof claims.match !== 'boolean') throw new Error('claims.match must be a boolean');
+      break;
     default:
       throw new Error('unsupported evidence_type');
   }
@@ -647,9 +712,47 @@ function claimsMatchAction(type: string, claims: any, action: any, requiredHuman
         && claims.decision === 'approve'
         && Object.hasOwn(ASSURANCE_RANK, claims.assurance_class)
         && ASSURANCE_RANK[claims.assurance_class] >= ASSURANCE_RANK[requiredHumanAssurance];
+    case 'physical_state_attestation':
+      // Physical-state acceptance has additional relying-party policy and time
+      // joins in verifyModelToMatterEvidence. This branch proves only that the
+      // signed claim is structurally meaningful; it never asserts physical truth.
+      return typeof claims.sensor_network_id === 'string' && claims.sensor_network_id.length > 0
+        && validDigest(claims.required_precondition_digest)
+        && validDigest(claims.measured_state_digest)
+        && !Number.isNaN(strictInstantMs(claims.measured_at))
+        && typeof claims.match === 'boolean';
     default:
       return false;
   }
+}
+
+function physicalMeasurementBody(artifact: any): any {
+  const body = unsigned(artifact);
+  if (body.evidence_type !== 'physical_state_attestation') {
+    throw new Error('physical-state measurement digest requires physical_state_attestation evidence');
+  }
+  assertEvidenceBody(body);
+  return {
+    '@version': M2M_EVIDENCE_VERSION,
+    evidence_type: body.evidence_type,
+    action_digest: body.action_digest,
+    issuer_id: body.issuer_id,
+    sensor_network_id: body.claims.sensor_network_id,
+    required_precondition_digest: body.claims.required_precondition_digest,
+    measured_state_digest: body.claims.measured_state_digest,
+    measured_at: body.claims.measured_at,
+    match: body.claims.match,
+  };
+}
+
+/**
+ * Stable identity for one claimed physical measurement. The signed validity
+ * window and signature are deliberately excluded, so re-signing the same
+ * measurement cannot change the identifier used by relying-party retirement
+ * state. This identifies a signed claim; it does not establish physical truth.
+ */
+export function physicalStateMeasurementDigest(artifact: any): string {
+  return canonicalDigest(physicalMeasurementBody(artifact));
 }
 
 /**
@@ -661,6 +764,7 @@ export function verifyModelToMatterEvidence(artifact: any, opts: any = {}): any 
     verified: false,
     accepted: false,
     revoked: false,
+    establishes_physical_truth: false,
     reason: null,
     ...overrides,
   });
@@ -707,6 +811,53 @@ export function verifyModelToMatterEvidence(artifact: any, opts: any = {}): any 
       reason: keyMatches.length ? 'pin_missing_or_mismatched_issuer_id' : 'issuer_key_not_pinned',
     };
   }
+  let measurementDigest: string | null = null;
+  if (artifact.evidence_type === 'physical_state_attestation') {
+    const policy = opts.physicalStatePolicy;
+    try { assertPhysicalStatePolicy(policy); } catch {
+      return { ...verified, reason: 'physical_state_policy_missing_or_invalid' };
+    }
+    if (acceptedPin.sensor_network_id !== artifact.claims.sensor_network_id) {
+      return { ...verified, reason: 'sensor_network_mismatch' };
+    }
+    if (acceptedPin.control_domain === policy.executor_control_domain) {
+      return { ...verified, reason: 'sensor_control_domain_not_independent' };
+    }
+    if (policy.executor_public_keys.includes(artifact.signature.public_key)) {
+      return { ...verified, reason: 'sensor_key_not_independent' };
+    }
+    if (artifact.claims.required_precondition_digest !== policy.required_precondition_digest) {
+      return { ...verified, reason: 'required_precondition_mismatch' };
+    }
+    if (artifact.claims.match !== true) {
+      return { ...verified, reason: 'physical_state_mismatch' };
+    }
+    const measuredAt = strictInstantMs(artifact.claims.measured_at);
+    if (measuredAt > asOf) return { ...verified, reason: 'measurement_not_yet_valid' };
+    // The measurement instant deterministically fixes both edges of the
+    // artifact's validity window. Without this rule, a sensor could re-sign
+    // identical measurement claims with a later issued_at or expires_at and
+    // silently renew an expired artifact. The retirement set below remains a
+    // useful replay fence, but correctness does not depend on the relying
+    // party having observed an earlier signature.
+    if (measuredAt !== issuedAt) return { ...verified, reason: 'measurement_issuance_mismatch' };
+    const canonicalExpiresAt = measuredAt + policy.max_validity_duration_sec * 1000;
+    if (expiresAt !== canonicalExpiresAt) {
+      return { ...verified, reason: 'measurement_validity_window_noncanonical' };
+    }
+    if (asOf - measuredAt > policy.max_measurement_age_sec * 1000) {
+      return { ...verified, reason: 'measurement_stale' };
+    }
+    try { measurementDigest = physicalStateMeasurementDigest(artifact); } catch {
+      return { ...verified, reason: 'evidence_body_invalid' };
+    }
+    if (!(opts.retiredPhysicalMeasurementDigests instanceof Set)) {
+      return { ...verified, measurement_digest: measurementDigest, reason: 'measurement_retirement_state_missing' };
+    }
+    if (opts.retiredPhysicalMeasurementDigests.has(measurementDigest)) {
+      return { ...verified, measurement_digest: measurementDigest, reason: 'measurement_reused' };
+    }
+  }
   if (!claimsMatchAction(
     artifact.evidence_type,
     artifact.claims,
@@ -718,7 +869,15 @@ export function verifyModelToMatterEvidence(artifact: any, opts: any = {}): any 
   const revoked = opts.revokedEvidenceDigests instanceof Set
     && opts.revokedEvidenceDigests.has(artifact.signature.evidence_digest);
   if (revoked) return { ...verified, revoked: true, reason: 'revoked' };
-  return { ...verified, accepted: true, reason: null };
+  return {
+    ...verified,
+    accepted: true,
+    reason: null,
+    ...(measurementDigest ? {
+      measurement_digest: measurementDigest,
+      limitation: 'This verifies a signed claim from a pinned sensor network; it is not physical truth.',
+    } : {}),
+  };
 }
 
 /** Build an EP-AEG graph whose identity is unchanged by any external storage choice. */
@@ -770,7 +929,13 @@ export async function createRegisteredModelToMatterChallenge(action: any, profil
   return createRegisteredEvidenceChallenge(action, profile, opts);
 }
 
-function graphVerifiers(action: any, profile: any, asOf: string, revokedEvidenceDigests: Set<string>): any {
+function graphVerifiers(
+  action: any,
+  profile: any,
+  asOf: string,
+  revokedEvidenceDigests: Set<string>,
+  retiredPhysicalMeasurementDigests: Set<string>,
+): any {
   return Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [type, (artifact) => {
     const result = verifyModelToMatterEvidence(artifact, {
       expectedType: type,
@@ -779,6 +944,8 @@ function graphVerifiers(action: any, profile: any, asOf: string, revokedEvidence
       pinnedIssuerKeys: profile.accepted_issuers[type],
       requiredHumanAssurance: profile.required_human_assurance,
       revokedEvidenceDigests,
+      physicalStatePolicy: profile.physical_state_policy,
+      retiredPhysicalMeasurementDigests,
     });
     // Revocation is a verified fact about otherwise accepted evidence. Preserve
     // signature validity so the admissibility layer classifies it as stale /
@@ -912,6 +1079,17 @@ export async function evaluateRegisteredModelToMatterPresentation(input: any = {
       reasons: ['revocation state contains a malformed evidence digest'],
     });
   }
+  if (!(input.retiredPhysicalMeasurementDigests instanceof Set)) {
+    return resultForAction('refused', {
+      reasons: ['explicit physical measurement retirement state is required; absence is not proof of freshness'],
+    });
+  }
+  const retiredPhysicalMeasurementDigests: Set<string> = new Set(input.retiredPhysicalMeasurementDigests);
+  if ([...retiredPhysicalMeasurementDigests].some((digest) => !validDigest(digest))) {
+    return resultForAction('malformed', {
+      reasons: ['physical measurement retirement state contains a malformed digest'],
+    });
+  }
   // The shared graph evaluator supports an open graph vocabulary. This profile
   // deliberately accepts only its closed, edge-free graph shape. Normalize any
   // structurally dangerous object to a refusal path before the generic digestor
@@ -931,6 +1109,7 @@ export async function evaluateRegisteredModelToMatterPresentation(input: any = {
           profile,
           input.as_of,
           revokedEvidenceDigests,
+          retiredPhysicalMeasurementDigests,
         ),
         as_of: input.as_of,
         nonce: input.next_nonce,
@@ -988,6 +1167,8 @@ export async function evaluateRegisteredModelToMatterPresentation(input: any = {
  * @param {*} [params.challengeStore] durable challenge store
  * @param {*} [params.clearanceStore] durable action clearance store
  * @param {Function} [params.revocationProvider] relying-party revocation provider
+ * @param {Function} [params.physicalMeasurementProvider] relying-party provider
+ * of retired physical measurement identities
  * @param {*} [params.relianceProgram] compiled, customer-owned Reliance Program
  * @param {number} [params.challengeTtlSec]
  * @param {() => (number|Date)} [params.now]
@@ -998,6 +1179,7 @@ export function createModelToMatterExecutor({
   challengeStore,
   clearanceStore,
   revocationProvider,
+  physicalMeasurementProvider,
   relianceProgram,
   challengeTtlSec = 300,
   now = Date.now,
@@ -1038,6 +1220,9 @@ export function createModelToMatterExecutor({
   if (typeof revocationProvider !== 'function') {
     throw new Error('Model-to-Matter executor requires a relying-party revocation provider');
   }
+  if (typeof physicalMeasurementProvider !== 'function') {
+    throw new Error('Model-to-Matter executor requires a physical measurement retirement provider');
+  }
   if (!Number.isSafeInteger(challengeTtlSec) || challengeTtlSec < 1 || challengeTtlSec > 86400) {
     throw new Error('Model-to-Matter challengeTtlSec must be an integer from 1 to 86400');
   }
@@ -1046,6 +1231,7 @@ export function createModelToMatterExecutor({
   const consumeChallenge = challengeStore.consume.bind(challengeStore);
   const consumeClearance = clearanceStore.consume.bind(clearanceStore);
   const getRevocations = revocationProvider;
+  const getRetiredPhysicalMeasurements = physicalMeasurementProvider;
   const pinnedChallengeStore = Object.freeze({
     durable: challengeStore.durable === true,
     atomicRegistration: true,
@@ -1090,6 +1276,7 @@ export function createModelToMatterExecutor({
     for (const field of [
       'profile', 'challengeStore', 'clearanceStore', 'revokedEvidenceDigests',
       'revocationProvider', 'relianceProgram', 'requirementBinding',
+      'physicalMeasurementProvider', 'retiredPhysicalMeasurementDigests',
       'as_of', 'next_expires_at', 'next_nonce',
     ]) {
       if (Object.prototype.hasOwnProperty.call(presentation, field)) return field;
@@ -1177,6 +1364,22 @@ export function createModelToMatterExecutor({
       });
     }
 
+    let retiredPhysicalMeasurementDigests;
+    try {
+      const provided = await getRetiredPhysicalMeasurements({
+        action_digest: modelToMatterActionDigest(actionSnapshot),
+        challenge: challengeSnapshot,
+        as_of: asOf,
+      });
+      if (!(provided instanceof Set)) throw new Error('physical measurement provider did not return a Set');
+      retiredPhysicalMeasurementDigests = new Set(provided);
+    } catch {
+      return executorClearance('refused', {
+        action_digest: modelToMatterActionDigest(actionSnapshot),
+        reasons: ['physical measurement retirement state is unavailable or malformed'],
+      });
+    }
+
     let result;
     try {
       result = await evaluateRegisteredModelToMatterPresentation({
@@ -1188,6 +1391,7 @@ export function createModelToMatterExecutor({
         challengeStore: pinnedChallengeStore,
         clearanceStore: pinnedClearanceStore,
         revokedEvidenceDigests,
+        retiredPhysicalMeasurementDigests,
         ...(pinnedRelianceProgram ? { relianceProgram: pinnedRelianceProgram } : {}),
         next_expires_at: new Date(Date.parse(asOf) + challengeTtlSec * 1000).toISOString(),
       });
@@ -1462,6 +1666,7 @@ const modelToMatter = {
   verifyModelToMatterCaid,
   createModelToMatterProfile,
   signModelToMatterEvidence,
+  physicalStateMeasurementDigest,
   verifyModelToMatterEvidence,
   buildModelToMatterGraph,
   createRegisteredModelToMatterChallenge,

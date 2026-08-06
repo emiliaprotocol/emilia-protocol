@@ -8,6 +8,7 @@ import { createDurableConsumptionStore, createMemoryBackend, } from "../../../pa
 const NOW = "2026-07-11T16:00:00Z";
 const ISSUED_AT = "2026-07-11T15:59:00Z";
 const EVIDENCE_EXPIRES = "2026-07-11T16:10:00Z";
+const PHYSICAL_STATE_EXPIRES = "2026-07-11T16:14:00Z";
 const EXACT_CAID = "caid:exact-action";
 const OTHER_CAID = "caid:other-action";
 function digest(label) {
@@ -33,6 +34,14 @@ function publicKey(privateKey) {
         .toString("base64url");
 }
 const evidenceKeys = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [type, deterministicPrivateKey(type)]));
+const executorKey = deterministicPrivateKey('executor');
+const physicalStatePolicy = Object.freeze({
+    required_precondition_digest: digest('required-physical-preconditions'),
+    max_measurement_age_sec: 120,
+    max_validity_duration_sec: 900,
+    executor_control_domain: 'control:cloud-lab:example',
+    executor_public_keys: [publicKey(executorKey)],
+});
 const ACTION_INPUT = Object.freeze({
     action_type: "science.bio.experiment.execute.1",
     model: {
@@ -78,9 +87,14 @@ function createProfile() {
                 {
                     issuer_id: `issuer:${type}`,
                     public_key: publicKey(evidenceKeys[type]),
+                    ...(type === 'physical_state_attestation' ? {
+                        sensor_network_id: 'sensor-network:facility-safe-demo-01',
+                        control_domain: 'control:independent-facility-sensors',
+                    } : {}),
                 },
             ],
         ])),
+        physical_state_policy: physicalStatePolicy,
     });
 }
 function claimsFor(type, action) {
@@ -134,6 +148,15 @@ function claimsFor(type, action) {
             assurance_class: "class_a",
         };
     }
+    if (type === "physical_state_attestation") {
+        return {
+            sensor_network_id: "sensor-network:facility-safe-demo-01",
+            required_precondition_digest: physicalStatePolicy.required_precondition_digest,
+            measured_state_digest: digest("measured-room-state"),
+            measured_at: ISSUED_AT,
+            match: true,
+        };
+    }
     throw new Error(`unknown Model-to-Matter evidence type: ${type}`);
 }
 function signedEvidence(action, type) {
@@ -142,7 +165,9 @@ function signedEvidence(action, type) {
         action_digest: modelToMatterActionDigest(action),
         issuer_id: `issuer:${type}`,
         issued_at: ISSUED_AT,
-        expires_at: EVIDENCE_EXPIRES,
+        expires_at: type === "physical_state_attestation"
+            ? PHYSICAL_STATE_EXPIRES
+            : EVIDENCE_EXPIRES,
         claims: claimsFor(type, action),
     }, evidenceKeys[type]);
 }
@@ -157,6 +182,7 @@ function createExecutor() {
         challengeStore: createDurableChallengeStore(createMemoryBackend()),
         clearanceStore: createDurableConsumptionStore(createMemoryBackend()),
         revocationProvider: async () => new Set(),
+        physicalMeasurementProvider: async () => new Set(),
         allowEphemeralState: true,
         now: () => Date.parse(NOW),
     });
@@ -194,7 +220,7 @@ async function clearanceOnceScenario() {
         scenario: "model-to-matter-clearance-once",
         steps: [
             {
-                operator: "PresentSixExactLegs",
+                operator: "PresentSevenExactLegs",
                 accepted: true,
                 projection: {
                     m2mState: "ready",

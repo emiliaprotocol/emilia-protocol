@@ -11,20 +11,20 @@ been filed. The posted `-03` source and renders remain unchanged.
 - `npm run check:model-to-matter-04`: pass. The checker verifies packet
   inventory, revision metadata, doctrine boundaries, implementation-status
   language, render currency, and checksums.
-- `idnits 3.1.0 -m submission`: one `SUBMISSION_TYPE_UNEXPECTED` diagnostic.
-  The `submissionType="IETF"` attribute is inherited unchanged from the posted
-  `-03` source, which was accepted by Datatracker. No other nit was reported.
+- `idnits 3.1.0 -m submission`: pass, no nit reported.
 
 ## Focused implementation checks
 
-- Model-to-Matter Vitest suites: 46/46 tests passed across 3 files.
-- `npm run m2m:conformance`: 17/17 `EP-MODEL-TO-MATTER-v1` vectors passed.
+- Model-to-Matter Vitest suites: 51/51 tests passed across 4 files.
+- `npm run m2m:conformance`: 25/25 `EP-MODEL-TO-MATTER-v1` vectors passed.
 - `npm run check:standards-staged`: 6 legacy staged XML sources and 12 renders
   passed their existing checksum and metadata checks.
 
-These implementation checks cover the currently shipped six-role profile. The
-new `physical_state_attestation` role is specified by `-04` but is not yet
-implemented or claimed by these tests.
+These checks cover the seven-role profile, canonical physical-measurement
+window, control-domain and key separation, negative and stale measurements,
+role substitution, measurement replay state, and the compiled Reliance Program
+and evidence-requirement digests bound into the clearance object. They use
+synthetic inputs and do not establish physical truth or wet-lab performance.
 
 ## Governed proof snapshot
 

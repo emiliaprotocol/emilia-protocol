@@ -1453,7 +1453,11 @@ li > p:last-of-type:only-child {
       corresponding pinned limit, when the required-precondition digest does
       not match, or when the match verdict is false. An expired artifact MUST
       NOT be renewed by re-signing the same measurement; a new measurement is
-      required.<a href="#section-3-3" class="pilcrow">¶</a></p>
+      required. Profiles MUST define a canonical validity window from the
+      signed measurement instant. The reference profile sets issued_at equal
+      to the measurement instant and derives expires_at by adding the pinned
+      maximum validity duration, so changing only either window edge is a
+      refusal rather than a renewal.<a href="#section-3-3" class="pilcrow">¶</a></p>
 <p id="section-3-4">A deployment MAY express those evidence roles in a customer-owned,
       signed Reliance Program and compile that source into its execution-time
       Gate configuration. When it does, the exact program identifier, version,
@@ -1623,7 +1627,7 @@ li > p:last-of-type:only-child {
 <a href="#section-11" class="section-number selfRef">11. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
       </h2>
 <p id="section-11-1">An Apache-2.0 TypeScript implementation provides the closed Action
-      Object, CAID binding, the six pre-existing signed evidence adapters,
+      Object, CAID binding, all seven signed evidence roles,
       registered challenge, durable single-use clearance, effect statements,
       source-routed Outcome Binding, independently signed observation sets,
       canonical-key and control-domain separation, source status and validity,
@@ -1633,12 +1637,16 @@ li > p:last-of-type:only-child {
       independent implementation is claimed. The repository also contains
       separate implementations of customer-owned Reliance Programs, typed AEB
       boundary terms, and Agent Qualification Statements.<a href="#section-11-1" class="pilcrow">¶</a></p>
-<p id="section-11-2">The physical_state_attestation role specified by this revision is not
-      yet implemented by the Model-to-Matter reference clearance path. The
-      program and requirement digests introduced in revision -03 are also not
-      yet wired into the reference clearance object. These are normative
-      interoperability requirements, not claims that the current reference
-      implementation or a physical deployment already enforces them.<a href="#section-11-2" class="pilcrow">¶</a></p>
+<p id="section-11-2">The reference clearance path requires physical_state_attestation,
+      verifies its exact-action and executor-pinned precondition bindings,
+      enforces independent sensor key and declared control domain, uses the
+      canonical measurement-derived validity window, and refuses missing,
+      stale, negative, substituted, or replayed measurement state. It also
+      binds the compiled reliance_program_digest and
+      evidence_requirement_digest into the clearance object and refuses a
+      mismatched compiled requirement. This is reference implementation and
+      synthetic conformance evidence, not evidence of physical truth, sensor
+      quality, complete hazard coverage, or deployment in a laboratory.<a href="#section-11-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="changes">
@@ -1653,8 +1661,8 @@ li > p:last-of-type:only-child {
       stale, mismatched, or negative artifacts. It also states explicitly that
       a signed measurement is a source claim rather than physical truth and
       does not establish that conditions remain unchanged through execution.
-      The implementation-status section records that this new role is not yet
-      implemented by the reference clearance path.<a href="#section-12-1" class="pilcrow">¶</a></p>
+      The reference implementation and conformance vectors now exercise the
+      seventh role and the -03 program and requirement digest bindings.<a href="#section-12-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <section id="section-13">
