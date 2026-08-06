@@ -48,6 +48,24 @@ test('executor snapshots are detached from later caller mutation', () => {
   assert.deepEqual(snapshot, { destination: 'acct_A', nested: { amount: 10.5 } });
 });
 
+test('post-approval redaction is a different action and requires fresh authority', () => {
+  const approved = snapshotToolArguments({
+    destination: 'vendor@example.test',
+    message: 'release order to account acct_A',
+  });
+  const approvedBinding = bindToolAction('mail.send', approved, 'communication.send');
+  const redactedBinding = bindToolAction('mail.send', {
+    ...approved,
+    message: 'release order to account [REDACTED]',
+  }, 'communication.send');
+
+  assert.notEqual(approvedBinding, redactedBinding);
+  assert.deepEqual(approved, {
+    destination: 'vendor@example.test',
+    message: 'release order to account acct_A',
+  });
+});
+
 test('ambiguous or executable payloads fail closed', () => {
   const accessor = {};
   Object.defineProperty(accessor, 'amount', { enumerable: true, get: () => 10 });

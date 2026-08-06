@@ -2,8 +2,11 @@
 
 This matrix turns the recurring framework-integration failures surfaced during
 the Anton/Claude Cookbook collaboration into repository-wide release checks.
-The unit of authorization is the exact executor call, not a callback boolean,
-tool family, UI acknowledgement, or mutable payload description.
+The unit of authorization is the exact, profile-defined canonical executor
+call and occurrence, not a callback boolean, tool family, UI acknowledgement,
+mutable payload description, or the caller's incidental JSON serialization.
+After binding, the executor uses the detached canonical snapshot or refuses;
+it never silently rewrites authority-bearing fields.
 
 | Failure pattern | Required result | Executable coverage |
 | --- | --- | --- |
@@ -12,6 +15,9 @@ tool family, UI acknowledgement, or mutable payload description.
 | Two OpenAI sibling calls have identical tool and arguments but different call IDs | Receipt for one call cannot authorize the other | `packages/openai-agents/index.test.ts`, `packages/require-receipt/action-binding.test.js` |
 | Receipt carrier changes while material arguments stay identical | Authority and loop fingerprints do not change | `packages/require-receipt/action-binding.test.js`, `tests/mcp-guard-boundary.test.ts` |
 | Caller or selector mutates arguments after binding begins | Execute the detached canonical snapshot; selector receives only a copy | `packages/langchain/index.test.ts`, `packages/openai-agents/index.test.ts`, `packages/crewai/tests/test_crewai.py`, `tests/mcp-guard-boundary.test.ts` |
+| A post-approval policy layer wants to redact or otherwise rewrite the action | Refuse/quarantine the approved action, or obtain fresh authority for the changed canonical action; never issue evidence that action A authorized A-prime | `packages/require-receipt/action-binding.test.js` |
+| An enrolled signing key presents evidence for a different enrolled subject | Refuse before projection or Gate admission even when the native signature is valid | `packages/verify/aeb-psea-adapter.test.ts`, `conformance/vectors/psea-aeb.v1.json` |
+| A human withdraws one approval while their identity credential remains valid | Refuse the exact receipt or standing grant named by the revocation; do not model withdrawal as credential compromise or revoke unrelated approvals | `packages/verify/revocation.test.ts`, `packages/verify/consent-grant.test.ts` |
 | Durable consumption fails | Executor boundary is never entered | `packages/openai-agents/index.test.ts`, `integrations/langchain-emilia/tests/test_client.py` |
 | Tool returns but execution attestation cannot be confirmed | Return `INDETERMINATE`, say do not retry, and do not claim execution evidence | `integrations/langchain-emilia/tests/test_tools.py` |
 | Identical MCP call loops inside the configured window | Local circuit opens with truthful 429; handler count stops | `tests/mcp-guard-boundary.test.ts` |

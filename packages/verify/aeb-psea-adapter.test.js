@@ -229,6 +229,10 @@ test('published hostile PSEA vectors fail closed for their declared reason', () 
         reject_stale_proof: { artifact: artifact(baseClaims({ iat: NOW_SEC - 500, exp: NOW_SEC - 200 })) },
         reject_noncanonical_payload: { artifact: artifact(baseClaims(), { noncanonical: true }) },
         reject_wrong_operation: { artifact: artifact(baseClaims({ psea_op: 'payment.cancel' })) },
+        reject_subject_enrollment_mismatch: {
+            artifact: artifact(),
+            roots: [{ ...root, subject_native_id: 'enrollment:other-subject' }],
+        },
         reject_inadequate_attestation: {
             artifact: artifact(),
             roots: [{ ...root, attestation_status: 'verified-key-only' }],
@@ -252,6 +256,16 @@ test('published hostile PSEA vectors fail closed for their declared reason', () 
         if (vector.reason)
             assert.ok(result.reasons.includes(vector.reason), `${vector.id}: ${result.reasons}`);
     }
+});
+test('an enrolled signing key cannot assert authority for a different subject', () => {
+    const inspected = inspectPseaProof({
+        artifact: artifact(),
+        config,
+        trust_roots: [{ ...root, subject_native_id: 'enrollment:other-subject' }],
+        now: NOW,
+    });
+    assert.equal(inspected.verified, false);
+    assert.ok(inspected.reasons.includes('psea:subject_enrollment_mismatch'));
 });
 test('adapter refuses stale status and never turns PSEA evidence into final authorization', () => {
     const adapter = createPseaAebAdapter();

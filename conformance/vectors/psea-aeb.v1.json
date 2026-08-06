@@ -15,6 +15,7 @@
     { "id": "reject_stale_proof", "mutation": "expired", "accepted": false, "reason": "psea:proof_expired" },
     { "id": "reject_noncanonical_payload", "mutation": "payload_member_order", "accepted": false, "reason": "psea:malformed_or_noncanonical_jws" },
     { "id": "reject_wrong_operation", "mutation": "operation", "accepted": false, "reason": "psea:operation_mismatch" },
+    { "id": "reject_subject_enrollment_mismatch", "mutation": "enrolled_key_subject", "accepted": false, "reason": "psea:subject_enrollment_mismatch" },
     { "id": "reject_inadequate_attestation", "mutation": "attestation", "accepted": false, "reason": "psea:inadequate_attestation" },
     { "id": "reject_action_canonicalization_difference", "mutation": "action_payload", "accepted": false, "reason": "psea:action_hash_mismatch" }
   ]
