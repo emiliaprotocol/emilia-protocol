@@ -26,11 +26,13 @@ import {
   artifactDigest,
   EVIDENCE_GRAPH_VERSION,
 } from '../evidence/evidence-graph.js';
+import { trustProgramDigest } from '../../packages/gate/trust-program.js';
 import { computeCaid, verifyCaid } from '../../caid/impl/js/caid.mjs';
 
 export const M2M_ACTION_VERSION = 'EP-MODEL-TO-MATTER-ACTION-v1';
 export const M2M_PROFILE_VERSION = 'EP-MODEL-TO-MATTER-PROFILE-v1';
 export const M2M_EVIDENCE_VERSION = 'EP-MODEL-TO-MATTER-EVIDENCE-v1';
+export const M2M_EVIDENCE_REQUIREMENT_VERSION = 'EP-MODEL-TO-MATTER-EVIDENCE-REQUIREMENT-v1';
 export const M2M_CLEARANCE_VERSION = 'EP-MODEL-TO-MATTER-CLEARANCE-v1';
 export const M2M_EFFECT_VERSION = 'EP-MODEL-TO-MATTER-EFFECT-v1';
 export const M2M_CAID_ACTION_TYPE = 'science.bio.experiment.execute.1';
@@ -69,6 +71,7 @@ const EVIDENCE_DOMAIN = `${M2M_EVIDENCE_VERSION}\0`;
 const EFFECT_DOMAIN = `${M2M_EFFECT_VERSION}\0`;
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/;
 const M2M_CAID_RE = /^caid:1:science\.bio\.experiment\.execute\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const RELIANCE_PROGRAM_VERSION = 'EP-RELIANCE-PROGRAM-v1';
 const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 const FORBIDDEN_CONTENT_FIELDS = new Set([
   'sequence', 'sequences', 'fasta', 'raw_sequence', 'raw_sequences',
@@ -110,6 +113,10 @@ const DEFAULT_FRESHNESS_SEC = Object.freeze({
 
 function sha256hex(bytes: any): string {
   return crypto.createHash('sha256').update(bytes).digest('hex');
+}
+
+function canonicalDigest(value: any): string {
+  return `sha256:${sha256hex(Buffer.from(canonicalize(value), 'utf8'))}`;
 }
 
 function isObject(value: any): boolean {
@@ -378,6 +385,148 @@ export function createModelToMatterProfile(input: any): any {
   };
   assertProfile(profile);
   return deepFreeze(profile);
+}
+
+/**
+ * Project the exact execution-time evidence bar into the content-addressed
+ * profile shape accepted by the customer-owned Reliance Program compiler.
+ * The v1 projection is deliberately fixed to all six roles; a customer-owned
+ * program selects and signs the bar but cannot weaken this profile version.
+ */
+export function createModelToMatterEvidenceRequirement(profile: any): any {
+  const pinned = clone(profile);
+  assertProfile(pinned);
+  const body = {
+    id: pinned.profile_id,
+    '@version': M2M_EVIDENCE_REQUIREMENT_VERSION,
+    version: 1,
+    policy_id: pinned.policy_id,
+    reliance_purpose: pinned.reliance_purpose,
+    allowed_action_types: [...pinned.allowed_action_types].sort(),
+    required_evidence: M2M_EVIDENCE_TYPES.map((evidenceType) => ({
+      evidence_type: evidenceType,
+      accepted_issuers: [...pinned.accepted_issuers[evidenceType]]
+        .map((issuer) => clone(issuer))
+        .sort((left, right) => canonicalize(left).localeCompare(canonicalize(right))),
+      max_age_sec: pinned.freshness_sec[evidenceType],
+      revocation_required: pinned.revocation_required.includes(evidenceType),
+    })),
+    required_human_assurance: pinned.required_human_assurance,
+    require_action_agreement: pinned.require_action_agreement,
+  };
+  return deepFreeze({ ...body, profile_hash: canonicalDigest(body) });
+}
+
+function assertCompiledRelianceProgram(value: any, evidenceRequirementDigest: string): any {
+  assertOnlyKeys(value, new Set([
+    'version', 'source_digest', 'relying_party_id', 'program', 'program_digest',
+    'trace', 'claim_boundary',
+  ]), 'relianceProgram');
+  if (value.version !== RELIANCE_PROGRAM_VERSION) {
+    throw new Error(`relianceProgram.version must be ${RELIANCE_PROGRAM_VERSION}`);
+  }
+  assertDigest(value.source_digest, 'relianceProgram.source_digest');
+  assertString(value.relying_party_id, 'relianceProgram.relying_party_id');
+  assertDigest(value.program_digest, 'relianceProgram.program_digest');
+  assertString(value.claim_boundary, 'relianceProgram.claim_boundary');
+  if (trustProgramDigest(value.program) !== value.program_digest) {
+    throw new Error('relianceProgram.program_digest does not match the compiled program');
+  }
+  assertString(value.program.program_id, 'relianceProgram.program.program_id');
+  if (!Number.isSafeInteger(value.program.version) || value.program.version < 1) {
+    throw new Error('relianceProgram.program.version must be a positive integer');
+  }
+  assertDigest(value.program.action_digest, 'relianceProgram.program.action_digest');
+  if (typeof value.program.root_caid !== 'string' || !M2M_CAID_RE.test(value.program.root_caid)) {
+    throw new Error('relianceProgram.program.root_caid must be a Model-to-Matter CAID');
+  }
+  if (!Array.isArray(value.trace) || value.trace.length === 0) {
+    throw new Error('relianceProgram.trace must contain the compiled requirement trace');
+  }
+  const stages = new Map<string, any>(value.program.stages.map((stage) => [stage.stage_id, stage]));
+  let requirementPinned = false;
+  for (const trace of value.trace) {
+    assertOnlyKeys(trace, new Set([
+      'stage_id', 'requirement_id', 'profile_id', 'profile_hash',
+    ]), 'relianceProgram.trace');
+    assertString(trace.stage_id, 'relianceProgram.trace.stage_id');
+    assertString(trace.requirement_id, 'relianceProgram.trace.requirement_id');
+    assertString(trace.profile_id, 'relianceProgram.trace.profile_id');
+    assertDigest(trace.profile_hash, 'relianceProgram.trace.profile_hash');
+    const requirement = stages.get(trace.stage_id)?.requirements
+      ?.find((candidate) => candidate.requirement_id === trace.requirement_id);
+    if (!requirement || requirement.policy_digest !== trace.profile_hash) {
+      throw new Error('relianceProgram.trace does not match the compiled program');
+    }
+    const requiredCount = requirement
+      ? (stages.get(trace.stage_id).rule.mode === 'all'
+        ? stages.get(trace.stage_id).requirements.length
+        : stages.get(trace.stage_id).rule.mode === 'any'
+          ? 1
+          : stages.get(trace.stage_id).rule.required)
+      : 0;
+    if (trace.profile_hash === evidenceRequirementDigest
+        && requiredCount === stages.get(trace.stage_id).requirements.length) {
+      requirementPinned = true;
+    }
+  }
+  if (!requirementPinned) {
+    throw new Error('relianceProgram evidence requirement digest does not match the pinned Model-to-Matter profile');
+  }
+  return value;
+}
+
+function createRequirementBinding(profile: any, relianceProgram: any): any {
+  const evidenceRequirement = createModelToMatterEvidenceRequirement(profile);
+  const compiled = clone(relianceProgram);
+  assertCompiledRelianceProgram(compiled, evidenceRequirement.profile_hash);
+  return deepFreeze({
+    reliance_program_id: compiled.program.program_id,
+    reliance_program_version: compiled.program.version,
+    reliance_program_source_digest: compiled.source_digest,
+    reliance_program_digest: compiled.program_digest,
+    evidence_requirement_digest: evidenceRequirement.profile_hash,
+    bound_action_digest: compiled.program.action_digest,
+    bound_action_caid: compiled.program.root_caid,
+    valid_from: compiled.program.valid_from,
+    expires_at: compiled.program.expires_at,
+  });
+}
+
+function requirementBindingRefusal(binding: any, actionDigest: string, actionCaid: string, asOf?: any): string | null {
+  if (!binding) return null;
+  if (binding.bound_action_digest !== actionDigest || binding.bound_action_caid !== actionCaid) {
+    return 'pinned Reliance Program binds a different Model-to-Matter action';
+  }
+  if (asOf !== undefined) {
+    const evaluatedAt = strictInstantMs(asOf);
+    const validFrom = strictInstantMs(binding.valid_from);
+    const expiresAt = strictInstantMs(binding.expires_at);
+    if (!Number.isFinite(evaluatedAt) || !Number.isFinite(validFrom) || !Number.isFinite(expiresAt)
+        || evaluatedAt < validFrom || evaluatedAt >= expiresAt) {
+      return 'pinned Reliance Program is not active at the evaluation time';
+    }
+  }
+  return null;
+}
+
+function clearanceBinding(binding: any): any {
+  return binding ? {
+    reliance_program_id: binding.reliance_program_id,
+    reliance_program_version: binding.reliance_program_version,
+    reliance_program_source_digest: binding.reliance_program_source_digest,
+    reliance_program_digest: binding.reliance_program_digest,
+    evidence_requirement_digest: binding.evidence_requirement_digest,
+  } : {};
+}
+
+function boundReplayDigest(replayDigest: any, binding: any): any {
+  if (!binding || !validDigest(replayDigest)) return replayDigest;
+  return canonicalDigest({
+    '@version': M2M_CLEARANCE_VERSION,
+    evidence_replay_digest: replayDigest,
+    ...clearanceBinding(binding),
+  });
 }
 
 function assertEvidenceBody(body: any): void {
@@ -663,6 +812,11 @@ function clearanceResult(baseVerdict: string, data: any = {}): any {
     action_digest: data.action_digest ?? null,
     action_caid: data.action_caid ?? null,
     replay_digest: data.replay_digest ?? null,
+    reliance_program_id: data.reliance_program_id ?? null,
+    reliance_program_version: data.reliance_program_version ?? null,
+    reliance_program_source_digest: data.reliance_program_source_digest ?? null,
+    reliance_program_digest: data.reliance_program_digest ?? null,
+    evidence_requirement_digest: data.evidence_requirement_digest ?? null,
     reasons: Array.isArray(data.reasons) ? data.reasons : [],
     next_challenge: data.next_challenge ?? null,
     reconciliation_required: data.reconciliation_required === true,
@@ -684,6 +838,7 @@ export async function evaluateRegisteredModelToMatterPresentation(input: any = {
   let presentedGraph;
   let actionDigest;
   let actionCaid;
+  let requirementBinding: any = null;
   try {
     action = deepFreeze(clone(input.action));
     profile = deepFreeze(clone(input.profile));
@@ -696,11 +851,40 @@ export async function evaluateRegisteredModelToMatterPresentation(input: any = {
   } catch (error) {
     return clearanceResult('malformed', { reasons: [`malformed input: ${error.message}`] });
   }
+  if (input.relianceProgram !== undefined) {
+    try {
+      requirementBinding = createRequirementBinding(profile, input.relianceProgram);
+    } catch (error) {
+      return clearanceResult('refused', {
+        action_digest: actionDigest,
+        action_caid: actionCaid,
+        reasons: [`pinned Reliance Program refused: ${error.message}`],
+      });
+    }
+  }
   const resultForAction = (baseVerdict, data = {}) => clearanceResult(baseVerdict, {
     action_digest: actionDigest,
     action_caid: actionCaid,
+    ...clearanceBinding(requirementBinding),
     ...data,
   });
+  const bindingRefusal = requirementBindingRefusal(
+    requirementBinding,
+    actionDigest,
+    actionCaid,
+    input.as_of,
+  );
+  if (bindingRefusal) {
+    if (!bindingRefusal.includes('different Model-to-Matter action')) {
+      return resultForAction('refused', { reasons: [bindingRefusal] });
+    }
+    return {
+      ...resultForAction('action_mismatch', {
+        reasons: [bindingRefusal],
+      }),
+      verdict: 'do_not_execute_action_mismatch',
+    };
+  }
   if (!profile.allowed_action_types.includes(action.action_type)) {
     return resultForAction('malformed', { reasons: ['action_type is not allowed by the profile'] });
   }
@@ -765,7 +949,7 @@ export async function evaluateRegisteredModelToMatterPresentation(input: any = {
       firstClearance = await input.clearanceStore.consume(`model-to-matter:${actionCaid}`);
     } catch {
       return resultForAction('refused', {
-        replay_digest: base.replay_digest,
+        replay_digest: boundReplayDigest(base.replay_digest, requirementBinding),
         reasons: ['action-consumption storage is unavailable or its outcome is indeterminate; execution is frozen pending reconciliation'],
         reconciliation_required: true,
         result: base.result,
@@ -773,7 +957,7 @@ export async function evaluateRegisteredModelToMatterPresentation(input: any = {
     }
     if (firstClearance !== true && firstClearance !== false) {
       return resultForAction('refused', {
-        replay_digest: base.replay_digest,
+        replay_digest: boundReplayDigest(base.replay_digest, requirementBinding),
         reasons: ['action-consumption store returned an ambiguous result; execution is frozen pending reconciliation'],
         reconciliation_required: true,
         result: base.result,
@@ -781,14 +965,14 @@ export async function evaluateRegisteredModelToMatterPresentation(input: any = {
     }
     if (firstClearance !== true) {
       return resultForAction('refused', {
-        replay_digest: base.replay_digest,
+        replay_digest: boundReplayDigest(base.replay_digest, requirementBinding),
         reasons: ['action has already received its one permitted clearance'],
         result: base.result,
       });
     }
   }
   return resultForAction(base.verdict, {
-    replay_digest: base.replay_digest,
+    replay_digest: boundReplayDigest(base.replay_digest, requirementBinding),
     reasons: base.reasons,
     next_challenge: base.next_challenge,
     result: base.result,
@@ -804,6 +988,7 @@ export async function evaluateRegisteredModelToMatterPresentation(input: any = {
  * @param {*} [params.challengeStore] durable challenge store
  * @param {*} [params.clearanceStore] durable action clearance store
  * @param {Function} [params.revocationProvider] relying-party revocation provider
+ * @param {*} [params.relianceProgram] compiled, customer-owned Reliance Program
  * @param {number} [params.challengeTtlSec]
  * @param {() => (number|Date)} [params.now]
  * @param {boolean} [params.allowEphemeralState]
@@ -813,16 +998,27 @@ export function createModelToMatterExecutor({
   challengeStore,
   clearanceStore,
   revocationProvider,
+  relianceProgram,
   challengeTtlSec = 300,
   now = Date.now,
   allowEphemeralState = false,
 }: any = {}): any {
   let pinnedProfile;
+  let pinnedRelianceProgram: any = null;
+  let pinnedRequirementBinding: any = null;
   try {
     pinnedProfile = deepFreeze(clone(profile));
     assertProfile(pinnedProfile);
   } catch {
     throw new Error('Model-to-Matter executor requires a valid relying-party profile');
+  }
+  if (relianceProgram !== undefined) {
+    try {
+      pinnedRelianceProgram = deepFreeze(clone(relianceProgram));
+      pinnedRequirementBinding = createRequirementBinding(pinnedProfile, pinnedRelianceProgram);
+    } catch (error) {
+      throw new Error(`Model-to-Matter executor requires a valid pinned Reliance Program: ${error.message}`);
+    }
   }
   if (typeof challengeStore?.register !== 'function' || typeof challengeStore?.consume !== 'function') {
     throw new Error('Model-to-Matter executor requires a challenge store with register() and consume()');
@@ -866,8 +1062,15 @@ export function createModelToMatterExecutor({
   });
   let reconciliationFreeze: string | null = null;
 
+  function executorClearance(baseVerdict, data: any = {}) {
+    return clearanceResult(baseVerdict, {
+      ...clearanceBinding(pinnedRequirementBinding),
+      ...data,
+    });
+  }
+
   function frozenClearance() {
-    return clearanceResult('refused', {
+    return executorClearance('refused', {
       reasons: [reconciliationFreeze ?? 'executor is frozen pending storage reconciliation'],
       reconciliation_required: true,
     });
@@ -886,7 +1089,8 @@ export function createModelToMatterExecutor({
   function transactionTrustField(presentation) {
     for (const field of [
       'profile', 'challengeStore', 'clearanceStore', 'revokedEvidenceDigests',
-      'revocationProvider', 'as_of', 'next_expires_at', 'next_nonce',
+      'revocationProvider', 'relianceProgram', 'requirementBinding',
+      'as_of', 'next_expires_at', 'next_nonce',
     ]) {
       if (Object.prototype.hasOwnProperty.call(presentation, field)) return field;
     }
@@ -908,6 +1112,15 @@ export function createModelToMatterExecutor({
     } catch {
       throw new Error('Model-to-Matter executor action is invalid');
     }
+    const bindingRefusal = requirementBindingRefusal(
+      pinnedRequirementBinding,
+      modelToMatterActionDigest(actionSnapshot),
+      modelToMatterCaid(actionSnapshot).caid,
+      asOf,
+    );
+    if (bindingRefusal) {
+      throw new Error(bindingRefusal);
+    }
     try {
       return await createRegisteredModelToMatterChallenge(actionSnapshot, pinnedProfile, {
         ...clone(options),
@@ -923,17 +1136,17 @@ export function createModelToMatterExecutor({
   async function evaluate(presentation: any = {}) {
     if (reconciliationFreeze) return frozenClearance();
     const asOf = currentInstant();
-    if (!asOf) return clearanceResult('refused', { reasons: ['executor clock is unavailable or invalid'] });
+    if (!asOf) return executorClearance('refused', { reasons: ['executor clock is unavailable or invalid'] });
     try {
       if (!isObject(presentation)) {
-        return clearanceResult('malformed', { reasons: ['presentation must be an object'] });
+        return executorClearance('malformed', { reasons: ['presentation must be an object'] });
       }
       const injected = transactionTrustField(presentation);
-      if (injected) return clearanceResult('refused', {
+      if (injected) return executorClearance('refused', {
         reasons: [`transaction-scoped trust configuration refused: ${injected}`],
       });
     } catch {
-      return clearanceResult('malformed', { reasons: ['presentation inspection failed'] });
+      return executorClearance('malformed', { reasons: ['presentation inspection failed'] });
     }
 
     let actionSnapshot;
@@ -945,7 +1158,7 @@ export function createModelToMatterExecutor({
       graphSnapshot = deepFreeze(clone(presentation.graph));
       assertAction(actionSnapshot);
     } catch (error) {
-      return clearanceResult('malformed', { reasons: [`malformed presentation: ${error.message}`] });
+      return executorClearance('malformed', { reasons: [`malformed presentation: ${error.message}`] });
     }
 
     let revokedEvidenceDigests;
@@ -958,7 +1171,7 @@ export function createModelToMatterExecutor({
       if (!(provided instanceof Set)) throw new Error('revocation provider did not return a Set');
       revokedEvidenceDigests = new Set(provided);
     } catch {
-      return clearanceResult('refused', {
+      return executorClearance('refused', {
         action_digest: modelToMatterActionDigest(actionSnapshot),
         reasons: ['revocation state is unavailable or malformed'],
       });
@@ -975,10 +1188,11 @@ export function createModelToMatterExecutor({
         challengeStore: pinnedChallengeStore,
         clearanceStore: pinnedClearanceStore,
         revokedEvidenceDigests,
+        ...(pinnedRelianceProgram ? { relianceProgram: pinnedRelianceProgram } : {}),
         next_expires_at: new Date(Date.parse(asOf) + challengeTtlSec * 1000).toISOString(),
       });
     } catch {
-      result = clearanceResult('refused', {
+      result = executorClearance('refused', {
         reasons: ['clearance evaluation failed; executor is frozen pending storage reconciliation'],
         reconciliation_required: true,
       });
@@ -1001,7 +1215,7 @@ export function createModelToMatterExecutor({
         return {
           ok: false,
           allow: false,
-          clearance: clearanceResult('refused', {
+          clearance: executorClearance('refused', {
             reasons: [`transaction-scoped trust configuration refused: ${injected}`],
           }),
         };
@@ -1011,7 +1225,7 @@ export function createModelToMatterExecutor({
       graphSnapshot = deepFreeze(clone(presentation?.graph));
       assertAction(actionSnapshot);
     } catch {
-      return { ok: false, allow: false, clearance: clearanceResult('malformed', { reasons: ['execution action is invalid'] }) };
+      return { ok: false, allow: false, clearance: executorClearance('malformed', { reasons: ['execution action is invalid'] }) };
     }
     const clearance = await evaluate({
       action: actionSnapshot,
@@ -1035,6 +1249,7 @@ export function createModelToMatterExecutor({
       reason: reconciliationFreeze,
     }),
     profile: pinnedProfile,
+    evidence_requirement: createModelToMatterEvidenceRequirement(pinnedProfile),
   });
 }
 

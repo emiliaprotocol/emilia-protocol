@@ -11,6 +11,7 @@ import {
   M2M_EVIDENCE_TYPES,
   M2M_PROFILE_VERSION,
   buildModelToMatterGraph,
+  createModelToMatterEvidenceRequirement,
   createModelToMatterExecutor,
   createModelToMatterAction,
   createModelToMatterProfile,
@@ -26,12 +27,18 @@ import {
   verifyModelToMatterCaid,
 } from '../lib/frontier/model-to-matter.js';
 import {
+  RELIANCE_PROGRAM_SOURCE_VERSION,
+  compileRelianceProgram,
+  signRelianceProgram,
+} from '../packages/gate/reliance-program.js';
+import {
   buildOutcomeObservation,
   observedEffectsDigest,
 } from '../packages/verify/index.js';
 import { predictedEffectsDigest } from '../packages/verify/effect-predicates.js';
 import { createDurableChallengeStore } from '../packages/gate/challenge-store.js';
 import { createDurableConsumptionStore, createMemoryBackend } from '../packages/gate/store.js';
+import { artifactDigest } from '../lib/evidence/evidence-graph.js';
 
 const NOW = '2026-07-11T16:00:00Z';
 const ISSUED_AT = '2026-07-11T15:59:00Z';
@@ -43,6 +50,7 @@ const keys = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [
   crypto.generateKeyPairSync('ed25519').privateKey,
 ]));
 const executorKey = crypto.generateKeyPairSync('ed25519').privateKey;
+const relianceProgramKey = crypto.generateKeyPairSync('ed25519');
 
 function publicKey(privateKey) {
   return crypto.createPublicKey(privateKey)
@@ -163,9 +171,9 @@ function signedEvidence(a, type, overrides = {}, privateKey = keys[type]) {
   return signModelToMatterEvidence({
     evidence_type: type,
     action_digest: modelToMatterActionDigest(a),
-    issuer_id: `issuer:${type}`,
-    issued_at: ISSUED_AT,
-    expires_at: EVIDENCE_EXPIRES,
+    issuer_id: overrides.issuer_id ?? `issuer:${type}`,
+    issued_at: overrides.issued_at ?? ISSUED_AT,
+    expires_at: overrides.expires_at ?? EVIDENCE_EXPIRES,
     claims: { ...claimsFor(type, a), ...(overrides.claims || {}) },
     ...(overrides.outcome ? { outcome: overrides.outcome } : {}),
   }, privateKey);
@@ -183,6 +191,49 @@ function store() {
 
 function actionStore(backend = createMemoryBackend()) {
   return createDurableConsumptionStore(backend);
+}
+
+function relianceProgram(a, p, sourceOverrides = {}) {
+  const requirement = createModelToMatterEvidenceRequirement(p);
+  const source = {
+    '@version': RELIANCE_PROGRAM_SOURCE_VERSION,
+    program_id: 'rp.m2m.example-research:v1',
+    version: 1,
+    relying_party: { id: 'org:example-university', key_id: 'rp-key-1' },
+    root_caid: modelToMatterCaid(a).caid,
+    action_digest: modelToMatterActionDigest(a),
+    valid_from: '2026-07-11T15:00:00Z',
+    expires_at: '2026-07-12T15:00:00Z',
+    stages: [{
+      stage_id: 'model-to-matter-evidence',
+      depends_on: [],
+      rule: { mode: 'all', distinct_subjects: true, distinct_keys: true },
+      profiles: [{
+        profile_id: requirement.id,
+        profile_hash: requirement.profile_hash,
+        evaluation_max_age_sec: 300,
+        revocation_required: true,
+      }],
+    }],
+    execution: {
+      depends_on: ['model-to-matter-evidence'],
+      consequence_mode: 'action-escrow',
+      capability_template_digest: null,
+      escrow_profile_digest: digest('m2m-action-escrow-profile'),
+    },
+    ...structuredClone(sourceOverrides),
+  };
+  const envelope = signRelianceProgram(source, relianceProgramKey.privateKey);
+  const compiled = compileRelianceProgram(envelope, {
+    trustedKeys: {
+      'rp-key-1': {
+        relying_party_id: source.relying_party.id,
+        public_key: publicKey(relianceProgramKey.privateKey),
+      },
+    },
+    profiles: [requirement],
+  });
+  return { requirement, compiled };
 }
 
 describe('EP Model-to-Matter action and profile', () => {
@@ -230,6 +281,13 @@ describe('EP Model-to-Matter action and profile', () => {
       expect(p.accepted_issuers[type]).toHaveLength(1);
     }
     expect(p.required_human_assurance).toBe('class_a');
+
+    const requirement = createModelToMatterEvidenceRequirement(p);
+    expect(requirement.id).toBe(p.profile_id);
+    expect(requirement.profile_hash).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(requirement.required_evidence.map((item) => item.evidence_type))
+      .toEqual(M2M_EVIDENCE_TYPES);
+    expect(Object.isFrozen(requirement)).toBe(true);
   });
 
   it('refuses profile weakening and prototype-inherited assurance labels', async () => {
@@ -606,17 +664,186 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
 });
 
 describe('EP Model-to-Matter pinned executor boundary', () => {
-  function executor(overrides = {}) {
+  function executor(overrides = {}, a = null) {
+    const p = profile();
     return createModelToMatterExecutor({
-      profile: profile(),
+      profile: p,
       challengeStore: store(),
       clearanceStore: actionStore(),
       revocationProvider: async () => new Set(),
       allowEphemeralState: true,
       now: () => Date.parse(NOW),
+      ...(a ? { relianceProgram: relianceProgram(a, p).compiled } : {}),
       ...overrides,
     });
   }
+
+  it('binds the signed Reliance Program and exact evidence requirement into clearance', async () => {
+    const a = action();
+    const p = profile();
+    const { requirement, compiled } = relianceProgram(a, p);
+    const gate = executor({ profile: p, relianceProgram: compiled });
+    const challenge = await gate.issueChallenge(a, { nonce: 'm2m-reliance-binding' });
+    const result = await gate.evaluate({
+      action: a,
+      challenge,
+      graph: buildModelToMatterGraph(a, evidenceSet(a)),
+    });
+
+    expect(result).toMatchObject({
+      verdict: 'clear_to_execute',
+      reliance_program_id: compiled.program.program_id,
+      reliance_program_version: compiled.program.version,
+      reliance_program_source_digest: compiled.source_digest,
+      reliance_program_digest: compiled.program_digest,
+      evidence_requirement_digest: requirement.profile_hash,
+    });
+  });
+
+  it('refuses missing roles, cross-role substitution, and mismatched program pins', async () => {
+    const a = action();
+    const p = profile();
+    const { compiled } = relianceProgram(a, p);
+
+    const missingGate = executor({ profile: p, relianceProgram: compiled });
+    const missingChallenge = await missingGate.issueChallenge(a, { nonce: 'm2m-program-missing-role' });
+    const missing = await missingGate.evaluate({
+      action: a,
+      challenge: missingChallenge,
+      graph: buildModelToMatterGraph(a, evidenceSet(a, ['biosafety_review'])),
+    });
+    expect(missing.verdict).toBe('do_not_execute_missing_evidence');
+    expect(missing.evidence_requirement_digest).toBe(createModelToMatterEvidenceRequirement(p).profile_hash);
+
+    const substitutionGate = executor({ profile: p, relianceProgram: compiled });
+    const substitutionChallenge = await substitutionGate.issueChallenge(a, { nonce: 'm2m-program-role-swap' });
+    const substitute = signedEvidence(a, 'model_attestation', { issued_at: '2026-07-11T15:59:01Z' });
+    const substitutedGraph = structuredClone(buildModelToMatterGraph(a, evidenceSet(a, ['biosafety_review'])));
+    substitutedGraph.nodes.push({
+      id: artifactDigest(substitute),
+      type: 'biosafety_review',
+      artifact: substitute,
+    });
+    const substituted = await substitutionGate.evaluate({
+      action: a,
+      challenge: substitutionChallenge,
+      graph: substitutedGraph,
+    });
+    expect(substituted.verdict).not.toBe('clear_to_execute');
+    expect(substituted.reasons.join(' ')).toMatch(/biosafety_review/i);
+
+    const stricterProfile = profile({ freshness_sec: { domain_screening: 299 } });
+    const mismatched = relianceProgram(a, stricterProfile).compiled;
+    expect(() => executor({ profile: p, relianceProgram: mismatched }))
+      .toThrow(/evidence requirement digest/i);
+
+    const otherAction = action({ destination_digest: digest('other-program-action') });
+    const otherGate = executor({ profile: p, relianceProgram: compiled });
+    await expect(otherGate.issueChallenge(otherAction)).rejects.toThrow(/Reliance Program.*action/i);
+
+    const expiredProgram = relianceProgram(a, p, {
+      valid_from: '2026-07-10T15:00:00Z',
+      expires_at: '2026-07-11T15:30:00Z',
+    }).compiled;
+    const expiredGate = executor({ profile: p, relianceProgram: expiredProgram });
+    await expect(expiredGate.issueChallenge(a)).rejects.toThrow(/Reliance Program is not active/i);
+  });
+
+  it('refuses corrupted compiled-program structure before challenge issuance', () => {
+    const a = action();
+    const p = profile();
+    const { compiled } = relianceProgram(a, p);
+    const cases = [
+      {
+        label: 'wrapper version',
+        mutate(program) { program.version = 'EP-RELIANCE-PROGRAM-v0'; },
+        reason: /relianceProgram\.version/i,
+      },
+      {
+        label: 'compiled digest',
+        mutate(program) { program.program_digest = digest('wrong-compiled-program'); },
+        reason: /program_digest/i,
+      },
+      {
+        label: 'CAID family',
+        build() {
+          return relianceProgram(a, p, {
+            root_caid: `caid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`,
+          }).compiled;
+        },
+        reason: /Model-to-Matter CAID/i,
+      },
+      {
+        label: 'empty trace',
+        mutate(program) { program.trace = []; },
+        reason: /trace/i,
+      },
+      {
+        label: 'trace mapping',
+        mutate(program) { program.trace[0].requirement_id = 'different-requirement'; },
+        reason: /trace/i,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const candidate = testCase.build ? testCase.build() : structuredClone(compiled);
+      testCase.mutate?.(candidate);
+      expect(() => executor({ profile: p, relianceProgram: candidate }), testCase.label)
+        .toThrow(testCase.reason);
+    }
+  });
+
+  it('refuses invalid or inactive Reliance Programs at the low-level evaluator boundary', async () => {
+    const a = action();
+    const p = profile();
+    const challengeStore = store();
+    const challenge = await createRegisteredModelToMatterChallenge(a, p, {
+      challengeStore,
+      expires_at: CHALLENGE_EXPIRES,
+      nonce: 'm2m-low-level-program-refusal',
+    });
+    const graph = buildModelToMatterGraph(a, evidenceSet(a));
+    const invalid = structuredClone(relianceProgram(a, p).compiled);
+    invalid.version = 'EP-RELIANCE-PROGRAM-v0';
+    const malformedProgram = await evaluateRegisteredModelToMatterPresentation({
+      action: a,
+      challenge,
+      graph,
+      profile: p,
+      relianceProgram: invalid,
+      as_of: NOW,
+      challengeStore,
+      clearanceStore: actionStore(),
+      revokedEvidenceDigests: new Set(),
+    });
+    expect(malformedProgram).toMatchObject({
+      verdict: 'do_not_execute_refused',
+      clear_to_execute: false,
+    });
+    expect(malformedProgram.reasons.join(' ')).toMatch(/pinned Reliance Program refused/i);
+
+    const expired = relianceProgram(a, p, {
+      valid_from: '2026-07-10T15:00:00Z',
+      expires_at: '2026-07-11T15:30:00Z',
+    }).compiled;
+    const inactive = await evaluateRegisteredModelToMatterPresentation({
+      action: a,
+      challenge,
+      graph,
+      profile: p,
+      relianceProgram: expired,
+      as_of: NOW,
+      challengeStore,
+      clearanceStore: actionStore(),
+      revokedEvidenceDigests: new Set(),
+    });
+    expect(inactive).toMatchObject({
+      verdict: 'do_not_execute_refused',
+      base_verdict: 'refused',
+      clear_to_execute: false,
+    });
+    expect(inactive.reasons).toEqual(['pinned Reliance Program is not active at the evaluation time']);
+  });
 
   it('pins all trust configuration and invokes the effect adapter only after one successful clearance', async () => {
     const a = action();
@@ -659,7 +886,8 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     const a = action();
     for (const field of [
       'profile', 'challengeStore', 'clearanceStore', 'revokedEvidenceDigests',
-      'revocationProvider', 'as_of', 'next_expires_at', 'next_nonce',
+      'revocationProvider', 'relianceProgram', 'requirementBinding',
+      'as_of', 'next_expires_at', 'next_nonce',
     ]) {
       const gate = executor();
       const challenge = await gate.issueChallenge(a, { nonce: `m2m-injected-${field}` });

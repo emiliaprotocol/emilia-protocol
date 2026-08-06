@@ -419,11 +419,11 @@
     },
     {
       "path": "lib/frontier/model-to-matter.js",
-      "sha256": "a650316a5f9660916f59096fec078f7ecab5b901c021ea963b114fa4e387cc90"
+      "sha256": "2c302fbc383faccfa1531441591c112b009cfe572b9b2b31f657829fb023c693"
     },
     {
       "path": "lib/frontier/model-to-matter.ts",
-      "sha256": "0a62964a7b261129b498a4c3cbff9768fba27866464ea8be3b8bf931a7706cbe"
+      "sha256": "0d1e693dcb7a23e4fd47ecec052bd1ede507451a2d2637bc4bd0377c47ce8996"
     },
     {
       "path": "lib/grace/curtailment.js",
@@ -880,6 +880,10 @@
     {
       "path": "packages/gate/store.js",
       "sha256": "0fedd5970540ef928722ba5a7c4f38530f9242f541cc88dc2c7482bb0a35bb24"
+    },
+    {
+      "path": "packages/gate/trust-program.js",
+      "sha256": "985eaac462c09f19ed7862f7c106dded96188675f741b98cdfee957c113301c3"
     },
     {
       "path": "packages/mobile/action-identity.js",

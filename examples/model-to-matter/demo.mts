@@ -13,15 +13,22 @@ import {
   M2M_EVIDENCE_TYPES,
   buildModelToMatterGraph,
   createModelToMatterAction,
+  createModelToMatterEvidenceRequirement,
   createModelToMatterExecutor,
   createModelToMatterProfile,
   modelToMatterActionDigest,
+  modelToMatterCaid,
   signModelToMatterEffect,
   signModelToMatterEvidence,
   verifyModelToMatterEffect,
 } from '../../lib/frontier/model-to-matter.js';
 import { createDurableChallengeStore } from '../../packages/gate/challenge-store.js';
 import { createDurableConsumptionStore, createMemoryBackend } from '../../packages/gate/store.js';
+import {
+  RELIANCE_PROGRAM_SOURCE_VERSION,
+  compileRelianceProgram,
+  signRelianceProgram,
+} from '../../packages/gate/reliance-program.js';
 
 const NOW = '2026-07-11T16:00:00Z';
 const EVIDENCE_EXPIRES = '2026-07-11T16:10:00Z';
@@ -69,6 +76,45 @@ const acceptedIssuers = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [typ
 const profile = createModelToMatterProfile({
   profile_id: 'ep:m2m:frontier-bio-research:v1',
   accepted_issuers: acceptedIssuers,
+});
+const evidenceRequirement = createModelToMatterEvidenceRequirement(profile);
+const relianceProgramKey = keyPair();
+const relianceProgramSource = {
+  '@version': RELIANCE_PROGRAM_SOURCE_VERSION,
+  program_id: 'rp.m2m.frontier-bio-research:v1',
+  version: 1,
+  relying_party: { id: action.principal.organization_id, key_id: 'rp-key-1' },
+  root_caid: modelToMatterCaid(action).caid,
+  action_digest: modelToMatterActionDigest(action),
+  valid_from: '2026-07-11T15:00:00Z',
+  expires_at: '2026-07-12T15:00:00Z',
+  stages: [{
+    stage_id: 'model-to-matter-evidence',
+    depends_on: [],
+    rule: { mode: 'all', distinct_subjects: true, distinct_keys: true },
+    profiles: [{
+      profile_id: evidenceRequirement.id,
+      profile_hash: evidenceRequirement.profile_hash,
+      evaluation_max_age_sec: 300,
+      revocation_required: true,
+    }],
+  }],
+  execution: {
+    depends_on: ['model-to-matter-evidence'],
+    consequence_mode: 'action-escrow',
+    capability_template_digest: null,
+    escrow_profile_digest: digest('model-to-matter-action-escrow-profile'),
+  },
+};
+const signedRelianceProgram = signRelianceProgram(relianceProgramSource, relianceProgramKey);
+const relianceProgram = compileRelianceProgram(signedRelianceProgram, {
+  trustedKeys: {
+    'rp-key-1': {
+      relying_party_id: relianceProgramSource.relying_party.id,
+      public_key: publicKey(relianceProgramKey),
+    },
+  },
+  profiles: [evidenceRequirement],
 });
 
 function claimsFor(type) {
@@ -133,6 +179,7 @@ const actionClearanceBackend = createMemoryBackend();
 function executorFor(challengeStore, revokedEvidenceDigests = new Set()) {
   return createModelToMatterExecutor({
     profile,
+    relianceProgram,
     challengeStore,
     clearanceStore: createDurableConsumptionStore(actionClearanceBackend),
     revocationProvider: async () => new Set(revokedEvidenceDigests),
@@ -156,6 +203,8 @@ async function evaluateOnce(label, artifacts, revokedEvidenceDigests = new Set()
 
 console.log('\nMODEL-TO-MATTER: frontier proposal -> physical executor\n');
 console.log(`STRUCTURE PASS  action is well-formed (${modelToMatterActionDigest(action).slice(0, 27)}...)`);
+console.log(`PROGRAM PASS    customer program ${relianceProgram.program_digest.slice(0, 27)}...`);
+console.log(`REQUIREMENT     exact six-role bar ${evidenceRequirement.profile_hash.slice(0, 27)}...`);
 console.log('                Structural validity is not permission to execute.\n');
 
 const rows: Array<[string, any, string]> = [];
@@ -240,8 +289,15 @@ const tamperedEffect = verifyModelToMatterEffect({ ...effect, status: 'failed' }
 });
 rows.push(['tampered effect statement', tamperedEffect.accepted ? 'accepted' : tamperedEffect.reason, 'digest_mismatch']);
 
+rows.push([
+  'clearance program/requirement binding',
+  cleared?.reliance_program_digest === relianceProgram.program_digest
+    && cleared?.evidence_requirement_digest === evidenceRequirement.profile_hash ? 'bound' : 'binding_mismatch',
+  'bound',
+]);
 for (const [label, actual] of rows) {
-  const prefix = actual === 'clear_to_execute' || actual === 'accepted' ? 'CLEAR ' : 'REFUSE';
+  const prefix = actual === 'clear_to_execute' || actual === 'accepted' || actual === 'bound'
+    ? 'CLEAR ' : 'REFUSE';
   console.log(`${prefix.padEnd(7)} ${label.padEnd(42)} -> ${actual}`);
 }
 

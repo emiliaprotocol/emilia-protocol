@@ -9,6 +9,7 @@ import {
   verifyModelToMatterCaid,
   verifyModelToMatterEffect,
 } from '../lib/frontier/model-to-matter.js';
+import { artifactDigest } from '../lib/evidence/evidence-graph.js';
 import { createDurableChallengeStore } from '../packages/gate/challenge-store.js';
 import { createDurableConsumptionStore, createMemoryBackend } from '../packages/gate/store.js';
 
@@ -37,7 +38,22 @@ async function challenge(challengeStore, nonce) {
 }
 
 function graphFor(vector) {
-  return buildModelToMatterGraph(suite.action, suite.evidence_sets[vector.evidence_set]);
+  const evidence = suite.evidence_sets[vector.evidence_set];
+  if (vector.kind !== 'role_substitution') {
+    return buildModelToMatterGraph(suite.action, evidence);
+  }
+  const byRole = new Map();
+  for (const artifact of evidence) {
+    if (!byRole.has(artifact.evidence_type)) byRole.set(artifact.evidence_type, artifact);
+  }
+  const graph = structuredClone(buildModelToMatterGraph(suite.action, [...byRole.values()]));
+  const substitute = [...evidence].reverse().find((artifact) => artifact.evidence_type === 'model_attestation');
+  graph.nodes.push({
+    id: artifactDigest(substitute),
+    type: vector.substitute_for,
+    artifact: structuredClone(substitute),
+  });
+  return graph;
 }
 
 function inputFor(vector, registeredChallenge, challengeStore, clearanceStore) {
@@ -50,6 +66,9 @@ function inputFor(vector, registeredChallenge, challengeStore, clearanceStore) {
     challengeStore,
     clearanceStore,
     revokedEvidenceDigests: new Set(vector.revoked_evidence_digests || []),
+    relianceProgram: vector.reliance_program === 'mismatched'
+      ? suite.mismatched_reliance_program
+      : suite.reliance_program,
   };
 }
 
@@ -74,7 +93,7 @@ for (const vector of suite.vectors) {
     }
 
     const state = stores();
-    if (vector.kind === 'presentation') {
+    if (vector.kind === 'presentation' || vector.kind === 'role_substitution') {
       const registered = await challenge(state.challengeStore, `m2m-vector-${vector.id}`);
       const clearanceStore = vector.clearance_store === 'throw'
         ? { consume: async () => { throw new Error('simulated storage failure'); } }
@@ -83,6 +102,11 @@ for (const vector of suite.vectors) {
         inputFor(vector, registered, state.challengeStore, clearanceStore),
       );
       assertEqual(vector.id, 'verdict', result.verdict, vector.expect.verdict);
+      for (const field of ['reliance_program_digest', 'evidence_requirement_digest']) {
+        if (Object.hasOwn(vector.expect, field)) {
+          assertEqual(vector.id, field, result[field], vector.expect[field]);
+        }
+      }
       if (Object.hasOwn(vector.expect, 'reconciliation_required')) {
         assertEqual(vector.id, 'reconciliation_required', result.reconciliation_required, vector.expect.reconciliation_required);
       }

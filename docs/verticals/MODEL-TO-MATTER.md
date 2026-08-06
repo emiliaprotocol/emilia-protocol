@@ -71,6 +71,22 @@ types. It cannot disable action agreement or revocation requirements. The
 executor pins accepted `(issuer_id, Ed25519 public key)` pairs, freshness windows,
 the allowed action type, and the minimum human-assurance class.
 
+`createModelToMatterEvidenceRequirement()` deterministically projects that
+complete profile into a content-addressed catalog entry for the customer-owned
+Reliance Program compiler. The resulting `profile_hash` is the
+`evidence_requirement_digest`. The v1 projection always contains all six roles;
+expressing it in a customer-owned program does not permit a `3 of 6` weakening.
+
+### Customer-owned Reliance Program binding
+
+A deployment may sign and compile a Reliance Program whose action digest and
+root CAID identify one exact Model-to-Matter action and whose profile reference
+pins the projected evidence requirement. Passing that compiled program to
+`createModelToMatterExecutor()` makes it construction-time trust configuration.
+The executor refuses a program with a mismatched compiled digest, trace,
+requirement hash, action digest, or CAID. A presenter cannot replace the program
+inside a transaction.
+
 ### Evidence adapters
 
 `EP-MODEL-TO-MATTER-EVIDENCE-v1` is a closed normalized adapter output, not a
@@ -101,11 +117,20 @@ digest itself, so two different challenges cannot each clear the same
 
 Production integrations use `createModelToMatterExecutor()`. It snapshots the
 relying-party profile, captures the validated challenge/action-store methods,
-and pins a revocation provider at construction. Transaction input may carry
-only the action, registered challenge, and evidence graph; a profile, store,
-clock, revocation set, or verifier supplied with that presentation is refused.
-Its `run()` method obtains one clearance before invoking the effect adapter and
-passes only a frozen pre-await action snapshot to that adapter.
+pins a revocation provider, and optionally pins the compiled Reliance Program
+at construction. Transaction input may carry only the action, registered
+challenge, and evidence graph; a profile, program, store, clock, revocation set,
+or verifier supplied with that presentation is refused. Its `run()` method
+obtains one clearance before invoking the effect adapter and passes only a
+frozen pre-await action snapshot to that adapter.
+
+When a Reliance Program is configured, every clearance records
+`reliance_program_id`, `reliance_program_version`,
+`reliance_program_source_digest`, `reliance_program_digest`, and
+`evidence_requirement_digest`. The clearance replay digest is recomputed over
+the underlying evidence replay digest plus those five fields, so they are part
+of the value consumed by the effect and outcome bindings rather than mutable
+descriptive metadata.
 
 A successful evaluation returns `clear_to_execute`. Every other result is a
 closed `do_not_execute_*` verdict. After execution, the pinned executor may sign
@@ -125,6 +150,10 @@ The public test contract, deterministic vector suite, and demo cover:
 - expired and revoked evidence;
 - absent revocation state;
 - missing evidence and machine-readable follow-up;
+- compiled Reliance Program and evidence-requirement digest binding;
+- refusal of a valid compiled program for a different evidence requirement;
+- refusal of cross-role substitution, including a model attestation presented
+  as a biosafety review;
 - one winner under concurrent presentation;
 - one winner across independently issued challenges for the same action;
 - refusal of replayed challenges;
@@ -152,13 +181,16 @@ partnership, or endorsement.
 An initial pilot needs adapters, not replacement systems:
 
 1. A model deployment emits its existing manifest and safeguards attestations.
-2. A safety evaluator signs the digest of its existing safety case.
-3. The institution maps its authorization decision into the authority adapter.
-4. A biosafety process signs its protocol and facility decision.
-5. A screening provider signs a result bound to the opaque materials commitment
+2. The customer signs a Reliance Program that pins the exact action and the
+   content-addressed six-role evidence requirement; the executor compiles and
+   pins it before accepting presentations.
+3. A safety evaluator signs the digest of its existing safety case.
+4. The institution maps its authorization decision into the authority adapter.
+5. A biosafety process signs its protocol and facility decision.
+6. A screening provider signs a result bound to the opaque materials commitment
    and destination.
-6. A responsible person completes a device-bound approval ceremony.
-7. A cloud-lab or instrument gateway evaluates the graph and consumes the
+7. A responsible person completes a device-bound approval ceremony.
+8. A cloud-lab or instrument gateway evaluates the graph and consumes the
    challenge immediately before execution.
 
 GPT-Rosalind can be evaluated in a non-authoritative role: extracting candidate

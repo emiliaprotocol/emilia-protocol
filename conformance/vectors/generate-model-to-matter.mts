@@ -10,12 +10,18 @@ import {
   M2M_CAID_ACTION_TYPE,
   M2M_EVIDENCE_TYPES,
   createModelToMatterAction,
+  createModelToMatterEvidenceRequirement,
   createModelToMatterProfile,
   modelToMatterActionDigest,
   modelToMatterCaid,
   signModelToMatterEffect,
   signModelToMatterEvidence,
 } from '../../lib/frontier/model-to-matter.js';
+import {
+  RELIANCE_PROGRAM_SOURCE_VERSION,
+  compileRelianceProgram,
+  signRelianceProgram,
+} from '../../packages/gate/reliance-program.js';
 
 const ISSUED_AT = '2026-07-19T11:59:00Z';
 const AS_OF = '2026-07-19T12:00:00Z';
@@ -86,6 +92,59 @@ const profile = createModelToMatterProfile({
   profile_id: 'ep:m2m:conformance:v1',
   accepted_issuers: acceptedIssuers,
 });
+
+function compiledRelianceProgram(selectedProfile, programId) {
+  const requirement = createModelToMatterEvidenceRequirement(selectedProfile);
+  const relianceKey = testPrivateKey(`reliance-program:${programId}`);
+  const source = {
+    '@version': RELIANCE_PROGRAM_SOURCE_VERSION,
+    program_id: programId,
+    version: 1,
+    relying_party: { id: 'org:example-research-institute', key_id: `key:${programId}` },
+    root_caid: modelToMatterCaid(action).caid,
+    action_digest: modelToMatterActionDigest(action),
+    valid_from: '2026-07-19T11:00:00Z',
+    expires_at: '2026-07-20T11:00:00Z',
+    stages: [{
+      stage_id: 'model-to-matter-evidence',
+      depends_on: [],
+      rule: { mode: 'all', distinct_subjects: true, distinct_keys: true },
+      profiles: [{
+        profile_id: requirement.id,
+        profile_hash: requirement.profile_hash,
+        evaluation_max_age_sec: 300,
+        revocation_required: true,
+      }],
+    }],
+    execution: {
+      depends_on: ['model-to-matter-evidence'],
+      consequence_mode: 'action-escrow',
+      capability_template_digest: null,
+      escrow_profile_digest: digest('m2m-conformance-action-escrow-profile'),
+    },
+  };
+  const envelope = signRelianceProgram(source, relianceKey);
+  return {
+    requirement,
+    compiled: compileRelianceProgram(envelope, {
+      trustedKeys: {
+        [source.relying_party.key_id]: {
+          relying_party_id: source.relying_party.id,
+          public_key: publicKey(relianceKey),
+        },
+      },
+      profiles: [requirement],
+    }),
+  };
+}
+
+const reliance = compiledRelianceProgram(profile, 'rp.m2m.conformance:v1');
+const alternateProfile = createModelToMatterProfile({
+  profile_id: profile.profile_id,
+  accepted_issuers: acceptedIssuers,
+  freshness_sec: { domain_screening: 299 },
+});
+const mismatchedReliance = compiledRelianceProgram(alternateProfile, 'rp.m2m.conformance-mismatch:v1');
 
 function claimsFor(type, overrides = {}) {
   const claims = {
@@ -162,6 +221,9 @@ function signEvidence(type, {
 }
 
 const valid = M2M_EVIDENCE_TYPES.map((type) => signEvidence(type));
+const alternateModelAttestation = signEvidence('model_attestation', {
+  issuedAt: '2026-07-19T11:59:01Z',
+});
 function replace(type, artifact) {
   return valid.map((candidate) => candidate.evidence_type === type ? artifact : candidate);
 }
@@ -183,6 +245,10 @@ const evidenceSets = {
   weak_human: replace('human_authorization', signEvidence('human_authorization', {
     claims: { assurance_class: 'software' },
   })),
+  model_for_biosafety: [
+    ...valid.filter((artifact) => artifact.evidence_type !== 'biosafety_review'),
+    alternateModelAttestation,
+  ],
 };
 
 const humanEvidence = valid.find((artifact) => artifact.evidence_type === 'human_authorization');
@@ -211,6 +277,9 @@ const suite = {
   action,
   caid: modelToMatterCaid(action),
   profile,
+  reliance_program: reliance.compiled,
+  mismatched_reliance_program: mismatchedReliance.compiled,
+  evidence_requirement_digest: reliance.requirement.profile_hash,
   evidence_sets: evidenceSets,
   effect_fixture: {
     effect,
@@ -223,8 +292,14 @@ const suite = {
   vectors: [
     { id: 'accept_registered_caid', kind: 'caid', expect: { valid: true } },
     { id: 'refuse_caid_action_substitution', kind: 'caid', action_overrides: { destination_digest: digest('other-caid-destination') }, expect: { valid: false } },
-    { id: 'accept_complete_evidence', kind: 'presentation', evidence_set: 'valid', expect: { verdict: 'clear_to_execute' } },
+    { id: 'accept_complete_evidence', kind: 'presentation', evidence_set: 'valid', expect: {
+      verdict: 'clear_to_execute',
+      reliance_program_digest: reliance.compiled.program_digest,
+      evidence_requirement_digest: reliance.requirement.profile_hash,
+    } },
     { id: 'refuse_missing_domain_screening', kind: 'presentation', evidence_set: 'missing_domain_screening', expect: { verdict: 'do_not_execute_missing_evidence' } },
+    { id: 'refuse_cross_role_model_for_biosafety', kind: 'role_substitution', evidence_set: 'model_for_biosafety', substitute_for: 'biosafety_review', expect: { verdict: 'do_not_execute_unverifiable' } },
+    { id: 'refuse_mismatched_evidence_requirement_digest', kind: 'presentation', evidence_set: 'valid', reliance_program: 'mismatched', expect: { verdict: 'do_not_execute_refused' } },
     { id: 'refuse_unpinned_domain_screening', kind: 'presentation', evidence_set: 'unpinned_domain_screening', expect: { verdict: 'do_not_execute_unverifiable' } },
     { id: 'refuse_expired_domain_screening', kind: 'presentation', evidence_set: 'expired_domain_screening', expect: { verdict: 'do_not_execute_unverifiable' } },
     { id: 'refuse_revoked_human_authorization', kind: 'presentation', evidence_set: 'valid', revoked_evidence_digests: [humanEvidence.signature.evidence_digest], expect: { verdict: 'do_not_execute_stale_evidence' } },

@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-06T13:05:40.425Z",
+  "evidence_snapshot_at": "2026-08-06T16:56:52.671Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "b4208b73d458233d22e386e18427875db7c6cd60bc5fd00306b92a96bd86faf7",
+    "input_digest_sha256": "c89cdf1849d33d08405cebbff32377b7f9302df78600c036b856028ddea09ab3",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "29089d6489a80f4ea4b229da2f63ea6c4ded12ca89b636a9442db0636173b394",
+        "sha256": "86da324ebc72d70e0b3fb3c05feccda0d7fc634b79cd47368ecfaf3cc8a683ca",
         "bytes": 4298
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "9ea8a22a334beb69c7b45ca24e4789b012254d2e2285f6ebc08a3988e279ed74",
+        "sha256": "b456bfef3c3179579d87d6e393dc76078dec83e65e0794dcad935490a5af6876",
         "bytes": 381402
       },
       {
@@ -62,8 +62,8 @@
       },
       {
         "path": "conformance/vectors/model-to-matter.v1.json",
-        "sha256": "92a19544dff130da7b91507f7b86f521cb40230e58fc208c06d5c65b56e093ad",
-        "bytes": 49117
+        "sha256": "e27ce4282750d49ebbc0ca0f5664de9d4b15347a82c73b1034f2830dcc704260",
+        "bytes": 61393
       }
     ],
     "freshness_command": "npm run check:llm-context"
@@ -272,7 +272,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 8732,
+      "total": 8736,
       "files": 520,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -314,7 +314,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "5d3c027a13050be887c8a58ccdafc1adf68bac14d60481f4a966e251a1ec2768",
+        "evidenceSha256": "116cd99646fca255324ac2a655e2de63588636ebe672490719af8c7b1234ec3f",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -384,7 +384,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 255,
-      "evidence_bundle_sha256": "98c15fd337633240c74b27a9b63e5ae299ceb9c4146c48f14f4e5ed4fac21e1c"
+      "evidence_bundle_sha256": "cd4f161cacfafc7dcdb9b713bbd54467c4786d60c8a16ee4ae3f9f2df84e9d55"
     },
     "caid": {
       "core_vectors": 48,
@@ -403,7 +403,7 @@
     },
     "model_to_matter": {
       "profile": "EP-MODEL-TO-MATTER-v1",
-      "deterministic_vectors": 15,
+      "deterministic_vectors": 17,
       "implementation_languages": [
         "javascript"
       ],
