@@ -1,9 +1,11 @@
 # Preprint staging: Authorization Receipts
 
-**Status: SUBMITTED AND EMAIL-CONFIRMED AT IACR; AWAITING EDITORIAL REVIEW.**
-Submission `xxxx/110952` was received and confirmed on 5 August 2026 PT. The
-source, PDF, and repository evidence claims are checker-gated. No public ePrint
-number has been assigned yet.
+**Status: REJECTED BY IACR EDITORIAL REVIEW; REVISION IN PROGRESS.**
+Submission `xxxx/110952` was received on 5 August 2026 PT and rejected on 6
+August 2026 with the editor's note: "Unclear or insufficient contribution to the
+field of cryptology." No public ePrint number was assigned. The revision narrows
+the paper around its explicit protocol/security result and records the rejection
+as a venue decision, not as a peer-review finding.
 
 **Venue:** arXiv (cs.CR) is locked for this topic for us and requires an
 endorsement we do not have, so this package targets the **IACR Cryptology ePrint
@@ -55,8 +57,8 @@ source with the same Tectonic toolchain are byte-identical.
 - **No endorsement / affiliation required** — the exact gate that blocks arXiv cs.CR.
 - **Format:** a single PDF (A4 or US-letter) — upload `main.pdf`.
 - **License:** CC options incl. CC BY (matches the paper's `CC-BY-4.0`).
-- **Moderation:** light human moderation for scope, no peer review; posting is
-  typically same/next business day.
+- **Moderation:** light human moderation for scope and contribution, no peer
+  review; posting is not guaranteed by a conformance or implementation record.
 
 **Submitted metadata:**
 1. Author: Iman Schrock; ORCID `0009-0004-0290-5433`; affiliation EMILIA
@@ -100,8 +102,11 @@ DOI. Other options if ever needed: TechRxiv (IEEE), HAL, OSF Preprints.
 
 ## Current publication boundary
 
-- The paper has been received and confirmed by IACR but is not public and has not
-  yet received a permanent `eprint.iacr.org/2026/NNNN` identifier.
+- The prior paper was rejected by IACR and is not public; it did not receive a
+  permanent `eprint.iacr.org/2026/NNNN` identifier.
+- The revised package must not be resubmitted until `npm run preprint:build`,
+  `npm run check:preprint`, and `npm run test:preprint` pass and the editor-facing
+  contribution is materially distinct from the rejected framing.
 - The paper remains single-author: Iman Schrock, EMILIA Protocol, Inc. The
   external Rust verifier author remains an acknowledged external implementation
   party, not a co-author.
