@@ -25,29 +25,30 @@ function compact(value) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with the Authority Brain adoption product and keeps technical proof in a restrained band', () => {
+  it('leads with the commercial consequence firewall and keeps the Authority Brain as the free entry point', () => {
     const page = read('app/HomePageClient.js');
     const route = read('app/page.js');
     const css = read('app/ep.css');
 
-    expect(route).toContain('EMILIA Authority Brain — See and Control Consequential AI Actions');
-    expect(route).toContain('Run a local Authority Map of visible AI-agent actions');
-    expect(page).toContain('EMILIA Authority Brain <span>· Local consequence control</span>');
-    expect(page).toContain('See where your AI can act. Put a human in control before it matters.');
-    expect(page).toContain('The scanner proposes. You review. On a completely mediated protected path, Gate enforces.');
+    expect(route).toContain('EMILIA Gate — Consequence Firewall for AI Agents');
+    expect(route).toContain('Block consequential AI-agent actions until the protected executor');
+    expect(page).toContain('EMILIA Gate <span>· Consequence firewall for AI agents</span>');
+    expect(page).toContain('Let agents act. Keep authority exact.');
+    expect(page).toContain('Customer-controlled authority, credentials, trust roots, policy, and evidence.');
     expect(page).toContain('Protocol proves. Gate prevents.');
     expect(page).toContain('Auth opens the door. EMILIA controls what crosses it.');
     expect(page).toContain('Existing authorization stack');
     expect(page).toContain('EMILIA Consequence Firewall');
-    expect(page).toContain('Run once, reconcile uncertainty, authorize remedy');
-    expect(page).toContain('On the mediated path: no receipt, no irreversible action.');
+    expect(page).toContain('Once before credentialed provider entry');
+    expect(page).toContain('No invented certainty.');
+    expect(page).toContain('This is not proof of success.');
+    expect(page).toContain('Never retry blindly.');
     expect(css).toContain('hero-human-machine-shoreline-v1.webp');
-    expect(page).toContain('Proof, not promises');
-    expect(page).toContain('IETF Internet-Drafts');
-    expect(page).toContain('verified lemmas');
-    expect(page).toContain('counterexample traces');
-    expect(page).toContain('href="/authority-brain"');
+    expect(page).toContain('Public evidence');
+    expect(page).toContain('unsafe counterexamples');
+    expect(page).toContain("href: '/authority-brain'");
     expect(page).toContain('href="/scan"');
+    expect(page).toContain('href="/pilot"');
     expect(page).toContain('href="/gate/live"');
     expect(page).toContain("href: '/gate'");
     expect(page).toContain('href="/proof"');
@@ -93,7 +94,7 @@ describe('homepage category contract', () => {
     expect(proofStats.alloy.assertions).toBe(32);
   });
 
-  it('keeps the investor hierarchy exact and the assurance claims bounded', () => {
+  it('keeps the technical composition hierarchy off the buyer homepage and bounded on diligence surfaces', () => {
     const hierarchy =
       'AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact authorization by an enrolled approver under the relying party’s pinned directory, then safely controls consequential outcomes.';
     const homepage = compact(read('app/HomePageClient.js'));
@@ -101,19 +102,19 @@ describe('homepage category contract', () => {
     const investors = compact(read('app/investors/page.js'));
     const productBrief = compact(read('docs/EMILIA-GATE-PRODUCT-BRIEF.md'));
 
-    for (const surface of [homepage, gate, productBrief]) {
+    for (const surface of [gate, productBrief]) {
       expect(surface).toContain(hierarchy);
     }
 
-    expect(homepage).toContain('CAID correlates native action descriptions only under exact, relying-party-pinned mapping profiles.');
-    expect(homepage).toContain('Action Escrow shows the chain on one exact release.');
-    expect(homepage).toContain('The Assurance Plane then re-performs the record');
+    expect(homepage).not.toContain('AgentROA governs calls.');
+    expect(homepage).not.toContain('ORPRG proves policy permitted the effect.');
+    expect(homepage).toContain('EMILIA supports the procedure; it does not issue the audit opinion.');
     expect(gate).toContain('A match is not authorization');
     expect(gate).toContain('consumes the reservation as indeterminate: no blind retry or refund');
     expect(gate).toContain('RECEIPT PROGRAMS');
     expect(gate).toContain('npm run demo:receipt-program');
     expect(gate).toContain('It is not a ZK proof, consensus result, provider attestation');
-    expect(investors).toContain('EMILIA Gate is the Consequence Firewall for autonomous software.');
+    expect(investors).toContain('EMILIA Gate is the Consequence Firewall for AI agents.');
     expect(investors).toContain('Identity proves who or what is present. Policy describes a rule. Neither proves that one exact consequential action may proceed now, once, under current limits.');
     expect(investors).toContain('currently claims no customer traction, recurring revenue, live payer integration');
     expect(investors).toContain('certification, RFC status, or standards-body endorsement.');

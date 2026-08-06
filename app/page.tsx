@@ -2,23 +2,23 @@ import type { Metadata } from 'next';
 import HomePageClient from './HomePageClient';
 
 export const metadata: Metadata = {
-  title: 'EMILIA Authority Brain — See and Control Consequential AI Actions',
+  title: 'EMILIA Gate — Consequence Firewall for AI Agents',
   description:
-    'Run a local Authority Map of visible AI-agent actions, review where exact authority is missing, '
-    + 'and place EMILIA Gate in front of one consequential workflow.',
+    'Block consequential AI-agent actions until the protected executor can verify the exact authority '
+    + 'its owner requires. Run the local Authority Map, then protect one workflow with EMILIA Gate.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'EMILIA Authority Brain — See Where Your AI Can Act',
+    title: 'EMILIA Gate — Let Agents Act. Keep Authority Exact.',
     description:
-      'Discover visible consequential actions locally, name the blind spots, and protect one workflow with exact-action authority.',
+      'The consequence firewall for AI agents. Protocol proves. Gate prevents.',
     url: 'https://www.emiliaprotocol.ai/',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA Authority Brain — See Where Your AI Can Act',
+    title: 'EMILIA Gate — Consequence Firewall for AI Agents',
     description:
-      'The scanner proposes. The owner reviews. Gate enforces.',
+      'Let agents act. Keep authority exact.',
   },
 };
 

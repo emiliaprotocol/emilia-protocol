@@ -32,7 +32,7 @@ describe('mobile public-site experience contract', () => {
     const homepage = read('app/HomePageClient.tsx');
     const css = read('app/ep.css');
 
-    expect(homepage).toContain('EMILIA Authority Brain <span>· Local consequence control</span>');
+    expect(homepage).toContain('EMILIA Gate <span>· Consequence firewall for AI agents</span>');
     expect(homepage).toContain('ep-home-lede-mobile');
     expect(homepage).toContain('Auth opens the door. EMILIA controls what crosses it.');
     expect(homepage).toContain('ep-home-auth-map');

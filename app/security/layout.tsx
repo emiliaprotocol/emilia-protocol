@@ -7,13 +7,13 @@ const evidence = `${proofStats.securityCase.claims} executable security claims, 
   + `${proofStats.externalImplementation.hostilityCases} external hostility cases`;
 
 export const metadata: Metadata = {
-  title: 'Trust & Security — Machine-Verifiable Security Case',
+  title: 'Product Security — Rerunnable Evidence for EMILIA Gate',
   description:
-    `EMILIA Protocol security posture backed by ${evidence}. `
-    + 'Includes formal scope, assumptions, exclusions, conformance, and disclosure policy.',
+    `EMILIA Gate and Protocol security evidence backed by ${evidence}. `
+    + 'Includes shipped controls, formal scope, assumptions, exclusions, conformance, and disclosure policy.',
   alternates: { canonical: '/security' },
   openGraph: {
-    title: 'EMILIA Protocol Trust & Security',
+    title: 'EMILIA Product Security',
     description:
       `Machine-verifiable security evidence: ${evidence}.`,
     url: 'https://www.emiliaprotocol.ai/security',

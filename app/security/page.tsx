@@ -47,14 +47,14 @@ export default function SecurityPage() {
       <SiteNav activePage="Trust" />
 
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56 }}>
-        <div className="ep-tag ep-hero-badge">Trust &amp; Security</div>
-        <h1 className="ep-hero-text" style={styles.h1}>Security claims you can execute</h1>
+        <div className="ep-tag ep-hero-badge">Product security</div>
+        <h1 className="ep-hero-text" style={styles.h1}>Security evidence you can rerun</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          EMILIA is implemented security infrastructure, not merely an architecture proposal. Its
-          current machine-verifiable case joins {SECURITY_CLAIMS} executable claims, a composed
-          Tamarin adversary model, cross-language negative vectors, fault-schedule testing, and
-          byte-pinned release evidence. Every engineering count on this page comes from generated
-          repository evidence.
+          Gate makes one narrow preventive claim: on a completely mediated protected path, a
+          mutation that lacks the owner&apos;s required exact-action evidence does not reach the
+          provider. The public security case tests that claim with {SECURITY_CLAIMS} executable
+          claims, bounded formal models, negative vectors, fault schedules, and byte-pinned release
+          evidence. Every count below is generated from the current repository.
         </p>
         <div className="ep-hero-text" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
           <a href="/proof" className="ep-cta" style={cta.primary}>Inspect the engineering evidence</a>
@@ -112,9 +112,11 @@ export default function SecurityPage() {
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
-        <h2 className="ep-reveal" style={styles.h2}>In progress</h2>
+        <h2 className="ep-reveal" style={styles.h2}>Conditional roadmap</h2>
         <p className="ep-reveal" style={styles.body}>
-          Funded or actively being scoped. Each item shows the target window and named partner where committed; items without a named auditor or sponsor are flagged as such — we believe a missed target is more damaging than no target.
+          These items are being scoped or are conditional on a funded engagement. A target is shown
+          only when the named prerequisite exists; an unfilled auditor or sponsor field is not a
+          commitment, certification, or buyer claim.
         </p>
         <div className="ep-reveal" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {COMPLIANCE_ROADMAP.inProgress.map((c, i) => {
@@ -143,7 +145,7 @@ export default function SecurityPage() {
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
-        <h2 className="ep-reveal" style={styles.h2}>Intent</h2>
+        <h2 className="ep-reveal" style={styles.h2}>Future intent</h2>
         <p className="ep-reveal" style={styles.body}>
           Targeted certifications and frameworks sequenced against named pilot or sponsor engagement. We treat these as commitments to pursue when the corresponding buyer relationship is real, not as marketing claims.
         </p>
@@ -198,7 +200,11 @@ export default function SecurityPage() {
           A guarantee you have to overstate isn&rsquo;t one. So, precisely:
         </p>
         <p className="ep-reveal" style={styles.body}>
-          <strong style={{ color: color.t1 }}>What they prove.</strong> Protocol-level safety: a signoff is bound to the exact action, can&rsquo;t be replayed or forged, can&rsquo;t self-approve, and the receipt is tamper-evident. No actor following the protocol can authorize an action that wasn&rsquo;t approved by an accountable, named human.
+          <strong style={{ color: color.t1 }}>What they prove.</strong> Under each model&apos;s stated
+          assumptions, accepted authorization artifacts remain bound to the modeled exact action,
+          required signer set, freshness, authority view, and one-time consumption rules. The
+          executable negative cases reject the named replay, substitution, downgrade, and tampering
+          conditions.
         </p>
         <p className="ep-reveal" style={styles.body}>
           <strong style={{ color: color.t1 }}>What they do not prove &mdash; stated plainly:</strong>

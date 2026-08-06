@@ -19,9 +19,9 @@ describe('scan to protected MCP boundary funnel', () => {
 
   it('starts with a passive local scan and offers one bounded protection step', () => {
     expect(homepage).toContain('href="/scan"');
-    expect(homepage).toContain('Run the local scan →');
-    expect(homepage).toContain('href="/authority-brain"');
-    expect(homepage).toContain('one action with exact authority');
+    expect(homepage).toContain('Run the local Authority Map');
+    expect(homepage).toContain("href: '/authority-brain'");
+    expect(homepage).toContain('Protect one workflow');
   });
 
   it('routes a scan result into Agent Guard and then the MCP integration', () => {
