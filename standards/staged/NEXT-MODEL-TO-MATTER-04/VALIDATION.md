@@ -29,8 +29,9 @@ synthetic inputs and do not establish physical truth or wet-lab performance.
 ## Governed proof snapshot
 
 The committed `lib/proof-stats.json`, generated at
-`2026-08-06T16:56:52.671Z`, reports 8,736 test cases across 520 files, 331
+`2026-08-06T22:10:31.054Z`, reports 8,741 test cases across 521 files, 331
 conformance vectors, 35 executable security claims, and 20 verified Tamarin
-obligations. `TLA2TOOLS_JAR` was not available in this shell, so this task did
-not regenerate the governed snapshot. The draft itself makes no proof-count
-claim.
+obligations. The pinned TLA+ tools v1.7.4 checker also re-verified the current
+seven-leg effect-profile model: 2,517,121 states generated, 453,600 distinct,
+zero left on queue, and no invariant violation. The draft itself makes no
+proof-count claim.
