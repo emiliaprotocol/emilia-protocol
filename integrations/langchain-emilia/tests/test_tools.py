@@ -23,6 +23,7 @@ class FakeGate(EmiliaGateClient):
         self.results = list(results)
         self.gate_calls = []
         self.attest_calls = []
+        self.attest_observations = []
         self.attest_error = None
 
     def gate(self, action_type, target, amount=None, comment="", wait_for_approval=True):
@@ -30,10 +31,18 @@ class FakeGate(EmiliaGateClient):
         step = self.results.pop(0)
         if isinstance(step, Exception):
             raise step
+        if isinstance(step, GateResult) and step.decision == "allow":
+            step.canonical_action = {
+                **(step.canonical_action or {}),
+                "action_type": action_type,
+                "target_resource_id": target,
+                **({"amount": amount} if amount is not None else {}),
+            }
         return step
 
-    def attest_execution(self, result):
+    def attest_execution(self, result, observed_action):
         self.attest_calls.append(result)
+        self.attest_observations.append(observed_action)
         if self.attest_error:
             raise self.attest_error
         return {"status": "executed", "binding_status": "match"}
@@ -73,6 +82,8 @@ def test_allow_executes_and_records_receipt():
     assert fake.gate_calls[0]["target"].startswith("transfer_funds#")
     assert fake.gate_calls[0]["amount"] == 82000.0
     assert [r.receipt_id for r in fake.attest_calls] == ["tr_ok"]
+    assert fake.attest_observations[0]["target_resource_id"] == fake.gate_calls[0]["target"]
+    assert fake.attest_observations[0]["amount"] == 82000.0
 
 
 def test_deny_blocks_execution_and_reports_to_model():

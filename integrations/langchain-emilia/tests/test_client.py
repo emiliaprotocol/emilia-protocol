@@ -134,12 +134,13 @@ def test_execution_attestation_is_bound_to_consumed_canonical_action():
         execution_reference_id="langchain-emilia:sha256:" + "b" * 64,
         consumed=True,
     )
-    attestation = c.attest_execution(result)
+    observed = {**CANONICAL_ACTION, "executor_observation": "read-after-call"}
+    attestation = c.attest_execution(result, observed)
     assert attestation["binding_status"] == "match"
     path, body = c.calls[0]
     assert path == "/api/v1/trust-receipts/tr_exec/execution"
     assert body["executed_action"] == CANONICAL_ACTION
-    assert body["observed_action"] == CANONICAL_ACTION
+    assert body["observed_action"] == observed
 
 
 def test_transport_failure_raises_unreachable():

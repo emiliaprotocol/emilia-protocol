@@ -395,13 +395,15 @@ describe('requireReceipt wrapper', () => {
       afterState: { amount: 82000 },
       executingSystem: 'payments-api',
       executionReferenceId: 'exec_ref_1',
+      observedAction: ({ receipt }) => receipt.canonical_action,
       executionId: (result) => (result as { execution_id: string }).execution_id,
     }, runMutation);
 
     expect(runMutation).toHaveBeenCalledOnce();
     expect(out.result.payment_id).toBe('payment_123');
     expect(out.consume.status).toBe('consumed');
-    expect(out.execution.binding_status).toBe('match');
+    expect(out.executionStatus).toBe('attested');
+    expect(out.execution?.binding_status).toBe('match');
     const paths = mockFetch.mock.calls.map(([url]) => String(url).replace('https://emiliaprotocol.ai', ''));
     expect(paths).toEqual([
       '/api/v1/trust-receipts',
@@ -410,7 +412,37 @@ describe('requireReceipt wrapper', () => {
     ]);
     const executionBody = JSON.parse((mockFetch.mock.calls[2]?.[1] as RequestInit).body as string);
     expect(executionBody.executed_action).toEqual(TRUST_RECEIPT.canonical_action);
+    expect(executionBody.observed_action).toEqual(TRUST_RECEIPT.canonical_action);
     expect(executionBody.execution_id).toBe('exec_1');
+  });
+
+  it('does not manufacture execution evidence from the approved plan when no observation is supplied', async () => {
+    const mockFetch = makeSequenceFetch([
+      { payload: TRUST_RECEIPT },
+      {
+        payload: {
+          receipt_id: TRUST_RECEIPT.receipt_id,
+          status: 'consumed',
+          consumed_at: '2026-06-23T00:00:00.000Z',
+          consumed_by_system: 'payments-api',
+        },
+      },
+    ]);
+    const client = new EPClient({
+      apiKey: 'ep_live_test_key',
+      fetchImpl: mockFetch as unknown as typeof fetch,
+    });
+
+    const out = await client.requireReceipt({
+      actionType: 'large_payment_release',
+      targetResourceId: 'payment_123',
+      executingSystem: 'payments-api',
+    }, async () => ({ payment_id: 'payment_123' }));
+
+    expect(out.result.payment_id).toBe('payment_123');
+    expect(out.executionStatus).toBe('unobserved');
+    expect(out.execution).toBeUndefined();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('fails closed after requesting signoff when no completion hook is supplied', async () => {

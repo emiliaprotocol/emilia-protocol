@@ -181,11 +181,22 @@ class EmiliaGuard:
             result,
         )
 
-    def attest(self, tool_name: str, digest: str, result: Optional[GateResult]) -> None:
+    def attest(self, tool_name: str, digest: str, payload: Any, result: Optional[GateResult]) -> None:
         if result is None or self.mode != "enforce":
             return
+        # Preserve server-bound authorization context, but overwrite the
+        # executor-observable action fields from the exact detached payload
+        # that was actually handed to the tool. This is not a read-after-write
+        # proof of real-world effects; it is an attributable executor report of
+        # the invocation and must not be synthesized solely from the plan.
+        observed_action = dict(result.canonical_action or {})
+        observed_action["action_type"] = self._action_type_for(tool_name)
+        observed_action["target_resource_id"] = f"{tool_name}#sha256:{digest}"
+        amount = self._amount_from(payload)
+        if amount is not None:
+            observed_action["amount"] = amount
         try:
-            attestation = self.client.attest_execution(result)
+            attestation = self.client.attest_execution(result, observed_action)
         except EmiliaUnreachable as err:
             self._emit({
                 "event": "indeterminate",
@@ -264,7 +275,7 @@ class GuardedTool(BaseTool):
         except BaseException:
             self.guard.execution_failed(self.name, digest, gate_result)
             raise
-        self.guard.attest(self.name, digest, gate_result)
+        self.guard.attest(self.name, digest, payload, gate_result)
         return output
 
     async def _arun(self, *args: Any, run_manager: Any = None, **kwargs: Any) -> Any:
@@ -277,7 +288,7 @@ class GuardedTool(BaseTool):
         except BaseException:
             self.guard.execution_failed(self.name, digest, gate_result)
             raise
-        await asyncio.to_thread(self.guard.attest, self.name, digest, gate_result)
+        await asyncio.to_thread(self.guard.attest, self.name, digest, payload, gate_result)
         return output
 
 

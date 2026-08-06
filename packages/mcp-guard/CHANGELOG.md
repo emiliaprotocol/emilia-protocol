@@ -3,6 +3,14 @@
 
 All notable changes to `@emilia-protocol/mcp-guard` are documented here.
 
+## Unreleased
+
+### Security
+
+- Keep the exact bound execution arguments private from consent, signoff,
+  issuer, annotation, and receipt-client callbacks. Each callback receives a
+  detached copy and cannot rewrite the object later passed to the tool handler.
+
 ## 0.5.0 (2026-08-05)
 
 ### Added

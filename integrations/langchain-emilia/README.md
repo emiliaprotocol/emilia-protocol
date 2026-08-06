@@ -27,9 +27,12 @@ When the agent calls `transfer_funds(amount=82000, beneficiary="Northwind")`:
    parameters — change one digit and it is invalid.
 3. **Consume** — the exact receipt is atomically consumed before the tool body;
    an already-consumed receipt cannot authorize another executor.
-4. **Attest** — after the tool returns, the adapter records the exact canonical
-   action as execution evidence. If that write cannot be confirmed, the result
-   is `INDETERMINATE` and the adapter says **DO NOT RETRY**.
+4. **Attest** — after the tool returns, the adapter reports executor-observed
+   invocation fields re-derived from the detached arguments actually handed to
+   the tool; it does not reuse the approved plan as its own observation. This is
+   attributable execution evidence, not proof of real-world effects. If the
+   evidence write cannot be confirmed, the result is `INDETERMINATE` and the
+   adapter says **DO NOT RETRY**.
 
 Denials and pending holds are returned to the model as the tool's output
 (`"EMILIA — BLOCKED … transfer_funds was NOT executed."`), so the agent loop

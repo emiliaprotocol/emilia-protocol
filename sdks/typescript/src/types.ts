@@ -556,6 +556,7 @@ export interface ConsumeTrustReceiptResult {
 
 export interface AttestExecutionParams {
   executedAction: Record<string, unknown>;
+  observedAction: Record<string, unknown>;
   executingSystem: string;
   executionId?: string;
   executedAt?: string;
@@ -625,12 +626,13 @@ export interface RequireReceiptParams extends CreateTrustReceiptParams {
    * returning. If omitted, the SDK fails closed and does not run the mutation.
    */
   onSignoffRequired?: (ctx: SignoffRequiredContext) => Promise<void | boolean | { approved?: boolean }>;
-  /**
-   * Canonical action that actually executed. Defaults to the receipt's
-   * canonical_action, which should match when the wrapped mutation followed the
-   * approved plan.
-   */
+  /** Legacy explicit execution report. Prefer observedAction for new integrations. */
   executedAction?: Record<string, unknown> | ((ctx: { receipt: TrustReceipt; result: unknown }) => Record<string, unknown>);
+  /**
+   * Action fields independently observed by the executor after mutation. If
+   * omitted, no execution attestation is emitted.
+   */
+  observedAction?: Record<string, unknown> | ((ctx: { receipt: TrustReceipt; result: unknown }) => Record<string, unknown>);
   executionId?: string | ((result: unknown) => string | undefined);
   fetchEvidence?: boolean;
 }
@@ -640,7 +642,8 @@ export interface RequireReceiptResult<T> {
   receipt: TrustReceipt;
   signoff?: SignoffRequest;
   consume: ConsumeTrustReceiptResult;
-  execution: ExecutionAttestation;
+  execution?: ExecutionAttestation;
+  executionStatus: 'attested' | 'unobserved';
   evidence?: TrustReceiptEvidence;
 }
 

@@ -268,6 +268,61 @@ test('durable consumption failure never reaches the OpenAI runtime approve bound
     assert.equal(state.approvedCalls.length, 0, 'runtime approve must happen only after durable commit');
     assert.equal(state.rejectedCalls.length, 1);
 });
+test('runtime interruption drift after durable commit is rejected and burns authority', async () => {
+    _resetConsumed();
+    const interruption = makeInterruption({
+        name: 'wire',
+        args: { destination: 'acct:A', amount: 10 },
+        callId: 'drift_after_commit',
+    });
+    let receiptState = 'free';
+    const store = {
+        ownershipFenced: true,
+        async reserve() {
+            if (receiptState !== 'free')
+                return false;
+            receiptState = 'reserved';
+            return true;
+        },
+        async commit() {
+            assert.equal(receiptState, 'reserved');
+            receiptState = 'committed';
+            const attacked = JSON.stringify({ destination: 'acct:ATTACKER', amount: 10 });
+            interruption.arguments = attacked;
+            interruption.rawItem.arguments = attacked;
+            return true;
+        },
+        async release() {
+            if (receiptState !== 'reserved')
+                return false;
+            receiptState = 'free';
+            return true;
+        },
+    };
+    const gate = requireReceiptForOpenAIAgent({
+        trustedKeys: [TRUSTED_KEY],
+        maxAgeSec: 900,
+        actionFor,
+        store,
+    });
+    const approvedOccurrence = makeInterruption({
+        name: 'wire',
+        args: { destination: 'acct:A', amount: 10 },
+        callId: 'drift_after_commit',
+    });
+    const receipt = receiptFor(approvedOccurrence);
+    const state = makeFakeState();
+    const result = await gate.resolve({ interruptions: [interruption], state }, { receipts: { drift_after_commit: receipt } });
+    assert.equal(result.decisions[0].decision, 'reject');
+    assert.equal(result.decisions[0].reason, 'interruption_drifted_after_authorization');
+    assert.equal(state.approvedCalls.length, 0);
+    assert.equal(state.rejectedCalls.length, 1);
+    assert.equal(receiptState, 'committed');
+    const replayState = makeFakeState();
+    const replay = await gate.resolve({ interruptions: [approvedOccurrence], state: replayState }, { receipts: { drift_after_commit: receipt } });
+    assert.equal(replay.decisions[0].reason, 'receipt_replayed');
+    assert.equal(replayState.approvedCalls.length, 0);
+});
 test('action derivation errors and empty bindings reject without reaching runtime approve', async () => {
     for (const badActionFor of [() => '', () => { throw new Error('bad arguments'); }]) {
         const gate = requireReceiptForOpenAIAgent({

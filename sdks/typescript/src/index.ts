@@ -255,6 +255,7 @@ export interface RequireReceiptParams extends CreateTrustReceiptParams {
   signoffExpiresInMinutes?: number;
   onSignoffRequired?: (ctx: { client: EPClient; receipt: TrustReceipt; signoff?: SignoffRequest }) => Promise<void | boolean | { approved?: boolean }>;
   executedAction?: Record<string, unknown> | ((ctx: { receipt: TrustReceipt; result: unknown }) => Record<string, unknown>);
+  observedAction?: Record<string, unknown> | ((ctx: { receipt: TrustReceipt; result: unknown }) => Record<string, unknown>);
   executionId?: string | ((result: unknown) => string | undefined);
   fetchEvidence?: boolean;
 }
@@ -264,7 +265,8 @@ export interface RequireReceiptResult<T> {
   receipt: TrustReceipt;
   signoff?: SignoffRequest;
   consume: ConsumeTrustReceiptResult;
-  execution: ExecutionAttestation;
+  execution?: ExecutionAttestation;
+  executionStatus: 'attested' | 'unobserved';
   evidence?: TrustReceiptEvidence;
 }
 
@@ -1102,6 +1104,7 @@ export class EPClient {
     receiptId: string,
     params: {
       executedAction: Record<string, unknown>;
+      observedAction: Record<string, unknown>;
       executingSystem: string;
       executionId?: string;
       executedAt?: string;
@@ -1112,6 +1115,7 @@ export class EPClient {
       `/api/v1/trust-receipts/${encodeURIComponent(receiptId)}/execution`,
       {
         executed_action: params.executedAction,
+        observed_action: params.observedAction,
         executing_system: params.executingSystem,
         execution_id: params.executionId,
         executed_at: params.executedAt,
@@ -1169,22 +1173,38 @@ export class EPClient {
       executionReferenceId: params.executionReferenceId,
     });
     const result = await mutate({ receipt, consume });
-    const executedAction = typeof params.executedAction === 'function'
+    const explicitExecutedAction = typeof params.executedAction === 'function'
       ? params.executedAction({ receipt, result })
-      : params.executedAction ?? receipt.canonical_action;
-    const executionId = typeof params.executionId === 'function'
-      ? params.executionId(result)
-      : params.executionId;
-    const execution = await this.attestExecution(receipt.receipt_id, {
-      executedAction,
-      executingSystem: params.executingSystem,
-      executionId,
-    });
+      : params.executedAction;
+    const observedAction = typeof params.observedAction === 'function'
+      ? params.observedAction({ receipt, result })
+      : params.observedAction ?? explicitExecutedAction;
+    let execution: ExecutionAttestation | undefined;
+    if (observedAction !== undefined) {
+      const executedAction = explicitExecutedAction ?? receipt.canonical_action;
+      const executionId = typeof params.executionId === 'function'
+        ? params.executionId(result)
+        : params.executionId;
+      execution = await this.attestExecution(receipt.receipt_id, {
+        executedAction,
+        observedAction,
+        executingSystem: params.executingSystem,
+        executionId,
+      });
+    }
     const evidence = params.fetchEvidence
       ? await this.getTrustReceiptEvidence(receipt.receipt_id)
       : undefined;
 
-    return { result, receipt, signoff, consume, execution, evidence };
+    return {
+      result,
+      receipt,
+      signoff,
+      consume,
+      execution,
+      executionStatus: execution ? 'attested' : 'unobserved',
+      evidence,
+    };
   }
 
   /** Wrap an existing async function with requireReceipt(). */

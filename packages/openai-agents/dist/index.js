@@ -141,6 +141,22 @@ function isApprovalInterruption(interruption) {
         return false;
     return interruptionToolName(interruption) != null;
 }
+function matchesPendingOccurrence(interruption, pendingApproval) {
+    if (!pendingApproval)
+        return false;
+    const toolName = interruptionToolName(interruption);
+    const callId = interruptionCallId(interruption);
+    const args = interruptionArgs(interruption);
+    if (args === null || toolName !== pendingApproval.toolName || callId !== pendingApproval.callId) {
+        return false;
+    }
+    try {
+        return JSON.stringify(snapshotToolArguments(args)) === pendingApproval.argsJson;
+    }
+    catch {
+        return false;
+    }
+}
 /**
  * Build a receipt gate for OpenAI Agents human-in-the-loop tool approvals.
  *
@@ -260,7 +276,13 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
             return { decision: 'reject', ...base, reason: 'receipt_replayed', receipt_id: c.receiptId };
         }
         if (reserveOnly) {
-            pending.set(c.receiptId, { gate, callKey });
+            pending.set(c.receiptId, {
+                gate,
+                callKey,
+                toolName,
+                callId,
+                argsJson: JSON.stringify(snapshotToolArguments(args)),
+            });
         }
         else {
             try {
@@ -368,9 +390,29 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
             if (d.decision === 'approve') {
                 if (state && typeof state.approve === 'function') {
                     try {
+                        const pendingApproval = d.receipt_id ? pending.get(d.receipt_id) : null;
                         // Commit first. Once the runtime sees approve, an effect may become
                         // inevitable; consumption must already be durable at that boundary.
                         await commitPending(d);
+                        // The SDK item is mutable and remains owned by the host runtime.
+                        // Re-read it after the final await and refuse if its tool, call id,
+                        // or arguments drifted since verification. The receipt deliberately
+                        // remains spent: authority reached the indeterminate boundary.
+                        if (!matchesPendingOccurrence(interruption, pendingApproval)) {
+                            d.decision = 'reject';
+                            d.reason = 'interruption_drifted_after_authorization';
+                            rejected.push(interruption);
+                            if (state && typeof state.reject === 'function') {
+                                try {
+                                    await state.reject(interruption, { message: 'EMILIA: interruption_drifted_after_authorization' });
+                                }
+                                catch {
+                                    // The authority is already consumed and runtime approval was
+                                    // never called. Preserve the primary fail-closed reason.
+                                }
+                            }
+                            continue;
+                        }
                         await state.approve(interruption);
                         approved.push(interruption);
                     }

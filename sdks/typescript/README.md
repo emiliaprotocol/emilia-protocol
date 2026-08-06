@@ -65,7 +65,9 @@ if (evaluation.decision !== 'allow') throw new Error(`Trust check failed: ${eval
 
 `requireReceipt()` is the five-minute enforcement path: create a v1 trust
 receipt, require signoff when policy demands it, consume the receipt before the
-write, run the mutation, then emit a post-mutation execution attestation.
+write, and run the mutation. It emits a post-mutation execution attestation only
+when the executor supplies independently observed action fields; it never treats
+the approved plan itself as proof of execution.
 
 ```typescript
 const out = await ep.requireReceipt({
@@ -76,6 +78,15 @@ const out = await ep.requireReceipt({
   currency: 'USD',
   approverId: 'ap_controller_jane',
   executingSystem: 'payments-api',
+
+  // Derive this from the system-of-record response or read-after-write result.
+  // If omitted, the mutation can complete but executionStatus is "unobserved".
+  observedAction: ({ result }) => ({
+    action_type: 'large_payment_release',
+    target_resource_id: result.payment_id,
+    amount: result.amount,
+    currency: result.currency,
+  }),
 
   // Complete approval externally: passkey ceremony, operator queue, or poller.
   // If omitted when signoff is required, the SDK fails closed and does not run.
@@ -88,7 +99,8 @@ const out = await ep.requireReceipt({
 
 console.log(out.receipt.receipt_id);
 console.log(out.consume.status);             // "consumed"
-console.log(out.execution.binding_status);   // "match" or "drift"
+console.log(out.executionStatus);            // "attested" or "unobserved"
+console.log(out.execution?.binding_status);  // "match" or "drift"
 ```
 
 For existing functions:

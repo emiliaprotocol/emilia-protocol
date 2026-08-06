@@ -176,19 +176,23 @@ class EmiliaGateClient:
             consumed=True,
         )
 
-    def attest_execution(self, result: GateResult) -> dict:
+    def attest_execution(self, result: GateResult, observed_action: dict) -> dict:
         """Record the exact action after the wrapped tool returns.
 
         This is deliberately separate from consume: consume must happen before
-        tool entry, while execution evidence can exist only after the call.
+        tool entry, while execution evidence can exist only after the call. The
+        caller must supply executor-observed fields; the approved plan is not an
+        observation of its own execution.
         """
         if not result.consumed or not result.receipt_id:
             raise EmiliaUnreachable("execution attestation requires a consumed receipt")
         if not isinstance(result.canonical_action, dict):
             raise EmiliaUnreachable("execution attestation lacks the canonical action")
+        if not isinstance(observed_action, dict):
+            raise EmiliaUnreachable("execution attestation lacks executor-observed action fields")
         body = {
             "executed_action": result.canonical_action,
-            "observed_action": result.canonical_action,
+            "observed_action": observed_action,
             "executing_system": "langchain-emilia",
             "execution_id": result.execution_reference_id,
         }

@@ -607,6 +607,7 @@ export class EPClient {
         auth: true,
         body: {
           executed_action: params.executedAction,
+          observed_action: params.observedAction,
           executing_system: params.executingSystem,
           execution_id: params.executionId,
           executed_at: params.executedAt,
@@ -664,22 +665,38 @@ export class EPClient {
     });
 
     const result = await mutate({ receipt, consume });
-    const executedAction = typeof params.executedAction === 'function'
+    const explicitExecutedAction = typeof params.executedAction === 'function'
       ? params.executedAction({ receipt, result })
-      : params.executedAction ?? receipt.canonical_action;
-    const executionId = typeof params.executionId === 'function'
-      ? params.executionId(result)
-      : params.executionId;
-    const execution = await this.attestExecution(receipt.receipt_id, {
-      executedAction,
-      executingSystem: params.executingSystem,
-      executionId,
-    });
+      : params.executedAction;
+    const observedAction = typeof params.observedAction === 'function'
+      ? params.observedAction({ receipt, result })
+      : params.observedAction ?? explicitExecutedAction;
+    let execution: ExecutionAttestation | undefined;
+    if (observedAction !== undefined) {
+      const executedAction = explicitExecutedAction ?? receipt.canonical_action;
+      const executionId = typeof params.executionId === 'function'
+        ? params.executionId(result)
+        : params.executionId;
+      execution = await this.attestExecution(receipt.receipt_id, {
+        executedAction,
+        observedAction,
+        executingSystem: params.executingSystem,
+        executionId,
+      });
+    }
     const evidence = params.fetchEvidence
       ? await this.getTrustReceiptEvidence(receipt.receipt_id)
       : undefined;
 
-    return { result, receipt, signoff, consume, execution, evidence };
+    return {
+      result,
+      receipt,
+      signoff,
+      consume,
+      execution,
+      executionStatus: execution ? 'attested' : 'unobserved',
+      evidence,
+    };
   }
 
   /**

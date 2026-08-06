@@ -809,10 +809,10 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
     if (!irreversible) return handler(name, args, extra);
 
     let action;
-    let materialArgs;
+    let executionArgs;
     try {
-      materialArgs = snapshotToolArguments(args);
-      action = resolveAction(name, materialArgs, extra, ann);
+      executionArgs = snapshotToolArguments(args);
+      action = resolveAction(name, executionArgs, extra, ann);
     } catch {
       return refusal(String(name || 'mcp.tool'), 'Tool call cannot be bound to the EP canonical JSON profile.', {
         stage: 'bind',
@@ -845,7 +845,7 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
             agentClaim: ann.agent_claim || (args.__ep && args.__ep.agent_claim) || null,
             liability: ann.liability || (args.__ep && args.__ep.liability) || null,
           });
-          return handler(name, materialArgs, extra);
+          return handler(name, executionArgs, extra);
         });
         if (!run.ok) {
           const reason = run.body?.rejected?.reason || 'receipt_required';
@@ -858,18 +858,23 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
     }
 
     // ---- Path B: no receipt → consent → Class-A signoff → issue → run.
-    const ctx = {
+    const callbackContext = () => ({
       tool: name,
       action,
       action_digest: actionDigest,
-      args: materialArgs,
+      // Adapter callbacks are outside the execution custody boundary. Give
+      // each one a fresh detached copy so no consent, signoff, or issuer hook
+      // can rewrite the exact arguments that were bound above and execute
+      // below.
+      args: snapshotToolArguments(executionArgs),
       meta,
       agent_claim: ann.agent_claim || (args.__ep && args.__ep.agent_claim) || null,
       liability: ann.liability || (args.__ep && args.__ep.liability) || null,
-    };
+    });
+    const evidenceContext = callbackContext();
 
     // 1) Consent.
-    const consent = await callAdapter(requestConsent, ctx, {
+    const consent = await callAdapter(requestConsent, callbackContext(), {
       approved: false,
       reason: 'no_consent_adapter',
     });
@@ -880,7 +885,7 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
     }
 
     // 2) Class-A signoff (named human, hardware-backed).
-    const signoff = await callAdapter(requestClassASignoff, ctx, {
+    const signoff = await callAdapter(requestClassASignoff, callbackContext(), {
       approved: false,
       reason: 'no_signoff_adapter',
     });
@@ -896,7 +901,7 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
         stage: 'issue',
       });
     }
-    const issued = await issueReceipt({ ...ctx, consent, signoff });
+    const issued = await issueReceipt({ ...callbackContext(), consent, signoff });
     const doc = issued && issued.receipt;
     if (!doc) {
       return refusal(action, 'Receipt issuer returned no EP-RECEIPT-v1.', { stage: 'issue' });
@@ -942,10 +947,10 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
           subject: verified.subject,
           signer: verified.signer,
         },
-        agentClaim: ctx.agent_claim,
-        liability: ctx.liability,
+        agentClaim: evidenceContext.agent_claim,
+        liability: evidenceContext.liability,
       });
-      return handler(name, ctx.args, extra);
+      return handler(name, executionArgs, extra);
     });
     if (!run.ok) {
       const reason = run.body?.rejected?.reason || 'receipt_required';
@@ -1025,33 +1030,34 @@ export function withMcpReceiptGuard(handler: (...args: any[]) => any, options: A
 
     if (!irreversible) return handler(name, args, extra);
 
-    let cleanArgs;
-    try { cleanArgs = snapshotToolArguments(args); }
+    let executionArgs;
+    try { executionArgs = snapshotToolArguments(args); }
     catch {
       return refusal(String(name || 'mcp.tool'), 'Tool call cannot be bound to the executor JSON profile.', {
         stage: 'bind',
         rejected: { ok: false, reason: 'action_binding_invalid' },
       });
     }
+    const callbackArgs = () => snapshotToolArguments(executionArgs);
     const rawBase = typeof receiptParams === 'function'
-      ? await receiptParams({ name, args: cleanArgs, extra, annotation: ann })
+      ? await receiptParams({ name, args: callbackArgs(), extra, annotation: ann })
       : (receiptParams || {});
     const base = rawBase && typeof rawBase === 'object' ? rawBase : {};
     const params = {
       ...base,
-      actionType: readAnnotation(ann, 'actionType', cleanArgs, extra)
+      actionType: readAnnotation(ann, 'actionType', callbackArgs(), extra)
         || base.actionType
-        || readAnnotation(ann, 'action', cleanArgs, extra)
+        || readAnnotation(ann, 'action', callbackArgs(), extra)
         || name,
-      targetResourceId: readAnnotation(ann, 'targetResourceId', cleanArgs, extra) || base.targetResourceId,
-      beforeState: readAnnotation(ann, 'beforeState', cleanArgs, extra) || base.beforeState,
-      afterState: readAnnotation(ann, 'afterState', cleanArgs, extra) || base.afterState || cleanArgs,
-      amount: readAnnotation(ann, 'amount', cleanArgs, extra) ?? base.amount,
-      currency: readAnnotation(ann, 'currency', cleanArgs, extra) || base.currency,
-      riskFlags: readAnnotation(ann, 'riskFlags', cleanArgs, extra) || base.riskFlags,
-      approverId: readAnnotation(ann, 'approverId', cleanArgs, extra) || base.approverId,
-      executingSystem: readAnnotation(ann, 'executingSystem', cleanArgs, extra) || base.executingSystem || executingSystem,
-      executionId: readAnnotation(ann, 'executionId', cleanArgs, extra) || base.executionId,
+      targetResourceId: readAnnotation(ann, 'targetResourceId', callbackArgs(), extra) || base.targetResourceId,
+      beforeState: readAnnotation(ann, 'beforeState', callbackArgs(), extra) || base.beforeState,
+      afterState: readAnnotation(ann, 'afterState', callbackArgs(), extra) || base.afterState || callbackArgs(),
+      amount: readAnnotation(ann, 'amount', callbackArgs(), extra) ?? base.amount,
+      currency: readAnnotation(ann, 'currency', callbackArgs(), extra) || base.currency,
+      riskFlags: readAnnotation(ann, 'riskFlags', callbackArgs(), extra) || base.riskFlags,
+      approverId: readAnnotation(ann, 'approverId', callbackArgs(), extra) || base.approverId,
+      executingSystem: readAnnotation(ann, 'executingSystem', callbackArgs(), extra) || base.executingSystem || executingSystem,
+      executionId: readAnnotation(ann, 'executionId', callbackArgs(), extra) || base.executionId,
       onSignoffRequired: ann.onSignoffRequired || base.onSignoffRequired,
     };
 
@@ -1061,7 +1067,7 @@ export function withMcpReceiptGuard(handler: (...args: any[]) => any, options: A
       });
     }
 
-    const lifecycle = await client.requireReceipt(params, () => handler(name, cleanArgs, extra));
+    const lifecycle = await client.requireReceipt(params, () => handler(name, executionArgs, extra));
     return returnEnvelope ? lifecycle : lifecycle.result;
   };
 
