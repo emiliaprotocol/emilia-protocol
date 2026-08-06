@@ -27,7 +27,7 @@ export type PresentationBindingInput = {
   evidence?: JsonRecord | null;
   signedContext?: JsonRecord | null;
   contextVerified?: boolean;
-  displaySignerKeys?: Record<string, string>;
+  displaySignerKeys?: Record<string, { public_key: string }>;
   verifyNativeOasnt?: (token: JsonRecord, action: JsonRecord) => NativeOasntResult;
 };
 
