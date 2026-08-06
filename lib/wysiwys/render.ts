@@ -231,15 +231,12 @@ export function buildDisplayAttestation({ action, signer }: { action: Record<str
   return att;
 }
 
-function verifyDetachedEd25519(proof, expectedPayloadB64u, boundPublicKeyB64u) {
+function verifyDetachedEd25519(proof, expectedPayloadB64u) {
   // Reject unless the proof signs EXACTLY the bytes the verifier independently
-  // recomputed (defeats sign-over-other-bytes), and the key is the one bound to
-  // the named signer (defeats key substitution).
+  // recomputed (defeats sign-over-other-bytes). The caller resolves and pins the
+  // named signer before invoking this cryptographic check.
   if (!proof || proof.algorithm !== 'Ed25519') return { ok: false, reason: 'proof_algorithm' };
   if (proof.signed_payload_b64u !== expectedPayloadB64u) return { ok: false, reason: 'proof_payload_mismatch' };
-  if (boundPublicKeyB64u && proof.public_key !== boundPublicKeyB64u) {
-    return { ok: false, reason: 'proof_key_unbound' };
-  }
   try {
     const pub = crypto.createPublicKey({
       key: Buffer.from(proof.public_key, 'base64url'),
@@ -383,7 +380,7 @@ export function verifyDisplayAttestation(action, attestation, opts: {
       return fail('proof_invalid: proof_key_unbound');
     }
 
-    const res = verifyDetachedEd25519(proof, expectedPayloadB64u, pinned);
+    const res = verifyDetachedEd25519(proof, expectedPayloadB64u);
     checks.proof_signed = res.ok;
     if (!res.ok) return fail(`proof_invalid: ${res.reason}`);
   } else if (opts.requireSignedAttestation === true) {

@@ -7,12 +7,13 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { actionHash, canonicalize } from '../packages/issue/index.js';
+import { actionHash, canonicalize, generateEd25519KeyPair } from '../packages/issue/index.js';
 import {
   MOBILE_PRESENTATION_PROFILE,
   OASNT_DISPLAY_PROFILE,
   verifyPresentationBinding,
 } from '../lib/presentation-binding/profile.js';
+import { buildDisplayAttestation } from '../lib/wysiwys/render.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const suite = JSON.parse(readFileSync(
@@ -57,6 +58,14 @@ function signedContext() {
   return {
     action_hash: actionHash(action),
     display_hash: sha256Canonical(presentation),
+  };
+}
+
+function displaySigner() {
+  const keyPair = generateEd25519KeyPair();
+  return {
+    ...keyPair,
+    publicKeyB64u: keyPair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
   };
 }
 
@@ -149,6 +158,108 @@ describe('EP-PRESENTATION-BINDING-v1', () => {
         token: { dsp: 'invalid' },
       },
       verifyNativeOasnt: () => { throw new Error('native parser failed'); },
+    });
+    expect(result).toMatchObject({ valid: false, reason: 'display-untrusted' });
+  });
+
+  it('refuses a mobile presentation without a verified signed context', () => {
+    const result = verifyPresentationBinding({
+      action,
+      evidence: mobileEvidence(),
+      contextVerified: false,
+    });
+    expect(result).toMatchObject({ valid: false, reason: 'display-untrusted' });
+  });
+
+  it('accepts a signed EP display attestation under the relying-party pin', () => {
+    const signer = displaySigner();
+    const attestation = buildDisplayAttestation({
+      action,
+      signer: {
+        signer_key_id: 'ep:key:client#1',
+        privateKey: signer.privateKey,
+        publicKeyB64u: signer.publicKeyB64u,
+      },
+    });
+    const result = verifyPresentationBinding({
+      action,
+      evidence: { profile: 'EP-DISPLAY-ATTESTATION-v1', attestation },
+      displaySignerKeys: { 'ep:key:client#1': { public_key: signer.publicKeyB64u } },
+    });
+    expect(result).toMatchObject({
+      valid: true,
+      profile: 'EP-DISPLAY-ATTESTATION-v1',
+      reason: null,
+    });
+  });
+
+  it('returns mismatch when an EP display attestation binds a different action', () => {
+    const attestation = buildDisplayAttestation({
+      action: { ...action, amount: '1.00' },
+    });
+    const result = verifyPresentationBinding({
+      action,
+      evidence: { profile: 'EP-DISPLAY-ATTESTATION-v1', attestation },
+    });
+    expect(result).toMatchObject({ valid: false, reason: 'display-mismatch' });
+  });
+
+  it('returns untrusted when an EP display attestation lacks the required signature', () => {
+    const attestation = buildDisplayAttestation({ action });
+    const result = verifyPresentationBinding({
+      action,
+      evidence: { profile: 'EP-DISPLAY-ATTESTATION-v1', attestation },
+    });
+    expect(result).toMatchObject({ valid: false, reason: 'display-untrusted' });
+  });
+
+  it('fails closed when EP display-attestation evaluation throws', () => {
+    const evidence = {
+      profile: 'EP-DISPLAY-ATTESTATION-v1',
+      get attestation() {
+        throw new Error('malformed attestation');
+      },
+    };
+    const result = verifyPresentationBinding({ action, evidence: evidence as any });
+    expect(result).toMatchObject({ valid: false, reason: 'display-untrusted' });
+  });
+
+  it('rejects an OASNT presentation when native verification is not valid', () => {
+    const canonicalDisplay = 'Action: wire.release';
+    const result = verifyPresentationBinding({
+      action,
+      evidence: {
+        profile: OASNT_DISPLAY_PROFILE,
+        canonical_display: canonicalDisplay,
+        token: {
+          dsp: crypto.createHash('sha256').update(Buffer.from(canonicalDisplay, 'utf8')).digest('base64url'),
+        },
+      },
+      verifyNativeOasnt: () => ({ valid: false, action_match: true }),
+    });
+    expect(result).toMatchObject({ valid: false, reason: 'display-untrusted' });
+  });
+
+  it('returns mismatch when native OASNT verification does not bind the action', () => {
+    const canonicalDisplay = 'Action: wire.release';
+    const result = verifyPresentationBinding({
+      action,
+      evidence: {
+        profile: OASNT_DISPLAY_PROFILE,
+        canonical_display: canonicalDisplay,
+        token: {
+          dsp: crypto.createHash('sha256').update(Buffer.from(canonicalDisplay, 'utf8')).digest('base64url'),
+        },
+      },
+      verifyNativeOasnt: () => ({ valid: true, action_match: false }),
+    });
+    expect(result).toMatchObject({ valid: false, reason: 'display-mismatch' });
+  });
+
+  it('rejects an unknown presentation profile', () => {
+    const result = verifyPresentationBinding({
+      action,
+      evidence: { profile: 'EP-UNKNOWN-PRESENTATION-v1' },
     });
     expect(result).toMatchObject({ valid: false, reason: 'display-untrusted' });
   });

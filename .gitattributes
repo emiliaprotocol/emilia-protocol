@@ -343,6 +343,7 @@ conformance/runners/run-invariants.mjs linguist-generated=true
 conformance/runners/run-js.mjs linguist-generated=true
 conformance/runners/strict-json.mjs linguist-generated=true
 conformance/suites.mjs linguist-generated=true
+conformance/tool-call-binding.test.js linguist-generated=true
 conformance/trusted-context-pack.test.js linguist-generated=true
 conformance/vectors/generate-aec-role.mjs linguist-generated=true
 conformance/vectors/generate-agentroa-orprg-ep.mjs linguist-generated=true
