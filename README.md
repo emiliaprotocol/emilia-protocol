@@ -5,6 +5,9 @@
 [![npm](https://img.shields.io/npm/v/@emilia-protocol/verify)](https://www.npmjs.com/package/@emilia-protocol/verify)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![IETF Internet-Draft](https://img.shields.io/badge/IETF-draft--schrock--ep--authorization--receipts-blue)](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
+<!-- Discord invite must be set to never expire with unlimited uses. A default
+     Discord invite expires in 7 days and leaves a dead link on this page. -->
+[![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/cEhbzXkhW)
 
 ---
 
@@ -337,7 +340,7 @@ EP Extensions (Handshake, Signoff, Commit, Delegation) add stronger enforcement 
 4. Verify
 5. Signoff and consume
 
-**[90-second demo](https://www.emiliaprotocol.ai/mcp)** · **[Quickstart](https://www.emiliaprotocol.ai/quickstart)** · **[Agent walkthrough](https://www.emiliaprotocol.ai/use-cases/ai-agent)** · **[IETF Draft](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)**
+**[90-second demo](https://www.emiliaprotocol.ai/mcp)** · **[Quickstart](https://www.emiliaprotocol.ai/quickstart)** · **[Agent walkthrough](https://www.emiliaprotocol.ai/use-cases/ai-agent)** · **[IETF Draft](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)** · **[Discord](https://discord.gg/cEhbzXkhW)**
 
 ---
 
