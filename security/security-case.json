@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d",
+  "evidence_bundle_sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187",
   "claim_count": 35,
-  "evidence_file_count": 255,
+  "evidence_file_count": 259,
   "execution": {
     "required": true,
     "status": "passed",
@@ -466,10 +466,15 @@
           "a delegation chain naming the leaf capability as a parent is rejected as a broken link",
           "a delegation chain that grants increasing authority is rejected",
           "a failed child registration remains a funded orphan and never refunds the parent",
+          "ancestor revocation and descendant reservation serialize without reopening committed authority",
+          "cascade revocation blocks later descendant reservations and child allocations",
           "concurrent N-sibling delegation transfers rather than copies parent authority",
           "delegation burns parent budget before registering a spendable child",
           "delegation cannot outlive its parent, including across multiple hops",
+          "direct revocation blocks the named capability but preserves previously registered descendants",
           "one delegation operation identifier funds only one child digest",
+          "postgres reservations refuse when any registered ancestor state is unavailable",
+          "real PostgreSQL serializes cascade revocation against descendant reservation",
           "separate authority stores demonstrate the explicit cross-domain non-guarantee"
         ],
         "result": "passed"
@@ -832,6 +837,14 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/capability-action-fence-migration-chain-postgres.test.ts",
+        "titles": [
+          "quarantines unknown legacy revocation policy and accepts only explicit fresh lineage"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/complete-mediation-boundary.test.ts",
         "titles": [
           "keeps raw provider credential material out of the decision plane"
@@ -1065,7 +1078,7 @@
       "package": "@emilia-protocol/gate",
       "version": "0.23.14",
       "filename": "emilia-protocol-gate-0.23.14.tgz",
-      "sha256": "29e655390027b0ecefd6c24de9d865d2440e91e66fdfbb3e0628437f2e1699e7",
+      "sha256": "9e351e04b7f3a079cb4bccb0789a2d302f12aed866346bf33a4840d09a5a3a21",
       "file_count": 718
     },
     "mobile-sdk": {
@@ -1079,8 +1092,8 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d",
-      "file_count": 255
+      "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187",
+      "file_count": 259
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -1243,7 +1256,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -1506,7 +1519,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -1615,7 +1628,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -1781,7 +1794,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -1905,7 +1918,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -2100,18 +2113,19 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
     {
       "claim_id": "conservation-of-authority-is-bounded-and-non-amplifying",
-      "statement": "Within an accepted delegation path, action and audience selectors can only narrow, budget dimensions and expiry cannot increase, and cycles or a leaf naming itself as an ancestor are refused. Aggregate sibling-budget conservation is claimed only when parent-funded child operations, allocations, reservations, and commits share one authoritative atomic state domain; it is not inferred from path containment alone and is not claimed across independent stores.",
+      "statement": "Within an accepted delegation path, action and audience selectors can only narrow, budget dimensions and expiry cannot increase, and cycles or a leaf naming itself as an ancestor are refused. Each signed capability declares direct or cascade revocation: direct revocation blocks the named capability and future child allocation from it without retracting previously registered descendants by itself; cascade revocation also blocks later descendant reservations and child allocations. Aggregate sibling-budget conservation and immediate cascade inheritance are claimed only when parent-funded child operations, allocations, reservations, revocations, and commits share one authoritative atomic state domain with complete current ancestor state; neither property is inferred from path containment or claimed across independent stores.",
       "acceptance_roots": [
         "the relying party's pinned authority-registry view and capability issuer",
         "an authoritative epoch-pinned allocation ledger for aggregate branch claims",
         "atomic compare-and-update reservation in the shared capability store",
-        "one authoritative atomic state domain for every authority-bearing ancestor and descendant"
+        "one authoritative atomic state domain for every authority-bearing ancestor and descendant",
+        "an explicit signed direct or cascade revocation mode and complete current ancestor state"
       ],
       "enforcement_path": [
         {
@@ -2304,6 +2318,36 @@
           "runner": "node-test"
         },
         {
+          "file": "packages/gate/capability-receipt.test.js",
+          "title": "direct revocation blocks the named capability but preserves previously registered descendants",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/capability-receipt.test.js",
+          "title": "cascade revocation blocks later descendant reservations and child allocations",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/capability-receipt.test.js",
+          "title": "ancestor revocation and descendant reservation serialize without reopening committed authority",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/capability-receipt.test.js",
+          "title": "postgres reservations refuse when any registered ancestor state is unavailable",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/capability-receipt.test.js",
+          "title": "real PostgreSQL serializes cascade revocation against descendant reservation",
+          "runner": "node-test"
+        },
+        {
+          "file": "tests/capability-action-fence-migration-chain-postgres.test.ts",
+          "title": "quarantines unknown legacy revocation policy and accepts only explicit fresh lineage",
+          "runner": "vitest"
+        },
+        {
           "file": "packages/gate/authority-allocation.test.ts",
           "title": "rejects stale or missing relying-party authority pins",
           "runner": "node-test"
@@ -2388,17 +2432,35 @@
             "DelegationOperationBindingImmutable"
           ],
           "scope": "TLC 2.19 exhaustively checked the bounded same-team finite configuration with one root, three possible children, three operation identifiers, amounts and time in 0..2, and delegation depth at most two. It models one authoritative state domain and is not a refinement proof of TypeScript or SQL."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_capability_revocation.tla",
+          "runner": "formal/ep_capability_revocation.cfg",
+          "result_evidence": "formal/results/ep-capability-revocation.tlc.summary.txt",
+          "obligations": [
+            "CascadeRevocationClosesDescendants",
+            "DirectRevocationDoesNotRetractTransferredAuthority",
+            "MissingLineageFailsClosed",
+            "OwnedReservationNeverReopens",
+            "NewReservationRequiresCurrentCompleteLineage",
+            "NewChildRequiresActiveParentLineage"
+          ],
+          "scope": "TLC 2.19 exhaustively checked the bounded same-team finite configuration with one root, one child, one grandchild, two operation identifiers, every direct/cascade mode assignment, and at most seven serialized transitions. It models one authoritative state domain and is not a refinement proof of TypeScript or SQL."
         }
       ],
       "assumptions": [
         "every accepted child is evaluated against its direct authenticated parent",
         "aggregate branch claims use the same authoritative allocation epoch for all siblings",
-        "all workers and every authority-bearing ancestor or descendant share one authoritative linearizable atomic state domain"
+        "all workers and every authority-bearing ancestor or descendant share one authoritative linearizable atomic state domain",
+        "the complete current registered ancestor lineage is available at each reservation and child allocation"
       ],
       "exclusions": [
         "the bounded evidence is not an unbounded theorem or a refinement proof of TypeScript or SQL",
         "path non-amplification alone does not conserve aggregate sibling budgets",
         "conservation across independent stores, clouds, or offline replicas is not claimed",
+        "revocation distribution, cross-domain cascade enforcement, and a grace or wind-down period are not claimed",
         "registry compromise, database isolation failure, legal authority, human intent, and physical-world truth are outside this claim"
       ],
       "release_artifacts": [
@@ -2408,11 +2470,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "29e655390027b0ecefd6c24de9d865d2440e91e66fdfbb3e0628437f2e1699e7"
+          "sha256": "9e351e04b7f3a079cb4bccb0789a2d302f12aed866346bf33a4840d09a5a3a21"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -2613,7 +2675,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -2796,7 +2858,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -3016,7 +3078,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -3250,7 +3312,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -3475,7 +3537,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -3584,7 +3646,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -3794,11 +3856,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "29e655390027b0ecefd6c24de9d865d2440e91e66fdfbb3e0628437f2e1699e7"
+          "sha256": "9e351e04b7f3a079cb4bccb0789a2d302f12aed866346bf33a4840d09a5a3a21"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -3936,11 +3998,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "29e655390027b0ecefd6c24de9d865d2440e91e66fdfbb3e0628437f2e1699e7"
+          "sha256": "9e351e04b7f3a079cb4bccb0789a2d302f12aed866346bf33a4840d09a5a3a21"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -4353,11 +4415,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "29e655390027b0ecefd6c24de9d865d2440e91e66fdfbb3e0628437f2e1699e7"
+          "sha256": "9e351e04b7f3a079cb4bccb0789a2d302f12aed866346bf33a4840d09a5a3a21"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -4514,11 +4576,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "29e655390027b0ecefd6c24de9d865d2440e91e66fdfbb3e0628437f2e1699e7"
+          "sha256": "9e351e04b7f3a079cb4bccb0789a2d302f12aed866346bf33a4840d09a5a3a21"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -4761,11 +4823,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "29e655390027b0ecefd6c24de9d865d2440e91e66fdfbb3e0628437f2e1699e7"
+          "sha256": "9e351e04b7f3a079cb4bccb0789a2d302f12aed866346bf33a4840d09a5a3a21"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -4899,7 +4961,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -5022,7 +5084,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -5158,7 +5220,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -5389,7 +5451,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -5603,7 +5665,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -5819,7 +5881,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -6123,7 +6185,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -6335,7 +6397,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -6501,7 +6563,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -6680,7 +6742,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -6855,7 +6917,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -7005,7 +7067,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -7146,7 +7208,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -7345,7 +7407,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -7755,11 +7817,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "29e655390027b0ecefd6c24de9d865d2440e91e66fdfbb3e0628437f2e1699e7"
+          "sha256": "9e351e04b7f3a079cb4bccb0789a2d302f12aed866346bf33a4840d09a5a3a21"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -8136,11 +8198,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "29e655390027b0ecefd6c24de9d865d2440e91e66fdfbb3e0628437f2e1699e7"
+          "sha256": "9e351e04b7f3a079cb4bccb0789a2d302f12aed866346bf33a4840d09a5a3a21"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     },
@@ -8339,11 +8401,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "29e655390027b0ecefd6c24de9d865d2440e91e66fdfbb3e0628437f2e1699e7"
+          "sha256": "9e351e04b7f3a079cb4bccb0789a2d302f12aed866346bf33a4840d09a5a3a21"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+          "sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
         }
       ]
     }
@@ -8574,6 +8636,14 @@
       "sha256": "67964496e40d9d894b47e934ea13f8f36042614b4b5aef78b1d2b025d2f2cd9e"
     },
     {
+      "path": "formal/ep_capability_revocation.cfg",
+      "sha256": "b4cb53435bd0e401931a5472c1b996eeb1e4f4b33c6a5ac39c34e69039e7e8d3"
+    },
+    {
+      "path": "formal/ep_capability_revocation.tla",
+      "sha256": "f8235f5950c163c12c6de93bf56fa16b482331eaafd2d77b960a91ae046601c9"
+    },
+    {
       "path": "formal/ep_complete_mediation.cfg",
       "sha256": "92fa472de94fd56e6302f56a41e011e787612ba2001ed1c54020582ab2d56efd"
     },
@@ -8662,6 +8732,10 @@
       "sha256": "da6b7be1ceb846c96d1f42cc858510a4a9b9c5e9cdc353eda718222ba88f5b05"
     },
     {
+      "path": "formal/results/ep-capability-revocation.tlc.summary.txt",
+      "sha256": "1245907a09fff41a396771ebdbdf4f7f5e49262e4a7361b0245107b2d2c8792c"
+    },
+    {
       "path": "formal/results/ep-capability.tlc.summary.txt",
       "sha256": "b2543f47165681b7fa33b5753b9fd0edc0362d2474ef3ff4060f3e6f206f4070"
     },
@@ -8695,7 +8769,7 @@
     },
     {
       "path": "formal/results/formal-runtime-scenario-conformance.v2.json",
-      "sha256": "d6a1fb07de2aa71315d59c011aa9e72a0e580ab8e87b68026ea30a3f90211bfa"
+      "sha256": "8badfd8283b32887557a5dc5ead29a69be0e72f351b6d3e4917febcfe031ce82"
     },
     {
       "path": "formal/results/outcome-authority-join.summary.txt",
@@ -8839,7 +8913,7 @@
     },
     {
       "path": "packages/gate/capability-receipt.test.js",
-      "sha256": "fae716561b57aeeb8c36d7de8b70ada09b8e9183a6540d57c9c90a0271a6ad7c"
+      "sha256": "f686d7f093f6814d0b2619d48d7f4b0604e50e763c84d81ac74e0cf950da0e76"
     },
     {
       "path": "packages/gate/consequence-actuator.test.js",
@@ -8887,7 +8961,7 @@
     },
     {
       "path": "packages/gate/receipt-program.test.js",
-      "sha256": "79fccaba1702f0ab25a93af7210756451441b7219e0e799879a94293c7108254"
+      "sha256": "8867eae4c63204fc3d1c71993f0b968ed7396a195262db587f81d8ce316e3e8f"
     },
     {
       "path": "packages/gate/src/action-escrow-custodian.ts",
@@ -8927,7 +9001,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "88eb37764717fe8e517babc0ae544689f493e7222c241cd5601bcc1c0b8733b9"
+      "sha256": "49a767676dfb71c4e33dd87d40ea040ec9446e500e26c9417e0a6cf8937feaa7"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -8947,7 +9021,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "ea2a6f2db20ce7e75b73a939fe6db2cee537163f775f1697ff1c7456be22da3e"
+      "sha256": "fe631e3ba9c59a89e64b60961990eacc47d3a2eab1b2edd88111072d5a99486d"
     },
     {
       "path": "packages/gate/src/loss-allocation-schedule.ts",
@@ -9239,7 +9313,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "4df4df1692fa3bd4205f43776868e5e45e630258e0b546598d8de71a1d46c23a"
+      "sha256": "63b1d5ebc19259da41ed4760556009d914ceac80bb3300ea3b93b48946c7e054"
     },
     {
       "path": "security/vectors.v1.json",
@@ -9288,6 +9362,10 @@
     {
       "path": "tests/authority-registry.test.ts",
       "sha256": "12e20fd9ea27b2c2f5c019dbb8433613fa27aa7f3549a9f6d501b3c202dfac13"
+    },
+    {
+      "path": "tests/capability-action-fence-migration-chain-postgres.test.ts",
+      "sha256": "99c0b1393f69dad70fe9b3f150d7c3de717b9d3e854581d83f39b5768c910424"
     },
     {
       "path": "tests/complete-mediation-boundary.test.ts",
