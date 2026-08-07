@@ -16,6 +16,15 @@ test('classifies the high-risk families', () => {
     assert.equal(classifyOperation({ name: 'customers', method: 'DELETE', path: '/customers/{id}' }).family, 'data_destruction');
     // a read-only GET that merely mentions "deploy" is not a mutation
     assert.equal(classifyOperation({ name: 'list_deploys', method: 'GET' }).dangerous, false);
+    // method-less MCP tools get the same read-verb exemption: reading charge
+    // records is not money movement
+    assert.equal(classifyOperation({ name: 'list_charges' }).dangerous, false);
+    assert.equal(classifyOperation({ name: 'get_payment', description: 'Return one payment' }).dangerous, false);
+    assert.equal(classifyOperation({ name: 'list_roles' }).dangerous, false);
+    // the exemption refuses compounds that also carry a destructive verb
+    assert.equal(classifyOperation({ name: 'retrieve_and_delete_customer' }).family, 'data_destruction');
+    // and never applies to data_export: the read is the exfiltration risk
+    assert.equal(classifyOperation({ name: 'get_export', description: 'bulk export of records' }).family, 'data_export');
 });
 test('MCP manifest: an ungated dangerous tool FAILS', () => {
     const r = scanMcpManifest({

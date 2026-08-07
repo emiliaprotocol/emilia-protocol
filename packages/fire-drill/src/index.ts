@@ -63,6 +63,15 @@ const FAMILIES = [
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+// Method-less tool names (MCP manifests carry no HTTP method) get the same
+// read-only exemption as GET when the name's leading verb is a read:
+// `list_charges` reads charge records, it does not move money. The exemption
+// never applies to data_export (the read IS the exfiltration risk) and never
+// when the text also carries an unambiguous destructive verb, so
+// `retrieve_and_delete_customer` still classifies as data_destruction.
+const READ_LEADING_VERB = /^\s*(?:list|get|retrieve|read|search|describe|view|show|find|count|status|fetch|lookup|query|inspect|browse|preview|summarize|health|ping)\b/i;
+const DESTRUCTIVE_ANYWHERE = /\b(?:delete|remove|purge|erase|destroy|drop|terminate|revoke|deactivate|disable|wipe)(?:s|es|d|ed|ing|ion|ions)?\b/i;
+
 /**
  * Classify one operation. Returns the strongest matching family (or {dangerous:false}).
  * @returns {{ dangerous: boolean, family?: string, label?: string, tier?: string, adapter?: string, why?: string }}
@@ -78,11 +87,16 @@ export function classifyOperation({ name = '', description = '', method = '', pa
     const fam = FAMILIES.find((f) => f.family === 'data_destruction');
     return { dangerous: true, ...famOut(fam) };
   }
+  const nameText = String(name).replace(/[_/.-]+/g, ' ');
   for (const f of FAMILIES) {
     if (f.name.test(text)) {
       // A read-only GET that merely mentions a word is not a mutation, EXCEPT
       // export/download which is dangerous even via GET.
       if (m === 'GET' && f.family !== 'data_export') continue;
+      // Same exemption for method-less tools whose leading verb is a read,
+      // unless a destructive verb appears anywhere in the text.
+      if (!m && f.family !== 'data_export'
+        && READ_LEADING_VERB.test(nameText) && !DESTRUCTIVE_ANYWHERE.test(text)) continue;
       return { dangerous: true, ...famOut(f) };
     }
   }

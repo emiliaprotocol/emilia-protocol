@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * /demo — "The Agent That Tried To" live crash test.
+ * /demo — "The Agent That Tried To" scripted crash test.
  * @license Apache-2.0
  *
  * An autonomous AI agent is manipulated (prompt injection) into a catastrophic
@@ -60,7 +60,7 @@ export default function DemoPage(): React.JSX.Element {
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 96, paddingBottom: 40 }}>
-        <div style={{ ...styles.eyebrow, color: color.red }}>● Live crash test</div>
+        <div style={{ ...styles.eyebrow, color: color.red }}>● Scripted crash test</div>
         <h1 style={{ ...styles.h1Large }}>
           The agent that <span style={{ color: color.gold }}>tried to.</span>
         </h1>
@@ -166,7 +166,8 @@ EMILIA> evaluating action before it runs`}
           <p style={{ ...styles.body, maxWidth: 560, margin: '0 auto 24px' }}>
             Every high-risk action an AI agent takes is evaluated before it runs. If it’s
             irreversible, a real human has to sign off — and there’s a cryptographic receipt either
-            way. Formally verified. Open protocol.
+            way. If the provider times out, the outcome is recorded as INDETERMINATE and is never
+            blindly retried. The protocol’s core properties are formally verified. Open protocol.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/r/example" className="ep-cta" style={cta.primary}>See a real signed receipt →</Link>
@@ -285,7 +286,7 @@ function ModeBadge({ mode }) {
         textTransform: 'uppercase',
       }}
     >
-      {enforced ? 'Enforced · live policy engine' : 'Illustrative pattern'}
+      {enforced ? 'Scripted crash test · real policy verdict' : 'Scripted crash test · illustrative verdict'}
     </span>
   );
 }

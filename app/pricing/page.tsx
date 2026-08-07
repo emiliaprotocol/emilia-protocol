@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     description: 'Open verification infrastructure, one $25K protected-workflow pilot, customer-specific Gate implementation, and deployment-scoped enforcement, reconciliation, and evidence operations.',
     url: 'https://www.emiliaprotocol.ai/pricing',
     type: 'website',
+    images: ['/og-sequence.jpg'],
   },
 };
 

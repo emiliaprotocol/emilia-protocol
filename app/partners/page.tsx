@@ -38,7 +38,7 @@ export default function PartnersPage(): React.ReactElement {
   }
 
   const AUDIENCE = [
-    { title: 'Pilot deployments', body: 'Test EMILIA in a real workflow — payment approvals, agent execution, operator overrides, or delegated authority. Prove control value in 60 to 90 days with one action class.' },
+    { title: 'Pilot deployments', body: 'Test EMILIA in a real workflow — payment approvals, agent execution, operator overrides, or delegated authority. Prove control value in 90 days with one protected workflow.' },
     { title: 'Regulated workflow design partners', body: 'Government agencies, banks, and enterprises that need policy-bound, auditable control over high-risk actions before they execute. Shape the compliance patterns that become defaults.' },
     { title: 'Control architecture partnerships', body: 'Integrate the EMILIA Protocol into existing infrastructure — identity providers, CI/CD pipelines, SIEM platforms, or agent orchestration layers. Make EP the enforcement point inside what you already run.' },
   ];
@@ -46,9 +46,11 @@ export default function PartnersPage(): React.ReactElement {
   const PILOT_STEPS = [
     'Select one high-risk workflow such as a beneficiary change, payment destination change, operator override, privileged production action, or destructive agent tool use',
     'Define one or two policies relevant to your workflow',
-    'Register counterparties and generate trust profiles',
-    'Run policy evaluation, Handshake, and—if needed—Accountable Signoff',
-    'Capture trust receipts and workflow decisions',
+    'Bind the exact action so the request that executes is the request that was approved',
+    'Acquire the named approval from the accountable owner',
+    'Verify evidence under the owner\'s pinned trust inputs',
+    'Consume one-time authority before provider entry',
+    'Reconcile the outcome against the approved action',
     'Test dispute and appeal paths where relevant',
     'Produce a final trust review with lessons, metrics, and implementation recommendations',
   ];
@@ -63,7 +65,7 @@ export default function PartnersPage(): React.ReactElement {
   ];
 
   const FAQS = [
-    { q: 'Is EMILIA open source?', a: 'EMILIA is being developed as open trust infrastructure with a focus on portability, inspectability, and implementability.' },
+    { q: 'Is EMILIA open source?', a: 'Yes. The protocol formats, reference runtime, and conformance suite are Apache 2.0.' },
     { q: 'Do pilot partners need to commit long term?', a: 'No. Early pilots are designed to be narrow, practical, and time-bounded.' },
     { q: 'Is this only for AI agents?', a: 'No. AI is one entry point. The broader category is high-risk action enforcement across government, payments, enterprise approvals, and agent workflows.' },
     { q: 'Are you looking for technical contributors too?', a: 'Yes. We are open to technical reviewers, maintainers, and governance participants who can strengthen correctness and adoption.' },
@@ -106,7 +108,7 @@ export default function PartnersPage(): React.ReactElement {
               High-risk actions are already executing inside authenticated, approved-looking workflows. Agents approve payments. Operators override limits. Delegated authority chains span multiple systems. The question is no longer who is acting — it is whether this exact action should proceed under this exact authority and this exact policy.
             </p>
             <p style={styles.body}>
-              EMILIA gives you the enforcement point. Partners deploy it inside a real workflow and prove the control value before competitors define the category.
+              EMILIA gives you the enforcement point. Partners deploy it inside a real workflow and prove the control value.
             </p>
           </div>
         </div>
@@ -133,7 +135,7 @@ export default function PartnersPage(): React.ReactElement {
         <div style={styles.section}>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>What a pilot looks like</h2>
-            <p style={styles.body}>A typical EMILIA pilot runs for 60 to 90 days and focuses on a narrow, high-value trust surface.</p>
+            <p style={styles.body}>The public pilot is $25K for 90 days and protects one workflow.</p>
           </div>
           <div className="ep-reveal" style={{
             borderTop: `1px solid ${color.border}`,

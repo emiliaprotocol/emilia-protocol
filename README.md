@@ -5,7 +5,6 @@
 [![npm](https://img.shields.io/npm/v/@emilia-protocol/verify)](https://www.npmjs.com/package/@emilia-protocol/verify)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![IETF Internet-Draft](https://img.shields.io/badge/IETF-draft--schrock--ep--authorization--receipts-blue)](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
-[![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/MSJXjEtD4)
 
 ---
 
@@ -15,6 +14,10 @@
 on protected executor paths without verifiable authority.** It sits at the executor or
 system-of-record boundary, refuses before mutation, consumes accepted authorization once, and
 leaves evidence another party can verify.
+
+EMILIA is the authority control plane for autonomous work: a human or institution defines a finite operating mandate once, agents work unattended inside it, and Gate enforces each consequential unit of work.
+
+Scan (`npx @emilia-protocol/scan`) → protect one privileged MCP tool call → $25K pilot.
 
 - **EMILIA Protocol** is the open Apache-2.0 verification and evidence substrate underneath Gate.
 - **EMILIA Approver** captures device-bound human decisions over the exact action through native apps
@@ -222,7 +225,7 @@ npm install @emilia-protocol/verify  # npm
 
 Every platform shift mints a new security primitive: the web got **SSL**, the cloud got **Okta / IAM**, the agent economy needs **action-level trust**. Enterprises are sitting on AI budgets that compliance won't let them spend — EMILIA is the key that unlocks them, by turning unpredictable agents into audit-ready infrastructure that maps primitive-by-primitive to NIST AI RMF, EU AI Act, and SOC 2 CC6/7 controls.
 
-The managed layer (**GovGuard / FinGuard**) extends the open standard with sector-specific policy packs, observe-mode pilots, and audit-ready evidence packages — with no procurement required to start.
+The managed Gate and Assurance Plane extend the open standard with sector-specific policy packs, observe-mode pilots, and audit-ready evidence packages, with no procurement required to start.
 
 ---
 
@@ -305,7 +308,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 | TLA+ safety properties | 26 bounded invariants held in the configured state space; not an implementation-refinement or unbounded proof — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
 | Alloy relational assertions | 35 facts + 32 assertions across four models — verified in CI |
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
-| Release security status | Repository security checks pass; every Strix finding on the Marvel changes is remediated with regression coverage and its review thread resolved |
+| Release security status | Repository security checks pass; every Strix finding on the audited changes is remediated with regression coverage and its review thread resolved |
 | Conformance (7/7) | `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` |
 | Cross-language conformance | 331 vectors · 21 suites: receipts · device signoffs · four-outcome resolution · multi-party quorum · revocation · Outcome Binding (semantic + real-crypto) · Authority Document/Proof issuer join · time-attestation · trust-receipt (x2 profiles) · provenance · evidence-record · canonicalization · boundary · AEC acceptance · currency · initiator-attestation · consumption-proof · witness · timestamp-proof (RFC 3161). JS / Python / Go verifiers agree (`node conformance/run.mjs`). The external Rust baseline remains 164 vectors / 16 suites. See [CONFORMANCE.md](CONFORMANCE.md). |
 | Handshake create p95 | 575ms at 50 VUs — [PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md) |
@@ -322,7 +325,7 @@ EP standardizes three interoperable objects that any conforming implementation c
 | **Trust Profile** | A standardized summary of observable trust state — *what is known* |
 | **Trust Decision** | A policy-evaluated result with reasons and appeal path — *what to do now* |
 
-EP Extensions (Handshake, Signoff, Commit, Delegation) add stronger enforcement where systems must constrain execution. The product layers (GovGuard / FinGuard) are built on top — not the protocol itself.
+EP Extensions (Handshake, Signoff, Commit, Delegation) add stronger enforcement where systems must constrain execution. The product layer, the managed Gate and Assurance Plane, is built on top, not the protocol itself.
 
 ---
 
@@ -334,7 +337,7 @@ EP Extensions (Handshake, Signoff, Commit, Delegation) add stronger enforcement 
 4. Verify
 5. Signoff and consume
 
-**[90-second demo](https://www.emiliaprotocol.ai/mcp)** · **[Quickstart](https://www.emiliaprotocol.ai/quickstart)** · **[Agent walkthrough](https://www.emiliaprotocol.ai/use-cases/ai-agent)** · **[IETF Draft](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)** · **[Discord](https://discord.gg/MSJXjEtD4)**
+**[90-second demo](https://www.emiliaprotocol.ai/mcp)** · **[Quickstart](https://www.emiliaprotocol.ai/quickstart)** · **[Agent walkthrough](https://www.emiliaprotocol.ai/use-cases/ai-agent)** · **[IETF Draft](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)**
 
 ---
 
@@ -344,7 +347,7 @@ EP is authorization at the moment of action, not an identity system, not a walle
 
 - **Is**: a trust standard for binding actor identity, authority, policy, and exact action context *before* execution
 - **Is not**: a replacement for OAuth / OIDC (those answer *who are you* — EP answers *who approved this exact action*)
-- **Is not**: a proprietary product (the core is Apache-2.0 and IETF-tracked)
+- **Is not**: a proprietary product (the core is Apache-2.0 and published as individual Internet-Drafts on the IETF Datatracker)
 - **Is not**: a blockchain (the receipt is the hero; optional public timestamping is a footnote)
 
 See [CONFORMANCE.md](CONFORMANCE.md) · [SECURITY.md](SECURITY.md) · [THREAT_MODEL.md](THREAT_MODEL.md) · [GOVERNANCE.md](GOVERNANCE.md) · [Neutrality Covenant](docs/NEUTRALITY-COVENANT.md)

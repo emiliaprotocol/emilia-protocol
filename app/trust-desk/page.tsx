@@ -349,7 +349,7 @@ function PricingCard({ name, price, unit, turnaround, bullets, href, highlighted
           fontFamily: font.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
           textTransform: 'uppercase', padding: '4px 10px', borderRadius: 999,
           alignSelf: 'flex-start', marginBottom: 12,
-        }}>Most vendors pick this</div>
+        }}>Recommended</div>
       )}
       <div style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1.5, textTransform: 'uppercase' }}>
         {name}
@@ -385,7 +385,7 @@ const FAQ = [
   { q: 'Who actually fills out the questionnaire?',
     a: 'Our automated pipeline drafts every answer from your intake and our versioned policy templates — and no answer ships without a cited source. A named reviewer with a security / compliance background signs off on anything the pipeline flags for human review, and signs the attestation on your trust page. You get speed and a human in the loop where it matters.' },
   { q: 'What if my questionnaire has questions you have not seen?',
-    a: 'Most AI security questionnaires share 80% of their content once you have seen 10 of them. For genuinely novel questions, we research the specific standard (NIST AI RMF, OWASP LLM Top 10, etc.) and answer in that framework\'s language.' },
+    a: 'AI security questionnaires share most of their structure across buyers. For genuinely novel questions, we research the specific standard (NIST AI RMF, OWASP LLM Top 10, etc.) and answer in that framework\'s language.' },
   { q: 'Will my buyer accept a "live trust page" instead of a PDF?',
     a: 'Yes. Enterprise security teams increasingly prefer trust centers (SafeBase, Vanta Trust Center, Drata Trust Center). Our page is the same pattern — with AI-specific policies those tools do not cover.' },
   { q: 'Can I verify the signed claims independently?',
@@ -393,5 +393,5 @@ const FAQ = [
   { q: 'Liability?',
     a: 'You remain responsible for the accuracy of the underlying claims about your product. We are responsible for the accuracy of the analysis, the policy drafting, and the platform. Our MSA is straightforward and we will send it on intake.' },
   { q: 'Why fintech only?',
-    a: 'Fintech buyers ask the hardest AI-risk questions (money is on the line) and their questionnaires share the most structure. We know this market. Healthcare is planned; not yet.' },
+    a: 'Fintech buyers ask the hardest AI-risk questions (money is on the line) and their questionnaires share the most structure. Healthcare is planned; not yet.' },
 ];

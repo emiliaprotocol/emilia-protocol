@@ -22,9 +22,20 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
   const c = BY_SLUG[slug];
   if (!c) return { title: 'Scan not found — EMILIA Fire Drill' };
   const r = scan(c.manifest);
+  const url = `https://www.emiliaprotocol.ai/fire-drill/scan/${slug}`;
+  const title = `${c.name} — static receipt declaration score ${r.score}/100`;
+  const description = `Static schema assessment of ${c.name}: ${r.summary.missing_declaration} detected dangerous action(s) omit a required receipt declaration. Runtime enforcement is not assessed.`;
   return {
-    title: `${c.name} — static receipt declaration score ${r.score}/100 | EMILIA`,
-    description: `Static schema assessment of ${c.name}: ${r.summary.missing_declaration} detected dangerous action(s) omit a required receipt declaration. Runtime enforcement is not assessed.`,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: 'website',
+      images: ['/og-sequence.jpg'],
+    },
   };
 }
 

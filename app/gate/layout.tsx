@@ -2,23 +2,25 @@ import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'AI Agent Consequence Firewall',
+  title: { absolute: 'EMILIA Gate: Consequence Firewall for AI Agents | Product' },
   description:
     'Stop consequential AI-agent actions at the executor boundary until exact-action authority is verified, '
     + 'then preserve one-time evidence on the open EMILIA Protocol.',
   alternates: { canonical: '/gate' },
   openGraph: {
-    title: 'EMILIA Gate — The Consequence Firewall for AI Agents',
+    title: 'EMILIA Gate: Consequence Firewall for AI Agents | Product',
     description:
       'Protocol proves. Gate prevents. Require verifiable authority before money moves, infrastructure changes, regulated records update, or irreversible state changes.',
     url: 'https://www.emiliaprotocol.ai/gate',
     type: 'website',
+    images: ['/og-sequence.jpg'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA Gate — The Consequence Firewall',
+    title: 'EMILIA Gate: Consequence Firewall for AI Agents | Product',
     description:
       'Stop consequential machine actions at the executor boundary until exact-action authority is verified.',
+    images: ['/og-sequence.jpg'],
   },
 };
 

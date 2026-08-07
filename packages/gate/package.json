@@ -6,7 +6,8 @@
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
     "directory": "packages/gate"
   },
-  "description": "EMILIA Gate \u2014 the Consequence Firewall. Deny-by-default enforcement for consequential machine actions: an action runs only with a valid, in-scope, sufficiently-assured, non-replayed EMILIA authorization receipt (proof a named human authorized this exact action). Composes require-receipt + verify; adds assurance-tier enforcement, one-time consumption (replay defense), a tamper-evident evidence log, default high-risk action packs, execution-field binding, reliance packets, an MCP drop-in, a GitHub system-of-record adapter, and EG-1 conformance. Framework-agnostic, fails closed. Reference implementation, experimental.",
+  "homepage": "https://www.emiliaprotocol.ai",
+  "description": "EMILIA Gate is the Consequence Firewall: deny-by-default enforcement that runs a consequential action only on proof a named human authorized this exact action. Fails closed.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",

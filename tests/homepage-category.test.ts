@@ -30,8 +30,10 @@ describe('homepage category contract', () => {
     const route = read('app/page.js');
     const css = read('app/ep.css');
 
-    expect(route).toContain('EMILIA Gate — Consequence Firewall for AI Agents');
-    expect(route).toContain('Block consequential AI-agent actions until the protected executor');
+    // The <title> carries the buyer query (SEO audit 2026-08-06); the hero and
+    // H1 still carry the Consequence Firewall category, asserted below.
+    expect(route).toContain('AI Agent Authorization and Enforcement | EMILIA Gate');
+    expect(route).toContain('block consequential agent actions until the protected');
     expect(page).toContain('EMILIA Gate <span>· Consequence firewall for AI agents</span>');
     expect(page).toContain('Let agents act. Keep authority exact.');
     expect(page).toContain('Customer-controlled authority, credentials, trust roots, policy, and evidence.');
