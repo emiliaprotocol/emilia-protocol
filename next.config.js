@@ -87,6 +87,9 @@ const nextConfig = {
       { source: '/amelia-i', destination: '/signal', permanent: true },
       { source: '/amelia-integrity', destination: '/signal', permanent: true },
       { source: '/amelia-grip', destination: '/signal', permanent: true },
+      { source: '/brain', destination: '/authority-brain', permanent: true },
+      { source: '/solutions', destination: '/use-cases', permanent: true },
+      { source: '/developers', destination: '/docs', permanent: true },
     ];
   },
   async headers() {

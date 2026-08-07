@@ -36,8 +36,9 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
   if (!c) return { title: 'Server not found — EMILIA Fire Drill' };
   const fam = FAMILY_LABEL[c.family as keyof typeof FAMILY_LABEL] || c.family;
   return {
-    title: `${c.name} — advertises ${fam} | Agent Action Firewall (EMILIA)`,
+    title: `${c.name} — advertises ${fam}`,
     description: `${c.name} advertises a high-risk ${fam} capability in the public MCP registry. Registry-level signal (name + description), not a tool-level scan. If it acts for an AI agent, it should require an authorization receipt.`,
+    robots: { index: false, follow: true },
   };
 }
 

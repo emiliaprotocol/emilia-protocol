@@ -7,15 +7,18 @@ import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'EMILIA MCP — Protect Agent Tools and Verify Receipts',
+  // Layout title template appends "| EMILIA", rendering
+  // "MCP Security: Authorize and Audit Agent Tool Calls | EMILIA".
+  title: 'MCP Security: Authorize and Audit Agent Tool Calls',
   description:
-    'Protect an existing MCP dispatcher with mcp-guard, or add EMILIA receipt and passkey verification tools to an MCP client with mcp-server.',
+    'MCP security for agent tool calls: protect an existing MCP dispatcher with mcp-guard, or add EMILIA receipt and passkey verification tools to an MCP client with mcp-server.',
   alternates: { canonical: '/mcp' },
   openGraph: {
-    title: 'EMILIA MCP — protect agent tools and verify receipts',
+    title: 'MCP Security: Authorize and Audit Agent Tool Calls | EMILIA',
     description: 'Two distinct MCP paths: guard an existing executor, or add EMILIA verification tools to a client.',
     url: 'https://www.emiliaprotocol.ai/mcp',
     type: 'website',
+    images: ['/og-sequence.jpg'],
   },
   keywords: ['MCP server', 'Model Context Protocol', 'AI agent authorization', 'human in the loop MCP', 'trust receipt', 'agent accountability'],
 };

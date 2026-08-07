@@ -16,6 +16,7 @@ export const metadata: Metadata = {
       'Identity and policy remain inputs. EMILIA Protocol carries exact-action evidence across approval, execution, uncertainty, and remedy.',
     url: 'https://www.emiliaprotocol.ai/protocol',
     type: 'article',
+    images: ['/og-sequence.jpg'],
   },
 };
 

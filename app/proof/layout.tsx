@@ -15,11 +15,13 @@ export const metadata: Metadata = {
     description,
     url: 'https://www.emiliaprotocol.ai/proof',
     type: 'article',
+    images: ['/og-sequence.jpg'],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'EMILIA Engineering Evidence',
     description,
+    images: ['/og-sequence.jpg'],
   },
   keywords: [
     'EMILIA Protocol security evidence',

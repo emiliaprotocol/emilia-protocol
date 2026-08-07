@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next';
 import { REPRESENTATIVE_CORPUS } from '../packages/fire-drill/corpus.js';
-import { REGISTRY_CORPUS } from '../packages/fire-drill/registry-corpus.js';
 
 // Auto-generated XML sitemap. Next.js's app/sitemap.ts convention serves
 // this file at /sitemap.xml automatically. Regenerated on each request
@@ -155,13 +154,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     path: `/fire-drill/scan/${c.slug}` as string, priority: 0.7, changeFrequency: 'monthly' as const,
   }));
 
-  // Registry-level result pages: real MCP-registry servers that advertise a
-  // high-risk capability and publish a repo (backlink surface).
+  // Registry index only. The per-server registry detail pages are noindexed
+  // template pages and are deliberately excluded from the sitemap.
   const registry = [
     { path: '/fire-drill/registry', priority: 0.8, changeFrequency: 'weekly' as const },
-    ...REGISTRY_CORPUS.map((c) => ({
-      path: `/fire-drill/registry/${c.slug}` as string, priority: 0.6, changeFrequency: 'monthly' as const,
-    })),
   ];
 
   const allEntries = [...marketing, ...comparison, ...blog, ...essays, ...product, ...functional, ...corporate, ...legal, ...scans, ...registry];
