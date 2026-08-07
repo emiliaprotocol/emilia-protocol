@@ -1,32 +1,33 @@
 # IANA media type registrations — EMILIA Protocol
 
-Completed registration templates per RFC 6838, Section 5.6, prepared for the
-**provisional standard media type** path (the vehicle for names whose defining
-specification is still in development). See `README.md` in this directory for
+Registration templates per RFC 6838, Section 5.6. The AE Challenge media type
+now follows the Independent Stream publication path for a permanent
+standards-tree registration; the current receipts draft carries its own
+standards-tree registration request. See `README.md` in this directory for
 submission channels, order of operations, and the status tracker.
 
 **Consistency rule applied throughout:** every string below is taken verbatim
 from a draft's own text. Nothing here invents a name a draft does not carry.
-The backing documents are **active INDIVIDUAL Internet-Drafts, not
-IETF-adopted or endorsed**; a permanent standards-tree registration needs
-approval the drafts do not yet have, which is exactly why these are prepared
-as provisional registrations.
+The backing documents are **individual Internet-Drafts, not IETF-adopted or
+endorsed**. A permanent standards-tree registration needs approval the drafts
+do not yet have.
 
 ---
 
 ## 1. application/authorization-evidence-challenge+json
 
-**Status: SUBMITTED / PENDING IANA REVIEW.** A clean replacement request was
-submitted on 2026-07-28 and acknowledged into IANA's queue as ticket #1456851.
-It supersedes the original vendor-tree request and accumulated corrections
-under ticket #1456611. Queue acknowledgement is not registration or approval;
-the type is not yet present in either the provisional or permanent IANA media
-type registry. The string is fixed by draft text:
-`draft-schrock-ae-challenge-01`, Section 2, specifies that
+**Status: DIRECT REQUEST CLOSED / INDEPENDENT STREAM PACKET STAGED.** IANA
+closed ticket #1456851 on 2026-08-07 without a merits decision because the
+document had not reached a publication-stage review. IANA advised that an
+Independent Stream document can be processed when it reaches IETF conflict
+review. The type is not registered. Revision -02 is staged to carry the full
+permanent standards-tree template and the Independent Stream metadata. The
+string remains fixed by draft text: `draft-schrock-ae-challenge-02`, Section 2,
+specifies that
 a challenge is "returned (in the HTTP binding) with status 428 and media type
 application/authorization-evidence-challenge+json". Section 5 (IANA
-Considerations) requests provisional registration of this media type. The
-submitted request therefore cites the active -01 directly.
+Considerations) requests permanent standards-tree registration. Do not treat
+the staged -02 as published until Datatracker accepts it.
 
 **Deployment honesty note:** the reference enforcement point returns the
 challenge object today labeled `application/json` (Express `res.json()`); this
@@ -50,7 +51,7 @@ and does not use record-separator framing. Binary is selected because JSON
 representations may contain lines longer than 998 octets.
 
 **Security considerations:** See Section 4 of
-draft-schrock-ae-challenge-01. A challenge authorizes
+draft-schrock-ae-challenge-02. A challenge authorizes
 nothing by itself: a forged challenge cannot make an action admissible, and a
 fully satisfied challenge yields a verdict under the relying party's policy,
 never a promise of execution. Challenges are single-use (nonce) and expiring,
@@ -67,10 +68,10 @@ lose the challenge semantics (single-use nonce, expiry, action digest
 binding). Consumers encountering an unrecognized `@version` value should treat
 the document as unprocessable rather than guessing.
 
-**Published specification:** draft-schrock-ae-challenge-01,
+**Published specification:** draft-schrock-ae-challenge-02,
 "An Authorization Evidence Challenge for High-Risk Agent Actions", Section 2
-(an active individual Internet-Draft, not IETF-adopted or endorsed; intended
-status Informational).
+(staged for publication and Independent Stream submission; intended status
+Informational; not IETF-adopted or endorsed).
 
 **Applications that use this media type:** Relying-party enforcement points
 that refuse a high-consequence machine-initiated action with HTTP 428 and a
@@ -103,77 +104,59 @@ team@emiliaprotocol.ai
 
 **Author:** Iman Schrock, EMILIA Protocol, Inc.
 
-**Change controller:** IETF (on permanent standards-tree registration; the
-draft author until then)
+**Change controller:** IETF
 
-**Provisional registration? (standards tree only):** Yes
+**Provisional registration? (standards tree only):** No
 
 ---
 
-## 2. application/ep-receipt+json
+## 2. application/ep-authorization-receipt+json
 
-**Status: PREPARED / NOT SUBMITTED.** The active
-`draft-schrock-ep-authorization-receipts-09` IANA Considerations say that the
-document has no IANA actions and that a future version may register
-`application/ep-receipt+json`. That is not a registration request. Do **not**
-file this template until a later draft revision explicitly requests the media
-type registration. The template below is retained only as preparation for
-that future revision.
+**Status: CARRIED BY CURRENT DRAFT.** The active
+`draft-schrock-ep-authorization-receipts-10`, Section 13, requests this media
+type and carries the complete registration template. Process the registration
+with the Standards Track document. The older proposed name
+`application/ep-receipt+json` is not the name selected by -10 and must not be
+filed as an alias.
 
 ### Registration template (RFC 6838 §5.6)
 
 **Type name:** application
 
-**Subtype name:** ep-receipt+json
+**Subtype name:** ep-authorization-receipt+json
 
-**Required parameters:** N/A
+**Required parameters:** none
 
-**Optional parameters:** N/A (none defined; the document's own version member,
-profile `EP-RECEIPT-v1`, gates interpretation)
+**Optional parameters:** none
 
-**Encoding considerations:** binary. The content is JSON [RFC8259] encoded in
-UTF-8. Signatures are computed over a canonical form (JCS-style
-canonicalization of an I-JSON value subset) as specified by the defining
-draft, so byte-exact transport of the canonical payload matters to verifiers.
+**Encoding considerations:** binary; the representation is a JSON object
+encoded as UTF-8 according to RFC 8259.
 
-**Security considerations:** See Section 11 of
-draft-schrock-ep-authorization-receipts-09. A receipt is offline-verifiable
-authorization evidence: Ed25519 signatures over canonical JSON, bound to a
-specific action, with one-time consumption against replay. Verification
-proves signature, binding, and (where a log is used) log-inclusion integrity —
-never the business correctness of the authorized action, and offline
-verification does not by itself prove non-revocation or log honesty (the draft
-states this as a MUST NOT overclaim). Possession of a receipt is evidence,
-not permission: the enforcement point, not the document, is the control.
+**Security considerations:** See the Security Considerations section of
+draft-schrock-ep-authorization-receipts-10. Receipt verification requires
+independently selected log, approver, directory, and policy trust inputs. A
+valid receipt is evidence, not current authorization, proof of execution, or
+proof of human comprehension. Implementations must also apply the draft's
+duplicate-member, Unicode-scalar, depth, and number restrictions.
 
-**Interoperability considerations:** Uses the `+json` structured syntax suffix
-[RFC6839]. Processors that treat the content as generic JSON lose the
-verification semantics; verifiers must apply the canonicalization profile of
-the defining draft before checking signatures, since divergent
-canonicalization produces divergent verdicts on identical documents.
+**Interoperability considerations:** The
+`EP-AUTHORIZATION-RECEIPT-v1` format profile and its offline verification
+algorithm are defined by the draft. The shorter identifier `EP-RECEIPT-v1`
+names a different generic envelope and is not an alias.
 
-**Published specification:** draft-schrock-ep-authorization-receipts
-(a future revision carrying registration text; -09 is the current revision:
-"Authorization Receipts for High-Risk Agent Actions" — an active individual
+**Published specification:** draft-schrock-ep-authorization-receipts-10,
+"Authorization Receipts for High-Risk Agent Actions" (an active individual
 Internet-Draft, not IETF-adopted or endorsed; intended status Standards Track).
 
-**Applications that use this media type:** Enforcement points that require an
-authorization receipt before executing a high-consequence agent action;
-agents presenting receipts; auditors verifying them offline. Reference
-implementation: the EMILIA Protocol repository (JavaScript, Python, and Go
-verifiers in one repository — a consistency check, not independent
-implementations; an independent clean-room reimplementation (COSA) is
-underway).
+**Applications that use this media type:** Agent-action authorization systems,
+verifying executors, audit systems, and evidence exchange services.
 
-**Fragment identifier considerations:** As specified for `+json` in RFC 6839,
-Section 3.1. No type-specific fragment identifier syntax is defined.
+**Fragment identifier considerations:** none
 
 **Additional information:**
 
-- Deprecated alias names for this type: none
 - Magic number(s): none
-- File extension(s): none registered; deployments that store receipts at rest
-  commonly use `.json`
+- File extension(s): none
 - Macintosh file type code(s): none
 
 **Person & email address to contact for further information:** Iman Schrock,
@@ -183,12 +166,11 @@ team@emiliaprotocol.ai
 
 **Restrictions on usage:** none
 
-**Author:** Iman Schrock, EMILIA Protocol, Inc.
+**Author:** Iman Schrock
 
-**Change controller:** IETF (on permanent standards-tree registration; the
-draft author until then)
+**Change controller:** IETF
 
-**Provisional registration? (standards tree only):** Yes
+**Provisional registration? (standards tree only):** No
 
 ---
 
