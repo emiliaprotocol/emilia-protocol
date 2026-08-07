@@ -1,7 +1,8 @@
 # Model-to-Matter -04 validation
 
-Validated on 2026-08-06. This packet is staged for human review and has not
-been filed. The posted `-03` source and renders remain unchanged.
+Validated and published on 2026-08-06. The immutable IETF archive XML is
+byte-identical to the retained source. The superseded `-03` source and renders
+are preserved under `standards/archive/`.
 
 ## Packet checks
 

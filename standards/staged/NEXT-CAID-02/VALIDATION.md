@@ -22,6 +22,6 @@ Validated on 2026-08-06 from the isolated CAID -02 working packet.
 - A fresh `xml2rfc 3.34.0` rebuild, followed by the same HTML whitespace
   normalization, produced TXT and HTML byte-identical to the staged renders.
 
-This packet is staged and unfiled. File it first. It references the currently
-posted receipts-09; receipts-10 then follows with a normative reference pinned
-to CAID-02.
+Datatracker published this packet as CAID-02 on 2026-08-06. The immutable IETF
+archive XML is byte-identical to the retained source. It was filed first;
+receipts-10 followed with a normative reference pinned to CAID-02.

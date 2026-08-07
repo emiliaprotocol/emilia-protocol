@@ -1,0 +1,504 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Experimental                              6 August 2026
+Expires: 7 February 2027
+
+
+ Model-to-Matter: Authorization and Outcome Evidence for Model-Directed
+                           Physical Execution
+                    draft-schrock-model-to-matter-04
+
+Abstract
+
+   Advanced models can propose operations that produce physical effects.
+   Model-to-Matter defines an executor-owned profile that composes
+   model, safety, institutional, domain, screening, human, and physical-
+   state attestation evidence over one canonical action before single-
+   use execution.  This revision also profiles post-execution Outcome
+   Binding.  An executor effect statement remains one source claim;
+   required independent observers sign separately bound observations.
+   Missing outcome evidence is indeterminate, not success or failure.
+   The profile standardizes evidence custody and reconciliation; it does
+   not perform screening, determine scientific safety, certify a
+   facility, or establish physical truth.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 7 February 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+
+
+
+Schrock                  Expires 7 February 2027                [Page 1]
+
+Internet-Draft               Model-to-Matter                 August 2026
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Requirements Language . . . . . . . . . . . . . . . . . .   3
+   2.  Canonical Action  . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Pre-Execution Evidence and Clearance  . . . . . . . . . . . .   3
+   4.  Effect Custody  . . . . . . . . . . . . . . . . . . . . . . .   5
+   5.  Outcome Claims and Binding  . . . . . . . . . . . . . . . . .   5
+   6.  Remedy and Subsequent Action  . . . . . . . . . . . . . . . .   6
+   7.  Industrial Execution Profile  . . . . . . . . . . . . . . . .   6
+   8.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
+     8.1.  Physical State Attestation  . . . . . . . . . . . . . . .   7
+   9.  Privacy Considerations  . . . . . . . . . . . . . . . . . . .   7
+   10. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
+   11. Implementation Status . . . . . . . . . . . . . . . . . . . .   7
+   12. Changes since -03 . . . . . . . . . . . . . . . . . . . . . .   8
+   13. Normative References  . . . . . . . . . . . . . . . . . . . .   8
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
+
+1.  Introduction
+
+   A digital proposal can become a physical effect through a laboratory,
+   instrument gateway, robot, manufacturing system, or other executor.
+   Independent authorities may each approve a different fact.  The
+   executor therefore constructs one closed Action Object and accepts
+   evidence only when every required issuer agrees about that action.
+
+   Authorization and outcome are separate phases. clear_to_execute
+   permits one invocation; it does not assert that invocation occurred.
+   An executor effect statement records the executor's claim; it does
+   not prove a sensor result.  Outcome reconciliation requires the
+   independently pinned sources selected by the expected-effects policy.
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 February 2027                [Page 2]
+
+Internet-Draft               Model-to-Matter                 August 2026
+
+
+1.1.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   BCP 14 is indexed by the RFC Editor at [BCP14].
+
+2.  Canonical Action
+
+   EP-MODEL-TO-MATTER-ACTION-v1 is a closed I-JSON [RFC7493] object
+   serialized with JCS [RFC8785].  It binds model manifest, harness and
+   safeguards; experiment protocol, material commitment and expected-
+   effects digest; principal; executor and facility; purpose;
+   destination; requested time; and max_executions=1.  Raw biological
+   content, prompts, completions, and hidden reasoning MUST NOT appear
+   in the portable object.
+
+   The executor independently computes both action_digest and CAID.  The
+   identifiers MUST encode the same canonical bytes.  CAID identifies
+   the action; it does not prove identity, authority, safety, execution,
+   or outcome.
+
+3.  Pre-Execution Evidence and Clearance
+
+   The executor pins its own acceptance profile.  The initial profile
+   requires model_attestation, safety_case_attestation,
+   institutional_authority, biosafety_review, domain_screening,
+   human_authorization, and physical_state_attestation artifacts.  Each
+   artifact is signed by a pinned issuer and binds action_digest.
+   Presenter-supplied issuer keys, sufficiency rules, or revocation
+   policy MUST NOT influence acceptance.
+
+   A physical_state_attestation binds action_digest, the attesting
+   sensor network identifier, a digest of the required precondition set,
+   a digest of the measured state, a validity window, and a match
+   verdict.  The required-precondition digest MUST equal the digest
+   pinned by the executor for the action and profile.  The executor
+   profile MUST pin the maximum measurement age and maximum validity
+   duration; presenter-supplied limits MUST NOT influence acceptance.
+   The attesting network's key MUST be pinned for this role, and its
+   relying-party-declared control domain MUST be distinct from the
+   executor's control domain.  A second key under the executor's control
+   is not independent.
+
+
+
+
+
+Schrock                  Expires 7 February 2027                [Page 3]
+
+Internet-Draft               Model-to-Matter                 August 2026
+
+
+   The executor MUST refuse when the physical_state_attestation is
+   absent, when its validity window does not encompass the time of
+   clearance evaluation, when the measurement age or validity duration
+   exceeds its corresponding pinned limit, when the required-
+   precondition digest does not match, or when the match verdict is
+   false.  An expired artifact MUST NOT be renewed by re-signing the
+   same measurement; a new measurement is required.  Profiles MUST
+   define a canonical validity window from the signed measurement
+   instant.  The reference profile sets issued_at equal to the
+   measurement instant and derives expires_at by adding the pinned
+   maximum validity duration, so changing only either window edge is a
+   refusal rather than a renewal.
+
+   A deployment MAY express those evidence roles in a customer-owned,
+   signed Reliance Program and compile that source into its execution-
+   time Gate configuration.  When it does, the exact program identifier,
+   version, source digest, compiled-program digest, and evidence-
+   requirement digest MUST be pinned by the executor and bound into the
+   clearance record.  A presenter-supplied program or an unpinned
+   compiled result MUST be refused.
+
+   A model or agent qualification statement MAY fill a named evaluation
+   role only after native verification binds the exact candidate,
+   harness, assignment, policy, campaign, freshness, and status.
+   Qualification is evidence about measured fitness.  It is not human
+   authorization, legal authority, safety approval, or permission to
+   execute, and MUST NOT satisfy any of those roles by itself.
+
+   The executor MUST apply the Action Evidence Boundary [EP-AEB] after
+   native verification and AEC [EP-AEC] evidence satisfaction.  It
+   independently derives the exact physical action, applies local
+   authorization, verifies required separation-of-duty terms and current
+   status, and durably consumes or reserves the clearance before
+   dispatch.
+
+   The executor registers and atomically consumes a short-lived
+   challenge.  Before returning clear_to_execute it atomically consumes
+   the action digest in durable shared state.  Storage ambiguity returns
+   indeterminate and freezes execution pending authenticated
+   reconciliation.  It MUST NOT permit blind retry.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 February 2027                [Page 4]
+
+Internet-Draft               Model-to-Matter                 August 2026
+
+
+4.  Effect Custody
+
+   After clearance consumption, the protected effect enters dispatch
+   custody.  The executor records a stable operation identifier and the
+   exact action digest, CAID, clearance replay digest, provider, and
+   facility.  A lost provider response after invocation is
+   indeterminate.  Reconciliation MUST query the authenticated provider
+   operation; it MUST NOT issue a new physical action under the consumed
+   clearance.
+
+5.  Outcome Claims and Binding
+
+   The Action Object's experiment.expected_effects_digest MUST commit to
+   the exact source-routed predicted_effects array.  Each prediction
+   identifies an executor, system_of_record, or independent_observer
+   role and MAY require a source class.  Post-execution observations
+   conform to [I-D.schrock-ep-outcome-binding].
+
+   For this profile, each observation MUST bind the action_digest as
+   action_hash, the action CAID, clearance replay digest, stable
+   operation identifier, executor facility, and observation window.  The
+   clearance replay digest is used as the authorization digest and
+   consumption binding; the derived authorization identifier is
+   "ep:m2m:clearance:" followed by the lowercase hexadecimal digest
+   value.
+
+   EP-MODEL-TO-MATTER-EFFECT-v1 remains the executor's signed statement.
+   Its status is completed, failed, aborted, or indeterminate.  Its
+   observed_effect_digest MUST equal the observed_effects_digest of the
+   accepted executor-role observation.  This prevents an executor
+   statement from being attached to different executor observations.
+
+   An accepted executor statement is necessary when required by policy
+   and is not physical truth.  If a prediction requires an independent
+   observer, the verifier MUST NOT reconcile without an accepted
+   observation from a separately pinned source matching the required
+   role, class, and facility.  The independent source MUST use an
+   Ed25519 canonical key identity and a relying-party-declared control
+   domain distinct from every executor or other non-independent source.
+   A second key in the executor's control domain is not independent.
+
+   The executor's acceptance profile MUST pin source status and
+   validity, source quorum, distinctness dimensions, and any required
+   observation window and maximum attestation delay.  Those requirements
+   are verifier policy and MUST NOT be accepted from the observation
+   presenter.  A compromised at the attestation instant, retired outside
+   its pinned historical validity interval, expired, not-yet-valid, non-
+   distinct, late, or window-mismatched source cannot satisfy the
+
+
+
+Schrock                  Expires 7 February 2027                [Page 5]
+
+Internet-Draft               Model-to-Matter                 August 2026
+
+
+   required evidence role.  Missing or unauthenticated evidence yields
+   lifecycle_state=indeterminate and outcome=null.  Authentic evidence
+   yields in_bounds, divergent, or incomparable under Outcome Binding.
+   An indeterminate state MUST NOT be mapped to incomparable.
+
+6.  Remedy and Subsequent Action
+
+   A divergent or failed outcome does not authorize a remedy.  Any
+   rollback, compensation, cleanup, repeat experiment, or other
+   consequence is a new action with a separately constructed Action
+   Object, CAID, evidence set, challenge, clearance, and consumption
+   event.
+
+7.  Industrial Execution Profile
+
+   An industrial deployment SHOULD separate at least three roles: the
+   actuator or facility executes; a meter, EMS, SCADA historian,
+   laboratory instrument, or other telemetry source observes under a
+   separately pinned identity; and the Model-to-Matter verifier
+   reconciles evidence and applies settlement or remediation policy.  A
+   controller acknowledgment MUST NOT be represented as an independent
+   physical measurement.
+
+   Action State or another external evidence format MAY carry the stable
+   action identity, custody transition, and Outcome Binding result
+   digest.  Such a carrier is an adapter and is not a core dependency of
+   this profile.
+
+8.  Security Considerations
+
+   This profile does not decide scientific safety, validate raw
+   material, certify a source, establish control-domain ownership, or
+   establish physical truth.  Pinned sources may be wrong, compromised,
+   correlated, or colluding.  Deployments need independent operational
+   controls, source calibration, key governance, bounded observation
+   windows, incident response, and legal review appropriate to the
+   physical consequence.
+
+   Exact action, CAID, clearance, operation, executor, facility, source,
+   and time bindings are mandatory.  Evidence for different operations
+   or facilities MUST NOT be joined.  An effect status of indeterminate
+   and an Outcome Binding lifecycle of indeterminate prohibit blind
+   retry.
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 February 2027                [Page 6]
+
+Internet-Draft               Model-to-Matter                 August 2026
+
+
+8.1.  Physical State Attestation
+
+   A physical_state_attestation establishes only that a network
+   identified by a pinned key signed a claim that it measured a state at
+   a stated time.  It does not establish physical truth, sensor
+   calibration, correct sensor placement, or the absence of unmeasured
+   hazards.  A miscalibrated or compromised sensor signs a false
+   measurement as readily as a true one; the physical_state_attestation
+   leg can pass and clearance can issue if all other requirements are
+   satisfied.
+
+   This artifact bounds measurement staleness at clearance evaluation.
+   It does not establish that the state remains unchanged through
+   dispatch or execution.  Deployments MUST NOT represent a cleared
+   action as evidence that physical conditions were correct.
+
+9.  Privacy Considerations
+
+   Portable evidence can reveal models, institutions, facilities,
+   principals, purposes, destinations, and times.  Deployments SHOULD
+   minimize identifiers and use hiding commitments for low-entropy
+   sensitive content.  A plain digest is not automatically confidential.
+
+10.  IANA Considerations
+
+   This document has no IANA actions.
+
+11.  Implementation Status
+
+   An Apache-2.0 TypeScript implementation provides the closed Action
+   Object, CAID binding, all seven signed evidence roles, registered
+   challenge, durable single-use clearance, effect statements, source-
+   routed Outcome Binding, independently signed observation sets,
+   canonical-key and control-domain separation, source status and
+   validity, observation-window policy, distinct-source quorum, and
+   adversarial tests.  Demonstrations are synthetic and process no raw
+   biological content.  No wet-lab deployment, scientific validation,
+   partner endorsement, or independent implementation is claimed.  The
+   repository also contains separate implementations of customer-owned
+   Reliance Programs, typed AEB boundary terms, and Agent Qualification
+   Statements.
+
+   The reference clearance path requires physical_state_attestation,
+   verifies its exact-action and executor-pinned precondition bindings,
+   enforces independent sensor key and declared control domain, uses the
+   canonical measurement-derived validity window, and refuses missing,
+   stale, negative, substituted, or replayed measurement state.  It also
+   binds the compiled reliance_program_digest and
+
+
+
+Schrock                  Expires 7 February 2027                [Page 7]
+
+Internet-Draft               Model-to-Matter                 August 2026
+
+
+   evidence_requirement_digest into the clearance object and refuses a
+   mismatched compiled requirement.  This is reference implementation
+   and synthetic conformance evidence, not evidence of physical truth,
+   sensor quality, complete hazard coverage, or deployment in a
+   laboratory.
+
+12.  Changes since -03
+
+   This revision adds physical_state_attestation as a seventh required
+   pre-execution evidence role.  It binds an independently controlled
+   sensor network's claimed measurement to the exact action, executor-
+   pinned preconditions, and bounded measurement time, while refusing
+   absent, stale, mismatched, or negative artifacts.  It also states
+   explicitly that a signed measurement is a source claim rather than
+   physical truth and does not establish that conditions remain
+   unchanged through execution.  The reference implementation and
+   conformance vectors now exercise the seventh role and the -03 program
+   and requirement digest bindings.
+
+13.  Normative References
+
+   [BCP14]    Internet Engineering Task Force, "Key Words for Use in
+              RFCs to Indicate Requirement Levels", BCP 14, 2017,
+              <https://www.rfc-editor.org/info/bcp14>.
+
+   [EP-AEB]   Schrock, I., "The Action Evidence Boundary for
+              Consequential Agent Effects", Work in Progress, Internet-
+              Draft, draft-schrock-action-evidence-boundary-03, August
+              2026, <https://datatracker.ietf.org/doc/draft-schrock-
+              action-evidence-boundary/>.
+
+   [EP-AEC]   Schrock, I., "Authorization Evidence Chains: Composing
+              Heterogeneous Agent-Action Evidence", Work in Progress,
+              Internet-Draft, draft-schrock-ep-authorization-evidence-
+              chain-05, August 2026, <https://datatracker.ietf.org/doc/
+              draft-schrock-ep-authorization-evidence-chain/>.
+
+   [I-D.schrock-ep-outcome-binding]
+              Schrock, I., "Outcome Binding for Authorized Actions and
+              Independently Observed Effects", Work in Progress,
+              Internet-Draft, draft-schrock-ep-outcome-binding-00, July
+              2026, <https://datatracker.ietf.org/doc/html/draft-
+              schrock-ep-outcome-binding-00>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+
+
+Schrock                  Expires 7 February 2027                [Page 8]
+
+Internet-Draft               Model-to-Matter                 August 2026
+
+
+   [RFC7493]  Bray, T., Ed., "The I-JSON Message Format", RFC 7493,
+              DOI 10.17487/RFC7493, March 2015,
+              <https://www.rfc-editor.org/info/rfc7493>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 February 2027                [Page 9]

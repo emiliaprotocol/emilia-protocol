@@ -237,9 +237,9 @@ authoritative for revision and status.
 
 For reader navigation, the canonical evidence path is:
 
-1. [Authorization Receipts-09](standards/posted/draft-schrock-ep-authorization-receipts-09.xml)
+1. [Authorization Receipts-10](standards/posted/draft-schrock-ep-authorization-receipts-10.xml)
    defines the action-bound approval-evidence profile. The current posted
-   revision is -09, filed as a Standards Track candidate individual submission.
+   revision is -10, filed as a Standards Track candidate individual submission.
 2. [Human Authorization Binding-00](standards/posted/draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact into an adjacent host record.
 3. [Authority Introduction-02](standards/posted/draft-schrock-ep-authority-introduction-02.xml)
@@ -256,7 +256,7 @@ portfolio.
 ### Separate runtime execution spine
 
 The runtime path is [Architecture-02](standards/posted/draft-schrock-ep-architecture-02.xml)
-→ [CAID-01](standards/posted/draft-schrock-canonical-action-identifier-01.xml)
+→ [CAID-02](standards/posted/draft-schrock-canonical-action-identifier-02.xml)
 → [AEC-05](standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
 → [AEB-03](standards/posted/draft-schrock-action-evidence-boundary-03.xml):
 system boundaries, exact material-action matching, evidence satisfaction, then

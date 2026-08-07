@@ -85,10 +85,10 @@ through host-record binding and scoped authority, to relying-party evidence
 satisfaction:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-09`](posted/draft-schrock-ep-authorization-receipts-09.xml)
+   [`draft-schrock-ep-authorization-receipts-10`](posted/draft-schrock-ep-authorization-receipts-10.xml)
    defines one action-bound organizational approval-evidence profile and its
    extension seam. Snapshot SHA-256:
-   `c4d430e4257fc6ff8a77d7eb8b6a40de3a3159f6eefa83f7df439ebbe42008b9`.
+   `4800fffb1d03df4aaef95bde97f2cdf9c4e4821b406068c5deca544b5a218d43`.
 2. **Human Authorization Binding** —
    [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact by value or reference into an
@@ -162,8 +162,8 @@ XML sources were verified byte-for-byte against the IETF archive:
 
 1. `draft-schrock-action-evidence-boundary-00`: the explicit boundary between
    independently verified evidence and one material action.
-2. `draft-schrock-canonical-action-identifier-01`: current material-action
-   identity and profile-bounded matching.
+2. `draft-schrock-canonical-action-identifier-01`: the July 21 material-action
+   identity and profile-bounded matching baseline, superseded by -02 on August 6.
 3. `draft-schrock-ep-architecture-02`: current ecosystem map, applicability
    test, and decision vocabulary.
 4. `draft-schrock-ep-authorization-evidence-chain-04`: current native
@@ -203,8 +203,16 @@ IETF archive:
    reachability, occurrence ceilings, and aggregate budgets are enforced in the
    same atomic domain as one-time Gate admission.
 
+On **August 6, 2026**, four maintenance revisions were published and verified
+byte-for-byte against the immutable IETF archive: CAID-02, Authorization
+Receipts-10, Bounded Capability Receipts-02, and Model-to-Matter-04. CAID-02
+landed first; Receipts-10 then normatively pinned it. The capability revision
+adds explicit shared-state-domain and per-action authorization composition.
+Model-to-Matter-04 adds the seventh physical-state attestation role while
+preserving the source-claim, not physical-truth, boundary.
+
 The published line also retains Authority Introduction-02, Quorum-03, Bounded
-Capability Receipts-01, and the other current individual drafts listed in
+Capability Receipts-02, and the other current individual drafts listed in
 `STATUS.json`. Model-to-Matter remains deliberately separate: publication does
 not claim a wet-lab deployment, screening capability, scientific-safety
 judgment, physical truth, or external endorsement.

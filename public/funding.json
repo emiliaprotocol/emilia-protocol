@@ -16,7 +16,7 @@
     {
       "guid": "emilia-protocol",
       "name": "EMILIA Protocol",
-      "description": "An open protocol and reference toolkit for producing and independently verifying authorization evidence for consequential machine actions. The fundable public surface includes same-team JavaScript, Python, and Go reference verifiers checked against shared adversarial vectors in CI; the npm packages @emilia-protocol/verify and @emilia-protocol/issue; executable security claims with hashed evidence; formal models with explicit boundedness and exclusions; and the individual Internet-Draft draft-schrock-ep-authorization-receipts-09.",
+      "description": "An open protocol and reference toolkit for producing and independently verifying authorization evidence for consequential machine actions. The fundable public surface includes same-team JavaScript, Python, and Go reference verifiers checked against shared adversarial vectors in CI; the npm packages @emilia-protocol/verify and @emilia-protocol/issue; executable security claims with hashed evidence; formal models with explicit boundedness and exclusions; and the individual Internet-Draft draft-schrock-ep-authorization-receipts-10.",
       "webpageUrl": {
         "url": "https://www.emiliaprotocol.ai",
         "wellKnown": "https://www.emiliaprotocol.ai/.well-known/funding-manifest-urls"

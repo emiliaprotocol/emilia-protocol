@@ -1,9 +1,9 @@
 # Bounded Capability Receipts -02 upload packet
 
-This is an isolated working packet for a potential maintenance revision of
-`draft-schrock-ep-bounded-capability-receipts-01`. It is separate from the
-immutable August 3 publication provenance packet and is not an upload or send
-instruction.
+This is the retained exact-submission packet for
+`draft-schrock-ep-bounded-capability-receipts-02`, published on 2026-08-06. It
+is separate from the immutable August 3 publication provenance packet and is
+not an upload or send instruction.
 
 Revision -02 makes the multi-executor boundary explicit: aggregate guarantees
 require one relying-party-pinned atomic state domain, while a deployment that
@@ -22,5 +22,5 @@ must bind the exact exercise-action digest. Legacy calls are labeled
 `local_store_only`, not aggregate. These integrations do not close the older
 wire-format and complete-lineage conformance gaps listed in the draft.
 
-The source is the authoritative working artifact. TXT and HTML renders are
-generated locally for review. Filing remains a separate human decision.
+The source, TXT, and HTML renders are retained for publication provenance. The
+IETF archive is authoritative for the posted revision and rendered forms.

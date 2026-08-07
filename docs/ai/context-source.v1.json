@@ -417,11 +417,11 @@
     },
     {
       "path": "conformance/vectors/model-to-matter.v1.json",
-      "purpose": "15 deterministic Model-to-Matter CAID, acceptance, refusal, replay, storage-failure, and effect-statement cases"
+      "purpose": "25 deterministic Model-to-Matter CAID, seven-role acceptance, refusal, replay, storage-failure, requirement-binding, and effect-statement cases"
     },
     {
-      "path": "standards/posted/draft-schrock-model-to-matter-03.xml",
-      "purpose": "Published August 3 Experimental Model-to-Matter profile adding relying-party programs, qualification evidence, and typed AEB composition while preserving the no-physical-truth limitation"
+      "path": "standards/posted/draft-schrock-model-to-matter-04.xml",
+      "purpose": "Published August 6 Experimental Model-to-Matter profile adding independently keyed physical-state attestation and implementing program and requirement digest binding while preserving the no-physical-truth limitation"
     },
     {
       "path": "standards/posted/draft-schrock-ep-outcome-binding-00.xml",

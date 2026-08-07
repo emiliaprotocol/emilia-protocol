@@ -21,11 +21,10 @@ Internet-Draft**. It is not an RFC, not an adopted working-group item, and not
 IETF endorsement. New revisions are prepared in `staged/`, while immutable
 published snapshots and superseded history live in `posted/` and `archive/`.
 
-The six August 3 publication snapshots were checked byte-for-byte against the
-immutable IETF archive before promotion to `posted/`. Their exact submitted
-bytes, checksums, and local review renders remain retained under
-`staged/` as provenance. The IETF archive is authoritative for rendered forms
-and live status.
+Published snapshots are checked byte-for-byte against the immutable IETF
+archive before promotion to `posted/`. Exact submitted bytes, checksums, and
+local review renders remain retained under `staged/` as provenance. The IETF
+archive is authoritative for rendered forms and live status.
 
 ## Cohesive architecture
 
@@ -47,7 +46,7 @@ remain separate lifecycle transitions.
 The reader-facing canonical surface is:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-09`](posted/draft-schrock-ep-authorization-receipts-09.xml):
+   [`draft-schrock-ep-authorization-receipts-10`](posted/draft-schrock-ep-authorization-receipts-10.xml):
    one action-bound organizational approval-evidence profile.
 2. **Human Authorization Binding** —
    [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml):
@@ -74,7 +73,7 @@ complete active portfolio remains the 22 records in
 `STATUS.json.active_datatracker`, including 20 active `draft-schrock-*` records
 and two coauthored records, each with its own scope and revision history.
 
-The separate runtime execution spine is **Architecture-02 -> CAID-01 ->
+The separate runtime execution spine is **Architecture-02 -> CAID-02 ->
 AEC-05 -> AEB-03**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
@@ -93,10 +92,25 @@ August 3, 2026:
 5. `draft-schrock-ep-bounded-capability-receipts-01`
 6. `draft-schrock-ep-bounded-execution-program-00`
 
-Their canonical current snapshots are in `posted/`. The exact submitted-byte
-packet remains in `staged/UPLOAD-THIS/` with rendered forms, submission-mode
+Their publication snapshots remain in `posted/` or, after supersession,
+`archive/`. The exact submitted-byte packet remains in `staged/UPLOAD-THIS/`
+with rendered forms, submission-mode
 `idnits` results, checksums, and Datatracker Additional Resources metadata for
 publication provenance. The retained packet is not an upload queue.
+
+## August 6 maintenance revisions
+
+Four maintenance revisions were published and checked byte-for-byte against
+the immutable IETF archive on August 6, 2026, in dependency order:
+
+1. `draft-schrock-canonical-action-identifier-02`
+2. `draft-schrock-ep-authorization-receipts-10`
+3. `draft-schrock-ep-bounded-capability-receipts-02`
+4. `draft-schrock-model-to-matter-04`
+
+CAID-02 was posted first so Receipts-10's normative reference resolved to the
+current CAID revision at publication time. Their isolated packets remain under
+`staged/NEXT-*` as publication provenance, not upload candidates.
 
 ## New-filing freeze
 

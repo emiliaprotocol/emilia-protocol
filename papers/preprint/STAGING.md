@@ -11,6 +11,12 @@ symbolic theorem, and the counterexample separations that distinguish protocol
 authorization from ordinary signature authenticity. The rejection remains
 recorded as a venue decision, not as a peer-review finding.
 
+The exact PDF submitted as `xxxx/110966` is preserved by git commit `a56b0bea`
+with SHA-256 `99d667231d9c596920bdf8ad7c445a26d7211e84606b6bd2b0ca8b27114449e5`.
+The current working PDF changes only the cited engineering draft from
+Authorization Receipts-09 to the subsequently published -10. It has not been
+resubmitted while the confirmed package remains under editor review.
+
 **Venue:** arXiv (cs.CR) is locked for this topic for us and requires an
 endorsement we do not have, so this package targets the **IACR Cryptology ePrint
 Archive** as the primary venue — the cryptography community's own preprint server,
@@ -25,7 +31,7 @@ mints a DOI, no scope moderation).
 | File | What it is | State |
 |---|---|---|
 | `main.tex` | Full LaTeX source carrying the canonical Markdown fingerprint and current repo evidence claims | Rebuilt locally; claim-checker gated |
-| `main.pdf` | Compiled PDF (25 pages), built from `main.tex` with `tectonic` | Submitted as `xxxx/110966`; email confirmed; awaiting editor review |
+| `main.pdf` | Compiled PDF (25 pages), built from `main.tex` with `tectonic` | Current citation-synchronized working copy; exact submitted bytes are pinned above |
 | `STAGING.md` | This checklist | — |
 
 The PDF is the artifact IACR ePrint and Zenodo both host directly (they do not
@@ -87,7 +93,7 @@ DOI. Other options if ever needed: TechRxiv (IEEE), HAL, OSF Preprints.
 ## Numbers all trace to repo artifacts (no invented figures)
 
 - Conformance 21 suites / 331 vectors → `conformance/conformance-manifest.json`.
-- Current cited drafts → `standards/STATUS.json`: Authorization Receipts -09,
+- Current cited drafts → `standards/STATUS.json`: Authorization Receipts -10,
   Quorum -03, Authorization Evidence Chain -05, Evidence Record -01.
 - Tamarin core/quorum/composed lemma blocks → `formal/PROOF_STATUS.md` (verbatim);
   20 composed obligations + 8 deliberate falsifications → `lib/proof-stats.json`.

@@ -1,16 +1,15 @@
 # Authorization Receipts -10 upload packet
 
 This is the isolated candidate packet for
-`draft-schrock-ep-authorization-receipts-10`. Nothing in this directory has
-been filed.
+`draft-schrock-ep-authorization-receipts-10`. It was published on 2026-08-06
+after CAID-02 and is retained as exact-submission provenance.
 
-Upload only:
+Submitted file:
 
 - `UPLOAD-THIS/draft-schrock-ep-authorization-receipts-10.xml`
 
-File this packet immediately after Datatracker shows
-`draft-schrock-canonical-action-identifier-02`. Its normative CAID reference is
-pinned to -02.
+Datatracker showed `draft-schrock-canonical-action-identifier-02` before this
+revision was filed. Its normative CAID reference is pinned to -02.
 
 Revision -10:
 

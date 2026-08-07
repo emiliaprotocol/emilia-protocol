@@ -77,7 +77,7 @@ boundary.
 ## Layout
 
 - `DESIGN.md` — normative core
-- `../standards/posted/draft-schrock-canonical-action-identifier-01.xml` —
+- `../standards/posted/draft-schrock-canonical-action-identifier-02.xml` —
   published individual Internet-Draft source (xml2rfc v3)
 - `registry/` — action-type registry seed, suites, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations

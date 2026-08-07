@@ -20,5 +20,6 @@ The state-domain digest is a relying-party deployment binding. These checks do
 not prove that two independently configured processes reach the same physical
 database, and the skipped PostgreSQL cases are not represented as passing.
 
-This packet is a working maintenance revision. It has not been filed and does
-not change the posted -01 snapshot or the repository's published-status record.
+Datatracker published this maintenance revision as -02 on 2026-08-06. The
+immutable IETF archive XML is byte-identical to the retained source; -01 is
+preserved under `standards/archive/`.

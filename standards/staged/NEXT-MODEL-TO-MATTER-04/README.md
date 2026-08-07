@@ -1,11 +1,12 @@
 # Model-to-Matter -04 upload packet
 
 This is the isolated candidate packet for
-`draft-schrock-model-to-matter-04`. Nothing in this directory has been filed.
-The posted `-03` source and the August 3 publication-provenance packet remain
+`draft-schrock-model-to-matter-04`. It was published on 2026-08-06 and is
+retained as exact-submission provenance. The superseded `-03` source remains
+in `standards/archive/`, and the August 3 publication-provenance packet remains
 unchanged.
 
-Upload only after human review:
+Submitted file:
 
 - `UPLOAD-THIS/draft-schrock-model-to-matter-04.xml`
 
@@ -27,6 +28,6 @@ Revision -04:
 The reference Model-to-Matter clearance path implements all seven roles and
 binds the compiled Reliance Program and evidence-requirement digests into each
 clearance. This is synthetic reference and conformance evidence, not a wet-lab
-deployment or a claim of physical truth. Filing remains a separate human
-decision and would publish an Experimental individual Internet-Draft, not an
-RFC, working-group document, IETF consensus, or IETF endorsement.
+deployment or a claim of physical truth. Publication created an Experimental
+individual Internet-Draft, not an RFC, working-group document, IETF consensus,
+or IETF endorsement.

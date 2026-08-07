@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-08-03",
+  "updated": "2026-08-06",
   "active_datatracker_count": 22,
   "active_schrock_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. The seven August 3 XML snapshots were verified byte-for-byte against the immutable IETF archive before promotion. Their exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. The four August 6 maintenance revisions and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -33,10 +33,10 @@
         "order": 1,
         "label": "Authorization Receipts",
         "draft": "draft-schrock-ep-authorization-receipts",
-        "revision": "09",
-        "source": "standards/posted/draft-schrock-ep-authorization-receipts-09.xml",
+        "revision": "10",
+        "source": "standards/posted/draft-schrock-ep-authorization-receipts-10.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-        "snapshot_sha256": "c4d430e4257fc6ff8a77d7eb8b6a40de3a3159f6eefa83f7df439ebbe42008b9",
+        "snapshot_sha256": "4800fffb1d03df4aaef95bde97f2cdf9c4e4821b406068c5deca544b5a218d43",
         "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
         "boundary": "One approval-evidence profile and extension seam; it does not establish scoped authority or evidence satisfaction by itself."
       },
@@ -103,10 +103,10 @@
         "order": 2,
         "label": "CAID",
         "draft": "draft-schrock-canonical-action-identifier",
-        "revision": "01",
-        "source": "standards/posted/draft-schrock-canonical-action-identifier-01.xml",
+        "revision": "02",
+        "source": "standards/posted/draft-schrock-canonical-action-identifier-02.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/",
-        "snapshot_sha256": "b76e67fcab2fb33187b9c86f7d4421f0903e237dd274122ab0a1fe382465f3f9",
+        "snapshot_sha256": "777487b04ac473ad70ff2dd8a0c396657744bb7fd9e92499d4ec0bee67762015",
         "runtime_role": "Identifies and profile-matches the exact material action without authorizing it."
       },
       {
@@ -224,10 +224,10 @@
     },
     {
       "draft": "draft-schrock-canonical-action-identifier",
-      "revision": "01",
+      "revision": "02",
       "layer": "material_action_identity_mapping",
       "role": "Typed material-action identity and profile-bounded cross-format matching",
-      "next_action": "Published July 21; use -01 as the current CAID baseline"
+      "next_action": "Published August 6; use -02 for target-bound tool-call identity and profile-bounded cross-format matching"
     },
     {
       "draft": "draft-schrock-emilia-eye",
@@ -259,17 +259,17 @@
     },
     {
       "draft": "draft-schrock-ep-authorization-receipts",
-      "revision": "09",
+      "revision": "10",
       "layer": "authorization_evidence",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published August 3; use -09 as the current Standards Track candidate for the receipt and extension baseline"
+      "next_action": "Published August 6; use -10 for the Standards Track receipt profile, normative CAID mapping, presentation binding, and the media-type request"
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts",
-      "revision": "01",
+      "revision": "02",
       "layer": "delegation_capability_policy",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published August 3; use -01 for parent-funded delegation, aggregate sibling conservation, and the one-authoritative-state-domain limitation"
+      "next_action": "Published August 6; use -02 for shared state-domain binding, single-executor fallback, and optional exact-action human-authorization composition"
     },
     {
       "draft": "draft-schrock-ep-bounded-execution-program",
@@ -329,10 +329,10 @@
     },
     {
       "draft": "draft-schrock-model-to-matter",
-      "revision": "03",
+      "revision": "04",
       "layer": "execution_lifecycle",
       "role": "Experimental executor-side authorization-evidence clearance for model-directed physical execution",
-      "next_action": "Published August 3; use -03 for relying-party program, qualification, and typed AEB composition while preserving the no-physical-truth limitation"
+      "next_action": "Published August 6; use -04 for the seven-role clearance profile, physical-state source claim, and program and requirement digest binding while preserving the no-physical-truth limitation"
     },
     {
       "draft": "draft-ferro-schrock-memory-projection-record",
@@ -453,7 +453,7 @@
       },
       {
         "draft": "draft-schrock-canonical-action-identifier-01",
-        "source": "standards/posted/draft-schrock-canonical-action-identifier-01.xml",
+        "source": "standards/archive/draft-schrock-canonical-action-identifier-01.xml",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
       {
@@ -494,7 +494,7 @@
       "path": "standards/staged/UPLOAD-THIS",
       "state": "retained_exact_submitted_bytes_not_upload_candidates",
       "checksum_manifest": "standards/staged/SHA256SUMS.txt",
-      "verification": "The six retained XML files match their canonical standards/posted snapshots byte-for-byte; retained renders and checksums preserve publication review provenance."
+      "verification": "The six retained XML files match the immutable IETF archive and their superseded standards/archive snapshots byte-for-byte; retained renders and checksums preserve publication review provenance."
     },
     "items": [
     {
@@ -533,7 +533,7 @@
     },
     {
       "draft": "draft-schrock-model-to-matter-03",
-      "source": "standards/posted/draft-schrock-model-to-matter-03.xml",
+      "source": "standards/archive/draft-schrock-model-to-matter-03.xml",
       "state": "published_ietf_archive_verified_exact_local_match",
       "claim": "Model-to-Matter composition with relying-party programs, qualification evidence, and typed AEB admission",
       "implementation": [
@@ -544,7 +544,7 @@
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts-01",
-      "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-01.xml",
+      "source": "standards/archive/draft-schrock-ep-bounded-capability-receipts-01.xml",
       "state": "published_ietf_archive_verified_exact_local_match",
       "claim": "Parent-funded delegation and aggregate sibling conservation in one authoritative atomic state domain",
       "implementation": [
@@ -566,6 +566,50 @@
       ],
       "limitations": "No plan-understanding, safety, legality, provider-truth, effect-truth, complete-mediation, or independent-implementation claim is made"
     }
+    ]
+  },
+  "august_6_2026_maintenance_wave": {
+    "filing_date": "2026-08-06",
+    "item_count": 4,
+    "publication_status": "published_and_ietf_archive_verified_2026_08_06",
+    "filing_order": [
+      "draft-schrock-canonical-action-identifier-02",
+      "draft-schrock-ep-authorization-receipts-10",
+      "draft-schrock-ep-bounded-capability-receipts-02",
+      "draft-schrock-model-to-matter-04"
+    ],
+    "verification": "Each listed XML is byte-for-byte identical to its immutable IETF archive artifact. CAID-02 was posted before Receipts-10 so the latter's normative CAID reference resolved to the current revision at publication time.",
+    "provenance_packets": [
+      "standards/staged/NEXT-CAID-02",
+      "standards/staged/NEXT-AUTHORIZATION-RECEIPTS-10",
+      "standards/staged/NEXT-BOUNDED-CAPABILITY-02",
+      "standards/staged/NEXT-MODEL-TO-MATTER-04"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-canonical-action-identifier-02",
+        "source": "standards/posted/draft-schrock-canonical-action-identifier-02.xml",
+        "snapshot_sha256": "777487b04ac473ad70ff2dd8a0c396657744bb7fd9e92499d4ec0bee67762015",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-ep-authorization-receipts-10",
+        "source": "standards/posted/draft-schrock-ep-authorization-receipts-10.xml",
+        "snapshot_sha256": "4800fffb1d03df4aaef95bde97f2cdf9c4e4821b406068c5deca544b5a218d43",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-ep-bounded-capability-receipts-02",
+        "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-02.xml",
+        "snapshot_sha256": "83cee3d57be0efcbd3040516d7c65517ac4c9bb2f97598129120974db41fe200",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-model-to-matter-04",
+        "source": "standards/posted/draft-schrock-model-to-matter-04.xml",
+        "snapshot_sha256": "94e107da7a668b236e50c7ee6173b9a9113627c9e64cfb2033fad659d3821810",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      }
     ]
   },
   "retired_absorbed": [

@@ -171,8 +171,9 @@ npm run test:mutation:model-to-matter
 ```
 
 The current published Experimental Internet-Draft source is archived locally at
-`standards/posted/draft-schrock-model-to-matter-03.xml`. It specifies the
-executor-side lifecycle, Outcome Binding, and explicit non-goals. Publication establishes the
+`standards/posted/draft-schrock-model-to-matter-04.xml`. It specifies the
+seven-role executor-side lifecycle, requirement-digest binding, Outcome
+Binding, and explicit non-goals. Publication establishes the
 open Model-to-Matter name; it does not establish deployment, adoption,
 partnership, or endorsement.
 
@@ -182,7 +183,7 @@ An initial pilot needs adapters, not replacement systems:
 
 1. A model deployment emits its existing manifest and safeguards attestations.
 2. The customer signs a Reliance Program that pins the exact action and the
-   content-addressed six-role evidence requirement; the executor compiles and
+   content-addressed seven-role evidence requirement; the executor compiles and
    pins it before accepting presentations.
 3. A safety evaluator signs the digest of its existing safety case.
 4. The institution maps its authorization decision into the authority adapter.

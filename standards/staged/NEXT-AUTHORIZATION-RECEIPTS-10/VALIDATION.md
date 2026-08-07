@@ -25,4 +25,5 @@ Validated on 2026-08-06:
 The draft remains an individual Internet-Draft and does not assert an adopted
 document stream. The source intentionally omits `submissionType`; the
 rendering default does not change that status, and the packet checker enforces
-the omission. File it only after Datatracker shows CAID-02.
+the omission. Datatracker published this packet on 2026-08-06 after CAID-02;
+the immutable IETF archive XML is byte-identical to the retained source.

@@ -234,7 +234,7 @@ const context: any = {
       deterministic_vectors: modelToMatter.vectors.length,
       implementation_languages: ['javascript'],
       command: 'npm run m2m:conformance',
-      current_draft: 'draft-schrock-model-to-matter-03',
+      current_draft: 'draft-schrock-model-to-matter-04',
       non_claims: ['biological screening', 'scientific safety', 'physical truth', 'wet-lab deployment', 'external endorsement'],
     },
   },
