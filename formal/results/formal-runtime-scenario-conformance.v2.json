@@ -975,7 +975,7 @@
     },
     {
       "path": "packages/verify/dist/a2a-receipt-binding.js",
-      "sha256": "38519511c94aa23bc90772280c7db31ba8db093ceb295cbdaa77ef6cdc2f7a55"
+      "sha256": "b4979b5b25cae1fae8aab8c671465df148bed4925c2832efd0d99baabc4d63b3"
     },
     {
       "path": "packages/verify/dist/aeb-acceptance-profile.js",

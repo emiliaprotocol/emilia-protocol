@@ -149,6 +149,7 @@ test('refuses task, context, message, target, negotiation, and protocol substitu
         ['context', { task: { ...f.task, contextId: 'context-server-0002' } }, 'context_binding_mismatch'],
         ['target', { target_interface_url: 'https://other.example/a2a/v1' }, 'target_binding_mismatch'],
         ['negotiation', { negotiated_extensions: [] }, 'extension_not_negotiated'],
+        ['lookalike negotiation', { negotiated_extensions: [`${A2A_RECEIPT_EXTENSION_URI}.attacker.example`] }, 'extension_not_negotiated'],
         ['version', { protocol_version: '0.3' }, 'protocol_version_mismatch'],
     ];
     for (const [label, override, reason] of cases) {

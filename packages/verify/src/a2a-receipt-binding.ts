@@ -476,7 +476,7 @@ export function createA2AReceiptPresentation(
   if (proofMessage.taskId !== task.id || proofMessage.contextId !== task.contextId) {
     throw new TypeError('proof Message must bind the supplied Task id and contextId');
   }
-  if ((proofMessage.extensions ?? []).includes(A2A_RECEIPT_EXTENSION_URI)
+  if ((proofMessage.extensions ?? []).some((uri) => uri === A2A_RECEIPT_EXTENSION_URI)
       || Object.hasOwn(proofMessage.metadata ?? {}, A2A_RECEIPT_EXTENSION_URI)) {
     throw new TypeError('proof Message already carries the EMILIA A2A extension');
   }
@@ -626,7 +626,7 @@ export function verifyA2AReceiptPresentation(
   const negotiated = Array.isArray(negotiatedExtensions)
     && negotiatedExtensions.every((uri) => typeof uri === 'string')
     && new Set(negotiatedExtensions).size === negotiatedExtensions.length
-    && negotiatedExtensions.includes(A2A_RECEIPT_EXTENSION_URI);
+    && negotiatedExtensions.some((uri) => uri === A2A_RECEIPT_EXTENSION_URI);
   result.checks.extension = negotiated;
   if (!negotiated) addReason(result, 'extension_not_negotiated');
 

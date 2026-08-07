@@ -17,7 +17,8 @@ import { siemEvent } from '@/lib/siem';
 // Unlisted routes default to 'read'.
 //
 // `rateCategory` maps to a key in RATE_LIMITS (lib/rate-limit.js).
-// `useAuth` means the rate-limit key includes the API key prefix + IP.
+// `useAuth` documents that the route authenticates in-route. The edge limiter
+// must not derive identity from the still-unverified Authorization header.
 // =============================================================================
 
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -437,21 +438,6 @@ function classifyRoute(method, pathname) {
   return { rateCategory: 'read', useAuth: false };
 }
 
-// =============================================================================
-// Auth helper
-// =============================================================================
-
-/**
- * @param {import('next/server').NextRequest} request
- * @returns {string|null}
- */
-function getApiKeyPrefix(request) {
-  const auth = request.headers.get('authorization') || '';
-  const token = auth.replace(/^Bearer\s+/i, '');
-  // API keys are like ep_live_abc123... — use first 16 chars as identity
-  return token ? token.slice(0, 16) : null;
-}
-
 /**
  * @param {import('next/server').NextRequest} request
  * @returns {number}
@@ -802,7 +788,7 @@ export async function middleware(request) {
     }
   }
 
-  const { rateCategory, useAuth } = classifyRoute(request.method, pathname);
+  const { rateCategory } = classifyRoute(request.method, pathname);
 
   // Protocol routes (rateCategory: null) skip middleware rate limiting entirely.
   // They rely on auth + DB-level idempotency instead, saving an Upstash roundtrip (~80ms).
@@ -816,14 +802,12 @@ export async function middleware(request) {
 
   const ip = getClientIP(request);
 
-  // For authenticated write routes, use API key prefix + IP as rate limit key.
-  let rateLimitKey = ip;
-  if (useAuth) {
-    const keyPrefix = getApiKeyPrefix(request);
-    if (keyPrefix) {
-      rateLimitKey = `${keyPrefix}:${ip}`;
-    }
-  }
+  // Authentication happens in the route, after this edge decision. A bearer
+  // prefix here is attacker-controlled: rotating fake prefixes would mint a
+  // fresh bucket for every request and defeat the pre-auth DoS boundary. Keep
+  // the edge identity stable by source IP; authenticated services may apply a
+  // second tenant/session-scoped limit after credential verification.
+  const rateLimitKey = ip;
 
   const isAgentRecordApi = AGENT_RECORD_API.test(pathname);
   const requiresDurableAgentRecordLimit = isAgentRecordApi

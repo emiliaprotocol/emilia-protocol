@@ -8,7 +8,10 @@
 ## Critical
 - **This repo is PUBLIC.** Everything tracked is world-readable. Business, strategy, GTM, investor, fundraising, outreach, competitive, and pitch material belongs in the private `emiliaprotocol/emilia-company` repository, never in tracked paths here. `docs/strategy-private/` remains ignored only as a compatibility safeguard, not as a source of truth. Run `npm run check:repository-boundary` before publishing. When in doubt, don't `git add` it.
 - **main == production within minutes.** Multiple agent sessions commit and push this same checkout in near-real-time, so a local commit is NOT a hold. Anything that must not publish yet goes on a branch or stays outside the repo. Re-fetch before reasoning about origin state.
-- Branch protection is off by owner decision: work directly on main and push each verified chunk.
+- Branch protection is active. Prefer a branch and pull request for reviewable
+  changes, and do not treat owner bypass as independent review. Until a second
+  human maintainer exists, any owner-bypass direct push must be locally verified
+  and documented in its commit.
 
 ## Build & ship
 - Run the full production build before pushing, not just tsc/eslint/tests.

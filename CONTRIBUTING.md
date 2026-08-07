@@ -18,10 +18,12 @@ Thank you for your interest in contributing to EP. This document explains how to
 3. Make your changes
 4. Run tests: `npm run test:run`
 5. Run conformance suite: `npm run test:run -- conformance/`
-6. Sign off every commit: `git commit -s` — CI enforces the [Developer Certificate of Origin](https://developercertificate.org/) and a PR with unsigned commits fails the `DCO` check
+6. Sign off every commit: `git commit -s` — CI enforces the [Developer Certificate of Origin](https://developercertificate.org/) and a PR with unsigned commits fails the `DCO` check. The signer must be the natural person accountable for the contribution; an AI system cannot sign the DCO or be named as a co-author.
 7. Submit a pull request against `main`
 
 Maintainer review is required on all paths (see `.github/CODEOWNERS`).
+AI-assisted contributions must also follow
+[`docs/AI-ASSISTED-DEVELOPMENT.md`](docs/AI-ASSISTED-DEVELOPMENT.md).
 
 ### Integration examples
 

@@ -61,6 +61,7 @@ describe('approval poll-token custody', () => {
     };
     const sealed = encryptPollToken(token, scope);
     expect(sealed.keyId).toBe('2026-07-v1');
+    expect(Buffer.from(sealed.tag, 'base64url')).toHaveLength(16);
     expect(sealed.ciphertext).toMatch(/^epat1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
     expect(JSON.stringify(sealed)).not.toContain(token);
     expect(decryptPollToken(sealed, scope)).toBe(token);

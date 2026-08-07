@@ -47,6 +47,17 @@ async function tierFor(method: string, url: string): Promise<string | undefined>
   return limiterCalls[0]?.category;
 }
 
+async function keyFor(method: string, url: string, authorization: string): Promise<string | undefined> {
+  limiterCalls.length = 0;
+  const { middleware } = await import('../middleware.js');
+  const { NextRequest } = await import('next/server');
+  await middleware(new NextRequest(url, {
+    method,
+    headers: { authorization },
+  }) as never);
+  return limiterCalls[0]?.key;
+}
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const API_DIR = path.join(ROOT, 'app', 'api');
 const MUTATING = ['POST', 'PUT', 'PATCH', 'DELETE'] as const;
@@ -153,6 +164,15 @@ describe('rate-limit classification coverage', () => {
     );
     expect(failClosed).toContain("'unclassified_write'");
     expect(failClosed).toContain("'mcp_tool_call'");
+  });
+
+  it('does not let attacker-controlled bearer prefixes mint fresh pre-auth buckets', async () => {
+    const url = 'https://ep.test/api/v1/trust-receipts';
+    const first = await keyFor('POST', url, `Bearer ep_live_${'a'.repeat(48)}`);
+    const second = await keyFor('POST', url, `Bearer ep_live_${'b'.repeat(48)}`);
+
+    expect(first).toBe('203.0.113.9');
+    expect(second).toBe(first);
   });
 
   it('gives the hosted MCP tool channel its own tier, not the shared read bucket', async () => {
