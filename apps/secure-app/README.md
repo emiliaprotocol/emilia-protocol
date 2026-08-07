@@ -89,6 +89,56 @@ class, software-key Class-A refusal, hardware-policy refusal, biometric-only
 and passcode-capable OS semantics, malformed/expired session refusal, corrupt
 SecureStore cleanup, and absence of bundled-token or live software-submit paths.
 
+## Dependency audit and exceptions
+
+```bash
+npm run audit:dependencies
+```
+
+Detection stays at `--audit-level=low`. Nothing is downgraded and nothing is
+blanket-ignored.
+
+Some advisories have no upstream fix. The current example is `image-size`,
+which reaches this app only through the Expo/metro bundler: every published
+version of it is inside the advisory range, and npm's suggested remediation is
+a three-major downgrade of Expo. `npm audit --omit=dev` does not help either,
+because `expo` and `react-native` are production dependencies and npm's
+dependency graph cannot express "ships to the device" versus "runs on the build
+machine".
+
+The gate in `../../scripts/audit-with-exceptions.mjs` handles that case without
+going quiet. Every advisory it lets through must be named in
+`audit-exceptions.json` with a written reachability justification, evidence
+that no upstream fix exists and what was checked to establish that, who
+accepted it, and two dates: when it was accepted and when the acceptance
+expires.
+
+**An exception expires.** On its `expires_on` date the build starts failing on
+that advisory until someone re-verifies it and accepts a new dated decision or
+fixes it. An acceptance window cannot exceed 180 days, so a far-future date
+cannot be used to make an exception permanent. Adding an entry here is a
+decision with a date on it, not a permanent silence.
+
+The gate fails, with a named reason, when any of these hold:
+
+| Reason | Meaning |
+|---|---|
+| `uncovered_advisory` | A live advisory no exception covers. The default answer to a new finding is still to fix it. |
+| `expired_exception` | An acceptance passed its `expires_on` date. This is the forcing function. |
+| `stale_exception` | An exception matches nothing live, so the file self-cleans and only ever describes real accepted risk. |
+| `malformed_exceptions_file` | Missing, unreadable, or missing a required field. A placeholder justification is rejected on length. |
+| `expiry_window_too_long` | The acceptance window exceeds 180 days. |
+| `unreviewed_affected_package` | The advisory now reaches a package outside the reviewed `affected_packages` set, so the reachability argument was written against a different blast radius. |
+| `severity_escalated` | The advisory is now more severe than the level it was accepted at. |
+| `audit_report_invalid` | `npm audit` produced nothing usable. The gate fails instead of reading an empty report as "clean". |
+| `invalid_usage` | The gate was invoked with a bad prefix, flag, or severity floor. A misconfigured gate fails rather than passing. |
+
+On success it prints each accepted advisory, its justification, and the days
+remaining before expiry, and warns when fewer than 21 days are left.
+
+The gate's own behaviour is covered by `lib/audit-gate.test.mjs`, which runs
+under `npm test` alongside the protocol tests.
+
 ## External acceptance gates
 
 Before any production signing claim, a platform-native build must:

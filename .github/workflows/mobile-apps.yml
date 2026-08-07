@@ -21,6 +21,7 @@ on:
       - 'packages/mobile/**'
       - 'sdks/kotlin-mobile/**'
       - 'sdks/swift-mobile/**'
+      - 'scripts/audit-with-exceptions.mjs'
       - 'scripts/check-mobile-production.mjs'
       - 'scripts/check-mobile-release.mjs'
       - 'scripts/check-write-discipline.js'
@@ -52,6 +53,7 @@ on:
       - 'packages/mobile/**'
       - 'sdks/kotlin-mobile/**'
       - 'sdks/swift-mobile/**'
+      - 'scripts/audit-with-exceptions.mjs'
       - 'scripts/check-mobile-production.mjs'
       - 'scripts/check-mobile-release.mjs'
       - 'scripts/check-write-discipline.js'
@@ -167,7 +169,9 @@ jobs:
       - name: Install secure-app dependencies
         working-directory: apps/secure-app
         run: npm ci --ignore-scripts
-      - name: Enforce zero secure-app vulnerabilities at low severity
+      - name: Enforce the secure-app audit gate at low severity
+        # Detection stays at low. Advisories with no upstream fix pass only when
+        # audit-exceptions.json accepts them, and each acceptance expires.
         working-directory: apps/secure-app
         run: npm run audit:dependencies
       - name: Run secure-app protocol tests
