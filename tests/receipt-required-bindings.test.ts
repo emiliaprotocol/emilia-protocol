@@ -38,6 +38,10 @@ describe("Receipt Required protocol binding registry", () => {
       registry.profiles.find((profile) => profile.protocol_id === "wimse")
         .implementation_status,
     ).toBe("verification_context_only");
+    expect(
+      registry.profiles.find((profile) => profile.protocol_id === "a2a")
+        .implementation_status,
+    ).toBe("reference_implemented");
   });
 
   it("rejects unknown keys at every contract level", () => {
@@ -107,6 +111,7 @@ describe("Receipt Required protocol binding registry", () => {
       if (
         protocolId === "http" ||
         protocolId === "mcp" ||
+        protocolId === "a2a" ||
         protocolId === "x402"
       )
         continue;

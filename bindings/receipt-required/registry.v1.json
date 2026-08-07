@@ -105,42 +105,42 @@
     {
       "profile_id": "ep:receipt-required:binding:a2a:v1",
       "protocol_id": "a2a",
-      "protocol_version": "A2A task-metadata profile",
-      "implementation_status": "documented_profile",
+      "protocol_version": "A2A v1.0 Message extension profile",
+      "implementation_status": "reference_implemented",
       "match_selector": {
         "carrier": "a2a_task",
-        "discriminator_path": "/state",
-        "discriminator_value": "input-required"
+        "discriminator_path": "/task/status/state",
+        "discriminator_value": "TASK_STATE_INPUT_REQUIRED"
       },
       "challenge_carrier": {
-        "kind": "a2a_task_metadata",
-        "location": "task.metadata.receipt_required",
-        "content_type": "application/json",
-        "refusal_code": "input-required"
+        "kind": "a2a_task_status_message_extension",
+        "location": "task.status.message metadata under the EMILIA extension URI",
+        "content_type": "application/a2a+json",
+        "refusal_code": "TASK_STATE_INPUT_REQUIRED"
       },
       "proof_carrier": {
-        "kind": "a2a_task_metadata",
-        "location": "task.metadata.emilia_receipt",
-        "content_type": "application/ep-receipt+json"
+        "kind": "a2a_message_extension",
+        "location": "message.metadata[https://emiliaprotocol.ai/extensions/a2a/receipt-binding/v1] with Message.extensions and A2A-Extensions negotiation",
+        "content_type": "application/a2a+json"
       },
       "caid_extraction": {
-        "caid_path": "/task/metadata/emilia_receipt/binding/caid",
-        "action_hash_path": "/task/metadata/emilia_receipt/binding/action_hash"
+        "caid_path": "/message/metadata/https:~1~1emiliaprotocol.ai~1extensions~1a2a~1receipt-binding~1v1/binding_artifact/caid",
+        "action_hash_path": "/message/metadata/https:~1~1emiliaprotocol.ai~1extensions~1a2a~1receipt-binding~1v1/binding_artifact/base_action_digest"
       },
       "required_field_mapping": [
         {
           "action_field": "action_type",
-          "source_path": "/task/input/action_type"
+          "source_path": "/message/metadata/https:~1~1emiliaprotocol.ai~1extensions~1a2a~1receipt-binding~1v1/action/action_type"
         },
-        { "action_field": "amount", "source_path": "/task/input/amount" },
-        { "action_field": "currency", "source_path": "/task/input/currency" },
+        { "action_field": "amount", "source_path": "/message/metadata/https:~1~1emiliaprotocol.ai~1extensions~1a2a~1receipt-binding~1v1/action/amount" },
+        { "action_field": "currency", "source_path": "/message/metadata/https:~1~1emiliaprotocol.ai~1extensions~1a2a~1receipt-binding~1v1/action/currency" },
         {
           "action_field": "beneficiary_account",
-          "source_path": "/task/input/beneficiary_account"
+          "source_path": "/message/metadata/https:~1~1emiliaprotocol.ai~1extensions~1a2a~1receipt-binding~1v1/action/beneficiary_account"
         },
         {
           "action_field": "payment_instruction_id",
-          "source_path": "/task/input/payment_instruction_id"
+          "source_path": "/message/metadata/https:~1~1emiliaprotocol.ai~1extensions~1a2a~1receipt-binding~1v1/action/payment_instruction_id"
         }
       ],
       "conformance_vector_refs": [
@@ -149,7 +149,7 @@
         "reject_action_hash_mismatch",
         "reject_missing_protocol_binding"
       ],
-      "claim_boundary": "This is a documented carrier profile and synthetic fixture. The repository does not claim a production A2A adapter, adoption, or interoperability result."
+      "claim_boundary": "The verify package implements a strict A2A v1.0 Message-extension presentation with a pinned Ed25519 binder, exact Task/context/message/Agent Card/receipt/action commitments, and fail-closed substitution tests. A2A server authentication, receipt verification, local authorization, external project adoption, and independent interoperability remain separate and are not claimed."
     },
     {
       "profile_id": "ep:receipt-required:binding:x402:v1",

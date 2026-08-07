@@ -7,6 +7,13 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `./a2a-receipt-binding`, a strict A2A v1.0 Message-extension presentation
+  that binds one verified receipt to the exact initiating Message,
+  server-issued Task/context, proof retry, Agent Card, target interface, action,
+  and CAID under a relying-party-pinned Ed25519 binder. It emits the
+  `EP-RECEIPT-EXTENSIONS-v1` companion and keeps A2A transport authentication,
+  receipt verification, local authorization, execution, and outcome proof as
+  separate decisions.
 - Revision-pinned AEB adapters for OASNT-01, APS-03, McGraw HTTP Agent
   Budget-03, and OAuth Transaction Challenge-00. Each verifies the native
   artifact under constructor-pinned relying-party policy, projects an exact

@@ -77,20 +77,30 @@
     "a2a": {
       "fixture_class": "synthetic_foreign_artifact",
       "artifact": {
-        "state": "input-required",
         "task": {
-          "input": {
-            "action_type": "payment.release.1",
-            "amount": "184.00",
-            "currency": "USD",
-            "beneficiary_account": "sha256:74ebd63b55d825ab575d801a4c902f9d2304e83b805bb3dd740b6716c3ae8ea6",
-            "payment_instruction_id": "pi-bindings-001"
-          },
+          "id": "task-bindings-001",
+          "contextId": "context-bindings-001",
+          "status": { "state": "TASK_STATE_INPUT_REQUIRED" }
+        },
+        "message": {
+          "messageId": "message-proof-bindings-001",
+          "taskId": "task-bindings-001",
+          "contextId": "context-bindings-001",
+          "role": "ROLE_USER",
+          "parts": [{ "text": "Authorization receipt attached." }],
+          "extensions": ["https://emiliaprotocol.ai/extensions/a2a/receipt-binding/v1"],
           "metadata": {
-            "emilia_receipt": {
-              "binding": {
+            "https://emiliaprotocol.ai/extensions/a2a/receipt-binding/v1": {
+              "action": {
+                "action_type": "payment.release.1",
+                "amount": "184.00",
+                "currency": "USD",
+                "beneficiary_account": "sha256:74ebd63b55d825ab575d801a4c902f9d2304e83b805bb3dd740b6716c3ae8ea6",
+                "payment_instruction_id": "pi-bindings-001"
+              },
+              "binding_artifact": {
                 "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
-                "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
+                "base_action_digest": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
               }
             }
           }

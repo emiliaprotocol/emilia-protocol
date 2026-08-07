@@ -223,6 +223,33 @@ AP2 verifier and independently reprojects them before reliance. The
 corresponding Gate 0.22.2 bridge performs that reprojection at admission; this
 pure helper alone is not admission or native AP2 verification.
 
+### A2A receipt binding — `@emilia-protocol/verify/a2a-receipt-binding`
+
+`createA2AReceiptPresentation()` carries an EMILIA receipt on A2A v1.0's
+official namespaced `Message.extensions` / `Message.metadata` extension point.
+The closed profile binds the complete base receipt, exact semantic action,
+pre-task initiating Message, server-issued Task and context, proof-retry
+Message, selected Agent Card, and target interface. It also emits the
+`EP-RECEIPT-EXTENSIONS-v1` companion index required by Receipts-10.
+
+The Task ID cannot be present in the initiating Message because A2A assigns it
+at the server. The bridge therefore preserves both phases instead of
+retroactively treating the first attempt as authorized: the original Message
+is committed by digest, then the signed companion binds that request and the
+receipt to the returned Task/context and the exact retry Message.
+
+`verifyA2AReceiptPresentation()` requires a relying-party-pinned Ed25519 binder,
+the exact Task snapshot obtained by the caller over authenticated A2A transport,
+the exact initiating Message, Agent Card and interface pins, current time,
+extension negotiation, locally expected
+action/CAID, and a caller-supplied receipt verifier that returns the digest and
+CAID it actually verified. It rejects task, context, message, target, action,
+receipt, metadata, protocol-version, and validity-window substitution. A valid
+result is correlation evidence only: A2A server authentication, receipt
+verification, local authorization, one-time consumption, execution, and
+outcome proof remain separate decisions. Raw unsigned A2A objects never become
+authority.
+
 ### Agent Edge Continuity — `@emilia-protocol/verify/agent-edge-continuity`
 
 `EP-AGENT-EDGE-CONTINUITY-v1` carries one material action across user,
