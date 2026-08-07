@@ -5,53 +5,60 @@ import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import EmailCapture from '@/components/EmailCapture';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
+import standardsStatus from '@/standards/STATUS.json';
 
 const goldText = '#765A13';
 
-// Canonical presentation path from standards/STATUS.json. Keep these visible
-// revisions aligned with that file.
-const CANONICAL_DOCUMENTS = [
-  {
-    order: '01',
-    label: 'Authorization Receipts',
-    draft: 'draft-schrock-ep-authorization-receipts-10',
+const CANONICAL_DOCUMENT_DETAILS: Record<string, {
+  question: string;
+  boundary: string;
+  href: string;
+  linkLabel: string;
+  external: boolean;
+}> = {
+  'draft-schrock-ep-authorization-receipts': {
     question: 'What action-bound organizational approval evidence was produced under the receipt profile?',
     boundary: 'One approval-evidence profile. It does not establish scoped authority or evidence satisfaction by itself.',
     href: '/spec',
-    linkLabel: 'Read Receipts -10',
+    linkLabel: 'Read Receipts',
     external: false,
   },
-  {
-    order: '02',
-    label: 'Human Authorization Binding',
-    draft: 'draft-schrock-human-authorization-binding-00',
+  'draft-schrock-human-authorization-binding': {
     question: 'How is named-human authorization evidence bound into an adjacent host record?',
     boundary: 'A host-agnostic by-value or by-reference binding. It does not redefine the authorization artifact or host format.',
     href: 'https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/',
-    linkLabel: 'Read Binding -00',
+    linkLabel: 'Read Binding',
     external: true,
   },
-  {
-    order: '03',
-    label: 'Authority Introduction',
-    draft: 'draft-schrock-ep-authority-introduction-02',
+  'draft-schrock-ep-authority-introduction': {
     question: "Under the relying party's trust roots, did the verified key have authority for this scope?",
     boundary: 'Trust-root introduction and scoped authority. Signature verification alone does not create authority.',
     href: 'https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/',
-    linkLabel: 'Read Authority -02',
+    linkLabel: 'Read Authority',
     external: true,
   },
-  {
-    order: '04',
-    label: 'Authorization Evidence Chain',
-    draft: 'draft-schrock-ep-authorization-evidence-chain-05',
+  'draft-schrock-ep-authorization-evidence-chain': {
     question: "Does the natively verified, action-matched bundle satisfy the relying party's evidence requirement?",
     boundary: 'Returns SATISFIED or UNSATISFIED. It never returns a universal authorization verdict.',
     href: '/evidence-chain',
-    linkLabel: 'Read AEC -05',
+    linkLabel: 'Read AEC',
     external: false,
   },
-];
+};
+
+// The governed status file owns document order and revision. This page owns
+// only reader-facing explanations and routes.
+const CANONICAL_DOCUMENTS = standardsStatus.canonical_four_document_surface.documents.map((document) => {
+  const details = CANONICAL_DOCUMENT_DETAILS[document.draft];
+  if (!details) throw new Error(`Missing protocol-page details for ${document.draft}`);
+  return {
+    order: String(document.order).padStart(2, '0'),
+    label: document.label,
+    draft: `${document.draft}-${document.revision}`,
+    ...details,
+    linkLabel: `${details.linkLabel} -${document.revision}`,
+  };
+});
 
 const DECISIONS = [
   { term: 'VERIFIED', definition: 'One artifact passed its native verifier under relying-party-selected trust inputs.' },

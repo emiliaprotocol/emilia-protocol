@@ -419,11 +419,11 @@
     },
     {
       "path": "lib/frontier/model-to-matter.js",
-      "sha256": "b87a779dac7d692c7c44b424b52fbb57f95f1a938dea31eb3f548e8925edfbd6"
+      "sha256": "64c5470a4c1551c87b2c780e62e71d5388c20bc4a77bf7c8b1cd88b6d4b60945"
     },
     {
       "path": "lib/frontier/model-to-matter.ts",
-      "sha256": "ae1f8a15c7e1097e86a85d4d109eccdefa62372a16734f630e0b2d0acd782b9b"
+      "sha256": "e6dccaee8130401b12b92944991ae350001519a02d2650b5b5ce6dc91cfc58bc"
     },
     {
       "path": "lib/grace/curtailment.js",
@@ -495,11 +495,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "5f6d4015bb6bef949768e13fc1b927639c0807bee8aa8c48508187e8b6dabde2"
+      "sha256": "11734a2337a32b8ac06f99613e5c0b86c5652ffa2d6effa1376ff7a2d4373b2d"
     },
     {
       "path": "package.json",
-      "sha256": "07ec3d52a466c6398d0720bca656bd4f27e52c1263573b3d9cd6f8d6217f4205"
+      "sha256": "f4a7f62b4b79bf60a4e435db5579756d867e72e664e8c020b3a6e739384b41ae"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -578,6 +578,10 @@
       "sha256": "05b27e572bd2a0a86b5e473a9b047e88eee327d31321217751f353e5db4a4c7a"
     },
     {
+      "path": "packages/gate/dist/bounded-execution-acceptance.js",
+      "sha256": "183ca52e56aac56d5cd1bd703bf388c932fe88d8dcf487f63bddd27015e3c978"
+    },
+    {
       "path": "packages/gate/dist/bounded-execution-program.js",
       "sha256": "5aaff064c1d5aa78611aadf241c2733aec202647d6a32b2d3f1bad4e4f4e52c8"
     },
@@ -647,7 +651,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "969e6d90ea6c1b11c9a0b636754b6941e34dc811a2404fb0a279ad95e0fa881b"
+      "sha256": "510184e187334082c98c7a8afcba16c47fe8694a17d8928c97c01eb9f37308fc"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -839,7 +843,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "8beab9a8b2645509d23cfae881747efee1cd5bc6e68c0d88146fbcd3852f2c42"
+      "sha256": "ea2a6f2db20ce7e75b73a939fe6db2cee537163f775f1697ff1c7456be22da3e"
     },
     {
       "path": "packages/gate/src/network-witness.ts",

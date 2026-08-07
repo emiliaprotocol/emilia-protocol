@@ -28,9 +28,12 @@ describe('canonical standards presentation surface', () => {
   });
 
   it('keeps every visible protocol-hub revision aligned with the governed surface', () => {
+    expect(protocolPage).toContain("import standardsStatus from '@/standards/STATUS.json'");
+    expect(protocolPage).toContain('standardsStatus.canonical_four_document_surface.documents.map');
     for (const document of status.canonical_four_document_surface.documents) {
-      expect(protocolPage).toContain(`${document.draft}-${document.revision}`);
+      expect(protocolPage).toContain(`'${document.draft}':`);
     }
+    expect(protocolPage).toContain('draft: `${document.draft}-${document.revision}`');
     expect(protocolPage).toContain('A protected path is not proof of complete mediation.');
   });
 

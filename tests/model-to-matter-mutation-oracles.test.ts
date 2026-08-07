@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
+import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { __modelToMatterSecurityInternals } from '../lib/frontier/model-to-matter.js';
 import { artifactDigest } from '../lib/evidence/evidence-graph.js';
+import { canonicalize } from '../packages/verify/index.js';
 
 const digest = (hex) => `sha256:${hex.repeat(64)}`;
 const action = {
@@ -80,7 +82,81 @@ describe('Model-to-Matter mutation oracles', () => {
   const {
     isObject, validDigest, strictInstantMs, deepFreeze,
     claimsMatchAction, graphIsSafeToEvaluate, clearanceResult,
+    requirementBindingRefusal, clearanceBinding, boundReplayDigest,
   } = __modelToMatterSecurityInternals;
+
+  it('keeps Reliance Program action and validity boundaries exact', () => {
+    const actionDigest = digest('a');
+    const actionCaid = 'caid:example-action';
+    const binding = {
+      reliance_program_id: 'rp.example:v1',
+      reliance_program_version: 1,
+      reliance_program_source_digest: digest('b'),
+      reliance_program_digest: digest('c'),
+      evidence_requirement_digest: digest('d'),
+      bound_action_digest: actionDigest,
+      bound_action_caid: actionCaid,
+      valid_from: '2026-07-12T11:00:00Z',
+      expires_at: '2026-07-12T13:00:00Z',
+    };
+
+    expect(requirementBindingRefusal(null, actionDigest, actionCaid, 'invalid')).toBeNull();
+    expect(requirementBindingRefusal(binding, digest('e'), actionCaid, '2026-07-12T12:00:00Z'))
+      .toMatch(/different Model-to-Matter action/);
+    expect(requirementBindingRefusal(binding, actionDigest, 'caid:other', '2026-07-12T12:00:00Z'))
+      .toMatch(/different Model-to-Matter action/);
+    expect(requirementBindingRefusal(binding, actionDigest, actionCaid)).toBeNull();
+
+    for (const [label, candidate, asOf] of [
+      ['invalid evaluation time', binding, 'not-an-instant'],
+      ['invalid start', { ...binding, valid_from: 'not-an-instant' }, '2026-07-12T12:00:00Z'],
+      ['invalid expiry', { ...binding, expires_at: 'not-an-instant' }, '2026-07-12T12:00:00Z'],
+      ['before start', binding, '2026-07-12T10:59:59Z'],
+      ['at expiry', binding, '2026-07-12T13:00:00Z'],
+    ]) {
+      expect(requirementBindingRefusal(candidate, actionDigest, actionCaid, asOf), label)
+        .toMatch(/not active/);
+    }
+    expect(requirementBindingRefusal(binding, actionDigest, actionCaid, binding.valid_from)).toBeNull();
+    expect(requirementBindingRefusal(binding, actionDigest, actionCaid, '2026-07-12T12:59:59.999Z')).toBeNull();
+  });
+
+  it('binds replay identity to the exact Reliance Program fields', () => {
+    const replayDigest = digest('a');
+    const binding = {
+      reliance_program_id: 'rp.example:v1',
+      reliance_program_version: 1,
+      reliance_program_source_digest: digest('b'),
+      reliance_program_digest: digest('c'),
+      evidence_requirement_digest: digest('d'),
+      bound_action_digest: digest('e'),
+      bound_action_caid: 'caid:example-action',
+      valid_from: '2026-07-12T11:00:00Z',
+      expires_at: '2026-07-12T13:00:00Z',
+    };
+    const projected = {
+      reliance_program_id: binding.reliance_program_id,
+      reliance_program_version: binding.reliance_program_version,
+      reliance_program_source_digest: binding.reliance_program_source_digest,
+      reliance_program_digest: binding.reliance_program_digest,
+      evidence_requirement_digest: binding.evidence_requirement_digest,
+    };
+
+    expect(clearanceBinding(null)).toEqual({});
+    expect(clearanceBinding(binding)).toEqual(projected);
+    expect(boundReplayDigest(replayDigest, null)).toBe(replayDigest);
+    expect(boundReplayDigest('invalid', binding)).toBe('invalid');
+
+    const expected = `sha256:${crypto.createHash('sha256').update(canonicalize({
+      '@version': 'EP-MODEL-TO-MATTER-CLEARANCE-v1',
+      evidence_replay_digest: replayDigest,
+      ...projected,
+    }), 'utf8').digest('hex')}`;
+    expect(boundReplayDigest(replayDigest, binding)).toBe(expected);
+    expect(boundReplayDigest(digest('f'), binding)).not.toBe(expected);
+    expect(boundReplayDigest(replayDigest, { ...binding, reliance_program_id: 'rp.other:v1' }))
+      .not.toBe(expected);
+  });
 
   it('keeps object, digest, timestamp, and freeze boundaries exact', () => {
     expect(isObject({})).toBe(true);

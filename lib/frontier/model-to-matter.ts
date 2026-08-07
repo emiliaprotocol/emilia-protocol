@@ -1649,6 +1649,9 @@ export const __modelToMatterSecurityInternals = Object.freeze({
   claimsMatchAction,
   graphIsSafeToEvaluate,
   clearanceResult,
+  requirementBindingRefusal,
+  clearanceBinding,
+  boundReplayDigest,
 });
 
 const modelToMatter = {

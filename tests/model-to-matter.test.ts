@@ -1199,6 +1199,44 @@ describe('EP Model-to-Matter post-execution effect receipt', () => {
     expect(result).toMatchObject({ accepted: true, lifecycle_state: 'reconciled', outcome: 'in_bounds' });
     expect(result.establishes_physical_truth).toBe(false);
 
+    const clearanceMismatch = verifyModelToMatterOutcome({
+      action: a,
+      clearance: { ...clearance, action_digest: digest('different-action') },
+      effect,
+      predicted_effects: predictions,
+      observations,
+    }, opts);
+    expect(clearanceMismatch).toMatchObject({
+      accepted: false,
+      lifecycle_state: 'indeterminate',
+      reason: 'clearance_binding_mismatch',
+    });
+
+    const predictionMismatch = verifyModelToMatterOutcome({
+      action: a, clearance, effect, predicted_effects: [], observations,
+    }, opts);
+    expect(predictionMismatch).toMatchObject({
+      accepted: false,
+      lifecycle_state: 'indeterminate',
+      reason: 'predicted_effects_not_bound_to_action',
+    });
+
+    const executorObservationMismatch = verifyModelToMatterOutcome({
+      action: a,
+      clearance,
+      effect,
+      predicted_effects: predictions,
+      observations: [
+        { ...observations[0], observed_effects_digest: digest('different-observed-effects') },
+        observations[1],
+      ],
+    }, opts);
+    expect(executorObservationMismatch).toMatchObject({
+      accepted: false,
+      lifecycle_state: 'indeterminate',
+      reason: 'executor_effect_not_bound_to_executor_observation',
+    });
+
     const missingObserver = verifyModelToMatterOutcome({
       action: a, clearance, effect, predicted_effects: predictions, observations: observations.slice(0, 1),
     }, opts);

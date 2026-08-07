@@ -450,6 +450,7 @@ packages/gate/aeb-consumption-store.test.js linguist-generated=true
 packages/gate/allowance.test.js linguist-generated=true
 packages/gate/authority-allocation.test.js linguist-generated=true
 packages/gate/autonomy-control-plane-profile.test.js linguist-generated=true
+packages/gate/bounded-execution-acceptance.test.js linguist-generated=true
 packages/gate/bounded-execution-program.test.js linguist-generated=true
 packages/gate/bounded-execution-report.test.js linguist-generated=true
 packages/gate/breakglass.test.js linguist-generated=true

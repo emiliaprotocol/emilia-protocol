@@ -21,16 +21,12 @@ const documents = status.canonical_four_document_surface.documents;
 describe('/protocol canonical four-document hub', () => {
   it('renders the STATUS.json presentation path in order at the current revisions', () => {
     expect(documents).toHaveLength(4);
-
-    let previousIndex = -1;
+    expect(protocolPage).toContain("import standardsStatus from '@/standards/STATUS.json'");
+    expect(protocolPage).toContain('standardsStatus.canonical_four_document_surface.documents.map');
     for (const document of documents) {
-      const visibleDraft = `${document.draft}-${document.revision}`;
-      const index = protocolPage.indexOf(`draft: '${visibleDraft}'`);
-
-      expect(protocolPage).toContain(`label: '${document.label}'`);
-      expect(index).toBeGreaterThan(previousIndex);
-      previousIndex = index;
+      expect(protocolPage).toContain(`'${document.draft}':`);
     }
+    expect(protocolPage).toContain('draft: `${document.draft}-${document.revision}`');
   });
 
   it('uses local explainers for Receipts and AEC and Datatracker for the two middle documents', () => {

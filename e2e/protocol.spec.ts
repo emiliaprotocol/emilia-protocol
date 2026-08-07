@@ -4,6 +4,10 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const standardsStatus = JSON.parse(readFileSync(resolve(process.cwd(), 'standards/STATUS.json'), 'utf8'));
 
 test.describe('Protocol Page', () => {
   test('leads with Gate and renders the canonical four-document path', async ({ page }) => {
@@ -12,12 +16,11 @@ test.describe('Protocol Page', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Gate exact actions before consequences.' })).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Four documents. One evidence path.' })).toBeVisible();
 
-    const expectedDocuments = [
-      ['canonical-document-1', 'Authorization Receipts', 'draft-schrock-ep-authorization-receipts-09'],
-      ['canonical-document-2', 'Human Authorization Binding', 'draft-schrock-human-authorization-binding-00'],
-      ['canonical-document-3', 'Authority Introduction', 'draft-schrock-ep-authority-introduction-02'],
-      ['canonical-document-4', 'Authorization Evidence Chain', 'draft-schrock-ep-authorization-evidence-chain-05'],
-    ] as const;
+    const expectedDocuments = standardsStatus.canonical_four_document_surface.documents.map((document) => [
+      `canonical-document-${document.order}`,
+      document.label,
+      `${document.draft}-${document.revision}`,
+    ] as const);
 
     for (const [testId, label, revision] of expectedDocuments) {
       const document = page.getByTestId(testId);

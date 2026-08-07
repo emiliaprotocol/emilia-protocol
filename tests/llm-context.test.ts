@@ -76,9 +76,9 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
       status: 'presentation_only_no_consolidation',
       document_count: 4,
       documents: [
-        { order: 1, draft: 'draft-schrock-ep-authorization-receipts', revision: '09' },
+        { order: 1, draft: 'draft-schrock-ep-authorization-receipts', revision: '10' },
         { order: 2, draft: 'draft-schrock-human-authorization-binding', revision: '00' },
-        { order: 3, draft: 'draft-schrock-ep-authority-introduction', revision: '02' },
+        { order: 3, draft: 'draft-schrock-ep-authority-introduction', revision: '03' },
         { order: 4, draft: 'draft-schrock-ep-authorization-evidence-chain', revision: '05' },
       ],
     });
