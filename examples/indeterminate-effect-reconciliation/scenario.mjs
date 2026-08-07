@@ -100,6 +100,7 @@ export function createIndeterminateEffectHarness() {
         issuerPrivateKey: issuer.privateKey,
         budget: { amount: 100_000, currency: 'USD' },
         expiry: new Date(NOW + 60_000).toISOString(),
+        revocationMode: 'direct',
         capabilityId: 'ep:capability:invoice-8841',
         scope: {
             profile: CAPABILITY_SCOPE_PROFILE,

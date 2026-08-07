@@ -184,6 +184,7 @@ function issue({
     ...(predecessorAllowance ? { predecessorAllowance } : {}),
     signer: allowanceSigner,
     capabilityIssuerPrivateKey: capabilityIssuerKeys.privateKey,
+    capabilityRevocationMode: 'direct',
   });
   assert.equal(capabilityStore.registerCapability(issued.capabilityReceipt), true);
   return { ...issued, store: capabilityStore };

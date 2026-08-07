@@ -682,6 +682,7 @@ describe('Gate construction guards fail closed without a runtime monitor', () =>
       issuerPrivateKey: issuer.privateKey,
       budget: { amount: 100000, currency: 'USD' },
       expiry: new Date(Date.now() + 3_600_000).toISOString(),
+      revocationMode: 'direct',
       scope: {
         profile: CAPABILITY_SCOPE_PROFILE,
         action_digests: [capabilityActionDigest(harness.action)],

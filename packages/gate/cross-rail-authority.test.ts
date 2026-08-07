@@ -92,6 +92,7 @@ function issuedAllowance(connectorId: string, keys: ReturnType<typeof signer>, a
     },
     signer: keys.signer,
     capabilityIssuerPrivateKey: keys.pair.privateKey,
+    capabilityRevocationMode: 'direct',
   });
   const store = createMemoryCapabilityStore();
   assert.equal(store.registerCapability(issued.capabilityReceipt), true);

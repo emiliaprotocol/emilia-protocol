@@ -48,6 +48,7 @@ export function freshCapability(store, capabilityId, budget) {
     issuerPrivateKey: privateKey,
     budget: { amount: budget, currency: CURRENCY },
     expiry: EXPIRY,
+    revocationMode: 'direct',
     capabilityId,
     scope: STORE_SCOPE,
   });

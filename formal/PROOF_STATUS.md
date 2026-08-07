@@ -142,6 +142,31 @@ parent authorization.
 
 ---
 
+## TLA+ — `ep_capability_revocation.tla`
+
+**Model checker:** TLC 2.19 (TLA+ tools `v1.7.4`, rev `5a47802`)
+**Verified parameters:** one root, one child, one grandchild, two operation
+identifiers, every direct/cascade mode assignment, and at most seven atomic
+transitions
+**Local execution:** 2026-08-07, pinned jar SHA-256
+`936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`
+**Result:** 24,180 states generated, 7,544 distinct states, complete depth 8 —
+**no error found** across six invariants and five temporal properties
+**Result evidence:** `formal/results/ep-capability-revocation.tlc.summary.txt`
+
+The model checks the BCR-03 distinction between direct and cascade revocation,
+complete ancestor-state availability, future child allocation, and the
+revocation-versus-reservation ordering rule. A revocation that commits first
+closes a later conflicting reservation; a reservation that already owns its
+operation remains owned when revocation commits later. Missing ancestor state
+closes later admission instead of being interpreted as active.
+
+This is a bounded state-machine model, not a TypeScript/SQL refinement proof.
+It assumes serialized atomic transitions in one authoritative state domain and
+does not establish revocation distribution or cross-domain enforcement.
+
+---
+
 ## TLA+ — `ep_receipt_program.tla`
 
 **Model checker:** TLC 2.19 (TLA+ tools `v1.7.4`, rev `5a47802`)

@@ -23,6 +23,7 @@ export const CAPABILITY_SCOPE_PROFILE = 'urn:emilia:scope:action-digest-set-v1';
 export const CAPABILITY_CAID_SCOPE_PROFILE = 'urn:emilia:scope:caid-set-v1';
 export const CAPABILITY_ALLOWANCE_SCOPE_PROFILE = 'EP-CAPABILITY-ALLOWANCE-SCOPE-v1';
 export const CAPABILITY_ACTION_FENCE_PROFILE = 'EP-CAPABILITY-ACTION-FENCE-v1';
+export const CAPABILITY_REVOCATION_MODES = Object.freeze(['direct', 'cascade']);
 // 2^521 - 1 is a prime and is comfortably larger than a 256-bit secret.
 const FIELD = (2n ** 521n) - 1n;
 const SHARE_BYTES = 66;
@@ -665,6 +666,12 @@ function validateExpiry(expiry) {
         throw new TypeError('capability expiry must be an ISO-8601 timestamp');
     return new Date(parsed).toISOString();
 }
+function normalizeRevocationMode(value) {
+    if (value !== 'direct' && value !== 'cascade') {
+        throw new TypeError('capability revocation_mode must be direct or cascade');
+    }
+    return value;
+}
 function validateThreshold(threshold = { m: 1, n: 1 }) {
     if (!isRecord(threshold)
         || !Number.isSafeInteger(threshold.m) || !Number.isSafeInteger(threshold.n)
@@ -780,6 +787,7 @@ function assertCapabilityShape(capability) {
     validateCurrency(capability.budget.currency);
     validateExpiry(capability.expiry);
     validateThreshold(capability.threshold);
+    normalizeRevocationMode(capability.revocation_mode);
     normalizeCapabilityScope(capability.scope);
     assertDelegationChain(capability.delegation_chain, capability.id);
     if (capability.consumed !== 0)
@@ -804,13 +812,14 @@ function verifyTrustedIssuer(publicKey, trustedIssuerKeys, allowUntrustedIssuer)
  * @param {CapabilityBudget} [options.budget]
  * @param {string|number} [options.expiry]
  * @param {{m:number,n:number}} [options.threshold]
+ * @param {'direct'|'cascade'} [options.revocationMode]
  * @param {object} [options.scope]
  * @param {any[]} [options.delegationChain]
  * @param {string} [options.capabilityId]
  * @param {string} [options.operationNamespace]
  * @param {Buffer|string} [options.secret]
  */
-export function mintCapabilityReceipt(baseReceipt, { issuerPrivateKey, budget, expiry, threshold = { m: 1, n: 1 }, scope, delegationChain = [], capabilityId = randomUUID(), secret = randomBytes(HASH_BYTES), } = {}) {
+export function mintCapabilityReceipt(baseReceipt, { issuerPrivateKey, budget, expiry, threshold = { m: 1, n: 1 }, revocationMode, scope, delegationChain = [], capabilityId = randomUUID(), secret = randomBytes(HASH_BYTES), } = {}) {
     const receipt = validateBaseReceipt(baseReceipt);
     if (!issuerPrivateKey)
         throw new TypeError('mintCapabilityReceipt requires issuerPrivateKey');
@@ -826,6 +835,7 @@ export function mintCapabilityReceipt(baseReceipt, { issuerPrivateKey, budget, e
         budget: { amount: validateAmount(budget.amount, 'budget.amount'), currency: validateCurrency(budget.currency) },
         consumed: 0,
         threshold: normalizedThreshold,
+        revocation_mode: normalizeRevocationMode(revocationMode),
         scope: normalizeCapabilityScope(scope),
         delegation_chain: assertDelegationChain(delegationChain),
         expiry: validateExpiry(expiry),
@@ -984,9 +994,67 @@ function capabilityStateFromEnvelope(capabilityReceipt) {
         budget_amount: c.budget.amount,
         currency: c.budget.currency,
         expires_at: Date.parse(c.expiry),
+        revocation_mode: normalizeRevocationMode(c.revocation_mode),
+        parent_capability_id: c.delegation_chain.length > 0
+            ? c.delegation_chain.at(-1).parent_capability_id
+            : null,
         allowance_profile_id: allowanceScope?.profile_id ?? null,
         allowance_digest: allowanceScope?.profile_digest ?? null,
     };
+}
+function capabilityLineageRefusal(states, capabilityId) {
+    const seen = new Set();
+    let currentId = capabilityId;
+    let depth = 0;
+    while (currentId !== null) {
+        if (seen.has(currentId) || depth > MAX_DELEGATES) {
+            return 'capability_ancestor_status_unavailable';
+        }
+        seen.add(currentId);
+        const state = states.get(currentId);
+        if (!state)
+            return 'capability_ancestor_status_unavailable';
+        if (Object.hasOwn(state, 'revocation_state_ready')
+            && state.revocation_state_ready !== true) {
+            return 'capability_ancestor_status_unavailable';
+        }
+        try {
+            normalizeRevocationMode(state.revocation_mode);
+        }
+        catch {
+            return 'capability_revocation_mode_invalid';
+        }
+        if (state.revoked_at !== null && state.revoked_at !== undefined) {
+            if (currentId === capabilityId)
+                return 'capability_revoked';
+            if (state.revocation_mode === 'cascade')
+                return 'capability_ancestor_revoked';
+        }
+        currentId = state.parent_capability_id ?? null;
+        depth += 1;
+    }
+    return null;
+}
+async function postgresCapabilityLineageRefusal(query, leafState) {
+    const states = new Map();
+    states.set(leafState.capability_id, leafState);
+    const seen = new Set([leafState.capability_id]);
+    let parentId = leafState.parent_capability_id ?? null;
+    let depth = 0;
+    while (parentId !== null) {
+        if (seen.has(parentId) || depth >= MAX_DELEGATES) {
+            return 'capability_ancestor_status_unavailable';
+        }
+        seen.add(parentId);
+        const result = await query(CAPABILITY_SQL.readState, [parentId]);
+        const parent = result?.rows?.[0];
+        if (!parent)
+            return 'capability_ancestor_status_unavailable';
+        states.set(parentId, parent);
+        parentId = parent.parent_capability_id ?? null;
+        depth += 1;
+    }
+    return capabilityLineageRefusal(states, leafState.capability_id);
 }
 /**
  * Production capability-store contract. Methods alone are insufficient: an
@@ -1002,7 +1070,9 @@ export function isSecureCapabilityStore(store) {
         && typeof store.beginProviderEntry === 'function'
         && typeof store.recoverPreEntrySpend === 'function'
         && typeof store.commitSpend === 'function'
-        && typeof store.reconcileSpend === 'function';
+        && typeof store.reconcileSpend === 'function'
+        && typeof store.revokeCapability === 'function'
+        && store.revocationInheritanceCapable === true;
 }
 /**
  * An in-memory atomic reference store. It is intentionally marked non-durable
@@ -1028,6 +1098,7 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
         atomicStateDomainCapable: true,
         stateDomainDigest,
         reconciliationCapable: true,
+        revocationInheritanceCapable: true,
         allowanceCurrentnessCapable: true,
         providerEntryDispositionCapable: true,
         registerCapability(capabilityReceipt) {
@@ -1041,11 +1112,60 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
                     && existing.budget_amount === state.budget_amount
                     && existing.currency === state.currency
                     && existing.expires_at === state.expires_at
+                    && existing.revocation_mode === state.revocation_mode
+                    && existing.parent_capability_id === state.parent_capability_id
                     && existing.allowance_profile_id === state.allowance_profile_id
                     && existing.allowance_digest === state.allowance_digest;
             }
-            states.set(state.capability_id, { ...state, consumed_amount: 0, reserved_amount: 0 });
+            if (state.parent_capability_id !== null) {
+                const parentRefusal = capabilityLineageRefusal(states, state.parent_capability_id);
+                if (parentRefusal)
+                    return false;
+            }
+            states.set(state.capability_id, {
+                ...state,
+                consumed_amount: 0,
+                reserved_amount: 0,
+                revoked_at: null,
+            });
             return true;
+        },
+        async revokeCapability({ capabilityId, capabilityFingerprint, now = Date.now } = {}) {
+            try {
+                validateCapabilityId(capabilityId);
+            }
+            catch {
+                return { ok: false, reason: 'capability_revocation_target_invalid' };
+            }
+            const state = states.get(capabilityId);
+            if (!state)
+                return { ok: false, reason: 'capability_not_registered' };
+            if (state.capability_fingerprint !== capabilityFingerprint) {
+                return { ok: false, reason: 'capability_envelope_mismatch' };
+            }
+            try {
+                normalizeRevocationMode(state.revocation_mode);
+            }
+            catch {
+                return { ok: false, reason: 'capability_revocation_mode_invalid' };
+            }
+            if (state.revoked_at !== null) {
+                return {
+                    ok: true,
+                    idempotent: true,
+                    capability_id: capabilityId,
+                    revocation_mode: state.revocation_mode,
+                    revoked_at: state.revoked_at,
+                };
+            }
+            state.revoked_at = nowMs(now);
+            return {
+                ok: true,
+                idempotent: false,
+                capability_id: capabilityId,
+                revocation_mode: state.revocation_mode,
+                revoked_at: state.revoked_at,
+            };
         },
         advanceAllowanceStatus(options) {
             const next = normalizeAllowanceStatusAdvance(options);
@@ -1083,6 +1203,9 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
                 return { ok: false, reason: 'capability_not_registered' };
             if (state.capability_fingerprint !== capabilityFingerprint)
                 return { ok: false, reason: 'capability_envelope_mismatch' };
+            const lineageRefusal = capabilityLineageRefusal(states, capabilityId);
+            if (lineageRefusal)
+                return { ok: false, reason: lineageRefusal };
             if (state.allowance_profile_id !== null && operationNamespace === state.allowance_profile_id) {
                 let asserted;
                 try {
@@ -1488,6 +1611,10 @@ export const CAPABILITY_STATE_DDL = `CREATE TABLE IF NOT EXISTS ${CAPABILITY_STA
   consumed_amount BIGINT NOT NULL DEFAULT 0 CHECK (consumed_amount >= 0),
   reserved_amount BIGINT NOT NULL DEFAULT 0 CHECK (reserved_amount >= 0),
   expires_at TIMESTAMPTZ NOT NULL,
+  revocation_mode TEXT NOT NULL CHECK (revocation_mode IN ('direct', 'cascade')),
+  parent_capability_id TEXT REFERENCES ${CAPABILITY_STATE_TABLE}(capability_id),
+  revoked_at TIMESTAMPTZ,
+  revocation_state_ready BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   allowance_profile_id TEXT,
   allowance_digest TEXT CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$'),
@@ -1498,6 +1625,52 @@ ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS capability_finger
 ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS allowance_profile_id TEXT;
 ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS allowance_digest TEXT CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$');
 ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS semantic_fence_ready BOOLEAN;
+ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS revocation_mode TEXT;
+ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS parent_capability_id TEXT;
+ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
+ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS revocation_state_ready BOOLEAN;
+ALTER TABLE ${CAPABILITY_STATE_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY_STATE_TABLE}_revocation_mode_check;
+ALTER TABLE ${CAPABILITY_STATE_TABLE}
+  ADD CONSTRAINT ${CAPABILITY_STATE_TABLE}_revocation_mode_check
+  CHECK (revocation_mode IS NULL OR revocation_mode IN ('direct', 'cascade'));
+ALTER TABLE ${CAPABILITY_STATE_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY_STATE_TABLE}_parent_capability_id_fkey;
+ALTER TABLE ${CAPABILITY_STATE_TABLE}
+  ADD CONSTRAINT ${CAPABILITY_STATE_TABLE}_parent_capability_id_fkey
+  FOREIGN KEY (parent_capability_id) REFERENCES ${CAPABILITY_STATE_TABLE}(capability_id);
+UPDATE ${CAPABILITY_STATE_TABLE}
+  SET revocation_state_ready = (revocation_mode IN ('direct', 'cascade'))
+  WHERE revocation_state_ready IS NULL
+     OR (revocation_state_ready IS TRUE AND revocation_mode NOT IN ('direct', 'cascade'));
+ALTER TABLE ${CAPABILITY_STATE_TABLE}
+  ALTER COLUMN revocation_state_ready SET DEFAULT TRUE,
+  ALTER COLUMN revocation_state_ready SET NOT NULL;
+CREATE OR REPLACE FUNCTION ep_require_capability_revocation_metadata()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path FROM CURRENT
+AS $capability_revocation_metadata_function$
+BEGIN
+  IF NEW.revocation_state_ready IS TRUE
+     AND (
+       NEW.revocation_mode IS NULL
+       OR NEW.revocation_mode NOT IN ('direct', 'cascade')
+     ) THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '55000',
+      MESSAGE = 'capability revocation metadata is not ready',
+      DETAIL = format('capability_id=%s', NEW.capability_id),
+      HINT = 'Reissue the capability with an explicitly signed direct or cascade revocation mode.';
+  END IF;
+  RETURN NEW;
+END
+$capability_revocation_metadata_function$;
+DROP TRIGGER IF EXISTS ep_capability_state_revocation_metadata_guard
+  ON ${CAPABILITY_STATE_TABLE};
+CREATE TRIGGER ep_capability_state_revocation_metadata_guard
+  BEFORE INSERT OR UPDATE OF revocation_mode, revocation_state_ready
+  ON ${CAPABILITY_STATE_TABLE}
+  FOR EACH ROW
+  EXECUTE FUNCTION ep_require_capability_revocation_metadata();
 CREATE TABLE IF NOT EXISTS ${CAPABILITY_ALLOWANCE_STATUS_TABLE} (
   allowance_profile_id TEXT PRIMARY KEY,
   allowance_digest TEXT NOT NULL CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$'),
@@ -1518,7 +1691,7 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   status TEXT NOT NULL CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_status_check CHECK (status IN ('reserved', 'provider_entered', 'committed', 'released')),
   reservation_token TEXT NOT NULL,
   outcome TEXT,
-  reconciliation_outcome TEXT CHECK (reconciliation_outcome IN ('executed')),
+  reconciliation_outcome TEXT CHECK (reconciliation_outcome IN ('executed', 'not_entered')),
   reconciliation_evidence_digest TEXT CHECK (reconciliation_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
   allowance_revision BIGINT CHECK (allowance_revision > 0),
   allowance_status_epoch BIGINT CHECK (allowance_status_epoch > 0),
@@ -1563,6 +1736,10 @@ ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
   ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_status_check
   CHECK (status IN ('reserved', 'provider_entered', 'committed', 'released'));
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY_OPERATION_TABLE}_reconciliation_outcome_check;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
+  ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_reconciliation_outcome_check
+  CHECK (reconciliation_outcome IS NULL OR reconciliation_outcome IN ('executed', 'not_entered'));
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_revision BIGINT CHECK (allowance_revision > 0);
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_status_epoch BIGINT CHECK (allowance_status_epoch > 0);
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_status_head_digest TEXT CHECK (allowance_status_head_digest ~ '^sha256:[0-9a-f]{64}$');
@@ -1625,6 +1802,8 @@ BEGIN
       FROM ${CAPABILITY_STATE_TABLE} AS capability_state
       WHERE capability_state.capability_id = NEW.capability_id
         AND capability_state.semantic_fence_ready IS TRUE
+        AND capability_state.revocation_state_ready IS TRUE
+        AND capability_state.revocation_mode IN ('direct', 'cascade')
   ) THEN
     RAISE EXCEPTION USING
       ERRCODE = '55000',
@@ -1852,8 +2031,9 @@ BEGIN
 END
 $capability_action_fence_index_contract$;`;
 export const CAPABILITY_SQL = Object.freeze({
-    register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint, allowance_profile_id, allowance_digest) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(${CAPABILITY_STATE_TABLE}.capability_fingerprint, EXCLUDED.capability_fingerprint), allowance_profile_id = COALESCE(${CAPABILITY_STATE_TABLE}.allowance_profile_id, EXCLUDED.allowance_profile_id), allowance_digest = COALESCE(${CAPABILITY_STATE_TABLE}.allowance_digest, EXCLUDED.allowance_digest) WHERE ${CAPABILITY_STATE_TABLE}.budget_amount = EXCLUDED.budget_amount AND ${CAPABILITY_STATE_TABLE}.currency = EXCLUDED.currency AND ${CAPABILITY_STATE_TABLE}.expires_at = EXCLUDED.expires_at AND (${CAPABILITY_STATE_TABLE}.allowance_profile_id IS NULL OR ${CAPABILITY_STATE_TABLE}.allowance_profile_id IS NOT DISTINCT FROM EXCLUDED.allowance_profile_id) AND (${CAPABILITY_STATE_TABLE}.allowance_digest IS NULL OR ${CAPABILITY_STATE_TABLE}.allowance_digest IS NOT DISTINCT FROM EXCLUDED.allowance_digest)`,
-    readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at, allowance_profile_id, allowance_digest, semantic_fence_ready FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
+    register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint, allowance_profile_id, allowance_digest, revocation_mode, parent_capability_id, revocation_state_ready) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE) ON CONFLICT (capability_id) DO NOTHING`,
+    readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at, allowance_profile_id, allowance_digest, semantic_fence_ready, revocation_mode, parent_capability_id, revoked_at, revocation_state_ready FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
+    revokeState: `UPDATE ${CAPABILITY_STATE_TABLE} SET revoked_at = $3 WHERE capability_id = $1 AND capability_fingerprint = $2 AND revoked_at IS NULL AND revocation_state_ready IS TRUE AND revocation_mode IN ('direct', 'cascade')`,
     readAllowanceStatus: `SELECT allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status FROM ${CAPABILITY_ALLOWANCE_STATUS_TABLE} WHERE allowance_profile_id = $1 FOR UPDATE`,
     insertAllowanceStatus: `INSERT INTO ${CAPABILITY_ALLOWANCE_STATUS_TABLE} (allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (allowance_profile_id) DO NOTHING`,
     updateAllowanceStatus: `UPDATE ${CAPABILITY_ALLOWANCE_STATUS_TABLE} SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3`,
@@ -1866,7 +2046,7 @@ export const CAPABILITY_SQL = Object.freeze({
     // PostgreSQL cannot lock a row that does not exist yet.
     readActionHolder: `SELECT operation_id, status, action_digest, action_fence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND action_fence_digest = $2 AND status IN ('reserved', 'provider_entered', 'committed') LIMIT 1 FOR UPDATE`,
     insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, action_fence_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, $7, 'reserved', $8, $9, $10, $11, $12, $13)`,
-    reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND semantic_fence_ready IS TRUE AND budget_amount - consumed_amount - reserved_amount >= $2`,
+    reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND semantic_fence_ready IS TRUE AND revocation_state_ready IS TRUE AND revocation_mode IN ('direct', 'cascade') AND revoked_at IS NULL AND budget_amount - consumed_amount - reserved_amount >= $2`,
     beginProviderEntry: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5`,
     commitOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6`,
     reconcileOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET reconciliation_outcome = $4, reconciliation_evidence_digest = $5, reconciled_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'committed' AND outcome = 'indeterminate' AND reconciliation_outcome IS NULL`,
@@ -1895,6 +2075,7 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
         atomicStateDomainCapable: true,
         stateDomainDigest: configuredStateDomainDigest,
         reconciliationCapable: true,
+        revocationInheritanceCapable: true,
         allowanceCurrentnessCapable: true,
         providerEntryDispositionCapable: true,
         async registerCapability(capabilityReceipt) {
@@ -1903,6 +2084,29 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
                 return false;
             const state = capabilityStateFromEnvelope(capabilityReceipt);
             return transaction(async (query) => {
+                const existingResult = await query(CAPABILITY_SQL.readState, [state.capability_id]);
+                const existing = existingResult?.rows?.[0];
+                if (existing) {
+                    return existing.capability_fingerprint === state.capability_fingerprint
+                        && Number(existing.budget_amount) === state.budget_amount
+                        && existing.currency === state.currency
+                        && Date.parse(existing.expires_at) === state.expires_at
+                        && (existing.allowance_profile_id ?? null) === state.allowance_profile_id
+                        && (existing.allowance_digest ?? null) === state.allowance_digest
+                        && existing.revocation_mode === state.revocation_mode
+                        && (existing.parent_capability_id ?? null) === state.parent_capability_id
+                        && existing.revocation_state_ready === true
+                        && existing.semantic_fence_ready === true;
+                }
+                if (state.parent_capability_id !== null) {
+                    const parentResult = await query(CAPABILITY_SQL.readState, [state.parent_capability_id]);
+                    const parent = parentResult?.rows?.[0];
+                    if (!parent)
+                        return false;
+                    const parentRefusal = await postgresCapabilityLineageRefusal(query, parent);
+                    if (parentRefusal)
+                        return false;
+                }
                 await query(CAPABILITY_SQL.register, [
                     state.capability_id,
                     state.budget_amount,
@@ -1911,6 +2115,8 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
                     state.capability_fingerprint,
                     state.allowance_profile_id,
                     state.allowance_digest,
+                    state.revocation_mode,
+                    state.parent_capability_id,
                 ]);
                 const result = await query(CAPABILITY_SQL.readState, [state.capability_id]);
                 const row = result?.rows?.[0];
@@ -1921,7 +2127,61 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
                     && Date.parse(row.expires_at) === state.expires_at
                     && (row.allowance_profile_id ?? null) === state.allowance_profile_id
                     && (row.allowance_digest ?? null) === state.allowance_digest
+                    && row.revocation_mode === state.revocation_mode
+                    && (row.parent_capability_id ?? null) === state.parent_capability_id
+                    && row.revocation_state_ready === true
                     && row.semantic_fence_ready === true;
+            });
+        },
+        async revokeCapability({ capabilityId, capabilityFingerprint, now = Date.now } = {}) {
+            try {
+                validateCapabilityId(capabilityId);
+            }
+            catch {
+                return { ok: false, reason: 'capability_revocation_target_invalid' };
+            }
+            const at = nowMs(now);
+            return transaction(async (query) => {
+                const result = await query(CAPABILITY_SQL.readState, [capabilityId]);
+                const state = result?.rows?.[0];
+                if (!state)
+                    return { ok: false, reason: 'capability_not_registered' };
+                if (state.capability_fingerprint !== capabilityFingerprint) {
+                    return { ok: false, reason: 'capability_envelope_mismatch' };
+                }
+                if (state.revocation_state_ready !== true) {
+                    return { ok: false, reason: 'capability_ancestor_status_unavailable' };
+                }
+                try {
+                    normalizeRevocationMode(state.revocation_mode);
+                }
+                catch {
+                    return { ok: false, reason: 'capability_revocation_mode_invalid' };
+                }
+                if (state.revoked_at !== null && state.revoked_at !== undefined) {
+                    return {
+                        ok: true,
+                        idempotent: true,
+                        capability_id: capabilityId,
+                        revocation_mode: state.revocation_mode,
+                        revoked_at: Date.parse(state.revoked_at),
+                    };
+                }
+                const revoked = await query(CAPABILITY_SQL.revokeState, [
+                    capabilityId,
+                    capabilityFingerprint,
+                    new Date(at).toISOString(),
+                ]);
+                if (revoked?.rowCount !== 1) {
+                    throw new Error('capability revocation transition conflicted; transaction must roll back');
+                }
+                return {
+                    ok: true,
+                    idempotent: false,
+                    capability_id: capabilityId,
+                    revocation_mode: state.revocation_mode,
+                    revoked_at: at,
+                };
             });
         },
         async advanceAllowanceStatus(options) {
@@ -1991,6 +2251,12 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
                     if (state.semantic_fence_ready !== true) {
                         return { ok: false, reason: 'capability_semantic_fence_migration_required' };
                     }
+                    if (state.revocation_state_ready !== true) {
+                        return { ok: false, reason: 'capability_ancestor_status_unavailable' };
+                    }
+                    const lineageRefusal = await postgresCapabilityLineageRefusal(query, state);
+                    if (lineageRefusal)
+                        return { ok: false, reason: lineageRefusal };
                     let assertedAllowanceStatus = null;
                     if (typeof state.allowance_profile_id === 'string'
                         && operationNamespace === state.allowance_profile_id) {
@@ -2938,6 +3204,7 @@ export async function reconcileCapabilityOperation({ store, capabilityId, operat
  * @param {CapabilityBudget} [options.budget]
  * @param {string|number} [options.expiry]
  * @param {{m:number,n:number}} [options.threshold]
+ * @param {'direct'|'cascade'} [options.revocationMode]
  * @param {object|null} [options.scope]
  * @param {string} [options.delegateId]
  * @param {string} [options.capabilityId]
@@ -2947,7 +3214,7 @@ export async function reconcileCapabilityOperation({ store, capabilityId, operat
  * @param {string|null} [options.operationId]
  * @param {number|(() => number)} [options.now]
  */
-export async function delegateCapabilityReceipt({ parentCapabilityReceipt, parentSecret, issuerPrivateKey, budget, expiry, threshold = { m: 1, n: 1 }, scope = null, delegateId, capabilityId = randomUUID(), secret = randomBytes(HASH_BYTES), store, trustedIssuerKeys = [], operationId = null, now = Date.now, } = {}) {
+export async function delegateCapabilityReceipt({ parentCapabilityReceipt, parentSecret, issuerPrivateKey, budget, expiry, threshold = { m: 1, n: 1 }, revocationMode, scope = null, delegateId, capabilityId = randomUUID(), secret = randomBytes(HASH_BYTES), store, trustedIssuerKeys = [], operationId = null, now = Date.now, } = {}) {
     const verified = verifyCapabilityReceipt(parentCapabilityReceipt, { trustedIssuerKeys });
     if (!verified.ok)
         return { ok: false, reason: verified.reason };
@@ -2995,6 +3262,7 @@ export async function delegateCapabilityReceipt({ parentCapabilityReceipt, paren
             budget: { amount: childAmount, currency },
             expiry: childExpiry,
             threshold,
+            revocationMode,
             scope: childScope,
             capabilityId: childId,
             secret,
@@ -3060,6 +3328,7 @@ export default {
     CAPABILITY_CAID_SCOPE_PROFILE,
     CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
     CAPABILITY_ACTION_FENCE_PROFILE,
+    CAPABILITY_REVOCATION_MODES,
     CAPABILITY_ALLOWANCE_STATUS_TABLE,
     CAPABILITY_STATE_DDL,
     CAPABILITY_SQL,

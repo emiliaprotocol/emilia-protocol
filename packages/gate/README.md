@@ -851,6 +851,7 @@ const minted = mintCapabilityReceipt(baseReceipt, {
   issuerPrivateKey,
   budget: { amount: 1_000_000, currency: 'USD' },
   expiry: '2026-12-31T00:00:00.000Z',
+  revocationMode: 'cascade',
   scope: {
     profile: CAPABILITY_SCOPE_PROFILE,
     operation_id_field: 'payment_instruction_id',

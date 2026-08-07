@@ -672,6 +672,7 @@ async function main() {
     issuerPrivateKey: issuer.privateKey,
     budget: { amount: 1, currency: 'DETERMINATION' },   // exactly ONE issuance
     expiry: new Date(NOW + 60_000).toISOString(),
+    revocationMode: 'direct',
     capabilityId: 'ep:capability:adverse-determination-0001',
     scope: {
       profile: CAPABILITY_SCOPE_PROFILE,

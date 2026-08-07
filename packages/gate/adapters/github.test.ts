@@ -192,6 +192,7 @@ function issueWorkflowAllowance({
       private_key: keys.privateKey,
     },
     capabilityIssuerPrivateKey: keys.privateKey,
+    capabilityRevocationMode: 'direct',
   });
   const store = createMemoryCapabilityStore();
   assert.equal(store.registerCapability(issued.capabilityReceipt), true);

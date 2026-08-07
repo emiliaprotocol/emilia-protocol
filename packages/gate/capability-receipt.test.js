@@ -47,6 +47,7 @@ function options(overrides = {}) {
     return {
         budget: { amount: 100, currency: 'USD' },
         expiry: NOW + 60_000,
+        revocationMode: 'direct',
         issuerPrivateKey: overrides.issuerPrivateKey,
         scope: {
             profile: CAPABILITY_SCOPE_PROFILE,
@@ -61,6 +62,7 @@ test('capability stores expose explicit production durability and reconciliation
     assert.equal(memory.durable, false);
     assert.equal(memory.reconciliationCapable, true);
     assert.equal(memory.providerEntryDispositionCapable, true);
+    assert.equal(memory.revocationInheritanceCapable, true);
     assert.equal(isSecureCapabilityStore(memory), false);
     const postgres = createPostgresCapabilityStore({
         transaction: async () => assert.fail('store contract inspection must not open a transaction'),
@@ -68,6 +70,7 @@ test('capability stores expose explicit production durability and reconciliation
     assert.equal(postgres.durable, true);
     assert.equal(postgres.reconciliationCapable, true);
     assert.equal(postgres.providerEntryDispositionCapable, true);
+    assert.equal(postgres.revocationInheritanceCapable, true);
     assert.equal(isSecureCapabilityStore(postgres), true);
     const methodsOnly = {
         registerCapability() { },
@@ -76,10 +79,37 @@ test('capability stores expose explicit production durability and reconciliation
         recoverPreEntrySpend() { },
         commitSpend() { },
         reconcileSpend() { },
+        revokeCapability() { },
     };
     assert.equal(isSecureCapabilityStore(methodsOnly), false);
     assert.equal(isSecureCapabilityStore({ ...methodsOnly, durable: true }), false);
     assert.equal(isSecureCapabilityStore({ ...methodsOnly, reconciliationCapable: true }), false);
+});
+test('revocation mode is signed, mandatory, and closed to direct or cascade', () => {
+    const keys = issuer();
+    assert.throws(() => mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        revocationMode: undefined,
+    })), /revocation_mode/);
+    assert.throws(() => mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        revocationMode: 'eventual',
+    })), /revocation_mode/);
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'signed-revocation-mode',
+        revocationMode: 'cascade',
+    }));
+    assert.equal(minted.capabilityReceipt.capability.revocation_mode, 'cascade');
+    assert.equal(verifyCapabilityReceipt(minted.capabilityReceipt, {
+        trustedIssuerKeys: [keys.receipt.public_key],
+    }).ok, true);
+    const forged = structuredClone(minted.capabilityReceipt);
+    delete forged.capability.revocation_mode;
+    resignEnvelope(forged, keys.privateKey);
+    assert.equal(verifyCapabilityReceipt(forged, {
+        trustedIssuerKeys: [keys.receipt.public_key],
+    }).reason, 'capability_malformed');
 });
 test('memory capability operations isolate identical operation ids by capability', async () => {
     const keys = issuer();
@@ -198,6 +228,15 @@ test('postgres capability operations use a composite namespace and operation key
     assert.match(CAPABILITY_STATE_DDL, /provider_entry_at TIMESTAMPTZ/);
     assert.match(CAPABILITY_STATE_DDL, /'provider_entered'/);
     assert.match(CAPABILITY_STATE_DDL, /'released'/);
+    assert.match(CAPABILITY_STATE_DDL, /reconciliation_outcome IN \('executed', 'not_entered'\)/);
+    assert.match(CAPABILITY_STATE_DDL, /revocation_mode TEXT NOT NULL CHECK \(revocation_mode IN \('direct', 'cascade'\)\)/);
+    assert.match(CAPABILITY_STATE_DDL, /revocation_state_ready BOOLEAN NOT NULL DEFAULT TRUE/);
+    assert.match(CAPABILITY_STATE_DDL, /NEW\.revocation_mode IS NULL/);
+    assert.match(CAPABILITY_STATE_DDL, /FOREIGN KEY \(parent_capability_id\) REFERENCES ep_capability_state\(capability_id\)/);
+    assert.match(CAPABILITY_SQL.readState, /FOR UPDATE/);
+    assert.match(CAPABILITY_SQL.reserveState, /revoked_at IS NULL/);
+    assert.match(CAPABILITY_SQL.reserveState, /revocation_state_ready IS TRUE/);
+    assert.doesNotMatch(CAPABILITY_STATE_DDL, /SET revocation_mode = 'direct'/);
     assert.match(CAPABILITY_SQL.readOperation, /operation_namespace = \$1 AND operation_id = \$2/);
     assert.match(CAPABILITY_STATE_DDL, /CREATE TABLE IF NOT EXISTS ep_gate_allowance_status/);
     assert.match(CAPABILITY_SQL.readAllowanceStatus, /FOR UPDATE/);
@@ -247,6 +286,10 @@ test('postgres capability operations use a composite namespace and operation key
                     reserved_amount: '0',
                     expires_at: params[3],
                     semantic_fence_ready: true,
+                    revocation_mode: params[7],
+                    parent_capability_id: params[8],
+                    revoked_at: null,
+                    revocation_state_ready: true,
                 });
             }
             return { rowCount: 1, rows: [] };
@@ -435,6 +478,10 @@ test('postgres reservation refuses a stale allowance head under the status row l
         allowance_profile_id: profileId,
         allowance_digest: allowanceDigest,
         semantic_fence_ready: true,
+        revocation_mode: 'direct',
+        parent_capability_id: null,
+        revoked_at: null,
+        revocation_state_ready: true,
     };
     let status = null;
     const transaction = async (callback) => callback(async (sql, params) => {
@@ -675,6 +722,7 @@ test('capability scope is mandatory, signed, exact, and operation-bound', async 
         issuerPrivateKey: keys.privateKey,
         budget: { amount: 10, currency: 'USD' },
         expiry: NOW + 60_000,
+        revocationMode: 'direct',
     }), /scope.profile/);
     const allowed = scopedAction('scope-op', { amount: 10, destination: 'acct_allowed' });
     const minted = mintCapabilityReceipt(keys.receipt, options({
@@ -1451,6 +1499,7 @@ test('delegation burns parent budget before registering a spendable child', asyn
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 40, currency: 'USD' },
         expiry: NOW + 30_000,
+        revocationMode: 'direct',
         delegateId: 'pilot-operator',
         capabilityId: 'child_1',
         secret: Buffer.alloc(32, 9),
@@ -1468,6 +1517,7 @@ test('delegation burns parent budget before registering a spendable child', asyn
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 61, currency: 'USD' },
         expiry: NOW + 30_000,
+        revocationMode: 'direct',
         delegateId: 'pilot-operator',
         capabilityId: 'child_2',
         store,
@@ -1493,6 +1543,7 @@ test('concurrent N-sibling delegation transfers rather than copies parent author
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 40, currency: 'USD' },
         expiry: NOW + 30_000,
+        revocationMode: 'direct',
         delegateId: `fanout-operator-${index}`,
         capabilityId: `fanout_child_${index}`,
         operationId: `fanout_operation_${index}`,
@@ -1521,6 +1572,7 @@ test('one delegation operation identifier funds only one child digest', async ()
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 30, currency: 'USD' },
         expiry: NOW + 30_000,
+        revocationMode: 'direct',
         delegateId: `injective-operator-${suffix}`,
         capabilityId: `injective_child_${suffix}`,
         operationId: 'injective_operation',
@@ -1555,6 +1607,7 @@ test('a failed child registration remains a funded orphan and never refunds the 
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 25, currency: 'USD' },
         expiry: NOW + 30_000,
+        revocationMode: 'direct',
         delegateId: 'orphan-operator',
         capabilityId: 'orphan_child',
         operationId: 'orphan_operation',
@@ -1588,6 +1641,7 @@ test('separate authority stores demonstrate the explicit cross-domain non-guaran
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 60, currency: 'USD' },
         expiry: NOW + 30_000,
+        revocationMode: 'direct',
         delegateId: `fork-operator-${index}`,
         capabilityId: `fork_child_${index}`,
         operationId: `fork_operation_${index}`,
@@ -1615,6 +1669,7 @@ test('delegation cannot outlive its parent, including across multiple hops', asy
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 10, currency: 'USD' },
         expiry: NOW + 30_001,
+        revocationMode: 'direct',
         delegateId: 'temporal-direct',
         capabilityId: 'temporal_child_invalid',
         store,
@@ -1630,6 +1685,7 @@ test('delegation cannot outlive its parent, including across multiple hops', asy
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 10, currency: 'USD' },
         expiry: NOW + 20_000,
+        revocationMode: 'direct',
         delegateId: 'temporal-child',
         capabilityId: 'temporal_child',
         secret: Buffer.alloc(32, 11),
@@ -1644,6 +1700,7 @@ test('delegation cannot outlive its parent, including across multiple hops', asy
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 5, currency: 'USD' },
         expiry: NOW + 20_001,
+        revocationMode: 'direct',
         delegateId: 'temporal-grandchild',
         capabilityId: 'temporal_grandchild_invalid',
         store,
@@ -1716,6 +1773,10 @@ test('postgres capability state also rejects a conflicting envelope', async () =
                     reserved_amount: '0',
                     expires_at: params[3],
                     semantic_fence_ready: true,
+                    revocation_mode: params[7],
+                    parent_capability_id: params[8],
+                    revoked_at: null,
+                    revocation_state_ready: true,
                 };
             }
             return { rowCount: row.capability_fingerprint === params[4] ? 1 : 0 };
@@ -1746,6 +1807,334 @@ function resignEnvelope(capabilityReceipt, privateKey) {
     capabilityReceipt.capability_signature.value = sign(null, Buffer.from(canonicalize(body)), privateKey).toString('base64url');
     return capabilityReceipt;
 }
+async function threeHopLineage({ keys, prefix, rootRevocationMode, store = createMemoryCapabilityStore(), }) {
+    const root = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: `${prefix}_root`,
+        secret: Buffer.alloc(32, 70),
+        revocationMode: rootRevocationMode,
+    }));
+    assert.equal(await store.registerCapability(root.capabilityReceipt), true);
+    const child = await delegateCapabilityReceipt({
+        parentCapabilityReceipt: root.capabilityReceipt,
+        parentSecret: root.secret,
+        issuerPrivateKey: keys.privateKey,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        budget: { amount: 50, currency: 'USD' },
+        expiry: NOW + 40_000,
+        revocationMode: 'direct',
+        delegateId: `${prefix}-child-holder`,
+        capabilityId: `${prefix}_child`,
+        operationId: `${prefix}_delegate_child`,
+        secret: Buffer.alloc(32, 71),
+        store,
+        now: NOW,
+    });
+    assert.equal(child.ok, true);
+    const grandchild = await delegateCapabilityReceipt({
+        parentCapabilityReceipt: child.capabilityReceipt,
+        parentSecret: child.secret,
+        issuerPrivateKey: keys.privateKey,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        budget: { amount: 20, currency: 'USD' },
+        expiry: NOW + 30_000,
+        revocationMode: 'direct',
+        delegateId: `${prefix}-grandchild-holder`,
+        capabilityId: `${prefix}_grandchild`,
+        operationId: `${prefix}_delegate_grandchild`,
+        secret: Buffer.alloc(32, 72),
+        store,
+        now: NOW,
+    });
+    assert.equal(grandchild.ok, true);
+    return { store, root, child, grandchild };
+}
+test('direct revocation blocks the named capability but preserves previously registered descendants', async () => {
+    const keys = issuer();
+    const lineage = await threeHopLineage({
+        keys,
+        prefix: 'direct-revocation',
+        rootRevocationMode: 'direct',
+    });
+    const rootId = lineage.root.capabilityReceipt.capability.id;
+    const revoked = await lineage.store.revokeCapability({
+        capabilityId: rootId,
+        capabilityFingerprint: lineage.store.getState(rootId).capability_fingerprint,
+        now: NOW + 1,
+    });
+    assert.equal(revoked.ok, true);
+    const descendantAction = scopedAction('op_4', { amount: 10 });
+    let effects = 0;
+    const descendant = await executeWithCapability({
+        capabilityReceipt: lineage.grandchild.capabilityReceipt,
+        secret: lineage.grandchild.secret,
+        action: descendantAction,
+        operationId: descendantAction.operation_id,
+        store: lineage.store,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        verifyBaseReceipt: () => true,
+        executeAction: async () => { effects += 1; return 'executed'; },
+        now: NOW + 2,
+    });
+    assert.equal(descendant.ok, true);
+    assert.equal(effects, 1);
+    const newChild = await delegateCapabilityReceipt({
+        parentCapabilityReceipt: lineage.root.capabilityReceipt,
+        parentSecret: lineage.root.secret,
+        issuerPrivateKey: keys.privateKey,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        budget: { amount: 1, currency: 'USD' },
+        expiry: NOW + 20_000,
+        revocationMode: 'direct',
+        delegateId: 'late-child-holder',
+        capabilityId: 'direct-revocation_late_child',
+        operationId: 'direct-revocation_late_delegation',
+        store: lineage.store,
+        now: NOW + 2,
+    });
+    assert.equal(newChild.ok, false);
+    assert.equal(newChild.reason, 'capability_revoked');
+});
+test('cascade revocation blocks later descendant reservations and child allocations', async () => {
+    const keys = issuer();
+    const lineage = await threeHopLineage({
+        keys,
+        prefix: 'cascade-revocation',
+        rootRevocationMode: 'cascade',
+    });
+    const rootId = lineage.root.capabilityReceipt.capability.id;
+    assert.equal((await lineage.store.revokeCapability({
+        capabilityId: rootId,
+        capabilityFingerprint: lineage.store.getState(rootId).capability_fingerprint,
+        now: NOW + 1,
+    })).ok, true);
+    const descendantAction = scopedAction('op_4', { amount: 10 });
+    const descendant = await executeWithCapability({
+        capabilityReceipt: lineage.grandchild.capabilityReceipt,
+        secret: lineage.grandchild.secret,
+        action: descendantAction,
+        operationId: descendantAction.operation_id,
+        store: lineage.store,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        verifyBaseReceipt: () => true,
+        executeAction: async () => assert.fail('cascade-revoked lineage must not enter the effect'),
+        now: NOW + 2,
+    });
+    assert.equal(descendant.ok, false);
+    assert.equal(descendant.reason, 'capability_ancestor_revoked');
+    const lateGrandchild = await delegateCapabilityReceipt({
+        parentCapabilityReceipt: lineage.child.capabilityReceipt,
+        parentSecret: lineage.child.secret,
+        issuerPrivateKey: keys.privateKey,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        budget: { amount: 1, currency: 'USD' },
+        expiry: NOW + 20_000,
+        revocationMode: 'direct',
+        delegateId: 'late-grandchild-holder',
+        capabilityId: 'cascade-revocation_late_grandchild',
+        operationId: 'cascade-revocation_late_delegation',
+        store: lineage.store,
+        now: NOW + 2,
+    });
+    assert.equal(lateGrandchild.ok, false);
+    assert.equal(lateGrandchild.reason, 'capability_ancestor_revoked');
+});
+test('ancestor revocation and descendant reservation serialize without reopening committed authority', async () => {
+    const keys = issuer();
+    const revocationFirst = await threeHopLineage({
+        keys,
+        prefix: 'race-revocation-first',
+        rootRevocationMode: 'cascade',
+    });
+    const firstRootId = revocationFirst.root.capabilityReceipt.capability.id;
+    const firstChildId = revocationFirst.child.capabilityReceipt.capability.id;
+    const [revoked, refused] = await Promise.all([
+        revocationFirst.store.revokeCapability({
+            capabilityId: firstRootId,
+            capabilityFingerprint: revocationFirst.store.getState(firstRootId).capability_fingerprint,
+            now: NOW + 1,
+        }),
+        revocationFirst.store.reserveSpend({
+            capabilityId: firstChildId,
+            capabilityFingerprint: revocationFirst.store.getState(firstChildId).capability_fingerprint,
+            operationId: 'race_after_revocation',
+            actionDigest: capabilityActionDigest(scopedAction('race_after_revocation')),
+            amount: 1,
+            currency: 'USD',
+            now: NOW + 1,
+        }),
+    ]);
+    assert.equal(revoked.ok, true);
+    assert.equal(refused.ok, false);
+    assert.equal(refused.reason, 'capability_ancestor_revoked');
+    const reservationFirst = await threeHopLineage({
+        keys,
+        prefix: 'race-reservation-first',
+        rootRevocationMode: 'cascade',
+    });
+    const secondRootId = reservationFirst.root.capabilityReceipt.capability.id;
+    const secondChildId = reservationFirst.child.capabilityReceipt.capability.id;
+    const [reserved, lateRevocation] = await Promise.all([
+        reservationFirst.store.reserveSpend({
+            capabilityId: secondChildId,
+            capabilityFingerprint: reservationFirst.store.getState(secondChildId).capability_fingerprint,
+            operationId: 'race_before_revocation',
+            actionDigest: capabilityActionDigest(scopedAction('race_before_revocation')),
+            amount: 1,
+            currency: 'USD',
+            now: NOW + 1,
+        }),
+        reservationFirst.store.revokeCapability({
+            capabilityId: secondRootId,
+            capabilityFingerprint: reservationFirst.store.getState(secondRootId).capability_fingerprint,
+            now: NOW + 1,
+        }),
+    ]);
+    assert.equal(reserved.ok, true);
+    assert.equal(lateRevocation.ok, true);
+    assert.equal(reservationFirst.store.getOperation('race_before_revocation', secondChildId).status, 'reserved');
+    assert.equal((await reservationFirst.store.beginProviderEntry({
+        capabilityId: secondChildId,
+        operationId: 'race_before_revocation',
+        reservationToken: reserved.reservation_token,
+        now: NOW + 2,
+    })).ok, true);
+    assert.equal((await reservationFirst.store.commitSpend({
+        capabilityId: secondChildId,
+        operationId: 'race_before_revocation',
+        reservationToken: reserved.reservation_token,
+        outcome: 'executed',
+        now: NOW + 3,
+    })).ok, true);
+    assert.equal((await reservationFirst.store.reserveSpend({
+        capabilityId: secondChildId,
+        capabilityFingerprint: reservationFirst.store.getState(secondChildId).capability_fingerprint,
+        operationId: 'race_later_claim',
+        actionDigest: capabilityActionDigest(scopedAction('race_later_claim')),
+        amount: 1,
+        currency: 'USD',
+        now: NOW + 4,
+    })).reason, 'capability_ancestor_revoked');
+});
+test('postgres reservations refuse when any registered ancestor state is unavailable', async () => {
+    const keys = issuer();
+    const parent = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'postgres_missing_ancestor_parent',
+    }));
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'postgres_missing_ancestor_leaf',
+        delegationChain: [chainEntry({
+                delegation_id: 'postgres-missing-ancestor-delegation',
+                parent: 'postgres_missing_ancestor_parent',
+                amount: 100,
+            })],
+    }));
+    const reference = createMemoryCapabilityStore();
+    assert.equal(reference.registerCapability(parent.capabilityReceipt), true);
+    assert.equal(reference.registerCapability(minted.capabilityReceipt), true);
+    const leafState = {
+        capability_id: minted.capabilityReceipt.capability.id,
+        capability_fingerprint: reference.getState(minted.capabilityReceipt.capability.id).capability_fingerprint,
+        budget_amount: 100,
+        currency: 'USD',
+        consumed_amount: '0',
+        reserved_amount: '0',
+        expires_at: new Date(NOW + 60_000).toISOString(),
+        allowance_profile_id: null,
+        allowance_digest: null,
+        semantic_fence_ready: true,
+        revocation_mode: 'direct',
+        parent_capability_id: 'postgres_missing_ancestor_parent',
+        revoked_at: null,
+        revocation_state_ready: true,
+    };
+    const transaction = async (callback) => callback(async (sql, params) => {
+        if (sql === CAPABILITY_SQL.readState) {
+            return params[0] === leafState.capability_id
+                ? { rowCount: 1, rows: [leafState] }
+                : { rowCount: 0, rows: [] };
+        }
+        throw new Error(`unexpected SQL in missing-ancestor test: ${sql}`);
+    });
+    const store = createPostgresCapabilityStore({ transaction });
+    const result = await store.reserveSpend({
+        capabilityId: leafState.capability_id,
+        capabilityFingerprint: leafState.capability_fingerprint,
+        operationId: 'postgres_missing_ancestor_reservation',
+        actionDigest: capabilityActionDigest(scopedAction('postgres_missing_ancestor_reservation')),
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'capability_ancestor_status_unavailable');
+});
+test('postgres reservations refuse a quarantined ancestor even when it carries a valid-looking mode', async () => {
+    const keys = issuer();
+    const parent = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'postgres_quarantined_ancestor_parent',
+    }));
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'postgres_quarantined_ancestor_leaf',
+        delegationChain: [chainEntry({
+                delegation_id: 'postgres-quarantined-ancestor-delegation',
+                parent: 'postgres_quarantined_ancestor_parent',
+                amount: 100,
+            })],
+    }));
+    const reference = createMemoryCapabilityStore();
+    assert.equal(reference.registerCapability(parent.capabilityReceipt), true);
+    assert.equal(reference.registerCapability(minted.capabilityReceipt), true);
+    const parentState = {
+        ...reference.getState(parent.capabilityReceipt.capability.id),
+        consumed_amount: '0',
+        reserved_amount: '0',
+        expires_at: new Date(NOW + 60_000).toISOString(),
+        semantic_fence_ready: true,
+        revocation_mode: 'cascade',
+        parent_capability_id: null,
+        revoked_at: null,
+        revocation_state_ready: false,
+    };
+    const leafState = {
+        ...reference.getState(minted.capabilityReceipt.capability.id),
+        consumed_amount: '0',
+        reserved_amount: '0',
+        expires_at: new Date(NOW + 60_000).toISOString(),
+        semantic_fence_ready: true,
+        revocation_mode: 'direct',
+        parent_capability_id: parentState.capability_id,
+        revoked_at: null,
+        revocation_state_ready: true,
+    };
+    const states = new Map([
+        [leafState.capability_id, leafState],
+        [parentState.capability_id, parentState],
+    ]);
+    const transaction = async (callback) => callback(async (sql, params) => {
+        if (sql === CAPABILITY_SQL.readState) {
+            const row = states.get(params[0]);
+            return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
+        }
+        throw new Error(`unexpected SQL in quarantined-ancestor test: ${sql}`);
+    });
+    const store = createPostgresCapabilityStore({ transaction });
+    const result = await store.reserveSpend({
+        capabilityId: leafState.capability_id,
+        capabilityFingerprint: leafState.capability_fingerprint,
+        operationId: 'postgres_quarantined_ancestor_reservation',
+        actionDigest: capabilityActionDigest(scopedAction('postgres_quarantined_ancestor_reservation')),
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'capability_ancestor_status_unavailable');
+});
 test('a valid linear delegation chain mints and verifies', () => {
     const keys = issuer();
     const minted = mintCapabilityReceipt(keys.receipt, options({
@@ -1777,6 +2166,7 @@ test('a real multi-hop delegation produces a chain that survives acyclicity inge
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 40, currency: 'USD' },
         expiry: NOW + 30_000,
+        revocationMode: 'direct',
         delegateId: 'acyc-child',
         capabilityId: 'acyc_child',
         secret: Buffer.alloc(32, 22),
@@ -1791,6 +2181,7 @@ test('a real multi-hop delegation produces a chain that survives acyclicity inge
         trustedIssuerKeys: [keys.receipt.public_key],
         budget: { amount: 20, currency: 'USD' },
         expiry: NOW + 20_000,
+        revocationMode: 'direct',
         delegateId: 'acyc-grandchild',
         capabilityId: 'acyc_grandchild',
         secret: Buffer.alloc(32, 23),
@@ -1874,6 +2265,8 @@ test('the durable store fences on the separate action fence too, not only the me
                 budget_amount: String(params[1]), currency: params[2],
                 consumed_amount: '0', reserved_amount: '0', expires_at: params[3],
                 semantic_fence_ready: true,
+                revocation_mode: params[7], parent_capability_id: params[8],
+                revoked_at: null, revocation_state_ready: true,
             });
             return { rowCount: 1, rows: [] };
         }
@@ -1965,6 +2358,10 @@ test('a concurrent postgres action-fence collision returns a closed refusal inst
                         reserved_amount: '0',
                         expires_at: new Date(state.expires_at).toISOString(),
                         semantic_fence_ready: true,
+                        revocation_mode: 'direct',
+                        parent_capability_id: null,
+                        revoked_at: null,
+                        revocation_state_ready: true,
                     }],
             };
         }
@@ -2030,6 +2427,10 @@ test('an unrelated postgres unique violation is not laundered into action_in_fli
                         reserved_amount: '0',
                         expires_at: new Date(state.expires_at).toISOString(),
                         semantic_fence_ready: true,
+                        revocation_mode: 'direct',
+                        parent_capability_id: null,
+                        revoked_at: null,
+                        revocation_state_ready: true,
                     }],
             };
         }
@@ -2059,6 +2460,171 @@ test('an unrelated postgres unique violation is not laundered into action_in_fli
     }), (error) => (error.code === '23505' && error.constraint === 'some_other_unique_constraint'));
 });
 const capabilityPostgresUrl = process.env.ADMISSION_STORE_POSTGRES_TEST_URL;
+test('real PostgreSQL serializes cascade revocation against descendant reservation', {
+    skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
+}, async () => {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: capabilityPostgresUrl, max: 8 });
+    const schemaPrefix = `ep_revocation_race_${process.pid}_${Date.now()}`;
+    function latch() {
+        let release;
+        const waiting = new Promise((resolve) => { release = resolve; });
+        return { waiting, release };
+    }
+    function transactionFor(schema, hooks = {}) {
+        return async (callback) => {
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
+                await client.query(`SET LOCAL search_path TO ${schema}, public`);
+                const result = await callback(async (sql, params = []) => {
+                    await hooks.before?.(sql, params);
+                    const queried = await client.query(sql, [...params]);
+                    await hooks.after?.(sql, params);
+                    return { rowCount: queried.rowCount ?? 0, rows: queried.rows };
+                });
+                await client.query('COMMIT');
+                return result;
+            }
+            catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+            }
+            finally {
+                client.release();
+            }
+        };
+    }
+    async function setupLineage(schema, prefix) {
+        await pool.query(`CREATE SCHEMA ${schema}`);
+        const setup = await pool.connect();
+        try {
+            await setup.query(`SET search_path TO ${schema}, public`);
+            await setup.query(CAPABILITY_STATE_DDL);
+        }
+        finally {
+            setup.release();
+        }
+        const keys = issuer();
+        const store = createPostgresCapabilityStore({ transaction: transactionFor(schema) });
+        const lineage = await threeHopLineage({
+            keys,
+            prefix,
+            rootRevocationMode: 'cascade',
+            store,
+        });
+        const rootId = lineage.root.capabilityReceipt.capability.id;
+        const childId = lineage.child.capabilityReceipt.capability.id;
+        const state = await pool.query(`
+      SELECT capability_id, capability_fingerprint
+      FROM ${schema}.ep_capability_state
+      WHERE capability_id IN ($1, $2)
+    `, [rootId, childId]);
+        const fingerprints = new Map(state.rows.map((row) => [row.capability_id, row.capability_fingerprint]));
+        return { rootId, childId, fingerprints };
+    }
+    try {
+        const firstSchema = `${schemaPrefix}_revocation_first`;
+        const first = await setupLineage(firstSchema, 'postgres-race-revocation-first');
+        const revocationLocked = latch();
+        const releaseRevocation = latch();
+        const reservationReachedRoot = latch();
+        let heldRevocation = false;
+        let observedReservation = false;
+        const revoker = createPostgresCapabilityStore({
+            transaction: transactionFor(firstSchema, {
+                async after(sql, params) {
+                    if (!heldRevocation && sql === CAPABILITY_SQL.readState && params[0] === first.rootId) {
+                        heldRevocation = true;
+                        revocationLocked.release();
+                        await releaseRevocation.waiting;
+                    }
+                },
+            }),
+        });
+        const reserver = createPostgresCapabilityStore({
+            transaction: transactionFor(firstSchema, {
+                before(sql, params) {
+                    if (!observedReservation && sql === CAPABILITY_SQL.readState && params[0] === first.rootId) {
+                        observedReservation = true;
+                        reservationReachedRoot.release();
+                    }
+                },
+            }),
+        });
+        const revoking = revoker.revokeCapability({
+            capabilityId: first.rootId,
+            capabilityFingerprint: first.fingerprints.get(first.rootId),
+            now: NOW + 1,
+        });
+        await revocationLocked.waiting;
+        const reserving = reserver.reserveSpend({
+            capabilityId: first.childId,
+            capabilityFingerprint: first.fingerprints.get(first.childId),
+            operationId: 'postgres_revocation_first_reservation',
+            actionDigest: capabilityActionDigest(scopedAction('postgres_revocation_first_reservation')),
+            amount: 1,
+            currency: 'USD',
+            now: NOW + 1,
+        });
+        await reservationReachedRoot.waiting;
+        releaseRevocation.release();
+        assert.equal((await revoking).ok, true);
+        assert.deepEqual(await reserving, { ok: false, reason: 'capability_ancestor_revoked' });
+        const secondSchema = `${schemaPrefix}_reservation_first`;
+        const second = await setupLineage(secondSchema, 'postgres-race-reservation-first');
+        const reservationLocked = latch();
+        const releaseReservation = latch();
+        const revocationReachedRoot = latch();
+        let heldReservation = false;
+        let observedRevocation = false;
+        const firstReserver = createPostgresCapabilityStore({
+            transaction: transactionFor(secondSchema, {
+                async after(sql, params) {
+                    if (!heldReservation && sql === CAPABILITY_SQL.readState && params[0] === second.rootId) {
+                        heldReservation = true;
+                        reservationLocked.release();
+                        await releaseReservation.waiting;
+                    }
+                },
+            }),
+        });
+        const lateRevoker = createPostgresCapabilityStore({
+            transaction: transactionFor(secondSchema, {
+                before(sql, params) {
+                    if (!observedRevocation && sql === CAPABILITY_SQL.readState && params[0] === second.rootId) {
+                        observedRevocation = true;
+                        revocationReachedRoot.release();
+                    }
+                },
+            }),
+        });
+        const reserved = firstReserver.reserveSpend({
+            capabilityId: second.childId,
+            capabilityFingerprint: second.fingerprints.get(second.childId),
+            operationId: 'postgres_reservation_first_claim',
+            actionDigest: capabilityActionDigest(scopedAction('postgres_reservation_first_claim')),
+            amount: 1,
+            currency: 'USD',
+            now: NOW + 1,
+        });
+        await reservationLocked.waiting;
+        const revoked = lateRevoker.revokeCapability({
+            capabilityId: second.rootId,
+            capabilityFingerprint: second.fingerprints.get(second.rootId),
+            now: NOW + 1,
+        });
+        await revocationReachedRoot.waiting;
+        releaseReservation.release();
+        assert.equal((await reserved).ok, true);
+        assert.equal((await revoked).ok, true);
+    }
+    finally {
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_revocation_first CASCADE`);
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_reservation_first CASCADE`);
+        await pool.end();
+    }
+});
 test('real PostgreSQL action fence is load-bearing across capability rows', {
     skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
 }, async () => {
@@ -2225,8 +2791,9 @@ test('package DDL quarantines legacy capability ids at the database boundary', {
             await client.query(`
         INSERT INTO ep_capability_state (
           capability_id, capability_fingerprint, budget_amount, currency,
-          consumed_amount, reserved_amount, expires_at, semantic_fence_ready
-        ) VALUES ($1, $2, 10, 'USD', 0, 0, now() + interval '1 hour', FALSE)
+          consumed_amount, reserved_amount, expires_at, semantic_fence_ready,
+          revocation_mode, revocation_state_ready
+        ) VALUES ($1, $2, 10, 'USD', 0, 0, now() + interval '1 hour', FALSE, 'direct', TRUE)
       `, ['legacy:quarantined', `sha256:${'a'.repeat(64)}`]);
             try {
                 await client.query(`
@@ -2290,8 +2857,9 @@ test('package DDL quarantines an incomplete bootstrap that already defaulted the
             await client.query(`
         INSERT INTO ep_capability_state (
           capability_id, capability_fingerprint, budget_amount, currency,
-          consumed_amount, reserved_amount, expires_at, semantic_fence_ready
-        ) VALUES ($1, $2, 10, 'USD', 0, 0, now() + interval '1 hour', TRUE)
+          consumed_amount, reserved_amount, expires_at, semantic_fence_ready,
+          revocation_mode, revocation_state_ready
+        ) VALUES ($1, $2, 10, 'USD', 0, 0, now() + interval '1 hour', TRUE, 'direct', TRUE)
       `, ['legacy:already-true', `sha256:${'a'.repeat(64)}`]);
             await client.query(`
         INSERT INTO ep_capability_operations (

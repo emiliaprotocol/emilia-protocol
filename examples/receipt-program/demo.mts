@@ -68,6 +68,7 @@ const parent = mintCapabilityReceipt(baseReceipt, {
   issuerPrivateKey: capabilityIssuer.privateKey,
   budget: { amount: 1000, currency: 'USD' },
   expiry: now + 30 * 24 * 60 * 60 * 1000,
+  revocationMode: 'cascade',
   capabilityId: 'cap_demo_parent',
   secret: Buffer.alloc(32, 7),
   scope: {
@@ -87,6 +88,7 @@ const child = await delegateCapabilityReceipt({
   issuerPrivateKey: capabilityIssuer.privateKey,
   budget: { amount: 100, currency: 'USD' },
   expiry: now + 30 * 24 * 60 * 60 * 1000,
+  revocationMode: 'direct',
   delegateId: 'payment-agent-demo',
   capabilityId: 'cap_demo_child',
   secret: Buffer.alloc(32, 8),

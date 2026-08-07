@@ -53,6 +53,7 @@ describe('DTC Base x EMILIA receipt-program kernel', function () {
       issuerPrivateKey: capabilityIssuer.privateKey,
       budget: { amount: 10, currency: 'USD' },
       expiry: nowMs + 24 * 60 * 60 * 1000,
+      revocationMode: 'direct',
       capabilityId: `cap_dtc_${label}`,
       secret: Buffer.alloc(32, 7),
       scope: {

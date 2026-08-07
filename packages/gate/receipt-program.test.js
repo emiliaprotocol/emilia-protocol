@@ -70,6 +70,7 @@ function fixture({ budget = 100, action = OBSERVED_ACTION, effectTimeoutMs = 100
         issuerPrivateKey: capabilityIssuer.privateKey,
         budget: { amount: budget, currency: 'USD' },
         expiry: NOW + 60_000,
+        revocationMode: 'direct',
         secret: Buffer.alloc(32, 9),
         capabilityId: `cap_receipt_program_${budget}`,
         scope: {

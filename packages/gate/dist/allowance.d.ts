@@ -46,12 +46,13 @@ export declare function verifyGateAllowance(artifact: unknown, { trusted_keys, n
  * binds the exact receipt bytes to both artifacts; it does not claim that the
  * receipt is trustworthy merely because it exists.
  */
-export declare function issueGateAllowance({ authorizationReceipt, allowance, predecessorAllowance, signer, capabilityIssuerPrivateKey, capabilityId, secret, }?: {
+export declare function issueGateAllowance({ authorizationReceipt, allowance, predecessorAllowance, signer, capabilityIssuerPrivateKey, capabilityRevocationMode, capabilityId, secret, }?: {
     authorizationReceipt?: RiskRecord;
     allowance?: RiskRecord;
     predecessorAllowance?: RiskRecord;
     signer?: AllowanceSigner;
     capabilityIssuerPrivateKey?: CapabilityKeyMaterial;
+    capabilityRevocationMode?: 'direct' | 'cascade';
     capabilityId?: string;
     secret?: Buffer | string;
 }): RiskRecord;

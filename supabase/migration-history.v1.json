@@ -1,16 +1,18 @@
 {
   "schema_version": "EP-MIGRATION-HISTORY-v1",
-  "as_of": "2026-08-05",
+  "as_of": "2026-08-07",
   "remote_head": "20260803231000",
   "private_remote_versions": [
     "20260723192504"
   ],
   "retroactive_pending_versions": [],
   "forward_pending_versions": [
-    "20260805120000"
+    "20260805120000",
+    "20260807010000"
   ],
   "deployment_sequence": [
-    "20260805120000"
+    "20260805120000",
+    "20260807010000"
   ],
   "requires_include_all": false,
   "remote_versions": [
@@ -401,6 +403,7 @@
     "20260803020000_agent_record_v1.sql": "096c5ccbfd181d0df9ce33692f95695ef4a45853ec6eba751ebceb70fac9b29a",
     "20260803230000_tenant_panic_control.sql": "08b22e339481d5a40336d7cfae08032fa439f1fa62976d2a3373b603361e5781",
     "20260803231000_signoff_ceremony_velocity.sql": "f88f2a3a25d9f384ba63a60fa76019ecda531a4b432d73b4c4a1686df7ea82d4",
-    "20260805120000_cloud_signoff_escalation_once.sql": "9b35687ab6112bd239873feaa17327220f5c3b872960377ec274c86c2fcd359b"
+    "20260805120000_cloud_signoff_escalation_once.sql": "9b35687ab6112bd239873feaa17327220f5c3b872960377ec274c86c2fcd359b",
+    "20260807010000_capability_revocation_inheritance.sql": "76bb3eef12a13b3d308de9fcdf531ab98799201fce4d874d1a78de3d084c7f9d"
   }
 }

@@ -23,6 +23,7 @@ function fixture({ budget = 100, baseAction = ACTION, providerEntryGuard = null 
         issuerPrivateKey: issuer.privateKey,
         budget: { amount: budget, currency: 'USD' },
         expiry: NOW + 60_000,
+        revocationMode: 'direct',
         secret: Buffer.alloc(32, 7),
         capabilityId: `cap_${budget}`,
         scope: {
@@ -76,7 +77,9 @@ function capabilityAdapter(overrides = {}) {
     return {
         durable: true,
         reconciliationCapable: true,
+        revocationInheritanceCapable: true,
         registerCapability() { return true; },
+        async revokeCapability() { return { ok: false }; },
         async reserveSpend() { return { ok: false }; },
         async beginProviderEntry() { return { ok: false }; },
         async recoverPreEntrySpend() { return { ok: false }; },
@@ -129,6 +132,18 @@ test('capability adapters must implement the provider-entry and pre-entry recove
             capabilityStore,
             capabilityTrustedIssuerKeys: ['pinned-capability-issuer'],
         }), /capabilityStore must implement/);
+    }
+});
+test('capability adapters must implement explicit revocation inheritance', () => {
+    for (const capabilityStore of [
+        capabilityAdapter({ revocationInheritanceCapable: undefined }),
+        capabilityAdapter({ revokeCapability: undefined }),
+    ]) {
+        assert.throws(() => createGate({
+            store: secureConsumptionStore(),
+            capabilityStore,
+            capabilityTrustedIssuerKeys: ['pinned-capability-issuer'],
+        }), /capabilityStore must be durable and reconciliation-capable/);
     }
 });
 test('production gate accepts an explicitly marked durable reconciliation-capable adapter', () => {

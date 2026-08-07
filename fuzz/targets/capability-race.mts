@@ -71,6 +71,7 @@ export default {
       issuerPrivateKey: privateKey,
       budget: { amount: budget, currency: CURRENCY },
       expiry: EXPIRY,
+      revocationMode: 'direct',
       capabilityId,
       scope: {
         profile: CAPABILITY_SCOPE_PROFILE,

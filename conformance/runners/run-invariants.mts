@@ -85,6 +85,7 @@ function mintAndRegister(store, { budget, expiryMs }) {
   const minted = mintCapabilityReceipt(base, {
     budget: { amount: budget, currency: 'USD' },
     expiry: NOW + expiryMs,
+    revocationMode: 'direct',
     issuerPrivateKey: keys.privateKey,
     scope: {
       profile: CAPABILITY_SCOPE_PROFILE,

@@ -722,6 +722,7 @@ function receiptProgramFixture() {
     issuerPrivateKey: capabilityIssuerPrivateKey,
     budget: { amount: 100, currency: "USD" },
     expiry: RECEIPT_PROGRAM_NOW + 60_000,
+    revocationMode: "direct",
     secret: Buffer.alloc(32, 0x73),
     capabilityId: "cap_five_claim_receipt_program",
     scope: {

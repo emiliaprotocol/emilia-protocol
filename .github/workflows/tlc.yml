@@ -177,6 +177,31 @@ jobs:
             exit 1
           fi
 
+      - name: Run TLC on ep_capability_revocation.tla
+        working-directory: formal
+        run: |
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_capability_revocation.cfg \
+            ep_capability_revocation.tla \
+            2>&1 | tee tlc-capability-revocation-output.txt
+
+      - name: Check ep_capability_revocation TLC result
+        working-directory: formal
+        run: |
+          if grep -q "Error:" tlc-capability-revocation-output.txt; then
+            echo "TLC found an error in the capability revocation-inheritance model."
+            grep -A 20 "Error:" tlc-capability-revocation-output.txt
+            exit 1
+          fi
+          if grep -q "Model checking completed. No error has been found." tlc-capability-revocation-output.txt; then
+            echo "TLC: all bounded capability revocation-inheritance properties hold."
+          else
+            echo "TLC did not produce a clean capability revocation completion message."
+            cat tlc-capability-revocation-output.txt
+            exit 1
+          fi
+
       - name: Run TLC on ep_receipt_program.tla
         working-directory: formal
         run: |

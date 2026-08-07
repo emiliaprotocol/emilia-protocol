@@ -67,6 +67,7 @@ function mintFixture(capabilityId: string, scopedAction = action(`${capabilityId
     issuerPrivateKey: keys.privateKey,
     budget: { amount: 10, currency: 'USD' },
     expiry: NOW + 60_000,
+    revocationMode: 'direct',
     scope: {
       profile: CAPABILITY_SCOPE_PROFILE,
       operation_id_field: 'operation_id',
@@ -146,6 +147,7 @@ test('a failed CAID resolver object refuses before any effect or spend', async (
     issuerPrivateKey: keys.privateKey,
     budget: { amount: 10, currency: 'USD' },
     expiry: NOW + 60_000,
+    revocationMode: 'direct',
     scope: {
       profile: CAPABILITY_CAID_SCOPE_PROFILE,
       operation_id_field: 'operation_id',
@@ -203,6 +205,7 @@ test('allowance profile requires one trusted semantic fence across wrapper opera
       issuerPrivateKey: keys.privateKey,
       budget: { amount: 10, currency: 'USD' },
       expiry: NOW + 60_000,
+      revocationMode: 'direct',
       scope: {
         profile: CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
         profile_id: profileId,

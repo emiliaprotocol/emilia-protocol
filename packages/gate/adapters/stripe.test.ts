@@ -161,6 +161,7 @@ test('typed Stripe payout allowance keeps the client local and executes in-envel
       private_key: keys.privateKey,
     },
     capabilityIssuerPrivateKey: keys.privateKey,
+    capabilityRevocationMode: 'direct',
   });
   const store = createMemoryCapabilityStore();
   assert.equal(store.registerCapability(issued.capabilityReceipt), true);
@@ -246,6 +247,7 @@ test('typed Stripe payout executes the immutable verified action when caller par
       private_key: keys.privateKey,
     },
     capabilityIssuerPrivateKey: keys.privateKey,
+    capabilityRevocationMode: 'direct',
   });
   const store = createMemoryCapabilityStore();
   assert.equal(store.registerCapability(issued.capabilityReceipt), true);
@@ -340,6 +342,7 @@ test('typed Stripe payout refuses cross-protocol and cross-account connector sub
         private_key: keys.privateKey,
       },
       capabilityIssuerPrivateKey: keys.privateKey,
+      capabilityRevocationMode: 'direct',
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);

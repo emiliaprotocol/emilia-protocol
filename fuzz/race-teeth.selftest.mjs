@@ -90,6 +90,7 @@ test('concurrent driver PASSES against the shipped atomic store (clean signal)',
     const capabilityId = 'cap-teeth';
     const { capabilityReceipt } = mintCapabilityReceipt(baseReceipt('r-teeth'), {
         issuerPrivateKey: privateKey, budget: { amount: budget, currency: CURRENCY }, expiry: EXPIRY, capabilityId,
+        revocationMode: 'direct',
         scope: STORE_SCOPE,
     });
     const store = createMemoryCapabilityStore();

@@ -268,7 +268,7 @@ export function verifyGateAllowance(artifact, { trusted_keys, now = Date.now, ex
  * binds the exact receipt bytes to both artifacts; it does not claim that the
  * receipt is trustworthy merely because it exists.
  */
-export function issueGateAllowance({ authorizationReceipt, allowance, predecessorAllowance, signer, capabilityIssuerPrivateKey, capabilityId, secret, } = {}) {
+export function issueGateAllowance({ authorizationReceipt, allowance, predecessorAllowance, signer, capabilityIssuerPrivateKey, capabilityRevocationMode, capabilityId, secret, } = {}) {
     if (!riskRecord(authorizationReceipt))
         throw new TypeError('authorizationReceipt is required');
     if (!riskRecord(allowance))
@@ -277,6 +277,9 @@ export function issueGateAllowance({ authorizationReceipt, allowance, predecesso
         throw new TypeError('allowance signer is required');
     if (!capabilityIssuerPrivateKey)
         throw new TypeError('capability issuer key is required');
+    if (capabilityRevocationMode !== 'direct' && capabilityRevocationMode !== 'cascade') {
+        throw new TypeError('capabilityRevocationMode must be direct or cascade');
+    }
     if (allowance.revision === 1 && predecessorAllowance !== undefined) {
         throw new TypeError('revision 1 allowance must not have a predecessor');
     }
@@ -333,6 +336,7 @@ export function issueGateAllowance({ authorizationReceipt, allowance, predecesso
             currency: signedBody.constraints.currency,
         },
         expiry: signedBody.expires_at,
+        revocationMode: capabilityRevocationMode,
         scope: {
             profile: CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
             profile_id: `${signedBody.tenant_id}/${signedBody.allowance_id}`,

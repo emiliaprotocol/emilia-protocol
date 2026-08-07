@@ -371,6 +371,7 @@ export function issueGateAllowance({
   predecessorAllowance,
   signer,
   capabilityIssuerPrivateKey,
+  capabilityRevocationMode,
   capabilityId,
   secret,
 }: {
@@ -379,6 +380,7 @@ export function issueGateAllowance({
   predecessorAllowance?: RiskRecord;
   signer?: AllowanceSigner;
   capabilityIssuerPrivateKey?: CapabilityKeyMaterial;
+  capabilityRevocationMode?: 'direct' | 'cascade';
   capabilityId?: string;
   secret?: Buffer | string;
 } = {}): RiskRecord {
@@ -386,6 +388,9 @@ export function issueGateAllowance({
   if (!riskRecord(allowance)) throw new TypeError('allowance is required');
   if (!signer) throw new TypeError('allowance signer is required');
   if (!capabilityIssuerPrivateKey) throw new TypeError('capability issuer key is required');
+  if (capabilityRevocationMode !== 'direct' && capabilityRevocationMode !== 'cascade') {
+    throw new TypeError('capabilityRevocationMode must be direct or cascade');
+  }
   if (allowance.revision === 1 && predecessorAllowance !== undefined) {
     throw new TypeError('revision 1 allowance must not have a predecessor');
   }
@@ -445,6 +450,7 @@ export function issueGateAllowance({
       currency: signedBody.constraints.currency,
     },
     expiry: signedBody.expires_at,
+    revocationMode: capabilityRevocationMode,
     scope: {
       profile: CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
       profile_id: `${signedBody.tenant_id}/${signedBody.allowance_id}`,

@@ -29,6 +29,13 @@ const FENCE_MIGRATION = readFileSync(
   ),
   'utf8',
 );
+const REVOCATION_MIGRATION = readFileSync(
+  new URL(
+    '../supabase/migrations/20260807010000_capability_revocation_inheritance.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const PACKAGED_PREFLIGHT = readFileSync(
   new URL(
     '../packages/gate/deploy/sql/capability-action-fence-preflight.sql',
@@ -91,6 +98,18 @@ async function applyFenceMigration(): Promise<void> {
   } catch (error) {
     // The migration owns its BEGIN/COMMIT boundary. A failed statement leaves
     // that explicit transaction aborted until the caller rolls it back.
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function applyRevocationMigration(): Promise<void> {
+  const client = await database.connect();
+  try {
+    await client.query(REVOCATION_MIGRATION);
+  } catch (error) {
     await client.query('ROLLBACK');
     throw error;
   } finally {
@@ -672,6 +691,97 @@ suite('capability action fence over the PostgreSQL 17 migration chain', () => {
       ) AS exists
     `);
     expect(semanticColumn.rows).toEqual([{ exists: false }]);
+  });
+
+  it('quarantines unknown legacy revocation policy and accepts only explicit fresh lineage', async () => {
+    await applyHistoricalCapabilityChain();
+    await insertCapability('capability:legacy-revocation-unknown');
+    await applyFenceMigration();
+    await expect(applyRevocationMigration()).resolves.toBeUndefined();
+    await expect(applyRevocationMigration()).resolves.toBeUndefined();
+
+    const legacy = await database.query<{
+      revocation_mode: string | null;
+      revocation_state_ready: boolean;
+    }>(`
+      SELECT revocation_mode, revocation_state_ready
+      FROM public.ep_capability_state
+      WHERE capability_id = 'capability:legacy-revocation-unknown'
+    `);
+    expect(legacy.rows).toEqual([{
+      revocation_mode: null,
+      revocation_state_ready: false,
+    }]);
+
+    await expect(database.query(`
+      INSERT INTO public.ep_capability_state (
+        capability_id, capability_fingerprint, budget_amount, currency,
+        expires_at, semantic_fence_ready
+      ) VALUES ($1, $2, 10, 'USD', now() + interval '1 hour', TRUE)
+    `, [
+      'capability:mode-omitted',
+      `sha256:${'2'.repeat(64)}`,
+    ])).rejects.toMatchObject({ code: '55000' });
+
+    await database.query(`
+      INSERT INTO public.ep_capability_state (
+        capability_id, capability_fingerprint, budget_amount, currency,
+        expires_at, semantic_fence_ready, revocation_mode
+      ) VALUES ($1, $2, 10, 'USD', now() + interval '1 hour', TRUE, 'cascade')
+    `, [
+      'capability:explicit-parent',
+      `sha256:${'3'.repeat(64)}`,
+    ]);
+    await database.query(`
+      INSERT INTO public.ep_capability_state (
+        capability_id, capability_fingerprint, budget_amount, currency,
+        expires_at, semantic_fence_ready, revocation_mode,
+        parent_capability_id
+      ) VALUES ($1, $2, 5, 'USD', now() + interval '30 minutes', TRUE, 'direct', $3)
+    `, [
+      'capability:explicit-child',
+      `sha256:${'4'.repeat(64)}`,
+      'capability:explicit-parent',
+    ]);
+
+    const fresh = await database.query<{
+      capability_id: string;
+      revocation_mode: string;
+      parent_capability_id: string | null;
+      revocation_state_ready: boolean;
+    }>(`
+      SELECT capability_id, revocation_mode, parent_capability_id,
+             revocation_state_ready
+      FROM public.ep_capability_state
+      WHERE capability_id IN ('capability:explicit-parent', 'capability:explicit-child')
+      ORDER BY capability_id
+    `);
+    expect(fresh.rows).toEqual([
+      {
+        capability_id: 'capability:explicit-child',
+        revocation_mode: 'direct',
+        parent_capability_id: 'capability:explicit-parent',
+        revocation_state_ready: true,
+      },
+      {
+        capability_id: 'capability:explicit-parent',
+        revocation_mode: 'cascade',
+        parent_capability_id: null,
+        revocation_state_ready: true,
+      },
+    ]);
+
+    await expect(database.query(`
+      INSERT INTO public.ep_capability_state (
+        capability_id, capability_fingerprint, budget_amount, currency,
+        expires_at, semantic_fence_ready, revocation_mode,
+        parent_capability_id
+      ) VALUES ($1, $2, 1, 'USD', now() + interval '10 minutes', TRUE, 'direct', $3)
+    `, [
+      'capability:missing-parent-child',
+      `sha256:${'5'.repeat(64)}`,
+      'capability:missing-parent',
+    ])).rejects.toMatchObject({ code: '23503' });
   });
 
   it.each([

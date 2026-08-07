@@ -159,6 +159,7 @@ test('issue binds the authorization receipt and wires the allowance to the capab
         allowance: allowanceInput(receipt, keys),
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     assert.equal(issued.allowance.authorization_receipt_digest, capabilityBaseReceiptDigest(receipt));
     assert.equal(issued.capabilityReceipt.capability.scope.profile_digest, allowanceDigest(issued.allowance));
@@ -180,6 +181,7 @@ test('one allowance binds exactly one capability envelope and refuses delegation
         allowance: input,
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
         secret: stableSecret,
     });
     const identical = issueGateAllowance({
@@ -187,6 +189,7 @@ test('one allowance binds exactly one capability envelope and refuses delegation
         allowance: input,
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
         secret: stableSecret,
     });
     const conflicting = issueGateAllowance({
@@ -194,6 +197,7 @@ test('one allowance binds exactly one capability envelope and refuses delegation
         allowance: input,
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
         secret: Buffer.alloc(32, 8),
     });
     const store = createMemoryCapabilityStore();
@@ -205,6 +209,7 @@ test('one allowance binds exactly one capability envelope and refuses delegation
         allowance: input,
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
         capabilityId: 'capability:allowance:duplicate',
     }), /allowance capability_id does not match/);
     const delegated = await delegateCapabilityReceipt({
@@ -213,6 +218,7 @@ test('one allowance binds exactly one capability envelope and refuses delegation
         issuerPrivateKey: keys.pair.privateKey,
         budget: { amount: 1_000, currency: 'USD' },
         expiry: input.expires_at,
+        revocationMode: 'direct',
         delegateId: 'agent:unapproved:b',
         capabilityId: 'capability:allowance:delegated',
         store,
@@ -252,6 +258,7 @@ test('allowed draws run unattended and atomically deplete the aggregate allowanc
         allowance: allowanceInput(receipt, keys),
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
@@ -298,6 +305,7 @@ test('allowance execution fences one material action across wrapper operation id
         allowance: input,
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
@@ -359,6 +367,7 @@ test('authorization receipt verifier exceptions fail closed before execution', a
         allowance: allowanceInput(receipt, keys),
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
@@ -402,6 +411,7 @@ test('per-action cap, beneficiary allowlist, action shape, and receipt binding f
         allowance: allowanceInput(receipt, keys),
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
@@ -461,6 +471,7 @@ test('concurrent draws linearize and post-entry uncertainty consumes replay auth
         allowance: input,
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
@@ -530,6 +541,7 @@ test('execution fails closed without current status and successors bind the pred
         allowance: allowanceInput(receipt, keys),
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
@@ -588,6 +600,7 @@ test('revocation landing after status verification but before spend reservation 
         allowance: input,
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     const capabilityStore = createMemoryCapabilityStore();
     assert.equal(capabilityStore.registerCapability(issued.capabilityReceipt), true);
@@ -649,6 +662,7 @@ test('a successor allowance cannot replay an operation consumed by its predecess
         allowance: firstInput,
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     const successorInput = {
         ...allowanceInput(receipt, keys),
@@ -662,6 +676,7 @@ test('a successor allowance cannot replay an operation consumed by its predecess
         predecessorAllowance: first.allowance,
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(first.capabilityReceipt), true);
@@ -722,6 +737,7 @@ test('a provider success followed by commit failure remains reconcilable without
         allowance: input,
         signer: keys.signer,
         capabilityIssuerPrivateKey: keys.pair.privateKey,
+        capabilityRevocationMode: 'direct',
     });
     const durableBoundary = createMemoryCapabilityStore();
     assert.equal(durableBoundary.registerCapability(issued.capabilityReceipt), true);

@@ -4,6 +4,7 @@ This document reproduces the pinned TLC checks for:
 
 - `ep_handshake.tla`
 - `ep_capability.tla`
+- `ep_capability_revocation.tla`
 - `ep_receipt_program.tla`
 - `ep_authority_program.tla`
 - `ep_trust_program.tla`
@@ -80,6 +81,12 @@ java -Xmx2G -jar ../tla2tools.jar \
   -config ep_capability.cfg \
   ep_capability.tla \
   2>&1 | tee tlc-capability-output.txt
+
+java -Xmx2G -jar ../tla2tools.jar \
+  -workers auto \
+  -config ep_capability_revocation.cfg \
+  ep_capability_revocation.tla \
+  2>&1 | tee tlc-capability-revocation-output.txt
 
 java -Xmx2G -jar ../tla2tools.jar \
   -workers auto \
