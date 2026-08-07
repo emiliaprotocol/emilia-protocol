@@ -974,6 +974,10 @@
       "sha256": "e84080622e0d2c61d48ed78547262b3733d422b7c4dccfa08a1c927e2277faa2"
     },
     {
+      "path": "packages/verify/dist/a2a-receipt-binding.js",
+      "sha256": "38519511c94aa23bc90772280c7db31ba8db093ceb295cbdaa77ef6cdc2f7a55"
+    },
+    {
       "path": "packages/verify/dist/aeb-acceptance-profile.js",
       "sha256": "6a3f5d52205e336896cba828a8844c05dda521e6c4c93b971800f5596fc04fea"
     },
@@ -1095,7 +1099,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "2a9b4344109223c82a64297e0f0be2c50a67b414a9f71f85f71ef1d4af5c6689"
+      "sha256": "52daa6c9ebfd33c7bdf8c3d54c83b5080c212dfc5d5de17afd632ab2c5ac1136"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1199,7 +1203,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "bd110e84d9cd80f800aa324554accf26aa1c35514bd4ca96cf22894d53cb92c9"
+      "sha256": "1e3a489019f4f4f4eb233b1a945b07f9adaa99423752aed217b970e5a611670a"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
