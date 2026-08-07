@@ -122,10 +122,12 @@ gaps, not cryptographic defects. Add a genuine second human maintainer before
 turning on controls that would otherwise make the sole-owner workflow
 inoperable.
 
-Six pull requests were open during the review. Four were conflicting and two
-were draft branches behind `main`. Stale security PRs should be closed or
-superseded after their verified changes land, so an acquirer does not have to
-guess whether an old branch contains an unremediated finding.
+Six pull requests were open at the start of the review. PRs #522 and #524 were
+closed as superseded after their verified security and dependency changes were
+confirmed on `main`. Four remain: #520 and #523 are conflicting review branches,
+while #525 and #526 are draft branches behind `main`. Each should be resolved or
+closed on its own technical merits so an acquirer does not have to infer status
+from branch age.
 
 ## AI attribution and human responsibility
 
