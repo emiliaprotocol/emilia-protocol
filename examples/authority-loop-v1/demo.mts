@@ -95,6 +95,7 @@ const unattended = mintCapabilityReceipt(mandateReceipt, {
   issuerPrivateKey: capabilityIssuer.privateKey,
   budget: { amount: 500, currency: 'USD' },
   expiry: now + 30 * 24 * 60 * 60 * 1000,
+  revocationMode: 'direct',
   capabilityId: 'cap_mandate_unattended',
   secret: Buffer.alloc(32, 7),
   scope: {
@@ -242,6 +243,7 @@ const approval620 = mintCapabilityReceipt(mandateReceipt, {
   issuerPrivateKey: capabilityIssuer.privateKey,
   budget: { amount: 620, currency: 'USD' },
   expiry: now + 24 * 60 * 60 * 1000,
+  revocationMode: 'direct',
   capabilityId: 'cap_owner_approval_620',
   secret: Buffer.alloc(32, 8),
   scope: {

@@ -91,7 +91,7 @@
     },
     {
       "path": "conformance/refinement/adapters/five-claim-bridge.mjs",
-      "sha256": "c096a634742fc6fab08958692e735e5cb8738dd057d4d77c8b276a3811faf9a7"
+      "sha256": "2016af12c700633547bbd91547b885ea88ba44f9452d5237f6e04b8f7d7033a6"
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mjs",
@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "a97f9b47ff3ca2369b9b132435693c81f1511a0181f612a0614bef4c6f8c4517"
+      "sha256": "24f983fffe8255a7b7191b167f5dda4193b1f2ac4c6551d9ec0aa964ffbee15a"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -567,7 +567,7 @@
     },
     {
       "path": "packages/gate/dist/allowance.js",
-      "sha256": "10d02561681a23e7bfb6b69271b221d3759c8779108db17175a50b09476b8c28"
+      "sha256": "e4ffdad1972c254744ce3489ab9a6719ca861d85a14ca18b2f26f9c2d9369c40"
     },
     {
       "path": "packages/gate/dist/authority-allocation.js",
@@ -595,7 +595,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "ee1352d47139646852e62b29cd028bff40d7cd6542f534b07e9af2a72c25e23f"
+      "sha256": "86ce1e4822259f72e0df7818889ef3c7baa544e30b231d07f9ebbf608ea6d253"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -651,7 +651,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "510184e187334082c98c7a8afcba16c47fe8694a17d8928c97c01eb9f37308fc"
+      "sha256": "ea615918060d0cb7b19264d8d12dc0caaebd48408dea82666a7bad136e28a1cc"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -823,7 +823,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "88eb37764717fe8e517babc0ae544689f493e7222c241cd5601bcc1c0b8733b9"
+      "sha256": "49a767676dfb71c4e33dd87d40ea040ec9446e500e26c9417e0a6cf8937feaa7"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -843,7 +843,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "ea2a6f2db20ce7e75b73a939fe6db2cee537163f775f1697ff1c7456be22da3e"
+      "sha256": "fe631e3ba9c59a89e64b60961990eacc47d3a2eab1b2edd88111072d5a99486d"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
