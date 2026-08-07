@@ -64,7 +64,14 @@ jobs:
         # files under packages/), which is how the gate drifted out of the
         # missing_receipt_id contract that packages/gate redteam HI-5 and
         # app/api/v1/guarded both enforce. Keep it wired in.
-        run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/attest/test.js packages/require-receipt/*.test.js
+        # packages/grpc-guard and packages/gateway-authz are the transport
+        # adapters over that same gate. Their suites are the ONLY place the
+        # "carried is not bound" property is executed per transport: a valid
+        # receipt replayed against different request bytes, a different method,
+        # or a different path must refuse. They are named here as well as
+        # discovered by scripts/run-package-suites.mjs — the redundancy is
+        # deliberate, because a receipt bound to nothing fails silently.
+        run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/attest/test.js packages/require-receipt/*.test.js packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs
       - name: Verify AAE x PSEA x Gate attempt pair (node:test)
         run: node --test interop/aae-psea-gate/verify.test.mjs interop/aae-psea-gate/reperform.test.mjs
       - name: Verify every remaining package suite (discovered, not listed)
