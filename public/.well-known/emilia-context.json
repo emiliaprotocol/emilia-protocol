@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-07T15:45:55.675Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "7e26e4fca349a1810627f23eb7411b092b46f0ccd6db3f8116ee887d68949425",
+    "input_digest_sha256": "c0588a257a918fd6f0c2aa94c1b59f2ca2d30f2adb207a487a9cc5735d599622",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "2ed63b1866070d2d30288c3aa154f16b9ad27848de3268a0616a9727833fda1a",
-        "bytes": 38575
+        "sha256": "827e9081453ec83d44e5803fb7224e3b09ac56cce9721d78de36e39670a8b2a9",
+        "bytes": 38579
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4476,9 +4476,9 @@
   "standards": [
     {
       "identifier": "draft-schrock-ae-challenge",
-      "revision_at_snapshot": "01",
+      "revision_at_snapshot": "02",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Use as the standalone HTTP 428 acquisition and retry contract; it uses the AEC presentation profile while remaining separate from AEB enforcement and AEC satisfaction semantics",
+      "next_action": "Published August 7 with the complete standards-tree media-type template and Independent Stream metadata; submit to the ISE, then carry the IANA request through IETF conflict review",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },

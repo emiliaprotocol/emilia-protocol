@@ -16,18 +16,18 @@ do not yet have.
 
 ## 1. application/authorization-evidence-challenge+json
 
-**Status: DIRECT REQUEST CLOSED / INDEPENDENT STREAM PACKET STAGED.** IANA
+**Status: DIRECT REQUEST CLOSED / ISE SUBMISSION STAGED.** IANA
 closed ticket #1456851 on 2026-08-07 without a merits decision because the
 document had not reached a publication-stage review. IANA advised that an
 Independent Stream document can be processed when it reaches IETF conflict
-review. The type is not registered. Revision -02 is staged to carry the full
-permanent standards-tree template and the Independent Stream metadata. The
-string remains fixed by draft text: `draft-schrock-ae-challenge-02`, Section 2,
-specifies that
+review. The type is not registered. Revision -02 was published on 2026-08-07
+with the full permanent standards-tree template and Independent Stream
+metadata; the checklist-complete ISE submission is staged in Gmail and unsent.
+The string remains fixed by draft text:
+`draft-schrock-ae-challenge-02`, Section 2, specifies that
 a challenge is "returned (in the HTTP binding) with status 428 and media type
 application/authorization-evidence-challenge+json". Section 5 (IANA
-Considerations) requests permanent standards-tree registration. Do not treat
-the staged -02 as published until Datatracker accepts it.
+Considerations) requests permanent standards-tree registration.
 
 **Deployment honesty note:** the reference enforcement point returns the
 challenge object today labeled `application/json` (Express `res.json()`); this
@@ -70,8 +70,8 @@ the document as unprocessable rather than guessing.
 
 **Published specification:** draft-schrock-ae-challenge-02,
 "An Authorization Evidence Challenge for High-Risk Agent Actions", Section 2
-(staged for publication and Independent Stream submission; intended status
-Informational; not IETF-adopted or endorsed).
+(published 2026-08-07; intended status Informational; not IETF-adopted or
+endorsed).
 
 **Applications that use this media type:** Relying-party enforcement points
 that refuse a high-consequence machine-initiated action with HTTP 428 and a

@@ -1,15 +1,16 @@
 # AE Challenge revision 02 working packet
 
-This directory stages `draft-schrock-ae-challenge-02` for submission and
-Independent Stream review.
+This directory retains the exact submission provenance for
+`draft-schrock-ae-challenge-02`, published on 2026-08-07, and the prepared
+Independent Stream submission.
 
-- `UPLOAD-THIS/` contains the authoritative XML to submit to Datatracker.
+- `UPLOAD-THIS/` contains the authoritative XML submitted to Datatracker.
 - `RENDERS/` contains the TXT and HTML review renderings generated from that
   XML.
 - `SHA256SUMS.txt` pins the source and both renderings.
-- `VALIDATION.md` records the completed checks and current external-state gate.
-- `ISE-SUBMISSION.md` contains the submission note to stage after Datatracker
-  publishes revision -02.
+- `VALIDATION.md` records the completed checks and exact publication state.
+- `ISE-SUBMISSION.md` contains the Independent Stream submission note staged in
+  Gmail after Datatracker published revision -02.
 
 Revision -02 does not change the challenge protocol or wire format. It names
 the Independent Stream as the intended publication path, replaces the closed
@@ -21,3 +22,5 @@ The target remains
 `application/authorization-evidence-challenge+json` in the standards tree.
 The earlier direct request, IANA ticket #1456851, was closed without a merits
 decision because the document had not reached a publication-stage review.
+The next external action is sending the staged ISE note. IANA can process the
+registration if the document reaches IETF conflict review.

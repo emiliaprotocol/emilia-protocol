@@ -29,7 +29,7 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 | # | Registration | IANA registry | Backing draft (section) | Draft text status | Template status | Gate to filing |
 |---|---|---|---|---|---|---|
 | 1 | `agent-action-control.json` | Well-Known URIs | draft-schrock-agent-action-manifest-00 (§3, §9) | **Requests registration** (fields in §9) | READY-ON-POST | Draft live on datatracker [verify posting after the 2026-07-06 batch upload] |
-| 2 | `application/authorization-evidence-challenge+json` | Media Types (standards tree) | draft-schrock-ae-challenge-02 (§2, §5; staged 2026-08-07) | **Requests permanent registration** and carries the complete RFC 6838 template | STAGED-FOR-ISE | Publish -02, submit it to the Independent Stream, then process the registration at IETF conflict review |
+| 2 | `application/authorization-evidence-challenge+json` | Media Types (standards tree) | draft-schrock-ae-challenge-02 (§2, §5; published 2026-08-07) | **Requests permanent registration** and carries the complete RFC 6838 template | ISE-NOTE-STAGED | Send the staged ISE submission, then process the registration at IETF conflict review if the document advances |
 | 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-10 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 4 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
 | 5 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | PROPOSED, requires draft text in next rev | Next-rev field definition; draft decides on any unprefixed successor |
@@ -56,8 +56,9 @@ registry, not IANA's.
   request. For standards-tree names this review is expected.
 - **AE Challenge:** do not refile the direct provisional form. IANA closed
   ticket #1456851 without a merits decision and instructed the author to use a
-  publication path. The staged -02 requests the permanent standards-tree name
-  through the Independent Stream; IANA can process it when the document reaches
+  publication path. Published revision -02 requests the permanent
+  standards-tree name through the Independent Stream; the checklist-complete
+  ISE submission is staged, and IANA can process it when the document reaches
   IETF conflict review.
 - **Receipt media type:** revision -10 requests
   `application/ep-authorization-receipt+json` and carries the complete
@@ -93,8 +94,8 @@ registry, not IANA's.
 ## Order of operations
 
 1. Verify each backing draft is live on Datatracker before citing it to IANA.
-2. For entry 2, publish AE Challenge -02, submit that published revision to the
-   Independent Stream, and let IANA process the standards-tree request when the
+2. For entry 2, send the staged Independent Stream submission for the published
+   AE Challenge -02 and let IANA process the standards-tree request if the
    document reaches IETF conflict review. Do not reopen ticket #1456851 or file
    a vendor-tree substitute.
 3. **File entry 1** (`agent-action-control.json`) only after re-verifying its

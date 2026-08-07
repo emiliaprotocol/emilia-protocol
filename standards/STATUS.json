@@ -196,10 +196,10 @@
   "active_datatracker": [
     {
       "draft": "draft-schrock-ae-challenge",
-      "revision": "01",
+      "revision": "02",
       "layer": "execution_lifecycle",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Use as the standalone HTTP 428 acquisition and retry contract; it uses the AEC presentation profile while remaining separate from AEB enforcement and AEC satisfaction semantics"
+      "next_action": "Published August 7 with the complete standards-tree media-type template and Independent Stream metadata; submit to the ISE, then carry the IANA request through IETF conflict review"
     },
     {
       "draft": "draft-schrock-action-evidence-boundary",

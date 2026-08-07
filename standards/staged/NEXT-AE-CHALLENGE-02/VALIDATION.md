@@ -23,8 +23,11 @@ Validated on 2026-08-07 from the isolated AE Challenge -02 working packet.
   byte-identical to the staged renderings. `shasum -a 256 -c SHA256SUMS.txt`
   verified all three pinned files.
 
-External-state gate: publish revision -02 in Datatracker before sending the
-Independent Stream submission. After publication, verify the archived XML
-against `UPLOAD-THIS/`, then send the checklist-complete note in
-`ISE-SUBMISSION.md` to `rfc-ise@rfc-editor.org`. IANA processing is expected at
-IETF conflict review if the Independent Stream submission advances.
+Datatracker published revision -02 on 2026-08-07 as an Informational individual
+draft identifying the Independent Stream. The immutable IETF archive XML is
+byte-identical to `UPLOAD-THIS/`, and the archive TXT is byte-identical to the
+staged TXT rendering. The local HTML rendering is retained because the live
+archive response is modified by CDN-injected script and generator-environment
+comments. The checklist-complete note in `ISE-SUBMISSION.md` is staged in Gmail
+and remains unsent. IANA processing is expected at IETF conflict review if the
+Independent Stream submission advances.
