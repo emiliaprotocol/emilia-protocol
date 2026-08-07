@@ -52,6 +52,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/sovereignty',           priority: 0.9, changeFrequency: 'monthly' },
     { path: '/quickstart',            priority: 0.85, changeFrequency: 'monthly' },
     { path: '/guides/require-receipt', priority: 0.85, changeFrequency: 'monthly' },
+    { path: '/ai-agent-audit-trail',  priority: 0.9,  changeFrequency: 'monthly' },
+    { path: '/ai-agent-approvals',    priority: 0.9,  changeFrequency: 'monthly' },
     { path: '/use-cases',             priority: 0.9, changeFrequency: 'monthly' },
     { path: '/use-cases/government',  priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases/financial',   priority: 0.85, changeFrequency: 'monthly' },
