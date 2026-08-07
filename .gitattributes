@@ -546,6 +546,7 @@ packages/require-receipt/carrier.test.js linguist-generated=true
 packages/require-receipt/gate.test.js linguist-generated=true
 packages/require-receipt/jws.test.js linguist-generated=true
 packages/require-receipt/manifest-assurance.test.js linguist-generated=true
+packages/verify/a2a-receipt-binding.test.js linguist-generated=true
 packages/verify/aeb-acceptance-profile.test.js linguist-generated=true
 packages/verify/aeb-adapter-contract.test.js linguist-generated=true
 packages/verify/aeb-aps-adapter.test.js linguist-generated=true
