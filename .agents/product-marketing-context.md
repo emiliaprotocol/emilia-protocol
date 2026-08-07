@@ -1,14 +1,14 @@
 # Product Marketing Context
 
-*Last updated: 2026-08-03*
+*Last updated: 2026-08-06*
 
 ## Product Overview
 
-**Core line:** Protocol proves. Gate prevents.
+**Core line:** Authority for autonomous work.
 
-**One-liner:** EMILIA Gate is the commercial consequence firewall that blocks consequential machine actions until the executor can verify the exact authority and evidence its owner requires.
+**One-liner:** EMILIA is the authority control plane that gives autonomous software a customer-owned, finite operating mandate and enforces it at the moment consequential work reaches a real system.
 
-**What it does:** EMILIA Gate sits immediately before a system that can mutate money, code, permissions, regulated records, infrastructure, energy, or physical state. A missing or insufficient authorization produces a closed refusal and an action-bound evidence challenge. A permitted action executes once and leaves portable evidence that can be checked independently.
+**What it does:** Humans and institutions define the mission, limits, evidence rules, trust roots, expiry, and exception path. Agents work unattended while each consequential unit of work remains inside that mandate. EMILIA Gate sits immediately before a system that can mutate money, code, permissions, regulated records, infrastructure, energy, or physical state. Missing, stale, or insufficient authority produces a closed refusal and an action-bound evidence challenge. Admitted work executes at most once and leaves portable evidence that can be checked independently.
 
 **Product architecture:**
 
@@ -20,7 +20,11 @@
 | **EMILIA Approver** | Native apps and embeddable SDKs that capture a device-bound human decision over the exact action | Included capture surface for Gate deployments |
 | **EMILIA Assurance Plane** | Managed verification, re-performance, conformance reporting, deployment evidence, reliance packets, and evidence operations | Paid service layer; not an audit opinion or accredited certification |
 
-**Product category:** Consequence Firewall for AI agents and other machine actors.
+**Product category:** Authority control plane for autonomous work.
+
+**Product metaphor:** EMILIA Gate is the consequence firewall at the executor boundary. This describes the enforcement product, not the company category.
+
+**Operating posture:** AI workers need authority, not constant supervision. A human click is one possible authority source, not the default execution model. Customers may install a durable, bounded mandate and allow unattended work inside it. Fresh human or institutional authority is required only when the customer requires per-occurrence review or when authority is missing, expired, widened, renewed, or used to authorize a separate remedy.
 
 **Product type:** Open-core security infrastructure with managed cloud, BYOC, enterprise integrations, and assurance services.
 
@@ -35,12 +39,13 @@
 
 Use this order in product, repository, sales, and machine-facing explanations:
 
-1. **Outcome:** EMILIA Gate prevents consequential machine actions without verifiable authority.
-2. **Mechanism:** It mediates the executor boundary, challenges for exact evidence, verifies, consumes once, and records the result.
-3. **Neutrality:** EMILIA Protocol makes the evidence independently verifiable under the customer's own pinned rules and keys.
-4. **Human ceremony:** EMILIA Approver captures a device-bound decision over the exact action.
-5. **Operational proof:** EMILIA Assurance Plane re-performs decisions and produces scoped evidence for auditors, insurers, regulators, and customers.
-6. **Engineering proof:** Executable security claims, formal models, adversarial conformance, same-team language ports, and time-pinned external implementation evidence.
+1. **Outcome:** Put autonomous software to work while the customer keeps authority.
+2. **Mandate:** The customer defines mission, limits, evidence, trust roots, expiry, and exceptions once; agents work unattended inside those bounds.
+3. **Enforcement:** Gate mediates consequential work at the executor boundary, challenges for exact evidence, verifies, consumes once, and records the result.
+4. **Neutrality:** EMILIA Protocol makes the evidence independently verifiable under the customer's own pinned rules and keys.
+5. **Exception ceremony:** EMILIA Approver can capture a device-bound decision when policy requires a person or the requested work exceeds the standing mandate.
+6. **Operational proof:** EMILIA Assurance Plane re-performs decisions and produces scoped evidence for auditors, insurers, regulators, and customers.
+7. **Engineering proof:** Executable security claims, formal models, adversarial conformance, same-team language ports, and time-pinned external implementation evidence.
 
 Do not lead a buyer or a language model with the draft portfolio, formal-method inventory, CAID, AEC, or a generic "trust architecture." Those prove the product after the problem and enforcement outcome are understood.
 
@@ -89,7 +94,7 @@ Payments, government disbursement, code and cloud administration, grid operation
 
 ## Problems And Pain Points
 
-**Core problem:** An AI agent can hold valid credentials and still attempt an action that no accountable person authorized in that exact form. IAM proves who or what has access. It does not prove that the material action about to execute matches a valid approval and may be consumed once.
+**Core problem:** An AI agent can hold valid credentials and still attempt work outside the mission, limits, evidence rules, or exception path its owner intended. IAM proves who or what has access. It does not define the job, bind a consequential unit of work to the mandate that authorized it, or preserve durable authority state after the agent process disappears.
 
 **Why alternatives fall short:**
 
@@ -102,7 +107,7 @@ Payments, government disbursement, code and cloud administration, grid operation
 
 **Cost of the problem:** Delayed agent deployment, manual review overhead, weak incident reconstruction, disputed responsibility, failed control testing, and consequential actions that cannot be defended later.
 
-**Emotional tension:** "The agent had access, but can we prove anyone approved this exact action before it happened?"
+**Emotional tension:** "The agent had access, but was this work actually inside its mandate—and can we prove that without trusting the agent's own log?"
 
 ## Differentiation
 
@@ -166,16 +171,18 @@ Payments, government disbursement, code and cloud administration, grid operation
 
 **Canonical EMILIA language:**
 
-- "See where your AI can act. Put a human in control before it matters."
-- "The scanner proposes. The owner reviews. Gate enforces."
-- "Protocol proves. Gate prevents."
-- "The Consequence Firewall for machine action."
-- "No valid receipt, no mutation."
+- "AI workers need authority, not constant supervision."
+- "Set the mandate once. Let the agent work."
+- "Put AI to work. Keep authority."
+- "The scanner maps work. The owner sets authority. Gate enforces."
+- "Authority infrastructure for autonomous work."
+- "The agent is ephemeral. Authority state survives."
+- "No valid authority, no consequential mutation."
 - "No valid licensed-review evidence, no adverse determination."
 - "A policy decision is not the same as human authorization."
 - "Complete mediation at the system of record."
 
-**Words to use:** consequence firewall, exact action, executor boundary, system of record, complete mediation, customer-pinned trust, evidence challenge, one-time consumption, re-performance, scoped conformance, independent verification.
+**Words to use:** authority control plane, autonomous work, machine workforce, operating mandate, unit of work, consequence firewall, exact action, executor boundary, system of record, complete mediation, customer-pinned trust, evidence challenge, one-time consumption, re-performance, scoped conformance, independent verification.
 
 **Words to avoid:** universal trust, AI safety solved, impossible to bypass, proof of comprehension, fully independent implementations, certified deployment, compliant by default, guaranteed legality, statute-mandated EMILIA.
 
@@ -204,7 +211,7 @@ Quantitative proof changes as the repository evolves. Never copy counts into new
 
 ## Goals
 
-**Primary business goal:** Land one leverage-bearing, production-adjacent Gate deployment that controls a real consequential rail.
+**Primary business goal:** Land one leverage-bearing, production-adjacent deployment that installs a customer-owned operating mandate and controls a real consequential workflow.
 
 **Adoption goal:** Make local Authority Brain → review the Authority Map → protect one tool → factual handoff the fastest free path into the product.
 
