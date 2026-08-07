@@ -18,6 +18,12 @@
  * verified AND the registrar key was pinned out of band by the relying party AND
  * any profile_id / epoch freshness pins are satisfied. A signed entry under an
  * unpinned key is identified, not trusted. FAIL-CLOSED throughout.
+ *
+ * IMMUTABILITY: every profile a verification result carries is a deep,
+ * recursively frozen CLONE that shares no object identity with the caller's
+ * entry, and the result restates the `profile_hash` those exact bytes hash to,
+ * so a verdict can never be re-pointed at a profile the acceptance was not
+ * computed over (re-check it with assertRelianceProfileBound).
  */
 import crypto from 'node:crypto';
 import { canonicalize } from './index.js';
@@ -29,6 +35,33 @@ const sha256hex = (bytes) => crypto.createHash('sha256').update(bytes).digest('h
 const keyIdFor = (pub) => `ep:reliance-registry-key:sha256:${sha256hex(Buffer.from(pub, 'base64url')).slice(0, 16)}`;
 function profileHash(profile) {
     return `sha256:${sha256hex(Buffer.from(canonicalize(profile), 'utf8'))}`;
+}
+/**
+ * Deep clone + recursive structural freeze, in one pass. Pure, zero-dependency.
+ *
+ * The clone shares NO object identity with the input: a caller can neither
+ * mutate what it is handed nor reach the registry entry through it. Every
+ * nested object and array is frozen too, so a downgrade one level in
+ * (`profile.quorum_policy.required = 1`) is as ineffective as one at the top.
+ * Only own string-keyed enumerable value properties are carried, which is
+ * exactly the member set canonicalize() hashes, so profileHash(deepFreeze(p))
+ * === profileHash(p) for any p that canonicalized.
+ */
+function deepFreeze(value) {
+    if (value === null || typeof value !== 'object')
+        return value;
+    if (Array.isArray(value))
+        return Object.freeze(value.map((item) => deepFreeze(item)));
+    const out = {};
+    for (const key of Object.getOwnPropertyNames(value)) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor))
+            continue;
+        // defineProperty, not assignment: a literal own `__proto__` member must
+        // become an own property of the clone, never a prototype swap.
+        Object.defineProperty(out, key, { value: deepFreeze(descriptor.value), enumerable: true, writable: false, configurable: false });
+    }
+    return Object.freeze(out);
 }
 function entrySigningBytes(unsignedEntry) {
     return Buffer.from(PROFILE_REGISTRY_DOMAIN + canonicalize(unsignedEntry), 'utf8');
@@ -79,7 +112,9 @@ export function signRelianceProfileEntry({ registry_id, profile_id, profile, reg
  * @param {Array<{registry_id:string,key_id?:string,public_key:string}>} [opts.pinnedRegistryKeys]
  * @param {string} [opts.expectProfileId]
  * @param {number} [opts.expectMinEpoch]
- * @returns {{verified:boolean, accepted:boolean, profile:(object|null), checks:object, reason?:string, entry_digest?:string, key_id?:string, registry_id?:string, profile_id?:string, registry_epoch?:number}}
+ * @returns {{verified:boolean, accepted:boolean, profile:(object|null), checks:object, reason?:string, entry_digest?:string, profile_hash?:string, key_id?:string, registry_id?:string, profile_id?:string, registry_epoch?:number}}
+ *   `profile`, when present, is a deep frozen clone of the entry's profile and
+ *   `profile_hash` is the digest of those exact bytes.
  */
 export function verifyRelianceProfileEntry(entry, opts = {}) {
     const checks = { version: false, signature: false, entry_digest: false, profile_hash: false, pinned_registry_key: false, profile_id: true, epoch_fresh: true, profile_wellformed: false };
@@ -142,21 +177,62 @@ export function verifyRelianceProfileEntry(entry, opts = {}) {
     const keyMatched = pinned.filter((k) => k?.public_key === sig.public_key
         && (k.key_id === undefined || k.key_id === derivedKeyId));
     const pin = keyMatched.find((k) => typeof k.registry_id === 'string' && k.registry_id === entry.registry_id);
+    // The resolved profile leaves this function as a frozen clone, never the
+    // caller's object: a live reference would let a holder of an ACCEPTED verdict
+    // rewrite the profile the acceptance was computed over (and the entry with
+    // it, through the shared reference), leaving a result that describes bytes
+    // the entry_digest and profile_hash never covered.
+    const resolved = deepFreeze(entry.profile);
+    const resolvedHash = profileHash(resolved);
     if (!pin) {
         // VERIFIED (signature holds) but NOT ACCEPTED (registrar key not pinned).
         return {
             verified: true,
             accepted: false,
-            profile: entry.profile,
+            profile: resolved,
             checks,
             reason: keyMatched.length ? 'pin_missing_or_mismatched_registry_id' : 'registry_key_not_pinned',
             entry_digest: digest,
+            profile_hash: resolvedHash,
             key_id: derivedKeyId,
             registry_id: entry.registry_id,
         };
     }
     checks.pinned_registry_key = true;
-    return { verified: true, accepted: true, profile: entry.profile, checks, key_id: derivedKeyId, registry_id: entry.registry_id, profile_id: entry.profile_id, registry_epoch: entry.registry_epoch, entry_digest: digest };
+    return { verified: true, accepted: true, profile: resolved, checks, key_id: derivedKeyId, registry_id: entry.registry_id, profile_id: entry.profile_id, registry_epoch: entry.registry_epoch, entry_digest: digest, profile_hash: resolvedHash };
+}
+/**
+ * Re-check that a verification result's profile still hashes to the
+ * `profile_hash` the result was issued with. Pure, offline, and independent of
+ * the registry entry: a consumer holding only the result can prove the bytes it
+ * is about to evaluate are the bytes the verdict was computed over.
+ *
+ * BINDING ONLY, never acceptance: `ok` says the profile matches its hash, and
+ * says nothing about `verified` or `accepted` — read those fields separately.
+ * Fail-closed with a reason; an expected mismatch returns, it never throws.
+ *
+ * @param {object} result a verifyRelianceProfileEntry() result
+ * @returns {{ok:boolean, reason:(string|null), profile_hash:(string|null)}}
+ */
+export function assertRelianceProfileBound(result) {
+    const refuse = (reason) => ({ ok: false, reason, profile_hash: null });
+    if (!result || typeof result !== 'object' || Array.isArray(result))
+        return refuse('result_malformed');
+    const profile = result.profile;
+    if (!profile || typeof profile !== 'object' || Array.isArray(profile))
+        return refuse('profile_missing');
+    if (typeof result.profile_hash !== 'string' || !SHA256_RE.test(result.profile_hash))
+        return refuse('profile_hash_missing_or_malformed');
+    let recomputed;
+    try {
+        recomputed = profileHash(profile);
+    }
+    catch {
+        return refuse('profile_uncanonicalizable');
+    }
+    if (recomputed !== result.profile_hash)
+        return refuse('profile_hash_mismatch');
+    return { ok: true, reason: null, profile_hash: recomputed };
 }
 export { RELIANCE_PROFILE_VERSION };
 //# sourceMappingURL=reliance-profile-registry.js.map
