@@ -1,7 +1,7 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
   "updated": "2026-08-06",
-  "active_datatracker_count": 22,
+  "active_datatracker_count": 23,
   "active_schrock_datatracker_count": 20,
   "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. The four August 6 maintenance revisions and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
@@ -55,10 +55,10 @@
         "order": 3,
         "label": "Authority Introduction",
         "draft": "draft-schrock-ep-authority-introduction",
-        "revision": "02",
-        "source": "standards/posted/draft-schrock-ep-authority-introduction-02.xml",
+        "revision": "03",
+        "source": "standards/posted/draft-schrock-ep-authority-introduction-03.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/",
-        "snapshot_sha256": "11e3a33a8f113691c0188e0b264b5428ee378ca42aefad89690377bc697a7c6e",
+        "snapshot_sha256": "1e9ac4a6b1b480fcec389a6bb42da386d9e394648c1ea6e709b966481247ea9f",
         "canonical_question": "Under the relying party's trust roots, did the verified key have authority for this scope?",
         "boundary": "Trust-root introduction and scoped authority; signature verification alone does not create authority."
       },
@@ -78,9 +78,9 @@
   "active_profile_portfolio": {
     "status": "preserved_distinct_from_navigation_views",
     "source_of_truth": "active_datatracker",
-    "active_datatracker_count": 22,
+    "active_datatracker_count": 23,
     "active_schrock_datatracker_count": 20,
-    "coauthored_datatracker_count": 2,
+    "coauthored_datatracker_count": 3,
     "relationship": "The canonical PRESENTATION surface and runtime execution spine are navigation views over active work. Neither view retires, merges, replaces, updates, obsoletes, subordinates, or demotes an active profile or lifecycle draft."
   },
   "runtime_execution_spine": {
@@ -245,10 +245,10 @@
     },
     {
       "draft": "draft-schrock-ep-authority-introduction",
-      "revision": "02",
+      "revision": "03",
       "layer": "delegation_capability_policy",
       "role": "Authority introduction and trust-root boundary",
-      "next_action": "Published July 29; use -02 as the current trust-root and scoped-authority baseline"
+      "next_action": "Published August 4; use -03 as the current trust-root, scoped-authority, and exact-action callee-binding baseline"
     },
     {
       "draft": "draft-schrock-ep-authorization-evidence-chain",
@@ -336,10 +336,10 @@
     },
     {
       "draft": "draft-ferro-schrock-memory-projection-record",
-      "revision": "00",
+      "revision": "01",
       "layer": "authorization_evidence",
       "role": "Signed record of exact context bytes projected by a memory adapter, with explicit nonclaims",
-      "next_action": "Published July 30; coordinate future revisions with Andrea Ferro"
+      "next_action": "Published August 4; coordinate future revisions with Andrea Ferro"
     },
     {
       "draft": "draft-mih-sato-agent-accountability-composition",
@@ -347,6 +347,13 @@
       "layer": "architecture",
       "role": "Coauthored composition perspective",
       "next_action": "Coordinate terminology; do not imply sole authorship"
+    },
+    {
+      "draft": "draft-dunbar-dmsc-gw-scenarios-gap-analysis",
+      "revision": "03",
+      "layer": "architecture",
+      "role": "Coauthored Agent Gateway deployment and exact-action authorization gap analysis",
+      "next_action": "Published August 6; coordinate -04 hygiene and related-work corrections with Linda Dunbar before any further revision"
     }
   ],
   "replaced_datatracker": [
@@ -620,7 +627,7 @@
     },
     {
       "draft": "draft-schrock-ep-authority-registry-00",
-      "canonical_owner": "draft-schrock-ep-authority-introduction-02",
+      "canonical_owner": "draft-schrock-ep-authority-introduction-03",
       "reason": "The active Authority Introduction draft owns trust-root introduction and scoped authority."
     },
     {
@@ -680,7 +687,7 @@
   },
   "acknowledgment_basis": {
     "Eric Rescorla": "Prompted separation of baseline verifier hygiene from the concrete cross-domain validation requirement.",
-    "Linda Dunbar": "Her individual Agent Gateway gap-analysis draft provided the cross-operator and cross-administrative-domain use case; this does not imply DMSC BoF consensus.",
+    "Linda Dunbar": "Coauthored the Agent Gateway gap-analysis -03 with Iman Schrock; the draft provides the cross-operator, cross-administrative-domain, exact-action authorization use case but does not imply DMSC BoF consensus.",
     "Chris Hood": "Agent transport and composition work sharpened the boundary between carrying context and independently verifying evidence."
   }
 }

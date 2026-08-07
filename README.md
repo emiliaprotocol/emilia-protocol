@@ -242,7 +242,7 @@ For reader navigation, the canonical evidence path is:
    revision is -10, filed as a Standards Track candidate individual submission.
 2. [Human Authorization Binding-00](standards/posted/draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact into an adjacent host record.
-3. [Authority Introduction-02](standards/posted/draft-schrock-ep-authority-introduction-02.xml)
+3. [Authority Introduction-03](standards/posted/draft-schrock-ep-authority-introduction-03.xml)
    establishes relying-party-pinned trust roots and scoped authority.
 4. [Authorization Evidence Chain-05](standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
    evaluates whether natively verified, action-matched evidence satisfies the
@@ -264,8 +264,8 @@ executor-side admission and one-time consequence custody. AEC appears in both
 views because evidence satisfaction feeds runtime admission, not because the
 views are equivalent.
 
-The complete active portfolio remains 22 Datatracker records: 20 active
-`draft-schrock-*` records and two coauthored records, each with its own scope
+The complete active portfolio remains 23 Datatracker records: 20 active
+`draft-schrock-*` records and three coauthored records, each with its own scope
 and revision history. See the [standards guide](standards/README.md),
 [portfolio](standards/PORTFOLIO.md), and machine-readable
 [status inventory](standards/STATUS.json).

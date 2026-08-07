@@ -1,6 +1,6 @@
 # EMILIA Standards Portfolio
 
-Updated: 2026-08-03
+Updated: 2026-08-06
 
 ## One story
 
@@ -95,11 +95,11 @@ satisfaction:
    adjacent host record without redefining either artifact. Snapshot SHA-256:
    `28574a050312837c96189561b2f0776da6cfdb1fe2720dab575fcb99a6811a0e`.
 3. **Authority Introduction** —
-   [`draft-schrock-ep-authority-introduction-02`](posted/draft-schrock-ep-authority-introduction-02.xml)
+   [`draft-schrock-ep-authority-introduction-03`](posted/draft-schrock-ep-authority-introduction-03.xml)
    establishes the relying-party-pinned trust root and scoped authority used
    to decide whether a verified key had the relevant authority. Snapshot
    SHA-256:
-   `11e3a33a8f113691c0188e0b264b5428ee378ca42aefad89690377bc697a7c6e`.
+   `1e9ac4a6b1b480fcec389a6bb42da386d9e394648c1ea6e709b966481247ea9f`.
 4. **Authorization Evidence Chain (AEC)** —
    [`draft-schrock-ep-authorization-evidence-chain-05`](posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
    composes natively verified, action-matched evidence against a
@@ -116,9 +116,9 @@ profile and lifecycle portfolio remains intact.
 ## Portfolio views that must not collapse
 
 The canonical presentation surface is not the active profile portfolio. The
-complete active portfolio remains the 22-entry `STATUS.json.active_datatracker`
+complete active portfolio remains the 23-entry `STATUS.json.active_datatracker`
 inventory, including its distinct evidence profiles and lifecycle drafts; all
-20 active `draft-schrock-*` records and both coauthored records retain their
+20 active `draft-schrock-*` records and all three coauthored records retain their
 individual status. Neither presentation order nor appearance in another view
 retires, merges, replaces, or demotes an active draft.
 
@@ -126,7 +126,7 @@ Separately, the **runtime execution spine** is:
 
 1. **Architecture-02** defines the system boundaries and non-collapsing
    decision vocabulary.
-2. **CAID-01** identifies and matches the exact material action.
+2. **CAID-02** identifies and matches the exact material action.
 3. **AEC-05** verifies and composes action-matched evidence into a relying-party
    satisfaction result.
 4. **AEB-03** applies the executor-side admission boundary, including authority
@@ -189,7 +189,7 @@ IETF archive:
    member is specified but not yet implemented by the legacy AEC evaluator.
 2. AEB-03 makes separation of duties, current status, signed evaluation records,
    and one-time consequence custody explicit boundary terms.
-3. Model-to-Matter-03 composes customer-owned Reliance Programs,
+3. Model-to-Matter-03 introduced customer-owned Reliance Programs,
    non-authorizing qualification evidence, and typed AEB admission. The new
    program digests are not yet wired into the reference clearance object.
 4. Reliance Agreement-00 defines signed terms and per-action reliance records
@@ -211,7 +211,7 @@ adds explicit shared-state-domain and per-action authorization composition.
 Model-to-Matter-04 adds the seventh physical-state attestation role while
 preserving the source-claim, not physical-truth, boundary.
 
-The published line also retains Authority Introduction-02, Quorum-03, Bounded
+The published line also retains Authority Introduction-03, Quorum-03, Bounded
 Capability Receipts-02, and the other current individual drafts listed in
 `STATUS.json`. Model-to-Matter remains deliberately separate: publication does
 not claim a wet-lab deployment, screening capability, scientific-safety
@@ -245,10 +245,10 @@ These are decisions, not an indefinite waiting room:
 | Candidate | Disposition | Canonical owner or trigger |
 | --- | --- | --- |
 | Assurance Classes | Retired before filing | Verifier-visible proof predicates and profile-local aliases |
-| Authority Registry | Retired and absorbed | Authority Introduction-02 |
+| Authority Registry | Retired and absorbed | Authority Introduction-03 |
 | Agent Trust Stack | Retired and absorbed | Architecture-02 |
 | PQC | Retired as a standalone draft | Evidence Record crypto agility and anti-stripping |
-| Model-to-Matter | Active Experimental profile; current -03 published August 3 | Name and open executor profile established; deployment claims require a real executor |
+| Model-to-Matter | Active Experimental profile; current -04 published August 6 | Seven-role clearance, physical-state source claims, and program and requirement digest binding are current; deployment claims require a real executor |
 | Human Oversight | Partner-triggered profile | A regulator or management-system standards partner validates the mapping |
 | Reliance Agreement | Active individual draft; -00 published August 3 | Narrow signed terms and reliance-event wire format; legal and insurance outcomes remain out of scope |
 
@@ -257,8 +257,9 @@ Retired sources remain in `archive/`; held application profiles live in
 
 ## Adjacent work
 
-- Linda Dunbar's individual DMSC Agent Gateway gap-analysis draft provides a
-  concrete cross-domain enforcement socket; it is not DMSC BoF consensus.
+- Linda Dunbar, YiFei Wang, Iman Schrock, and Bing Liu's coauthored DMSC Agent
+  Gateway gap-analysis -03 provides a concrete cross-domain enforcement socket;
+  it is an active individual draft, not DMSC BoF consensus.
 - WIMSE provides live workload identity and channel possession.
 - AuthZEN AARP provides requestable denial, asynchronous approval, an approval
   object with optional opaque proof or verifier state, JWS interoperability for

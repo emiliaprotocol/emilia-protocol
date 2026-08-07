@@ -5,8 +5,8 @@ the IETF Datatracker. It contains the current published revision of all 20
 active `draft-schrock-*` records represented in this repository, plus the
 locally retained coauthored Memory Projection Record snapshot. Datatracker is
 authoritative for current revisions and status; see
-[`../STATUS.json`](../STATUS.json) for the complete 22-record active inventory,
-including the two coauthored records.
+[`../STATUS.json`](../STATUS.json) for the complete 23-record active inventory,
+including the three coauthored records.
 
 Do not upload a file from this directory as a new draft. Maintenance revisions
 may be prepared in `../staged/`, rendered and tested, then filed through the
@@ -30,7 +30,7 @@ August 3 XMLs were checked byte-for-byte against the immutable IETF archive
 before promotion. TXT and HTML snapshots are conveniences; the archive is
 authoritative for rendered forms.
 
-- `draft-ferro-schrock-memory-projection-record-00`
+- `draft-ferro-schrock-memory-projection-record-01`
 - `draft-schrock-ae-challenge-01`
 - `draft-schrock-action-evidence-boundary-03`
 - `draft-schrock-action-remedy-receipts-00`
@@ -38,7 +38,7 @@ authoritative for rendered forms.
 - `draft-schrock-canonical-action-identifier-02`
 - `draft-schrock-emilia-eye-00`
 - `draft-schrock-ep-architecture-02`
-- `draft-schrock-ep-authority-introduction-02`
+- `draft-schrock-ep-authority-introduction-03`
 - `draft-schrock-ep-authorization-evidence-chain-05`
 - `draft-schrock-ep-authorization-receipts-10`
 - `draft-schrock-ep-bounded-capability-receipts-02`
@@ -61,7 +61,7 @@ For reader navigation, the canonical evidence path is:
    revision is -10 and the exact posted source matches the Datatracker submission.
 2. [Human Authorization Binding-00](draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact into an adjacent host record.
-3. [Authority Introduction-02](draft-schrock-ep-authority-introduction-02.xml)
+3. [Authority Introduction-03](draft-schrock-ep-authority-introduction-03.xml)
    establishes relying-party-pinned trust roots and scoped authority.
 4. [Authorization Evidence Chain-05](draft-schrock-ep-authorization-evidence-chain-05.xml)
    evaluates whether natively verified, action-matched evidence satisfies the
@@ -83,7 +83,7 @@ admission and one-time consequence custody.
 This spine is a separate navigation view. It is not the four-document
 presentation surface or a replacement portfolio. AEC appears in both views
 because evidence satisfaction feeds runtime admission, not because the views
-are equivalent. The complete active portfolio remains the 22-record inventory
+are equivalent. The complete active portfolio remains the 23-record inventory
 in [`../STATUS.json`](../STATUS.json), with each draft's scope and revision
 history preserved.
 

@@ -23,8 +23,8 @@
     "workflow_files_scanned": 327
   },
   "integrity": {
-    "catalog_sha256": "5af1d7710e94f4ce58991babdf801e342b3bae4ec43e91cbab8a7f96601f6d27",
-    "source_lock_sha256": "dd2f76ba0839dc5fbaebfce6764bc7fc34a5b6c179dfc6f8db56d8f81b13b38e",
+    "catalog_sha256": "fdd37ad02534702d492092b3eb680696777dfa06328bf94660fcd39e5c692b03",
+    "source_lock_sha256": "4bcf5e1fe7f513b430bf137b6f731e33410f27e5527dc74415b6a9f25b121eb8",
     "recon_corpus_sha256": "9fc130a7ce66205fe48a9c66d48e1041fea5c4baaa236091408159a2762864ed"
   },
   "dimensions": [
@@ -246,8 +246,8 @@
         }
       },
       "evidence_lock": {
-        "content_sha256": "4e1a8e4313c8272358d18c70338cf3dc16dfffb30f6374f758febe7c3ecfc8f4",
-        "content_bytes": 244929,
+        "content_sha256": "d9eb91034237396115ab2017c1142b34ea2e810bdac2948a2ba9d5973c21e50f",
+        "content_bytes": 245134,
         "quote_sha256": "5f44d2f40d0e1b58ddb0ab41c0d5be5d7de9d87e3429f7b547aef836d334343c",
         "quote_verified": true
       }
@@ -1100,20 +1100,20 @@
       "venue": "IETF individual / DMSC",
       "layer": "gateway-enforcement",
       "source_kind": "ietf_draft",
-      "revision": "draft-dunbar-dmsc-gw-scenarios-gap-analysis-02",
-      "revision_date": "2026-07-02",
+      "revision": "draft-dunbar-dmsc-gw-scenarios-gap-analysis-03",
+      "revision_date": "2026-08-06",
       "lifecycle": "active_individual_draft",
       "operative_status": "current_draft",
       "operative_basis": "Latest posted Datatracker revision at snapshot time.",
-      "source_url": "https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-02.txt",
+      "source_url": "https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-03.txt",
       "canonical_url": "https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/",
       "status_url": "https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/",
       "relation": "host_socket",
       "defines": "A managed Agent Gateway model with action-level authorization for physical-world effects, separately from session-level trust.",
-      "limits": "The gap-analysis draft identifies the conditions a gateway should evaluate but does not define a portable approval artifact, canonical action-mapping format, or one-time evidence-consumption mechanism.",
+      "limits": "The gap-analysis draft requires action-bound approval evidence, independent local evaluation, refusal behavior, and atomic single-use consumption where applicable, but does not define a wire format, canonical material-action encoding, or native verifier.",
       "quote": {
         "locator": "Section 6.9",
-        "text": "communication-level trust determines whether an agent may participate in an exchange at all, while action-level authorization determines whether a specific instruction within that exchange may take effect in the physical world"
+        "text": "Communication-level trust determines whether an agent may participate in an exchange; action-level authorization determines whether a specific instruction may take effect in the physical world."
       },
       "guarantees": {
         "named_human": {
@@ -1126,7 +1126,7 @@
         },
         "exact_action": {
           "value": "partial",
-          "rationale": "The draft requires evaluating a specific instruction individually but does not define canonical material-action encoding or matching."
+          "rationale": "The draft requires evidence bound to an identifier or canonical digest for the exact action but does not define canonical material-action encoding or cross-format matching."
         },
         "distinct_quorum": {
           "value": "no",
@@ -1137,8 +1137,8 @@
           "rationale": "The bounded draft review found no portable initiator-exclusion predicate."
         },
         "one_time_consumption": {
-          "value": "no",
-          "rationale": "The action-level model does not define consumption of approval evidence."
+          "value": "partial",
+          "rationale": "The draft requires atomic reservation and consumption where evidence is single-use, but does not define the state machine or wire protocol."
         },
         "offline_verification": {
           "value": "no",
@@ -1146,9 +1146,9 @@
         }
       },
       "evidence_lock": {
-        "content_sha256": "17ebf5da730d45266e51052ee806d7d824539348ca89d362a7784e3d50d7c499",
-        "content_bytes": 73507,
-        "quote_sha256": "003d4e02995719c0e83d5505cfd0b41b0de173af93d3f976b35f7a55596608b2",
+        "content_sha256": "2854764905aeccfd6799929a3d865774c77d3fbbb78c85672dca712765ec0a78",
+        "content_bytes": 76202,
+        "quote_sha256": "9a74ff04e124de4bb0a6027e5e85da5001f3873450f3cdaf837ba508432e0c25",
         "quote_verified": true
       }
     },
@@ -1206,8 +1206,8 @@
         }
       },
       "evidence_lock": {
-        "content_sha256": "7efb2eaf953de179adb1f7a114e0e8656bc744707dc296608915ac55bd57a225",
-        "content_bytes": 383710,
+        "content_sha256": "b04758fb8ce0c9c8d6c59dd7957e3b62393c3bb9ff62d41d6eb1b05c6e109921",
+        "content_bytes": 383711,
         "quote_sha256": "6b94dde2480c6021c3fd47b05b48dbc26a26832fe012a2ff4229f7439c6d1097",
         "quote_verified": true
       }
@@ -1430,5 +1430,5 @@
     },
     "corpus_sha256": "9fc130a7ce66205fe48a9c66d48e1041fea5c4baaa236091408159a2762864ed"
   },
-  "snapshot_sha256": "57e513998be693a30060be0dc9d8d2388caa86d04bfc954e004ba31a4f462c72"
+  "snapshot_sha256": "44379d6428aec3f85fcffa3b7d90ec207e7fd14ed540a7f36f9fd0e798698a64"
 }

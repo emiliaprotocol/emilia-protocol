@@ -3,12 +3,12 @@
   "evidence_snapshot_at": "2026-08-06T22:10:31.054Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "80abc087ec4c634320df91f63d8ec82f01ecd120b55302a477bffb293e0ed708",
+    "input_digest_sha256": "3608158c160d524bb8111bff03150bbc1914926b0431c17d5a2e36751af7da45",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "8b0b5672fe698237507377457fcc103a4d4bfdc40ce7f506f3887c4d14fd0033",
-        "bytes": 43093
+        "sha256": "b71b87a09849a4753c883c785e35af27bdb84e1ee4b7ffb498b2b00e593a1e87",
+        "bytes": 43255
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -42,13 +42,13 @@
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
-        "sha256": "e00b36d70a28984611e28e0ce2d41cf2f7018f8e286580d092c3aaaa07347184",
-        "bytes": 69223
+        "sha256": "11c0591341d6492b73c2d8a25ea80cb155c454fc29bf4918becc1d3d83abc237",
+        "bytes": 69354
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "98ce9fbc2300d8d3e1f46ca636ea565cf4e4c04c51153087c2803d3ba8749681",
-        "bytes": 38125
+        "sha256": "2ed63b1866070d2d30288c3aa154f16b9ad27848de3268a0616a9727833fda1a",
+        "bytes": 38575
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -267,7 +267,7 @@
       "layer": "execution lifecycle",
       "question": "Was evidence demanded, consumed, executed, observed, revoked, and preserved correctly?",
       "ep_role": "Separates challenge, native verification, matching, evidence satisfaction, local authorization, bounded reserve, provider invocation, executed or indeterminate outcome, authenticated reconciliation, revocation, and preservation.",
-      "adjacent_examples": "Linda Dunbar's individual DMSC Agent Gateway gap-analysis draft, system-of-record gate, bounded capability, provider evidence, SCITT, evidence records"
+      "adjacent_examples": "The Dunbar-Wang-Schrock-Liu DMSC Agent Gateway gap-analysis -03, system-of-record gate, bounded capability, provider evidence, SCITT, evidence records"
     }
   ],
   "current_evidence": {
@@ -4409,7 +4409,7 @@
     "The AgentROA and ORPRG adapters implement the exact documented native formats and relying-party profiles. They do not claim universal support for every future revision or ORPRG wire profile.",
     "The checked-in TPM interoperability fixture was generated with a software TPM. The verifier is real, but no physical TPM, manufacturer EK chain, measured-boot deployment, or running-production-binary attestation is claimed.",
     "The three local witness instances prove emit, quorum, and gossip behavior. They are not independent operators. Independent witness evidence exists only after separately administered external operators generate and control their own keys and publish live views.",
-    "Twenty-two Datatracker records are active in the repository portfolio as of August 3, 2026. The August 3 wave filed AEB -03, AEC -05, Model-to-Matter -03, Reliance Agreement -00, Bounded Capability Receipts -01, and Bounded Execution Program -00. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
+    "Twenty-three Datatracker records are active in the repository portfolio as of August 6, 2026: 20 draft-schrock series and three coauthored series. The current coauthored records are Memory Projection Record -01, Agent Accountability Composition -00, and the DMSC Agent Gateway Gap Analysis -03. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
@@ -4532,9 +4532,9 @@
     },
     {
       "identifier": "draft-schrock-ep-authority-introduction",
-      "revision_at_snapshot": "02",
+      "revision_at_snapshot": "03",
       "role": "Authority introduction and trust-root boundary",
-      "next_action": "Published July 29; use -02 as the current trust-root and scoped-authority baseline",
+      "next_action": "Published August 4; use -03 as the current trust-root, scoped-authority, and exact-action callee-binding baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4636,9 +4636,9 @@
     },
     {
       "identifier": "draft-ferro-schrock-memory-projection-record",
-      "revision_at_snapshot": "00",
+      "revision_at_snapshot": "01",
       "role": "Signed record of exact context bytes projected by a memory adapter, with explicit nonclaims",
-      "next_action": "Published July 30; coordinate future revisions with Andrea Ferro",
+      "next_action": "Published August 4; coordinate future revisions with Andrea Ferro",
       "url": "https://datatracker.ietf.org/doc/draft-ferro-schrock-memory-projection-record/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4648,6 +4648,14 @@
       "role": "Coauthored composition perspective",
       "next_action": "Coordinate terminology; do not imply sole authorship",
       "url": "https://datatracker.ietf.org/doc/draft-mih-sato-agent-accountability-composition/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "identifier": "draft-dunbar-dmsc-gw-scenarios-gap-analysis",
+      "revision_at_snapshot": "03",
+      "role": "Coauthored Agent Gateway deployment and exact-action authorization gap analysis",
+      "next_action": "Published August 6; coordinate -04 hygiene and related-work corrections with Linda Dunbar before any further revision",
+      "url": "https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     }
   ],
@@ -4693,10 +4701,10 @@
           "order": 3,
           "label": "Authority Introduction",
           "draft": "draft-schrock-ep-authority-introduction",
-          "revision": "02",
-          "source": "standards/posted/draft-schrock-ep-authority-introduction-02.xml",
+          "revision": "03",
+          "source": "standards/posted/draft-schrock-ep-authority-introduction-03.xml",
           "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/",
-          "snapshot_sha256": "11e3a33a8f113691c0188e0b264b5428ee378ca42aefad89690377bc697a7c6e",
+          "snapshot_sha256": "1e9ac4a6b1b480fcec389a6bb42da386d9e394648c1ea6e709b966481247ea9f",
           "canonical_question": "Under the relying party's trust roots, did the verified key have authority for this scope?",
           "boundary": "Trust-root introduction and scoped authority; signature verification alone does not create authority."
         },
@@ -4915,7 +4923,7 @@
       },
       {
         "draft": "draft-schrock-ep-authority-registry-00",
-        "canonical_owner": "draft-schrock-ep-authority-introduction-02",
+        "canonical_owner": "draft-schrock-ep-authority-introduction-03",
         "reason": "The active Authority Introduction draft owns trust-root introduction and scoped authority."
       },
       {
@@ -4964,7 +4972,7 @@
   },
   "standards_observatory": {
     "as_of": "2026-07-14T20:14:59Z",
-    "snapshot_sha256": "57e513998be693a30060be0dc9d8d2388caa86d04bfc954e004ba31a4f462c72",
+    "snapshot_sha256": "44379d6428aec3f85fcffa3b7d90ec207e7fd14ed540a7f36f9fd0e798698a64",
     "primary_sources_verified": 20,
     "declared_agent_reads": 294,
     "recovered_structured_reports": 291,
@@ -5235,7 +5243,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 3, the repository tracks 22 active records; the latest wave includes AEB -03, AEC -05, Model-to-Matter -03, Reliance Agreement -00, Bounded Capability Receipts -01, and Bounded Execution Program -00. Never call them RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 6, the repository tracks 23 active records: 20 draft-schrock series and three coauthored series. Current revisions include CAID -02, Authorization Receipts -10, Bounded Capability Receipts -02, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, and DMSC Agent Gateway Gap Analysis -03. Never call them RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

@@ -30,7 +30,7 @@ Interoperability evidence: 21 conformance suites and 331 current vectors across 
 - [draft-schrock-canonical-action-identifier](https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/): Typed material-action identity and profile-bounded cross-format matching; snapshot revision -02, check Datatracker for current status.
 - [draft-schrock-emilia-eye](https://datatracker.ietf.org/doc/draft-schrock-emilia-eye/): Scope-bound advisory that can tighten but never authorize; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-ep-architecture](https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/): Portfolio architecture; snapshot revision -02, check Datatracker for current status.
-- [draft-schrock-ep-authority-introduction](https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/): Authority introduction and trust-root boundary; snapshot revision -02, check Datatracker for current status.
+- [draft-schrock-ep-authority-introduction](https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/): Authority introduction and trust-root boundary; snapshot revision -03, check Datatracker for current status.
 - [draft-schrock-ep-authorization-evidence-chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/): Heterogeneous evidence composition; snapshot revision -05, check Datatracker for current status.
 - [draft-schrock-ep-authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/): One action-bound organizational approval evidence profile; snapshot revision -10, check Datatracker for current status.
 - [draft-schrock-ep-bounded-capability-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/): Action-bound capability budget and spend evidence; snapshot revision -02, check Datatracker for current status.
@@ -43,8 +43,9 @@ Interoperability evidence: 21 conformance suites and 331 current vectors across 
 - [draft-schrock-ep-reliance-agreement](https://datatracker.ietf.org/doc/draft-schrock-ep-reliance-agreement/): Signed technical terms that bind reliance-program identifiers, versions, digests, parties, and acceptance conditions without creating legal enforceability or insurance; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-human-authorization-binding](https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/): Binding a human-authorization artifact into adjacent host formats; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-model-to-matter](https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/): Experimental executor-side authorization-evidence clearance for model-directed physical execution; snapshot revision -04, check Datatracker for current status.
-- [draft-ferro-schrock-memory-projection-record](https://datatracker.ietf.org/doc/draft-ferro-schrock-memory-projection-record/): Signed record of exact context bytes projected by a memory adapter, with explicit nonclaims; snapshot revision -00, check Datatracker for current status.
+- [draft-ferro-schrock-memory-projection-record](https://datatracker.ietf.org/doc/draft-ferro-schrock-memory-projection-record/): Signed record of exact context bytes projected by a memory adapter, with explicit nonclaims; snapshot revision -01, check Datatracker for current status.
 - [draft-mih-sato-agent-accountability-composition](https://datatracker.ietf.org/doc/draft-mih-sato-agent-accountability-composition/): Coauthored composition perspective; snapshot revision -00, check Datatracker for current status.
+- [draft-dunbar-dmsc-gw-scenarios-gap-analysis](https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/): Coauthored Agent Gateway deployment and exact-action authorization gap analysis; snapshot revision -03, check Datatracker for current status.
 
 ## Evidence
 

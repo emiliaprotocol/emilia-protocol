@@ -537,28 +537,28 @@
       "venue": "IETF individual / DMSC",
       "layer": "gateway-enforcement",
       "source_kind": "ietf_draft",
-      "revision": "draft-dunbar-dmsc-gw-scenarios-gap-analysis-02",
-      "revision_date": "2026-07-02",
+      "revision": "draft-dunbar-dmsc-gw-scenarios-gap-analysis-03",
+      "revision_date": "2026-08-06",
       "lifecycle": "active_individual_draft",
       "operative_status": "current_draft",
       "operative_basis": "Latest posted Datatracker revision at snapshot time.",
-      "source_url": "https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-02.txt",
+      "source_url": "https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-03.txt",
       "canonical_url": "https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/",
       "status_url": "https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/",
       "relation": "host_socket",
       "defines": "A managed Agent Gateway model with action-level authorization for physical-world effects, separately from session-level trust.",
-      "limits": "The gap-analysis draft identifies the conditions a gateway should evaluate but does not define a portable approval artifact, canonical action-mapping format, or one-time evidence-consumption mechanism.",
+      "limits": "The gap-analysis draft requires action-bound approval evidence, independent local evaluation, refusal behavior, and atomic single-use consumption where applicable, but does not define a wire format, canonical material-action encoding, or native verifier.",
       "quote": {
         "locator": "Section 6.9",
-        "text": "communication-level trust determines whether an agent may participate in an exchange at all, while action-level authorization determines whether a specific instruction within that exchange may take effect in the physical world"
+        "text": "Communication-level trust determines whether an agent may participate in an exchange; action-level authorization determines whether a specific instruction may take effect in the physical world."
       },
       "guarantees": {
         "named_human": { "value": "partial", "rationale": "Human approval state is one action-level condition, but no human ceremony or portable human-binding artifact is defined." },
         "rp_pinned_acceptance": { "value": "partial", "rationale": "The gateway applies local policy and current context, but the draft does not define a portable relying-party evidence profile." },
-        "exact_action": { "value": "partial", "rationale": "The draft requires evaluating a specific instruction individually but does not define canonical material-action encoding or matching." },
+        "exact_action": { "value": "partial", "rationale": "The draft requires evidence bound to an identifier or canonical digest for the exact action but does not define canonical material-action encoding or cross-format matching." },
         "distinct_quorum": { "value": "no", "rationale": "The bounded draft review found no distinct-human M-of-N mechanism." },
         "initiator_exclusion": { "value": "no", "rationale": "The bounded draft review found no portable initiator-exclusion predicate." },
-        "one_time_consumption": { "value": "no", "rationale": "The action-level model does not define consumption of approval evidence." },
+        "one_time_consumption": { "value": "partial", "rationale": "The draft requires atomic reservation and consumption where evidence is single-use, but does not define the state machine or wire protocol." },
         "offline_verification": { "value": "no", "rationale": "The described gateway evaluates current context; no unrelated-party offline artifact verifier is defined." }
       }
     },

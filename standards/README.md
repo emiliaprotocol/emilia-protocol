@@ -53,7 +53,7 @@ The reader-facing canonical surface is:
    the host-agnostic binding of named-human authorization evidence into an
    adjacent agent-action record.
 3. **Authority Introduction** —
-   [`draft-schrock-ep-authority-introduction-02`](posted/draft-schrock-ep-authority-introduction-02.xml):
+   [`draft-schrock-ep-authority-introduction-03`](posted/draft-schrock-ep-authority-introduction-03.xml):
    relying-party-pinned trust-root introduction and scoped authority.
 4. **Authorization Evidence Chain (AEC)** —
    [`draft-schrock-ep-authorization-evidence-chain-05`](posted/draft-schrock-ep-authorization-evidence-chain-05.xml):
@@ -69,9 +69,9 @@ the distinct profile and lifecycle portfolio remains intact.
 ## Separate portfolio and runtime views
 
 The presentation surface does not replace the active profile portfolio. The
-complete active portfolio remains the 22 records in
+complete active portfolio remains the 23 records in
 `STATUS.json.active_datatracker`, including 20 active `draft-schrock-*` records
-and two coauthored records, each with its own scope and revision history.
+and three coauthored records, each with its own scope and revision history.
 
 The separate runtime execution spine is **Architecture-02 -> CAID-02 ->
 AEC-05 -> AEB-03**: architecture and decision boundaries, exact material-action

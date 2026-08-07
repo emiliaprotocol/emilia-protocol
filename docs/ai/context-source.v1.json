@@ -199,7 +199,7 @@
       "layer": "execution lifecycle",
       "question": "Was evidence demanded, consumed, executed, observed, revoked, and preserved correctly?",
       "ep_role": "Separates challenge, native verification, matching, evidence satisfaction, local authorization, bounded reserve, provider invocation, executed or indeterminate outcome, authenticated reconciliation, revocation, and preservation.",
-      "adjacent_examples": "Linda Dunbar's individual DMSC Agent Gateway gap-analysis draft, system-of-record gate, bounded capability, provider evidence, SCITT, evidence records"
+      "adjacent_examples": "The Dunbar-Wang-Schrock-Liu DMSC Agent Gateway gap-analysis -03, system-of-record gate, bounded capability, provider evidence, SCITT, evidence records"
     }
   ],
   "non_claims": [
@@ -225,7 +225,7 @@
     "The AgentROA and ORPRG adapters implement the exact documented native formats and relying-party profiles. They do not claim universal support for every future revision or ORPRG wire profile.",
     "The checked-in TPM interoperability fixture was generated with a software TPM. The verifier is real, but no physical TPM, manufacturer EK chain, measured-boot deployment, or running-production-binary attestation is claimed.",
     "The three local witness instances prove emit, quorum, and gossip behavior. They are not independent operators. Independent witness evidence exists only after separately administered external operators generate and control their own keys and publish live views.",
-    "Twenty-two Datatracker records are active in the repository portfolio as of August 3, 2026. The August 3 wave filed AEB -03, AEC -05, Model-to-Matter -03, Reliance Agreement -00, Bounded Capability Receipts -01, and Bounded Execution Program -00. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
+    "Twenty-three Datatracker records are active in the repository portfolio as of August 6, 2026: 20 draft-schrock series and three coauthored series. The current coauthored records are Memory Projection Record -01, Agent Accountability Composition -00, and the DMSC Agent Gateway Gap Analysis -03. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
@@ -552,7 +552,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 3, the repository tracks 22 active records; the latest wave includes AEB -03, AEC -05, Model-to-Matter -03, Reliance Agreement -00, Bounded Capability Receipts -01, and Bounded Execution Program -00. Never call them RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 6, the repository tracks 23 active records: 20 draft-schrock series and three coauthored series. Current revisions include CAID -02, Authorization Receipts -10, Bounded Capability Receipts -02, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, and DMSC Agent Gateway Gap Analysis -03. Never call them RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

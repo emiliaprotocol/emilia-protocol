@@ -1,6 +1,6 @@
 # EMILIA Standards Observatory
 
-Source-locked snapshot as of July 14, 2026. Snapshot sha256:57e513998be693a30060be0dc9d8d2388caa86d04bfc954e004ba31a4f462c72.
+Source-locked snapshot as of July 14, 2026. Snapshot sha256:44379d6428aec3f85fcffa3b7d90ec207e7fd14ed540a7f36f9fd0e798698a64.
 
 ## Truth Rules
 
@@ -37,7 +37,7 @@ Source-locked snapshot as of July 14, 2026. Snapshot sha256:57e513998be693a30060
 - EP Authorization Receipts | draft-schrock-ep-authorization-receipts-06 | current_draft | native | https://www.ietf.org/archive/id/draft-schrock-ep-authorization-receipts-06.txt | quote sha256:61d929717d649d11b769243ac09de5d075b8a98a8db8927a3d2f0b4a3d4897f7
 - EP-QUORUM | draft-schrock-ep-quorum-02 | current_draft | native | https://www.ietf.org/archive/id/draft-schrock-ep-quorum-02.txt | quote sha256:29ba746cab0e8fc1ff6d1b0c6ff072ef99eb0a62f6c7627a5e67f98f842b21ef
 - EP-AEC | draft-schrock-ep-authorization-evidence-chain-02 | current_draft | native | https://www.ietf.org/archive/id/draft-schrock-ep-authorization-evidence-chain-02.txt | quote sha256:c507e982338a7801af91426ec60cf87d4aa31a7cf36a6fed901ddd8bef49cbd1
-- DMSC Gateway Gap Analysis | draft-dunbar-dmsc-gw-scenarios-gap-analysis-02 | current_draft | host_socket | https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-02.txt | quote sha256:003d4e02995719c0e83d5505cfd0b41b0de173af93d3f976b35f7a55596608b2
+- DMSC Gateway Gap Analysis | draft-dunbar-dmsc-gw-scenarios-gap-analysis-03 | current_draft | host_socket | https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-03.txt | quote sha256:9a74ff04e124de4bb0a6027e5e85da5001f3873450f3cdaf837ba508432e0c25
 - AuthZEN AARP | draft-1:2026-07-09 | current_draft | adjacent_profile | https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html | quote sha256:6b94dde2480c6021c3fd47b05b48dbc26a26832fe012a2ff4229f7439c6d1097
 - AGTP | draft-hood-independent-agtp-09 | current_draft | transport_neighbor | https://www.ietf.org/archive/id/draft-hood-independent-agtp-09.txt | quote sha256:63ffea9867d02af8704b95d9cefa80cdd652be707dfb2d080a85a17aa9d9a239
 
