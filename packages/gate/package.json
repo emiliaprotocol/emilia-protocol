@@ -313,6 +313,10 @@
       "types": "./dist/bounded-execution-program.d.ts",
       "import": "./bounded-execution-program.js"
     },
+    "./bounded-execution-acceptance": {
+      "types": "./dist/bounded-execution-acceptance.d.ts",
+      "import": "./bounded-execution-acceptance.js"
+    },
     "./bounded-execution-report": {
       "types": "./dist/bounded-execution-report.d.ts",
       "import": "./bounded-execution-report.js"
@@ -464,6 +468,7 @@
     "authority-allocation.js",
     "autonomy-control-plane-profile.js",
     "bounded-execution-program.js",
+    "bounded-execution-acceptance.js",
     "bounded-execution-report.js",
     "admission-store.js",
     "admission-store-postgres.js",
@@ -559,7 +564,7 @@
     "pretest": "npm run build",
     "test": "node --test --test-concurrency=1 && npm run test:qualification",
     "check:allowance-security-test-coverage": "node check-allowance-security-test-coverage.mjs",
-    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 allowance.test.ts capability-receipt.test.ts action-fence-runtime-regression.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts recovery-admission.test.ts recovery-admission-postgres.test.ts recovery-admission-remedy.test.ts",
+    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 allowance.test.ts capability-receipt.test.ts action-fence-runtime-regression.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts bounded-execution-acceptance.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts recovery-admission.test.ts recovery-admission-postgres.test.ts recovery-admission-remedy.test.ts",
     "demo": "node demo.mjs",
     "eg1": "node eg1.mjs",
     "cf1": "node cf1.mjs"

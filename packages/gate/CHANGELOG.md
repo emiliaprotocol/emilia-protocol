@@ -42,6 +42,14 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Add `./bounded-execution-acceptance`, a relying-party-signed acceptance
+  profile and portable evidence pack over signed bounded-execution reports.
+  Evaluation preserves unresolved work as `INDETERMINATE` and deliberately
+  makes no legal-compliance, external-effect, safety, or complete-mediation
+  claim.
+
 ## 0.23.9 (2026-08-03)
 
 ### Security

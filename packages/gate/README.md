@@ -342,6 +342,18 @@ claim requires a separately signed external Inventory Root and is intentionally
 outside this package. The checked-in report vectors are same-team experimental
 reference vectors, not independent or cross-language conformance evidence.
 
+`@emilia-protocol/gate/bounded-execution-acceptance` adds the separate
+relying-party question the program and report intentionally do not answer: do
+the recorded outcomes satisfy this party's signed acceptance profile? The
+profile pins the exact program digest, accepted runtime statuses, unresolved
+and reserved occurrence ceilings, and required node outcomes. Its offline
+verifier returns `RECORDED_PROCESS_ACCEPTED`,
+`RECORDED_PROCESS_NOT_ACCEPTED`, or `INDETERMINATE` and can assemble the signed
+profile, signed report, and deterministic evaluation into one portable
+evidence pack. It does not emit a `compliant` boolean or claim legal
+compliance, external effect truth, program safety, or complete mediation. See
+[`EP-BOUNDED-EXECUTION-ACCEPTANCE-PROFILE-v1`](../../docs/protocol/bounded-execution-acceptance-v1.md).
+
 ### Install the Gate Qualification v2 SQL artifact
 
 Pin the package artifact to `@emilia-protocol/gate@0.23.13` and verify the exact

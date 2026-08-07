@@ -106,6 +106,7 @@
     "src/authority-allocation.ts",
     "src/autonomy-control-plane-profile.ts",
     "src/bounded-execution-program.ts",
+    "src/bounded-execution-acceptance.ts",
     "src/bounded-execution-report.ts",
     "src/admission-store.ts",
     "src/admission-store-postgres.ts",

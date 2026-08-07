@@ -245,6 +245,7 @@ export {
 export * from './authority-allocation.js';
 export * from './autonomy-control-plane-profile.js';
 export * from './bounded-execution-program.js';
+export * from './bounded-execution-acceptance.js';
 export * from './allowance.js';
 export * from './bounded-execution-report.js';
 export * from './admission-store.js';

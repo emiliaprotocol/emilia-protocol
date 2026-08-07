@@ -1,0 +1,496 @@
+{
+  "@version": "EP-BOUNDED-EXECUTION-ACCEPTANCE-REFERENCE-VECTORS-v1",
+  "status": "same-team-experimental-reference-vectors",
+  "vectors_version": "1.0.0",
+  "claim_boundary": {
+    "establishes": [
+      "deterministic profile signature, report composition, tri-state evaluation, package digest, and hostile outcomes against this repository reference implementation",
+      "one relying party accepted one Gate-recorded process result under an exact signed profile"
+    ],
+    "does_not_establish": [
+      "independent or cross-language conformance, interoperability, standardization, certification, deployment, or production durability",
+      "legal compliance, external effect truth, event chronology, program safety, complete mediation, or the absence of outside-Gate actions"
+    ]
+  },
+  "known_answer": {
+    "profile_input": {
+      "profile_id": "profile:reference-remediation-acceptance:01",
+      "relying_party_id": "rp:reference-operations",
+      "program_id": "program:reference-remediation:01",
+      "program_version": 1,
+      "program_digest": "sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd",
+      "valid_from": "2026-07-30T20:00:00.000Z",
+      "expires_at": "2026-07-30T21:00:00.000Z",
+      "accepted_program_statuses": [
+        "ACTIVE"
+      ],
+      "max_total_unresolved": 0,
+      "max_total_reserved": 0,
+      "required_nodes": [
+        {
+          "node_id": "inspect",
+          "min_terminal_occurrences": 1,
+          "accepted_outcomes": [
+            "COMMITTED"
+          ],
+          "allow_additional_terminal_outcomes": false
+        }
+      ]
+    },
+    "profile_artifact": {
+      "@version": "EP-BOUNDED-EXECUTION-ACCEPTANCE-PROFILE-v1",
+      "accepted_program_statuses": [
+        "ACTIVE"
+      ],
+      "claim_boundary": "rp_acceptance_of_gate_recorded_program_outcomes_only_not_legal_compliance_not_external_effect_truth_not_program_safety_not_complete_mediation",
+      "expires_at": "2026-07-30T21:00:00.000Z",
+      "issuer": {
+        "id": "rp:reference-operations",
+        "key_id": "key:reference-process-acceptance"
+      },
+      "max_total_reserved": 0,
+      "max_total_unresolved": 0,
+      "profile_id": "profile:reference-remediation-acceptance:01",
+      "program_digest": "sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd",
+      "program_id": "program:reference-remediation:01",
+      "program_version": 1,
+      "relying_party_id": "rp:reference-operations",
+      "required_nodes": [
+        {
+          "accepted_outcomes": [
+            "COMMITTED"
+          ],
+          "allow_additional_terminal_outcomes": false,
+          "min_terminal_occurrences": 1,
+          "node_id": "inspect"
+        }
+      ],
+      "valid_from": "2026-07-30T20:00:00.000Z",
+      "proof": {
+        "algorithm": "Ed25519",
+        "key_id": "key:reference-process-acceptance",
+        "body_digest": "sha256:3f002c35d1e59cebdfdbe23f75988cff4d422b54b4ff1eb58071a524b819d986",
+        "signature_b64u": "DSGEQ2ODqpDXCggwbtPfQOkvutgscJ5UPtJCjj-kA_963RltoNCM8qDwqUyCDi4qgMOa30l429MgDc_sg3-0Ag"
+      }
+    },
+    "profile_verification_context": {
+      "trusted_keys": {
+        "key:reference-process-acceptance": {
+          "issuer_id": "rp:reference-operations",
+          "public_key": "MCowBQYDK2VwAyEAIxNk-qqsqtg216hiEeV6ZXRfdl2eiw7pxYvNrIGquHU"
+        }
+      },
+      "expected_profile_id": "profile:reference-remediation-acceptance:01",
+      "expected_relying_party_id": "rp:reference-operations",
+      "expected_program_id": "program:reference-remediation:01",
+      "expected_program_version": 1,
+      "expected_program_digest": "sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd",
+      "now": "2026-07-30T20:31:00.000Z"
+    },
+    "report_artifact": {
+      "@version": "EP-BOUNDED-EXECUTION-REPORT-v1",
+      "audience": "gate:reference:01",
+      "budget_usage": [
+        {
+          "budget_id": "attempts",
+          "consumed": 1,
+          "limit": 1,
+          "remaining": 0,
+          "reserved": 0,
+          "unit": "attempt"
+        }
+      ],
+      "claim_boundary": "gate_recorded_program_occurrences_only_not_external_effect_truth_not_program_safety_not_complete_mediation_not_absence_of_outside_gate_actions",
+      "generated_at": "2026-07-30T20:31:00.000Z",
+      "issuer": {
+        "id": "rp:reference-operations",
+        "key_id": "key:reference-report-signer"
+      },
+      "node_buckets": [
+        {
+          "max_occurrences": 1,
+          "never_attempted": {
+            "reserved_occurrence_ids": [],
+            "unallocated_occurrence_count": 0
+          },
+          "node_id": "inspect",
+          "released_pre_entry": [
+            "occurrence:inspect:01-released"
+          ],
+          "terminal_recorded_outcomes": [
+            {
+              "occurrence_id": "occurrence:inspect:02-committed",
+              "outcome": "COMMITTED"
+            }
+          ],
+          "unresolved_post_entry": []
+        }
+      ],
+      "occurrence_inventory_digest": "sha256:f54c18e82e5d8500b65905b4601866b7aa41915b986078186e392d166479276e",
+      "outside_plan_claim": "EXECUTED_OUTSIDE_THE_PLAN_NOT_CLAIMED_REQUIRES_SEPARATELY_SIGNED_EXTERNAL_INVENTORY_ROOT",
+      "program_digest": "sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd",
+      "program_id": "program:reference-remediation:01",
+      "program_version": 1,
+      "relying_party_id": "rp:reference-operations",
+      "report_id": "report:reference-remediation:01",
+      "report_interval": {
+        "end": "2026-07-30T20:30:00.000Z",
+        "start": "2026-07-30T20:00:00.000Z"
+      },
+      "report_snapshot_marker": "sha256:cb157effe8e05e608963dcf63e89b03593e665980533fd5c73e9167e02e5e5cc",
+      "runtime_state_digest": "sha256:96c9830c345345cac0f3aa15f0b26cfbc5cfb81e4063a042fd38600417d6dd4a",
+      "status": "ACTIVE",
+      "subject_id": "agent:reference-operator:01",
+      "supersession": {
+        "superseded_by_program_digest": null,
+        "supersedes_program_digest": null
+      },
+      "tenant_id": "tenant:reference",
+      "proof": {
+        "algorithm": "Ed25519",
+        "key_id": "key:reference-report-signer",
+        "body_digest": "sha256:133b78b678733f16f2065b292549fea418e460b36b953ace8f729df7c0e3b6b6",
+        "signature_b64u": "pNjBJmSBMBgl0dLVHrn7a6s8oeDX8zlnCEXKob6nwcRNjMjRRUj3iLOM5CTj3Jm-dBoKEVJQQF4JV1jez2jSDw"
+      }
+    },
+    "report_verification_context": {
+      "trusted_keys": {
+        "key:reference-report-signer": {
+          "issuer_id": "rp:reference-operations",
+          "public_key": "MCowBQYDK2VwAyEArpIRM1ag7QkpFEWRFcZdcy9pNJG2XocyVM1J4FrXQa4"
+        }
+      },
+      "expected_report_id": "report:reference-remediation:01",
+      "expected_relying_party_id": "rp:reference-operations",
+      "expected_tenant_id": "tenant:reference",
+      "expected_program_id": "program:reference-remediation:01",
+      "expected_program_version": 1,
+      "expected_program_digest": "sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd",
+      "expected_subject_id": "agent:reference-operator:01",
+      "expected_audience": "gate:reference:01",
+      "expected_report_interval": {
+        "start": "2026-07-30T20:00:00.000Z",
+        "end": "2026-07-30T20:30:00.000Z"
+      },
+      "expected_runtime_state_digest": "sha256:96c9830c345345cac0f3aa15f0b26cfbc5cfb81e4063a042fd38600417d6dd4a",
+      "expected_occurrence_inventory_digest": "sha256:f54c18e82e5d8500b65905b4601866b7aa41915b986078186e392d166479276e",
+      "expected_report_snapshot_marker": "sha256:cb157effe8e05e608963dcf63e89b03593e665980533fd5c73e9167e02e5e5cc",
+      "now": "2026-07-30T20:31:00.000Z",
+      "max_report_age_ms": 60000
+    },
+    "evaluation": {
+      "valid": true,
+      "verdict": "RECORDED_PROCESS_ACCEPTED",
+      "reason": null,
+      "reasons": [],
+      "profile_digest": "sha256:97459c96aa3376ddd38f1782aeb963961cee1de59f41794a13254df46decbbaf",
+      "report_digest": "sha256:cefa1b9c513433d5b0aadc22bbfd1ab63bc62209a6ccd3740154d7a830151c64",
+      "claim_boundary": "rp_acceptance_of_gate_recorded_program_outcomes_only_not_legal_compliance_not_external_effect_truth_not_program_safety_not_complete_mediation"
+    },
+    "evidence_pack": {
+      "@version": "EP-BOUNDED-EXECUTION-EVIDENCE-PACK-v1",
+      "profile_artifact": {
+        "@version": "EP-BOUNDED-EXECUTION-ACCEPTANCE-PROFILE-v1",
+        "accepted_program_statuses": [
+          "ACTIVE"
+        ],
+        "claim_boundary": "rp_acceptance_of_gate_recorded_program_outcomes_only_not_legal_compliance_not_external_effect_truth_not_program_safety_not_complete_mediation",
+        "expires_at": "2026-07-30T21:00:00.000Z",
+        "issuer": {
+          "id": "rp:reference-operations",
+          "key_id": "key:reference-process-acceptance"
+        },
+        "max_total_reserved": 0,
+        "max_total_unresolved": 0,
+        "profile_id": "profile:reference-remediation-acceptance:01",
+        "program_digest": "sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd",
+        "program_id": "program:reference-remediation:01",
+        "program_version": 1,
+        "proof": {
+          "algorithm": "Ed25519",
+          "body_digest": "sha256:3f002c35d1e59cebdfdbe23f75988cff4d422b54b4ff1eb58071a524b819d986",
+          "key_id": "key:reference-process-acceptance",
+          "signature_b64u": "DSGEQ2ODqpDXCggwbtPfQOkvutgscJ5UPtJCjj-kA_963RltoNCM8qDwqUyCDi4qgMOa30l429MgDc_sg3-0Ag"
+        },
+        "relying_party_id": "rp:reference-operations",
+        "required_nodes": [
+          {
+            "accepted_outcomes": [
+              "COMMITTED"
+            ],
+            "allow_additional_terminal_outcomes": false,
+            "min_terminal_occurrences": 1,
+            "node_id": "inspect"
+          }
+        ],
+        "valid_from": "2026-07-30T20:00:00.000Z"
+      },
+      "report_artifact": {
+        "@version": "EP-BOUNDED-EXECUTION-REPORT-v1",
+        "audience": "gate:reference:01",
+        "budget_usage": [
+          {
+            "budget_id": "attempts",
+            "consumed": 1,
+            "limit": 1,
+            "remaining": 0,
+            "reserved": 0,
+            "unit": "attempt"
+          }
+        ],
+        "claim_boundary": "gate_recorded_program_occurrences_only_not_external_effect_truth_not_program_safety_not_complete_mediation_not_absence_of_outside_gate_actions",
+        "generated_at": "2026-07-30T20:31:00.000Z",
+        "issuer": {
+          "id": "rp:reference-operations",
+          "key_id": "key:reference-report-signer"
+        },
+        "node_buckets": [
+          {
+            "max_occurrences": 1,
+            "never_attempted": {
+              "reserved_occurrence_ids": [],
+              "unallocated_occurrence_count": 0
+            },
+            "node_id": "inspect",
+            "released_pre_entry": [
+              "occurrence:inspect:01-released"
+            ],
+            "terminal_recorded_outcomes": [
+              {
+                "occurrence_id": "occurrence:inspect:02-committed",
+                "outcome": "COMMITTED"
+              }
+            ],
+            "unresolved_post_entry": []
+          }
+        ],
+        "occurrence_inventory_digest": "sha256:f54c18e82e5d8500b65905b4601866b7aa41915b986078186e392d166479276e",
+        "outside_plan_claim": "EXECUTED_OUTSIDE_THE_PLAN_NOT_CLAIMED_REQUIRES_SEPARATELY_SIGNED_EXTERNAL_INVENTORY_ROOT",
+        "program_digest": "sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd",
+        "program_id": "program:reference-remediation:01",
+        "program_version": 1,
+        "proof": {
+          "algorithm": "Ed25519",
+          "body_digest": "sha256:133b78b678733f16f2065b292549fea418e460b36b953ace8f729df7c0e3b6b6",
+          "key_id": "key:reference-report-signer",
+          "signature_b64u": "pNjBJmSBMBgl0dLVHrn7a6s8oeDX8zlnCEXKob6nwcRNjMjRRUj3iLOM5CTj3Jm-dBoKEVJQQF4JV1jez2jSDw"
+        },
+        "relying_party_id": "rp:reference-operations",
+        "report_id": "report:reference-remediation:01",
+        "report_interval": {
+          "end": "2026-07-30T20:30:00.000Z",
+          "start": "2026-07-30T20:00:00.000Z"
+        },
+        "report_snapshot_marker": "sha256:cb157effe8e05e608963dcf63e89b03593e665980533fd5c73e9167e02e5e5cc",
+        "runtime_state_digest": "sha256:96c9830c345345cac0f3aa15f0b26cfbc5cfb81e4063a042fd38600417d6dd4a",
+        "status": "ACTIVE",
+        "subject_id": "agent:reference-operator:01",
+        "supersession": {
+          "superseded_by_program_digest": null,
+          "supersedes_program_digest": null
+        },
+        "tenant_id": "tenant:reference"
+      },
+      "evaluation": {
+        "claim_boundary": "rp_acceptance_of_gate_recorded_program_outcomes_only_not_legal_compliance_not_external_effect_truth_not_program_safety_not_complete_mediation",
+        "profile_digest": "sha256:97459c96aa3376ddd38f1782aeb963961cee1de59f41794a13254df46decbbaf",
+        "reason": null,
+        "reasons": [],
+        "report_digest": "sha256:cefa1b9c513433d5b0aadc22bbfd1ab63bc62209a6ccd3740154d7a830151c64",
+        "valid": true,
+        "verdict": "RECORDED_PROCESS_ACCEPTED"
+      },
+      "claim_boundary": "rp_acceptance_of_gate_recorded_program_outcomes_only_not_legal_compliance_not_external_effect_truth_not_program_safety_not_complete_mediation",
+      "package_digest": "sha256:c44dcd731348a4661d0bae58aec80008b6fb6a6fe1d5001b7a39238d42a508e1"
+    },
+    "canonical_profile_body_utf8": "{\"@version\":\"EP-BOUNDED-EXECUTION-ACCEPTANCE-PROFILE-v1\",\"accepted_program_statuses\":[\"ACTIVE\"],\"claim_boundary\":\"rp_acceptance_of_gate_recorded_program_outcomes_only_not_legal_compliance_not_external_effect_truth_not_program_safety_not_complete_mediation\",\"expires_at\":\"2026-07-30T21:00:00.000Z\",\"issuer\":{\"id\":\"rp:reference-operations\",\"key_id\":\"key:reference-process-acceptance\"},\"max_total_reserved\":0,\"max_total_unresolved\":0,\"profile_id\":\"profile:reference-remediation-acceptance:01\",\"program_digest\":\"sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd\",\"program_id\":\"program:reference-remediation:01\",\"program_version\":1,\"relying_party_id\":\"rp:reference-operations\",\"required_nodes\":[{\"accepted_outcomes\":[\"COMMITTED\"],\"allow_additional_terminal_outcomes\":false,\"min_terminal_occurrences\":1,\"node_id\":\"inspect\"}],\"valid_from\":\"2026-07-30T20:00:00.000Z\"}",
+    "canonical_profile_body_b64u": "eyJAdmVyc2lvbiI6IkVQLUJPVU5ERUQtRVhFQ1VUSU9OLUFDQ0VQVEFOQ0UtUFJPRklMRS12MSIsImFjY2VwdGVkX3Byb2dyYW1fc3RhdHVzZXMiOlsiQUNUSVZFIl0sImNsYWltX2JvdW5kYXJ5IjoicnBfYWNjZXB0YW5jZV9vZl9nYXRlX3JlY29yZGVkX3Byb2dyYW1fb3V0Y29tZXNfb25seV9ub3RfbGVnYWxfY29tcGxpYW5jZV9ub3RfZXh0ZXJuYWxfZWZmZWN0X3RydXRoX25vdF9wcm9ncmFtX3NhZmV0eV9ub3RfY29tcGxldGVfbWVkaWF0aW9uIiwiZXhwaXJlc19hdCI6IjIwMjYtMDctMzBUMjE6MDA6MDAuMDAwWiIsImlzc3VlciI6eyJpZCI6InJwOnJlZmVyZW5jZS1vcGVyYXRpb25zIiwia2V5X2lkIjoia2V5OnJlZmVyZW5jZS1wcm9jZXNzLWFjY2VwdGFuY2UifSwibWF4X3RvdGFsX3Jlc2VydmVkIjowLCJtYXhfdG90YWxfdW5yZXNvbHZlZCI6MCwicHJvZmlsZV9pZCI6InByb2ZpbGU6cmVmZXJlbmNlLXJlbWVkaWF0aW9uLWFjY2VwdGFuY2U6MDEiLCJwcm9ncmFtX2RpZ2VzdCI6InNoYTI1NjpmMTEzNzk5NmM1NDc4ODRlYTBiMWExNzdiMGUyYzA2MDkyMjEwOTVmZjZiZmRiNjBmZjUxYjIwNWEyM2FiZGNkIiwicHJvZ3JhbV9pZCI6InByb2dyYW06cmVmZXJlbmNlLXJlbWVkaWF0aW9uOjAxIiwicHJvZ3JhbV92ZXJzaW9uIjoxLCJyZWx5aW5nX3BhcnR5X2lkIjoicnA6cmVmZXJlbmNlLW9wZXJhdGlvbnMiLCJyZXF1aXJlZF9ub2RlcyI6W3siYWNjZXB0ZWRfb3V0Y29tZXMiOlsiQ09NTUlUVEVEIl0sImFsbG93X2FkZGl0aW9uYWxfdGVybWluYWxfb3V0Y29tZXMiOmZhbHNlLCJtaW5fdGVybWluYWxfb2NjdXJyZW5jZXMiOjEsIm5vZGVfaWQiOiJpbnNwZWN0In1dLCJ2YWxpZF9mcm9tIjoiMjAyNi0wNy0zMFQyMDowMDowMC4wMDBaIn0",
+    "signature_input_b64u": "RVAtQk9VTkRFRC1FWEVDVVRJT04tQUNDRVBUQU5DRS1QUk9GSUxFLXYxAHsiQHZlcnNpb24iOiJFUC1CT1VOREVELUVYRUNVVElPTi1BQ0NFUFRBTkNFLVBST0ZJTEUtdjEiLCJhY2NlcHRlZF9wcm9ncmFtX3N0YXR1c2VzIjpbIkFDVElWRSJdLCJjbGFpbV9ib3VuZGFyeSI6InJwX2FjY2VwdGFuY2Vfb2ZfZ2F0ZV9yZWNvcmRlZF9wcm9ncmFtX291dGNvbWVzX29ubHlfbm90X2xlZ2FsX2NvbXBsaWFuY2Vfbm90X2V4dGVybmFsX2VmZmVjdF90cnV0aF9ub3RfcHJvZ3JhbV9zYWZldHlfbm90X2NvbXBsZXRlX21lZGlhdGlvbiIsImV4cGlyZXNfYXQiOiIyMDI2LTA3LTMwVDIxOjAwOjAwLjAwMFoiLCJpc3N1ZXIiOnsiaWQiOiJycDpyZWZlcmVuY2Utb3BlcmF0aW9ucyIsImtleV9pZCI6ImtleTpyZWZlcmVuY2UtcHJvY2Vzcy1hY2NlcHRhbmNlIn0sIm1heF90b3RhbF9yZXNlcnZlZCI6MCwibWF4X3RvdGFsX3VucmVzb2x2ZWQiOjAsInByb2ZpbGVfaWQiOiJwcm9maWxlOnJlZmVyZW5jZS1yZW1lZGlhdGlvbi1hY2NlcHRhbmNlOjAxIiwicHJvZ3JhbV9kaWdlc3QiOiJzaGEyNTY6ZjExMzc5OTZjNTQ3ODg0ZWEwYjFhMTc3YjBlMmMwNjA5MjIxMDk1ZmY2YmZkYjYwZmY1MWIyMDVhMjNhYmRjZCIsInByb2dyYW1faWQiOiJwcm9ncmFtOnJlZmVyZW5jZS1yZW1lZGlhdGlvbjowMSIsInByb2dyYW1fdmVyc2lvbiI6MSwicmVseWluZ19wYXJ0eV9pZCI6InJwOnJlZmVyZW5jZS1vcGVyYXRpb25zIiwicmVxdWlyZWRfbm9kZXMiOlt7ImFjY2VwdGVkX291dGNvbWVzIjpbIkNPTU1JVFRFRCJdLCJhbGxvd19hZGRpdGlvbmFsX3Rlcm1pbmFsX291dGNvbWVzIjpmYWxzZSwibWluX3Rlcm1pbmFsX29jY3VycmVuY2VzIjoxLCJub2RlX2lkIjoiaW5zcGVjdCJ9XSwidmFsaWRfZnJvbSI6IjIwMjYtMDctMzBUMjA6MDA6MDAuMDAwWiJ9",
+    "signature_b64u": "DSGEQ2ODqpDXCggwbtPfQOkvutgscJ5UPtJCjj-kA_963RltoNCM8qDwqUyCDi4qgMOa30l429MgDc_sg3-0Ag",
+    "profile_digest": "sha256:97459c96aa3376ddd38f1782aeb963961cee1de59f41794a13254df46decbbaf",
+    "package_digest": "sha256:c44dcd731348a4661d0bae58aec80008b6fb6a6fe1d5001b7a39238d42a508e1"
+  },
+  "hostile_mutations": [
+    {
+      "id": "profile_requirement_tampered_after_signature",
+      "target": "profile",
+      "artifact": {
+        "@version": "EP-BOUNDED-EXECUTION-ACCEPTANCE-PROFILE-v1",
+        "accepted_program_statuses": [
+          "ACTIVE"
+        ],
+        "claim_boundary": "rp_acceptance_of_gate_recorded_program_outcomes_only_not_legal_compliance_not_external_effect_truth_not_program_safety_not_complete_mediation",
+        "expires_at": "2026-07-30T21:00:00.000Z",
+        "issuer": {
+          "id": "rp:reference-operations",
+          "key_id": "key:reference-process-acceptance"
+        },
+        "max_total_reserved": 0,
+        "max_total_unresolved": 0,
+        "profile_id": "profile:reference-remediation-acceptance:01",
+        "program_digest": "sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd",
+        "program_id": "program:reference-remediation:01",
+        "program_version": 1,
+        "relying_party_id": "rp:reference-operations",
+        "required_nodes": [
+          {
+            "accepted_outcomes": [
+              "COMMITTED"
+            ],
+            "allow_additional_terminal_outcomes": false,
+            "min_terminal_occurrences": 2,
+            "node_id": "inspect"
+          }
+        ],
+        "valid_from": "2026-07-30T20:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "key:reference-process-acceptance",
+          "body_digest": "sha256:3f002c35d1e59cebdfdbe23f75988cff4d422b54b4ff1eb58071a524b819d986",
+          "signature_b64u": "DSGEQ2ODqpDXCggwbtPfQOkvutgscJ5UPtJCjj-kA_963RltoNCM8qDwqUyCDi4qgMOa30l429MgDc_sg3-0Ag"
+        }
+      },
+      "expected_reason": "digest_mismatch"
+    },
+    {
+      "id": "evaluation_forged_and_package_digest_recomputed",
+      "target": "pack",
+      "artifact": {
+        "@version": "EP-BOUNDED-EXECUTION-EVIDENCE-PACK-v1",
+        "profile_artifact": {
+          "@version": "EP-BOUNDED-EXECUTION-ACCEPTANCE-PROFILE-v1",
+          "accepted_program_statuses": [
+            "ACTIVE"
+          ],
+          "claim_boundary": "rp_acceptance_of_gate_recorded_program_outcomes_only_not_legal_compliance_not_external_effect_truth_not_program_safety_not_complete_mediation",
+          "expires_at": "2026-07-30T21:00:00.000Z",
+          "issuer": {
+            "id": "rp:reference-operations",
+            "key_id": "key:reference-process-acceptance"
+          },
+          "max_total_reserved": 0,
+          "max_total_unresolved": 0,
+          "profile_id": "profile:reference-remediation-acceptance:01",
+          "program_digest": "sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd",
+          "program_id": "program:reference-remediation:01",
+          "program_version": 1,
+          "proof": {
+            "algorithm": "Ed25519",
+            "body_digest": "sha256:3f002c35d1e59cebdfdbe23f75988cff4d422b54b4ff1eb58071a524b819d986",
+            "key_id": "key:reference-process-acceptance",
+            "signature_b64u": "DSGEQ2ODqpDXCggwbtPfQOkvutgscJ5UPtJCjj-kA_963RltoNCM8qDwqUyCDi4qgMOa30l429MgDc_sg3-0Ag"
+          },
+          "relying_party_id": "rp:reference-operations",
+          "required_nodes": [
+            {
+              "accepted_outcomes": [
+                "COMMITTED"
+              ],
+              "allow_additional_terminal_outcomes": false,
+              "min_terminal_occurrences": 1,
+              "node_id": "inspect"
+            }
+          ],
+          "valid_from": "2026-07-30T20:00:00.000Z"
+        },
+        "report_artifact": {
+          "@version": "EP-BOUNDED-EXECUTION-REPORT-v1",
+          "audience": "gate:reference:01",
+          "budget_usage": [
+            {
+              "budget_id": "attempts",
+              "consumed": 1,
+              "limit": 1,
+              "remaining": 0,
+              "reserved": 0,
+              "unit": "attempt"
+            }
+          ],
+          "claim_boundary": "gate_recorded_program_occurrences_only_not_external_effect_truth_not_program_safety_not_complete_mediation_not_absence_of_outside_gate_actions",
+          "generated_at": "2026-07-30T20:31:00.000Z",
+          "issuer": {
+            "id": "rp:reference-operations",
+            "key_id": "key:reference-report-signer"
+          },
+          "node_buckets": [
+            {
+              "max_occurrences": 1,
+              "never_attempted": {
+                "reserved_occurrence_ids": [],
+                "unallocated_occurrence_count": 0
+              },
+              "node_id": "inspect",
+              "released_pre_entry": [
+                "occurrence:inspect:01-released"
+              ],
+              "terminal_recorded_outcomes": [
+                {
+                  "occurrence_id": "occurrence:inspect:02-committed",
+                  "outcome": "COMMITTED"
+                }
+              ],
+              "unresolved_post_entry": []
+            }
+          ],
+          "occurrence_inventory_digest": "sha256:f54c18e82e5d8500b65905b4601866b7aa41915b986078186e392d166479276e",
+          "outside_plan_claim": "EXECUTED_OUTSIDE_THE_PLAN_NOT_CLAIMED_REQUIRES_SEPARATELY_SIGNED_EXTERNAL_INVENTORY_ROOT",
+          "program_digest": "sha256:f1137996c547884ea0b1a177b0e2c0609221095ff6bfdb60ff51b205a23abdcd",
+          "program_id": "program:reference-remediation:01",
+          "program_version": 1,
+          "proof": {
+            "algorithm": "Ed25519",
+            "body_digest": "sha256:133b78b678733f16f2065b292549fea418e460b36b953ace8f729df7c0e3b6b6",
+            "key_id": "key:reference-report-signer",
+            "signature_b64u": "pNjBJmSBMBgl0dLVHrn7a6s8oeDX8zlnCEXKob6nwcRNjMjRRUj3iLOM5CTj3Jm-dBoKEVJQQF4JV1jez2jSDw"
+          },
+          "relying_party_id": "rp:reference-operations",
+          "report_id": "report:reference-remediation:01",
+          "report_interval": {
+            "end": "2026-07-30T20:30:00.000Z",
+            "start": "2026-07-30T20:00:00.000Z"
+          },
+          "report_snapshot_marker": "sha256:cb157effe8e05e608963dcf63e89b03593e665980533fd5c73e9167e02e5e5cc",
+          "runtime_state_digest": "sha256:96c9830c345345cac0f3aa15f0b26cfbc5cfb81e4063a042fd38600417d6dd4a",
+          "status": "ACTIVE",
+          "subject_id": "agent:reference-operator:01",
+          "supersession": {
+            "superseded_by_program_digest": null,
+            "supersedes_program_digest": null
+          },
+          "tenant_id": "tenant:reference"
+        },
+        "evaluation": {
+          "claim_boundary": "rp_acceptance_of_gate_recorded_program_outcomes_only_not_legal_compliance_not_external_effect_truth_not_program_safety_not_complete_mediation",
+          "profile_digest": "sha256:97459c96aa3376ddd38f1782aeb963961cee1de59f41794a13254df46decbbaf",
+          "reason": null,
+          "reasons": [],
+          "report_digest": "sha256:cefa1b9c513433d5b0aadc22bbfd1ab63bc62209a6ccd3740154d7a830151c64",
+          "valid": true,
+          "verdict": "RECORDED_PROCESS_NOT_ACCEPTED"
+        },
+        "claim_boundary": "rp_acceptance_of_gate_recorded_program_outcomes_only_not_legal_compliance_not_external_effect_truth_not_program_safety_not_complete_mediation",
+        "package_digest": "sha256:ecd8e0ddfa31e821da86eb143835c9fbafa758bbcd4404a00d50757e9713ceaa"
+      },
+      "expected_reason": "package_evaluation_mismatch"
+    },
+    {
+      "id": "caller_substitutes_expected_program_digest",
+      "target": "profile_context",
+      "context": {
+        "trusted_keys": {
+          "key:reference-process-acceptance": {
+            "issuer_id": "rp:reference-operations",
+            "public_key": "MCowBQYDK2VwAyEAIxNk-qqsqtg216hiEeV6ZXRfdl2eiw7pxYvNrIGquHU"
+          }
+        },
+        "expected_profile_id": "profile:reference-remediation-acceptance:01",
+        "expected_relying_party_id": "rp:reference-operations",
+        "expected_program_id": "program:reference-remediation:01",
+        "expected_program_version": 1,
+        "expected_program_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+        "now": "2026-07-30T20:31:00.000Z"
+      },
+      "expected_reason": "program_digest_mismatch"
+    }
+  ]
+}
