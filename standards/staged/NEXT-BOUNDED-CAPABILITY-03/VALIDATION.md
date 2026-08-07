@@ -7,7 +7,6 @@ Validated on 2026-08-07 from the isolated -03 candidate packet.
 - `idnits 3.1.0 -m submission` passed with no nit reported.
 - A fresh `xml2rfc 3.34.0` rebuild produced TXT and HTML byte-identical to the
   retained renderings.
-- `git diff --check` reported no whitespace errors.
 - The source, TXT, and HTML bytes are pinned in `SHA256SUMS.txt`.
 - The focused Node capability suites passed 75 tests; five PostgreSQL-only
   cases were skipped in that non-database run.
