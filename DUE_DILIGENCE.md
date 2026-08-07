@@ -1,302 +1,207 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Public Due-Diligence Evidence
 
-This is a point-in-time map of evidence a technical, security, standards, or
-procurement reviewer can inspect without treating repository claims as
-certification.
+This file maps the public evidence a technical, security, standards, or
+procurement reviewer can reproduce. It is not a certification, legal opinion,
+or substitute for the company's private corporate data room.
 
-- **Source snapshot:** [`origin/main` at `1832dd0c`](https://github.com/emiliaprotocol/emilia-protocol/commit/1832dd0ce17e747ea8371d54d7e2752111b691cc)
-- **Reviewed:** 2026-07-18 PDT / 2026-07-19 UTC
-- **Scope:** public source, tests, conformance, formal models, security evidence,
-  production migration state, and public releases
-- **Not established by this document:** regulatory approval, IETF adoption,
-  customer adoption, an independent-operator network, an accredited audit, or
-  physical-hardware attestation
+- **Reviewed technical baseline:** [`632c425b`](https://github.com/emiliaprotocol/emilia-protocol/commit/632c425b)
+- **Reviewed:** 2026-08-07 PDT
+- **Scope:** source, tests, conformance, formal models, executable security
+  evidence, repository controls, release process, and attribution provenance
+- **Not established:** production deployment parity, customer adoption,
+  regulatory approval, IETF adoption, accredited assurance, legal chain of
+  title, or physical truth outside an observed and signed evidence boundary
 
-## Status summary
+The commit containing this documentation may be newer than the reviewed
+baseline. It changes the evidence map, not the reviewed implementation.
 
-| Area | Evidence established | Boundary |
+## Executive status
+
+| Area | Current public evidence | Remaining diligence item |
 | --- | --- | --- |
-| Source and CI | The reviewed commit is on `main`. Its [CI run](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618048), [security scan](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618050), [secret scan](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618016), [CodeQL](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618029), [Scorecard](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618011), [schema-security](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618042), and [security-kernel mutation gate](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618025) completed successfully. | Green repository checks do not prove that the same commit, configuration, or schema is serving every production request. |
-| Automated tests | The checked-in Linux CI evidence records **6,872 tests across 359 files**. The head CI test, conformance, security-case, integration, build, E2E, and generated-proof-stat jobs passed. | Test counts and passing suites are scoped regression evidence, not proof that every possible input, deployment configuration, or downstream effect is safe. |
-| Executable security case | [`security/security-case.json`](security/security-case.json) resolves **28 claims** over **140 hashed evidence files** and records a passing executed evidence set. The head CI `security-case` job passed. | This is a repository-defined assurance case with explicit assumptions and exclusions, not an accredited certification or a substitute for deployment testing. |
-| Production database | A read-only check of the linked production migration ledger found **135 applied migrations**, latest `20260719043735_capability_operation_action_binding`. The corresponding `ep_capability_operations` columns and four named constraints were present in the production catalog. | This is maintainer-verifiable operational evidence, not publicly reproducible from GitHub alone. It proves migration/catalog state, not application deployment, secrets/configuration, data correctness, or closure of an external attack-chain retest. |
-| GitHub security and governance | `main` requires 16 strict status checks, one approval, Code Owner review, approval of the latest push, stale-review dismissal, and conversation resolution. Force-pushes and branch deletion are disabled. Release-tag families are covered by an active immutable-tag ruleset. At review time, open CodeQL, Dependabot, and secret-scanning alert counts were all zero. | Administrator enforcement remains disabled while the organization has one owner. A genuine second owner/reviewer and verified organization domain remain open governance milestones; zero open platform alerts is not a guarantee that no vulnerability exists. |
-| Releases | Public package registries and GitHub releases were checked separately from `main`; see [Release state](#release-state). | A package version in source, a candidate tarball hash, a Git tag, and a registry publication are four different states. |
-| Standards | Public Datatracker documents are active **individual Internet-Drafts**. | They are not RFCs, working-group-adopted documents, standards-track approvals, or IETF endorsement. Staged repository drafts are not filings. |
-| External milestones | A separately authored Rust verifier has pinned interoperability results, and two separately deployed EMILIA-operated federation endpoints exercise the cross-operator mechanism. | Strict independently attested clean-room acceptance is still zero, both federation operators have the same owner, and no independent third-party operator is established. |
-| Hardware attestation | WebAuthn/mobile and TPM verification code is shipped and tested. | The public TPM fixture is software-TPM evidence, not physical hardware. No manufacturer/EK-backed TPM enrollment artifact or retained physical-device hostile-release record was found in this snapshot. |
+| Tests and build | **8,744 tests across 521 files** in [`lib/proof-stats.json`](lib/proof-stats.json); the production Next.js build passes. | Passing tests are scoped regression evidence, not whole-system proof. |
+| Executable security case | **35 claims over 255 hashed evidence files**, execution passed, bundle SHA-256 `3d2472f2e6c5fafb010be6f4846ecc49491de68ad6dcf41a74434848057134aa`. | Repository-defined assurance is not an accredited audit. |
+| Conformance | **21 suites and 331 vectors** across JavaScript, Python, and Go same-team ports; a source-free 30-file clean-room v2 kit rebuilds byte-for-byte. | Strict independent clean-room acceptance remains false until a separately attested implementation is accepted. |
+| Formal evidence | 26 principal TLC invariants; 78 selected model/runtime scenarios with 51 paired negative controls; 20 Tamarin obligations and 8 deliberately unsafe counterexamples; 35 Alloy facts and 32 assertions. | These are bounded or symbolic models under stated assumptions, not mechanized whole-program refinement. |
+| Dependencies and releases | Root and nested production audits report zero known vulnerabilities; release-chain validation covers **26 packages**; packed exports pass for 12 packages. | Publish an SBOM and third-party notice bundle with each release. |
+| Secrets and licensing | Full-history Gitleaks scan found no secret; repository-boundary and Apache-2.0 header checks pass; every public package manifest declares a license. | Repeat scans in CI and during a transaction-specific data-room export. |
+| GitHub controls | `main` has 16 strict required checks, one approval, Code Owner and latest-push review, stale-review dismissal, conversation resolution, no force-push, no deletion, read-only workflow tokens, and immutable release-tag rules. | Add a second human owner/reviewer, enforce rules for administrators, require signed commits, verify the organization domain, and then consider two approvals. |
+| AI-assisted development | Human accountability and future attribution rules are public in [`docs/AI-ASSISTED-DEVELOPMENT.md`](docs/AI-ASSISTED-DEVELOPMENT.md). | Complete counsel-led chain-of-title review in the private data room. |
 
-## Tests, conformance, and security evidence
+## Security hardening in this review
 
-The repository's generated test count is in
-[`lib/proof-stats.json`](lib/proof-stats.json). The reviewed head CI independently
-ran the Vitest suite, package tests, cross-language conformance, Postgres
-integration, schema contracts, fuzzing, E2E smoke tests, secret scanning, and a
-production build.
+Commit [`40a4044c`](https://github.com/emiliaprotocol/emilia-protocol/commit/40a4044c)
+closes a pre-authentication denial-of-service control defect: an unverified
+Bearer prefix previously contributed to the edge rate-limit key, so an attacker
+could rotate fake prefixes to obtain fresh buckets. The edge limiter now keys
+on source IP before authentication; authenticated services may add a second
+verified tenant or session limit. A regression proves two different fake
+Bearer values resolve to the same pre-auth bucket.
 
-The current same-team reference ports are JavaScript, Python, and Go. They agree
-over **21 suites and 328 vectors** according to
-[`conformance/conformance-manifest.json`](conformance/conformance-manifest.json).
-That is a cross-language consistency result across one team's ports, not three
-independent implementations.
+The same commit:
 
-The separately authored Rust verifier is pinned in
-[`conformance/external/rust-cleanroom-jdieselny.v1.json`](conformance/external/rust-cleanroom-jdieselny.v1.json).
-It records:
+- pins AES-256-GCM poll-token encryption and decryption to a 16-byte tag;
+- makes A2A extension negotiation an explicit exact-string comparison; and
+- adds a hostile lookalike-extension case.
 
-- 16 suites and 164 vectors passed against a time-pinned bundle;
-- 359 structured and parser-hostility cases passed in the pinned evaluator run;
-- `third_party_attestation: false`; and
-- `strict_clean_room_acceptance: false`, because the available signed
-  construction statement predates and does not attest the pinned hardening
-  commit.
+At the start of this review, GitHub showed two open high-severity CodeQL alerts
+for the former A2A `Array.includes` expressions. The expressions performed
+exact array membership, not URL substring validation, but visible high alerts
+are still diligence debt. The replacement preserves exact semantics and lets a
+fresh CodeQL run close the false positives. Alert closure must be checked on the
+live repository; this document does not predeclare it.
 
-The executable security case is stronger than an undifferentiated test count:
-each claim identifies enforcement paths, positive and negative vectors,
-language coverage, formal coverage or a stated gap, trust assumptions,
-exclusions, and content-addressed evidence. Reviewers should inspect the claim
-record rather than infer whole-system security from the aggregate number.
+The regenerated assurance case is in commit
+[`c8163a9c`](https://github.com/emiliaprotocol/emilia-protocol/commit/c8163a9c),
+and the clean-room consumer pins are synchronized in
+[`4d4aec96`](https://github.com/emiliaprotocol/emilia-protocol/commit/4d4aec96).
 
-The mutation baselines are also scoped regression oracles, not proofs:
+## Reproducible evidence
 
-- security kernel: **90.34%** total mutation score with a 90% breaking floor
-  ([status](security/MUTATION_STATUS.md));
-- Authorization Evidence Chain: **80.15%** with an 80% floor
-  ([status](security/AEC_MUTATION_STATUS.md)); and
-- Model-to-Matter reference implementation: **82.22%** with an 80% floor
-  ([status](security/MODEL_TO_MATTER_MUTATION_STATUS.md)).
+The authoritative generated summary is
+[`lib/proof-stats.json`](lib/proof-stats.json). Review the underlying files and
+boundaries rather than treating aggregate counts as proof.
 
-## Formal methods
+Current measured evidence includes:
 
-The formal artifacts are checked into [`formal/`](formal/) and are CI-gated.
-They prove properties of bounded or symbolic models under their stated
-assumptions; they do not prove the deployed application as a whole.
+- 8,744 tests across 521 files;
+- 35 executable claims over 255 content-addressed evidence files;
+- 21 suites and 331 conformance vectors;
+- 78 selected model/runtime scenarios, 51 paired negative controls, and 21
+  claims under explicit projection relations;
+- two formally verified obligations linked to runtime claims, 21 bounded
+  runtime-traced claims, one bounded formal-evidence claim, and 11 executable
+  operational-evidence claims; and
+- 85 catalogued red-team cases.
 
-| Method | Current public evidence | Important scope |
-| --- | --- | --- |
-| TLA+ / TLC | The handshake and identity-continuity configuration contains **26 invariants**. The capability configuration adds **10 invariants**. The [latest TLC run](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29669525965) completed successfully for both models. | The headline 26 in `lib/proof-stats.json` counts the handshake configuration only. The principal exhaustive result uses one handshake and one claim; multi-handshake exploration is bounded, not an unbounded concurrency proof. |
-| Alloy | **35 facts and 32 assertions across four models**, plus satisfiability runs, execute headlessly under Alloy 6.2.0. The [latest Alloy run](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29672325113) completed successfully. | Alloy checks finite scopes (principally 6 or 8), so “no counterexample” means no counterexample within those scopes. |
-| Tamarin | The composed Dolev-Yao model records **10 verified strict obligations** and **2 deliberately unsafe comparison obligations with concrete counterexample traces**. Standalone receipt and quorum models are gated in the [latest Tamarin run](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29670362760). | The models abstract or scope out items including WebAuthn internals, hardware custody, canonical parser implementation, human perception, arbitrary quorum sizes, complete deployment configuration, and downstream physical effects. |
+The explicit boundary in the generated file is load-bearing: selected scenario
+conformance is **not** a mechanized implementation-refinement proof.
 
-The detailed model claims, state counts, counterexamples, and exclusions are in
-[`formal/PROOF_STATUS.md`](formal/PROOF_STATUS.md) and
-[`formal/tamarin/README.md`](formal/tamarin/README.md).
+The security-case generator re-executes evidence instead of trusting committed
+verdicts. During this review it correctly refused to certify a dirty checkout,
+a stale conformance manifest, and stale clean-room pins. After those inputs were
+committed and synchronized, the same checks passed.
 
-## Security assessment boundary
+## Dependency, license, and release evidence
 
-The public repository supports these claims:
+The review ran:
 
-- a coordinated vulnerability-disclosure policy exists in
-  [`SECURITY.md`](SECURITY.md);
-- the security acknowledgments name one outside reporter whose two findings are
-  recorded as remediated and production-retested by that reporter;
-- a March 2026 Shannon-framework remediation summary records 31 findings and
-  31 remediations in
-  [`docs/security/PENTEST_REMEDIATION.md`](docs/security/PENTEST_REMEDIATION.md);
-  and
-- current repository CI, schema-security, CodeQL, secret-scanning, mutation,
-  conformance, and security-case checks are green at the reviewed commit.
+- `npm audit --omit=dev` at the root and in every nested production package;
+- `npm run check:release-chain` across 20 npm, five PyPI, and one Go package;
+- `npm run check:packed-package-exports` across 12 packed packages;
+- `node scripts/check-license-headers.js`;
+- `npm run check:repository-boundary`; and
+- a full-history Gitleaks scan over all refs.
 
-The public evidence does **not** justify calling the current system externally
-certified or the latest hostile review closed. In particular,
-[`docs/security/STRIX_REMEDIATION_2026-07-18.md`](docs/security/STRIX_REMEDIATION_2026-07-18.md)
-labels itself an **active retest, not a closure memo**. It separates branch
-controls from deployment and live retest. The successful production migration
-check above closes the migration-ledger question for this snapshot, but it does
-not establish application deployment or completion of the active external
-retest.
+All passed. Package publication uses repository workflows with OIDC and
+provenance, but source versions, Git tags, GitHub releases, candidate tarball
+hashes, and registry publication are separate states. Verify the registry and
+tag for every package included in a transaction; do not infer publication from
+`package.json` alone.
 
-The Shannon document is a remediation summary, not a raw signed third-party
-report or accreditation artifact. It should be described as a recorded
-framework assessment and remediation campaign unless independent provenance is
-provided separately.
+The repository can emit a CycloneDX 1.5 SBOM, but no governed SBOM or complete
+third-party notice bundle was found as a checked-in or release-attached artifact
+in this review. Adding both is the remaining supply-chain documentation task.
 
-## Repository security and governance
+## Repository governance
 
-The following settings were read from the live GitHub repository during this
-review:
+Live GitHub settings on 2026-08-07 established:
 
-- `main` uses strict branch protection with 16 required checks;
-- pull requests require one approval, Code Owner review, approval after the
-  latest push, dismissal of stale approvals, and resolution of conversations;
-- force-pushes and deletion of `main` are disabled;
-- workflow tokens default to read-only and cannot approve pull requests;
-- secret scanning, push protection, Dependabot security updates, and code
-  scanning are enabled;
-- open CodeQL, Dependabot, and secret-scanning alert counts were all zero; and
-- the active release-tag ruleset blocks updates and deletion across every
-  release/evidence tag family present at the time of review.
+- 16 strict required checks on `main`;
+- one approval, Code Owner review, latest-push approval, stale-review dismissal,
+  and conversation resolution;
+- force-push and branch deletion disabled;
+- workflow tokens read-only and unable to approve pull requests; and
+- immutable release-tag rules without a bypass actor.
 
-These are strong repository controls, not a claim of independent governance.
-Administrator enforcement is not enabled because the organization currently
-has one owner. The open governance milestone is to add a genuine independent
-second owner/reviewer, then require administrator compliance and consider two
-approvals. GitHub organization-domain verification also remains pending the
-required DNS proof. The organization and repository descriptions, homepage,
-license, and discoverability topics were updated to identify EMILIA as an
-open-protocol consequence firewall without claiming certification, adoption, or
-standards endorsement.
+The repository is not yet independently governed. The organization has one
+member, administrator enforcement is disabled, required signed commits are
+disabled, and the organization domain is not verified. These are governance
+gaps, not cryptographic defects. Add a genuine second human maintainer before
+turning on controls that would otherwise make the sole-owner workflow
+inoperable.
 
-## Production-applied migrations
+Six pull requests were open during the review. Four were conflicting and two
+were draft branches behind `main`. Stale security PRs should be closed or
+superseded after their verified changes land, so an acquirer does not have to
+guess whether an old branch contains an unremediated finding.
 
-Repository migration files establish intended database changes; they do not by
-themselves establish production application. For this review, a read-only query
-was made against the linked production database:
+## AI attribution and human responsibility
 
-```text
-applied migration rows: 135
-latest version: 20260719043735
-latest name: capability_operation_action_binding
-```
+The tracked repository contains tool instructions such as `AGENTS.md`,
+`CLAUDE.md`, and `GEMINI.md`. They are reproducibility and operating controls,
+not corporate titles or ownership claims, and should remain public.
 
-The catalog also contained the four columns introduced or reconciled by that
-migration, with `action_digest` non-null, and these constraints:
+The history contains **1,141 commits** with a Claude or Anthropic
+`Co-authored-by` trailer and no Codex or OpenAI co-author trailers as of this
+review. Those trailers are conspicuous provenance metadata. They are not a
+substitute for human authorship, DCO sign-off, invention records, or assignment.
+Published history should not be rewritten to remove them: rewriting would
+change commit and tag identities and weaken release provenance.
 
-```text
-ep_capability_operations_action_digest_check
-ep_capability_operations_reconciliation_complete_check
-ep_capability_operations_reconciliation_evidence_digest_check
-ep_capability_operations_reconciliation_outcome_check
-```
+Going forward, commits must identify the accountable natural person, carry that
+person's DCO sign-off, and must not name an AI system as co-author. Optional
+`Assisted-by` metadata may disclose tool use without assigning authorship.
+AI systems must never be listed as corporate officers, maintainers of record,
+standards or scientific authors, patent inventors, copyright claimants,
+reviewers, approvers, or DCO signers.
 
-The source migration is
-[`supabase/migrations/20260719043735_capability_operation_action_binding.sql`](supabase/migrations/20260719043735_capability_operation_action_binding.sql).
-No credentials, project identifier, customer data, or private configuration are
-published here.
+## Private corporate data-room checklist
 
-## Release state
+The public repository cannot close corporate ownership diligence. Counsel and
+the company should retain and review:
 
-The root repository's latest full GitHub Release is
-[`v1.0.0`](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/v1.0.0),
-published 2026-03-27. The
-[`clean-room-kit-v1`](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/clean-room-kit-v1)
-release is marked prerelease. The reviewed `main` is 1,438 commits ahead of the
-root `v1.0.0` tag, so the root release must not be used as evidence that all
-current `main` features are released.
+1. founder invention and IP assignment to the operating company;
+2. employee and contractor confidentiality and invention-assignment agreements;
+3. the founder's current-employer conflict disclosure, written carve-out, or
+   other counsel-approved evidence that EMILIA was built outside employer scope;
+4. contributor provenance and DCO records for non-founder contributions;
+5. AI-tool commercial terms, account ownership, and payment records applicable
+   when material code was generated;
+6. patent inventorship files naming natural persons and documenting conception;
+7. cap table, board approvals, officer records, and signing authority; and
+8. customer, deployment, security-assessment, and regulatory claims with exact
+   scope and issuer evidence.
 
-| Component | Source at reviewed `main` | Public registry checked during review | Due-diligence conclusion |
-| --- | --- | --- | --- |
-| `@emilia-protocol/gate` | `0.12.0` | [`0.11.0` on npm](https://www.npmjs.com/package/@emilia-protocol/gate/v/0.11.0) | The current Gate/Marvel source is ahead of the published package. Candidate `0.12.0` tarball hashes in the security case are not registry publication evidence. |
-| `@emilia-protocol/verify` | `3.11.0` | [`3.11.0` on npm](https://www.npmjs.com/package/@emilia-protocol/verify/v/3.11.0) | The version matches, but the package tree on `main` has changed since the release tag. Post-tag changes are not in the registry artifact merely because the version string is unchanged. |
-| `@emilia-protocol/mobile` | `0.1.1` | [`0.1.1` on npm](https://www.npmjs.com/package/@emilia-protocol/mobile/v/0.1.1) | The package tree matched its release tag in this review. Publishing the server-side package does not publish the native apps. |
-| `@emilia-protocol/mcp-server` | `1.1.1` | [`1.1.1` on npm](https://www.npmjs.com/package/@emilia-protocol/mcp-server/v/1.1.1) | The package tree matched its release tag in this review. |
+This is the largest remaining diligence risk because it cannot be solved by a
+clean GitHub repository alone.
 
-The release manifest in
-[`release/release-packages.v1.json`](release/release-packages.v1.json) maps
-package paths to tag prefixes and publishing workflows. It is release-process
-evidence, not proof that any individual workflow ran or that a registry accepted
-the artifact. Registry state and tags were therefore checked independently.
+## Standards, deployment, and adoption boundaries
 
-## Standards status
+`standards/posted/` is evidence of published text; the live IETF Datatracker is
+authoritative for revision and adoption status. Individual Internet-Drafts are
+not RFCs, working-group adoption, IETF consensus, or endorsement. Staged drafts
+are not filings.
 
-The live IETF Datatracker, not a repository filename, is authoritative for
-filing status. On July 21, 2026, the repository inventory was refreshed against
-the live Datatracker. The current revisions include:
-
-- [Action Evidence Boundary, revision 00](https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/)
-- [CAID, revision 01](https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/)
-- [Architecture, revision 02](https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/)
-- [Authority Introduction, revision 01](https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/)
-- [Authorization Receipts, revision 08](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
-- [EP-QUORUM, revision 03](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/)
-- [Bounded Capability Receipts, revision 00](https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/)
-- [EP-AEC, revision 04](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/)
-- [Revocation Statement, revision 00](https://datatracker.ietf.org/doc/draft-schrock-ep-revocation-statement/)
-- [Model-to-Matter, revision 01](https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/)
-
-Datatracker labels each as an **Active Internet-Draft (individual)** and states
-that an Internet-Draft is not IETF-endorsed and has no formal standing in the
-IETF standards process. No RFC stream, responsible Area Director, or working
-group adoption is shown for these documents.
-
-[`standards/STATUS.json`](standards/STATUS.json) is the repository's portfolio
-inventory. Current published snapshots are under [`standards/posted/`](standards/posted/);
-superseded and unfiled material is under [`standards/archive/`](standards/archive/).
-No private submission packet is stored in the public repository. Architecture
-documents and draft packets are design evidence, not proof of standards
-adoption or deployed behavior.
-
-## External and hardware milestones
-
-### Independent operators
-
-The federation mechanism has a live two-deployment proof documented in
-[`docs/conformance/FEDERATION-PROOF.md`](docs/conformance/FEDERATION-PROOF.md).
-The deployments use separate infrastructure and keys, but both are operated by
-EMILIA. This proves the mechanism can cross deployment boundaries; it does not
-establish a neutral or independently governed operator network.
-
-**Open milestone:** a different organization operates an instance and passes
-the live federation verification contract.
-
-### Independent implementation
-
-The external Rust result is meaningful interoperability evidence, but its
-checked-in manifest explicitly records zero strict clean-room acceptance
-pending a corrected third-party-attested construction record and independently
-pinned attestor key.
-
-**Open milestone:** third-party attestation covering the exact pinned source
-commit and construction process.
-
-### Real hardware attestation
-
-The repository ships a strict TPM 2.0 quote parser/verifier and fail-closed
-trust-input boundary in [`attestation/`](attestation/). Its checked-in quote
-fixture was generated by `swtpm` and is explicitly marked
-`hardware_backed: false`. The verifier checks a quote under a relying-party
-pinned Attestation Key and PCR policy, but it does not prove that the key is in
-physical hardware or chained to a manufacturer Endorsement Key.
-
-The mobile code contains App Attest, Play Integrity, device-key, and WebAuthn
-verification paths. The repository also records a maintainer-reported
-real-device Touch ID acceptance. That is distinct from a retained,
-independently verifiable platform-attestation and physical-device hostile-test
-package. [`docs/mobile/RELEASE.md`](docs/mobile/RELEASE.md) still treats the
-signed physical-device matrix as a release gate.
-
-**Open milestone:** retain and publish an appropriately redacted evidence
-package from physical hardware with independently pinned platform/manufacturer
-roots, exact signed artifact hashes, challenge freshness, and the hostile
-release matrix.
-
-## Certification and adoption non-claims
-
-The repository contains control mappings, deployment guidance, and evidence
-formats. Those materials may support an assessment; they are not the
-assessment. This review found no public evidence establishing:
-
-- FedRAMP authorization, FIPS module validation, agency accreditation, or an
-  operating EMILIA certification program;
-- a SOC 2 report or other accredited assurance opinion over a defined
-  production service boundary;
-- IETF adoption, consensus, endorsement, or RFC status;
-- an independent third-party production operator;
-- public-store release of the native mobile applications;
-- a production physical-hardware TPM attestation chain; or
-- customer, regulator, bank, insurer, or standards-body adoption merely from
-  the presence of examples, mappings, drafts, or partner-oriented documents.
-
-Evidence for any of these milestones should be added only as a stable public
-artifact with issuer, scope, date, subject, limitations, and a verifiable
-binding to the exact release or deployment assessed.
+Repository migrations, examples, deployment code, and passing integration tests
+do not prove that the same commit, schema, secrets, or configuration is live in
+production. This review did not refresh private production state. Likewise,
+control mappings and partner-facing material do not establish certification,
+customer adoption, an independent operator network, or physical-hardware
+attestation.
 
 ## Reproduction entry points
 
 ```bash
 git fetch origin
 git rev-parse origin/main
+npm ci
+npm run test:run
+npm run build
 npm run check:proof-stats
 npm run check:security-case
-npm run conformance
+npm run conformance:manifest:check
+npm run conformance:clean-room:v2:selftest
 npm run check:release-chain
-npm run test:mutation:security
+npm run check:packed-package-exports
+npm run check:repository-boundary
+npm audit --omit=dev
 ```
 
-Formal rerun instructions are in
-[`formal/RUN_TLC.md`](formal/RUN_TLC.md),
+Formal rerun instructions are in [`formal/RUN_TLC.md`](formal/RUN_TLC.md),
 [`formal/RUN_ALLOY.md`](formal/RUN_ALLOY.md), and
-[`formal/tamarin/README.md`](formal/tamarin/README.md). Production migration
-verification requires authorized read-only access to the deployment and cannot
-be reproduced from the public repository alone.
+[`formal/tamarin/README.md`](formal/tamarin/README.md). Some formal checks
+require separately installed toolchains. Private deployment checks require
+authorized read-only access and are intentionally not reproducible from this
+public repository.
