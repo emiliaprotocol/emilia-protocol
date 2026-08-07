@@ -1635,9 +1635,9 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         <front>
           <title>The Canonical Action Identifier (CAID)</title>
           <author fullname="Iman Schrock"/>
-          <date year="2026" month="July"/>
+          <date year="2026" month="August" day="6"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-01"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-02"/>
       </reference>
       <reference anchor="I-D.thallapelly-oasnt" target="https://datatracker.ietf.org/doc/draft-thallapelly-oasnt/">
         <front>

@@ -2020,7 +2020,7 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
    [EP-CAID]  Schrock, I., "The Canonical Action Identifier (CAID)",
               Work in Progress, Internet-Draft, draft-schrock-canonical-
-              action-identifier-01, July 2026,
+              action-identifier-02, 6 August 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-canonical-
               action-identifier/>.
 

@@ -14,12 +14,14 @@ Validated on 2026-08-06 from the isolated CAID -02 working packet.
 - `node caid/conformance/run.mjs` passed the registry identity check and all
   existing JavaScript, Python, and Go core, mapping, and consequential-action
   vectors.
-- `node scripts/check-caid-02.mjs` verifies Standards Track metadata, current
-  receipts/AEB/AEC/OASNT references, absence of stale revision strings, the
+- `node scripts/check-caid-02.mjs` verifies Standards Track metadata, the
+  currently posted receipts-09 reference, current AEB/AEC/OASNT references,
+  absence of future or stale revision strings, the
   target-bound `tool.call.1` public registry shape, the independently
   recomputed example CAID, render status, and all three checksums.
 - A fresh `xml2rfc 3.34.0` rebuild, followed by the same HTML whitespace
   normalization, produced TXT and HTML byte-identical to the staged renders.
 
-This packet is staged and unfiled. It must follow receipts-10 so its reference
-to that revision resolves when CAID-02 is submitted.
+This packet is staged and unfiled. File it first. It references the currently
+posted receipts-09; receipts-10 then follows with a normative reference pinned
+to CAID-02.

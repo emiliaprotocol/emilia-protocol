@@ -25,13 +25,14 @@ assert(source.includes('docName="draft-schrock-canonical-action-identifier-02"')
 assert(source.includes('category="std"'), 'candidate is not Standards Track');
 assert(!source.includes('submissionType='), 'individual draft must not claim an adopted stream');
 for (const current of [
-  'draft-schrock-ep-authorization-receipts-10',
+  'draft-schrock-ep-authorization-receipts-09',
   'draft-schrock-action-evidence-boundary-03',
   'draft-schrock-ep-authorization-evidence-chain-05',
   'draft-thallapelly-oasnt-caid-01',
 ]) assert(source.includes(current), `missing current reference ${current}`);
 for (const stale of [
   'draft-schrock-ep-authorization-receipts-08',
+  'draft-schrock-ep-authorization-receipts-10',
   'draft-schrock-action-evidence-boundary-00',
   'draft-schrock-ep-authorization-evidence-chain-04',
 ]) assert(!source.includes(stale), `stale reference ${stale}`);

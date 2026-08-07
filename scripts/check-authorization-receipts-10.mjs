@@ -41,6 +41,8 @@ const oasntReference = xml.indexOf('<reference anchor="I-D.thallapelly-oasnt"');
 invariant(normativeStart >= 0 && informativeStart > normativeStart, 'Reference groups are malformed');
 invariant(caidReference > normativeStart && caidReference < informativeStart, 'CAID must be normative');
 invariant(oasntReference > normativeStart && oasntReference < informativeStart, 'OASNT profile dependency must be normative');
+invariant(xml.includes('draft-schrock-canonical-action-identifier-02'), 'Normative CAID reference must pin -02');
+invariant(!xml.includes('draft-schrock-canonical-action-identifier-01'), 'Normative CAID reference must not remain on -01');
 
 for (const required of [
   'EP-PRESENTATION-BINDING-v1',

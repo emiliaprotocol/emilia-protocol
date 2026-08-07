@@ -8,6 +8,10 @@ Upload only:
 
 - `UPLOAD-THIS/draft-schrock-ep-authorization-receipts-10.xml`
 
+File this packet immediately after Datatracker shows
+`draft-schrock-canonical-action-identifier-02`. Its normative CAID reference is
+pinned to -02.
+
 Revision -10:
 
 - replaces the unverifiable faithful-rendering claim with the optional,
