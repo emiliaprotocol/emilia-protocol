@@ -1,24 +1,22 @@
-# EMILIA Gate — the Consequence Firewall
+# EMILIA — the authority control plane for autonomous work
 
 *Product brief · 2026-07 · EMILIA Protocol, Inc.*
 
-> **If an agent cannot produce a valid receipt, it cannot change money, code, permissions, data,
-> infrastructure, energy, or physical state.**
+> **Set the mandate once. Let the agent work. Gate enforces every consequential unit of work.**
 
-**The frame:** *Antivirus scanned files. Firewalls filtered packets. EMILIA verifies actions before
-machines change the world.* The category is the **Consequence Firewall**: it sits at the
-**actuator boundary** — before API calls, deploys,
+**The frame:** EMILIA is the authority control plane for autonomous work. A human or institution
+defines a finite operating mandate—mission, limits, evidence, expiry, delegation, and exception
+rules—and agents work unattended inside it. **EMILIA Gate** is the commercial Consequence Firewall
+that enforces each exact unit of work at the **actuator boundary**—before API calls, deploys,
 payments, deletes, exports; before robot motion, tool use, doors, lifts, vehicles; before energy
 curtailment posture changes; before autonomous systems execute bounded actions — **not inside the
 model.**
 
-**The world-saving sentence (sober enough for serious rooms, big enough to carry the mission):**
-*In a world where machines can act, EMILIA makes consequential action require accountable human
-authorization before execution.* EMILIA does not stop every evil system — a bad actor can build an
-unguarded machine. It makes **unreceipted systems untrusted**, so legitimate infrastructure, robots,
-APIs, clouds, and critical equipment refuse consequential actions without a valid receipt. That is
-how TLS, code signing, and SOC 2 won: not by stopping every bad actor, but by making serious buyers
-reject systems that lack the control.
+**The category sentence:**
+*In a world where machines perform work, EMILIA makes their authority finite, executable, and
+verifiable at the point of consequence.* A human decision is one authority source and an exception
+path, not the default execution model. EMILIA does not stop every unguarded system; it protects only
+the paths where a resource owner deploys Gate with complete mediation.
 
 ## The category
 
@@ -76,14 +74,15 @@ When a protected workflow requires evaluated-candidate evidence, Gate first veri
 qualification remains current for the exact measured candidate, assignment, and request. That pure
 decision is side-effect free and supplies only one evidence leg to local Gate composition.
 
-A guarded action runs only if its receipt is **valid** (Ed25519 / canonical JSON, pinned issuer),
-**in-scope** (bound to the exact action), **sufficiently assured** (meets the action's tier),
-**fresh**, and **unused** (one-time). Otherwise: a machine-readable `Receipt-Required` challenge
-(HTTP 428) telling the agent exactly what to bring. Every decision is appended to a **tamper-evident
-evidence log** — the compliance/insurance artifact.
+A guarded action runs only if its operating mandate and required evidence are **valid** under pinned
+native rules, **in-scope** for the exact action, **sufficient** under the relying party's requirement,
+**fresh**, and **unused** where one-time semantics apply. A profile that requires a fresh human
+decision can use the shipped `Receipt-Required` challenge (HTTP 428) to tell the agent what to bring;
+other profiles can use bounded capabilities or natively verified evidence without manufacturing a
+human click. Every admission decision is appended to a tamper-evident evidence log.
 
-Assurance tiers: `software` < `class_a` (device signoff / WebAuthn) < `quorum` (m-of-n, two-person
-rule). The action's risk sets the floor.
+When a human ceremony is required, assurance tiers are `software` < `class_a` (device signoff /
+WebAuthn) < `quorum` (m-of-n, two-person rule). The relying party sets the floor.
 
 For a bounded capability, Gate also reserves the exact action and spend before
 entering the provider boundary. Overspend and replay fail closed. Success
@@ -104,18 +103,18 @@ partnership, endorsement, or license. What the reference proves is the
 cryptographic and state-machine boundary: only the exact mutually approved
 release can enter the protected effect once.
 
-## The EP-to-EP handshake (this is the protocol)
+## One approval-profile loop
 
-Legitimate machines should speak in receipts. A serious system shouldn't just receive a command — it
-should ask "where is the receipt? who authorized this? under what policy? was it already used? what
-proof do I emit after I act?" That is the EP-Gate handshake, and it's the full firewall loop:
+When a mandate requires fresh exact-action human authority, Gate can challenge for a receipt and run
+this loop:
 
 ```
 request action → 428 challenge → human/quorum signs exact action → verify
   (authority · policy · freshness · WYSIWYS · tenant · quorum · replay) → invoke → bound execution record
 ```
 
-The two halves both ship in `@emilia-protocol/gate`: `check()` does the pre-execution authorization
+This is one supported authority profile, not the whole protocol and not a claim that every action
+needs a human. The two halves ship in `@emilia-protocol/gate`: `check()` does the pre-execution authorization
 (challenge → verify, deny-by-default); `recordExecution()` emits an execution-evidence record bound
 to the exact authorization decision and the wrapper's stated outcome. That binding preserves what
 the local runtime reported and detects action substitution. It does not by itself prove provider
@@ -127,8 +126,9 @@ authorization into outcome truth.
 ## It's deployed by the defender (this is the key framing)
 
 The Gate is installed by the **resource owner** — the bank, the cloud API, the database, the robot
-controller, the grid operator — in front of what can be mutated. An agent wanting to act must
-**bring a receipt** the gate verifies. There is no "EP must talk to EP everywhere" mandate. The
+controller, the grid operator — in front of what can be mutated. An agent wanting to act must present
+the mandate and evidence the owner's pinned requirement demands for that exact work. There is no
+"EP must talk to EP everywhere" mandate. The
 first deployment protects its resource owner without ecosystem-wide adoption. An acceptance effect
 may emerge later if consequential rails require compatible evidence and agents adopt issuance to
 reach them. That is a future adoption hypothesis analogous to TLS acceptance, not a present network,
@@ -185,14 +185,13 @@ Plant the gate at every actuator boundary, widest-adoption-first:
 
 ## Standards
 
-The public standards basis includes 14 active `draft-schrock` individual
-Internet-Drafts. The July 22 wave posted AEB -00, CAID -01, Architecture -02,
-AEC -04, Authorization Receipts -08, Revocation Statement -00, and
-Model-to-Matter -01. Bounded Capability Receipts -00, Quorum -03, and the other
-active revisions remain individual submissions as recorded in
-`standards/STATUS.json` and live Datatracker. None is an RFC, an adopted
-working-group item, or IETF endorsement. Conformance is earned by executable
-harnesses, not asserted by draft status.
+The governed repository inventory currently tracks 23 active Datatracker records: 20
+`draft-schrock-*` records and three coauthored records. Current snapshots include AE-CHALLENGE -03,
+AEB -03, CAID -02, Architecture -02, AEC -05, Authorization Receipts -10, Bounded Capability
+Receipts -03, Quorum -03, and Model-to-Matter -04. `standards/STATUS.json` is the repository source
+and the live Datatracker is authoritative for current revision and status. None is an RFC, an adopted
+working-group item, or IETF endorsement. Conformance is earned by executable harnesses, not asserted
+by draft status.
 
 Gate Qualification v2 is an implementation profile over existing public formats and extension
 points. It is not a new Internet-Draft and must not be described as IETF submission, review, adoption,
@@ -207,10 +206,11 @@ without issuing an audit opinion or accredited certification.
 ## Boundary (state it honestly)
 
 EMILIA Gate cannot stop a malicious operator who controls their own stack from simply not deploying
-it. What it does: make legitimate infrastructure refuse unreceipted consequential actions by default,
-and let clouds/rails/regulators/insurers *require* the receipt — so bad actors get shut out of the
-rails that adopt it. Necessary, not sufficient. That is how a standard wins: first it protects the
-careful, then it becomes a procurement requirement, then unprotected systems look reckless.
+it. What it does: make legitimate infrastructure refuse consequential actions that lack the valid
+authority evidence required by the resource owner, and let clouds, rails, regulators, and insurers
+require a suitable evidence profile. Necessary, not sufficient. That is how a standard wins: first
+it protects the careful, then it becomes a procurement requirement, then unprotected systems look
+reckless.
 
 A portable qualification does not change that limit. It establishes only that accepted evaluation
 evidence remains current for the exact measured candidate, assignment, and request under pinned
@@ -227,4 +227,4 @@ settlement profile that requires a gated route.
 EMILIA Gate is the **horizontal product**; the verticals are profiles of it:
 **Receipt-Required** (MCP/dev) is the adoption wedge that seeds Gate deployment · **GRACE** is the
 energy vertical · **defense/autonomy** is the physical-action vertical. One company, one sentence:
-**the pre-execution trust layer for machines that can change the world.**
+**the authority control plane for autonomous work.**
