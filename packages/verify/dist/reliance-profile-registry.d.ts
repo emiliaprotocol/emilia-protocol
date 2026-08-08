@@ -22,7 +22,9 @@ export declare function signRelianceProfileEntry({ registry_id, profile_id, prof
  * @param {Array<{registry_id:string,key_id?:string,public_key:string}>} [opts.pinnedRegistryKeys]
  * @param {string} [opts.expectProfileId]
  * @param {number} [opts.expectMinEpoch]
- * @returns {{verified:boolean, accepted:boolean, profile:(object|null), checks:object, reason?:string, entry_digest?:string, key_id?:string, registry_id?:string, profile_id?:string, registry_epoch?:number}}
+ * @returns {{verified:boolean, accepted:boolean, profile:(object|null), checks:object, reason?:string, entry_digest?:string, profile_hash?:string, key_id?:string, registry_id?:string, profile_id?:string, registry_epoch?:number}}
+ *   `profile`, when present, is a deep frozen clone of the entry's profile and
+ *   `profile_hash` is the digest of those exact bytes.
  */
 export declare function verifyRelianceProfileEntry(entry: Obj, opts?: RegistryOptions): {
     verified: boolean;
@@ -39,6 +41,7 @@ export declare function verifyRelianceProfileEntry(entry: Obj, opts?: RegistryOp
     checks: Record<string, boolean>;
     reason: string;
     entry_digest: string;
+    profile_hash?: undefined;
     key_id?: undefined;
     registry_id?: undefined;
     profile_id?: undefined;
@@ -46,10 +49,11 @@ export declare function verifyRelianceProfileEntry(entry: Obj, opts?: RegistryOp
 } | {
     verified: boolean;
     accepted: boolean;
-    profile: any;
+    profile: Obj;
     checks: Record<string, boolean>;
     reason: string;
     entry_digest: string;
+    profile_hash: string;
     key_id: string;
     registry_id: string;
     profile_id?: undefined;
@@ -57,14 +61,33 @@ export declare function verifyRelianceProfileEntry(entry: Obj, opts?: RegistryOp
 } | {
     verified: boolean;
     accepted: boolean;
-    profile: any;
+    profile: Obj;
     checks: Record<string, boolean>;
     key_id: string;
     registry_id: string;
     profile_id: any;
     registry_epoch: any;
     entry_digest: string;
+    profile_hash: string;
     reason?: undefined;
+};
+/**
+ * Re-check that a verification result's profile still hashes to the
+ * `profile_hash` the result was issued with. Pure, offline, and independent of
+ * the registry entry: a consumer holding only the result can prove the bytes it
+ * is about to evaluate are the bytes the verdict was computed over.
+ *
+ * BINDING ONLY, never acceptance: `ok` says the profile matches its hash, and
+ * says nothing about `verified` or `accepted` — read those fields separately.
+ * Fail-closed with a reason; an expected mismatch returns, it never throws.
+ *
+ * @param {object} result a verifyRelianceProfileEntry() result
+ * @returns {{ok:boolean, reason:(string|null), profile_hash:(string|null)}}
+ */
+export declare function assertRelianceProfileBound(result: Obj): {
+    ok: boolean;
+    reason: string | null;
+    profile_hash: string | null;
 };
 export { RELIANCE_PROFILE_VERSION };
 //# sourceMappingURL=reliance-profile-registry.d.ts.map

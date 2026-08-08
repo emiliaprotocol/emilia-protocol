@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import {
   signRelianceProfileEntry, verifyRelianceProfileEntry, profileRegistryEntryDigest,
+  assertRelianceProfileBound,
 } from '../packages/verify/reliance-profile-registry.js';
 import { validateRelianceProfile } from '../packages/verify/reliance.js';
 
@@ -90,5 +91,129 @@ describe('EP-RELIANCE-PROFILE-REGISTRY-v1 invariants', () => {
     expect(r.accepted).toBe(false);
     expect(r.reason).toBe('registry_key_not_pinned');
     expect(r.profile).not.toBeNull(); // profile surfaced for inspection, but not trusted
+  });
+});
+
+// A verdict that hands back a LIVE reference to the entry's profile is not a
+// verdict: the holder of an `accepted: true` result could rewrite the rule the
+// acceptance was computed over (and, through the shared reference, the entry
+// itself), leaving a result that describes bytes no entry_digest or
+// profile_hash ever covered. The resolved profile is a frozen clone instead.
+describe('EP-RELIANCE-PROFILE-REGISTRY-v1 resolved-profile immutability', () => {
+  const PINNED = () => ({ pinnedRegistryKeys: [{ registry_id: 'emilia-registrar', public_key: registrarPub }] });
+  const resolve = (opts, profile = NCPDP, profile_id = 'ncpdp.specialty-pa.v1') => {
+    const entry = signRelianceProfileEntry({ registry_id: 'emilia-registrar', profile_id, profile, registry_epoch: 3 }, registrarKey);
+    return { entry, r: verifyRelianceProfileEntry(entry, opts) };
+  };
+  // Strict-mode ESM throws on a frozen write; swallow it so the assertion that
+  // follows proves the property (unchanged bytes) under either semantics.
+  const attempt = (mutate) => { try { mutate(); } catch { /* frozen: TypeError is the other acceptable outcome */ } };
+
+  it('an accepted verdict cannot be downgraded through its profile reference, and the entry is untouched', () => {
+    const { entry, r } = resolve(PINNED());
+    expect(r.accepted).toBe(true);
+    expect(r.profile.required_assurance).toBe('class_a');
+    expect(Object.isFrozen(r.profile)).toBe(true);
+
+    attempt(() => { r.profile.required_assurance = 'signed'; });
+
+    expect(r.profile.required_assurance).toBe('class_a');   // ineffective on the result
+    expect(entry.profile.required_assurance).toBe('class_a'); // and no aliasing back into the entry
+    expect(profileRegistryEntryDigest(entry)).toBe(entry.signature.entry_digest);
+    expect(verifyRelianceProfileEntry(entry, PINNED()).accepted).toBe(true);
+  });
+
+  it('the resolved profile is a clone, never the entry object itself', () => {
+    const { entry, r } = resolve(PINNED());
+    expect(r.profile).not.toBe(entry.profile);
+    expect(r.profile.required_evidence).not.toBe(entry.profile.required_evidence);
+    expect(r.profile).toEqual(entry.profile); // same bytes, different object graph
+  });
+
+  it('the accepted result restates the profile_hash of the exact bytes it carries', () => {
+    const { entry, r } = resolve(PINNED());
+    expect(r.profile_hash).toBe(entry.profile_hash);
+    expect(assertRelianceProfileBound(r)).toEqual({ ok: true, reason: null, profile_hash: entry.profile_hash });
+  });
+
+  it('nested objects and arrays inside the resolved profile are frozen too', () => {
+    const deep = seed('medi-cal-hospice-integrity.v1.json');
+    const { entry, r } = resolve(PINNED(), deep, 'medi-cal.hospice-integrity.v1');
+    expect(r.accepted).toBe(true);
+
+    const nested = r.profile.x_emilia_program_integrity;
+    const action = nested.action_control_manifest.actions[0];
+    expect(Object.isFrozen(nested)).toBe(true);
+    expect(Object.isFrozen(nested.privacy)).toBe(true);
+    expect(Object.isFrozen(r.profile.required_evidence)).toBe(true);
+    expect(Object.isFrozen(action)).toBe(true);
+    expect(Object.isFrozen(action.control.execution_binding.required_fields)).toBe(true);
+
+    attempt(() => { nested.privacy.reference_artifact = 'real PHI'; });
+    attempt(() => { action.risk = 'low'; });
+    attempt(() => { action.receipt_required = false; });
+    attempt(() => { r.profile.required_evidence.push('nothing'); });
+    attempt(() => { r.profile.required_evidence[0] = 'nothing'; });
+
+    expect(nested.privacy.reference_artifact).toBe('PHI-free and synthetic');
+    expect(action.risk).toBe('critical');
+    expect(action.receipt_required).toBe(true);
+    expect(r.profile.required_evidence).toEqual(deep.required_evidence);
+    expect(entry.profile.x_emilia_program_integrity.privacy.reference_artifact).toBe('PHI-free and synthetic');
+    expect(assertRelianceProfileBound(r).ok).toBe(true);
+  });
+
+  it('assertRelianceProfileBound refuses a result whose profile was swapped for a downgraded copy', () => {
+    const { r } = resolve(PINNED());
+    const downgraded = { ...structuredClone(r.profile), required_assurance: 'signed' };
+    const swapped = { ...r, profile: downgraded };
+
+    expect(swapped.accepted).toBe(true); // the verdict still SAYS accepted...
+    expect(assertRelianceProfileBound(swapped)).toEqual({ ok: false, reason: 'profile_hash_mismatch', profile_hash: null });
+
+    r.profile = downgraded; // the same swap performed in place on the result object
+    expect(assertRelianceProfileBound(r).ok).toBe(false);
+    expect(assertRelianceProfileBound(r).reason).toBe('profile_hash_mismatch');
+  });
+
+  it('assertRelianceProfileBound is a byte check, not an identity check, and fails closed on a missing binding', () => {
+    const { r } = resolve(PINNED());
+    // A consumer's own mutable clone of the same bytes still binds: the guard
+    // asserts what the profile IS, not which object it is.
+    expect(assertRelianceProfileBound({ ...r, profile: structuredClone(r.profile) }).ok).toBe(true);
+    expect(assertRelianceProfileBound(null).reason).toBe('result_malformed');
+    expect(assertRelianceProfileBound({ profile: null, profile_hash: r.profile_hash }).reason).toBe('profile_missing');
+    expect(assertRelianceProfileBound({ profile: r.profile }).reason).toBe('profile_hash_missing_or_malformed');
+    expect(assertRelianceProfileBound(verifyRelianceProfileEntry({}, PINNED())).ok).toBe(false);
+  });
+
+  it('cloning a profile carrying a literal __proto__ member neither pollutes a prototype nor moves the hash', () => {
+    // JSON.parse is the realistic source: it makes __proto__ an OWN property,
+    // which canonicalize() hashes. A clone built by assignment would silently
+    // drop it (breaking profile_hash) or swap a prototype instead.
+    const hostile = { ...NCPDP, ...JSON.parse('{"x_note":{"__proto__":{"polluted":true}}}') };
+    const { entry, r } = resolve(PINNED(), hostile, 'hostile.proto.v1');
+
+    expect(r.accepted).toBe(true);
+    expect(r.profile_hash).toBe(entry.profile_hash);
+    expect(assertRelianceProfileBound(r).ok).toBe(true);
+    expect(Object.isFrozen(r.profile.x_note)).toBe(true);
+    expect(({} as any).polluted).toBeUndefined();
+    expect((Object.prototype as any).polluted).toBeUndefined();
+  });
+
+  it('a verified-but-unpinned result also resolves a frozen, non-aliased profile', () => {
+    const { entry, r } = resolve({ pinnedRegistryKeys: [] });
+    expect(r.verified).toBe(true);
+    expect(r.accepted).toBe(false);
+    expect(r.reason).toBe('registry_key_not_pinned');
+    expect(r.profile).not.toBe(entry.profile);
+    expect(Object.isFrozen(r.profile)).toBe(true);
+
+    attempt(() => { r.profile.required_assurance = 'signed'; });
+
+    expect(r.profile.required_assurance).toBe('class_a');
+    expect(entry.profile.required_assurance).toBe('class_a');
+    expect(assertRelianceProfileBound(r).ok).toBe(true); // bound, but still not accepted
   });
 });

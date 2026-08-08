@@ -65,6 +65,20 @@ not trusted. Fail-closed throughout: unsupported version, malformed or invalid
 signature, digest or hash mismatch, an ill-formed inner profile, a `profile_id`
 mismatch, or a stale epoch each refuse.
 
+## What the result carries
+
+The `profile` on a result is a deep, recursively frozen **clone**. It shares no
+object identity with the entry, so nothing downstream of a verdict can rewrite
+the rule the verdict was computed over, and no write through the result can
+reach the entry. The result also restates `profile_hash` for the exact bytes it
+carries.
+
+`assertRelianceProfileBound(result)` re-derives that hash from the profile on a
+result and returns `{ ok, reason, profile_hash }`, refusing with
+`profile_hash_mismatch` when the two no longer agree. It is a binding check
+only: it says the bytes about to be evaluated are the bytes the verdict covered,
+and says nothing about `accepted`, which is read from its own field.
+
 ## Seed profiles
 
 `public/schemas/reliance-profiles/` ships `ncpdp.specialty-pa.v1` and
