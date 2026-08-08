@@ -3,9 +3,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { canonicalize, verifyActionBinding, verifyPinnedSource } from './reperform.mjs';
+import {
+  canonicalize,
+  verifyActionBinding,
+  verifyConfirmedVectorDelta,
+  verifyPinnedSource,
+} from './reperform.mjs';
 
 const RETURN_PATH = fileURLToPath(new URL('./independent-return.v1.json', import.meta.url));
+const LIVE_STATE_PATH = fileURLToPath(new URL('./confirmed-live-state.v1.json', import.meta.url));
 
 test('the checked-in return preserves the bounded accepted result', async () => {
   const returned = JSON.parse(await readFile(RETURN_PATH, 'utf8'));
@@ -15,6 +21,18 @@ test('the checked-in return preserves the bounded accepted result', async () => 
   assert.equal(returned.accepted_result.principal_linkage, 'PROPOSED');
   assert.equal(returned.accepted_result.psea_conformance, 'NOT_ESTABLISHED');
   assert.equal(returned.accepted_result.provider_effect, 'INDETERMINATE');
+});
+
+test('the checked-in live state preserves the historical return and confirms only WHO', async () => {
+  const live = JSON.parse(await readFile(LIVE_STATE_PATH, 'utf8'));
+  assert.equal(live.historical_return.source_commit, 'e8c00e5014c52a4cb4ff51d24c360db5c82d599e');
+  assert.equal(live.historical_return.principal_linkage_status, 'PROPOSED');
+  assert.equal(live.verification.frozen_fixture_files, 'BYTE_IDENTICAL');
+  assert.equal(live.verification.historical_to_live_delta, 'TWO_STATUS_FIELDS_ONLY');
+  assert.equal(live.confirmed_state.principal_linkage, 'SAME');
+  assert.equal(live.confirmed_state.principal_linkage_status, 'CONFIRMED');
+  assert.equal(live.confirmed_state.principal_mapping_basis, 'SUPPLIED_NOT_DERIVED');
+  assert.equal(live.confirmed_state.psea_conformance, 'NOT_ESTABLISHED');
 });
 
 test('the independent JCS implementation reproduces the pinned payload order', () => {
@@ -59,5 +77,43 @@ test('C7: a mismatched authenticated action binding cannot produce WHAT equivale
       },
     }),
     /action_binding digest/,
+  );
+});
+
+test('the live-state verifier permits only the two confirmed-status changes', () => {
+  const historical = {
+    status: 'proposed',
+    input: {
+      join_who: {
+        status: 'proposed convention, pending cross-run confirmation',
+      },
+    },
+    expected: {
+      stages: {
+        action_linkage: { value: 'EQUIVALENT' },
+        principal_linkage: { value: 'SAME' },
+      },
+    },
+  };
+  const live = JSON.parse(JSON.stringify(historical));
+  live.status = 'confirmed';
+  live.input.join_who.status =
+    'confirmed at head 8bed788 (Mohamad Khalil-Yossif); WHO linkage established, PSEA conformance not established, kid-to-principal mapping supplied not derived';
+
+  assert.deepEqual(
+    verifyConfirmedVectorDelta(
+      Buffer.from(JSON.stringify(historical)),
+      Buffer.from(JSON.stringify(live)),
+    ),
+    { action_linkage: 'EQUIVALENT', principal_linkage: 'SAME' },
+  );
+
+  live.input.join_what = { changed: true };
+  assert.throws(
+    () => verifyConfirmedVectorDelta(
+      Buffer.from(JSON.stringify(historical)),
+      Buffer.from(JSON.stringify(live)),
+    ),
+    /historical-to-live vector delta/,
   );
 });
