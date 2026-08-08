@@ -33,12 +33,12 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.emiliaprotocol.ai'),
   title: {
-    default: 'EMILIA Gate — Consequence Firewall for AI Agents',
+    default: 'EMILIA — Authority Control Plane for Autonomous Work',
     template: '%s | EMILIA',
   },
   description:
-    'EMILIA Gate blocks consequential AI-agent actions until exact-action authority verifies. '
-    + 'EMILIA Protocol keeps the proof open, portable, and independently reproducible.',
+    'Define a finite operating mandate once, let agents work inside it, and enforce each '
+    + 'consequential unit of work with EMILIA Gate.',
   applicationName: 'EMILIA Gate',
   keywords: [
     'AI agent authorization',
@@ -66,9 +66,9 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://www.emiliaprotocol.ai',
     siteName: 'EMILIA Protocol',
-    title: 'EMILIA Gate — The Consequence Firewall for AI Agents',
+    title: 'EMILIA — Authority Control Plane for Autonomous Work',
     description:
-      `Protocol proves. Gate prevents. Machine-verifiable evidence: ${PROOF_SUMMARY}.`,
+      `AI workers need authority, not constant supervision. Protocol proves. Gate prevents. Machine-verifiable evidence: ${PROOF_SUMMARY}.`,
     images: [
       {
         url: '/og-sequence.jpg',
@@ -80,7 +80,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA Gate — The Consequence Firewall for AI Agents',
+    title: 'EMILIA — Authority Control Plane for Autonomous Work',
     description:
       `Protocol proves. Gate prevents. ${PROOF_SUMMARY}.`,
     images: ['/og-sequence.jpg'],
@@ -116,8 +116,8 @@ const ORGANIZATION_JSONLD = {
   url: 'https://www.emiliaprotocol.ai',
   logo: 'https://www.emiliaprotocol.ai/logo.png',
   description:
-    'EMILIA builds the commercial Gate enforcement product on the open EMILIA Protocol proof substrate. '
-    + 'Protocol verification remains Apache-2.0 and independently reproducible.',
+    'EMILIA is the authority control plane for autonomous work. The commercial Gate enforcement '
+    + 'product runs on the open Apache-2.0 EMILIA Protocol proof substrate.',
   foundingDate: '2026-06-03',
   sameAs: [
     'https://github.com/emiliaprotocol',

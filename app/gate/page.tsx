@@ -17,7 +17,7 @@ const GATED = [
   { type: 'regulated.decision.override', label: 'Regulated override', sample: 'Benefit, credit, clinical, compliance, or safety decision override', tier: 'Quorum' },
 ];
 
-const LOOP = [
+const RECEIPT_REQUIRED_LOOP = [
   { n: '1', title: 'Request', body: 'An agent or system requests a consequential action at the actuator boundary.' },
   { n: '2', title: 'Challenge', body: 'If the action is guarded and no valid receipt is present, the gate returns 428 Receipt Required and tells the agent exactly what to bring.' },
   { n: '3', title: 'Authorize', body: 'A directory-bound approver — or a quorum, for hard cuts — signs the exact action on an enrolled device-bound authenticator.' },
@@ -178,10 +178,10 @@ export default function GatePage() {
             </h2>
             <p style={{ ...styles.body, maxWidth: 680, marginTop: 16 }}>
               The gate is deployed by the resource owner — the bank, the cloud API, the database, the
-              robot controller, the grid. An agent that wants to act must bring a receipt the gate
-              verifies. The guarantee is only as strong as that mediation: every protected path must
-              reach Gate at the actual system of record or actuator. Verification itself is open and
-              can run offline without an EMILIA service.
+              robot controller, the grid. An agent that wants to act must present the mandate and
+              evidence the owner requires for that exact work. The guarantee is only as strong as
+              that mediation: every protected path must reach Gate at the actual system of record or
+              actuator. Verification itself is open and can run offline without an EMILIA service.
             </p>
           </div>
         </section>
@@ -314,13 +314,19 @@ export default function GatePage() {
           </div>
         </section>
 
-        {/* The loop */}
+        {/* One authority profile */}
         <section id="loop" style={styles.section}>
           <div style={styles.container}>
-            <div style={styles.eyebrow}>THE LOOP</div>
+            <div style={styles.eyebrow}>ONE AUTHORITY PROFILE · RECEIPT REQUIRED</div>
             <h2 style={{ ...styles.h2, marginTop: 12 }}>Request → challenge → sign → verify → execute → proof.</h2>
+            <p style={{ ...styles.body, maxWidth: 720, marginTop: 16 }}>
+              When a mandate requires a fresh exact-action human or quorum decision, Gate can run
+              this approval loop. It is one supported profile, not a requirement that every action
+              receive a new human click; bounded mandates can authorize unattended work inside
+              their finite scope.
+            </p>
             <div style={{ marginTop: 32 }}>
-              {LOOP.map((s) => (
+              {RECEIPT_REQUIRED_LOOP.map((s) => (
                 <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.border}` }}>
                   <div style={{ fontFamily: font.mono, fontSize: 14, color: color.gold, fontWeight: 600, minWidth: 24 }}>{s.n}</div>
                   <div>
@@ -343,7 +349,7 @@ export default function GatePage() {
           <div style={styles.container}>
             <div style={styles.eyebrow}>THE COMPLETE SYSTEM</div>
             <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 760 }}>
-              Gate enforces. The surrounding layers keep it human, open, and reproducible.
+              Gate enforces. The surrounding layers keep authority bounded, open, and reproducible.
             </h2>
             <div style={{ marginTop: 32, borderTop: `1px solid ${color.border}` }}>
               {[
@@ -379,7 +385,7 @@ export default function GatePage() {
                 ['Evaluation qualification', 'Gate Qualification v2', 'Does accepted evaluation evidence still match this exact measured candidate, assignment, and protected request?'],
                 ['Call governance', 'AgentROA', 'Does the call remain inside the agent’s verified delegated scope?'],
                 ['Policy permit', 'ORPRG', 'Does the native policy evidence prove this effect was permitted?'],
-                ['Approver authorization + control', 'EMILIA', 'Did the directory-bound approver authorize this exact action, and may the protected executor mutate now?'],
+                ['Exact authority + control', 'EMILIA', 'Does the mandate and any required approver evidence authorize this exact action, and may the protected executor mutate now?'],
               ].map(([label, title, body]) => (
                 <div key={title} style={{ ...styles.card, padding: 24 }}>
                   <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.2, textTransform: 'uppercase' }}>{label}</div>
@@ -580,11 +586,11 @@ export default function GatePage() {
         <section style={styles.section}>
           <div style={styles.container}>
             <div style={styles.eyebrow}>THE HONEST LIMIT</div>
-            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 760 }}>It does not stop every bad actor. It makes unreceipted systems untrusted.</h2>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 760 }}>It does not stop every bad actor. It makes unauthorized paths visible and refusable.</h2>
             <p style={{ ...styles.body, maxWidth: 680, marginTop: 16 }}>
               A bad actor can build an unguarded machine. EMILIA Gate makes legitimate
-              infrastructure refuse unreceipted consequential actions by default — so the parties
-              with leverage (clouds, payment rails, regulators, insurers) can require a receipt.
+              infrastructure refuse consequential actions that lack the authority evidence the
+              resource owner requires — so parties with leverage can require an appropriate profile.
               It cannot constrain a path that bypasses Gate. Complete mediation requires the resource
               owner to place the verifier immediately before every protected mutation and to remove
               alternate execution paths. Necessary, not sufficient.

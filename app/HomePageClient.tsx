@@ -61,7 +61,7 @@ const PRODUCTS = [
   {
     label: 'Prove',
     title: 'Open Protocol + Approver',
-    body: 'Portable formats, offline verification, and an exact-action human or quorum decision. Evidence remains attributable to its native source.',
+    body: 'Portable formats and offline verification, plus an exact-action human or quorum decision when the mandate requires fresh authority. Evidence remains attributable to its native source.',
     href: '/protocol',
     accent: color.blue,
   },
@@ -75,9 +75,9 @@ const PRODUCTS = [
 ];
 
 const LIFECYCLE = [
-  ['01', 'Bind the action', 'Freeze the canonical amount, target, record, tool call, material fields, and validity window.'],
-  ['02', 'Verify the evidence', 'Check each required identity, qualification, approval, status, and policy artifact under the owner’s pinned trust inputs.'],
-  ['03', 'Authorize locally', 'The resource owner decides whether this exact action may proceed. Evidence is never silently promoted into permission.'],
+  ['01', 'Define the mandate', 'Set mission, limits, required evidence, expiry, delegation, and exception rules outside the agent process.'],
+  ['02', 'Bind the unit of work', 'Freeze the canonical amount, target, record, tool call, material fields, and occurrence.'],
+  ['03', 'Verify and authorize', 'Check pinned native evidence, then make the separate local decision for this exact action.'],
   ['04', 'Consume before entry', 'Gate durably takes the one-time authority before the credentialed adapter can enter the provider.'],
   ['05', 'Preserve the result', 'Record provider and observer evidence separately. Unknown stays unknown; any remedy is a new authorized action.'],
 ];
@@ -106,20 +106,20 @@ export default function HomePage(): React.ReactElement {
           <C>
             <motion.div className="ep-home-calm-copy" {...heroIn()}>
               <div className="ep-home-calm-kicker">
-                EMILIA Gate <span>· Consequence firewall for AI agents</span>
+                EMILIA <span>· Authority control plane for autonomous work</span>
               </div>
-              <h1 id="home-trust-thesis">Let agents act. Keep authority exact.</h1>
+              <h1 id="home-trust-thesis">Set authority once. Let agents work.</h1>
               <p className="ep-home-calm-lede ep-home-lede-desktop">
-                EMILIA Gate sits before money, code, permissions, and regulated decisions.
-                If the protected executor cannot verify the owner&apos;s required authority for the
-                exact action, the mutation does not proceed.
+                A human or institution defines a finite operating mandate. Agents work unattended
+                inside it. EMILIA Gate enforces each consequential unit of work before money, code,
+                permissions, records, or infrastructure can change.
               </p>
               <p className="ep-home-calm-lede ep-home-lede-mobile">
-                Put Gate before the consequential action. No verified exact authority on the
-                protected path, no mutation.
+                Define a finite mandate once. Gate enforces every consequential unit of work on the
+                protected path.
               </p>
               <p className="ep-home-calm-detail">
-                Customer-controlled authority, credentials, trust roots, policy, and evidence.
+                Not every action needs a human. Every consequential action needs valid authority.
                 {' '}Protocol proves. Gate prevents.
               </p>
               <div className="ep-home-calm-actions">
@@ -186,29 +186,30 @@ export default function HomePage(): React.ReactElement {
         <section className="ep-home-auth-bridge" style={{ padding: '104px 0 0' }}>
           <C>
             <motion.div {...reveal()} style={{ maxWidth: 780 }}>
-              <div style={eyebrow}>Where existing controls stop</div>
-              <h2 style={{ ...styles.h2, maxWidth: 760 }}>Auth opens the door. EMILIA controls what crosses it.</h2>
+              <div style={eyebrow}>Identity is not a job description</div>
+              <h2 style={{ ...styles.h2, maxWidth: 760 }}>Identity tells you who. Authority defines the work.</h2>
               <p style={{ ...styles.body, maxWidth: 700, marginTop: 18 }}>
-                Identity, OAuth, policy engines, and monitoring remain essential. None alone proves
-                that one exact consequential action may enter now, once, under current authority.
+                Identity, OAuth, policy engines, and monitoring remain essential. None alone defines
+                the agent&apos;s finite mission, limits, evidence, expiry, and exception rules—or proves
+                that this exact consequential unit of work may enter now, once.
               </p>
             </motion.div>
             <motion.div className="ep-home-auth-map" {...reveal(0.08)}>
               <div className="ep-home-auth-column ep-home-auth-column-existing">
                 <div className="ep-home-auth-label">Existing authorization stack</div>
                 <div className="ep-home-auth-item"><span>01</span><strong>Identity verified</strong><em>Who or what is calling?</em></div>
-                <div className="ep-home-auth-item"><span>02</span><strong>Credential issued</strong><em>What broad scope exists?</em></div>
-                <div className="ep-home-auth-item"><span>03</span><strong>Policy permits</strong><em>Is this class of call allowed?</em></div>
-                <div className="ep-home-auth-stop">The exact consequence is still unowned.</div>
+                <div className="ep-home-auth-item"><span>02</span><strong>Credential issued</strong><em>What broad reach exists?</em></div>
+                <div className="ep-home-auth-item"><span>03</span><strong>Policy permits</strong><em>What is generally allowed?</em></div>
+                <div className="ep-home-auth-stop">The finite job and exact consequence are still undefined.</div>
               </div>
               <div className="ep-home-auth-handoff" aria-hidden="true">
                 <span>executor boundary</span>
                 <strong>→</strong>
               </div>
               <div className="ep-home-auth-column ep-home-auth-column-emilia">
-                <div className="ep-home-auth-label">EMILIA Consequence Firewall</div>
-                <div className="ep-home-auth-item"><span>04</span><strong>Exact action bound</strong><em>Target, fields, limits, expiry</em></div>
-                <div className="ep-home-auth-item"><span>05</span><strong>Authority verified</strong><em>Owner-pinned evidence and policy</em></div>
+                <div className="ep-home-auth-label">EMILIA authority control plane</div>
+                <div className="ep-home-auth-item"><span>04</span><strong>Mandate loaded</strong><em>Mission, limits, evidence, expiry</em></div>
+                <div className="ep-home-auth-item"><span>05</span><strong>Exact work verified</strong><em>Owner-pinned action and authority</em></div>
                 <div className="ep-home-auth-item"><span>06</span><strong>Authority consumed</strong><em>Once before credentialed provider entry</em></div>
                 <div className="ep-home-auth-result">Required evidence verifies—or the mutation stays locked.</div>
               </div>
