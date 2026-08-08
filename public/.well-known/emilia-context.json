@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-08T07:49:13.504Z",
+  "evidence_snapshot_at": "2026-08-08T08:55:14.801Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "6ea07b9b61c6e0fd62310f9e766a398e05947bf7918dfb48c63af0db549c0110",
+    "input_digest_sha256": "8a6fbf93fa7ea974dd687e16e424ab514cd878ba5484014e428ea56ab31a2803",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "88258f761b118572f4811d2d384613c7361f7729c044cde1ceabc9bd252c81aa",
+        "sha256": "7952a452a8d0e104fbbcec79a383e9944cb5b0307a509b49ee6920dc3fa2a77b",
         "bytes": 4298
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "936f6c6b1cb3157725752026f21e13b987c0e5c66f4f40cd884d194005e1f613",
+        "sha256": "36c2f69564934935f7f7f048775e303c605972bb3d492672c3f0288141391cdc",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "40f8a3f609fc3ac87f73ff2ff3d304ee61d1c7de1e6020937eac42e7b44e6b19",
+        "sha256": "43cff7c2deeca7c77c72c24bdd90185ae68740a496896b6fb1fd45c63b9ee805",
         "bytes": 385871
       },
       {
@@ -272,7 +272,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 8747,
+      "total": 8755,
       "files": 521,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -282,7 +282,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "11c9825db460cd124ba3dbe8c3522de158cbdd136a9c9594cdcc9689d84ab384",
+      "manifest_sha256": "160bde71f880e4aae6274dbcea89a1fa1071762ef4a4eda6f874371fc06f135d",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
