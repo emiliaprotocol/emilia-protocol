@@ -1099,7 +1099,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "52daa6c9ebfd33c7bdf8c3d54c83b5080c212dfc5d5de17afd632ab2c5ac1136"
+      "sha256": "46ef13a7110b75d59830232775c09dbfda7c055f44ff5e53a99da67a81a0e1fb"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1120,6 +1120,10 @@
     {
       "path": "packages/verify/dist/platform-attestation.js",
       "sha256": "0cfb6818724a4f69f4c8c7ebd36b2b28e0e9bf0fbbf852eb03d25b8f5d3eae46"
+    },
+    {
+      "path": "packages/verify/dist/policy-decision-evidence.js",
+      "sha256": "c6b06c28426f498059ff2b59889637dbc58c01e6a00b02a63eea4fe2f934edd1"
     },
     {
       "path": "packages/verify/dist/provenance.js",
@@ -1203,7 +1207,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "1e3a489019f4f4f4eb233b1a945b07f9adaa99423752aed217b970e5a611670a"
+      "sha256": "2c8f325d6d44cd65a080a081f0532bf26294acdc421956d1d5e245921e0ae087"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

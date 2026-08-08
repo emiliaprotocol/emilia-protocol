@@ -165,6 +165,30 @@ relying party pins the maximum acceptable snapshot age. This prevents a fresh
 token from laundering stale directory state into a claim of current standing;
 it does not prove HR-system freshness or instantaneous employment status.
 
+`@emilia-protocol/verify/policy-decision-evidence` is the distribution bridge
+for existing local policy engines. It projects an exact OPA boolean or Cerbos
+effect into a short-lived Ed25519 statement, verifies it under a
+relying-party-pinned bridge key, pins the accepted engine and policy digest,
+and maps the signed action through CAID. Its evidence role is normally
+`machine-policy-decision`. A machine `ALLOW` satisfies only that role; it is
+not human intent, authorization, admission, complete-mediation proof, or an
+effect receipt. Consequential requirements should compose it with a separate
+`human-authorization` leg:
+
+```js
+requirements: {
+  'human-plus-local-policy': {
+    '@version': 'AEB-REQUIREMENT-v1',
+    all_of: ['human-authorization', 'machine-policy-decision'],
+    terms: [{ type: 'one-time-consumption' }],
+  },
+}
+```
+
+The bridge signs what the integration observed; it does not make OPA or Cerbos
+independent witnesses. Keep the bridge key behind the credential-owning
+enforcement point and use Gate's durable consumption path for execution.
+
 `@emilia-protocol/verify/aeb-psea-adapter` adds an optional, revision-pinned
 adapter for `draft-yossif-psea-02`. It verifies strict ES256 compact JWS/EAT
 proofs against enrolled P-256 keys; rejects unknown headers and claims; binds
