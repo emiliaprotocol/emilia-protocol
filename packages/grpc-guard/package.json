@@ -1,0 +1,47 @@
+{
+  "name": "@emilia-protocol/grpc-guard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bind an EMILIA authorization receipt to the exact serialized gRPC request message bytes, method path, and target. Server interceptor refuses with a gRPC status when the receipt is missing, invalid, drifted, or replayed; client interceptor attaches one for the bytes it is about to send.",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./index.mjs",
+    "./binding.mjs": "./binding.mjs",
+    "./guard.mjs": "./guard.mjs",
+    "./status.mjs": "./status.mjs",
+    "./interceptors.mjs": "./interceptors.mjs"
+  },
+  "scripts": {
+    "test": "node --test binding.test.mjs guard.test.mjs interceptors.test.mjs"
+  },
+  "dependencies": {
+    "@emilia-protocol/require-receipt": "^0.8.0"
+  },
+  "peerDependencies": {
+    "@grpc/grpc-js": "^1.10.0"
+  },
+  "peerDependenciesMeta": {
+    "@grpc/grpc-js": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "keywords": [
+    "emilia-protocol",
+    "grpc",
+    "interceptor",
+    "authorization-receipt",
+    "action-binding",
+    "replay-refusal",
+    "ai-agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/grpc-guard"
+  },
+  "homepage": "https://www.emiliaprotocol.ai/agent-guard"
+}

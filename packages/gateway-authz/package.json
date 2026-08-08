@@ -1,0 +1,40 @@
+{
+  "name": "@emilia-protocol/gateway-authz",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "External-authorization handler for Envoy ext_authz (HTTP variant) and Kong. Binds an EMILIA authorization receipt to the exact method, path, material headers, and body bytes, and refuses when the proxy did not buffer a body to bind.",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./index.mjs",
+    "./descriptor.mjs": "./descriptor.mjs",
+    "./authz.mjs": "./authz.mjs",
+    "./envoy.mjs": "./envoy.mjs",
+    "./kong.mjs": "./kong.mjs"
+  },
+  "scripts": {
+    "test": "node --test descriptor.test.mjs authz.test.mjs adapters.test.mjs"
+  },
+  "dependencies": {
+    "@emilia-protocol/require-receipt": "^0.8.0"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "keywords": [
+    "emilia-protocol",
+    "envoy",
+    "ext-authz",
+    "kong",
+    "external-authorization",
+    "authorization-receipt",
+    "action-binding",
+    "replay-refusal"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/gateway-authz"
+  },
+  "homepage": "https://www.emiliaprotocol.ai/agent-guard"
+}
