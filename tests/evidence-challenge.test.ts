@@ -434,12 +434,26 @@ describe('AE-CHALLENGE -03 HTTP binding', () => {
     });
     const response = createEvidenceChallengeProblem(challenge);
 
+    for (const [mutation, expected] of [
+      [{ ...challenge, '@version': 'AE-CHALLENGE-v0' }, /unknown challenge version/],
+      [{ ...challenge, nonce: '' }, /nonce missing or invalid/],
+      [{ ...challenge, action_digest: 'not-a-digest' }, /action_digest missing or invalid/],
+      [{ ...challenge, action_profile: '' }, /action_profile missing or invalid/],
+      [{ ...challenge, expires_at: 'not-a-time' }, /expires_at missing or invalid/],
+    ] as const) {
+      expect(() => createEvidenceChallengeProblem(mutation)).toThrow(expected);
+    }
+
     expect(() => parseEvidenceChallengeProblem({ ...response, status: 428 }))
       .toThrow(/MUST use status 403/);
     expect(() => parseEvidenceChallengeProblem({
       ...response,
       headers: { ...response.headers, 'content-type': 'application/authorization-evidence-challenge+json' },
     })).toThrow(/application\/problem\+json/);
+    expect(() => parseEvidenceChallengeProblem({
+      ...response,
+      body: { ...response.body, type: 'https://attacker.example/problem' },
+    })).toThrow(/Problem Details metadata is invalid/);
     expect(() => parseEvidenceChallengeProblem({
       ...response,
       body: { ...response.body, evidence_challenge: { ...challenge, action_digest: 'not-a-digest' } },
