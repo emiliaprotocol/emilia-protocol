@@ -31,6 +31,7 @@ function makeChain(resolveValue = { data: null, error: null }) {
     order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
     gte: vi.fn().mockReturnThis(),
+    lt: vi.fn().mockReturnThis(),
     insert: vi.fn().mockResolvedValue(resolveValue),
     update: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue(resolveValue),
@@ -445,9 +446,29 @@ describe('eye command routing', () => {
 // ── Cron/lifecycle handlers ───────────────────────────────────────────────────
 
 describe('cron/lifecycle command routing', () => {
+  it('reports only receipts that still satisfy the expiry predicate at commit time', async () => {
+    const chain = makeChain({ data: [], error: null });
+    const mockSupabase = { from: vi.fn().mockReturnValue(chain) };
+    mockGetServiceClient.mockReturnValue(mockSupabase);
+
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.EXPIRE_RECEIPTS,
+      input: { receipt_ids: ['r-raced'], now: '2026-08-08T20:00:00.000Z' },
+      actor: { id: 'cron' },
+    });
+
+    expect(result.expired).toBe(0);
+    expect(chain.eq).toHaveBeenCalledWith('bilateral_status', 'pending_confirmation');
+    expect(chain.lt).toHaveBeenCalledWith('confirmation_deadline', '2026-08-08T20:00:00.000Z');
+    expect(mockSupabase.from).toHaveBeenCalledTimes(1);
+  });
+
   it('expire_receipts routes to DB update and returns count', async () => {
     const mockSupabase = {
-      from: vi.fn().mockReturnValue(makeChain({ data: null, error: null })),
+      from: vi.fn().mockReturnValue(makeChain({
+        data: [{ receipt_id: 'r_1' }, { receipt_id: 'r_2' }, { receipt_id: 'r_3' }],
+        error: null,
+      })),
     };
     mockGetServiceClient.mockReturnValue(mockSupabase);
 
@@ -479,7 +500,10 @@ describe('cron/lifecycle command routing', () => {
 
   it('escalate_disputes routes to DB update and returns count', async () => {
     const mockSupabase = {
-      from: vi.fn().mockReturnValue(makeChain({ data: null, error: null })),
+      from: vi.fn().mockReturnValue(makeChain({
+        data: [{ dispute_id: 'd_1' }, { dispute_id: 'd_2' }],
+        error: null,
+      })),
     };
     mockGetServiceClient.mockReturnValue(mockSupabase);
 
@@ -511,7 +535,10 @@ describe('cron/lifecycle command routing', () => {
 
   it('expire_continuity_claims routes to DB update and returns count', async () => {
     const mockSupabase = {
-      from: vi.fn().mockReturnValue(makeChain({ data: null, error: null })),
+      from: vi.fn().mockReturnValue(makeChain({
+        data: [{ continuity_id: 'ep_ix_1' }, { continuity_id: 'ep_ix_2' }],
+        error: null,
+      })),
     };
     mockGetServiceClient.mockReturnValue(mockSupabase);
 

@@ -255,6 +255,58 @@ describe('canonicalSubmitAutoReceipt', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('canonicalBilateralConfirm', () => {
+  function makeRacingReceiptSupabase(updateResult) {
+    let mode = 'read';
+    const receipt = {
+      receipt_id: 'r-race', entity_id: 'entity-A', submitted_by: 'entity-B',
+      bilateral_status: 'pending_confirmation',
+      confirmation_deadline: new Date(Date.now() + 60_000).toISOString(),
+    };
+    const receipts = {
+      select: vi.fn(() => receipts),
+      update: vi.fn(() => { mode = 'update'; return receipts; }),
+      eq: vi.fn(() => receipts),
+      neq: vi.fn(() => receipts),
+      or: vi.fn(() => receipts),
+      order: vi.fn(() => receipts),
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+      single: vi.fn().mockResolvedValue({ data: receipt, error: null }),
+      maybeSingle: vi.fn(() => Promise.resolve(mode === 'update'
+        ? updateResult
+        : { data: receipt, error: null })),
+      then: (resolve) => Promise.resolve(mode === 'update'
+        ? updateResult
+        : { data: receipt, error: null }).then(resolve),
+    };
+    return {
+      from: vi.fn((table) => table === 'receipts'
+        ? receipts
+        : makeChain({ data: null, error: null })),
+      rpc: vi.fn().mockResolvedValue({ data: 80, error: null }),
+    };
+  }
+
+  it('fails closed instead of reporting confirmation when the database write fails', async () => {
+    mockGetServiceClient.mockReturnValue(makeRacingReceiptSupabase({
+      data: null,
+      error: { code: '08006', message: 'connection lost' },
+    }));
+
+    const result = await canonicalBilateralConfirm('r-race', 'entity-A', true);
+
+    expect(result.status).toBe(503);
+    expect(result.error).toMatch(/persist/i);
+  });
+
+  it('refuses when another transition wins after the advisory read', async () => {
+    mockGetServiceClient.mockReturnValue(makeRacingReceiptSupabase({ data: null, error: null }));
+
+    const result = await canonicalBilateralConfirm('r-race', 'entity-A', true);
+
+    expect(result.status).toBe(409);
+    expect(result.error).toMatch(/changed|pending/i);
+  });
+
   function makeReceiptSupabase(receipt, updateError = null) {
     return {
       from: vi.fn((table) => {
@@ -262,10 +314,14 @@ describe('canonicalBilateralConfirm', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            neq: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            lt: vi.fn().mockReturnThis(),
             update: vi.fn().mockReturnThis(),
             order: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue({ data: [], error: null }),
             single: vi.fn().mockResolvedValue({ data: receipt, error: null }),
+            maybeSingle: vi.fn().mockResolvedValue({ data: receipt, error: updateError }),
             then: (resolve) => Promise.resolve({ data: receipt, error: null }).then(resolve),
           };
         }

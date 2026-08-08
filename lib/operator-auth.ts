@@ -4,9 +4,12 @@
  * Replaces the shared CRON_SECRET with per-operator HMAC-SHA256 tokens.
  * Each operator gets its own signing key. Tokens are short-lived (5 min).
  *
- * Token format: ep_op_<operator_id>.<timestamp_hex>.<hmac_hex>
+ * Request-bound token format:
+ *   ep_op2_<operator_id_b64u>.<timestamp_hex>.<nonce_b64u>.<method>
+ *     .<target_b64u>.<body_sha256_hex>.<hmac_hex>
  *
- * Backward compatible: still accepts legacy CRON_SECRET during migration.
+ * Scheduler compatibility: explicitly opted-in cron routes still accept the
+ * legacy CRON_SECRET. Unbound ep_op_ tokens are refused on HTTP requests.
  *
  * Environment:
  *   EP_OPERATOR_KEYS — JSON map: { "operator_id": "hex_secret", ... }
@@ -25,6 +28,20 @@ import { consumeOperatorToken } from './operator-token-replay.js';
 
 const TOKEN_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const TOKEN_PREFIX = 'ep_op_';
+const TOKEN_V2_PREFIX = 'ep_op2_';
+const MAX_OPERATOR_REQUEST_BYTES = 1024 * 1024;
+
+export interface OperatorTokenBinding {
+  method: string;
+  target: string;
+  body?: string | Uint8Array;
+}
+
+interface NormalizedOperatorRequestBinding {
+  method: string;
+  target: string;
+  bodyDigest: string;
+}
 
 export interface OperatorAuthOptions {
   /**
@@ -35,6 +52,10 @@ export interface OperatorAuthOptions {
    * the flag silently accepted the anonymous shared cron secret.
    */
   requireOperatorIdentity?: boolean;
+  /** Internal verification seam populated by authenticateOperator(). */
+  requestBinding?: NormalizedOperatorRequestBinding;
+  /** Reject legacy ep_op_ tokens that carry no request binding. */
+  requireRequestBinding?: boolean;
 }
 
 export interface OperatorAuthResult {
@@ -51,14 +72,58 @@ export interface OperatorAuthResult {
  * @param {string} secretHex - The operator's HMAC secret (hex)
  * @returns {string} Signed token
  */
-export function generateOperatorToken(operatorId: string, secretHex: string): string {
+function bodyDigest(body: string | Uint8Array = ''): string {
+  return crypto.createHash('sha256').update(body).digest('hex');
+}
+
+function normalizeMethod(method: string): string {
+  const normalized = typeof method === 'string' ? method.trim().toUpperCase() : '';
+  if (!/^[A-Z]{3,16}$/.test(normalized)) throw new TypeError('operator token method is malformed');
+  return normalized;
+}
+
+function normalizeTarget(target: string): string {
+  if (typeof target !== 'string' || !target.startsWith('/') || target.startsWith('//')) {
+    throw new TypeError('operator token target must be an absolute-path reference');
+  }
+  const parsed = new URL(target, 'https://operator.invalid');
+  if (parsed.origin !== 'https://operator.invalid' || parsed.hash) {
+    throw new TypeError('operator token target is malformed');
+  }
+  return `${parsed.pathname}${parsed.search}`;
+}
+
+function normalizeBinding(binding: OperatorTokenBinding): NormalizedOperatorRequestBinding {
+  if (!binding || typeof binding !== 'object') throw new TypeError('operator token request binding is required');
+  return {
+    method: normalizeMethod(binding.method),
+    target: normalizeTarget(binding.target),
+    bodyDigest: bodyDigest(binding.body),
+  };
+}
+
+export function generateOperatorToken(
+  operatorId: string,
+  secretHex: string,
+  binding: OperatorTokenBinding,
+): string {
   const timestamp = Date.now().toString(16);
-  const message = `${operatorId}.${timestamp}`;
+  const normalized = normalizeBinding(binding);
+  const operatorIdEncoded = Buffer.from(operatorId, 'utf8').toString('base64url');
+  const targetEncoded = Buffer.from(normalized.target, 'utf8').toString('base64url');
+  const nonce = crypto.randomBytes(16).toString('base64url');
+  const message = [
+    operatorIdEncoded,
+    timestamp,
+    nonce,
+    normalized.method,
+    targetEncoded,
+    normalized.bodyDigest,
+  ].join('.');
   const hmac = crypto.createHmac('sha256', Buffer.from(secretHex, 'hex'))
     .update(message)
     .digest('hex');
-
-  return `${TOKEN_PREFIX}${message}.${hmac}`;
+  return `${TOKEN_V2_PREFIX}${message}.${hmac}`;
 }
 
 /**
@@ -75,8 +140,81 @@ export async function verifyOperatorAuth(token: string | null | undefined, opts:
     return { valid: false, error: 'No token provided' };
   }
 
-  // === Path 1: Per-operator token (ep_op_<id>.<ts>.<hmac>) ===
+  // === Path 1: Request-bound per-operator token ===
+  if (token.startsWith(TOKEN_V2_PREFIX)) {
+    const body = token.slice(TOKEN_V2_PREFIX.length);
+    const parts = body.split('.');
+    if (parts.length !== 7) return { valid: false, error: 'Malformed operator token' };
+    const [operatorIdEncoded, timestampHex, nonce, method, targetEncoded, boundBodyDigest, providedHmac] = parts;
+    if (!/^[A-Za-z0-9_-]{1,171}$/.test(operatorIdEncoded)
+        || !/^[0-9a-f]{11,16}$/.test(timestampHex)
+        || !/^[A-Za-z0-9_-]{20,32}$/.test(nonce)
+        || !/^[A-Z]{3,16}$/.test(method)
+        || !/^[A-Za-z0-9_-]+$/.test(targetEncoded)
+        || !/^[0-9a-f]{64}$/.test(boundBodyDigest)
+        || !/^[0-9a-f]{64}$/.test(providedHmac)) {
+      return { valid: false, error: 'Malformed operator token' };
+    }
+
+    let operatorId: string;
+    let target: string;
+    try {
+      operatorId = Buffer.from(operatorIdEncoded, 'base64url').toString('utf8');
+      target = Buffer.from(targetEncoded, 'base64url').toString('utf8');
+      if (!operatorId || Buffer.from(operatorId, 'utf8').toString('base64url') !== operatorIdEncoded
+          || Buffer.from(target, 'utf8').toString('base64url') !== targetEncoded
+          || normalizeTarget(target) !== target) {
+        return { valid: false, error: 'Malformed operator token' };
+      }
+    } catch {
+      return { valid: false, error: 'Malformed operator token' };
+    }
+
+    const timestamp = parseInt(timestampHex, 16);
+    const age = Date.now() - timestamp;
+    if (!Number.isFinite(timestamp) || age < 0 || age > TOKEN_MAX_AGE_MS) {
+      return { valid: false, error: 'Token expired or from the future' };
+    }
+
+    const secret = getOperatorKeys().get(operatorId);
+    if (!secret) return { valid: false, error: 'Unknown operator' };
+    const message = parts.slice(0, -1).join('.');
+    const expectedHmac = crypto.createHmac('sha256', secret).update(message).digest('hex');
+    const supplied = Buffer.from(providedHmac, 'utf8');
+    const expected = Buffer.from(expectedHmac, 'utf8');
+    if (supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) {
+      return { valid: false, error: 'Invalid signature' };
+    }
+
+    const requestBinding = opts.requestBinding;
+    if (!requestBinding
+        || requestBinding.method !== method
+        || requestBinding.target !== target
+        || requestBinding.bodyDigest !== boundBodyDigest) {
+      return { valid: false, error: 'Operator token request binding mismatch' };
+    }
+
+    const claim = await consumeOperatorToken(providedHmac, TOKEN_MAX_AGE_MS / 1000 + 60);
+    if (!claim.ok) {
+      return {
+        valid: false,
+        error: claim.reason === 'already_consumed'
+          ? 'Operator token already used; mint a fresh token per request'
+          : 'Operator token replay protection unavailable',
+      };
+    }
+    return {
+      valid: true,
+      operator_id: operatorId,
+      role: getOperatorRoles().get(operatorId) || null,
+    };
+  }
+
+  // === Path 1b: Legacy unbound per-operator token (verification-only) ===
   if (token.startsWith(TOKEN_PREFIX)) {
+    if (opts.requireRequestBinding === true) {
+      return { valid: false, error: 'Legacy operator token has no request binding' };
+    }
     const body = token.slice(TOKEN_PREFIX.length);
     const parts = body.split('.');
     if (parts.length !== 3) {
@@ -181,7 +319,29 @@ export async function authenticateOperator(request: Request, opts: OperatorAuthO
   const auth = request.headers.get('authorization') || '';
   const bearer = auth.replace(/^Bearer\s+/i, '').trim();
   if (bearer) {
-    return verifyOperatorAuth(bearer, opts);
+    if (bearer.startsWith(TOKEN_V2_PREFIX)) {
+      let bytes: Uint8Array;
+      try {
+        const raw = new Uint8Array(await request.clone().arrayBuffer());
+        if (raw.byteLength > MAX_OPERATOR_REQUEST_BYTES) {
+          return { valid: false, error: 'Operator request body exceeds authentication limit' };
+        }
+        bytes = raw;
+      } catch {
+        return { valid: false, error: 'Operator request body could not be bound' };
+      }
+      const url = new URL(request.url);
+      return verifyOperatorAuth(bearer, {
+        ...opts,
+        requireRequestBinding: true,
+        requestBinding: {
+          method: normalizeMethod(request.method),
+          target: `${url.pathname}${url.search}`,
+          bodyDigest: bodyDigest(bytes),
+        },
+      });
+    }
+    return verifyOperatorAuth(bearer, { ...opts, requireRequestBinding: true });
   }
 
   // Fallback: x-cron-secret header (legacy)

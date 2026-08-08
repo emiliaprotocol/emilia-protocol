@@ -36,6 +36,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { adjudicateDispute } from '@/lib/dispute-adjudication';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { authenticateOperator } from '@/lib/operator-auth';
+import { hasPermission } from '@/lib/procedural-justice';
 import { logger } from '../../../../../lib/logger.js';
 
 // Minimum age before a filer can trigger adjudication themselves.
@@ -61,7 +62,10 @@ export async function POST(
     // Authorization: operator auth or authenticated filer
     // -------------------------------------------------------------------
     const opAuth = await authenticateOperator(request, { requireOperatorIdentity: true });
-    const isCron = opAuth.valid;
+    const isCron = opAuth.valid && hasPermission(opAuth.role || '', 'dispute.adjudicate');
+    if (opAuth.valid && !isCron) {
+      return EP_ERRORS.FORBIDDEN('Operator role lacks dispute.adjudicate permission');
+    }
 
     let callerEntityId: string | null = null;
     let triggeredBy: string = isCron ? (opAuth.operator_id ?? 'unknown') : 'filer';

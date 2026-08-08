@@ -31,7 +31,7 @@ function request(body) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.authenticateOperator.mockReturnValue({ valid: true, operator_id: 'operator-1' });
+  mocks.authenticateOperator.mockResolvedValue({ valid: true, operator_id: 'operator-1', role: 'operator' });
   mocks.rpc.mockResolvedValue({
     data: [{ kid: 'old-kid', revoked_at: '2026-07-15T12:00:00.000Z' }],
     error: null,
@@ -39,6 +39,19 @@ beforeEach(() => {
 });
 
 describe('POST /api/commit-keys/revoke', () => {
+  it('refuses a named operator whose role lacks commit-key revocation authority', async () => {
+    mocks.authenticateOperator.mockResolvedValue({
+      valid: true,
+      operator_id: 'reviewer-1',
+      role: 'reviewer',
+    });
+
+    const response = await POST(request({ kid: 'old-kid', reason: 'compromised' }));
+
+    expect(response.status).toBe(403);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it('uses the revocation RPC that serializes against gate consumption', async () => {
     const response = await POST(request({ kid: 'old-kid', reason: 'compromised' }));
     const body = await response.json();

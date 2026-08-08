@@ -12,10 +12,12 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 const mockGetBlockchainConfig = vi.fn();
 const mockIsProduction = vi.fn();
+const mockGetUpstashConfig = vi.fn();
 
 vi.mock('@/lib/env', () => ({
   getBlockchainConfig: (...a) => mockGetBlockchainConfig(...a),
   isProduction: (...a) => mockIsProduction(...a),
+  getUpstashConfig: (...a) => mockGetUpstashConfig(...a),
 }));
 
 vi.mock('@/lib/crypto', () => ({
@@ -285,6 +287,22 @@ describe('anchorToBase — viem error wrapping', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('runAnchorBatch — no receipts', () => {
+  it('does not read or publish a batch when another worker holds the durable lease', async () => {
+    mockGetBlockchainConfig.mockReturnValue(null);
+    mockIsProduction.mockReturnValue(false);
+    const sendsBefore = mockSendTransaction.mock.calls.length;
+    const supabase = makeSupabaseMock({
+      unanchored: [{ id: 'id-raced', receipt_id: 'receipt-raced', receipt_hash: 'a'.repeat(64) }],
+    });
+    const result = await runAnchorBatch(supabase, {
+      acquireLease: vi.fn().mockResolvedValue({ ok: false, reason: 'already_held' }),
+    });
+
+    expect(result.status).toBe('already_running');
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(mockSendTransaction).toHaveBeenCalledTimes(sendsBefore);
+  });
+
   it('returns no_receipts status when DB is empty', async () => {
     mockGetBlockchainConfig.mockReturnValue(null);
     mockIsProduction.mockReturnValue(false);

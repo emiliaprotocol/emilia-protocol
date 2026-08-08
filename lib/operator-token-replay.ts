@@ -21,12 +21,10 @@
  *
  *   Upstash Redis  — cross-instance, the only correct backend for a serverless
  *                    deployment. Used whenever UPSTASH_REDIS_REST_* is set.
- *   in-process Map — single-instance only. Correct for local development, a
- *                    self-hosted single process, and tests. On a multi-instance
- *                    deployment it degrades to per-instance protection, which
- *                    is NOT replay protection: an attacker who reaches a
- *                    different instance replays successfully. Deployments that
- *                    care must configure Redis.
+ *   in-process Map — local development and tests only. Production fails closed
+ *                    unless the durable Redis backend is configured, because a
+ *                    per-instance map is not replay protection in a
+ *                    multi-instance deployment.
  *
  * A configured Redis that errors fails CLOSED (the token is refused). Operator
  * auth is a low-volume, high-value path, and the unattended cron jobs do not
@@ -35,7 +33,7 @@
  */
 
 import crypto from 'crypto';
-import { getUpstashConfig } from './env.js';
+import { getUpstashConfig, isProduction } from './env.js';
 import { logger } from './logger.js';
 
 const REDIS_TIMEOUT_MS = 3000;
@@ -79,6 +77,12 @@ export async function consumeOperatorToken(
   const upstash = getUpstashConfig();
 
   if (!upstash) {
+    if (isProduction()) {
+      logger.error('operator token replay store unavailable', {
+        error: 'UPSTASH_REDIS_REST_URL and token are required in production',
+      });
+      return { ok: false, reason: 'replay_store_unavailable' };
+    }
     const now = Date.now();
     sweepMemory(now);
     if (_memory.has(key)) return { ok: false, reason: 'already_consumed' };

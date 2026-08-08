@@ -16,6 +16,7 @@ import crypto from 'crypto';
 import { sha256 } from '@/lib/crypto';
 import { getBlockchainConfig, isProduction } from '@/lib/env';
 import { resolveBlockchainSigner } from './blockchain-signing.js';
+import { acquireJobLease, type JobLease } from './job-lease.js';
 import { logger } from './logger.js';
 
 // =============================================================================
@@ -319,7 +320,7 @@ export async function anchorToBase(batchId, merkleRoot, { v2 = false } = {}) {
  * @param {Object} supabase - Supabase service client
  * @returns {Promise<Object>} batch summary
  */
-export async function runAnchorBatch(supabase) {
+async function runAnchorBatchUnderLease(supabase) {
   // 1. Collect unanchored receipt hashes
   const { data: unanchored, error: fetchErr } = await supabase
     .from('receipts')
@@ -423,4 +424,36 @@ export async function runAnchorBatch(supabase) {
     explorer_url: anchorResult.explorerUrl,
     skipped_onchain: anchorResult.skipped || false,
   };
+}
+
+/**
+ * Run one globally exclusive anchor batch. The lease spans the database read,
+ * irreversible chain transaction, and receipt-reference commit. Without that
+ * fence, concurrent workers can publish the same receipts in several batches
+ * before the first worker marks them anchored.
+ */
+export async function runAnchorBatch(
+  supabase,
+  options: {
+    acquireLease?: (name: string, ttlMs: number) => Promise<JobLease>;
+  } = {},
+) {
+  const acquireLease = options.acquireLease || acquireJobLease;
+  const lease = await acquireLease('anchor-batch', 15 * 60 * 1000);
+  if (!lease.ok) {
+    if (lease.reason === 'already_held') {
+      return { status: 'already_running', message: 'Another anchor batch holds the durable lease' };
+    }
+    throw new Error('Anchor batch lease store unavailable');
+  }
+
+  try {
+    return await runAnchorBatchUnderLease(supabase);
+  } finally {
+    try {
+      await lease.release();
+    } catch (error: any) {
+      logger.error('Anchor batch lease release failed', { error: error?.message });
+    }
+  }
 }

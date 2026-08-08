@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { authenticateOperator } from '@/lib/operator-auth';
+import { hasPermission } from '@/lib/procedural-justice';
 import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '@/lib/logger.js';
 
@@ -33,6 +34,9 @@ const MAX_BODY_BYTES = 32 * 1024;
 export async function POST(request: NextRequest) {
   const auth = await authenticateOperator(request, { requireOperatorIdentity: true });
   if (!auth.valid) return epProblem(401, 'unauthorized', auth.error || 'Unauthorized');
+  if (!hasPermission(auth.role || '', 'commit_key.revoke')) {
+    return epProblem(403, 'forbidden', 'Operator role lacks commit_key.revoke permission');
+  }
 
   const parsed = await readEpJson(request, MAX_BODY_BYTES);
   if (!parsed.ok) return parsed.response;
