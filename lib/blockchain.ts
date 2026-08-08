@@ -370,10 +370,30 @@ async function runAnchorBatchUnderLease(supabase) {
     throw new Error(`Anchor batch DB pre-insert failed: ${insertErr.message}`);
   }
 
-  // 5. Anchor to Base L2 (the irreversible step). Tag calldata EP:v2:.
+  // 5. Claim every receipt for this persisted batch BEFORE the irreversible
+  // chain operation. If the worker crashes or its lease expires after the
+  // transaction is submitted, a successor will not select these receipts as
+  // unanchored and publish the same set again. A pending batch is recoverable;
+  // a duplicate external effect is not.
+  const updates = proofs.map(p => ({
+    receipt_id:        p.receipt_id,
+    anchor_batch_id:   batchId,
+    merkle_proof:      p.proof,
+    merkle_leaf_index: p.leaf_index,
+  }));
+
+  const { error: receiptErr } = await supabase
+    .rpc('bulk_update_receipt_anchors', { p_updates: updates });
+
+  if (receiptErr) {
+    logger.error('Failed to claim receipt anchor references; no on-chain tx attempted:', receiptErr);
+    throw new Error(`Receipt anchor claim failed: ${receiptErr.message}`);
+  }
+
+  // 6. Anchor to Base L2 (the irreversible step). Tag calldata EP:v2:.
   const anchorResult = await anchorToBase(batchId, tree.root, { v2: tree.alg === MERKLE_V2_ALG });
 
-  // 6. Confirm the batch row with the on-chain details.
+  // 7. Confirm the batch row with the on-chain details.
   const { error: confirmErr } = await supabase
     .from('anchor_batches')
     .update({
@@ -386,33 +406,16 @@ async function runAnchorBatchUnderLease(supabase) {
     .eq('batch_id', batchId);
 
   if (confirmErr) {
-    // The tx is on chain AND the batch row exists (with the merkle_root). This is
-    // reconcilable, NOT split-brain: ops can backfill the tx hash by matching the
-    // root on chain. Receipts are NOT marked until the row is confirmed.
+    // The tx is on chain, the batch row exists, and its receipts remain claimed.
+    // A successor therefore cannot duplicate the publication. Operations can
+    // reconcile the transaction metadata by matching the persisted Merkle root.
     logger.error(
-      `Anchor batch on-chain (txHash: ${anchorResult.transactionHash}) but DB confirm failed — batch row exists as pending (merkle_root: ${tree.root}); reconcilable. Receipts NOT marked.`,
+      `Anchor batch on-chain (txHash: ${anchorResult.transactionHash}) but DB confirm failed — batch and receipt claims remain pending (merkle_root: ${tree.root}); reconcilable.`,
       confirmErr,
     );
     throw new Error(
       `Anchor batch DB confirm failed: ${confirmErr.message}. On-chain tx: ${anchorResult.transactionHash}`,
     );
-  }
-
-  // 7. Bulk-update all receipts in a single RPC call (migration 075).
-  // Replaces the previous N+1 serial UPDATE loop.
-  const updates = proofs.map(p => ({
-    receipt_id:        p.receipt_id,
-    anchor_batch_id:   batchId,
-    merkle_proof:      p.proof,
-    merkle_leaf_index: p.leaf_index,
-  }));
-
-  const { error: receiptErr } = await supabase
-    .rpc('bulk_update_receipt_anchors', { p_updates: updates });
-
-  if (receiptErr) {
-    logger.error('Failed to update receipt anchor references:', receiptErr);
-    throw new Error(`Receipt anchor update failed: ${receiptErr.message}`);
   }
 
   return {
