@@ -179,6 +179,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     });
     const mutations = [
       { ...challenge, action_digest: `sha256:${'ef'.repeat(32)}` },
+      { ...challenge, action_profile: 'https://attacker.example/action-profile' },
       {
         ...challenge,
         required_evidence: challenge.required_evidence.map((entry, index) => (

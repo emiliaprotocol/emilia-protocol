@@ -1,0 +1,728 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                             8 August 2026
+Expires: 9 February 2027
+
+
+    An Authorization Evidence Challenge for High-Risk Agent Actions
+                     draft-schrock-ae-challenge-03
+
+Abstract
+
+   When a relying party refuses a consequential agent action because
+   authorization evidence is missing, stale, or unverifiable, the agent
+   needs a machine-readable description of what remains necessary.  This
+   document defines a transport-neutral Authorization Evidence Challenge
+   data model bound to the relying party's exact action.  The challenge
+   identifies outstanding evidence requirements, freshness and status
+   constraints, acceptable presentation profiles, and retry state.  It
+   authorizes nothing, transfers no admission ownership, and provides no
+   promise that a later request will execute.
+
+   The document also defines an HTTP binding using 403 Forbidden and RFC
+   9457 Problem Details, and describes an informative gateway-handoff
+   profile for DMSC-style federation.  The gateway profile communicates
+   evidence requirements; it does not solve conserved admission or
+   double-admission across independently operated gateways.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 9 February 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+Schrock                  Expires 9 February 2027                [Page 1]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Requirements Language . . . . . . . . . . . . . . . . . .   3
+     1.2.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  Transport-Neutral Core Data Model . . . . . . . . . . . . . .   3
+     2.1.  Action and Policy Binding . . . . . . . . . . . . . . . .   4
+     2.2.  Evidence Requirements and Presentation  . . . . . . . . .   5
+     2.3.  Lifecycle, Replay, and Retry  . . . . . . . . . . . . . .   6
+     2.4.  Extensibility . . . . . . . . . . . . . . . . . . . . . .   6
+   3.  HTTP Binding  . . . . . . . . . . . . . . . . . . . . . . . .   7
+   4.  Informative DMSC Gateway Profile  . . . . . . . . . . . . . .   8
+     4.1.  Gateway Conformance Case  . . . . . . . . . . . . . . . .   8
+   5.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+   7.  Interoperability Questions for Review . . . . . . . . . . . .  10
+   8.  Changes since -02 . . . . . . . . . . . . . . . . . . . . . .  10
+   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  11
+     9.1.  Normative References  . . . . . . . . . . . . . . . . . .  11
+     9.2.  Informative References  . . . . . . . . . . . . . . . . .  12
+   Appendix A.  Relationship to Existing Mechanisms  . . . . . . . .  13
+   Appendix B.  Implementation Status  . . . . . . . . . . . . . . .  13
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  13
+
+1.  Introduction
+
+   Evidence formats describe artifacts such as receipts, permits,
+   attestations, and logs.  They do not by themselves define the live
+   interaction that follows when a relying party finds the presented
+   evidence insufficient.  Without a common challenge, each agent
+   protocol invents its own vocabulary for missing evidence, acceptable
+   presentations, freshness, status checking, and retry.
+
+   This document defines the challenge as an application data model,
+   independent of HTTP, a particular agent protocol, and any one
+   evidence format.  The nearest prior art is OAuth step-up
+   authentication [RFC9470], which lets a resource identify stronger
+   authentication requirements.  AE-CHALLENGE applies the interaction
+   shape to authorization evidence about an exact proposed action.
+
+
+
+
+
+
+Schrock                  Expires 9 February 2027                [Page 2]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   A challenge is a refusal with information.  It is not an
+   authorization decision, reservation, capability, ownership transfer,
+   or promise of execution.  Satisfying it causes the relying party to
+   evaluate a new presentation under its live local policy.
+
+1.1.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+1.2.  Terminology
+
+   Relying party:  The component that decides whether evidence satisfies
+      its requirements for a proposed action.
+
+   Presenter:  The agent, gateway, or other component that receives a
+      challenge and may later present evidence.
+
+   Exact action:  The relying-party-derived material action that would
+      be admitted, including every field its selected action profile
+      treats as consequential.
+
+   Challenge:  A single-use, expiring description of evidence still
+      required for one exact action.
+
+2.  Transport-Neutral Core Data Model
+
+   The AE-CHALLENGE-v1 data model is independent of its carrier.  A
+   transport binding MUST preserve every member that the relying party
+   uses when registering and later consuming the challenge.  A binding
+   MUST also provide authenticated integrity and peer identification, or
+   carry the challenge in an authenticated envelope that provides those
+   properties.
+
+   The JSON format defined by [RFC8259] is the reference serialization
+   of the core model.  A non-JSON binding MUST define an unambiguous
+   mapping to the same members and value types.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 9 February 2027                [Page 3]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   {
+     "@version": "AE-CHALLENGE-v1",
+     "challenge_id": "7a3120d1-...",
+     "nonce": "<single-use unpredictable value>",
+     "action_digest": "sha256:<relying-party-derived digest>",
+     "action_profile": "https://example.net/action/payment-v3",
+     "audience": "https://gateway-b.example",
+     "policy_id": "https://gateway-b.example/policies/high-risk-v4",
+     "policy_digest": "sha256:<relying-party policy digest>",
+     "required_evidence": [
+       {
+         "requirement_id": "human-approval",
+         "type": "authorization_receipt",
+         "profiles": ["https://example.net/profiles/receipt-v1"],
+         "max_age_sec": 300,
+         "status": "current"
+       }
+     ],
+     "present_as": ["ep-aec-v1"],
+     "obtain_hints": [
+       {
+         "requirement_id": "human-approval",
+         "mechanism": "https://example.net/flows/approval-v1",
+         "uri": "https://approver.example/tasks/123"
+       }
+     ],
+     "expires_at": "2026-08-08T23:59:00Z"
+   }
+
+2.1.  Action and Policy Binding
+
+   @version MUST equal AE-CHALLENGE-v1.  A recipient that does not
+   implement this version MUST refuse automated processing.
+
+   challenge_id is an opaque correlation identifier.  Authorization
+   decisions MUST NOT depend on its global uniqueness.  nonce MUST be
+   unpredictable, non-empty, and single-use.  The relying party MUST
+   bind the complete challenge body to the durable nonce record before
+   exposing the challenge.
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 9 February 2027                [Page 4]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   action_digest MUST be computed by the relying party from the exact
+   action it would admit.  It MUST NOT be copied from the presenter or
+   from presented evidence. action_profile MUST be present and
+   identifies the canonicalization or mapping profile used to derive the
+   digest.  It is descriptive to the presenter; it does not let the
+   presenter select or weaken that profile.  If two parties cannot
+   establish the same material action under an understood profile, the
+   challenge cannot repair the disagreement and the relying party MUST
+   refuse automated admission.
+
+   audience identifies the component that is expected to answer the
+   challenge.  A binding or authenticated envelope MUST let the
+   presenter establish the challenge issuer.  A relying party processing
+   a returned challenge MUST verify the issuer and audience before using
+   any obtain hint or disclosing evidence.
+
+   policy_id and policy_digest identify the local policy state from
+   which the requirements were derived.  They do not transfer policy
+   authority to the presenter.  At evaluation time the relying party
+   MUST use its authenticated live policy and MUST NOT use a policy
+   supplied in the response.
+
+2.2.  Evidence Requirements and Presentation
+
+   Each required_evidence entry MUST contain a requirement_id and type.
+   Requirement identifiers are unique within one challenge and correlate
+   requirements with acquisition hints and diagnostics.  Type and
+   profile identifiers are opaque protocol identifiers; a recipient MUST
+   NOT infer security semantics from string prefixes or substring
+   matches.
+
+   An entry MAY contain profiles, proof_predicates, max_age_sec, and
+   status.  Profiles are alternatives acceptable for that requirement.
+   max_age_sec is measured at the relying party's evaluation time using
+   the issuance or observation time defined by the selected evidence
+   profile. status equal to current requires a separately authenticated
+   status result satisfying the relying party's freshness policy; it
+   does not mean that absence from an unauthenticated revocation list is
+   sufficient.
+
+   present_as lists alternative presentation profiles.  The order
+   expresses the relying party's preference, not a security ranking.
+   Supporting a presentation profile does not imply support for every
+   evidence type named by the challenge.  The presenter selects one
+   mutually supported profile and includes enough information for the
+   relying party to match every component to a requirement.
+
+
+
+
+
+Schrock                  Expires 9 February 2027                [Page 5]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   obtain_hints are untrusted routing hints.  Following a hint,
+   authenticating to its URI, or receiving an "approved" response
+   confers no authority at the relying party.  Evidence obtained through
+   a hint remains subject to native verification, exact-action matching,
+   freshness and status checks, policy evaluation, and one-time
+   consumption.  Unknown transports MAY omit obtain hints entirely.
+
+2.3.  Lifecycle, Replay, and Retry
+
+   expires_at MUST be an absolute timestamp.  The relying party MUST
+   refuse an expired challenge before policy evaluation.  Challenge
+   expiry does not extend the validity of any evidence and evidence
+   expiry does not extend the challenge.
+
+   Evaluation is ordered: version and structure; authenticated issuer
+   and audience; durable body binding; expiry; action agreement; nonce
+   consumption; native evidence verification; and local policy
+   evaluation.  Malformed input that cannot be associated with a
+   registered challenge is refused without consuming a nonce.  Once a
+   structurally valid presentation has been matched to a registered
+   challenge, the nonce MUST be consumed before evidence evaluation so
+   concurrent or action-swapped retries cannot reuse it.
+
+   If evidence remains missing, stale, or unverifiable, the relying
+   party MAY issue a follow-up challenge.  A follow-up MUST use a fresh
+   challenge identifier and nonce, MUST remain bound to the same locally
+   derived action digest and action profile, and SHOULD list only the
+   requirements that remain unsatisfied.  It is a new refusal, not a
+   continuation of the consumed nonce.
+
+   Unknown acquisition status, timeout, transport failure, or an
+   unverifiable response is indeterminate.  It MUST NOT be interpreted
+   as evidence satisfaction or permission to retry an action whose
+   effect may already have occurred.
+
+2.4.  Extensibility
+
+   Recipients MUST ignore an unknown member unless its name appears in
+   the optional critical array.  A recipient that does not understand
+   every member named by critical MUST refuse automated processing.  A
+   specification defining an extension MUST state whether that extension
+   is safe to ignore and how it is bound to the registered challenge
+   body.
+
+
+
+
+
+
+
+
+Schrock                  Expires 9 February 2027                [Page 6]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+3.  HTTP Binding
+
+   An HTTP origin server that refuses an action because authorization
+   evidence is missing, stale, or unverifiable SHOULD return 403
+   Forbidden as defined by [RFC9110].  The response body MUST be an
+   application/problem+json Problem Details object as defined by
+   [RFC9457].  Status 428 is not used: it is defined for requests that
+   the origin server requires to be conditional, not for authorization-
+   evidence negotiation.
+
+   HTTP/1.1 403 Forbidden
+   Content-Type: application/problem+json
+   Cache-Control: no-store
+
+   {
+   "type":"https://iana.org/assignments/http-problem-types#ae-required",
+     "title": "Authorization Evidence Required",
+     "status": 403,
+     "detail": "Required evidence is unavailable.",
+     "evidence_challenge": {
+       "@version": "AE-CHALLENGE-v1",
+       "challenge_id": "7a3120d1-...",
+       "nonce": "...",
+       "action_digest": "sha256:...",
+       "action_profile": "https://example.net/action/payment-v3",
+       "audience": "https://agent.example",
+       "policy_id": "https://resource.example/policies/high-risk-v4",
+       "policy_digest": "sha256:...",
+       "required_evidence": [
+         { "requirement_id": "human-approval",
+           "type": "authorization_receipt",
+           "max_age_sec": 300,
+           "status": "current" }
+       ],
+       "present_as": ["ep-aec-v1"],
+       "obtain_hints": [],
+       "expires_at": "2026-08-08T23:59:00Z"
+     }
+   }
+
+   The Problem Details type and title MUST have the values shown above.
+   The HTTP status code and the optional status member MUST both be 403.
+   The core challenge MUST appear in the evidence_challenge extension
+   member.  Human-readable detail text is advisory and MUST NOT be
+   parsed for protocol semantics.
+
+
+
+
+
+
+Schrock                  Expires 9 February 2027                [Page 7]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   The origin server MUST send Cache-Control: no-store.  A generic
+   intermediary can still transform an HTTP response, so a client MUST
+   validate the Problem Details object and the authenticated origin
+   before acting on hints or presenting evidence.
+
+4.  Informative DMSC Gateway Profile
+
+   Agent gateways can carry the transport-neutral challenge during
+   federation or handoff.  The receiving gateway is the relying party:
+   it derives the exact action, applies its own trust anchors and
+   policy, and issues a challenge when evidence is missing, stale, or
+   unverifiable.  The sending gateway or agent can obtain evidence and
+   return a new presentation using a DMSC-defined extension point or
+   error carrier.
+
+   When a receiving gateway refuses an action because required
+   authorization evidence is missing, stale, or unverifiable, it may
+   return a structured evidence challenge identifying the exact action,
+   outstanding evidence requirements, applicable freshness or status
+   constraints, and supported presentation profiles.  The challenge does
+   not authorize the action or transfer admission ownership; conserved
+   admission across gateway boundaries remains the separate requirement
+   described in Section 7.8 of the proposed next revision of
+   [DMSC-GAPS].
+
+   In particular, AE-CHALLENGE does not prevent Gateway A and Gateway B
+   from admitting the same single-use right.  It does not copy, fence,
+   or relinquish consumption state and does not establish which gateway
+   owns admission during a partition.  A DMSC handoff profile MUST solve
+   those properties separately.  If the receiving gateway cannot
+   establish the required exclusivity, its safe result is refusal or
+   indeterminate, not acceptance based on the challenge.
+
+4.1.  Gateway Conformance Case
+
+   Gateway A forwards a proposed action to Gateway B.  Gateway B derives
+   the exact action under its pinned action profile and refuses because
+   a current approval artifact is missing.  B returns an AE-CHALLENGE
+   bound to B's action digest and local evidence requirement.  A obtains
+   and presents the artifact.  B verifies it under B's trust anchors,
+   matches it to the same action, and reevaluates B's policy.  The case
+   passes only if A never treats the challenge as authorization and B
+   refuses an action-digest mismatch, stale status, replayed nonce, or
+   unsupported presentation profile.
+
+   A second case attempts concurrent admission of one single-use right
+   at both gateways.  AE-CHALLENGE alone MUST NOT be reported as passing
+   that case.  The case passes only when a separate conserved-admission
+
+
+
+Schrock                  Expires 9 February 2027                [Page 8]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   mechanism establishes exclusivity, or when the receiving gateway
+   refuses or returns indeterminate because exclusivity cannot be
+   established.
+
+5.  Security Considerations
+
+   *Challenge forgery and evidence exfiltration.* A forged challenge
+   cannot authorize an action, but it can redirect a presenter, induce
+   unnecessary approval work, or solicit sensitive evidence.  Presenters
+   MUST authenticate the relying party and audience before following
+   obtain hints or disclosing evidence.  A bare JSON object copied
+   outside its authenticated carrier has no origin authenticity.
+
+   *Action substitution.* The relying party computes the challenge
+   action digest from the action it would execute and recomputes that
+   binding before admission.  A digest supplied by the presenter or an
+   action profile selected by the presenter defeats the purpose of the
+   protocol.
+
+   *Replay and denial of service.* Durable body-bound nonce registration
+   is required before challenge exposure.  Consumption before evidence
+   evaluation prevents concurrent replays, but an attacker who can
+   submit a structurally valid response can consume a challenge.
+   Deployments therefore need authenticated presenters, rate limits,
+   short expiries, and a cheap path to issue a replacement challenge.
+
+   *Information disclosure.* Evidence requirements, policy identifiers,
+   action profiles, and obtain hints can reveal sensitive policy
+   structure.  A relying party SHOULD disclose only the minimum
+   information needed for remediation.  The HTTP binding requires Cache-
+   Control: no-store.
+
+   *Stale facts and uncertain effects.* A satisfied challenge proves
+   only that the relying party's evidence requirement was met at
+   evaluation time.  It does not prove that external facts remain true,
+   that an action executed, or that an uncertain action is safe to
+   retry.  Status rechecking, execution custody, effect observation, and
+   reconciliation remain separate controls.
+
+   *Gateway split brain.* An authenticated challenge from a receiving
+   gateway does not transfer a single-use authorization or its
+   consumption ledger.  Implementations MUST NOT claim cross-gateway
+   double-admission prevention merely because both gateways implement
+   this challenge.
+
+
+
+
+
+
+
+Schrock                  Expires 9 February 2027                [Page 9]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+6.  IANA Considerations
+
+   IANA is requested to add the following entry to the "HTTP Problem
+   Types" registry established by [RFC9457].  That registry uses the
+   Specification Required policy defined by [RFC8126]; this request does
+   not require IETF Review or Standards Action.
+
+   Type URI:
+      https://iana.org/assignments/http-problem-types#ae-required
+
+   Title:  Authorization Evidence Required
+
+   Recommended HTTP status code:  403
+
+   Reference:  This document.
+
+   This revision withdraws the earlier request for a new application/
+   authorization-evidence-challenge+json media type.  The HTTP binding
+   reuses the registered application/problem+json media type.  Non-HTTP
+   bindings define their own carriage without changing the core data
+   model.
+
+7.  Interoperability Questions for Review
+
+   This revision resolves the transport layering, HTTP status and media
+   type, gateway-ownership boundary, and acquisition-protocol coupling
+   in revision -02.  Review is requested on the following remaining
+   choices:
+
+   *  Whether evidence type, presentation profile, and action profile
+      identifiers should be required to be absolute URIs or may remain
+      opaque identifiers governed by the carrying protocol.
+
+   *  Whether consuming the nonce after structural and action matching
+      but before evidence verification is the correct common replay rule
+      for both task-oriented and message-oriented agent protocols.
+
+   *  Which Agent2Agent and AgentProto extension or error carriers can
+      preserve the complete challenge, authenticated issuer, and
+      audience without treating the challenge as a task result or
+      authorization.
+
+   *  Whether a DMSC gateway profile should carry the core object
+      directly or reference it by an authenticated, digest-bound URI.
+
+8.  Changes since -02
+
+
+
+
+
+Schrock                  Expires 9 February 2027               [Page 10]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   *  Separates the transport-neutral core model from transport
+      bindings.
+
+   *  Replaces HTTP 428 and the proposed dedicated media type with HTTP
+      403 and RFC 9457 application/problem+json.
+
+   *  Requests an HTTP Problem Types registry entry under Specification
+      Required rather than a standards-tree media type.
+
+   *  Removes the protocol-specific EP-APPROVAL acquisition flow from
+      the core and defines generic, non-authoritative obtain hints.
+
+   *  Defines action-profile, requirement-correlation, extension, nonce
+      consumption, and authenticated-carriage rules.
+
+   *  Adds an informative DMSC gateway profile and conformance cases
+      while explicitly excluding admission transfer and double-admission
+      prevention.
+
+9.  References
+
+9.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
+              Writing an IANA Considerations Section in RFCs", BCP 26,
+              RFC 8126, DOI 10.17487/RFC8126, June 2017,
+              <https://www.rfc-editor.org/info/rfc8126>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8259]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
+              Interchange Format", STD 90, RFC 8259,
+              DOI 10.17487/RFC8259, December 2017,
+              <https://www.rfc-editor.org/info/rfc8259>.
+
+   [RFC9110]  Fielding, R., Ed., Nottingham, M., Ed., and J. Reschke,
+              Ed., "HTTP Semantics", STD 97, RFC 9110,
+              DOI 10.17487/RFC9110, June 2022,
+              <https://www.rfc-editor.org/info/rfc9110>.
+
+
+
+
+
+Schrock                  Expires 9 February 2027               [Page 11]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   [RFC9457]  Nottingham, M., Wilde, E., and S. Dalal, "Problem Details
+              for HTTP APIs", RFC 9457, DOI 10.17487/RFC9457, July 2023,
+              <https://www.rfc-editor.org/info/rfc9457>.
+
+9.2.  Informative References
+
+   [AEB]      Schrock, I., "The Action Evidence Boundary for
+              Consequential Agent Effects", Work in Progress, Internet-
+              Draft, draft-schrock-action-evidence-boundary-03, August
+              2026, <https://datatracker.ietf.org/doc/draft-schrock-
+              action-evidence-boundary/>.
+
+   [AEC]      Schrock, I., "Authorization Evidence Chains: Composing
+              Heterogeneous Agent-Action Evidence (EP-AEC)", Work in
+              Progress, Internet-Draft, draft-schrock-ep-authorization-
+              evidence-chain-05, August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-evidence-chain/>.
+
+   [BCR]      Schrock, I., "Bounded Capability Receipts and Durable
+              Spend Control for Agent Actions", Work in Progress,
+              Internet-Draft, draft-schrock-ep-bounded-capability-
+              receipts-03, August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              bounded-capability-receipts/>.
+
+   [CAID]     Schrock, I., "The Canonical Action Identifier (CAID)",
+              Work in Progress, Internet-Draft, draft-schrock-canonical-
+              action-identifier-02, August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-canonical-
+              action-identifier/>.
+
+   [DMSC-GAPS]
+              Dunbar, L., Wang, Y., Schrock, I., and B. Liu, "Deployment
+              Scenarios and Gap Analysis for AI Agent Gateway", Work in
+              Progress, Internet-Draft, draft-dunbar-dmsc-gw-scenarios-
+              gap-analysis-03, August 2026,
+              <https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-
+              scenarios-gap-analysis/>.
+
+   [RFC9470]  Bertocci, V. and B. Campbell, "OAuth 2.0 Step Up
+              Authentication Challenge Protocol", RFC 9470,
+              DOI 10.17487/RFC9470, September 2023,
+              <https://www.rfc-editor.org/info/rfc9470>.
+
+
+
+
+
+
+
+Schrock                  Expires 9 February 2027               [Page 12]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+Appendix A.  Relationship to Existing Mechanisms
+
+   CAID [CAID] is one mechanism for deriving and mapping exact material
+   actions.  AEB [AEB] defines executor-side evidence verification,
+   refusal, and one-time consumption.  Bounded Capability Receipts [BCR]
+   define durable single-domain reservation and consumption.  AEC [AEC]
+   is one possible presentation profile.  None is required by the core
+   challenge, and the challenge does not extend any of them across
+   independently operated admission domains.
+
+Appendix B.  Implementation Status
+
+   The EMILIA Protocol repository contains a same-team reference
+   implementation of the AE-CHALLENGE-v1 core lifecycle, including
+   relying-party-derived action binding, policy-derived requirements,
+   durable body-bound registration, single-use consumption, expiry,
+   follow-up challenges, and action-swap refusal.  Revision -03 adds a
+   serializer and parser for the RFC 9457 HTTP binding and tests that
+   pin status 403, application/problem+json, Cache-Control: no-store,
+   and the evidence_challenge extension.
+
+   This is same-team implementation evidence.  No independent
+   implementation or interoperability is claimed.  The implementation
+   does not yet provide a DMSC carrier or conserved-admission mechanism,
+   and its current local evidence and presentation identifiers do not
+   resolve the identifier-governance question in Section 7.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 9 February 2027               [Page 13]

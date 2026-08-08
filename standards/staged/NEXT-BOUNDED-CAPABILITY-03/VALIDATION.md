@@ -1,6 +1,6 @@
 # Validation record
 
-Validated on 2026-08-07 from the isolated -03 candidate packet.
+Validated on 2026-08-08 from the isolated -03 candidate packet.
 
 - `xmllint --noout` passed for the XML source.
 - `xml2rfc 3.34.0` generated the TXT and HTML renderings.

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from 'vitest';
 import {
-  CHALLENGE_PRESENTATION_METHOD, CHALLENGE_VERSION,
+  CHALLENGE_HTTP_STATUS, CHALLENGE_MEDIA_TYPE,
+  CHALLENGE_PRESENTATION_METHOD, CHALLENGE_PROBLEM_TYPE, CHALLENGE_VERSION,
   createEvidenceChallenge, createFollowupEvidenceChallenge,
+  createEvidenceChallengeProblem, parseEvidenceChallengeProblem,
   evaluatePresentation, deriveRequiredEvidence,
 } from '../lib/negotiate/evidence-challenge.js';
 import { artifactDigest } from '../lib/evidence/evidence-graph.js';
@@ -334,11 +336,11 @@ describe('deriveRequiredEvidence — edge cases fail safe', () => {
 
   it('requests only the least-disclosing unsatisfied branch of an OR policy', () => {
     expect(deriveRequiredEvidence({ requirement: 'authorization_receipt OR policy_permit' }))
-      .toEqual([{ type: 'authorization_receipt' }]);
+      .toEqual([{ requirement_id: 'authorization_receipt', type: 'authorization_receipt' }]);
     expect(deriveRequiredEvidence(
       { requirement: 'authorization_receipt OR (policy_permit AND workload_identity)' },
       { satisfied_by: ['policy_permit'] },
-    )).toEqual([{ type: 'authorization_receipt' }]);
+    )).toEqual([{ requirement_id: 'authorization_receipt', type: 'authorization_receipt' }]);
   });
 
   it('carries the active draft -00 profile and proof-predicate constraints', () => {
@@ -347,8 +349,9 @@ describe('deriveRequiredEvidence — edge cases fail safe', () => {
       profiles: { authorization_receipt: 'ep-receipt-v1' },
       proof_predicates: { authorization_receipt: ['signature_valid', 'not_revoked'] },
     })).toEqual([{
+      requirement_id: 'authorization_receipt',
       type: 'authorization_receipt',
-      profile: 'ep-receipt-v1',
+      profiles: ['ep-receipt-v1'],
       proof_predicates: ['signature_valid', 'not_revoked'],
     }]);
   });
@@ -399,5 +402,47 @@ describe('evaluatePresentation — structural refusals before any policy runs', 
     expect(impossibleExpiry.verdict).toBe('refused');
     expect(impossibleExpiry.reasons.join(' ')).toContain('expires_at');
     expect(nonces.size).toBe(0);
+  });
+});
+
+describe('AE-CHALLENGE -03 HTTP binding', () => {
+  it('uses RFC 9457 Problem Details with 403 and no-store', () => {
+    const challenge = createEvidenceChallenge(ACTION, policy, {
+      expires_at: EXPIRES,
+      nonce: 'nonce-http-binding-0001',
+      audience: 'https://agent.example',
+    });
+    const response = createEvidenceChallengeProblem(challenge, {
+      instance: 'https://resource.example/problems/challenge-1',
+    });
+
+    expect(response.status).toBe(CHALLENGE_HTTP_STATUS);
+    expect(response.status).toBe(403);
+    expect(response.headers['content-type']).toBe(CHALLENGE_MEDIA_TYPE);
+    expect(response.headers['content-type']).toBe('application/problem+json');
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body.type).toBe(CHALLENGE_PROBLEM_TYPE);
+    expect(response.body.status).toBe(403);
+    expect(response.body.evidence_challenge).toBe(challenge);
+    expect(parseEvidenceChallengeProblem(response)).toBe(challenge);
+  });
+
+  it('refuses 428, the retired custom media type, and malformed extensions', () => {
+    const challenge = createEvidenceChallenge(ACTION, policy, {
+      expires_at: EXPIRES,
+      nonce: 'nonce-http-binding-0002',
+    });
+    const response = createEvidenceChallengeProblem(challenge);
+
+    expect(() => parseEvidenceChallengeProblem({ ...response, status: 428 }))
+      .toThrow(/MUST use status 403/);
+    expect(() => parseEvidenceChallengeProblem({
+      ...response,
+      headers: { ...response.headers, 'content-type': 'application/authorization-evidence-challenge+json' },
+    })).toThrow(/application\/problem\+json/);
+    expect(() => parseEvidenceChallengeProblem({
+      ...response,
+      body: { ...response.body, evidence_challenge: { ...challenge, action_digest: 'not-a-digest' } },
+    })).toThrow(/missing or invalid/);
   });
 });

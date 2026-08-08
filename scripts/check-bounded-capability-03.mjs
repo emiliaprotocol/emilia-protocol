@@ -36,7 +36,7 @@ invariant(xml.includes(`docName="${basename}"`), 'docName must identify -03');
 invariant(xml.includes(`value="${basename}"`), 'seriesInfo must identify -03');
 invariant(xml.includes('category="exp"'), 'the candidate must remain Experimental');
 invariant(xml.includes('submissionType="IETF"'), 'the inherited submission type changed');
-invariant(xml.includes('<date year="2026" month="August" day="7"/>'), 'date must be 7 August 2026');
+invariant(xml.includes('<date year="2026" month="August" day="8"/>'), 'date must be 8 August 2026');
 invariant(txt.includes(basename) && html.includes(basename), 'renderings must identify -03');
 
 for (const required of [

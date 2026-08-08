@@ -32,8 +32,15 @@ import { artifactDigest, evaluateEvidenceGraph } from '../evidence/evidence-grap
 import { evaluateChainAdmissibility } from '../evidence/admissibility.js';
 
 export const CHALLENGE_VERSION = 'AE-CHALLENGE-v1';
-export const CHALLENGE_MEDIA_TYPE = 'application/authorization-evidence-challenge+json';
+// draft-schrock-ae-challenge-03 separates the transport-neutral challenge
+// from its HTTP carrier. HTTP reuses RFC 9457 Problem Details instead of
+// defining a dedicated media type.
+export const CHALLENGE_MEDIA_TYPE = 'application/problem+json';
+export const CHALLENGE_HTTP_STATUS = 403;
+export const CHALLENGE_PROBLEM_TYPE = 'https://iana.org/assignments/http-problem-types#ae-required';
+export const CHALLENGE_PROBLEM_TITLE = 'Authorization Evidence Required';
 export const CHALLENGE_PRESENTATION_METHOD = 'ep-aec-v1';
+export const CHALLENGE_ACTION_PROFILE = 'https://emiliaprotocol.ai/profiles/artifact-digest-v1';
 const CHALLENGE_PRESENTATION_DOCUMENT_VERSION = 'EP-AEC-v1';
 const LEGACY_GRAPH_DOCUMENT_VERSION = 'EP-AEG-v1';
 
@@ -107,6 +114,7 @@ type EvidenceChallengeOpts = {
   consumedNonces?: Set<string>;
   next_expires_at?: string;
   audience?: string;
+  action_profile?: string;
   expected_audience?: string;
   keysByType?: Record<string, any>;
   policiesByType?: Record<string, any>;
@@ -118,6 +126,10 @@ function mintChallengeForDigest(action_digest, policy, opts: EvidenceChallengeOp
   if (!validSha256Digest(action_digest)) throw new Error('action_digest MUST be a sha256 digest');
   const nonce = opts.nonce ?? crypto.randomBytes(18).toString('base64url');
   if (typeof nonce !== 'string' || !nonce.trim()) throw new Error('nonce MUST be a non-empty string');
+  const actionProfile = opts.action_profile ?? CHALLENGE_ACTION_PROFILE;
+  if (typeof actionProfile !== 'string' || !actionProfile.trim() || actionProfile.length > 512) {
+    throw new Error('action_profile MUST be a non-empty identifier of at most 512 characters');
+  }
   if (opts.audience !== undefined
       && (typeof opts.audience !== 'string' || !opts.audience.trim() || opts.audience.length > 256)) {
     throw new Error('audience MUST be a non-empty string of at most 256 characters');
@@ -127,6 +139,7 @@ function mintChallengeForDigest(action_digest, policy, opts: EvidenceChallengeOp
     challenge_id: opts.challenge_id ?? crypto.randomUUID(),
     nonce,
     action_digest,
+    action_profile: actionProfile,
     reliance_purpose: policy?.reliance_purpose ?? null,
     policy_id: policy?.policy_id ?? null,
     policy_digest: digestPolicy(policy),
@@ -211,6 +224,7 @@ export function deriveRequiredEvidence(policy, priorResult: { satisfied_by?: str
   const assuranceByType = [policy?.required_assurance, policy?.assurance_class, policy?.assurance_classes]
     .find((v) => v && typeof v === 'object') ?? {};
   return [...new Set(tokens)].map((type) => ({
+    requirement_id: type,
     type,
     ...(typeof assuranceByType[type] === 'string' ? { assurance_class: assuranceByType[type] } : {}),
     ...(Number.isFinite(policy?.freshness_sec?.[type]) ? {
@@ -219,7 +233,7 @@ export function deriveRequiredEvidence(policy, priorResult: { satisfied_by?: str
     ...(policy?.revocation_required?.includes(type) ? {
       status: 'current',
     } : {}),
-    ...(typeof policy?.profiles?.[type] === 'string' ? { profile: policy.profiles[type] } : {}),
+    ...(typeof policy?.profiles?.[type] === 'string' ? { profiles: [policy.profiles[type]] } : {}),
     ...(Array.isArray(policy?.proof_predicates?.[type])
       ? { proof_predicates: [...policy.proof_predicates[type]] }
       : {}),
@@ -234,6 +248,78 @@ export function deriveRequiredEvidence(policy, priorResult: { satisfied_by?: str
  */
 export function createEvidenceChallenge(action, policy, opts = {}) {
   return mintChallengeForDigest(artifactDigest(action), policy, opts);
+}
+
+/**
+ * RFC 9457 HTTP binding for the transport-neutral challenge core.
+ * The challenge remains a refusal with information: wrapping it in a Problem
+ * Details response does not authorize the action or promise a later effect.
+ */
+export function createEvidenceChallengeProblem(challenge, opts: {
+  detail?: string;
+  instance?: string;
+} = {}) {
+  if (challenge?.['@version'] !== CHALLENGE_VERSION) {
+    throw new Error('unknown challenge version');
+  }
+  if (typeof challenge?.nonce !== 'string' || !challenge.nonce.trim()) {
+    throw new Error('challenge nonce missing or invalid');
+  }
+  if (!validSha256Digest(challenge?.action_digest)) {
+    throw new Error('challenge action_digest missing or invalid');
+  }
+  if (typeof challenge?.action_profile !== 'string' || !challenge.action_profile.trim()) {
+    throw new Error('challenge action_profile missing or invalid');
+  }
+  if (Number.isNaN(parseTimestamp(challenge?.expires_at))) {
+    throw new Error('challenge expires_at missing or invalid');
+  }
+  const body = {
+    type: CHALLENGE_PROBLEM_TYPE,
+    title: CHALLENGE_PROBLEM_TITLE,
+    status: CHALLENGE_HTTP_STATUS,
+    detail: opts.detail ?? 'The action was refused because required authorization evidence is unavailable.',
+    ...(opts.instance !== undefined ? { instance: opts.instance } : {}),
+    evidence_challenge: challenge,
+  };
+  return {
+    status: CHALLENGE_HTTP_STATUS,
+    headers: Object.freeze({
+      'content-type': CHALLENGE_MEDIA_TYPE,
+      'cache-control': 'no-store',
+    }),
+    body,
+  };
+}
+
+/** Parse and validate the RFC 9457 binding without treating it as authority. */
+export function parseEvidenceChallengeProblem(response) {
+  const contentType = String(response?.headers?.['content-type']
+    ?? response?.headers?.get?.('content-type')
+    ?? '').split(';', 1)[0].trim().toLowerCase();
+  const body = response?.body;
+  if (response?.status !== CHALLENGE_HTTP_STATUS) {
+    throw new Error('evidence challenge HTTP response MUST use status 403');
+  }
+  if (contentType !== CHALLENGE_MEDIA_TYPE) {
+    throw new Error('evidence challenge HTTP response MUST use application/problem+json');
+  }
+  if (body?.type !== CHALLENGE_PROBLEM_TYPE
+      || body?.title !== CHALLENGE_PROBLEM_TITLE
+      || body?.status !== CHALLENGE_HTTP_STATUS) {
+    throw new Error('evidence challenge Problem Details metadata is invalid');
+  }
+  const challenge = body?.evidence_challenge;
+  if (challenge?.['@version'] !== CHALLENGE_VERSION
+      || typeof challenge?.nonce !== 'string'
+      || !challenge.nonce.trim()
+      || !validSha256Digest(challenge?.action_digest)
+      || typeof challenge?.action_profile !== 'string'
+      || !challenge.action_profile.trim()
+      || Number.isNaN(parseTimestamp(challenge?.expires_at))) {
+    throw new Error('evidence_challenge extension is missing or invalid');
+  }
+  return challenge;
 }
 
 function requireChallengeStore(store, opts: EvidenceChallengeOpts = {}) {
@@ -287,6 +373,7 @@ export function createFollowupEvidenceChallenge(challenge, policy, priorResult, 
     expires_at,
     prior: priorResult,
     audience: opts.audience ?? challenge.audience,
+    action_profile: opts.action_profile ?? challenge.action_profile,
   });
 }
 
@@ -382,6 +469,9 @@ export function evaluatePresentation(challenge, graphDoc, policy, opts: Evidence
   if (challenge?.['@version'] !== CHALLENGE_VERSION) return refuse('unknown challenge version');
   if (typeof challenge?.nonce !== 'string' || !challenge.nonce.trim()) return refuse('challenge nonce missing or invalid');
   if (!validSha256Digest(challenge.action_digest)) return refuse('challenge action_digest missing or invalid');
+  if (typeof challenge?.action_profile !== 'string' || !challenge.action_profile.trim()) {
+    return refuse('challenge action_profile missing or invalid');
+  }
   if (!policyMatchesChallenge(challenge, policy)) return refuse('challenge policy_digest missing or policy changed');
   if (!validPresentationContract(challenge)) return refuse('challenge presentation method is not the AE-CHALLENGE-v1 ep-aec-v1 profile');
   const audienceError = validateAudience(challenge, opts);

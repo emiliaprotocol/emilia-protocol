@@ -73,8 +73,9 @@ remain at their stated lower evidence types.
   enforced at the gate, not offline-verifiable (see Dependency).
 - **Layer**: application-layer artifact; rides any session/transport.
 - **Failure behavior**: fail-closed. Missing/invalid/stale/replayed/
-  out-of-scope → refuse + machine-readable challenge (HTTP 428,
-  `application/authorization-evidence-challenge+json`).
+  out-of-scope → refuse + transport-neutral machine-readable challenge. The
+  AE Challenge -03 HTTP binding uses 403 with RFC 9457
+  `application/problem+json`; non-HTTP carriers preserve the core data model.
 - **Implementation status**: implemented.
 - **Specification status**: specified — draft-schrock-ep-authorization-receipts,
   draft-schrock-human-authorization-binding (host-record binding profile).

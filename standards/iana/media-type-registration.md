@@ -1,10 +1,9 @@
 # IANA media type registrations — EMILIA Protocol
 
-Registration templates per RFC 6838, Section 5.6. The AE Challenge media type
-now follows the Independent Stream publication path for a permanent
-standards-tree registration; the current receipts draft carries its own
-standards-tree registration request. See `README.md` in this directory for
-submission channels, order of operations, and the status tracker.
+Registration templates per RFC 6838, Section 5.6. The current receipts draft
+carries the active standards-tree registration request. The former AE
+Challenge media-type request is retained below only as process history; -03
+withdraws it and uses RFC 9457 `application/problem+json`.
 
 **Consistency rule applied throughout:** every string below is taken verbatim
 from a draft's own text. Nothing here invents a name a draft does not carry.
@@ -16,18 +15,20 @@ do not yet have.
 
 ## 1. application/authorization-evidence-challenge+json
 
-**Status: DIRECT REQUEST CLOSED / ISE SUBMISSION STAGED.** IANA
+**Status: RETIRED BY AE CHALLENGE -03; DO NOT FILE.** IANA
 closed ticket #1456851 on 2026-08-07 without a merits decision because the
 document had not reached a publication-stage review. IANA advised that an
 Independent Stream document can be processed when it reaches IETF conflict
 review. The type is not registered. Revision -02 was published on 2026-08-07
 with the full permanent standards-tree template and Independent Stream
 metadata; the checklist-complete ISE submission is staged in Gmail and unsent.
-The string remains fixed by draft text:
+The string was fixed by revision -02 text:
 `draft-schrock-ae-challenge-02`, Section 2, specifies that
 a challenge is "returned (in the HTTP binding) with status 428 and media type
 application/authorization-evidence-challenge+json". Section 5 (IANA
-Considerations) requests permanent standards-tree registration.
+Considerations) requested permanent standards-tree registration. Revision -03
+withdraws that request, uses HTTP 403 with `application/problem+json`, and
+requests an HTTP Problem Types registry entry under Specification Required.
 
 **Deployment honesty note:** the reference enforcement point returns the
 challenge object today labeled `application/json` (Express `res.json()`); this

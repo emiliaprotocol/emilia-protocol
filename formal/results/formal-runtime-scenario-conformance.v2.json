@@ -483,11 +483,11 @@
     },
     {
       "path": "lib/negotiate/evidence-challenge.js",
-      "sha256": "ffbda771fddd96b00eb972aefeafe0458d1798a07e1b10a4a5eb591ebba5d6cc"
+      "sha256": "127cfe038263f87c58aeee68082579dac14e97c7bfec460c334c5cdaf658d9f5"
     },
     {
       "path": "lib/negotiate/evidence-challenge.ts",
-      "sha256": "07d16aada9de9afbc66a91097beac9c0aa49f199243de1fbc4727b5abc2e85cc"
+      "sha256": "4798354a6a6e2789ba3b5465b810f7503dcb0081f484c51d56797fce1ba50808"
     },
     {
       "path": "lib/strict-json.js",
@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "24f983fffe8255a7b7191b167f5dda4193b1f2ac4c6551d9ec0aa964ffbee15a"
+      "sha256": "bacc9540c1152b46c63130d94afcce22e734cee9df6464182553184bd91116fc"
     },
     {
       "path": "packages/gate/aec-execution.js",

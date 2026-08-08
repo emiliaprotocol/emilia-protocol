@@ -189,14 +189,16 @@ describe("bounded assurance closure for exactly two claims", () => {
     expect(projection.challenge.action_digest).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(projection.challenge.required_evidence).toEqual([
       {
+        requirement_id: "authorization_receipt",
         type: "authorization_receipt",
         max_age_sec: 300,
-        profile: "EP-TRUST-RECEIPT-v1",
+        profiles: ["EP-TRUST-RECEIPT-v1"],
       },
       {
+        requirement_id: "workload_identity",
         type: "workload_identity",
         max_age_sec: 60,
-        profile: "EP-WORKLOAD-IDENTITY-v1",
+        profiles: ["EP-WORKLOAD-IDENTITY-v1"],
       },
     ]);
     expect(projection.challenge.policy_id).toBe(policy.policy_id);
