@@ -30,7 +30,7 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 | # | Registration | IANA registry | Backing draft (section) | Draft text status | Template status | Gate to filing |
 |---|---|---|---|---|---|---|
 | 1 | `agent-action-control.json` | Well-Known URIs | draft-schrock-agent-action-manifest-00 (§3, §9) | **Requests registration** (fields in §9) | READY-ON-POST | Draft live on datatracker [verify posting after the 2026-07-06 batch upload] |
-| 2 | `authorization-evidence-required` | HTTP Problem Types | draft-schrock-ae-challenge-03 (§3, §6; candidate 2026-08-08) | **Requests registration** under Specification Required; reuses `application/problem+json` | READY-ON-POST | Publish -03, obtain focused HTTP review, and process with the Independent Stream document |
+| 2 | `authorization-evidence-required` | HTTP Problem Types | draft-schrock-ae-challenge-03 (§3, §6; published 2026-08-08) | **Requests registration** under Specification Required; reuses `application/problem+json` | CARRIED-BY-DRAFT | Obtain focused HTTP review and process with the Independent Stream document |
 | 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-10 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 4 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
 | 5 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | PROPOSED, requires draft text in next rev | Next-rev field definition; draft decides on any unprefixed successor |
@@ -100,8 +100,8 @@ registry, not IANA's.
 ## Order of operations
 
 1. Verify each backing draft is live on Datatracker before citing it to IANA.
-2. For entry 2, publish AE Challenge -03, obtain Agent2Agent, AgentProto, and
-   HTTP-specific review, then send the fresh Independent Stream request. The
+2. For entry 2, obtain Agent2Agent, AgentProto, and HTTP-specific review of the
+   published AE Challenge -03, then send the fresh Independent Stream request. The
    only IANA allocation is Specification Required; do not reopen the retired
    media-type tickets or file a vendor-tree substitute.
 3. **File entry 1** (`agent-action-control.json`) only after re-verifying its

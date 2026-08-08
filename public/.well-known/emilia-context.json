@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-08T07:49:13.504Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "cfdb919cfc8675e360706d284d7b772774787e78e34670b74d69faf97742e594",
+    "input_digest_sha256": "6ea07b9b61c6e0fd62310f9e766a398e05947bf7918dfb48c63af0db549c0110",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "827e9081453ec83d44e5803fb7224e3b09ac56cce9721d78de36e39670a8b2a9",
-        "bytes": 38579
+        "sha256": "380f0f1cdd5e0efa0f6abdfda22c3f2c52dbb8680ae73553bc909fc92e0d3648",
+        "bytes": 39899
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4495,9 +4495,9 @@
   "standards": [
     {
       "identifier": "draft-schrock-ae-challenge",
-      "revision_at_snapshot": "02",
+      "revision_at_snapshot": "03",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 7 with the complete standards-tree media-type template and Independent Stream metadata; submit to the ISE, then carry the IANA request through IETF conflict review",
+      "next_action": "Published August 8; obtain Agent2Agent, AgentProto, and HTTP-specific review of the transport-neutral core and RFC 9457 binding, then send a fresh checklist-complete Independent Stream request",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4575,9 +4575,9 @@
     },
     {
       "identifier": "draft-schrock-ep-bounded-capability-receipts",
-      "revision_at_snapshot": "02",
+      "revision_at_snapshot": "03",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published August 6; use -02 for shared state-domain binding, single-executor fallback, and optional exact-action human-authorization composition",
+      "next_action": "Published August 8; use -03 for shared state-domain binding, single-executor fallback, optional exact-action human-authorization composition, and serialized revocation inheritance for delegated authority",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4679,7 +4679,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-08-06",
+    "updated": "2026-08-08",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",

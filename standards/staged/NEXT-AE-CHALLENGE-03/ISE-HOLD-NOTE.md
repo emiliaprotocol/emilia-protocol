@@ -2,13 +2,16 @@ Subject: Re: Independent Stream submission: draft-schrock-ae-challenge-02
 
 Eliot,
 
-Please hold my submission request for revision -02. In a further review I found
-that the document coupled the core challenge to HTTP 428 and a dedicated media
-type, and did not state the gateway admission-ownership boundary clearly
-enough. I have replaced it with a substantive -03 that separates the
-transport-neutral core, uses 403 and RFC 9457 for HTTP, and makes explicit that
-a challenge neither transfers admission ownership nor solves cross-gateway
-double admission.
+Thank you. Please set aside the -02 request. In a further review I found that
+the document coupled the core challenge to HTTP 428 and a dedicated media type,
+and did not state the gateway admission-ownership boundary clearly enough.
+
+I have replaced it with a substantive -03 that separates the transport-neutral
+core, uses 403 and RFC 9457 for HTTP, and makes explicit that a challenge
+neither transfers admission ownership nor solves cross-gateway double
+admission:
+
+https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/
 
 I am requesting focused review from Agent2Agent, AgentProto, and an HTTP
 reviewer before asking you to consider -03. After that discussion I will send a
@@ -17,4 +20,3 @@ summary. Please do not begin review of -02.
 
 Thank you,
 Iman
-

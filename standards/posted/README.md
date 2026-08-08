@@ -10,9 +10,10 @@ including the three coauthored records.
 
 Do not upload a file from this directory as a new draft. Maintenance revisions
 may be prepared in `../staged/`, rendered and tested, then filed through the
-Datatracker. The August 3 packet and four isolated August 6 packets are retained
-exact-submission provenance. Despite retained `UPLOAD-THIS` directory names,
-they are not upload candidates or a filing queue.
+Datatracker. The August 3 packet, four isolated August 6 packets, and two
+isolated August 8 packets are retained exact-submission provenance. Despite
+retained `UPLOAD-THIS` directory names, they are not upload candidates or a
+filing queue.
 
 Posted snapshots are immutable publication records. Implementation-status text
 inside a posted revision reflects the state described when that revision was
@@ -31,7 +32,7 @@ before promotion. TXT and HTML snapshots are conveniences; the archive is
 authoritative for rendered forms.
 
 - `draft-ferro-schrock-memory-projection-record-01`
-- `draft-schrock-ae-challenge-01`
+- `draft-schrock-ae-challenge-03`
 - `draft-schrock-action-evidence-boundary-03`
 - `draft-schrock-action-remedy-receipts-00`
 - `draft-schrock-agent-qualification-statements-00`
@@ -41,7 +42,7 @@ authoritative for rendered forms.
 - `draft-schrock-ep-authority-introduction-03`
 - `draft-schrock-ep-authorization-evidence-chain-05`
 - `draft-schrock-ep-authorization-receipts-10`
-- `draft-schrock-ep-bounded-capability-receipts-02`
+- `draft-schrock-ep-bounded-capability-receipts-03`
 - `draft-schrock-ep-bounded-execution-program-00`
 - `draft-schrock-ep-evidence-record-01`
 - `draft-schrock-ep-outcome-binding-00`
@@ -141,3 +142,16 @@ immutable IETF archive before promotion into this directory:
 
 The isolated `../staged/NEXT-*` packets retain the exact submitted bytes,
 review renders, checksums, and validation records as publication provenance.
+
+## August 8, 2026 maintenance set
+
+The following current XML snapshots were verified byte-for-byte against the
+immutable IETF archive before promotion into this directory:
+
+- `draft-schrock-ae-challenge-03`
+- `draft-schrock-ep-bounded-capability-receipts-03`
+
+The retained `../staged/NEXT-AE-CHALLENGE-03` and
+`../staged/NEXT-BOUNDED-CAPABILITY-03` packets preserve the exact submitted
+XML, review renders, validation records, and correspondence text as publication
+provenance.

@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-08-06",
+  "updated": "2026-08-08",
   "active_datatracker_count": 23,
   "active_schrock_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. The four August 6 maintenance revisions and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. AE-CHALLENGE-03, Bounded Capability Receipts-03, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -196,10 +196,10 @@
   "active_datatracker": [
     {
       "draft": "draft-schrock-ae-challenge",
-      "revision": "02",
+      "revision": "03",
       "layer": "execution_lifecycle",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 7 with the complete standards-tree media-type template and Independent Stream metadata; submit to the ISE, then carry the IANA request through IETF conflict review"
+      "next_action": "Published August 8; obtain Agent2Agent, AgentProto, and HTTP-specific review of the transport-neutral core and RFC 9457 binding, then send a fresh checklist-complete Independent Stream request"
     },
     {
       "draft": "draft-schrock-action-evidence-boundary",
@@ -266,10 +266,10 @@
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts",
-      "revision": "02",
+      "revision": "03",
       "layer": "delegation_capability_policy",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published August 6; use -02 for shared state-domain binding, single-executor fallback, and optional exact-action human-authorization composition"
+      "next_action": "Published August 8; use -03 for shared state-domain binding, single-executor fallback, optional exact-action human-authorization composition, and serialized revocation inheritance for delegated authority"
     },
     {
       "draft": "draft-schrock-ep-bounded-execution-program",
@@ -615,6 +615,34 @@
         "draft": "draft-schrock-model-to-matter-04",
         "source": "standards/posted/draft-schrock-model-to-matter-04.xml",
         "snapshot_sha256": "94e107da7a668b236e50c7ee6173b9a9113627c9e64cfb2033fad659d3821810",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      }
+    ]
+  },
+  "august_8_2026_maintenance_wave": {
+    "filing_date": "2026-08-08",
+    "item_count": 2,
+    "publication_status": "published_and_ietf_archive_verified_2026_08_08",
+    "filing_order": [
+      "draft-schrock-ae-challenge-03",
+      "draft-schrock-ep-bounded-capability-receipts-03"
+    ],
+    "verification": "Each listed XML is byte-for-byte identical to its immutable IETF archive artifact.",
+    "provenance_packets": [
+      "standards/staged/NEXT-AE-CHALLENGE-03",
+      "standards/staged/NEXT-BOUNDED-CAPABILITY-03"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-ae-challenge-03",
+        "source": "standards/posted/draft-schrock-ae-challenge-03.xml",
+        "snapshot_sha256": "3e6c1fbefa4c1c87731083b72e185dd9a80528ed9e23a38881116c4b930d3d99",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-ep-bounded-capability-receipts-03",
+        "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-03.xml",
+        "snapshot_sha256": "8f9dc9c3fbc7dfbe9f6c8f63d7dfd662773e8a118834f6b92bef9ed7148696a1",
         "state": "published_ietf_archive_verified_exact_local_match"
       }
     ]
