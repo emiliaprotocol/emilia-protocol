@@ -9,6 +9,8 @@
   },
   "exports": {
     ".": "./dist/runtime.js",
+    "./github-deployment-server": "./dist/github-deployment-server.js",
+    "./github-deployment-webhook": "./dist/github-deployment-webhook.js",
     "./observation": "./dist/observation.js",
     "./production-config": "./dist/production-config.js",
     "./routes": "./dist/routes.js",

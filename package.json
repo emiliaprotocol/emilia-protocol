@@ -32,6 +32,7 @@
     "test:grpc-guard": "node --test packages/grpc-guard/*.test.mjs",
     "test:gateway-authz": "node --test packages/gateway-authz/*.test.mjs",
     "test:transport-adapters": "node --test packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs",
+    "test:github-authority-map": "node --test integrations/github-authority-map-action/tests/*.node-test.mjs",
     "test:ot-command-binding": "node --test examples/ot-command-binding-v1/scenario.test.mjs",
     "demo:ot-command-binding": "node examples/ot-command-binding-v1/demo.mjs",
     "ml:selftest": "node --test ml/risk-eval/classifiers/heuristic.selftest.mjs ml/risk-eval/classifiers/tinker.selftest.mjs && python3 ml/train/prepare.selftest.py",

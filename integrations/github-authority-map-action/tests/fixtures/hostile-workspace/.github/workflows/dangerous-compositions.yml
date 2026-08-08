@@ -1,0 +1,39 @@
+name: Concrete dangerous compositions
+
+on:
+  pull_request_target:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  candidate-code:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: ./candidate-action
+
+  untrusted-shell:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - run: echo "${{ github.event.pull_request.title }}"
+
+  publish-without-environment:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - run: npm publish --provenance
+  protected-publish:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+    steps:
+      - run: npm publish --provenance

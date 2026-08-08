@@ -443,6 +443,7 @@ packages/gate/action-refusal-postgres.test.js linguist-generated=true
 packages/gate/action-refusal-statement.test.js linguist-generated=true
 packages/gate/adapters/aws.test.js linguist-generated=true
 packages/gate/adapters/cloud.test.js linguist-generated=true
+packages/gate/adapters/github-deployment.test.js linguist-generated=true
 packages/gate/adapters/github.test.js linguist-generated=true
 packages/gate/adapters/mongodb.test.js linguist-generated=true
 packages/gate/adapters/mutation-closure.test.js linguist-generated=true

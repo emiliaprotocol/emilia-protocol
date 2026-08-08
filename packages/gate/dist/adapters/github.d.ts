@@ -75,6 +75,26 @@ export declare function createGithubAllowanceConnector({ octokit, }?: {
     octokit?: any;
 }): Promise<Readonly<{}>>;
 /**
+ * Bind a deployment-protection client to the GitHub App installation that
+ * authenticated the provider probe.  The resulting opaque connector is the
+ * only object accepted by the deployment admission function.
+ */
+export declare function createGithubDeploymentProtectionConnector({ octokit, }?: {
+    octokit?: any;
+}): Promise<Readonly<{}>>;
+/**
+ * Approve one GitHub workflow run's admission to one named environment under
+ * a signed Gate allowance. Authority is reserved and consumed before GitHub's
+ * approval endpoint is entered. An uncertain callback response is therefore
+ * INDETERMINATE and cannot be blindly retried under a new operation id.
+ */
+export declare function guardGithubDeploymentProtectionRule({ connector, params, operationId, ...allowanceOptions }: {
+    [x: string]: any;
+    connector: any;
+    params: any;
+    operationId: any;
+}): Promise<import("../reliance-risk-crypto.js").RiskRecord>;
+/**
  * Dispatch one specifically bound production workflow under a signed Gate
  * allowance. The Octokit client and GitHub credential remain in the caller's
  * process; this path exposes no generic GitHub mutation.
@@ -138,6 +158,8 @@ declare const _default: {
     githubWorkflowInputsDigest: typeof githubWorkflowInputsDigest;
     createGithubAllowanceConnector: typeof createGithubAllowanceConnector;
     guardGithubAllowanceMutation: typeof guardGithubAllowanceMutation;
+    createGithubDeploymentProtectionConnector: typeof createGithubDeploymentProtectionConnector;
+    guardGithubDeploymentProtectionRule: typeof guardGithubDeploymentProtectionRule;
 };
 export default _default;
 //# sourceMappingURL=github.d.ts.map

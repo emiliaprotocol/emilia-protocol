@@ -1,0 +1,14 @@
+name: Scheduled self-hosted review
+
+on:
+  schedule:
+    - cron: '17 7 * * *'
+
+permissions: read-all
+
+jobs:
+  audit:
+    runs-on: [self-hosted, linux]
+    permissions: {}
+    steps:
+      - run: echo "scheduled"
