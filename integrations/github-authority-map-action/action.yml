@@ -25,7 +25,7 @@ outputs:
     description: Number of ambiguous or unsupported constructs recorded.
 
 runs:
-  using: node20
+  using: node24
   main: scan.mjs
 
 branding:

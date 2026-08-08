@@ -276,11 +276,11 @@ test('CLI supports fail-on=never and rejects unsupported fail policies', async (
   assert.match(invalid.stderr, /never\|critical/);
 });
 
-test('action metadata selects Node 20 and declares the scanner inputs and outputs', async () => {
+test('action metadata selects Node 24 and declares the scanner inputs and outputs', async () => {
   const actionYaml = await readFile(path.resolve(here, '..', 'action.yml'), 'utf8');
 
   assert.match(actionYaml, /^name: EMILIA Authority Map$/m);
-  assert.match(actionYaml, /^  using: node20$/m);
+  assert.match(actionYaml, /^  using: node24$/m);
   assert.match(actionYaml, /^  main: scan\.mjs$/m);
   assert.match(actionYaml, /^  fail-on:$/m);
   assert.match(actionYaml, /^  json-output:$/m);

@@ -27,6 +27,9 @@ The integration is split into three modules:
 - `github-deployment-webhook` authenticates the untouched webhook bytes with
   `X-Hub-Signature-256`, pins the App installation and repository, validates
   the callback URL, re-reads the workflow run, and constructs the exact action.
+- `github-deployment-queue` persists the authenticated raw delivery before
+  acknowledgment, leases it to one worker with `SKIP LOCKED`, and permits retry
+  only for pre-admission unavailability. `INDETERMINATE` is terminal.
 - `@emilia-protocol/gate/adapters/github` verifies a server-owned signed
   allowance, reserves and consumes its one-time capability, and only then
   reviews the deployment protection rule.
@@ -61,14 +64,17 @@ repository:
 - an installation-authenticated Octokit client scoped to the repository;
 - the signed Gate allowance, capability secret, trusted issuer pins, real
   receipt and allowance-currentness verifiers, and a durable capability store;
-- a durable, atomic webhook-delivery store; and
-- an operational queue or request budget that acknowledges GitHub promptly.
+- the private PostgreSQL delivery queue from migration
+  `20260808233000_github_deployment_delivery_queue.sql`; and
+- a bounded worker loop around `createGitHubDeploymentDeliveryWorker()`.
 
-`createMemoryGitHubWebhookDeliveryStore()` is deliberately marked non-durable
-and is accepted only with `allowEphemeralStore: true`. It exists for tests and
-local demonstrations, not production. The checked-in HTTP server processes the
-reference path synchronously; a production deployment should persist and queue
-the authenticated delivery before expensive verification work.
+`createMemoryGitHubWebhookDeliveryStore()` and
+`createMemoryGitHubDeploymentDeliveryQueue()` are deliberately marked
+non-durable and are accepted only under explicit test flags. The synchronous
+gate remains useful for conformance tests. Production wiring must put
+`createGitHubDeploymentWebhookInbox()` at the HTTP boundary and process its
+leased records through `createGitHubDeploymentWebhookProcessor()`; it must not
+acknowledge directly from the synchronous reference gate.
 
 This integration does not make every GitHub mutation non-bypassable. It covers
 only jobs that target an environment where this App is enabled, and GitHub

@@ -5,7 +5,7 @@ name: Publish emilia-verify to PyPI
 # short-lived upload credential. Configure the matching trusted publisher once at:
 #   pypi.org -> Your projects -> emilia-verify -> Manage -> Publishing
 #   Owner: emiliaprotocol | Repo: emilia-protocol
-#   Workflow: publish-python-verify.yml | Environment: (leave blank)
+#   Workflow: publish-python-verify.yml | Environment: registry-publishing-approval
 #
 # Release flow: bump version, merge it to main, create and push the matching
 # tag, then manually dispatch this workflow with the tag and typed confirmation.
@@ -27,17 +27,10 @@ permissions:
   contents: read
 
 jobs:
-  approval:
-    runs-on: ubuntu-latest
-    environment: registry-publishing-approval
-    permissions: {}
-    steps:
-      - run: echo "Owner approved registry publication."
-
   publish:
-    needs: approval
     name: Build and publish emilia-verify
     runs-on: ubuntu-latest
+    environment: registry-publishing-approval
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     concurrency:

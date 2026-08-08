@@ -30,6 +30,7 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: registry-publishing-approval
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     concurrency:

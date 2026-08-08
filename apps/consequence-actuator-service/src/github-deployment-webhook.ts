@@ -42,6 +42,14 @@ interface DeliveryRecord {
   result: JsonObject | null;
 }
 
+export interface AuthenticatedGitHubDeploymentDelivery {
+  delivery_id: string;
+  request_digest: string;
+  body: Buffer;
+  headers: Record<string, string>;
+  payload: ReturnType<typeof normalizePayload>;
+}
+
 class WebhookInputError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -246,6 +254,188 @@ function uncertainAdmission(reason: unknown): boolean {
   );
 }
 
+export function validateGitHubDeploymentWebhookAuthenticationConfig({
+  webhookSecret,
+  expectedInstallationId,
+  expectedRepositoryId,
+  expectedRepository,
+  maxBodyBytes = DEFAULT_MAX_BODY_BYTES,
+}: any = {}) {
+  if (typeof webhookSecret !== 'string' || webhookSecret.length < 16
+      || !positiveInteger(expectedInstallationId)
+      || !positiveInteger(expectedRepositoryId)
+      || typeof expectedRepository !== 'string'
+      || !SAFE_REPOSITORY.test(expectedRepository)
+      || !Number.isSafeInteger(maxBodyBytes)
+      || maxBodyBytes < 1024
+      || maxBodyBytes > 25 * 1024 * 1024) {
+    throw new TypeError('github_deployment_webhook_auth_config_invalid');
+  }
+  return Object.freeze({
+    webhookSecret,
+    expectedInstallationId,
+    expectedRepositoryId,
+    expectedRepository,
+    maxBodyBytes,
+  });
+}
+
+export function authenticateGitHubDeploymentWebhook(
+  input: { headers?: unknown; body?: unknown } = {},
+  config: any = {},
+): AuthenticatedGitHubDeploymentDelivery {
+  const {
+    webhookSecret,
+    expectedInstallationId,
+    expectedRepositoryId,
+    expectedRepository,
+    maxBodyBytes,
+  } = validateGitHubDeploymentWebhookAuthenticationConfig(config);
+  const bytes = Buffer.isBuffer(input.body)
+    ? Buffer.from(input.body)
+    : input.body instanceof Uint8Array ? Buffer.from(input.body) : null;
+  if (!bytes || bytes.byteLength === 0 || bytes.byteLength > maxBodyBytes) {
+    throw new WebhookInputError(bytes && bytes.byteLength > maxBodyBytes ? 413 : 400, 'webhook_body_invalid');
+  }
+  const contentType = header(input.headers, 'content-type');
+  const event = header(input.headers, 'x-github-event');
+  const deliveryId = header(input.headers, 'x-github-delivery');
+  const userAgent = header(input.headers, 'user-agent');
+  const signature = header(input.headers, 'x-hub-signature-256');
+  if (!JSON_CONTENT_TYPE.test(contentType ?? '')) {
+    throw new WebhookInputError(415, 'application_json_required');
+  }
+  if (event !== 'deployment_protection_rule') {
+    throw new WebhookInputError(400, 'github_event_invalid');
+  }
+  if (!deliveryId || !DELIVERY_ID.test(deliveryId)) {
+    throw new WebhookInputError(400, 'github_delivery_id_invalid');
+  }
+  if (!String(userAgent ?? '').startsWith('GitHub-Hookshot/')) {
+    throw new WebhookInputError(400, 'github_user_agent_invalid');
+  }
+  if (!verifySignature(bytes, signature, webhookSecret)) {
+    throw new WebhookInputError(401, 'webhook_signature_invalid');
+  }
+  const payload = normalizePayload(strictJson(bytes));
+  if (payload.installation_id !== expectedInstallationId
+      || payload.repository_id !== expectedRepositoryId
+      || payload.repository !== expectedRepository) {
+    throw new WebhookInputError(403, 'github_target_not_allowed');
+  }
+  return Object.freeze({
+    delivery_id: deliveryId,
+    request_digest: requestDigest(bytes),
+    body: bytes,
+    headers: Object.freeze({
+      'content-type': contentType!,
+      'user-agent': userAgent!,
+      'x-github-event': event!,
+      'x-github-delivery': deliveryId,
+      'x-hub-signature-256': signature!,
+    }),
+    payload,
+  });
+}
+
+export async function evaluateAuthenticatedGitHubDeployment({
+  payload,
+  inspectRun,
+  admitDeployment,
+}: any): Promise<{ ok: boolean; status: number; state: DeliveryState; reason: string | null; result: JsonObject | null }> {
+  let observedRun;
+  try {
+    observedRun = await inspectRun({
+      installation_id: payload.installation_id,
+      owner: payload.owner,
+      repo: payload.repo,
+      repository_id: payload.repository_id,
+      run_id: payload.run_id,
+    });
+  } catch {
+    return { ok: false, status: 503, state: 'UNAVAILABLE', reason: 'workflow_run_unavailable', result: null };
+  }
+  const run = normalizeRun(observedRun, payload);
+  if (!run) {
+    return { ok: false, status: 200, state: 'REFUSED', reason: 'workflow_run_binding_mismatch', result: null };
+  }
+
+  const operationId = `github:environment:${payload.repository_id}:${payload.run_id}:${payload.environment}`;
+  const params = Object.freeze({
+    owner: payload.owner,
+    repo: payload.repo,
+    repositoryId: payload.repository_id,
+    environment: payload.environment,
+    workflow: run.workflow,
+    ref: payload.ref,
+    sha: payload.sha,
+    event: payload.event,
+    runId: payload.run_id,
+  });
+  let admission;
+  try {
+    admission = await admitDeployment({ params, operation_id: operationId });
+  } catch {
+    return { ok: false, status: 200, state: 'INDETERMINATE', reason: 'admission_outcome_indeterminate', result: null };
+  }
+  if (admission?.ok === true) {
+    return { ok: true, status: 200, state: 'APPROVED', reason: null, result: admission };
+  }
+  const reason = typeof admission?.reason === 'string' ? admission.reason : 'deployment_not_authorized';
+  return {
+    ok: false,
+    status: 200,
+    state: uncertainAdmission(reason) ? 'INDETERMINATE' : 'REFUSED',
+    reason,
+    result: admission ?? null,
+  };
+}
+
+export function createGitHubDeploymentWebhookProcessor({
+  webhookSecret,
+  expectedInstallationId,
+  expectedRepositoryId,
+  expectedRepository,
+  inspectRun,
+  admitDeployment,
+  maxBodyBytes = DEFAULT_MAX_BODY_BYTES,
+}: any = {}) {
+  if (typeof inspectRun !== 'function' || typeof admitDeployment !== 'function') {
+    throw new TypeError('github_deployment_webhook_processor_config_invalid');
+  }
+  const authConfig = validateGitHubDeploymentWebhookAuthenticationConfig({
+    webhookSecret,
+    expectedInstallationId,
+    expectedRepositoryId,
+    expectedRepository,
+    maxBodyBytes,
+  });
+  return Object.freeze({
+    async process(record: any) {
+      try {
+        const authenticated = authenticateGitHubDeploymentWebhook({
+          headers: record?.headers,
+          body: record?.body,
+        }, authConfig);
+        if (authenticated.delivery_id !== record?.delivery_id
+            || authenticated.request_digest !== record?.request_digest) {
+          return { ok: false, status: 200, state: 'REFUSED', reason: 'queued_delivery_binding_mismatch', result: null };
+        }
+        return evaluateAuthenticatedGitHubDeployment({
+          payload: authenticated.payload,
+          inspectRun,
+          admitDeployment,
+        });
+      } catch (error) {
+        if (error instanceof WebhookInputError) {
+          return { ok: false, status: error.status, state: 'REFUSED', reason: error.message, result: null };
+        }
+        return { ok: false, status: 500, state: 'INDETERMINATE', reason: 'queued_delivery_internal_error', result: null };
+      }
+    },
+  });
+}
+
 export function createGitHubDeploymentWebhookGate({
   webhookSecret,
   expectedInstallationId,
@@ -296,84 +486,26 @@ export function createGitHubDeploymentWebhookGate({
   return Object.freeze({
     async handle(input: { headers?: unknown; body?: unknown } = {}) {
       try {
-        const bytes = Buffer.isBuffer(input.body)
-          ? input.body
-          : input.body instanceof Uint8Array ? Buffer.from(input.body) : null;
-        if (!bytes || bytes.byteLength === 0 || bytes.byteLength > maxBodyBytes) {
-          throw new WebhookInputError(bytes && bytes.byteLength > maxBodyBytes ? 413 : 400, 'webhook_body_invalid');
-        }
-        if (!JSON_CONTENT_TYPE.test(header(input.headers, 'content-type') ?? '')) {
-          throw new WebhookInputError(415, 'application_json_required');
-        }
-        if (header(input.headers, 'x-github-event') !== 'deployment_protection_rule') {
-          throw new WebhookInputError(400, 'github_event_invalid');
-        }
-        const deliveryId = header(input.headers, 'x-github-delivery');
-        if (!deliveryId || !DELIVERY_ID.test(deliveryId)) {
-          throw new WebhookInputError(400, 'github_delivery_id_invalid');
-        }
-        if (!String(header(input.headers, 'user-agent') ?? '').startsWith('GitHub-Hookshot/')) {
-          throw new WebhookInputError(400, 'github_user_agent_invalid');
-        }
-        if (!verifySignature(bytes, header(input.headers, 'x-hub-signature-256'), webhookSecret)) {
-          throw new WebhookInputError(401, 'webhook_signature_invalid');
-        }
-        const payload = normalizePayload(strictJson(bytes));
-        if (payload.installation_id !== expectedInstallationId
-            || payload.repository_id !== expectedRepositoryId
-            || payload.repository !== expectedRepository) {
-          throw new WebhookInputError(403, 'github_target_not_allowed');
-        }
-        const digest = requestDigest(bytes);
+        const authenticated = authenticateGitHubDeploymentWebhook(input, {
+          webhookSecret,
+          expectedInstallationId,
+          expectedRepositoryId,
+          expectedRepository,
+          maxBodyBytes,
+        });
+        const { delivery_id: deliveryId, request_digest: digest, payload } = authenticated;
         const claim = await deliveryStore.claim({ delivery_id: deliveryId, request_digest: digest });
         if (!claim?.ok) {
           return { ok: false, status: 409, state: 'REFUSED', reason: claim?.reason || 'delivery_claim_refused' };
         }
         if (claim.duplicate) return publicResult(claim.record, true);
 
-        let observedRun;
-        try {
-          observedRun = await inspectRun({
-            installation_id: payload.installation_id,
-            owner: payload.owner,
-            repo: payload.repo,
-            repository_id: payload.repository_id,
-            run_id: payload.run_id,
-          });
-        } catch {
-          return finish(deliveryId, digest, 'UNAVAILABLE', 'workflow_run_unavailable');
-        }
-        const run = normalizeRun(observedRun, payload);
-        if (!run) {
-          return finish(deliveryId, digest, 'REFUSED', 'workflow_run_binding_mismatch');
-        }
-
-        const operationId = `github:environment:${payload.repository_id}:${payload.run_id}:${payload.environment}`;
-        const params = Object.freeze({
-          owner: payload.owner,
-          repo: payload.repo,
-          repositoryId: payload.repository_id,
-          environment: payload.environment,
-          workflow: run.workflow,
-          ref: payload.ref,
-          sha: payload.sha,
-          event: payload.event,
-          runId: payload.run_id,
+        const evaluated = await evaluateAuthenticatedGitHubDeployment({
+          payload,
+          inspectRun,
+          admitDeployment,
         });
-        let admission;
-        try {
-          admission = await admitDeployment({ params, operation_id: operationId });
-        } catch {
-          return finish(deliveryId, digest, 'INDETERMINATE', 'admission_outcome_indeterminate');
-        }
-        if (admission?.ok === true) {
-          return finish(deliveryId, digest, 'APPROVED', null, admission);
-        }
-        const reason = typeof admission?.reason === 'string' ? admission.reason : 'deployment_not_authorized';
-        if (uncertainAdmission(reason)) {
-          return finish(deliveryId, digest, 'INDETERMINATE', reason, admission ?? null);
-        }
-        return finish(deliveryId, digest, 'REFUSED', reason, admission ?? null);
+        return finish(deliveryId, digest, evaluated.state, evaluated.reason, evaluated.result);
       } catch (error) {
         if (error instanceof WebhookInputError) {
           return { ok: false, status: error.status, state: 'REFUSED', reason: error.message };
@@ -426,7 +558,11 @@ export async function createGitHubDeploymentProtectionProvider({
 }
 
 export default Object.freeze({
+  authenticateGitHubDeploymentWebhook,
+  validateGitHubDeploymentWebhookAuthenticationConfig,
+  evaluateAuthenticatedGitHubDeployment,
   createGitHubDeploymentWebhookGate,
+  createGitHubDeploymentWebhookProcessor,
   createMemoryGitHubWebhookDeliveryStore,
   createGitHubDeploymentProtectionProvider,
 });

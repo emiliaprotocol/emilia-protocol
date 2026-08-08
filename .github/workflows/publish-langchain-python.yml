@@ -38,17 +38,10 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/integrations/langchain-emilia
         run: python -m pytest -q integrations/langchain-emilia/tests
 
-  approval:
+  publish:
     needs: test
     runs-on: ubuntu-latest
     environment: registry-publishing-approval
-    permissions: {}
-    steps:
-      - run: echo "Owner approved registry publication."
-
-  publish:
-    needs: approval
-    runs-on: ubuntu-latest
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     concurrency:

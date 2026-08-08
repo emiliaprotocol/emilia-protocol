@@ -1,6 +1,14 @@
 # EMILIA Authority Map
 
-EMILIA Authority Map is a zero-dependency Node 20 GitHub Action that statically inventories `.github/workflows/*.yml` and `.github/workflows/*.yaml` from `GITHUB_WORKSPACE`.
+Map privileged GitHub Actions paths before you protect them.
+
+EMILIA Authority Map is a zero-dependency Node 24 GitHub Action that statically inventories `.github/workflows/*.yml` and `.github/workflows/*.yaml` from `GITHUB_WORKSPACE`.
+
+Our first run against the EMILIA Protocol repository surfaced five critical
+static review paths whose mutation jobs had no environment: three Python
+publishers, a reusable PyPI publisher, and Dependabot's merge job. We moved the
+protection to the exact mutation jobs and reran the scanner to zero critical
+findings. That result identified control placement; it did not prove an exploit.
 
 It emits JSON and Markdown covering:
 
@@ -22,7 +30,7 @@ The scanner recognizes common block and flow forms for triggers, permissions, ru
 
 ## Usage
 
-Pin the Action itself to a reviewed full commit SHA:
+For a quick evaluation, use the maintained `v1` release line:
 
 ```yaml
 name: Authority discovery
@@ -40,10 +48,13 @@ jobs:
     steps:
       - uses: actions/checkout@<full-commit-sha>
       - id: authority-map
-        uses: <owner>/<repository>/integrations/github-authority-map-action@<full-commit-sha>
+        uses: emiliaprotocol/github-authority-map@v1
         with:
           fail-on: critical
 ```
+
+For production, replace `v1` with the reviewed full commit SHA. The moving
+major tag is convenient for evaluation; it is not an immutable dependency pin.
 
 By default, the Action writes `emilia-authority-map.json` and `emilia-authority-map.md` to `RUNNER_TEMP`, appends the Markdown report to the job summary, and exposes these outputs:
 
@@ -70,6 +81,9 @@ environment are warning-level review paths. Scanner/configuration errors exit
 with status 2.
 
 Failure is a reporting policy, not mutation prevention.
+
+Start with `fail-on: never`, review the report, and protect or document each
+real mutation path. Switch to `critical` only after the baseline is understood.
 
 ## Local CLI
 

@@ -1,0 +1,22 @@
+name: Test Authority Map
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Unit and hostile fixture tests
+        run: node --test tests/*.node-test.mjs
+      - name: Scan this repository
+        run: node scan.mjs --workspace . --fail-on critical
