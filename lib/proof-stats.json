@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-08-07T18:48:21.440Z",
+  "generatedAt": "2026-08-08T00:02:21.287Z",
   "tests": {
-    "total": 8744,
+    "total": 8745,
     "files": 521,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
@@ -21,7 +21,7 @@
     "coveredModelActions": 28,
     "actionCompleteModels": 1,
     "formalMutationOperators": 51,
-    "evidenceSha256": "d6a1fb07de2aa71315d59c011aa9e72a0e580ab8e87b68026ea30a3f90211bfa",
+    "evidenceSha256": "8badfd8283b32887557a5dc5ead29a69be0e72f351b6d3e4917febcfe031ce82",
     "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
   },
   "formalEvidenceCoverage": {
@@ -104,8 +104,8 @@
   "securityCase": {
     "status": "passed",
     "claims": 35,
-    "evidenceFiles": 255,
-    "evidenceBundleSha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+    "evidenceFiles": 259,
+    "evidenceBundleSha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
   },
   "conformance": {
     "suites": 21,

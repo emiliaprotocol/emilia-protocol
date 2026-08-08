@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-07T18:48:21.440Z",
+  "evidence_snapshot_at": "2026-08-08T00:02:21.287Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "03fd226a5b7fc10f0ef7577a048ac816c3f5f42b97d235562561c5ac44c373bc",
+    "input_digest_sha256": "1957490a1562b255b991169095632cd9405360a1c42954dd8b70727a7b52c1fb",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "519b08c0c1e51923680b555bebf0b4809cef4d68d6d44c654d81769cf2c0a35f",
+        "sha256": "e514ef453400a1b5949abd0e76f8ad1cf6e2f811a85b5513130c6394c1ddb8e1",
         "bytes": 4298
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "4df4df1692fa3bd4205f43776868e5e45e630258e0b546598d8de71a1d46c23a",
-        "bytes": 248412
+        "sha256": "63b1d5ebc19259da41ed4760556009d914ceac80bb3300ea3b93b48946c7e054",
+        "bytes": 251460
       },
       {
         "path": "security/security-case.json",
-        "sha256": "844b0692d9d80101b7b77d979e30f6d8e97d1dca83faaea7cdc9415ad41017a5",
-        "bytes": 381410
+        "sha256": "defeed815f90ca7e011deb9a8d6dc7980b06fd05b750f4de5be7cf6fc0f83dfc",
+        "bytes": 385871
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -272,7 +272,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 8744,
+      "total": 8745,
       "files": 521,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -314,7 +314,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "d6a1fb07de2aa71315d59c011aa9e72a0e580ab8e87b68026ea30a3f90211bfa",
+        "evidenceSha256": "8badfd8283b32887557a5dc5ead29a69be0e72f351b6d3e4917febcfe031ce82",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -383,8 +383,8 @@
     "security_case": {
       "status": "passed",
       "claims": 35,
-      "evidence_files": 255,
-      "evidence_bundle_sha256": "e402496e04f40a2a10bba9e820ccc9a63a49f0e4ed3e49fd4baa11ea49cc095d"
+      "evidence_files": 259,
+      "evidence_bundle_sha256": "bc1cb1803cfe08ba92c96d1e695c1b672aa0fa47886126cab8b0c5b45535d187"
     },
     "caid": {
       "core_vectors": 48,
@@ -1042,12 +1042,13 @@
     },
     {
       "claim_id": "conservation-of-authority-is-bounded-and-non-amplifying",
-      "statement": "Within an accepted delegation path, action and audience selectors can only narrow, budget dimensions and expiry cannot increase, and cycles or a leaf naming itself as an ancestor are refused. Aggregate sibling-budget conservation is claimed only when parent-funded child operations, allocations, reservations, and commits share one authoritative atomic state domain; it is not inferred from path containment alone and is not claimed across independent stores.",
+      "statement": "Within an accepted delegation path, action and audience selectors can only narrow, budget dimensions and expiry cannot increase, and cycles or a leaf naming itself as an ancestor are refused. Each signed capability declares direct or cascade revocation: direct revocation blocks the named capability and future child allocation from it without retracting previously registered descendants by itself; cascade revocation also blocks later descendant reservations and child allocations. Aggregate sibling-budget conservation and immediate cascade inheritance are claimed only when parent-funded child operations, allocations, reservations, revocations, and commits share one authoritative atomic state domain with complete current ancestor state; neither property is inferred from path containment or claimed across independent stores.",
       "acceptance_roots": [
         "the relying party's pinned authority-registry view and capability issuer",
         "an authoritative epoch-pinned allocation ledger for aggregate branch claims",
         "atomic compare-and-update reservation in the shared capability store",
-        "one authoritative atomic state domain for every authority-bearing ancestor and descendant"
+        "one authoritative atomic state domain for every authority-bearing ancestor and descendant",
+        "an explicit signed direct or cascade revocation mode and complete current ancestor state"
       ],
       "enforcement_path": [
         {
@@ -1163,17 +1164,35 @@
             "DelegationOperationBindingImmutable"
           ],
           "scope": "TLC 2.19 exhaustively checked the bounded same-team finite configuration with one root, three possible children, three operation identifiers, amounts and time in 0..2, and delegation depth at most two. It models one authoritative state domain and is not a refinement proof of TypeScript or SQL."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_capability_revocation.tla",
+          "runner": "formal/ep_capability_revocation.cfg",
+          "result_evidence": "formal/results/ep-capability-revocation.tlc.summary.txt",
+          "obligations": [
+            "CascadeRevocationClosesDescendants",
+            "DirectRevocationDoesNotRetractTransferredAuthority",
+            "MissingLineageFailsClosed",
+            "OwnedReservationNeverReopens",
+            "NewReservationRequiresCurrentCompleteLineage",
+            "NewChildRequiresActiveParentLineage"
+          ],
+          "scope": "TLC 2.19 exhaustively checked the bounded same-team finite configuration with one root, one child, one grandchild, two operation identifiers, every direct/cascade mode assignment, and at most seven serialized transitions. It models one authoritative state domain and is not a refinement proof of TypeScript or SQL."
         }
       ],
       "assumptions": [
         "every accepted child is evaluated against its direct authenticated parent",
         "aggregate branch claims use the same authoritative allocation epoch for all siblings",
-        "all workers and every authority-bearing ancestor or descendant share one authoritative linearizable atomic state domain"
+        "all workers and every authority-bearing ancestor or descendant share one authoritative linearizable atomic state domain",
+        "the complete current registered ancestor lineage is available at each reservation and child allocation"
       ],
       "exclusions": [
         "the bounded evidence is not an unbounded theorem or a refinement proof of TypeScript or SQL",
         "path non-amplification alone does not conserve aggregate sibling budgets",
         "conservation across independent stores, clouds, or offline replicas is not claimed",
+        "revocation distribution, cross-domain cascade enforcement, and a grace or wind-down period are not claimed",
         "registry compromise, database isolation failure, legal authority, human intent, and physical-world truth are outside this claim"
       ]
     },
