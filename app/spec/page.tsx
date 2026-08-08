@@ -3,7 +3,11 @@ import { join } from 'path';
 import { JetBrains_Mono, Outfit, Space_Grotesk } from 'next/font/google';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { safeHref } from '@/lib/safe-href';
+import {
+  escapeHtml,
+  renderInlineMarkdown as inlineFormat,
+  sanitizeCodeLanguage,
+} from '@/lib/spec-markdown';
 
 // Self-host the spec page's three custom fonts so the spec renders without
 // blocking on Google Fonts CSS and so the @next/next/no-page-custom-font
@@ -34,9 +38,9 @@ function mdToHtml(md: string): string {
 
   function processTable(tableBlock: string): string {
     const rows = tableBlock.split('\n').filter(r => r.trim());
-    if (rows.length < 2) return tableBlock;
+    if (rows.length < 2) return `<p>${inlineFormat(tableBlock)}</p>`;
     const sepIdx = rows.findIndex(r => /^\|[\s-:|]+\|$/.test(r.trim()));
-    if (sepIdx < 0) return tableBlock;
+    if (sepIdx < 0) return `<p>${inlineFormat(tableBlock)}</p>`;
     let thead = '', tbody = '';
     rows.forEach((row, i) => {
       const cells = row.split('|').slice(1, -1).map(c => c.trim());
@@ -54,9 +58,9 @@ function mdToHtml(md: string): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line.startsWith('```')) {
-      if (!inCode) { inCode = true; codeLang = line.slice(3).trim(); codeLines = []; }
+      if (!inCode) { inCode = true; codeLang = sanitizeCodeLanguage(line.slice(3)); codeLines = []; }
       else {
-        const escaped = codeLines.join('\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const escaped = escapeHtml(codeLines.join('\n'));
         output.push(`<pre class="code-block"><code class="lang-${codeLang || 'text'}">${escaped}</code></pre>`);
         inCode = false;
       }
@@ -81,14 +85,6 @@ function mdToHtml(md: string): string {
   }
   if (inTable) output.push(processTable(tableLines.join('\n')));
   return output.join('\n');
-}
-
-function inlineFormat(text: string): string {
-  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => `<a href="${safeHref(url)}">${label}</a>`);
-  return text;
 }
 
 export default function SpecPage() {

@@ -9,6 +9,7 @@ const {
   mockRequestSignoff,
   mockConsumeReceipt,
   mockReadEvidence,
+  mockLoggerWarn,
 } = vi.hoisted(() => ({
   mockAuthenticateCloudRequest: vi.fn(),
   mockLoadTenantApprovalQueue: vi.fn(),
@@ -16,6 +17,7 @@ const {
   mockRequestSignoff: vi.fn(),
   mockConsumeReceipt: vi.fn(),
   mockReadEvidence: vi.fn(),
+  mockLoggerWarn: vi.fn(),
 }));
 
 vi.mock('@/lib/cloud/auth', () => ({
@@ -40,7 +42,7 @@ vi.mock('@/app/api/v1/trust-receipts/[receiptId]/evidence/route.js', () => ({
   GET: (...args) => mockReadEvidence(...args),
 }));
 vi.mock('@/lib/logger.js', () => ({
-  logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() },
+  logger: { warn: mockLoggerWarn, info: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
 import { GET, POST } from '../app/api/cloud/approvals/route.js';
@@ -188,6 +190,23 @@ describe('Cloud approval endpoint', () => {
 
     expect(response.status).toBe(403);
     expect(mockRequestSignoff).not.toHaveBeenCalled();
+  });
+
+  it('keeps an orphaned receipt id out of a failed signoff response', async () => {
+    mockRequestSignoff.mockResolvedValue(Response.json(
+      { type: 'invalid_approver', detail: 'Approver is unavailable.' },
+      { status: 422 },
+    ));
+
+    const response = await POST(request('POST', approvalBody()));
+
+    expect(response.status).toBe(422);
+    expect(response.headers.get('x-emilia-orphaned-receipt-id')).toBeNull();
+    expect(await response.text()).not.toContain(RECEIPT_ID);
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      '[cloud/approvals] signoff request failed after receipt mint',
+      { receipt_id: RECEIPT_ID, signoff_status: 422 },
+    );
   });
 
   it('delegates one-time consume with a fixed executing-system identity', async () => {

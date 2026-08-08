@@ -257,8 +257,11 @@ export async function POST(request: NextRequest) {
       },
     ) as any);
     if (![200, 201].includes(signoffResponse.status)) {
+      logger.warn('[cloud/approvals] signoff request failed after receipt mint', {
+        receipt_id: receipt.receipt_id,
+        signoff_status: signoffResponse.status,
+      });
       const failed = await relayJson(signoffResponse);
-      failed.headers.set('x-emilia-orphaned-receipt-id', receipt.receipt_id);
       return failed;
     }
     const signoff = await signoffResponse.json();
