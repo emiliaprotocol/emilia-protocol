@@ -3,7 +3,7 @@
 
 *Status: canonical public-message doctrine*
 
-*Last updated: 2026-07-22*
+*Last updated: 2026-08-05*
 
 This document keeps the product, protocol, apps, assurance services, standards, and vertical profiles in one coherent company story. It governs public repository narrative, machine-facing context, marketing architecture, decks, product documentation, and future copy reviews. Runtime and security claims remain governed by the higher-precedence evidence sources named in `docs/ai/context-source.v1.json`.
 
@@ -55,6 +55,24 @@ EMILIA Assurance Plane re-performs the deployment's claims
 Gate belongs immediately before the system that can mutate state: an MCP tool, API handler, payment rail, cloud control, clinical determination workflow, grid actuator, or physical controller. It checks the relying party's evidence requirements and local policy before calling the executor. Missing or insufficient evidence produces a closed refusal and an action-bound challenge. Accepted evidence authorizes only the exact action and is consumed once. Gate reserves bounded authority before provider entry, preserves uncertainty when the provider outcome cannot be established, refuses blind replay, and accepts reconciliation only from authenticated evidence bound to the same operation and material action. Disputes, returns, refunds, reversals, and other remedies remain append-only: they are new, separately authorized actions and never rewrite the original effect.
 
 **What customers buy:** Managed or BYOC operation, policy compilation, trust and revocation configuration, approver-directory integrations, durable consumption, outcome reconciliation, dispute and remedy operations, evidence retention, deployment coverage, integrations, support, SLA, and a separately contracted warranty where offered.
+
+#### Deployment and custody model
+
+Customer-operated and EMILIA-managed Gate are parallel deployment choices, not a maturity ladder. A regulated customer may remain on-premises or BYOC permanently. In either mode, the customer remains the relying party and authority owner:
+
+- the customer selects the protected actions, policy, trust roots, approver directory, evidence requirements, and acceptance rules;
+- provider credentials remain inside a customer-controlled KMS, HSM, vault, or scoped connector boundary;
+- the calling agent never receives provider credentials or one-time Gate custody capabilities;
+- an EMILIA operations or support role cannot widen customer authority; and
+- the customer can export and independently verify its evidence without an EMILIA callback.
+
+An EMILIA-managed deployment means EMILIA operates the software, availability, upgrades, monitoring, and contracted evidence procedures. It does not make EMILIA the source of customer authority, a transaction principal, or the owner of the customer's portable evidence.
+
+#### Execution evidence and remedy
+
+Gate keeps local authorization, request custody, provider entry, provider commitment, observed effect, and remedy as separate facts. A local execution record can bind the runtime's stated outcome to the exact authorization; it does not by itself prove provider receipt or external effect. Those claims require evidence accepted under the relying party's pinned provider or effect profile.
+
+An uncertain provider outcome remains `INDETERMINATE` and closed to blind retry. A refund, return, reversal, replacement, or other remedy is a new separately authorized action with its own CAID, operation, limits, evidence, and possible indeterminate outcome. It never rewrites the original action as though it had not occurred.
 
 **Claim boundary:** "Gate prevents" is true only for action paths under complete mediation. An operator-controlled bypass remains outside the guarantee and must not be hidden by product language.
 

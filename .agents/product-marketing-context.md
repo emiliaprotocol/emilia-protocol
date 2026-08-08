@@ -31,7 +31,8 @@
 **Business model:**
 
 - The open verifier, protocol formats, conformance vectors, and interoperability materials remain reproducible and Apache-2.0.
-- The paid Gate surface includes managed policy, trust and revocation operations, integrations, durable consumption, evidence retention, deployment operations, support, SLA, and separately contracted warranty.
+- The paid Gate surface includes customer-operated or EMILIA-managed enforcement, policy, trust and revocation operations, integrations, durable consumption, evidence retention, deployment operations, support, SLA, and separately contracted warranty.
+- In either deployment mode, the customer remains the relying party and controls authority, policy, trust roots, provider credentials, acceptance rules, and portable evidence. Managed operation does not transfer authority ownership to EMILIA.
 - The paid Assurance Plane includes verification and re-performance services, signed scoped result artifacts, conformance reports, deployment-evidence packages, evidence operations, and partner workflows.
 - Any future certification mark depends on independent governance, scoped assessor authority, and external participation. EMILIA does not currently operate a public certification scheme and must not present itself as an auditor or accredited certifier.
 
@@ -114,7 +115,7 @@ Payments, government disbursement, code and cloud administration, grid operation
 **Key differentiators:**
 
 - Executor-side mediation before mutation, with a closed refusal when evidence is absent or insufficient.
-- Exact-action binding across approval, policy, authority, execution, and evidence.
+- Exact-action binding across approval, policy, authority, request custody, provider evidence, observed-effect evidence, and remedy without collapsing those claims.
 - One-time consumption and explicit indeterminate-effect handling.
 - Customer-pinned keys, policies, directories, registries, and acceptance profiles.
 - Open, offline verification that does not require an EMILIA callback.
@@ -124,7 +125,7 @@ Payments, government disbursement, code and cloud administration, grid operation
 
 **Why this is better:** A buyer can deploy a preventive product now, retain control of its trust roots, and later prove what the product did without asking the vendor to validate its own story.
 
-**Defensibility:** The product moat is the managed enforcement and evidence network, integrations, operational trust configuration, assurance workflows, support, and warranty. The neutrality moat is the open substrate, external implementation evidence, partner integrations, and reproducible verdict computation. Product success must not turn the Protocol into a vendor-controlled trust root.
+**Defensibility:** The product moat is installed complete-mediation integrations, durable authority and custody operations, provider-evidence profiles, customer workflow configuration, assurance procedures, support, and warranty. The acceptance moat grows only when relying parties accept or require compatible evidence; receipt volume by itself is not a network effect. The neutrality moat is the open substrate, external implementation evidence, partner integrations, and reproducible verdict computation. Product success must not turn the Protocol into a vendor-controlled trust root.
 
 ## Competitive Landscape
 
@@ -181,10 +182,11 @@ Payments, government disbursement, code and cloud administration, grid operation
 - "No valid licensed-review evidence, no adverse determination."
 - "A policy decision is not the same as human authorization."
 - "Complete mediation at the system of record."
+- "EMILIA operates the control; the customer controls the authority, credentials, and evidence."
 
 **Words to use:** authority control plane, autonomous work, machine workforce, operating mandate, unit of work, consequence firewall, exact action, executor boundary, system of record, complete mediation, customer-pinned trust, evidence challenge, one-time consumption, re-performance, scoped conformance, independent verification.
 
-**Words to avoid:** universal trust, AI safety solved, impossible to bypass, proof of comprehension, fully independent implementations, certified deployment, compliant by default, guaranteed legality, statute-mandated EMILIA.
+**Words to avoid:** universal trust, AI safety solved, impossible to bypass, proof of comprehension, proof an external effect occurred from a local log, automatic rollback, fully independent implementations, certified deployment, compliant by default, guaranteed legality, statute-mandated EMILIA, Visa network for AI actions.
 
 ## Brand Voice
 

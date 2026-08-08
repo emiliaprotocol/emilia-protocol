@@ -370,9 +370,9 @@ export default function GatePage() {
               A distinct job at each control layer.
             </h2>
             <p style={{ ...styles.lead, maxWidth: 820, marginTop: 18 }}>
-              AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves
-              exact authorization by an enrolled approver under the relying party&rsquo;s pinned
-              directory, then safely controls consequential outcomes.
+              AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA verifies
+              the exact authority and any required approver evidence under the relying party&rsquo;s
+              pinned rules, then controls admission at covered consequence boundaries.
             </p>
             <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 }}>
               {[
