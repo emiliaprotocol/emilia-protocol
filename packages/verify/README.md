@@ -165,6 +165,17 @@ relying party pins the maximum acceptable snapshot age. This prevents a fresh
 token from laundering stale directory state into a claim of current standing;
 it does not prove HR-system freshness or instantaneous employment status.
 
+`@emilia-protocol/verify/authorization-bundle` verifies the closed
+`EP-AUTHORIZATION-BUNDLE-v1` pre-execution human-evidence object. The relying
+party supplies the exact action, audience, native OAuth/RAR binding,
+policy-selected approver set, accepted key classes, current policy result, and
+any required status or presentation verifiers. The result is exactly
+`SATISFIED`, `REFUSE`, or `INDETERMINATE`; even `SATISFIED` explicitly sets
+`authorization_decision: false`. A separate compare-and-set helper binds one
+bundle digest to one native grant, but the caller must perform that transition
+atomically in its own durable authoritative store. The package includes 21
+same-repository hostile cases; they are not an external interoperability claim.
+
 `@emilia-protocol/verify/policy-decision-evidence` is the distribution bridge
 for existing local policy engines. It projects an exact OPA boolean or Cerbos
 effect into a short-lived Ed25519 statement, verifies it under a

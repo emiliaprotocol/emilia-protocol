@@ -7,6 +7,12 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `EP-AUTHORIZATION-BUNDLE-v1`, a closed pre-execution verifier for portable
+  human approval evidence with exact-action, audience, OAuth/RAR actor and
+  transaction binding, policy-selected approvers, current-policy and status
+  checks, three-state results, a pure bundle-to-grant compare-and-set helper,
+  and 21 generated hostile cases. `SATISFIED` remains evidence input and never
+  becomes a grant, authorization decision, consumption record, or effect proof.
 - `./a2a-receipt-binding`, a strict A2A v1.0 Message-extension presentation
   that binds one verified receipt to the exact initiating Message,
   server-issued Task/context, proof retry, Agent Card, target interface, action,

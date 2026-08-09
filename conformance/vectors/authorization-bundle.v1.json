@@ -1,0 +1,3007 @@
+{
+  "@version": "EP-AUTHORIZATION-BUNDLE-CASES-v1",
+  "status": "implementation-profile-cases",
+  "claim_boundary": "These vectors test pre-execution evidence satisfaction. SATISFIED is not an authorization decision, grant, reservation, consumption record, or execution proof.",
+  "generated_by": "conformance/vectors/generate-authorization-bundle.mts",
+  "cases": [
+    {
+      "id": "valid-two-person-oauth-bound-bundle",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "SATISFIED",
+        "reasons": []
+      }
+    },
+    {
+      "id": "approve-a-execute-b",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 50000,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "action_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "wrong-resource-server-audience",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://attacker.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "context_audience_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "wrong-agent-actor",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/other",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "authorization_binding_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "wrong-delegated-subject",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:bob",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "authorization_binding_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "generic-confirmation-without-native-transaction-binding",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z"
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z"
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:42beec2882ee012ab9d5e51f0bb03ee5784be2c48ccf49ae00472e6871df78fc",
+            "signature": "LT_ogQfYWfIYXFsKNc4y1_PKFSQ6_4529FdydUaw3ysJSxtXo_-a9DKkca9BdtofUKnh7av93gyF2xLfCjGSAQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:582f4f0d9131269a786a9fca1532c93690cf72095f0ed25414888fb3df345534",
+            "signature": "8-sK922Tq4vlrcweDcN-fdPkYpnu72mxVTjn08WgsGBWxFmpspE8VTHSTIe5NrqQH4tjxAqyIknuwAPoYBaCDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "authorization_binding_required"
+        ]
+      }
+    },
+    {
+      "id": "native-authorization-binding-unavailable",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reasons": [
+          "native_authorization_binding_unavailable"
+        ]
+      }
+    },
+    {
+      "id": "expired-approval-window",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:06:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "context_outside_validity_window"
+        ]
+      }
+    },
+    {
+      "id": "required-status-stale",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": true,
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reasons": [
+          "current_status_unavailable_or_stale"
+        ]
+      },
+      "current_status": {
+        "checked_at": "2026-08-09T17:40:00Z",
+        "expires_at": "2026-08-09T17:50:00Z",
+        "revoked_key_ids": []
+      }
+    },
+    {
+      "id": "required-status-provider-timeout",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": true,
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reasons": [
+          "current_status_unavailable_or_stale"
+        ]
+      },
+      "current_status": {
+        "checked_at": "2026-08-09T18:00:00Z",
+        "expires_at": "2026-08-09T18:01:00Z",
+        "unavailable": true,
+        "revoked_key_ids": []
+      }
+    },
+    {
+      "id": "approver-key-revoked",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": true,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "approver_key_revoked"
+        ]
+      },
+      "current_status": {
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z",
+        "revoked_key_ids": [
+          "ep:key:controller#1"
+        ]
+      }
+    },
+    {
+      "id": "incomplete-quorum",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "separation_of_duties_or_quorum_failed"
+        ]
+      }
+    },
+    {
+      "id": "duplicate-human-does-not-satisfy-quorum",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "separation_of_duties_or_quorum_failed"
+        ]
+      }
+    },
+    {
+      "id": "initiator-self-approval",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:approver:controller",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:e1ab55047fdaf7556c310ad7437dff61b9987bcb0d81a7787c61df17399b6e5a",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:e1ab55047fdaf7556c310ad7437dff61b9987bcb0d81a7787c61df17399b6e5a",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:approver:controller",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:e1ab55047fdaf7556c310ad7437dff61b9987bcb0d81a7787c61df17399b6e5a",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:approver:controller",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:19284ebbec8d3a8120e95464104d3e0f70e5ae8fea9ab7f243fe077ac3ff979c",
+            "signature": "zEr-8-2Rzh9ocdRjHi8wnKD0WVNReWMWEUkoTfkXJ5CoLbGzki0SO8aYjd9LBYGoWh29jIeLI84oecn0Cf5qAw",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:601c62f021779f508f8921da1439d70aa97caf57ed2a4d1d08f3e01e6666d661",
+            "signature": "ubZbbc9yGRM6fhPIwyslXecSTrLnDLrNgnh8QRyAHwmcavcrsHpG0hrPokIy51_zttWf8UYvScgValAJKE9GAw",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:approver:controller",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "separation_of_duties_or_quorum_failed"
+        ]
+      }
+    },
+    {
+      "id": "mismatched-policy-between-contexts",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:e5eca4135cfbb989be26220ca40914777e4fce33a651901d442c102d075f9a78",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:79e6ce50b2778d73996f26a1c44b1d303c24cb91b7776d6b135effc67f8614f5",
+            "signature": "uK4jUb4abuiK10BlRaQayFw5taNNR9AzbmhmXQrh_dMX02MTK8nogQ95HIXF0pL6WGUP16Q0IGG3ZzHHW_SdBA",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "contexts_do_not_share_one_policy_audience_and_binding"
+        ]
+      }
+    },
+    {
+      "id": "invalid-approver-signature",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "signoff_signature_invalid"
+        ]
+      }
+    },
+    {
+      "id": "unpinned-or-different-action-mapping-profile",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/lossy-payment-v0"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "authorization_binding_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "dynamic-plan-expands-beyond-approved-action",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7",
+          "recurring": true
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "action_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "closed-bundle-rejects-unknown-member",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": [],
+        "unregistered_member": true
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "bundle_malformed"
+        ]
+      }
+    },
+    {
+      "id": "current-policy-provider-unavailable",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z",
+        "unavailable": true
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reasons": [
+          "current_policy_unavailable_or_stale"
+        ]
+      }
+    },
+    {
+      "id": "presenter-selected-approver-set-does-not-match-policy",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
+            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "approver_selection_mismatch"
+        ]
+      }
+    }
+  ]
+}
