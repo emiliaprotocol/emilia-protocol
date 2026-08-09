@@ -23,9 +23,9 @@ import { ClaimBadge, ExampleTag, Tag, WorksDisciplineNote } from './ui';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'EMILIA Marketplace (Private Beta) — The Verified Market for Autonomous Work',
+  title: 'EMILIA Works (Private Beta) — Inspectable Autonomous Work',
   description:
-    'An open directory of builders, agents, and projects where every material claim carries a status, a scope, a source, and its limitations.',
+    'A directory of accountable builders and their work, with evidence status on capability statements.',
 };
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -91,6 +91,7 @@ export default async function WorksDirectory({ searchParams }: {
     if (filters.activity && !activeByListing.get(listing.listing_id)?.has(filters.activity)) return false;
     return true;
   });
+  const filtersActive = Object.values(filters).some(Boolean);
 
   return (
     <div style={styles.page}>
@@ -98,25 +99,25 @@ export default async function WorksDirectory({ searchParams }: {
 
       <section style={{ borderBottom: `1px solid ${color.border}` }}>
         <div style={{ ...styles.sectionWide, paddingTop: 72, paddingBottom: 64 }}>
-          <div style={styles.eyebrow}>EMILIA Marketplace · Private beta</div>
+          <div style={styles.eyebrow}>EMILIA Works · Private beta</div>
           <h1 style={{ ...styles.h1, maxWidth: 760 }}>
-            The verified market for autonomous work
+            A market for autonomous work you can inspect
           </h1>
           <p style={{ ...styles.body, maxWidth: 680 }}>
-            An open directory of builders, agents, and projects. List what you are building,
-            show the work, become discoverable. Every material claim carries a status, a scope,
-            a source, and its limitations — VERIFIED and ASSERTED are never the same thing here.
+            Builder profiles and listings are supplied by their posters. Capability statements carry
+            an evidence status, exact scope, source, observation date, and limitations so visitors can
+            distinguish VERIFIED evidence from an ASSERTED statement or an UNKNOWN state.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <Link href="/works/opportunities" style={cta.secondary}>Browse opportunities</Link>
-            <a href="https://github.com/emiliaprotocol/emilia-protocol" style={cta.ghost}>
-              Source on GitHub
-            </a>
+            <Link href="/works/join" style={cta.primary} className="ep-cta">List your work</Link>
+            <Link href="/works/opportunities/new" style={cta.secondary} className="ep-cta-secondary">Post an opportunity</Link>
+            <a href="#works-listings" style={cta.ghost} className="ep-cta-ghost">Browse listings</a>
+            <Link href="/works/opportunities" style={cta.ghost} className="ep-cta-ghost">Browse and respond</Link>
           </div>
         </div>
       </section>
 
-      <section>
+      <section id="works-listings">
         <div style={{ ...styles.sectionWide, paddingTop: 48, paddingBottom: 96 }}>
           {/* Filters — plain GET form, server-rendered */}
           <form method="get" action="/works" style={{
@@ -198,9 +199,10 @@ export default async function WorksDirectory({ searchParams }: {
                 </div>
               );
             })}
-            {visible.length === 0 ? (
+            {filtersActive && visible.length === 0 ? (
               <div style={{ ...styles.card, color: color.t3, fontSize: 14 }}>
-                No listings match these filters.
+                <div style={{ marginBottom: 12 }}>No listings match these filters.</div>
+                <Link href="/works" style={cta.secondary} className="ep-cta-secondary">Reset filters</Link>
               </div>
             ) : null}
           </div>

@@ -147,8 +147,9 @@ export function WorksDisciplineNote() {
       fontSize: 13, color: color.t3, lineHeight: 1.7,
       borderTop: `1px solid ${color.border}`, paddingTop: 20, margin: '48px 0 0',
     }}>
-      Every material claim on the EMILIA Marketplace carries a status — VERIFIED, ASSERTED, or UNKNOWN — with its
-      exact scope, source, observation date, and limitations. VERIFIED means a content-addressed
+      Capability, funding, authority, and eligibility statements on EMILIA Works carry a status —
+      VERIFIED, ASSERTED, or UNKNOWN — with exact scope, source, observation date, and limitations.
+      Profile and listing fields do not become verified merely by appearing here. VERIFIED means a content-addressed
       artifact or external signer backs the claim; it is never a quality score, a ranking, or a
       judgment that anything is safe or fit for purpose. Works does not rate, rank, or endorse.
     </p>

@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, color, font, radius } from '@/lib/tokens';
+import { styles, cta, color, font, radius } from '@/lib/tokens';
 import { isWorksV0Enabled } from '@/lib/works/env';
 import { getWorksRecord, listWorksRecords } from '@/lib/works/store';
 import type {
@@ -17,8 +17,13 @@ import type {
   SubmissionRecord,
 } from '@/lib/works/model';
 import { ClaimCard, ExampleTag, SectionTitle, WorksDisciplineNote } from '../../ui';
+import SubmissionForm from '../../SubmissionForm';
 
 export const dynamic = 'force-dynamic';
+
+type VisibleSubmissionRecord = SubmissionRecord & {
+  visibility?: 'private' | 'public';
+};
 
 export default async function OpportunityPage({ params }: {
   params: Promise<{ id: string }>;
@@ -34,8 +39,9 @@ export default async function OpportunityPage({ params }: {
     listWorksRecords('builders'),
     listWorksRecords('listings'),
   ]);
-  const submissions = ((subsRes.ok ? subsRes.records : []) as SubmissionRecord[])
-    .filter((sub) => sub.opportunity_id === opportunity.opportunity_id);
+  const submissions = ((subsRes.ok ? subsRes.records : []) as VisibleSubmissionRecord[])
+    .filter((sub) => sub.opportunity_id === opportunity.opportunity_id)
+    .filter((sub) => sub.visibility === 'public' || sub.example === true);
   const builderById = new Map(
     ((buildersRes.ok ? buildersRes.records : []) as BuilderRecord[])
       .map((b) => [b.builder_id, b]),
@@ -83,7 +89,31 @@ export default async function OpportunityPage({ params }: {
             </>
           ) : null}
 
-          <SectionTitle>Submissions</SectionTitle>
+          <SectionTitle>Respond</SectionTitle>
+          {opportunity.example ? (
+            <div style={{ ...styles.card, marginBottom: 48 }}>
+              <p style={{ ...styles.body, margin: '0 0 16px' }}>
+                This is a read-only example opportunity. It demonstrates claim status and response
+                structure, but it does not accept submissions.
+              </p>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <Link href="/works/opportunities" style={cta.secondary} className="ep-cta-secondary">
+                  Browse live opportunities
+                </Link>
+                <Link href="/works/opportunities/new" style={cta.primary} className="ep-cta">
+                  Post a live opportunity
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <SubmissionForm
+              opportunityId={opportunity.opportunity_id}
+              sponsorName={opportunity.posted_by}
+              sponsorContactRoute={opportunity.contact_route}
+            />
+          )}
+
+          <SectionTitle>Public submissions</SectionTitle>
           <div style={{ display: 'grid', gap: 16 }}>
             {submissions.map((sub) => {
               const builder = builderById.get(sub.builder_id);
@@ -126,20 +156,8 @@ export default async function OpportunityPage({ params }: {
               );
             })}
             {submissions.length === 0 ? (
-              <div style={{ fontSize: 14, color: color.t3 }}>No submissions yet.</div>
+              <div style={{ fontSize: 14, color: color.t3 }}>No public submissions yet.</div>
             ) : null}
-          </div>
-
-          <div style={{
-            marginTop: 32, padding: '16px 20px', background: '#F5F5F4',
-            border: `1px solid ${color.border}`, borderRadius: radius.base,
-            fontSize: 13, color: color.t2, lineHeight: 1.7,
-          }}>
-            Builders respond through the authenticated API:{' '}
-            <span style={{ fontFamily: font.mono, fontSize: 12 }}>
-              POST /api/works/submissions
-            </span>{' '}
-            with a Cloud API key, referencing this opportunity id.
           </div>
 
           <WorksDisciplineNote />

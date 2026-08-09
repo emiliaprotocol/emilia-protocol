@@ -9,7 +9,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, color, font, radius } from '@/lib/tokens';
+import { styles, cta, color, font, radius } from '@/lib/tokens';
 import { isWorksV0Enabled } from '@/lib/works/env';
 import { listWorksRecords } from '@/lib/works/store';
 import type { OpportunityRecord, SubmissionRecord } from '@/lib/works/model';
@@ -23,6 +23,10 @@ export const metadata = {
     'Problems, challenges, bounties, procurement notices, and collaboration requests — with claim-status discipline on every funding and eligibility statement.',
 };
 
+type VisibleSubmissionRecord = SubmissionRecord & {
+  visibility?: 'private' | 'public';
+};
+
 export default async function OpportunitiesPage() {
   if (!isWorksV0Enabled()) notFound();
 
@@ -31,7 +35,8 @@ export default async function OpportunitiesPage() {
     listWorksRecords('submissions'),
   ]);
   const opportunities = (oppsRes.ok ? oppsRes.records : []) as OpportunityRecord[];
-  const submissions = (subsRes.ok ? subsRes.records : []) as SubmissionRecord[];
+  const submissions = ((subsRes.ok ? subsRes.records : []) as VisibleSubmissionRecord[])
+    .filter((sub) => sub.visibility === 'public' || sub.example === true);
   const submissionCount = new Map<string, number>();
   for (const sub of submissions) {
     submissionCount.set(sub.opportunity_id, (submissionCount.get(sub.opportunity_id) || 0) + 1);
@@ -48,11 +53,16 @@ export default async function OpportunitiesPage() {
             {' / Opportunities'}
           </div>
           <h1 style={{ ...styles.h1, maxWidth: 760 }}>Opportunities</h1>
-          <p style={{ ...styles.body, maxWidth: 680, marginBottom: 0 }}>
+          <p style={{ ...styles.body, maxWidth: 680 }}>
             Problems, challenges, bounties, procurement notices, and collaboration requests posted
             by any account. Funding, authority, and eligibility statements carry a claim status —
             check the status before you build.
           </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Link href="/works/opportunities/new" style={cta.primary} className="ep-cta">Post an opportunity</Link>
+            <Link href="/works/join" style={cta.secondary} className="ep-cta-secondary">List your work</Link>
+            <Link href="/works" style={cta.ghost} className="ep-cta-ghost">Browse listings</Link>
+          </div>
         </div>
       </section>
 
@@ -89,11 +99,15 @@ export default async function OpportunitiesPage() {
                     </div>
                   ))}
                 </div>
+                <Link href={`/works/opportunities/${opp.opportunity_id}`} style={{ ...cta.ghost, marginTop: 8 }} className="ep-cta-ghost">
+                  View and respond
+                </Link>
               </div>
             ))}
             {opportunities.length === 0 ? (
               <div style={{ ...styles.card, color: color.t3, fontSize: 14 }}>
-                No opportunities posted yet.
+                No opportunities posted yet.{' '}
+                <Link href="/works/opportunities/new" style={{ color: color.t1 }}>Post an opportunity</Link>.
               </div>
             ) : null}
           </div>
