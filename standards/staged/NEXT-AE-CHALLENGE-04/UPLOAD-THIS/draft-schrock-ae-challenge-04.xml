@@ -559,8 +559,6 @@ Retry-After: 30
 
   <back>
     <references>
-      <name>References</name>
-      <references>
         <name>Normative References</name>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3339.xml"/>
@@ -581,8 +579,8 @@ Retry-After: 30
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8259.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9110.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9457.xml"/>
-      </references>
-      <references>
+    </references>
+    <references>
         <name>Informative References</name>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9470.xml"/>
         <reference anchor="DMSC-GAPS" target="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">
@@ -628,7 +626,6 @@ Retry-After: 30
           </front>
           <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-05"/>
         </reference>
-      </references>
     </references>
 
     <section anchor="related-work">

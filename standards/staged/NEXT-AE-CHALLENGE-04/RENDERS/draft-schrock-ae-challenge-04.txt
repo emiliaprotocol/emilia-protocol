@@ -90,9 +90,8 @@ Table of Contents
    7.  Interoperability Questions for Review . . . . . . . . . . . .  13
    8.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  13
    9.  Changes since -03 . . . . . . . . . . . . . . . . . . . . . .  13
-   10. References  . . . . . . . . . . . . . . . . . . . . . . . . .  14
-     10.1.  Normative References . . . . . . . . . . . . . . . . . .  14
-     10.2.  Informative References . . . . . . . . . . . . . . . . .  15
+   10. Normative References  . . . . . . . . . . . . . . . . . . . .  14
+   11. Informative References  . . . . . . . . . . . . . . . . . . .  15
    Appendix A.  Relationship to Existing Mechanisms  . . . . . . . .  16
    Appendix B.  Implementation Status  . . . . . . . . . . . . . . .  16
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  16
@@ -105,6 +104,7 @@ Table of Contents
    evidence insufficient.  Without a common challenge, each agent
    protocol invents its own vocabulary for missing evidence, acceptable
    presentations, freshness, status checking, and retry.
+
 
 
 
@@ -747,9 +747,7 @@ Internet-Draft             Evidence Challenge                August 2026
       every admission and release interleaving while leaving that
       mechanism outside AE-CHALLENGE.
 
-10.  References
-
-10.1.  Normative References
+10.  Normative References
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -781,6 +779,8 @@ Internet-Draft             Evidence Challenge                August 2026
 
 
 
+
+
 Schrock                 Expires 10 February 2027               [Page 14]
 
 Internet-Draft             Evidence Challenge                August 2026
@@ -795,7 +795,7 @@ Internet-Draft             Evidence Challenge                August 2026
               for HTTP APIs", RFC 9457, DOI 10.17487/RFC9457, July 2023,
               <https://www.rfc-editor.org/info/rfc9457>.
 
-10.2.  Informative References
+11.  Informative References
 
    [AEB]      Schrock, I., "The Action Evidence Boundary for
               Consequential Agent Effects", Work in Progress, Internet-
