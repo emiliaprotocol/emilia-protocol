@@ -5,7 +5,7 @@ to bond a public **$10,000 receipt-forgery bounty**, and the evidence + regressi
 corpus that decision needs.
 
 Prepared on branch `verifier-hardening` (worktree copy of `origin/main`).
-Base commit assessed: `6d7bc5d2`. **The bounty MUST reference the tip of
+Base commit assessed: `24e2468e`. **The bounty MUST reference the tip of
 `verifier-hardening`** (the commit that carries the two parity fixes and this
 corpus), not the base — see §Findings.
 
@@ -25,8 +25,10 @@ Concretely, a **win** is any input for which:
   Class A: a WebAuthn assertion whose challenge binds that digest) a context that
   commits to the submitted action.
 
-Both the Node (`.`) and browser (`./web`) entry points are in scope and MUST
-return the **same** `valid` verdict for the same document.
+Both the Node (`.`) and browser (`./web`) entry points are in scope. For APIs
+exported by both, including `verifyReceipt`, they MUST return the **same**
+`valid` verdict for the same document. `verifyTrustReceipt` is Node-only and is
+adjudicated only through the Node entry point.
 
 ## Public-key set the bond is defined against
 
@@ -136,10 +138,11 @@ the out-of-scope list above.
 
 Basis for the confidence, and its honest limits:
 
-- **What was tested:** the full implementation-level forgery surface of both
-  published verifiers — canonicalization, algorithm/key pinning, identity join,
+- **What was tested:** the implementation-level forgery surface of the
+  published JavaScript verifier APIs — canonicalization, algorithm/key pinning, identity join,
   malleability, type confusion, missing-field defaulting, Merkle leaf/branch and
-  empty-path confusion, Class-A/B downgrade, and Node↔Web parity — with executed
+  empty-path confusion, Class-A/B downgrade, and Node-Web parity for APIs shared
+  by both entry points — with executed
   PoCs, not readings. 31 forgery tests plus the pre-existing 766-test verify
   suite are green at the tip.
 - **What was NOT exhaustively tested:** the optional additive gates (witness

@@ -18,10 +18,14 @@ strongest statement we can make about the verifier.
 
 ## Scope: the JavaScript verifier, at one pinned commit
 
-- Package: `@emilia-protocol/verify`, pinned to commit `46e0c368` on the
-  `verifier-hardening` line (the launch announcement restates the exact commit).
-- Both entry points are in scope and MUST return the same `valid` verdict for
-  the same document: the Node entry (`.`) and the browser entry (`./web`).
+- Package: `@emilia-protocol/verify`. The launch announcement and frozen
+  challenge manifest MUST name the same exact immutable commit containing the
+  parity fixes and regression corpus. This staged text intentionally does not
+  pin a moving branch hash.
+- Both package entry points are in scope: Node (`.`) and browser (`./web`). For
+  an API exported by both entry points, including `verifyReceipt`, the two MUST
+  return the same `valid` verdict for the same document. `verifyTrustReceipt`
+  is Node-only and is adjudicated only through the Node entry point.
 - The Python and Go ports are **out of scope** for this program. They have not
   been through this hardening pass. A separate program may cover them later.
 
@@ -35,8 +39,8 @@ Any input for which, at the pinned commit and against the published pinned keys:
   returns `valid:true` while, for at least one counted approval, the pinned key's
   named `approver_id` did not sign a context that commits to the submitted
   action; or
-- the Node and browser entry points return different `valid` verdicts for the
-  same document.
+- the Node and browser implementations of an API they both export return
+  different `valid` verdicts for the same input.
 
 ## The frozen challenge
 
@@ -52,9 +56,11 @@ not against "EMILIA's key":
 2. You submit a document or receipt that the verifier returns `valid:true` for,
    using those published pinned keys, without EMILIA having signed your submitted
    action with the matching private key.
-3. Adjudication is mechanical: we run the two published entry points at the
-   pinned commit against the published pinned keys. The verifier's output decides
-   it. Nothing else is trusted, which protects you as much as us.
+3. Adjudication is mechanical: we run every in-scope implementation of the
+   submitted API at the pinned commit against the published pinned keys. Shared
+   APIs run through Node and browser; `verifyTrustReceipt` runs through Node.
+   The verifier output decides it. Nothing else is trusted, which protects you
+   as much as us.
 
 Pinning your own key, or reading unsigned document fields as if they were signed,
 is a misuse of the API contract, not a forgery, and does not win.

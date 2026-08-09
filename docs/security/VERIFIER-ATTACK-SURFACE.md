@@ -6,7 +6,7 @@ maps the code paths that decide VERIFIED, for the purpose of bonding a public
 forgery bounty. Companion: `BOUNTY-READINESS.md`; regression corpus:
 `tests/verifier-forgery/`.
 
-Base commit mapped: `origin/main` @ `6d7bc5d2` (worktree `verifier-hardening`).
+Base commit mapped: `origin/main` @ `24e2468e` (worktree `verifier-hardening`).
 
 ## 1. Entry points (exact paths)
 
