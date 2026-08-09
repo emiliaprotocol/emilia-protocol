@@ -44,6 +44,7 @@ type Evaluation = {
     assurance_class: string | null;
     max_age_sec: number;
     one_time_consumption: boolean;
+    consumption_scope: string;
     execution_binding_fields: string[];
     why: string | null;
   };
@@ -205,28 +206,21 @@ export default function WatchItRefuseExperience() {
 
   const shareUrl = useMemo(() => {
     if (!data || typeof window === 'undefined') return '';
-    const params = new URLSearchParams({ q: data.input.text, v: finalVerdict === 'authorized' ? 'authorized' : 'refused' });
+    const params = new URLSearchParams({ q: data.input.text });
     return `${window.location.origin}/refuse?${params.toString()}`;
-  }, [data, finalVerdict]);
+  }, [data]);
 
   const cardUrl = useMemo(() => {
     if (!data) return '';
-    const refusedReason = data.refusal.reason.plain;
-    const params = new URLSearchParams({
-      t: data.input.text,
-      v: finalVerdict === 'authorized' ? 'authorized' : 'refused',
-      r: finalVerdict === 'authorized'
-        ? 'A verified demo receipt authorized exactly one execution. A replay was refused.'
-        : refusedReason,
-    });
+    const params = new URLSearchParams({ t: data.input.text });
     return `/api/refuse/og?${params.toString()}`;
-  }, [data, finalVerdict]);
+  }, [data]);
 
   const caption = useMemo(() => {
     if (!data) return '';
     return finalVerdict === 'authorized'
-      ? `I told an agent to “${data.input.text}”. It was authorized exactly once. The replay was refused. Here's why.`
-      : `I told an agent to “${data.input.text}”. It was refused. Here's why.`;
+      ? `I ran a synthetic EMILIA demo for “${data.input.text}”. The no-evidence attempt was refused; a demo receipt was admitted once and refused on immediate replay inside the same evaluation. No action executed.`
+      : `I ran a synthetic EMILIA demo for “${data.input.text}”. The no-evidence attempt was refused. No action executed.`;
   }, [data, finalVerdict]);
 
   const copyShare = useCallback(async () => {
@@ -258,7 +252,7 @@ export default function WatchItRefuseExperience() {
     },
     {
       label: 'One-time consumption',
-      detail: 'Never presented before. A receipt authorizes exactly one execution',
+      detail: 'For this demo, unused inside the current in-process evaluation; production requires durable atomic storage',
     },
   ] : [];
 
@@ -276,7 +270,7 @@ export default function WatchItRefuseExperience() {
           <p className={styles.sub}>
             Type any consequential agent action in your own words. The real EMILIA
             authorization evaluation runs live and refuses it, with typed,
-            verifiable reasons. Unless you approve it. Once.
+            verifiable reasons. Then you can run a synthetic approval lifecycle.
           </p>
           <p className={styles.noEffect}>
             No action is performed. This demonstrates the authorization decision layer only.
@@ -502,13 +496,13 @@ export default function WatchItRefuseExperience() {
           <div className={`${styles.act} ${lifecycleStep >= 4 ? styles.actVisible : ''}`}>
             <div className={styles.actIndex}>A</div>
             <div className={styles.actBody}>
-              <p className={styles.actKicker}>Authorized</p>
+              <p className={styles.actKicker}>Demo admission</p>
               <StatusTag state={stages.authorized.allow ? 'ok' : 'fail'}>
-                {stages.authorized.allow ? 'Allowed' : stages.authorized.reason.code ?? 'refused'}
+                {stages.authorized.allow ? 'Admitted in this evaluation' : stages.authorized.reason.code ?? 'refused'}
               </StatusTag>
               <p className={styles.actMeta}>
                 {stages.authorized.allow
-                  ? <>The gate allows this exact action, and appends the decision to a hash-chained evidence log <span className={styles.dim}>({shortDigest(stages.authorized.evidence_hash)})</span>. In a real deployment, execution would proceed now. Here, nothing executes.</>
+                  ? <>The in-process demo gate allows this exact action and appends the decision to its demo evidence chain <span className={styles.dim}>({shortDigest(stages.authorized.evidence_hash)})</span>. Nothing executes, and this is not a durable production admission.</>
                   : stages.authorized.reason.plain}
               </p>
             </div>
@@ -517,12 +511,12 @@ export default function WatchItRefuseExperience() {
           <div className={`${styles.act} ${lifecycleStep >= 5 ? styles.actVisible : ''}`}>
             <div className={styles.actIndex}>C</div>
             <div className={styles.actBody}>
-              <p className={styles.actKicker}>Consumed</p>
+              <p className={styles.actKicker}>Demo state consumed</p>
               <StatusTag state={stages.consumed.consumed ? 'ok' : 'fail'}>
-                {stages.consumed.consumed ? 'Receipt spent' : 'not consumed'}
+                {stages.consumed.consumed ? 'Immediate replay fenced' : 'not consumed'}
               </StatusTag>
               <p className={styles.actMeta}>
-                The receipt is consumed on use. One receipt, one execution.
+                The same receipt is consumed inside this ephemeral evaluation and its immediate replay is refused. No action executes; durable cross-request consumption is outside this demo.
               </p>
             </div>
           </div>
@@ -547,7 +541,7 @@ export default function WatchItRefuseExperience() {
       {/* ── Share card ───────────────────────────────────────── */}
       {data && finalVerdict ? (
         <section className={styles.shareSection}>
-          <p className={styles.actKicker}>Share the verdict</p>
+          <p className={styles.actKicker}>Share the initial refusal</p>
           <p className={styles.shareCaption}>{caption}</p>
           <div className={styles.shareCardShell}>
             {/* eslint-disable-next-line @next/next/no-img-element */}

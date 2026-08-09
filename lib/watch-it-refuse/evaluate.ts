@@ -347,6 +347,7 @@ export async function evaluateWatchItRefuse(
       assurance_class: requirement?.assurance_class ?? null,
       max_age_sec: MAX_AGE_SEC,
       one_time_consumption: true,
+      consumption_scope: 'ephemeral_per_evaluation',
       execution_binding_fields: requirement?.execution_binding?.required_fields ?? [],
       evidence_policy: policy,
       why: requirement?.why ?? null,
@@ -436,8 +437,10 @@ export async function evaluateWatchItRefuse(
         },
         authorized: decisionSummary(authorization),
         consumed: {
-          // One-time consumption is proven by the replay refusal below: the
-          // same receipt, presented again to the same gate, is refused.
+          // This proves only in-process consumption inside this synthetic
+          // evaluation: the same receipt, presented again to the same
+          // ephemeral gate instance, is refused. It is not a durable or
+          // cross-request production consumption claim.
           consumed: authorization.allow === true && replay.allow !== true,
           replay_attempt: decisionSummary(replay),
         },

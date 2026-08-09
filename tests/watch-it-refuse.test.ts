@@ -8,8 +8,9 @@
 //   3. Flag off -> 404 on the APIs, and the page fails closed via notFound().
 //   4. Demo receipts verify under the demo issuer, are rejected under any
 //      other trust root, and every minted artifact is demo-marked.
-//   5. A consumed demo receipt is refused on replay with the typed reason.
-//   6. The OG card endpoint renders a PNG.
+//   5. A demo receipt is consumed only inside one ephemeral evaluation and is
+//      refused on immediate replay with the typed reason.
+//   6. The OG card recomputes its refusal and never accepts a caller verdict.
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -120,7 +121,7 @@ describe('refusal path — real typed reasons for every archetype', () => {
   }
 });
 
-describe('approval path — full lifecycle with real one-time consumption', () => {
+describe('approval path — full lifecycle with in-process demo consumption', () => {
   it('VERIFIED -> MATCH -> SATISFIED -> AUTHORIZED -> CONSUMED, then replay refused', async () => {
     const result = await evaluateWatchItRefuse({
       text: ARCHETYPE_INPUTS.payment,
@@ -137,6 +138,7 @@ describe('approval path — full lifecycle with real one-time consumption', () =
     expect(stages.satisfied.admissibility.verdict).toBe('admissible');
     expect(stages.authorized.allow).toBe(true);
     expect(stages.authorized.status).toBe(200);
+    expect(result.requirements.consumption_scope).toBe('ephemeral_per_evaluation');
 
     // The replay of the SAME receipt against the SAME gate is refused.
     expect(stages.consumed.consumed).toBe(true);
@@ -280,7 +282,7 @@ describe('OG card endpoint', () => {
   it('renders a PNG when enabled', async () => {
     const { NextRequest } = await import('next/server');
     const res = await ogRoute(new NextRequest(
-      'https://demo.test/api/refuse/og?t=Wire%20%2440%2C000%20to%20this%20account&v=refused',
+      'https://demo.test/api/refuse/og?t=Wire%20%2440%2C000%20to%20this%20account&v=authorized&r=forged',
     ));
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('image/png');
@@ -288,6 +290,14 @@ describe('OG card endpoint', () => {
     // PNG magic number.
     expect(Array.from(bytes.slice(0, 4))).toEqual([0x89, 0x50, 0x4e, 0x47]);
   }, 30000);
+
+  it('recomputes the refusal and ignores caller-supplied verdict and reason text', () => {
+    const src = readFileSync(join(ROOT, 'app/api/refuse/og/route.tsx'), 'utf8');
+    expect(src).toContain('evaluateWatchItRefuse({ text })');
+    expect(src).not.toContain("params.get('v')");
+    expect(src).not.toContain("params.get('r')");
+    expect(src).not.toContain('AUTHORIZED, ONCE');
+  });
 });
 
 describe('public-repo hygiene', () => {

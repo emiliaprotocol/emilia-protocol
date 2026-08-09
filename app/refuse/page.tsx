@@ -29,21 +29,19 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const params = await searchParams;
   const shared = (firstParam(params.q) || '').replace(/\s+/g, ' ').trim().slice(0, 140);
-  const verdict = firstParam(params.v) === 'authorized' ? 'authorized' : 'refused';
   const title = 'Watch It Refuse | EMILIA Protocol';
   const description = shared
-    ? `An agent was told to "${shared}". Watch the authorization layer decide: live, typed, cryptographic. No action is performed.`
-    : 'Type any consequential agent action and watch the real authorization evaluation refuse it, or authorize it exactly once. No action is performed.';
+    ? `An agent was told to "${shared}". Run the live no-evidence authorization evaluation and inspect its typed refusal. No action is performed.`
+    : 'Type any consequential agent action and watch the live no-evidence authorization evaluation refuse it. No action is performed.';
   const og = new URLSearchParams();
   if (shared) og.set('t', shared);
-  og.set('v', verdict);
   return {
     title,
     description,
     alternates: { canonical: '/refuse' },
     openGraph: {
       title: shared
-        ? `"${shared}": ${verdict === 'refused' ? 'REFUSED' : 'AUTHORIZED, ONCE'}`
+        ? `"${shared}": REFUSAL DEMO`
         : 'Watch It Refuse',
       description,
       url: '/refuse',

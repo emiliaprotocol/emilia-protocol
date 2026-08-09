@@ -2,15 +2,16 @@
 //
 // GET /api/refuse/og — Watch It Refuse share card (Open Graph image).
 //
-// Renders the verdict card for link unfurls and downloads: the action in the
-// user's words, the decision, and the plain-English reason. Pure rendering of
-// query-string inputs (capped and sanitized); no evaluation happens here and
-// no state is read. 404 unless WATCH_IT_REFUSE=1.
+// Renders the initial no-evidence refusal for link unfurls and downloads. The
+// caller supplies only action text; the verdict and reason are recomputed by
+// the real evaluation and cannot be injected through query parameters.
+// 404 unless WATCH_IT_REFUSE=1.
 
 import { ImageResponse } from 'next/og';
 import type { NextRequest } from 'next/server';
 
 import { isWatchItRefuseEnabled } from '@/lib/env';
+import { evaluateWatchItRefuse } from '@/lib/watch-it-refuse/evaluate';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,6 @@ const PAPER = '#FAFAF9';
 const MUTED = '#A8A29E';
 const GOLD = '#B08D35';
 const RED = '#DC2626';
-const GREEN = '#16A34A';
 
 function cap(value: string | null, max: number, fallback: string): string {
   const clean = (value || '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -32,15 +32,12 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
   const params = request.nextUrl.searchParams;
   const text = cap(params.get('t'), 140, 'Wire $40,000 to this account');
-  const verdictParam = params.get('v') === 'authorized' ? 'authorized' : 'refused';
-  const refused = verdictParam === 'refused';
-  const verdict = refused ? 'REFUSED' : 'AUTHORIZED, ONCE';
+  const evaluation = await evaluateWatchItRefuse({ text });
+  const verdict = 'INITIAL ATTEMPT REFUSED';
   const reason = cap(
-    params.get('r'),
+    evaluation.refusal?.reason?.plain ?? null,
     120,
-    refused
-      ? 'No human authorization evidence was presented for this exact action.'
-      : 'A verified receipt authorized exactly one execution. A replay was refused.',
+    'No human authorization evidence was presented for this exact action.',
   );
 
   return new ImageResponse(
@@ -92,7 +89,7 @@ export async function GET(request: NextRequest): Promise<Response> {
               fontSize: 96,
               fontWeight: 800,
               letterSpacing: 4,
-              color: refused ? RED : GREEN,
+              color: RED,
               display: 'flex',
             }}
           >
