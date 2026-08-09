@@ -105,6 +105,11 @@ const ROUTE_POLICIES = {
   // Emergency commit signing-key revocation (T6) — operator-authed in-route.
   'POST /api/commit-keys/revoke':            { rateCategory: 'submit', useAuth: false },
 
+  // EMILIA Marketplace (flag-gated: routes 404 unless WORKS_V0=1). Create/edit are
+  // cloud-API-key authenticated in-route; rate-limit on key + IP.
+  'POST /api/works/*':                       { rateCategory: 'submit', useAuth: true },
+  'PATCH /api/works/*/*':                    { rateCategory: 'submit', useAuth: true },
+
   // Trust evaluation. Rich evaluator/profile surfaces are auth-scoped to avoid
   // anonymous system mapping; only narrow public verification/capability surfaces
   // stay unauthenticated.

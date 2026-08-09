@@ -42,6 +42,8 @@ tags:
     description: Pharmacy reliance verdicts and profile pinning (EP-NCPDP-RX-RELIANCE-PROFILE-v1)
   - name: Entities
     description: Entity registration and search
+  - name: Works
+    description: Evidence-labeled marketplace records for autonomous work
   - name: Disputes
     description: Dispute lifecycle — file, respond, resolve, appeal, withdraw
   - name: Delegations
@@ -1166,6 +1168,153 @@ paths:
       responses:
         '200':
           description: Verification result
+
+  # ===========================================================================
+  # Works
+  # ===========================================================================
+
+  /api/works/{collection}:
+    get:
+      tags: [Works]
+      operationId: listWorksRecords
+      summary: List Works records
+      description: |
+        Lists public Works records while the private-beta feature is enabled.
+        Anonymous reads of submissions return only records whose submitter
+        explicitly selected public visibility. A valid entity API key also
+        returns private submissions owned by that entity or addressed to an
+        opportunity owned by that entity. Works does not rank or endorse records.
+      security:
+        - {}
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksCollection'
+      responses:
+        '200':
+          description: Records visible to the current caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorksCollectionResponse'
+        '401':
+          $ref: '#/components/responses/WorksUnauthorized'
+        '404':
+          $ref: '#/components/responses/WorksNotFoundOrDisabled'
+        '503':
+          $ref: '#/components/responses/WorksUnavailable'
+    post:
+      tags: [Works]
+      operationId: createWorksRecord
+      summary: Create a Works record
+      description: |
+        Creates a record owned by the authenticated EMILIA entity. Related
+        builder and listing records must belong to that entity. Participant
+        writes cannot mint VERIFIED claims or server-managed examples.
+        Submission visibility defaults to private.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksCollection'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorksRecord'
+      responses:
+        '201':
+          description: Record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorksRecordResponse'
+        '400':
+          $ref: '#/components/responses/WorksInvalidRequest'
+        '401':
+          $ref: '#/components/responses/WorksUnauthorized'
+        '403':
+          $ref: '#/components/responses/WorksForbidden'
+        '404':
+          $ref: '#/components/responses/WorksNotFoundOrDisabled'
+        '409':
+          $ref: '#/components/responses/WorksConflict'
+        '413':
+          description: Request body exceeds 256 KiB
+        '415':
+          description: Content-Type is not application/json
+        '503':
+          $ref: '#/components/responses/WorksUnavailable'
+
+  /api/works/{collection}/{id}:
+    get:
+      tags: [Works]
+      operationId: getWorksRecord
+      summary: Get one Works record
+      description: |
+        Returns one public record. Private submissions are returned only to
+        their submitting entity, the owning entity of the addressed
+        opportunity, or an authorized administrator. Unauthorized private
+        submissions are indistinguishable from absent records.
+      security:
+        - {}
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksCollection'
+        - $ref: '#/components/parameters/WorksRecordId'
+      responses:
+        '200':
+          description: Record visible to the current caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorksRecordResponse'
+        '401':
+          $ref: '#/components/responses/WorksUnauthorized'
+        '404':
+          $ref: '#/components/responses/WorksNotFoundOrDisabled'
+        '503':
+          $ref: '#/components/responses/WorksUnavailable'
+    patch:
+      tags: [Works]
+      operationId: updateWorksRecord
+      summary: Update an owned Works record
+      description: |
+        Updates a record only when it belongs to the authenticated entity.
+        Record identity and ownership remain immutable; relationship ownership,
+        example reservation, and the ban on self-issued VERIFIED claims are
+        rechecked after merging the patch.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksCollection'
+        - $ref: '#/components/parameters/WorksRecordId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorksRecordPatch'
+      responses:
+        '200':
+          description: Updated record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorksRecordResponse'
+        '400':
+          $ref: '#/components/responses/WorksInvalidRequest'
+        '401':
+          $ref: '#/components/responses/WorksUnauthorized'
+        '403':
+          $ref: '#/components/responses/WorksForbidden'
+        '404':
+          $ref: '#/components/responses/WorksNotFoundOrDisabled'
+        '413':
+          description: Request body exceeds 256 KiB
+        '415':
+          description: Content-Type is not application/json
+        '503':
+          $ref: '#/components/responses/WorksUnavailable'
 
   # ===========================================================================
   # Entities
@@ -6996,8 +7145,70 @@ components:
       schema:
         type: string
         format: uri
+    WorksCollection:
+      name: collection
+      in: path
+      required: true
+      description: Works record collection
+      schema:
+        type: string
+        enum: [builders, listings, cards, activity, opportunities, submissions]
+    WorksRecordId:
+      name: id
+      in: path
+      required: true
+      description: Collection-specific Works record identifier
+      schema:
+        type: string
+        pattern: '^[a-z0-9][a-z0-9-]{2,63}$'
 
   schemas:
+    WorksRecord:
+      type: object
+      description: |
+        A collection-specific builder, listing, capability card, activity,
+        opportunity, or submission record. The selected collection determines
+        the required identifier and fields. Internal ownership metadata is never
+        accepted in or returned with this object.
+      additionalProperties: true
+    WorksRecordPatch:
+      type: object
+      description: Partial collection-specific Works record update
+      additionalProperties: true
+    WorksRecordResponse:
+      type: object
+      additionalProperties: false
+      required: [collection, record]
+      properties:
+        collection:
+          type: string
+          enum: [builders, listings, cards, activity, opportunities, submissions]
+        record:
+          $ref: '#/components/schemas/WorksRecord'
+    WorksCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [collection, records]
+      properties:
+        collection:
+          type: string
+          enum: [builders, listings, cards, activity, opportunities, submissions]
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorksRecord'
+    WorksProblem:
+      type: object
+      description: RFC 7807 problem detail
+      additionalProperties: true
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code: { type: string }
+
     AgentRecordCreateResponse:
       type: object
       additionalProperties: false
@@ -9353,6 +9564,42 @@ components:
           format: date-time
 
   responses:
+    WorksInvalidRequest:
+      description: Invalid collection, record, relationship, visibility, or claim state
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/WorksProblem'
+    WorksUnauthorized:
+      description: Missing or invalid EMILIA entity API key where authentication is required
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/WorksProblem'
+    WorksForbidden:
+      description: The authenticated entity does not own the record or referenced relationship
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/WorksProblem'
+    WorksNotFoundOrDisabled:
+      description: Record is absent or private, or the Works private-beta feature is disabled
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/WorksProblem'
+    WorksConflict:
+      description: A record with the selected identifier already exists
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/WorksProblem'
+    WorksUnavailable:
+      description: Works storage or authentication dependency is unavailable
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/WorksProblem'
     ApprovalProblem:
       description: EP-APPROVAL-v1 request or polling problem
       content:

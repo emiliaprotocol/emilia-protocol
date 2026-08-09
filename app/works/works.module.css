@@ -1,0 +1,141 @@
+.form {
+  display: grid;
+  gap: 28px;
+}
+
+.fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.gridTwo,
+.gridThree {
+  display: grid;
+  gap: 16px;
+}
+
+.gridTwo {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gridThree {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.spanTwo {
+  grid-column: span 2;
+}
+
+.field {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.field > input,
+.field > select,
+.field > textarea {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.field > input,
+.field > select {
+  min-height: 44px;
+}
+
+.textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.hint {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.actions > button,
+.actions > a {
+  min-height: 44px;
+}
+
+.notice {
+  display: grid;
+  gap: 12px;
+}
+
+.keyValue {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.checkboxRow {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.checkboxRow input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+}
+
+.checkboxRow label {
+  line-height: 1.55;
+}
+
+.status {
+  min-height: 22px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .gridTwo,
+  .gridThree {
+    grid-template-columns: 1fr;
+  }
+
+  .spanTwo {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .actions > button,
+  .actions > a {
+    box-sizing: border-box;
+    justify-content: center;
+    width: 100%;
+  }
+}
