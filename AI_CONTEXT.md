@@ -15,7 +15,7 @@ When this file conflicts with a quantitative claim elsewhere, use the machine-re
 
 ## Current Evidence Snapshot
 
-- Automated tests: 8,854 cases across 532 files; all platform-applicable cases must pass; platform-specific cases may skip.
+- Automated tests: 8,883 cases across 533 files; all platform-applicable cases must pass; platform-specific cases may skip.
 - Cross-language conformance: 21 suites, 331 current vectors, 3 same-team ports (JavaScript, Python, Go). This is consistency evidence, not implementation independence.
 - External Rust interoperability: pass on the time-pinned 164-vector set evaluated 2026-07-11; the current bundle has 331. The same pinned implementation passes 359 hostility cases. Strict clean-room construction acceptance: false.
 - Security case: 35 executable claims, 259 evidence files, execution passed; bundle sha256:61861be193ac3c4505500a0bd1ad031ae7b5522298edec8b03f077b04875b8a9.
