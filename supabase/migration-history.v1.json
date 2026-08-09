@@ -6,8 +6,12 @@
     "20260723192504"
   ],
   "retroactive_pending_versions": [],
-  "forward_pending_versions": [],
-  "deployment_sequence": [],
+  "forward_pending_versions": [
+    "20260809060000"
+  ],
+  "deployment_sequence": [
+    "20260809060000"
+  ],
   "requires_include_all": false,
   "remote_versions": [
     "001",
@@ -402,6 +406,7 @@
     "20260803231000_signoff_ceremony_velocity.sql": "f88f2a3a25d9f384ba63a60fa76019ecda531a4b432d73b4c4a1686df7ea82d4",
     "20260805120000_cloud_signoff_escalation_once.sql": "9b35687ab6112bd239873feaa17327220f5c3b872960377ec274c86c2fcd359b",
     "20260807010000_capability_revocation_inheritance.sql": "76bb3eef12a13b3d308de9fcdf531ab98799201fce4d874d1a78de3d084c7f9d",
-    "20260808233000_github_deployment_delivery_queue.sql": "64ff2ea3e40f9c56281dd6c7d0af97cba6fa15efaeec500acbcede00541d7423"
+    "20260808233000_github_deployment_delivery_queue.sql": "64ff2ea3e40f9c56281dd6c7d0af97cba6fa15efaeec500acbcede00541d7423",
+    "20260809060000_works_records.sql": "1c4bc077bfa7dc4bd3cf5667169db9be91c5ac132cef9f4816e68d403de09aa7"
   }
 }
