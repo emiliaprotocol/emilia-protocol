@@ -56,14 +56,44 @@
       presentations, freshness, status checking, and retry.</t>
       <t>This document defines the challenge as an application data model,
       independent of HTTP, a particular agent protocol, and any one evidence
-      format. The nearest prior art is OAuth step-up authentication
-      <xref target="RFC9470"/>, which lets a resource identify stronger
-      authentication requirements. AE-CHALLENGE applies the interaction
-      shape to authorization evidence about an exact proposed action.</t>
+      format. OAuth step-up authentication <xref target="RFC9470"/> lets a
+      resource identify stronger authentication requirements. OAuth
+      Transaction Authorization Challenge
+      <xref target="OAUTH-TXN-CHALLENGE"/> defines a signed, OAuth-specific
+      challenge that an authorization server turns into a transaction-bound
+      access token after obtaining any required approval. AE-CHALLENGE does
+      not replace either mechanism. It describes missing authorization
+      evidence for an exact proposed action when an application needs a
+      transport-neutral evidence-negotiation object.</t>
       <t>A challenge is a refusal with information. It is not an
       authorization decision, reservation, capability, ownership transfer,
       or promise of execution. Satisfying it causes the relying party to
       evaluate a new presentation under its live local policy.</t>
+      <section anchor="oauth-boundary">
+        <name>Boundary with OAuth Transaction Authorization</name>
+        <t>When the required next step is issuance of a transaction-specific
+        OAuth grant, an implementation <bcp14>SHOULD</bcp14> use OAuth
+        Transaction Authorization Challenge. It <bcp14>MUST NOT</bcp14>
+        substitute an AE-CHALLENGE, its nonce, or a successfully presented
+        evidence object for that signed OAuth challenge, its transaction
+        identifier, the authorization-server decision, or the resulting
+        access token. Satisfying AE-CHALLENGE never satisfies a native OAuth
+        grant requirement.</t>
+        <t>AE-CHALLENGE remains applicable outside OAuth and when a relying
+        party needs evidence that a native authorization protocol does not
+        itself negotiate, such as a current status proof, quorum receipt,
+        hardware attestation, or separately verified policy artifact. An
+        OAuth application profile <bcp14>MAY</bcp14> carry or reference both
+        mechanisms, but that profile <bcp14>MUST</bcp14> define their exact
+        action and audience join, which challenge is primary for each
+        refusal, and how native grant state remains separate from
+        AE-CHALLENGE replay state. Without such a profile, the mechanisms are
+        separate and neither is silently converted into the other.</t>
+        <t>The single-use property in this document applies only to one
+        evidence-presentation attempt under an AE-CHALLENGE nonce. It does not
+        consume an OAuth transaction, invalidate an access token, reserve an
+        action, or establish one-time admission at an executor.</t>
+      </section>
       <section anchor="requirements-language">
         <name>Requirements Language</name>
         <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
@@ -396,6 +426,15 @@
 
     <section anchor="http-binding">
       <name>HTTP Binding</name>
+      <t>This 403 Problem Details binding is not the OAuth transaction-
+      authorization response. When a protected resource requires the native
+      transaction-specific OAuth grant defined by
+      <xref target="OAUTH-TXN-CHALLENGE"/>, it uses that specification's
+      <tt>transaction_authorization_required</tt> response and signed
+      <tt>transaction_challenge</tt>, normally carried with
+      <tt>WWW-Authenticate</tt> and status 401. It <bcp14>MUST NOT</bcp14>
+      return only this document's 403 response and then accept AE evidence as
+      a substitute for the missing OAuth grant.</t>
       <t>An HTTP origin server that refuses an action because authorization
       evidence is missing, stale, or unverifiable SHOULD return
       <tt>403 Forbidden</tt> as defined by <xref target="RFC9110"/>. The
@@ -468,6 +507,18 @@ Retry-After: 30
       not carry the jitter value and does not change the challenge expiry,
       authorize the action, promise capacity or acceptance, or make a retry
       safe after an uncertain effect.</t>
+      <section anchor="oauth-non-substitution-case">
+        <name>OAuth Non-Substitution Conformance Case</name>
+        <t>A protected resource requires a transaction-specific OAuth grant.
+        The presenter supplies a valid AE-CHALLENGE response but no native
+        transaction-bound access token. The protected resource
+        <bcp14>MUST</bcp14> refuse the action. It <bcp14>MUST NOT</bcp14> treat
+        the AE challenge identifier or nonce as the OAuth transaction
+        identifier, and it <bcp14>MUST NOT</bcp14> report the evidence
+        presentation as satisfying the native grant requirement. The case
+        passes only when the protected resource continues the native OAuth
+        flow or refuses.</t>
+      </section>
     </section>
 
     <section anchor="dmsc-profile">
@@ -478,6 +529,11 @@ Retry-After: 30
       issues a challenge when evidence is missing, stale, or unverifiable.
       The sending gateway or agent can obtain evidence and return a new
       presentation using a DMSC-defined extension point or error carrier.</t>
+      <t>If the receiving gateway's required next step is a native OAuth
+      transaction grant, the DMSC carrier preserves that native challenge
+      rather than wrapping it as AE-CHALLENGE. A DMSC application profile can
+      carry both only under the explicit composition rules in
+      <xref target="oauth-boundary"/>.</t>
       <t>If a gateway rewrites or translates the proposed action, the next
       gateway re-evaluates that locally derived action and, when necessary,
       issues its own binding. The prior gateway's action digest does not
@@ -615,6 +671,9 @@ Retry-After: 30
         and whether either protocol needs an additional attempt identifier.</li>
         <li>Whether a DMSC gateway profile should carry the core object
         directly or reference it by an authenticated, digest-bound URI.</li>
+        <li>Which application profiles, if any, need both a native OAuth
+        transaction challenge and an AE-CHALLENGE, and how those profiles
+        should expose the two independent replay domains.</li>
       </ul>
     </section>
 
@@ -646,6 +705,11 @@ Retry-After: 30
         <li>Requires one authoritative atomic replay domain across verifier
         replicas and prohibits eviction of live replay state.</li>
         <li>Adds state-exhaustion and multi-replica conformance cases.</li>
+        <li>Separates AE-CHALLENGE from OAuth Transaction Authorization
+        Challenge: native transaction-grant flows retain their signed OAuth
+        challenge, 401 response, transaction identifier, access token, and
+        replay state. Adds an explicit non-substitution conformance case and
+        permits composition only through an application profile.</li>
       </ul>
     </section>
   </middle>
@@ -676,6 +740,30 @@ Retry-After: 30
     <references>
         <name>Informative References</name>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9470.xml"/>
+        <reference anchor="OAUTH-TXN-CHALLENGE" target="https://datatracker.ietf.org/doc/draft-rosomakho-oauth-txn-challenge/">
+          <front>
+            <title>OAuth Transaction Authorization Challenge</title>
+            <author fullname="Yaroslav Rosomakho"><organization>Zscaler</organization></author>
+            <author fullname="Brian Campbell"><organization>Ping Identity</organization></author>
+            <author fullname="Karl McGuinness"><organization>Independent</organization></author>
+            <author fullname="Pieter Kasselman"><organization>Defakto Security</organization></author>
+            <date year="2026" month="June" day="25"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-rosomakho-oauth-txn-challenge-00"/>
+        </reference>
+        <reference anchor="KLRC" target="https://datatracker.ietf.org/doc/draft-klrc-aiagent-auth/">
+          <front>
+            <title>AI Agent Authentication and Authorization</title>
+            <author fullname="Pieter Kasselman"/>
+            <author fullname="Jean-Francois Lombardo"/>
+            <author fullname="Yaroslav Rosomakho"/>
+            <author fullname="Brian Campbell"/>
+            <author fullname="Nick Steele"/>
+            <author fullname="Aaron Parecki"/>
+            <date year="2026" month="July" day="9"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-klrc-aiagent-auth-03"/>
+        </reference>
         <reference anchor="DMSC-GAPS" target="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">
           <front>
             <title>Deployment Scenarios and Gap Analysis for AI Agent Gateway</title>
@@ -719,6 +807,14 @@ Retry-After: 30
           </front>
           <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-05"/>
         </reference>
+        <reference anchor="AUTH-RECEIPTS" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
+          <front>
+            <title>Authorization Receipts for High-Risk Agent Actions</title>
+            <author fullname="Iman Schrock"/>
+            <date year="2026" month="August" day="9"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-11"/>
+        </reference>
     </references>
 
     <section anchor="related-work">
@@ -731,6 +827,16 @@ Retry-After: 30
       presentation profile. None is required by the core challenge, and the
       challenge does not extend any of them across independently operated
       admission domains.</t>
+      <t>OAuth Transaction Authorization Challenge
+      <xref target="OAUTH-TXN-CHALLENGE"/> supplies the OAuth-native
+      choreography and transaction-bound grant that this document explicitly
+      does not define. The KLRC architecture <xref target="KLRC"/> describes
+      broader agent authentication and authorization requirements, including
+      human-in-the-loop and externalized authorization patterns. Authorization
+      Receipts <xref target="AUTH-RECEIPTS"/> are one possible portable human-
+      evidence type that an AE-CHALLENGE can request; neither the receipt nor
+      AE-CHALLENGE replaces a native OAuth grant or a relying party's final
+      policy decision.</t>
     </section>
 
     <section anchor="impl">
@@ -758,6 +864,11 @@ Retry-After: 30
       restarts, but does not yet implement the -05 configurable cap behavior
       or self-describing issuance path. No implementation claim is made for
       those additions.</t>
+      <t>The OAuth boundary and non-substitution case in revision -05 are
+      normative text and conformance requirements. The same-team reference
+      implementation does not convert an AE-CHALLENGE into an OAuth challenge
+      or grant, and no such conversion is planned. It does not yet implement a
+      composed application profile carrying both mechanisms.</t>
       <t>This is same-team implementation evidence. No independent
       implementation or interoperability is claimed. The implementation does
       not yet provide a DMSC carrier or conserved-admission mechanism. Its

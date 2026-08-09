@@ -79,31 +79,31 @@ Copyright Notice
 Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
-     1.1.  Requirements Language . . . . . . . . . . . . . . . . . .   3
-     1.2.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   3
+     1.1.  Boundary with OAuth Transaction Authorization . . . . . .   3
+     1.2.  Requirements Language . . . . . . . . . . . . . . . . . .   4
+     1.3.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   4
    2.  Transport-Neutral Core Data Model . . . . . . . . . . . . . .   4
      2.1.  Action and Policy Binding . . . . . . . . . . . . . . . .   5
-     2.2.  Evidence Requirements and Presentation  . . . . . . . . .   6
-     2.3.  Lifecycle, Replay, and Retry  . . . . . . . . . . . . . .   7
+     2.2.  Evidence Requirements and Presentation  . . . . . . . . .   7
+     2.3.  Lifecycle, Replay, and Retry  . . . . . . . . . . . . . .   8
      2.4.  State Bounds and Exhaustion . . . . . . . . . . . . . . .   9
-       2.4.1.  State Exhaustion Conformance Cases  . . . . . . . . .   9
-     2.5.  Extensibility . . . . . . . . . . . . . . . . . . . . . .  10
-     2.6.  Carrier Semantics . . . . . . . . . . . . . . . . . . . .  10
-   3.  HTTP Binding  . . . . . . . . . . . . . . . . . . . . . . . .  10
-   4.  Informative DMSC Gateway Profile  . . . . . . . . . . . . . .  12
-     4.1.  Gateway Conformance Case  . . . . . . . . . . . . . . . .  13
-   5.  Security Considerations . . . . . . . . . . . . . . . . . . .  13
-   6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  15
-   7.  Interoperability Questions for Review . . . . . . . . . . . .  15
-   8.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  15
-   9.  Changes since -04 . . . . . . . . . . . . . . . . . . . . . .  16
-   10. Normative References  . . . . . . . . . . . . . . . . . . . .  16
-   11. Informative References  . . . . . . . . . . . . . . . . . . .  17
-   Appendix A.  Relationship to Existing Mechanisms  . . . . . . . .  18
-   Appendix B.  Implementation Status  . . . . . . . . . . . . . . .  18
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  19
-
-
+       2.4.1.  State Exhaustion Conformance Cases  . . . . . . . . .  10
+     2.5.  Extensibility . . . . . . . . . . . . . . . . . . . . . .  11
+     2.6.  Carrier Semantics . . . . . . . . . . . . . . . . . . . .  11
+   3.  HTTP Binding  . . . . . . . . . . . . . . . . . . . . . . . .  11
+     3.1.  OAuth Non-Substitution Conformance Case . . . . . . . . .  13
+   4.  Informative DMSC Gateway Profile  . . . . . . . . . . . . . .  13
+     4.1.  Gateway Conformance Case  . . . . . . . . . . . . . . . .  14
+   5.  Security Considerations . . . . . . . . . . . . . . . . . . .  15
+   6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  16
+   7.  Interoperability Questions for Review . . . . . . . . . . . .  16
+   8.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  17
+   9.  Changes since -04 . . . . . . . . . . . . . . . . . . . . . .  17
+   10. Normative References  . . . . . . . . . . . . . . . . . . . .  17
+   11. Informative References  . . . . . . . . . . . . . . . . . . .  18
+   Appendix A.  Relationship to Existing Mechanisms  . . . . . . . .  20
+   Appendix B.  Implementation Status  . . . . . . . . . . . . . . .  20
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  21
 
 
 
@@ -125,17 +125,57 @@ Internet-Draft             Evidence Challenge                August 2026
 
    This document defines the challenge as an application data model,
    independent of HTTP, a particular agent protocol, and any one
-   evidence format.  The nearest prior art is OAuth step-up
-   authentication [RFC9470], which lets a resource identify stronger
-   authentication requirements.  AE-CHALLENGE applies the interaction
-   shape to authorization evidence about an exact proposed action.
+   evidence format.  OAuth step-up authentication [RFC9470] lets a
+   resource identify stronger authentication requirements.  OAuth
+   Transaction Authorization Challenge [OAUTH-TXN-CHALLENGE] defines a
+   signed, OAuth-specific challenge that an authorization server turns
+   into a transaction-bound access token after obtaining any required
+   approval.  AE-CHALLENGE does not replace either mechanism.  It
+   describes missing authorization evidence for an exact proposed action
+   when an application needs a transport-neutral evidence-negotiation
+   object.
 
    A challenge is a refusal with information.  It is not an
    authorization decision, reservation, capability, ownership transfer,
    or promise of execution.  Satisfying it causes the relying party to
    evaluate a new presentation under its live local policy.
 
-1.1.  Requirements Language
+1.1.  Boundary with OAuth Transaction Authorization
+
+   When the required next step is issuance of a transaction-specific
+   OAuth grant, an implementation SHOULD use OAuth Transaction
+   Authorization Challenge.  It MUST NOT substitute an AE-CHALLENGE, its
+   nonce, or a successfully presented evidence object for that signed
+   OAuth challenge, its transaction identifier, the authorization-server
+   decision, or the resulting access token.  Satisfying AE-CHALLENGE
+   never satisfies a native OAuth grant requirement.
+
+   AE-CHALLENGE remains applicable outside OAuth and when a relying
+   party needs evidence that a native authorization protocol does not
+   itself negotiate, such as a current status proof, quorum receipt,
+   hardware attestation, or separately verified policy artifact.  An
+   OAuth application profile MAY carry or reference both mechanisms, but
+   that profile MUST define their exact action and audience join, which
+   challenge is primary for each refusal, and how native grant state
+   remains separate from AE-CHALLENGE replay state.  Without such a
+   profile, the mechanisms are separate and neither is silently
+   converted into the other.
+
+
+
+
+
+Schrock                 Expires 10 February 2027                [Page 3]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   The single-use property in this document applies only to one
+   evidence-presentation attempt under an AE-CHALLENGE nonce.  It does
+   not consume an OAuth transaction, invalidate an access token, reserve
+   an action, or establish one-time admission at an executor.
+
+1.2.  Requirements Language
 
    The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
    "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
@@ -143,7 +183,7 @@ Internet-Draft             Evidence Challenge                August 2026
    14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
 
-1.2.  Terminology
+1.3.  Terminology
 
    Relying party:  The component that decides whether evidence satisfies
       its requirements for a proposed action.
@@ -158,18 +198,6 @@ Internet-Draft             Evidence Challenge                August 2026
    Challenge:  A single-use, expiring description of evidence still
       required for one exact action.
 
-
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027                [Page 3]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
 2.  Transport-Neutral Core Data Model
 
    The AE-CHALLENGE-v1 data model is independent of its carrier.  A
@@ -182,6 +210,21 @@ Internet-Draft             Evidence Challenge                August 2026
    The JSON format defined by [RFC8259] is the reference serialization
    of the core model.  A non-JSON binding MUST define an unambiguous
    mapping to the same members and value types.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 10 February 2027                [Page 4]
+
+Internet-Draft             Evidence Challenge                August 2026
+
 
    {
      "@version": "AE-CHALLENGE-v1",
@@ -216,20 +259,28 @@ Internet-Draft             Evidence Challenge                August 2026
      "expires_at": "2026-08-10T00:05:00Z"
    }
 
-
-
-
-
-
-Schrock                 Expires 10 February 2027                [Page 4]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
 2.1.  Action and Policy Binding
 
    @version MUST equal AE-CHALLENGE-v1.  A recipient that does not
    implement this version MUST refuse automated processing.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 10 February 2027                [Page 5]
+
+Internet-Draft             Evidence Challenge                August 2026
+
 
    challenge_id is an opaque correlation identifier.  Authorization
    decisions MUST NOT depend on its global uniqueness.  nonce MUST be
@@ -272,16 +323,6 @@ Internet-Draft             Evidence Challenge                August 2026
    MUST use its authenticated live policy and MUST NOT use a policy
    supplied in the response.
 
-
-
-
-
-
-Schrock                 Expires 10 February 2027                [Page 5]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
    Delegation, translation, or task rewriting does not preserve one
    action binding across hops.  Each receiving relying party MUST re-
    evaluate the action it is asked to admit under its own policy and
@@ -289,6 +330,14 @@ Internet-Draft             Evidence Challenge                August 2026
    derive a new action_digest and register its own challenge binding.  A
    prior hop's challenge or decision record MAY be presented as evidence
    or context, but it MUST NOT substitute for the receiving relying
+
+
+
+Schrock                 Expires 10 February 2027                [Page 6]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
    party's binding to a rewritten action.  A chain of per-hop records
    does not by itself prove that the actions at different hops are
    semantically equivalent.
@@ -329,15 +378,6 @@ Internet-Draft             Evidence Challenge                August 2026
    freshness and status checks, policy evaluation, and one-time
    consumption.  Unknown transports MAY omit obtain hints entirely.
 
-
-
-
-
-Schrock                 Expires 10 February 2027                [Page 6]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
    Capability discovery MAY advertise evidence types, presentation
    profiles, or acquisition mechanisms that an implementation supports.
    Such discovery is not an authorization decision and does not
@@ -346,6 +386,13 @@ Internet-Draft             Evidence Challenge                August 2026
    authenticated local policy at evaluation time.  A cached discovery
    response, a mutually supported profile, or a successful acquisition
    flow MUST NOT waive an unsatisfied local requirement.
+
+
+
+Schrock                 Expires 10 February 2027                [Page 7]
+
+Internet-Draft             Evidence Challenge                August 2026
+
 
 2.3.  Lifecycle, Replay, and Retry
 
@@ -382,18 +429,6 @@ Internet-Draft             Evidence Challenge                August 2026
    MUST refuse without evidence evaluation or admission; it MUST NOT
    fall back to fresh local state.
 
-
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027                [Page 7]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
    If evidence remains missing, stale, or unverifiable, the relying
    party MAY issue a follow-up challenge.  A follow-up MUST use a fresh
    challenge identifier and nonce, MUST remain bound to the same locally
@@ -407,6 +442,14 @@ Internet-Draft             Evidence Challenge                August 2026
    MUST NOT send the challenge response before not_before.  When
    jitter_sec is greater than zero, the presenter SHOULD add an
    independently selected delay between zero and that many seconds.  The
+
+
+
+Schrock                 Expires 10 February 2027                [Page 8]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
    selected delay SHOULD vary for each challenge and MUST NOT be treated
    as extending expires_at.  The not_before value is only the earliest
    time to present corrected evidence.  It is not a promise of capacity,
@@ -442,14 +485,6 @@ Internet-Draft             Evidence Challenge                August 2026
    as evidence satisfaction or permission to retry an action whose
    effect may already have occurred.
 
-
-
-
-Schrock                 Expires 10 February 2027                [Page 8]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
 2.4.  State Bounds and Exhaustion
 
    A relying party MUST configure a finite aggregate upper bound on
@@ -460,6 +495,16 @@ Internet-Draft             Evidence Challenge                August 2026
    presenter and per-audience bounds.  Multi-tenant deployments SHOULD
    apply an administrative bound per tenant so one tenant cannot consume
    the aggregate allowance.
+
+
+
+
+
+
+Schrock                 Expires 10 February 2027                [Page 9]
+
+Internet-Draft             Evidence Challenge                August 2026
+
 
    Admission control for a stateful challenge MUST occur before the
    challenge is exposed.  If the relying party cannot allocate the
@@ -499,13 +544,6 @@ Internet-Draft             Evidence Challenge                August 2026
    *  At the outstanding-state cap, a stateful issuer returns no new
       challenge and allocates no additional outstanding record.
 
-
-
-Schrock                 Expires 10 February 2027                [Page 9]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
    *  At the replay-state cap, a returned self-describing challenge
       receives no evidence evaluation and no admission.
 
@@ -514,6 +552,15 @@ Internet-Draft             Evidence Challenge                August 2026
 
    *  Allocating a new challenge never evicts an in-flight or unexpired
       consumed nonce.
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 10]
+
+Internet-Draft             Evidence Challenge                August 2026
+
 
 2.5.  Extensibility
 
@@ -539,6 +586,15 @@ Internet-Draft             Evidence Challenge                August 2026
 
 3.  HTTP Binding
 
+   This 403 Problem Details binding is not the OAuth transaction-
+   authorization response.  When a protected resource requires the
+   native transaction-specific OAuth grant defined by
+   [OAUTH-TXN-CHALLENGE], it uses that specification's
+   transaction_authorization_required response and signed
+   transaction_challenge, normally carried with WWW-Authenticate and
+   status 401.  It MUST NOT return only this document's 403 response and
+   then accept AE evidence as a substitute for the missing OAuth grant.
+
    An HTTP origin server that refuses an action because authorization
    evidence is missing, stale, or unverifiable SHOULD return 403
    Forbidden as defined by [RFC9110].  The response body MUST be an
@@ -557,7 +613,7 @@ Internet-Draft             Evidence Challenge                August 2026
 
 
 
-Schrock                 Expires 10 February 2027               [Page 10]
+Schrock                 Expires 10 February 2027               [Page 11]
 
 Internet-Draft             Evidence Challenge                August 2026
 
@@ -613,7 +669,7 @@ Internet-Draft             Evidence Challenge                August 2026
 
 
 
-Schrock                 Expires 10 February 2027               [Page 11]
+Schrock                 Expires 10 February 2027               [Page 12]
 
 Internet-Draft             Evidence Challenge                August 2026
 
@@ -639,6 +695,17 @@ Internet-Draft             Evidence Challenge                August 2026
    capacity or acceptance, or make a retry safe after an uncertain
    effect.
 
+3.1.  OAuth Non-Substitution Conformance Case
+
+   A protected resource requires a transaction-specific OAuth grant.
+   The presenter supplies a valid AE-CHALLENGE response but no native
+   transaction-bound access token.  The protected resource MUST refuse
+   the action.  It MUST NOT treat the AE challenge identifier or nonce
+   as the OAuth transaction identifier, and it MUST NOT report the
+   evidence presentation as satisfying the native grant requirement.
+   The case passes only when the protected resource continues the native
+   OAuth flow or refuses.
+
 4.  Informative DMSC Gateway Profile
 
    Agent gateways can carry the transport-neutral challenge during
@@ -648,6 +715,20 @@ Internet-Draft             Evidence Challenge                August 2026
    unverifiable.  The sending gateway or agent can obtain evidence and
    return a new presentation using a DMSC-defined extension point or
    error carrier.
+
+   If the receiving gateway's required next step is a native OAuth
+   transaction grant, the DMSC carrier preserves that native challenge
+   rather than wrapping it as AE-CHALLENGE.  A DMSC application profile
+   can carry both only under the explicit composition rules in
+   Section 1.1.
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 13]
+
+Internet-Draft             Evidence Challenge                August 2026
+
 
    If a gateway rewrites or translates the proposed action, the next
    gateway re-evaluates that locally derived action and, when necessary,
@@ -665,14 +746,6 @@ Internet-Draft             Evidence Challenge                August 2026
    admission across gateway boundaries remains the separate requirement
    described in Section 7.8 of the proposed next revision of
    [DMSC-GAPS].
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 12]
-
-Internet-Draft             Evidence Challenge                August 2026
-
 
    In particular, AE-CHALLENGE does not prevent Gateway A and Gateway B
    from admitting the same single-use right.  It does not copy, fence,
@@ -704,6 +777,15 @@ Internet-Draft             Evidence Challenge                August 2026
    refuses or returns indeterminate because exclusivity cannot be
    established.
 
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 14]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
 5.  Security Considerations
 
    *Challenge forgery and evidence exfiltration.* A forged challenge
@@ -722,14 +804,6 @@ Internet-Draft             Evidence Challenge                August 2026
    *Replay and state exhaustion.* Stateful issuance binds the complete
    body before exposure; self-describing issuance defers storage but
    still requires an atomic replay claim before evidence evaluation.  An
-
-
-
-Schrock                 Expires 10 February 2027               [Page 13]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
    attacker can provoke refusals cheaply or consume a structurally valid
    challenge.  Aggregate and scoped bounds, short expiries,
    authentication where available, and rate limits are therefore
@@ -760,6 +834,14 @@ Internet-Draft             Evidence Challenge                August 2026
    information needed for remediation.  The HTTP binding requires Cache-
    Control: no-store.
 
+
+
+
+Schrock                 Expires 10 February 2027               [Page 15]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
    *Stale facts and uncertain effects.* A satisfied challenge proves
    only that the relying party's evidence requirement was met at
    evaluation time.  It does not prove that external facts remain true,
@@ -772,19 +854,6 @@ Internet-Draft             Evidence Challenge                August 2026
    consumption ledger.  Implementations MUST NOT claim cross-gateway
    double-admission prevention merely because both gateways implement
    this challenge.
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 14]
-
-Internet-Draft             Evidence Challenge                August 2026
-
 
 6.  IANA Considerations
 
@@ -821,8 +890,20 @@ Internet-Draft             Evidence Challenge                August 2026
       timing, and whether either protocol needs an additional attempt
       identifier.
 
+
+
+
+Schrock                 Expires 10 February 2027               [Page 16]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
    *  Whether a DMSC gateway profile should carry the core object
       directly or reference it by an authenticated, digest-bound URI.
+
+   *  Which application profiles, if any, need both a native OAuth
+      transaction challenge and an AE-CHALLENGE, and how those profiles
+      should expose the two independent replay domains.
 
 8.  Acknowledgments
 
@@ -834,14 +915,6 @@ Internet-Draft             Evidence Challenge                August 2026
    action rebinding, and the separation of capability discovery from
    local authority.  Thanks to Henri Sirkkavaara for review of replay
    ordering, concurrent-presentation behavior, diagnostic ordering, and
-
-
-
-Schrock                 Expires 10 February 2027               [Page 15]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
    portable identifier semantics.
 
 9.  Changes since -04
@@ -865,7 +938,21 @@ Internet-Draft             Evidence Challenge                August 2026
 
    *  Adds state-exhaustion and multi-replica conformance cases.
 
+   *  Separates AE-CHALLENGE from OAuth Transaction Authorization
+      Challenge: native transaction-grant flows retain their signed
+      OAuth challenge, 401 response, transaction identifier, access
+      token, and replay state.  Adds an explicit non-substitution
+      conformance case and permits composition only through an
+      application profile.
+
 10.  Normative References
+
+
+
+Schrock                 Expires 10 February 2027               [Page 17]
+
+Internet-Draft             Evidence Challenge                August 2026
+
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -889,14 +976,6 @@ Internet-Draft             Evidence Challenge                August 2026
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 16]
-
-Internet-Draft             Evidence Challenge                August 2026
-
 
    [RFC8259]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
               Interchange Format", STD 90, RFC 8259,
@@ -923,9 +1002,24 @@ Internet-Draft             Evidence Challenge                August 2026
    [AEC]      Schrock, I., "Authorization Evidence Chains: Composing
               Heterogeneous Agent-Action Evidence (EP-AEC)", Work in
               Progress, Internet-Draft, draft-schrock-ep-authorization-
+
+
+
+Schrock                 Expires 10 February 2027               [Page 18]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
               evidence-chain-05, August 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-evidence-chain/>.
+
+   [AUTH-RECEIPTS]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-11, 9 August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-receipts/>.
 
    [BCR]      Schrock, I., "Bounded Capability Receipts and Durable
               Spend Control for Agent Actions", Work in Progress,
@@ -940,20 +1034,6 @@ Internet-Draft             Evidence Challenge                August 2026
               <https://datatracker.ietf.org/doc/draft-schrock-canonical-
               action-identifier/>.
 
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 17]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
    [DMSC-GAPS]
               Dunbar, L., Wang, Y., Schrock, I., and B. Liu, "Deployment
               Scenarios and Gap Analysis for AI Agent Gateway", Work in
@@ -961,6 +1041,30 @@ Internet-Draft             Evidence Challenge                August 2026
               gap-analysis-03, August 2026,
               <https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-
               scenarios-gap-analysis/>.
+
+   [KLRC]     Kasselman, P., Lombardo, J., Rosomakho, Y., Campbell, B.,
+              Steele, N., and A. Parecki, "AI Agent Authentication and
+              Authorization", Work in Progress, Internet-Draft, draft-
+              klrc-aiagent-auth-03, 9 July 2026,
+              <https://datatracker.ietf.org/doc/draft-klrc-aiagent-
+              auth/>.
+
+   [OAUTH-TXN-CHALLENGE]
+              Rosomakho, Y., Campbell, B., McGuinness, K., and P.
+              Kasselman, "OAuth Transaction Authorization Challenge",
+              Work in Progress, Internet-Draft, draft-rosomakho-oauth-
+              txn-challenge-00, 25 June 2026,
+              <https://datatracker.ietf.org/doc/draft-rosomakho-oauth-
+              txn-challenge/>.
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 19]
+
+Internet-Draft             Evidence Challenge                August 2026
+
 
    [RFC9470]  Bertocci, V. and B. Campbell, "OAuth 2.0 Step Up
               Authentication Challenge Protocol", RFC 9470,
@@ -976,6 +1080,16 @@ Appendix A.  Relationship to Existing Mechanisms
    is one possible presentation profile.  None is required by the core
    challenge, and the challenge does not extend any of them across
    independently operated admission domains.
+
+   OAuth Transaction Authorization Challenge [OAUTH-TXN-CHALLENGE]
+   supplies the OAuth-native choreography and transaction-bound grant
+   that this document explicitly does not define.  The KLRC architecture
+   [KLRC] describes broader agent authentication and authorization
+   requirements, including human-in-the-loop and externalized
+   authorization patterns.  Authorization Receipts [AUTH-RECEIPTS] are
+   one possible portable human- evidence type that an AE-CHALLENGE can
+   request; neither the receipt nor AE-CHALLENGE replaces a native OAuth
+   grant or a relying party's final policy decision.
 
 Appendix B.  Implementation Status
 
@@ -997,26 +1111,28 @@ Appendix B.  Implementation Status
    are not claimed as an independent implementation of this
    specification.
 
+   Revision -05 adds optional self-describing issuance, mandatory state
+   bounds and cap behavior, authoritative replay-domain requirements,
+   and state-exhaustion conformance cases.  The same-team implementation
 
 
 
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 18]
+Schrock                 Expires 10 February 2027               [Page 20]
 
 Internet-Draft             Evidence Challenge                August 2026
 
 
-   Revision -05 adds optional self-describing issuance, mandatory state
-   bounds and cap behavior, authoritative replay-domain requirements,
-   and state-exhaustion conformance cases.  The same-team implementation
    uses durable stateful issuance and atomic consumption across workers
    and restarts, but does not yet implement the -05 configurable cap
    behavior or self-describing issuance path.  No implementation claim
    is made for those additions.
+
+   The OAuth boundary and non-substitution case in revision -05 are
+   normative text and conformance requirements.  The same-team reference
+   implementation does not convert an AE-CHALLENGE into an OAuth
+   challenge or grant, and no such conversion is planned.  It does not
+   yet implement a composed application profile carrying both
+   mechanisms.
 
    This is same-team implementation evidence.  No independent
    implementation or interoperability is claimed.  The implementation
@@ -1057,8 +1173,4 @@ Author's Address
 
 
 
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 19]
+Schrock                 Expires 10 February 2027               [Page 21]

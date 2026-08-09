@@ -9,6 +9,16 @@ upload source for the next revision is:
 Revision -05 closes the state-exhaustion and retry-semantics findings raised
 by Sumit P. Ahuja after publication of -04.
 
+It also closes the overlap with OAuth Transaction Authorization Challenge.
+When the missing object is a native transaction-specific OAuth grant, that
+flow remains primary: its signed challenge, 401 response, transaction ID,
+authorization-server decision, access token, and replay state are not replaced
+by AE-CHALLENGE. AE remains the transport-neutral description of other missing
+or stale authorization evidence. Both can coexist only through an application
+profile that defines their action join and keeps their replay domains separate.
+An explicit hostile case requires refusal when AE evidence is presented without
+the native OAuth grant.
+
 `retry_timing` is explicitly non-critical: it changes pacing, not the meaning
 of the refusal. `not_before` is only an earliest presentation time and makes
 no promise about capacity, evidence sufficiency, admission, or execution.

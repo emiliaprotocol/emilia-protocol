@@ -39,6 +39,14 @@ for (const required of [
   '<date year="2026" month="August" day="9"/>',
   'Transport-Neutral Core Data Model',
   'HTTP Binding',
+  'Boundary with OAuth Transaction Authorization',
+  'OAuth Non-Substitution Conformance Case',
+  'transaction_authorization_required',
+  'Satisfying AE-CHALLENGE never satisfies a native OAuth grant requirement',
+  'single-use property in this document applies only to one evidence-presentation attempt',
+  'draft-rosomakho-oauth-txn-challenge-00',
+  'draft-klrc-aiagent-auth-03',
+  'draft-schrock-ep-authorization-receipts-11',
   '403 Forbidden',
   'application/problem+json',
   'Informative DMSC Gateway Profile',
@@ -87,6 +95,11 @@ for (const required of [
   'Expires: 10 February 2027',
   'Transport-Neutral Core Data Model',
   'HTTP Binding',
+  'Boundary with OAuth Transaction Authorization',
+  'OAuth Non-Substitution Conformance Case',
+  'transaction_authorization_required',
+  'never satisfies a native OAuth grant requirement',
+  'one evidence-presentation attempt',
   '403 Forbidden',
   'application/problem+json',
   'Informative DMSC Gateway Profile',
@@ -115,6 +128,14 @@ for (const required of [
 ]) {
   invariant(flatTxt.includes(required), `TXT rendering is stale or missing: ${required}`);
 }
+
+const implementation = readFileSync(new URL('../lib/negotiate/evidence-challenge.ts', import.meta.url), 'utf8');
+for (const required of [
+  'selectAuthorizationChallengeMechanism',
+  "primary: 'oauth-transaction-authorization'",
+  'substitution_allowed: false',
+  'explicit_composition_profile',
+]) invariant(implementation.includes(required), `implementation is missing OAuth boundary guard: ${required}`);
 for (const forbidden of [
   'application/authorization-evidence-challenge+json in the standards tree',
   'with status 428',
@@ -152,4 +173,4 @@ for (const [index, relative] of expectedPaths.entries()) {
   }
 }
 
-console.log('AE Challenge -05: non-critical retry pacing, bounded refusal-path state, authoritative replay, conformance cases, renders, checksums, and immutable -04 PASS.');
+console.log('AE Challenge -05: OAuth non-substitution, retry pacing, bounded refusal-path state, authoritative replay, conformance cases, renders, checksums, and immutable -04 PASS.');

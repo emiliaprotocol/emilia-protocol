@@ -1346,13 +1346,16 @@ li > p:last-of-type:only-child {
         </h2>
 <nav class="toc"><ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
-            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+            <p id="section-toc.1-1.1.1"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
-                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-requirements-language" class="internal xref">Requirements Language</a></p>
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-boundary-with-oauth-transac" class="internal xref">Boundary with OAuth Transaction Authorization</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
-                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-requirements-language" class="internal xref">Requirements Language</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
 </li>
             </ul>
 </li>
@@ -1386,6 +1389,11 @@ li > p:last-of-type:only-child {
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
             <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-http-binding" class="internal xref">HTTP Binding</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.1">
+                <p id="section-toc.1-1.3.2.1.1"><a href="#section-3.1" class="auto internal xref">3.1</a>.  <a href="#name-oauth-non-substitution-conf" class="internal xref">OAuth Non-Substitution Conformance Case</a></p>
+</li>
+            </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
             <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-informative-dmsc-gateway-pr" class="internal xref">Informative DMSC Gateway Profile</a></p>
@@ -1442,52 +1450,86 @@ li > p:last-of-type:only-child {
       presentations, freshness, status checking, and retry.<a href="#section-1-1" class="pilcrow">¶</a></p>
 <p id="section-1-2">This document defines the challenge as an application data model,
       independent of HTTP, a particular agent protocol, and any one evidence
-      format. The nearest prior art is OAuth step-up authentication
-      <span>[<a href="#RFC9470" class="cite xref">RFC9470</a>]</span>, which lets a resource identify stronger
-      authentication requirements. AE-CHALLENGE applies the interaction
-      shape to authorization evidence about an exact proposed action.<a href="#section-1-2" class="pilcrow">¶</a></p>
+      format. OAuth step-up authentication <span>[<a href="#RFC9470" class="cite xref">RFC9470</a>]</span> lets a
+      resource identify stronger authentication requirements. OAuth
+      Transaction Authorization Challenge
+      <span>[<a href="#OAUTH-TXN-CHALLENGE" class="cite xref">OAUTH-TXN-CHALLENGE</a>]</span> defines a signed, OAuth-specific
+      challenge that an authorization server turns into a transaction-bound
+      access token after obtaining any required approval. AE-CHALLENGE does
+      not replace either mechanism. It describes missing authorization
+      evidence for an exact proposed action when an application needs a
+      transport-neutral evidence-negotiation object.<a href="#section-1-2" class="pilcrow">¶</a></p>
 <p id="section-1-3">A challenge is a refusal with information. It is not an
       authorization decision, reservation, capability, ownership transfer,
       or promise of execution. Satisfying it causes the relying party to
       evaluate a new presentation under its live local policy.<a href="#section-1-3" class="pilcrow">¶</a></p>
-<div id="requirements-language">
+<div id="oauth-boundary">
 <section id="section-1.1">
-        <h3 id="name-requirements-language">
-<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-requirements-language" class="section-name selfRef">Requirements Language</a>
+        <h3 id="name-boundary-with-oauth-transac">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-boundary-with-oauth-transac" class="section-name selfRef">Boundary with OAuth Transaction Authorization</a>
         </h3>
-<p id="section-1.1-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+<p id="section-1.1-1">When the required next step is issuance of a transaction-specific
+        OAuth grant, an implementation <span class="bcp14">SHOULD</span> use OAuth
+        Transaction Authorization Challenge. It <span class="bcp14">MUST NOT</span>
+        substitute an AE-CHALLENGE, its nonce, or a successfully presented
+        evidence object for that signed OAuth challenge, its transaction
+        identifier, the authorization-server decision, or the resulting
+        access token. Satisfying AE-CHALLENGE never satisfies a native OAuth
+        grant requirement.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">AE-CHALLENGE remains applicable outside OAuth and when a relying
+        party needs evidence that a native authorization protocol does not
+        itself negotiate, such as a current status proof, quorum receipt,
+        hardware attestation, or separately verified policy artifact. An
+        OAuth application profile <span class="bcp14">MAY</span> carry or reference both
+        mechanisms, but that profile <span class="bcp14">MUST</span> define their exact
+        action and audience join, which challenge is primary for each
+        refusal, and how native grant state remains separate from
+        AE-CHALLENGE replay state. Without such a profile, the mechanisms are
+        separate and neither is silently converted into the other.<a href="#section-1.1-2" class="pilcrow">¶</a></p>
+<p id="section-1.1-3">The single-use property in this document applies only to one
+        evidence-presentation attempt under an AE-CHALLENGE nonce. It does not
+        consume an OAuth transaction, invalidate an access token, reserve an
+        action, or establish one-time admission at an executor.<a href="#section-1.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="requirements-language">
+<section id="section-1.2">
+        <h3 id="name-requirements-language">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-requirements-language" class="section-name selfRef">Requirements Language</a>
+        </h3>
+<p id="section-1.2-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
         "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
         RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
         interpreted as described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span>
           <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they appear in all
-        capitals, as shown here.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+        capitals, as shown here.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="terms">
-<section id="section-1.2">
+<section id="section-1.3">
         <h3 id="name-terminology">
-<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
         </h3>
-<span class="break"></span><dl class="dlParallel" id="section-1.2-1">
-          <dt id="section-1.2-1.1">Relying party:</dt>
-          <dd style="margin-left: 1.5em" id="section-1.2-1.2">The component that decides whether evidence satisfies its
-          requirements for a proposed action.<a href="#section-1.2-1.2" class="pilcrow">¶</a>
+<span class="break"></span><dl class="dlParallel" id="section-1.3-1">
+          <dt id="section-1.3-1.1">Relying party:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-1.2">The component that decides whether evidence satisfies its
+          requirements for a proposed action.<a href="#section-1.3-1.2" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
-<dt id="section-1.2-1.3">Presenter:</dt>
-          <dd style="margin-left: 1.5em" id="section-1.2-1.4">The agent, gateway, or other component that receives a
-          challenge and may later present evidence.<a href="#section-1.2-1.4" class="pilcrow">¶</a>
+<dt id="section-1.3-1.3">Presenter:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-1.4">The agent, gateway, or other component that receives a
+          challenge and may later present evidence.<a href="#section-1.3-1.4" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
-<dt id="section-1.2-1.5">Exact action:</dt>
-          <dd style="margin-left: 1.5em" id="section-1.2-1.6">The relying-party-derived material action that would be
+<dt id="section-1.3-1.5">Exact action:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-1.6">The relying-party-derived material action that would be
           admitted, including every field its selected action profile treats
-          as consequential.<a href="#section-1.2-1.6" class="pilcrow">¶</a>
+          as consequential.<a href="#section-1.3-1.6" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
-<dt id="section-1.2-1.7">Challenge:</dt>
-          <dd style="margin-left: 1.5em" id="section-1.2-1.8">A single-use, expiring description of evidence still required
-          for one exact action.<a href="#section-1.2-1.8" class="pilcrow">¶</a>
+<dt id="section-1.3-1.7">Challenge:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-1.8">A single-use, expiring description of evidence still required
+          for one exact action.<a href="#section-1.3-1.8" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -1832,14 +1874,23 @@ li > p:last-of-type:only-child {
       <h2 id="name-http-binding">
 <a href="#section-3" class="section-number selfRef">3. </a><a href="#name-http-binding" class="section-name selfRef">HTTP Binding</a>
       </h2>
-<p id="section-3-1">An HTTP origin server that refuses an action because authorization
+<p id="section-3-1">This 403 Problem Details binding is not the OAuth transaction-
+      authorization response. When a protected resource requires the native
+      transaction-specific OAuth grant defined by
+      <span>[<a href="#OAUTH-TXN-CHALLENGE" class="cite xref">OAUTH-TXN-CHALLENGE</a>]</span>, it uses that specification's
+      <code>transaction_authorization_required</code> response and signed
+      <code>transaction_challenge</code>, normally carried with
+      <code>WWW-Authenticate</code> and status 401. It <span class="bcp14">MUST NOT</span>
+      return only this document's 403 response and then accept AE evidence as
+      a substitute for the missing OAuth grant.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<p id="section-3-2">An HTTP origin server that refuses an action because authorization
       evidence is missing, stale, or unverifiable SHOULD return
       <code>403 Forbidden</code> as defined by <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>. The
       response body MUST be an <code>application/problem+json</code> Problem
       Details object as defined by <span>[<a href="#RFC9457" class="cite xref">RFC9457</a>]</span>. Status 428 is not
       used: it is defined for requests that the origin server requires to be
-      conditional, not for authorization-evidence negotiation.<a href="#section-3-1" class="pilcrow">¶</a></p>
-<p id="section-3-2">If temporary overload is the sole reason for refusal, the origin
+      conditional, not for authorization-evidence negotiation.<a href="#section-3-2" class="pilcrow">¶</a></p>
+<p id="section-3-3">If temporary overload is the sole reason for refusal, the origin
       server MUST NOT fabricate an authorization-evidence challenge. It uses
       <code>503 Service Unavailable</code>, or another response appropriate to the
       actual failure, and MAY use <code>Retry-After</code> as defined by
@@ -1847,8 +1898,8 @@ li > p:last-of-type:only-child {
       evidence is actually insufficient, including when load pressure also
       makes pacing the corrected presentation necessary. If the server cannot
       allocate or claim the state required by Section 2.4, it uses 503 and
-      MUST NOT include <code>evidence_challenge</code>.<a href="#section-3-2" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-3-3">
+      MUST NOT include <code>evidence_challenge</code>.<a href="#section-3-3" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-3-4">
 <pre>
 HTTP/1.1 403 Forbidden
 Content-Type: application/problem+json
@@ -1885,19 +1936,19 @@ Retry-After: 30
     "expires_at": "2026-08-10T00:05:00Z"
   }
 }
-</pre><a href="#section-3-3" class="pilcrow">¶</a>
+</pre><a href="#section-3-4" class="pilcrow">¶</a>
 </div>
-<p id="section-3-4">The Problem Details <code>type</code> and <code>title</code> MUST have the
+<p id="section-3-5">The Problem Details <code>type</code> and <code>title</code> MUST have the
       values shown above. The HTTP status code and the optional
       <code>status</code> member MUST both be 403. The core challenge MUST appear
       in the <code>evidence_challenge</code> extension member. Human-readable
       <code>detail</code> text is advisory and MUST NOT be parsed for protocol
-      semantics.<a href="#section-3-4" class="pilcrow">¶</a></p>
-<p id="section-3-5">The origin server MUST send <code>Cache-Control: no-store</code>. A
+      semantics.<a href="#section-3-5" class="pilcrow">¶</a></p>
+<p id="section-3-6">The origin server MUST send <code>Cache-Control: no-store</code>. A
       generic intermediary can still transform an HTTP response, so a client
       MUST validate the Problem Details object and the authenticated origin
-      before acting on hints or presenting evidence.<a href="#section-3-5" class="pilcrow">¶</a></p>
-<p id="section-3-6">When the core challenge contains <code>retry_timing</code>, the origin
+      before acting on hints or presenting evidence.<a href="#section-3-6" class="pilcrow">¶</a></p>
+<p id="section-3-7">When the core challenge contains <code>retry_timing</code>, the origin
       server SHOULD send a <code>Retry-After</code> field as defined by
       <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>. Its HTTP-date or delay-seconds value MUST NOT
       permit a follow-up request earlier than <code>not_before</code>. If the
@@ -1905,7 +1956,23 @@ Retry-After: 30
       use the later bound and then apply <code>jitter_sec</code>. Retry-After does
       not carry the jitter value and does not change the challenge expiry,
       authorize the action, promise capacity or acceptance, or make a retry
-      safe after an uncertain effect.<a href="#section-3-6" class="pilcrow">¶</a></p>
+      safe after an uncertain effect.<a href="#section-3-7" class="pilcrow">¶</a></p>
+<div id="oauth-non-substitution-case">
+<section id="section-3.1">
+        <h3 id="name-oauth-non-substitution-conf">
+<a href="#section-3.1" class="section-number selfRef">3.1. </a><a href="#name-oauth-non-substitution-conf" class="section-name selfRef">OAuth Non-Substitution Conformance Case</a>
+        </h3>
+<p id="section-3.1-1">A protected resource requires a transaction-specific OAuth grant.
+        The presenter supplies a valid AE-CHALLENGE response but no native
+        transaction-bound access token. The protected resource
+        <span class="bcp14">MUST</span> refuse the action. It <span class="bcp14">MUST NOT</span> treat
+        the AE challenge identifier or nonce as the OAuth transaction
+        identifier, and it <span class="bcp14">MUST NOT</span> report the evidence
+        presentation as satisfying the native grant requirement. The case
+        passes only when the protected resource continues the native OAuth
+        flow or refuses.<a href="#section-3.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
 </section>
 </div>
 <div id="dmsc-profile">
@@ -1919,13 +1986,18 @@ Retry-After: 30
       issues a challenge when evidence is missing, stale, or unverifiable.
       The sending gateway or agent can obtain evidence and return a new
       presentation using a DMSC-defined extension point or error carrier.<a href="#section-4-1" class="pilcrow">¶</a></p>
-<p id="section-4-2">If a gateway rewrites or translates the proposed action, the next
+<p id="section-4-2">If the receiving gateway's required next step is a native OAuth
+      transaction grant, the DMSC carrier preserves that native challenge
+      rather than wrapping it as AE-CHALLENGE. A DMSC application profile can
+      carry both only under the explicit composition rules in
+      <a href="#oauth-boundary" class="auto internal xref">Section 1.1</a>.<a href="#section-4-2" class="pilcrow">¶</a></p>
+<p id="section-4-3">If a gateway rewrites or translates the proposed action, the next
       gateway re-evaluates that locally derived action and, when necessary,
       issues its own binding. The prior gateway's action digest does not
       survive the rewrite as the receiving gateway's binding. Any claim that
       the two actions are equivalent requires a separately defined mapping or
-      transformation proof.<a href="#section-4-2" class="pilcrow">¶</a></p>
-<p id="section-4-3">When a receiving gateway refuses an action because required
+      transformation proof.<a href="#section-4-3" class="pilcrow">¶</a></p>
+<p id="section-4-4">When a receiving gateway refuses an action because required
       authorization evidence is missing, stale, or unverifiable, it may
       return a structured evidence challenge identifying the exact action,
       outstanding evidence requirements, applicable freshness or status
@@ -1933,8 +2005,8 @@ Retry-After: 30
       not authorize the action or transfer admission ownership; conserved
       admission across gateway boundaries remains the separate requirement
       described in Section 7.8 of the proposed next revision of
-      <span>[<a href="#DMSC-GAPS" class="cite xref">DMSC-GAPS</a>]</span>.<a href="#section-4-3" class="pilcrow">¶</a></p>
-<p id="section-4-4">In particular, AE-CHALLENGE does not prevent Gateway A and Gateway B
+      <span>[<a href="#DMSC-GAPS" class="cite xref">DMSC-GAPS</a>]</span>.<a href="#section-4-4" class="pilcrow">¶</a></p>
+<p id="section-4-5">In particular, AE-CHALLENGE does not prevent Gateway A and Gateway B
       from admitting the same single-use right. It does not copy, fence, or
       relinquish consumption state and does not establish which gateway owns
       admission during a partition. The separate handoff property is not a
@@ -1943,7 +2015,7 @@ Retry-After: 30
       admissions and releases. A DMSC handoff profile MUST solve that property
       separately. If the receiving gateway cannot establish the
       required exclusivity, its safe result is refusal or indeterminate, not
-      acceptance based on the challenge.<a href="#section-4-4" class="pilcrow">¶</a></p>
+      acceptance based on the challenge.<a href="#section-4-5" class="pilcrow">¶</a></p>
 <div id="dmsc-case">
 <section id="section-4.1">
         <h3 id="name-gateway-conformance-case">
@@ -2079,6 +2151,10 @@ Retry-After: 30
         <li class="normal" id="section-7-2.2">Whether a DMSC gateway profile should carry the core object
         directly or reference it by an authenticated, digest-bound URI.<a href="#section-7-2.2" class="pilcrow">¶</a>
 </li>
+        <li class="normal" id="section-7-2.3">Which application profiles, if any, need both a native OAuth
+        transaction challenge and an AE-CHALLENGE, and how those profiles
+        should expose the two independent replay domains.<a href="#section-7-2.3" class="pilcrow">¶</a>
+</li>
       </ul>
 </section>
 </div>
@@ -2121,6 +2197,12 @@ Retry-After: 30
         replicas and prohibits eviction of live replay state.<a href="#section-9-1.5" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-9-1.6">Adds state-exhaustion and multi-replica conformance cases.<a href="#section-9-1.6" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-9-1.7">Separates AE-CHALLENGE from OAuth Transaction Authorization
+        Challenge: native transaction-grant flows retain their signed OAuth
+        challenge, 401 response, transaction identifier, access token, and
+        replay state. Adds an explicit non-substitution conformance case and
+        permits composition only through an application profile.<a href="#section-9-1.7" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
@@ -2177,6 +2259,10 @@ Retry-After: 30
       <dd>
 <span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-evidence-chain-05</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="AUTH-RECEIPTS">[AUTH-RECEIPTS]</dt>
+      <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Receipts for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-receipts-11</span>, <time datetime="2026-08-09" class="refDate">9 August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="BCR">[BCR]</dt>
       <dd>
 <span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Bounded Capability Receipts and Durable Spend Control for Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-bounded-capability-receipts-03</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/</a>&gt;</span>. </dd>
@@ -2188,6 +2274,14 @@ Retry-After: 30
 <dt id="DMSC-GAPS">[DMSC-GAPS]</dt>
       <dd>
 <span class="refAuthor">Dunbar, L.</span>, <span class="refAuthor">Wang, Y.</span>, <span class="refAuthor">Schrock, I.</span>, and <span class="refAuthor">B. Liu</span>, <span class="refTitle">"Deployment Scenarios and Gap Analysis for AI Agent Gateway"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-dunbar-dmsc-gw-scenarios-gap-analysis-03</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="KLRC">[KLRC]</dt>
+      <dd>
+<span class="refAuthor">Kasselman, P.</span>, <span class="refAuthor">Lombardo, J.</span>, <span class="refAuthor">Rosomakho, Y.</span>, <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Steele, N.</span>, and <span class="refAuthor">A. Parecki</span>, <span class="refTitle">"AI Agent Authentication and Authorization"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-klrc-aiagent-auth-03</span>, <time datetime="2026-07-09" class="refDate">9 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-klrc-aiagent-auth/">https://datatracker.ietf.org/doc/draft-klrc-aiagent-auth/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="OAUTH-TXN-CHALLENGE">[OAUTH-TXN-CHALLENGE]</dt>
+      <dd>
+<span class="refAuthor">Rosomakho, Y.</span>, <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">McGuinness, K.</span>, and <span class="refAuthor">P. Kasselman</span>, <span class="refTitle">"OAuth Transaction Authorization Challenge"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-rosomakho-oauth-txn-challenge-00</span>, <time datetime="2026-06-25" class="refDate">25 June 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-rosomakho-oauth-txn-challenge/">https://datatracker.ietf.org/doc/draft-rosomakho-oauth-txn-challenge/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC9470">[RFC9470]</dt>
     <dd>
@@ -2208,6 +2302,16 @@ Retry-After: 30
       presentation profile. None is required by the core challenge, and the
       challenge does not extend any of them across independently operated
       admission domains.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+<p id="appendix-A-2">OAuth Transaction Authorization Challenge
+      <span>[<a href="#OAUTH-TXN-CHALLENGE" class="cite xref">OAUTH-TXN-CHALLENGE</a>]</span> supplies the OAuth-native
+      choreography and transaction-bound grant that this document explicitly
+      does not define. The KLRC architecture <span>[<a href="#KLRC" class="cite xref">KLRC</a>]</span> describes
+      broader agent authentication and authorization requirements, including
+      human-in-the-loop and externalized authorization patterns. Authorization
+      Receipts <span>[<a href="#AUTH-RECEIPTS" class="cite xref">AUTH-RECEIPTS</a>]</span> are one possible portable human-
+      evidence type that an AE-CHALLENGE can request; neither the receipt nor
+      AE-CHALLENGE replaces a native OAuth grant or a relying party's final
+      policy decision.<a href="#appendix-A-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="impl">
@@ -2238,11 +2342,16 @@ Retry-After: 30
       restarts, but does not yet implement the -05 configurable cap behavior
       or self-describing issuance path. No implementation claim is made for
       those additions.<a href="#appendix-B-3" class="pilcrow">¶</a></p>
-<p id="appendix-B-4">This is same-team implementation evidence. No independent
+<p id="appendix-B-4">The OAuth boundary and non-substitution case in revision -05 are
+      normative text and conformance requirements. The same-team reference
+      implementation does not convert an AE-CHALLENGE into an OAuth challenge
+      or grant, and no such conversion is planned. It does not yet implement a
+      composed application profile carrying both mechanisms.<a href="#appendix-B-4" class="pilcrow">¶</a></p>
+<p id="appendix-B-5">This is same-team implementation evidence. No independent
       implementation or interoperability is claimed. The implementation does
       not yet provide a DMSC carrier or conserved-admission mechanism. Its
       current local evidence and presentation identifiers are not the absolute
-      URIs required by this revision.<a href="#appendix-B-4" class="pilcrow">¶</a></p>
+      URIs required by this revision.<a href="#appendix-B-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="authors-addresses">
