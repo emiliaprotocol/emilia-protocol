@@ -49,6 +49,8 @@ export * from './aeb-oasnt-adapter.js';
 export * from './aeb-psea-adapter.js';
 export * from './fido-ap2-bridge.js';
 export * from './a2a-receipt-binding.js';
+export * from './ap2-native-adapter.js';
+export * from './a2a-evidence-challenge.js';
 export * from './memory-projection.js';
 export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';

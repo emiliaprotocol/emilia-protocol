@@ -22,6 +22,10 @@ requires for the exact action, refuses before mutation, consumes accepted author
 portable evidence of what the protected path admitted and later observed. **Protocol proves. Gate
 prevents.**
 
+Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval
+systems, then enforces them once at the executor. The A2A/AP2 path is experimental and has same-team
+reference vectors; independent interoperability is not yet claimed.
+
 - **Authority Brain** maps supported declared action surfaces locally. No account, upload, or
   callback is required. Discovery creates no authority; the owner reviews the map.
 - **EMILIA Gate** turns the approved map and operating mandate into preventive control on a fully

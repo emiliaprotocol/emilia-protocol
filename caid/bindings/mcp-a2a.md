@@ -140,6 +140,22 @@ store custom metadata about a task."
 
 ### 1. Where actions live in A2A
 
+#### Experimental authorization-evidence interruption (2026-08-09)
+
+For a receiving executor that lacks current authorization evidence, the
+reference profile returns `TASK_STATE_AUTH_REQUIRED`, not
+`TASK_STATE_INPUT_REQUIRED`. The status message advertises the EMILIA extension
+URI and carries `AE-CHALLENGE-v1` in `message.metadata[extension-uri]`. A text
+Part remains human-readable; the metadata object is the machine-readable
+challenge.
+
+In the A2A/AP2 composition, the challenge advertises `ap2-native`, binds the
+server-derived action digest and relying-party audience, and requests current AP2
+authorization evidence. It does not authorize the action or transfer admission
+ownership. The receiving executor independently verifies native AP2 evidence,
+maps it to a locally computed CAID through AEB, and reserves before effect. See
+`docs/integrations/A2A-AP2-GATE-EXPERIMENTAL.md`.
+
 In A2A, work is initiated by a client sending a Message (role plus an
 array of Parts holding the content) via the send-message operation, and
 the agent responds with either a direct Message or a Task, "the core unit

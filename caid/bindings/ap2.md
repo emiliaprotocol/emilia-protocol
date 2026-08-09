@@ -1,6 +1,20 @@
 <!-- PRIVATE. PR-ready text only. NOT submitted anywhere. Gated on Iman's word. -->
 # Binding: Google AP2 (Agent Payments Protocol)
 
+## Experimental executor profile (2026-08-09)
+
+The repository now includes an experimental AP2-native AEB adapter and A2A/AP2
+Gate composition. The AP2 mandate remains the native artifact and is verified by
+a relying-party-pinned AP2 implementation. The adapter never rewraps that mandate
+as an EMILIA authorization and explicitly reports `emilia_originated: false`.
+
+The executor computes CAID locally from the exact normalized action under a
+pinned mapping profile. A CAID supplied by the mandate verifier is not treated as
+authoritative. AEB then joins the native AP2 evidence to that CAID and Gate
+reserves the native replay identity before provider entry. This is a local
+admission profile; it does not change AP2 or claim cross-domain exactly-once
+execution. See `docs/integrations/A2A-AP2-GATE-EXPERIMENTAL.md`.
+
 Target: AP2, "an open protocol for the emerging Agent Economy"
 (https://ap2-protocol.org/). Per the same page, Google announced the
 protocol on 2025-09-16 and "has donated it to the FIDO Alliance for

@@ -257,3 +257,26 @@ test('fails closed on validity boundaries and hostile non-JSON inputs', () => {
     }), /strict canonical JSON|closed A2A Message/);
     assert.equal(getterRan, false);
 });
+test('refuses an INPUT_REQUIRED Task substituted for the A2A authorization interruption', () => {
+    const f = fixture();
+    // A2A v1.0 delegates authorization to the client through TASK_STATE_AUTH_REQUIRED.
+    // A generic input-required Task is not an authorization interruption and MUST NOT
+    // be accepted in its place, otherwise an agent could downgrade the authorization
+    // step to an ordinary input prompt while still presenting a bound receipt.
+    for (const state of ['TASK_STATE_INPUT_REQUIRED', 'TASK_STATE_SUBMITTED', 'TASK_STATE_WORKING', 'TASK_STATE_COMPLETED']) {
+        const substituted = { ...f.task, status: { ...f.task.status, state } };
+        assert.throws(() => createA2AReceiptPresentation({
+            protocol_version: A2A_PROTOCOL_VERSION,
+            target_interface_url: 'https://executor.example/a2a/v1',
+            agent_card: f.agentCard,
+            task: substituted,
+            initiating_message: f.initiatingMessage,
+            proof_message: f.proofMessage,
+            base_receipt: f.receipt,
+            receipt_binding: { caid: CAID, action_digest: digestAeb(ACTION) },
+            issued_at: '2026-08-06T17:59:30.000Z',
+            expires_at: '2026-08-06T18:05:00.000Z',
+            signer: { key_id: 'binder:test', private_key: f.binder.privateKey },
+        }), /closed A2A auth-required Task required/, `state ${state} must be refused`);
+    }
+});
