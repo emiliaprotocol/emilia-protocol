@@ -11,6 +11,10 @@ Validated on 2026-08-09 from the isolated -04 candidate packet.
   retained renderings.
 - `node scripts/check-ae-challenge-04.mjs` passed the focused source, render,
   revision-boundary, checksum, and immutable-posted-03 assertions.
+- The AgentProto review dispositions are explicit: portable absolute-URI
+  identifiers, action agreement before expiry and atomic consumption, and
+  replay refusal for a duplicate arriving while the first evaluation remains
+  in flight.
 - The source, TXT, and HTML bytes are pinned in `SHA256SUMS.txt`.
 
 This candidate changes specification text and packet checks only. It does not

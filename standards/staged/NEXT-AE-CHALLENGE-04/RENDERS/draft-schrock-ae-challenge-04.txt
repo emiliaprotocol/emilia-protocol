@@ -80,7 +80,7 @@ Table of Contents
      2.1.  Action and Policy Binding . . . . . . . . . . . . . . . .   4
      2.2.  Evidence Requirements and Presentation  . . . . . . . . .   5
      2.3.  Lifecycle, Replay, and Retry  . . . . . . . . . . . . . .   6
-     2.4.  Extensibility . . . . . . . . . . . . . . . . . . . . . .   7
+     2.4.  Extensibility . . . . . . . . . . . . . . . . . . . . . .   8
      2.5.  Carrier Semantics . . . . . . . . . . . . . . . . . . . .   8
    3.  HTTP Binding  . . . . . . . . . . . . . . . . . . . . . . . .   8
    4.  Informative DMSC Gateway Profile  . . . . . . . . . . . . . .  10
@@ -182,13 +182,13 @@ Internet-Draft             Evidence Challenge                August 2026
      "required_evidence": [
        {
          "requirement_id": "human-approval",
-         "type": "authorization_receipt",
+         "type": "https://example.net/e/authorization-receipt",
          "profiles": ["https://example.net/profiles/receipt-v1"],
          "max_age_sec": 300,
          "status": "current"
        }
      ],
-     "present_as": ["ep-aec-v1"],
+     "present_as": ["https://example.net/p/ep-aec-v1"],
      "obtain_hints": [
        {
          "requirement_id": "human-approval",
@@ -216,8 +216,8 @@ Internet-Draft             Evidence Challenge                August 2026
 
    action_digest MUST be computed by the relying party from the exact
    action it would admit.  It MUST NOT be copied from the presenter or
-   from presented evidence. action_profile MUST be present and
-   identifies the canonicalization or mapping profile used to derive the
+   from presented evidence. action_profile MUST be present, MUST be an
+   absolute URI as defined by [RFC3986], and identifies the
 
 
 
@@ -226,11 +226,12 @@ Schrock                 Expires 10 February 2027                [Page 4]
 Internet-Draft             Evidence Challenge                August 2026
 
 
-   digest.  It is descriptive to the presenter; it does not let the
-   presenter select or weaken that profile.  If two parties cannot
-   establish the same material action under an understood profile, the
-   challenge cannot repair the disagreement and the relying party MUST
-   refuse automated admission.
+   canonicalization or mapping profile used to derive the digest.  It is
+   descriptive to the presenter; it does not let the presenter select or
+   weaken that profile.  If two parties cannot establish the same
+   material action under an understood profile, the challenge cannot
+   repair the disagreement and the relying party MUST refuse automated
+   admission.
 
    audience identifies the component that is expected to answer the
    challenge.  A binding or authenticated envelope MUST let the
@@ -259,21 +260,20 @@ Internet-Draft             Evidence Challenge                August 2026
 
    Each required_evidence entry MUST contain a requirement_id and type.
    Requirement identifiers are unique within one challenge and correlate
-   requirements with acquisition hints and diagnostics.  Type and
-   profile identifiers are opaque protocol identifiers; a recipient MUST
-   NOT infer security semantics from string prefixes or substring
-   matches.
+   requirements with acquisition hints and diagnostics.  Every evidence
+   type, evidence profiles entry, and present_as entry MUST be an
+   absolute URI as defined by [RFC3986] so that the same identifier has
+   portable meaning across transport protocols and conformance corpora.
+   Unless the defining specification says otherwise, these identifiers
+   are compared as exact strings.  A recipient MUST NOT infer security
+   semantics from URI prefixes or substring matches; it uses only
+   locally configured semantics for the complete identifier.
 
    An entry MAY contain profiles, proof_predicates, max_age_sec, and
    status.  Profiles are alternatives acceptable for that requirement.
    max_age_sec is measured at the relying party's evaluation time using
    the issuance or observation time defined by the selected evidence
    profile. status equal to current requires a separately authenticated
-   status result satisfying the relying party's freshness policy; it
-   does not mean that absence from an unauthenticated revocation list is
-   sufficient.
-
-
 
 
 
@@ -281,6 +281,10 @@ Schrock                 Expires 10 February 2027                [Page 5]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+   status result satisfying the relying party's freshness policy; it
+   does not mean that absence from an unauthenticated revocation list is
+   sufficient.
 
    present_as lists alternative presentation profiles.  The order
    expresses the relying party's preference, not a security ranking.
@@ -308,28 +312,24 @@ Internet-Draft             Evidence Challenge                August 2026
 2.3.  Lifecycle, Replay, and Retry
 
    expires_at MUST be an absolute timestamp.  The relying party MUST
-   refuse an expired challenge before policy evaluation.  Challenge
-   expiry does not extend the validity of any evidence and evidence
-   expiry does not extend the challenge.
+   refuse an expired challenge before evidence or policy evaluation.
+   Challenge expiry does not extend the validity of any evidence and
+   evidence expiry does not extend the challenge.
 
    Evaluation is ordered: version and structure; authenticated issuer
-   and audience; durable body binding; expiry; action agreement; nonce
-   consumption; native evidence verification; and local policy
+   and audience; durable body binding; action agreement; expiry; atomic
+   nonce consumption; native evidence verification; and local policy
    evaluation.  Malformed input that cannot be associated with a
-   registered challenge is refused without consuming a nonce.  Once a
-   structurally valid presentation has been matched to a registered
-   challenge, the nonce MUST be consumed before evidence evaluation so
-   concurrent or action-swapped retries cannot reuse it.
+   registered challenge, or a presentation that does not agree with the
+   registered exact action, is refused without consuming a nonce.  Once
+   structural and action matching succeed, the nonce MUST be consumed
+   atomically before evidence evaluation.
 
-   If evidence remains missing, stale, or unverifiable, the relying
-   party MAY issue a follow-up challenge.  A follow-up MUST use a fresh
-   challenge identifier and nonce, MUST remain bound to the same locally
-   derived action digest and action profile, and SHOULD list only the
-   requirements that remain unsatisfied.  It is a new refusal, not a
-   continuation of the consumed nonce.
-
-
-
+   A concurrent duplicate that arrives after another presentation has
+   consumed the nonce, whether that first evaluation is still in flight
+   or has completed, MUST be refused as a replay.  It MUST NOT receive a
+   second evidence evaluation, an indeterminate result merely because
+   the first evaluation is in flight, or a second admission.  An
 
 
 
@@ -337,6 +337,17 @@ Schrock                 Expires 10 February 2027                [Page 6]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+   implementation MAY distinguish in-flight from completed consumption
+   internally for operations and audit, but that distinction does not
+   reopen the challenge.
+
+   If evidence remains missing, stale, or unverifiable, the relying
+   party MAY issue a follow-up challenge.  A follow-up MUST use a fresh
+   challenge identifier and nonce, MUST remain bound to the same locally
+   derived action digest and action profile, and SHOULD list only the
+   requirements that remain unsatisfied.  It is a new refusal, not a
+   continuation of the consumed nonce.
 
    retry_timing is OPTIONAL.  When present, it MUST contain a not_before
    Internet timestamp as defined by [RFC3339] and MAY contain a non-
@@ -371,17 +382,6 @@ Internet-Draft             Evidence Challenge                August 2026
    as evidence satisfaction or permission to retry an action whose
    effect may already have occurred.
 
-2.4.  Extensibility
-
-   Recipients MUST ignore an unknown member unless its name appears in
-   the optional critical array.  A recipient that does not understand
-   every member named by critical MUST refuse automated processing.  A
-   specification defining an extension MUST state whether that extension
-   is safe to ignore and how it is bound to the registered challenge
-   body.
-
-
-
 
 
 
@@ -393,6 +393,15 @@ Schrock                 Expires 10 February 2027                [Page 7]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+2.4.  Extensibility
+
+   Recipients MUST ignore an unknown member unless its name appears in
+   the optional critical array.  A recipient that does not understand
+   every member named by critical MUST refuse automated processing.  A
+   specification defining an extension MUST state whether that extension
+   is safe to ignore and how it is bound to the registered challenge
+   body.
 
 2.5.  Carrier Semantics
 
@@ -436,15 +445,6 @@ Internet-Draft             Evidence Challenge                August 2026
 
 
 
-
-
-
-
-
-
-
-
-
 Schrock                 Expires 10 February 2027                [Page 8]
 
 Internet-Draft             Evidence Challenge                August 2026
@@ -472,11 +472,11 @@ Internet-Draft             Evidence Challenge                August 2026
        "policy_digest": "sha256:...",
        "required_evidence": [
          { "requirement_id": "human-approval",
-           "type": "authorization_receipt",
+           "type": "https://example.net/e/authorization-receipt",
            "max_age_sec": 300,
            "status": "current" }
        ],
-       "present_as": ["ep-aec-v1"],
+       "present_as": ["https://example.net/p/ep-aec-v1"],
        "obtain_hints": [],
        "retry_timing": {
          "not_before": "2026-08-09T23:50:30Z",
@@ -545,13 +545,13 @@ Internet-Draft             Evidence Challenge                August 2026
    In particular, AE-CHALLENGE does not prevent Gateway A and Gateway B
    from admitting the same single-use right.  It does not copy, fence,
    or relinquish consumption state and does not establish which gateway
-   owns admission during a partition.  A DMSC handoff profile MUST solve
-   those properties separately.  If the receiving gateway cannot
-   establish the required exclusivity, its safe result is refusal or
-   indeterminate, not acceptance based on the challenge.
-
-
-
+   owns admission during a partition.  The separate handoff property is
+   not a race to decide which gateway admitted first; it is an invariant
+   that committed capacity is not over-allocated under any interleaving
+   of admissions and releases.  A DMSC handoff profile MUST solve that
+   property separately.  If the receiving gateway cannot establish the
+   required exclusivity, its safe result is refusal or indeterminate,
+   not acceptance based on the challenge.
 
 
 
@@ -688,14 +688,6 @@ Internet-Draft             Evidence Challenge                August 2026
    revision -03.  Review is requested on the following remaining
    choices:
 
-   *  Whether evidence type, presentation profile, and action profile
-      identifiers should be required to be absolute URIs or may remain
-      opaque identifiers governed by the carrying protocol.
-
-   *  Whether consuming the nonce after structural and action matching
-      but before evidence verification is the correct common replay rule
-      for both task-oriented and message-oriented agent protocols.
-
    *  Which Agent2Agent and AgentProto error carriers can preserve the
       complete challenge, authenticated issuer, audience, and retry
       timing, and whether either protocol needs an additional attempt
@@ -711,7 +703,9 @@ Internet-Draft             Evidence Challenge                August 2026
    suggesting retry timing and jitter.  Thanks to Guigui Wang for
    implementation feedback on structured error payloads, per-hop action
    rebinding, and the separation of capability discovery from local
-   authority.
+   authority.  Thanks to Henri Sirkkavaara for review of replay
+   ordering, concurrent-presentation behavior, diagnostic ordering, and
+   portable identifier semantics.
 
 9.  Changes since -03
 
@@ -721,6 +715,12 @@ Internet-Draft             Evidence Challenge                August 2026
    *  Maps the lower bound to HTTP Retry-After while retaining jitter in
       the core challenge.
 
+   *  Defines retry synchronization and load amplification as a denial
+      of service concern without making a challenge an overload
+      response.
+
+   *  Recommends structured refusal or error payloads while preserving
+      transport-neutral carrier semantics.
 
 
 
@@ -730,18 +730,22 @@ Schrock                 Expires 10 February 2027               [Page 13]
 Internet-Draft             Evidence Challenge                August 2026
 
 
-   *  Defines retry synchronization and load amplification as a denial
-      of service concern without making a challenge an overload
-      response.
-
-   *  Recommends structured refusal or error payloads while preserving
-      transport-neutral carrier semantics.
-
    *  Requires each delegation or rewriting hop to re-evaluate its local
       action and issue its own binding.
 
    *  Separates capability discovery from authority and local evidence
       sufficiency.
+
+   *  Requires portable absolute-URI identifiers for evidence types,
+      action profiles, and presentation profiles.
+
+   *  Checks action agreement before expiry and nonce consumption, and
+      defines a concurrent duplicate during evidence evaluation as a
+      replay that cannot trigger a second evaluation or admission.
+
+   *  States conserved admission as a committed-capacity invariant over
+      every admission and release interleaving while leaving that
+      mechanism outside AE-CHALLENGE.
 
 10.  References
 
@@ -755,6 +759,11 @@ Internet-Draft             Evidence Challenge                August 2026
    [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
               <https://www.rfc-editor.org/info/rfc3339>.
+
+   [RFC3986]  Berners-Lee, T., Fielding, R. T., and L. Masinter,
+              "Uniform Resource Identifier (URI): Generic Syntax",
+              STD 66, RFC 3986, DOI 10.17487/RFC3986, January 2005,
+              <https://www.rfc-editor.org/info/rfc3986>.
 
    [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
               Writing an IANA Considerations Section in RFCs", BCP 26,
@@ -770,6 +779,13 @@ Internet-Draft             Evidence Challenge                August 2026
               DOI 10.17487/RFC8259, December 2017,
               <https://www.rfc-editor.org/info/rfc8259>.
 
+
+
+Schrock                 Expires 10 February 2027               [Page 14]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
    [RFC9110]  Fielding, R., Ed., Nottingham, M., Ed., and J. Reschke,
               Ed., "HTTP Semantics", STD 97, RFC 9110,
               DOI 10.17487/RFC9110, June 2022,
@@ -778,13 +794,6 @@ Internet-Draft             Evidence Challenge                August 2026
    [RFC9457]  Nottingham, M., Wilde, E., and S. Dalal, "Problem Details
               for HTTP APIs", RFC 9457, DOI 10.17487/RFC9457, July 2023,
               <https://www.rfc-editor.org/info/rfc9457>.
-
-
-
-Schrock                 Expires 10 February 2027               [Page 14]
-
-Internet-Draft             Evidence Challenge                August 2026
-
 
 10.2.  Informative References
 
@@ -822,15 +831,6 @@ Internet-Draft             Evidence Challenge                August 2026
               <https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-
               scenarios-gap-analysis/>.
 
-   [RFC9470]  Bertocci, V. and B. Campbell, "OAuth 2.0 Step Up
-              Authentication Challenge Protocol", RFC 9470,
-              DOI 10.17487/RFC9470, September 2023,
-              <https://www.rfc-editor.org/info/rfc9470>.
-
-
-
-
-
 
 
 
@@ -841,6 +841,11 @@ Schrock                 Expires 10 February 2027               [Page 15]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+   [RFC9470]  Bertocci, V. and B. Campbell, "OAuth 2.0 Step Up
+              Authentication Challenge Protocol", RFC 9470,
+              DOI 10.17487/RFC9470, September 2023,
+              <https://www.rfc-editor.org/info/rfc9470>.
 
 Appendix A.  Relationship to Existing Mechanisms
 
@@ -864,17 +869,19 @@ Appendix B.  Implementation Status
    and the evidence_challenge extension.
 
    Revision -04 specifies retry timing, per-hop rebinding, discovery
-   separation, and carrier semantics.  These additions are based in part
-   on external implementer review, including experience with structured
-   error payloads and per-verifier decision bindings.  They are not yet
-   implemented by the same-team reference implementation and are not
-   claimed as an independent implementation of this specification.
+   separation, carrier semantics, portable absolute-URI identifiers, and
+   action-before-consumption replay ordering.  These additions are based
+   in part on external implementer review, including experience with
+   structured error payloads and per-verifier decision bindings.  They
+   are not yet implemented by the same-team reference implementation and
+   are not claimed as an independent implementation of this
+   specification.
 
    This is same-team implementation evidence.  No independent
    implementation or interoperability is claimed.  The implementation
-   does not yet provide a DMSC carrier or conserved-admission mechanism,
-   and its current local evidence and presentation identifiers do not
-   resolve the identifier-governance question in Section 7.
+   does not yet provide a DMSC carrier or conserved-admission mechanism.
+   Its current local evidence and presentation identifiers are not the
+   absolute URIs required by this revision.
 
 Author's Address
 
@@ -882,13 +889,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
 
 
 
