@@ -47,6 +47,13 @@ describe('hasPermission', () => {
     expect(hasPermission('operator', 'dispute.resolve')).toBe(true);
   });
 
+  it('reserves signing-key revocation and adjudication for the full operator role', () => {
+    expect(hasPermission('operator', 'commit_key.revoke')).toBe(true);
+    expect(hasPermission('operator', 'dispute.adjudicate')).toBe(true);
+    expect(hasPermission('reviewer', 'commit_key.revoke')).toBe(false);
+    expect(hasPermission('host_verifier', 'dispute.adjudicate')).toBe(false);
+  });
+
   it('returns false for a permission the role lacks', () => {
     expect(hasPermission('reporter', 'dispute.resolve')).toBe(false);
   });

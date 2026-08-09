@@ -1,0 +1,33 @@
+name: EMILIA Authority Map
+description: Conservatively inventory GitHub workflow authority signals without claiming enforcement.
+author: EMILIA Protocol
+
+inputs:
+  fail-on:
+    description: Exit nonzero after emitting reports when critical findings exist (never|critical).
+    required: false
+    default: never
+  json-output:
+    description: JSON output path, relative to GITHUB_WORKSPACE unless absolute.
+    required: false
+  markdown-output:
+    description: Markdown output path, relative to GITHUB_WORKSPACE unless absolute.
+    required: false
+
+outputs:
+  json-path:
+    description: Absolute path to the emitted JSON report.
+  markdown-path:
+    description: Absolute path to the emitted Markdown report.
+  critical-findings:
+    description: Number of critical static findings.
+  ambiguity-count:
+    description: Number of ambiguous or unsupported constructs recorded.
+
+runs:
+  using: node24
+  main: scan.mjs
+
+branding:
+  icon: shield
+  color: purple

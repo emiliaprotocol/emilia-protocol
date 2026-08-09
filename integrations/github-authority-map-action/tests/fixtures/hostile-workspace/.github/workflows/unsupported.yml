@@ -1,0 +1,18 @@
+name: Dynamic and anchored workflow
+
+on:
+  workflow_call:
+
+permissions: &base_permissions
+  contents: read
+
+jobs:
+  dynamic:
+    runs-on: ${{ fromJSON(inputs.runners) }}
+    environment: ${{ inputs.environment }}
+    permissions:
+      <<: *base_permissions
+      issues: ${{ inputs.permission_level }}
+    steps:
+      - uses: ${{ inputs.action }}
+      - uses: vendor/dynamic-action@${{ inputs.ref }}

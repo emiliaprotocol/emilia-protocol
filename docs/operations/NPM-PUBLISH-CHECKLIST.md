@@ -3,9 +3,10 @@
 Long-lived npm/PyPI tokens, direct local publication, and automatic tag-triggered
 publication are not part of the release path. A release requires two explicit
 owner actions after the matching tag exists on `main`: manually dispatch the
-package workflow with a version-bound confirmation, then approve its protected
-`registry-publishing-approval` job. Only then does the workflow test the source,
-create one reproducible artifact, attest those exact bytes through GitHub OIDC,
+package workflow with a version-bound confirmation, then approve the protected
+OIDC-bearing publisher in `registry-publishing-approval`. Only then does the
+workflow test the source, create one reproducible artifact, attest those exact
+bytes through GitHub OIDC,
 publish that same file through registry trusted publishing, and download and
 byte-compare the registry copy.
 
@@ -43,7 +44,7 @@ For each `@emilia-protocol/*` package, add a GitHub Actions trusted publisher:
 - organization: `emiliaprotocol`
 - repository: `emilia-protocol`
 - workflow: the package's `publish-*.yml` filename
-- environment: blank unless the workflow is later changed to use one
+- environment: `registry-publishing-approval`
 - allowed action: `npm publish`
 
 Use npm 11.18.0 or later. Earlier trust clients do not send the required
@@ -65,8 +66,9 @@ npm publisher relationships. Registry-side activation must be read back for
 every declared caller before its next release; the repository manifest, not a
 historical count in this document, is authoritative.
 
-The actual npm publish jobs do not declare an environment; a separate job uses
-the protected approval environment before the publish job can start. The
+The actual npm and PyPI publish jobs declare
+`registry-publishing-approval`; a detached approval job is not an equivalent
+OIDC identity or authority boundary. The
 complete package/workflow inventory is machine-checked in
 `release/release-packages.v1.json`. The reusable npm callers invoke the shared
 `_publish-npm-package.yml`, but npm validates the package's calling
@@ -79,9 +81,9 @@ release identity.
 The release registry currently declares five PyPI projects: `emilia-crewai`,
 `ep-verify`, `emilia-verify`, `emilia-protocol`, and `langchain-emilia`. Add the
 matching GitHub trusted publisher named in each entry's workflow under the
-project's Publishing settings. Leave the registry publisher's environment
-blank because the OIDC-bearing publish jobs do not declare one; their separate
-approval jobs do. Live activation and first-release proof are tracked in
+project's Publishing settings. Set its environment to
+`registry-publishing-approval`, matching the OIDC-bearing publish job. Live
+activation and first-release proof are tracked in
 GitHub issue #251.
 
 ## Core verifier release

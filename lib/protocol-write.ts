@@ -809,10 +809,14 @@ const HANDLERS: Record<string, (command: ProtocolCommand) => Promise<any>> = {
   async [COMMAND_TYPES.EXPIRE_RECEIPTS](command: ProtocolCommand) {
     const supabase = getServiceClient();
     const { receipt_ids } = command.input;
-    const { error } = await supabase
+    const now = typeof command.input.now === 'string' ? command.input.now : new Date().toISOString();
+    const { data, error } = await supabase
       .from('receipts')
       .update({ bilateral_status: 'expired' })
-      .in('receipt_id', receipt_ids);
+      .in('receipt_id', receipt_ids)
+      .eq('bilateral_status', 'pending_confirmation')
+      .lt('confirmation_deadline', now)
+      .select('receipt_id');
 
     if (error) {
       throw new ProtocolWriteError(
@@ -820,17 +824,26 @@ const HANDLERS: Record<string, (command: ProtocolCommand) => Promise<any>> = {
         { code: 'EXPIRE_RECEIPTS_FAILED', status: 500 },
       );
     }
-    return { result: { expired: receipt_ids.length, receipt_ids }, aggregateId: receipt_ids[0] };
+    const committedIds = Array.isArray(data) ? data.map((row) => row.receipt_id) : [];
+    return {
+      result: { expired: committedIds.length, receipt_ids: committedIds },
+      aggregateId: committedIds[0] || receipt_ids[0],
+      _skipProtocolEvent: committedIds.length === 0,
+    };
   },
 
   async [COMMAND_TYPES.ESCALATE_DISPUTES](command: ProtocolCommand) {
     const supabase = getServiceClient();
     const { dispute_ids } = command.input;
-    const now = new Date().toISOString();
-    const { error } = await supabase
+    const now = typeof command.input.now === 'string' ? command.input.now : new Date().toISOString();
+    const { data, error } = await supabase
       .from('disputes')
       .update({ status: 'under_review', updated_at: now })
-      .in('dispute_id', dispute_ids);
+      .in('dispute_id', dispute_ids)
+      .eq('status', 'open')
+      .lt('response_deadline', now)
+      .is('responded_at', null)
+      .select('dispute_id');
 
     if (error) {
       throw new ProtocolWriteError(
@@ -838,17 +851,25 @@ const HANDLERS: Record<string, (command: ProtocolCommand) => Promise<any>> = {
         { code: 'ESCALATE_DISPUTES_FAILED', status: 500 },
       );
     }
-    return { result: { escalated: dispute_ids.length, dispute_ids }, aggregateId: dispute_ids[0] };
+    const committedIds = Array.isArray(data) ? data.map((row) => row.dispute_id) : [];
+    return {
+      result: { escalated: committedIds.length, dispute_ids: committedIds },
+      aggregateId: committedIds[0] || dispute_ids[0],
+      _skipProtocolEvent: committedIds.length === 0,
+    };
   },
 
   async [COMMAND_TYPES.EXPIRE_CONTINUITY_CLAIMS](command: ProtocolCommand) {
     const supabase = getServiceClient();
     const { continuity_ids } = command.input;
-    const now = new Date().toISOString();
-    const { error } = await supabase
+    const now = typeof command.input.now === 'string' ? command.input.now : new Date().toISOString();
+    const { data, error } = await supabase
       .from('continuity_claims')
       .update({ status: 'expired', updated_at: now })
-      .in('continuity_id', continuity_ids);
+      .in('continuity_id', continuity_ids)
+      .in('status', ['pending', 'under_challenge'])
+      .lt('expires_at', now)
+      .select('continuity_id');
 
     if (error) {
       throw new ProtocolWriteError(
@@ -856,7 +877,12 @@ const HANDLERS: Record<string, (command: ProtocolCommand) => Promise<any>> = {
         { code: 'EXPIRE_CONTINUITY_FAILED', status: 500 },
       );
     }
-    return { result: { expired: continuity_ids.length, continuity_ids }, aggregateId: continuity_ids[0] };
+    const committedIds = Array.isArray(data) ? data.map((row) => row.continuity_id) : [];
+    return {
+      result: { expired: committedIds.length, continuity_ids: committedIds },
+      aggregateId: committedIds[0] || continuity_ids[0],
+      _skipProtocolEvent: committedIds.length === 0,
+    };
   },
 
   // ── Eye handlers ───────────────────────────────────────────────────────
@@ -1044,7 +1070,7 @@ export async function protocolWrite(command: ProtocolCommand): Promise<any> {
   }
 
   const handlerResult = await handler(command);
-  const { result, aggregateId, _protocolEventWritten } = handlerResult;
+  const { result, aggregateId, _protocolEventWritten, _skipProtocolEvent } = handlerResult;
 
   // If the canonical function returned an error (not thrown), propagate it
   if (result && result.error) {
@@ -1054,7 +1080,7 @@ export async function protocolWrite(command: ProtocolCommand): Promise<any> {
   // ── Step 7-8: Build and append protocol event ──
   // Skip if the handler already wrote the event atomically (e.g., via RPC).
   let protocolEvent: ProtocolEvent | null = null;
-  if (!_protocolEventWritten) {
+  if (!_protocolEventWritten && !_skipProtocolEvent) {
     protocolEvent = buildProtocolEvent({
       aggregateType: COMMAND_TO_AGGREGATE[command.type],
       aggregateId,

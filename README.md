@@ -11,23 +11,32 @@
 
 ---
 
-## Protocol proves. Gate prevents.
+## AI workers need authority, not constant supervision.
 
-**EMILIA Gate is the commercial Consequence Firewall that prevents consequential machine actions
-on protected executor paths without verifiable authority.** It sits at the executor or
-system-of-record boundary, refuses before mutation, consumes accepted authorization once, and
-leaves evidence another party can verify.
+**EMILIA is the authority control plane for autonomous work.** A human or institution defines a
+finite operating mandate once; agents work unattended inside it; EMILIA Gate enforces each
+consequential unit of work at the executor or system-of-record boundary.
 
-EMILIA is the authority control plane for autonomous work: a human or institution defines a finite operating mandate once, agents work unattended inside it, and Gate enforces each consequential unit of work.
+Gate is the commercial Consequence Firewall on that boundary. It verifies the authority the owner
+requires for the exact action, refuses before mutation, consumes accepted authority once, and leaves
+portable evidence of what the protected path admitted and later observed. **Protocol proves. Gate
+prevents.**
 
-Scan (`npx @emilia-protocol/scan`) → protect one privileged MCP tool call → $25K pilot.
-
-- **EMILIA Protocol** is the open Apache-2.0 verification and evidence substrate underneath Gate.
-- **EMILIA Approver** captures device-bound human decisions over the exact action through native apps
-  and embeddable SDKs.
+- **Authority Brain** maps supported declared action surfaces locally. No account, upload, or
+  callback is required. Discovery creates no authority; the owner reviews the map.
+- **EMILIA Gate** turns the approved map and operating mandate into preventive control on a fully
+  mediated, credential-owning executor path.
+- **EMILIA Protocol** is the open Apache-2.0 substrate for exact-action identity, native evidence
+  verification, evidence composition, one-time admission, and portable work records.
+- **EMILIA Approver** captures a device-bound exact-action human decision when the mandate or local
+  policy requires fresh human authority. A human click is one authority source, not the default
+  execution model.
 - **EMILIA Assurance Plane** provides scoped verification, re-performance, conformance reports, and
   deployment evidence. It supports auditors, insurers, regulators, and customers; EMILIA is not an
   auditor or accredited certifier, and no public EMILIA certification program is operating.
+
+Run the local map (`npx @emilia-protocol/scan`), choose one consequential workflow, and place Gate
+where the provider credential turns intent into work.
 
 Start free by protecting one privileged MCP tool call. The first paid market is payer AI-assisted
 adverse medical-necessity determination, under one safety rule: **no valid licensed-review evidence,
@@ -43,13 +52,13 @@ fallback; it is not authority to withhold medically necessary care.
 ## Engineering evidence, not architecture claims
 
 EMILIA ships a security case that reviewers can execute. The current repository resolves **35
-security claims over 255 hashed evidence files**, verifies **20 Tamarin lemmas across two composed
+security claims over 259 hashed evidence files**, verifies **20 Tamarin lemmas across two composed
 Dolev-Yao models — 17 all-traces obligations and 3 exists-trace reachability witnesses** — and
 preserves **8 deliberately weakened variants that produce concrete
 attack traces when load-bearing checks are removed**. The live same-team conformance corpus contains **21 suites and
 331 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
 **16-suite/164-vector** bundle and a **359-case hostility campaign**. The broader suite contains
-**8,659+ automated tests across 509+ files**.
+**8,755 automated tests across 521 files**.
 
 Production JavaScript and JSDoc surfaces are compiler-checked with TypeScript
 `checkJs`; the secure app has its own compatibility compiler project, while
@@ -91,31 +100,42 @@ generated keys, in-memory state, and mock provider behavior. It is useful local
 proof, not evidence of a real human, external bank, production deployment, or
 one end-to-end production integration.
 
-## The engine without brakes
+## Identity is not a job description
 
-For fifty years, software security answered one question: *who is allowed in?* Firewalls, OAuth, and passwords — all built to verify a human identity at the door.
+Identity says who or what is calling. Policy says what is generally allowed. Neither defines the
+finite job an autonomous worker may perform now: its mission, material-action limits, budget,
+required evidence, expiry, delegation rules, and exception path.
 
-That era is ending. The dominant users of software are no longer humans; they're autonomous AI agents. Agents don't just log in — they write code, call tools, and change reality on the fly. Every CISO knows a single bad prompt can make an agent wipe a production database or wire money to the wrong account. So they're **blocking deployment** — sitting on billions in AI budget they can't spend because their compliance teams can't answer one question:
+EMILIA keeps those questions separate:
 
-**Who approved that action?**
+| Layer | Question |
+|---|---|
+| **Identity** | Who or what is present? |
+| **Policy** | What is generally allowed? |
+| **Authority** | What exact work may this agent perform under this mandate? |
 
-The crisis of our generation isn't authentication. It's **authorization at the moment of action**: how do you prove that *what an agent is about to do* is *exactly what a named human authorized* — before it executes?
+Credentials grant reach. Authority defines the job. Not every action needs a human; every
+consequential action needs valid authority.
 
-**EMILIA is the seatbelt for the agentic era.**
-
-> *Decision logs are testimony. EMILIA produces receipts.*
+At the foundation, EP Core still exposes **three interoperable objects**: a **Trust Receipt** carries
+attributable evidence, a **Trust Profile** represents structured trust state, and a **Trust Decision**
+records the relying party's policy-evaluated result. The authority-control-plane layers add exact
+action binding, finite mandates, admission, consumption, and outcome evidence without collapsing
+those objects into one claim.
 
 ---
 
-## No receipt, no irreversible action
+## Set the mandate once. Let the agent work.
 
-> If an agent tries to move money, delete code, deploy production, change permissions, or mutate
-> regulated state **without a valid EMILIA receipt, the tool refuses to run** — and if it runs,
-> **anyone can verify who authorized exactly what**, offline, trusting no one.
+The customer defines the mission, limits, evidence requirements, expiry, and exception rules. Local
+code may narrow that authority; it cannot invent or widen it. Gate binds each executable request to
+the mandate, admits it once inside a durable authority domain, and escalates only when authority is
+missing, stale, exhausted, or too narrow.
 
-That is the whole protocol. The developer wedge is one wrapper around an irreversible MCP tool.
-See it cold, fully offline, no key, no account — each demo runs the entire loop (refused →
-named human signs the exact action → tool runs → forged receipt rejected):
+The bundled MCP examples demonstrate one policy profile in which a fresh human decision is required
+at the edge. They run the complete local loop—missing evidence refused, exact action signed, action
+admitted once, forged evidence rejected—without claiming that every autonomous action needs a human
+click:
 
 ```bash
 node examples/mcp/payment-server.mjs    # release_payment  — refuses without a receipt
@@ -168,27 +188,32 @@ npx -y @emilia-protocol/mcp-server
 
 ---
 
-## How it works — four acts
+## How it works — one authority lifecycle
 
-![EMILIA crash test — an autonomous agent tries to wire $82,000; the policy engine holds it, a named human signs off on their own device, the receipt verifies offline, and a forged copy fails.](docs/media/crash-test.gif)
+![EMILIA crash test — an autonomous agent tries to wire $82,000; the selected policy profile requires fresh human authority, the exact action is signed, the receipt verifies offline, and a forged copy fails.](docs/media/crash-test.gif)
 
 > Run it yourself: `node examples/crash-test.mjs` — fully offline, no API key.
 
 ```
-  [ INTENT ]          [ DECISION ]           [ CEREMONY ]           [ RECEIPT ]
-  Agent calls a     Policy-bound, hash-    Named human signs     Signed, offline-
-  tool via MCP   →  pinned: allow /     →  the EXACT action  →  verifiable proof.
-                    allow-with-signoff /   on their own          Tamper it:
-                    deny  (+observe        device (passkey).      fails by design.
-                    mode: zero change      What they saw =
-                    to production)         what they signed.
+  [ MANDATE ]       [ EXACT WORK ]       [ VERIFY ]       [ ADMIT ONCE ]       [ RECONCILE ]
+  mission, limits   canonical action     pinned native    consume before      preserve provider
+  evidence, expiry  + occurrence         evidence         provider entry      and effect truth
 ```
 
-**Act I — Interception (MCP-native).** No rewrites. EMILIA hooks the tool call at the Model Context Protocol boundary — the moment an agent tries to delete a file or move capital, the action is caught mid-air.
+**Mandate.** The authority source defines finite work. It can be a customer-signed operating
+program, bounded capability, required human decision, quorum, or a relying-party composition of
+native evidence.
 
-**Act II — Decision (policy-bound, deterministic).** The action is checked against a hash-pinned policy: `allow`, `allow-with-signoff`, or `deny`. Plus an **observe mode** that changes nothing in production and reports what *would* have been held. Deterministic, auditable — not a black-box risk score.
+**Exact work.** Gate binds method, origin, callee, target, occurrence, and every material field into
+the canonical executable object. Intent, a prompt, or ticket text is not that object.
 
-**Act III — The ceremony (device-bound human signoff).** When policy requires a human, EMILIA runs a **WebAuthn / passkey signoff bound to the exact action and its deterministic display hash** — Face ID / Touch ID on the operator's own device. Class-A approvals also bind a server-measured review interval and an action-specific confirmation phrase, with a durable per-approver velocity limit. This narrows the "what you saw is what you signed" gap; it does not prove comprehension. A correctly installed protected path cannot skip the ceremony.
+**Verify and admit once.** Native artifacts remain native. The relying party pins trust and mapping
+profiles, evaluates the complete evidence requirement, makes the separate local authorization
+decision, and consumes the operation before the credential-owning adapter enters the provider.
+
+**Fresh human authority when required.** A policy can require a WebAuthn/passkey decision bound to
+the exact action and deterministic display hash. This narrows the “what you saw is what you signed”
+gap; it does not prove comprehension, wisdom, legality, or outcome.
 
 For enterprise deployments, Gate can additionally require an independently
 verified Authorization Server confirmation bound to that exact human evidence,
@@ -199,13 +224,19 @@ leg is evidence under customer-pinned trust; it never authorizes by itself,
 proves instantaneous employment standing, or turns the agent orchestrator into
 an authority.
 
-**Act IV — The receipt (the evidence).** The result is a **signed authorization receipt** that anyone can verify **offline, with open-source code, no backend, no vendor trust.** Tamper it and verification fails by construction. Optionally anchor it for public timestamping — the core needs no blockchain.
+**Truthful result.** Admission is not execution, and execution is not effect. A signed record can be
+verified offline; provider and observer evidence remain separate. A lost response becomes
+`INDETERMINATE`, which is a state to reconcile—not permission to retry. A remedy is a new authorized
+action and never rewrites the old result.
 
 ---
 
 ## Why developers use it
 
-You want agents that actually *do things* — but you're paralyzed by runaway loops, API over-spend, and accidental data destruction. EMILIA gives you a **plug-and-play MCP server + a thin SDK wrapper**. Apply a policy hash, and irreversible tool calls gain a cryptographically hardened, NIST-AI-RMF-mapped approval-and-evidence layer — without building approval workflows or audit infrastructure from scratch.
+Start by mapping the work locally, then protect one declared action surface with the **MCP server or
+thin SDK wrapper**. The scanner proposes a reviewable map; the owner defines the mandate; Gate owns
+the provider credential and enforces the exact action on the covered path. No scan proves complete
+mediation, and discovery alone grants no authority.
 
 ```python
 # langchain-emilia — wrap any LangChain tool with an EP gate
@@ -220,15 +251,19 @@ pip install langchain-emilia   # PyPI
 npm install @emilia-protocol/verify  # npm
 ```
 
-*Your agent can't outrun its leash.*
+The agent receives the ability to perform bounded work, not a standing credential it can reinterpret.
 
 ---
 
 ## Why enterprises need it
 
-Every platform shift mints a new security primitive: the web got **SSL**, the cloud got **Okta / IAM**, the agent economy needs **action-level trust**. Enterprises are sitting on AI budgets that compliance won't let them spend — EMILIA is the key that unlocks them, by turning unpredictable agents into audit-ready infrastructure that maps primitive-by-primitive to NIST AI RMF, EU AI Act, and SOC 2 CC6/7 controls.
+Agent processes restart and models change. The customer's mandate, consumption state, revocation,
+uncertainty, and work history must survive outside them. EMILIA keeps that durable authority state at
+the customer's boundary while accepting foreign proof through pinned adapters.
 
-The managed Gate and Assurance Plane extend the open standard with sector-specific policy packs, observe-mode pilots, and audit-ready evidence packages, with no procurement required to start.
+The managed Gate and Assurance Plane add mandate operations, integrations, evidence operations,
+re-performance, support, and service levels around the open protocol. The customer retains control
+of authority, trust roots, credentials, policy, and portable evidence.
 
 ---
 
@@ -288,18 +323,15 @@ Three same-team reference ports (JS / Python / Go) agree across all 21 suites an
 
 ---
 
-## The EP stack
-
-```
-Eye observes. Handshake verifies. Signoff owns. Commit seals.
-```
+## The authority stack
 
 | Layer | What it does |
 |---|---|
-| **EP Eye** | Observes and classifies agent behavior (OBSERVE → SHADOW → ENFORCE) |
-| **EP Handshake** | Cryptographic consent ceremony with 7-property binding |
-| **EP Signoff** | Named human ownership — WebAuthn / passkey Class A, device-bound; **multi-party quorum** (M-of-N / ordered — the two-person rule) for the highest-stakes actions |
-| **EP Commit** | Atomic, immutable action close with Merkle-chained receipts |
+| **Mandate** | Defines mission, limits, evidence, expiry, delegation, and exception rules. |
+| **CAID / exact action** | Freezes the material executable object so evidence cannot move to different work. |
+| **AEC** | Evaluates whether independently verified and matched evidence satisfies the relying party's requirement; it does not authorize. |
+| **AEB / Gate** | Makes the local authorization and one-time admission decision before provider entry. |
+| **Outcome evidence** | Keeps invocation, provider response, observed effect, and uncertainty distinct. |
 
 ---
 
@@ -307,7 +339,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 
 | Metric | Value |
 |---|---|
-| Automated test cases | 8,659+ across 509+ files; all platform-applicable cases must pass |
+| Automated test cases | 8,755 across 521 files; all platform-applicable cases must pass |
 | TLA+ safety properties | 26 bounded invariants held in the configured state space; not an implementation-refinement or unbounded proof — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
 | Alloy relational assertions | 35 facts + 32 assertions across four models — verified in CI |
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
@@ -318,27 +350,25 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 
 ---
 
-## EP Core objects
-
-EP standardizes three interoperable objects that any conforming implementation can produce and verify:
+## Core protocol objects
 
 | Object | What it is |
 |---|---|
-| **Trust Receipt** | A portable, signed record of an authorization event — *what happened* |
-| **Trust Profile** | A standardized summary of observable trust state — *what is known* |
-| **Trust Decision** | A policy-evaluated result with reasons and appeal path — *what to do now* |
-
-EP Extensions (Handshake, Signoff, Commit, Delegation) add stronger enforcement where systems must constrain execution. The product layer, the managed Gate and Assurance Plane, is built on top, not the protocol itself.
+| **Authority program / bounded capability** | A finite mandate with explicit scope, budget or units, expiry, delegation, and consumption rules. |
+| **CAID** | A canonical identifier for one material action under a named mapping profile; matching is not authorization. |
+| **Evidence requirement and AEC result** | The relying party's pinned rule and its `SATISFIED`, `UNSATISFIED`, or `INDETERMINATE` evaluation. |
+| **AEB admission and custody record** | The executor-side record of authorization, reservation, provider entry, and reconciliation state. |
+| **Authorization and outcome evidence** | Portable native or EP artifacts that retain their exact issuer, scope, and claim boundary. |
 
 ---
 
-## Quickstart in five calls
+## Quickstart
 
-1. Create policy
-2. Initiate handshake
-3. Present evidence
-4. Verify
-5. Signoff and consume
+1. Run `npx @emilia-protocol/scan protect ./tools.json` to map supported declared surfaces.
+2. Review the generated action manifest, material fields, credentials, and named blind spots.
+3. Install Gate on the path that owns the provider credential and durable consumption state.
+4. Define the operating mandate and any fresh-human or quorum exception rules.
+5. Run the refusal, exact-action, replay, timeout, and reconciliation cases before enabling enforcement.
 
 **[90-second demo](https://www.emiliaprotocol.ai/mcp)** · **[Quickstart](https://www.emiliaprotocol.ai/quickstart)** · **[Agent walkthrough](https://www.emiliaprotocol.ai/use-cases/ai-agent)** · **[IETF Draft](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)** · **[Discord](https://discord.gg/cEhbzXkhW)**
 
@@ -346,11 +376,17 @@ EP Extensions (Handshake, Signoff, Commit, Delegation) add stronger enforcement 
 
 ## What EP is — and is not
 
-EP is authorization at the moment of action, not an identity system, not a wallet, not a reputation score.
+EMILIA is authority infrastructure for autonomous work, not an identity system, wallet, reputation
+score, settlement rail, or universal policy engine.
 
-- **Is**: a trust standard for binding actor identity, authority, policy, and exact action context *before* execution
-- **Is not**: a replacement for OAuth / OIDC (those answer *who are you* — EP answers *who approved this exact action*)
-- **Is not**: a proprietary product (the core is Apache-2.0 and published as individual Internet-Drafts on the IETF Datatracker)
-- **Is not**: a blockchain (the receipt is the hero; optional public timestamping is a footnote)
+- **Is**: a control plane for finite operating mandates, exact-action verification, one-time
+  admission, truthful uncertainty, and portable evidence on covered executor paths.
+- **Is not**: a replacement for OAuth/OIDC, workload identity, or policy engines. Those remain native
+  inputs under the relying party's pins.
+- **Is not**: a requirement that a human approve every action. A mandate may permit automatic work
+  inside finite bounds and demand fresh authority only at the edge.
+- **Is not**: proof that an admitted action executed successfully or caused the intended effect.
+- **Is not**: proprietary protocol control. The core is Apache-2.0 and the Internet-Drafts are
+  individual submissions, not RFCs or IETF endorsement.
 
 See [CONFORMANCE.md](CONFORMANCE.md) · [SECURITY.md](SECURITY.md) · [THREAT_MODEL.md](THREAT_MODEL.md) · [GOVERNANCE.md](GOVERNANCE.md) · [Neutrality Covenant](docs/NEUTRALITY-COVENANT.md)

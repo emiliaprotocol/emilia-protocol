@@ -25,22 +25,21 @@ function compact(value) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with the commercial consequence firewall and keeps the Authority Brain as the free entry point', () => {
+  it('leads with the authority control plane, keeps Gate as the enforcement product, and keeps Authority Brain as the free entry point', () => {
     const page = read('app/HomePageClient.js');
     const route = read('app/page.js');
     const css = read('app/ep.css');
 
-    // The <title> carries the buyer query (SEO audit 2026-08-06); the hero and
-    // H1 still carry the Consequence Firewall category, asserted below.
-    expect(route).toContain('AI Agent Authorization and Enforcement | EMILIA Gate');
-    expect(route).toContain('block consequential agent actions until the protected');
-    expect(page).toContain('EMILIA Gate <span>· Consequence firewall for AI agents</span>');
-    expect(page).toContain('Let agents act. Keep authority exact.');
-    expect(page).toContain('Customer-controlled authority, credentials, trust roots, policy, and evidence.');
+    expect(route).toContain('Authority Control Plane for Autonomous Work | EMILIA');
+    expect(route).toContain('Set a finite operating mandate once');
+    expect(page).toContain('EMILIA <span>· Authority control plane for autonomous work</span>');
+    expect(page).toContain('Set authority once. Let agents work.');
+    expect(page).toContain('Not every action needs a human. Every consequential action needs valid authority.');
     expect(page).toContain('Protocol proves. Gate prevents.');
-    expect(page).toContain('Auth opens the door. EMILIA controls what crosses it.');
+    expect(page).toContain('Identity tells you who. Authority defines the work.');
     expect(page).toContain('Existing authorization stack');
-    expect(page).toContain('EMILIA Consequence Firewall');
+    expect(page).toContain('EMILIA authority control plane');
+    expect(page).toContain('Mandate loaded');
     expect(page).toContain('Once before credentialed provider entry');
     expect(page).toContain('No invented certainty.');
     expect(page).toContain('This is not proof of success.');
@@ -116,8 +115,8 @@ describe('homepage category contract', () => {
     expect(gate).toContain('RECEIPT PROGRAMS');
     expect(gate).toContain('npm run demo:receipt-program');
     expect(gate).toContain('It is not a ZK proof, consensus result, provider attestation');
-    expect(investors).toContain('EMILIA Gate is the Consequence Firewall for AI agents.');
-    expect(investors).toContain('Identity proves who or what is present. Policy describes a rule. Neither proves that one exact consequential action may proceed now, once, under current limits.');
+    expect(investors).toContain('EMILIA is the authority control plane for autonomous work.');
+    expect(investors).toContain('Policy describes what is generally allowed. Neither defines the finite job an autonomous worker may perform under current limits.');
     expect(investors).toContain('currently claims no customer traction, recurring revenue, live payer integration');
     expect(investors).toContain('certification, RFC status, or standards-body endorsement.');
     expect(productBrief).toContain('No independently administered operator has produced external witness evidence');

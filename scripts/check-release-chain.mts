@@ -350,6 +350,7 @@ export function validateReusableNpmCallerText(text: string, label: string): bool
 
 export function validateReusablePypiWorkflowText(text: string): boolean {
   requireText(text, [
+    'environment: registry-publishing-approval',
     'npm run security-case:emit',
     'npm run conformance:manifest',
     'verify-reproducible-wheel.mjs',
@@ -366,6 +367,13 @@ export function validateReusablePypiWorkflowText(text: string): boolean {
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.checkout, 'reusable PyPI workflow checkout action');
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.attest, 'reusable PyPI workflow attestation action');
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.pypiPublish, 'reusable PyPI workflow publish action');
+  const workflow: any = YAML.parse(text);
+  const publish: any = workflow?.jobs?.publish;
+  if (JSON.stringify(Object.keys(workflow?.jobs ?? {})) !== JSON.stringify(['publish'])
+    || publish?.environment !== 'registry-publishing-approval'
+    || publish?.permissions?.['id-token'] !== 'write') {
+    throw new Error('reusable PyPI workflow does not put its OIDC publisher inside the protected approval environment');
+  }
   validateTlaSecurityCaseWorkflowText(text, 'reusable PyPI workflow');
   forbidCredentialInjection(text, 'reusable PyPI workflow');
   return true;
@@ -518,7 +526,7 @@ export function validatePypiDirect(text, label) {
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.checkout, `${label} checkout action`);
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.attest, `${label} attestation action`);
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.pypiPublish, `${label} publish action`);
-  validateManualPublisher(text, label, { direct: true });
+  validateManualPublisher(text, label, { direct: true, protectedPublisher: true });
   validateTlaSecurityCaseWorkflowText(text, label);
   forbidCredentialInjection(text, label);
   return true;

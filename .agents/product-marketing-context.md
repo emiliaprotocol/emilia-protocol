@@ -1,6 +1,6 @@
 # Product Marketing Context
 
-*Last updated: 2026-08-06*
+*Last updated: 2026-08-08*
 
 ## Product Overview
 
@@ -63,6 +63,34 @@ Do not lead a buyer or a language model with the draft portfolio, formal-method 
 **Adoption promise:** `npx @emilia-protocol/scan brain ./tools.json` creates a self-contained local Authority Map without an account, upload, telemetry, or remote asset. The scan launches no configured server and makes no prevention claim. The owner reviews the proposal; the protect step requires action-bound evidence for one selected tool; and the optional factual handoff reports completed local checks without claiming certification, deployment security, or complete mediation.
 
 **Commercial role:** Public distribution and proof of demand. The conversion event is a buyer-selected $25K protected-workflow pilot, not a vanity scan or certification sale.
+
+### GitHub-native entry experiment: protect production deployment
+
+**Decision:** Use GitHub as a distribution and integration rail for Gate, not as a new company category and not as an excuse to build a general agent marketplace. EMILIA is not itself a GitHub Agent App. It is the authority layer outside coding agents, so the same control can govern work proposed by Copilot, an Agent App, a third-party coding agent, or a person.
+
+**Free surface:** A narrowly scoped GitHub Action may map agent-reachable workflows, privileged permissions, protected environments, and visible bypass paths. It is an Authority Brain distribution surface. Running the Action does not establish complete mediation and must not be marketed as preventive enforcement. Repository use of an Action is also not a GitHub App installation and does not count toward GitHub's current 100-install threshold for publishing a paid App plan.
+
+**Enforcement surface:** The candidate GitHub App is a custom deployment-protection rule for one production environment. GitHub pauses the referenced deployment job and withholds environment secrets while Gate evaluates a customer-owned mandate over the exact repository, environment, commit SHA, ref, workflow run, and other closed material fields. Gate then approves or rejects the deployment through GitHub's callback, consumes admitted authority once, and retains portable evidence under customer-pinned rules.
+
+**Authority source:** A repository file such as `.github/emilia-mandate.yml` may propose selectors or display customer-reviewed configuration, but it is not authority merely because it is present in the repository. Any field an agent or ordinary contributor can modify is untrusted input. Enforce only a customer-signed or externally pinned mandate and protect changes to the workflow, ruleset, environment, App configuration, approver directory, and mandate digest under a separately controlled administrative path.
+
+**Human-decision posture:** Do not require a hardware-key tap for every deployment by default. A standing, finite customer mandate may authorize unattended deployments inside its bounds. Fresh device-bound human or institutional authority is required only when the customer's policy requires per-occurrence review or the action is missing, stale, expired, wider, or otherwise outside the mandate. TOTP is not an equivalent fallback because it does not bind the approver to the exact action bytes.
+
+**Initial action coverage:** The first supported consequence is a workflow job entering a protected production environment. A protected merge can be a later profile when an App-sourced required check and bypass controls provide the boundary. Release publication, secret rotation, repository-permission changes, workflow-file mutation, and dependency approval do not share one generic pre-action veto; each needs a separately proven GitHub control or credential-owning executor path before it is advertised as blocked by Gate.
+
+**Required boundary:** The deployment is protected only when every covered production job names the protected GitHub environment, the EMILIA App is enabled on that environment, bypass is disabled, workflow and ruleset administration are separately controlled, and no alternate credential or deployment path avoids the boundary. Direct cloud deploys, unprotected workflows, mutable workflow definitions, or administrators allowed to bypass remain explicit exclusions until separately mediated.
+
+**Platform posture:** GitHub's Agent Apps channel is currently a partner preview, but EMILIA does not need Agent App status. A normal GitHub App can implement a deployment-protection rule. The protection-rule feature is itself in public preview, and private or internal repository use requires GitHub Enterprise under the current GitHub documentation; both are product and go-to-market constraints, not footnotes.
+
+**Validation sequence:**
+
+1. Reuse the existing GitHub allowance, consequence-control, custody, and evidence machinery to build one deployment-protection-rule prototype; do not claim the native App exists before that path is runnable.
+2. Dogfood it on an EMILIA-controlled public repository and demonstrate authorized deployment, stale or mismatched evidence refusal, replay refusal, denied bypass configuration, and `INDETERMINATE` handling without blind retry.
+3. Obtain ten external installations that enable the rule on at least one real environment, three organizations that use it repeatedly, and one buyer-funded protected-deployment pilot.
+4. If the Action shows demand, release a genuinely useful free GitHub App so App installations—not Action invocations—can test the path toward GitHub's current 100-install threshold for a paid Marketplace plan. Treat the threshold as a distribution requirement, not as proof that 100 installations are easy or as a company milestone by itself.
+5. Change the deck's first paid wedge only after the GitHub path produces stronger buyer evidence than the named payer workflow. Until then, GitHub is the developer-distribution and technical-validation lane; payer adverse determinations remain the stated paid wedge.
+
+**Long-term option, not current claim:** Scoped conformance and customer-authorized aggregate evidence may eventually help buyers compare an agent in a named workflow and environment. EMILIA does not passively centralize customer receipts, publish a universal agent reliability score, certify agents, or operate an investment marketplace. Any future financing product belongs to a regulated platform; EMILIA may supply authority and evidence infrastructure to that platform.
 
 ### First paid wedge: payer adverse medical-necessity determinations
 

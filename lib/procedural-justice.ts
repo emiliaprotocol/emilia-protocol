@@ -77,6 +77,8 @@ export const OPERATOR_ROLES: Record<string, OperatorRoleDefinition> = {
       'redaction.manage',
       'audit.view',
       'release_lock.reconcile',
+      'commit_key.revoke',
+      'dispute.adjudicate',
     ],
     requires_auth: true,
     requires_role: 'operator',

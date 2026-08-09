@@ -2,24 +2,24 @@ import type { Metadata } from 'next';
 import HomePageClient from './HomePageClient';
 
 export const metadata: Metadata = {
-  title: { absolute: 'AI Agent Authorization and Enforcement | EMILIA Gate' },
+  title: { absolute: 'Authority Control Plane for Autonomous Work | EMILIA' },
   description:
-    'AI agent authorization and enforcement: block consequential agent actions until the protected '
-    + 'executor can verify the exact authority its owner requires. Run the local Authority Map, then protect one workflow with EMILIA Gate.',
+    'Set a finite operating mandate once, let agents work inside it, and enforce each consequential '
+    + 'unit of work at the protected executor with EMILIA Gate.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'AI Agent Authorization and Enforcement | EMILIA Gate',
+    title: 'Authority Control Plane for Autonomous Work | EMILIA',
     description:
-      'The consequence firewall for AI agents. Protocol proves. Gate prevents.',
+      'AI workers need authority, not constant supervision. Protocol proves. Gate prevents.',
     url: 'https://www.emiliaprotocol.ai/',
     type: 'website',
     images: ['/og-sequence.jpg'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AI Agent Authorization and Enforcement | EMILIA Gate',
+    title: 'Authority Control Plane for Autonomous Work | EMILIA',
     description:
-      'Let agents act. Keep authority exact.',
+      'Set authority once. Let agents work.',
     images: ['/og-sequence.jpg'],
   },
 };

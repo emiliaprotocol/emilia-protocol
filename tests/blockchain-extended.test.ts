@@ -12,10 +12,12 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 const mockGetBlockchainConfig = vi.fn();
 const mockIsProduction = vi.fn();
+const mockGetUpstashConfig = vi.fn();
 
 vi.mock('@/lib/env', () => ({
   getBlockchainConfig: (...a) => mockGetBlockchainConfig(...a),
   isProduction: (...a) => mockIsProduction(...a),
+  getUpstashConfig: (...a) => mockGetUpstashConfig(...a),
 }));
 
 vi.mock('@/lib/crypto', () => ({
@@ -285,6 +287,22 @@ describe('anchorToBase — viem error wrapping', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('runAnchorBatch — no receipts', () => {
+  it('does not read or publish a batch when another worker holds the durable lease', async () => {
+    mockGetBlockchainConfig.mockReturnValue(null);
+    mockIsProduction.mockReturnValue(false);
+    const sendsBefore = mockSendTransaction.mock.calls.length;
+    const supabase = makeSupabaseMock({
+      unanchored: [{ id: 'id-raced', receipt_id: 'receipt-raced', receipt_hash: 'a'.repeat(64) }],
+    });
+    const result = await runAnchorBatch(supabase, {
+      acquireLease: vi.fn().mockResolvedValue({ ok: false, reason: 'already_held' }),
+    });
+
+    expect(result.status).toBe('already_running');
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(mockSendTransaction).toHaveBeenCalledTimes(sendsBefore);
+  });
+
   it('returns no_receipts status when DB is empty', async () => {
     mockGetBlockchainConfig.mockReturnValue(null);
     mockIsProduction.mockReturnValue(false);
@@ -366,8 +384,8 @@ describe('runAnchorBatch — happy path (skipped anchor)', () => {
   });
 
   it('confirm-update error throws as reconcilable (row exists, tx on chain)', async () => {
-    // If the post-tx confirm UPDATE fails, the batch row still exists (with the
-    // merkle_root) and the tx is on chain — reconcilable, not split-brain.
+    // If the post-tx confirm UPDATE fails, the batch row and receipt claims
+    // still exist and the tx is on chain — reconcilable without republishing.
     const supabase = makeSupabaseMock({
       unanchored: makeReceipts(2),
       batchConfirmErr: { message: 'confirm failed' },
@@ -375,6 +393,29 @@ describe('runAnchorBatch — happy path (skipped anchor)', () => {
     await expect(runAnchorBatch(supabase)).rejects.toThrow(
       /Anchor batch DB confirm failed/,
     );
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      'bulk_update_receipt_anchors',
+      expect.objectContaining({ p_updates: expect.any(Array) }),
+    );
+  });
+
+  it('durably claims receipts before the irreversible chain publication', async () => {
+    mockGetBlockchainConfig.mockReturnValue({
+      network: 'sepolia',
+      walletPrivateKey: 'ab'.repeat(32),
+    });
+    mockPrivateKeyToAccount.mockReturnValue({ address: '0xabc123' });
+    mockSendTransaction.mockResolvedValue('0xanchor');
+    mockWaitForTransactionReceipt.mockResolvedValue({ blockNumber: 12345n });
+
+    const supabase = makeSupabaseMock({ unanchored: makeReceipts(2) });
+    await runAnchorBatch(supabase);
+
+    const claimCall = supabase.rpc.mock.invocationCallOrder[0];
+    const publishCall = mockSendTransaction.mock.invocationCallOrder.at(-1);
+    expect(claimCall).toBeDefined();
+    expect(publishCall).toBeDefined();
+    expect(claimCall).toBeLessThan(publishCall as number);
   });
 
   it('updates receipts via bulk_update_receipt_anchors RPC', async () => {

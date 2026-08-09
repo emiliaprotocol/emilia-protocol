@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
   // Authenticate operator (supports per-operator tokens + legacy CRON_SECRET)
   const auth = await authenticateOperator(request, {
     // Unattended scheduler: there is no named human behind a cron tick, so
-    // this route declares its opt-out from the named-operator default rather
-    // than inheriting it by silence. It takes no trust-changing action and
-    // reads no role from the result.
+    // this scheduler route declares its opt-out from the named-operator default
+    // rather than inheriting it by silence. Every lifecycle transition still
+    // passes through protocolWrite(), which rechecks its live state predicate.
     requireOperatorIdentity: false,
   });
   if (!auth.valid) {
@@ -52,12 +52,12 @@ export async function GET(request: NextRequest) {
 
     if (stale && stale.length > 0) {
       const ids = stale.map(r => r.receipt_id);
-      await protocolWrite({
+      const committed = await protocolWrite({
         type: COMMAND_TYPES.EXPIRE_RECEIPTS,
         actor: 'cron:expire',
-        input: { receipt_ids: ids },
+        input: { receipt_ids: ids, now },
       });
-      results.bilateral_expired = ids.length;
+      results.bilateral_expired = Number(committed?.expired ?? 0);
     }
   } catch (err) {
     results.errors.push({ step: 'bilateral_expire', error: err.message });
@@ -74,12 +74,12 @@ export async function GET(request: NextRequest) {
 
     if (overdue && overdue.length > 0) {
       const ids = overdue.map(d => d.dispute_id);
-      await protocolWrite({
+      const committed = await protocolWrite({
         type: COMMAND_TYPES.ESCALATE_DISPUTES,
         actor: 'cron:expire',
-        input: { dispute_ids: ids },
+        input: { dispute_ids: ids, now },
       });
-      results.disputes_escalated = ids.length;
+      results.disputes_escalated = Number(committed?.escalated ?? 0);
     }
   } catch (err) {
     results.errors.push({ step: 'dispute_escalate', error: err.message });
@@ -95,12 +95,12 @@ export async function GET(request: NextRequest) {
 
     if (staleIx && staleIx.length > 0) {
       const ids = staleIx.map(c => c.continuity_id);
-      await protocolWrite({
+      const committed = await protocolWrite({
         type: COMMAND_TYPES.EXPIRE_CONTINUITY_CLAIMS,
         actor: 'cron:expire',
-        input: { continuity_ids: ids },
+        input: { continuity_ids: ids, now },
       });
-      results.continuity_expired = ids.length;
+      results.continuity_expired = Number(committed?.expired ?? 0);
     }
   } catch (err) {
     // Table may not exist yet — that's fine

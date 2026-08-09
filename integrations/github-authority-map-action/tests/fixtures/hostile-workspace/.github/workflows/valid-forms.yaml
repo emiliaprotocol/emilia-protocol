@@ -1,0 +1,21 @@
+name: "Production release: mapped environment"
+
+on: [push, workflow_dispatch]
+
+permissions: { contents: read }
+
+jobs:
+  release:
+    runs-on:
+      - ubuntu-latest
+    environment:
+      name: production
+      url: https://example.invalid/releases
+    permissions: { contents: write, id-token: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: vendor/pinned-action@abcdefabcdefabcdefabcdefabcdefabcdefabcd
+      - uses: ./local-action
+      - run: |
+          printf '%s\n' "release"
+          printf '%s\n' "production"

@@ -31,6 +31,11 @@ import { executeWithGateAllowance } from '../allowance.js';
 
 const GITHUB_WORKFLOW_ALLOWANCE_ACTION = 'github.workflow.dispatch.production';
 const GITHUB_WORKFLOW_ALLOWANCE_UNIT = 'DISPATCH';
+const GITHUB_DEPLOYMENT_ALLOWANCE_ACTION = 'github.environment.enter.production';
+const GITHUB_DEPLOYMENT_ALLOWANCE_UNIT = 'ADMISSION';
+const GITHUB_SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+const GITHUB_REF = /^refs\/(?:heads|tags)\/[A-Za-z0-9._/-]{1,240}$/;
+const GITHUB_WORKFLOW = /^(?:\.github\/workflows\/)?[A-Za-z0-9._/-]{1,240}$/;
 
 export const GITHUB_ACTION_PACK = Object.freeze([
   Object.freeze({
@@ -147,6 +152,122 @@ export async function createGithubAllowanceConnector({
 }
 
 /**
+ * Bind a deployment-protection client to the GitHub App installation that
+ * authenticated the provider probe.  The resulting opaque connector is the
+ * only object accepted by the deployment admission function.
+ */
+export async function createGithubDeploymentProtectionConnector({
+  octokit,
+}: {
+  octokit?: any;
+} = {}) {
+  if (typeof octokit?.request !== 'function') {
+    throw new TypeError('createGithubDeploymentProtectionConnector requires an Octokit request client');
+  }
+  const response = await octokit.request('GET /installation');
+  const installationId = response?.data?.id;
+  if (!Number.isSafeInteger(installationId) || installationId <= 0) {
+    throw new TypeError('GitHub installation identity probe returned an invalid installation');
+  }
+  const connectorInstanceId = `github:installation:${installationId}`;
+  const connector = Object.freeze({});
+  githubAllowanceConnectors.set(connector, { octokit, connectorInstanceId });
+  return connector;
+}
+
+function githubDeploymentParameters(params) {
+  if (!params || typeof params !== 'object' || Array.isArray(params)) {
+    throw new TypeError('guardGithubDeploymentProtectionRule requires deployment params');
+  }
+  for (const field of ['owner', 'repo', 'environment', 'workflow', 'ref', 'sha', 'event']) {
+    if (typeof params[field] !== 'string' || params[field].length === 0) {
+      throw new TypeError(`guardGithubDeploymentProtectionRule requires params.${field}`);
+    }
+  }
+  if (!/^[A-Za-z0-9_.-]{1,100}$/.test(params.owner)
+      || !/^[A-Za-z0-9_.-]{1,100}$/.test(params.repo)
+      || !/^[A-Za-z0-9_.:/-]{1,255}$/.test(params.environment)
+      || !GITHUB_WORKFLOW.test(params.workflow)
+      || !GITHUB_REF.test(params.ref)
+      || !GITHUB_SHA.test(params.sha)
+      || !/^[A-Za-z0-9_.:-]{1,100}$/.test(params.event)
+      || !Number.isSafeInteger(params.repositoryId) || params.repositoryId < 1
+      || !Number.isSafeInteger(params.runId) || params.runId < 1) {
+    throw new TypeError('guardGithubDeploymentProtectionRule deployment params are invalid');
+  }
+  return canonicalActuatorObject({
+    owner: params.owner,
+    repo: params.repo,
+    repositoryId: params.repositoryId,
+    environment: params.environment,
+    workflow: params.workflow,
+    ref: params.ref,
+    sha: params.sha,
+    event: params.event,
+    runId: params.runId,
+  });
+}
+
+/**
+ * Approve one GitHub workflow run's admission to one named environment under
+ * a signed Gate allowance. Authority is reserved and consumed before GitHub's
+ * approval endpoint is entered. An uncertain callback response is therefore
+ * INDETERMINATE and cannot be blindly retried under a new operation id.
+ */
+export function guardGithubDeploymentProtectionRule({
+  connector,
+  params,
+  operationId,
+  ...allowanceOptions
+}) {
+  const configured = githubAllowanceConnectors.get(connector);
+  if (!configured) {
+    throw new TypeError('guardGithubDeploymentProtectionRule requires a configured GitHub deployment connector');
+  }
+  const input = githubDeploymentParameters(params);
+  const action = {
+    action_type: GITHUB_DEPLOYMENT_ALLOWANCE_ACTION,
+    repository: `${input.owner}/${input.repo}`,
+    repository_id: input.repositoryId,
+    environment: input.environment,
+    workflow: input.workflow,
+    ref: input.ref,
+    sha: input.sha,
+    event: input.event,
+    run_id: input.runId,
+    decision: 'approved',
+    amount: 1,
+    currency: GITHUB_DEPLOYMENT_ALLOWANCE_UNIT,
+    operation_id: operationId,
+  };
+  return executeWithGateAllowance({
+    ...allowanceOptions,
+    expected: {
+      ...(allowanceOptions.expected || {}),
+      connector_id: configured.connectorInstanceId,
+    },
+    action,
+    operationId,
+    executeAction: async (verifiedAction) => {
+      const separator = verifiedAction.repository.indexOf('/');
+      const response = await configured.octokit.request(
+        'POST /repos/{owner}/{repo}/actions/runs/{run_id}/deployment_protection_rule',
+        {
+          owner: verifiedAction.repository.slice(0, separator),
+          repo: verifiedAction.repository.slice(separator + 1),
+          run_id: verifiedAction.run_id,
+          environment_name: verifiedAction.environment,
+          state: 'approved',
+          comment: "EMILIA authorized this workflow run's admission to this environment.",
+        },
+      );
+      if (response?.status !== 204) throw new Error('github_deployment_review_outcome_indeterminate');
+      return response;
+    },
+  });
+}
+
+/**
  * Dispatch one specifically bound production workflow under a signed Gate
  * allowance. The Octokit client and GitHub credential remain in the caller's
  * process; this path exposes no generic GitHub mutation.
@@ -219,4 +340,6 @@ export default {
   githubWorkflowInputsDigest,
   createGithubAllowanceConnector,
   guardGithubAllowanceMutation,
+  createGithubDeploymentProtectionConnector,
+  guardGithubDeploymentProtectionRule,
 };

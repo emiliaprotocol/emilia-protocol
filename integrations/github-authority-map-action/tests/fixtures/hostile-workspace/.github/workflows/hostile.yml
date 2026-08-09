@@ -1,0 +1,29 @@
+name: Hostile mutation path
+
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+  push:
+    branches: [main]
+
+permissions: write-all
+
+jobs:
+  publish:
+    runs-on: [self-hosted, linux, "${{ inputs.runner_label }}"]
+    permissions:
+      contents: write
+      packages: write
+      issues: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: octo-org/deploy-action@main
+      - uses: vendor/pinned-action@0123456789abcdef0123456789abcdef01234567
+      - run: gh release create "$GITHUB_SHA"
+
+  administration:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    environment: staging
+    steps:
+      - uses: vendor/pinned-action@fedcbafedcbafedcbafedcbafedcbafedcbafedc

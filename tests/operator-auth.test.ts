@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import crypto from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   authenticateOperator,
@@ -9,6 +10,16 @@ import {
 import { _resetOperatorTokenReplayMemory } from '../lib/operator-token-replay.js';
 
 const SECRET_HEX = '11'.repeat(32);
+
+// Legacy-token construction is intentionally test-local. Production callers
+// can only mint the request-bound v2 shape through generateOperatorToken().
+function legacyOperatorToken(operatorId: string, secretHex: string): string {
+  const message = `${operatorId}.${Date.now().toString(16)}`;
+  const hmac = crypto.createHmac('sha256', Buffer.from(secretHex, 'hex'))
+    .update(message)
+    .digest('hex');
+  return `ep_op_${message}.${hmac}`;
+}
 
 beforeEach(() => {
   _resetOperatorTokenReplayMemory();
@@ -24,7 +35,7 @@ describe('operator auth — red-team accountability boundary', () => {
     vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
     vi.stubEnv('EP_OPERATOR_ROLES', JSON.stringify({ op_alice: 'reviewer' }));
 
-    const token = generateOperatorToken('op_alice', SECRET_HEX);
+    const token = legacyOperatorToken('op_alice', SECRET_HEX);
     const result = await verifyOperatorAuth(token, { requireOperatorIdentity: true });
 
     expect(result).toMatchObject({ valid: true, operator_id: 'op_alice', role: 'reviewer' });
@@ -34,7 +45,7 @@ describe('operator auth — red-team accountability boundary', () => {
     vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
     vi.stubEnv('EP_OPERATOR_ROLES', '');
 
-    const token = generateOperatorToken('op_alice', SECRET_HEX);
+    const token = legacyOperatorToken('op_alice', SECRET_HEX);
     const result = await verifyOperatorAuth(token, { requireOperatorIdentity: true });
 
     expect(result).toMatchObject({ valid: true, operator_id: 'op_alice', role: null });
@@ -128,10 +139,75 @@ describe('operator auth — named identity is the default, not an opt-in', () =>
 });
 
 describe('operator auth — token replay', () => {
+  it('accepts an exactly matching request-bound token once and refuses its replay', async () => {
+    vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
+    vi.stubEnv('EP_OPERATOR_ROLES', JSON.stringify({ op_alice: 'operator' }));
+    const body = JSON.stringify({ kid: 'compromised-kid' });
+    const token = generateOperatorToken('op_alice', SECRET_HEX, {
+      method: 'POST',
+      target: '/api/commit-keys/revoke?source=console',
+      body,
+    });
+    const makeRequest = () => new Request(
+      'https://x/api/commit-keys/revoke?source=console',
+      { method: 'POST', headers: { authorization: `Bearer ${token}` }, body },
+    );
+
+    await expect(authenticateOperator(makeRequest(), {
+      requireOperatorIdentity: true,
+    })).resolves.toMatchObject({ valid: true, operator_id: 'op_alice', role: 'operator' });
+    const replay = await authenticateOperator(makeRequest(), { requireOperatorIdentity: true });
+    expect(replay.valid).toBe(false);
+    expect(replay.error).toMatch(/already used/i);
+  });
+
+  it('refuses body substitution on the same method and route', async () => {
+    vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
+    const token = generateOperatorToken('op_alice', SECRET_HEX, {
+      method: 'POST',
+      target: '/api/commit-keys/revoke',
+      body: JSON.stringify({ kid: 'approved-kid' }),
+    });
+    const result = await authenticateOperator(new Request(
+      'https://x/api/commit-keys/revoke',
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kid: 'substituted-kid' }),
+      },
+    ), { requireOperatorIdentity: true });
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/request binding/i);
+  });
+
+  it('refuses a fresh token when it is raced into a different request', async () => {
+    vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
+    vi.stubEnv('EP_OPERATOR_ROLES', JSON.stringify({ op_alice: 'reviewer' }));
+
+    const token = generateOperatorToken('op_alice', SECRET_HEX, {
+      method: 'POST',
+      target: '/api/cron/expire',
+      body: '',
+    });
+
+    const substituted = await authenticateOperator(
+      new Request('https://x/api/commit-keys/revoke', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kid: 'compromised-kid' }),
+      }),
+      { requireOperatorIdentity: true },
+    );
+
+    expect(substituted.valid).toBe(false);
+    expect(substituted.error).toMatch(/request binding/i);
+  });
+
   it('spends a per-operator token on first use and refuses the replay', async () => {
     vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
 
-    const token = generateOperatorToken('op_alice', SECRET_HEX);
+    const token = legacyOperatorToken('op_alice', SECRET_HEX);
 
     const first = await verifyOperatorAuth(token, { requireOperatorIdentity: true });
     expect(first.valid).toBe(true);
@@ -147,7 +223,11 @@ describe('operator auth — token replay', () => {
   it('refuses a token replayed against a DIFFERENT route than the one that spent it', async () => {
     vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
 
-    const token = generateOperatorToken('op_alice', SECRET_HEX);
+    const token = generateOperatorToken('op_alice', SECRET_HEX, {
+      method: 'GET',
+      target: '/api/cron/expire',
+      body: '',
+    });
     const headers = { authorization: `Bearer ${token}` };
 
     const cron = await authenticateOperator(
@@ -161,7 +241,7 @@ describe('operator auth — token replay', () => {
       { requireOperatorIdentity: true },
     );
     expect(escalation.valid).toBe(false);
-    expect(escalation.error).toMatch(/already used/i);
+    expect(escalation.error).toMatch(/request binding/i);
   });
 
   it('lets two DIFFERENT tokens from the same operator through', async () => {
@@ -171,12 +251,12 @@ describe('operator auth — token replay', () => {
     // rather than per operator: single-use must not throttle a real operator
     // down to one action per five minutes.
     const first = await verifyOperatorAuth(
-      generateOperatorToken('op_alice', SECRET_HEX),
+      legacyOperatorToken('op_alice', SECRET_HEX),
       { requireOperatorIdentity: true },
     );
     await new Promise((resolve) => { setTimeout(resolve, 2); });
     const second = await verifyOperatorAuth(
-      generateOperatorToken('op_alice', SECRET_HEX),
+      legacyOperatorToken('op_alice', SECRET_HEX),
       { requireOperatorIdentity: true },
     );
 
@@ -187,7 +267,7 @@ describe('operator auth — token replay', () => {
   it('does not consume anything when the HMAC is forged', async () => {
     vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
 
-    const real = generateOperatorToken('op_alice', SECRET_HEX);
+    const real = legacyOperatorToken('op_alice', SECRET_HEX);
     const forged = `${real.slice(0, -1)}${real.endsWith('0') ? '1' : '0'}`;
 
     const attack = await verifyOperatorAuth(forged, { requireOperatorIdentity: true });
@@ -230,7 +310,7 @@ describe('operator auth — durable replay-store contract', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await verifyOperatorAuth(
-      generateOperatorToken('op_alice', SECRET_HEX),
+      legacyOperatorToken('op_alice', SECRET_HEX),
       { requireOperatorIdentity: true },
     );
 
@@ -248,7 +328,7 @@ describe('operator auth — durable replay-store contract', () => {
     )));
 
     const result = await verifyOperatorAuth(
-      generateOperatorToken('op_alice', SECRET_HEX),
+      legacyOperatorToken('op_alice', SECRET_HEX),
       { requireOperatorIdentity: true },
     );
 
@@ -265,7 +345,7 @@ describe('operator auth — durable replay-store contract', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
 
     const result = await verifyOperatorAuth(
-      generateOperatorToken('op_alice', SECRET_HEX),
+      legacyOperatorToken('op_alice', SECRET_HEX),
       { requireOperatorIdentity: true },
     );
 
@@ -278,7 +358,22 @@ describe('operator auth — durable replay-store contract', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
 
     const result = await verifyOperatorAuth(
-      generateOperatorToken('op_alice', SECRET_HEX),
+      legacyOperatorToken('op_alice', SECRET_HEX),
+      { requireOperatorIdentity: true },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/replay protection unavailable/i);
+  });
+
+  it('fails closed in production when no durable replay store is configured', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
+    vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
+
+    const result = await verifyOperatorAuth(
+      legacyOperatorToken('op_alice', SECRET_HEX),
       { requireOperatorIdentity: true },
     );
 

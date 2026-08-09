@@ -331,12 +331,13 @@ export async function canonicalBilateralConfirm(
   const supabase = getServiceClient();
   const now = new Date().toISOString();
 
-  const { data: receipt } = await supabase
+  const { data: receipt, error: receiptError } = await supabase
     .from('receipts')
     .select('receipt_id, entity_id, submitted_by, bilateral_status, confirmation_deadline')
     .eq('receipt_id', receiptId)
     .single();
 
+  if (receiptError) return { error: 'Could not load bilateral receipt state', status: 503 };
   if (!receipt) return { error: 'Receipt not found', status: 404 };
   if (receipt.entity_id !== confirmingEntityId) {
     return { error: 'Only the subject entity can confirm', status: 403 };
@@ -347,30 +348,57 @@ export async function canonicalBilateralConfirm(
   if (receipt.bilateral_status !== 'pending_confirmation') {
     return { error: `Status is '${receipt.bilateral_status}', not pending`, status: 409 };
   }
-  if (receipt.confirmation_deadline && new Date(receipt.confirmation_deadline) < new Date()) {
-    await supabase.from('receipts').update({ bilateral_status: 'expired' }).eq('receipt_id', receiptId);
+  const deadlineMs = receipt.confirmation_deadline === null
+    ? null
+    : Date.parse(receipt.confirmation_deadline);
+  if (deadlineMs !== null && !Number.isFinite(deadlineMs)) {
+    return { error: 'Receipt confirmation deadline is malformed', status: 503 };
+  }
+  if (deadlineMs !== null && deadlineMs < Date.parse(now)) {
+    const { data: expired, error: expireError } = await supabase
+      .from('receipts')
+      .update({ bilateral_status: 'expired' })
+      .eq('receipt_id', receiptId)
+      .eq('entity_id', confirmingEntityId)
+      .neq('submitted_by', confirmingEntityId)
+      .eq('bilateral_status', 'pending_confirmation')
+      .lt('confirmation_deadline', now)
+      .select('receipt_id')
+      .maybeSingle();
+    if (expireError) return { error: 'Could not persist bilateral receipt expiry', status: 503 };
+    if (!expired) return { error: 'Receipt state changed before expiry could commit', status: 409 };
     emitEvent(WRITE_EVENTS.RECEIPT_BILATERAL_EXPIRED, { receipt_id: receiptId });
     return { error: 'Confirmation deadline expired', status: 410 };
   }
 
-  if (confirm) {
-    await supabase.from('receipts').update({
+  const transition = supabase
+    .from('receipts')
+    .update(confirm ? {
       bilateral_status: 'confirmed',
       provenance_tier: 'bilateral',
       confirmed_by: confirmingEntityId,
       confirmed_at: now,
-    }).eq('receipt_id', receiptId);
+    } : {
+      bilateral_status: 'disputed',
+      confirmed_by: confirmingEntityId,
+      confirmed_at: now,
+    })
+    .eq('receipt_id', receiptId)
+    .eq('entity_id', confirmingEntityId)
+    .neq('submitted_by', confirmingEntityId)
+    .eq('bilateral_status', 'pending_confirmation')
+    .or(`confirmation_deadline.is.null,confirmation_deadline.gte.${now}`)
+    .select('receipt_id, bilateral_status, provenance_tier')
+    .maybeSingle();
+  const { data: committed, error: transitionError } = await transition;
+  if (transitionError) return { error: 'Could not persist bilateral receipt transition', status: 503 };
+  if (!committed) return { error: 'Receipt state changed and is no longer pending confirmation', status: 409 };
 
+  if (confirm) {
     emitEvent(WRITE_EVENTS.RECEIPT_BILATERAL_CONFIRMED, { receipt_id: receiptId });
     await materializeTrustProfile(receipt.entity_id);
     return { receipt_id: receiptId, bilateral_status: 'confirmed', provenance_tier: 'bilateral' };
   }
-
-  await supabase.from('receipts').update({
-    bilateral_status: 'disputed',
-    confirmed_by: confirmingEntityId,
-    confirmed_at: now,
-  }).eq('receipt_id', receiptId);
 
   emitEvent(WRITE_EVENTS.RECEIPT_BILATERAL_DISPUTED, { receipt_id: receiptId });
   return { receipt_id: receiptId, bilateral_status: 'disputed', provenance_tier: 'self_attested' };

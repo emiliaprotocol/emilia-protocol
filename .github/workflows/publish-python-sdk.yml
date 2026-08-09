@@ -22,17 +22,10 @@ on:
         type: string
 
 jobs:
-  approval:
-    runs-on: ubuntu-latest
-    environment: registry-publishing-approval
-    permissions: {}
-    steps:
-      - run: echo "Owner approved registry publication."
-
   publish:
-    needs: approval
     name: Publish emilia-protocol
     runs-on: ubuntu-latest
+    environment: registry-publishing-approval
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     concurrency:

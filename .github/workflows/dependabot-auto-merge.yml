@@ -34,6 +34,7 @@ jobs:
   auto-merge:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    environment: repository-administration-approval
     permissions:
       contents: write
       pull-requests: write
@@ -98,13 +99,12 @@ jobs:
           echo "- **reason**: $REASON"             >> "$GITHUB_STEP_SUMMARY"
 
       # NOTE: An "Approve PR" step is intentionally absent. Organization
-      # policy does not allow GitHub Actions to approve pull requests, and
-      # main requires a human approval plus all required checks. This step
-      # only queues eligible updates; it never bypasses review or protection.
-      # A repository maintainer must still review and approve the Dependabot
-      # PR before GitHub can complete the queued merge.
+      # policy does not allow GitHub Actions to approve pull requests. The
+      # repository-administration-approval environment requires an explicit
+      # owner review before this mutation job receives its write token; GitHub
+      # then keeps the merge queued until every branch-protection check passes.
 
-      - name: Enable auto-merge (queues until branch protection is satisfied)
+      - name: Enable auto-merge after owner-gated repository administration
         if: steps.decide.outputs.eligible == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -283,7 +283,7 @@ describe('Operational Failure Modeling', () => {
     it('protocol event append fails gracefully (non-truth-bearing) but logs', async () => {
       const makeFullChain = (overrides = {}) => {
         const chain = {};
-        for (const m of ['select', 'insert', 'update', 'delete', 'eq', 'neq', 'in', 'contains', 'order', 'limit']) {
+        for (const m of ['select', 'insert', 'update', 'delete', 'eq', 'neq', 'in', 'contains', 'order', 'limit', 'or', 'lt', 'gte', 'is']) {
           chain[m] = vi.fn().mockReturnValue(chain);
         }
         chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
@@ -305,6 +305,14 @@ describe('Operational Failure Modeling', () => {
                 data: {
                   receipt_id: 'r-1', entity_id: 'ent-1', submitted_by: 'other-ent',
                   bilateral_status: 'pending_confirmation', confirmation_deadline: null,
+                },
+                error: null,
+              }),
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: {
+                  receipt_id: 'r-1',
+                  bilateral_status: 'confirmed',
+                  provenance_tier: 'bilateral',
                 },
                 error: null,
               }),

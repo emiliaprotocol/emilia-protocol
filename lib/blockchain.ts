@@ -16,6 +16,7 @@ import crypto from 'crypto';
 import { sha256 } from '@/lib/crypto';
 import { getBlockchainConfig, isProduction } from '@/lib/env';
 import { resolveBlockchainSigner } from './blockchain-signing.js';
+import { acquireJobLease, type JobLease } from './job-lease.js';
 import { logger } from './logger.js';
 
 // =============================================================================
@@ -319,7 +320,7 @@ export async function anchorToBase(batchId, merkleRoot, { v2 = false } = {}) {
  * @param {Object} supabase - Supabase service client
  * @returns {Promise<Object>} batch summary
  */
-export async function runAnchorBatch(supabase) {
+async function runAnchorBatchUnderLease(supabase) {
   // 1. Collect unanchored receipt hashes
   const { data: unanchored, error: fetchErr } = await supabase
     .from('receipts')
@@ -369,10 +370,30 @@ export async function runAnchorBatch(supabase) {
     throw new Error(`Anchor batch DB pre-insert failed: ${insertErr.message}`);
   }
 
-  // 5. Anchor to Base L2 (the irreversible step). Tag calldata EP:v2:.
+  // 5. Claim every receipt for this persisted batch BEFORE the irreversible
+  // chain operation. If the worker crashes or its lease expires after the
+  // transaction is submitted, a successor will not select these receipts as
+  // unanchored and publish the same set again. A pending batch is recoverable;
+  // a duplicate external effect is not.
+  const updates = proofs.map(p => ({
+    receipt_id:        p.receipt_id,
+    anchor_batch_id:   batchId,
+    merkle_proof:      p.proof,
+    merkle_leaf_index: p.leaf_index,
+  }));
+
+  const { error: receiptErr } = await supabase
+    .rpc('bulk_update_receipt_anchors', { p_updates: updates });
+
+  if (receiptErr) {
+    logger.error('Failed to claim receipt anchor references; no on-chain tx attempted:', receiptErr);
+    throw new Error(`Receipt anchor claim failed: ${receiptErr.message}`);
+  }
+
+  // 6. Anchor to Base L2 (the irreversible step). Tag calldata EP:v2:.
   const anchorResult = await anchorToBase(batchId, tree.root, { v2: tree.alg === MERKLE_V2_ALG });
 
-  // 6. Confirm the batch row with the on-chain details.
+  // 7. Confirm the batch row with the on-chain details.
   const { error: confirmErr } = await supabase
     .from('anchor_batches')
     .update({
@@ -385,33 +406,16 @@ export async function runAnchorBatch(supabase) {
     .eq('batch_id', batchId);
 
   if (confirmErr) {
-    // The tx is on chain AND the batch row exists (with the merkle_root). This is
-    // reconcilable, NOT split-brain: ops can backfill the tx hash by matching the
-    // root on chain. Receipts are NOT marked until the row is confirmed.
+    // The tx is on chain, the batch row exists, and its receipts remain claimed.
+    // A successor therefore cannot duplicate the publication. Operations can
+    // reconcile the transaction metadata by matching the persisted Merkle root.
     logger.error(
-      `Anchor batch on-chain (txHash: ${anchorResult.transactionHash}) but DB confirm failed — batch row exists as pending (merkle_root: ${tree.root}); reconcilable. Receipts NOT marked.`,
+      `Anchor batch on-chain (txHash: ${anchorResult.transactionHash}) but DB confirm failed — batch and receipt claims remain pending (merkle_root: ${tree.root}); reconcilable.`,
       confirmErr,
     );
     throw new Error(
       `Anchor batch DB confirm failed: ${confirmErr.message}. On-chain tx: ${anchorResult.transactionHash}`,
     );
-  }
-
-  // 7. Bulk-update all receipts in a single RPC call (migration 075).
-  // Replaces the previous N+1 serial UPDATE loop.
-  const updates = proofs.map(p => ({
-    receipt_id:        p.receipt_id,
-    anchor_batch_id:   batchId,
-    merkle_proof:      p.proof,
-    merkle_leaf_index: p.leaf_index,
-  }));
-
-  const { error: receiptErr } = await supabase
-    .rpc('bulk_update_receipt_anchors', { p_updates: updates });
-
-  if (receiptErr) {
-    logger.error('Failed to update receipt anchor references:', receiptErr);
-    throw new Error(`Receipt anchor update failed: ${receiptErr.message}`);
   }
 
   return {
@@ -423,4 +427,36 @@ export async function runAnchorBatch(supabase) {
     explorer_url: anchorResult.explorerUrl,
     skipped_onchain: anchorResult.skipped || false,
   };
+}
+
+/**
+ * Run one globally exclusive anchor batch. The lease spans the database read,
+ * irreversible chain transaction, and receipt-reference commit. Without that
+ * fence, concurrent workers can publish the same receipts in several batches
+ * before the first worker marks them anchored.
+ */
+export async function runAnchorBatch(
+  supabase,
+  options: {
+    acquireLease?: (name: string, ttlMs: number) => Promise<JobLease>;
+  } = {},
+) {
+  const acquireLease = options.acquireLease || acquireJobLease;
+  const lease = await acquireLease('anchor-batch', 15 * 60 * 1000);
+  if (!lease.ok) {
+    if (lease.reason === 'already_held') {
+      return { status: 'already_running', message: 'Another anchor batch holds the durable lease' };
+    }
+    throw new Error('Anchor batch lease store unavailable');
+  }
+
+  try {
+    return await runAnchorBatchUnderLease(supabase);
+  } finally {
+    try {
+      await lease.release();
+    } catch (error: any) {
+      logger.error('Anchor batch lease release failed', { error: error?.message });
+    }
+  }
 }
