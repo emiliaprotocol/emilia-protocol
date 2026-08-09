@@ -13,7 +13,7 @@
  * @license Apache-2.0
  */
 
-import { canonicalizeStrictJson, strictJsonGate } from './strict-json.js';
+import { canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate } from './strict-json.js';
 
 type JsonObject = Record<string, any>;
 
@@ -179,6 +179,20 @@ function derEcdsaToRawP256(der: Uint8Array): Uint8Array | null {
 export async function verifyReceipt(doc: JsonObject, publicKeyBase64url: string, opts: WebOptions = {}) {
   const checks: { version: boolean; signature: boolean; anchor: boolean | null } = { version: false, signature: false, anchor: null };
 
+  // Parity with the Node verifier (index.ts): inspect the COMPLETE caller-supplied
+  // object before reading any member. This rejects documents whose (even unsigned)
+  // fields fall outside the closed EP canonicalization profile — non-safe-integer
+  // numbers, non-plain objects, accessors, symbols, cycles — so the browser and
+  // Node verifiers never disagree on the same document. Without this gate a doc
+  // that Node refuses would verify here, giving two different published answers.
+  if (!isStrictCanonicalJson(doc)) {
+    return {
+      valid: false,
+      checks,
+      error: 'Receipt is outside the EP canonicalization profile; only plain JSON data is accepted',
+    };
+  }
+
   if (!doc?.['@version'] || !SUPPORTED_VERSIONS.includes(doc['@version'])) {
     return { valid: false, checks, error: `Unsupported version: ${doc?.['@version']}` };
   }
@@ -186,6 +200,13 @@ export async function verifyReceipt(doc: JsonObject, publicKeyBase64url: string,
 
   if (!doc.payload || !doc.signature?.value || !doc.signature?.algorithm) {
     return { valid: false, checks, error: 'Missing payload or signature' };
+  }
+  if (!isStrictCanonicalJson(doc.payload)) {
+    return {
+      valid: false,
+      checks,
+      error: 'Payload is outside the EP canonicalization profile; use strings or safe integers in signed material',
+    };
   }
 
   try {
@@ -439,6 +460,13 @@ export async function verifyCommitmentProof(proof: JsonObject, publicKeyBase64ur
 export async function verifyReceiptBundle(bundle: JsonObject, publicKeyBase64url: string) {
   if (bundle?.['@version'] !== 'EP-BUNDLE-v1') {
     return { valid: false, total: 0, verified: 0, failed: ['Invalid bundle version'] };
+  }
+  // Parity with the Node verifier (index.ts): a bundle with the right version but
+  // no document array is malformed input, not an exceptional condition. Refuse it
+  // without dereferencing attacker-controlled shape so a caller cannot be crashed
+  // with an uncaught TypeError (the browser build has no surrounding try/catch).
+  if (!Array.isArray(bundle.documents)) {
+    return { valid: false, total: 0, verified: 0, failed: ['Bundle documents must be an array'] };
   }
   const failed: string[] = [];
   let verified = 0;
