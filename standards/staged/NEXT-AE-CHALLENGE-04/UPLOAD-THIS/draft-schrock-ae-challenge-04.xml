@@ -113,13 +113,13 @@
   "required_evidence": [
     {
       "requirement_id": "human-approval",
-      "type": "authorization_receipt",
+      "type": "https://example.net/e/authorization-receipt",
       "profiles": ["https://example.net/profiles/receipt-v1"],
       "max_age_sec": 300,
       "status": "current"
     }
   ],
-  "present_as": ["ep-aec-v1"],
+  "present_as": ["https://example.net/p/ep-aec-v1"],
   "obtain_hints": [
     {
       "requirement_id": "human-approval",
@@ -148,9 +148,11 @@
         <t><tt>action_digest</tt> MUST be computed by the relying party from
         the exact action it would admit. It MUST NOT be copied from the
         presenter or from presented evidence. <tt>action_profile</tt> MUST be
-        present and identifies the canonicalization or mapping profile used to
-        derive the digest. It is descriptive to the presenter; it does not let the
-        presenter select or weaken that profile. If two parties cannot
+        present, MUST be an absolute URI as defined by
+        <xref target="RFC3986"/>, and identifies the canonicalization or
+        mapping profile used to derive the digest. It is descriptive to the
+        presenter; it does not let the presenter select or weaken that
+        profile. If two parties cannot
         establish the same material action under an understood profile, the
         challenge cannot repair the disagreement and the relying party MUST
         refuse automated admission.</t>
@@ -181,9 +183,15 @@
         <t>Each <tt>required_evidence</tt> entry MUST contain a
         <tt>requirement_id</tt> and <tt>type</tt>. Requirement identifiers
         are unique within one challenge and correlate requirements with
-        acquisition hints and diagnostics. Type and profile identifiers are
-        opaque protocol identifiers; a recipient MUST NOT infer security
-        semantics from string prefixes or substring matches.</t>
+        acquisition hints and diagnostics. Every evidence <tt>type</tt>,
+        evidence <tt>profiles</tt> entry, and <tt>present_as</tt> entry MUST
+        be an absolute URI as defined by <xref target="RFC3986"/> so that the
+        same identifier has portable meaning across transport protocols and
+        conformance corpora. Unless the defining specification says
+        otherwise, these identifiers are compared as exact strings. A
+        recipient MUST NOT infer security semantics from URI prefixes or
+        substring matches; it uses only locally configured semantics for the
+        complete identifier.</t>
         <t>An entry MAY contain <tt>profiles</tt>,
         <tt>proof_predicates</tt>, <tt>max_age_sec</tt>, and
         <tt>status</tt>. Profiles are alternatives acceptable for that
@@ -218,17 +226,26 @@
       <section anchor="core-lifecycle">
         <name>Lifecycle, Replay, and Retry</name>
         <t><tt>expires_at</tt> MUST be an absolute timestamp. The relying
-        party MUST refuse an expired challenge before policy evaluation.
+        party MUST refuse an expired challenge before evidence or policy
+        evaluation.
         Challenge expiry does not extend the validity of any evidence and
         evidence expiry does not extend the challenge.</t>
         <t>Evaluation is ordered: version and structure; authenticated issuer
-        and audience; durable body binding; expiry; action agreement; nonce
-        consumption; native evidence verification; and local policy
+        and audience; durable body binding; action agreement; expiry; atomic
+        nonce consumption; native evidence verification; and local policy
         evaluation. Malformed input that cannot be associated with a
-        registered challenge is refused without consuming a nonce. Once a
-        structurally valid presentation has been matched to a registered
-        challenge, the nonce MUST be consumed before evidence evaluation so
-        concurrent or action-swapped retries cannot reuse it.</t>
+        registered challenge, or a presentation that does not agree with the
+        registered exact action, is refused without consuming a nonce. Once
+        structural and action matching succeed, the nonce MUST be consumed
+        atomically before evidence evaluation.</t>
+        <t>A concurrent duplicate that arrives after another presentation has
+        consumed the nonce, whether that first evaluation is still in flight
+        or has completed, MUST be refused as a replay. It MUST NOT receive a
+        second evidence evaluation, an indeterminate result merely because the
+        first evaluation is in flight, or a second admission. An
+        implementation MAY distinguish in-flight from completed consumption
+        internally for operations and audit, but that distinction does not
+        reopen the challenge.</t>
         <t>If evidence remains missing, stale, or unverifiable, the relying
         party MAY issue a follow-up challenge. A follow-up MUST use a fresh
         challenge identifier and nonce, MUST remain bound to the same locally
@@ -329,11 +346,11 @@ Retry-After: 30
     "policy_digest": "sha256:...",
     "required_evidence": [
       { "requirement_id": "human-approval",
-        "type": "authorization_receipt",
+        "type": "https://example.net/e/authorization-receipt",
         "max_age_sec": 300,
         "status": "current" }
     ],
-    "present_as": ["ep-aec-v1"],
+    "present_as": ["https://example.net/p/ep-aec-v1"],
     "obtain_hints": [],
     "retry_timing": {
       "not_before": "2026-08-09T23:50:30Z",
@@ -389,8 +406,11 @@ Retry-After: 30
       <t>In particular, AE-CHALLENGE does not prevent Gateway A and Gateway B
       from admitting the same single-use right. It does not copy, fence, or
       relinquish consumption state and does not establish which gateway owns
-      admission during a partition. A DMSC handoff profile MUST solve those
-      properties separately. If the receiving gateway cannot establish the
+      admission during a partition. The separate handoff property is not a
+      race to decide which gateway admitted first; it is an invariant that
+      committed capacity is not over-allocated under any interleaving of
+      admissions and releases. A DMSC handoff profile MUST solve that property
+      separately. If the receiving gateway cannot establish the
       required exclusivity, its safe result is refusal or indeterminate, not
       acceptance based on the challenge.</t>
       <section anchor="dmsc-case">
@@ -490,12 +510,6 @@ Retry-After: 30
       synchronization, and per-hop binding questions raised through revision
       -03. Review is requested on the following remaining choices:</t>
       <ul>
-        <li>Whether evidence type, presentation profile, and action profile
-        identifiers should be required to be absolute URIs or may remain
-        opaque identifiers governed by the carrying protocol.</li>
-        <li>Whether consuming the nonce after structural and action matching
-        but before evidence verification is the correct common replay rule
-        for both task-oriented and message-oriented agent protocols.</li>
         <li>Which Agent2Agent and AgentProto error carriers can preserve the
         complete challenge, authenticated issuer, audience, and retry timing,
         and whether either protocol needs an additional attempt identifier.</li>
@@ -511,7 +525,9 @@ Retry-After: 30
       suggesting retry timing and jitter. Thanks to Guigui Wang for
       implementation feedback on structured error payloads, per-hop action
       rebinding, and the separation of capability discovery from local
-      authority.</t>
+      authority. Thanks to Henri Sirkkavaara for review of replay ordering,
+      concurrent-presentation behavior, diagnostic ordering, and portable
+      identifier semantics.</t>
     </section>
 
     <section anchor="changes">
@@ -529,6 +545,14 @@ Retry-After: 30
         action and issue its own binding.</li>
         <li>Separates capability discovery from authority and local evidence
         sufficiency.</li>
+        <li>Requires portable absolute-URI identifiers for evidence types,
+        action profiles, and presentation profiles.</li>
+        <li>Checks action agreement before expiry and nonce consumption, and
+        defines a concurrent duplicate during evidence evaluation as a replay
+        that cannot trigger a second evaluation or admission.</li>
+        <li>States conserved admission as a committed-capacity invariant over
+        every admission and release interleaving while leaving that mechanism
+        outside AE-CHALLENGE.</li>
       </ul>
     </section>
   </middle>
@@ -540,6 +564,18 @@ Retry-After: 30
         <name>Normative References</name>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3339.xml"/>
+        <reference anchor="RFC3986" target="https://www.rfc-editor.org/info/rfc3986">
+          <front>
+            <title>Uniform Resource Identifier (URI): Generic Syntax</title>
+            <author fullname="Tim Berners-Lee"/>
+            <author fullname="Roy T. Fielding"/>
+            <author fullname="Larry Masinter"/>
+            <date year="2005" month="January"/>
+          </front>
+          <seriesInfo name="STD" value="66"/>
+          <seriesInfo name="RFC" value="3986"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3986"/>
+        </reference>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8259.xml"/>
@@ -619,16 +655,17 @@ Retry-After: 30
       <tt>Cache-Control: no-store</tt>, and the
       <tt>evidence_challenge</tt> extension.</t>
       <t>Revision -04 specifies retry timing, per-hop rebinding, discovery
-      separation, and carrier semantics. These additions are based in part on
-      external implementer review, including experience with structured error
-      payloads and per-verifier decision bindings. They are not yet implemented
-      by the same-team reference implementation and are not claimed as an
-      independent implementation of this specification.</t>
+      separation, carrier semantics, portable absolute-URI identifiers, and
+      action-before-consumption replay ordering. These additions are based in
+      part on external implementer review, including experience with structured
+      error payloads and per-verifier decision bindings. They are not yet
+      implemented by the same-team reference implementation and are not
+      claimed as an independent implementation of this specification.</t>
       <t>This is same-team implementation evidence. No independent
       implementation or interoperability is claimed. The implementation does
-      not yet provide a DMSC carrier or conserved-admission mechanism, and its
-      current local evidence and presentation identifiers do not resolve the
-      identifier-governance question in <xref target="open-questions"/>.</t>
+      not yet provide a DMSC carrier or conserved-admission mechanism. Its
+      current local evidence and presentation identifiers are not the absolute
+      URIs required by this revision.</t>
     </section>
   </back>
 </rfc>

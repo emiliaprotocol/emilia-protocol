@@ -1512,13 +1512,13 @@ li > p:last-of-type:only-child {
   "required_evidence": [
     {
       "requirement_id": "human-approval",
-      "type": "authorization_receipt",
+      "type": "https://example.net/e/authorization-receipt",
       "profiles": ["https://example.net/profiles/receipt-v1"],
       "max_age_sec": 300,
       "status": "current"
     }
   ],
-  "present_as": ["ep-aec-v1"],
+  "present_as": ["https://example.net/p/ep-aec-v1"],
   "obtain_hints": [
     {
       "requirement_id": "human-approval",
@@ -1550,9 +1550,11 @@ li > p:last-of-type:only-child {
 <p id="section-2.1-3"><code>action_digest</code> MUST be computed by the relying party from
         the exact action it would admit. It MUST NOT be copied from the
         presenter or from presented evidence. <code>action_profile</code> MUST be
-        present and identifies the canonicalization or mapping profile used to
-        derive the digest. It is descriptive to the presenter; it does not let the
-        presenter select or weaken that profile. If two parties cannot
+        present, MUST be an absolute URI as defined by
+        <span>[<a href="#RFC3986" class="cite xref">RFC3986</a>]</span>, and identifies the canonicalization or
+        mapping profile used to derive the digest. It is descriptive to the
+        presenter; it does not let the presenter select or weaken that
+        profile. If two parties cannot
         establish the same material action under an understood profile, the
         challenge cannot repair the disagreement and the relying party MUST
         refuse automated admission.<a href="#section-2.1-3" class="pilcrow">¶</a></p>
@@ -1586,9 +1588,15 @@ li > p:last-of-type:only-child {
 <p id="section-2.2-1">Each <code>required_evidence</code> entry MUST contain a
         <code>requirement_id</code> and <code>type</code>. Requirement identifiers
         are unique within one challenge and correlate requirements with
-        acquisition hints and diagnostics. Type and profile identifiers are
-        opaque protocol identifiers; a recipient MUST NOT infer security
-        semantics from string prefixes or substring matches.<a href="#section-2.2-1" class="pilcrow">¶</a></p>
+        acquisition hints and diagnostics. Every evidence <code>type</code>,
+        evidence <code>profiles</code> entry, and <code>present_as</code> entry MUST
+        be an absolute URI as defined by <span>[<a href="#RFC3986" class="cite xref">RFC3986</a>]</span> so that the
+        same identifier has portable meaning across transport protocols and
+        conformance corpora. Unless the defining specification says
+        otherwise, these identifiers are compared as exact strings. A
+        recipient MUST NOT infer security semantics from URI prefixes or
+        substring matches; it uses only locally configured semantics for the
+        complete identifier.<a href="#section-2.2-1" class="pilcrow">¶</a></p>
 <p id="section-2.2-2">An entry MAY contain <code>profiles</code>,
         <code>proof_predicates</code>, <code>max_age_sec</code>, and
         <code>status</code>. Profiles are alternatives acceptable for that
@@ -1626,24 +1634,33 @@ li > p:last-of-type:only-child {
 <a href="#section-2.3" class="section-number selfRef">2.3. </a><a href="#name-lifecycle-replay-and-retry" class="section-name selfRef">Lifecycle, Replay, and Retry</a>
         </h3>
 <p id="section-2.3-1"><code>expires_at</code> MUST be an absolute timestamp. The relying
-        party MUST refuse an expired challenge before policy evaluation.
+        party MUST refuse an expired challenge before evidence or policy
+        evaluation.
         Challenge expiry does not extend the validity of any evidence and
         evidence expiry does not extend the challenge.<a href="#section-2.3-1" class="pilcrow">¶</a></p>
 <p id="section-2.3-2">Evaluation is ordered: version and structure; authenticated issuer
-        and audience; durable body binding; expiry; action agreement; nonce
-        consumption; native evidence verification; and local policy
+        and audience; durable body binding; action agreement; expiry; atomic
+        nonce consumption; native evidence verification; and local policy
         evaluation. Malformed input that cannot be associated with a
-        registered challenge is refused without consuming a nonce. Once a
-        structurally valid presentation has been matched to a registered
-        challenge, the nonce MUST be consumed before evidence evaluation so
-        concurrent or action-swapped retries cannot reuse it.<a href="#section-2.3-2" class="pilcrow">¶</a></p>
-<p id="section-2.3-3">If evidence remains missing, stale, or unverifiable, the relying
+        registered challenge, or a presentation that does not agree with the
+        registered exact action, is refused without consuming a nonce. Once
+        structural and action matching succeed, the nonce MUST be consumed
+        atomically before evidence evaluation.<a href="#section-2.3-2" class="pilcrow">¶</a></p>
+<p id="section-2.3-3">A concurrent duplicate that arrives after another presentation has
+        consumed the nonce, whether that first evaluation is still in flight
+        or has completed, MUST be refused as a replay. It MUST NOT receive a
+        second evidence evaluation, an indeterminate result merely because the
+        first evaluation is in flight, or a second admission. An
+        implementation MAY distinguish in-flight from completed consumption
+        internally for operations and audit, but that distinction does not
+        reopen the challenge.<a href="#section-2.3-3" class="pilcrow">¶</a></p>
+<p id="section-2.3-4">If evidence remains missing, stale, or unverifiable, the relying
         party MAY issue a follow-up challenge. A follow-up MUST use a fresh
         challenge identifier and nonce, MUST remain bound to the same locally
         derived action digest and action profile, and SHOULD list only the
         requirements that remain unsatisfied. It is a new refusal, not a
-        continuation of the consumed nonce.<a href="#section-2.3-3" class="pilcrow">¶</a></p>
-<p id="section-2.3-4"><code>retry_timing</code> is OPTIONAL. When present, it MUST contain a
+        continuation of the consumed nonce.<a href="#section-2.3-4" class="pilcrow">¶</a></p>
+<p id="section-2.3-5"><code>retry_timing</code> is OPTIONAL. When present, it MUST contain a
         <code>not_before</code> Internet timestamp as defined by
         <span>[<a href="#RFC3339" class="cite xref">RFC3339</a>]</span> and MAY contain a non-negative integer
         <code>jitter_sec</code>. A presenter that processes this member MUST NOT
@@ -1651,8 +1668,8 @@ li > p:last-of-type:only-child {
         <code>jitter_sec</code> is greater than zero, the presenter SHOULD add an
         independently selected delay between zero and that many seconds. The
         selected delay SHOULD vary for each challenge and MUST NOT be treated
-        as extending <code>expires_at</code>.<a href="#section-2.3-4" class="pilcrow">¶</a></p>
-<p id="section-2.3-5">A relying party that expects many correlated refusals SHOULD issue
+        as extending <code>expires_at</code>.<a href="#section-2.3-5" class="pilcrow">¶</a></p>
+<p id="section-2.3-6">A relying party that expects many correlated refusals SHOULD issue
         recipient-specific or challenge-specific retry schedules rather than
         one common retry instant. It SHOULD provide a jitter interval wide
         enough for its expected population and recovery capacity. A presenter
@@ -1660,18 +1677,18 @@ li > p:last-of-type:only-child {
         absent. A challenge MUST NOT be issued solely to signal overload when
         the carrying protocol has a distinct overload response. If evidence
         insufficiency and load pressure coexist, retry timing can pace the new
-        evidence presentation without changing the refusal semantics.<a href="#section-2.3-5" class="pilcrow">¶</a></p>
-<p id="section-2.3-6">Ignoring <code>retry_timing</code> does not make evidence sufficient or
+        evidence presentation without changing the refusal semantics.<a href="#section-2.3-6" class="pilcrow">¶</a></p>
+<p id="section-2.3-7">Ignoring <code>retry_timing</code> does not make evidence sufficient or
         authorize an action, but it can defeat the issuer's load-control goal.
         An issuer that requires the recipient to understand the timing member
         MUST include <code>retry_timing</code> in <code>critical</code>. A presenter
         that cannot establish whether <code>not_before</code> has passed MUST NOT
         infer permission to send early; it uses its local backoff policy or
-        declines automated retry.<a href="#section-2.3-6" class="pilcrow">¶</a></p>
-<p id="section-2.3-7">Unknown acquisition status, timeout, transport failure, or an
+        declines automated retry.<a href="#section-2.3-7" class="pilcrow">¶</a></p>
+<p id="section-2.3-8">Unknown acquisition status, timeout, transport failure, or an
         unverifiable response is indeterminate. It MUST NOT be interpreted as
         evidence satisfaction or permission to retry an action whose effect
-        may already have occurred.<a href="#section-2.3-7" class="pilcrow">¶</a></p>
+        may already have occurred.<a href="#section-2.3-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="core-extensibility">
@@ -1748,11 +1765,11 @@ Retry-After: 30
     "policy_digest": "sha256:...",
     "required_evidence": [
       { "requirement_id": "human-approval",
-        "type": "authorization_receipt",
+        "type": "https://example.net/e/authorization-receipt",
         "max_age_sec": 300,
         "status": "current" }
     ],
-    "present_as": ["ep-aec-v1"],
+    "present_as": ["https://example.net/p/ep-aec-v1"],
     "obtain_hints": [],
     "retry_timing": {
       "not_before": "2026-08-09T23:50:30Z",
@@ -1812,8 +1829,11 @@ Retry-After: 30
 <p id="section-4-4">In particular, AE-CHALLENGE does not prevent Gateway A and Gateway B
       from admitting the same single-use right. It does not copy, fence, or
       relinquish consumption state and does not establish which gateway owns
-      admission during a partition. A DMSC handoff profile MUST solve those
-      properties separately. If the receiving gateway cannot establish the
+      admission during a partition. The separate handoff property is not a
+      race to decide which gateway admitted first; it is an invariant that
+      committed capacity is not over-allocated under any interleaving of
+      admissions and releases. A DMSC handoff profile MUST solve that property
+      separately. If the receiving gateway cannot establish the
       required exclusivity, its safe result is refusal or indeterminate, not
       acceptance based on the challenge.<a href="#section-4-4" class="pilcrow">¶</a></p>
 <div id="dmsc-case">
@@ -1934,20 +1954,12 @@ Retry-After: 30
       synchronization, and per-hop binding questions raised through revision
       -03. Review is requested on the following remaining choices:<a href="#section-7-1" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-7-2.1">Whether evidence type, presentation profile, and action profile
-        identifiers should be required to be absolute URIs or may remain
-        opaque identifiers governed by the carrying protocol.<a href="#section-7-2.1" class="pilcrow">¶</a>
-</li>
-        <li class="normal" id="section-7-2.2">Whether consuming the nonce after structural and action matching
-        but before evidence verification is the correct common replay rule
-        for both task-oriented and message-oriented agent protocols.<a href="#section-7-2.2" class="pilcrow">¶</a>
-</li>
-        <li class="normal" id="section-7-2.3">Which Agent2Agent and AgentProto error carriers can preserve the
+<li class="normal" id="section-7-2.1">Which Agent2Agent and AgentProto error carriers can preserve the
         complete challenge, authenticated issuer, audience, and retry timing,
-        and whether either protocol needs an additional attempt identifier.<a href="#section-7-2.3" class="pilcrow">¶</a>
+        and whether either protocol needs an additional attempt identifier.<a href="#section-7-2.1" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-7-2.4">Whether a DMSC gateway profile should carry the core object
-        directly or reference it by an authenticated, digest-bound URI.<a href="#section-7-2.4" class="pilcrow">¶</a>
+        <li class="normal" id="section-7-2.2">Whether a DMSC gateway profile should carry the core object
+        directly or reference it by an authenticated, digest-bound URI.<a href="#section-7-2.2" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
@@ -1962,7 +1974,9 @@ Retry-After: 30
       suggesting retry timing and jitter. Thanks to Guigui Wang for
       implementation feedback on structured error payloads, per-hop action
       rebinding, and the separation of capability discovery from local
-      authority.<a href="#section-8-1" class="pilcrow">¶</a></p>
+      authority. Thanks to Henri Sirkkavaara for review of replay ordering,
+      concurrent-presentation behavior, diagnostic ordering, and portable
+      identifier semantics.<a href="#section-8-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="changes">
@@ -1989,6 +2003,17 @@ Retry-After: 30
         <li class="normal" id="section-9-1.6">Separates capability discovery from authority and local evidence
         sufficiency.<a href="#section-9-1.6" class="pilcrow">¶</a>
 </li>
+        <li class="normal" id="section-9-1.7">Requires portable absolute-URI identifiers for evidence types,
+        action profiles, and presentation profiles.<a href="#section-9-1.7" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-9-1.8">Checks action agreement before expiry and nonce consumption, and
+        defines a concurrent duplicate during evidence evaluation as a replay
+        that cannot trigger a second evaluation or admission.<a href="#section-9-1.8" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-9-1.9">States conserved admission as a committed-capacity invariant over
+        every admission and release interleaving while leaving that mechanism
+        outside AE-CHALLENGE.<a href="#section-9-1.9" class="pilcrow">¶</a>
+</li>
       </ul>
 </section>
 </div>
@@ -2008,6 +2033,10 @@ Retry-After: 30
 <dt id="RFC3339">[RFC3339]</dt>
         <dd>
 <span class="refAuthor">Klyne, G.</span> and <span class="refAuthor">C. Newman</span>, <span class="refTitle">"Date and Time on the Internet: Timestamps"</span>, <span class="seriesInfo">RFC 3339</span>, <span class="seriesInfo">DOI 10.17487/RFC3339</span>, <time datetime="2002-07" class="refDate">July 2002</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3339">https://www.rfc-editor.org/info/rfc3339</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC3986">[RFC3986]</dt>
+        <dd>
+<span class="refAuthor">Berners-Lee, T.</span>, <span class="refAuthor">Fielding, R. T.</span>, and <span class="refAuthor">L. Masinter</span>, <span class="refTitle">"Uniform Resource Identifier (URI): Generic Syntax"</span>, <span class="seriesInfo">STD 66</span>, <span class="seriesInfo">RFC 3986</span>, <span class="seriesInfo">DOI 10.17487/RFC3986</span>, <time datetime="2005-01" class="refDate">January 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3986">https://www.rfc-editor.org/info/rfc3986</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8126">[RFC8126]</dt>
         <dd>
@@ -2093,16 +2122,17 @@ Retry-After: 30
       <code>Cache-Control: no-store</code>, and the
       <code>evidence_challenge</code> extension.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
 <p id="appendix-B-2">Revision -04 specifies retry timing, per-hop rebinding, discovery
-      separation, and carrier semantics. These additions are based in part on
-      external implementer review, including experience with structured error
-      payloads and per-verifier decision bindings. They are not yet implemented
-      by the same-team reference implementation and are not claimed as an
-      independent implementation of this specification.<a href="#appendix-B-2" class="pilcrow">¶</a></p>
+      separation, carrier semantics, portable absolute-URI identifiers, and
+      action-before-consumption replay ordering. These additions are based in
+      part on external implementer review, including experience with structured
+      error payloads and per-verifier decision bindings. They are not yet
+      implemented by the same-team reference implementation and are not
+      claimed as an independent implementation of this specification.<a href="#appendix-B-2" class="pilcrow">¶</a></p>
 <p id="appendix-B-3">This is same-team implementation evidence. No independent
       implementation or interoperability is claimed. The implementation does
-      not yet provide a DMSC carrier or conserved-admission mechanism, and its
-      current local evidence and presentation identifiers do not resolve the
-      identifier-governance question in <a href="#open-questions" class="auto internal xref">Section 7</a>.<a href="#appendix-B-3" class="pilcrow">¶</a></p>
+      not yet provide a DMSC carrier or conserved-admission mechanism. Its
+      current local evidence and presentation identifiers are not the absolute
+      URIs required by this revision.<a href="#appendix-B-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="authors-addresses">

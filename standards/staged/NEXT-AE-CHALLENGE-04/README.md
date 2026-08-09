@@ -6,8 +6,8 @@ upload source for the next revision is:
 
 `UPLOAD-THIS/draft-schrock-ae-challenge-04.xml`
 
-Revision -04 is a substantive protocol update based on public Agent2Agent
-review from Sumit P. Ahuja and Guigui Wang.
+Revision -04 is a substantive protocol update based on public Agent2Agent and
+AgentProto review from Sumit P. Ahuja, Guigui Wang, and Henri Sirkkavaara.
 
 The transport-neutral core adds optional `retry_timing` with an absolute
 `not_before` lower bound and an optional `jitter_sec` interval. A presenter
@@ -30,4 +30,13 @@ presented evidence is sufficient.
 
 The DMSC boundary from -03 is preserved: AE-CHALLENGE communicates evidence
 requirements but does not transfer admission ownership or prevent
-cross-gateway double admission.
+cross-gateway double admission. The separate handoff requirement is stated as
+conservation of committed capacity under every admission and release
+interleaving, not as an ordering contest between gateways.
+
+Identifier governance and replay ordering are now closed rather than left as
+open questions. Evidence-type, action-profile, and presentation-profile
+identifiers are absolute URIs. Action agreement is checked before expiry and
+atomic nonce consumption. A concurrent duplicate arriving after consumption
+starts is refused as replay even while the first evidence evaluation remains
+in flight; it cannot trigger a second evaluation or admission.
