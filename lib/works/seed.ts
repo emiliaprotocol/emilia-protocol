@@ -262,7 +262,7 @@ export const SEED_CARDS: CapabilityCardRecord[] = [
     builder_id: 'emilia-protocol-maintainers',
     listing_id: 'ep-conformance-catalog',
     claim: {
-      statement: 'A maintainer run of `npm run check:public-conformance-claims` at this revision reported PASS: 21 suites, 331 vectors, 359 external hostility cases; 8755 automated test cases across 521 files.',
+      statement: 'A maintainer run of `npm run check:public-conformance-claims` at this revision reported PASS: 21 suites, 331 vectors, 359 external hostility cases; 8850 automated test cases across 532 files.',
       status: 'ASSERTED',
       scope: `scripts/check-public-conformance-claims.mjs at revision ${REV_SHORT} of emiliaprotocol/emilia-protocol`,
       source: {
