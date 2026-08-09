@@ -50,6 +50,12 @@ const ROUTE_POLICIES = {
   'POST /api/arena/sessions/*/attempts/*/publish': { rateCategory: 'submit', useAuth: false },
   'GET /api/arena/refusals/*':                   { rateCategory: 'public_verify', useAuth: false },
 
+  // Watch It Refuse public demo (flag-gated: the routes 404 unless
+  // WATCH_IT_REFUSE=1). Evaluation is anonymous and synthetic — no credential
+  // exists, so the edge key stays IP-only. The OG card render is a read.
+  'POST /api/refuse/evaluate':                   { rateCategory: 'submit', useAuth: false },
+  'GET /api/refuse/og':                          { rateCategory: 'read', useAuth: false },
+
   // Public Agent Adoption challenge. Session creation is anonymous; every
   // later mutation authenticates a dedicated eaa1_ capability in-route. Keep
   // edge limits IP-scoped so attacker-chosen bearer text cannot mint arbitrary

@@ -13,14 +13,14 @@ const API_DIR = path.join(ROOT, 'app', 'api');
 const MIDDLEWARE_PATH = path.join(ROOT, 'middleware.ts');
 const OPENAPI_PATH = path.join(ROOT, 'openapi.yaml');
 
-/** Read all `route.js`/`route.ts` files under app/api/ and return their API paths. */
+/** Read all `route.js`/`route.ts`/`route.tsx` files under app/api/ and return their API paths. */
 function discoverRouteFiles() {
-  const files = fg.sync('app/api/**/route.{js,ts}', { cwd: ROOT });
+  const files = fg.sync('app/api/**/route.{js,ts,tsx}', { cwd: ROOT });
   return files.map((f) => {
     // app/api/disputes/[disputeId]/adjudicate/route.js -> /api/disputes/[disputeId]/adjudicate
     const relative = f
       .replace(/^app/, '')
-      .replace(/\/route\.(js|ts)$/, '');
+      .replace(/\/route\.(js|tsx?)$/, '');
     return { file: f, apiPath: relative };
   });
 }
@@ -236,6 +236,10 @@ const OPENAPI_EXEMPTIONS = [
   // ingest them as first-class API.
   '/api/demo/trust-receipts/[receiptId]/evidence',
   '/api/demo/crash/[scenarioId]',
+  // Watch It Refuse public demo (flag-gated 404 unless WATCH_IT_REFUSE=1).
+  // Serves only synthetic demo-marked artifacts; not a protocol API surface.
+  '/api/refuse/evaluate',
+  '/api/refuse/og',
   // AI Trust Desk — product surface (not the EP protocol API). intake is
   // a public form POST (rate-limited in middleware.js ROUTE_POLICIES);
   // status + verify are read endpoints; the monitor is a Vercel cron.

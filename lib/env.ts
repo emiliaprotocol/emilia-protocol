@@ -464,6 +464,16 @@ export function isPublicEntityRegistrationEnabled(): boolean {
 }
 
 /**
+ * "Watch It Refuse" public demo surface (/refuse + /api/refuse/*).
+ * Entirely absent (404) unless the operator explicitly enables it. The demo
+ * evaluates real refusal/authorization decisions over synthetic demo
+ * artifacts; it never executes any action and never touches production keys.
+ */
+export function isWatchItRefuseEnabled(): boolean {
+  return process.env.WATCH_IT_REFUSE === '1';
+}
+
+/**
  * Assurance-tier quorum enforcement at consume. A 'dual' value tier (e.g.
  * payment >= $1M) requires TWO distinct, individually-authorized Class-A
  * approvals before consume, not one. Default ON (fail-closed): a receipt the

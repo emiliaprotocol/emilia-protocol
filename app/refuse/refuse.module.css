@@ -1,0 +1,623 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Watch It Refuse — imagery-led editorial on solid ink. One accent (gold),
+   high contrast, no glass, no glow, no gradients-as-decoration. */
+
+.page {
+  --wir-ink: #0c0a09;
+  --wir-ink-2: #151210;
+  --wir-card: #1c1917;
+  --wir-line: #2e2925;
+  --wir-paper: #fafaf9;
+  --wir-muted: #a8a29e;
+  --wir-dim: #78716c;
+  --wir-gold: #b08d35;
+  --wir-red: #dc2626;
+  --wir-green: #16a34a;
+  min-height: 100vh;
+  background: var(--wir-ink);
+  color: var(--wir-paper);
+  font-family: var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif);
+}
+
+.page,
+.page *,
+.page *::before,
+.page *::after {
+  box-sizing: border-box;
+}
+
+.page h1,
+.page p,
+.page ul {
+  margin: 0;
+}
+
+.page code {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 0.92em;
+  color: var(--wir-paper);
+  word-break: break-all;
+}
+
+/* ── Hero ─────────────────────────────────────────────────── */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+  align-items: center;
+  gap: clamp(24px, 5vw, 80px);
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: clamp(56px, 9vh, 120px) 0 clamp(32px, 5vh, 64px);
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.eyebrow {
+  color: var(--wir-gold);
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+}
+
+.headline {
+  font-size: clamp(44px, 7.2vw, 92px);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.headlineAccent {
+  color: var(--wir-gold);
+}
+
+.sub {
+  max-width: 520px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--wir-muted);
+}
+
+.noEffect {
+  display: inline-block;
+  width: fit-content;
+  border-left: 3px solid var(--wir-gold);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--wir-paper);
+  background: var(--wir-ink-2);
+}
+
+.heroArt {
+  min-width: 0;
+}
+
+.heroArt img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* The asset is ink-on-ink; it sits on the page surface with no framing. */
+}
+
+/* ── Console ──────────────────────────────────────────────── */
+
+.console {
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 8px 0 56px;
+}
+
+.inputRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inputLabel {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+  color: var(--wir-muted);
+}
+
+.inputShell {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.input {
+  flex: 1 1 380px;
+  min-width: 0;
+  padding: 18px 20px;
+  font: inherit;
+  font-size: 19px;
+  color: var(--wir-paper);
+  background: var(--wir-ink-2);
+  border: 1px solid var(--wir-line);
+  border-radius: 4px;
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--wir-dim);
+}
+
+.input:focus {
+  border-color: var(--wir-gold);
+}
+
+.runButton,
+.approveButton {
+  padding: 18px 28px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--wir-ink);
+  background: var(--wir-gold);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.runButton:hover,
+.approveButton:hover {
+  background: #c9a24a;
+}
+
+.runButton:disabled,
+.approveButton:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.example {
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--wir-muted);
+  background: transparent;
+  border: 1px solid var(--wir-line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.example:hover {
+  color: var(--wir-paper);
+  border-color: var(--wir-gold);
+}
+
+.example:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.error {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--wir-red);
+}
+
+/* ── Stage (acts) ─────────────────────────────────────────── */
+
+.stage {
+  width: min(920px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 24px 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lifecycleTitle {
+  padding: 26px 0 10px;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+  color: var(--wir-gold);
+  border-top: 1px solid var(--wir-line);
+}
+
+.act {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 18px;
+  padding: 22px 24px;
+  background: var(--wir-card);
+  border: 1px solid var(--wir-line);
+  border-radius: 6px;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+
+.actVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.actIndex {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--wir-gold);
+  line-height: 1;
+  padding-top: 2px;
+}
+
+.actBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.actKicker {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: var(--wir-muted);
+}
+
+.proposedText {
+  font-size: clamp(22px, 3.4vw, 34px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.actMeta {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--wir-muted);
+}
+
+.actMeta strong {
+  color: var(--wir-paper);
+  font-weight: 600;
+}
+
+.dim {
+  color: var(--wir-dim);
+}
+
+.caid {
+  padding: 12px 14px;
+  background: var(--wir-ink);
+  border: 1px solid var(--wir-line);
+  border-radius: 4px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.reqList {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.reqList li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--wir-line);
+}
+
+.reqList li:last-child {
+  border-bottom: none;
+}
+
+.reqLabel {
+  flex: 0 0 auto;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--wir-paper);
+}
+
+.reqDetail {
+  font-size: 13.5px;
+  color: var(--wir-muted);
+  text-align: right;
+}
+
+/* ── Tags ─────────────────────────────────────────────────── */
+
+.tag {
+  display: inline-block;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.tag_ok {
+  color: var(--wir-green);
+  border: 1px solid var(--wir-green);
+}
+
+.tag_fail {
+  color: var(--wir-red);
+  border: 1px solid var(--wir-red);
+}
+
+.tag_none {
+  color: var(--wir-red);
+  border: 1px solid var(--wir-red);
+}
+
+.tag_wait {
+  color: var(--wir-muted);
+  border: 1px solid var(--wir-line);
+}
+
+/* ── Verdict ──────────────────────────────────────────────── */
+
+.verdictCard {
+  padding: 26px 28px;
+  border-radius: 6px;
+  background: var(--wir-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.verdictRefused {
+  border: 1px solid var(--wir-red);
+  border-left-width: 6px;
+}
+
+.verdictWord {
+  font-size: clamp(40px, 6vw, 68px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--wir-red);
+}
+
+.verdictWordSmall {
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--wir-red);
+}
+
+.verdictCode {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 13px;
+  color: var(--wir-muted);
+}
+
+.verdictPlain {
+  font-size: 16.5px;
+  line-height: 1.55;
+  color: var(--wir-paper);
+  max-width: 640px;
+}
+
+/* ── Ceremony ─────────────────────────────────────────────── */
+
+.followUp {
+  padding-top: 6px;
+}
+
+.ceremonyCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 26px 28px;
+  background: var(--wir-card);
+  border: 1px solid var(--wir-gold);
+  border-radius: 6px;
+}
+
+.ceremonyLead {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--wir-paper);
+  max-width: 640px;
+}
+
+.ceremonyNotice {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--wir-muted);
+  border-left: 3px solid var(--wir-gold);
+  padding-left: 12px;
+  max-width: 640px;
+}
+
+.approveButton {
+  width: fit-content;
+}
+
+/* ── Share ────────────────────────────────────────────────── */
+
+.shareSection {
+  width: min(920px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 40px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shareCaption {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+  max-width: 680px;
+}
+
+.shareCardShell {
+  border: 1px solid var(--wir-line);
+  border-radius: 6px;
+  overflow: hidden;
+  max-width: 720px;
+}
+
+.shareCard {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.shareActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.shareDownload {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wir-gold);
+  text-decoration: none;
+  border-bottom: 1px solid var(--wir-gold);
+  padding-bottom: 2px;
+}
+
+.resetButton {
+  padding: 12px 18px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wir-muted);
+  background: transparent;
+  border: 1px solid var(--wir-line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.resetButton:hover {
+  color: var(--wir-paper);
+  border-color: var(--wir-dim);
+}
+
+/* ── Raw evidence ─────────────────────────────────────────── */
+
+.rawSection {
+  width: min(920px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 24px 0 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.raw {
+  border: 1px solid var(--wir-line);
+  border-radius: 6px;
+  background: var(--wir-ink-2);
+}
+
+.raw summary {
+  cursor: pointer;
+  padding: 16px 20px;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--wir-muted);
+}
+
+.raw[open] summary {
+  border-bottom: 1px solid var(--wir-line);
+  color: var(--wir-paper);
+}
+
+.rawNote {
+  padding: 14px 20px 0;
+  font-size: 13px;
+  color: var(--wir-muted);
+}
+
+.raw pre {
+  margin: 0;
+  padding: 16px 20px 20px;
+  overflow-x: auto;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--wir-muted);
+}
+
+.footNotice {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wir-dim);
+  letter-spacing: 0.4px;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .hero {
+    grid-template-columns: 1fr;
+    padding-top: 48px;
+  }
+
+  .heroArt {
+    order: -1;
+  }
+
+  .act {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .actIndex {
+    font-size: 18px;
+  }
+
+  .reqList li {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .reqDetail {
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .act {
+    transition: none;
+    transform: none;
+  }
+}

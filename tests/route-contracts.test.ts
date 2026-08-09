@@ -35,7 +35,7 @@ function openapiPathToRouteFile(apiPath) {
 function findRouteFile(routePath) {
   const parts = routePath.split('/').filter(Boolean);
   const candidates = resolvePathParts(join(ROOT, 'app'), parts);
-  return candidates.some(dir => existsSync(join(dir, 'route.js')) || existsSync(join(dir, 'route.ts')));
+  return candidates.some(dir => existsSync(join(dir, 'route.js')) || existsSync(join(dir, 'route.ts')) || existsSync(join(dir, 'route.tsx')));
 }
 
 function resolvePathParts(base, parts) {

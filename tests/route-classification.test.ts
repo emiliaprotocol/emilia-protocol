@@ -37,7 +37,7 @@ function walk(dir, acc = []) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, e.name);
     if (e.isDirectory()) walk(p, acc);
-    else if (e.name === 'route.js' || e.name === 'route.ts') acc.push(p);
+    else if (e.name === 'route.js' || e.name === 'route.ts' || e.name === 'route.tsx') acc.push(p);
   }
   return acc;
 }
