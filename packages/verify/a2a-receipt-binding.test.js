@@ -64,7 +64,7 @@ function fixture() {
     const task = {
         id: 'task-server-0001',
         contextId: 'context-server-0001',
-        status: { state: 'TASK_STATE_INPUT_REQUIRED', timestamp: '2026-08-06T17:58:30.000Z' },
+        status: { state: 'TASK_STATE_AUTH_REQUIRED', timestamp: '2026-08-06T17:58:30.000Z' },
     };
     const proofMessage = {
         messageId: 'msg-proof-0001',

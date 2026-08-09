@@ -80,7 +80,7 @@
         "task": {
           "id": "task-bindings-001",
           "contextId": "context-bindings-001",
-          "status": { "state": "TASK_STATE_INPUT_REQUIRED" }
+          "status": { "state": "TASK_STATE_AUTH_REQUIRED" }
         },
         "message": {
           "messageId": "message-proof-bindings-001",
