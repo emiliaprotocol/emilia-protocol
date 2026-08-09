@@ -36,7 +36,7 @@ test.describe('Homepage', () => {
   test('technical foundation and enforcement invariant are visible', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: 'Let agents act. Keep authority exact.' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'Set authority once. Let agents work.' })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByText('Required evidence verifies—or the mutation stays locked.', { exact: true })).toBeVisible({
