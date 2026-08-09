@@ -11,6 +11,19 @@
     "consume one authorization at most once",
     "after dispatch without a proved outcome, report INDETERMINATE and do not retry blindly"
   ],
+  "detached_evidence": {
+    "lookup": "attempt reference plus exact-action digest",
+    "request_instance_binding": "authenticated-conduit-context-plus-attempt-reference",
+    "digest_is_secret": false,
+    "repeated_action_rule": "two authorizations for the same action use distinct attempt references",
+    "failure_domain": "attempt holder and authoritative consumption record are conduit-owned",
+    "equivalence_boundary": "inline and detached modes can provide equivalent agreement, verification, and consumption; request-instance binding depends on the secure channel or authenticated conduit context plus attempt reference"
+  },
+  "freshness": {
+    "clock": "conduit-owned",
+    "rule": "the conduit evaluates the authorization validity window immediately before admission",
+    "short_window_is_not_reconciliation": true
+  },
   "vectors": [
     {
       "id": "modbus-write-single-register-v1",
@@ -30,10 +43,10 @@
         "device": "ep:device:plc-3",
         "unit_id": 3,
         "function_code": 6,
-        "register": 40001,
+        "protocol_address": 0,
         "value": 1
       },
-      "action_digest": "sha256:9b4ae0e591e52a464a0076efdbdcbb6870302c4b337797a21e3e2fc53bf56134",
+      "action_digest": "sha256:fa7748a3d69bfbe4a47ca6cff90a4ea0cc35ecb006774c9900b245c62447db26",
       "native_command": {
         "transport": "modbus-tcp",
         "hex": "000100000006030600000001",
@@ -41,6 +54,10 @@
         "protocol_address": 0,
         "metadata_octets_available": 0,
         "carries_authorization": false
+      },
+      "display_metadata": {
+        "register_label": "40001",
+        "note": "Convention-dependent operator display only; excluded from the action digest."
       },
       "correlation_variant": {
         "native_command": {
@@ -51,27 +68,65 @@
           "metadata_octets_available": 0,
           "carries_authorization": false
         },
-        "expected_action_digest": "sha256:9b4ae0e591e52a464a0076efdbdcbb6870302c4b337797a21e3e2fc53bf56134",
+        "expected_action_digest": "sha256:fa7748a3d69bfbe4a47ca6cff90a4ea0cc35ecb006774c9900b245c62447db26",
         "note": "Changing only the MBAP transaction id does not change the physical act."
+      },
+      "field_census": {
+        "material": [
+          "unit_id",
+          "function_code",
+          "protocol_address",
+          "value"
+        ],
+        "conduit_context": [
+          "site",
+          "device"
+        ],
+        "correlation_only": [
+          "mbap.transaction_id"
+        ],
+        "fixed_or_derived": [
+          "mbap.protocol_id=0",
+          "mbap.length=6"
+        ]
+      },
+      "encoding_scope": {
+        "fc06_and_fc16_quantity_one_are_distinct": true,
+        "equivalent_effect_action": {
+          "action_type": "ot.modbus.write_multiple_registers",
+          "transport": "modbus-tcp",
+          "site": "ep:site:demo-lift-station",
+          "device": "ep:device:plc-3",
+          "unit_id": 3,
+          "function_code": 16,
+          "protocol_address": 0,
+          "quantity": 1,
+          "byte_count": 2,
+          "values": [
+            1
+          ]
+        },
+        "equivalent_effect_action_digest": "sha256:6b802c5e2cf9b9e55368a5358c55691f364ac64cc749c7ebf732fcd91b8bcbd2",
+        "note": "The profile binds native encoding and does not normalize FC 0x06 into FC 0x10 quantity one."
       },
       "negative_cases": [
         {
-          "field": "register",
-          "value": 40002,
+          "field": "protocol_address",
+          "value": 1,
           "expected": "different-action-digest",
-          "action_digest": "sha256:e3ffe515470e3231ed8b3a5f4e08996adb3f2cc863c59b80d14a7935d1afa678"
+          "action_digest": "sha256:913466057f1ebe59f78071701b005cf6dc7939d8edda6265701336753a32b0cc"
         },
         {
           "field": "value",
           "value": 0,
           "expected": "different-action-digest",
-          "action_digest": "sha256:932f91ad30ea8705732eff467e70bc99c6d38e85d00a8d1f2a4ea55b90383baf"
+          "action_digest": "sha256:477aea3933996c57eda0b2b8afb9aee4bd566f6525bd3308898c46ed22b06d12"
         },
         {
           "field": "unit_id",
           "value": 4,
           "expected": "different-action-digest",
-          "action_digest": "sha256:56a8afc73fdac8c3268d00ee9ba3aee806b8ed3847870126fb46ca51867b8009"
+          "action_digest": "sha256:5aeaf62db5bf494e891f679ddd0fe3423f7e918a32329ff17f0db28dbc1d37de"
         }
       ]
     },
@@ -92,13 +147,16 @@
         "site": "ep:site:demo-lift-station",
         "device": "ep:device:rtu-12",
         "outstation_address": 12,
+        "application_function": 5,
         "group": 12,
         "variation": 1,
         "index": 7,
-        "control_code": "LATCH_ON",
-        "count": 1
+        "control_octet": 3,
+        "operation_count": 1,
+        "on_time_ms": 0,
+        "off_time_ms": 0
       },
-      "action_digest": "sha256:3bd89e88e578362460b47366f9276506d1c22a113b3c763b4fa80ee09a77f179",
+      "action_digest": "sha256:307347d8dceae8464d8eadc76d50932116e6e20fe90687a56994881a0981cad1",
       "native_command": {
         "transport": "dnp3",
         "hex": "c0050c011701070301000000000000000000",
@@ -107,24 +165,102 @@
         "metadata_octets_available": 0,
         "carries_authorization": false
       },
+      "link_context": {
+        "fields": [
+          "site",
+          "device",
+          "outstation_address"
+        ],
+        "note": "The pinned bytes begin at the application header; the conduit establishes the link-layer outstation address."
+      },
+      "field_census": {
+        "material": [
+          "application_function",
+          "group",
+          "variation",
+          "index",
+          "control_octet",
+          "operation_count",
+          "on_time_ms",
+          "off_time_ms"
+        ],
+        "fixed_or_derived": [
+          "application_control sequence",
+          "qualifier=0x17",
+          "object_count=1",
+          "status=0"
+        ]
+      },
+      "profile_scope": {
+        "direct_operate_supported": true,
+        "direct_operate_no_ack_supported": true,
+        "select_operate_supported": false,
+        "select_operate_requirement": "A future profile must bind SELECT and OPERATE to one authorization and enforce the arm timer in one state machine."
+      },
+      "no_ack_variant": {
+        "action": {
+          "action_type": "ot.dnp3.control_relay_output_block",
+          "transport": "dnp3",
+          "site": "ep:site:demo-lift-station",
+          "device": "ep:device:rtu-12",
+          "outstation_address": 12,
+          "application_function": 6,
+          "group": 12,
+          "variation": 1,
+          "index": 7,
+          "control_octet": 3,
+          "operation_count": 1,
+          "on_time_ms": 0,
+          "off_time_ms": 0
+        },
+        "action_digest": "sha256:d51674c0773d6713f3a64b14376ac06aeaab9144decfb9d88126c30a1fa7e161",
+        "native_command": {
+          "transport": "dnp3",
+          "hex": "c0060c011701070301000000000000000000",
+          "octets": 18,
+          "crob_octets": 11,
+          "metadata_octets_available": 0,
+          "carries_authorization": false
+        },
+        "terminal_outcome": "INDETERMINATE",
+        "reason": "DIRECT_OPERATE_NR supplies no protocol acknowledgement."
+      },
       "negative_cases": [
         {
           "field": "index",
           "value": 8,
           "expected": "different-action-digest",
-          "action_digest": "sha256:9b2eb9a37a8ef0ecbb9278aad2c5c44bb8f7572f55138aac561265866941c2cf"
+          "action_digest": "sha256:6c4e33b8cf86b0e03198ccb6d248f59eaa1d0682992ef623a230681ae56a85f2"
         },
         {
-          "field": "control_code",
-          "value": "LATCH_OFF",
+          "field": "control_octet",
+          "value": 67,
           "expected": "different-action-digest",
-          "action_digest": "sha256:3f62c97058df4ad4c2c8858f2eab8c660bb0aa6815b9235e89e2074875b6e9ef"
+          "action_digest": "sha256:2878f01239eec563b3871dfd2342ff1edf10ce9a8b2e6e6c770f1102807a36cf"
+        },
+        {
+          "field": "on_time_ms",
+          "value": 100,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:27149be0faf41fe4e21aa4d68da3618bf2272b362432393b1d5b8674ac482378"
+        },
+        {
+          "field": "off_time_ms",
+          "value": 100,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:988d52b4c2d798e788e7b845f27ae1048a865f5c510846f279f1a33afd39cc90"
+        },
+        {
+          "field": "application_function",
+          "value": 6,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:d51674c0773d6713f3a64b14376ac06aeaab9144decfb9d88126c30a1fa7e161"
         },
         {
           "field": "outstation_address",
           "value": 13,
           "expected": "different-action-digest",
-          "action_digest": "sha256:e7b4211fab8b76fba8f355dc0646e1aa93d01eb1a2ca6988caf3f32a8d2f606b"
+          "action_digest": "sha256:169d99c62a16ca5e264f03319bec7c3a062afd2fe956dd979ddd228a3d0441af"
         }
       ]
     },

@@ -30,6 +30,7 @@ test('every pinned native command decodes to the action whose digest is publishe
   const modbusObserved = decodeModbusWriteRegister(modbus.native_command.hex, {
     site: modbus.action.site,
     device: modbus.action.device,
+    unit_id: modbus.action.unit_id,
   });
   const dnp3Observed = decodeDnp3ControlRelay(dnp3.native_command.hex, {
     site: dnp3.action.site,
@@ -58,9 +59,26 @@ test('every one-field negative case has a different action digest', () => {
 test('Modbus correlation changes native bytes without changing the action', () => {
   const vector = pinned.vectors.find((candidate: any) => candidate.id === 'modbus-write-single-register-v1');
   assert.notEqual(vector.native_command.hex, vector.correlation_variant.native_command.hex);
-  const link = { site: vector.action.site, device: vector.action.device };
+  const link = { site: vector.action.site, device: vector.action.device, unit_id: vector.action.unit_id };
   assert.equal(commandDigest(decodeModbusWriteRegister(vector.native_command.hex, link)), vector.action_digest);
   assert.equal(commandDigest(decodeModbusWriteRegister(vector.correlation_variant.native_command.hex, link)), vector.action_digest);
+});
+
+test('the pinned profiles state their normalization and request-instance boundaries', () => {
+  const modbus = pinned.vectors.find((candidate: any) => candidate.id === 'modbus-write-single-register-v1');
+  const dnp3 = pinned.vectors.find((candidate: any) => candidate.id === 'dnp3-direct-operate-crob-v1');
+  assert.equal(modbus.action.protocol_address, 0);
+  assert.equal(Object.hasOwn(modbus.action, 'register'), false);
+  assert.equal(modbus.encoding_scope.fc06_and_fc16_quantity_one_are_distinct, true);
+  assert.equal(dnp3.action.application_function, 5);
+  assert.equal(dnp3.action.control_octet, 3);
+  assert.equal(dnp3.action.operation_count, 1);
+  assert.equal(dnp3.action.on_time_ms, 0);
+  assert.equal(dnp3.action.off_time_ms, 0);
+  assert.equal(dnp3.profile_scope.select_operate_supported, false);
+  assert.equal(pinned.detached_evidence.request_instance_binding, 'authenticated-conduit-context-plus-attempt-reference');
+  assert.equal(pinned.detached_evidence.digest_is_secret, false);
+  assert.equal(pinned.freshness.clock, 'conduit-owned');
 });
 
 test('the OPC-UA vector demonstrates carriage but never pretends its reference is authorization', () => {

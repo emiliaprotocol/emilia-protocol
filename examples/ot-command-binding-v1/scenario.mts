@@ -55,7 +55,7 @@ const SITE = 'ep:site:demo-lift-station';
 
 /** Link facts each enforcement point owns because it terminates the connection. */
 const LINKS = Object.freeze({
-  'modbus-tcp': Object.freeze({ site: SITE, device: 'ep:device:plc-3' }),
+  'modbus-tcp': Object.freeze({ site: SITE, device: 'ep:device:plc-3', unit_id: 3 }),
   dnp3: Object.freeze({ site: SITE, device: 'ep:device:rtu-12', outstation_address: 12 }),
   'opc-ua': Object.freeze({ site: SITE, device: 'ep:device:dcs-1' }),
 });
@@ -63,14 +63,18 @@ const LINKS = Object.freeze({
 /** The one exact command per transport this lab authorizes. */
 export const EXACT_COMMANDS = Object.freeze({
   'modbus-tcp': modbusWriteRegisterAction({
-    ...LINKS['modbus-tcp'], unitId: 3, register: 40001, value: 1,
+    ...LINKS['modbus-tcp'], unitId: 3, protocolAddress: 0, value: 1,
   }),
   dnp3: dnp3ControlRelayAction({
     site: LINKS.dnp3.site,
     device: LINKS.dnp3.device,
     outstationAddress: LINKS.dnp3.outstation_address,
     index: 7,
-    controlCode: 'LATCH_ON',
+    applicationFunction: 5,
+    controlOctet: 0x03,
+    operationCount: 1,
+    onTimeMs: 0,
+    offTimeMs: 0,
   }),
   'opc-ua': opcuaCallMethodAction({
     ...LINKS['opc-ua'],
@@ -88,13 +92,12 @@ const SELECTORS = Object.freeze({
 });
 
 const WHY = Object.freeze({
-  'modbus-tcp': 'Writes a physical setpoint. Bind the exact unit, register, and value; Class-A human key.',
-  dnp3: 'Operates a physical relay. Bind the exact outstation, point index, and control code; Class-A human key.',
+  'modbus-tcp': 'Writes a physical setpoint. Bind the exact unit, wire address, native function, and value; Class-A human key.',
+  dnp3: 'Operates a physical relay. Bind the exact outstation, application function, point, complete control octet, count, and timing; Class-A human key.',
   'opc-ua': 'Changes a process interlock. Bind the exact node, method, and argument; Class-A human key.',
 });
 
-function actionPackEntry(transport: string): any {
-  const action = EXACT_COMMANDS[transport];
+function actionPackEntry(transport: string, action: any = EXACT_COMMANDS[transport]): any {
   return Object.freeze({
     id: `ot.${transport}.guarded`,
     label: `${transport} control command`,
@@ -133,24 +136,52 @@ const TRANSPORT_OPS: Record<string, any> = Object.freeze({
 
 /**
  * The out-of-band authorization holder. Modbus and DNP3 cannot carry an
- * authorization on the wire, so the enforcement point keeps it here, keyed by
- * the canonical digest of the exact command. `hashCanonical` is the gate's own
- * function, so this index is keyed by exactly what the gate records as
- * `observed_action_hash`.
+ * authorization on the wire, so the conduit supplies an attempt reference from
+ * its authenticated request context. The holder resolves that reference only
+ * when its stored exact-action digest matches the command decoded from the
+ * wire. The digest is not secret and is not a request-instance identifier.
+ *
+ * This lets two legitimate authorizations for the same action coexist. The
+ * gate's consumption store remains authoritative for single use and lives in
+ * the same conduit failure domain as this holder.
  */
-export function createOutOfBandAuthorizationIndex(): any {
-  const byDigest = new Map<string, any>();
+export function createOutOfBandAuthorizationIndex({ defaultRequestContext = null }: any = {}): any {
+  const byAttempt = new Map<string, any>();
   return {
-    hold(action: any, receipt: any) {
+    hold(action: any, receipt: any, {
+      attemptRef = receipt?.payload?.receipt_id,
+      requestContext = defaultRequestContext,
+    }: any = {}) {
       const digest = commandDigestHex(action);
-      byDigest.set(digest, receipt);
-      return digest;
+      requireAttemptRef(attemptRef);
+      requireRequestContext(requestContext);
+      if (byAttempt.has(attemptRef)) throw new TypeError('attempt reference already held');
+      byAttempt.set(attemptRef, Object.freeze({ digest, receipt, requestContext }));
+      return Object.freeze({ attempt_ref: attemptRef, action_digest: digest });
     },
-    lookup(digest: string) {
-      return byDigest.get(digest) ?? null;
+    lookup(attemptRef: string | null, digest: string, requestContext = defaultRequestContext) {
+      if (!attemptRef) return null;
+      const held = byAttempt.get(attemptRef);
+      return held?.digest === digest && held?.requestContext === requestContext
+        ? held.receipt
+        : null;
     },
-    get size() { return byDigest.size; },
+    get size() { return byAttempt.size; },
   };
+}
+
+function requireAttemptRef(value: any): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError('attempt reference must be a non-empty string');
+  }
+  return value;
+}
+
+function requireRequestContext(value: any): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError('request context must be a non-empty string');
+  }
+  return value;
 }
 
 /** A device that records what it was told to do and can be made to go quiet. */
@@ -182,11 +213,14 @@ function createDevice(): any {
  * manifest, its own pinned issuer and approver keys, its own consumption store,
  * its own evidence log.
  */
-export function createEnforcementPoint(transport: string, { startMs = T0 }: any = {}): any {
+export function createEnforcementPoint(transport: string, {
+  startMs = T0,
+  action = EXACT_COMMANDS[transport],
+}: any = {}): any {
   const clock = { ms: startMs };
   const now = () => clock.ms;
   const harness = createEg1Harness({
-    action: EXACT_COMMANDS[transport] as any,
+    action: action as any,
     idPrefix: `ot_${transport.replace(/-/g, '_')}`,
     now,
   });
@@ -194,7 +228,7 @@ export function createEnforcementPoint(transport: string, { startMs = T0 }: any 
   const consumption = createDurableConsumptionStore(backend);
   const evidenceLog = createEvidenceLog({ strict: true });
   const gate = createGate({
-    manifest: manifestFromPack([actionPackEntry(transport)]),
+    manifest: manifestFromPack([actionPackEntry(transport, action)]),
     trustedKeys: [harness.publicKey],
     approverKeys: harness.approverKeys,
     rpId: harness.rpId,
@@ -209,7 +243,11 @@ export function createEnforcementPoint(transport: string, { startMs = T0 }: any 
     allowEphemeralStore: true,
   });
   const device = createDevice();
-  const index = createOutOfBandAuthorizationIndex();
+  // Synthetic stand-in for a conduit-owned authenticated request/session
+  // identity. The example models the binding; it does not implement channel
+  // authentication.
+  const attemptContext = `${transport}:authenticated-session:synthetic-1`;
+  const index = createOutOfBandAuthorizationIndex({ defaultRequestContext: attemptContext });
 
   return {
     transport,
@@ -220,11 +258,12 @@ export function createEnforcementPoint(transport: string, { startMs = T0 }: any 
     evidenceLog,
     device,
     index,
+    attempt_context: attemptContext,
     profile: TRANSPORT_PROFILES[transport],
     selector: SELECTORS[transport],
     link: LINKS[transport],
-    requirement: actionPackEntry(transport),
-    action: EXACT_COMMANDS[transport],
+    requirement: actionPackEntry(transport, action),
+    action,
     advanceSeconds(seconds: number) { clock.ms += seconds * 1000; },
     /** Mint an operator authorization for this enforcement point's exact command. */
     authorize() { return harness.mint({ outcome: 'allow_with_signoff' }); },
@@ -238,7 +277,13 @@ export function createEnforcementPoint(transport: string, { startMs = T0 }: any 
  * it. The observed action is always decoded from the wire plus the link facts;
  * the caller's description of the command is never a trust source.
  */
-async function dispatch(point: any, { action, receipt, encodeOptions = {} }: any): Promise<any> {
+async function dispatch(point: any, {
+  action,
+  receipt,
+  attemptRef = receipt?.payload?.receipt_id ?? null,
+  attemptContext = point.attempt_context,
+  encodeOptions = {},
+}: any): Promise<any> {
   const ops = TRANSPORT_OPS[point.transport];
   const inline = point.profile.carries_authorization_inline;
   const encoded = ops.encode(action, inline ? { ...encodeOptions, receipt } : encodeOptions);
@@ -248,7 +293,7 @@ async function dispatch(point: any, { action, receipt, encodeOptions = {} }: any
   const observedDigest = commandDigestHex(observedAction);
   const presented = inline
     ? ops.inlineAuthorization(wire)
-    : point.index.lookup(observedDigest);
+    : point.index.lookup(attemptRef, observedDigest, attemptContext);
 
   const before = point.device.commandCount;
   let outcome: any;
@@ -256,7 +301,15 @@ async function dispatch(point: any, { action, receipt, encodeOptions = {} }: any
   try {
     outcome = await point.gate.run(
       { selector: { ...point.selector }, receipt: presented, observedAction },
-      async () => point.device.apply(observedAction),
+      async () => {
+        const result = await point.device.apply(observedAction);
+        if (point.transport === 'dnp3' && observedAction.application_function === 6) {
+          const error: any = new Error('dnp3_direct_operate_no_ack');
+          error.code = 'DNP3_DIRECT_OPERATE_NO_ACK';
+          throw error;
+        }
+        return result;
+      },
     );
   } catch (error: any) {
     if (error?.code !== 'EMILIA_GATE_TERMINAL_OUTCOME') throw error;
@@ -275,6 +328,7 @@ async function dispatch(point: any, { action, receipt, encodeOptions = {} }: any
     observed_digest: `sha256:${observedDigest}`,
     authorization_carried_inline: inline && Boolean(presented),
     authorization_presented: Boolean(presented),
+    attempt_ref: inline ? null : attemptRef,
     ok: Boolean(outcome?.ok),
     reason: terminal ? terminal.emiliaGateOutcome.reason : (outcome?.authorization?.reason ?? null),
     status: terminal ? null : (outcome?.status ?? 200),
@@ -300,17 +354,17 @@ function driftVariants(transport: string): any[] {
   const base = EXACT_COMMANDS[transport];
   if (transport === 'modbus-tcp') {
     return [
-      { field: 'register', note: 'the adjacent holding register', action: modbusWriteRegisterAction({ ...LINKS['modbus-tcp'], unitId: 3, register: 40002, value: 1 }) },
-      { field: 'value', note: 'the opposite setpoint', action: modbusWriteRegisterAction({ ...LINKS['modbus-tcp'], unitId: 3, register: 40001, value: 0 }) },
-      { field: 'unit_id', note: 'the neighbouring unit on the same link', action: modbusWriteRegisterAction({ ...LINKS['modbus-tcp'], unitId: 4, register: 40001, value: 1 }) },
+      { field: 'protocol_address', note: 'the adjacent on-wire holding-register address', action: modbusWriteRegisterAction({ ...LINKS['modbus-tcp'], unitId: 3, protocolAddress: 1, value: 1 }) },
+      { field: 'value', note: 'the opposite setpoint', action: modbusWriteRegisterAction({ ...LINKS['modbus-tcp'], unitId: 3, protocolAddress: 0, value: 0 }) },
+      { field: 'unit_id', note: 'the neighbouring unit on the same link', action: modbusWriteRegisterAction({ ...LINKS['modbus-tcp'], unitId: 4, protocolAddress: 0, value: 1 }) },
     ];
   }
   if (transport === 'dnp3') {
     const link = LINKS.dnp3;
     return [
-      { field: 'index', note: 'the adjacent point index', action: dnp3ControlRelayAction({ site: link.site, device: link.device, outstationAddress: link.outstation_address, index: 8, controlCode: 'LATCH_ON' }) },
-      { field: 'control_code', note: 'the opposite control code', action: dnp3ControlRelayAction({ site: link.site, device: link.device, outstationAddress: link.outstation_address, index: 7, controlCode: 'LATCH_OFF' }) },
-      { field: 'outstation_address', note: 'a different outstation', action: dnp3ControlRelayAction({ site: link.site, device: link.device, outstationAddress: 13, index: 7, controlCode: 'LATCH_ON' }) },
+      { field: 'index', note: 'the adjacent point index', action: dnp3ControlRelayAction({ site: link.site, device: link.device, outstationAddress: link.outstation_address, index: 8, applicationFunction: 5, controlOctet: 0x03, operationCount: 1, onTimeMs: 0, offTimeMs: 0 }) },
+      { field: 'control_octet', note: 'a different complete CROB control field', action: dnp3ControlRelayAction({ site: link.site, device: link.device, outstationAddress: link.outstation_address, index: 7, applicationFunction: 5, controlOctet: 0x04, operationCount: 1, onTimeMs: 0, offTimeMs: 0 }) },
+      { field: 'outstation_address', note: 'a different outstation', action: dnp3ControlRelayAction({ site: link.site, device: link.device, outstationAddress: 13, index: 7, applicationFunction: 5, controlOctet: 0x03, operationCount: 1, onTimeMs: 0, offTimeMs: 0 }) },
     ];
   }
   return [
@@ -405,9 +459,13 @@ async function sceneAuthorized(): Promise<any> {
     const point = createEnforcementPoint(transport);
     const authorization = point.authorize();
     const inline = point.profile.carries_authorization_inline;
-    const heldDigest = inline ? null : point.index.hold(point.action, authorization);
+    const held = inline ? null : point.index.hold(point.action, authorization);
 
-    const result = await dispatch(point, { action: point.action, receipt: authorization });
+    const result = await dispatch(point, {
+      action: point.action,
+      receipt: authorization,
+      attemptRef: held?.attempt_ref,
+    });
 
     // The same artifact, re-verified by the standalone offline verifier package
     // with nothing but the pinned issuer public key. No gate, no store, no log.
@@ -417,7 +475,8 @@ async function sceneAuthorized(): Promise<any> {
       transport,
       binding_mode: point.profile.binding_mode,
       authorization_carried_inline: result.authorization_carried_inline,
-      out_of_band_key: heldDigest ? `sha256:${heldDigest}` : null,
+      out_of_band_key: held ? `sha256:${held.action_digest}` : null,
+      out_of_band_attempt_ref: held?.attempt_ref ?? null,
       wire_octets: result.encoded.octets,
       authorization_octets_on_wire: result.encoded.authorization_octets ?? 0,
       allowed: result.ok,
@@ -462,18 +521,28 @@ async function sceneDriftRefused(): Promise<any> {
       const authorization = point.authorize();
       // The operator authorized the exact command; the index is keyed by that
       // command's digest, so a drifted command finds no authorization at all.
-      point.index.hold(point.action, authorization);
+      const exactHeld = point.index.hold(point.action, authorization);
       // Hand the drifted command the authorization anyway, so the refusal is
       // the action binding refusing and not a lookup miss.
-      point.index.hold(variant.action, authorization);
+      const driftHeld = point.index.hold(variant.action, authorization, {
+        attemptRef: `${authorization.payload.receipt_id}:drift:${variant.field}`,
+      });
 
-      const drifted = await dispatch(point, { action: variant.action, receipt: authorization });
+      const drifted = await dispatch(point, {
+        action: variant.action,
+        receipt: authorization,
+        attemptRef: driftHeld.attempt_ref,
+      });
       const receiptId = authorization.payload.receipt_id;
       const storeAfterDrift = await point.storeState(receiptId);
 
       // The refusal did not burn the operator's approval: the exact command
       // still goes through afterwards.
-      const honest = await dispatch(point, { action: point.action, receipt: authorization });
+      const honest = await dispatch(point, {
+        action: point.action,
+        receipt: authorization,
+        attemptRef: exactHeld.attempt_ref,
+      });
 
       cases.push({
         transport,
@@ -503,7 +572,7 @@ async function sceneDriftRefused(): Promise<any> {
     const authorization = point.authorize();
     point.index.hold(point.action, authorization);
     const variant = driftVariants(transport)[0];
-    const attempt = await dispatch(point, { action: variant.action, receipt: null });
+    const attempt = await dispatch(point, { action: variant.action, receipt: null, attemptRef: null });
     lookupMiss.push({
       transport,
       drifted_field: variant.field,
@@ -533,13 +602,13 @@ async function sceneUnresolvedAfterDispatch(): Promise<any> {
   const point = createEnforcementPoint('modbus-tcp');
   const authorization = point.authorize();
   const receiptId = authorization.payload.receipt_id;
-  point.index.hold(point.action, authorization);
+  const held = point.index.hold(point.action, authorization);
 
   // The command is accepted by the gate and reaches the PLC. The PLC then goes
   // quiet, so the acknowledgement never comes back. The effect may or may not
   // have landed, and nothing available to the enforcement point can tell.
   point.device.goQuiet();
-  const dispatched = await dispatch(point, { action: point.action, receipt: authorization });
+  const dispatched = await dispatch(point, { action: point.action, receipt: authorization, attemptRef: held.attempt_ref });
 
   const storeAfter = await point.storeState(receiptId);
   const executionRecords = point.evidenceLog.all().filter((record: any) => record.kind === 'execution');
@@ -549,7 +618,7 @@ async function sceneUnresolvedAfterDispatch(): Promise<any> {
   // a second time on an authorization whose outcome is unknown.
   const commandsBeforeRetry = point.device.commandCount;
   point.device.speakAgain();
-  const retry = await dispatch(point, { action: point.action, receipt: authorization });
+  const retry = await dispatch(point, { action: point.action, receipt: authorization, attemptRef: held.attempt_ref });
   const commandsAfterRetry = point.device.commandCount;
   const retryLeftDeviceUntouched = commandsAfterRetry === commandsBeforeRetry;
 
@@ -557,8 +626,32 @@ async function sceneUnresolvedAfterDispatch(): Promise<any> {
   // the device. Recovery is a human re-authorizing after reconciling what the
   // PLC actually did, which the gate admits as a new authorization.
   const reauthorization = point.authorize();
-  point.index.hold(point.action, reauthorization);
-  const reauthorized = await dispatch(point, { action: point.action, receipt: reauthorization });
+  const reauthorizedHeld = point.index.hold(point.action, reauthorization);
+  const reauthorized = await dispatch(point, { action: point.action, receipt: reauthorization, attemptRef: reauthorizedHeld.attempt_ref });
+
+  // DIRECT_OPERATE_NR (application function 6) intentionally has no protocol
+  // acknowledgement. The device is entered, but the conduit cannot report a
+  // proved outcome, so this is an ordinary INDETERMINATE terminal result.
+  const dnp3Base = EXACT_COMMANDS.dnp3;
+  const noAckAction = dnp3ControlRelayAction({
+    site: dnp3Base.site,
+    device: dnp3Base.device,
+    outstationAddress: dnp3Base.outstation_address,
+    index: dnp3Base.index,
+    applicationFunction: 6,
+    controlOctet: dnp3Base.control_octet,
+    operationCount: dnp3Base.operation_count,
+    onTimeMs: dnp3Base.on_time_ms,
+    offTimeMs: dnp3Base.off_time_ms,
+  });
+  const noAckPoint = createEnforcementPoint('dnp3', { action: noAckAction });
+  const noAckAuthorization = noAckPoint.authorize();
+  const noAckHeld = noAckPoint.index.hold(noAckAction, noAckAuthorization);
+  const noAck = await dispatch(noAckPoint, {
+    action: noAckAction,
+    receipt: noAckAuthorization,
+    attemptRef: noAckHeld.attempt_ref,
+  });
 
   return {
     id: 'unresolved-after-dispatch',
@@ -602,6 +695,13 @@ async function sceneUnresolvedAfterDispatch(): Promise<any> {
       device_entered: reauthorized.device_entered,
       device_command_count_after: point.device.commandCount,
     },
+    dnp3_direct_operate_no_ack: {
+      application_function: noAckAction.application_function,
+      device_entered: noAck.device_entered,
+      terminal_outcome: noAck.terminal_outcome,
+      reason: noAck.reason,
+      store_state: String(await noAckPoint.storeState(noAckAuthorization.payload.receipt_id)),
+    },
     device_command_count: commandsAfterRetry,
   };
 }
@@ -616,12 +716,12 @@ async function sceneSpentOnce(): Promise<any> {
   const spentPoint = createEnforcementPoint('modbus-tcp');
   const spent = spentPoint.authorize();
   const spentId = spent.payload.receipt_id;
-  spentPoint.index.hold(spentPoint.action, spent);
+  const spentHeld = spentPoint.index.hold(spentPoint.action, spent);
 
-  const firstUse = await dispatch(spentPoint, { action: spentPoint.action, receipt: spent });
+  const firstUse = await dispatch(spentPoint, { action: spentPoint.action, receipt: spent, attemptRef: spentHeld.attempt_ref });
   spentPoint.advanceSeconds(60);
   const commandsBeforeReplay = spentPoint.device.commandCount;
-  const replay = await dispatch(spentPoint, { action: spentPoint.action, receipt: spent });
+  const replay = await dispatch(spentPoint, { action: spentPoint.action, receipt: spent, attemptRef: spentHeld.attempt_ref });
 
   // Freshness checked on its own terms, by the receipt verifier, at the same
   // instant the gate refused the replay. The verifier knows nothing about
@@ -640,7 +740,7 @@ async function sceneSpentOnce(): Promise<any> {
   const stalePoint = createEnforcementPoint('modbus-tcp');
   const stale = stalePoint.authorize();
   const staleId = stale.payload.receipt_id;
-  stalePoint.index.hold(stalePoint.action, stale);
+  const staleHeld = stalePoint.index.hold(stalePoint.action, stale);
   stalePoint.advanceSeconds(MAX_AGE_SEC + 300);
   const storeBeforeStale = await stalePoint.storeState(staleId);
   const freshnessAtStaleUse = verifyEmiliaReceipt(stale, {
@@ -648,7 +748,7 @@ async function sceneSpentOnce(): Promise<any> {
     maxAgeSec: MAX_AGE_SEC,
     now: () => stalePoint.clock.ms,
   });
-  const staleUse = await dispatch(stalePoint, { action: stalePoint.action, receipt: stale });
+  const staleUse = await dispatch(stalePoint, { action: stalePoint.action, receipt: stale, attemptRef: staleHeld.attempt_ref });
 
   return {
     id: 'spent-once',

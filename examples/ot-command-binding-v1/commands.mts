@@ -96,18 +96,17 @@ function requireString(value: any, name: string): string {
 }
 
 /**
- * A Modbus write to one holding register.
+ * A Modbus FC 0x06 write to one holding-register protocol address.
  *
- * `register` is the operator-facing 4x reference an engineer reads off a point
- * list. This example maps it to the zero-based protocol address the frame
- * carries by subtracting 40001, and the decoder reverses that exact mapping, so
- * the reference and the address can never disagree inside one run.
+ * The digest binds the zero-based address carried on the wire. A site's
+ * operator-facing 4xxxxx label is convention-dependent display metadata and
+ * must not be substituted for the protocol address in the signed action.
  */
 export function modbusWriteRegisterAction({
   site,
   device,
   unitId,
-  register,
+  protocolAddress,
   value,
 }: any): any {
   return Object.freeze({
@@ -117,22 +116,60 @@ export function modbusWriteRegisterAction({
     device: requireString(device, 'device'),
     unit_id: requireSafeInt(unitId, 'unitId', 0, 247),
     function_code: 0x06,
-    register: requireSafeInt(register, 'register', 40001, 40001 + 0xffff),
+    protocol_address: requireSafeInt(protocolAddress, 'protocolAddress', 0, 0xffff),
     value: requireSafeInt(value, 'value', 0, 0xffff),
   });
 }
 
-/** A DNP3 direct-operate of one control relay output block (group 12, variation 1). */
+/**
+ * A Modbus FC 0x10 write-multiple-registers action.
+ *
+ * This is modeled so the profile can state its normalization choice: FC 0x06
+ * and FC 0x10 with quantity one can produce the same register effect, but this
+ * profile treats the native encodings as distinct authorities.
+ */
+export function modbusWriteMultipleRegistersAction({
+  site,
+  device,
+  unitId,
+  protocolAddress,
+  values,
+}: any): any {
+  if (!Array.isArray(values) || values.length < 1 || values.length > 123) {
+    throw new TypeError('values must contain between 1 and 123 register values');
+  }
+  const normalizedValues = Object.freeze(
+    values.map((value, index) => requireSafeInt(value, `values[${index}]`, 0, 0xffff)),
+  );
+  return Object.freeze({
+    action_type: 'ot.modbus.write_multiple_registers',
+    transport: 'modbus-tcp',
+    site: requireString(site, 'site'),
+    device: requireString(device, 'device'),
+    unit_id: requireSafeInt(unitId, 'unitId', 0, 247),
+    function_code: 0x10,
+    protocol_address: requireSafeInt(protocolAddress, 'protocolAddress', 0, 0xffff),
+    quantity: normalizedValues.length,
+    byte_count: normalizedValues.length * 2,
+    values: normalizedValues,
+  });
+}
+
+/** A DNP3 direct-operate CROB (group 12, variation 1). */
 export function dnp3ControlRelayAction({
   site,
   device,
   outstationAddress,
   index,
-  controlCode,
-  count = 1,
+  applicationFunction,
+  controlOctet,
+  operationCount = 1,
+  onTimeMs = 0,
+  offTimeMs = 0,
 }: any): any {
-  if (!Object.hasOwn(DNP3_CONTROL_CODES, String(controlCode))) {
-    throw new TypeError(`unsupported DNP3 control code ${String(controlCode)}`);
+  if (applicationFunction !== DNP3_FC_DIRECT_OPERATE
+      && applicationFunction !== DNP3_FC_DIRECT_OPERATE_NO_ACK) {
+    throw new TypeError('this profile supports DNP3 DIRECT_OPERATE (5) and DIRECT_OPERATE_NR (6) only');
   }
   return Object.freeze({
     action_type: 'ot.dnp3.control_relay_output_block',
@@ -140,11 +177,14 @@ export function dnp3ControlRelayAction({
     site: requireString(site, 'site'),
     device: requireString(device, 'device'),
     outstation_address: requireSafeInt(outstationAddress, 'outstationAddress', 0, 65519),
+    application_function: applicationFunction,
     group: 12,
     variation: 1,
     index: requireSafeInt(index, 'index', 0, 0xff),
-    control_code: String(controlCode),
-    count: requireSafeInt(count, 'count', 1, 0xff),
+    control_octet: requireSafeInt(controlOctet, 'controlOctet', 0, 0xff),
+    operation_count: requireSafeInt(operationCount, 'operationCount', 1, 0xff),
+    on_time_ms: requireSafeInt(onTimeMs, 'onTimeMs', 0, 0xffffffff),
+    off_time_ms: requireSafeInt(offTimeMs, 'offTimeMs', 0, 0xffffffff),
   });
 }
 
@@ -176,11 +216,13 @@ export function opcuaCallMethodAction({
  */
 export const BOUND_FIELDS = Object.freeze({
   'modbus-tcp': Object.freeze([
-    'action_type', 'transport', 'site', 'device', 'unit_id', 'function_code', 'register', 'value',
+    'action_type', 'transport', 'site', 'device', 'unit_id', 'function_code',
+    'protocol_address', 'value',
   ]),
   dnp3: Object.freeze([
     'action_type', 'transport', 'site', 'device', 'outstation_address', 'group', 'variation',
-    'index', 'control_code', 'count',
+    'application_function', 'index', 'control_octet', 'operation_count', 'on_time_ms',
+    'off_time_ms',
   ]),
   'opc-ua': Object.freeze([
     'action_type', 'transport', 'site', 'device', 'object_id', 'method_id',
@@ -192,7 +234,6 @@ export const BOUND_FIELDS = Object.freeze({
 // Modbus TCP
 // ---------------------------------------------------------------------------
 
-const MODBUS_HOLDING_REGISTER_BASE = 40001;
 const MODBUS_FC_WRITE_SINGLE_REGISTER = 0x06;
 /** Transaction id (2) + protocol id (2) + length (2) + unit id (1). */
 const MODBUS_MBAP_OCTETS = 7;
@@ -211,8 +252,7 @@ export function encodeModbusWriteRegister(action: any, { transactionId = 1 }: an
   if (action?.transport !== 'modbus-tcp' || action?.function_code !== MODBUS_FC_WRITE_SINGLE_REGISTER) {
     throw new TypeError('encodeModbusWriteRegister requires a modbus-tcp write-single-register action');
   }
-  const protocolAddress = action.register - MODBUS_HOLDING_REGISTER_BASE;
-  requireSafeInt(protocolAddress, 'protocolAddress', 0, 0xffff);
+  const protocolAddress = requireSafeInt(action.protocol_address, 'protocolAddress', 0, 0xffff);
   requireSafeInt(transactionId, 'transactionId', 0, 0xffff);
   const frame = Buffer.alloc(MODBUS_ADU_OCTETS);
   frame.writeUInt16BE(transactionId, 0);   // MBAP transaction id
@@ -247,11 +287,15 @@ export function decodeModbusWriteRegister(hex: string, link: any): any {
   if (frame.readUInt8(7) !== MODBUS_FC_WRITE_SINGLE_REGISTER) {
     throw new TypeError('unexpected Modbus function code');
   }
+  const unitId = frame.readUInt8(6);
+  if (link?.unit_id !== undefined && unitId !== link.unit_id) {
+    throw new TypeError('Modbus unit id does not match conduit device context');
+  }
   return modbusWriteRegisterAction({
     site: link?.site,
     device: link?.device,
-    unitId: frame.readUInt8(6),
-    register: frame.readUInt16BE(8) + MODBUS_HOLDING_REGISTER_BASE,
+    unitId,
+    protocolAddress: frame.readUInt16BE(8),
     value: frame.readUInt16BE(10),
   });
 }
@@ -260,7 +304,7 @@ export function decodeModbusWriteRegister(hex: string, link: any): any {
 // DNP3
 // ---------------------------------------------------------------------------
 
-/** Control-code encoding this example uses for the CROB control field. */
+/** Human-readable labels for common complete CROB control-field octets. */
 export const DNP3_CONTROL_CODES: Record<string, number> = Object.freeze({
   NUL: 0x00,
   PULSE_ON: 0x01,
@@ -269,11 +313,8 @@ export const DNP3_CONTROL_CODES: Record<string, number> = Object.freeze({
   LATCH_OFF: 0x04,
 });
 
-const DNP3_CONTROL_CODE_NAMES: Record<number, string> = Object.freeze(
-  Object.fromEntries(Object.entries(DNP3_CONTROL_CODES).map(([name, code]) => [code, name])),
-);
-
 const DNP3_FC_DIRECT_OPERATE = 0x05;
+const DNP3_FC_DIRECT_OPERATE_NO_ACK = 0x06;
 /** Application control (1) + function code (1). */
 const DNP3_APPLICATION_HEADER_OCTETS = 2;
 /** Group (1) + variation (1) + qualifier (1) + count (1) + index (1). */
@@ -295,20 +336,18 @@ export function encodeDnp3ControlRelay(action: any, { sequence = 0 }: any = {}):
     throw new TypeError('encodeDnp3ControlRelay requires a dnp3 group 12 variation 1 action');
   }
   requireSafeInt(sequence, 'sequence', 0, 0x0f);
-  const controlCode = DNP3_CONTROL_CODES[action.control_code];
-  if (controlCode === undefined) throw new TypeError(`unsupported DNP3 control code ${action.control_code}`);
   const fragment = Buffer.alloc(DNP3_FRAGMENT_OCTETS);
   fragment.writeUInt8(0xc0 | sequence, 0);        // FIR | FIN | sequence
-  fragment.writeUInt8(DNP3_FC_DIRECT_OPERATE, 1);
+  fragment.writeUInt8(action.application_function, 1);
   fragment.writeUInt8(action.group, 2);
   fragment.writeUInt8(action.variation, 3);
   fragment.writeUInt8(0x17, 4);                   // 1-octet count, 1-octet index prefix
   fragment.writeUInt8(1, 5);                      // one object follows
   fragment.writeUInt8(action.index, 6);
-  fragment.writeUInt8(controlCode, 7);            // CROB control field
-  fragment.writeUInt8(action.count, 8);
-  fragment.writeUInt32LE(0, 9);                   // on-time
-  fragment.writeUInt32LE(0, 13);                  // off-time
+  fragment.writeUInt8(action.control_octet, 7);   // complete CROB control field
+  fragment.writeUInt8(action.operation_count, 8);
+  fragment.writeUInt32LE(action.on_time_ms, 9);
+  fragment.writeUInt32LE(action.off_time_ms, 13);
   fragment.writeUInt8(0, 17);                     // status
   return Object.freeze({
     transport: 'dnp3',
@@ -327,22 +366,27 @@ export function encodeDnp3ControlRelay(action: any, { sequence = 0 }: any = {}):
 export function decodeDnp3ControlRelay(hex: string, link: any): any {
   const fragment = Buffer.from(requireString(hex, 'hex'), 'hex');
   if (fragment.length !== DNP3_FRAGMENT_OCTETS) throw new TypeError('unexpected DNP3 fragment length');
-  if (fragment.readUInt8(1) !== DNP3_FC_DIRECT_OPERATE) throw new TypeError('unexpected DNP3 function code');
+  const applicationFunction = fragment.readUInt8(1);
+  if (applicationFunction !== DNP3_FC_DIRECT_OPERATE
+      && applicationFunction !== DNP3_FC_DIRECT_OPERATE_NO_ACK) {
+    throw new TypeError('unexpected DNP3 function code');
+  }
   if (fragment.readUInt8(2) !== 12 || fragment.readUInt8(3) !== 1) {
     throw new TypeError('unexpected DNP3 object group or variation');
   }
   if (fragment.readUInt8(4) !== 0x17 || fragment.readUInt8(5) !== 1) {
     throw new TypeError('unexpected DNP3 qualifier or object count');
   }
-  const controlCode = DNP3_CONTROL_CODE_NAMES[fragment.readUInt8(7)];
-  if (controlCode === undefined) throw new TypeError('unrecognized DNP3 control code');
   return dnp3ControlRelayAction({
     site: link?.site,
     device: link?.device,
     outstationAddress: link?.outstation_address,
     index: fragment.readUInt8(6),
-    controlCode,
-    count: fragment.readUInt8(8),
+    applicationFunction,
+    controlOctet: fragment.readUInt8(7),
+    operationCount: fragment.readUInt8(8),
+    onTimeMs: fragment.readUInt32LE(9),
+    offTimeMs: fragment.readUInt32LE(13),
   });
 }
 
@@ -417,6 +461,7 @@ export default {
   commandDigest,
   commandDigestHex,
   modbusWriteRegisterAction,
+  modbusWriteMultipleRegistersAction,
   dnp3ControlRelayAction,
   opcuaCallMethodAction,
   encodeModbusWriteRegister,
