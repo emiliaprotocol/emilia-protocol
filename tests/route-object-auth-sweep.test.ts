@@ -62,6 +62,7 @@ const AUTHZ_SIGNALS = [
   'authorizeAgentAdoptionSession', // hashed adoption capability bound to the exact session and tenant
   'authorizeAgentAdoptionRequest', // bearer-or-HttpOnly recovery capability with exact-origin mutation guard
   'revokeAgentRecord',      // record-specific owner capability is hashed and checked inside the store RPC
+  'authenticateWorksRead',  // Works helper: optional public projection plus owner/opportunity-owner private access
 ];
 
 // Reviewed public-by-design routes: intentionally unauthenticated OR intentionally
