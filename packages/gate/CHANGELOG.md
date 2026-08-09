@@ -44,6 +44,11 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add the transport- and evidence-format-neutral `./consequence-boundary`
+  facade. It re-verifies a signed AEB join for one frozen action, applies local
+  policy, atomically fences native replay units, records provider-attempt
+  custody, and reports only `EXECUTED`, authoritative `FAILED`, or
+  `INDETERMINATE` after provider entry.
 - Add `./bounded-execution-acceptance`, a relying-party-signed acceptance
   profile and portable evidence pack over signed bounded-execution reports.
   Evaluation preserves unresolved work as `INDETERMINATE` and deliberately
