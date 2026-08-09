@@ -1,0 +1,215 @@
+{
+  "@type": "EP-OT-COMMAND-BINDING-VECTORS-v1",
+  "profile_status": "experimental",
+  "source": {
+    "example": "examples/ot-command-binding-v1",
+    "note": "Synthetic protocol models; no live PLC, RTU, DCS, or certified stack."
+  },
+  "invariants": [
+    "derive the observed action from decoded native bytes and enforcement-point-owned link context",
+    "compare the observed action digest with the authorized action before forwarding",
+    "consume one authorization at most once",
+    "after dispatch without a proved outcome, report INDETERMINATE and do not retry blindly"
+  ],
+  "vectors": [
+    {
+      "id": "modbus-write-single-register-v1",
+      "transport_profile": {
+        "transport": "modbus-tcp",
+        "envelope_capacity": "none",
+        "carries_authorization_inline": false,
+        "binding_mode": "out-of-band-digest",
+        "extension_point": null,
+        "metadata_octets_available": 0,
+        "why": "A write is unit id, function code, register address, and value. Length is fixed by the function code; nothing else fits on the wire."
+      },
+      "action": {
+        "action_type": "ot.modbus.write_single_register",
+        "transport": "modbus-tcp",
+        "site": "ep:site:demo-lift-station",
+        "device": "ep:device:plc-3",
+        "unit_id": 3,
+        "function_code": 6,
+        "register": 40001,
+        "value": 1
+      },
+      "action_digest": "sha256:9b4ae0e591e52a464a0076efdbdcbb6870302c4b337797a21e3e2fc53bf56134",
+      "native_command": {
+        "transport": "modbus-tcp",
+        "hex": "000100000006030600000001",
+        "octets": 12,
+        "protocol_address": 0,
+        "metadata_octets_available": 0,
+        "carries_authorization": false
+      },
+      "correlation_variant": {
+        "native_command": {
+          "transport": "modbus-tcp",
+          "hex": "109200000006030600000001",
+          "octets": 12,
+          "protocol_address": 0,
+          "metadata_octets_available": 0,
+          "carries_authorization": false
+        },
+        "expected_action_digest": "sha256:9b4ae0e591e52a464a0076efdbdcbb6870302c4b337797a21e3e2fc53bf56134",
+        "note": "Changing only the MBAP transaction id does not change the physical act."
+      },
+      "negative_cases": [
+        {
+          "field": "register",
+          "value": 40002,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:e3ffe515470e3231ed8b3a5f4e08996adb3f2cc863c59b80d14a7935d1afa678"
+        },
+        {
+          "field": "value",
+          "value": 0,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:932f91ad30ea8705732eff467e70bc99c6d38e85d00a8d1f2a4ea55b90383baf"
+        },
+        {
+          "field": "unit_id",
+          "value": 4,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:56a8afc73fdac8c3268d00ee9ba3aee806b8ed3847870126fb46ca51867b8009"
+        }
+      ]
+    },
+    {
+      "id": "dnp3-direct-operate-crob-v1",
+      "transport_profile": {
+        "transport": "dnp3",
+        "envelope_capacity": "fixed-object-space",
+        "carries_authorization_inline": false,
+        "binding_mode": "out-of-band-digest",
+        "extension_point": null,
+        "metadata_octets_available": 0,
+        "why": "A control relay output block is a fixed-width object in a typed object space. No octet of the fragment is free for an envelope."
+      },
+      "action": {
+        "action_type": "ot.dnp3.control_relay_output_block",
+        "transport": "dnp3",
+        "site": "ep:site:demo-lift-station",
+        "device": "ep:device:rtu-12",
+        "outstation_address": 12,
+        "group": 12,
+        "variation": 1,
+        "index": 7,
+        "control_code": "LATCH_ON",
+        "count": 1
+      },
+      "action_digest": "sha256:3bd89e88e578362460b47366f9276506d1c22a113b3c763b4fa80ee09a77f179",
+      "native_command": {
+        "transport": "dnp3",
+        "hex": "c0050c011701070301000000000000000000",
+        "octets": 18,
+        "crob_octets": 11,
+        "metadata_octets_available": 0,
+        "carries_authorization": false
+      },
+      "negative_cases": [
+        {
+          "field": "index",
+          "value": 8,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:9b2eb9a37a8ef0ecbb9278aad2c5c44bb8f7572f55138aac561265866941c2cf"
+        },
+        {
+          "field": "control_code",
+          "value": "LATCH_OFF",
+          "expected": "different-action-digest",
+          "action_digest": "sha256:3f62c97058df4ad4c2c8858f2eab8c660bb0aa6815b9235e89e2074875b6e9ef"
+        },
+        {
+          "field": "outstation_address",
+          "value": 13,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:e7b4211fab8b76fba8f355dc0646e1aa93d01eb1a2ca6988caf3f32a8d2f606b"
+        }
+      ]
+    },
+    {
+      "id": "opcua-call-method-v1",
+      "transport_profile": {
+        "transport": "opc-ua",
+        "envelope_capacity": "extensible",
+        "carries_authorization_inline": true,
+        "binding_mode": "inline",
+        "extension_point": "request-header extension object (modeled here as a JSON member)",
+        "metadata_octets_available": null,
+        "why": "The request structure has an extension slot, so an authorization can ride with the call."
+      },
+      "action": {
+        "action_type": "ot.opcua.call_method",
+        "transport": "opc-ua",
+        "site": "ep:site:demo-lift-station",
+        "device": "ep:device:dcs-1",
+        "object_id": "ns=2;s=LiftStation.PumpTrain",
+        "method_id": "ns=2;s=SetInterlock",
+        "argument_name": "Enabled",
+        "argument_value": 1
+      },
+      "action_digest": "sha256:4e657b4e2fe4f9ad58ca6d12a8d9e01a8aae4036ba29383535f299e920ca3f01",
+      "native_command": {
+        "transport": "opc-ua",
+        "request": {
+          "service": "Call",
+          "request_header": {
+            "request_handle": 1,
+            "additional_header": {
+              "type_id": "urn:emilia-protocol:EP-OT-COMMAND-BINDING-v1",
+              "body": {
+                "ep_receipt": {
+                  "@type": "EP-OT-AUTHORIZATION-REFERENCE-v0",
+                  "artifact_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "note": "Illustrative carriage reference only; not a valid authorization receipt."
+                }
+              }
+            }
+          },
+          "methods_to_call": [
+            {
+              "object_id": "ns=2;s=LiftStation.PumpTrain",
+              "method_id": "ns=2;s=SetInterlock",
+              "input_arguments": [
+                {
+                  "name": "Enabled",
+                  "value": 1
+                }
+              ]
+            }
+          ]
+        },
+        "octets": 524,
+        "authorization_octets": 218,
+        "metadata_octets_available": null,
+        "carries_authorization": true
+      },
+      "inline_authorization_reference": {
+        "@type": "EP-OT-AUTHORIZATION-REFERENCE-v0",
+        "artifact_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "note": "Illustrative carriage reference only; not a valid authorization receipt."
+      },
+      "negative_cases": [
+        {
+          "field": "object_id",
+          "value": "ns=2;s=LiftStation.OtherPump",
+          "expected": "different-action-digest",
+          "action_digest": "sha256:4eb2b4e952c0117d496099caffd4022f5e948bc20c18b719cb6c87103635ac3b"
+        },
+        {
+          "field": "method_id",
+          "value": "ns=2;s=DisableInterlock",
+          "expected": "different-action-digest",
+          "action_digest": "sha256:3db4f9356217f5905e78c930a6c8c358110413a31f34ffdbd2daf88dc2791d3b"
+        },
+        {
+          "field": "argument_value",
+          "value": 0,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:924abda88a60b3d4aa20c77c1ab5f82ecde0def85c153a78b22a56bc8a198881"
+        }
+      ]
+    }
+  ]
+}
