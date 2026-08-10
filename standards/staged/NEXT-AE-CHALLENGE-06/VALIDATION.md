@@ -20,6 +20,10 @@ Validated on 2026-08-10 against
   platform-specific skips).
 - `npm run build`: PASS. The existing unused-eslint-disable warnings remain
   warnings and are unrelated to this packet.
+- `TLA2TOOLS_JAR=<checksum-verified v1.7.4 jar> npm run
+  check:security-case`: PASS, 35 executable claims over 259 hashed evidence
+  files. The jar matched the repository-pinned SHA-256
+  `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`.
 - Revision -06 does not claim that the reference implementation already
   supplies the new configurable capacity-reservation or replay-shard routing
   interfaces.
