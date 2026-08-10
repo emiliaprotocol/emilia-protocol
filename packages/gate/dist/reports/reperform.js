@@ -135,7 +135,7 @@ function reverifyMaterial(m, { issuerKeys, action, rpId, allowedOrigins, approve
         const entry = pinnedApproverEntry(approverKeys, approver, m.key);
         if (!entry)
             return 'signoff:approver_key_unpinned_or_ambiguous';
-        const r = verifyWebAuthnSignoff(m.doc, entry.public_key, { rpId, allowedOrigins });
+        const r = verifyWebAuthnSignoff(m.doc, entry.public_key, { mode: 'relying-party', rpId, allowedOrigins });
         return r.valid ? null : `signoff:${r.error ? `error:${r.error}` : `checks_failed:${failingChecks(r.checks)}`}`;
     }
     if (m.type === 'quorum') {
@@ -153,7 +153,7 @@ function reverifyMaterial(m, { issuerKeys, action, rpId, allowedOrigins, approve
         }) : [];
         if (members.length === 0 || members.some((member) => !member))
             return 'quorum:approver_key_unpinned_or_ambiguous';
-        const r = verifyQuorum({ ...m.doc, policy: policy.policy, members }, { rpId, allowedOrigins });
+        const r = verifyQuorum({ ...m.doc, policy: policy.policy, members }, { mode: 'relying-party', rpId, allowedOrigins });
         return r.valid ? null : `quorum:checks_failed:${failingChecks(r.checks)}`;
     }
     /* c8 ignore next */

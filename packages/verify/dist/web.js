@@ -283,6 +283,19 @@ function counterPolicyError(metadata, opts) {
 /**
  * Verify a Class A (approver-held key) signoff fully offline, in the browser.
  * Mirrors index.js verifyWebAuthnSignoff.
+ *
+ * `opts.mode` selects the verification posture:
+ *   - 'relying-party': an authoritative relying-party check. `rpId` AND
+ *     `allowedOrigins` are REQUIRED; omitting either fails the verdict with
+ *     'rp_pins_required' and `checks.rp_id_hash === false`. This makes it
+ *     impossible for a caller that intends an authoritative check to silently
+ *     skip origin/rp scoping by forgetting the pins.
+ *   - 'offline-integrity' (default): today's portable integrity check —
+ *     challenge/action/nonce binding, ceremony type, UP/UV flags, and the
+ *     device signature are verified; origin is asserted only when the caller
+ *     supplies pins, and `checks.rp_id_hash` stays null when unpinned. This is
+ *     the documented posture for the public /verify page and demos, which have
+ *     no out-of-band relying-party trust profile.
  * @returns {Promise<{valid:boolean, checks:object, error?:string}>}
  */
 export async function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts = {}) {
@@ -300,6 +313,21 @@ export async function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, 
         signature: false,
     };
     let authenticator = null;
+    if (opts.mode !== undefined && opts.mode !== 'relying-party' && opts.mode !== 'offline-integrity') {
+        return { valid: false, checks, authenticator, error: 'mode must be "relying-party" or "offline-integrity"' };
+    }
+    if (opts.mode === 'relying-party') {
+        const rpIdPinned = typeof opts.rpId === 'string' && opts.rpId.length > 0;
+        const originsPinned = Array.isArray(opts.allowedOrigins)
+            && opts.allowedOrigins.length > 0
+            && opts.allowedOrigins.every((origin) => typeof origin === 'string' && origin.length > 0);
+        if (!rpIdPinned || !originsPinned) {
+            // An authoritative origin check was requested but cannot be performed.
+            // rp_id_hash is false (not null): the pin requirement itself failed.
+            checks.rp_id_hash = false;
+            return { valid: false, checks, authenticator, error: 'rp_pins_required' };
+        }
+    }
     try {
         if (!signoff?.context || !signoff?.webauthn) {
             return { valid: false, checks, authenticator, error: 'Missing context or webauthn evidence' };
