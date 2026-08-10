@@ -6,7 +6,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 
 const root = new URL('../standards/staged/NEXT-AE-CHALLENGE-06/', import.meta.url);
 const basename = 'draft-schrock-ae-challenge-06';
-const published05 = new URL('../standards/posted/draft-schrock-ae-challenge-05.xml', import.meta.url);
+const published05 = new URL('../standards/archive/draft-schrock-ae-challenge-05.xml', import.meta.url);
 const published05Sha256 = '77fce83124c69fbd1cd5b45fb13aba64d00a2ffdd4f17c4610f6ace895a8106b';
 
 function invariant(condition, message) {
