@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-10T09:00:46.123Z",
+  "evidence_snapshot_at": "2026-08-10T09:24:29.284Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "c3556449a723926a1a23c11c461f69221be5769835347b4b19f5d3793ef81987",
+    "input_digest_sha256": "0b5ca3c2e3d4fb90fcc6c4200e28a346182896c8563978e80be000a1ccf7cbae",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "47e630d4d2a5c97eef8e6c5bc4bbebd7f627d0ffd55fa4504bca84b570a55b10",
+        "sha256": "2eae6d15bc40dfce09abdc66f6237faa6550cce6ae911ac690ca46f0c75e5283",
         "bytes": 4298
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "785880a4e7d2483171b666de532ee6421ff895df41d16eddfba7f4aa8a41ccb4",
+        "sha256": "a1c9036b934b70430d55a04c3a6c274aaf6118bfc670341d1110103b51a7119c",
         "bytes": 385871
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "380f0f1cdd5e0efa0f6abdfda22c3f2c52dbb8680ae73553bc909fc92e0d3648",
-        "bytes": 39899
+        "sha256": "fbddabdc6e2e40e5e3f2b05f14502f6a285f98b342ca82d99ea4d195b378a412",
+        "bytes": 40653
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -287,7 +287,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 8861,
+      "total": 8862,
       "files": 532,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -329,7 +329,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "dbccc12e9a76a52887f287d24c25a5610ba81e299b980b4e86ab55f7f5fda15d",
+        "evidenceSha256": "fceefdf5a1b9d293870edb09ac8131213c6526f428bd74835ec0025ff52fa750",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -399,7 +399,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "94b60610bedc053e741143cbdabd4d4cd0a3070972d6e650b4ade7a27d42d9fe"
+      "evidence_bundle_sha256": "5de9140b262206fc971a4f7b6d29205f0fd3324f59fd808cd5dc4b9c5a86701f"
     },
     "caid": {
       "core_vectors": 48,
@@ -4510,9 +4510,9 @@
   "standards": [
     {
       "identifier": "draft-schrock-ae-challenge",
-      "revision_at_snapshot": "03",
+      "revision_at_snapshot": "05",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 8; obtain Agent2Agent, AgentProto, and HTTP-specific review of the transport-neutral core and RFC 9457 binding, then send a fresh checklist-complete Independent Stream request",
+      "next_action": "Published August 10; use -05 as the refusal-state, retry-pacing, bounded-state, and replay-domain baseline while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4694,7 +4694,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-08-08",
+    "updated": "2026-08-10",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
