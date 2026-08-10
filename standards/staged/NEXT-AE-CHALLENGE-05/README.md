@@ -1,8 +1,10 @@
-# AE Challenge revision 05 candidate
+# AE Challenge revision 05 publication-provenance packet
 
-This isolated candidate is derived from the published
-`draft-schrock-ae-challenge-04` source. Revision -04 remains unchanged. The
-upload source for the next revision is:
+This isolated packet preserves the exact source and review artifacts for
+`draft-schrock-ae-challenge-05`, published on 2026-08-10. It was derived from
+the immutable revision -04 source. It is not an upload candidate; the
+immutable IETF archive is authoritative. The submitted source retained for
+provenance is:
 
 `UPLOAD-THIS/draft-schrock-ae-challenge-05.xml`
 

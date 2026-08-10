@@ -1,7 +1,7 @@
 # IANA media type registrations — EMILIA Protocol
 
 Registration templates per RFC 6838, Section 5.6. The current receipts draft
-carries the active standards-tree registration request. The former AE
+carries both active standards-tree registration requests. The former AE
 Challenge media-type request is retained below only as process history; current
 revision -05 retains the -03 withdrawal and uses RFC 9457
 `application/problem+json`.
@@ -154,6 +154,68 @@ Internet-Draft, not IETF-adopted or endorsed; intended status Standards Track).
 
 **Applications that use this media type:** Agent-action authorization systems,
 verifying executors, audit systems, and evidence exchange services.
+
+**Fragment identifier considerations:** none
+
+**Additional information:**
+
+- Magic number(s): none
+- File extension(s): none
+- Macintosh file type code(s): none
+
+**Person & email address to contact for further information:** Iman Schrock,
+team@emiliaprotocol.ai
+
+**Intended usage:** COMMON
+
+**Restrictions on usage:** none
+
+**Author:** Iman Schrock
+
+**Change controller:** IETF
+
+**Provisional registration? (standards tree only):** No
+
+---
+
+## 3. application/ep-authorization-bundle+json
+
+**Status: CARRIED BY CURRENT DRAFT.** The active
+`draft-schrock-ep-authorization-receipts-11`, Section 13, requests this media
+type and carries the complete registration template. Process the registration
+with the Standards Track document; do not file a conflicting direct request.
+
+### Registration template (RFC 6838 §5.6)
+
+**Type name:** application
+
+**Subtype name:** ep-authorization-bundle+json
+
+**Required parameters:** none
+
+**Optional parameters:** none
+
+**Encoding considerations:** binary; the representation is a JSON object
+encoded as UTF-8 according to RFC 8259.
+
+**Security considerations:** See the Security Considerations and bundle
+verification sections of draft-schrock-ep-authorization-receipts-11. A valid
+bundle is approval evidence, not an authorization grant, reservation,
+consumption record, execution receipt, proof of current external facts, or
+permission to retry an action with an uncertain effect.
+
+**Interoperability considerations:** The `EP-AUTHORIZATION-BUNDLE-v1` closed
+object and verification algorithm are defined by the draft. A consumer must
+independently pin the audience, policy, action mapping, approver directory,
+trust roots, and any required current status sources.
+
+**Published specification:** draft-schrock-ep-authorization-receipts-11,
+"Authorization Receipts for High-Risk Agent Actions" (an active individual
+Internet-Draft, not IETF-adopted or endorsed; intended status Standards Track).
+
+**Applications that use this media type:** Authorization servers, policy
+decision points, protected resources, verifying executors, and agent-action
+approval systems.
 
 **Fragment identifier considerations:** none
 

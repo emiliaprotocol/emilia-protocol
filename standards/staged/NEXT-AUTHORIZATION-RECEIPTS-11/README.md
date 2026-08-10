@@ -1,9 +1,10 @@
-# Authorization Receipts -11 upload packet
+# Authorization Receipts -11 publication-provenance packet
 
-This is the isolated, unsubmitted candidate packet for
-`draft-schrock-ep-authorization-receipts-11`, prepared on 2026-08-09.
+This isolated packet preserves the exact source and review artifacts for
+`draft-schrock-ep-authorization-receipts-11`, published on 2026-08-10. It is
+not an upload candidate; the immutable IETF archive is authoritative.
 
-Submitted file:
+Submitted source retained for provenance:
 
 - `UPLOAD-THIS/draft-schrock-ep-authorization-receipts-11.xml`
 
@@ -30,5 +31,5 @@ Revision -11:
 - requests `application/ep-authorization-bundle+json` in addition to the
   receipt media type already requested by -10.
 
-The document remains an individual Internet-Draft. Submission would not make
+The document remains an individual Internet-Draft. Publication does not make
 it an RFC, a working-group document, IETF consensus, or IETF endorsement.
