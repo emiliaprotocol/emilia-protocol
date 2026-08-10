@@ -2,10 +2,13 @@
 
 Status: pre-draft collaboration outline; not an Internet-Draft.
 
+Working authors: Iman Schrock and Blake Morrison. The Modbus TCP and DNP3
+transport-binding sections were contributed by Blake Morrison. Both authors
+will review the complete Internet-Draft before any filing.
+
 This note proposes concrete transport-binding requirements and conformance
 cases for the gap identified in Sections 7 and 10 of
-`draft-morrison-ot-command-authority-01`. It does not assign co-authorship.
-Any author list requires each person's explicit agreement.
+`draft-morrison-ot-command-authority-01`.
 
 ## Scope
 
