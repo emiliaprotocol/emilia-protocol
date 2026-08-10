@@ -208,7 +208,7 @@ async function registered(a, p, nonce) {
   const challenge = await createRegisteredModelToMatterChallenge(a, p, {
     challengeStore: store,
     expires_at: CHALLENGE_EXPIRES,
-    nonce,
+    nonce: crypto.createHash('sha256').update(nonce).digest('base64url'),
   });
   return { challenge, store };
 }

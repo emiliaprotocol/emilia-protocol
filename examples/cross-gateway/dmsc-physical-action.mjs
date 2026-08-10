@@ -351,6 +351,9 @@ export function createReceivingGateway({ policy = DEMO_POLICY, verification, cha
         catch {
             return refusal('challenge_storage_unavailable');
         }
+        if (base.verdict === 'unavailable') {
+            return refusal('challenge_storage_unavailable', base);
+        }
         if (base.verdict !== 'admissible') {
             return refusal(base.reasons?.[0] ?? `evidence_${base.verdict}`, base);
         }
