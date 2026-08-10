@@ -11,8 +11,10 @@ test('Authorization Bundle publishes a closed hostile-case inventory', () => {
     assert.equal(vectors['@version'], 'EP-AUTHORIZATION-BUNDLE-CASES-v1');
     assert.equal(vectors.status, 'implementation-profile-cases');
     assert.match(vectors.claim_boundary, /not an authorization decision/i);
-    assert.equal(vectors.cases.length, 24);
-    assert.equal(new Set(vectors.cases.map((entry) => entry.id)).size, 24);
+    assert.equal(vectors.cases.length, 27);
+    assert.equal(new Set(vectors.cases.map((entry) => entry.id)).size, 27);
+    assert.ok(vectors.cases.some((entry) => entry.id === 'valid-two-of-three-oauth-bound-bundle'));
+    assert.ok(vectors.cases.some((entry) => entry.id === 'cross-ceremony-signoff-splicing'));
 });
 for (const vector of vectors.cases) {
     test(`Authorization Bundle hostile case: ${vector.id}`, () => {
@@ -28,6 +30,7 @@ for (const vector of vectors.cases) {
             acceptedKeyClasses: vector.accepted_key_classes,
             currentPolicy: vector.current_policy,
             expectedAction: vector.expected_action,
+            expectedAuthorizationInstance: vector.expected_authorization_instance,
             expectedAuthorizationBinding,
             requireAuthorizationBinding: vector.require_authorization_binding,
             currentStatus: vector.current_status,

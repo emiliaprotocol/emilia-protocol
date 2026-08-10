@@ -22,7 +22,10 @@ Revision -11:
   with the OAuth/RAR projection implemented in a separate package profile;
 - requires current policy, policy-selected approvers, current status when
   configured, and fail-closed handling of unavailable inputs;
-- publishes one TypeScript/JavaScript verifier and 24 generated hostile cases;
+- binds every quorum signoff to one independently issued, durably registered
+  authorization instance while retaining a distinct nonce per signoff, closing
+  both cross-ceremony splicing and presenter-selected-instance attacks;
+- publishes one TypeScript/JavaScript verifier and 27 generated cases;
   and
 - requests `application/ep-authorization-bundle+json` in addition to the
   receipt media type already requested by -10.

@@ -22,9 +22,10 @@
  *     exactly that action and nonce (Sec 5.1: user-verification
  *     flag MUST be required).
  *   - The signed message is the Authorization Context abstracted as
- *     <'ep_signoff_v1', h(action), nonce> (Sec 4: the approver signs
- *     the hash of the JCS-canonical context containing the action
- *     hash and a fresh unique nonce).
+ *     <'ep_signoff_v2', h(action), policy, initiator, audience,
+ *     nonce, validity, slot>. The model does not interpret policy or time;
+ *     it proves that the exact tokens the verifier relies on are in
+ *     the signed term.
  *   - The attacker can request the human to sign ARBITRARY actions
  *     of the attacker's choice (rule Request_Signoff takes the
  *     action from In(), i.e. from the attacker). This is what rules
@@ -59,11 +60,11 @@
  *     'sign' is the abstract Dolev-Yao signature with perfect
  *     cryptography; no computational claim is made.
  *
- * One-time consumption (Sec 6, guarantee G3): the model has TWO
- * relying-party accept rules. RP_Accept_NoConsume does no
- * consumption check; RP_Accept_Consume enforces one-time
- * consumption per (human, nonce) via the ConsumeOnce restriction,
- * abstracting the consumption record. Lemma
+ * One-time admission (Sec 6, guarantee G3): the model has TWO
+ * relying-party accept rules. RP_Accept_NoConsume does no state
+ * transition. RP_Accept_Consume must consume the single linear
+ * AdmissionAvailable fact created with the fresh authorization
+ * attempt. No restriction states the desired result. Lemma
  * unchecked_acceptance_is_injective over the unchecked rule is
  * EXPECTED TO BE FALSIFIED (same-receipt double acceptance), which
  * is precisely why the spec mandates the consumption record; the
@@ -113,9 +114,11 @@ rule RP_Pin_Key:
  *    globally unique CSPRNG nonce).
  * ------------------------------------------------------------------ */
 rule Request_Signoff:
-    [ In(a), Fr(~n) ]
-  --[ Requested($H, a, ~n) ]->
-    [ SignRequest($H, a, ~n) ]
+    [ In(<a, p, i, r, w, v>), Fr(~n) ]
+  --[ Requested($H, a, p, i, r, ~n, w, v)
+    , AdmissionCreated($H, a, p, i, r, ~n, w, v) ]->
+    [ SignRequest($H, a, p, i, r, ~n, w, v)
+    , AdmissionAvailable($H, a, p, i, r, ~n, w, v) ]
 
 /* ------------------------------------------------------------------
  * 4. User verification: the human performs UV (biometric/PIN) for
@@ -125,9 +128,9 @@ rule Request_Signoff:
  *    preceding UV over the same (action, nonce).
  * ------------------------------------------------------------------ */
 rule Human_UserVerify:
-    [ SignRequest(H, a, n) ]
-  --[ UV(H, a, n) ]->
-    [ UVDone(H, a, n) ]
+    [ SignRequest(H, a, p, i, r, n, w, v) ]
+  --[ UV(H, a, p, i, r, n, w, v) ]->
+    [ UVDone(H, a, p, i, r, n, w, v) ]
 
 /* ------------------------------------------------------------------
  * 5. Signature: UV-gated. Signs the abstracted Authorization
@@ -136,11 +139,12 @@ rule Human_UserVerify:
  *    honest receipt.
  * ------------------------------------------------------------------ */
 rule Human_Sign_Receipt:
-    [ UVDone(H, a, n)
+    [ UVDone(H, a, p, i, r, n, w, v)
     , !HumanLtk(H, ltk)
     ]
-  --[ Signed(H, a, n) ]->
-    [ Out(<a, n, sign(<'ep_signoff_v1', h(a), n>, ltk)>) ]
+  --[ Signed(H, a, p, i, r, n, w, v) ]->
+    [ Out(<a, p, i, r, n, w, v,
+           sign(<'ep_signoff_v2', h(a), p, i, r, n, w, v>, ltk)>) ]
 
 /* ------------------------------------------------------------------
  * 6. Key compromise: the device key can leak. Lemmas below are
@@ -158,35 +162,35 @@ rule Reveal_Human_Ltk:
  *     received. This is the pure signature-verification leg.
  * ------------------------------------------------------------------ */
 rule RP_Accept_NoConsume:
-    [ In(<a, n, sig>)
+    [ In(<a, p, i, r, n, w, v, sig>)
     , !PinnedKey(RP, H, pkH)
     ]
-  --[ Accept(RP, H, a, n)
-    , Eq(verify(sig, <'ep_signoff_v1', h(a), n>, pkH), true)
+  --[ Accept(RP, H, a, p, i, r, n, w, v)
+    , Eq(verify(sig, <'ep_signoff_v2', h(a), p, i, r, n, w, v>, pkH), true)
     ]->
     [ ]
 
 /* ------------------------------------------------------------------
- * 7b. Relying-party acceptance WITH one-time consumption per
- *     (human, nonce), abstracting the consumption record (Sec 6,
- *     G3) as the ConsumeOnce restriction.
+ * 7b. Relying-party acceptance WITH a real single-use transition.
+ *     AdmissionAvailable is linear and no rule recreates it for the
+ *     same fresh nonce, so the checked rule can fire once for the
+ *     authorization attempt. This models atomic consume-if-unused;
+ *     database linearizability remains a deployment assumption.
  * ------------------------------------------------------------------ */
 rule RP_Accept_Consume:
-    [ In(<a, n, sig>)
+    [ In(<a, p, i, r, n, w, v, sig>)
     , !PinnedKey(RP, H, pkH)
+    , AdmissionAvailable(H, a, p, i, r, n, w, v)
     ]
-  --[ Accept(RP, H, a, n)
-    , AcceptChecked(RP, H, a, n)
-    , Consume(<H, n>)
-    , Eq(verify(sig, <'ep_signoff_v1', h(a), n>, pkH), true)
+  --[ Accept(RP, H, a, p, i, r, n, w, v)
+    , AcceptChecked(RP, H, a, p, i, r, n, w, v)
+    , AdmissionConsumed(H, a, p, i, r, n, w, v)
+    , Eq(verify(sig, <'ep_signoff_v2', h(a), p, i, r, n, w, v>, pkH), true)
     ]->
     [ ]
 
 restriction Equality:
   "All x y #i. Eq(x, y) @ #i ==> x = y"
-
-restriction ConsumeOnce:
-  "All x #i #j. Consume(x) @ #i & Consume(x) @ #j ==> #i = #j"
 
 /* ==================================================================
  * LEMMAS
@@ -197,10 +201,10 @@ restriction ConsumeOnce:
  *     compromise, so the model is not vacuous. */
 lemma executable_honest_receipt:
   exists-trace
-  "Ex RP H a n #j #k #i.
-      UV(H, a, n) @ #j
-    & Signed(H, a, n) @ #k
-    & AcceptChecked(RP, H, a, n) @ #i
+  "Ex RP H a p init r n w v #j #k #i.
+      UV(H, a, p, init, r, n, w, v) @ #j
+    & Signed(H, a, p, init, r, n, w, v) @ #k
+    & AcceptChecked(RP, H, a, p, init, r, n, w, v) @ #i
     & #j < #k & #k < #i
     & not (Ex #r. RevealLtk(H) @ #r)"
 
@@ -210,39 +214,39 @@ lemma executable_honest_receipt:
  *     and then a signature over EXACTLY (a, n), both before the
  *     acceptance. Covers both accept rules. */
 lemma core_authenticity_uv_gated:
-  "All RP H a n #i.
-      Accept(RP, H, a, n) @ #i
+  "All RP H a p init r n w v #i.
+      Accept(RP, H, a, p, init, r, n, w, v) @ #i
     & not (Ex #r. RevealLtk(H) @ #r & #r < #i)
     ==> (Ex #j #k.
-            UV(H, a, n) @ #j
-          & Signed(H, a, n) @ #k
+            UV(H, a, p, init, r, n, w, v) @ #j
+          & Signed(H, a, p, init, r, n, w, v) @ #k
           & #j < #k & #k < #i)"
 
 /* (c) NO-REPLAY-ACROSS-ACTIONS: there is no trace in which a
  *     receipt for action a is accepted while the uncompromised
- *     human never signed exactly (a, n). Since the attacker can
+ *     human never signed the complete accepted context. Since the attacker can
  *     obtain honest signatures over arbitrary OTHER actions
  *     (Request_Signoff takes the action from the network), this
  *     rules out transplanting a signature over any a' != a (or
  *     nonce n' != n) onto action a. */
 lemma no_replay_across_actions:
-  "not (Ex RP H a n #i.
-           Accept(RP, H, a, n) @ #i
+  "not (Ex RP H a p init r n w v #i.
+           Accept(RP, H, a, p, init, r, n, w, v) @ #i
          & not (Ex #r. RevealLtk(H) @ #r & #r < #i)
-         & not (Ex #j. Signed(H, a, n) @ #j & #j < #i))"
+         & not (Ex #j. Signed(H, a, p, init, r, n, w, v) @ #j & #j < #i))"
 
 /* (d) INJECTIVE ACCEPTANCE with the consumption check: every
  *     consumption-checked acceptance corresponds to a preceding
- *     honest signature over exactly (a, n), and no second
- *     consumption-checked acceptance of the same (H, a, n) exists
+ *     honest signature over the complete context, and no second
+ *     consumption-checked acceptance of that same context exists
  *     anywhere (injective agreement, given one-time consumption). */
 lemma injective_acceptance_with_consumption:
-  "All RP H a n #i.
-      AcceptChecked(RP, H, a, n) @ #i
+  "All RP H a p init r n w v #i.
+      AcceptChecked(RP, H, a, p, init, r, n, w, v) @ #i
     & not (Ex #r. RevealLtk(H) @ #r & #r < #i)
-    ==> (Ex #k. Signed(H, a, n) @ #k & #k < #i
+    ==> (Ex #k. Signed(H, a, p, init, r, n, w, v) @ #k & #k < #i
          & not (Ex RP2 #i2.
-                   AcceptChecked(RP2, H, a, n) @ #i2
+                   AcceptChecked(RP2, H, a, p, init, r, n, w, v) @ #i2
                  & not (#i2 = #i)))"
 
 /* (e) EXPECTED FALSIFIED, kept deliberately: WITHOUT a consumption
@@ -252,9 +256,9 @@ lemma injective_acceptance_with_consumption:
  *     exists to prevent; the counterexample Tamarin finds is that
  *     replay, not a new attack on the signature scheme. */
 lemma unchecked_acceptance_is_injective:
-  "All RP1 RP2 H a n #i1 #i2.
-      Accept(RP1, H, a, n) @ #i1
-    & Accept(RP2, H, a, n) @ #i2
+  "All RP1 RP2 H a p init r n w v #i1 #i2.
+      Accept(RP1, H, a, p, init, r, n, w, v) @ #i1
+    & Accept(RP2, H, a, p, init, r, n, w, v) @ #i2
     & not (Ex #r. RevealLtk(H) @ #r)
     ==> #i1 = #i2"
 

@@ -11,7 +11,8 @@
       receipt, an evidence artifact binding an enrolled approver key to
       one canonical action before execution. An approver-held key signs an
       Authorization Context containing the action hash, policy reference,
-      nonce, audience, and validity window. A Trust Receipt carries the
+      shared authorization instance, per-signoff nonce, audience, and validity
+      window. A Trust Receipt carries the
       signed contexts, terminal consumption record, and Merkle inclusion
       material so a relying party can verify the recorded event offline
       under independently selected log, directory, policy, and approver
@@ -1293,7 +1294,8 @@ li > p:last-of-type:only-child {
       receipt, an evidence artifact binding an enrolled approver key to
       one canonical action before execution. An approver-held key signs an
       Authorization Context containing the action hash, policy reference,
-      nonce, audience, and validity window. A Trust Receipt carries the
+      shared authorization instance, per-signoff nonce, audience, and validity
+      window. A Trust Receipt carries the
       signed contexts, terminal consumption record, and Merkle inclusion
       material so a relying party can verify the recorded event offline
       under independently selected log, directory, policy, and approver
@@ -1852,6 +1854,7 @@ li > p:last-of-type:only-child {
   "policy_id": "ep:policy:wires-over-100k@v12",
   "policy_hash": "sha256:77ab...",
   "initiator": "ep:entity:agent-recon-7",
+  "authorization_instance": "b64u:Q0ND...",
   "audience": "https://payments.example.com",
   "approver": "ep:approver:jchen-controller",
   "approver_index": 1,
@@ -1867,48 +1870,64 @@ li > p:last-of-type:only-child {
 <p id="section-4-3">Rules:<a href="#section-4-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-4-4.1">
+          <code>authorization_instance</code> <span class="bcp14">MUST</span> be present
+        in every Authorization Context carried by an
+        <code>EP-AUTHORIZATION-BUNDLE-v1</code> object. It <span class="bcp14">MUST</span>
+        contain at least 128 bits of CSPRNG output, <span class="bcp14">MUST</span> be
+        freshly issued and durably registered for each authorization attempt
+        by the relying party, authorization server, or another component the
+        relying party independently trusts for this purpose. The orchestrator
+        or presenter <span class="bcp14">MUST NOT</span> select it. It
+        <span class="bcp14">MUST</span> be byte-identical in every context for that
+        attempt. Because it is inside each signed
+        context, it prevents valid signoffs from separate approval ceremonies
+        from being spliced into one quorum. Older Trust Receipts that do not
+        use the new Bundle profile remain valid under their existing profile
+        and need not contain this member.<a href="#section-4-4.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-4.2">
           <code>nonce</code> <span class="bcp14">MUST</span> be at least 128 bits of
-        CSPRNG output and <span class="bcp14">MUST</span> be unique within the issuer and
-        consumption domain for each authorization attempt. It is the
-        consumption key for G3, and is
+        CSPRNG output and <span class="bcp14">MUST</span> be unique for each approver
+        context within the issuer and authorization domain. It is the
+        per-signoff replay and freshness unit, and is
         the receipt's freshness mechanism in the sense of the Entity
         Attestation Token (RFC 9711): a verifier-relevant nonce, here held
         to a 128-bit floor (twice the EAT minimum). EP does not treat a
         timestamp alone as freshness; absolute time, where a relying party
         requires it, is asserted by an independent authority rather than by
-        the operator.<a href="#section-4-4.1" class="pilcrow">¶</a>
+        the operator.<a href="#section-4-4.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-4-4.2">
+        <li class="normal" id="section-4-4.3">
           <code>policy_hash</code> commits to the exact policy version
         evaluated. A signature over a context with policy_hash X
         <span class="bcp14">MUST NOT</span> satisfy a requirement evaluated under
-        policy_hash Y, even for the same policy_id.<a href="#section-4-4.2" class="pilcrow">¶</a>
+        policy_hash Y, even for the same policy_id.<a href="#section-4-4.3" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-4-4.3">
+        <li class="normal" id="section-4-4.4">
           <code>audience</code> identifies the relying party or protected
         resource expected to evaluate this evidence for the action. It
         <span class="bcp14">MUST</span> be a non-empty absolute URI. A verifier
         <span class="bcp14">MUST</span> compare it to its independently configured
         identifier and <span class="bcp14">MUST NOT</span> accept a value selected only by
         the presenter. This member corrects the -10 abstract, which named an
-        audience that the -10 Authorization Context example did not carry.<a href="#section-4-4.3" class="pilcrow">¶</a>
+        audience that the -10 Authorization Context example did not carry.<a href="#section-4-4.4" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-4-4.4">
+        <li class="normal" id="section-4-4.5">
           <code>prev_receipt_hash</code> chains this authorization to the
         issuing log's most recent receipt, contributing to tamper
-        evidence.<a href="#section-4-4.4" class="pilcrow">¶</a>
+        evidence.<a href="#section-4-4.5" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-4-4.5">The context is JCS-canonicalized; the <strong>context
+        <li class="normal" id="section-4-4.6">The context is JCS-canonicalized; the <strong>context
         hash</strong> is its SHA-256 digest. The approver signs the
-        context hash.<a href="#section-4-4.5" class="pilcrow">¶</a>
+        context hash.<a href="#section-4-4.6" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-4-4.6">A conforming signing client <span class="bcp14">MUST</span> render a
+        <li class="normal" id="section-4-4.7">A conforming signing client <span class="bcp14">MUST</span> render a
         human-readable presentation from the exact Action Object covered by
         <code>action_hash</code>, not from a separately supplied description. This
         is a signing-client behavior requirement. Base receipt verification
         alone does not prove that a faithful rendering reached a human. A
         relying party that requires verifiable presentation evidence
-        <span class="bcp14">MUST</span> apply the profile below.<a href="#section-4-4.6" class="pilcrow">¶</a>
+        <span class="bcp14">MUST</span> apply the profile below.<a href="#section-4-4.7" class="pilcrow">¶</a>
 </li>
       </ul>
 <div id="presentation-binding-profile">
@@ -2536,7 +2555,8 @@ li > p:last-of-type:only-child {
   "bundle_id": "ep:authorization-bundle:01J...",
   "action": { "...": "full Action Object" },
   "action_hash": "sha256:9f2c...",
-  "contexts": [ { "...": "Authorization Context 1" } ],
+  "contexts": [ { "...": "Authorization Context 1" },
+                { "...": "Authorization Context 2" } ],
   "signoffs": [ { "...": "Signoff 1" },
                 { "...": "Signoff 2" } ],
   "approver_key_proofs": [ { "directory_inclusion": "..." } ],
@@ -2564,6 +2584,19 @@ li > p:last-of-type:only-child {
       the action, prove that an effect occurred, or make an uncertain action
       safe to retry. Those properties belong to the authorization server,
       policy decision point, executor, and terminal Trust Receipt.<a href="#section-6-5" class="pilcrow">¶</a></p>
+<p id="section-6-6">For an m-of-n policy, <code>contexts</code> contains the n approver
+      contexts independently selected by current policy, with distinct
+      approver identifiers, indexes, and nonces. Every context
+      <span class="bcp14">MUST</span> carry the same signed
+      <code>authorization_instance</code>. The <code>bundle_id</code> is only an
+      external identifier and <span class="bcp14">MUST NOT</span> substitute for that
+      signed value. <code>signoffs</code> contains at
+      least m and at most n entries, each covering a different context. An
+      unsigned context identifies an eligible approver slot that did not
+      contribute to the satisfied quorum; it is not a malformed bundle. A
+      signoff that does not cover one of the selected contexts, two signoffs
+      covering one context, fewer than m valid signoffs, or more than one
+      signoff from the same approver is a refusal.<a href="#section-6-6" class="pilcrow">¶</a></p>
 <div id="authorization-binding">
 <section id="section-6.1">
         <h3 id="name-optional-native-authorizati">
@@ -2605,44 +2638,53 @@ li > p:last-of-type:only-child {
           <li id="section-6.2-2.2">Recompute <code>action_hash</code> from the canonical Action Object.<a href="#section-6.2-2.2" class="pilcrow">¶</a>
 </li>
           <li id="section-6.2-2.3">Recompute each context hash and require every context to commit
-          to that action hash, one policy hash, one audience, and, when
-          present, one identical authorization binding.<a href="#section-6.2-2.3" class="pilcrow">¶</a>
+          to that action hash, one policy hash, one audience, one shared
+          <code>authorization_instance</code>, and, when present, one identical
+          authorization binding. Each context nonce remains distinct.<a href="#section-6.2-2.3" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.2-2.4">Verify every signoff against the independently trusted approver
+          <li id="section-6.2-2.4">Require the signed <code>authorization_instance</code> to equal the
+          value independently issued and durably registered for this approval
+          ceremony. An unavailable expected value is
+          <code>INDETERMINATE</code>; a presenter-selected or unequal value is
+          <code>REFUSE</code>.<a href="#section-6.2-2.4" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.2-2.5">Verify every presented signoff against the independently trusted approver
           key and directory proof, including relying-party acceptance of the
           key class, key validity, signing time, and the WebAuthn
-          user-verification requirements for Class A.<a href="#section-6.2-2.4" class="pilcrow">¶</a>
+          user-verification requirements for Class A. Require each signoff to
+          cover one distinct selected context; do not require signoffs for the
+          n-m eligible contexts that did not contribute.<a href="#section-6.2-2.5" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.2-2.5">Require the context approver set to equal the set independently
+          <li id="section-6.2-2.6">Require the context approver set to equal the set independently
           selected for this transaction by the authorization server or current
           policy. Then apply initiator exclusion, pairwise approver
           independence, delegated-approver constraints, and the required
           m-of-n threshold. A presenter-selected set is insufficient even when
-          every signature is valid.<a href="#section-6.2-2.5" class="pilcrow">¶</a>
+          every signature is valid.<a href="#section-6.2-2.6" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.2-2.6">Require the relying-party clock to fall within every context's
+          <li id="section-6.2-2.7">Require the relying-party clock to fall within every context's
           validity window. Historical or clockless verification is not a
-          pre-execution authorization check.<a href="#section-6.2-2.6" class="pilcrow">¶</a>
+          pre-execution authorization check.<a href="#section-6.2-2.7" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.2-2.7">Require every context audience to equal the verifier's
-          independently configured audience.<a href="#section-6.2-2.7" class="pilcrow">¶</a>
+          <li id="section-6.2-2.8">Require every context audience to equal the verifier's
+          independently configured audience.<a href="#section-6.2-2.8" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.2-2.8">When current directory, revocation, presentation, or delegation
+          <li id="section-6.2-2.9">When current directory, revocation, presentation, or delegation
           evidence is required by policy, verify it from pinned trust inputs.
           Unavailable or stale required state is <code>INDETERMINATE</code>, never
-          an implicit pass.<a href="#section-6.2-2.8" class="pilcrow">¶</a>
+          an implicit pass.<a href="#section-6.2-2.9" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.2-2.9">When <code>authorization_binding</code> is present, apply the
+          <li id="section-6.2-2.10">When <code>authorization_binding</code> is present, apply the
           independently selected native profile and verifier. Derive the
           expected binding from natively verified inputs, compare its JCS bytes
           to the signed binding, and require a lossless match to the exact
-          Action Object under a relying-party-pinned mapping.<a href="#section-6.2-2.9" class="pilcrow">¶</a>
+          Action Object under a relying-party-pinned mapping.<a href="#section-6.2-2.10" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.2-2.10">Re-evaluate the verifier's current local policy and require its
+          <li id="section-6.2-2.11">Re-evaluate the verifier's current local policy and require its
           policy digest to equal the digest signed by every context. Unavailable
           or stale policy state is <code>INDETERMINATE</code>; a refusal or digest
           mismatch is <code>REFUSE</code>. The human evidence does not freeze or
-          replace relying-party policy.<a href="#section-6.2-2.10" class="pilcrow">¶</a>
+          replace relying-party policy.<a href="#section-6.2-2.11" class="pilcrow">¶</a>
 </li>
         </ol>
 <p id="section-6.2-3">The result is exactly one of:<a href="#section-6.2-3" class="pilcrow">¶</a></p>
@@ -2665,8 +2707,9 @@ li > p:last-of-type:only-child {
         <dd class="break"></dd>
 </dl>
 <p id="section-6.2-5">An authorization server that accepts a bundle for grant issuance
-        <span class="bcp14">MUST</span> atomically bind the bundle digest and context nonce
-        set to one grant identifier. Concurrent or repeated presentation
+        <span class="bcp14">MUST</span> atomically bind the bundle digest, signed
+        <code>authorization_instance</code>, and context nonce set to one grant
+        identifier. Concurrent or repeated presentation
         <span class="bcp14">MUST NOT</span> create two independently usable grants; an
         idempotent retry can return the same grant result. The executor remains
         responsible for atomic one-time admission of the native transaction or
@@ -2699,20 +2742,33 @@ li > p:last-of-type:only-child {
           <li class="normal" id="section-6.3-2.6">wrong policy digest, incomplete quorum, duplicate human, and
           initiator self-approval;<a href="#section-6.3-2.6" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-6.3-2.7">valid signatures from a presenter-selected approver set that does
-          not equal the authorization-server or policy-selected set;<a href="#section-6.3-2.7" class="pilcrow">¶</a>
+          <li class="normal" id="section-6.3-2.7">a valid m-of-n bundle with exactly m signoffs and n-m unsigned
+          eligible approver contexts, to prevent an implementation from
+          silently replacing m-of-n with n-of-n;<a href="#section-6.3-2.7" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-6.3-2.8">a missing, lossy, unpinned, or profile-mismatched native
-          authorization-to-Action mapping;<a href="#section-6.3-2.8" class="pilcrow">¶</a>
+          <li class="normal" id="section-6.3-2.8">valid signoffs from two different authorization instances spliced
+          into one apparent quorum, which <span class="bcp14">MUST</span> be refused even
+          when action, policy, audience, approvers, and signatures otherwise
+          match;<a href="#section-6.3-2.8" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-6.3-2.9">native challenge or mandate replay distinguished from grant replay and from
-          executor-side action consumption;<a href="#section-6.3-2.9" class="pilcrow">¶</a>
+          <li class="normal" id="section-6.3-2.9">an internally consistent bundle whose shared authorization
+          instance was selected by the presenter rather than matching the
+          relying party's registered instance;<a href="#section-6.3-2.9" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-6.3-2.10">a dynamic plan expansion beyond the approved action or trusted
-          effect envelope, which requires a new bundle; and<a href="#section-6.3-2.10" class="pilcrow">¶</a>
+          <li class="normal" id="section-6.3-2.10">valid signatures from a presenter-selected approver set that does
+          not equal the authorization-server or policy-selected set;<a href="#section-6.3-2.10" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-6.3-2.11">a status, policy, or provider timeout producing
-          <code>INDETERMINATE</code> without blind execution or blind retry.<a href="#section-6.3-2.11" class="pilcrow">¶</a>
+          <li class="normal" id="section-6.3-2.11">a missing, lossy, unpinned, or profile-mismatched native
+          authorization-to-Action mapping;<a href="#section-6.3-2.11" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-6.3-2.12">native challenge or mandate replay distinguished from grant replay and from
+          executor-side action consumption;<a href="#section-6.3-2.12" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-6.3-2.13">a dynamic plan expansion beyond the approved action or trusted
+          effect envelope, which requires a new bundle; and<a href="#section-6.3-2.13" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-6.3-2.14">a status, policy, or provider timeout producing
+          <code>INDETERMINATE</code> without blind execution or blind retry.<a href="#section-6.3-2.14" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -2742,11 +2798,15 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
 <ul class="normal">
 <li class="normal" id="section-7.1-4.1">
             <strong>ConsumeOnce.</strong> Within one conforming shared,
-          atomic consumption domain, a nonce transitions to a terminal
+          atomic consumption domain, an authorization instance transitions to a terminal
           state at most once. Any second presentation to that domain
           <span class="bcp14">MUST</span> be rejected with a replay error. The model
           does not assert coordination with an independent store that
-          does not share this state.<a href="#section-7.1-4.1" class="pilcrow">¶</a>
+          does not share this state. For a Bundle-derived Trust Receipt,
+          <code>consumption.nonce</code> <span class="bcp14">MUST</span> equal the Bundle's
+          shared <code>authorization_instance</code>. A legacy single-context
+          receipt without that member retains its context nonce as the
+          consumption key.<a href="#section-7.1-4.1" class="pilcrow">¶</a>
 </li>
           <li class="normal" id="section-7.1-4.2">
             <strong>BindingMatch.</strong> A signoff satisfies only the
@@ -2792,7 +2852,8 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
   "receipt_id": "ep:receipt:01J...",
   "action": { "...": "full Action Object" },
   "action_hash": "sha256:9f2c...",
-  "contexts": [ { "...": "Authorization Context 1" } ],
+  "contexts": [ { "...": "Authorization Context 1" },
+                { "...": "Authorization Context 2" } ],
   "signoffs": [ { "...": "Signoff 1" },
                 { "...": "Signoff 2" } ],
   "consumption": { "nonce": "b64u:R9w1...",
@@ -2808,6 +2869,13 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
 }
 </pre><a href="#section-7.2-3" class="pilcrow">¶</a>
 </div>
+<p id="section-7.2-4">For a receipt produced from an
+        <code>EP-AUTHORIZATION-BUNDLE-v1</code> object, the value carried as
+        <code>consumption.nonce</code> <span class="bcp14">MUST</span> equal the signed
+        <code>authorization_instance</code> shared by every context. The field name
+        is retained for compatibility with the base receipt profile; the
+        equality prevents the terminal state from being detached from the
+        approval ceremony.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
 </section>
 <div id="offline-verification">
 <section id="section-7.3">
@@ -2825,7 +2893,9 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
 </li>
           <li id="section-7.3-2.2">For each context: recompute the context hash; confirm it
           commits to the action hash, the policy hash, and a distinct
-          approver.<a href="#section-7.3-2.2" class="pilcrow">¶</a>
+          approver. For a Bundle-derived receipt, require one shared
+          <code>authorization_instance</code>, distinct per-context nonces, and
+          equality between that instance and <code>consumption.nonce</code>.<a href="#section-7.3-2.2" class="pilcrow">¶</a>
 </li>
           <li id="section-7.3-2.3">For each signoff: verify the signature (and WebAuthn
           assertion where present) over the context hash against the
@@ -3059,8 +3129,9 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
       </h2>
 <p id="section-9-1">A policy <span class="bcp14">MAY</span> require k distinct approvers from a
       role set. Each approver receives and signs an individual
-      Authorization Context sharing the same <code>action_hash</code> and
-      <code>nonce</code> family but a distinct <code>approver_index</code>.
+      Authorization Context sharing the same <code>action_hash</code> and signed
+      <code>authorization_instance</code> but carrying a distinct
+      <code>nonce</code> and <code>approver_index</code>.
       Commitment occurs only when k valid, distinct signoffs exist before
       <code>expires_at</code>. Partial approval confers no authority: a
       verifying executor presented with fewer than k signoffs
@@ -3382,6 +3453,9 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         comparison lemmas are falsified with concrete traces: one omits
         consumption and admits same-receipt replay; the other omits exact
         registry-view binding and admits a stale or equivocating view. The
+        one-time property is derived by consuming a linear authorization fact
+        created once for the registered action instance; it is not imposed by
+        a trace restriction that assumes uniqueness. The
         model treats signatures as perfect symbolic primitives and does not
         prove WebAuthn internals, parser correctness, amount arithmetic,
         policy authorship, clock freshness, transparency-log completeness,
@@ -3405,10 +3479,10 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         and execution for that bundle, not yet strict clean-room construction
         acceptance for the current specification.<a href="#section-13.5-4" class="pilcrow">¶</a></p>
 <p id="section-13.5-5">The -11 Authorization Bundle algorithm has one TypeScript/JavaScript
-        reference verifier and 21 generated hostile cases covering the
+        reference verifier and 27 generated cases covering the
         positive path, structural malformation, action and audience
         substitution, actor and subject confusion, approver-set selection,
-        quorum and separation of duties, policy and status unavailability,
+        quorum, cross-ceremony signoff splicing, separation of duties, policy and status unavailability,
         revocation, mapping mismatch, and dynamic-plan expansion. These are
         same-repository implementation-profile cases, not independent or
         cross-language interoperability. The bundle-to-grant helper models a
@@ -3904,7 +3978,7 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         status and policy, presenter-selected approvers, quorum failure,
         mapping failure, replay-layer confusion, dynamic-plan expansion, and
         indeterminate provider outcomes. Added one TypeScript/JavaScript
-        reference verifier and 21 generated implementation-profile cases while
+        reference verifier and 27 generated implementation-profile cases while
         stating the absence of external and cross-language coverage.<a href="#appendix-B-1.5" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="appendix-B-1.6">Requested registration of

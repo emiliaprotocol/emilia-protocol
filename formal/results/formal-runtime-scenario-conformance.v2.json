@@ -1043,7 +1043,7 @@
     },
     {
       "path": "packages/verify/dist/authorization-bundle.js",
-      "sha256": "77560bcca0cb0b3e6d0f9ebf49850801e416f5d4fc8b43de053c058af786d282"
+      "sha256": "3f9775c47d82cc88461f358b5e67758e656c37cc9a2e9a0271431201b60864c5"
     },
     {
       "path": "packages/verify/dist/authorization-server-confirmation.js",

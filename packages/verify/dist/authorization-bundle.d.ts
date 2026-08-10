@@ -36,6 +36,12 @@ export interface AuthorizationBundleVerificationOptions {
     /** Exact action independently derived by the relying party. */
     expectedAction: unknown;
     /**
+     * Fresh authorization instance independently issued or registered by the
+     * relying party or authorization server for this approval ceremony.
+     * A presenter-selected value is not a trust input.
+     */
+    expectedAuthorizationInstance?: string;
+    /**
      * Native-verified, profile-specific projection independently derived by the
      * relying party. Required when the contexts bind one. The Bundle verifier
      * compares canonical bytes; native verification belongs to the selected

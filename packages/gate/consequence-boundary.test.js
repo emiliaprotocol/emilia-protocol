@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
 import { adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, } from '@emilia-protocol/verify/aeb-adapter-contract';
-import { createConsequenceBoundary, } from './consequence-boundary.js';
+import { consequenceBoundaryProviderIdempotencyKey, createConsequenceBoundary, } from './consequence-boundary.js';
 const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION = Object.freeze({
     action_type: 'payment.release.1',
@@ -16,6 +16,12 @@ const ACTION = Object.freeze({
 const EVALUATED_AT = '2026-08-09T12:00:00.000Z';
 const NOW = '2026-08-09T12:00:01.000Z';
 const EXECUTOR = 'executor:gate-1';
+const PROVIDER = Object.freeze({
+    tenant_id: 'tenant:acme',
+    provider_id: 'provider:bank',
+    provider_account_id: 'account:one',
+    environment: 'sandbox',
+});
 function registryEntry(entryId, kind, definition) {
     const entry = { kind, version: '1', status: 'active', definition };
     entry.definition_digest = registryEntryDigest(entryId, entry);
@@ -221,7 +227,7 @@ function attemptStore() {
             const evidence = input.evidence;
             for (const field of [
                 'tenant_id', 'provider_id', 'provider_account_id', 'environment',
-                'attempt_id', 'request_digest',
+                'attempt_id', 'request_digest', 'provider_idempotency_key',
             ]) {
                 if (evidence[field] !== binding[field])
                     return false;
@@ -251,12 +257,7 @@ function makeBoundary({ f = fixture(), aebStore = durableAebStore(), attempts = 
     let attemptCounter = 0;
     const boundary = createConsequenceBoundary({
         executor_id: EXECUTOR,
-        provider: {
-            tenant_id: 'tenant:acme',
-            provider_id: 'provider:bank',
-            provider_account_id: 'account:one',
-            environment: 'sandbox',
-        },
+        provider: PROVIDER,
         aeb: { config: f.config, adapters: f.adapters, store: aebStore },
         attempts: {
             store: attempts,
@@ -286,6 +287,13 @@ test('neutral consequence boundary executes native mandate evidence without requ
             assert.equal(Object.isFrozen(context), true);
             assert.equal(Object.isFrozen(context.action), true);
             assert.equal(context.caid, CAID);
+            assert.equal(context.provider_idempotency_key, consequenceBoundaryProviderIdempotencyKey({
+                provider: PROVIDER,
+                caid: CAID,
+                action_digest: digestAeb(ACTION),
+                authorization_instance: f.evaluation.consumption_nonce,
+            }));
+            assert.equal(context.attempt.provider_idempotency_key, context.provider_idempotency_key);
             return { state: 'EXECUTED', evidence: executedEvidence(), result: { id: 'effect-1' } };
         },
     });
@@ -293,6 +301,29 @@ test('neutral consequence boundary executes native mandate evidence without requ
     assert.equal(result.state, 'EXECUTED');
     assert.equal(result.invoked, true);
     assert.equal(calls, 1);
+});
+test('provider idempotency key is canonical, provider-scoped, and bound to one exact authorization instance', () => {
+    const base = {
+        provider: PROVIDER,
+        caid: CAID,
+        action_digest: digestAeb(ACTION),
+        authorization_instance: 'nonce:operation:release-1',
+    };
+    const first = consequenceBoundaryProviderIdempotencyKey(base);
+    assert.match(first, /^epcb1:[a-f0-9]{64}$/);
+    assert.equal(consequenceBoundaryProviderIdempotencyKey(base), first);
+    assert.notEqual(consequenceBoundaryProviderIdempotencyKey({
+        ...base,
+        provider: { ...PROVIDER, provider_account_id: 'account:two' },
+    }), first);
+    assert.notEqual(consequenceBoundaryProviderIdempotencyKey({
+        ...base,
+        action_digest: digestAeb({ ...ACTION, amount: '501.00' }),
+    }), first);
+    assert.notEqual(consequenceBoundaryProviderIdempotencyKey({
+        ...base,
+        authorization_instance: 'nonce:operation:release-2',
+    }), first);
 });
 test('approve-A execute-B substitution is refused before the provider callback', async () => {
     const f = fixture();
@@ -409,6 +440,19 @@ test('INDETERMINATE is closed to replay but can be reconciled through separately
     const first = await h.boundary.run(input(f));
     assert.equal(first.state, 'INDETERMINATE');
     assert.ok(first.attempt);
+    const tamperedBinding = await h.boundary.reconcile({
+        evaluation: f.evaluation,
+        action: ACTION,
+        artifacts: f.artifacts,
+        attempt: {
+            ...first.attempt,
+            provider_idempotency_key: `epcb1:${'0'.repeat(64)}`,
+        },
+        outcome: { state: 'EXECUTED', evidence: executedEvidence(), result: { id: 'effect:wrong-key' } },
+        recovery_authorization: 'recovery:approved',
+    });
+    assert.equal(tamperedBinding.state, 'REFUSED');
+    assert.equal(tamperedBinding.reason, 'reconciliation_binding_mismatch');
     const refusedRecovery = await h.boundary.reconcile({
         evaluation: f.evaluation,
         action: ACTION,

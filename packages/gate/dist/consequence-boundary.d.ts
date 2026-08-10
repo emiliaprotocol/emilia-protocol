@@ -10,6 +10,7 @@
 import { type AebAdapter, type AebDigest, type AebDurableConsumptionStore, type AebEvaluationRecord, type AebPinnedConfig, type AebStatusInput } from '@emilia-protocol/verify/aeb-adapter-contract';
 import type { AebExecutionConditionsResult } from '@emilia-protocol/verify/aeb-execution-conditions';
 export declare const CONSEQUENCE_BOUNDARY_VERSION = "EMILIA-CONSEQUENCE-BOUNDARY-v1";
+export declare const CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN = "EMILIA-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1";
 export interface ConsequenceBoundaryProvider {
     tenant_id: string;
     provider_id: string;
@@ -19,6 +20,12 @@ export interface ConsequenceBoundaryProvider {
 export interface ConsequenceBoundaryAttemptBinding extends ConsequenceBoundaryProvider {
     attempt_id: string;
     request_digest: AebDigest;
+    /**
+     * Stable for retries and reconciliation of this authorization instance.
+     * A provider adapter MUST pass it unchanged to any native idempotency API.
+     * The key alone does not assert that the provider offers such semantics.
+     */
+    provider_idempotency_key: string;
 }
 declare const CONSEQUENCE_BOUNDARY_OWNER: unique symbol;
 export type ConsequenceBoundaryOwnerHandle = string & {
@@ -89,6 +96,7 @@ export interface ConsequenceBoundaryEffectContext {
     caid: string;
     evaluation_digest: AebDigest;
     authorization_program_digest: AebDigest;
+    provider_idempotency_key: string;
     attempt: Readonly<ConsequenceBoundaryAttemptBinding>;
 }
 export interface ConsequenceBoundaryAuthorizationContext {
@@ -169,7 +177,23 @@ export declare function consequenceBoundaryRequestDigest(input: {
     caid: string;
     action: unknown;
     evaluation_digest: AebDigest;
+    provider_idempotency_key: string;
 }): AebDigest;
+/**
+ * Derive the provider retry/reconciliation key from one exact action and one
+ * authorization instance. Canonical encoding avoids ambiguous concatenation;
+ * provider coordinates prevent the same key from crossing provider domains.
+ *
+ * A deployment may claim provider-side duplicate suppression only when its
+ * pinned adapter profile establishes native idempotency, a sufficient
+ * retention horizon, payload-mismatch refusal, and lookup by this exact key.
+ */
+export declare function consequenceBoundaryProviderIdempotencyKey(input: {
+    provider: ConsequenceBoundaryProvider;
+    caid: string;
+    action_digest: AebDigest;
+    authorization_instance: string;
+}): string;
 /**
  * Build one relying-party-controlled consequence boundary. Presented evidence
  * never selects adapters, trust roots, requirements, or local policy.
@@ -183,6 +207,8 @@ export declare function createConsequenceBoundary<TResult>(options: ConsequenceB
 }>;
 declare const _default: Readonly<{
     CONSEQUENCE_BOUNDARY_VERSION: "EMILIA-CONSEQUENCE-BOUNDARY-v1";
+    CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN: "EMILIA-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1";
+    consequenceBoundaryProviderIdempotencyKey: typeof consequenceBoundaryProviderIdempotencyKey;
     consequenceBoundaryRequestDigest: typeof consequenceBoundaryRequestDigest;
     createConsequenceBoundary: typeof createConsequenceBoundary;
 }>;

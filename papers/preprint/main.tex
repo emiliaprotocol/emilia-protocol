@@ -7,7 +7,7 @@
 %
 % Content is a faithful carriage of papers/authorization-receipts-preprint.md,
 % with evidence-backed claims and reference revisions synchronized to repo state.
-% Canonical Markdown SHA-256: 90de77af844d5c1bfbd15645d095bc01a8b78d3a8d4c5bb15ba09553ff99c151
+% Canonical Markdown SHA-256: 7bd64a3e9b39d487dc674486a22753d8b95beb99b35cc94a50c9a062cd531908
 % Every quantitative claim is traceable to a repository artifact:
 %   - conformance 21 suites / 331 vectors -> conformance/conformance-manifest.json
 %     (totals.suites=21, totals.vectors=331)
@@ -35,10 +35,10 @@
 \urlstyle{same}
 
 \hypersetup{
-  pdftitle={Action-Bound Injective Authorization under Signer Harvesting: A Symbolic Security Analysis},
+  pdftitle={Action-Bound Injective Authorization under Signer Harvesting: A Computational and Symbolic Security Analysis},
   pdfauthor={Iman Schrock (EMILIA Protocol, Inc.)},
   pdfsubject={cs.CR},
-  pdfkeywords={action-bound authorization, injective authorization, signer harvesting, symbolic analysis, Tamarin, Dolev-Yao, human approval evidence}
+  pdfkeywords={action-bound authorization, injective authorization, signer harvesting, computational reduction, symbolic analysis, Tamarin, human approval evidence}
 }
 
 % Inline monospaced code with safe underscores/hyphens.
@@ -50,8 +50,8 @@
 % Verbatim style for machine-checked tool output.
 \DefineVerbatimEnvironment{tool}{Verbatim}{fontsize=\footnotesize,frame=single,framesep=4pt}
 
-\title{Action-Bound Injective Authorization under Signer Harvesting: A Symbolic
-Security Analysis}
+\title{Action-Bound Injective Authorization under Signer Harvesting: A
+Computational and Symbolic Security Analysis}
 
 \author{Iman Schrock\\
 EMILIA Protocol, Inc.\\
@@ -72,26 +72,27 @@ this paper is self-contained and does not depend on them.}
 
 \begin{abstract}
 Digital signatures authenticate messages, but signature authenticity alone does
-not imply that an authorization is non-transplantable to another action or
-injectively consumable at an enforcement point. We study this
+not make an authorization non-transplantable to another action or single-use at
+an enforcement point. We study this
 protocol-composition problem when the service that renders requests, routes
 signoffs, and retains records is untrusted. We define \emph{Action-Bound
 Injective Authorization (ABIA)}: an approver-held key signs an injectively
-encoded authorization context naming one exact action, and a relying party
-accepts only after verifying that context and atomically consuming its
-authorization within a stated domain. The adversary controls the network and
-may obtain valid signatures on contexts of its choice, which models signer
-harvesting by a malicious operator, but does not compromise the approver keys.
-In the symbolic trace model, the receipt core establishes action
-non-transplantability and user-verification-gated authenticity; the consumption
-rule establishes injective terminal acceptance within one shared domain; and the
-2-of-2 quorum model establishes signer distinctness and initiator exclusion when
-those values are signed. Removing consumption, initiator binding, or exact
-registry-view binding yields concrete traces while leaving the signature
-primitive ideal. Four Tamarin models verify 17 all-traces properties and three
-executable witnesses; eight deliberately weakened comparisons are falsified.
-The result is a protocol-security theorem under Dolev--Yao assumptions, not a
-new signature primitive or a computational reduction. TLA+, Alloy,
+encoded authorization context naming one exact action, while an enforcement
+domain admits that authorization only through an atomic consume-if-unused
+transition. The adversary controls the network and may obtain valid signatures
+on adaptively chosen contexts, modeling signer harvesting by a malicious
+operator. We prove that transplantation against an uncompromised approver
+reduces to signature forgery or a hash collision under the stated
+injective-encoding assumption;
+duplicate admission reduces to violation of the linearizable single-use state
+interface; and a 2-of-2 quorum reduces to those failures or violation of explicit
+signer-distinctness and initiator-exclusion checks. The reduction separates
+cryptographic assumptions from the state-service assumption and does not claim
+exactly-once physical effects. Four Tamarin models independently check the
+corresponding symbolic trace properties using linear state facts rather than a
+uniqueness axiom: 24 all-traces properties and five executable witnesses
+verify, while nine deliberately weakened comparisons produce attacks. TLA+,
+Alloy,
 implementation, and conformance artifacts validate the surrounding construction
 but do not replace the symbolic result. The analysis does not prove
 natural-person identity, presentation fidelity, policy correctness,
@@ -158,39 +159,61 @@ organization publishing this work is not an auditor, regulator, or insurer; the
 artifacts described here support the judgments of such parties and conclude
 nothing on their own.
 
-\subsection{What standard signature security does not provide}
+\subsection{Security experiment}
 
-The contribution is not the claim that a signature can authenticate a byte
-string. That is the primitive assumption. The cryptographic question is what
-must be added around that primitive before a relying party may treat a signed
-authorization as evidence for one exact action and one terminal admission.
+The contribution is not the observation that a signature authenticates a byte
+string. The question is what a relying party may infer when the party collecting
+signatures is itself adversarial.
 
-Let $\mathsf{Sign}_H(x)$ be an honest approver's signing operation on
-authorization context $x$, and let $\mathsf{Accept}_D(x)$ be terminal acceptance
-in atomic domain $D$. The signer-harvesting adversary may choose $x$ and obtain
-$\mathsf{Sign}_H(x)$ for arbitrary actions, then replay, splice, or reorder the
-resulting artifacts. It wins one of three protocol games if:
+Let $\mathsf{Enc}$ be the closed, injective encoding of valid typed tuples.
+Define the base authorization context $b=(a,p,i,r,q)$: canonical action $a$,
+policy commitment $p$, initiator $i$, relying-party audience $r$, and fresh
+shared authorization instance $q$. For approver slot $v$, let $n_v$ be that
+slot's fresh nonce and $w_v$ its validity token. The signed context is
+$x_v=(b,v,n_v,w_v)$ and the signed message is
+$m_{b,v}=\mathsf{Enc}(\texttt{ep\_signoff\_v2},H(\mathsf{Enc}(a)),p,i,r,q,n_v,w_v,v)$.
+Distinct quorum slots therefore sign distinct messages while agreeing on the
+same authorization instance. The domain-scoped admission key is
+$u_b=H(\mathsf{Enc}(\texttt{ep\_admission\_v1},d,H(\mathsf{Enc}(a)),p,i,r,q))$.
+Before any slot context is signed, the relying party, authorization server, or
+other trusted component for domain $d$ issues $q$ and durably registers the
+corresponding $u_b$ as fresh. The adversarial operator may transport $q$ but
+cannot choose it or recreate its registration. An enforcement domain exposes
+two linearizable operations: $\mathsf{RegisterFresh}(u_b)$, which succeeds once,
+and
+$\mathsf{ConsumeIfUnused}(u_b)$, which returns success to at most one caller and
+durably changes the key from \textsc{unused} to \textsc{admitted} before that
+caller may enter the provider. A timeout after provider entry is reported as
+\textsc{indeterminate}; it is never converted into proof that the physical
+effect did or did not occur.
+
+The challenger generates and pins the relying party's approver keys. The
+adversary controls the network, operator, and receipt presenter. It may
+adaptively query $\mathsf{Sign}_j(m)$ for any message under any uncompromised
+approver key $j$, thereby receiving genuine signatures on arbitrarily many
+contexts of its choice. It may reveal designated keys, but no claim is made for
+a key after reveal. It may replay, splice, reorder, or suppress every artifact
+and may invoke verification and admission concurrently.
+
+The adversary wins the ABIA experiment if one of the following occurs for an
+unrevealed required key:
 
 \begin{enumerate}[leftmargin=*]
-\item \textbf{Transplantation:} $\mathsf{Accept}_D(x)$ occurs without an
-honest signature on the same canonical context $x$ (an approval for one action
-is used for another).
-\item \textbf{Non-injective acceptance:} two terminal acceptances in the same
-$D$ consume the same authorization context (the same valid receipt is replayed).
-\item \textbf{Quorum substitution:} a quorum commits an action without distinct
-enrolled approvers signing the same action and initiator, or allows the initiator
-to occupy an approver slot.
+\item \textbf{Transplantation:} the verifier admits slot context
+$x^*=(b^*,v^*,n^*,w^*)$, but the signing oracle was never queried on $m_{b^*,v^*}$
+under the pinned key satisfying slot $v^*$.
+\item \textbf{Duplicate admission:} two provider-entry events in the same
+domain $d$ are both preceded by successful consumption of the same $u_b$.
+\item \textbf{Quorum substitution:} a 2-of-2 admission succeeds without two
+distinct pinned approver identifiers and keys, without a valid signature from
+each on its assigned $m_{b,v}$, without both messages sharing the same base
+context $b$, or with the initiator occupying either slot.
 \end{enumerate}
 
-For the 2-of-2 profile analyzed here, we call the conjunction of these
-properties \emph{ABIA security}. This is a
-protocol-level security notion, not a replacement for standard signature
-security: a scheme may remain perfectly unforgeable while a verifier that omits
-consumption or leaves the initiator outside the signed context loses ABIA. The
-negative traces in Section 7 are therefore separation results. They show that
-the missing checks are not editorial detail and that a valid signature, a log
-inclusion proof, or a quorum count does not supply the omitted protocol
-property by itself.
+This is a protocol experiment, not a replacement for EUF-CMA signature
+security. A signature scheme may be unforgeable while an implementation that
+omits $\mathsf{ConsumeIfUnused}$, accepts an ambiguous encoding, or leaves the
+initiator outside the signed context loses ABIA.
 
 \subsection{Contributions}
 
@@ -200,11 +223,17 @@ action-bound authorization from its agent and workflow integrations, define the
 signer-harvesting games, terminal acceptance relation, shared consumption domain,
 quorum condition, and relying-party key pinning, and state the exact properties
 a relying party is entitled to infer.
-\item \textbf{A symbolic security theorem and separations.} Four Tamarin models
-derive the receipt and quorum properties rather than assuming that an accepted
-signature is enough. The strict models verify 17 all-traces properties and three
-executable witnesses; weakened models produce concrete replay, initiator-binding,
-and stale-registry-view attacks while the signature algebra remains ideal.
+\item \textbf{A reduction with explicit non-cryptographic assumptions.} We
+bound transplantation and quorum forgery by EUF-CMA, hash collision resistance,
+and injective encoding; duplicate admission is impossible only if the named
+domain's consume-if-unused interface is linearizable and completely mediates
+provider entry.
+\item \textbf{Mechanized symbolic confirmation and separations.} Four Tamarin
+models derive the receipt and quorum properties from signature equations and
+linear protocol state. The strict models verify 24 all-traces properties and
+five executable witnesses; nine weakened comparisons produce concrete replay,
+initiator-binding, and stale-registry-view attacks while the signature algebra
+remains ideal.
 \item \textbf{An operator-untrusted adversary model.} The party that renders the
 action, routes approval, and keeps the record may drive an honest approver to
 sign any action chosen by the attacker. This removes the honest-renderer
@@ -221,56 +250,86 @@ security proofs.
 \end{itemize}
 
 The paper does not claim a new signature, hash, or transparency-log primitive.
-Its cryptology contribution is the ABIA protocol result: under a
-signer-harvesting adversary, exact action binding and terminal injectivity are
-separate obligations, the state and context bindings needed for them can be
-machine-checked, and removing those bindings produces attacks without forging
-the underlying signatures.
+Its cryptology contribution is the ABIA composition theorem: under an adaptive
+signer-harvesting adversary, exact-context authenticity and single-use admission
+rest on different assumptions, and omitting either binding produces an attack
+without weakening the signature scheme.
 
 \subsection{The result in one statement}
 
-\textbf{Theorem 1 (symbolic ABIA result).} Let $x=(a,p,i,n,w,v)$ be the
-injectively encoded authorization context, where $a$ is the canonical action,
-$p$ the policy commitment, $i$ the initiator, $n$ the one-time nonce, $w$ the
-validity window, and $v$ the approver slot. Let $D$ be the executor's shared
-atomic consumption domain. In the trace semantics of the models in Section 7,
-with pinned key material, uncompromised signing keys, and the stated injective
-encoding assumption:
+\textbf{Theorem 1 (ABIA composition).} Let $\mathsf{Sig}$ be EUF-CMA secure,
+$H$ collision resistant, and $\mathsf{Enc}$ injective on the closed
+authorization-context schema. Let all successful provider-entry events in
+domain $d$ be completely mediated by a linearizable service that registers
+each fresh $u_b$ once and later exposes $\mathsf{ConsumeIfUnused}(u_b)$. Let
+verification require the signed $q$ to equal the independently issued value
+for the attempt. For any probabilistic
+polynomial-time signer-harvesting adversary $\mathcal{A}$, there exist signature
+forgers $\mathcal{B}_j$ and a collision finder $\mathcal{C}_H$ such that
 
-\begin{itemize}[leftmargin=*]
-\item \textbf{Receipt core:} an accepted receipt implies a prior
-user-verification-gated signature over the exact $(a,n)$ context; an honest
-signature over another action cannot be transplanted.
-\item \textbf{Terminal injectivity:} within $D$, two terminal acceptances cannot
-consume the same $(H(x),n)$ authorization. This guarantee is not portable across
-independent executors that do not share $D$.
-\item \textbf{Quorum integrity:} the 2-of-2 model requires two distinct enrolled
-approver identities, each signing the same action and initiator; the initiator
-cannot fill an approver slot.
-\end{itemize}
+\[
+\Pr[\mathsf{ABIA}_{\mathcal{A}}=1] \leq
+\sum_j \mathsf{Adv}^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal{B}_j)
++ \mathsf{Adv}^{\mathrm{cr}}_H(\mathcal{C}_H)
++ \Pr[\mathsf{AtomicityFail}_d \lor \mathsf{MediationBypass}_d].
+\]
 
-The counterexamples are part of the theorem's boundary. Removing the consumption
-check admits a replay trace; removing the initiator from the signed context admits
-a quorum/separation-of-duties trace; and omitting the exact pinned registry view
-admits a stale-view trace. These are protocol failures, not failures of the
-underlying signature primitive. The composed models extend the same reasoning to
-challenge registration, authority scope, reliance configuration, and action-keyed
-execution; they do not silently promote those additional fields into the focused
-receipt theorem.
+For the 2-of-2 profile, the sum ranges over the two unrevealed pinned approver
+keys required by the accepted policy. The theorem establishes one admitted
+provider attempt per authorization inside $d$; it does \emph{not} establish
+that a downstream physical effect occurred exactly once. It also does not
+extend across independent domains unless they share an equivalent linearizable
+admission service.
 
-\textbf{Proof sketch.} In \code{ep\_receipt\_core.spthy}, the only rule that
-emits an honest signature consumes a linear user-verification fact for the same
-action and nonce. The acceptance rules can fire only when Tamarin's signature
-equation holds under the pinned key, so the equality restriction yields the
-exact signed context. The \code{ConsumeOnce} restriction makes two checked
-acceptances of the same authorization impossible. In
-\code{ep\_quorum\_core.spthy}, the commit rule requires two verification
-equations under distinct pinned keys and explicitly excludes the initiator;
-removing the initiator field from the signed term makes the corresponding
-separation-of-duties query falsifiable. The composed models apply the same
-derivation to the pinned registry view and challenge/action key. Thus the
-positive result and the negative traces use the same symbolic signature theory;
-only the protocol rules and restrictions differ.
+\textbf{Proof.} Condition on the absence of hash collisions, state-service
+atomicity failure, and provider-entry bypass; $\mathsf{Enc}$ is injective by
+construction. Suppose transplantation occurs for slot context
+$x^*=(b^*,v^*,n^*,w^*)$. Verification succeeded under a pinned unrevealed key on
+$m_{b^*,v^*}$. If the corresponding signing oracle was never queried on
+$m_{b^*,v^*}$, the accepted signature is an EUF-CMA forgery. Otherwise an
+oracle query exists on the same bytes. Under injective $\mathsf{Enc}$ and
+collision-resistant $H$, those bytes bind the same action, policy commitment,
+initiator, audience, authorization instance, slot nonce, validity token, and
+approver slot; therefore the
+event is not transplantation. The locally configured domain and the shared
+base authorization remain bound separately into $u_b$.
+
+For duplicate admission, both provider-entry events must, by complete
+mediation, follow successful $\mathsf{ConsumeIfUnused}(u_b)$ calls.
+Linearizability gives one total order consistent with real time. The first
+successful call changes $u_b$ from \textsc{unused} to \textsc{admitted}; no
+transition recreates \textsc{unused}, so the second call cannot also return
+success. Two admitted entries therefore imply either an atomicity failure or a
+bypass, both explicit terms in the bound.
+
+The independently issued value check prevents the operator from choosing a
+fresh-looking $q$ after collecting signoffs or from registering an untrusted
+authorization instance. If registration is not fresh, is recreated, or is not
+linearizable with consumption, the execution falls under
+$\mathsf{AtomicityFail}_d$; if provider entry skips the check, it falls under
+$\mathsf{MediationBypass}_d$.
+
+For quorum substitution, the verifier first checks that the two slot
+identifiers and pinned public keys are pairwise distinct and that neither
+identifier equals the signed initiator. It then verifies one signature per slot
+on $m_{b,v_1}$ and $m_{b,v_2}$ and checks equality of every base-context field.
+If an unrevealed slot lacks a matching oracle query, its signature yields an
+EUF-CMA forgery. If both queries exist, injectivity and collision resistance
+make each signed slot context equal to the one the verifier accepted, while the
+explicit base-context equality check makes both signatures authorize the same
+action, policy, initiator, audience, and authorization instance. Each slot's
+nonce and validity token remain separately bound to that slot. The explicit
+distinctness checks exclude one signer or the initiator from
+filling both roles. This exhausts the winning conditions. A union bound over the
+bad events gives the stated inequality. \hfill$\square$
+
+The mechanized result in Section 7 independently corroborates this argument in
+the Dolev--Yao trace model. Its checked acceptance rule consumes a linear
+\code{AdmissionAvailable} fact created for the fresh context; it does not use a
+restriction asserting that consumption is unique. Removing that state input
+produces the expected same-receipt replay. Removing the initiator from the
+quorum signature or omitting the exact pinned registry view produces the other
+reported separation traces.
 
 \section{Threat Model}
 
@@ -386,12 +445,18 @@ For each required approver, the orchestrator constructs an Authorization Context
 canonical JSON structure containing the action hash, the policy identifier
 \emph{and} a policy hash committing to the exact policy version evaluated, the
 initiator identity, the approver identifier and slot index, the required approval
-count, a one-time nonce of at least 128 bits of CSPRNG output, issuance and expiry
-times, and a hash chaining the attempt to the issuing log's most recent receipt.
-The context is JCS-canonicalized; the \emph{context hash} is its SHA-256 digest;
-the approver signs the context hash.
+count, a shared authorization instance of at least 128 bits of CSPRNG output, a
+distinct per-approver nonce of at least 128 bits of CSPRNG output, issuance and
+expiry times, and a hash chaining the attempt to the issuing log's most recent
+receipt. Every context in one approval ceremony signs the same authorization
+instance; each context signs a different nonce. The context is JCS-canonicalized;
+the \emph{context hash} is its SHA-256 digest; the approver signs the context hash.
+The shared instance is issued and durably registered by the relying party,
+authorization server, or another trusted component for the enforcement domain
+before the operator constructs any slot context. An untrusted operator or
+presenter may relay that value but must not select it.
 
-Three bindings deserve emphasis, and each is exactly the kind of load-bearing
+Four bindings deserve emphasis, and each is exactly the kind of load-bearing
 detail a symbolic prover exposes. First, the policy commitment is exact: a
 signature over a context with policy hash X must not satisfy a requirement
 evaluated under policy hash Y, even for the same policy identifier. Approvals
@@ -399,7 +464,10 @@ cannot migrate across policy versions. Second, the initiator identity is bound
 \emph{inside} the signed context, not merely tracked as an executor-local label;
 Section 7.3 records that an earlier quorum model that omitted this binding was
 falsified, because separation of duties then held only at the executor and not in
-the signatures themselves. Third, the approver must be shown, at signing time, a
+the signatures themselves. Third, the shared authorization instance binds all
+quorum signoffs to one approval ceremony. Without it, an adversarial collector
+can splice individually valid signoffs from different ceremonies whose action,
+policy, audience, and approver slots happen to match. Fourth, the approver must be shown, at signing time, a
 faithful human-readable rendering of the Action Object, not only its hash;
 interfaces that display a different action than the one hashed constitute a
 presentation attack (Section 10.2).
@@ -427,7 +495,7 @@ attests both possession of the enrolled authenticator and a local user-verificat
 event. In the symbolic models this user-verification requirement is modeled
 structurally as a linear precondition that only a user-verification step can
 satisfy, so no trace contains a signature without a preceding user-verification
-event over exactly that action and nonce (Section 7.2); the model assumes the
+event over the complete signed authorization context (Section 7.2); the model assumes the
 authenticator enforces user verification and does not itself prove WebAuthn
 internals. Denials are signed over the same context hash with a denial envelope,
 so refusals are equally attributable to the enrolled key and equally terminal:
@@ -436,15 +504,56 @@ verifiable fact, not an absence.
 
 \subsection{Core protocol interface and adversarial queries}
 
-The cryptographic core has four roles: an approver key holder, an operator that
+The cryptographic core has four roles: approver key holders, an operator that
 may be malicious, a relying party, and an enforcement domain $D$. The operator
-constructs a canonical context $x$, obtains an approver signature, and returns
-the resulting artifact to the network. The relying party runs
-$\mathsf{Verify}(x,sig,K)$ against independently pinned key material, then runs
-the atomic operation $\mathsf{Consume}_D(H(x),n)$ before terminally admitting the
-action. A receipt may include a transparency-log inclusion proof, but that proof
-authenticates publication; it does not replace either the signature check or the
-consume operation.
+constructs one base context $b$ around the authorization instance independently
+issued for the attempt and one slot context $x_v=(b,v,n_v,w_v)$ for each required
+approver. The relying party accepts only closed, canonically encoded
+contexts whose base fields are byte-identical, verifies each signature under
+independently pinned key material, enforces signer/slot distinctness and
+initiator exclusion, derives $u_b$, and invokes the atomic consume operation
+before provider entry. A receipt may include a transparency-log inclusion
+proof, but that proof authenticates publication; it does not replace either the
+signature checks or the consume operation.
+
+The following algorithms define the analyzed 2-of-2 profile; the one-signer
+profile is the same construction with one slot:
+
+\begin{tool}
+Issue_D(a, p, i, r):
+    repeat q <- CSPRNG(lambda)
+    u_b <- H(Enc("ep_admission_v1", D, H(Enc(a)), p, i, r, q))
+    until RegisterFresh_D(u_b) atomically returns success
+    return q
+
+Sign(sk_j, b, v_j, n_j, w_j):
+    m_j <- Enc("ep_signoff_v2", H(Enc(a)), p, i, r, q, n_j, w_j, v_j)
+    return (v_j, n_j, w_j, Sign.S(sk_j, m_j))
+
+VerifyContext(pk_j, b, v_j, n_j, w_j, sigma_j):
+    reject unless b, v_j, n_j, and w_j parse under the closed schema
+    m_j <- Enc("ep_signoff_v2", H(Enc(a)), p, i, r, q, n_j, w_j, v_j)
+    return Sign.V(pk_j, m_j, sigma_j)
+
+VerifyAndConsume_D(b, {(id_j, pk_j, v_j, n_j, w_j, sigma_j)}_{j=1,2}):
+    reject unless the two entries have the same b
+    reject unless q equals the independently issued value for this attempt
+    reject unless q is shared and n_1 != n_2
+    reject unless ids, keys, and slots are pairwise distinct
+    reject if either id equals initiator i
+    reject unless VerifyContext succeeds for both pinned keys
+    u_b <- H(Enc("ep_admission_v1", D, H(Enc(a)), p, i, r, q))
+    reject unless ConsumeIfUnused_D(u_b) atomically returns success
+    emit ProviderEntry(D, u_b, a)
+\end{tool}
+
+$\mathsf{RegisterFresh}_D$ and $\mathsf{ConsumeIfUnused}_D$ are stateful
+interfaces, not cryptographic primitives. Their contract is linearizability,
+one durable registration per authorization instance, durable transition from
+\textsc{unused} to \textsc{admitted}, and complete mediation of every
+$\mathsf{ProviderEntry}$ in $D$. No transition may recreate \textsc{unused} for
+the same key. The reduction names a failure of that contract explicitly instead
+of treating it as a signature failure.
 
 The formal adversary is allowed to call the honest signing rule on arbitrary
 actions and initiators. This models an operator that can make a genuine signing
@@ -470,9 +579,10 @@ maintained as machine-checked models (Section 7) and required of conforming
 implementations, are:
 
 \begin{itemize}[leftmargin=*]
-\item \textbf{ConsumeOnce.} Within one shared atomic consumption domain, a nonce
-transitions to a terminal state at most once; any second presentation to that
-domain is rejected as a replay.
+\item \textbf{ConsumeOnce.} Within one shared atomic consumption domain, an
+authorization instance transitions to a terminal state at most once; any second
+presentation to that domain is rejected as a replay. A legacy single-context
+receipt without the shared instance uses its context nonce as the instance key.
 \item \textbf{BindingMatch.} A signoff satisfies only the context, and therefore
 only the action hash, that it signs.
 \item \textbf{TerminalIrreversibility.} No transition exits a terminal state.
@@ -596,12 +706,13 @@ misses: counting signatures instead of humans. This is the section the symbolic
 quorum model of Section 7.3 analyzes directly.
 
 Under an m-of-n policy, each required approver receives and signs an individual
-authorization context sharing the same action hash and nonce family but carrying a
-distinct approver index. Commitment occurs only when the required number of valid,
+authorization context sharing the same action hash and authorization instance but
+carrying a distinct approver index and nonce. Commitment occurs only when the required number of valid,
 distinct signoffs exists before expiry. Partial approval confers no authority
 whatsoever: a verifying executor presented with fewer than the required signoffs
 refuses. The symbolic model encodes this literally: it has no accept rule that
-fires on a single signature.
+fires on a single signature, and its commitment rule requires both signatures to
+carry the same authorization instance.
 
 The distinctness requirement is stated at the level the mechanism can enforce:
 the required number of \emph{distinct enrolled approver identities}, with distinct
@@ -798,10 +909,10 @@ carries no legal meaning.
 
 \section{Formal Analysis}
 
-The central formal contribution of this work is a symbolic-security analysis, under
-a Dolev-Yao attacker, of the receipt core, a 2-of-2 quorum instance, and two
-composed acceptance models spanning authority, registry view, reliance
-configuration, challenge consumption, and fleet execution. We present that
+The reduction in Section 1.5 is the security argument. This section provides an
+independent symbolic check, under a Dolev--Yao attacker, of the receipt core, a
+2-of-2 quorum instance, and two composed acceptance models spanning authority,
+registry view, reliance configuration, challenge consumption, and fleet execution. We present that
 analysis first (Sections 7.1 through 7.4), then the
 complementary state-machine and relational model checking that surrounds it
 (Section 7.5), and finally the discipline that keeps \emph{specified} separate from
@@ -859,22 +970,24 @@ The core model maps to the receipt construction of Section 3. A human approver
 holds a device-bound key whose public half is published (so the attacker always
 knows it). User verification is modeled structurally: the signing rule can consume
 only a linear fact that the user-verification step alone produces, so no trace
-contains a human signature without a prior user-verification event over exactly
-that action and nonce. The relying party pins the human's key out of band
-(abstracting the approver directory as a single step) and accepts a receipt only if
-the signature verifies under the pinned key over the exact action received.
-One-time consumption is modeled as a per-(human, nonce) restriction on a
-consumption-checked accept rule, sitting beside an unchecked accept rule that omits
-it.
+contains a human signature without a prior user-verification event over the same
+action hash, policy commitment, initiator, audience, nonce, validity token, and
+approver slot. The relying party pins the human's key out of band (abstracting
+the approver directory as a single step) and accepts a receipt only if the
+signature verifies under that pinned key over the complete abstract context.
+The request rule creates one linear \code{AdmissionAvailable} fact for the fresh
+context. The checked acceptance rule must consume that fact; the unchecked
+comparison rule omits it. There is no uniqueness restriction that states the
+desired result.
 
 The machine-checked result, verbatim from the run, was:
 
 \begin{tool}
-executable_honest_receipt (exists-trace): verified (8 steps)
-core_authenticity_uv_gated (all-traces): verified (12 steps)
-no_replay_across_actions (all-traces): verified (12 steps)
-injective_acceptance_with_consumption (all-traces): verified (6 steps)
-unchecked_acceptance_is_injective (all-traces): falsified - found trace (10 steps)
+executable_honest_receipt (exists-trace): verified (9 steps)
+core_authenticity_uv_gated (all-traces): verified (11 steps)
+no_replay_across_actions (all-traces): verified (11 steps)
+injective_acceptance_with_consumption (all-traces): verified (11 steps)
+unchecked_acceptance_is_injective (all-traces): falsified - found trace (11 steps)
 \end{tool}
 
 What each verified lemma establishes:
@@ -884,56 +997,56 @@ What each verified lemma establishes:
 honest, user-verified, consumption-checked receipt is accepted with no key
 compromise, so the model is not vacuous.
 \item \code{core\_authenticity\_uv\_gated} (verified, authenticity gated on user
-verification). If any relying party accepts a receipt naming human H for action a
-with nonce n, and H's key was not compromised before acceptance, then H performed a
-user-verification event and then a signature over exactly (a, n), in that order,
-before the acceptance.
-\item \code{no\_replay\_across\_actions} (verified, no replay across actions). No
-trace exists in which a receipt for action a is accepted while the uncompromised
-human never signed exactly (a, n). The attacker holds honest signatures over
-arbitrary other actions of its choice and still cannot transplant any of them onto
-a different action.
+verification). If any relying party accepts a receipt naming human H for one
+complete abstract context, and H's key was not compromised before acceptance,
+then H performed a user-verification event and signed that same context, in that
+order, before acceptance.
+\item \code{no\_replay\_across\_actions} (verified, no transplant across
+contexts). No trace accepts a context that the uncompromised human did not sign.
+The attacker holds honest signatures over arbitrary other contexts of its choice
+and still cannot transplant any of them by changing the action, policy,
+initiator, audience, nonce, validity token, or approver slot.
 \item \code{injective\_acceptance\_with\_consumption} (verified, injective
-acceptance under one-time consumption). With the one-time consumption check, each
-consumption-checked acceptance corresponds to a preceding honest signature and no
-second consumption-checked acceptance of the same (H, a, n) exists anywhere.
+acceptance under one-time admission). Each checked acceptance corresponds to a
+preceding honest signature, and the linear availability fact prevents a second
+checked acceptance of that same complete context.
 \end{itemize}
 
-The fifth lemma, \code{unchecked\_acceptance\_is\_injective}, is falsified \emph{by
-design}, and this is a strength rather than a defect. It asserts injective
-acceptance \emph{without} a consumption check. Tamarin falsifies it and produces
-the counterexample: the attacker takes the one honest receipt broadcast by the
-signing rule and delivers it to an accept point twice. No forgery and no key reveal
-occur in the trace; it is a pure same-receipt replay. The verified authenticity
-lemma forces every acceptance to be backed by a signature over exactly (a, n), and
-the fresh, unique nonce admits at most one such signature, so any double acceptance
-is necessarily the single honest receipt accepted twice. This is precisely the
-failure the specification's one-time consumption record exists to prevent, and the
-model shows mechanically that adding the consumption restriction restores
-injectivity. The consumption check is load-bearing, not defense-in-depth, and the
-prover demonstrates exactly that.
+The fifth lemma, \code{unchecked\_acceptance\_is\_injective}, is falsified
+\emph{by design}. It asserts injective acceptance without consuming state.
+Tamarin produces the expected trace: the attacker takes the honest receipt
+broadcast by the signing rule and delivers it to an unchecked accept point
+twice. No forgery and no key reveal occur. Requiring the checked rule to consume
+the sole linear availability fact removes that trace. The difference between
+the models is therefore an executable state transition, not an axiom that
+duplicate consumption cannot occur. This establishes the symbolic half of the
+assumption split in Theorem 1: signature verification carries exact-context
+authenticity, while linear state carries single-use admission.
 
 \subsection{Quorum: verified lemmas and the initiator-binding falsification}
 
 The quorum model maps to Section 4. It enrolls two distinct approver identities,
 each with its own device-bound key; a restriction enforces that a single name
 cannot be enrolled twice, so the two quorum slots are two distinct names. An
-initiator identity, chosen by the attacker, proposes the action, and the initiator
-is bound \emph{into} each approver's signed authorization context, abstracted as
-\code{<'ep\_signoff\_v1', h(action), initiator, nonce>}. Each approver signs its
-own context, user-verification-gated as in the core model. Commitment fires only
-when two signatures verify under two distinct pinned approver keys over the same
-action and the same initiator, and neither approver is the initiator; there is no
-accept rule that fires on a single signature.
+initiator identity, chosen by the attacker, proposes the action. One request rule
+creates a fresh shared authorization instance and a distinct nonce for each
+approver. The initiator and authorization instance are bound \emph{into} each
+signed context, abstracted as
+\code{<'ep\_signoff\_v1', h(action), initiator, authorization\_instance, nonce>}.
+Each approver signs its own context, user-verification-gated as in the core model.
+Commitment fires only when two signatures verify under two distinct pinned
+approver keys over the same action, initiator, and authorization instance, and
+neither approver is the initiator; there is no accept rule that fires on a single
+signature or combines signatures from separate ceremonies.
 
 The machine-checked result, verbatim from the run, was:
 
 \begin{tool}
-executable_quorum (exists-trace): verified (12 steps)
-quorum_requires_two_distinct_uv_gated_signatures (all-traces): verified (20 steps)
+executable_quorum (exists-trace): verified (13 steps)
+quorum_requires_two_distinct_uv_gated_signatures (all-traces): verified (27 steps)
 initiator_cannot_self_approve (all-traces): verified (4 steps)
 no_single_signer_fills_quorum (all-traces): verified (4 steps)
-commit_requires_signature_over_that_action (all-traces): verified (7 steps)
+commit_requires_signature_over_that_action (all-traces): verified (8 steps)
 \end{tool}
 
 What each verified lemma establishes:
@@ -944,11 +1057,12 @@ distinct honest approvers, both user-verified, neither the initiator, no key
 compromise, so the distinctness and self-approval restrictions do not make
 commitment unreachable.
 \item \code{quorum\_requires\_two\_distinct\_uv\_gated\_signatures} (verified).
-Whenever the executor commits action a citing approvers H1 and H2, and neither
-approver key was compromised before the commit, then H1 and H2 are distinct and
-each performed a user-verification event followed by a signature over exactly
-action a, all before the commit. A single signature, two signatures from one
-identity, or two signatures over different actions can never commit.
+Whenever the executor commits action a and authorization instance q citing
+approvers H1 and H2, and neither key was compromised before the commit, H1 and H2
+are distinct and each performed user verification followed by a signature over
+exactly (a,q), all before the commit. A single signature, two signatures from one
+identity, signatures over different actions, or signoffs from different
+authorization instances can never commit.
 \item \code{initiator\_cannot\_self\_approve} (verified). No trace commits an
 action with the initiator itself appearing as either quorum approver. Because the
 initiator identity is attacker-chosen, this also rules out an attacker naming a
@@ -958,10 +1072,9 @@ approvers are never the same identity; distinct pinned keys entail distinct
 enrolled identities. This is the no-key-fills-two-slots property at the identity
 level.
 \item \code{commit\_requires\_signature\_over\_that\_action} (verified). No trace
-commits action a while an uncompromised named approver never signed exactly a.
-Because the attacker can obtain honest signoffs over arbitrary other actions, this
-rules out transplanting an approver's signature over any other action onto a
-committed a.
+commits (a,q) while an uncompromised named approver never signed exactly (a,q).
+Because the attacker can obtain honest signoffs over arbitrary other actions and
+ceremonies, this rules out transplanting an approver's signature from either.
 \end{itemize}
 
 As with the consumption check, an earlier revision of this model was falsified, and
@@ -990,16 +1103,16 @@ registry epoch and head; revocation state; a pinned receipt issuer; one-time
 consumption; and execution. Its machine-checked summary is:
 
 \begin{tool}
-executable_composed_reliance (exists-trace): verified (19 steps)
-execution_requires_full_composition (all-traces): verified (97 steps)
+executable_composed_reliance (exists-trace): verified (20 steps)
+execution_requires_full_composition (all-traces): verified (101 steps)
 caid_binds_family_and_material (all-traces): verified (2 steps)
 initiator_cannot_self_approve (all-traces): verified (4 steps)
 no_single_signer_fills_quorum (all-traces): verified (2 steps)
-no_issuer_laundering (all-traces): verified (781 steps)
+no_issuer_laundering (all-traces): verified (785 steps)
 strict_registry_view_is_exact (all-traces): verified (25 steps)
-no_cross_action_profile_or_audience_replay (all-traces): verified (37 steps)
-execution_has_honest_approvals_or_prior_compromise (all-traces): verified (170 steps)
-injective_execution_with_consumption (all-traces): verified (2 steps)
+no_cross_action_profile_or_audience_replay (all-traces): verified (41 steps)
+execution_has_honest_approvals_or_prior_compromise (all-traces): verified (178 steps)
+injective_execution_with_consumption (all-traces): verified (250 steps)
 unchecked_composition_is_injective (all-traces): falsified - found trace (31 steps)
 unchecked_registry_view_is_current (all-traces): falsified - found trace (20 steps)
 \end{tool}
@@ -1014,8 +1127,8 @@ composed path to six enforcement claims and two companion sanity properties. Its
 machine-checked summary is:
 
 \begin{tool}
-executable_six_claim_composition (exists-trace): verified (10 steps)
-signed_denial_remains_verifiable_evidence (exists-trace): verified (7 steps)
+executable_six_claim_composition (exists-trace): verified (11 steps)
+signed_denial_remains_verifiable_evidence (exists-trace): verified (8 steps)
 class_a_downgrade_refused (all-traces): verified (22 steps)
 signed_denial_cannot_authorize (all-traces): verified (2 steps)
 scoped_authority_is_pinned (all-traces): verified (49 steps)
@@ -1024,12 +1137,12 @@ evidence_challenge_is_registered_and_consumed (all-traces): verified (41 steps)
 fresh_challenge_registration_is_unique (all-traces): verified (2 steps)
 aec_execution_is_action_keyed_and_fleet_fail_closed (all-traces): verified (13 steps)
 action_reservation_failure_is_fail_closed (all-traces): verified (3 steps)
-unchecked_presenter_class_is_pinned (all-traces): falsified - found trace (13 steps)
-unchecked_signed_denial_cannot_authorize (all-traces): falsified - found trace (13 steps)
-unchecked_authority_scope_is_pinned (all-traces): falsified - found trace (15 steps)
-unchecked_reliance_profile_is_pinned (all-traces): falsified - found trace (13 steps)
-unchecked_unregistered_challenge_is_registered (all-traces): falsified - found trace (13 steps)
-unchecked_presenter_execution_key_is_canonical (all-traces): falsified - found trace (13 steps)
+unchecked_presenter_class_is_pinned (all-traces): falsified - found trace (14 steps)
+unchecked_signed_denial_cannot_authorize (all-traces): falsified - found trace (14 steps)
+unchecked_authority_scope_is_pinned (all-traces): falsified - found trace (16 steps)
+unchecked_reliance_profile_is_pinned (all-traces): falsified - found trace (14 steps)
+unchecked_unregistered_challenge_is_registered (all-traces): falsified - found trace (14 steps)
+unchecked_presenter_execution_key_is_canonical (all-traces): falsified - found trace (14 steps)
 \end{tool}
 
 Each unsafe comparison removes one named restriction and produces the expected

@@ -47,7 +47,14 @@ const TEST_KEYS = [
         private_key: 'MC4CAQAwBQYDK2VwBCIEIIfOl4Dl0C5zVMoUFPU5YJCjbHfhr4rGmeFDMNQcEMXP',
         public_key: 'MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI',
     },
+    {
+        id: 'ep:key:risk-officer#1',
+        approver: 'ep:approver:risk-officer',
+        private_key: 'MC4CAQAwBQYDK2VwBCIEIHcFDwdSpTxBTR2O73P0ad72-9RXfLkDC936JchWH18A',
+        public_key: 'MCowBQYDK2VwAyEAt9zVJ5WG2hLmkT6Lm5xw9ZoPwsm_WzQwPhrVuZftsqA',
+    },
 ];
+const BASE_KEYS = TEST_KEYS.slice(0, 2);
 function clone(value) {
     return structuredClone(value);
 }
@@ -69,24 +76,31 @@ function signContext(context, key) {
 function fixture(input = {}) {
     const action = clone(input.action ?? ACTION);
     const actionHash = digestAeb(action);
+    const authorizationInstance = input.authorizationInstance
+        ?? `b64u:${Buffer.alloc(16, 0x41).toString('base64url')}`;
     const binding = input.binding === undefined ? clone(BINDING) : input.binding;
-    const contexts = input.contexts ?? TEST_KEYS.map((key, index) => ({
+    const keys = input.keys ?? BASE_KEYS;
+    const requiredApprovals = input.requiredApprovals ?? 2;
+    const contexts = input.contexts ?? keys.map((key, index) => ({
         ep_version: '1.0',
         context_type: 'ep.signoff.v1',
         action_hash: actionHash,
         policy_id: 'ep:policy:payments@v4',
         policy_hash: POLICY_HASH,
         initiator: action.initiator,
+        authorization_instance: authorizationInstance,
         audience: AUDIENCE,
         approver: key.approver,
         approver_index: index + 1,
-        required_approvals: 2,
+        required_approvals: requiredApprovals,
         nonce: `b64u:${Buffer.alloc(16, index + 1).toString('base64url')}`,
         issued_at: '2026-08-09T17:55:00Z',
         expires_at: '2026-08-09T18:05:00Z',
         ...(binding === null ? {} : { authorization_binding: clone(binding) }),
     }));
-    const signoffs = contexts.map((context, index) => signContext(context, TEST_KEYS[index]));
+    const signoffCount = input.signoffCount ?? contexts.length;
+    const signoffs = contexts.slice(0, signoffCount)
+        .map((context, index) => signContext(context, keys[index]));
     return {
         bundle: {
             bundle_version: 'EP-AUTHORIZATION-BUNDLE-v1',
@@ -98,7 +112,7 @@ function fixture(input = {}) {
             approver_key_proofs: [],
             presentation_evidence: [],
         },
-        approver_keys: Object.fromEntries(TEST_KEYS.map((key) => [key.id, {
+        approver_keys: Object.fromEntries(keys.map((key) => [key.id, {
                 approver_id: key.approver,
                 public_key: key.public_key,
                 key_class: 'B',
@@ -114,7 +128,7 @@ function baseCase(id, expect, replacement = {}) {
         id,
         bundle: built.bundle,
         approver_keys: built.approver_keys,
-        expected_approvers: TEST_KEYS.map((key) => key.approver),
+        expected_approvers: BASE_KEYS.map((key) => key.approver),
         accepted_key_classes: ['B'],
         current_policy: {
             policy_hash: POLICY_HASH,
@@ -123,6 +137,7 @@ function baseCase(id, expect, replacement = {}) {
             expires_at: '2026-08-09T18:01:00Z',
         },
         expected_action: clone(ACTION),
+        expected_authorization_instance: built.bundle.contexts[0].authorization_instance,
         expected_authorization_binding: clone(BINDING),
         require_authorization_binding: true,
         audience: AUDIENCE,
@@ -134,6 +149,37 @@ function baseCase(id, expect, replacement = {}) {
 }
 const cases = [];
 cases.push(baseCase('valid-two-person-oauth-bound-bundle', { verdict: 'SATISFIED', reasons: [] }));
+{
+    const built = fixture({ keys: TEST_KEYS, requiredApprovals: 2, signoffCount: 2 });
+    cases.push(baseCase('valid-two-of-three-oauth-bound-bundle', {
+        verdict: 'SATISFIED', reasons: [],
+    }, {
+        bundle: built.bundle,
+        approver_keys: built.approver_keys,
+        expected_approvers: TEST_KEYS.map((key) => key.approver),
+    }));
+}
+{
+    const first = fixture({
+        authorizationInstance: `b64u:${Buffer.alloc(16, 0x41).toString('base64url')}`,
+    });
+    const second = fixture({
+        authorizationInstance: `b64u:${Buffer.alloc(16, 0x42).toString('base64url')}`,
+    });
+    first.bundle.contexts[1] = clone(second.bundle.contexts[1]);
+    first.bundle.signoffs[1] = clone(second.bundle.signoffs[1]);
+    cases.push(baseCase('cross-ceremony-signoff-splicing', {
+        verdict: 'REFUSE', reasons: ['authorization_instance_mismatch'],
+    }, {
+        bundle: first.bundle,
+        approver_keys: first.approver_keys,
+    }));
+}
+cases.push(baseCase('presenter-selected-authorization-instance', {
+    verdict: 'REFUSE', reasons: ['authorization_instance_mismatch'],
+}, {
+    expected_authorization_instance: `b64u:${Buffer.alloc(16, 0x42).toString('base64url')}`,
+}));
 {
     const built = fixture({ binding: clone(NATIVE_BINDING) });
     cases.push(baseCase('valid-non-oauth-native-binding', {

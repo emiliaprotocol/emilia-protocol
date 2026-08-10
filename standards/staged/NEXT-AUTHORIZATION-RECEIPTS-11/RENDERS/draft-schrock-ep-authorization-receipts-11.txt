@@ -17,11 +17,12 @@ Abstract
    an evidence artifact binding an enrolled approver key to one
    canonical action before execution.  An approver-held key signs an
    Authorization Context containing the action hash, policy reference,
-   nonce, audience, and validity window.  A Trust Receipt carries the
-   signed contexts, terminal consumption record, and Merkle inclusion
-   material so a relying party can verify the recorded event offline
-   under independently selected log, directory, policy, and approver
-   trust inputs.
+   shared authorization instance, per-signoff nonce, audience, and
+   validity window.  A Trust Receipt carries the signed contexts,
+   terminal consumption record, and Merkle inclusion material so a
+   relying party can verify the recorded event offline under
+   independently selected log, directory, policy, and approver trust
+   inputs.
 
    The receipt establishes only the guarantees of the selected
    verification profile.  The mapping from an enrolled approver
@@ -41,7 +42,6 @@ Abstract
    independently verified native authorization artifact without
    replacing that artifact or making this receipt format depend on its
    transport or trust model.
-
 
 
 
@@ -126,41 +126,41 @@ Internet-Draft          EP Authorization Receipts            August 2026
      6.1.  Optional Native Authorization Binding . . . . . . . . . .  21
      6.2.  Pre-Execution Verification Algorithm  . . . . . . . . . .  21
      6.3.  Required Hostile Conformance Cases  . . . . . . . . . . .  23
-   7.  Consumption, Commitment, and the Trust Receipt  . . . . . . .  23
-     7.1.  State Machine . . . . . . . . . . . . . . . . . . . . . .  23
-     7.2.  The Trust Receipt . . . . . . . . . . . . . . . . . . . .  24
-     7.3.  Offline Verification Algorithm  . . . . . . . . . . . . .  25
-   8.  Companion Receipt Extensions and Digest Binding . . . . . . .  26
-     8.1.  Provisional Extension Registry  . . . . . . . . . . . . .  28
-     8.2.  Relationship to the Action Lifecycle  . . . . . . . . . .  29
-   9.  Multi-Approver Policies (m-of-n)  . . . . . . . . . . . . . .  29
+   7.  Consumption, Commitment, and the Trust Receipt  . . . . . . .  24
+     7.1.  State Machine . . . . . . . . . . . . . . . . . . . . . .  24
+     7.2.  The Trust Receipt . . . . . . . . . . . . . . . . . . . .  25
+     7.3.  Offline Verification Algorithm  . . . . . . . . . . . . .  26
+   8.  Companion Receipt Extensions and Digest Binding . . . . . . .  27
+     8.1.  Provisional Extension Registry  . . . . . . . . . . . . .  29
+     8.2.  Relationship to the Action Lifecycle  . . . . . . . . . .  30
+   9.  Multi-Approver Policies (m-of-n)  . . . . . . . . . . . . . .  30
    10. Delegation Constraints  . . . . . . . . . . . . . . . . . . .  30
-   11. Conformance Classes and Execution-Side Enforcement  . . . . .  30
+   11. Conformance Classes and Execution-Side Enforcement  . . . . .  31
    12. Relationship to Other Work  . . . . . . . . . . . . . . . . .  31
-   13. Security Considerations . . . . . . . . . . . . . . . . . . .  33
-     13.1.  Operator Compromise  . . . . . . . . . . . . . . . . . .  33
+   13. Security Considerations . . . . . . . . . . . . . . . . . . .  34
+     13.1.  Operator Compromise  . . . . . . . . . . . . . . . . . .  34
      13.2.  Approver Device Compromise . . . . . . . . . . . . . . .  34
-     13.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  34
+     13.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  35
      13.4.  Log Equivocation . . . . . . . . . . . . . . . . . . . .  35
-     13.5.  What the Formal Models Do and Do Not Prove . . . . . . .  35
+     13.5.  What the Formal Models Do and Do Not Prove . . . . . . .  36
      13.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  37
-     13.7.  What Separation of Duties Does and Does Not Provide  . .  37
-     13.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  37
+     13.7.  What Separation of Duties Does and Does Not Provide  . .  38
+     13.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  38
      13.9.  Initiator Attestation as an Attack Surface . . . . . . .  38
      13.10. No symmetric key on the verification trust path  . . . .  39
-     13.11. Canonicalization Robustness  . . . . . . . . . . . . . .  39
+     13.11. Canonicalization Robustness  . . . . . . . . . . . . . .  40
    14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  40
    15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  42
      15.1.  Normative References . . . . . . . . . . . . . . . . . .  42
      15.2.  Informative References . . . . . . . . . . . . . . . . .  43
-   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  44
-   Appendix B.  Changes since -10  . . . . . . . . . . . . . . . . .  44
-   Appendix C.  Changes since -09  . . . . . . . . . . . . . . . . .  45
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  45
+   Appendix B.  Changes since -10  . . . . . . . . . . . . . . . . .  45
+   Appendix C.  Changes since -09  . . . . . . . . . . . . . . . . .  46
    Appendix D.  Changes since -08  . . . . . . . . . . . . . . . . .  46
-   Appendix E.  Changes since -07  . . . . . . . . . . . . . . . . .  46
-   Appendix F.  Changes since -06  . . . . . . . . . . . . . . . . .  46
-   Appendix G.  Changes since -04  . . . . . . . . . . . . . . . . .  47
-   Appendix H.  Changes since -00 (through -04)  . . . . . . . . . .  47
+   Appendix E.  Changes since -07  . . . . . . . . . . . . . . . . .  47
+   Appendix F.  Changes since -06  . . . . . . . . . . . . . . . . .  47
+   Appendix G.  Changes since -04  . . . . . . . . . . . . . . . . .  48
+   Appendix H.  Changes since -00 (through -04)  . . . . . . . . . .  48
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  49
 
 
@@ -462,6 +462,7 @@ Internet-Draft          EP Authorization Receipts            August 2026
      "policy_id": "ep:policy:wires-over-100k@v12",
      "policy_hash": "sha256:77ab...",
      "initiator": "ep:entity:agent-recon-7",
+     "authorization_instance": "b64u:Q0ND...",
      "audience": "https://payments.example.com",
      "approver": "ep:approver:jchen-controller",
      "approver_index": 1,
@@ -475,15 +476,35 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
    Rules:
 
+   *  authorization_instance MUST be present in every Authorization
+      Context carried by an EP-AUTHORIZATION-BUNDLE-v1 object.  It MUST
+      contain at least 128 bits of CSPRNG output, MUST be freshly issued
+      and durably registered for each authorization attempt by the
+      relying party, authorization server, or another component the
+      relying party independently trusts for this purpose.  The
+      orchestrator or presenter MUST NOT select it.  It MUST be byte-
+      identical in every context for that attempt.  Because it is inside
+      each signed context, it prevents valid signoffs from separate
+      approval ceremonies from being spliced into one quorum.  Older
+      Trust Receipts that do not use the new Bundle profile remain valid
+      under their existing profile and need not contain this member.
+
    *  nonce MUST be at least 128 bits of CSPRNG output and MUST be
-      unique within the issuer and consumption domain for each
-      authorization attempt.  It is the consumption key for G3, and is
-      the receipt's freshness mechanism in the sense of the Entity
-      Attestation Token (RFC 9711): a verifier-relevant nonce, here held
-      to a 128-bit floor (twice the EAT minimum).  EP does not treat a
-      timestamp alone as freshness; absolute time, where a relying party
-      requires it, is asserted by an independent authority rather than
-      by the operator.
+      unique for each approver context within the issuer and
+      authorization domain.  It is the per-signoff replay and freshness
+      unit, and is the receipt's freshness mechanism in the sense of the
+      Entity Attestation Token (RFC 9711): a verifier-relevant nonce,
+      here held to a 128-bit floor (twice the EAT minimum).  EP does not
+      treat a timestamp alone as freshness; absolute time, where a
+      relying party requires it, is asserted by an independent authority
+      rather than by the operator.
+
+
+
+Schrock                 Expires 10 February 2027                [Page 9]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    *  policy_hash commits to the exact policy version evaluated.  A
       signature over a context with policy_hash X MUST NOT satisfy a
@@ -497,14 +518,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
       selected only by the presenter.  This member corrects the -10
       abstract, which named an audience that the -10 Authorization
       Context example did not carry.
-
-
-
-
-Schrock                 Expires 10 February 2027                [Page 9]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
 
    *  prev_receipt_hash chains this authorization to the issuing log's
       most recent receipt, contributing to tamper evidence.
@@ -542,6 +555,13 @@ Internet-Draft          EP Authorization Receipts            August 2026
    trust inputs independently of the presenter.  This revision defines
    three composition cases:
 
+
+
+Schrock                 Expires 10 February 2027               [Page 10]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    *  EP-MOBILE-PRESENTATION-v1: recompute SHA-256 over the JCS form of
       the closed mobile presentation object and require equality with
       display_hash in the already verified Authorization Context.
@@ -551,16 +571,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
       digests to match, and verify the detached proof under a signing-
       client key pinned by the relying party.  A key carried only by the
       producer is not a trust input.
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 10]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
 
    *  An OASNT dsp claim [I-D.thallapelly-oasnt]: first perform OASNT
       native verification, require its action to match this receipt
@@ -597,16 +607,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    initiator's own stated reason for escalating the action to a human.
    When present it MUST be a JSON object with the following members and
    no others:
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1078,7 +1078,8 @@ Internet-Draft          EP Authorization Receipts            August 2026
      "bundle_id": "ep:authorization-bundle:01J...",
      "action": { "...": "full Action Object" },
      "action_hash": "sha256:9f2c...",
-     "contexts": [ { "...": "Authorization Context 1" } ],
+     "contexts": [ { "...": "Authorization Context 1" },
+                   { "...": "Authorization Context 2" } ],
      "signoffs": [ { "...": "Signoff 1" },
                    { "...": "Signoff 2" } ],
      "approver_key_proofs": [ { "directory_inclusion": "..." } ],
@@ -1108,12 +1109,11 @@ Internet-Draft          EP Authorization Receipts            August 2026
    retry.  Those properties belong to the authorization server, policy
    decision point, executor, and terminal Trust Receipt.
 
-
-
-
-
-
-
+   For an m-of-n policy, contexts contains the n approver contexts
+   independently selected by current policy, with distinct approver
+   identifiers, indexes, and nonces.  Every context MUST carry the same
+   signed authorization_instance.  The bundle_id is only an external
+   identifier and MUST NOT substitute for that signed value. signoffs
 
 
 
@@ -1121,6 +1121,14 @@ Schrock                 Expires 10 February 2027               [Page 20]
 
 Internet-Draft          EP Authorization Receipts            August 2026
 
+
+   contains at least m and at most n entries, each covering a different
+   context.  An unsigned context identifies an eligible approver slot
+   that did not contribute to the satisfied quorum; it is not a
+   malformed bundle.  A signoff that does not cover one of the selected
+   contexts, two signoffs covering one context, fewer than m valid
+   signoffs, or more than one signoff from the same approver is a
+   refusal.
 
 6.1.  Optional Native Authorization Binding
 
@@ -1157,17 +1165,9 @@ Internet-Draft          EP Authorization Receipts            August 2026
    2.   Recompute action_hash from the canonical Action Object.
 
    3.   Recompute each context hash and require every context to commit
-        to that action hash, one policy hash, one audience, and, when
-        present, one identical authorization binding.
-
-   4.   Verify every signoff against the independently trusted approver
-        key and directory proof, including relying-party acceptance of
-        the key class, key validity, signing time, and the WebAuthn
-        user-verification requirements for Class A.
-
-
-
-
+        to that action hash, one policy hash, one audience, one shared
+        authorization_instance, and, when present, one identical
+        authorization binding.  Each context nonce remains distinct.
 
 
 
@@ -1178,32 +1178,45 @@ Schrock                 Expires 10 February 2027               [Page 21]
 Internet-Draft          EP Authorization Receipts            August 2026
 
 
-   5.   Require the context approver set to equal the set independently
+   4.   Require the signed authorization_instance to equal the value
+        independently issued and durably registered for this approval
+        ceremony.  An unavailable expected value is INDETERMINATE; a
+        presenter-selected or unequal value is REFUSE.
+
+   5.   Verify every presented signoff against the independently trusted
+        approver key and directory proof, including relying-party
+        acceptance of the key class, key validity, signing time, and the
+        WebAuthn user-verification requirements for Class A.  Require
+        each signoff to cover one distinct selected context; do not
+        require signoffs for the n-m eligible contexts that did not
+        contribute.
+
+   6.   Require the context approver set to equal the set independently
         selected for this transaction by the authorization server or
         current policy.  Then apply initiator exclusion, pairwise
         approver independence, delegated-approver constraints, and the
         required m-of-n threshold.  A presenter-selected set is
         insufficient even when every signature is valid.
 
-   6.   Require the relying-party clock to fall within every context's
+   7.   Require the relying-party clock to fall within every context's
         validity window.  Historical or clockless verification is not a
         pre-execution authorization check.
 
-   7.   Require every context audience to equal the verifier's
+   8.   Require every context audience to equal the verifier's
         independently configured audience.
 
-   8.   When current directory, revocation, presentation, or delegation
+   9.   When current directory, revocation, presentation, or delegation
         evidence is required by policy, verify it from pinned trust
         inputs.  Unavailable or stale required state is INDETERMINATE,
         never an implicit pass.
 
-   9.   When authorization_binding is present, apply the independently
+   10.  When authorization_binding is present, apply the independently
         selected native profile and verifier.  Derive the expected
         binding from natively verified inputs, compare its JCS bytes to
         the signed binding, and require a lossless match to the exact
         Action Object under a relying-party-pinned mapping.
 
-   10.  Re-evaluate the verifier's current local policy and require its
+   11.  Re-evaluate the verifier's current local policy and require its
         policy digest to equal the digest signed by every context.
         Unavailable or stale policy state is INDETERMINATE; a refusal or
         digest mismatch is REFUSE.  The human evidence does not freeze
@@ -1214,6 +1227,13 @@ Internet-Draft          EP Authorization Receipts            August 2026
    SATISFIED  The bundle satisfies the selected evidence profile.  This
       result is evidence input only and is not an authorization verdict.
 
+
+
+Schrock                 Expires 10 February 2027               [Page 22]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    REFUSE  A definite structural, signature, action, actor, subject,
       audience, policy, freshness, revocation, independence, threshold,
       or replay mismatch occurred.
@@ -1223,21 +1243,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
       completed.
 
    An authorization server that accepts a bundle for grant issuance MUST
-   atomically bind the bundle digest and context nonce set to one grant
-   identifier.  Concurrent or repeated presentation MUST NOT create two
-   independently usable grants; an idempotent retry can return the same
-
-
-
-Schrock                 Expires 10 February 2027               [Page 22]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
-   grant result.  The executor remains responsible for atomic one-time
-   admission of the native transaction or grant in its authoritative
-   state domain.  Neither rule claims global double-spend prevention
-   across independent authorization servers or executors.
+   atomically bind the bundle digest, signed authorization_instance, and
+   context nonce set to one grant identifier.  Concurrent or repeated
+   presentation MUST NOT create two independently usable grants; an
+   idempotent retry can return the same grant result.  The executor
+   remains responsible for atomic one-time admission of the native
+   transaction or grant in its authoritative state domain.  Neither rule
+   claims global double-spend prevention across independent
+   authorization servers or executors.
 
 6.3.  Required Hostile Conformance Cases
 
@@ -1260,6 +1273,27 @@ Internet-Draft          EP Authorization Receipts            August 2026
    *  wrong policy digest, incomplete quorum, duplicate human, and
       initiator self-approval;
 
+   *  a valid m-of-n bundle with exactly m signoffs and n-m unsigned
+      eligible approver contexts, to prevent an implementation from
+      silently replacing m-of-n with n-of-n;
+
+   *  valid signoffs from two different authorization instances spliced
+      into one apparent quorum, which MUST be refused even when action,
+      policy, audience, approvers, and signatures otherwise match;
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 23]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
+   *  an internally consistent bundle whose shared authorization
+      instance was selected by the presenter rather than matching the
+      relying party's registered instance;
+
    *  valid signatures from a presenter-selected approver set that does
       not equal the authorization-server or policy-selected set;
 
@@ -1281,15 +1315,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
    An authorization attempt proceeds:
 
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 23]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
              \-> DENIED                          \-> EXPIRED
              \-> EXPIRED
@@ -1299,15 +1324,27 @@ Internet-Draft          EP Authorization Receipts            August 2026
    implementations -- are:
 
    *  *ConsumeOnce.* Within one conforming shared, atomic consumption
-      domain, a nonce transitions to a terminal state at most once.  Any
-      second presentation to that domain MUST be rejected with a replay
-      error.  The model does not assert coordination with an independent
-      store that does not share this state.
+      domain, an authorization instance transitions to a terminal state
+      at most once.  Any second presentation to that domain MUST be
+      rejected with a replay error.  The model does not assert
+      coordination with an independent store that does not share this
+      state.  For a Bundle-derived Trust Receipt, consumption.nonce MUST
+      equal the Bundle's shared authorization_instance.  A legacy
+      single-context receipt without that member retains its context
+      nonce as the consumption key.
 
    *  *BindingMatch.* A signoff satisfies only the context (and
       therefore only the action hash) it signs.
 
    *  *TerminalIrreversibility.* No transition exits a terminal state.
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 24]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    *  *SelfApprovalImpossible.* For every signoff, approver !=
       initiator; for m-of-n policies, approvers are pairwise distinct
@@ -1331,26 +1368,12 @@ Internet-Draft          EP Authorization Receipts            August 2026
    payload, signature } envelope.  A consumer that is told only EP-
    RECEIPT-v1 therefore MUST NOT dispatch to this section's verifier.
 
-
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 24]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    {
      "receipt_id": "ep:receipt:01J...",
      "action": { "...": "full Action Object" },
      "action_hash": "sha256:9f2c...",
-     "contexts": [ { "...": "Authorization Context 1" } ],
+     "contexts": [ { "...": "Authorization Context 1" },
+                   { "...": "Authorization Context 2" } ],
      "signoffs": [ { "...": "Signoff 1" },
                    { "...": "Signoff 2" } ],
      "consumption": { "nonce": "b64u:R9w1...",
@@ -1365,6 +1388,20 @@ Internet-Draft          EP Authorization Receipts            August 2026
      "approver_key_proofs": [ { "directory_inclusion": "..." } ]
    }
 
+   For a receipt produced from an EP-AUTHORIZATION-BUNDLE-v1 object, the
+   value carried as consumption.nonce MUST equal the signed
+   authorization_instance shared by every context.  The field name is
+   retained for compatibility with the base receipt profile; the
+   equality prevents the terminal state from being detached from the
+   approval ceremony.
+
+
+
+Schrock                 Expires 10 February 2027               [Page 25]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
 7.3.  Offline Verification Algorithm
 
    A verifier with (receipt, trusted log public key, trusted directory
@@ -1377,6 +1414,9 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
    2.  For each context: recompute the context hash; confirm it commits
        to the action hash, the policy hash, and a distinct approver.
+       For a Bundle-derived receipt, require one shared
+       authorization_instance, distinct per-context nonces, and equality
+       between that instance and consumption.nonce.
 
    3.  For each signoff: verify the signature (and WebAuthn assertion
        where present) over the context hash against the approver key
@@ -1392,15 +1432,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
    6.  Confirm signed_at and committed_at fall within [issued_at,
        expires_at].
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 25]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
 
    Degenerate empty-path rule (step 5).  An empty inclusion_path MUST be
    accepted only when the checkpoint's tree_size is exactly 1 and the
@@ -1419,6 +1450,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
    query to the log.  Detecting log equivocation (split-view attacks)
    additionally benefits from gossip or witness cosigning
    (Section 13.4), which is an online activity; the offline guarantee is
+
+
+
+Schrock                 Expires 10 February 2027               [Page 26]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    that _this receipt is internally consistent, correctly signed by
    enrolled approver keys, and was included in a log tree whose head the
    log operator signed_.
@@ -1446,18 +1485,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    otherwise preprocess an unrecognized receipt member before
    verification.
 
-
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 26]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    A producer MAY convey lifecycle or composition bindings in a separate
    companion object whose version is EP-RECEIPT-EXTENSIONS-v1.  The
    companion is not part of the base Trust Receipt and confers no
@@ -1477,6 +1504,15 @@ Internet-Draft          EP Authorization Receipts            August 2026
        }
      ]
    }
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 27]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    The base_receipt_digest MUST be SHA-256 over the JCS canonicalization
    of the complete, unchanged base Trust Receipt.  No member is removed
@@ -1506,14 +1542,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
       value MUST be non-empty, contain no control characters, and
       contain no more than 512 Unicode scalar values.
 
-
-
-
-Schrock                 Expires 10 February 2027               [Page 27]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    *  consequence_digest is either null for a pre-effect extension or
       the extension profile's digest of the exact observed, claimed, or
       settled consequence.  A null value conveys no execution or outcome
@@ -1534,6 +1562,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
    surrogate, number, and depth rejection rules in Section 13.11 to the
    companion before using any entry.  For each required entry, an
    extension-specific verifier MUST verify the companion artifact under
+
+
+
+Schrock                 Expires 10 February 2027               [Page 28]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    relying-party-selected trust and MUST require that artifact to bind
    the same extension name, base action digest, base receipt digest,
    operation identifier, and consequence digest.  It then recomputes the
@@ -1562,14 +1598,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    revision makes no ep. assignments.  Other specifications can self-
    allocate a reversed-DNS name under a domain they control.
 
-
-
-
-Schrock                 Expires 10 February 2027               [Page 28]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    Every extension definition MUST specify its immutable name,
    controlling specification and version, companion artifact version,
    canonicalization rule, artifact-digest rule, operation-identifier
@@ -1584,6 +1612,19 @@ Internet-Draft          EP Authorization Receipts            August 2026
    it.  A future document could request an IANA registry if
    interoperable use demonstrates that centralized allocation is needed.
    Such a request is outside the scope of this revision.
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 29]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
 8.2.  Relationship to the Action Lifecycle
 
@@ -1614,19 +1655,11 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
    A policy MAY require k distinct approvers from a role set.  Each
    approver receives and signs an individual Authorization Context
-   sharing the same action_hash and nonce family but a distinct
-   approver_index.  Commitment occurs only when k valid, distinct
-   signoffs exist before expires_at.  Partial approval confers no
-   authority: a verifying executor presented with fewer than k signoffs
-
-
-
-Schrock                 Expires 10 February 2027               [Page 29]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
-   MUST refuse.
+   sharing the same action_hash and signed authorization_instance but
+   carrying a distinct nonce and approver_index.  Commitment occurs only
+   when k valid, distinct signoffs exist before expires_at.  Partial
+   approval confers no authority: a verifying executor presented with
+   fewer than k signoffs MUST refuse.
 
 10.  Delegation Constraints
 
@@ -1637,6 +1670,17 @@ Internet-Draft          EP Authorization Receipts            August 2026
    the principal's authority at signing time.  Delegation chains are
    bounded (RECOMMENDED depth of at most 2) and every link is
    independently signed.
+
+
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 30]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
 11.  Conformance Classes and Execution-Side Enforcement
 
@@ -1667,21 +1711,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    the difference between "we proved the protocol" and "your deployment
    is unbypassable" is the most common overclaim in this category.
 
-
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 30]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
 12.  Relationship to Other Work
 
    *Companion EP documents.* This document is self-contained: a receipt
@@ -1701,6 +1730,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
    *DRP* ([I-D.nelson-agent-delegation-receipts]) binds a _user's_
    delegation to an _operator's_ instructions -- upstream consumer
    delegation.  EP binds an _organizational approver_ to an _exact
+
+
+
+Schrock                 Expires 10 February 2027               [Page 31]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    action_ -- downstream authorization under its own SoD and m-of-n
    profiles.  The two compose: a DRP delegation can be referenced in an
    EP Action Object's provenance field.
@@ -1730,14 +1767,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    one concrete, portable approval-evidence profile for that binding,
    including exact action, approver independence, audience, actor,
    subject, policy, and validity checks.  It does not replace the native
-
-
-
-Schrock                 Expires 10 February 2027               [Page 31]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    grant or authorization-server decision.  The same document requires
    durable, tamper-evident audit records.  An EP Trust Receipt can
    supply an action, decision, and terminal-consumption record under the
@@ -1756,6 +1785,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
    generic authorization_binding extension point without making this
    receipt format an OAuth extension or replacing the authorization
    server's decision.
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 32]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    *Mastercard Verifiable Intent* [FIDO-VI], co-developed with Google
    and contributed to the FIDO Alliance, describes portable, verifiable
@@ -1786,14 +1823,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    *Receiver-attested logging (e.g., Sello)* has the receiving service
    sign what it observed, post-hoc.  EP is pre-execution authorization.
    A complete deployment benefits from both: EP records the pre-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 32]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    execution signing and consumption event under a selected profile;
    receiver attestation records what the receiver observed afterward.
    Local policy determines whether the former is sufficient for
@@ -1812,6 +1841,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
    approver key's action-bound decision.  The two are orthogonal and
    composable: an EAT says the machine is what it claims; an EP receipt
    says a named person approved the exact action.
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 33]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    *Transaction Tokens (draft-ietf-oauth-transaction-tokens)* propagate
    workload and agent authorization context across a machine call chain;
@@ -1842,14 +1879,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    can enroll keys it controls (Section 5.2, Section 13.6).
    Accordingly, the accurate claim for classes A/B is: "the operator
    cannot forge an approver's signature."  The stronger claim -- "the
-
-
-
-Schrock                 Expires 10 February 2027               [Page 33]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    operator cannot obtain an unauthorized approval" -- additionally
    requires the directory-authority and independent-rendering controls.
    Under class C the operator can fabricate outright; hence the labeling
@@ -1861,6 +1890,21 @@ Internet-Draft          EP Authorization Receipts            August 2026
    biometric/PIN.  Organizations SHOULD require key class A for high-
    value policies and SHOULD pair approval with out-of-band action
    rendering (the approver sees the wire details on a second surface).
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 34]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
 13.3.  Presentation Attacks
 
@@ -1891,21 +1935,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    evidence and the signed action.  Even then, a compromised physical
    display path remains outside the cryptographic claim.
 
-
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 34]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
 13.4.  Log Equivocation
 
    A malicious log could show different trees to different parties.
@@ -1918,6 +1947,20 @@ Internet-Draft          EP Authorization Receipts            August 2026
    previously accepted checkpoint.  A quorum of witness signatures over
    a caller-supplied but unauthenticated tuple is not evidence that the
    named log produced that tuple.
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 35]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    For this purpose, independent operators require separate
    administrative control, key custody, and failure domains; multiple
@@ -1953,15 +1996,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    sections are specified, not proven, and extending the models to them
    is tracked work.
 
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 35]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    A separate composed Tamarin model joins signed challenge, CAID, two
    distinct user-verification-gated approvals, scoped authority under an
    exact pinned registry view, revocation, receipt-issuer pinning, one-
@@ -1973,10 +2007,21 @@ Internet-Draft          EP Authorization Receipts            August 2026
    comparison lemmas are falsified with concrete traces: one omits
    consumption and admits same-receipt replay; the other omits exact
    registry-view binding and admits a stale or equivocating view.  The
-   model treats signatures as perfect symbolic primitives and does not
-   prove WebAuthn internals, parser correctness, amount arithmetic,
-   policy authorship, clock freshness, transparency-log completeness,
-   collusion resistance, or downstream exactly-once physical effects.
+   one-time property is derived by consuming a linear authorization fact
+   created once for the registered action instance; it is not imposed by
+   a trace restriction that assumes uniqueness.  The model treats
+
+
+
+Schrock                 Expires 10 February 2027               [Page 36]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
+   signatures as perfect symbolic primitives and does not prove WebAuthn
+   internals, parser correctness, amount arithmetic, policy authorship,
+   clock freshness, transparency-log completeness, collusion resistance,
+   or downstream exactly-once physical effects.
 
    The quorum abstraction in the standalone symbolic model is a fixed
    2-of-2 instance.  Its checked result is evidence for that instance,
@@ -1999,24 +2044,16 @@ Internet-Draft          EP Authorization Receipts            August 2026
    room construction acceptance for the current specification.
 
    The -11 Authorization Bundle algorithm has one TypeScript/JavaScript
-   reference verifier and 21 generated hostile cases covering the
-   positive path, structural malformation, action and audience
-   substitution, actor and subject confusion, approver-set selection,
-   quorum and separation of duties, policy and status unavailability,
-   revocation, mapping mismatch, and dynamic-plan expansion.  These are
-   same-repository implementation-profile cases, not independent or
-   cross-language interoperability.  The bundle-to-grant helper models a
-   compare-and-set transition; it does not supply the authoritative
-   durable store or prove that a deployment performs the transition
-   atomically.
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 36]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
+   reference verifier and 27 generated cases covering the positive path,
+   structural malformation, action and audience substitution, actor and
+   subject confusion, approver-set selection, quorum, cross-ceremony
+   signoff splicing, separation of duties, policy and status
+   unavailability, revocation, mapping mismatch, and dynamic-plan
+   expansion.  These are same-repository implementation-profile cases,
+   not independent or cross-language interoperability.  The bundle-to-
+   grant helper models a compare-and-set transition; it does not supply
+   the authoritative durable store or prove that a deployment performs
+   the transition atomically.
 
 13.6.  Directory Authority
 
@@ -2029,6 +2066,13 @@ Internet-Draft          EP Authorization Receipts            August 2026
    enrollment; Class C-equivalent treatment otherwise) exist for this
    reason.  Auditors SHOULD verify directory key custody as part of any
    assessment that relies on receipts.
+
+
+
+Schrock                 Expires 10 February 2027               [Page 37]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
 13.7.  What Separation of Duties Does and Does Not Provide
 
@@ -2060,20 +2104,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    human at its center, and implementations SHOULD say so to their
    customers.
 
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 37]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
 13.9.  Initiator Attestation as an Attack Surface
 
    The statement member of an Initiator Attestation (Section 4.2) is
@@ -2092,6 +2122,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
    rendered Action Object.  This is consistent with the rendering-
    faithfulness discipline of Section 13.3: the approver's decision
    input is the rendered Action Object; the statement is commentary from
+
+
+
+Schrock                 Expires 10 February 2027               [Page 38]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    a party the protocol never trusts.  A related residual vector is
    divide-and-misinform: because each approver signs their own context,
    a malicious orchestrator can show different approvers of an m-of-n
@@ -2121,15 +2159,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    remains evidence that the control was bypassed -- that property comes
    from the gate, not from this member.)
 
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 38]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    No trust feedback: policy engines MUST NOT use initiator_attestation
    content to relax thresholds, skip approvers, or raise any trust
    score.  The initiator must gain nothing by saying the right words;
@@ -2149,6 +2178,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
    HMAC-chained audit log) is verifiable only by a party holding the
    same secret as the producer, so it does not provide public
    verification outside that trust domain.  An asymmetric issuer can
+
+
+
+Schrock                 Expires 10 February 2027               [Page 39]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    still sign conflicting histories; witness cosigning or gossip is
    required to detect that equivocation.  Conforming verifier
    implementations MUST NOT introduce a symmetric primitive on the
@@ -2178,14 +2215,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
    surrogate, and depth gates are applied at the parse boundary by the
    conformance runners, since the verifier packages receive already-
    parsed values; the profile predicate, canonical serialization, and
-
-
-
-Schrock                 Expires 10 February 2027               [Page 39]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    digests exercise the verifier packages themselves.)
 
 14.  IANA Considerations
@@ -2205,6 +2234,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
       encoded as UTF-8 according to RFC 8259 [RFC8259].
 
    Security considerations:  See the Security Considerations section of
+
+
+
+Schrock                 Expires 10 February 2027               [Page 40]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
       this document.  Receipt verification requires independently
       selected log, approver, directory, and policy trust inputs.  A
       valid receipt is evidence, not current authorization, proof of
@@ -2235,13 +2272,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
    Restrictions on usage:  none.
 
-
-
-Schrock                 Expires 10 February 2027               [Page 40]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    Author:  Iman Schrock
 
    Change controller:  IETF
@@ -2259,6 +2289,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
    Encoding considerations:  binary; the representation is a JSON object
       encoded as UTF-8 according to RFC 8259 [RFC8259].
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 41]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    Security considerations:  See the Security Considerations and
       Section 6.2.  A valid bundle is approval evidence, not an
@@ -2290,14 +2328,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
    Restrictions on usage:  none.
 
-
-
-
-Schrock                 Expires 10 February 2027               [Page 41]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    Author:  Iman Schrock
 
    Change controller:  IETF
@@ -2314,6 +2344,15 @@ Internet-Draft          EP Authorization Receipts            August 2026
               Backchannel Authentication Flow - Core 1.0", September
               2021, <https://openid.net/specs/openid-client-initiated-
               backchannel-authentication-core-1_0.html>.
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 42]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    [EP-CAID]  Schrock, I., "The Canonical Action Identifier (CAID)",
               Work in Progress, Internet-Draft, draft-schrock-canonical-
@@ -2347,13 +2386,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
               DOI 10.17487/RFC8259, December 2017,
               <https://www.rfc-editor.org/info/rfc8259>.
 
-
-
-Schrock                 Expires 10 February 2027               [Page 42]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
               Canonicalization Scheme (JCS)", RFC 8785,
               DOI 10.17487/RFC8785, June 2020,
@@ -2370,6 +2402,13 @@ Internet-Draft          EP Authorization Receipts            August 2026
               Profile - Draft 1", July 2026,
               <https://openid.github.io/authzen/authzen-access-request-
               approval-profile-1_0.html>.
+
+
+
+Schrock                 Expires 10 February 2027               [Page 43]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    [EP-BOUNDED-CAP]
               Schrock, I., "Bounded Capability Receipts and Durable
@@ -2403,13 +2442,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
               10 July 2026, <https://github.com/emiliaprotocol/emilia-
               protocol/blob/main/formal/PROOF_STATUS.md>.
 
-
-
-Schrock                 Expires 10 February 2027               [Page 43]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    [I-D.klrc-aiagent-auth]
               Kasselman, P., Lombardo, J., Rosomakho, Y., Campbell, B.,
               Steele, N., and A. Parecki, "AI Agent Authentication and
@@ -2424,6 +2456,15 @@ Internet-Draft          EP Authorization Receipts            August 2026
               nelson-agent-delegation-receipts-10, 13 June 2026,
               <https://datatracker.ietf.org/doc/draft-nelson-agent-
               delegation-receipts/>.
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 44]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    [I-D.rosomakho-oauth-txn-challenge]
               Rosomakho, Y., Campbell, B., McGuinness, K., and P.
@@ -2456,16 +2497,6 @@ Appendix A.  Acknowledgments
 
 Appendix B.  Changes since -10
 
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 44]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    *  Defined the closed EP-AUTHORIZATION-BUNDLE-v1 pre-execution
       object, digest, three-state verification result, and ordered
       verification algorithm.  Removed the undefined pre-execution
@@ -2481,6 +2512,16 @@ Internet-Draft          EP Authorization Receipts            August 2026
       not make the Bundle depend on OAuth, AP2, WIMSE, or another trust
       model.
 
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 45]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    *  Kept OAuth Transaction Authorization Challenge as informative
       related work.  Its optional OAuth/RAR projection is implemented as
       a separate package profile rather than a normative dependency of
@@ -2491,7 +2532,7 @@ Internet-Draft          EP Authorization Receipts            August 2026
       status and policy, presenter-selected approvers, quorum failure,
       mapping failure, replay-layer confusion, dynamic-plan expansion,
       and indeterminate provider outcomes.  Added one TypeScript/
-      JavaScript reference verifier and 21 generated implementation-
+      JavaScript reference verifier and 27 generated implementation-
       profile cases while stating the absence of external and cross-
       language coverage.
 
@@ -2513,15 +2554,6 @@ Appendix C.  Changes since -09
       across artifact formats.  Missing, lossy, failed, or unpinned
       mappings remain indeterminate.
 
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 45]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    *  Named the detailed Section 6 receipt profile EP-AUTHORIZATION-
       RECEIPT-v1 and explicitly separated it from the pre-existing
       generic EP-RECEIPT-v1 envelope.
@@ -2534,6 +2566,17 @@ Appendix D.  Changes since -08
    *  Changed the intended status from Informational to Standards Track;
       the wire format, canonicalization, signature inputs, and
       consumption rules are unchanged.
+
+
+
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 46]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    *  Clarified composition with the authorization-server, human-in-the-
       loop, transaction-token, and audit requirements in
@@ -2568,16 +2611,6 @@ Appendix F.  Changes since -06
       domain and stated that offline evidence cannot prove global non-
       replay across independent executors.
 
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 46]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
    *  Replaced legal non-repudiation language with cryptographic
       attribution, tamper evidence, and public verifiability; stated the
       issuer-equivocation boundary.
@@ -2592,6 +2625,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
 
    *  Added Mastercard Verifiable Intent and AuthZEN AARP as adjacent,
       composable work.
+
+
+
+
+Schrock                 Expires 10 February 2027               [Page 47]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
 
    *  Clarified that a receipt can authorize and be consumed for
       capability issuance, but cannot be reused as per-operation
@@ -2613,26 +2654,6 @@ Appendix H.  Changes since -00 (through -04)
 
    This summary covers -00 through -04.  Section numbering is stable;
    all changes are new subsections or in-place additions.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 10 February 2027               [Page 47]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
 
    1.  New OPTIONAL Authorization Context member initiator_attestation
        (new Section 4.2): a REQUIRED escalation_trigger enum
@@ -2661,6 +2682,14 @@ Internet-Draft          EP Authorization Receipts            August 2026
        a trust input.  The formal-models section now lists the Initiator
        Attestation among the not-yet-modeled areas.
 
+
+
+
+Schrock                 Expires 10 February 2027               [Page 48]
+
+Internet-Draft          EP Authorization Receipts            August 2026
+
+
    3.  Introduction/terminology clarifications (new text in the
        Introduction, new Section 1.2, and a sentence in Section 5.1 and
        Section 5.2): makes unmistakable that (a) EP's user-verification-
@@ -2682,14 +2711,6 @@ Internet-Draft          EP Authorization Receipts            August 2026
        validity.  The OPTIONAL delegation.observed_at records when the
        upstream identity/delegation (L4) evidence was observed; a
        relying party MAY enforce freshness against it fail-closed,
-
-
-
-Schrock                 Expires 10 February 2027               [Page 48]
-
-Internet-Draft          EP Authorization Receipts            August 2026
-
-
        keeping the receipt agnostic to which external identity scheme
        prevails while making a stale or unconstrained upstream claim
        detectable after the fact.
@@ -2704,27 +2725,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

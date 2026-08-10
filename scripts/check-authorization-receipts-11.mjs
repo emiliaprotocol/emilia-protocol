@@ -76,8 +76,20 @@ const repoRoot = new URL('../', import.meta.url);
 const vectorBytes = readFileSync(new URL('conformance/vectors/authorization-bundle.v1.json', repoRoot));
 const vectors = JSON.parse(vectorBytes.toString('utf8'));
 invariant(vectors['@version'] === 'EP-AUTHORIZATION-BUNDLE-CASES-v1', 'Wrong bundle vector version');
-invariant(vectors.cases?.length === 24, 'Authorization Bundle must publish 24 hostile cases');
-invariant(new Set(vectors.cases.map((entry) => entry.id)).size === 24, 'Bundle vector IDs must be unique');
+invariant(vectors.cases?.length === 27, 'Authorization Bundle must publish 27 cases');
+invariant(new Set(vectors.cases.map((entry) => entry.id)).size === 27, 'Bundle vector IDs must be unique');
+invariant(
+  vectors.cases.some((entry) => entry.id === 'valid-two-of-three-oauth-bound-bundle'),
+  'Bundle vectors must prove that m-of-n does not collapse to n-of-n',
+);
+invariant(
+  vectors.cases.some((entry) => entry.id === 'cross-ceremony-signoff-splicing'),
+  'Bundle vectors must reject quorum signoffs spliced across authorization instances',
+);
+invariant(
+  vectors.cases.some((entry) => entry.id === 'presenter-selected-authorization-instance'),
+  'Bundle vectors must reject a presenter-selected authorization instance',
+);
 invariant(
   Buffer.compare(vectorBytes, readFileSync(new URL('packages/verify/authorization-bundle.v1.json', repoRoot))) === 0,
   'Packed Authorization Bundle vectors differ from repository source',

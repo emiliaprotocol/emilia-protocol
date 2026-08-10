@@ -27,8 +27,11 @@ import {
 import type { AebExecutionConditionsResult } from '@emilia-protocol/verify/aeb-execution-conditions';
 
 export const CONSEQUENCE_BOUNDARY_VERSION = 'EMILIA-CONSEQUENCE-BOUNDARY-v1';
+export const CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN =
+  'EMILIA-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1';
 
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/;
+const AUTHORIZATION_INSTANCE = /^[A-Za-z0-9_.:-]{1,256}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
 
 type JsonObject = Record<string, unknown>;
@@ -44,6 +47,12 @@ export interface ConsequenceBoundaryAttemptBinding
   extends ConsequenceBoundaryProvider {
   attempt_id: string;
   request_digest: AebDigest;
+  /**
+   * Stable for retries and reconciliation of this authorization instance.
+   * A provider adapter MUST pass it unchanged to any native idempotency API.
+   * The key alone does not assert that the provider offers such semantics.
+   */
+  provider_idempotency_key: string;
 }
 
 declare const CONSEQUENCE_BOUNDARY_OWNER: unique symbol;
@@ -123,6 +132,7 @@ export interface ConsequenceBoundaryEffectContext {
   caid: string;
   evaluation_digest: AebDigest;
   authorization_program_digest: AebDigest;
+  provider_idempotency_key: string;
   attempt: Readonly<ConsequenceBoundaryAttemptBinding>;
 }
 
@@ -348,13 +358,15 @@ function validAttemptBinding(value: unknown): value is ConsequenceBoundaryAttemp
       'environment',
       'attempt_id',
       'request_digest',
+      'provider_idempotency_key',
     ])
     && identifier(record.tenant_id)
     && identifier(record.provider_id)
     && identifier(record.provider_account_id)
     && identifier(record.environment)
     && identifier(record.attempt_id)
-    && digest(record.request_digest);
+    && digest(record.request_digest)
+    && identifier(record.provider_idempotency_key);
 }
 
 function opaqueOwner(value: unknown): value is ConsequenceBoundaryOwnerHandle {
@@ -375,6 +387,7 @@ function validAttemptReference(
     'environment',
     'attempt_id',
     'request_digest',
+    'provider_idempotency_key',
     'owner',
   ]) || !opaqueOwner(record.owner)) return false;
   const { owner: _owner, ...binding } = record;
@@ -387,6 +400,7 @@ export function consequenceBoundaryRequestDigest(input: {
   caid: string;
   action: unknown;
   evaluation_digest: AebDigest;
+  provider_idempotency_key: string;
 }): AebDigest {
   return digestAeb({
     domain: `${CONSEQUENCE_BOUNDARY_VERSION}:REQUEST`,
@@ -395,7 +409,45 @@ export function consequenceBoundaryRequestDigest(input: {
     caid: input.caid,
     action: input.action,
     evaluation_digest: input.evaluation_digest,
+    provider_idempotency_key: input.provider_idempotency_key,
   });
+}
+
+/**
+ * Derive the provider retry/reconciliation key from one exact action and one
+ * authorization instance. Canonical encoding avoids ambiguous concatenation;
+ * provider coordinates prevent the same key from crossing provider domains.
+ *
+ * A deployment may claim provider-side duplicate suppression only when its
+ * pinned adapter profile establishes native idempotency, a sufficient
+ * retention horizon, payload-mismatch refusal, and lookup by this exact key.
+ */
+export function consequenceBoundaryProviderIdempotencyKey(input: {
+  provider: ConsequenceBoundaryProvider;
+  caid: string;
+  action_digest: AebDigest;
+  authorization_instance: string;
+}): string {
+  if (!isObject(input)
+      || !isObject(input.provider)
+      || !identifier(input.provider.tenant_id)
+      || !identifier(input.provider.provider_id)
+      || !identifier(input.provider.provider_account_id)
+      || !identifier(input.provider.environment)
+      || !identifier(input.caid)
+      || !digest(input.action_digest)
+      || typeof input.authorization_instance !== 'string'
+      || !AUTHORIZATION_INSTANCE.test(input.authorization_instance)) {
+    throw new TypeError('provider_idempotency_binding_invalid');
+  }
+  const derived = digestAeb({
+    domain: CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN,
+    provider: input.provider,
+    caid: input.caid,
+    action_digest: input.action_digest,
+    authorization_instance: input.authorization_instance,
+  });
+  return `epcb1:${derived.slice('sha256:'.length)}`;
 }
 
 function refused(reason: string): ConsequenceBoundaryResult<never> {
@@ -515,12 +567,20 @@ export function createConsequenceBoundary<TResult>(
         : refused(authorization.reason);
     }
     const reservationKey = authorization.reservation_key;
+    const actionDigest = digestAeb(action);
+    const providerIdempotencyKey = consequenceBoundaryProviderIdempotencyKey({
+      provider,
+      caid: evaluation.caid,
+      action_digest: actionDigest,
+      authorization_instance: evaluation.consumption_nonce,
+    });
     const requestDigest = consequenceBoundaryRequestDigest({
       provider,
       operation_id: evaluation.operation_id,
       caid: evaluation.caid,
       action,
       evaluation_digest: evaluationDigest,
+      provider_idempotency_key: providerIdempotencyKey,
     });
 
     let attemptId: string;
@@ -539,6 +599,7 @@ export function createConsequenceBoundary<TResult>(
       ...provider,
       attempt_id: attemptId,
       request_digest: requestDigest,
+      provider_idempotency_key: providerIdempotencyKey,
     });
     let reserved;
     try {
@@ -579,6 +640,7 @@ export function createConsequenceBoundary<TResult>(
         caid: evaluation.caid,
         evaluation_digest: evaluationDigest,
         authorization_program_digest: authorization.program_digest,
+        provider_idempotency_key: providerIdempotencyKey,
         attempt: attemptBinding,
       }));
     } catch {
@@ -625,7 +687,6 @@ export function createConsequenceBoundary<TResult>(
       return indeterminate('authorization_consumption_unconfirmed', true, publicAttempt(attempt));
     }
 
-    const actionDigest = digestAeb(action);
     const terminalState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
     const providerEvidence: ConsequenceBoundaryProviderEvidence = cloneFrozen({
       ...attemptBinding,
@@ -702,11 +763,24 @@ export function createConsequenceBoundary<TResult>(
       caid: evaluation.caid,
       action,
       evaluation_digest: evaluationDigest,
+      provider_idempotency_key: consequenceBoundaryProviderIdempotencyKey({
+        provider,
+        caid: evaluation.caid,
+        action_digest: digestAeb(action),
+        authorization_instance: evaluation.consumption_nonce,
+      }),
+    });
+    const expectedProviderIdempotencyKey = consequenceBoundaryProviderIdempotencyKey({
+      provider,
+      caid: evaluation.caid,
+      action_digest: digestAeb(action),
+      authorization_instance: evaluation.consumption_nonce,
     });
     if (attemptBinding.tenant_id !== provider.tenant_id
         || attemptBinding.provider_id !== provider.provider_id
         || attemptBinding.provider_account_id !== provider.provider_account_id
         || attemptBinding.environment !== provider.environment
+        || attemptBinding.provider_idempotency_key !== expectedProviderIdempotencyKey
         || attemptBinding.request_digest !== expectedRequestDigest) {
       return refused('reconciliation_binding_mismatch');
     }
@@ -792,6 +866,8 @@ export function createConsequenceBoundary<TResult>(
 
 export default Object.freeze({
   CONSEQUENCE_BOUNDARY_VERSION,
+  CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN,
+  consequenceBoundaryProviderIdempotencyKey,
   consequenceBoundaryRequestDigest,
   createConsequenceBoundary,
 });

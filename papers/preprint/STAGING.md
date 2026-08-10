@@ -1,21 +1,27 @@
 # Preprint staging: Action-Bound Injective Authorization
 
-**Status: SUBMITTED TO IACR; EMAIL CONFIRMED; AWAITING EDITOR REVIEW.**
+**Status: NOT APPROVED TO POST OR RESUBMIT. IACR SUBMISSION REJECTED; MATERIAL
+SECURITY-ARGUMENT REPAIR IN PROGRESS.**
 Historical submission `xxxx/110952` was received on 5 August 2026 PT and rejected
 on 6 August 2026 with the editor's note: "Unclear or insufficient contribution
 to the field of cryptology." No public ePrint number was assigned. The revised
 package was submitted as `xxxx/110966` on 6 August 2026 PT and its author email
-was confirmed. The revision now foregrounds the named Action-Bound Injective
-Authorization (ABIA) security definition, its signer-harvesting adversary, its
-symbolic theorem, and the counterexample separations that distinguish protocol
-authorization from ordinary signature authenticity. The rejection remains
-recorded as a venue decision, not as a peer-review finding.
+was confirmed, then rejected because it lacked security proofs or convincing
+security arguments. No public ePrint number was assigned. The current working
+package responds materially: it defines the Action-Bound Injective Authorization
+(ABIA) experiment, states a computational reduction with explicit
+non-cryptographic assumptions, removes replay properties that had been assumed
+as Tamarin restrictions, uses linear protocol state instead, and adds a shared,
+independently issued authorization instance to prevent cross-ceremony quorum
+splicing. These repairs must pass the complete local package gates before any
+new submission is considered. The rejection remains a venue decision rather
+than peer review, but its security-argument criticism is treated as correct.
 
 The exact PDF submitted as `xxxx/110966` is preserved by git commit `a56b0bea`
 with SHA-256 `99d667231d9c596920bdf8ad7c445a26d7211e84606b6bd2b0ca8b27114449e5`.
-The current working PDF changes only the cited engineering draft from
-Authorization Receipts-09 to the subsequently published -10. It has not been
-resubmitted while the confirmed package remains under editor review.
+The current working source is materially different from the rejected package.
+It has not been resubmitted, and no generated PDF is an approved submission
+artifact until the gates below pass against a clean reviewed commit.
 
 **Venue:** arXiv (cs.CR) is locked for this topic for us and requires an
 endorsement we do not have, so this package targets the **IACR Cryptology ePrint
@@ -31,7 +37,7 @@ mints a DOI, no scope moderation).
 | File | What it is | State |
 |---|---|---|
 | `main.tex` | Full LaTeX source carrying the canonical Markdown fingerprint and current repo evidence claims | Rebuilt locally; claim-checker gated |
-| `main.pdf` | Compiled PDF (25 pages), built from `main.tex` with `tectonic` | Current citation-synchronized working copy; exact submitted bytes are pinned above |
+| `main.pdf` | Compiled PDF, built from `main.tex` with `tectonic` | Working copy only; not approved for submission |
 | `STAGING.md` | This checklist | — |
 
 The PDF is the artifact IACR ePrint and Zenodo both host directly (they do not
@@ -70,7 +76,7 @@ source with the same Tectonic toolchain are byte-identical.
 - **Moderation:** light human moderation for scope and contribution, no peer
   review; posting is not guaranteed by a conformance or implementation record.
 
-**Resubmission metadata:**
+**Future resubmission metadata (only after an explicit approval gate):**
 1. Author: Iman Schrock; ORCID `0009-0004-0290-5433`; affiliation EMILIA
    Protocol, Inc.; public contact `team@emiliaprotocol.ai`.
 2. Category: `Cryptographic protocols`.
@@ -78,9 +84,9 @@ source with the same Tectonic toolchain are byte-identical.
    DOI `10.5281/zenodo.21520973`.
 4. License: CC BY.
 5. PDF: the checker-gated 25-page `main.pdf` in this directory.
-6. Submission: `xxxx/110966`; author email ownership confirmed; awaiting editor
-   review. The private confirmation code remains only in the author's IACR email,
-   not this repo.
+6. Prior submission: `xxxx/110966`; author email ownership was confirmed, then
+   the package was rejected. The private confirmation code remains only in the
+   author's IACR email, not this repo.
 
 ## Fallback venue — Zenodo (zenodo.org)
 
@@ -115,10 +121,11 @@ DOI. Other options if ever needed: TechRxiv (IEEE), HAL, OSF Preprints.
 
 - The prior paper was rejected by IACR and is not public; it did not receive a
   permanent `eprint.iacr.org/2026/NNNN` identifier.
-- The revised package was resubmitted as `xxxx/110966` only after
-  `npm run preprint:build`, `npm run check:preprint`, and `npm run test:preprint`
-  passed and the editor-facing contribution was materially distinct from the
-  rejected framing.
+- The second package, `xxxx/110966`, was rejected. The current security analysis
+  is a material repair made after that decision and has not been submitted.
+- A future upload requires a clean reviewed commit, reproducible PDF build,
+  passing `npm run check:preprint` and `npm run test:preprint`, and fresh explicit
+  submission approval from the author.
 - The paper remains single-author: Iman Schrock, EMILIA Protocol, Inc. The
   external Rust verifier author remains an acknowledged external implementation
   party, not a co-author.

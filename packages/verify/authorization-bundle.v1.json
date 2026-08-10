@@ -27,6 +27,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -51,6 +52,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -71,15 +73,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -128,6 +130,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -144,6 +147,479 @@
       "expect": {
         "verdict": "SATISFIED",
         "reasons": []
+      }
+    },
+    {
+      "id": "valid-two-of-three-oauth-bound-bundle",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:risk-officer",
+            "approver_index": 3,
+            "required_approvals": 2,
+            "nonce": "b64u:AwMDAwMDAwMDAwMDAwMDAw",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:risk-officer#1": {
+          "approver_id": "ep:approver:risk-officer",
+          "public_key": "MCowBQYDK2VwAyEAt9zVJ5WG2hLmkT6Lm5xw9ZoPwsm_WzQwPhrVuZftsqA",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer",
+        "ep:approver:risk-officer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "SATISFIED",
+        "reasons": []
+      }
+    },
+    {
+      "id": "cross-ceremony-signoff-splicing",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QkJCQkJCQkJCQkJCQkJCQg",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:484caeea5b010582e3c26bf1ddd252e07728270a6eeae2dcb0fc2265c3465e79",
+            "signature": "NSbS2ntMXWYYl4YDLPDKNbCNr-WaZy1SVALN-6DC--r64tZ0wI5KRfzTVTmz46acu1bq52WBiZebgCi1omDIAA",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "authorization_instance_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "presenter-selected-authorization-instance",
+      "bundle": {
+        "bundle_version": "EP-AUTHORIZATION-BUNDLE-v1",
+        "bundle_id": "ep:authorization-bundle:case-0001",
+        "action": {
+          "action_type": "payment.release.1",
+          "initiator": "ep:entity:agent-recon-7",
+          "parameters": {
+            "amount_minor": 12550,
+            "currency": "USD",
+            "payee": "merchant:7"
+          }
+        },
+        "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:controller",
+            "approver_index": 1,
+            "required_approvals": 2,
+            "nonce": "b64u:AQEBAQEBAQEBAQEBAQEBAQ",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+            "policy_id": "ep:policy:payments@v4",
+            "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+            "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
+            "audience": "https://payments.example.com",
+            "approver": "ep:approver:treasurer",
+            "approver_index": 2,
+            "required_approvals": 2,
+            "nonce": "b64u:AgICAgICAgICAgICAgICAg",
+            "issued_at": "2026-08-09T17:55:00Z",
+            "expires_at": "2026-08-09T18:05:00Z",
+            "authorization_binding": {
+              "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+              "authorization_server": "https://as.example.com",
+              "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+              "actor": "spiffe://example.com/agent/recon-7",
+              "delegated_subject": "user:alice",
+              "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+              "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+            }
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
+            "key_class": "B",
+            "approver_key_id": "ep:key:controller#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          },
+          {
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
+            "key_class": "B",
+            "approver_key_id": "ep:key:treasurer#1",
+            "signed_at": "2026-08-09T17:55:00Z"
+          }
+        ],
+        "approver_key_proofs": [],
+        "presentation_evidence": []
+      },
+      "approver_keys": {
+        "ep:key:controller#1": {
+          "approver_id": "ep:approver:controller",
+          "public_key": "MCowBQYDK2VwAyEA8-JGCUJSYAflpoZeFhT3mweYL5RbPMO4xcwShb5M0X0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        },
+        "ep:key:treasurer#1": {
+          "approver_id": "ep:approver:treasurer",
+          "public_key": "MCowBQYDK2VwAyEATxdXWH3M--29JIlek938V6z8JblWNTQErUIa-J-4DpI",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00Z",
+          "valid_to": "2027-01-01T00:00:00Z",
+          "compromised_at": null
+        }
+      },
+      "expected_approvers": [
+        "ep:approver:controller",
+        "ep:approver:treasurer"
+      ],
+      "accepted_key_classes": [
+        "B"
+      ],
+      "current_policy": {
+        "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
+        "decision": "PERMIT",
+        "checked_at": "2026-08-09T17:59:00Z",
+        "expires_at": "2026-08-09T18:01:00Z"
+      },
+      "expected_action": {
+        "action_type": "payment.release.1",
+        "initiator": "ep:entity:agent-recon-7",
+        "parameters": {
+          "amount_minor": 12550,
+          "currency": "USD",
+          "payee": "merchant:7"
+        }
+      },
+      "expected_authorization_instance": "b64u:QkJCQkJCQkJCQkJCQkJCQg",
+      "expected_authorization_binding": {
+        "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
+        "authorization_server": "https://as.example.com",
+        "transaction_id": "97053963-771d-49cc-a4e3-20aad399c312",
+        "actor": "spiffe://example.com/agent/recon-7",
+        "delegated_subject": "user:alice",
+        "authorization_details_digest": "sha256:3f88a9cbd7be7f17e23619de54ddb4f43888c75856d492467600e6014702836d",
+        "action_mapping_profile": "https://profiles.example.com/payment-release-v1"
+      },
+      "require_authorization_binding": true,
+      "audience": "https://payments.example.com",
+      "now": "2026-08-09T18:00:00Z",
+      "require_current_status": false,
+      "expect": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "authorization_instance_mismatch"
+        ]
       }
     },
     {
@@ -169,6 +645,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -190,6 +667,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -207,15 +685,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:a1d9c464e715e892241ac900539a107227348a5acfa7a1e828af91e98e0b9bb9",
-            "signature": "FQt7LGjqdDtJdSZRf6ot6h50DD_yI781IgdNRpEdZm_VpxAaFcuGA7xXq9yRnQpeEtX22zmc3HJSiXgYFVaMDw",
+            "context_hash": "sha256:dcdff3aab7c62905404bdf8b9efb4c35f5ead5c2aeb7152f6c598f3d1f8b0bf2",
+            "signature": "u4N8zoCgwQc5Z_6HIo-hgba8pVjtARMQWbXgWeTCc_QsRP2gTTYUqdBYrEJ2cNiITyPY8ayQVoCfUJA9KvtiCg",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:f1efb16ca5a27b28d3d491c15db38b698ff921e2e75dc2afaeddf268f162946d",
-            "signature": "_rf7r2q7oWiJm6G8zSo3rIFhbNKxGbmHz7TKsqYuKNFNPPvwZL9Ii5BS_Eo3koNFIDWwoVb_mvqHKwttuB4vDw",
+            "context_hash": "sha256:c5629b61ea5fdea6a52aa2752a76ba9409967cc514d187f0f18d69a2e376993c",
+            "signature": "XfFB4ViXP_iHKuUTVQLvFvRoE8BdfpBalnIChqFt4Zzfu_VSyB77eEnv3cPocq868KT8sZxm8RyRL3KmvUWFAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -264,6 +742,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EXAMPLE-NATIVE-MANDATE-BINDING-v1",
         "mandate_id": "mandate:release-7",
@@ -302,6 +781,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -326,6 +806,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -346,15 +827,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -403,6 +884,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -446,6 +928,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -470,6 +953,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -490,15 +974,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -547,6 +1031,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -590,6 +1075,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -614,6 +1100,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -634,15 +1121,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -691,6 +1178,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -734,6 +1222,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -758,6 +1247,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -778,15 +1268,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -835,6 +1325,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -878,6 +1369,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -893,6 +1385,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -904,15 +1397,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:42beec2882ee012ab9d5e51f0bb03ee5784be2c48ccf49ae00472e6871df78fc",
-            "signature": "LT_ogQfYWfIYXFsKNc4y1_PKFSQ6_4529FdydUaw3ysJSxtXo_-a9DKkca9BdtofUKnh7av93gyF2xLfCjGSAQ",
+            "context_hash": "sha256:04c2668b3a558662bae04d888dc3a3e27ebcc75f6ec3d7037ef3b61848538c72",
+            "signature": "iHF5PBqhuw1xaolxB5bDbbX4Fys-EiXF4CjD7R5QmU4WwfLvK3VA7KNxp3Acf_Yb50E6H4FW1u2ggmrDdgdoDg",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:582f4f0d9131269a786a9fca1532c93690cf72095f0ed25414888fb3df345534",
-            "signature": "8-sK922Tq4vlrcweDcN-fdPkYpnu72mxVTjn08WgsGBWxFmpspE8VTHSTIe5NrqQH4tjxAqyIknuwAPoYBaCDQ",
+            "context_hash": "sha256:8cdacac26b630393e6b2b29c9eb683afd2de5b2d1bcdd901e65c00f3199676cc",
+            "signature": "lT4ls6GZGJiKe6SjvX04ZPiZ8GddLNfNzMirWD_MS3n1WxWIerOGX15FZXE3lS1R5e5UavMO7jJNmO8qiMufDw",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -961,6 +1454,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "require_authorization_binding": true,
       "audience": "https://payments.example.com",
       "now": "2026-08-09T18:00:00Z",
@@ -995,6 +1489,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -1019,6 +1514,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -1030,15 +1526,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:582f4f0d9131269a786a9fca1532c93690cf72095f0ed25414888fb3df345534",
-            "signature": "8-sK922Tq4vlrcweDcN-fdPkYpnu72mxVTjn08WgsGBWxFmpspE8VTHSTIe5NrqQH4tjxAqyIknuwAPoYBaCDQ",
+            "context_hash": "sha256:8cdacac26b630393e6b2b29c9eb683afd2de5b2d1bcdd901e65c00f3199676cc",
+            "signature": "lT4ls6GZGJiKe6SjvX04ZPiZ8GddLNfNzMirWD_MS3n1WxWIerOGX15FZXE3lS1R5e5UavMO7jJNmO8qiMufDw",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -1087,6 +1583,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -1130,6 +1627,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -1148,6 +1646,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -1162,15 +1661,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:136ab79cf25cc6ab877bb49b2be20de1be76db6d3eb56c030701fc5ab0935461",
-            "signature": "G1ToyAKryr4zT6ck_oHvXXx09YGtLM4KT4uxhWrv29PjwAXJU5dekYYsRhYVvjRSmGETaQiJ_JfjBnGBTFwDBQ",
+            "context_hash": "sha256:d9c26349d74caa0c4f08d00c0c4657e389fa81ddb91438011dd066fa8c21db7b",
+            "signature": "XPdM0XZWP8dIm4bU6A8dbE-OuZWkEYLMza9IU6GvWY2e9ZaJZnGdFxPlxoN0Z8FQKQWI6zf7hPWCsSyrLCJuBw",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:a5071e76beeeabb35e014bb80d0b3ee7a649618f74cf0e017c9f143b4658213d",
-            "signature": "p5rk68VamBRtjuSFRPnBISugxb4DC3O64oQYU4zak71idilxejLaD6KEnU5C6h4jsqAPn1Aqp5_ZCO5mmNSmDg",
+            "context_hash": "sha256:08ac8ef8377e860e39cbbc26662bc09a09424c48fc92b139578062c5bcc97468",
+            "signature": "ni8tPnpqHJQoWqvduuUhsiFbxlPpeV0SGIDGDSbEFhcxWA1hjYLRRXjvZVzSAI_R8kVMN8jK05E9meSGpGY7Bw",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -1219,6 +1718,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -1262,6 +1762,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -1286,6 +1787,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -1306,15 +1808,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -1363,6 +1865,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "require_authorization_binding": true,
       "audience": "https://payments.example.com",
       "now": "2026-08-09T18:00:00Z",
@@ -1397,6 +1900,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -1421,6 +1925,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -1441,15 +1946,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -1498,6 +2003,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -1541,6 +2047,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -1565,6 +2072,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -1585,15 +2093,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -1642,6 +2150,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -1690,6 +2199,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -1714,6 +2224,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -1734,15 +2245,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -1791,6 +2302,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -1840,6 +2352,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -1864,6 +2377,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -1884,15 +2398,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -1941,6 +2455,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -1991,6 +2506,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -2015,6 +2531,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -2035,8 +2552,8 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -2085,6 +2602,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -2129,6 +2647,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -2153,6 +2672,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -2173,15 +2693,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -2230,6 +2750,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -2273,6 +2794,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:approver:controller",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -2297,6 +2819,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:approver:controller",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -2317,15 +2840,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:19284ebbec8d3a8120e95464104d3e0f70e5ae8fea9ab7f243fe077ac3ff979c",
-            "signature": "zEr-8-2Rzh9ocdRjHi8wnKD0WVNReWMWEUkoTfkXJ5CoLbGzki0SO8aYjd9LBYGoWh29jIeLI84oecn0Cf5qAw",
+            "context_hash": "sha256:6cb1d11c8b2725a795b8886345e5fcf43b95e4e19311b12489260849ac029ebe",
+            "signature": "9LYUfvvxhlncelTvMCbi2PNXRq5JGzwnB9_XhfbSe5jfPHtCtYmj7qSjSlWDq9Ks1BBgvU1MG11WbG-EUW7YBw",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:601c62f021779f508f8921da1439d70aa97caf57ed2a4d1d08f3e01e6666d661",
-            "signature": "ubZbbc9yGRM6fhPIwyslXecSTrLnDLrNgnh8QRyAHwmcavcrsHpG0hrPokIy51_zttWf8UYvScgValAJKE9GAw",
+            "context_hash": "sha256:fe4aa68d6871d932d887a98dc38985c7e895c642ebaa57940dd66f0565d0b21d",
+            "signature": "LkznezM5X3w_pz27mw-ROAGH2oJjRSK365K3JE8C1ODmirQCACXfOvayt0hxPhiEP2ONuzcmCWzkDqYju-J7CA",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -2374,6 +2897,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -2417,6 +2941,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -2441,6 +2966,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:e5eca4135cfbb989be26220ca40914777e4fce33a651901d442c102d075f9a78",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -2461,15 +2987,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:79e6ce50b2778d73996f26a1c44b1d303c24cb91b7776d6b135effc67f8614f5",
-            "signature": "uK4jUb4abuiK10BlRaQayFw5taNNR9AzbmhmXQrh_dMX02MTK8nogQ95HIXF0pL6WGUP16Q0IGG3ZzHHW_SdBA",
+            "context_hash": "sha256:d886376d726afb410628631b807fba99e547e15d292c534e8d580149dce16341",
+            "signature": "QFxmYReDtJEf4tRHOHUon66Wd6NC8umfu0IAg-KvxOYyoz4cKj6iqDxwCITmXetvYg1myEcWRct-A6fC-a6YBg",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -2518,6 +3044,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -2561,6 +3088,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -2585,6 +3113,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -2605,15 +3134,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
             "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -2662,6 +3191,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -2705,6 +3235,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -2729,6 +3260,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -2749,15 +3281,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -2806,6 +3338,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -2849,6 +3382,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -2873,6 +3407,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -2893,15 +3428,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -2951,6 +3486,7 @@
           "recurring": true
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -2994,6 +3530,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -3018,6 +3555,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -3038,15 +3576,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -3096,6 +3634,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -3139,6 +3678,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -3163,6 +3703,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -3183,15 +3724,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -3241,6 +3782,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",
@@ -3284,6 +3826,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:controller",
             "approver_index": 1,
@@ -3308,6 +3851,7 @@
             "policy_id": "ep:policy:payments@v4",
             "policy_hash": "sha256:552fbeac165560d483669ebffacd097e53211edb041ddd9d836521a3a7098980",
             "initiator": "ep:entity:agent-recon-7",
+            "authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
             "audience": "https://payments.example.com",
             "approver": "ep:approver:treasurer",
             "approver_index": 2,
@@ -3328,15 +3872,15 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:49cf51388a5c095700137b0e6c5168f6985a56d2cff95546aaa6d0b32ba99eba",
-            "signature": "XeMwRzbVD6P8cKBdvIahKjQrJ2yzq5dZkSnPWx9SBOqXlMNG9kUD6qsfqX9sR7ipcuTtYXRHnz2j6u1ZMVwbCg",
+            "context_hash": "sha256:f8b090a15266032d02f32e389baa9852eebbfdfb14c2dd4e55a7f6c6e88949fe",
+            "signature": "bCsPfwzLI3zateVBnyLDbZkzb3Q5Nk0f1--dKU-wIgTUEt2E78EZOtDpLlInsiO1PN8xdk3Cd09oSQp1MAaSBA",
             "key_class": "B",
             "approver_key_id": "ep:key:controller#1",
             "signed_at": "2026-08-09T17:55:00Z"
           },
           {
-            "context_hash": "sha256:0503509899772e9621230eac015b5de69160d360e3fec5d296ad4668d83f78dc",
-            "signature": "Wh2OC9AMJli4KL0JKXv3AADlF_U18I33u-TecA5suS_-oRm57KS1g-83DjZmFuHh8t-wogwV4dyT434e6bmqDQ",
+            "context_hash": "sha256:057a3a63120cf2dde60641d37541a78d9888c66ce44262c93c3f561f8ce02685",
+            "signature": "i-z-yY39a9qVIhTwvMDI3VWN0sgFppqMdiuE8wpr5x46jbSr9GKMrq3J2ldPXcu6f4gSPErcg05xQwW1M_mJAQ",
             "key_class": "B",
             "approver_key_id": "ep:key:treasurer#1",
             "signed_at": "2026-08-09T17:55:00Z"
@@ -3384,6 +3928,7 @@
           "payee": "merchant:7"
         }
       },
+      "expected_authorization_instance": "b64u:QUFBQUFBQUFBQUFBQUFBQQ",
       "expected_authorization_binding": {
         "profile": "EP-OAUTH-RAR-AUTHORIZATION-BINDING-v1",
         "authorization_server": "https://as.example.com",

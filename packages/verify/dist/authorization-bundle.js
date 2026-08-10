@@ -118,6 +118,7 @@ function baseResult() {
             separation_of_duties: false,
             windows: false,
             audience: false,
+            authorization_instance: false,
             authorization_binding: false,
             key_proofs: false,
             presentation: false,
@@ -191,6 +192,7 @@ function verifyAuthorizationBundleCore(bundle, options) {
     const policyHashes = new Set();
     const policyIds = new Set();
     const audiences = new Set();
+    const authorizationInstances = new Set();
     const bindingDigests = new Set();
     let bindingPresence = 0;
     const approverIds = [];
@@ -220,6 +222,14 @@ function verifyAuthorizationBundleCore(bundle, options) {
             || Buffer.from(String(context.nonce).replace(/^b64u:/, ''), 'base64url').length < 16) {
             contextsOk = false;
             definite.push('context_commitment_mismatch');
+        }
+        if (!canonicalB64url(context.authorization_instance)
+            || Buffer.from(String(context.authorization_instance).replace(/^b64u:/, ''), 'base64url').length < 16) {
+            contextsOk = false;
+            definite.push('authorization_instance_missing_or_invalid');
+        }
+        else {
+            authorizationInstances.add(String(context.authorization_instance));
         }
         if (nonEmptyString(context.policy_hash))
             policyHashes.add(context.policy_hash);
@@ -279,6 +289,21 @@ function verifyAuthorizationBundleCore(bundle, options) {
         bindingsOk = false;
         definite.push('contexts_do_not_share_one_policy_audience_and_binding');
     }
+    if (authorizationInstances.size !== 1) {
+        contextsOk = false;
+        definite.push('authorization_instance_mismatch');
+    }
+    if (!canonicalB64url(options.expectedAuthorizationInstance)
+        || Buffer.from(String(options.expectedAuthorizationInstance).replace(/^b64u:/, ''), 'base64url').length < 16) {
+        uncertain.push('expected_authorization_instance_unavailable');
+    }
+    else if (authorizationInstances.size === 1
+        && authorizationInstances.has(options.expectedAuthorizationInstance)) {
+        result.checks.authorization_instance = true;
+    }
+    else {
+        definite.push('authorization_instance_mismatch');
+    }
     if (policyHashes.size !== 1 || policyIds.size !== 1 || audiences.size !== 1
         || bindingDigests.size > 1 || approverIndexes.size !== contexts.length
         || nonces.size !== contexts.length || requiredApprovalCounts.size !== 1) {
@@ -310,6 +335,15 @@ function verifyAuthorizationBundleCore(bundle, options) {
         else {
             result.checks.approver_selection = true;
         }
+    }
+    const requiredValues = contexts.map((context) => context.required_approvals);
+    const validRequired = requiredValues.every((value) => Number.isInteger(value) && Number(value) >= 1)
+        && new Set(requiredValues).size === 1;
+    const required = validRequired ? Number(requiredValues[0]) : Number.POSITIVE_INFINITY;
+    if (!validRequired || required > contexts.length) {
+        contextsOk = false;
+        result.checks.contexts = false;
+        definite.push('required_approvals_invalid');
     }
     const validApprovers = [];
     const signedContextDigests = new Set();
@@ -395,16 +429,13 @@ function verifyAuthorizationBundleCore(bundle, options) {
         }
         validApprovers.push(String(context.approver));
     }
-    if (signoffs.length !== contexts.length || signedContextDigests.size !== contexts.length) {
+    if (!validRequired || signoffs.length < required
+        || signedContextDigests.size !== signoffs.length) {
         signaturesOk = false;
         definite.push('signoff_context_coverage_failed');
     }
     result.checks.signatures = signaturesOk;
     const initiator = bundle.action.initiator;
-    const requiredValues = contexts.map((context) => context.required_approvals);
-    const validRequired = requiredValues.every((value) => Number.isInteger(value) && Number(value) >= 1)
-        && new Set(requiredValues).size === 1;
-    const required = validRequired ? Number(requiredValues[0]) : Number.POSITIVE_INFINITY;
     const sod = validRequired
         && nonEmptyString(initiator)
         && !validApprovers.includes(initiator)

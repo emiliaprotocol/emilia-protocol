@@ -27,7 +27,8 @@
       receipt, an evidence artifact binding an enrolled approver key to
       one canonical action before execution. An approver-held key signs an
       Authorization Context containing the action hash, policy reference,
-      nonce, audience, and validity window. A Trust Receipt carries the
+      shared authorization instance, per-signoff nonce, audience, and validity
+      window. A Trust Receipt carries the
       signed contexts, terminal consumption record, and Merkle inclusion
       material so a relying party can verify the recorded event offline
       under independently selected log, directory, policy, and approver
@@ -312,6 +313,7 @@
   "policy_id": "ep:policy:wires-over-100k@v12",
   "policy_hash": "sha256:77ab...",
   "initiator": "ep:entity:agent-recon-7",
+  "authorization_instance": "b64u:Q0ND...",
   "audience": "https://payments.example.com",
   "approver": "ep:approver:jchen-controller",
   "approver_index": 1,
@@ -325,10 +327,24 @@
 ]]></sourcecode>
       <t>Rules:</t>
       <ul>
+        <li><tt>authorization_instance</tt> <bcp14>MUST</bcp14> be present
+        in every Authorization Context carried by an
+        <tt>EP-AUTHORIZATION-BUNDLE-v1</tt> object. It <bcp14>MUST</bcp14>
+        contain at least 128 bits of CSPRNG output, <bcp14>MUST</bcp14> be
+        freshly issued and durably registered for each authorization attempt
+        by the relying party, authorization server, or another component the
+        relying party independently trusts for this purpose. The orchestrator
+        or presenter <bcp14>MUST NOT</bcp14> select it. It
+        <bcp14>MUST</bcp14> be byte-identical in every context for that
+        attempt. Because it is inside each signed
+        context, it prevents valid signoffs from separate approval ceremonies
+        from being spliced into one quorum. Older Trust Receipts that do not
+        use the new Bundle profile remain valid under their existing profile
+        and need not contain this member.</li>
         <li><tt>nonce</tt> <bcp14>MUST</bcp14> be at least 128 bits of
-        CSPRNG output and <bcp14>MUST</bcp14> be unique within the issuer and
-        consumption domain for each authorization attempt. It is the
-        consumption key for G3, and is
+        CSPRNG output and <bcp14>MUST</bcp14> be unique for each approver
+        context within the issuer and authorization domain. It is the
+        per-signoff replay and freshness unit, and is
         the receipt's freshness mechanism in the sense of the Entity
         Attestation Token (RFC 9711): a verifier-relevant nonce, here held
         to a 128-bit floor (twice the EAT minimum). EP does not treat a
@@ -846,7 +862,8 @@
   "bundle_id": "ep:authorization-bundle:01J...",
   "action": { "...": "full Action Object" },
   "action_hash": "sha256:9f2c...",
-  "contexts": [ { "...": "Authorization Context 1" } ],
+  "contexts": [ { "...": "Authorization Context 1" },
+                { "...": "Authorization Context 2" } ],
   "signoffs": [ { "...": "Signoff 1" },
                 { "...": "Signoff 2" } ],
   "approver_key_proofs": [ { "directory_inclusion": "..." } ],
@@ -873,6 +890,19 @@
       the action, prove that an effect occurred, or make an uncertain action
       safe to retry. Those properties belong to the authorization server,
       policy decision point, executor, and terminal Trust Receipt.</t>
+      <t>For an m-of-n policy, <tt>contexts</tt> contains the n approver
+      contexts independently selected by current policy, with distinct
+      approver identifiers, indexes, and nonces. Every context
+      <bcp14>MUST</bcp14> carry the same signed
+      <tt>authorization_instance</tt>. The <tt>bundle_id</tt> is only an
+      external identifier and <bcp14>MUST NOT</bcp14> substitute for that
+      signed value. <tt>signoffs</tt> contains at
+      least m and at most n entries, each covering a different context. An
+      unsigned context identifies an eligible approver slot that did not
+      contribute to the satisfied quorum; it is not a malformed bundle. A
+      signoff that does not cover one of the selected contexts, two signoffs
+      covering one context, fewer than m valid signoffs, or more than one
+      signoff from the same approver is a refusal.</t>
 
       <section anchor="authorization-binding">
         <name>Optional Native Authorization Binding</name>
@@ -907,12 +937,20 @@
           bundle shape.</li>
           <li>Recompute <tt>action_hash</tt> from the canonical Action Object.</li>
           <li>Recompute each context hash and require every context to commit
-          to that action hash, one policy hash, one audience, and, when
-          present, one identical authorization binding.</li>
-          <li>Verify every signoff against the independently trusted approver
+          to that action hash, one policy hash, one audience, one shared
+          <tt>authorization_instance</tt>, and, when present, one identical
+          authorization binding. Each context nonce remains distinct.</li>
+          <li>Require the signed <tt>authorization_instance</tt> to equal the
+          value independently issued and durably registered for this approval
+          ceremony. An unavailable expected value is
+          <tt>INDETERMINATE</tt>; a presenter-selected or unequal value is
+          <tt>REFUSE</tt>.</li>
+          <li>Verify every presented signoff against the independently trusted approver
           key and directory proof, including relying-party acceptance of the
           key class, key validity, signing time, and the WebAuthn
-          user-verification requirements for Class A.</li>
+          user-verification requirements for Class A. Require each signoff to
+          cover one distinct selected context; do not require signoffs for the
+          n-m eligible contexts that did not contribute.</li>
           <li>Require the context approver set to equal the set independently
           selected for this transaction by the authorization server or current
           policy. Then apply initiator exclusion, pairwise approver
@@ -953,8 +991,9 @@
           policy evaluation was unavailable or could not be completed.</dd>
         </dl>
         <t>An authorization server that accepts a bundle for grant issuance
-        <bcp14>MUST</bcp14> atomically bind the bundle digest and context nonce
-        set to one grant identifier. Concurrent or repeated presentation
+        <bcp14>MUST</bcp14> atomically bind the bundle digest, signed
+        <tt>authorization_instance</tt>, and context nonce set to one grant
+        identifier. Concurrent or repeated presentation
         <bcp14>MUST NOT</bcp14> create two independently usable grants; an
         idempotent retry can return the same grant result. The executor remains
         responsible for atomic one-time admission of the native transaction or
@@ -978,6 +1017,16 @@
           <li>expired, revoked, stale, malformed, and unavailable approval evidence;</li>
           <li>wrong policy digest, incomplete quorum, duplicate human, and
           initiator self-approval;</li>
+          <li>a valid m-of-n bundle with exactly m signoffs and n-m unsigned
+          eligible approver contexts, to prevent an implementation from
+          silently replacing m-of-n with n-of-n;</li>
+          <li>valid signoffs from two different authorization instances spliced
+          into one apparent quorum, which <bcp14>MUST</bcp14> be refused even
+          when action, policy, audience, approvers, and signatures otherwise
+          match;</li>
+          <li>an internally consistent bundle whose shared authorization
+          instance was selected by the presenter rather than matching the
+          relying party's registered instance;</li>
           <li>valid signatures from a presenter-selected approver set that does
           not equal the authorization-server or policy-selected set;</li>
           <li>a missing, lossy, unpinned, or profile-mismatched native
@@ -1006,11 +1055,15 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         <bcp14>REQUIRED</bcp14> of conforming implementations -- are:</t>
         <ul>
           <li><strong>ConsumeOnce.</strong> Within one conforming shared,
-          atomic consumption domain, a nonce transitions to a terminal
+          atomic consumption domain, an authorization instance transitions to a terminal
           state at most once. Any second presentation to that domain
           <bcp14>MUST</bcp14> be rejected with a replay error. The model
           does not assert coordination with an independent store that
-          does not share this state.</li>
+          does not share this state. For a Bundle-derived Trust Receipt,
+          <tt>consumption.nonce</tt> <bcp14>MUST</bcp14> equal the Bundle's
+          shared <tt>authorization_instance</tt>. A legacy single-context
+          receipt without that member retains its context nonce as the
+          consumption key.</li>
           <li><strong>BindingMatch.</strong> A signoff satisfies only the
           context (and therefore only the action hash) it signs.</li>
           <li><strong>TerminalIrreversibility.</strong> No transition
@@ -1044,7 +1097,8 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
   "receipt_id": "ep:receipt:01J...",
   "action": { "...": "full Action Object" },
   "action_hash": "sha256:9f2c...",
-  "contexts": [ { "...": "Authorization Context 1" } ],
+  "contexts": [ { "...": "Authorization Context 1" },
+                { "...": "Authorization Context 2" } ],
   "signoffs": [ { "...": "Signoff 1" },
                 { "...": "Signoff 2" } ],
   "consumption": { "nonce": "b64u:R9w1...",
@@ -1059,6 +1113,13 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
   "approver_key_proofs": [ { "directory_inclusion": "..." } ]
 }
 ]]></sourcecode>
+        <t>For a receipt produced from an
+        <tt>EP-AUTHORIZATION-BUNDLE-v1</tt> object, the value carried as
+        <tt>consumption.nonce</tt> <bcp14>MUST</bcp14> equal the signed
+        <tt>authorization_instance</tt> shared by every context. The field name
+        is retained for compatibility with the base receipt profile; the
+        equality prevents the terminal state from being detached from the
+        approval ceremony.</t>
       </section>
       <section anchor="offline-verification">
         <name>Offline Verification Algorithm</name>
@@ -1072,7 +1133,9 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
           compare.</li>
           <li>For each context: recompute the context hash; confirm it
           commits to the action hash, the policy hash, and a distinct
-          approver.</li>
+          approver. For a Bundle-derived receipt, require one shared
+          <tt>authorization_instance</tt>, distinct per-context nonces, and
+          equality between that instance and <tt>consumption.nonce</tt>.</li>
           <li>For each signoff: verify the signature (and WebAuthn
           assertion where present) over the context hash against the
           approver key entry, checking the key's validity window contains
@@ -1276,8 +1339,9 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
       <name>Multi-Approver Policies (m-of-n)</name>
       <t>A policy <bcp14>MAY</bcp14> require k distinct approvers from a
       role set. Each approver receives and signs an individual
-      Authorization Context sharing the same <tt>action_hash</tt> and
-      <tt>nonce</tt> family but a distinct <tt>approver_index</tt>.
+      Authorization Context sharing the same <tt>action_hash</tt> and signed
+      <tt>authorization_instance</tt> but carrying a distinct
+      <tt>nonce</tt> and <tt>approver_index</tt>.
       Commitment occurs only when k valid, distinct signoffs exist before
       <tt>expires_at</tt>. Partial approval confers no authority: a
       verifying executor presented with fewer than k signoffs
@@ -1573,6 +1637,9 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         comparison lemmas are falsified with concrete traces: one omits
         consumption and admits same-receipt replay; the other omits exact
         registry-view binding and admits a stale or equivocating view. The
+        one-time property is derived by consuming a linear authorization fact
+        created once for the registered action instance; it is not imposed by
+        a trace restriction that assumes uniqueness. The
         model treats signatures as perfect symbolic primitives and does not
         prove WebAuthn internals, parser correctness, amount arithmetic,
         policy authorship, clock freshness, transparency-log completeness,
@@ -1596,10 +1663,10 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         and execution for that bundle, not yet strict clean-room construction
         acceptance for the current specification.</t>
         <t>The -11 Authorization Bundle algorithm has one TypeScript/JavaScript
-        reference verifier and 21 generated hostile cases covering the
+        reference verifier and 27 generated cases covering the
         positive path, structural malformation, action and audience
         substitution, actor and subject confusion, approver-set selection,
-        quorum and separation of duties, policy and status unavailability,
+        quorum, cross-ceremony signoff splicing, separation of duties, policy and status unavailability,
         revocation, mapping mismatch, and dynamic-plan expansion. These are
         same-repository implementation-profile cases, not independent or
         cross-language interoperability. The bundle-to-grant helper models a
@@ -1998,7 +2065,7 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         status and policy, presenter-selected approvers, quorum failure,
         mapping failure, replay-layer confusion, dynamic-plan expansion, and
         indeterminate provider outcomes. Added one TypeScript/JavaScript
-        reference verifier and 21 generated implementation-profile cases while
+        reference verifier and 27 generated implementation-profile cases while
         stating the absence of external and cross-language coverage.</li>
         <li>Requested registration of
         <tt>application/ep-authorization-bundle+json</tt> and corrected the
