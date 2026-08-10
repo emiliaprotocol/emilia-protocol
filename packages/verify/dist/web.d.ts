@@ -103,7 +103,7 @@ export declare function verifyCommitmentProof(proof: JsonObject, publicKeyBase64
 /** @returns {Promise<{valid:boolean, total:number, verified:number, failed:string[]}>} */
 export declare function verifyReceiptBundle(bundle: JsonObject, publicKeyBase64url: string): Promise<{
     valid: boolean;
-    total: any;
+    total: number;
     verified: number;
     failed: string[];
 }>;
