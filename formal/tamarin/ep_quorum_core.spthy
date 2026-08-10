@@ -32,14 +32,15 @@
  *     signature: as in the core model, the signing rule can only
  *     consume the linear UVDone fact that only the UV rule produces.
  *     A quorum signature cannot exist without a prior UV over exactly
- *     that action, approver, and nonce (Sec 5.1 UV MUST).
+ *     that action, authorization instance, approver, and nonce (Sec 5.1
+ *     UV MUST).
  *   - Each of the k approvers signs an individual Authorization Context
- *     that binds the ACTION HASH, the INITIATOR identity, and that
- *     approver's own fresh nonce: <tag, h(action), initiator, nonce>
+ *     that binds the ACTION HASH, the INITIATOR identity, one shared
+ *     authorization instance, and that approver's own fresh nonce:
+ *     <tag, h(action), initiator, authorization_instance, nonce>
  *     (Sec 3: the Authorization Context carries the initiator identity;
- *     Sec 7: "same action_hash and nonce family but a distinct
- *     approver_index" -- the per-approver fresh nonce here abstracts the
- *     distinct index / per-approver context binding). Binding the
+ *     Sec 7: every quorum context shares one authorization_instance but
+ *     carries a distinct nonce and approver_index). Binding the
  *     initiator into the signed context is what makes separation of
  *     duties (Sec 6 SelfApprovalImpossible / G4) a property of the
  *     SIGNATURE and not merely of an executor-local label: an approver
@@ -51,7 +52,8 @@
  *     the policy engine picked a convenient action.
  *   - Commitment (the executor's accept) fires only when TWO signatures
  *     that verify under TWO DISTINCT pinned approver keys over the SAME
- *     action are presented, and (SoD) neither of those two approvers is
+ *     action and the SAME authorization instance are presented, and
+ *     (SoD) neither of those two approvers is
  *     the initiator (Sec 6 SelfApprovalImpossible, G4, Sec 7 "k valid,
  *     distinct signoffs"). Partial approval commits nothing: there is
  *     no accept rule that fires on a single signature.
@@ -134,19 +136,26 @@ rule Pin_Approver:
     [ !PinnedKey($H, pkH) ]
 
 /* ------------------------------------------------------------------
- * 3. Quorum request: the ACTION and the INITIATOR identity both come
- *    from the network, i.e. the attacker chooses the action put up for
- *    quorum and who the initiator is. A per-approver fresh nonce is
- *    drawn (Sec 7: same action_hash, per-approver context). One request
- *    fact is emitted per approver so each approver signs its own
- *    context sharing the action.
+ * 3. Quorum request: the ACTION, INITIATOR identity, and two eligible
+ *    approver identities come from the network, i.e. the attacker
+ *    chooses the action put up for quorum and the requested participants.
+ *    One fresh authorization instance and two per-approver fresh nonces
+ *    are drawn. Both request facts carry the same authorization instance,
+ *    so signatures from different ceremonies cannot be spliced into one
+ *    quorum even when every other base field is equal.
  * ------------------------------------------------------------------ */
-rule Quorum_Request:
-    [ In(<a, $Init>)
-    , Fr(~n)
+rule Quorum_Request_2of2:
+    [ In(<a, $Init, $H1, $H2>)
+    , Fr(~q)
+    , Fr(~n1)
+    , Fr(~n2)
     ]
-  --[ QuorumRequested($Init, $H, a, ~n) ]->
-    [ ApproverRequest($Init, $H, a, ~n) ]
+  --[ QuorumRequested($Init, $H1, a, ~q, ~n1)
+    , QuorumRequested($Init, $H2, a, ~q, ~n2)
+    ]->
+    [ ApproverRequest($Init, $H1, a, ~q, ~n1)
+    , ApproverRequest($Init, $H2, a, ~q, ~n2)
+    ]
 
 /* ------------------------------------------------------------------
  * 4. User verification by approver $H for exactly this request. UVDone
@@ -155,15 +164,17 @@ rule Quorum_Request:
  *    over the same (initiator, approver, action, nonce).
  * ------------------------------------------------------------------ */
 rule Approver_UserVerify:
-    [ ApproverRequest(Init, H, a, n) ]
-  --[ UV(Init, H, a, n) ]->
-    [ UVDone(Init, H, a, n) ]
+    [ ApproverRequest(Init, H, a, q, n) ]
+  --[ UV(Init, H, a, q, n) ]->
+    [ UVDone(Init, H, a, q, n) ]
 
 /* ------------------------------------------------------------------
  * 5. Approver signature: UV-gated. Signs the abstracted per-approver
- *    Authorization Context <tag, h(action), initiator, nonce>, binding
- *    the initiator identity into the signature (Sec 3); the individual
- *    signoff (approver, action, nonce, sig) goes to the network, so the
+ *    Authorization Context <tag, h(action), initiator,
+ *    authorization_instance, nonce>, binding the ceremony and initiator
+ *    identity into the signature (Sec 3); the individual signoff
+ *    (approver, action, authorization instance, nonce, sig) goes to the
+ *    network, so the
  *    attacker holds every honest signoff. Binding the initiator is
  *    load-bearing: without it, an approver signature does not commit to
  *    a specific initiator and the executor's initiator label floats, so
@@ -175,11 +186,11 @@ rule Approver_UserVerify:
  *    initiator is bound here.)
  * ------------------------------------------------------------------ */
 rule Approver_Sign:
-    [ UVDone(Init, H, a, n)
+    [ UVDone(Init, H, a, q, n)
     , !HumanLtk(H, ltk)
     ]
-  --[ Signed(Init, H, a, n) ]->
-    [ Out(<H, a, n, sign(<'ep_signoff_v1', h(a), Init, n>, ltk)>) ]
+  --[ Signed(Init, H, a, q, n) ]->
+    [ Out(<H, a, q, n, sign(<'ep_signoff_v1', h(a), Init, q, n>, ltk)>) ]
 
 /* ------------------------------------------------------------------
  * 6. Key compromise: an approver device key can leak. Lemmas are
@@ -195,7 +206,8 @@ rule Reveal_Human_Ltk:
  * 7. Quorum commitment (2-of-2): the executor commits an action only
  *    when it holds TWO signoffs that
  *      - each verify under a DISTINCT pinned approver key,
- *      - are over the SAME action a AND the SAME initiator ($Init), and
+ *      - are over the SAME action a, initiator ($Init), and authorization
+ *        instance q, and
  *      - are from two approvers NEITHER of which is the initiator.
  *    Distinctness of the two approver keys is enforced by the pinned
  *    keys being distinct (Neq(pk1,pk2)); since distinct enrolled
@@ -206,17 +218,17 @@ rule Reveal_Human_Ltk:
  * ------------------------------------------------------------------ */
 rule Executor_Commit_2of2:
     [ In($Init)
-    , In(<H1, a, n1, sig1>)
-    , In(<H2, a, n2, sig2>)
+    , In(<H1, a, q, n1, sig1>)
+    , In(<H2, a, q, n2, sig2>)
     , !PinnedKey(H1, pk1)
     , !PinnedKey(H2, pk2)
     ]
-  --[ Commit($Init, a, H1, H2)
+  --[ Commit($Init, a, q, H1, H2)
     , Neq(pk1, pk2)
     , Neq(H1, $Init)
     , Neq(H2, $Init)
-    , Eq(verify(sig1, <'ep_signoff_v1', h(a), $Init, n1>, pk1), true)
-    , Eq(verify(sig2, <'ep_signoff_v1', h(a), $Init, n2>, pk2), true)
+    , Eq(verify(sig1, <'ep_signoff_v1', h(a), $Init, q, n1>, pk1), true)
+    , Eq(verify(sig2, <'ep_signoff_v1', h(a), $Init, q, n2>, pk2), true)
     ]->
     [ ]
 
@@ -244,10 +256,10 @@ restriction TwoDistinctApprovers:
  *     Neq/Eq restrictions make Commit unreachable. */
 lemma executable_quorum:
   exists-trace
-  "Ex Init H1 H2 a n1 n2 #s1 #s2 #c.
-      Signed(Init, H1, a, n1) @ #s1
-    & Signed(Init, H2, a, n2) @ #s2
-    & Commit(Init, a, H1, H2) @ #c
+  "Ex Init H1 H2 a q n1 n2 #s1 #s2 #c.
+      Signed(Init, H1, a, q, n1) @ #s1
+    & Signed(Init, H2, a, q, n2) @ #s2
+    & Commit(Init, a, q, H1, H2) @ #c
     & not (H1 = H2)
     & not (H1 = Init)
     & not (H2 = Init)
@@ -262,18 +274,18 @@ lemma executable_quorum:
  *     the commit. A single signature (or two signatures from the same
  *     identity, or two over different actions) can never commit. */
 lemma quorum_requires_two_distinct_uv_gated_signatures:
-  "All Init a H1 H2 #c.
-      Commit(Init, a, H1, H2) @ #c
+  "All Init a q H1 H2 #c.
+      Commit(Init, a, q, H1, H2) @ #c
     & not (Ex #r. RevealLtk(H1) @ #r & #r < #c)
     & not (Ex #r. RevealLtk(H2) @ #r & #r < #c)
     ==> not (H1 = H2)
         & (Ex n1 #u1 #g1.
-              UV(Init, H1, a, n1) @ #u1
-            & Signed(Init, H1, a, n1) @ #g1
+              UV(Init, H1, a, q, n1) @ #u1
+            & Signed(Init, H1, a, q, n1) @ #g1
             & #u1 < #g1 & #g1 < #c)
         & (Ex n2 #u2 #g2.
-              UV(Init, H2, a, n2) @ #u2
-            & Signed(Init, H2, a, n2) @ #g2
+              UV(Init, H2, a, q, n2) @ #u2
+            & Signed(Init, H2, a, q, n2) @ #g2
             & #u2 < #g2 & #g2 < #c)"
 
 /* (c) NO SELF-APPROVAL (Sec 6 SelfApprovalImpossible, G4): there is no
@@ -283,8 +295,8 @@ lemma quorum_requires_two_distinct_uv_gated_signatures:
  *     rules out an attacker naming a compliant approver as initiator to
  *     have it count against itself. */
 lemma initiator_cannot_self_approve:
-  "not (Ex Init a H1 H2 #c.
-           Commit(Init, a, H1, H2) @ #c
+  "not (Ex Init a q H1 H2 #c.
+           Commit(Init, a, q, H1, H2) @ #c
          & (H1 = Init | H2 = Init))"
 
 /* (d) NO SINGLE SIGNER FILLS BOTH SLOTS: the two committing approvers
@@ -293,7 +305,7 @@ lemma initiator_cannot_self_approve:
  *     Fr keys => distinct enrolled identities). It does NOT claim the
  *     two identities are two distinct humans; see Sec 11.7 / header. */
 lemma no_single_signer_fills_quorum:
-  "not (Ex Init a H #c. Commit(Init, a, H, H) @ #c)"
+  "not (Ex Init a q H #c. Commit(Init, a, q, H, H) @ #c)"
 
 /* (e) UNSIGNED ACTION NEVER COMMITS: there is no trace in which action
  *     a is committed while an uncompromised approver H1 named in the
@@ -302,9 +314,9 @@ lemma no_single_signer_fills_quorum:
  *     takes the action from the network), this rules out transplanting
  *     an approver's signature over any a' != a onto a committed a. */
 lemma commit_requires_signature_over_that_action:
-  "not (Ex Init a H1 H2 #c.
-           Commit(Init, a, H1, H2) @ #c
+  "not (Ex Init a q H1 H2 #c.
+           Commit(Init, a, q, H1, H2) @ #c
          & not (Ex #r. RevealLtk(H1) @ #r & #r < #c)
-         & not (Ex n1 #g1. Signed(Init, H1, a, n1) @ #g1 & #g1 < #c))"
+         & not (Ex n1 #g1. Signed(Init, H1, a, q, n1) @ #g1 & #g1 < #c))"
 
 end

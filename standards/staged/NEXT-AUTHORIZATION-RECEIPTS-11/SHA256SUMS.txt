@@ -1,0 +1,3 @@
+7dc112e2481b03dc4e017216c168e143cb32b878e70265f2a0402e483bea1a45  UPLOAD-THIS/draft-schrock-ep-authorization-receipts-11.xml
+f601f27646f09087e1a41d6f1b2f2e7acc1fb537b7e29f0098dc6436e161a6d9  RENDERS/draft-schrock-ep-authorization-receipts-11.html
+778096f6f83f7ffaec303d428aa77aca9dda56be5aa39aca83aa970fe224cc35  RENDERS/draft-schrock-ep-authorization-receipts-11.txt

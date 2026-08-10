@@ -16,8 +16,9 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 
 - `http-problem-type-registration.md` — RFC 9457 registration template for
   the transport-neutral AE Challenge HTTP binding.
-- `media-type-registration.md` — the active RFC 6838 §5.6 template for
-  `application/ep-authorization-receipt+json`, plus the retired AE Challenge
+- `media-type-registration.md` — the active RFC 6838 §5.6 templates for
+  `application/ep-authorization-receipt+json` and
+  `application/ep-authorization-bundle+json`, plus the retired AE Challenge
   media-type request retained as process history.
 - `well-known-uri-registration.md` — RFC 8615 template for
   `agent-action-control.json`, which a published draft already requests.
@@ -30,13 +31,14 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 | # | Registration | IANA registry | Backing draft (section) | Draft text status | Template status | Gate to filing |
 |---|---|---|---|---|---|---|
 | 1 | `agent-action-control.json` | Well-Known URIs | draft-schrock-agent-action-manifest-00 (§3, §9) | **Requests registration** (fields in §9) | READY-ON-POST | Draft live on datatracker [verify posting after the 2026-07-06 batch upload] |
-| 2 | `authorization-evidence-required` | HTTP Problem Types | draft-schrock-ae-challenge-03 (§3, §6; published 2026-08-08) | **Requests registration** under Specification Required; reuses `application/problem+json` | CARRIED-BY-DRAFT | Obtain focused HTTP review and process with the Independent Stream document |
-| 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-10 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
-| 4 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
-| 5 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | PROPOSED, requires draft text in next rev | Next-rev field definition; draft decides on any unprefixed successor |
-| 6 | `application/ep-aec+json` | Media Types | draft-schrock-ep-authorization-evidence-chain-01 (§10) | Illustrative only ("e.g.") | NOT PREPARED | Chain draft must pick and fix the string first |
-| 7 | `application/ep-eye-advisory+json` + SET event-type URI | Media Types / SET event URI | posted/draft-schrock-emilia-eye-00 | "may register" | NOT PREPARED | A revision committing to it |
-| 8 | JWT/CWT claim names | JWT Claims / CWT Claims | draft-schrock-human-authorization-binding-00 (§8) | "anticipated for a future revision, after host-format feedback" | NOT PREPARED | Host-format feedback, then next rev |
+| 2 | `authorization-evidence-required` | HTTP Problem Types | draft-schrock-ae-challenge-05 (§3, §6; published 2026-08-10) | **Requests registration** under Specification Required; reuses `application/problem+json` | CARRIED-BY-DRAFT | Continue focused HTTP and Independent Stream review; do not file a conflicting direct request |
+| 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-11 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
+| 4 | `application/ep-authorization-bundle+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-11 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
+| 5 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
+| 6 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | PROPOSED, requires draft text in next rev | Next-rev field definition; draft decides on any unprefixed successor |
+| 7 | `application/ep-aec+json` | Media Types | draft-schrock-ep-authorization-evidence-chain-01 (§10) | Illustrative only ("e.g.") | NOT PREPARED | Chain draft must pick and fix the string first |
+| 8 | `application/ep-eye-advisory+json` + SET event-type URI | Media Types / SET event URI | posted/draft-schrock-emilia-eye-00 | "may register" | NOT PREPARED | A revision committing to it |
+| 9 | JWT/CWT claim names | JWT Claims / CWT Claims | draft-schrock-human-authorization-binding-00 (§8) | "anticipated for a future revision, after host-format feedback" | NOT PREPARED | Host-format feedback, then next rev |
 
 Not IANA actions (no filing anywhere): the EP **profile registry** entries the
 drafts declare — `grid.curtailment` (draft-schrock-kintzele-grid-curtailment-00),
@@ -52,13 +54,13 @@ registry, not IANA's.
 - **Registry page:** <https://www.iana.org/assignments/http-problem-types>.
 - **Policy:** Specification Required with designated-expert review (RFC 9457
   §4.2 and RFC 8126 §4.6), not IETF Review or Standards Action.
-- **AE Challenge:** revision -03 withdraws the dedicated standards-tree media
+- **AE Challenge:** current revision -05 retains the -03 withdrawal of the dedicated standards-tree media
   type and requests the common problem type
   `authorization-evidence-required`, recommended status 403. Process the
   registration with the Independent Stream document after focused HTTP
   review; do not reopen tickets #1456851 or #1456611.
 
-### Media types (entry 3)
+### Media types (entries 3-4)
 
 - **Registry pages:** <https://www.iana.org/assignments/media-types> and, where
   a provisional path is appropriate,
@@ -66,13 +68,14 @@ registry, not IANA's.
 - **Community review (RFC 6838 §5.1):** post the completed template to the
   **media-types@iana.org** mailing list for review before or alongside the
   request. For standards-tree names this review is expected.
-- **Receipt media type:** revision -10 requests
-  `application/ep-authorization-receipt+json` and carries the complete
-  template. Process it with the Standards Track document; do not revive the
-  older `application/ep-receipt+json` preparation or file a conflicting direct
-  request.
+- **Receipt media types:** revision -11 requests
+  `application/ep-authorization-receipt+json` and
+  `application/ep-authorization-bundle+json`, and carries complete templates
+  for both. Process them with the Standards Track document; do not revive the
+  older `application/ep-receipt+json` preparation or file conflicting direct
+  requests.
 
-### Well-known URIs (entries 1, 4)
+### Well-known URIs (entry 1)
 
 - **Registry page:** <https://www.iana.org/assignments/well-known-uris>.
 - **Policy:** Specification Required with designated-expert review
@@ -83,7 +86,7 @@ registry, not IANA's.
 - **Filing:** send the completed template to **iana@iana.org** referencing
   the Well-Known URIs registry; IANA routes it to the designated expert.
 
-### HTTP field names (entries 5, 6)
+### HTTP field names (entries 5-6)
 
 - **Registry page:** <https://www.iana.org/assignments/http-fields>
   (RFC 9110 §18.4; registration requirements in §16.3.1).
@@ -100,17 +103,19 @@ registry, not IANA's.
 ## Order of operations
 
 1. Verify each backing draft is live on Datatracker before citing it to IANA.
-2. For entry 2, obtain Agent2Agent, AgentProto, and HTTP-specific review of the
-   published AE Challenge -03, then send the fresh Independent Stream request. The
+2. For entry 2, continue Agent2Agent, AgentProto, HTTP-specific, and
+   Independent Stream review of the published AE Challenge -05. The
    only IANA allocation is Specification Required; do not reopen the retired
    media-type tickets or file a vendor-tree substitute.
 3. **File entry 1** (`agent-action-control.json`) only after re-verifying its
    current backing-draft and registry state. Optional heads-up to
    wellknown-uri-review@ietf.org first.
-4. **Everything else waits for draft text.** When a revision commits to a
+4. Process entries 3 and 4 with Authorization Receipts through its Standards
+   Track publication path; do not file parallel direct requests.
+5. **Everything else waits for draft text.** When a revision commits to a
    PROPOSED entry, update its template here to cite the new revision, flip
    the tracker row, then file.
-5. After any filing, record the IANA ticket/outcome in the tracker row.
+6. After any filing, record the IANA ticket/outcome in the tracker row.
 
 ## Honesty register (applies to every template here)
 

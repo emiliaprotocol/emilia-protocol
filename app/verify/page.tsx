@@ -122,7 +122,7 @@ async function verifyAny(doc: unknown): Promise<{ kind: string | null; result?: 
     // This public page has no out-of-band relying-party trust profile. Do not
     // copy an RP ID or origin from the artifact and present it as an independent
     // pin; run the low-level integrity check and label that boundary plainly.
-    return { kind: 'signoff', result: await verifyWebAuthnSignoff(doc, key) };
+    return { kind: 'signoff', result: await verifyWebAuthnSignoff(doc, key, { mode: 'offline-integrity' }) };
   }
   return { kind: null };
 }
