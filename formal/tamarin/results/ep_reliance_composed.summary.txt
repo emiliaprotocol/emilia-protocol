@@ -1,36 +1,36 @@
 EP-RELIANCE-COMPOSED + EP-SIX-CLAIM-COMPOSED proof record
-Run date: 2026-07-24
+Run date: 2026-08-09
 Tamarin: 1.10.0
 Maude: 3.4
 Container: lmandrelli/tamarin-prover-and-batch@sha256:dff2af961e192e2b8eef3faa0484a0075c380b476bd0e79c160a5619b2519083
 Core model: ep_reliance_composed.spthy
-Model SHA-256: 174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3
+Model SHA-256: 7c6f623e6cec025a49054e42b2b384a16cbea98f4d1d0e05c6fd4c4ff077e968
 Focused model: ep_six_claim_composed.spthy
-Model SHA-256: d19fee48ab098a178d56d3141a0dd545998a0a136f6e3fc8cb3db1fcf6052302
+Model SHA-256: 80c64c9b85eaa4781542d5cbf8f2f9e54ea62d3cbf2e8efa8723f1e41c847e3b
 Runner SHA-256: c04a9471d29c3d8164c52b2f2e01b38275d1fdc47ccdd587561315e8835e640f
 Integrated command: TAMARIN_OUT_DIR=run-output-final sh ./run-composed.sh
 Focused command form: docker run --rm -v "$PWD:/work" -w /work <pinned-container> tamarin-prover --derivcheck-timeout=300 --prove=<lemma> ep_six_claim_composed.spthy
 Execution mode: one named lemma per pinned-container invocation; every completed invocation reported clean well-formedness.
 
 Core verified obligations (completed in the integrated runner):
-  executable_composed_reliance (exists-trace): verified (19 steps)
-  execution_requires_full_composition (all-traces): verified (97 steps)
+  executable_composed_reliance (exists-trace): verified (20 steps)
+  execution_requires_full_composition (all-traces): verified (101 steps)
   caid_binds_family_and_material (all-traces): verified (2 steps)
   initiator_cannot_self_approve (all-traces): verified (4 steps)
   no_single_signer_fills_quorum (all-traces): verified (2 steps)
-  no_issuer_laundering (all-traces): verified (781 steps)
+  no_issuer_laundering (all-traces): verified (785 steps)
   strict_registry_view_is_exact (all-traces): verified (25 steps)
-  no_cross_action_profile_or_audience_replay (all-traces): verified (37 steps)
-  execution_has_honest_approvals_or_prior_compromise (all-traces): verified (170 steps)
-  injective_execution_with_consumption (all-traces): verified (2 steps)
+  no_cross_action_profile_or_audience_replay (all-traces): verified (41 steps)
+  execution_has_honest_approvals_or_prior_compromise (all-traces): verified (178 steps)
+  injective_execution_with_consumption (all-traces): verified (250 steps)
 
 Core deliberately unsafe comparisons (completed in the integrated runner):
   unchecked_composition_is_injective (all-traces): falsified - found trace (31 steps)
   unchecked_registry_view_is_current (all-traces): falsified - found trace (20 steps)
 
 Focused verified obligations:
-  executable_six_claim_composition (exists-trace): verified (10 steps)
-  signed_denial_remains_verifiable_evidence (exists-trace): verified (7 steps)
+  executable_six_claim_composition (exists-trace): verified (11 steps)
+  signed_denial_remains_verifiable_evidence (exists-trace): verified (8 steps)
   class_a_downgrade_refused (all-traces): verified (22 steps)
   signed_denial_cannot_authorize (all-traces): verified (2 steps)
   scoped_authority_is_pinned (all-traces): verified (49 steps)
@@ -41,12 +41,12 @@ Focused verified obligations:
   action_reservation_failure_is_fail_closed (all-traces): verified (3 steps)
 
 Focused deliberately unsafe comparisons:
-  unchecked_presenter_class_is_pinned (all-traces): falsified - found trace (13 steps)
-  unchecked_signed_denial_cannot_authorize (all-traces): falsified - found trace (13 steps)
-  unchecked_authority_scope_is_pinned (all-traces): falsified - found trace (15 steps)
-  unchecked_reliance_profile_is_pinned (all-traces): falsified - found trace (13 steps)
-  unchecked_unregistered_challenge_is_registered (all-traces): falsified - found trace (13 steps)
-  unchecked_presenter_execution_key_is_canonical (all-traces): falsified - found trace (13 steps)
+  unchecked_presenter_class_is_pinned (all-traces): falsified - found trace (14 steps)
+  unchecked_signed_denial_cannot_authorize (all-traces): falsified - found trace (14 steps)
+  unchecked_authority_scope_is_pinned (all-traces): falsified - found trace (16 steps)
+  unchecked_reliance_profile_is_pinned (all-traces): falsified - found trace (14 steps)
+  unchecked_unregistered_challenge_is_registered (all-traces): falsified - found trace (14 steps)
+  unchecked_presenter_execution_key_is_canonical (all-traces): falsified - found trace (14 steps)
 
 Validation note:
   One uninterrupted invocation of the integrated runner completed all 20

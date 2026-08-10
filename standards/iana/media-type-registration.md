@@ -1,9 +1,10 @@
 # IANA media type registrations — EMILIA Protocol
 
 Registration templates per RFC 6838, Section 5.6. The current receipts draft
-carries the active standards-tree registration request. The former AE
-Challenge media-type request is retained below only as process history; -03
-withdraws it and uses RFC 9457 `application/problem+json`.
+carries both active standards-tree registration requests. The former AE
+Challenge media-type request is retained below only as process history; current
+revision -05 retains the -03 withdrawal and uses RFC 9457
+`application/problem+json`.
 
 **Consistency rule applied throughout:** every string below is taken verbatim
 from a draft's own text. Nothing here invents a name a draft does not carry.
@@ -21,7 +22,9 @@ document had not reached a publication-stage review. IANA advised that an
 Independent Stream document can be processed when it reaches IETF conflict
 review. The type is not registered. Revision -02 was published on 2026-08-07
 with the full permanent standards-tree template and Independent Stream
-metadata; the checklist-complete ISE submission is staged in Gmail and unsent.
+metadata. An Independent Stream request based on that revision was sent; the
+current -05 revision is published and retains the media-type withdrawal while
+Independent Stream review continues.
 The string was fixed by revision -02 text:
 `draft-schrock-ae-challenge-02`, Section 2, specifies that
 a challenge is "returned (in the HTTP binding) with status 428 and media type
@@ -114,10 +117,10 @@ team@emiliaprotocol.ai
 ## 2. application/ep-authorization-receipt+json
 
 **Status: CARRIED BY CURRENT DRAFT.** The active
-`draft-schrock-ep-authorization-receipts-10`, Section 13, requests this media
+`draft-schrock-ep-authorization-receipts-11`, Section 13, requests this media
 type and carries the complete registration template. Process the registration
 with the Standards Track document. The older proposed name
-`application/ep-receipt+json` is not the name selected by -10 and must not be
+`application/ep-receipt+json` is not the name selected by -11 and must not be
 filed as an alias.
 
 ### Registration template (RFC 6838 §5.6)
@@ -134,7 +137,7 @@ filed as an alias.
 encoded as UTF-8 according to RFC 8259.
 
 **Security considerations:** See the Security Considerations section of
-draft-schrock-ep-authorization-receipts-10. Receipt verification requires
+draft-schrock-ep-authorization-receipts-11. Receipt verification requires
 independently selected log, approver, directory, and policy trust inputs. A
 valid receipt is evidence, not current authorization, proof of execution, or
 proof of human comprehension. Implementations must also apply the draft's
@@ -145,12 +148,74 @@ duplicate-member, Unicode-scalar, depth, and number restrictions.
 algorithm are defined by the draft. The shorter identifier `EP-RECEIPT-v1`
 names a different generic envelope and is not an alias.
 
-**Published specification:** draft-schrock-ep-authorization-receipts-10,
+**Published specification:** draft-schrock-ep-authorization-receipts-11,
 "Authorization Receipts for High-Risk Agent Actions" (an active individual
 Internet-Draft, not IETF-adopted or endorsed; intended status Standards Track).
 
 **Applications that use this media type:** Agent-action authorization systems,
 verifying executors, audit systems, and evidence exchange services.
+
+**Fragment identifier considerations:** none
+
+**Additional information:**
+
+- Magic number(s): none
+- File extension(s): none
+- Macintosh file type code(s): none
+
+**Person & email address to contact for further information:** Iman Schrock,
+team@emiliaprotocol.ai
+
+**Intended usage:** COMMON
+
+**Restrictions on usage:** none
+
+**Author:** Iman Schrock
+
+**Change controller:** IETF
+
+**Provisional registration? (standards tree only):** No
+
+---
+
+## 3. application/ep-authorization-bundle+json
+
+**Status: CARRIED BY CURRENT DRAFT.** The active
+`draft-schrock-ep-authorization-receipts-11`, Section 13, requests this media
+type and carries the complete registration template. Process the registration
+with the Standards Track document; do not file a conflicting direct request.
+
+### Registration template (RFC 6838 §5.6)
+
+**Type name:** application
+
+**Subtype name:** ep-authorization-bundle+json
+
+**Required parameters:** none
+
+**Optional parameters:** none
+
+**Encoding considerations:** binary; the representation is a JSON object
+encoded as UTF-8 according to RFC 8259.
+
+**Security considerations:** See the Security Considerations and bundle
+verification sections of draft-schrock-ep-authorization-receipts-11. A valid
+bundle is approval evidence, not an authorization grant, reservation,
+consumption record, execution receipt, proof of current external facts, or
+permission to retry an action with an uncertain effect.
+
+**Interoperability considerations:** The `EP-AUTHORIZATION-BUNDLE-v1` closed
+object and verification algorithm are defined by the draft. A consumer must
+independently pin the audience, policy, action mapping, approver directory,
+trust roots, and any required current status sources.
+
+**Published specification:** draft-schrock-ep-authorization-receipts-11,
+"Authorization Receipts for High-Risk Agent Actions" (an active individual
+Internet-Draft, not IETF-adopted or endorsed; intended status Standards Track).
+
+**Applications that use this media type:** Authorization servers, policy
+decision points, protected resources, verifying executors, and agent-action
+approval systems.
 
 **Fragment identifier considerations:** none
 
