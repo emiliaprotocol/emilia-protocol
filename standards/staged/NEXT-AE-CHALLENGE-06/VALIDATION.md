@@ -1,5 +1,8 @@
 # Validation record
 
+Published on the IETF Datatracker on 2026-08-10. The retained XML and TXT are
+byte-for-byte identical to the immutable IETF archive artifacts.
+
 Validated on 2026-08-10 against
 `UPLOAD-THIS/draft-schrock-ae-challenge-06.xml`.
 

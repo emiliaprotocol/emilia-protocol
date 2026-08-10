@@ -11,8 +11,8 @@ including the three coauthored records.
 Do not upload a file from this directory as a new draft. Maintenance revisions
 may be prepared in `../staged/`, rendered and tested, then filed through the
 Datatracker. The August 3 packet, four isolated August 6 packets, two isolated
-August 8 packets, and the isolated Authorization Receipts-11 and
-AE-CHALLENGE-05 packets from August 10 are
+August 8 packets, and the isolated Authorization Receipts-11,
+AE-CHALLENGE-05, and AE-CHALLENGE-06 packets from August 10 are
 retained exact-submission provenance. Despite retained `UPLOAD-THIS` directory
 names, they are not upload candidates or a filing queue.
 
@@ -33,7 +33,7 @@ before promotion. TXT and HTML snapshots are conveniences; the archive is
 authoritative for rendered forms.
 
 - `draft-ferro-schrock-memory-projection-record-01`
-- `draft-schrock-ae-challenge-05`
+- `draft-schrock-ae-challenge-06`
 - `draft-schrock-action-evidence-boundary-03`
 - `draft-schrock-action-remedy-receipts-00`
 - `draft-schrock-agent-qualification-statements-00`
@@ -159,14 +159,17 @@ provenance.
 
 ## August 10, 2026 maintenance set
 
-The following current XML snapshots, and the AE Challenge TXT snapshot, were verified byte-for-byte
-against the immutable IETF archive before promotion into this directory:
+The following current XML snapshots, and the AE Challenge TXT snapshot, were
+verified byte-for-byte against the immutable IETF archive before promotion
+into this directory:
 
 - `draft-schrock-ep-authorization-receipts-11`
-- `draft-schrock-ae-challenge-05`
+- `draft-schrock-ae-challenge-06`
 
-The retained `../staged/NEXT-AUTHORIZATION-RECEIPTS-11` and
-`../staged/NEXT-AE-CHALLENGE-05` packets preserve the exact submitted XML,
-review renders, validation records, and checksums as publication provenance.
-The superseded `draft-schrock-ep-authorization-receipts-10` and
-`draft-schrock-ae-challenge-03` snapshots are retained in `../archive/`.
+The retained `../staged/NEXT-AUTHORIZATION-RECEIPTS-11`,
+`../staged/NEXT-AE-CHALLENGE-05`, and `../staged/NEXT-AE-CHALLENGE-06`
+packets preserve the exact submitted XML, review renders, validation records,
+and checksums as publication provenance. The superseded
+`draft-schrock-ep-authorization-receipts-10`,
+`draft-schrock-ae-challenge-03`, and `draft-schrock-ae-challenge-05`
+snapshots are retained in `../archive/`.
