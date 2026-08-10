@@ -296,6 +296,7 @@ export async function POST(
         const members = decisionsToMembers(base.quorum_policy, authorizedDecisions, credsByCredentialId);
         const { rpID, origin } = getRpConfig();
         const gate = quorumGate(base.quorum_policy, base.action_hash, members, {
+          mode: 'relying-party',
           rpId: rpID,
           allowedOrigins: [origin],
         });
@@ -382,6 +383,7 @@ export async function POST(
             decision: approved.after_state,
             approverPublicKeySpki: approverPublicKeySpki ?? undefined,
             expectedActionHash: base.action_hash,
+            mode: 'relying-party',
             rpId: rpID,
             allowedOrigins: [origin],
           });
@@ -498,6 +500,7 @@ export async function POST(
               decision: approval,
               approverPublicKeySpki: credential.public_key_spki,
               expectedActionHash: base.action_hash,
+              mode: 'relying-party',
               rpId: rpID,
               allowedOrigins: [origin],
             });

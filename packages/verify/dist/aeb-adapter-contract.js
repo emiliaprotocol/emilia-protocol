@@ -117,8 +117,32 @@ function sha256(value) {
     // codeql[js/insufficient-password-hash]
     return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
+// COMPATIBILITY-FROZEN digest bytes: sha256(canonicalize(value)) with NO
+// domain-separation prefix. This exact byte contract is shared with the CAID
+// reference implementations (caid/impl/go/mapping.go, caid/impl/python), is
+// baked into thousands of sha256:… literals across conformance/vectors/*.json,
+// and appears inside already-signed artifacts in the wild. Changing these
+// bytes would require a synchronized JS/Python/Go release plus full vector
+// regeneration; existing callers stay on this function. Type confusion between
+// digested shapes is prevented for NEW commitments by digestTyped below, which
+// prefixes an explicit domain tag the way AEB_EVALUATION_DOMAIN prefixes
+// signature payloads.
 function digest(value) {
     return sha256(Buffer.from(canonicalize(value), 'utf8'));
+}
+// Domain-separated digest for NEW digest fields. The tag is drawn from the
+// same closed identifier alphabet as other AEB identifiers (IDENT_RE), which
+// cannot contain the NUL separator — so no (tag, value) pair can produce the
+// preimage of a different (tag, value) pair. And no typed digest can collide
+// with a raw digest(value): the typed preimage contains a literal NUL byte,
+// which canonical JSON output can never contain (control characters are always
+// \u-escaped). Use one stable tag per commitment type, e.g.
+// 'EP-AEB-ACTION-v1' vs 'EP-AEB-CONTEXT-v1'.
+function typedDigest(value, domainTag) {
+    if (!exactString(domainTag)) {
+        throw new TypeError('digestAebTyped requires a non-empty domain tag from the AEB identifier alphabet');
+    }
+    return sha256(Buffer.from(`${domainTag}\0${canonicalize(value)}`, 'utf8'));
 }
 function validDigest(value) {
     return typeof value === 'string' && DIGEST_RE.test(value);
@@ -1473,5 +1497,5 @@ export async function reconcileAebExecutionDurable(store, reservationKey, outcom
         return { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'consumption_store_unavailable' };
     }
 }
-export { canonicalize as canonicalizeAeb, digest as digestAeb };
+export { canonicalize as canonicalizeAeb, digest as digestAeb, typedDigest as digestAebTyped };
 //# sourceMappingURL=aeb-adapter-contract.js.map

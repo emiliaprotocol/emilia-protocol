@@ -7,7 +7,7 @@
     "directory": "packages/gate"
   },
   "homepage": "https://www.emiliaprotocol.ai",
-  "description": "EMILIA Gate is the Consequence Firewall: deny-by-default enforcement that runs a consequential action only on proof a named human authorized this exact action. Fails closed.",
+  "description": "Executor-side consequence control that verifies relying-party-pinned evidence for one exact action, reserves authority before effect, and fails closed.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
@@ -298,6 +298,10 @@
       "types": "./dist/consequence-actuator.d.ts",
       "import": "./consequence-actuator.js"
     },
+    "./consequence-boundary": {
+      "types": "./dist/consequence-boundary.d.ts",
+      "import": "./consequence-boundary.js"
+    },
     "./discovery-permit-resolver": {
       "types": "./dist/discovery-permit-resolver.d.ts",
       "import": "./discovery-permit-resolver.js"
@@ -465,6 +469,7 @@
     "proposal-to-effect-postgres.js",
     "aeb-consumption-store.js",
     "consequence-actuator.js",
+    "consequence-boundary.js",
     "discovery-permit-resolver.js",
     "authority-allocation.js",
     "autonomy-control-plane-profile.js",
@@ -565,7 +570,7 @@
     "pretest": "npm run build",
     "test": "node --test --test-concurrency=1 && npm run test:qualification",
     "check:allowance-security-test-coverage": "node check-allowance-security-test-coverage.mjs",
-    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 allowance.test.ts capability-receipt.test.ts action-fence-runtime-regression.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/github-deployment.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts bounded-execution-acceptance.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts recovery-admission.test.ts recovery-admission-postgres.test.ts recovery-admission-remedy.test.ts",
+    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 consequence-boundary.test.ts allowance.test.ts capability-receipt.test.ts action-fence-runtime-regression.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/github-deployment.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts bounded-execution-acceptance.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts recovery-admission.test.ts recovery-admission-postgres.test.ts recovery-admission-remedy.test.ts",
     "demo": "node demo.mjs",
     "eg1": "node eg1.mjs",
     "cf1": "node cf1.mjs"

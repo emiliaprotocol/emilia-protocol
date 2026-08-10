@@ -126,6 +126,45 @@ test('missing receipt -> 428 challenge', async () => {
   assert.match(out.header, /action=/);
 });
 
+test('one-time consumption is tenant-scoped: same receipt_id across tenants cannot collide', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
+  const mintTenantReceipt = (tenant, receiptId = 'rcpt_shared_id') => {
+    const s = mintDeviceSignoff({ actionHash: HASH_FOR('payment.release'), approver: 'ep:approver:test' });
+    return mint(privateKey, {
+      receipt_id: receiptId, subject: 'agent:test', issuer: 'ep:org:test',
+      created_at: new Date().toISOString(),
+      claim: {
+        action_type: 'payment.release', outcome: 'allow_with_signoff',
+        ...(tenant ? { tenant_id: tenant } : {}),
+      },
+      signoff: s.signoff, approver_public_key: s.approver_public_key,
+    });
+  };
+  const a = await g.check({ selector: PAY, receipt: mintTenantReceipt('org_a') });
+  assert.equal(a.allow, true, a.reason);
+  // The same issuer id under a DIFFERENT signed tenant is a distinct store key:
+  // a shared store or a non-unique-id regression can never become cross-tenant replay.
+  const b = await g.check({ selector: PAY, receipt: mintTenantReceipt('org_b') });
+  assert.equal(b.allow, true, b.reason);
+  assert.equal(a.evidence.consumption_key, canon(['org_a', 'rcpt_shared_id']));
+  assert.equal(b.evidence.consumption_key, canon(['org_b', 'rcpt_shared_id']));
+  // Same (tenant, receipt_id) is still fenced — even via a freshly minted copy.
+  const replay = await g.check({ selector: PAY, receipt: mintTenantReceipt('org_a') });
+  assert.equal(replay.allow, false);
+  assert.equal(replay.reason, 'replay_refused');
+  // Hostile input: an untenanted receipt whose receipt_id is crafted to LOOK
+  // like tenant org_a's composite key cannot forge that key (canonicalize
+  // JSON-escapes both components) and must neither be refused as org_a's
+  // replay nor poison org_a's keyspace.
+  const forged = await g.check({
+    selector: PAY,
+    receipt: mintTenantReceipt(null, canon(['org_a', 'rcpt_shared_id'])),
+  });
+  assert.equal(forged.allow, true, forged.reason);
+  assert.notEqual(forged.evidence.consumption_key, a.evidence.consumption_key);
+});
+
 test('valid class_a receipt -> allow; same receipt again -> replay refused', async () => {
   const { pub, privateKey } = makeKey();
   const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
