@@ -43,6 +43,8 @@ export * from './aeb-oauth-transaction-challenge-adapter.js';
 export * from './aeb-discovery-permit-adapter.js';
 export * from './aeb-wimse-oauth-adapter.js';
 export * from './authorization-server-confirmation.js';
+export * from './authorization-bundle.js';
+export * from './oauth-rar-authorization-binding.js';
 export * from './policy-decision-evidence.js';
 export * from './aeb-native-adapters.js';
 export * from './aeb-oasnt-adapter.js';
