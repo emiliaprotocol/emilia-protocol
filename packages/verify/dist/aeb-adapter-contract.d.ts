@@ -390,6 +390,7 @@ export declare class InMemoryAebConsumptionStore implements AebConsumptionStore 
 }
 declare function canonicalize(value: unknown): string;
 declare function digest(value: unknown): AebDigest;
+declare function typedDigest(value: unknown, domainTag: string): AebDigest;
 /** Sign the exact result emitted by a native verifier or protocol gateway. */
 export declare function signAebNativeVerificationAttestation(body: AebNativeVerificationAttestationBody, signer: AebNativeVerificationAttestationSigner): AebNativeVerificationAttestation;
 /**
@@ -441,5 +442,5 @@ export declare function reconcileAebExecutionDurable(store: unknown, reservation
     retry_allowed: boolean;
     reason: string;
 }>;
-export { canonicalize as canonicalizeAeb, digest as digestAeb };
+export { canonicalize as canonicalizeAeb, digest as digestAeb, typedDigest as digestAebTyped };
 //# sourceMappingURL=aeb-adapter-contract.d.ts.map

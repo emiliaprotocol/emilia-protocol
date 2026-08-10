@@ -31,6 +31,37 @@ afterEach(() => {
 });
 
 describe('operator auth — red-team accountability boundary', () => {
+  it('refuses absent, malformed, stale-format, and unknown-operator tokens explicitly', async () => {
+    vi.stubEnv('EP_OPERATOR_KEYS', '');
+
+    await expect(verifyOperatorAuth(undefined)).resolves.toEqual({
+      valid: false,
+      error: 'No token provided',
+    });
+    await expect(verifyOperatorAuth('ep_op2_bad')).resolves.toMatchObject({
+      valid: false,
+      error: 'Malformed operator token',
+    });
+    await expect(verifyOperatorAuth('ep_op_bad')).resolves.toMatchObject({
+      valid: false,
+      error: 'Malformed operator token',
+    });
+    await expect(verifyOperatorAuth(`ep_op_op_alice.zz.${'0'.repeat(64)}`)).resolves.toMatchObject({
+      valid: false,
+      error: 'Invalid timestamp',
+    });
+    await expect(verifyOperatorAuth(legacyOperatorToken('op_missing', SECRET_HEX))).resolves.toMatchObject({
+      valid: false,
+      error: 'Unknown operator',
+    });
+    await expect(verifyOperatorAuth(legacyOperatorToken('op_missing', SECRET_HEX), {
+      requireRequestBinding: true,
+    })).resolves.toMatchObject({
+      valid: false,
+      error: 'Legacy operator token has no request binding',
+    });
+  });
+
   it('accepts a fresh per-operator token and returns the named operator id', async () => {
     vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
     vi.stubEnv('EP_OPERATOR_ROLES', JSON.stringify({ op_alice: 'reviewer' }));

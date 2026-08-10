@@ -46,7 +46,7 @@ remain separate lifecycle transitions.
 The reader-facing canonical surface is:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-10`](posted/draft-schrock-ep-authorization-receipts-10.xml):
+   [`draft-schrock-ep-authorization-receipts-11`](posted/draft-schrock-ep-authorization-receipts-11.xml):
    one action-bound organizational approval-evidence profile.
 2. **Human Authorization Binding** —
    [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml):
@@ -111,6 +111,14 @@ the immutable IETF archive on August 6, 2026, in dependency order:
 CAID-02 was posted first so Receipts-10's normative reference resolved to the
 current CAID revision at publication time. Their isolated packets remain under
 `staged/NEXT-*` as publication provenance, not upload candidates.
+
+## August 10 maintenance revision
+
+`draft-schrock-ep-authorization-receipts-11` was published and checked
+byte-for-byte against the immutable IETF archive on August 10, 2026. It makes
+the Authorization Bundle transport-neutral and moves OAuth RAR into an
+optional binding profile. Its isolated packet remains under
+`staged/NEXT-AUTHORIZATION-RECEIPTS-11` as publication provenance.
 
 ## New-filing freeze
 

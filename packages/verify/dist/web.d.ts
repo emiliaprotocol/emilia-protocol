@@ -22,6 +22,7 @@ interface WebOptions {
     allowUnsigned?: boolean;
     previousSignCount?: number;
     counterPolicy?: 'observe' | 'enforce';
+    mode?: 'relying-party' | 'offline-integrity';
 }
 export declare const canonicalize: typeof canonicalizeStrictJson;
 export declare const MERKLE_V2_ALG = "EP-MERKLE-v2";
@@ -53,6 +54,19 @@ export declare function verifyMerkleAnchor(leafHash: unknown, proof: unknown, ex
 /**
  * Verify a Class A (approver-held key) signoff fully offline, in the browser.
  * Mirrors index.js verifyWebAuthnSignoff.
+ *
+ * `opts.mode` selects the verification posture:
+ *   - 'relying-party': an authoritative relying-party check. `rpId` AND
+ *     `allowedOrigins` are REQUIRED; omitting either fails the verdict with
+ *     'rp_pins_required' and `checks.rp_id_hash === false`. This makes it
+ *     impossible for a caller that intends an authoritative check to silently
+ *     skip origin/rp scoping by forgetting the pins.
+ *   - 'offline-integrity' (default): today's portable integrity check —
+ *     challenge/action/nonce binding, ceremony type, UP/UV flags, and the
+ *     device signature are verified; origin is asserted only when the caller
+ *     supplies pins, and `checks.rp_id_hash` stays null when unpinned. This is
+ *     the documented posture for the public /verify page and demos, which have
+ *     no out-of-band relying-party trust profile.
  * @returns {Promise<{valid:boolean, checks:object, error?:string}>}
  */
 export declare function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicKeySpkiB64u: string, opts?: WebOptions): Promise<{
@@ -103,7 +117,7 @@ export declare function verifyCommitmentProof(proof: JsonObject, publicKeyBase64
 /** @returns {Promise<{valid:boolean, total:number, verified:number, failed:string[]}>} */
 export declare function verifyReceiptBundle(bundle: JsonObject, publicKeyBase64url: string): Promise<{
     valid: boolean;
-    total: any;
+    total: number;
     verified: number;
     failed: string[];
 }>;

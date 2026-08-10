@@ -21,7 +21,7 @@ function linkDeclaredDependencies(consumerRoot, packageJson) {
   }
 }
 
-test('a packed blank consumer resolves the bounded program runtime and AdmissionStore types', () => {
+test('a packed blank consumer resolves bounded-program, AdmissionStore, and consequence-boundary types', () => {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'emilia-gate-consumer-'));
   try {
     const packOutput = JSON.parse(execFileSync('npm', [
@@ -47,6 +47,11 @@ test('a packed blank consumer resolves the bounded program runtime and Admission
       import: './bounded-execution-report.js',
     });
     assert.ok(packedPackage.files.includes('bounded-execution-report.js'));
+    assert.deepEqual(packedPackage.exports['./consequence-boundary'], {
+      types: './dist/consequence-boundary.d.ts',
+      import: './consequence-boundary.js',
+    });
+    assert.ok(packedPackage.files.includes('consequence-boundary.js'));
     assert.ok(packedPackage.files.includes('sql/gate-qualification-v2.sql'));
     assert.ok(fs.existsSync(path.join(installedGate, 'sql', 'gate-qualification-v2.sql')));
 
@@ -58,6 +63,7 @@ test('a packed blank consumer resolves the bounded program runtime and Admission
       import * as program from '@emilia-protocol/gate/bounded-execution-program';
       import * as report from '@emilia-protocol/gate/bounded-execution-report';
       import * as admission from '@emilia-protocol/gate/admission-store';
+      import * as consequence from '@emilia-protocol/gate/consequence-boundary';
       if (gate.signBoundedExecutionProgram !== program.signBoundedExecutionProgram) {
         throw new Error('root barrel does not export bounded execution programs');
       }
@@ -66,6 +72,9 @@ test('a packed blank consumer resolves the bounded program runtime and Admission
       }
       if (gate.signBoundedExecutionReport !== report.signBoundedExecutionReport) {
         throw new Error('root barrel does not export bounded execution reports');
+      }
+      if (typeof consequence.createConsequenceBoundary !== 'function') {
+        throw new Error('consequence boundary subpath did not resolve');
       }
     `);
     execFileSync(process.execPath, [path.join(consumerRoot, 'consumer.mjs')], {
@@ -88,6 +97,10 @@ test('a packed blank consumer resolves the bounded program runtime and Admission
         type ExecutionProgramOccurrence,
         type ExecutionProgramRuntimeState,
       } from '@emilia-protocol/gate';
+      import {
+        createConsequenceBoundary,
+        type ConsequenceBoundaryRunInput,
+      } from '@emilia-protocol/gate/consequence-boundary';
       const store: ExecutionProgramAdmissionStore = createMemoryAdmissionStore();
       const state: ExecutionProgramRuntimeState | null = await store.readExecutionProgram({
         tenant_id: 'tenant:consumer',
@@ -100,6 +113,8 @@ test('a packed blank consumer resolves the bounded program runtime and Admission
       void verifyBoundedExecutionReport;
       void state;
       void occurrence;
+      void createConsequenceBoundary;
+      void (null as ConsequenceBoundaryRunInput | null);
     `);
     fs.writeFileSync(path.join(consumerRoot, 'tsconfig.json'), JSON.stringify({
       compilerOptions: {

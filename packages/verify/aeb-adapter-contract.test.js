@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import test from 'node:test';
-import { AEB_EVALUATION_DOMAIN, AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, InMemoryAebConsumptionStore, aebReservationKey, adapterPinDigest, canonicalizeAeb, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, authorizeAebExecution, authorizeAebExecutionDurable, createAebNativeVerificationAttestationAdapter, reconcileAebExecution, reconcileAebExecutionDurable, signAebNativeVerificationAttestation, verifyAebEvaluation, } from './aeb-adapter-contract.js';
+import { AEB_EVALUATION_DOMAIN, AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, InMemoryAebConsumptionStore, aebReservationKey, adapterPinDigest, canonicalizeAeb, digestAeb, digestAebTyped, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, authorizeAebExecution, authorizeAebExecutionDurable, createAebNativeVerificationAttestationAdapter, reconcileAebExecution, reconcileAebExecutionDurable, signAebNativeVerificationAttestation, verifyAebEvaluation, } from './aeb-adapter-contract.js';
 const vectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/aeb-adapter.v1.json', import.meta.url), 'utf8'));
 const CAID = `caid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
 const OTHER_CAID = `caid:1:order.purchase.1:jcs-sha256:${'B'.repeat(43)}`;
@@ -952,6 +952,33 @@ test('execution verification is bound to the exact evaluation record consumed', 
     });
     assert.equal(decision.invoke_allowed, false);
     assert.equal(decision.reason, 'evaluation_verification_record_mismatch');
+});
+test('digestAeb bytes are compatibility-frozen (matches Go/Python ports and shipped vectors)', () => {
+    // The exact contract cross-language ports and conformance vectors depend on:
+    // sha256 over the canonical JSON encoding, hex, 'sha256:' prefix, NO domain
+    // prefix. If this assertion ever fails, digest bytes changed and every
+    // vector plus the Python/Go implementations would need a synchronized
+    // regeneration — do not "fix" this test, fix the digest.
+    const value = { b: 2, a: 1 };
+    const expected = `sha256:${crypto.createHash('sha256').update('{"a":1,"b":2}', 'utf8').digest('hex')}`;
+    assert.equal(digestAeb(value), expected);
+});
+test('digestAebTyped separates digest domains so shape-identical values cannot collide', () => {
+    const value = { id: 'x', amount: '10.00' };
+    const asAction = digestAebTyped(value, 'EP-AEB-ACTION-v1');
+    const asContext = digestAebTyped(value, 'EP-AEB-CONTEXT-v1');
+    // Same canonical bytes, different commitment types: never the same digest.
+    assert.notEqual(asAction, asContext);
+    // A typed digest never collides with the legacy raw digest either — the
+    // typed preimage carries a literal NUL separator canonical JSON cannot emit.
+    assert.notEqual(asAction, digestAeb(value));
+    assert.notEqual(asContext, digestAeb(value));
+    // Deterministic under a fixed tag.
+    assert.equal(asAction, digestAebTyped({ amount: '10.00', id: 'x' }, 'EP-AEB-ACTION-v1'));
+    // The tag must come from the closed AEB identifier alphabet.
+    assert.throws(() => digestAebTyped(value, ''), TypeError);
+    assert.throws(() => digestAebTyped(value, 'bad tag'), TypeError);
+    assert.throws(() => digestAebTyped(value, undefined), TypeError);
 });
 test('production execution requires durable ownership-fenced permanent custody', async () => {
     const s = setup();
