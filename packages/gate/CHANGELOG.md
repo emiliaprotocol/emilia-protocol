@@ -55,6 +55,25 @@ This package follows [Semantic Versioning](https://semver.org/).
   makes no legal-compliance, external-effect, safety, or complete-mediation
   claim.
 
+### Security
+
+- Scope legacy receipt consumption by the canonical signed
+  `[tenant_id, receipt_id]` pair. Every reserve, consume, commit, and release
+  transition now uses the same recorded composite key, preventing one
+  tenant's receipt identifier from colliding with another tenant in a shared
+  store.
+- Require an explicit relying-party verification mode when WebAuthn RP and
+  origin pins are authoritative; omitted pins now fail closed instead of
+  silently producing an integrity-only result.
+
+### Compatibility
+
+- Pre-composite stores contain bare `receipt_id` rows that the new composite
+  keyspace does not consult. Before upgrading a deployment that cannot accept
+  one additional admission during the configured `maxAgeSec` window, drain
+  in-flight receipts or refuse admission for one complete `maxAgeSec`
+  interval. Fresh stores are unaffected.
+
 ## 0.23.9 (2026-08-03)
 
 ### Security
