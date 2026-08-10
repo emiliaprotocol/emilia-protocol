@@ -10,9 +10,10 @@
  */
 import { hashCanonical } from './execution-binding.js';
 
-export const DURABLE_CHALLENGE_STORE_VERSION = 'EP-DURABLE-CHALLENGE-STORE-v2';
-const OPEN_PREFIX = 'challenge-open:v2:';
-const CONSUMED_PREFIX = 'challenge-consumed:v2:';
+export const DURABLE_CHALLENGE_STORE_VERSION = 'EP-DURABLE-CHALLENGE-STORE-v3';
+const OPEN_PREFIX = 'challenge-open:v3:';
+const CONSUMED_PREFIX = 'challenge-consumed:v3:';
+const LEGACY_SINGLE_ISSUER_IDENTITY = 'urn:emilia:challenge-issuer:legacy-single-store';
 
 function assertChallenge(challenge) {
   if (!challenge || typeof challenge !== 'object' || Array.isArray(challenge)) {
@@ -23,13 +24,24 @@ function assertChallenge(challenge) {
   if (typeof challenge.nonce !== 'string' || !challenge.nonce.trim()) throw new Error('challenge nonce is required');
 }
 
-export function challengeStorageKey(challenge) {
+function normalizedIssuerIdentity(issuerIdentity?: string) {
+  if (issuerIdentity === undefined) return LEGACY_SINGLE_ISSUER_IDENTITY;
+  if (typeof issuerIdentity !== 'string' || !issuerIdentity.trim()) {
+    throw new Error('authenticated issuer identity must be a non-empty string');
+  }
+  return issuerIdentity;
+}
+
+export function challengeStorageKey(challenge, issuerIdentity?: string) {
   assertChallenge(challenge);
-  // The backend is the authoritative replay domain for one issuer.  The nonce,
-  // not the correlation-only challenge_id, is the security key.  Using
-  // challenge_id here would let one issuer accidentally register the same nonce
-  // twice under different correlation identifiers.
-  return `ae-challenge:v2:${hashCanonical({ nonce: challenge.nonce })}`;
+  // The authenticated issuer identity and nonce form the replay key. The
+  // correlation-only challenge_id is intentionally excluded. The legacy
+  // sentinel preserves source compatibility for explicitly single-issuer,
+  // non-conforming callers; production -07 use requires issuerScoped=true.
+  return `ae-challenge:v3:${hashCanonical({
+    issuer: normalizedIssuerIdentity(issuerIdentity),
+    nonce: challenge.nonce,
+  })}`;
 }
 
 export function challengeBodyDigest(challenge) {
@@ -37,11 +49,45 @@ export function challengeBodyDigest(challenge) {
   return hashCanonical(challenge);
 }
 
-export function createDurableChallengeStore(backend) {
+export function createDurableChallengeStore(
+  backend,
+  { issuerIdentity }: { issuerIdentity?: string } = {},
+) {
   for (const method of ['addIfAbsent', 'compareAndSet', 'has']) {
     if (typeof backend?.[method] !== 'function') {
       throw new Error(`createDurableChallengeStore: backend must implement atomic async ${method}()`);
     }
+  }
+
+  const issuer = normalizedIssuerIdentity(issuerIdentity);
+  const issuerScoped = issuerIdentity !== undefined;
+  const canClassify = typeof backend.get === 'function';
+
+  function keyFor(challenge) {
+    return challengeStorageKey(challenge, issuer);
+  }
+
+  async function classify(challenge) {
+    if (!canClassify) {
+      throw new Error('challenge backend cannot authoritatively classify replay state');
+    }
+    const value = await backend.get(keyFor(challenge));
+    if (value === undefined || value === null) return 'absent';
+    const digest = challengeBodyDigest(challenge);
+    if (typeof value !== 'string') {
+      throw new Error('challenge store contains a malformed authoritative state value');
+    }
+    if (value.startsWith(OPEN_PREFIX)) {
+      return value.slice(OPEN_PREFIX.length) === digest
+        ? 'open-exact'
+        : 'open-body-collision';
+    }
+    if (value.startsWith(CONSUMED_PREFIX)) {
+      return value.slice(CONSUMED_PREFIX.length) === digest
+        ? 'claimed-exact'
+        : 'claimed-body-collision';
+    }
+    throw new Error('challenge store contains an unknown authoritative state value');
   }
 
   return {
@@ -49,14 +95,17 @@ export function createDurableChallengeStore(backend) {
     atomicRegistration: true,
     bodyBound: true,
     permanentConsumption: true,
+    authoritativeClassification: canClassify,
+    issuerScoped,
+    issuerIdentity: issuer,
     async register(challenge) {
-      const key = challengeStorageKey(challenge);
+      const key = keyFor(challenge);
       const digest = challengeBodyDigest(challenge);
       return (await backend.addIfAbsent(key, `${OPEN_PREFIX}${digest}`)) === true;
     },
 
     async consume(challenge) {
-      const key = challengeStorageKey(challenge);
+      const key = keyFor(challenge);
       const digest = challengeBodyDigest(challenge);
       return (await backend.compareAndSet(
         key,
@@ -65,8 +114,10 @@ export function createDurableChallengeStore(backend) {
       )) === true;
     },
 
+    ...(canClassify ? { classify } : {}),
+
     async has(challenge) {
-      return (await backend.has(challengeStorageKey(challenge))) === true;
+      return (await backend.has(keyFor(challenge))) === true;
     },
   };
 }

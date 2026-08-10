@@ -83,11 +83,11 @@
     },
     {
       "path": "conformance/refinement/adapters/evidence-challenge-lifecycle.mjs",
-      "sha256": "644645304339a393dfec2f896b9fe2acfe525d8c1e989a054c20ce45fc3db63a"
+      "sha256": "89650cae28773fbf6c2ff3f92b13e6db27de5a720e7885a4b4729ffca31e758d"
     },
     {
       "path": "conformance/refinement/adapters/evidence-challenge-lifecycle.mts",
-      "sha256": "2f1906e528ebc91f30e58be3f7ab801abda65c08d1b74e8606c5005b332fed22"
+      "sha256": "97e2aa832c512377ef3343874f3f991bc22cbd72daeee0993f7205671deec550"
     },
     {
       "path": "conformance/refinement/adapters/five-claim-bridge.mjs",
@@ -483,11 +483,11 @@
     },
     {
       "path": "lib/negotiate/evidence-challenge.js",
-      "sha256": "4d4ae190ed647699ed29ce65e9e75b74000c9e865282467d1f3bd591eabd0629"
+      "sha256": "f225e5e6f403baaacb6d10c0e973c536c215635d105e1d0156fcb9f33889c2d7"
     },
     {
       "path": "lib/negotiate/evidence-challenge.ts",
-      "sha256": "cec12f0f6295b96641a67a27be47c3d5712c6cf578d7b774638e22b89a3d745f"
+      "sha256": "4226f54ed823d330b4afe044cdbec7d83004f1e17e2fb8b4948872908bd893bb"
     },
     {
       "path": "lib/strict-json.js",
@@ -607,7 +607,7 @@
     },
     {
       "path": "packages/gate/dist/challenge-store.js",
-      "sha256": "800c30494c01e7ffa84e50d16f8746f7b830693d58c69d388f9fcac1b08fa403"
+      "sha256": "590dfc82f30e5d592ee7a9b4f3fc8a5e228e73cb61150d46dec82b03d57b1d62"
     },
     {
       "path": "packages/gate/dist/consequence-actuator.js",
@@ -779,7 +779,7 @@
     },
     {
       "path": "packages/gate/dist/store-postgres.js",
-      "sha256": "6c690524a33006ac7790762e057f202cf0d591d16cf44b69305bb2164acd49c2"
+      "sha256": "e9ac7d44e769e96a851d79d4d9c992511f546ee92fb52bc19ad71b7cd02ce9de"
     },
     {
       "path": "packages/gate/dist/store.js",
@@ -831,7 +831,7 @@
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
-      "sha256": "654818309ed50ddaf78d0cfc8e9c1ab738a59902d81b17f65cc6b6858ca6569c"
+      "sha256": "bd417a4cae8af4a66c0caa1e04998768d80e1a5e7a00d9d351fe936263cea716"
     },
     {
       "path": "packages/gate/src/consequence-actuator.ts",
@@ -867,7 +867,7 @@
     },
     {
       "path": "packages/gate/src/store-postgres.ts",
-      "sha256": "50d54be6b3ea4a0956a8f5cbd218b5762fbd422c41daf2bf7b3b593f5799adf1"
+      "sha256": "d0178db88ac80fd03d8aab16710ce750bd8d799e56a8e1e4a627ea297fe660f8"
     },
     {
       "path": "packages/gate/src/store.ts",

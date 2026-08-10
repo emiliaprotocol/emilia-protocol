@@ -1169,8 +1169,8 @@
     },
     {
       "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
-      "statement": "An AE-CHALLENGE binds the canonical action and governing policy, is exposed only after atomic durable registration of its exact body, and is consumed on the first valid evaluation attempt across workers and restarts.",
-      "acceptance_roots": ["an atomic shared backend implementing insert-if-absent and compare-and-set"],
+      "statement": "An AE-CHALLENGE binds the canonical action and governing policy and is exposed only after atomic durable registration of its exact body. The reference compatibility path consumes it on the first valid evaluation attempt across workers and restarts. Production -07 evaluation fails closed unless the owner supplies one compound nonce-claim-and-capacity transition; no current reference backend advertises that production capability.",
+      "acceptance_roots": ["an atomic shared backend implementing insert-if-absent and compare-and-set", "for production -07, one owner-side compound claim-and-capacity transition spanning every applicable cap bucket"],
       "enforcement_path": [
         { "language": "javascript", "file": "lib/negotiate/evidence-challenge.ts", "symbol": "createRegisteredEvidenceChallenge", "exported": true },
         { "language": "javascript", "file": "packages/gate/src/challenge-store.ts", "symbol": "createDurableChallengeStore", "exported": true },
@@ -1193,7 +1193,7 @@
       "tests": [
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "atomically registers one exact challenge across 100 concurrent workers", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "survives restart and admits exactly one concurrent presentation", "runner": "vitest" },
-        { "file": "tests/evidence-challenge-durable.test.ts", "title": "uses the Postgres durable backend across adapter restart and admits one of 64 concurrent presentations", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-durable.test.ts", "title": "uses the Postgres durable backend across adapter restart and admits one of 64 concurrent nonconforming legacy presentations", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "requires every production storage capability and permits only explicit test-only ephemeral mode", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "binds action, missing evidence, freshness/policy, expiry, nonce, and presentation method", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "refuses an action swap without consuming the registered challenge", "runner": "vitest" },
@@ -1239,7 +1239,7 @@
             "ConcurrentConsumptionIsOneTime",
             "ConsumedStatePersistsAcrossRestart"
           ],
-          "scope": "Bounded same-team exploration of all 1,024 wire/storage configurations plus restart, registration, first-attempt, and concurrent-consumption transitions. Selected scenarios exercise the standalone AE-CHALLENGE-v1 production APIs and PostgreSQL adapter. The challenge requests evidence and authorizes nothing. This is not a refinement proof of the TypeScript or deployed database implementation.",
+          "scope": "Bounded same-team exploration of all 1,024 wire/storage configurations plus restart, registration, first-attempt, and concurrent-consumption transitions. Selected scenarios exercise the durable compatibility path and PostgreSQL adapter, not production -07 claim-and-capacity conformance. The challenge requests evidence and authorizes nothing. This is not a refinement proof of the TypeScript or deployed database implementation.",
           "scenario_evidence": "formal/runtime-scenarios.v2.json",
           "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
           "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
@@ -1275,29 +1275,17 @@
           ]
         },
         {
-          "status": "partial",
-          "method": "bounded_exhaustive_state_exploration",
-          "model": "formal/evidence-challenge-claim-capacity.model.mjs",
-          "runner": "formal/check-evidence-challenge-claim-capacity.mjs",
-          "result_evidence": "formal/results/evidence-challenge-claim-capacity.summary.txt",
-          "obligations": [
-            "CompoundClaimAndCapacityAtomic",
-            "DuplicateReservesOnce",
-            "CapacityRefusalDoesNotClaim",
-            "BodyCollisionIsNotReplay",
-            "OwnerUncertaintyIsUnavailable",
-            "ExpiredDoesNotClaimOrReserve",
-            "ClaimedReplayPrecedesExpiry",
-            "GlobalCapIsConservedAcrossShards",
-            "RecoveryFinalizationIsFenced",
-            "RetryWindowPrecedesExpiry",
-            "PresenterMatchesAudience"
-          ],
-          "scope": "Bounded finite same-team logic evidence for the owner-side nonce-claim-and-capacity-reservation transition and selected retry and audience invariants. It does not model stateful open registration or transfer of an existing outstanding-state debit, is not a database refinement proof, and the compound transition is not yet implemented by the reference runtime."
+          "status": "not_modeled",
+          "gap": "The -07 compound claim-and-capacity transition has a finite same-team scenario harness with mutation counterexamples, but it is not exhaustive formal verification or a storage-driver refinement and is therefore not counted as formal evidence."
         }
       ],
+      "operational_evidence": [
+        { "file": "formal/evidence-challenge-claim-capacity.model.mjs", "contains": ["EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v2", "StatefulDebitTransfersWithoutDoubleCount", "ReplayKeyTupleIsUnambiguous"] },
+        { "file": "formal/check-evidence-challenge-claim-capacity.mjs", "contains": ["finite_scenario_enumeration_with_mutation_counterexamples", "states_checked: states + 16"] },
+        { "file": "formal/results/evidence-challenge-claim-capacity.summary.txt", "contains": ["Checked finite scenarios: 113.", "No current reference backend implements the compound"] }
+      ],
       "assumptions": ["the backend linearizes registration and compare-and-set", "the challenge-store backend is shared by all relying-party workers", "every alias and replica able to validate one issuer's challenge maps it to one stable authenticated issuer identity and replay domain"],
-      "exclusions": ["the legacy Set-based evaluator remains only for compatibility and is not a durable production path"],
+      "exclusions": ["the legacy Set-based evaluator remains only for compatibility and is not a durable production path", "the split durable classify-then-consume compatibility path is not production -07 claim-and-capacity conformance", "no production -07 reference backend or database-isolation refinement is claimed"],
       "release_artifacts": ["gate-sdk", "security-evidence"]
     },
     {

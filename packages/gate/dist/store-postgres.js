@@ -64,6 +64,8 @@ export const CONSUMPTION_SQL = {
     deleteIfValue: `DELETE FROM ${CONSUMPTION_TABLE} WHERE consumption_key = $1 AND state = $2`,
     /** $1 key. Any row — even an expired one — counts as consumed until cleaned. */
     has: `SELECT 1 FROM ${CONSUMPTION_TABLE} WHERE consumption_key = $1`,
+    /** $1 key. Returns the authoritative state value for classification. */
+    get: `SELECT state FROM ${CONSUMPTION_TABLE} WHERE consumption_key = $1`,
     /** $1 now ms. Removes ONLY rows whose TTL has elapsed; NULL expires_at never expires. */
     cleanupExpired: `DELETE FROM ${CONSUMPTION_TABLE} WHERE state LIKE 'committed:%' `
         + 'AND expires_at IS NOT NULL AND expires_at <= $1',
@@ -139,6 +141,18 @@ export function createPostgresBackend({ query, now = Date.now, } = {}) {
         async has(key) {
             const res = await query(CONSUMPTION_SQL.has, [key]);
             return (res?.rows?.length ?? res?.rowCount ?? 0) > 0;
+        },
+        async get(key) {
+            const res = await query(CONSUMPTION_SQL.get, [key]);
+            if (!res || typeof res.rowCount !== 'number' || !Array.isArray(res.rows)) {
+                throw new Error('get: malformed query result — cannot classify challenge state');
+            }
+            if (res.rowCount === 0)
+                return undefined;
+            if (res.rowCount !== 1 || res.rows.length !== 1 || typeof res.rows[0]?.state !== 'string') {
+                throw new Error('get: ambiguous or malformed challenge state');
+            }
+            return res.rows[0].state;
         },
         /** Garbage-collect rows whose TTL elapsed. Returns the number removed. */
         async cleanupExpired(at) {

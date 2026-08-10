@@ -1,47 +1,42 @@
-# AE Challenge revision 07 hostile-review candidate
+# AE Challenge revision 07 private red-team candidate
 
-This isolated packet is a candidate for `draft-schrock-ae-challenge-07`. It is
-not published and must not be described as live on the Datatracker. It starts
-from the exact published -06 source and repairs defects found by a hostile
-state-machine review.
+This packet is private and unpublished. Do not upload it, announce it, or
+describe it as live on the Datatracker.
 
-Upload candidate after all gates pass:
+Candidate source:
 
 `UPLOAD-THIS/draft-schrock-ae-challenge-07.xml`
 
-The load-bearing repair is one atomic owner-side transition joining exact-body
-nonce claim to every applicable refusal-path capacity reservation. Separate
-steps can either reserve twice for concurrent copies of one nonce or burn a
-nonce when capacity is unavailable. The transition has six closed outcomes:
-claimed-with-capacity, exact-body-replay, body-collision, capacity-refused,
-expired, and unavailable.
+Revision -07 repairs the load-bearing defects found after -06:
 
-The revision also:
+- one owner-side transition joins expiry, replay/collision classification,
+  nonce claim, and every applicable refusal-path capacity bucket;
+- stateful-open capacity is transferred into the in-flight reservation and
+  only the positive incremental delta is added;
+- replay is scoped to a stable authenticated issuer identity plus nonce;
+- nonce syntax now carries at least 128 bits when generated as required;
+- replay, collision, expiry, capacity refusal, and owner uncertainty have a
+  total decision order;
+- the current action is compared before claim, while the final executor fence
+  remains explicitly outside AE-CHALLENGE;
+- the HTTP section is only a 403 Problem Details challenge-response carrier,
+  not a complete presentation protocol;
+- 401, 403, 409, 429, and 503 boundaries follow their HTTP semantics;
+- the DMSC material is illustrative and does not claim a gateway profile;
+- nested objects, top-level critical extensions, Retry-After conversion,
+  confidentiality, diagnostics, and pre-owner anti-abuse budgets are explicit.
 
-- scopes replay to authenticated issuer identity plus nonce and makes
-  `challenge_id` correlation-only;
-- binds the authenticated returning presenter to the challenge audience;
-- requires current exact-action rederivation before state claim;
-- requires one transaction domain or bounded preallocated quotas for every
-  hard-cap bucket;
-- fences recovery so a stale worker cannot publish state after reassignment;
-- rejects duplicate JSON members and requires finite pre-cryptographic limits;
-- defines deterministic complete-body digesting and portable JSON integer
-  bounds;
-- makes all evidence entries and predicates conjunctive while treating
-  profiles within one entry as alternatives;
-- requires retry timing plus maximum jitter to remain before expiry;
-- hardens obtain hints against SSRF and credential forwarding;
-- regenerates follow-ups only from the current action and live policy; and
-- removes reliance on an unpublished DMSC section number.
+The finite same-team model explores four coordinated cap buckets, transfer of
+stateful-open debits, tuple-safe replay keys, recovery fencing, and explicit
+unsafe mutations. It is not a database isolation or storage-driver refinement
+proof.
 
-The same branch repairs two reference-runtime defects that predated the new
-compound transition: an action-mismatched presentation no longer consumes the
-valid challenge, and the durable replay key no longer includes the
-correlation-only `challenge_id`.
+The current reference runtime is deliberately blocked from claiming production
+-07 conformance because it does not implement the compound claim-and-capacity
+transition. Its production capability gate requires
+`compoundClaimAndCapacity()`, which the current adapters do not implement.
 
-The new compound capacity transition remains unimplemented and is labeled that
-way in Implementation Status. A finite same-team model checks selected logic
-properties and includes mutations for split claim/reservation, nonce burn,
-cross-shard over-allocation, and stale-owner finalization. It is not a database
-refinement proof or independent implementation evidence.
+Publication remains blocked until the packet is rebuilt from frozen source,
+all recorded gates are rerun, and an independent HTTP/security reviewer has
+reviewed the exact bytes. The render and validation files are evidence only
+after they have been regenerated from the final XML.

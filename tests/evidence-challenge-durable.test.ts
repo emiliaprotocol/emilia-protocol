@@ -46,6 +46,10 @@ function createLocalPostgresHarness() {
           return rows.has(params[0])
             ? { rowCount: 1, rows: [{ present: true }] }
             : { rowCount: 0, rows: [] };
+        case CONSUMPTION_SQL.get:
+          return rows.has(params[0])
+            ? { rowCount: 1, rows: [{ state: rows.get(params[0])?.state }] }
+            : { rowCount: 0, rows: [] };
         default:
           throw new Error(`unexpected challenge Postgres statement: ${text}`);
       }
@@ -71,7 +75,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     const backend = createMemoryBackend();
     const stores = Array.from({ length: 100 }, () => createDurableChallengeStore(backend));
     const challenge = {
-      '@version': 'AE-CHALLENGE-v1', challenge_id: 'challenge-atomic', nonce: 'nonce-atomic',
+      '@version': 'AE-CHALLENGE-v1', challenge_id: 'challenge-atomic', nonce: 'nonce-atomic-00000000001',
       action_digest: artifactDigest(action), expires_at: expiresAt,
     };
     const results = await Promise.all(stores.map((store) => store.register(challenge)));
@@ -86,7 +90,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
       action_digest: artifactDigest(action), expires_at: expiresAt,
     };
     const second = { ...first, challenge_id: 'correlation-b' };
-    expect(challengeStorageKey(first)).toMatch(/^ae-challenge:v2:/);
+    expect(challengeStorageKey(first)).toMatch(/^ae-challenge:v3:/);
     expect(challengeStorageKey(second)).toBe(challengeStorageKey(first));
     expect(await store.register(first)).toBe(true);
     expect(await store.register(second)).toBe(false);
@@ -96,13 +100,15 @@ describe('durable AE-CHALLENGE lifecycle', () => {
 
   it('survives restart and admits exactly one concurrent presentation', async () => {
     const backend = createMemoryBackend();
-    const issuerStore = createDurableChallengeStore(backend);
+    const issuerStore = createDurableChallengeStore(backend, {
+      issuerIdentity: 'https://issuer.example',
+    });
     const challenge = await createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: issuerStore, challenge_id: 'challenge-restart', nonce: 'nonce-restart-0001', expires_at: expiresAt,
+      challengeStore: issuerStore, challenge_id: 'challenge-restart', nonce: 'nonce-restart-0000000001', expires_at: expiresAt,
     });
 
-    const restartedA = createDurableChallengeStore(backend);
-    const restartedB = createDurableChallengeStore(backend);
+    const restartedA = createDurableChallengeStore(backend, { issuerIdentity: 'https://issuer.example' });
+    const restartedB = createDurableChallengeStore(backend, { issuerIdentity: 'https://issuer.example' });
     const results = await Promise.all([
       evaluateRegisteredPresentation(challenge, completeGraph(), policy, { challengeStore: restartedA, verifiers, as_of: asOf }),
       evaluateRegisteredPresentation(challenge, completeGraph(), policy, { challengeStore: restartedB, verifiers, as_of: asOf }),
@@ -112,18 +118,18 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     expect(results.find((result) => result.verdict === 'refused').reasons.join(' ')).toContain('replay');
   });
 
-  it('uses the Postgres durable backend across adapter restart and admits one of 64 concurrent presentations', async () => {
+  it('uses the Postgres durable backend across adapter restart and admits one of 64 concurrent nonconforming legacy presentations', async () => {
     const postgres = createLocalPostgresHarness();
     const issueBackend = createPostgresBackend({
       query: postgres.query,
       now: () => Date.parse(asOf),
     });
     const challenge = await createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: createDurableChallengeStore(issueBackend),
+      challengeStore: createDurableChallengeStore(issueBackend, { issuerIdentity: 'https://issuer.example' }),
       challenge_id: 'challenge-postgres-restart',
       nonce: 'nonce-postgres-restart-0001',
       expires_at: expiresAt,
-      production: true,
+      production: false,
     });
 
     const results = await Promise.all(
@@ -133,17 +139,18 @@ describe('durable AE-CHALLENGE lifecycle', () => {
           now: () => Date.parse(asOf),
         });
         return evaluateRegisteredPresentation(challenge, completeGraph(), policy, {
-          challengeStore: createDurableChallengeStore(restartedBackend),
+          challengeStore: createDurableChallengeStore(restartedBackend, { issuerIdentity: 'https://issuer.example' }),
           verifiers,
           as_of: asOf,
-          production: true,
+          current_action: action,
+          production: false,
         });
       }),
     );
 
     expect(results.filter((result) => result.verdict === 'admissible')).toHaveLength(1);
     expect(results.filter((result) => result.verdict === 'refused')).toHaveLength(63);
-    expect([...postgres.rows.values()].at(-1)?.state).toMatch(/^challenge-consumed:v2:/);
+    expect([...postgres.rows.values()].at(-1)?.state).toMatch(/^challenge-consumed:v3:/);
   });
 
   it('requires every production storage capability and permits only explicit test-only ephemeral mode', async () => {
@@ -170,28 +177,47 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     const secure = createDurableChallengeStore(createPostgresBackend({
       query: postgres.query,
       now: () => Date.parse(asOf),
-    }));
+    }), { issuerIdentity: 'https://issuer.example' });
+
+    await expect(createRegisteredEvidenceChallenge(action, policy, {
+      challengeStore: secure,
+      expires_at: expiresAt,
+      production: true,
+    })).rejects.toThrow(/compoundClaimAndCapacity/);
+
+    const declared = {
+      ...secure,
+      async compoundClaimAndCapacity() {
+        return { result: 'owner_unavailable' };
+      },
+    };
     for (const capability of [
       'durable',
       'atomicRegistration',
       'bodyBound',
       'permanentConsumption',
+      'authoritativeClassification',
+      'issuerScoped',
     ]) {
       await expect(createRegisteredEvidenceChallenge(action, policy, {
-        challengeStore: { ...secure, [capability]: false },
+        challengeStore: { ...declared, [capability]: false },
         challenge_id: `challenge-missing-${capability}`,
-        nonce: `nonce-missing-${capability}-0001`,
         expires_at: expiresAt,
         production: true,
       })).rejects.toThrow(new RegExp(capability));
     }
+    await expect(createRegisteredEvidenceChallenge(action, policy, {
+      challengeStore: { ...declared, compoundClaimAndCapacity: undefined },
+      expires_at: expiresAt,
+      production: true,
+    })).rejects.toThrow(/compoundClaimAndCapacity\(\)/);
   });
 
   it('binds action, missing evidence, freshness/policy, expiry, nonce, and presentation method', async () => {
     const backend = createMemoryBackend();
     const store = createDurableChallengeStore(backend);
     const challenge = await createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: store, challenge_id: 'challenge-body', nonce: 'nonce-body-0000001', expires_at: expiresAt,
+      challengeStore: store, challenge_id: 'challenge-body', nonce: 'nonce-body-000000000001', expires_at: expiresAt,
     });
     const mutations = [
       { ...challenge, action_digest: `sha256:${'ef'.repeat(32)}` },
@@ -253,7 +279,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     const backend = createMemoryBackend();
     const store = createDurableChallengeStore(backend);
     const challenge = await createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: store, challenge_id: 'challenge-policy', nonce: 'nonce-policy-00001', expires_at: expiresAt,
+      challengeStore: store, challenge_id: 'challenge-policy', nonce: 'nonce-policy-00000000001', expires_at: expiresAt,
     });
     const weakened = { ...policy, requirement: 'authorization_receipt' };
     const refused = await evaluateRegisteredPresentation(challenge, completeGraph(), weakened, {
@@ -272,14 +298,14 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     const backend = createMemoryBackend();
     const store = createDurableChallengeStore(backend);
     const challenge = await createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: store, challenge_id: 'challenge-followup', nonce: 'nonce-first-000001', expires_at: expiresAt,
+      challengeStore: store, challenge_id: 'challenge-followup', nonce: 'nonce-first-00000000001', expires_at: expiresAt,
     });
     const partial = {
       ...completeGraph(),
       components: completeGraph().components.slice(0, 1),
     };
     const first = await evaluateRegisteredPresentation(challenge, partial, policy, {
-      challengeStore: store, verifiers, as_of: asOf, nonce: 'nonce-second-00001',
+      challengeStore: store, verifiers, as_of: asOf, nonce: 'nonce-second-0000000001',
     });
     expect(first.verdict).toBe('missing_evidence');
     expect(await createDurableChallengeStore(backend).has(first.next_challenge)).toBe(true);
@@ -293,7 +319,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
       challenge_id: 'challenge-weak-nonce',
       nonce: 'too-short',
       expires_at: expiresAt,
-    })).rejects.toThrow(/16-128 base64url/);
+    })).rejects.toThrow(/22-128 unpadded base64url/);
   });
 
   it('propagates backend outage without an in-memory fallback', async () => {
@@ -301,11 +327,12 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     const backend = {
       async addIfAbsent() { throw outage; },
       async compareAndSet() { throw outage; },
+      async get() { throw outage; },
       async has() { throw outage; },
     };
     const store = createDurableChallengeStore(backend);
     await expect(createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: store, challenge_id: 'challenge-outage', nonce: 'nonce-outage-00001', expires_at: expiresAt,
+      challengeStore: store, challenge_id: 'challenge-outage', nonce: 'nonce-outage-0000000001', expires_at: expiresAt,
     })).rejects.toThrow(/backend_unavailable/);
   });
 });

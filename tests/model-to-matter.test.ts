@@ -63,6 +63,10 @@ function digest(label) {
   return `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 }
 
+function challengeNonce(label) {
+  return crypto.createHash('sha256').update(label).digest('base64url');
+}
+
 const ACTION_INPUT = Object.freeze({
   action_type: 'science.bio.experiment.execute.1',
   model: {
@@ -433,7 +437,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
   it('challenges for the complete model-to-matter evidence set', async () => {
     const a = action();
     const challenge = await createRegisteredModelToMatterChallenge(a, profile(), {
-      challengeStore: store(), expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-required-evidence',
+      challengeStore: store(), expires_at: CHALLENGE_EXPIRES, nonce: challengeNonce('m2m-required-evidence'),
     });
     expect(challenge.required_evidence.map((item) => item.type)).toEqual(M2M_EVIDENCE_TYPES);
     expect(challenge.action_digest).toBe(modelToMatterActionDigest(a));
@@ -445,7 +449,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const a = action();
     const p = profile();
     const challenge = await createRegisteredModelToMatterChallenge(a, p, {
-      challengeStore: issueStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-once-00000001',
+      challengeStore: issueStore, expires_at: CHALLENGE_EXPIRES, nonce: challengeNonce('m2m-once-00000001'),
     });
     const graph = buildModelToMatterGraph(a, evidenceSet(a));
     const results = await Promise.all([
@@ -478,10 +482,10 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const issueStore = createDurableChallengeStore(challengeBackend);
     const [first, second] = await Promise.all([
       createRegisteredModelToMatterChallenge(a, p, {
-        challengeStore: issueStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-action-once-a',
+        challengeStore: issueStore, expires_at: CHALLENGE_EXPIRES, nonce: challengeNonce('m2m-action-once-a'),
       }),
       createRegisteredModelToMatterChallenge(a, p, {
-        challengeStore: issueStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-action-once-b',
+        challengeStore: issueStore, expires_at: CHALLENGE_EXPIRES, nonce: challengeNonce('m2m-action-once-b'),
       }),
     ]);
     const graph = buildModelToMatterGraph(a, evidenceSet(a));
@@ -511,7 +515,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const challenge = await createRegisteredModelToMatterChallenge(a, p, {
       challengeStore: registeredStore,
       expires_at: CHALLENGE_EXPIRES,
-      nonce: 'm2m-snapshot-before-await',
+      nonce: challengeNonce('m2m-snapshot-before-await'),
     });
     let releaseConsume;
     const consumeBarrier = new Promise((resolve) => { releaseConsume = resolve; });
@@ -549,7 +553,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const p = profile();
     const challengeStore = store();
     const challenge = await createRegisteredModelToMatterChallenge(a, p, {
-      challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-revocation-state',
+      challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: challengeNonce('m2m-revocation-state'),
     });
     const graph = buildModelToMatterGraph(a, evidenceSet(a));
     const clearanceStore = actionStore();
@@ -572,12 +576,12 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const p = profile();
     const challengeStore = store();
     const challenge = await createRegisteredModelToMatterChallenge(a, p, {
-      challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-partial-00001',
+      challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: challengeNonce('m2m-partial-00001'),
     });
     const graph = buildModelToMatterGraph(a, evidenceSet(a, ['biosafety_review', 'domain_screening']));
     const result = await evaluateRegisteredModelToMatterPresentation({
       action: a, challenge, graph, profile: p, as_of: NOW, challengeStore,
-      next_nonce: 'm2m-followup-0001',
+      next_nonce: challengeNonce('m2m-followup-0001'),
       clearanceStore: actionStore(),
       revokedEvidenceDigests: new Set(),
       retiredPhysicalMeasurementDigests: new Set(),
@@ -592,7 +596,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const p = profile();
     const challengeStore = store();
     const challenge = await createRegisteredModelToMatterChallenge(a, p, {
-      challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-action-swap-1',
+      challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: challengeNonce('m2m-action-swap-1'),
     });
     const graph = buildModelToMatterGraph(a, evidenceSet(a));
     const changed = action({ model: { ...ACTION_INPUT.model, harness_digest: digest('changed-harness') } });
@@ -653,7 +657,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
       const p = profile(testCase.profile || {});
       const challengeStore = store();
       const challenge = await createRegisteredModelToMatterChallenge(a, p, {
-        challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: `m2m-${testCase.label}-evidence`,
+        challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: challengeNonce(`m2m-${testCase.label}-evidence`),
       });
       const result = await evaluateRegisteredModelToMatterPresentation({
         action: a, challenge, graph: buildModelToMatterGraph(a, testCase.evidence(a)),
@@ -719,7 +723,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     const p = profile();
     const { requirement, compiled } = relianceProgram(a, p);
     const gate = executor({ profile: p, relianceProgram: compiled });
-    const challenge = await gate.issueChallenge(a, { nonce: 'm2m-reliance-binding' });
+    const challenge = await gate.issueChallenge(a, { nonce: challengeNonce('m2m-reliance-binding') });
     const result = await gate.evaluate({
       action: a,
       challenge,
@@ -742,7 +746,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     const { compiled } = relianceProgram(a, p);
 
     const missingGate = executor({ profile: p, relianceProgram: compiled });
-    const missingChallenge = await missingGate.issueChallenge(a, { nonce: 'm2m-program-missing-role' });
+    const missingChallenge = await missingGate.issueChallenge(a, { nonce: challengeNonce('m2m-program-missing-role') });
     const missing = await missingGate.evaluate({
       action: a,
       challenge: missingChallenge,
@@ -753,7 +757,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
 
     const missingPhysicalGate = executor({ profile: p, relianceProgram: compiled });
     const missingPhysicalChallenge = await missingPhysicalGate.issueChallenge(a, {
-      nonce: 'm2m-program-missing-physical-state',
+      nonce: challengeNonce('m2m-program-missing-physical-state'),
     });
     const missingPhysical = await missingPhysicalGate.evaluate({
       action: a,
@@ -763,7 +767,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     expect(missingPhysical.verdict).toBe('do_not_execute_missing_evidence');
 
     const substitutionGate = executor({ profile: p, relianceProgram: compiled });
-    const substitutionChallenge = await substitutionGate.issueChallenge(a, { nonce: 'm2m-program-role-swap' });
+    const substitutionChallenge = await substitutionGate.issueChallenge(a, { nonce: challengeNonce('m2m-program-role-swap') });
     const substitute = signedEvidence(a, 'model_attestation', { issued_at: '2026-07-11T15:59:01Z' });
     const substitutedGraph = structuredClone(buildModelToMatterGraph(a, evidenceSet(a, ['biosafety_review'])));
     substitutedGraph.nodes.push({
@@ -781,7 +785,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
 
     const physicalSubstitutionGate = executor({ profile: p, relianceProgram: compiled });
     const physicalSubstitutionChallenge = await physicalSubstitutionGate.issueChallenge(a, {
-      nonce: 'm2m-program-physical-role-swap',
+      nonce: challengeNonce('m2m-program-physical-role-swap'),
     });
     const screeningSubstitute = signedEvidence(a, 'domain_screening', {
       issued_at: '2026-07-11T15:59:02Z',
@@ -871,7 +875,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     const challenge = await createRegisteredModelToMatterChallenge(a, p, {
       challengeStore,
       expires_at: CHALLENGE_EXPIRES,
-      nonce: 'm2m-low-level-program-refusal',
+      nonce: challengeNonce('m2m-low-level-program-refusal'),
     });
     const graph = buildModelToMatterGraph(a, evidenceSet(a));
     const invalid = structuredClone(relianceProgram(a, p).compiled);
@@ -923,7 +927,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     const challengeStore = store();
     const clearanceStore = actionStore();
     const gate = executor({ challengeStore, clearanceStore });
-    const challenge = await gate.issueChallenge(a, { nonce: 'm2m-pinned-executor' });
+    const challenge = await gate.issueChallenge(a, { nonce: challengeNonce('m2m-pinned-executor') });
     const graph = buildModelToMatterGraph(a, evidenceSet(a));
     const presentation = { action: structuredClone(a), challenge, graph };
     let effects = 0;
@@ -964,7 +968,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
       'as_of', 'next_expires_at', 'next_nonce',
     ]) {
       const gate = executor();
-      const challenge = await gate.issueChallenge(a, { nonce: `m2m-injected-${field}` });
+      const challenge = await gate.issueChallenge(a, { nonce: challengeNonce(`m2m-injected-${field}`) });
       const result = await gate.evaluate({
         action: a,
         challenge,
@@ -982,7 +986,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     await expect(badClock.issueChallenge(a)).rejects.toThrow(/clock/i);
 
     const badRevocation = executor({ revocationProvider: async () => null });
-    const challenge = await badRevocation.issueChallenge(a, { nonce: 'm2m-bad-revocation-provider' });
+    const challenge = await badRevocation.issueChallenge(a, { nonce: challengeNonce('m2m-bad-revocation-provider') });
     const result = await badRevocation.evaluate({
       action: a,
       challenge,
@@ -996,7 +1000,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
 
     const badMeasurements = executor({ physicalMeasurementProvider: async () => null });
     const measurementChallenge = await badMeasurements.issueChallenge(a, {
-      nonce: 'm2m-bad-physical-measurement-provider',
+      nonce: challengeNonce('m2m-bad-physical-measurement-provider'),
     });
     const measurementResult = await badMeasurements.evaluate({
       action: a,
@@ -1017,7 +1021,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
       challengeStore,
       clearanceStore: { consume: async () => { throw new Error('response lost'); } },
     });
-    const challenge = await gate.issueChallenge(a, { nonce: 'm2m-storage-freeze' });
+    const challenge = await gate.issueChallenge(a, { nonce: challengeNonce('m2m-storage-freeze') });
     let effects = 0;
     const result = await gate.run({
       action: a,
@@ -1043,7 +1047,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
       clear_to_execute: false,
       reconciliation_required: true,
     });
-    await expect(gate.issueChallenge(a, { nonce: 'm2m-after-freeze' })).rejects.toThrow(/frozen/i);
+    await expect(gate.issueChallenge(a, { nonce: challengeNonce('m2m-after-freeze') })).rejects.toThrow(/frozen/i);
   });
 
   it('requires explicit durable custody in production mode', () => {

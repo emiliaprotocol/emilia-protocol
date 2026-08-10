@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v1
+ * EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v2
  *
- * A finite model of the owner-side transition added after the -06 hostile
- * review.  Replay classification and refusal-path capacity are deliberately
- * one transition.  Modeling them as two ordered operations admits either a
- * capacity leak on duplicate presentations or a nonce burn at capacity.
+ * A finite executable model of the owner-side transition added after the -06
+ * hostile review. Replay classification, expiry, transfer of a stateful-open
+ * debit, and reservation across every applicable capacity bucket are one
+ * transition. This is scenario exploration, not a storage-driver proof.
  */
 
 export const FORMAL_MODEL_VERSION =
-  'EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v1';
+  'EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v2';
+
+export const CAP_BUCKETS = Object.freeze([
+  'aggregate',
+  'presenter',
+  'audience',
+  'tenant',
+]);
 
 export const FORMAL_OBLIGATIONS = Object.freeze([
   'CompoundClaimAndCapacityAtomic',
@@ -20,6 +27,8 @@ export const FORMAL_OBLIGATIONS = Object.freeze([
   'ExpiredDoesNotClaimOrReserve',
   'ClaimedReplayPrecedesExpiry',
   'GlobalCapIsConservedAcrossShards',
+  'StatefulDebitTransfersWithoutDoubleCount',
+  'ReplayKeyTupleIsUnambiguous',
   'RecoveryFinalizationIsFenced',
   'RetryWindowPrecedesExpiry',
   'PresenterMatchesAudience',
@@ -34,28 +43,86 @@ export const CLAIM_RESULTS = Object.freeze({
   UNAVAILABLE: 'owner_unavailable',
 });
 
-export function initialState({ cap = 1, used = 0 } = {}) {
+function vector(value, fallback = 0) {
+  if (Number.isSafeInteger(value)) {
+    return Object.fromEntries(CAP_BUCKETS.map((bucket) => [bucket, value]));
+  }
+  return Object.fromEntries(CAP_BUCKETS.map((bucket) => [
+    bucket,
+    Number.isSafeInteger(value?.[bucket]) ? value[bucket] : fallback,
+  ]));
+}
+
+export function replayKey(issuer, nonce) {
+  // A structured tuple avoids delimiter collisions such as ("a\\0b", "c")
+  // versus ("a", "b\\0c").
+  return JSON.stringify([issuer, nonce]);
+}
+
+export function initialState({ cap = 1, caps, used = 0 } = {}) {
   return {
-    cap,
-    used,
+    caps: vector(caps ?? cap),
+    used: vector(used),
     replay: new Map(),
+    outstanding: new Map(),
     reservations: new Map(),
   };
 }
 
 function cloneState(state) {
   return {
-    cap: state.cap,
-    used: state.used,
+    caps: { ...state.caps },
+    used: { ...state.used },
     replay: new Map(state.replay),
+    outstanding: new Map(state.outstanding),
     reservations: new Map(state.reservations),
   };
 }
 
+export function withinCaps(state) {
+  return CAP_BUCKETS.every((bucket) => (
+    Number.isSafeInteger(state.used[bucket])
+    && Number.isSafeInteger(state.caps[bucket])
+    && state.used[bucket] >= 0
+    && state.used[bucket] <= state.caps[bucket]
+  ));
+}
+
+function capacityAvailable(state, delta) {
+  return CAP_BUCKETS.every((bucket) => (
+    Number.isSafeInteger(delta[bucket])
+    && delta[bucket] >= 0
+    && state.used[bucket] + delta[bucket] <= state.caps[bucket]
+  ));
+}
+
+function addVector(target, delta) {
+  for (const bucket of CAP_BUCKETS) target[bucket] += delta[bucket];
+}
+
+/** Register and debit a stateful-open challenge before it is exposed. */
+export function registerOutstanding(state, {
+  issuer,
+  nonce,
+  body_digest,
+  units = 1,
+}) {
+  const next = cloneState(state);
+  const key = replayKey(issuer, nonce);
+  const debit = vector(units);
+  if (next.replay.has(key) || next.outstanding.has(key) || !capacityAvailable(next, debit)) {
+    return { registered: false, state: next };
+  }
+  addVector(next.used, debit);
+  next.outstanding.set(key, { body_digest, units: debit });
+  return { registered: true, state: next };
+}
+
 /**
- * Sound owner-side primitive.  The replay key is scoped by authenticated
- * issuer identity and nonce.  All cap buckets represented by `units` commit
- * with the nonce claim or neither does.
+ * Sound owner-side primitive. `units` is the conservative total reservation
+ * required while evaluation is in flight. For stateful issuance, an existing
+ * outstanding debit is transferred and only the positive incremental delta is
+ * added. Every bucket commits with the replay claim or none does.
  */
 export function claimAndReserve(
   state,
@@ -72,9 +139,6 @@ export function claimAndReserve(
 ) {
   const next = cloneState(state);
   if (!owner_reachable || !owner_result_certain) {
-    // The caller cannot infer whether the owner committed before the response
-    // was lost.  Both authoritative outcomes remain possible, while the only
-    // safe externally reported result is unavailability.
     const possible_states = [next];
     if (!owner_result_certain) {
       possible_states.push(claimAndReserve(state, {
@@ -90,30 +154,50 @@ export function claimAndReserve(
     }
     return { result: CLAIM_RESULTS.UNAVAILABLE, state: next, possible_states };
   }
-  const key = `${issuer}\u0000${nonce}`;
-  const existing = next.replay.get(key);
-  if (existing !== undefined) {
+
+  const key = replayKey(issuer, nonce);
+  const claimed = next.replay.get(key);
+  if (claimed !== undefined) {
     return {
-      result:
-        existing.body_digest === body_digest
-          ? CLAIM_RESULTS.REPLAY
-          : CLAIM_RESULTS.COLLISION,
+      result: claimed.body_digest === body_digest
+        ? CLAIM_RESULTS.REPLAY
+        : CLAIM_RESULTS.COLLISION,
       state: next,
     };
   }
   if (!Number.isSafeInteger(now_ms) || !Number.isSafeInteger(expires_at_ms)) {
     return { result: CLAIM_RESULTS.UNAVAILABLE, state: next, possible_states: [next] };
   }
+  // Expiry precedes classification of an unclaimed stateful-open body.
   if (now_ms >= expires_at_ms) {
     return { result: CLAIM_RESULTS.EXPIRED, state: next };
   }
-  if (!Number.isSafeInteger(units) || units <= 0 || next.used + units > next.cap) {
+
+  const outstanding = next.outstanding.get(key);
+  if (outstanding !== undefined && outstanding.body_digest !== body_digest) {
+    return { result: CLAIM_RESULTS.COLLISION, state: next };
+  }
+
+  const target = vector(units);
+  const existing = outstanding?.units ?? vector(0);
+  const incremental = Object.fromEntries(CAP_BUCKETS.map((bucket) => [
+    bucket,
+    Math.max(0, target[bucket] - existing[bucket]),
+  ]));
+  if (!capacityAvailable(next, incremental)) {
     return { result: CLAIM_RESULTS.CAPACITY, state: next };
   }
-  const owner_token = `${key}:${body_digest}`;
-  next.used += units;
+
+  addVector(next.used, incremental);
+  next.outstanding.delete(key);
+  const owner_token = JSON.stringify([key, body_digest]);
   next.replay.set(key, { body_digest, owner_token });
-  next.reservations.set(owner_token, { key, units, body_digest });
+  next.reservations.set(owner_token, {
+    key,
+    units: target,
+    body_digest,
+    owner_token,
+  });
   return { result: CLAIM_RESULTS.CLAIMED, owner_token, state: next };
 }
 
@@ -125,15 +209,19 @@ export function twoConcurrentDuplicatesSound(input, state = initialState()) {
 
 /** Mutation: two workers reserve from the same snapshot before either claims. */
 export function twoConcurrentDuplicatesSplit(input, state = initialState()) {
-  const key = `${input.issuer}\u0000${input.nonce}`;
+  const key = replayKey(input.issuer, input.nonce);
+  const units = vector(input.units ?? 1);
   const bothSawAbsent = !state.replay.has(key);
-  const bothSawCapacity = state.used + input.units <= state.cap;
+  const bothSawCapacity = capacityAvailable(state, units);
   const next = cloneState(state);
   if (bothSawAbsent && bothSawCapacity) {
-    next.used += input.units * 2;
+    addVector(next.used, Object.fromEntries(CAP_BUCKETS.map((bucket) => [
+      bucket,
+      units[bucket] * 2,
+    ])));
     next.replay.set(key, { body_digest: input.body_digest, owner_token: 'worker-a' });
-    next.reservations.set('worker-a', { key, units: input.units });
-    next.reservations.set('worker-b-leaked', { key, units: input.units });
+    next.reservations.set('worker-a', { key, units, owner_token: 'worker-a' });
+    next.reservations.set('worker-b-leaked', { key, units, owner_token: 'worker-b-leaked' });
   }
   return { state: next, bothSawAbsent, bothSawCapacity };
 }
@@ -149,15 +237,24 @@ export function twoIndependentShardClaims({ global_cap = 1, units = 1 } = {}) {
   };
 }
 
+/** Mutation: a stateful-open debit is counted again rather than transferred. */
+export function claimWithDoubleCountedOutstanding(state, input) {
+  const next = cloneState(state);
+  const requested = vector(input.units ?? 1);
+  if (capacityAvailable(next, requested)) addVector(next.used, requested);
+  return { state: next };
+}
+
 /** Mutation: claim is committed before the cap decision. */
 export function claimBeforeCapacity(input, state = initialState()) {
   const next = cloneState(state);
-  const key = `${input.issuer}\u0000${input.nonce}`;
+  const key = replayKey(input.issuer, input.nonce);
   next.replay.set(key, { body_digest: input.body_digest, owner_token: null });
-  const capacityAvailable = next.used + input.units <= next.cap;
-  if (capacityAvailable) next.used += input.units;
+  const requested = vector(input.units ?? 1);
+  const available = capacityAvailable(next, requested);
+  if (available) addVector(next.used, requested);
   return {
-    result: capacityAvailable ? CLAIM_RESULTS.CLAIMED : CLAIM_RESULTS.CAPACITY,
+    result: available ? CLAIM_RESULTS.CLAIMED : CLAIM_RESULTS.CAPACITY,
     state: next,
   };
 }
@@ -171,18 +268,14 @@ export function claimWithExpiryFirst(state, input) {
   return claimAndReserve(state, input);
 }
 
-/**
- * A reclaimed reservation is safe only when a fencing token prevents the old
- * worker from publishing a late follow-up or other state transition.
- */
 export function finalizeReservation(
   reservation,
   presented_owner_token,
   { ignore_fence = false } = {},
 ) {
-  const accepted =
-    ignore_fence || reservation.owner_token === presented_owner_token;
-  return { accepted };
+  return {
+    accepted: ignore_fence || reservation.owner_token === presented_owner_token,
+  };
 }
 
 export function retryWindowValid({ not_before_ms, jitter_sec, expires_at_ms }) {

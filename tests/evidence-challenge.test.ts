@@ -467,6 +467,13 @@ describe('AE-CHALLENGE -03 HTTP binding', () => {
     expect(response.body.status).toBe(403);
     expect(response.body.evidence_challenge).toBe(challenge);
     expect(parseEvidenceChallengeProblem(response)).toBe(challenge);
+
+    expect(parseEvidenceChallengeProblem({
+      ...response,
+      body: { ...response.body, title: 'Autorisationsnachweis erforderlich' },
+    })).toBe(challenge);
+    const { status: _status, ...withoutStatus } = response.body;
+    expect(parseEvidenceChallengeProblem({ ...response, body: withoutStatus })).toBe(challenge);
   });
 
   it('refuses 428, the retired custom media type, and malformed extensions', () => {
@@ -495,6 +502,10 @@ describe('AE-CHALLENGE -03 HTTP binding', () => {
     expect(() => parseEvidenceChallengeProblem({
       ...response,
       body: { ...response.body, type: 'https://attacker.example/problem' },
+    })).toThrow(/Problem Details metadata is invalid/);
+    expect(() => parseEvidenceChallengeProblem({
+      ...response,
+      body: { ...response.body, status: 409 },
     })).toThrow(/Problem Details metadata is invalid/);
     expect(() => parseEvidenceChallengeProblem({
       ...response,

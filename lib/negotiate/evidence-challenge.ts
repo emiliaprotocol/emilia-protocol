@@ -21,7 +21,8 @@
  * - The SERVER computes the action digest into the challenge. The agent
  *   obtains evidence against the server's canonical action, and the server
  *   recomputes at execution — a presentation whose graph binds a different
- *   action is refused outright (kills the time-of-check/time-of-use swap).
+ *   action is refused before claim. This does not replace a final executor
+ *   rederivation or fence at the effect boundary.
  * - Challenges are SINGLE-USE (nonce) and EXPIRE. A replayed or expired
  *   challenge fails closed before any policy evaluation runs.
  * - The challenge is not a commitment: satisfying it yields a verdict under
@@ -44,14 +45,18 @@ export const CHALLENGE_ACTION_PROFILE = 'https://emiliaprotocol.ai/profiles/arti
 const CHALLENGE_PRESENTATION_DOCUMENT_VERSION = 'EP-AEC-v1';
 const LEGACY_GRAPH_DOCUMENT_VERSION = 'EP-AEG-v1';
 
-const SHA256_DIGEST_RE = /^sha256:[0-9a-f]{64}$/i;
-const DURABLE_NONCE_RE = /^[A-Za-z0-9_-]{16,128}$/;
+const SHA256_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
+// Sixteen random octets encode to at least 22 unpadded base64url characters.
+// Length is only a syntactic floor; issuers still need a CSPRNG.
+const DURABLE_NONCE_RE = /^[A-Za-z0-9_-]{22,128}$/;
 const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 const REQUIRED_PRODUCTION_STORE_CAPABILITIES = Object.freeze([
   'durable',
   'atomicRegistration',
   'bodyBound',
   'permanentConsumption',
+  'authoritativeClassification',
+  'issuerScoped',
 ]);
 
 export type AuthorizationChallengeMechanism =
@@ -141,6 +146,25 @@ type EvidenceChallengeOpts = {
     atomicRegistration?: boolean;
     bodyBound?: boolean;
     permanentConsumption?: boolean;
+    authoritativeClassification?: boolean;
+    issuerScoped?: boolean;
+    compoundClaimAndCapacity?: (
+      challenge: any,
+      context: {
+        as_of: string;
+        audience?: string;
+        authenticated_presenter?: string;
+      },
+    ) => Promise<{
+      result:
+        | 'claimed_with_capacity'
+        | 'exact_body_replay'
+        | 'nonce_body_collision'
+        | 'capacity_refused'
+        | 'expired'
+        | 'owner_unavailable';
+    }>;
+    classify?: (challenge: any) => string | Promise<string>;
   };
   production?: boolean;
   test_only_ephemeral?: boolean;
@@ -156,6 +180,8 @@ type EvidenceChallengeOpts = {
   authenticated_presenter?: string;
   /** @deprecated Use authenticated_presenter. Retained for source compatibility. */
   expected_audience?: string;
+  /** Separately held action currently proposed to the relying party. */
+  current_action?: unknown;
   keysByType?: Record<string, any>;
   policiesByType?: Record<string, any>;
 };
@@ -273,7 +299,9 @@ export function deriveRequiredEvidence(policy, priorResult: { satisfied_by?: str
     requirement_id: type,
     type,
     ...(typeof assuranceByType[type] === 'string' ? { assurance_class: assuranceByType[type] } : {}),
-    ...(Number.isFinite(policy?.freshness_sec?.[type]) ? {
+    ...(Number.isSafeInteger(policy?.freshness_sec?.[type])
+      && policy.freshness_sec[type] >= 0
+      && policy.freshness_sec[type] <= 2147483647 ? {
       max_age_sec: policy.freshness_sec[type],
     } : {}),
     ...(policy?.revocation_required?.includes(type) ? {
@@ -297,7 +325,7 @@ export function createEvidenceChallenge(action, policy, opts = {}) {
 }
 
 /**
- * RFC 9457 HTTP binding for the transport-neutral challenge core.
+ * RFC 9457 HTTP challenge-response carrier for the transport-neutral core.
  * The challenge remains a refusal with information: wrapping it in a Problem
  * Details response does not authorize the action or promise a later effect.
  */
@@ -351,8 +379,7 @@ export function parseEvidenceChallengeProblem(response) {
     throw new Error('evidence challenge HTTP response MUST use application/problem+json');
   }
   if (body?.type !== CHALLENGE_PROBLEM_TYPE
-      || body?.title !== CHALLENGE_PROBLEM_TITLE
-      || body?.status !== CHALLENGE_HTTP_STATUS) {
+      || (body?.status !== undefined && body.status !== response.status)) {
     throw new Error('evidence challenge Problem Details metadata is invalid');
   }
   const challenge = body?.evidence_challenge;
@@ -381,6 +408,9 @@ function requireChallengeStore(store, opts: EvidenceChallengeOpts = {}) {
     const missing = REQUIRED_PRODUCTION_STORE_CAPABILITIES.filter(
       (capability) => store[capability] !== true,
     );
+    if (typeof store.compoundClaimAndCapacity !== 'function') {
+      missing.push('compoundClaimAndCapacity()');
+    }
     if (missing.length > 0) {
       throw new Error(
         `production challengeStore lacks required durable lifecycle capabilities: ${missing.join(', ')}`,
@@ -390,12 +420,19 @@ function requireChallengeStore(store, opts: EvidenceChallengeOpts = {}) {
   return store;
 }
 
+function productionMode(opts: EvidenceChallengeOpts = {}) {
+  return opts.production ?? process.env.NODE_ENV === 'production';
+}
+
 /** Mint and atomically register a challenge before it is exposed to a caller. */
 export async function createRegisteredEvidenceChallenge(action, policy, opts: EvidenceChallengeOpts = {}) {
   const store = requireChallengeStore(opts.challengeStore, opts);
+  if (productionMode(opts) && opts.nonce !== undefined && opts.test_only_ephemeral !== true) {
+    throw new Error('production challenge nonces are generated internally');
+  }
   const challenge = createEvidenceChallenge(action, policy, opts);
   if (!DURABLE_NONCE_RE.test(challenge.nonce)) {
-    throw new Error('durable challenge nonce MUST be 16-128 base64url characters');
+    throw new Error('durable challenge nonce MUST be 22-128 unpadded base64url characters');
   }
   if (await store.register(challenge) !== true) {
     throw new Error('challenge registration collision or replay');
@@ -411,6 +448,12 @@ export async function createRegisteredEvidenceChallenge(action, policy, opts: Ev
 export function createFollowupEvidenceChallenge(challenge, policy, priorResult, opts: EvidenceChallengeOpts = {}) {
   if (challenge?.['@version'] !== CHALLENGE_VERSION) throw new Error('unknown challenge version');
   if (!policyMatchesChallenge(challenge, policy)) throw new Error('policy changed since the original challenge');
+  if (opts.challenge_id !== undefined && opts.challenge_id === challenge.challenge_id) {
+    throw new Error('follow-up challenge_id MUST be fresh');
+  }
+  if (opts.action_profile !== undefined && opts.action_profile !== challenge.action_profile) {
+    throw new Error('follow-up action_profile MUST remain pinned');
+  }
   const expires_at = opts.expires_at ?? challenge.expires_at;
   const nonce = opts.nonce === challenge.nonce ? undefined : opts.nonce;
   return mintChallengeForDigest(challenge.action_digest, policy, {
@@ -419,7 +462,7 @@ export function createFollowupEvidenceChallenge(challenge, policy, priorResult, 
     expires_at,
     prior: priorResult,
     audience: opts.audience ?? challenge.audience,
-    action_profile: opts.action_profile ?? challenge.action_profile,
+    action_profile: challenge.action_profile,
     present_as: opts.present_as ?? challenge.present_as,
   });
 }
@@ -427,9 +470,12 @@ export function createFollowupEvidenceChallenge(challenge, policy, priorResult, 
 /** Mint and atomically register a follow-up before returning it to a presenter. */
 export async function createRegisteredFollowupEvidenceChallenge(challenge, policy, priorResult, opts: EvidenceChallengeOpts = {}) {
   const store = requireChallengeStore(opts.challengeStore, opts);
+  if (productionMode(opts) && opts.nonce !== undefined && opts.test_only_ephemeral !== true) {
+    throw new Error('production follow-up nonces are generated internally');
+  }
   const next = createFollowupEvidenceChallenge(challenge, policy, priorResult, opts);
   if (!DURABLE_NONCE_RE.test(next.nonce)) {
-    throw new Error('durable challenge nonce MUST be 16-128 base64url characters');
+    throw new Error('durable challenge nonce MUST be 22-128 unpadded base64url characters');
   }
   if (await store.register(next) !== true) {
     throw new Error('follow-up challenge registration collision or replay');
@@ -438,6 +484,19 @@ export async function createRegisteredFollowupEvidenceChallenge(challenge, polic
 }
 
 function validateAudience(challenge, opts: EvidenceChallengeOpts): string | null {
+  if (opts.authenticated_presenter !== undefined
+      && opts.expected_audience !== undefined
+      && opts.authenticated_presenter !== opts.expected_audience) {
+    return 'conflicting authenticated presenter identities';
+  }
+  if (productionMode(opts)) {
+    if (typeof challenge?.audience !== 'string' || !challenge.audience.trim()) {
+      return 'challenge audience is required for production evaluation';
+    }
+    if (typeof opts.authenticated_presenter !== 'string' || !opts.authenticated_presenter.trim()) {
+      return 'authenticated presenter is required for production evaluation';
+    }
+  }
   const presenter = opts.authenticated_presenter ?? opts.expected_audience;
   if (challenge?.audience === undefined && presenter === undefined) return null;
   if (typeof challenge?.audience !== 'string' || !challenge.audience.trim()) {
@@ -451,10 +510,35 @@ function validateAudience(challenge, opts: EvidenceChallengeOpts): string | null
     : 'challenge audience does not match the authenticated presenter';
 }
 
+function validateCurrentAction(challenge, opts: EvidenceChallengeOpts): string | null {
+  if (opts.current_action === undefined) {
+    return productionMode(opts)
+      ? 'current proposed action is required for production challenge evaluation'
+      : null;
+  }
+  const digester = challenge.action_profile === CHALLENGE_ACTION_PROFILE
+    ? artifactDigest
+    : null;
+  if (typeof digester !== 'function') {
+    return 'no pinned action digester is configured for the challenge action_profile';
+  }
+  try {
+    return digester(opts.current_action) === challenge.action_digest
+      ? null
+      : 'current proposed action does not match the registered exact action';
+  } catch {
+    return 'current proposed action is not canonicalizable under the pinned action profile';
+  }
+}
+
+async function classifyAuthoritativeState(store, challenge) {
+  if (typeof store?.classify !== 'function') return null;
+  return store.classify(challenge);
+}
+
 function validPresentationContract(challenge): boolean {
   return Array.isArray(challenge?.present_as)
-    && challenge.present_as.length === 1
-    && challenge.present_as[0] === CHALLENGE_PRESENTATION_METHOD;
+    && challenge.present_as.includes(CHALLENGE_PRESENTATION_METHOD);
 }
 
 function evaluateEvidencePresentation(challenge, presentation, policy, opts: EvidenceChallengeOpts) {
@@ -528,10 +612,8 @@ export function evaluatePresentation(challenge, graphDoc, policy, opts: Evidence
   if (Number.isNaN(expiresAt)) return refuse('challenge expires_at missing or invalid');
   const asOf = parseTimestamp(opts.as_of);
   if (Number.isNaN(asOf)) return refuse('valid evaluation time (as_of) is required');
-  if (asOf >= expiresAt) return refuse('challenge expired');
   const nonces = opts.consumedNonces;
   if (!(nonces instanceof Set)) return refuse('nonce ledger required (consumedNonces)');
-  if (nonces.has(challenge.nonce)) return refuse('challenge nonce already consumed (replay)');
 
   if (!supportedPresentationDocument(graphDoc)) {
     return refuse('presented evidence uses a method not advertised by the challenge');
@@ -543,6 +625,10 @@ export function evaluatePresentation(challenge, graphDoc, policy, opts: Evidence
   if (presentationDigest !== challenge.action_digest) {
     return refuse('presented evidence binds a different action than the challenge (action swap)');
   }
+  const currentActionError = validateCurrentAction(challenge, opts);
+  if (currentActionError) return refuse(currentActionError);
+  if (nonces.has(challenge.nonce)) return refuse('challenge nonce already consumed (replay)');
+  if (asOf >= expiresAt) return refuse('challenge expired');
   nonces.add(challenge.nonce); // consumed on first structurally and action-valid attempt
 
   const result = evaluateEvidencePresentation(challenge, graphDoc, policy, opts);
@@ -564,6 +650,12 @@ export function evaluatePresentation(challenge, graphDoc, policy, opts: Evidence
  */
 export async function evaluateRegisteredPresentation(challenge, graphDoc, policy, opts: EvidenceChallengeOpts = {}) {
   const refuse = (reason) => ({ verdict: 'refused', reasons: [reason], next_challenge: null });
+  const unavailable = () => ({
+    verdict: 'unavailable',
+    reasons: ['authoritative challenge state unavailable'],
+    state_changed: 'unknown',
+    next_challenge: null,
+  });
   const store = requireChallengeStore(opts.challengeStore, opts);
 
   if (challenge?.['@version'] !== CHALLENGE_VERSION) return refuse('unknown challenge version');
@@ -578,7 +670,6 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
   if (Number.isNaN(expiresAt)) return refuse('challenge expires_at missing or invalid');
   const asOf = parseTimestamp(opts.as_of);
   if (Number.isNaN(asOf)) return refuse('valid evaluation time (as_of) is required');
-  if (asOf >= expiresAt) return refuse('challenge expired');
 
   if (!supportedPresentationDocument(graphDoc)) {
     return refuse('presented evidence uses a method not advertised by the challenge');
@@ -590,13 +681,77 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
   if (presentationDigest !== challenge.action_digest) {
     return refuse('presented evidence binds a different action than the challenge (action swap)');
   }
-  if (await store.consume(challenge) !== true) {
-    return refuse('challenge is unregistered, tampered, or already consumed (replay)');
+  const currentActionError = validateCurrentAction(challenge, opts);
+  if (currentActionError) return refuse(currentActionError);
+
+  if (productionMode(opts)) {
+    let transition;
+    try {
+      transition = await store.compoundClaimAndCapacity(challenge, {
+        as_of: opts.as_of,
+        audience: challenge.audience,
+        authenticated_presenter: opts.authenticated_presenter,
+      });
+    } catch {
+      return unavailable();
+    }
+    switch (transition?.result) {
+      case 'claimed_with_capacity':
+        break;
+      case 'exact_body_replay':
+        return refuse('challenge nonce already consumed (replay)');
+      case 'nonce_body_collision':
+        return refuse('challenge nonce body collision');
+      case 'capacity_refused':
+        return refuse('challenge owner capacity refused');
+      case 'expired':
+        return refuse('challenge expired');
+      case 'owner_unavailable':
+      default:
+        return unavailable();
+    }
+  } else {
+    // Compatibility path for tests and older deployments. This split
+    // classify/consume sequence is not -07 production conformance.
+    let beforeClaim;
+    try {
+      beforeClaim = await classifyAuthoritativeState(store, challenge);
+    } catch {
+      return unavailable();
+    }
+    if (beforeClaim === 'claimed-exact') return refuse('challenge nonce already consumed (replay)');
+    if (beforeClaim === 'claimed-body-collision') return refuse('challenge nonce body collision');
+    if (beforeClaim === 'absent') return refuse('challenge is not registered in the authoritative replay domain');
+    if (asOf >= expiresAt) return refuse('challenge expired');
+    if (beforeClaim === 'open-body-collision') return refuse('challenge nonce body collision');
+
+    let consumed;
+    try {
+      consumed = await store.consume(challenge);
+    } catch {
+      return unavailable();
+    }
+    if (consumed !== true) {
+      let afterFailedClaim;
+      try {
+        afterFailedClaim = await classifyAuthoritativeState(store, challenge);
+      } catch {
+        return unavailable();
+      }
+      if (afterFailedClaim === 'claimed-exact') return refuse('challenge nonce already consumed (replay)');
+      if (afterFailedClaim === 'claimed-body-collision'
+          || afterFailedClaim === 'open-body-collision') {
+        return refuse('challenge nonce body collision');
+      }
+      return refuse('challenge is unregistered or could not be authoritatively claimed');
+    }
   }
 
   const result = evaluateEvidencePresentation(challenge, graphDoc, policy, opts);
   let next_challenge: Awaited<ReturnType<typeof createRegisteredFollowupEvidenceChallenge>> | null = null;
   if (result.verdict !== 'admissible') {
+    const currentActionAfterEvaluation = validateCurrentAction(challenge, opts);
+    if (currentActionAfterEvaluation) return refuse(currentActionAfterEvaluation);
     next_challenge = await createRegisteredFollowupEvidenceChallenge(challenge, policy, result, {
       ...opts,
       expires_at: opts.next_expires_at ?? challenge.expires_at,

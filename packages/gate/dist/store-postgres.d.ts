@@ -50,6 +50,8 @@ export declare const CONSUMPTION_SQL: {
     deleteIfValue: string;
     /** $1 key. Any row — even an expired one — counts as consumed until cleaned. */
     has: string;
+    /** $1 key. Returns the authoritative state value for classification. */
+    get: string;
     /** $1 now ms. Removes ONLY rows whose TTL has elapsed; NULL expires_at never expires. */
     cleanupExpired: string;
 };
@@ -81,6 +83,7 @@ export declare function createPostgresBackend({ query, now, }?: {
     deleteIfValue(key: any, expected: any): Promise<boolean>;
     /** Present = consumed. Expired-but-uncleaned rows still count (conservative). */
     has(key: any): Promise<boolean>;
+    get(key: any): Promise<any>;
     /** Garbage-collect rows whose TTL elapsed. Returns the number removed. */
     cleanupExpired(at: any): Promise<number>;
 };
@@ -98,6 +101,8 @@ declare const _default: {
         deleteIfValue: string;
         /** $1 key. Any row — even an expired one — counts as consumed until cleaned. */
         has: string;
+        /** $1 key. Returns the authoritative state value for classification. */
+        get: string;
         /** $1 now ms. Removes ONLY rows whose TTL has elapsed; NULL expires_at never expires. */
         cleanupExpired: string;
     };

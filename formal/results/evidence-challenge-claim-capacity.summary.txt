@@ -1,50 +1,42 @@
-EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v1
+EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v2
 Status: local same-team bounded model result; not deployed or independently reviewed
-Method: deterministic finite state exploration with explicit unsafe mutations
+Method: finite scenario enumeration with explicit mutation counterexamples
 Execution date: 2026-08-10
 Runtime: Node.js
-Model SHA-256: 5eeaffb2d7f940e84c95874f791f8adbfcc4f5062ff5d521a5c060cedade88a4
-Runner SHA-256: 9d5b69ce8157ea44fde1bbc8af62e96df566e3f78fab9db54e2a25815117beed
+Model SHA-256: dd4cd710e87b0e872d62d10c9b4c7373d6b51843ac782f2663f939fd8f3d06b1
+Runner SHA-256: bd587f8e40a63c48be1002715c815fae66212791c0f1c69211f3c48500b5244a
 
-Checked states and edges: 18.
-
-Verified properties:
-- one duplicate presentation claims and reserves once;
-- an exact-body replay adds no capacity debit;
-- a capacity refusal does not claim or burn the nonce;
-- a different body under the same issuer-and-nonce key is a collision;
-- owner uncertainty is reported as unavailability while preserving both
-  possible authoritative outcomes;
-- an otherwise unclaimed expired challenge claims and reserves nothing;
-- a retained claimed replay is classified before expiry while the first
-  evaluation remains in flight;
-- a stale reservation owner cannot finalize after reassignment;
-- retry timing plus maximum jitter remains strictly before expiry; and
-- the authenticated returning presenter matches the challenge audience.
+Checked finite scenarios: 113.
 
 Obligations:
-CompoundClaimAndCapacityAtomic (9 states): verified
-DuplicateReservesOnce (1 transition): verified
-CapacityRefusalDoesNotClaim (1 transition): verified
-BodyCollisionIsNotReplay (1 transition): verified
-OwnerUncertaintyIsUnavailable (1 transition): verified
-ExpiredDoesNotClaimOrReserve (1 transition): verified
-ClaimedReplayPrecedesExpiry (1 transition): verified
-GlobalCapIsConservedAcrossShards (1 transition): verified
-RecoveryFinalizationIsFenced (1 transition): verified
+CompoundClaimAndCapacityAtomic (97 states): verified
+DuplicateReservesOnce (1 state): verified
+CapacityRefusalDoesNotClaim (1 state): verified
+BodyCollisionIsNotReplay (2 states): verified
+OwnerUncertaintyIsUnavailable (1 state): verified
+ExpiredDoesNotClaimOrReserve (2 states): verified
+ClaimedReplayPrecedesExpiry (2 states): verified
+GlobalCapIsConservedAcrossShards (1 state): verified
+StatefulDebitTransfersWithoutDoubleCount (2 states): verified
+ReplayKeyTupleIsUnambiguous (1 state): verified
+RecoveryFinalizationIsFenced (1 state): verified
 RetryWindowPrecedesExpiry (3 states): verified
 PresenterMatchesAudience (2 states): verified
 
-Mutation counterexamples:
-- checking expiry before retained claim state masks a concurrent replay;
-- reserving before a separate claim leaks or over-allocates capacity;
-- claiming before a separate cap decision burns a nonce at capacity;
-- independent shards without a coordinator or bounded quota over-allocate a
-  global cap; and
-- ignoring fencing lets a stale worker publish state after recovery.
+Mutation counterexamples exposed:
+- expiry_before_retained_claim;
+- split_capacity_before_claim;
+- claim_before_capacity;
+- independent_shards_without_quota_or_coordinator;
+- stateful_outstanding_debit_counted_twice; and
+- stale_owner_without_fence.
 
-Scope: finite same-team logic evidence for the AE-CHALLENGE owner transition.
-It is not a database refinement proof. Storage-driver correctness, transaction
-isolation, stateful open registration, transfer of an existing outstanding
-debit, authentication, current-action derivation, evidence verification, and
-policy correctness remain acceptance roots.
+Scope: finite same-team scenario evidence for the AE-CHALLENGE owner
+transition. The model checks four named capacity buckets, transfer of an
+existing stateful outstanding debit, a structured issuer-and-nonce replay key,
+owner fencing, retry timing, and presenter/audience equality. It is not a
+storage-driver or database-isolation refinement proof. Crash atomicity, quota
+transfer, authenticated alias mapping, self-describing envelope verification,
+evidence verification, policy correctness, and transport authentication remain
+outside this model. No current reference backend implements the compound
+production transition.

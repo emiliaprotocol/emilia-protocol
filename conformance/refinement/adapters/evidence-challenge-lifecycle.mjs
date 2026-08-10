@@ -16,6 +16,7 @@ const ACTION = Object.freeze({
 const POLICY = getPolicyPack("ep:pack:wire-transfer:v1");
 const AS_OF = "2026-07-03T12:01:00Z";
 const EXPIRES_AT = "2026-07-03T12:10:00Z";
+const ISSUER_IDENTITY = "https://issuer.example";
 const VERIFIERS = Object.freeze({
     authorization_receipt: (artifact) => ({
         valid: true,
@@ -106,6 +107,10 @@ function localPostgresQuery() {
                     return rows.has(params[0])
                         ? { rowCount: 1, rows: [{ present: true }] }
                         : { rowCount: 0, rows: [] };
+                case CONSUMPTION_SQL.get:
+                    return rows.has(params[0])
+                        ? { rowCount: 1, rows: [{ state: rows.get(params[0])?.state }] }
+                        : { rowCount: 0, rows: [] };
                 default:
                     throw new Error(`unexpected challenge Postgres statement: ${text}`);
             }
@@ -118,11 +123,14 @@ async function durableChallenge(challengeId, nonce, query) {
         now: () => Date.parse(AS_OF),
     });
     return createRegisteredEvidenceChallenge(ACTION, POLICY, {
-        challengeStore: createDurableChallengeStore(backend),
+        challengeStore: createDurableChallengeStore(backend, { issuerIdentity: ISSUER_IDENTITY }),
         challenge_id: challengeId,
         nonce,
         expires_at: EXPIRES_AT,
-        production: true,
+        // The reference adapter intentionally exercises the durable compatibility
+        // path. Production -07 use is separately proved to fail closed until a
+        // store implements compoundClaimAndCapacity().
+        production: false,
     });
 }
 export async function runEvidenceChallengeLifecycleScenario(scenario) {
@@ -182,7 +190,7 @@ export async function runEvidenceChallengeLifecycleScenario(scenario) {
     const restartedStore = () => createDurableChallengeStore(createPostgresBackend({
         query: postgres.query,
         now: () => Date.parse(AS_OF),
-    }));
+    }), { issuerIdentity: ISSUER_IDENTITY });
     if (scenario === "evidence-challenge-body-tamper-refused") {
         const sharedInput = {
             ...SOUND_CHALLENGE_CONFIGURATION,
@@ -197,10 +205,11 @@ export async function runEvidenceChallengeLifecycleScenario(scenario) {
             challengeStore: restartedStore(),
             verifiers: VERIFIERS,
             as_of: AS_OF,
-            production: true,
+            current_action: ACTION,
+            production: false,
         });
         assertRuntime(result.verdict === "refused" &&
-            result.reasons.join(" ").includes("tampered"), "tampered missing-evidence body consumed the original registration");
+            result.reasons.join(" ").includes("body collision"), "tampered missing-evidence body consumed the original registration");
         const formalProjection = {
             accepted: formal.accepted,
             failedObligation: formal.failed_obligation ?? "none",
@@ -241,13 +250,15 @@ export async function runEvidenceChallengeLifecycleScenario(scenario) {
             challengeStore: restartedStore(),
             verifiers: VERIFIERS,
             as_of: AS_OF,
-            production: true,
+            current_action: ACTION,
+            production: false,
         });
         const retry = await evaluateRegisteredPresentation(challenge, completeGraph(), POLICY, {
             challengeStore: restartedStore(),
             verifiers: VERIFIERS,
             as_of: AS_OF,
-            production: true,
+            current_action: ACTION,
+            production: false,
         });
         assertRuntime(first.verdict === "refused" &&
             first.reasons.join(" ").includes("action swap") &&
@@ -282,7 +293,8 @@ export async function runEvidenceChallengeLifecycleScenario(scenario) {
         challengeStore: restartedStore(),
         verifiers: VERIFIERS,
         as_of: AS_OF,
-        production: true,
+        current_action: ACTION,
+        production: false,
     })));
     const admittedAttempts = results.filter((result) => result.verdict === "admissible").length;
     const replayRefused = results.filter((result) => result.verdict === "refused" &&
@@ -299,7 +311,7 @@ export async function runEvidenceChallengeLifecycleScenario(scenario) {
     };
     const runtimeProjection = {
         admittedAttempts,
-        consumed: [...postgres.rows.values()].some((row) => row.state.startsWith("challenge-consumed:v2:")),
+        consumed: [...postgres.rows.values()].some((row) => row.state.startsWith("challenge-consumed:v3:")),
         replayRefused,
     };
     return {
