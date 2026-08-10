@@ -483,11 +483,11 @@
     },
     {
       "path": "lib/negotiate/evidence-challenge.js",
-      "sha256": "127cfe038263f87c58aeee68082579dac14e97c7bfec460c334c5cdaf658d9f5"
+      "sha256": "65e3d85b07df4868437a7ab5183f46e52035bcbca92530106c64508a4b531b7f"
     },
     {
       "path": "lib/negotiate/evidence-challenge.ts",
-      "sha256": "4798354a6a6e2789ba3b5465b810f7503dcb0081f484c51d56797fce1ba50808"
+      "sha256": "be5f4529f615024893705603ec79bcc20433f5e9d0086347ccfcef0755c945c8"
     },
     {
       "path": "lib/strict-json.js",

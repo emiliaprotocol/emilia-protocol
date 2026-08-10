@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-08-08",
+  "updated": "2026-08-10",
   "active_datatracker_count": 23,
   "active_schrock_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. AE-CHALLENGE-03, Bounded Capability Receipts-03, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. AE-CHALLENGE-05, Bounded Capability Receipts-03, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -196,10 +196,10 @@
   "active_datatracker": [
     {
       "draft": "draft-schrock-ae-challenge",
-      "revision": "03",
+      "revision": "05",
       "layer": "execution_lifecycle",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 8; obtain Agent2Agent, AgentProto, and HTTP-specific review of the transport-neutral core and RFC 9457 binding, then send a fresh checklist-complete Independent Stream request"
+      "next_action": "Published August 10; use -05 as the refusal-state, retry-pacing, bounded-state, and replay-domain baseline while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues"
     },
     {
       "draft": "draft-schrock-action-evidence-boundary",
@@ -635,7 +635,7 @@
     "items": [
       {
         "draft": "draft-schrock-ae-challenge-03",
-        "source": "standards/posted/draft-schrock-ae-challenge-03.xml",
+        "source": "standards/archive/draft-schrock-ae-challenge-03.xml",
         "snapshot_sha256": "3e6c1fbefa4c1c87731083b72e185dd9a80528ed9e23a38881116c4b930d3d99",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
@@ -643,6 +643,26 @@
         "draft": "draft-schrock-ep-bounded-capability-receipts-03",
         "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-03.xml",
         "snapshot_sha256": "8f9dc9c3fbc7dfbe9f6c8f63d7dfd662773e8a118834f6b92bef9ed7148696a1",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      }
+    ]
+  },
+  "august_10_2026_maintenance_wave": {
+    "filing_date": "2026-08-10",
+    "item_count": 1,
+    "publication_status": "published_and_ietf_archive_verified_2026_08_10",
+    "filing_order": [
+      "draft-schrock-ae-challenge-05"
+    ],
+    "verification": "The listed XML and TXT are byte-for-byte identical to their immutable IETF archive artifacts.",
+    "provenance_packets": [
+      "standards/staged/NEXT-AE-CHALLENGE-05"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-ae-challenge-05",
+        "source": "standards/posted/draft-schrock-ae-challenge-05.xml",
+        "snapshot_sha256": "77fce83124c69fbd1cd5b45fb13aba64d00a2ffdd4f17c4610f6ace895a8106b",
         "state": "published_ietf_archive_verified_exact_local_match"
       }
     ]
