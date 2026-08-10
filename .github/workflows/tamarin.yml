@@ -34,8 +34,8 @@ jobs:
       - name: Verify pinned model bytes
         working-directory: formal/tamarin
         run: |
-          echo '174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3  ep_reliance_composed.spthy' | sha256sum -c -
-          echo 'd19fee48ab098a178d56d3141a0dd545998a0a136f6e3fc8cb3db1fcf6052302  ep_six_claim_composed.spthy' | sha256sum -c -
+          echo '7c6f623e6cec025a49054e42b2b384a16cbea98f4d1d0e05c6fd4c4ff077e968  ep_reliance_composed.spthy' | sha256sum -c -
+          echo '80c64c9b85eaa4781542d5cbf8f2f9e54ea62d3cbf2e8efa8723f1e41c847e3b  ep_six_claim_composed.spthy' | sha256sum -c -
           echo 'c04a9471d29c3d8164c52b2f2e01b38275d1fdc47ccdd587561315e8835e640f  run-composed.sh' | sha256sum -c -
       - name: Run every composed proof obligation independently
         working-directory: formal/tamarin
@@ -62,7 +62,7 @@ jobs:
       - name: Verify pinned model bytes
         working-directory: formal/tamarin
         run: |
-          echo 'de5eee9b40790baadb22d42cdfff921c5fb2edf10ac6e041d3f8a786f0f0343e  ep_receipt_core.spthy' | sha256sum -c -
+          echo '8eb1edfc21fe823f2ce01c3f858d07bd576f92faf1b0c06ead2ad0caa3c6ad99  ep_receipt_core.spthy' | sha256sum -c -
           echo 'd1e46b6ba20f845e93342e1118a1d42f087c174902e1634870adb05159a6b063  run-receipt-core.sh' | sha256sum -c -
       - name: Run every receipt-core proof obligation independently
         working-directory: formal/tamarin
@@ -89,7 +89,7 @@ jobs:
       - name: Verify pinned model bytes
         working-directory: formal/tamarin
         run: |
-          echo '399e4f739b6bfbecb9a7fc83bdbe12ecb0f900dc77aaecaf790b8cb36d152dbb  ep_quorum_core.spthy' | sha256sum -c -
+          echo 'c71a116bd0bc1326876e569b893f2b197f736d9fbf76f787938e87137355cc20  ep_quorum_core.spthy' | sha256sum -c -
           echo '3dcaf37a0d1fa047bc655319ee35959b3f4ee6fc6afde358b7487eb5227691d7  run-quorum.sh' | sha256sum -c -
       - name: Run every quorum-core proof obligation independently
         working-directory: formal/tamarin

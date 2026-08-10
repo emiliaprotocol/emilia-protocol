@@ -48,6 +48,7 @@ export async function verifySignoffTool({ signoff, approver_public_key, rp_id, a
     };
   }
   const result = await verifyWebAuthnSignoff(signoff, approver_public_key, {
+    mode: 'relying-party',
     rpId: rp_id,
     allowedOrigins: allowed_origins,
   });

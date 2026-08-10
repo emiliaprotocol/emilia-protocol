@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-08-10T08:37:16.219Z",
+  "generatedAt": "2026-08-10T09:55:00.208Z",
   "tests": {
-    "total": 8854,
+    "total": 8862,
     "files": 532,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
@@ -21,7 +21,7 @@
     "coveredModelActions": 28,
     "actionCompleteModels": 1,
     "formalMutationOperators": 51,
-    "evidenceSha256": "dbccc12e9a76a52887f287d24c25a5610ba81e299b980b4e86ab55f7f5fda15d",
+    "evidenceSha256": "c4ae672c29a243940653fc5c0c0b3025b6a474726e98001a1b7e5fcedd1eede2",
     "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
   },
   "formalEvidenceCoverage": {
@@ -98,14 +98,14 @@
     "existsTraceWitnesses": 3,
     "deliberatelyUnsafeCounterexamples": 8,
     "version": "1.10.0",
-    "modelSha256": "174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3",
-    "focusedModelSha256": "d19fee48ab098a178d56d3141a0dd545998a0a136f6e3fc8cb3db1fcf6052302"
+    "modelSha256": "7c6f623e6cec025a49054e42b2b384a16cbea98f4d1d0e05c6fd4c4ff077e968",
+    "focusedModelSha256": "80c64c9b85eaa4781542d5cbf8f2f9e54ea62d3cbf2e8efa8723f1e41c847e3b"
   },
   "securityCase": {
     "status": "passed",
     "claims": 35,
     "evidenceFiles": 259,
-    "evidenceBundleSha256": "94b60610bedc053e741143cbdabd4d4cd0a3070972d6e650b4ade7a27d42d9fe"
+    "evidenceBundleSha256": "69b947cdf0d197dc7c36299058213c4ac9e8b7e27bed5861c29efa3043fa822a"
   },
   "conformance": {
     "suites": 21,

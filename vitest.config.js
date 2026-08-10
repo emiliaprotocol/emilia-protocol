@@ -108,6 +108,9 @@ export default defineConfig({
       'interop/apertomemory-emilia/verify.test.mjs',
       'interop/aae-psea-gate/verify.test.mjs',
       'interop/aae-psea-gate/reperform.test.mjs',
+      // The public forgery corpus deliberately uses node:test so the pinned
+      // bounty command runs without Vitest. CI executes it explicitly below.
+      'tests/verifier-forgery/**',
       // Generated Node-20 companions of .test.ts sources (e.g. under
       // conformance/): vitest must collect the .ts source only, or every
       // converted test in a companion-glob tree runs twice.

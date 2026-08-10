@@ -22,9 +22,9 @@ Maps to `standards/posted/draft-schrock-ep-authorization-receipts-04.txt`:
   a human signature without a prior UV event over exactly that action and
   nonce.
 - The signed message is the Authorization Context abstracted as
-  `<'ep_signoff_v1', h(action), nonce>` (Section 4: signature over the hash
-  of the canonical context containing the action hash and a fresh unique
-  nonce).
+  `<'ep_signoff_v2', h(action), policy, initiator, audience, nonce,
+  validity, approver-slot>`. The theorem events carry the same fields, so the
+  statement and the signed term cannot drift apart.
 - The relying party pins the human's public key out of band (abstracting the
   Approver Directory) and accepts a receipt only if the signature verifies
   under the pinned key over the exact action term received.
@@ -32,12 +32,14 @@ Maps to `standards/posted/draft-schrock-ep-authorization-receipts-04.txt`:
   explicitly that its guarantee is conditional on the device key not having
   leaked.
 - One-time consumption (Section 6, guarantee G3) is modeled as two accept
-  rules: one without any consumption check, and one with a one-per-(human,
-  nonce) consumption restriction abstracting the consumption record.
+  rules. `Request_Signoff` creates one linear `AdmissionAvailable` fact for
+  the fresh context; the checked accept rule consumes it and no rule recreates
+  it. The comparison rule omits that input. There is no uniqueness restriction
+  that assumes the result to be proved.
 
 ## Machine-checked result
 
-Verbatim `summary of summaries` from the run on 2026-07-05
+Verbatim `summary of summaries` from the repaired run on 2026-08-09
 (tamarin-prover 1.10.0, Maude 3.4, all wellformedness checks successful):
 
 ```
@@ -45,13 +47,11 @@ summary of summaries:
 
 analyzed: ep_receipt_core.spthy
 
-  processing time: 0.39s
-
-  executable_honest_receipt (exists-trace): verified (8 steps)
-  core_authenticity_uv_gated (all-traces): verified (12 steps)
-  no_replay_across_actions (all-traces): verified (12 steps)
-  injective_acceptance_with_consumption (all-traces): verified (6 steps)
-  unchecked_acceptance_is_injective (all-traces): falsified - found trace (10 steps)
+  executable_honest_receipt (exists-trace): verified (9 steps)
+  core_authenticity_uv_gated (all-traces): verified (11 steps)
+  no_replay_across_actions (all-traces): verified (11 steps)
+  injective_acceptance_with_consumption (all-traces): verified (11 steps)
+  unchecked_acceptance_is_injective (all-traces): falsified - found trace (11 steps)
 ```
 
 What each result means:
@@ -59,15 +59,15 @@ What each result means:
 | Lemma | Result | Meaning |
 |---|---|---|
 | `executable_honest_receipt` | verified | Sanity trace exists: an honest UV-gated receipt is accepted with no key compromise. The model is not vacuous. |
-| `core_authenticity_uv_gated` | verified | If any relying party accepts a receipt naming human H for action a with nonce n, and H's key was not compromised before acceptance, then H performed a UV event and then a signature over exactly (a, n), in that order, before the acceptance. |
-| `no_replay_across_actions` | verified | No trace exists where a receipt for action a is accepted while the uncompromised human never signed exactly (a, n). The attacker holds honest signatures over arbitrary other actions of its choice and still cannot transplant any of them onto a different action. |
-| `injective_acceptance_with_consumption` | verified | With the one-time consumption check, each consumption-checked acceptance corresponds to a preceding honest signature and no second consumption-checked acceptance of the same (H, a, n) exists anywhere. (The lemma quantifies over `AcceptChecked` events only; an unchecked accept path, if deployed, is exactly what the falsified lemma below shows to be replayable.) |
+| `core_authenticity_uv_gated` | verified | If a relying party accepts a receipt under an uncompromised key, a prior UV event and signature exist over the exact action, policy, initiator, audience, nonce, validity token, and approver slot. |
+| `no_replay_across_actions` | verified | Honest signatures harvested over other contexts cannot be transplanted onto a different accepted context. |
+| `injective_acceptance_with_consumption` | verified | Each checked acceptance has a preceding honest signature and no second checked acceptance of the same complete context exists; this follows from consuming the linear `AdmissionAvailable` fact. |
 | `unchecked_acceptance_is_injective` | falsified | Expected and kept deliberately, see below. |
 
 ## The falsified lemma is a demonstrated replay, not a hidden defect
 
 `unchecked_acceptance_is_injective` asserts that even WITHOUT a consumption
-check, the same (H, a, n) is never accepted twice. Tamarin falsified it and
+check, the same complete signed context is never accepted twice. Tamarin falsified it and
 produced the counterexample trace: the attacker takes the one honest receipt
 broadcast by `Human_Sign_Receipt` and delivers it to an accept point twice
 (in the found trace, once through the consumption-checked rule and once
@@ -75,7 +75,7 @@ through the unchecked rule). No forgery and no key reveal occur in the trace.
 
 Why the counterexample is necessarily a same-receipt replay and not
 something worse: the verified `core_authenticity_uv_gated` lemma forces every
-acceptance to be backed by a Signed event over exactly (a, n), and the model
+acceptance to be backed by a Signed event over the complete context, and the model
 admits at most one Signed event per nonce (the nonce is `Fr`-fresh, so only
 one sign request carries it, and the linear `UVDone` fact allows exactly one
 signature per request). So any double acceptance is the single honest receipt
@@ -84,8 +84,8 @@ and fact linearity in the model semantics; it is not itself a separate
 machine-checked lemma.)
 
 This is precisely the failure mode the spec's one-time consumption record
-(Section 6, G3) exists to prevent, and the model shows that adding the
-consumption check (the `ConsumeOnce` restriction) restores injectivity
+(Section 6, G3) exists to prevent. The checked rule restores injectivity by
+consuming protocol state, not by excluding replay traces with a restriction
 (`injective_acceptance_with_consumption`, verified).
 
 ## Out of scope (honest boundary)
@@ -145,8 +145,8 @@ proven in `ep_receipt_core.spthy`. It does NOT re-prove the single-signature
 core lemma; it assumes the per-signature guarantees already machine-checked in
 `ep_receipt_core.spthy` and asks the next question: given two distinct enrolled
 approver keys and a 2-of-2 policy, does a satisfied quorum necessarily consist
-of two distinct UV-gated signatures over the same action, and can the initiator
-of that action count toward its own quorum?
+of two distinct UV-gated signatures over the same action and authorization
+instance, and can the initiator of that action count toward its own quorum?
 
 Signatures are again terms in Tamarin's standard `signing` equational theory,
 and the adversary is the standard Dolev-Yao network attacker: full network
@@ -164,18 +164,20 @@ Maps to `standards/posted/draft-schrock-ep-authorization-receipts-06.txt`:
   enrolled twice.
 - An INITIATOR identity that proposes the action (Section 2, Section 3: the
   initiator is identified but never trusted). The initiator is bound INTO the
-  signed Authorization Context, `<'ep_signoff_v1', h(action), initiator, nonce>`
-  (Section 3), so an approver signature commits to a specific initiator.
+  signed Authorization Context, `<'ep_signoff_v1', h(action), initiator,
+  authorization_instance, nonce>` (Section 3), so an approver signature commits
+  to a specific initiator and approval ceremony.
 - A user-verification (UV) event that MUST precede every approver signature,
   gated structurally the same way as in the core model (a linear `UVDone` fact
   that only the UV rule produces and only the signing rule consumes).
-- Each approver signs its own per-approver context sharing the same action hash
-  but carrying that approver's own fresh nonce (Section 7: "same action_hash and
-  nonce family but a distinct approver_index"; the fresh nonce abstracts the
-  distinct index).
+- One request rule creates a fresh shared authorization instance and two
+  per-approver fresh nonces. Each approver signs its own context carrying that
+  same authorization instance and its own nonce. The shared signed value rules
+  out cross-ceremony signoff splicing; the distinct nonce binds the individual
+  context.
 - Commitment (the executor's accept) fires only when TWO signatures that verify
-  under TWO DISTINCT pinned approver keys over the SAME action AND the SAME
-  initiator are presented, and neither approver is the initiator (Section 6
+  under TWO DISTINCT pinned approver keys over the SAME action, initiator, AND
+  authorization instance are presented, and neither approver is the initiator (Section 6
   SelfApprovalImpossible, G4, Section 7 "k valid, distinct signoffs"). There is
   no accept rule that fires on a single signature: partial approval commits
   nothing.
@@ -185,7 +187,7 @@ Maps to `standards/posted/draft-schrock-ep-authorization-receipts-06.txt`:
 
 ## Machine-checked result
 
-Verbatim `summary of summaries` from the run on 2026-07-06
+Verbatim `summary of summaries` from the repaired run on 2026-08-09
 (tamarin-prover 1.10.0, Maude 3.4, all wellformedness checks successful):
 
 ```
@@ -193,22 +195,20 @@ summary of summaries:
 
 analyzed: ep_quorum_core.spthy
 
-  processing time: 0.44s
-
-  executable_quorum (exists-trace): verified (12 steps)
-  quorum_requires_two_distinct_uv_gated_signatures (all-traces): verified (20 steps)
+  executable_quorum (exists-trace): verified (13 steps)
+  quorum_requires_two_distinct_uv_gated_signatures (all-traces): verified (27 steps)
   initiator_cannot_self_approve (all-traces): verified (4 steps)
   no_single_signer_fills_quorum (all-traces): verified (4 steps)
-  commit_requires_signature_over_that_action (all-traces): verified (7 steps)
+  commit_requires_signature_over_that_action (all-traces): verified (8 steps)
 ```
 
 | Lemma | Result | Meaning |
 |---|---|---|
 | `executable_quorum` | verified | Sanity trace exists: a 2-of-2 quorum commits with two distinct honest approvers, both UV-gated, neither the initiator, no key compromise. The model is not vacuous, so the distinctness/self-approval restrictions do not make `Commit` unreachable. |
-| `quorum_requires_two_distinct_uv_gated_signatures` | verified | Whenever the executor commits action a citing approvers H1 and H2, and neither approver key was compromised before the commit, then H1 and H2 are distinct and each performed a UV event followed by a signature over exactly action a, all before the commit. A single signature, two signatures from one identity, or two over different actions can never commit. |
+| `quorum_requires_two_distinct_uv_gated_signatures` | verified | Whenever the executor commits action a and authorization instance q citing approvers H1 and H2, and neither key was compromised, H1 and H2 are distinct and each performed UV then signed exactly (a, q) before commit. A single signature, one identity, a different action, or a different ceremony cannot fill the quorum. |
 | `initiator_cannot_self_approve` | verified | No trace commits an action with the initiator itself appearing as either quorum approver (Section 6 SelfApprovalImpossible, G4). The initiator identity is attacker-chosen, so this also rules out an attacker naming a compliant approver as initiator to have it count against itself. |
 | `no_single_signer_fills_quorum` | verified | The two committing approvers are never the same identity (distinct pinned keys entail distinct fresh keys entail distinct enrolled identities). This is the "no key fills two slots" property at the identity level. |
-| `commit_requires_signature_over_that_action` | verified | No trace commits action a while an uncompromised named approver never signed exactly a. Because the attacker can obtain honest signoffs over arbitrary other actions, this rules out transplanting an approver's signature over any other action onto a committed a. |
+| `commit_requires_signature_over_that_action` | verified | No trace commits (a, q) while an uncompromised named approver never signed exactly (a, q). This rules out transplanting a signature from another action or authorization instance. |
 
 ## An earlier revision of this model was FALSIFIED, and why
 
@@ -224,7 +224,9 @@ was only an executor-local check rather than a property of the signatures.
 
 The fix is spec-faithful, not a lemma weakening: the initiator identity is now
 bound inside the signed context (`<'ep_signoff_v1', h(action), initiator,
-nonce>`, per Section 3, the Authorization Context carries the initiator). With
+authorization_instance, nonce>`). The repaired model also binds one fresh
+authorization instance into both quorum signoffs, matching the -11 wire rule.
+With
 the initiator bound into what each approver signs, all five lemmas verify. This
 is the same kind of result the core model records for one-time consumption: the
 falsification identified a load-bearing binding, and the model now shows that
