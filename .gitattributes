@@ -469,6 +469,7 @@ packages/gate/capability-gate.test.js linguist-generated=true
 packages/gate/capability-receipt.test.js linguist-generated=true
 packages/gate/cf1.test.js linguist-generated=true
 packages/gate/consequence-actuator.test.js linguist-generated=true
+packages/gate/consequence-boundary.test.js linguist-generated=true
 packages/gate/control-plane.test.js linguist-generated=true
 packages/gate/coverage-reconciliation-attestation.test.js linguist-generated=true
 packages/gate/coverage-reconciliation-runner.test.js linguist-generated=true
