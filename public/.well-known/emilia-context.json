@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-10T09:24:29.284Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "0b5ca3c2e3d4fb90fcc6c4200e28a346182896c8563978e80be000a1ccf7cbae",
+    "input_digest_sha256": "4fd1c7ade2c00b9ffa2745059a1eb226be66a2cc514c2f52b83a781b306f739c",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "a1c9036b934b70430d55a04c3a6c274aaf6118bfc670341d1110103b51a7119c",
+        "sha256": "0e193cf1da71791fc7211aab4ec5fb4ce57921c97c0d5542385830618101fa64",
         "bytes": 385871
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "fbddabdc6e2e40e5e3f2b05f14502f6a285f98b342ca82d99ea4d195b378a412",
-        "bytes": 40653
+        "sha256": "ed7e769c768cdd2cb17ce896f845fdbc11706d4a250eac0196db32128120448c",
+        "bytes": 41225
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -399,7 +399,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "5de9140b262206fc971a4f7b6d29205f0fd3324f59fd808cd5dc4b9c5a86701f"
+      "evidence_bundle_sha256": "69b947cdf0d197dc7c36299058213c4ac9e8b7e27bed5861c29efa3043fa822a"
     },
     "caid": {
       "core_vectors": 48,
@@ -4582,9 +4582,9 @@
     },
     {
       "identifier": "draft-schrock-ep-authorization-receipts",
-      "revision_at_snapshot": "10",
+      "revision_at_snapshot": "11",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published August 6; use -10 for the Standards Track receipt profile, normative CAID mapping, presentation binding, and the media-type request",
+      "next_action": "Published August 10; use -11 for the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4713,10 +4713,10 @@
           "order": 1,
           "label": "Authorization Receipts",
           "draft": "draft-schrock-ep-authorization-receipts",
-          "revision": "10",
-          "source": "standards/posted/draft-schrock-ep-authorization-receipts-10.xml",
+          "revision": "11",
+          "source": "standards/posted/draft-schrock-ep-authorization-receipts-11.xml",
           "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-          "snapshot_sha256": "4800fffb1d03df4aaef95bde97f2cdf9c4e4821b406068c5deca544b5a218d43",
+          "snapshot_sha256": "7dc112e2481b03dc4e017216c168e143cb32b878e70265f2a0402e483bea1a45",
           "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
           "boundary": "One approval-evidence profile and extension seam; it does not establish scoped authority or evidence satisfaction by itself."
         },
