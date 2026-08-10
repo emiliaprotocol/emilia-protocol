@@ -155,7 +155,7 @@ function validTask(value) {
     if (!isObject(value) || !onlyKeys(value, TASK_KEYS)
         || !exactString(value.id) || !exactString(value.contextId)
         || !isObject(value.status) || !onlyKeys(value.status, STATUS_KEYS)
-        || value.status.state !== 'TASK_STATE_INPUT_REQUIRED')
+        || value.status.state !== 'TASK_STATE_AUTH_REQUIRED')
         return false;
     if (value.status.timestamp !== undefined || value.status.message !== undefined) {
         if (value.status.timestamp !== undefined && !Number.isFinite(instant(value.status.timestamp)))
@@ -316,7 +316,7 @@ export function createA2AReceiptPresentation(input) {
         throw new TypeError('Agent Card must advertise the selected A2A v1.0 interface and EMILIA receipt extension');
     }
     if (!validTask(task))
-        throw new TypeError('closed A2A input-required Task required');
+        throw new TypeError('closed A2A auth-required Task required');
     if (!validMessage(initiatingMessage) || initiatingMessage.role !== 'ROLE_USER') {
         throw new TypeError('closed initiating A2A user Message required');
     }

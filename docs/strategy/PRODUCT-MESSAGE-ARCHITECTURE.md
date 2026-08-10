@@ -3,7 +3,7 @@
 
 *Status: canonical public-message doctrine*
 
-*Last updated: 2026-08-05*
+*Last updated: 2026-08-09*
 
 This document keeps the product, protocol, apps, assurance services, standards, and vertical profiles in one coherent company story. It governs public repository narrative, machine-facing context, marketing architecture, decks, product documentation, and future copy reviews. Runtime and security claims remain governed by the higher-precedence evidence sources named in `docs/ai/context-source.v1.json`.
 
@@ -55,6 +55,8 @@ EMILIA Assurance Plane re-performs the deployment's claims
 Gate belongs immediately before the system that can mutate state: an MCP tool, API handler, payment rail, cloud control, clinical determination workflow, grid actuator, or physical controller. It checks the relying party's evidence requirements and local policy before calling the executor. Missing or insufficient evidence produces a closed refusal and an action-bound challenge. Accepted evidence authorizes only the exact action and is consumed once. Gate reserves bounded authority before provider entry, preserves uncertainty when the provider outcome cannot be established, refuses blind replay, and accepts reconciliation only from authenticated evidence bound to the same operation and material action. Disputes, returns, refunds, reversals, and other remedies remain append-only: they are new, separately authorized actions and never rewrite the original effect.
 
 **What customers buy:** Managed or BYOC operation, policy compilation, trust and revocation configuration, approver-directory integrations, durable consumption, outcome reconciliation, dispute and remedy operations, evidence retention, deployment coverage, integrations, support, SLA, and a separately contracted warranty where offered.
+
+**Distribution and interoperability:** Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems, then enforces them once at the executor. Native evidence remains owned by its source protocol; EMILIA verifies and composes it under the relying party's pinned rules and does not reissue it as EMILIA-originated authority. The A2A/AP2 composition is experimental and same-team until an independent implementation reproduces the hostile cases.
 
 #### Deployment and custody model
 

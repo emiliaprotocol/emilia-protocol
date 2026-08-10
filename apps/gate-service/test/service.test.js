@@ -360,13 +360,18 @@ test('a timeout after DELETE burns the receipt and emits indeterminate evidence'
   assert.equal(first.body.status, 'indeterminate');
   assert.equal(first.body.error.code, 'github_delete_timeout_outcome_unknown');
   assert.equal(fixture.deleteCalls.length, 1);
-  assert.equal(await fixture.consumptionStore.has(receipt.payload.receipt_id), true);
+
+  const records = await fixture.evidenceLog.all();
+  const decision = records.find((record) => record.kind === 'decision' && record.allow === true);
+  assert.equal(typeof decision?.consumption_key, 'string');
+  assert.equal(await fixture.consumptionStore.has(decision.consumption_key), true);
+  assert.notEqual(decision.consumption_key, receipt.payload.receipt_id,
+    'consumption must remain scoped to the signed tenant rather than the bare receipt id');
 
   const action = await fixture.request(`/v1/actions/${first.body.id}`);
   assert.equal(action.status, 200);
   assert.equal(action.body.status, 'indeterminate');
 
-  const records = await fixture.evidenceLog.all();
   assert.ok(records.some((record) => record.kind === 'execution' && record.outcome === 'indeterminate'));
 
   const replay = await fixture.request(path, { method: 'POST', body: resumeBody, carrier });

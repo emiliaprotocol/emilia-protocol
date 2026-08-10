@@ -1,0 +1,78 @@
+{
+  "schema_ref": "https://emiliaprotocol.ai/schemas/conformance/a2a-ap2-gate-hostile.v1.schema.json",
+  "@version": "EP-A2A-AP2-GATE-HOSTILE-v1",
+  "profile": "EP-A2A-AP2-GATE-EXPERIMENTAL-v1",
+  "claim_scope": {
+    "status": "same-team-reference-only",
+    "guarantees": [
+      "native_ap2_evidence_preserved_without_emilia_origin_claim",
+      "executor_owned_action_status_policy_and_time",
+      "one_local_atomic_admission_domain",
+      "reserve_before_provider_entry",
+      "ambiguous_provider_outcome_is_indeterminate_and_not_retryable"
+    ],
+    "exclusions": [
+      "a2a_or_ap2_extension_status",
+      "cross_domain_exactly_once",
+      "provider_commitment_or_observed_effect_truth",
+      "independent_interoperability"
+    ]
+  },
+  "external_reproductions": [],
+  "vectors": [
+    {
+      "id": "native_ap2_admit",
+      "hostile_condition": "Control: exact native AP2 mandate, exact action, current status, and one unused challenge.",
+      "expected": { "state": "ADMIT", "invoked": true, "retry_allowed": false },
+      "executable_test": {
+        "file": "packages/gate/a2a-ap2-gate.test.ts",
+        "title": "joins native AP2 evidence to CAID/AEB, reserves before effect, and returns ADMIT"
+      }
+    },
+    {
+      "id": "approve_a_execute_b",
+      "hostile_condition": "A valid evaluation for action A is presented while the executor resolves action B.",
+      "expected": { "state": "REFUSE", "invoked": false, "retry_allowed": false },
+      "executable_test": {
+        "file": "packages/gate/a2a-ap2-gate.test.ts",
+        "title": "refuses approve-A/execute-B using the executor-owned action before provider invocation"
+      }
+    },
+    {
+      "id": "concurrent_admission",
+      "hostile_condition": "Three concurrent callers present the same registered challenge and evaluation.",
+      "expected": { "state": "ADMIT", "invoked": true, "retry_allowed": false },
+      "executable_test": {
+        "file": "packages/gate/a2a-ap2-gate.test.ts",
+        "title": "admits one concurrent attempt and refuses the rest"
+      }
+    },
+    {
+      "id": "replay_under_another_task",
+      "hostile_condition": "The same native AP2 replay identity is presented under a second A2A task and challenge.",
+      "expected": { "state": "REFUSE", "invoked": false, "retry_allowed": false },
+      "executable_test": {
+        "file": "packages/gate/a2a-ap2-gate.test.ts",
+        "title": "refuses the same AP2 mandate replayed under another A2A task"
+      }
+    },
+    {
+      "id": "revoked_or_malicious_as_evidence",
+      "hostile_condition": "The native mandate is revoked, or authorization-server evidence is substituted for the required AP2 authorization role.",
+      "expected": { "state": "REFUSE", "invoked": false, "retry_allowed": false },
+      "executable_test": {
+        "file": "packages/gate/a2a-ap2-gate.test.ts",
+        "title": "refuses revoked evidence and AS-only evidence that does not satisfy the AP2 role"
+      }
+    },
+    {
+      "id": "provider_timeout",
+      "hostile_condition": "The provider is invoked but its commitment outcome cannot be learned.",
+      "expected": { "state": "INDETERMINATE", "invoked": true, "retry_allowed": false },
+      "executable_test": {
+        "file": "packages/gate/a2a-ap2-gate.test.ts",
+        "title": "returns INDETERMINATE and permanently prevents blind retry after provider timeout"
+      }
+    }
+  ]
+}

@@ -73,6 +73,7 @@ export * from './admission-store.js';
 export * from './admission-store-postgres.js';
 export * from './gate-qualification-v2.js';
 export * from './fido-ap2-bridge.js';
+export * from './a2a-ap2-gate.js';
 export * from './referee.js';
 export * from './referee-runner.js';
 export * from './loss-allocation-schedule.js';

@@ -61,6 +61,8 @@
     "src/aeb-psea-adapter.ts",
     "src/fido-ap2-bridge.ts",
     "src/a2a-receipt-binding.ts",
+    "src/ap2-native-adapter.ts",
+    "src/a2a-evidence-challenge.ts",
     "src/agent-edge-continuity.ts",
     "src/status.ts",
     "src/gate-qualification.ts",

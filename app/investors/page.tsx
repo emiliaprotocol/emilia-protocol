@@ -64,6 +64,11 @@ export default function InvestorsPage() {
           a finite operating mandate once; agents work unattended inside it; Gate enforces each
           consequential unit of work where money, code, permissions, records, or infrastructure can change.
         </p>
+        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 560, marginBottom: 12 }}>
+          Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed
+          approval systems, then enforces them once at the executor. The A2A/AP2 integration is
+          experimental; independent interoperability is not yet claimed.
+        </p>
         <div style={{ display: 'grid', gap: 18, marginTop: 32, marginBottom: 24 }}>
           {[
             ['The problem', 'Identity proves who or what is present. Policy describes what is generally allowed. Neither defines the finite job an autonomous worker may perform under current limits.'],

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/conformance/a2a-ap2-gate-hostile.v1.schema.json",
+  "title": "EMILIA Gate for A2A/AP2 hostile case catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_ref", "@version", "profile", "claim_scope", "external_reproductions", "vectors"],
+  "properties": {
+    "schema_ref": { "const": "https://emiliaprotocol.ai/schemas/conformance/a2a-ap2-gate-hostile.v1.schema.json" },
+    "@version": { "const": "EP-A2A-AP2-GATE-HOSTILE-v1" },
+    "profile": { "const": "EP-A2A-AP2-GATE-EXPERIMENTAL-v1" },
+    "claim_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "guarantees", "exclusions"],
+      "properties": {
+        "status": { "const": "same-team-reference-only" },
+        "guarantees": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "exclusions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "external_reproductions": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "vectors": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/vector" }
+    }
+  },
+  "$defs": {
+    "vector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "hostile_condition", "expected", "executable_test"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]+$" },
+        "hostile_condition": { "type": "string", "minLength": 1 },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "invoked", "retry_allowed"],
+          "properties": {
+            "state": { "enum": ["ADMIT", "REFUSE", "INDETERMINATE"] },
+            "invoked": { "type": "boolean" },
+            "retry_allowed": { "const": false }
+          }
+        },
+        "executable_test": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file", "title"],
+          "properties": {
+            "file": { "const": "packages/gate/a2a-ap2-gate.test.ts" },
+            "title": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

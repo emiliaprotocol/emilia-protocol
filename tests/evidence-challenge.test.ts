@@ -123,6 +123,23 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     expect(ch).not.toHaveProperty('aec');
   });
 
+  it('can mint a profile-specific native presentation method without treating it as AEC', () => {
+    const ch = createEvidenceChallenge(ACTION, policy, {
+      expires_at: EXPIRES,
+      nonce: 'native-ap2-presentation-nonce',
+      present_as: ['ap2-native'],
+    });
+    expect(ch.present_as).toEqual(['ap2-native']);
+    const result = evaluatePresentation(
+      ch,
+      graphFor(['authorization_receipt', 'policy_permit', 'workload_identity']),
+      policy,
+      { verifiers, as_of: AS_OF, consumedNonces: new Set() },
+    );
+    expect(result.verdict).toBe('refused');
+    expect(result.reasons.join(' ')).toContain('method');
+  });
+
   it('accepts the earlier graph serialization carried by the AEC presentation profile', () => {
     const ch = createEvidenceChallenge(ACTION, policy, {
       expires_at: EXPIRES,

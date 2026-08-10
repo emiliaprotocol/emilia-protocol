@@ -483,11 +483,11 @@
     },
     {
       "path": "lib/negotiate/evidence-challenge.js",
-      "sha256": "65e3d85b07df4868437a7ab5183f46e52035bcbca92530106c64508a4b531b7f"
+      "sha256": "1450561c09c9b8eceb16eaff12392911c67501a573fdc33d0205eaff509479a1"
     },
     {
       "path": "lib/negotiate/evidence-challenge.ts",
-      "sha256": "be5f4529f615024893705603ec79bcc20433f5e9d0086347ccfcef0755c945c8"
+      "sha256": "ee75cf9a0b93843b618eb124741283504efc3fb0d82db363840fb514b26bfc04"
     },
     {
       "path": "lib/strict-json.js",
@@ -516,6 +516,10 @@
     {
       "path": "packages/gate/consequence-actuator.js",
       "sha256": "bb25a9dabd4701ba3687c05fffff8b3f5b8aad4b917cc0b4fce791ce89360245"
+    },
+    {
+      "path": "packages/gate/dist/a2a-ap2-gate.js",
+      "sha256": "019247087d621cff2096b0629ec18a8fb3720936c26a4fd115fb9e9b0fe8e77c"
     },
     {
       "path": "packages/gate/dist/action-control-manifest.js",
@@ -651,7 +655,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "6142cf62ef5a95392282963099ba82f980bfa1fea39a1695ab911938d9680238"
+      "sha256": "51bedd9cf2615dd6649d7451f3d933c22ecddaf6d160ca9c1e70421b15eb9a71"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -843,7 +847,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "a2baa24176e301957693d9c49ca6261b068e1ebf9b15cc764e65b30bf56fe7a8"
+      "sha256": "d30ca49cf7d78388c7d34b27ce3c41b749e33c9a6e0b2ab57a4b8e421b9d6f46"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -966,16 +970,28 @@
       "sha256": "c53a70b0ba581c93b06b457395e32d0578a8316174b5f81514b7ab17583c6c2c"
     },
     {
+      "path": "packages/verify/a2a-evidence-challenge.js",
+      "sha256": "16014379d5972462aecc30ff9b0a33eb233fc95c59ab609d6d2fa246e964f59c"
+    },
+    {
       "path": "packages/verify/aeb-adapter-contract.js",
       "sha256": "1039e1f85b78d714bfdbac0ad5236195d312e66060cbc97e36c064ff85b635db"
+    },
+    {
+      "path": "packages/verify/ap2-native-adapter.js",
+      "sha256": "7dd2dd1edaf38d9c6d35f1695c0f0ae88e5ef7dfdb6aade59ae2a05ce552366d"
     },
     {
       "path": "packages/verify/discovery-permit-contract.js",
       "sha256": "e84080622e0d2c61d48ed78547262b3733d422b7c4dccfa08a1c927e2277faa2"
     },
     {
+      "path": "packages/verify/dist/a2a-evidence-challenge.js",
+      "sha256": "5b84100e09190bdb56398809603190dbc53826fe8db7f36cf626018d4af24b2c"
+    },
+    {
       "path": "packages/verify/dist/a2a-receipt-binding.js",
-      "sha256": "b4979b5b25cae1fae8aab8c671465df148bed4925c2832efd0d99baabc4d63b3"
+      "sha256": "3a6230e27c1afb19c946b81b3ed33ff8a15b3a5f382dcc5e1dad4a7545699ab3"
     },
     {
       "path": "packages/verify/dist/aeb-acceptance-profile.js",
@@ -1032,6 +1048,10 @@
     {
       "path": "packages/verify/dist/agentroa.js",
       "sha256": "c10bb89d528f4bdff01c29915914c1d0064780a4ff01a55c6c207991d838a255"
+    },
+    {
+      "path": "packages/verify/dist/ap2-native-adapter.js",
+      "sha256": "b5fe340992631b5a8f852a7f77f1c00b11f12fb1f92c2a7a1d1fd121db8406af"
     },
     {
       "path": "packages/verify/dist/authority-program.js",
@@ -1103,7 +1123,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "8ec92dd2f4785a0745fe3f6bec00e3199d810215040f78da23e0f8c4e7010a96"
+      "sha256": "cef09ddc86c83af909eb6c142f0ae2d1b937b92ead751c76ba4ce6775ae89286"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1215,7 +1235,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "0d4cb11337dbde848526f8c64101f7447c4055e110331bacceb5489cb564f110"
+      "sha256": "6b3fb11dca0d4a539ed5de8d84d0cdff833aa1550a495e56a199d7d0a16af5be"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

@@ -110,13 +110,13 @@
       "match_selector": {
         "carrier": "a2a_task",
         "discriminator_path": "/task/status/state",
-        "discriminator_value": "TASK_STATE_INPUT_REQUIRED"
+        "discriminator_value": "TASK_STATE_AUTH_REQUIRED"
       },
       "challenge_carrier": {
         "kind": "a2a_task_status_message_extension",
         "location": "task.status.message metadata under the EMILIA extension URI",
         "content_type": "application/a2a+json",
-        "refusal_code": "TASK_STATE_INPUT_REQUIRED"
+        "refusal_code": "TASK_STATE_AUTH_REQUIRED"
       },
       "proof_carrier": {
         "kind": "a2a_message_extension",

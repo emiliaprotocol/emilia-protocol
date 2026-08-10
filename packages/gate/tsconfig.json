@@ -116,6 +116,7 @@
     "src/recovery-admission-remedy.ts",
     "src/gate-qualification-v2.ts",
     "src/fido-ap2-bridge.ts",
+    "src/a2a-ap2-gate.ts",
     "src/referee.ts",
     "src/referee-runner.ts",
     "src/reliance-risk-crypto.ts",
