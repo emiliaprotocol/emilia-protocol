@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-10T08:37:16.219Z",
+  "evidence_snapshot_at": "2026-08-10T09:55:00.208Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "5a049058c6b5cf11453bda35b56edf3998edaf1919b87a0c98ccdddcd7ea89ed",
+    "input_digest_sha256": "fdf3759e16710c09a486bd8fabf533b9d21be577cb54df04e1a78d3331ca48f2",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "2a6fabfc44422c917c5923a21102fb08562e20ef35950de9b6341c741126338b",
+        "sha256": "d1ba6abcfbb999ba142d035890bc7c26c06ea711f8e6cb1facd28c18253ba2c9",
         "bytes": 4298
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "e011fb3538f973cfcea6d02df79500af1d7ab74ee85667b46790633063294058",
+        "sha256": "13d3a35fc6b2754a66ec4c70416c8ee3a7b5a83bea028fd819f23854e2b816e8",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "21e9e1f8c5a4360271fa6810697d0205f4831ddff52b2efa18b7367b5bd8f7ae",
+        "sha256": "0e193cf1da71791fc7211aab4ec5fb4ce57921c97c0d5542385830618101fa64",
         "bytes": 385871
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "380f0f1cdd5e0efa0f6abdfda22c3f2c52dbb8680ae73553bc909fc92e0d3648",
-        "bytes": 39899
+        "sha256": "ed7e769c768cdd2cb17ce896f845fdbc11706d4a250eac0196db32128120448c",
+        "bytes": 41225
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -287,7 +287,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 8854,
+      "total": 8862,
       "files": 532,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -297,7 +297,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "8c0d9f64e2a6347ee7135d5316cf7b2ebeed0cbceab35dd797c2b3e185cdc656",
+      "manifest_sha256": "cc0ec3e7b0a97eac45d9f06471b3af54d848cc522479438398b0e84e92164eb1",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -315,8 +315,8 @@
         "existsTraceWitnesses": 3,
         "deliberatelyUnsafeCounterexamples": 8,
         "version": "1.10.0",
-        "modelSha256": "174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3",
-        "focusedModelSha256": "d19fee48ab098a178d56d3141a0dd545998a0a136f6e3fc8cb3db1fcf6052302"
+        "modelSha256": "7c6f623e6cec025a49054e42b2b384a16cbea98f4d1d0e05c6fd4c4ff077e968",
+        "focusedModelSha256": "80c64c9b85eaa4781542d5cbf8f2f9e54ea62d3cbf2e8efa8723f1e41c847e3b"
       },
       "selected_scenario_conformance": {
         "method": "bounded_selected_scenario_conformance",
@@ -329,7 +329,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "dbccc12e9a76a52887f287d24c25a5610ba81e299b980b4e86ab55f7f5fda15d",
+        "evidenceSha256": "c4ae672c29a243940653fc5c0c0b3025b6a474726e98001a1b7e5fcedd1eede2",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -399,7 +399,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "94b60610bedc053e741143cbdabd4d4cd0a3070972d6e650b4ade7a27d42d9fe"
+      "evidence_bundle_sha256": "69b947cdf0d197dc7c36299058213c4ac9e8b7e27bed5861c29efa3043fa822a"
     },
     "caid": {
       "core_vectors": 48,
@@ -4510,9 +4510,9 @@
   "standards": [
     {
       "identifier": "draft-schrock-ae-challenge",
-      "revision_at_snapshot": "03",
+      "revision_at_snapshot": "05",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 8; obtain Agent2Agent, AgentProto, and HTTP-specific review of the transport-neutral core and RFC 9457 binding, then send a fresh checklist-complete Independent Stream request",
+      "next_action": "Published August 10; use -05 as the refusal-state, retry-pacing, bounded-state, and replay-domain baseline while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4582,9 +4582,9 @@
     },
     {
       "identifier": "draft-schrock-ep-authorization-receipts",
-      "revision_at_snapshot": "10",
+      "revision_at_snapshot": "11",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published August 6; use -10 for the Standards Track receipt profile, normative CAID mapping, presentation binding, and the media-type request",
+      "next_action": "Published August 10; use -11 for the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4694,7 +4694,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-08-08",
+    "updated": "2026-08-10",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -4713,10 +4713,10 @@
           "order": 1,
           "label": "Authorization Receipts",
           "draft": "draft-schrock-ep-authorization-receipts",
-          "revision": "10",
-          "source": "standards/posted/draft-schrock-ep-authorization-receipts-10.xml",
+          "revision": "11",
+          "source": "standards/posted/draft-schrock-ep-authorization-receipts-11.xml",
           "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-          "snapshot_sha256": "4800fffb1d03df4aaef95bde97f2cdf9c4e4821b406068c5deca544b5a218d43",
+          "snapshot_sha256": "7dc112e2481b03dc4e017216c168e143cb32b878e70265f2a0402e483bea1a45",
           "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
           "boundary": "One approval-evidence profile and extension seam; it does not establish scoped authority or evidence satisfaction by itself."
         },

@@ -345,6 +345,7 @@ export function verifyResolutionReceipt(receipt, opts = {}) {
         if (!checks.origin)
             return refuse('webauthn_origin_not_allowed', checks, outcome);
         const signoff = verifyWebAuthnSignoff(receipt.signoff, pinnedPublicKey, {
+            mode: 'relying-party',
             rpId: opts.rpId,
             allowedOrigins: opts.allowedOrigins,
         });

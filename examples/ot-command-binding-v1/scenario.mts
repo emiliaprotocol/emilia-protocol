@@ -267,8 +267,8 @@ export function createEnforcementPoint(transport: string, {
     advanceSeconds(seconds: number) { clock.ms += seconds * 1000; },
     /** Mint an operator authorization for this enforcement point's exact command. */
     authorize() { return harness.mint({ outcome: 'allow_with_signoff' }); },
-    /** Raw store state for a receipt id: undefined, a reservation, or committed. */
-    async storeState(receiptId: string) { return backend.get(receiptId); },
+    /** Raw store state for the exact tenant-scoped key returned by Gate. */
+    async storeState(consumptionKey: string) { return backend.get(consumptionKey); },
   };
 }
 
@@ -335,6 +335,7 @@ async function dispatch(point: any, {
     terminal_outcome: terminal ? terminal.emiliaGateOutcome.outcome : null,
     terminal_execution: terminal ? terminal.emiliaGateOutcome.execution : null,
     receipt_id: authorization?.evidence?.receipt_id ?? null,
+    consumption_key: authorization?.evidence?.consumption_key ?? null,
     recorded_action_digest: authorization?.evidence?.observed_action_hash
       ? `sha256:${authorization.evidence.observed_action_hash}`
       : null,
@@ -610,7 +611,8 @@ async function sceneUnresolvedAfterDispatch(): Promise<any> {
   point.device.goQuiet();
   const dispatched = await dispatch(point, { action: point.action, receipt: authorization, attemptRef: held.attempt_ref });
 
-  const storeAfter = await point.storeState(receiptId);
+  const consumptionKey = dispatched.consumption_key;
+  const storeAfter = await point.storeState(consumptionKey);
   const executionRecords = point.evidenceLog.all().filter((record: any) => record.kind === 'execution');
   const indeterminateRecord = executionRecords.find((record: any) => record.outcome === 'indeterminate') ?? null;
 
@@ -665,7 +667,9 @@ async function sceneUnresolvedAfterDispatch(): Promise<any> {
     },
     consumption_store: {
       receipt_id: receiptId,
-      // Read straight out of the store backend, not out of a printed line.
+      consumption_key: consumptionKey,
+      // Read straight out of the store backend using the exact tenant-scoped
+      // key Gate returned, not a bare receipt id or a printed line.
       state: storeAfter === undefined ? 'unseen' : String(storeAfter),
       committed: storeAfter === 'committed:v2',
       returned_to_pool: storeAfter === undefined,
@@ -700,7 +704,8 @@ async function sceneUnresolvedAfterDispatch(): Promise<any> {
       device_entered: noAck.device_entered,
       terminal_outcome: noAck.terminal_outcome,
       reason: noAck.reason,
-      store_state: String(await noAckPoint.storeState(noAckAuthorization.payload.receipt_id)),
+      consumption_key: noAck.consumption_key,
+      store_state: String(await noAckPoint.storeState(noAck.consumption_key)),
     },
     device_command_count: commandsAfterRetry,
   };
@@ -762,7 +767,8 @@ async function sceneSpentOnce(): Promise<any> {
       still_inside_freshness_window: ageSecondsAtReplay < MAX_AGE_SEC,
       replay_allowed: replay.ok,
       replay_reason: replay.reason,
-      store_state: String(await spentPoint.storeState(spentId)),
+      consumption_key: firstUse.consumption_key,
+      store_state: String(await spentPoint.storeState(firstUse.consumption_key)),
       device_entered_on_replay: replay.device_entered,
       device_command_count_unchanged: spentPoint.device.commandCount === commandsBeforeReplay,
       freshness_verdict_ok: freshnessAtReplay.ok === true,

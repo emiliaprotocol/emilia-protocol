@@ -10,10 +10,11 @@ including the three coauthored records.
 
 Do not upload a file from this directory as a new draft. Maintenance revisions
 may be prepared in `../staged/`, rendered and tested, then filed through the
-Datatracker. The August 3 packet, four isolated August 6 packets, and two
-isolated August 8 packets are retained exact-submission provenance. Despite
-retained `UPLOAD-THIS` directory names, they are not upload candidates or a
-filing queue.
+Datatracker. The August 3 packet, four isolated August 6 packets, two isolated
+August 8 packets, and the isolated Authorization Receipts-11 and
+AE-CHALLENGE-05 packets from August 10 are
+retained exact-submission provenance. Despite retained `UPLOAD-THIS` directory
+names, they are not upload candidates or a filing queue.
 
 Posted snapshots are immutable publication records. Implementation-status text
 inside a posted revision reflects the state described when that revision was
@@ -32,7 +33,7 @@ before promotion. TXT and HTML snapshots are conveniences; the archive is
 authoritative for rendered forms.
 
 - `draft-ferro-schrock-memory-projection-record-01`
-- `draft-schrock-ae-challenge-03`
+- `draft-schrock-ae-challenge-05`
 - `draft-schrock-action-evidence-boundary-03`
 - `draft-schrock-action-remedy-receipts-00`
 - `draft-schrock-agent-qualification-statements-00`
@@ -41,7 +42,7 @@ authoritative for rendered forms.
 - `draft-schrock-ep-architecture-02`
 - `draft-schrock-ep-authority-introduction-03`
 - `draft-schrock-ep-authorization-evidence-chain-05`
-- `draft-schrock-ep-authorization-receipts-10`
+- `draft-schrock-ep-authorization-receipts-11`
 - `draft-schrock-ep-bounded-capability-receipts-03`
 - `draft-schrock-ep-bounded-execution-program-00`
 - `draft-schrock-ep-evidence-record-01`
@@ -57,9 +58,9 @@ authoritative for rendered forms.
 
 For reader navigation, the canonical evidence path is:
 
-1. [Authorization Receipts-10](draft-schrock-ep-authorization-receipts-10.xml)
+1. [Authorization Receipts-11](draft-schrock-ep-authorization-receipts-11.xml)
    defines the action-bound approval-evidence profile. The current posted
-   revision is -10 and the exact posted source matches the Datatracker submission.
+   revision is -11 and the exact posted source matches the Datatracker submission.
 2. [Human Authorization Binding-00](draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact into an adjacent host record.
 3. [Authority Introduction-03](draft-schrock-ep-authority-introduction-03.xml)
@@ -116,7 +117,7 @@ August 1, 2026.
 
 ## August 3, 2026 publication set
 
-The following current XML snapshots were verified byte-for-byte against the
+The following XML snapshots were verified byte-for-byte against the
 immutable IETF archive before promotion into this directory:
 
 - `draft-schrock-action-evidence-boundary-03`
@@ -127,7 +128,7 @@ immutable IETF archive before promotion into this directory:
 - `draft-schrock-model-to-matter-03`
 
 Their exact submitted bytes remain in `../staged/UPLOAD-THIS/` as publication
-provenance, not as upload candidates. Authorization Receipts-10 is the current
+provenance, not as upload candidates. Authorization Receipts-11 is the current
 posted receipt revision in this inventory.
 
 ## August 6, 2026 maintenance set
@@ -145,7 +146,7 @@ review renders, checksums, and validation records as publication provenance.
 
 ## August 8, 2026 maintenance set
 
-The following current XML snapshots were verified byte-for-byte against the
+The following XML snapshots were verified byte-for-byte against the
 immutable IETF archive before promotion into this directory:
 
 - `draft-schrock-ae-challenge-03`
@@ -155,3 +156,17 @@ The retained `../staged/NEXT-AE-CHALLENGE-03` and
 `../staged/NEXT-BOUNDED-CAPABILITY-03` packets preserve the exact submitted
 XML, review renders, validation records, and correspondence text as publication
 provenance.
+
+## August 10, 2026 maintenance set
+
+The following current XML snapshots, and the AE Challenge TXT snapshot, were verified byte-for-byte
+against the immutable IETF archive before promotion into this directory:
+
+- `draft-schrock-ep-authorization-receipts-11`
+- `draft-schrock-ae-challenge-05`
+
+The retained `../staged/NEXT-AUTHORIZATION-RECEIPTS-11` and
+`../staged/NEXT-AE-CHALLENGE-05` packets preserve the exact submitted XML,
+review renders, validation records, and checksums as publication provenance.
+The superseded `draft-schrock-ep-authorization-receipts-10` and
+`draft-schrock-ae-challenge-03` snapshots are retained in `../archive/`.
