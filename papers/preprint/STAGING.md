@@ -1,7 +1,7 @@
 # Preprint staging: Action-Bound Injective Authorization
 
-**Status: NOT APPROVED TO POST OR RESUBMIT. IACR SUBMISSION REJECTED; MATERIAL
-SECURITY-ARGUMENT REPAIR IN PROGRESS.**
+**Status: APPROVED FOR IACR RESUBMISSION AFTER MATERIAL SECURITY-ARGUMENT
+REPAIR; COMPLETE LOCAL PACKAGE GATES PASSED ON 10 AUGUST 2026.**
 Historical submission `xxxx/110952` was received on 5 August 2026 PT and rejected
 on 6 August 2026 with the editor's note: "Unclear or insufficient contribution
 to the field of cryptology." No public ePrint number was assigned. The revised
@@ -13,15 +13,15 @@ package responds materially: it defines the Action-Bound Injective Authorization
 non-cryptographic assumptions, removes replay properties that had been assumed
 as Tamarin restrictions, uses linear protocol state instead, and adds a shared,
 independently issued authorization instance to prevent cross-ceremony quorum
-splicing. These repairs must pass the complete local package gates before any
-new submission is considered. The rejection remains a venue decision rather
+splicing. The repaired package passed `preprint:build`, `check:preprint`, and
+`test:preprint` on 10 August 2026. The rejection remains a venue decision rather
 than peer review, but its security-argument criticism is treated as correct.
 
 The exact PDF submitted as `xxxx/110966` is preserved by git commit `a56b0bea`
 with SHA-256 `99d667231d9c596920bdf8ad7c445a26d7211e84606b6bd2b0ca8b27114449e5`.
 The current working source is materially different from the rejected package.
-It has not been resubmitted, and no generated PDF is an approved submission
-artifact until the gates below pass against a clean reviewed commit.
+The checked submission artifact is `main.pdf`, 27 pages, SHA-256
+`f851d7e8a7ccf472d22a04eef8707743d446d30300d2c7d48cf505d4bea2bc9b`.
 
 **Venue:** arXiv (cs.CR) is locked for this topic for us and requires an
 endorsement we do not have, so this package targets the **IACR Cryptology ePrint
@@ -83,7 +83,7 @@ source with the same Tectonic toolchain are byte-identical.
 3. Publication history: major revision of the earlier Zenodo preprint,
    DOI `10.5281/zenodo.21520973`.
 4. License: CC BY.
-5. PDF: the checker-gated 25-page `main.pdf` in this directory.
+5. PDF: the checker-gated 27-page `main.pdf` in this directory.
 6. Prior submission: `xxxx/110966`; author email ownership was confirmed, then
    the package was rejected. The private confirmation code remains only in the
    author's IACR email, not this repo.
@@ -99,7 +99,7 @@ DOI. Other options if ever needed: TechRxiv (IEEE), HAL, OSF Preprints.
 ## Numbers all trace to repo artifacts (no invented figures)
 
 - Conformance 21 suites / 331 vectors → `conformance/conformance-manifest.json`.
-- Current cited drafts → `standards/STATUS.json`: Authorization Receipts -10,
+- Current cited drafts → `standards/STATUS.json`: Authorization Receipts -11,
   Quorum -03, Authorization Evidence Chain -05, Evidence Record -01.
 - Tamarin core/quorum/composed lemma blocks → `formal/PROOF_STATUS.md` (verbatim);
   20 composed obligations + 8 deliberate falsifications → `lib/proof-stats.json`.

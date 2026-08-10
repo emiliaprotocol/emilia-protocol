@@ -7,7 +7,7 @@ ORCID: [0009-0004-0290-5433](https://orcid.org/0009-0004-0290-5433)
 
 *Preprint. August 2026.*
 
-*The construction analyzed here is also specified, in engineering form, as a set of individual Internet-Drafts (draft-schrock-ep-authorization-receipts-10 and companions). Those are individual submissions with no working-group status; this paper is self-contained and does not depend on them.*
+*The construction analyzed here is also specified, in engineering form, as a set of individual Internet-Drafts (draft-schrock-ep-authorization-receipts-11 and companions). Those are individual submissions with no working-group status; this paper is self-contained and does not depend on them.*
 
 ---
 
@@ -571,7 +571,7 @@ The following are published under the Apache-2.0 license in the EMILIA Protocol 
 
 ## References
 
-- I. Schrock, "Authorization Receipts for High-Risk Agent Actions," Internet-Draft draft-schrock-ep-authorization-receipts-10, work in progress, August 2026.
+- I. Schrock, "Authorization Receipts for High-Risk Agent Actions," Internet-Draft draft-schrock-ep-authorization-receipts-11, work in progress, August 2026.
 - I. Schrock, "Multi-Party Human Authorization (EP-QUORUM)," Internet-Draft draft-schrock-ep-quorum-03, work in progress, July 2026.
 - I. Schrock, "Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)," Internet-Draft draft-schrock-ep-authorization-evidence-chain-05, work in progress, August 2026.
 - I. Schrock, "Long-Term Evidence Records for Authorization Receipts (EP-EVIDENCE-RECORD)," Internet-Draft draft-schrock-ep-evidence-record-01, work in progress, July 2026.
