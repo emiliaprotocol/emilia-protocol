@@ -124,8 +124,19 @@ export declare function verifyMerkleAnchor(leafHash: string, proof: any[], expec
  *     signature: string,           // b64u (DER ECDSA)
  *   }
  * }
+ * `opts.mode` selects the verification posture:
+ *   - 'relying-party': an authoritative relying-party check. `rpId` AND
+ *     `allowedOrigins` are REQUIRED; omitting either fails the verdict with
+ *     'rp_pins_required' and `checks.rp_id_hash === false`. This makes it
+ *     impossible for a caller that intends an authoritative check to silently
+ *     skip origin/rp scoping by forgetting the pins.
+ *   - 'offline-integrity' (default): today's portable integrity check —
+ *     challenge/action/nonce binding, ceremony type, UP/UV flags, and the
+ *     device signature are verified; origin is asserted only when the caller
+ *     supplies pins, and `checks.rp_id_hash` stays null when unpinned.
+ *
  * @param {string} approverPublicKeySpkiB64u - enrolled P-256 key, SPKI DER b64u
- * @param {{ rpId?: string, allowedOrigins?: string[] }} [opts]
+ * @param {{ rpId?: string, allowedOrigins?: string[], mode?: 'relying-party'|'offline-integrity' }} [opts]
  * @returns {{ valid: boolean, checks: object, error?: string }}
  */
 export declare function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: string, opts?: any): Obj;

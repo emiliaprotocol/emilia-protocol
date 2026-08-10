@@ -622,6 +622,7 @@ export async function verifyPolicyRolloutAuthorization({
     decision: approvedState,
     approverPublicKeySpki: publicKey,
     expectedActionHash: shaped.actionHash,
+    mode: 'relying-party',
     rpId: rpConfig.rpID,
     allowedOrigins: [rpConfig.origin],
   });

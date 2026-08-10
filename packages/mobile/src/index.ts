@@ -861,6 +861,7 @@ export async function verifyMobileCeremony({
     if (!checks.origin) return refused('refuse_origin', 'WebAuthn origin is not pinned by the reliance profile', checks);
 
     const webauthn = verifyWebAuthnSignoff(response.signoff, enrollment.public_key_spki, {
+      mode: 'relying-party',
       rpId: profile.rp_id,
       allowedOrigins: profile.allowed_origins,
     });

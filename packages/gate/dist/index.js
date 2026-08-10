@@ -32,7 +32,7 @@ import { verifyWebAuthnSignoff, verifyQuorum } from '@emilia-protocol/verify';
 import { MemoryConsumptionStore, isSecureConsumptionStore } from './store.js';
 import { canonicalEvidenceJson, createAtomicEvidenceLog, createEvidenceLog, createMemoryAtomicEvidenceBackend, } from './evidence.js';
 import { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest } from './action-packs.js';
-import { hashCanonical, verifyExecutionBinding } from './execution-binding.js';
+import { canonicalize as canonicalizeExecutionBinding, hashCanonical, verifyExecutionBinding } from './execution-binding.js';
 import { buildReliancePacket, ADMISSIBILITY_VERDICTS } from './reliance-packet.js';
 import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR } from './eg1-conformance.js';
 import { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
@@ -146,6 +146,30 @@ function safeCanonicalHash(value) {
     catch {
         return null;
     }
+}
+/**
+ * One-time consumption keys are canonically tenant-scoped: the store key is
+ * canonicalize([tenant_id, receipt_id]) — the same composite-key
+ * canonicalization the consequence actuator uses for its (tenant, nonce)
+ * reservation key. Receipt ids are issuer-unique and the signed tenant is
+ * pinned upstream (verifyBusinessAuthorization) when a business requirement is
+ * configured, so today this changes no verdict for correct callers; it makes a
+ * future shared-store or non-unique-receipt-id regression collide per tenant
+ * instead of enabling cross-tenant replay. A receipt without an unambiguous
+ * signed tenant is keyed under the JSON-null tenant component — still a closed
+ * keyspace, and never able to collide with a named tenant's keys (canonicalize
+ * JSON-escapes both components, so no crafted receipt_id can forge the
+ * composite of another tenant).
+ *
+ * MIGRATION NOTE: stores written by pre-composite gates hold bare receipt_id
+ * keys, which the composite keyspace does not consult. On upgrade, a receipt
+ * consumed under the old key format and still inside the gate's maxAgeSec
+ * window could be accepted once more; deployments that cannot tolerate that
+ * bounded window should drain in-flight receipts (or refuse for one maxAgeSec
+ * interval) when rolling this out. Fresh stores are unaffected.
+ */
+function consumptionScopeKey(tenantId, receiptId) {
+    return canonicalizeExecutionBinding([nonEmptyString(tenantId) ? tenantId : null, receiptId]);
 }
 /**
  * Capability spending is intentionally bound to the executor's observed
@@ -285,6 +309,13 @@ export function receiptAssuranceTier(doc, opts = {}) {
     // --- Path (b): self-contained embedded per-signer evidence (DoD audit fix). ---
     const p = doc?.payload || {};
     const verifyOpts = {
+        // With relying-party pins present this is an authoritative check and the
+        // verifier must refuse if the pins ever go missing mid-refactor. Without
+        // pins the tier evaluator runs its documented offline-integrity posture
+        // (pin-less tier diagnostics; class_a+ requirements are separately fenced
+        // by the assurance_context_unpinned refusal in check()).
+        ...(opts.rpId && Array.isArray(opts.allowedOrigins) && opts.allowedOrigins.length > 0
+            ? { mode: 'relying-party' } : {}),
         ...(opts.rpId ? { rpId: opts.rpId } : {}),
         ...(Array.isArray(opts.allowedOrigins) ? { allowedOrigins: opts.allowedOrigins } : {}),
     };
@@ -1065,21 +1096,26 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         if (!receiptId) {
             return decide(false, RECEIPT_REQUIRED_STATUS, 'receipt_rejected:missing_receipt_id');
         }
+        // Tenant-scoped composite key (see consumptionScopeKey). The tenant
+        // component is the receipt's SIGNED tenant identity — the same signed
+        // extraction verifyBusinessAuthorization pins — never a caller-supplied
+        // header. reserve/commit/release/consume all use this one key.
+        const consumptionKey = consumptionScopeKey(businessEvaluation.evaluated.tenant_id, receiptId);
         let fresh;
         if (consumptionMode === 'reserve') {
             if (typeof consumption.reserve !== 'function') {
-                return decide(false, RECEIPT_REQUIRED_STATUS, 'consumption_store_lacks_reserve', { consumption_key: receiptId });
+                return decide(false, RECEIPT_REQUIRED_STATUS, 'consumption_store_lacks_reserve', { consumption_key: consumptionKey });
             }
-            fresh = await consumption.reserve(receiptId);
+            fresh = await consumption.reserve(consumptionKey);
         }
         else if (consumptionMode === 'none') {
             fresh = true;
         }
         else {
-            fresh = await consumption.consume(receiptId);
+            fresh = await consumption.consume(consumptionKey);
         }
         if (!fresh) {
-            return decide(false, RECEIPT_REQUIRED_STATUS, 'replay_refused', { consumption_key: receiptId });
+            return decide(false, RECEIPT_REQUIRED_STATUS, 'replay_refused', { consumption_key: consumptionKey });
         }
         const allowExtra = {
             signer: v.signer,
@@ -1088,6 +1124,10 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             assurance_tier_source: 'cryptographic_verification',
             execution_binding: executionBinding,
             consumption_mode: consumptionMode,
+            // The exact store key this decision reserved/consumed, so commit/release
+            // later transition the SAME tenant-scoped key (never a re-derivation
+            // that could drift from what was reserved).
+            consumption_key: consumptionKey,
             ...(capability ? { capability: { ...capabilitySummary(capability, capability?.operationId), ...capabilityBinding } } : {}),
         };
         // Carry the admissibility block (from the presented packet) onto the decision
@@ -1468,6 +1508,10 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             return { ok: false, status: authorization.status, body: authorization.challenge, authorization };
         }
         const receiptId = authorization.evidence?.receipt_id;
+        // The tenant-scoped key check() reserved; commit/release must transition
+        // that exact key. Fall back to the bare receipt id only for evidence
+        // records produced before the composite keyspace existed.
+        const consumptionKey = authorization.evidence?.consumption_key ?? receiptId;
         const runtimeCycleId = authorization._runtime_cycle_id;
         const entryVerdict = await providerEntryVerdict({ authorization, selector, observedAction, capability: null });
         if (!entryVerdict.ok) {
@@ -1475,9 +1519,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             let transitionOk = disposition === 'hold';
             try {
                 if (disposition === 'burn')
-                    transitionOk = (await consumption.commit(receiptId)) === true;
+                    transitionOk = (await consumption.commit(consumptionKey)) === true;
                 if (disposition === 'release')
-                    transitionOk = (await consumption.release(receiptId)) === true;
+                    transitionOk = (await consumption.release(consumptionKey)) === true;
             }
             catch {
                 transitionOk = false;
@@ -1535,7 +1579,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             phase = 'effect_returned';
             runtimeMonitor?.effectReturned(runtimeCycleId);
             if (typeof consumption.commit === 'function')
-                await consumption.commit(receiptId);
+                await consumption.commit(consumptionKey);
             consumptionCommitted = true;
             phase = 'consumed';
             runtimeMonitor?.consumptionCommitted(runtimeCycleId);
@@ -1570,7 +1614,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             let consumptionError = null;
             if (!consumptionCommitted && phase !== 'reserved' && typeof consumption.commit === 'function') {
                 try {
-                    await consumption.commit(receiptId);
+                    await consumption.commit(consumptionKey);
                     consumptionCommitted = true;
                     phase = 'consumed';
                     runtimeMonitor?.consumptionCommitted(runtimeCycleId);
