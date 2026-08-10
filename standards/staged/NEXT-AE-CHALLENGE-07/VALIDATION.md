@@ -29,10 +29,20 @@ Validated on 2026-08-10 against
   claims. The jar matched repository-pinned SHA-256
   `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`.
 - Gate package: PASS, 326 passed, 0 failed, 12 environment-gated skips.
-- Focused packet, protocol-discipline, write-discipline, public-claim,
-  packed-export, formal-trace, and standalone-runtime gates: PASS.
-- Full repository test, build, clean-checkout security-case, and generated
-  proof-stat gates: pending the clean-commit reproducibility cycle.
+- Full repository suite: PASS, 8,763 passed, 0 failed, and 103 explicitly
+  environment-gated skips across 533 files, for 8,866 total cases.
+- Production `next build`: PASS. Existing unused-disable and module-style
+  warnings remain non-fatal and were not introduced by this candidate.
+- Executable security case: PASS from a clean reviewed commit, with 35 claims,
+  262 hashed evidence files, and release-byte reproducibility enforced.
+- Generated proof statistics: PASS against live re-execution with the
+  checksum-pinned TLC 2.19 jar; 8,866 cases, 20 verified Tamarin lemmas, 35
+  executable security claims, 331 current conformance vectors, and 359
+  external hostility cases.
+- Packet, protocol-discipline, write-discipline, public-claim, packed-export,
+  release-chain, LLM-context, formal-trace, and standalone-runtime gates:
+  PASS. Protocol discipline reports 15 pre-existing route-size warnings and
+  no critical findings.
 
 Revision -07 does not claim the reference implementation supplies the compound
 capacity transition, configurable cap buckets, self-describing issuance, or
