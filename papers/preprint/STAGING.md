@@ -38,7 +38,8 @@ mints a DOI, no scope moderation).
 | File | What it is | State |
 |---|---|---|
 | `main.tex` | Full LaTeX source carrying the canonical Markdown fingerprint and current repo evidence claims | Rebuilt locally; claim-checker gated |
-| `main.pdf` | Compiled PDF, built from `main.tex` with `tectonic` | Working copy only; not approved for submission |
+| `main.pdf` | Compiled PDF, built from `main.tex` with `tectonic` | Current working copy; may advance after the submitted artifact is preserved separately |
+| `submissions/xxxx-111011/main.pdf` | Exact PDF submitted and author-confirmed on 10 August 2026 | Immutable submission provenance; awaiting editor review |
 | `STAGING.md` | This checklist | — |
 
 The PDF is the artifact IACR ePrint and Zenodo both host directly (they do not
@@ -123,11 +124,16 @@ DOI. Other options if ever needed: TechRxiv (IEEE), HAL, OSF Preprints.
 
 - The prior paper was rejected by IACR and is not public; it did not receive a
   permanent `eprint.iacr.org/2026/NNNN` identifier.
-- The second package, `xxxx/110966`, was rejected. The current security analysis
-  is a material repair made after that decision and has not been submitted.
-- A future upload requires a clean reviewed commit, reproducible PDF build,
-  passing `npm run check:preprint` and `npm run test:preprint`, and fresh explicit
-  submission approval from the author.
+- The second package, `xxxx/110966`, was rejected. The materially repaired
+  security analysis was submitted and author-confirmed as `xxxx/111011` on
+  10 August 2026 and is awaiting editor review.
+- The exact submitted PDF and corresponding source are preserved under
+  `submissions/xxxx-111011/`. Repository evidence totals may advance in the
+  working `main.tex` and `main.pdf`; those working files must not be represented
+  as the bytes currently under IACR review.
+- No replacement upload should be made while `xxxx/111011` is under review
+  unless the editor requests one or the author explicitly withdraws and
+  approves a fresh submission.
 - The paper remains single-author: Iman Schrock, EMILIA Protocol, Inc. The
   external Rust verifier author remains an acknowledged external implementation
   party, not a co-author.
