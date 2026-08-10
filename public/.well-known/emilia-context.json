@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-10T09:55:00.208Z",
+  "evidence_snapshot_at": "2026-08-10T15:45:38.805Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "fdf3759e16710c09a486bd8fabf533b9d21be577cb54df04e1a78d3331ca48f2",
+    "input_digest_sha256": "4aca6d3bc72425a4e29a3263871568414200ead38b6b134eedf855da6e8c9d03",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "cdd7f6baa18ce8b0543fc6ecc9650be7f599d4b65608e0e5250f6cfa48d67835",
-        "bytes": 45818
+        "sha256": "cc567905b9e705aa7c5e81d94b2647870bde0c7e7c84cc5354110c904f0b179c",
+        "bytes": 46186
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "d1ba6abcfbb999ba142d035890bc7c26c06ea711f8e6cb1facd28c18253ba2c9",
+        "sha256": "90351de88cb4c0741562d3b964f925e0240174aaf2b7b80a1230c1534b44226c",
         "bytes": 4298
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "13d3a35fc6b2754a66ec4c70416c8ee3a7b5a83bea028fd819f23854e2b816e8",
+        "sha256": "bde10b42672a37d752d402ef75483476610e6cd37ac18a564dff37e8f1891312",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "0e193cf1da71791fc7211aab4ec5fb4ce57921c97c0d5542385830618101fa64",
+        "sha256": "67ac0a5f18b4497eaef0c4a5a3148c8d4fffd7184616d0301ee790e043d0a6e3",
         "bytes": 385871
       },
       {
@@ -72,10 +72,11 @@
     "name": "EMILIA",
     "category": "authority control plane for autonomous work",
     "core_line": "Protocol proves. Gate prevents.",
-    "summary": "EMILIA is the authority control plane for autonomous work. A human or institution defines a finite operating mandate once; agents work unattended inside it; EMILIA Gate enforces each consequential unit of work on protected executor paths. Gate verifies the authority and evidence the owner requires for the exact action, consumes accepted authority before provider entry, preserves executed or indeterminate outcomes, refuses blind replay, and treats any remedy as a new authorized action rather than rewritten history. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.",
+    "summary": "EMILIA is the authority control plane for autonomous work. A human or institution defines a finite operating mandate once; agents work unattended inside it; EMILIA Gate enforces each consequential unit of work on protected executor paths. Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems, then enforces them once at the executor. Gate verifies the authority and evidence the owner requires for the exact action, consumes accepted authority before provider entry, preserves executed or indeterminate outcomes, refuses blind replay, and treats any remedy as a new authorized action rather than rewritten history. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.",
     "message_order": [
       "Lead with EMILIA as the authority control plane for autonomous work and the finite operating mandate it enforces.",
       "Explain EMILIA Gate as the executor-side Consequence Firewall that enforces each consequential unit of work on covered paths.",
+      "Explain that Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems, then enforces them once at the executor; do not imply that EMILIA originated native authority.",
       "Explain EMILIA Protocol as the open, customer-pinned substrate underneath Gate.",
       "Explain EMILIA Approver only when an exact-action human ceremony is required by the mandate or local policy.",
       "Explain EMILIA Assurance Plane as scoped verification and re-performance, never self-declared certification.",
@@ -287,8 +288,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 8862,
-      "files": 532,
+      "total": 8865,
+      "files": 533,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -297,7 +298,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "cc0ec3e7b0a97eac45d9f06471b3af54d848cc522479438398b0e84e92164eb1",
+      "manifest_sha256": "d3df9af13e96ad4926f7a49dcd4a960aed71d79fb8a03fee15127ddddc2d2c14",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -329,7 +330,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "c4ae672c29a243940653fc5c0c0b3025b6a474726e98001a1b7e5fcedd1eede2",
+        "evidenceSha256": "548a5ab5f7becc61b35c4eee54e8279974de0cbc87cf2b50f6559375541d9236",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -399,7 +400,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "69b947cdf0d197dc7c36299058213c4ac9e8b7e27bed5861c29efa3043fa822a"
+      "evidence_bundle_sha256": "90d0596be786fbebea40c0cdb129ebcb9674b3ab4eab887fc36b103344e51c03"
     },
     "caid": {
       "core_vectors": 48,
