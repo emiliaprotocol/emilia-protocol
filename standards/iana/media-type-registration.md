@@ -22,7 +22,9 @@ document had not reached a publication-stage review. IANA advised that an
 Independent Stream document can be processed when it reaches IETF conflict
 review. The type is not registered. Revision -02 was published on 2026-08-07
 with the full permanent standards-tree template and Independent Stream
-metadata; the checklist-complete ISE submission is staged in Gmail and unsent.
+metadata. An Independent Stream request based on that revision was sent; the
+current -05 revision is published and retains the media-type withdrawal while
+Independent Stream review continues.
 The string was fixed by revision -02 text:
 `draft-schrock-ae-challenge-02`, Section 2, specifies that
 a challenge is "returned (in the HTTP binding) with status 428 and media type
