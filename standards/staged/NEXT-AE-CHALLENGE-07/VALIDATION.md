@@ -36,15 +36,16 @@ Validated on 2026-08-10 against XML SHA-256
 - Executable security case from committed private bytes: PASS, 35 executable
   claims and 262 hashed evidence files, including release-byte
   reproducibility.
+- Full repository suite: PASS, 8,774 passed, 103 explicitly environment-gated
+  skips, and 0 failed across 534 test files.
 - Independent protocol-logic re-audit of the exact XML above: no remaining
   Critical or High finding after collision-resistant body-digest pins,
   security-semantic version pins, expiry tombstones, anonymous-profile
   consistency, bounded DoS wording, and local-only assurance wording were
   repaired.
 
-Not run or claimed in this record: the full repository test suite, production
-`next build`, remote CI, external interoperability, or independent
-implementation.
+Not run or claimed in this record: production `next build`, remote CI,
+external interoperability, or independent implementation.
 
 Revision -07 does not claim that a current reference backend implements the
 normative compound claim-and-capacity transition. Production evaluation fails
