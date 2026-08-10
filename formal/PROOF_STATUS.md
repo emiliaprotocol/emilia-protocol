@@ -492,7 +492,7 @@ counterexample and `showChain` satisfiable in the 2026-07-18 CI-gated run.
 
 ## Tamarin (symbolic, Dolev-Yao) : `tamarin/ep_receipt_core.spthy`
 
-**Status: first symbolic-crypto model, machine-checked 2026-07-05** (tamarin-prover 1.10.0,
+**Status: repaired symbolic-crypto model, machine-checked 2026-08-09** (tamarin-prover 1.10.0,
 Maude 3.4, via Docker; full tool output and the re-run one-liner are in `formal/tamarin/README.md`).
 Unlike the TLA+/Alloy models above, this model does NOT treat "signature verifies" as an axiom:
 it runs a Dolev-Yao attacker (full network control, may request the human to sign other actions,
@@ -501,18 +501,20 @@ explicit key-compromise rule) against the core receipt lemma.
 Verbatim tool summary:
 
 ```
-executable_honest_receipt (exists-trace): verified (8 steps)
-core_authenticity_uv_gated (all-traces): verified (12 steps)
-no_replay_across_actions (all-traces): verified (12 steps)
-injective_acceptance_with_consumption (all-traces): verified (6 steps)
-unchecked_acceptance_is_injective (all-traces): falsified - found trace (10 steps)
+executable_honest_receipt (exists-trace): verified (9 steps)
+core_authenticity_uv_gated (all-traces): verified (11 steps)
+no_replay_across_actions (all-traces): verified (11 steps)
+injective_acceptance_with_consumption (all-traces): verified (11 steps)
+unchecked_acceptance_is_injective (all-traces): falsified - found trace (11 steps)
 ```
 
 The falsified lemma is a deliberate, by-design result: it asserts injective acceptance WITHOUT a
 consumption check, and Tamarin's counterexample is a same-receipt replay (the one honest receipt
-delivered twice; no forgery, no key reveal). Adding the one-time-consumption restriction restores
-injectivity, which Tamarin proved. The model thereby demonstrates mechanically that one-time
-consumption is load-bearing, not defense-in-depth.
+delivered twice; no forgery, no key reveal). The checked rule consumes a linear
+`AdmissionAvailable` fact created once for the fresh signed context, and no rule recreates it.
+Injectivity is therefore derived from protocol state rather than imposed by a trace restriction.
+The model demonstrates mechanically that one-time consumption is load-bearing, not
+defense-in-depth.
 
 **Scoped out (stated in the model header):** the Approver Directory / Merkle log / checkpoints
 (pinning is one out-of-band step), WebAuthn attestation internals (user verification is assumed as
@@ -525,33 +527,33 @@ composition under a symbolic prover remains future work.
 
 ## Tamarin (symbolic, Dolev-Yao) : `tamarin/ep_quorum_core.spthy`
 
-**Status: second symbolic-crypto model, machine-checked 2026-07-06** (tamarin-prover 1.10.0,
+**Status: repaired symbolic-crypto model, machine-checked 2026-08-09** (tamarin-prover 1.10.0,
 Maude 3.4, via Docker; full tool output, the falsification history, and the re-run one-liner are
 in `formal/tamarin/README.md`). Layers m-of-n quorum, in the smallest non-trivial instance
 (2-of-2), on top of the same UV-gated signature machinery proven in `ep_receipt_core.spthy`.
 It does NOT re-prove the single-signature core lemma; it assumes the per-signature core
 guarantees and asks whether a satisfied 2-of-2 quorum necessarily consists of two distinct
-UV-gated signatures over the same action, and whether an initiator can count toward its own
-quorum. Same Dolev-Yao attacker as the core model, additionally choosing which action goes up
-for quorum and which identity is named the initiator.
+UV-gated signatures over the same action and shared authorization instance, and whether an
+initiator can count toward its own quorum. Same Dolev-Yao attacker as the core model,
+additionally choosing which action goes up for quorum and which identities are requested.
 
 Verbatim tool summary:
 
 ```
-executable_quorum (exists-trace): verified (12 steps)
-quorum_requires_two_distinct_uv_gated_signatures (all-traces): verified (20 steps)
+executable_quorum (exists-trace): verified (13 steps)
+quorum_requires_two_distinct_uv_gated_signatures (all-traces): verified (27 steps)
 initiator_cannot_self_approve (all-traces): verified (4 steps)
 no_single_signer_fills_quorum (all-traces): verified (4 steps)
-commit_requires_signature_over_that_action (all-traces): verified (7 steps)
+commit_requires_signature_over_that_action (all-traces): verified (8 steps)
 ```
 
 | Lemma                                              | Result   | Meaning                                                                                                                                       |
 | -------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `executable_quorum`                                | verified | A 2-of-2 quorum can commit with two distinct honest UV-gated approvers, neither the initiator, no key compromise (model not vacuous).         |
-| `quorum_requires_two_distinct_uv_gated_signatures` | verified | Any commit of action a with uncompromised approvers H1, H2 forces H1 != H2 and a UV-then-signature over exactly a by each, before the commit. |
+| `quorum_requires_two_distinct_uv_gated_signatures` | verified | Any commit of (action a, authorization instance q) with uncompromised approvers H1, H2 forces H1 != H2 and a UV-then-signature over exactly (a, q) by each, before commit. |
 | `initiator_cannot_self_approve`                    | verified | No commit names the initiator as either approver (Section 6 SelfApprovalImpossible / G4); the initiator identity is attacker-chosen.          |
 | `no_single_signer_fills_quorum`                    | verified | The two committing approvers are never the same identity (distinct pinned keys entail distinct enrolled identities).                          |
-| `commit_requires_signature_over_that_action`       | verified | No commit of a while an uncompromised named approver never signed exactly a; rules out transplanting a signature over any other action.       |
+| `commit_requires_signature_over_that_action`       | verified | No commit of (a, q) while an uncompromised named approver never signed exactly (a, q); rules out action and cross-ceremony transplanting.       |
 
 **Falsification history (honest record):** an earlier revision of this model omitted the
 initiator identity from the signed Authorization Context. Under that revision Tamarin FALSIFIED
@@ -559,8 +561,10 @@ initiator identity from the signed Authorization Context. Under that revision Ta
 approvers signed action a under one initiator label and the executor committed a under a different
 one, because the approver signatures were not tied to the committing initiator. The fix was
 spec-faithful, not a lemma weakening: bind the initiator into the signed context
-(`<'ep_signoff_v1', h(action), initiator, nonce>`, per Section 3), after which all five lemmas
-verify. The falsification identified a load-bearing binding.
+(`<'ep_signoff_v1', h(action), initiator, authorization_instance, nonce>`),
+after which all five lemmas verify. The repaired model creates one fresh shared
+authorization instance per quorum request, preventing cross-ceremony signoff
+splicing. The falsification identified a load-bearing binding.
 
 **Scoped out (stated in the model header):** COLLUSION, one-human-many-identities, and COERCION
 (Section 11.7 is explicit that separation of duties guarantees distinct signing IDENTITIES, not two
@@ -579,7 +583,7 @@ publication, Merkle-log mechanics, arbitrary k-of-n, and wall-clock semantics re
 
 ## Tamarin (symbolic, Dolev-Yao) : `tamarin/ep_reliance_composed.spthy`
 
-**Status: composed acceptance path, machine-checked 2026-07-10.** This model
+**Status: composed acceptance path, repaired and machine-checked 2026-08-09.** This model
 puts signed challenge, computed CAID, exact profile/audience/initiator binding,
 two distinct UV-gated approvals, scoped authority under an exact pinned registry
 epoch/head, revocation state, pinned receipt issuer, one-time consumption, and
@@ -588,16 +592,16 @@ SHA-256, command, and exact output summary are recorded in
 `formal/tamarin/results/ep_reliance_composed.summary.txt` and re-run by CI.
 
 ```
-executable_composed_reliance (exists-trace): verified (19 steps)
-execution_requires_full_composition (all-traces): verified (97 steps)
+executable_composed_reliance (exists-trace): verified (20 steps)
+execution_requires_full_composition (all-traces): verified (101 steps)
 caid_binds_family_and_material (all-traces): verified (2 steps)
 initiator_cannot_self_approve (all-traces): verified (4 steps)
 no_single_signer_fills_quorum (all-traces): verified (2 steps)
-no_issuer_laundering (all-traces): verified (781 steps)
+no_issuer_laundering (all-traces): verified (785 steps)
 strict_registry_view_is_exact (all-traces): verified (25 steps)
-no_cross_action_profile_or_audience_replay (all-traces): verified (37 steps)
-execution_has_honest_approvals_or_prior_compromise (all-traces): verified (170 steps)
-injective_execution_with_consumption (all-traces): verified (2 steps)
+no_cross_action_profile_or_audience_replay (all-traces): verified (41 steps)
+execution_has_honest_approvals_or_prior_compromise (all-traces): verified (178 steps)
+injective_execution_with_consumption (all-traces): verified (250 steps)
 unchecked_composition_is_injective (all-traces): falsified - found trace (31 steps)
 unchecked_registry_view_is_current (all-traces): falsified - found trace (20 steps)
 ```
@@ -614,7 +618,7 @@ downstream exactly-once effects.
 
 ## Tamarin (symbolic, Dolev-Yao) : `tamarin/ep_six_claim_composed.spthy`
 
-**Status: six dedicated protocol obligations, machine-checked 2026-07-24.**
+**Status: six dedicated protocol obligations, repaired and machine-checked 2026-08-09.**
 This companion model replaces six broad lemma references with exact obligations
 for Class-A downgrade refusal, signed denial as non-authorizing evidence,
 scoped authority pins, complete reliance-profile pins,

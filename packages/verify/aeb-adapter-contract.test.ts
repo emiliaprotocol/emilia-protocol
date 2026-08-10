@@ -11,6 +11,7 @@ import {
   adapterPinDigest,
   canonicalizeAeb,
   digestAeb,
+  digestAebTyped,
   evaluateAebEvidence,
   mappingProfileDigest,
   registryEntryDigest,
@@ -1062,6 +1063,35 @@ test('execution verification is bound to the exact evaluation record consumed', 
   });
   assert.equal(decision.invoke_allowed, false);
   assert.equal(decision.reason, 'evaluation_verification_record_mismatch');
+});
+
+test('digestAeb bytes are compatibility-frozen (matches Go/Python ports and shipped vectors)', () => {
+  // The exact contract cross-language ports and conformance vectors depend on:
+  // sha256 over the canonical JSON encoding, hex, 'sha256:' prefix, NO domain
+  // prefix. If this assertion ever fails, digest bytes changed and every
+  // vector plus the Python/Go implementations would need a synchronized
+  // regeneration — do not "fix" this test, fix the digest.
+  const value = { b: 2, a: 1 };
+  const expected = `sha256:${crypto.createHash('sha256').update('{"a":1,"b":2}', 'utf8').digest('hex')}`;
+  assert.equal(digestAeb(value), expected);
+});
+
+test('digestAebTyped separates digest domains so shape-identical values cannot collide', () => {
+  const value = { id: 'x', amount: '10.00' };
+  const asAction = digestAebTyped(value, 'EP-AEB-ACTION-v1');
+  const asContext = digestAebTyped(value, 'EP-AEB-CONTEXT-v1');
+  // Same canonical bytes, different commitment types: never the same digest.
+  assert.notEqual(asAction, asContext);
+  // A typed digest never collides with the legacy raw digest either — the
+  // typed preimage carries a literal NUL separator canonical JSON cannot emit.
+  assert.notEqual(asAction, digestAeb(value));
+  assert.notEqual(asContext, digestAeb(value));
+  // Deterministic under a fixed tag.
+  assert.equal(asAction, digestAebTyped({ amount: '10.00', id: 'x' }, 'EP-AEB-ACTION-v1'));
+  // The tag must come from the closed AEB identifier alphabet.
+  assert.throws(() => digestAebTyped(value, ''), TypeError);
+  assert.throws(() => digestAebTyped(value, 'bad tag'), TypeError);
+  assert.throws(() => digestAebTyped(value, undefined as unknown as string), TypeError);
 });
 
 test('production execution requires durable ownership-fenced permanent custody', async () => {

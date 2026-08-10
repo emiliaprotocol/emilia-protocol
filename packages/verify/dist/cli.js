@@ -459,6 +459,7 @@ for (const file of files) {
         const key = findKey(doc, ['approver_public_key', 'public_key', 'publicKey']);
         result = key && suppliedRpId && suppliedAllowedOrigins.length > 0
             ? verifyWebAuthnSignoff(doc, key, {
+                mode: 'relying-party',
                 rpId: suppliedRpId,
                 allowedOrigins: suppliedAllowedOrigins,
             })

@@ -346,6 +346,7 @@ export async function POST(
           },
         });
         const verdict = canAccept(quorumPolicy, loaded.actionHash, existingMembers, incoming, {
+          mode: 'relying-party',
           rpId: rpID,
           allowedOrigins: [origin],
         });

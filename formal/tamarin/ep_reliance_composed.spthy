@@ -72,6 +72,7 @@ rule RP_Issue_Challenge:
                       <'caid_v1', family, h(material)>, profile, audience, ~nonce) ]->
     [ !OpenChallenge(RP, Init, family, material,
                      <'caid_v1', family, h(material)>, profile, audience, ~nonce)
+    , AdmissionAvailable(<RP, ~nonce>)
     , Out(<RP, Init, family, material, <'caid_v1', family, h(material)>,
            profile, audience, ~nonce,
            sign(<'ep_challenge_v2', RP, Init,
@@ -156,7 +157,8 @@ rule Verify_Consume_And_Execute:
     , !PinnedRPPk(V, RP, pkRP), !PinnedHumanPk(V, H1, pkH1)
     , !PinnedHumanPk(V, H2, pkH2), !PinnedIssuerPk(V, I, pkI)
     , !PinnedAuthorityPk(V, A, pkA), !PinnedRevokerPk(V, R, pkR)
-    , !PinnedRegistryView(V, A, epoch, head) ]
+    , !PinnedRegistryView(V, A, epoch, head)
+    , AdmissionAvailable(<RP, nonce>) ]
   --[ Eq(V, audience), Eq(caid, <'caid_v1', family, h(material)>)
     , Eq(verify(challengeSig,
                <'ep_challenge_v2', RP, Init, caid, profile, audience, nonce>, pkRP), true)
@@ -176,7 +178,7 @@ rule Verify_Consume_And_Execute:
                  challengeSig, humanSig1, humanSig2, authoritySig,
                  revocationSig>, pkI), true)
     , Neq(H1, H2), Neq(pkH1, pkH2), Neq(H1, Init), Neq(H2, Init)
-    , Consume(<RP, nonce>)
+    , AdmissionConsumed(<RP, nonce>)
     , AcceptedStrict(V, I, H1, H2, RP, Init, family, material, caid,
                      profile, nonce, A, R, epoch, head)
     , Executed(V, I, H1, H2, RP, Init, family, material, caid,
@@ -250,9 +252,6 @@ restriction Equality:
 
 restriction Inequality:
   "All x #i. Neq(x, x) @ #i ==> F"
-
-restriction ConsumeOnce:
-  "All x #i #j. Consume(x) @ #i & Consume(x) @ #j ==> #i = #j"
 
 restriction OneHumanEnrollment:
   "All H #i #j. RegisterHuman(H) @ #i & RegisterHuman(H) @ #j ==> #i = #j"

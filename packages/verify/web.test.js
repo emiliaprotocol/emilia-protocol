@@ -222,6 +222,63 @@ test('signoff: valid device assertion — both verifiers accept, identically', a
         allowedOrigins: ['https://www.emiliaprotocol.ai'],
     }, true);
 });
+test('signoff: relying-party mode with correct pins — both verifiers accept', async () => {
+    const { signoff, spki } = makeSignoff();
+    await assertEquivalentSignoff(signoff, spki, {
+        mode: 'relying-party',
+        rpId: 'emiliaprotocol.ai',
+        allowedOrigins: ['https://www.emiliaprotocol.ai'],
+    }, true);
+});
+test('signoff: relying-party mode with pins omitted fails closed, never open', async () => {
+    const { signoff, spki } = makeSignoff();
+    // No pins at all, rpId only, and origins only: each MUST refuse. A caller
+    // that intends an authoritative check can no longer silently skip origin
+    // scoping by forgetting a pin.
+    const optsVariants = [
+        { mode: 'relying-party' },
+        { mode: 'relying-party', rpId: 'emiliaprotocol.ai' },
+        { mode: 'relying-party', allowedOrigins: ['https://www.emiliaprotocol.ai'] },
+        { mode: 'relying-party', rpId: 'emiliaprotocol.ai', allowedOrigins: [] },
+    ];
+    for (const opts of optsVariants) {
+        const node = nodeV.verifyWebAuthnSignoff(signoff, spki, opts);
+        const web = await webV.verifyWebAuthnSignoff(signoff, spki, opts);
+        for (const r of [node, web]) {
+            assert.equal(r.valid, false);
+            assert.equal(r.error, 'rp_pins_required');
+            assert.equal(r.checks.rp_id_hash, false, 'requested-but-unperformable origin check must be false, not null');
+        }
+        assert.deepEqual(web.checks, node.checks);
+    }
+});
+test('signoff: relying-party mode refuses an origin outside the pin set', async () => {
+    const { signoff, spki } = makeSignoff();
+    await assertEquivalentSignoff(signoff, spki, {
+        mode: 'relying-party',
+        rpId: 'emiliaprotocol.ai',
+        allowedOrigins: ['https://attacker.example'],
+    }, false);
+});
+test('signoff: offline-integrity mode without pins keeps the documented integrity verdict', async () => {
+    const { signoff, spki } = makeSignoff();
+    const node = nodeV.verifyWebAuthnSignoff(signoff, spki, { mode: 'offline-integrity' });
+    const web = await webV.verifyWebAuthnSignoff(signoff, spki, { mode: 'offline-integrity' });
+    const legacy = nodeV.verifyWebAuthnSignoff(signoff, spki, {});
+    assert.equal(node.valid, true);
+    assert.equal(node.checks.rp_id_hash, null, 'unpinned offline-integrity asserts nothing about origin');
+    assert.deepEqual(web.checks, node.checks);
+    assert.deepEqual(node.checks, legacy.checks, 'explicit offline-integrity must equal the pre-mode default');
+});
+test('signoff: an unknown mode value is refused, not ignored', async () => {
+    const { signoff, spki } = makeSignoff();
+    const node = nodeV.verifyWebAuthnSignoff(signoff, spki, { mode: 'authoritative' });
+    const web = await webV.verifyWebAuthnSignoff(signoff, spki, { mode: 'authoritative' });
+    assert.equal(node.valid, false);
+    assert.equal(web.valid, false);
+    assert.match(String(node.error), /mode must be/);
+    assert.match(String(web.error), /mode must be/);
+});
 test('signoff: surfaces signCount and backup flags without putting numbers in checks', async () => {
     const { signoff, spki } = makeSignoff({ flags: 0x1d, signCount: 17 });
     const node = nodeV.verifyWebAuthnSignoff(signoff, spki, {
