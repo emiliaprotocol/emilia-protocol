@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-10T15:45:38.805Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "4aca6d3bc72425a4e29a3263871568414200ead38b6b134eedf855da6e8c9d03",
+    "input_digest_sha256": "691dfd8584c0a57a4474a7a01d796b716c9dc785785d622ce00779f01ced4648",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "ed7e769c768cdd2cb17ce896f845fdbc11706d4a250eac0196db32128120448c",
-        "bytes": 41225
+        "sha256": "d1fb6132c3c7118d73f70b52fba0d10472a6d24fcc5a0bacdefe51490d0c045b",
+        "bytes": 41671
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4511,9 +4511,9 @@
   "standards": [
     {
       "identifier": "draft-schrock-ae-challenge",
-      "revision_at_snapshot": "05",
+      "revision_at_snapshot": "06",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 10; use -05 as the refusal-state, retry-pacing, bounded-state, and replay-domain baseline while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues",
+      "next_action": "Published August 10; use -06 as the cap-first refusal, no-policy-hint overload, authoritative replay-owner, retry-pacing, and bounded-state baseline while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },

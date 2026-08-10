@@ -42,6 +42,17 @@ The following posted revisions were superseded on 2026-08-06 and moved here:
 - `draft-schrock-ep-bounded-capability-receipts-01`
 - `draft-schrock-model-to-matter-03`
 
+The following posted revisions were superseded on 2026-08-08 and moved here:
+
+- `draft-schrock-ae-challenge-02`
+- `draft-schrock-ep-bounded-capability-receipts-02`
+
+The following posted revisions were superseded on 2026-08-10 and moved here:
+
+- `draft-schrock-ae-challenge-03`
+- `draft-schrock-ae-challenge-05`
+- `draft-schrock-ep-authorization-receipts-10`
+
 `draft-schrock-authorization-evidence-challenge-01.html` is an unfiled
 rendering from the longer-named July 3 series that Datatracker marks replaced
 by Action Evidence Boundary. The active standalone challenge is the distinct

@@ -1,6 +1,9 @@
-# AE Challenge revision 06 upload packet
+# AE Challenge revision 06 publication-provenance packet
 
-Upload exactly:
+This isolated packet preserves the exact source and review artifacts for
+`draft-schrock-ae-challenge-06`, published on 2026-08-10. It is not an upload
+candidate; the immutable IETF archive is authoritative. The submitted source
+retained for provenance is:
 
 `UPLOAD-THIS/draft-schrock-ae-challenge-06.xml`
 
@@ -32,3 +35,7 @@ The packet preserves the existing OAuth non-substitution, DMSC ownership,
 retry-pacing, and bounded-state boundaries from -05. The implementation-status
 appendix states that the new -06 requirements are not yet implemented and makes
 no independent-implementation claim.
+
+The retained XML and TXT are byte-for-byte identical to the immutable IETF
+archive artifacts. The XML SHA-256 is
+`aa189344c491948a1df2d18d9bff529d696e618ebb2f73ebe607445031744433`.

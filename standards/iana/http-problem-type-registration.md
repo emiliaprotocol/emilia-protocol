@@ -1,6 +1,6 @@
 # Authorization Evidence Required HTTP Problem Type
 
-Backing specification: `draft-schrock-ae-challenge-05`, Sections 3 and 6.
+Backing specification: `draft-schrock-ae-challenge-06`, Sections 3 and 6.
 The draft is an individual Internet-Draft and is not IETF-adopted or endorsed.
 
 Registration policy: Specification Required under RFC 9457 Section 4.2 and
@@ -14,7 +14,7 @@ Action.
 
 **Recommended HTTP status code:** 403
 
-**Reference:** `draft-schrock-ae-challenge-05`
+**Reference:** `draft-schrock-ae-challenge-06`
 
 The problem indicates that an origin server refused an action because required
 authorization evidence is missing, stale, or unverifiable. The
