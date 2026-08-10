@@ -31,7 +31,7 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 |---|---|---|---|---|---|---|
 | 1 | `agent-action-control.json` | Well-Known URIs | draft-schrock-agent-action-manifest-00 (§3, §9) | **Requests registration** (fields in §9) | READY-ON-POST | Draft live on datatracker [verify posting after the 2026-07-06 batch upload] |
 | 2 | `authorization-evidence-required` | HTTP Problem Types | draft-schrock-ae-challenge-05 (§3, §6; published 2026-08-10) | **Requests registration** under Specification Required; reuses `application/problem+json` | CARRIED-BY-DRAFT | Continue focused HTTP and Independent Stream review; do not file a conflicting direct request |
-| 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-10 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
+| 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-11 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 4 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
 | 5 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | PROPOSED, requires draft text in next rev | Next-rev field definition; draft decides on any unprefixed successor |
 | 6 | `application/ep-aec+json` | Media Types | draft-schrock-ep-authorization-evidence-chain-01 (§10) | Illustrative only ("e.g.") | NOT PREPARED | Chain draft must pick and fix the string first |
@@ -66,7 +66,7 @@ registry, not IANA's.
 - **Community review (RFC 6838 §5.1):** post the completed template to the
   **media-types@iana.org** mailing list for review before or alongside the
   request. For standards-tree names this review is expected.
-- **Receipt media type:** revision -10 requests
+- **Receipt media type:** revision -11 requests
   `application/ep-authorization-receipt+json` and carries the complete
   template. Process it with the Standards Track document; do not revive the
   older `application/ep-receipt+json` preparation or file a conflicting direct
@@ -100,8 +100,8 @@ registry, not IANA's.
 ## Order of operations
 
 1. Verify each backing draft is live on Datatracker before citing it to IANA.
-2. For entry 2, obtain Agent2Agent, AgentProto, and HTTP-specific review of the
-   published AE Challenge -03, then send the fresh Independent Stream request. The
+2. For entry 2, continue Agent2Agent, AgentProto, HTTP-specific, and
+   Independent Stream review of the published AE Challenge -05. The
    only IANA allocation is Specification Required; do not reopen the retired
    media-type tickets or file a vendor-tree substitute.
 3. **File entry 1** (`agent-action-control.json`) only after re-verifying its
