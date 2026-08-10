@@ -46,6 +46,8 @@ export function buildOtCommandBindingVectors() {
         onTimeMs: dnp3.on_time_ms,
         offTimeMs: dnp3.off_time_ms,
     });
+    const dnp3Sequence0 = encodeDnp3ControlRelay(dnp3, { sequence: 0 });
+    const dnp3Sequence9 = encodeDnp3ControlRelay(dnp3, { sequence: 9 });
     const encodedOpcua = encodeOpcuaCall(opcua, { receipt: INLINE_REFERENCE });
     return {
         '@type': OT_COMMAND_BINDING_VECTOR_PROFILE,
@@ -112,7 +114,7 @@ export function buildOtCommandBindingVectors() {
                 transport_profile: TRANSPORT_PROFILES.dnp3,
                 action: dnp3,
                 action_digest: commandDigest(dnp3),
-                native_command: encodeDnp3ControlRelay(dnp3),
+                native_command: dnp3Sequence0,
                 link_context: {
                     fields: ['site', 'device', 'outstation_address'],
                     note: 'The pinned bytes begin at the application header; the conduit establishes the link-layer outstation address.',
@@ -122,7 +124,17 @@ export function buildOtCommandBindingVectors() {
                         'application_function', 'group', 'variation', 'index', 'control_octet',
                         'operation_count', 'on_time_ms', 'off_time_ms',
                     ],
-                    fixed_or_derived: ['application_control sequence', 'qualifier=0x17', 'object_count=1', 'status=0'],
+                    conduit_context: ['site', 'device', 'outstation_address'],
+                    correlation_only: ['application_control.sequence'],
+                    fixed_or_derived: [
+                        'application_control.FIR=1', 'application_control.FIN=1',
+                        'qualifier=0x17', 'object_count=1', 'status=0',
+                    ],
+                },
+                correlation_variant: {
+                    native_command: dnp3Sequence9,
+                    expected_action_digest: commandDigest(dnp3),
+                    note: 'Changing only the DNP3 application sequence changes the fragment bytes, not the physical act.',
                 },
                 profile_scope: {
                     direct_operate_supported: true,

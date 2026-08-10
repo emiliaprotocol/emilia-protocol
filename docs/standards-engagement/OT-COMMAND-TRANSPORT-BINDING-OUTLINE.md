@@ -92,6 +92,9 @@ on-time, and off-time. The qualifier object count is named separately from the
 CROB operation count. The fixed object space provides no authority-evidence
 envelope, so the initial profile uses detached evidence keyed by an
 authenticated conduit context, an attempt reference, and the action digest.
+The application sequence is correlation metadata: changing it changes the
+fragment bytes but not the admitted physical action. The FIR and FIN bits are
+fixed by this single-fragment profile.
 
 The initial vectors cover DIRECT_OPERATE and DIRECT_OPERATE_NR. Because the
 latter provides no protocol acknowledgement, a successful dispatch has an
@@ -123,6 +126,8 @@ A conforming implementation demonstrates at least the following:
   encoding-scoped rule;
 - changing the DNP3 application function, complete control octet, operation
   count, on-time, or off-time changes the action identifier;
+- changing only the DNP3 application sequence changes the fragment bytes but
+  not the action identifier;
 - two authorizations for the same exact action remain separately addressable by
   distinct conduit attempt references;
 - DNP3 DIRECT_OPERATE_NR enters the device and terminates `INDETERMINATE`;

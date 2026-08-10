@@ -184,12 +184,33 @@
           "on_time_ms",
           "off_time_ms"
         ],
+        "conduit_context": [
+          "site",
+          "device",
+          "outstation_address"
+        ],
+        "correlation_only": [
+          "application_control.sequence"
+        ],
         "fixed_or_derived": [
-          "application_control sequence",
+          "application_control.FIR=1",
+          "application_control.FIN=1",
           "qualifier=0x17",
           "object_count=1",
           "status=0"
         ]
+      },
+      "correlation_variant": {
+        "native_command": {
+          "transport": "dnp3",
+          "hex": "c9050c011701070301000000000000000000",
+          "octets": 18,
+          "crob_octets": 11,
+          "metadata_octets_available": 0,
+          "carries_authorization": false
+        },
+        "expected_action_digest": "sha256:307347d8dceae8464d8eadc76d50932116e6e20fe90687a56994881a0981cad1",
+        "note": "Changing only the DNP3 application sequence changes the fragment bytes, not the physical act."
       },
       "profile_scope": {
         "direct_operate_supported": true,

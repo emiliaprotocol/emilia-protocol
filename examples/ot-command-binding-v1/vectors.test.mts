@@ -64,6 +64,18 @@ test('Modbus correlation changes native bytes without changing the action', () =
   assert.equal(commandDigest(decodeModbusWriteRegister(vector.correlation_variant.native_command.hex, link)), vector.action_digest);
 });
 
+test('DNP3 application sequence changes native bytes without changing the action', () => {
+  const vector = pinned.vectors.find((candidate: any) => candidate.id === 'dnp3-direct-operate-crob-v1');
+  assert.notEqual(vector.native_command.hex, vector.correlation_variant.native_command.hex);
+  const link = {
+    site: vector.action.site,
+    device: vector.action.device,
+    outstation_address: vector.action.outstation_address,
+  };
+  assert.equal(commandDigest(decodeDnp3ControlRelay(vector.native_command.hex, link)), vector.action_digest);
+  assert.equal(commandDigest(decodeDnp3ControlRelay(vector.correlation_variant.native_command.hex, link)), vector.action_digest);
+});
+
 test('the pinned profiles state their normalization and request-instance boundaries', () => {
   const modbus = pinned.vectors.find((candidate: any) => candidate.id === 'modbus-write-single-register-v1');
   const dnp3 = pinned.vectors.find((candidate: any) => candidate.id === 'dnp3-direct-operate-crob-v1');
