@@ -2,8 +2,9 @@
 
 Registration templates per RFC 6838, Section 5.6. The current receipts draft
 carries the active standards-tree registration request. The former AE
-Challenge media-type request is retained below only as process history; -03
-withdraws it and uses RFC 9457 `application/problem+json`.
+Challenge media-type request is retained below only as process history; current
+revision -05 retains the -03 withdrawal and uses RFC 9457
+`application/problem+json`.
 
 **Consistency rule applied throughout:** every string below is taken verbatim
 from a draft's own text. Nothing here invents a name a draft does not carry.

@@ -30,7 +30,7 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 | # | Registration | IANA registry | Backing draft (section) | Draft text status | Template status | Gate to filing |
 |---|---|---|---|---|---|---|
 | 1 | `agent-action-control.json` | Well-Known URIs | draft-schrock-agent-action-manifest-00 (§3, §9) | **Requests registration** (fields in §9) | READY-ON-POST | Draft live on datatracker [verify posting after the 2026-07-06 batch upload] |
-| 2 | `authorization-evidence-required` | HTTP Problem Types | draft-schrock-ae-challenge-03 (§3, §6; published 2026-08-08) | **Requests registration** under Specification Required; reuses `application/problem+json` | CARRIED-BY-DRAFT | Obtain focused HTTP review and process with the Independent Stream document |
+| 2 | `authorization-evidence-required` | HTTP Problem Types | draft-schrock-ae-challenge-05 (§3, §6; published 2026-08-10) | **Requests registration** under Specification Required; reuses `application/problem+json` | CARRIED-BY-DRAFT | Continue focused HTTP and Independent Stream review; do not file a conflicting direct request |
 | 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-10 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 4 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
 | 5 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | PROPOSED, requires draft text in next rev | Next-rev field definition; draft decides on any unprefixed successor |
@@ -52,7 +52,7 @@ registry, not IANA's.
 - **Registry page:** <https://www.iana.org/assignments/http-problem-types>.
 - **Policy:** Specification Required with designated-expert review (RFC 9457
   §4.2 and RFC 8126 §4.6), not IETF Review or Standards Action.
-- **AE Challenge:** revision -03 withdraws the dedicated standards-tree media
+- **AE Challenge:** current revision -05 retains the -03 withdrawal of the dedicated standards-tree media
   type and requests the common problem type
   `authorization-evidence-required`, recommended status 403. Process the
   registration with the Independent Stream document after focused HTTP
