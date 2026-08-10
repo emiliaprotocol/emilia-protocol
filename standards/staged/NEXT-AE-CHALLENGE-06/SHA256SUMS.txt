@@ -1,0 +1,3 @@
+aa189344c491948a1df2d18d9bff529d696e618ebb2f73ebe607445031744433  UPLOAD-THIS/draft-schrock-ae-challenge-06.xml
+dca44205eaa35459cf144fbe036e9a4a38e4a69d50785b92f7c2e9bf0d91479c  RENDERS/draft-schrock-ae-challenge-06.html
+94a1a9f2d003684513b004cb61df2ad20de9166ac248c88144a9657237ed1fff  RENDERS/draft-schrock-ae-challenge-06.txt
