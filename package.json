@@ -170,7 +170,7 @@
     "node-app-attest": "1.0.1",
     "pdf-parse": "^2.4.5",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
+    "react-dom": "^19.2.8",
     "remotion": "^4.0.452",
     "stripe": "^22.3.2",
     "viem": "^2.55.5",
