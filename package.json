@@ -202,7 +202,7 @@
     "@xmldom/xmldom": "^0.9.10",
     "brace-expansion": "5.0.9",
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.2.9",
+    "eslint-config-next": "^16.2.12",
     "fast-check": "^4.9.0",
     "google-auth-library": "10.9.1",
     "husky": "^9.0.0",
