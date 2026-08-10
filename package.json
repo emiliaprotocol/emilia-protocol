@@ -164,7 +164,7 @@
     "jose": "^6.2.3",
     "lucide-react": "^1.25.0",
     "mammoth": "^1.12.0",
-    "mcp-handler": "^1.1.0",
+    "mcp-handler": "^2.1.0",
     "motion": "^12.42.2",
     "next": "15.5.21",
     "node-app-attest": "1.0.1",
