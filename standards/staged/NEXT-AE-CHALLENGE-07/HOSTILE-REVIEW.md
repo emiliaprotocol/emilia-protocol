@@ -46,6 +46,23 @@ artifact.
     final-action TOCTOU boundaries are now explicit.
 16. The state namespace was changed in place during hardening. Issuer-scoped
     replay now uses v3, with a separate v2-to-v3 drain or atomic migration.
+17. Concurrent stateful issuers could both pass a non-atomic last-slot check.
+    Issuance now atomically joins every cap check and debit with replay-key and
+    complete-body registration before exposure.
+18. Remaining-only follow-ups could splice ambient evidence from a consumed
+    challenge. The core now repeats all requirements unless an explicit
+    authenticated continuation profile binds the predecessor evidence and
+    evaluation state.
+19. A digest could be compared without authenticating the action profile that
+    gave it meaning, and a profile could omit a material effect field. The
+    security binding is now the profile-and-digest pair and exact profiles must
+    cover every material field.
+20. Mutable audience aliases could change meaning between issuance and return.
+    Namespace, comparison, alias version, and stable principal are now pinned
+    for the challenge lifetime.
+21. The HTTP carrier conflicted with HEAD and mapped every owner failure to
+    503. HEAD is excluded, while 502, 503, and 504 retain their distinct HTTP
+    meanings without carrying evidence details.
 
 ## Runtime defects caught and bounded
 
@@ -69,17 +86,24 @@ artifact.
 
 ## Deliberately unclaimed and publication-blocking
 
-The runtime does not implement the normative `compoundClaimAndCapacity()`
-transition, multi-bucket database transaction, self-describing issuance,
-fenced recovery, raw-JSON duplicate detection, or a complete strict v1 profile.
-Production -07 conformance is therefore blocked by an unavailable capability,
-not inferred from partial behavior.
+An independent runtime pass found that the existing callback surface cannot
+implement normative reservation finalization or fenced recovery, trusts
+self-declared capability properties, delegates authoritative time to caller
+input, and has no contract-tested production backend. The production posture
+was also transaction-downgradable; that downgrade and the missing domain
+separation in the body digest are repaired on this private branch. The larger
+compound-store and finalization gaps remain. Production -07 conformance is
+blocked and MUST NOT be inferred from the current scaffolding or tests.
 
 The finite model is same-team scenario exploration over small bounds. It does
 not prove database isolation, crash atomicity, alias authentication, quota
 transfer, or implementation refinement. No independent implementation or
 interoperability result is claimed.
 
-The candidate must remain unpublished until the source, renders, checksums,
-runtime companions, and validation record are regenerated together and the
-exact packet receives independent HTTP and security review.
+The finite-model report also labels several design demonstrations as verified
+obligations without a sound coordinator or recovery state machine. Those claims
+must be narrowed or replaced before this packet can support publication.
+
+The candidate must remain unpublished until the runtime and formal claims are
+made exact, source, renders, checksums, and validation are regenerated together,
+and the final packet receives independent review.

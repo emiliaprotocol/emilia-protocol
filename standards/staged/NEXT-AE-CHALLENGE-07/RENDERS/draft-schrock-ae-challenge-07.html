@@ -15,18 +15,18 @@
       identifies outstanding evidence requirements, freshness and status
       constraints, acceptable presentation profiles, and retry state. It
       authorizes nothing, transfers no admission ownership, and provides no
-      promise that a later request will execute.
+      promise that a later request will execute. 
        The document also defines an HTTP challenge-response carrier using
       403 Forbidden and RFC 9457 Problem Details, and describes an informative
       gateway-handoff illustration for DMSC-style federation. The gateway
       illustration communicates
       evidence requirements; it does not solve conserved admission or
-      double-admission across independently operated gateways.
+      double-admission across independently operated gateways. 
        A challenge can synchronize corrected retries and amplify load. The
       core therefore defines optional retry timing with per-challenge jitter,
       and the HTTP carrier maps its lower bound to Retry-After. Retry timing
       controls presentation attempts only; it does not authorize the action
-      or make an uncertain action safe to repeat.
+      or make an uncertain action safe to repeat. 
        Single-use processing also places state on the refusal path. The core
       therefore requires bounded outstanding and replay state, fail-closed
       behavior when state cannot be claimed, and retention of live replay
@@ -35,7 +35,7 @@
        before native evidence verification, and a binding capacity
       refusal reveals no remaining evidence requirements. In a sharded replay
       domain, only the authoritative owner can classify a nonce as already
-      claimed; inability to reach that owner is unavailability, not replay.
+      claimed; inability to reach that owner is unavailability, not replay. 
     " name="description">
 <meta content="xml2rfc 3.34.0" name="generator">
 <meta content="AI agents" name="keyword">
@@ -260,7 +260,7 @@ dl > dt {
   float: left;
   margin-right: 1em;
 }
-/*
+/* 
 dl.nohang > dt {
   float: none;
 }
@@ -1724,14 +1724,26 @@ li > p:last-of-type:only-child {
         establish the same material action under an understood profile, the
         challenge cannot repair the disagreement and the relying party MUST
         refuse automated admission.<a href="#section-2.2-7" class="pilcrow">¶</a></p>
-<p id="section-2.2-8">The relying party MUST pin the semantics of the selected
+<p id="section-2.2-8">The security action binding is the ordered pair
+         (<code>action_profile</code>, <code>action_digest</code>), not the digest
+         alone. Every evidence correlation, continuation, comparison, and
+         downstream admission profile that relies on this challenge MUST
+         authenticate and compare both members. An implementation MUST NOT
+         accept evidence merely because a digest produced under a different
+         action profile has the same octets.<a href="#section-2.2-8" class="pilcrow">¶</a></p>
+<p id="section-2.2-9">The relying party MUST pin the semantics of the selected
          <code>action_profile</code> for the lifetime of the challenge. It MUST NOT
          fetch mutable profile content at evaluation time and silently apply
          different canonicalization or material-field rules under the same
          profile identifier. A deployment using resolvable profile documents
          needs an immutable version, authenticated content digest, or equivalent
-         local pin.<a href="#section-2.2-8" class="pilcrow">¶</a></p>
-<p id="section-2.2-9"><code>audience</code> identifies the component that is expected to
+         local pin. An action profile that claims exact-action binding MUST
+         include every input whose change can alter authorization, target or
+         resource selection, the provider request, or an externally observable
+         effect. If a profile omits such a material field, it MUST NOT describe
+         its digest as an exact-action binding, and a relying party that requires
+         exact-action binding MUST refuse to use it.<a href="#section-2.2-9" class="pilcrow">¶</a></p>
+<p id="section-2.2-10"><code>audience</code> identifies the component that is expected to
          answer the challenge. A binding or authenticated envelope MUST let the
          presenter establish the challenge issuer and its own effective
          audience. Before following an obtain hint or disclosing evidence, the
@@ -1741,13 +1753,21 @@ li > p:last-of-type:only-child {
          audience before claiming the nonce. A profile that intentionally
          permits a transferable or anonymous presentation MUST state that
          exception and define its confidentiality, replay, and denial-of-service
-         consequences.<a href="#section-2.2-9" class="pilcrow">¶</a></p>
-<p id="section-2.2-10"><code>policy_id</code> and <code>policy_digest</code> identify the local
+         consequences. The audience identifier namespace, comparison procedure,
+         alias mapping or mapping version, and resulting stable principal MUST be
+         pinned for the lifetime of the challenge. Stateful registration MUST
+         store those pins with the body; self-describing issuance MUST
+         authenticate them. A mutable directory, configuration change, or alias
+         update MUST NOT reinterpret the same audience string between issuance
+         and return. If the pinned mapping is unavailable or has changed, the
+         relying party MUST refuse the old presentation and MAY issue a fresh
+         challenge under the new mapping when policy permits.<a href="#section-2.2-10" class="pilcrow">¶</a></p>
+<p id="section-2.2-11"><code>policy_id</code> and <code>policy_digest</code> identify the local
         policy state from which the requirements were derived. They do not
         transfer policy authority to the presenter. At evaluation time the
         relying party MUST use its authenticated live policy and MUST NOT use
-        a policy supplied in the response.<a href="#section-2.2-10" class="pilcrow">¶</a></p>
-<p id="section-2.2-11">Delegation, translation, or task rewriting does not preserve one
+        a policy supplied in the response.<a href="#section-2.2-11" class="pilcrow">¶</a></p>
+<p id="section-2.2-12">Delegation, translation, or task rewriting does not preserve one
         action binding across hops. Each receiving relying party MUST
         re-evaluate the action it is asked to admit under its own policy and
         action profile. If that relying party issues a challenge, it MUST
@@ -1756,7 +1776,7 @@ li > p:last-of-type:only-child {
         as evidence or context, but it MUST NOT substitute for the receiving
         relying party's binding to a rewritten action. A chain of per-hop
         records does not by itself prove that the actions at different hops
-        are semantically equivalent.<a href="#section-2.2-11" class="pilcrow">¶</a></p>
+        are semantically equivalent.<a href="#section-2.2-12" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="core-requirements">
@@ -1814,13 +1834,26 @@ li > p:last-of-type:only-child {
         presentation-profile specification MUST define the response carrier or
         encoding, how the challenge or an immutable authenticated reference to
         it is returned, how the selected profile is identified, how presented
-        components map to <code>requirement_id</code> values, how exact-action
-         correlation is carried, and either how the returning presenter is
+         components map to <code>requirement_id</code> values, how exact-action
+         correlation authenticates both <code>action_profile</code> and
+         <code>action_digest</code>, and either how the returning presenter is
          authenticated or how an explicitly anonymous or transferable profile
          satisfies the confidentiality, replay, and denial-of-service rules in
          this document. This core does not define a generic successful-response
          envelope.<a href="#section-2.3-4" class="pilcrow">¶</a></p>
-<p id="section-2.3-5"><code>obtain_hints</code> are untrusted routing hints. Following a
+<p id="section-2.3-5">A fresh challenge is evaluated from a complete authenticated evidence
+         presentation under live policy. The core defines no implicit carry-over
+         of evidence, verification results, or ambient verifier state from a
+         consumed challenge. A separate continuation profile MAY omit already
+         satisfied evidence only when the new authenticated challenge binds an
+         immutable predecessor evaluation, the exact evidence and verification
+         semantics relied upon, issuer, presenter or explicit transfer rule, the
+         complete action-binding pair, policy, freshness and status observations,
+         and applicable capacity state. The continuation state MUST participate
+         in replay protection and state bounds. Without such a profile, every
+         follow-up repeats the complete requirement set and the presenter
+         re-presents all required evidence.<a href="#section-2.3-5" class="pilcrow">¶</a></p>
+<p id="section-2.3-6"><code>obtain_hints</code> are untrusted routing hints. Following a
          hint, authenticating to its URI, or receiving an "approved" response
          confers no authority at the relying party. Evidence obtained through
          a hint remains subject to native verification, exact-action matching,
@@ -1832,15 +1865,15 @@ li > p:last-of-type:only-child {
          An issuer MAY omit obtain hints when constructing a challenge. A
          carrier MUST NOT remove them from an already authenticated challenge
          body. Multiple hints for one requirement are unordered alternatives
-         unless an application profile defines ordering.<a href="#section-2.3-5" class="pilcrow">¶</a></p>
-<p id="section-2.3-6">Capability discovery MAY advertise evidence types, presentation
+         unless an application profile defines ordering.<a href="#section-2.3-6" class="pilcrow">¶</a></p>
+<p id="section-2.3-7">Capability discovery MAY advertise evidence types, presentation
         profiles, or acquisition mechanisms that an implementation supports.
         Such discovery is not an authorization decision and does not establish
         that any advertised choice is sufficient for a particular action.
         The relying party MUST determine sufficiency using its authenticated
         local policy at evaluation time. A cached discovery response, a
         mutually supported profile, or a successful acquisition flow MUST NOT
-         waive an unsatisfied local requirement.<a href="#section-2.3-6" class="pilcrow">¶</a></p>
+         waive an unsatisfied local requirement.<a href="#section-2.3-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="core-validation">
@@ -1951,8 +1984,10 @@ li > p:last-of-type:only-child {
          challenge identifier and nonce, MUST remain bound to the same locally
          rederived action digest and action profile, and MUST derive its
          requirements and policy identifiers from authenticated live policy.
-         It SHOULD list only the requirements that remain unsatisfied. It is a new refusal, not a
-         continuation of the consumed nonce.<a href="#section-2.5-6" class="pilcrow">¶</a></p>
+         It MUST list the complete requirement set unless a continuation profile
+         satisfying <a href="#core-requirements" class="auto internal xref">Section 2.3</a> is explicitly in use. It
+         is a new refusal with new authoritative state, never an implicit
+         continuation of the consumed nonce or ambient prior evidence.<a href="#section-2.5-6" class="pilcrow">¶</a></p>
 <p id="section-2.5-7"><code>retry_timing</code> is OPTIONAL. When present, it MUST contain a
         <code>not_before</code> Internet timestamp as defined by
         <span>[<a href="#RFC3339" class="cite xref">RFC3339</a>]</span> and MAY contain a non-negative integer
@@ -2016,10 +2051,15 @@ li > p:last-of-type:only-child {
         administrative bound per tenant so one tenant cannot consume the
         aggregate allowance.<a href="#section-2.6-1" class="pilcrow">¶</a></p>
 <p id="section-2.6-2">Admission control for a stateful challenge MUST occur before the
-        challenge is exposed. If the relying party cannot allocate the
-        required outstanding record, it MUST NOT issue that challenge. It
-        returns a carrier-appropriate overload or generic refusal without an
-        authorization-evidence challenge.<a href="#section-2.6-2" class="pilcrow">¶</a></p>
+         challenge is exposed. The cap check, insertion of the issuer-and-nonce
+         replay key and complete authenticated body binding, and debit across
+         every applicable outstanding-state bucket MUST commit as one atomic
+         issuance transition in the same coordination domain. A read-check-
+         register sequence or registration followed by a separate capacity debit
+         does not satisfy this requirement. If the relying party cannot complete
+         that transition or allocate the required outstanding record, it MUST NOT
+         issue or expose the challenge. It returns a carrier-appropriate overload
+         or generic refusal without an authorization-evidence challenge.<a href="#section-2.6-2" class="pilcrow">¶</a></p>
 <p id="section-2.6-3">For self-describing issuance, the relying party MUST enforce the
         replay-state bound when the first returned presentation attempts to
         claim the nonce. If it cannot durably and atomically claim replay
@@ -2154,57 +2194,63 @@ li > p:last-of-type:only-child {
 <li class="normal" id="section-2.6.1-2.1">At the outstanding-state cap, a stateful issuer returns no new
             challenge and allocates no additional outstanding record.<a href="#section-2.6.1-2.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.2">At the replay-state cap, a returned self-describing challenge
-            receives no evidence evaluation, no admission, and no requirements
-            or obtain hints.<a href="#section-2.6.1-2.2" class="pilcrow">¶</a>
+            <li class="normal" id="section-2.6.1-2.2">With one outstanding-state slot remaining, two concurrent
+             stateful issuers produce exactly one committed and exposed
+             challenge and one capacity refusal. Replay registration, complete-
+             body binding, and every capacity debit commit together; no bucket
+             exceeds its bound.<a href="#section-2.6.1-2.2" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.3">When evidence is insufficient and a hard cap is also binding,
+            <li class="normal" id="section-2.6.1-2.3">At the replay-state cap, a returned self-describing challenge
+            receives no evidence evaluation, no admission, and no requirements
+            or obtain hints.<a href="#section-2.6.1-2.3" class="pilcrow">¶</a>
+</li>
+            <li class="normal" id="section-2.6.1-2.4">When evidence is insufficient and a hard cap is also binding,
             the capacity response wins: native verifiers and local policy are
             not invoked and no follow-up or stateless requirements hint is
-            returned.<a href="#section-2.6.1-2.3" class="pilcrow">¶</a>
+            returned.<a href="#section-2.6.1-2.4" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.4">Two verifier replicas concurrently receiving the same nonce
+            <li class="normal" id="section-2.6.1-2.5">Two verifier replicas concurrently receiving the same nonce
              and exact body produce one <code>claimed-with-capacity</code> result,
              one <code>exact-body-replay</code> result, and exactly one capacity
-             debit.<a href="#section-2.6.1-2.4" class="pilcrow">¶</a>
+             debit.<a href="#section-2.6.1-2.5" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.5">At a binding cap, an unclaimed body receives
+            <li class="normal" id="section-2.6.1-2.6">At a binding cap, an unclaimed body receives
              <code>capacity-refused</code>, the nonce remains unclaimed, and no
-             partial aggregate, presenter, audience, or tenant debit remains.<a href="#section-2.6.1-2.5" class="pilcrow">¶</a>
+             partial aggregate, presenter, audience, or tenant debit remains.<a href="#section-2.6.1-2.6" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.6">An otherwise retained open record, authenticated expiry
+            <li class="normal" id="section-2.6.1-2.7">An otherwise retained open record, authenticated expiry
              tombstone, or valid self-describing body that reaches the owner at
              or after expiry receives <code>expired</code>, leaves the nonce
              unclaimed, and changes no capacity bucket. A removed stateful
              record without a tombstone receives a generic unknown-challenge
              refusal. A retained claimed record follows the replay-or-collision
-             precedence above.<a href="#section-2.6.1-2.6" class="pilcrow">¶</a>
+             precedence above.<a href="#section-2.6.1-2.7" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.7">Reuse of an issuer-and-nonce key with a different body produces
+            <li class="normal" id="section-2.6.1-2.8">Reuse of an issuer-and-nonce key with a different body produces
              <code>body-collision</code>, not replay, when the claimed record is
              retained or the open record is unexpired, and changes no capacity
-             bucket. An expired open record produces <code>expired</code>.<a href="#section-2.6.1-2.7" class="pilcrow">¶</a>
+             bucket. An expired open record produces <code>expired</code>.<a href="#section-2.6.1-2.8" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.8">Claiming a statefully issued challenge transfers the existing
+            <li class="normal" id="section-2.6.1-2.9">Claiming a statefully issued challenge transfers the existing
              outstanding debit and adds only the positive incremental delta; it
              neither double-counts the old debit nor refuses a zero-increment
-             transfer merely because the bucket is at its cap.<a href="#section-2.6.1-2.8" class="pilcrow">¶</a>
+             transfer merely because the bucket is at its cap.<a href="#section-2.6.1-2.9" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.9">Two owner shards cannot each reserve against one shared global
+            <li class="normal" id="section-2.6.1-2.10">Two owner shards cannot each reserve against one shared global
              slot. The case passes only with one coordinating transaction or
-             preallocated quotas whose live sum is bounded by the global cap.<a href="#section-2.6.1-2.9" class="pilcrow">¶</a>
+             preallocated quotas whose live sum is bounded by the global cap.<a href="#section-2.6.1-2.10" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.10">After a reservation is reassigned during recovery, a late worker
+            <li class="normal" id="section-2.6.1-2.11">After a reservation is reassigned during recovery, a late worker
              using the old fencing token cannot publish a follow-up or finalize
-             state.<a href="#section-2.6.1-2.10" class="pilcrow">¶</a>
+             state.<a href="#section-2.6.1-2.11" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.11">A front end that reaches the authoritative owner and receives
+            <li class="normal" id="section-2.6.1-2.12">A front end that reaches the authoritative owner and receives
             an already-claimed result reports replay. The same front end, given
             an owner timeout, partition, or uncertain response, reports
-            unavailability and does not report replay or evaluate evidence.<a href="#section-2.6.1-2.11" class="pilcrow">¶</a>
+            unavailability and does not report replay or evaluate evidence.<a href="#section-2.6.1-2.12" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-2.6.1-2.12">Allocating a new challenge never evicts an in-flight or
-            unexpired consumed nonce.<a href="#section-2.6.1-2.12" class="pilcrow">¶</a>
+            <li class="normal" id="section-2.6.1-2.13">Allocating a new challenge never evicts an in-flight or
+            unexpired consumed nonce.<a href="#section-2.6.1-2.13" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -2277,17 +2323,26 @@ li > p:last-of-type:only-child {
 <p id="section-3-4">When an HTTP origin server uses this carrier, it MUST return
       <code>403 Forbidden</code> as defined by <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>. The
       response body MUST be an <code>application/problem+json</code> Problem
-      Details object as defined by <span>[<a href="#RFC9457" class="cite xref">RFC9457</a>]</span>.<a href="#section-3-4" class="pilcrow">¶</a></p>
+       Details object as defined by <span>[<a href="#RFC9457" class="cite xref">RFC9457</a>]</span>. This carrier MUST
+       NOT be used in a response to <code>HEAD</code>, because HTTP forbids response
+       content for that method. A bodyless refusal to <code>HEAD</code> conveys no
+       AE-CHALLENGE unless a separate retrieval profile is defined.<a href="#section-3-4" class="pilcrow">¶</a></p>
 <p id="section-3-5">If temporary overload or temporary owner unavailability is the reason
-      for refusal, the origin server uses <code>503 Service Unavailable</code> and
-      MAY use <code>Retry-After</code>. It uses 503 only when the inability is
-      temporary. Actual request-rate limiting can use <code>429 Too Many
+       for refusal, an origin server uses <code>503 Service Unavailable</code> and
+       MAY use <code>Retry-After</code> only when the service itself is temporarily
+       unavailable or overloaded. A gateway or proxy uses <code>504 Gateway
+       Timeout</code> for an upstream owner timeout and can use <code>502 Bad
+       Gateway</code> when the upstream response satisfies that status code's
+       semantics under <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>. Actual request-rate limiting can use <code>429 Too Many
       Requests</code> as defined by <span>[<a href="#RFC6585" class="cite xref">RFC6585</a>]</span>. A permanent administrative limit or generic policy refusal
       can use 403 without the <code>ae-required</code> problem type. None of these
       responses includes <code>evidence_challenge</code>, remaining requirements,
       obtain hints, or evidence-sufficiency details merely because evidence
-      might also be insufficient.<a href="#section-3-5" class="pilcrow">¶</a></p>
-<p id="section-3-6">The <code>ae-required</code> problem type MUST be used only when the
+       might also be insufficient.<a href="#section-3-5" class="pilcrow">¶</a></p>
+<p id="section-3-6">The following example omits HTTP message-framing fields such as
+       <code>Content-Length</code>. A sender still supplies framing required by the
+       HTTP version and connection in use.<a href="#section-3-6" class="pilcrow">¶</a></p>
+<p id="section-3-7">The <code>ae-required</code> problem type MUST be used only when the
        server is returning a fresh evidence challenge after a successful
        <code>claimed-with-capacity</code> transition or when issuing a newly
        registered stateful challenge or a valid newly issuer-protected
@@ -2297,8 +2352,8 @@ li > p:last-of-type:only-child {
        that response. An implementation uses 409 Conflict only when an
        application profile establishes a conflict with the target resource's
        current state that the requester can resolve; replay, expiry, and body
-       collision do not by themselves establish that condition.<a href="#section-3-6" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-3-7">
+       collision do not by themselves establish that condition.<a href="#section-3-7" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-3-8">
 <pre>
 HTTP/1.1 403 Forbidden
 Content-Type: application/problem+json
@@ -2335,22 +2390,22 @@ Retry-After: 30
     "expires_at": "2026-08-10T00:05:00Z"
   }
 }
-</pre><a href="#section-3-7" class="pilcrow">¶</a>
+</pre><a href="#section-3-8" class="pilcrow">¶</a>
 </div>
-<p id="section-3-8">The Problem Details <code>type</code> MUST have the value shown above.
+<p id="section-3-9">The Problem Details <code>type</code> MUST have the value shown above.
       The <code>title</code> SHOULD use the shown English title but MAY be localized;
       clients MUST NOT interpret it for protocol semantics. The HTTP status
       code MUST be 403. The <code>status</code> member MAY be omitted; when present,
       it MUST be 403. The core challenge MUST appear
       in the <code>evidence_challenge</code> extension member. Human-readable
       <code>detail</code> text is advisory and MUST NOT be parsed for protocol
-      semantics.<a href="#section-3-8" class="pilcrow">¶</a></p>
-<p id="section-3-9">The origin server MUST send <code>Cache-Control: no-store</code> as defined
+      semantics.<a href="#section-3-9" class="pilcrow">¶</a></p>
+<p id="section-3-10">The origin server MUST send <code>Cache-Control: no-store</code> as defined
       by <span>[<a href="#RFC9111" class="cite xref">RFC9111</a>]</span>. A
       generic intermediary can still transform an HTTP response, so a client
       MUST validate the Problem Details object and the authenticated origin
-      before acting on hints or presenting evidence.<a href="#section-3-9" class="pilcrow">¶</a></p>
-<p id="section-3-10">When the core challenge contains <code>retry_timing</code>, the origin
+      before acting on hints or presenting evidence.<a href="#section-3-10" class="pilcrow">¶</a></p>
+<p id="section-3-11">When the core challenge contains <code>retry_timing</code>, the origin
       server SHOULD send a <code>Retry-After</code> field as defined by
       <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>. A client converts an HTTP-date directly to an
       instant. It converts delay-seconds to an instant relative to the time it
@@ -2365,7 +2420,7 @@ Retry-After: 30
       authorize the action, promise capacity or acceptance, or make a retry
       safe after an uncertain effect. If an intermediary changes the HTTP
       status from 403, a client MUST NOT process the response as this carrier
-      merely because the body still contains the type URI.<a href="#section-3-10" class="pilcrow">¶</a></p>
+      merely because the body still contains the type URI.<a href="#section-3-11" class="pilcrow">¶</a></p>
 <div id="oauth-non-substitution-case">
 <section id="section-3.1">
         <h3 id="name-oauth-non-substitution-conf">
@@ -2480,7 +2535,15 @@ Retry-After: 30
        fence. A later admission or effect boundary rederives or immutably binds
        the action again so a change after challenge evaluation cannot substitute
        a different effect.<a href="#section-5-3" class="pilcrow">¶</a></p>
-<p id="section-5-4"><strong>Replay and state exhaustion.</strong> Stateful issuance binds
+<p id="section-5-4"><strong>Action-profile confusion and incomplete actions.</strong> The
+       action binding is the authenticated pair of action profile and digest.
+       Comparing a digest without its profile permits evidence produced under
+       different action semantics to be spliced into the challenge. A profile
+       that omits a beneficiary, resource, amount, provider parameter, or other
+       field material to authorization or effect can also reproduce a digest
+       while changing the real action. Profiles therefore pin their semantics,
+       cover every material field, and travel with every digest comparison.<a href="#section-5-4" class="pilcrow">¶</a></p>
+<p id="section-5-5"><strong>Replay and state exhaustion.</strong> Stateful issuance binds
       the complete body before exposure; self-describing issuance defers
       storage but still requires an atomic replay claim before evidence
        evaluation. The owner claims the issuer-and-nonce key and reserves all
@@ -2495,8 +2558,8 @@ Retry-After: 30
        evidence-signature verification and evidence-status work, so those tasks
        do not run after the state budget is exhausted. Envelope and presenter
        authentication that occur before the owner transition remain protected
-       only by the separate pre-owner anti-abuse budget.<a href="#section-5-4" class="pilcrow">¶</a></p>
-<p id="section-5-5"><strong>Replica consistency.</strong> Per-process replay caches permit
+       only by the separate pre-owner anti-abuse budget.<a href="#section-5-5" class="pilcrow">¶</a></p>
+<p id="section-5-6"><strong>Replica consistency.</strong> Per-process replay caches permit
       two verifier replicas to accept the same nonce. Verifiers for one issuer
       need one atomic replay domain or an exclusive deterministic shard.
       During partition or store failure they refuse rather than create local
@@ -2504,13 +2567,13 @@ Retry-After: 30
        result is replay; routing failure is unavailability and is not relabeled
        as attacker replay. An uncertain owner response does not prove that the
        transition failed to commit; callers retain the unavailable result and do
-       not create local replacement state.<a href="#section-5-5" class="pilcrow">¶</a></p>
-<p id="section-5-6"><strong>Parser and pre-claim work amplification.</strong> State caps
+       not create local replacement state.<a href="#section-5-6" class="pilcrow">¶</a></p>
+<p id="section-5-7"><strong>Parser and pre-claim work amplification.</strong> State caps
        apply only at the owner-side transition. They do not protect an unbounded
        JSON parser, duplicate-member ambiguity, canonicalization, envelope
        verification, or action derivation. Finite pre-cryptographic limits and
-       duplicate-member refusal are therefore independent requirements.<a href="#section-5-6" class="pilcrow">¶</a></p>
-<p id="section-5-7"><strong>Retry synchronization and load amplification.</strong> A
+       duplicate-member refusal are therefore independent requirements.<a href="#section-5-7" class="pilcrow">¶</a></p>
+<p id="section-5-8"><strong>Retry synchronization and load amplification.</strong> A
       precise challenge tells a presenter how to correct a request, so a
       population receiving similar refusals can retry in a synchronized burst.
       An issuer under pressure SHOULD combine recipient-specific retry timing,
@@ -2519,8 +2582,8 @@ Retry-After: 30
       control even when a challenge supplies a lower bound. Timing guidance
       paces only a new evidence presentation and MUST NOT be interpreted as
       evidence satisfaction, authorization, or a promise that capacity or
-       admission will exist after <code>not_before</code>.<a href="#section-5-7" class="pilcrow">¶</a></p>
-<p id="section-5-8"><strong>Information disclosure.</strong> Evidence requirements,
+       admission will exist after <code>not_before</code>.<a href="#section-5-8" class="pilcrow">¶</a></p>
+<p id="section-5-9"><strong>Information disclosure.</strong> Evidence requirements,
       policy identifiers, action profiles, and obtain hints can reveal
       sensitive policy structure. A relying party SHOULD disclose only the
       minimum information needed for remediation. The HTTP carrier requires
@@ -2535,19 +2598,19 @@ Retry-After: 30
        routing information, the binding or authenticated envelope MUST also
        provide confidentiality appropriate to the deployment. Digests do not
        make low-entropy values secret: equality tests and dictionary attacks can
-       reveal guessed actions, policies, or requirements.<a href="#section-5-8" class="pilcrow">¶</a></p>
-<p id="section-5-9"><strong>Stale facts and uncertain effects.</strong> A satisfied
+       reveal guessed actions, policies, or requirements.<a href="#section-5-9" class="pilcrow">¶</a></p>
+<p id="section-5-10"><strong>Stale facts and uncertain effects.</strong> A satisfied
        challenge means only that the relying party concluded, under its live
        local policy at evaluation time, that the evidence requirement was met.
        It does not prove that external facts remain
       true, that an action executed, or that an uncertain action is safe to
       retry. Status rechecking, execution custody, effect observation, and
-      reconciliation remain separate controls.<a href="#section-5-9" class="pilcrow">¶</a></p>
-<p id="section-5-10"><strong>Gateway split brain.</strong> An authenticated challenge from
+      reconciliation remain separate controls.<a href="#section-5-10" class="pilcrow">¶</a></p>
+<p id="section-5-11"><strong>Gateway split brain.</strong> An authenticated challenge from
       a receiving gateway does not transfer a single-use authorization or its
       consumption ledger. Implementations MUST NOT claim cross-gateway
       double-admission prevention merely because both gateways implement this
-      challenge.<a href="#section-5-10" class="pilcrow">¶</a></p>
+      challenge.<a href="#section-5-11" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="iana">
@@ -2652,23 +2715,33 @@ Retry-After: 30
          rules.<a href="#section-9-1.5" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-9-1.6">Requires follow-ups to use the current exact action and live policy,
-         and removes dependency on an unpublished DMSC section number.<a href="#section-9-1.6" class="pilcrow">¶</a>
+         repeats the complete evidence requirement set unless an explicit
+         authenticated continuation profile binds prior evidence and state, and
+         removes dependency on an unpublished DMSC section number.<a href="#section-9-1.6" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.7">Defines an unambiguous base64url nonce syntax, a total
+        <li class="normal" id="section-9-1.7">Makes the action profile and digest one authenticated security
+         binding, requires complete material-field coverage, and pins audience
+         namespace and alias semantics for the challenge lifetime.<a href="#section-9-1.7" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-9-1.8">Makes stateful issuance atomically register the complete body and
+         debit every applicable state-cap bucket before exposure, including the
+         concurrent last-slot case.<a href="#section-9-1.8" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-9-1.9">Defines an unambiguous base64url nonce syntax, a total
          replay-collision-expiry ordering, and mandatory transfer of a
-         stateful-open debit into the in-flight reservation.<a href="#section-9-1.7" class="pilcrow">¶</a>
+         stateful-open debit into the in-flight reservation.<a href="#section-9-1.9" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.8">Narrows the HTTP section to a 403 challenge-response carrier,
+        <li class="normal" id="section-9-1.10">Narrows the HTTP section to a 403 challenge-response carrier,
          aligns Problem Details metadata with RFC 9457, separates 401, 403,
-         409, 429, and 503 semantics, and defines Retry-After conversion.<a href="#section-9-1.8" class="pilcrow">¶</a>
+         409, 429, and 503 semantics, and defines Retry-After conversion.<a href="#section-9-1.10" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.9">Makes the DMSC material illustrative, closes nested core objects,
+        <li class="normal" id="section-9-1.11">Makes the DMSC material illustrative, closes nested core objects,
          scopes critical extensions to the top level, and adds confidentiality
-         and final-action-fencing requirements.<a href="#section-9-1.9" class="pilcrow">¶</a>
+         and final-action-fencing requirements.<a href="#section-9-1.11" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.10">Withdraws the earlier request for
+        <li class="normal" id="section-9-1.12">Withdraws the earlier request for
          <code>application/authorization-evidence-challenge+json</code> and reuses
-         <code>application/problem+json</code> for HTTP carriage.<a href="#section-9-1.10" class="pilcrow">¶</a>
+         <code>application/problem+json</code> for HTTP carriage.<a href="#section-9-1.12" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>

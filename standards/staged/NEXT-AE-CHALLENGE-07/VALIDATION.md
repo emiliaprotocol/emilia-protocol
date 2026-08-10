@@ -2,8 +2,9 @@
 
 Private candidate only. Not published or pushed.
 
-Validated on 2026-08-10 against XML SHA-256
-`24c625e004401b4ea71ceb74b0202e6508a702bab5045957358359f0b90e2cf4`.
+The prior validation below is superseded. The current repaired XML SHA-256 is
+`2fd28bb29bbe7aaa1b9a91b7216c72b10f19ac1224febdb473413cc06d8afa89`.
+It is not a publication-ready validation record.
 
 - `xmllint --noout`: PASS.
 - `xml2rfc --text` and `--html`: PASS. The renderer reports four long
@@ -14,7 +15,7 @@ Validated on 2026-08-10 against XML SHA-256
 - `node scripts/check-ae-challenge-07.mjs`: PASS, including immutable -06,
   current normative text, runtime fail-closed guards, v3 migration, finite-
   model source/result binding, renders, and packet checksums.
-- Focused challenge suite: PASS, 56 of 56 tests across
+- Focused challenge suite after the first runtime repairs: PASS, 58 of 58 tests across
   `evidence-challenge.test.ts`, `evidence-challenge-durable.test.ts`, and
   `evidence-challenge-07-redteam.test.ts`.
 - Model-to-Matter integration after the 128-bit nonce repair: PASS, 33 of 33
@@ -38,13 +39,15 @@ Validated on 2026-08-10 against XML SHA-256
   reproducibility.
 - Full repository suite: PASS, 8,774 passed, 103 explicitly environment-gated
   skips, and 0 failed across 534 test files.
-- Independent protocol-logic re-audit of the exact XML above: no remaining
-  Critical or High finding after collision-resistant body-digest pins,
-  security-semantic version pins, expiry tombstones, anonymous-profile
-  consistency, bounded DoS wording, and local-only assurance wording were
-  repaired.
+- Independent protocol and runtime re-audit found four High protocol gaps and
+  seven High runtime/evidence gaps. The protocol gaps and two immediate runtime
+  defects are repaired in the current private bytes. Compound finalization,
+  authoritative time, capability contract testing, and overclaimed finite-model
+  obligations remain publication blockers.
 
-Not run or claimed in this record: production `next build`, remote CI,
+The previously recorded full-suite and security-case results predate the current
+repairs and MUST be rerun before they are cited. Not run or claimed in this
+record: production `next build`, remote CI,
 external interoperability, or independent implementation.
 
 Revision -07 does not claim that a current reference backend implements the

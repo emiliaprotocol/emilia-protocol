@@ -287,13 +287,25 @@
         establish the same material action under an understood profile, the
         challenge cannot repair the disagreement and the relying party MUST
         refuse automated admission.</t>
+	        <t>The security action binding is the ordered pair
+	        (<tt>action_profile</tt>, <tt>action_digest</tt>), not the digest
+	        alone. Every evidence correlation, continuation, comparison, and
+	        downstream admission profile that relies on this challenge MUST
+	        authenticate and compare both members. An implementation MUST NOT
+	        accept evidence merely because a digest produced under a different
+	        action profile has the same octets.</t>
 	        <t>The relying party MUST pin the semantics of the selected
 	        <tt>action_profile</tt> for the lifetime of the challenge. It MUST NOT
 	        fetch mutable profile content at evaluation time and silently apply
 	        different canonicalization or material-field rules under the same
 	        profile identifier. A deployment using resolvable profile documents
 	        needs an immutable version, authenticated content digest, or equivalent
-	        local pin.</t>
+	        local pin. An action profile that claims exact-action binding MUST
+	        include every input whose change can alter authorization, target or
+	        resource selection, the provider request, or an externally observable
+	        effect. If a profile omits such a material field, it MUST NOT describe
+	        its digest as an exact-action binding, and a relying party that requires
+	        exact-action binding MUST refuse to use it.</t>
 	        <t><tt>audience</tt> identifies the component that is expected to
 	        answer the challenge. A binding or authenticated envelope MUST let the
 	        presenter establish the challenge issuer and its own effective
@@ -304,7 +316,15 @@
 	        audience before claiming the nonce. A profile that intentionally
 	        permits a transferable or anonymous presentation MUST state that
 	        exception and define its confidentiality, replay, and denial-of-service
-	        consequences.</t>
+	        consequences. The audience identifier namespace, comparison procedure,
+	        alias mapping or mapping version, and resulting stable principal MUST be
+	        pinned for the lifetime of the challenge. Stateful registration MUST
+	        store those pins with the body; self-describing issuance MUST
+	        authenticate them. A mutable directory, configuration change, or alias
+	        update MUST NOT reinterpret the same audience string between issuance
+	        and return. If the pinned mapping is unavailable or has changed, the
+	        relying party MUST refuse the old presentation and MAY issue a fresh
+	        challenge under the new mapping when policy permits.</t>
         <t><tt>policy_id</tt> and <tt>policy_digest</tt> identify the local
         policy state from which the requirements were derived. They do not
         transfer policy authority to the presenter. At evaluation time the
@@ -374,12 +394,25 @@
         presentation-profile specification MUST define the response carrier or
         encoding, how the challenge or an immutable authenticated reference to
         it is returned, how the selected profile is identified, how presented
-        components map to <tt>requirement_id</tt> values, how exact-action
-	        correlation is carried, and either how the returning presenter is
+	        components map to <tt>requirement_id</tt> values, how exact-action
+	        correlation authenticates both <tt>action_profile</tt> and
+	        <tt>action_digest</tt>, and either how the returning presenter is
 	        authenticated or how an explicitly anonymous or transferable profile
 	        satisfies the confidentiality, replay, and denial-of-service rules in
 	        this document. This core does not define a generic successful-response
 	        envelope.</t>
+	        <t>A fresh challenge is evaluated from a complete authenticated evidence
+	        presentation under live policy. The core defines no implicit carry-over
+	        of evidence, verification results, or ambient verifier state from a
+	        consumed challenge. A separate continuation profile MAY omit already
+	        satisfied evidence only when the new authenticated challenge binds an
+	        immutable predecessor evaluation, the exact evidence and verification
+	        semantics relied upon, issuer, presenter or explicit transfer rule, the
+	        complete action-binding pair, policy, freshness and status observations,
+	        and applicable capacity state. The continuation state MUST participate
+	        in replay protection and state bounds. Without such a profile, every
+	        follow-up repeats the complete requirement set and the presenter
+	        re-presents all required evidence.</t>
 	        <t><tt>obtain_hints</tt> are untrusted routing hints. Following a
 	        hint, authenticating to its URI, or receiving an "approved" response
 	        confers no authority at the relying party. Evidence obtained through
@@ -505,8 +538,10 @@
 	        challenge identifier and nonce, MUST remain bound to the same locally
 	        rederived action digest and action profile, and MUST derive its
 	        requirements and policy identifiers from authenticated live policy.
-	        It SHOULD list only the requirements that remain unsatisfied. It is a new refusal, not a
-	        continuation of the consumed nonce.</t>
+	        It MUST list the complete requirement set unless a continuation profile
+	        satisfying <xref target="core-requirements"/> is explicitly in use. It
+	        is a new refusal with new authoritative state, never an implicit
+	        continuation of the consumed nonce or ambient prior evidence.</t>
         <t><tt>retry_timing</tt> is OPTIONAL. When present, it MUST contain a
         <tt>not_before</tt> Internet timestamp as defined by
         <xref target="RFC3339"/> and MAY contain a non-negative integer
@@ -566,11 +601,16 @@
         and per-audience bounds. Multi-tenant deployments SHOULD apply an
         administrative bound per tenant so one tenant cannot consume the
         aggregate allowance.</t>
-        <t>Admission control for a stateful challenge MUST occur before the
-        challenge is exposed. If the relying party cannot allocate the
-        required outstanding record, it MUST NOT issue that challenge. It
-        returns a carrier-appropriate overload or generic refusal without an
-        authorization-evidence challenge.</t>
+	        <t>Admission control for a stateful challenge MUST occur before the
+	        challenge is exposed. The cap check, insertion of the issuer-and-nonce
+	        replay key and complete authenticated body binding, and debit across
+	        every applicable outstanding-state bucket MUST commit as one atomic
+	        issuance transition in the same coordination domain. A read-check-
+	        register sequence or registration followed by a separate capacity debit
+	        does not satisfy this requirement. If the relying party cannot complete
+	        that transition or allocate the required outstanding record, it MUST NOT
+	        issue or expose the challenge. It returns a carrier-appropriate overload
+	        or generic refusal without an authorization-evidence challenge.</t>
         <t>For self-describing issuance, the relying party MUST enforce the
         replay-state bound when the first returned presentation attempts to
         claim the nonce. If it cannot durably and atomically claim replay
@@ -689,6 +729,11 @@
           <ul>
             <li>At the outstanding-state cap, a stateful issuer returns no new
             challenge and allocates no additional outstanding record.</li>
+	            <li>With one outstanding-state slot remaining, two concurrent
+	            stateful issuers produce exactly one committed and exposed
+	            challenge and one capacity refusal. Replay registration, complete-
+	            body binding, and every capacity debit commit together; no bucket
+	            exceeds its bound.</li>
             <li>At the replay-state cap, a returned self-describing challenge
             receives no evidence evaluation, no admission, and no requirements
             or obtain hints.</li>
@@ -790,16 +835,25 @@
       <t>When an HTTP origin server uses this carrier, it MUST return
       <tt>403 Forbidden</tt> as defined by <xref target="RFC9110"/>. The
       response body MUST be an <tt>application/problem+json</tt> Problem
-      Details object as defined by <xref target="RFC9457"/>.</t>
+	      Details object as defined by <xref target="RFC9457"/>. This carrier MUST
+	      NOT be used in a response to <tt>HEAD</tt>, because HTTP forbids response
+	      content for that method. A bodyless refusal to <tt>HEAD</tt> conveys no
+	      AE-CHALLENGE unless a separate retrieval profile is defined.</t>
       <t>If temporary overload or temporary owner unavailability is the reason
-      for refusal, the origin server uses <tt>503 Service Unavailable</tt> and
-      MAY use <tt>Retry-After</tt>. It uses 503 only when the inability is
-      temporary. Actual request-rate limiting can use <tt>429 Too Many
+	      for refusal, an origin server uses <tt>503 Service Unavailable</tt> and
+	      MAY use <tt>Retry-After</tt> only when the service itself is temporarily
+	      unavailable or overloaded. A gateway or proxy uses <tt>504 Gateway
+	      Timeout</tt> for an upstream owner timeout and can use <tt>502 Bad
+	      Gateway</tt> when the upstream response satisfies that status code's
+	      semantics under <xref target="RFC9110"/>. Actual request-rate limiting can use <tt>429 Too Many
       Requests</tt> as defined by <xref target="RFC6585"/>. A permanent administrative limit or generic policy refusal
       can use 403 without the <tt>ae-required</tt> problem type. None of these
       responses includes <tt>evidence_challenge</tt>, remaining requirements,
       obtain hints, or evidence-sufficiency details merely because evidence
-      might also be insufficient.</t>
+	      might also be insufficient.</t>
+	      <t>The following example omits HTTP message-framing fields such as
+	      <tt>Content-Length</tt>. A sender still supplies framing required by the
+	      HTTP version and connection in use.</t>
 	      <t>The <tt>ae-required</tt> problem type MUST be used only when the
 	      server is returning a fresh evidence challenge after a successful
 	      <tt>claimed-with-capacity</tt> transition or when issuing a newly
@@ -977,6 +1031,14 @@ Retry-After: 30
 	      fence. A later admission or effect boundary rederives or immutably binds
 	      the action again so a change after challenge evaluation cannot substitute
 	      a different effect.</t>
+	      <t><strong>Action-profile confusion and incomplete actions.</strong> The
+	      action binding is the authenticated pair of action profile and digest.
+	      Comparing a digest without its profile permits evidence produced under
+	      different action semantics to be spliced into the challenge. A profile
+	      that omits a beneficiary, resource, amount, provider parameter, or other
+	      field material to authorization or effect can also reproduce a digest
+	      while changing the real action. Profiles therefore pin their semantics,
+	      cover every material field, and travel with every digest comparison.</t>
       <t><strong>Replay and state exhaustion.</strong> Stateful issuance binds
       the complete body before exposure; self-describing issuance defers
       storage but still requires an atomic replay claim before evidence
@@ -1121,7 +1183,15 @@ Retry-After: 30
 	        requirements, hint SSRF protections, and satisfiable retry-window
 	        rules.</li>
 	        <li>Requires follow-ups to use the current exact action and live policy,
-	        and removes dependency on an unpublished DMSC section number.</li>
+	        repeats the complete evidence requirement set unless an explicit
+	        authenticated continuation profile binds prior evidence and state, and
+	        removes dependency on an unpublished DMSC section number.</li>
+	        <li>Makes the action profile and digest one authenticated security
+	        binding, requires complete material-field coverage, and pins audience
+	        namespace and alias semantics for the challenge lifetime.</li>
+	        <li>Makes stateful issuance atomically register the complete body and
+	        debit every applicable state-cap bucket before exposure, including the
+	        concurrent last-slot case.</li>
 	        <li>Defines an unambiguous base64url nonce syntax, a total
 	        replay-collision-expiry ordering, and mandatory transfer of a
 	        stateful-open debit into the in-flight reservation.</li>

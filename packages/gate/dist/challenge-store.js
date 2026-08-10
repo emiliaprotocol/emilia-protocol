@@ -46,7 +46,12 @@ export function challengeStorageKey(challenge, issuerIdentity) {
 }
 export function challengeBodyDigest(challenge) {
     assertChallenge(challenge);
-    return hashCanonical(challenge);
+    // Domain separation is part of the stored body identity. The same JSON
+    // value used by another protocol domain must not have the same digest.
+    return hashCanonical({
+        domain: 'AE-CHALLENGE-BODY-v1',
+        challenge,
+    });
 }
 export function createDurableChallengeStore(backend, { issuerIdentity } = {}) {
     for (const method of ['addIfAbsent', 'compareAndSet', 'has']) {

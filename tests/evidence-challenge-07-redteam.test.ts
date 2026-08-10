@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   createRegisteredEvidenceChallenge,
@@ -19,6 +20,7 @@ const actionB = { ...actionA, amount: '250000.01' };
 const beforeExpiry = '2026-07-03T12:01:00Z';
 const afterExpiry = '2026-07-03T12:11:00Z';
 const expiresAt = '2026-07-03T12:10:00Z';
+const testNonce = (label) => crypto.createHash('sha256').update(label).digest('base64url').slice(0, 24);
 const verifiers = {
   authorization_receipt: (artifact) => ({
     valid: true,
@@ -65,7 +67,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     const challenge = {
       '@version': 'AE-CHALLENGE-v1',
       challenge_id: 'issuer-scope-a',
-      nonce: 'same-nonce-different-issuer-0001',
+      nonce: testNonce('same-nonce-different-issuer'),
       action_digest: artifactDigest(actionA),
       expires_at: expiresAt,
     };
@@ -81,7 +83,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
       challengeStore: store,
       challenge_id: 'retained-replay-precedence',
-      nonce: 'retained-replay-precedence-0001',
+      nonce: testNonce('retained-replay-precedence'),
       expires_at: expiresAt,
     });
     expect((await evaluateRegisteredPresentation(challenge, completeGraph(), policy, {
@@ -106,7 +108,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
       challengeStore: store,
       challenge_id: 'current-action-rederivation',
-      nonce: 'current-action-rederivation-0001',
+      nonce: testNonce('current-action-rederivation'),
       expires_at: expiresAt,
     });
 
@@ -127,7 +129,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
       challengeStore: store,
       challenge_id: 'body-collision-a',
-      nonce: 'body-collision-shared-nonce-0001',
+      nonce: testNonce('body-collision-shared'),
       expires_at: expiresAt,
     });
     const collision = {
@@ -156,7 +158,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
           issuerIdentity: 'https://different-owner.example',
         }),
         challenge_id: 'not-registered-here',
-        nonce: 'not-registered-here-0000000001',
+        nonce: testNonce('not-registered-here'),
         expires_at: expiresAt,
       })),
     };
@@ -179,7 +181,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
       challengeStore: store,
       challenge_id: 'expired-open-body-a',
-      nonce: 'expired-open-body-collision-0001',
+      nonce: testNonce('expired-open-body-collision'),
       expires_at: expiresAt,
     });
     const collision = {
@@ -206,7 +208,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
       challengeStore: store,
       challenge_id: 'conflicting-presenters',
-      nonce: 'conflicting-presenters-000000001',
+      nonce: testNonce('conflicting-presenters'),
       expires_at: expiresAt,
       audience: 'https://presenter.example',
     });
@@ -239,7 +241,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
       challengeStore: store,
       challenge_id: 'production-current-action',
-      nonce: 'production-current-action-000001',
+      nonce: testNonce('production-current-action'),
       expires_at: expiresAt,
       audience: 'https://presenter.example',
       production: false,
@@ -274,9 +276,8 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
         },
       };
       const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
-        challengeStore: raw,
+        challengeStore: declared,
         challenge_id: 'effective-production-mode',
-        nonce: 'effective-production-mode-0001',
         expires_at: expiresAt,
         audience: 'https://presenter.example',
         production: false,
@@ -286,6 +287,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
         verifiers,
         as_of: beforeExpiry,
         current_action: actionA,
+        production: false,
       });
       expect(result.verdict).toBe('refused');
       expect(result.reasons.join(' ')).toContain('authenticated presenter is required');
@@ -302,7 +304,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
       challengeStore: raw,
       challenge_id: 'timeout-after-commit',
-      nonce: 'timeout-after-commit-00000001',
+      nonce: testNonce('timeout-after-commit'),
       expires_at: expiresAt,
     });
     let verifierCalls = 0;
@@ -337,7 +339,7 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
       challengeStore: raw,
       challenge_id: 'compound-production-path',
-      nonce: 'compound-production-path-0001',
+      nonce: testNonce('compound-production-path'),
       expires_at: expiresAt,
       audience: 'https://presenter.example',
       production: false,

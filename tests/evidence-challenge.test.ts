@@ -75,7 +75,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     expect(req.find((r) => r.type === 'policy_permit').assurance_class).toBeUndefined();
   });
 
-  it('the full circuit: challenge -> partial present -> next_challenge lists ONLY the missing -> complete present -> admissible', () => {
+  it('the full circuit: a follow-up repeats the complete requirement set and never relies on ambient prior evidence', () => {
     const nonces = new Set();
     const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
     expect(ch['@version']).toBe(CHALLENGE_VERSION);
@@ -89,7 +89,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     const missing = partial.next_challenge.required_evidence.map((r) => r.type);
     expect(missing).toContain('policy_permit');
     expect(missing).toContain('workload_identity');
-    expect(missing).not.toContain('authorization_receipt');
+    expect(missing).toContain('authorization_receipt');
     expect(partial.next_challenge.action_digest).toBe(ch.action_digest);
 
     const done = evaluatePresentation(partial.next_challenge,
@@ -97,6 +97,28 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
       { verifiers, as_of: AS_OF, consumedNonces: nonces });
     expect(done.verdict).toBe('admissible');
     expect(done.next_challenge).toBeNull();
+  });
+
+  it('refuses a follow-up that presents only newly missing evidence', () => {
+    const nonces = new Set();
+    const challenge = createEvidenceChallenge(ACTION, policy, {
+      expires_at: EXPIRES,
+      nonce: 'first-evidence-attempt',
+    });
+    const partial = evaluatePresentation(
+      challenge,
+      graphFor(['authorization_receipt']),
+      policy,
+      { verifiers, as_of: AS_OF, consumedNonces: nonces, nonce: 'second-evidence-attempt' },
+    );
+    const spliced = evaluatePresentation(
+      partial.next_challenge,
+      graphFor(['policy_permit', 'workload_identity']),
+      policy,
+      { verifiers, as_of: AS_OF, consumedNonces: nonces },
+    );
+    expect(spliced.verdict).not.toBe('admissible');
+    expect(spliced.reasons.join(' ')).toContain('authorization_receipt');
   });
 
   it('advertises and accepts the active standalone draft -00 AEC presentation profile', () => {
@@ -260,7 +282,11 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
       { verifiers, as_of: AS_OF, consumedNonces: nonces, nonce: 'n2' });
     expect(r.verdict).toBe('stale');
     const missing = r.next_challenge.required_evidence.map((x) => x.type);
-    expect(missing).toEqual(['authorization_receipt']);
+    expect(missing).toEqual(expect.arrayContaining([
+      'authorization_receipt',
+      'policy_permit',
+      'workload_identity',
+    ]));
     expect(r.next_challenge.action_digest).toBe(ch.action_digest);
   });
 
