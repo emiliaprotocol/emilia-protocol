@@ -1,0 +1,372 @@
+{
+  "@type": "EP-OT-COMMAND-BINDING-VECTORS-v1",
+  "profile_status": "experimental",
+  "source": {
+    "example": "examples/ot-command-binding-v1",
+    "note": "Synthetic protocol models; no live PLC, RTU, DCS, or certified stack."
+  },
+  "invariants": [
+    "derive the observed action from decoded native bytes and enforcement-point-owned link context",
+    "compare the observed action digest with the authorized action before forwarding",
+    "consume one authorization at most once",
+    "after dispatch without a proved outcome, report INDETERMINATE and do not retry blindly"
+  ],
+  "detached_evidence": {
+    "lookup": "attempt reference plus exact-action digest",
+    "request_instance_binding": "authenticated-conduit-context-plus-attempt-reference",
+    "digest_is_secret": false,
+    "repeated_action_rule": "two authorizations for the same action use distinct attempt references",
+    "failure_domain": "attempt holder and authoritative consumption record are conduit-owned",
+    "equivalence_boundary": "inline and detached modes can provide equivalent agreement, verification, and consumption; request-instance binding depends on the secure channel or authenticated conduit context plus attempt reference"
+  },
+  "freshness": {
+    "clock": "conduit-owned",
+    "rule": "the conduit evaluates the authorization validity window immediately before admission",
+    "short_window_is_not_reconciliation": true
+  },
+  "vectors": [
+    {
+      "id": "modbus-write-single-register-v1",
+      "transport_profile": {
+        "transport": "modbus-tcp",
+        "envelope_capacity": "none",
+        "carries_authorization_inline": false,
+        "binding_mode": "out-of-band-digest",
+        "extension_point": null,
+        "metadata_octets_available": 0,
+        "why": "A write is unit id, function code, register address, and value. Length is fixed by the function code; nothing else fits on the wire."
+      },
+      "action": {
+        "action_type": "ot.modbus.write_single_register",
+        "transport": "modbus-tcp",
+        "site": "ep:site:demo-lift-station",
+        "device": "ep:device:plc-3",
+        "unit_id": 3,
+        "function_code": 6,
+        "protocol_address": 0,
+        "value": 1
+      },
+      "action_digest": "sha256:fa7748a3d69bfbe4a47ca6cff90a4ea0cc35ecb006774c9900b245c62447db26",
+      "native_command": {
+        "transport": "modbus-tcp",
+        "hex": "000100000006030600000001",
+        "octets": 12,
+        "protocol_address": 0,
+        "metadata_octets_available": 0,
+        "carries_authorization": false
+      },
+      "display_metadata": {
+        "register_label": "40001",
+        "note": "Convention-dependent operator display only; excluded from the action digest."
+      },
+      "correlation_variant": {
+        "native_command": {
+          "transport": "modbus-tcp",
+          "hex": "109200000006030600000001",
+          "octets": 12,
+          "protocol_address": 0,
+          "metadata_octets_available": 0,
+          "carries_authorization": false
+        },
+        "expected_action_digest": "sha256:fa7748a3d69bfbe4a47ca6cff90a4ea0cc35ecb006774c9900b245c62447db26",
+        "note": "Changing only the MBAP transaction id does not change the physical act."
+      },
+      "field_census": {
+        "material": [
+          "unit_id",
+          "function_code",
+          "protocol_address",
+          "value"
+        ],
+        "conduit_context": [
+          "site",
+          "device"
+        ],
+        "correlation_only": [
+          "mbap.transaction_id"
+        ],
+        "fixed_or_derived": [
+          "mbap.protocol_id=0",
+          "mbap.length=6"
+        ]
+      },
+      "encoding_scope": {
+        "fc06_and_fc16_quantity_one_are_distinct": true,
+        "equivalent_effect_action": {
+          "action_type": "ot.modbus.write_multiple_registers",
+          "transport": "modbus-tcp",
+          "site": "ep:site:demo-lift-station",
+          "device": "ep:device:plc-3",
+          "unit_id": 3,
+          "function_code": 16,
+          "protocol_address": 0,
+          "quantity": 1,
+          "byte_count": 2,
+          "values": [
+            1
+          ]
+        },
+        "equivalent_effect_action_digest": "sha256:6b802c5e2cf9b9e55368a5358c55691f364ac64cc749c7ebf732fcd91b8bcbd2",
+        "note": "The profile binds native encoding and does not normalize FC 0x06 into FC 0x10 quantity one."
+      },
+      "negative_cases": [
+        {
+          "field": "protocol_address",
+          "value": 1,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:913466057f1ebe59f78071701b005cf6dc7939d8edda6265701336753a32b0cc"
+        },
+        {
+          "field": "value",
+          "value": 0,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:477aea3933996c57eda0b2b8afb9aee4bd566f6525bd3308898c46ed22b06d12"
+        },
+        {
+          "field": "unit_id",
+          "value": 4,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:5aeaf62db5bf494e891f679ddd0fe3423f7e918a32329ff17f0db28dbc1d37de"
+        }
+      ]
+    },
+    {
+      "id": "dnp3-direct-operate-crob-v1",
+      "transport_profile": {
+        "transport": "dnp3",
+        "envelope_capacity": "fixed-object-space",
+        "carries_authorization_inline": false,
+        "binding_mode": "out-of-band-digest",
+        "extension_point": null,
+        "metadata_octets_available": 0,
+        "why": "A control relay output block is a fixed-width object in a typed object space. No octet of the fragment is free for an envelope."
+      },
+      "action": {
+        "action_type": "ot.dnp3.control_relay_output_block",
+        "transport": "dnp3",
+        "site": "ep:site:demo-lift-station",
+        "device": "ep:device:rtu-12",
+        "outstation_address": 12,
+        "application_function": 5,
+        "group": 12,
+        "variation": 1,
+        "index": 7,
+        "control_octet": 3,
+        "operation_count": 1,
+        "on_time_ms": 0,
+        "off_time_ms": 0
+      },
+      "action_digest": "sha256:307347d8dceae8464d8eadc76d50932116e6e20fe90687a56994881a0981cad1",
+      "native_command": {
+        "transport": "dnp3",
+        "hex": "c0050c011701070301000000000000000000",
+        "octets": 18,
+        "crob_octets": 11,
+        "metadata_octets_available": 0,
+        "carries_authorization": false
+      },
+      "link_context": {
+        "fields": [
+          "site",
+          "device",
+          "outstation_address"
+        ],
+        "note": "The pinned bytes begin at the application header; the conduit establishes the link-layer outstation address."
+      },
+      "field_census": {
+        "material": [
+          "application_function",
+          "group",
+          "variation",
+          "index",
+          "control_octet",
+          "operation_count",
+          "on_time_ms",
+          "off_time_ms"
+        ],
+        "conduit_context": [
+          "site",
+          "device",
+          "outstation_address"
+        ],
+        "correlation_only": [
+          "application_control.sequence"
+        ],
+        "fixed_or_derived": [
+          "application_control.FIR=1",
+          "application_control.FIN=1",
+          "qualifier=0x17",
+          "object_count=1",
+          "status=0"
+        ]
+      },
+      "correlation_variant": {
+        "native_command": {
+          "transport": "dnp3",
+          "hex": "c9050c011701070301000000000000000000",
+          "octets": 18,
+          "crob_octets": 11,
+          "metadata_octets_available": 0,
+          "carries_authorization": false
+        },
+        "expected_action_digest": "sha256:307347d8dceae8464d8eadc76d50932116e6e20fe90687a56994881a0981cad1",
+        "note": "Changing only the DNP3 application sequence changes the fragment bytes, not the physical act."
+      },
+      "profile_scope": {
+        "direct_operate_supported": true,
+        "direct_operate_no_ack_supported": true,
+        "select_operate_supported": false,
+        "select_operate_requirement": "A future profile must bind SELECT and OPERATE to one authorization and enforce the arm timer in one state machine."
+      },
+      "no_ack_variant": {
+        "action": {
+          "action_type": "ot.dnp3.control_relay_output_block",
+          "transport": "dnp3",
+          "site": "ep:site:demo-lift-station",
+          "device": "ep:device:rtu-12",
+          "outstation_address": 12,
+          "application_function": 6,
+          "group": 12,
+          "variation": 1,
+          "index": 7,
+          "control_octet": 3,
+          "operation_count": 1,
+          "on_time_ms": 0,
+          "off_time_ms": 0
+        },
+        "action_digest": "sha256:d51674c0773d6713f3a64b14376ac06aeaab9144decfb9d88126c30a1fa7e161",
+        "native_command": {
+          "transport": "dnp3",
+          "hex": "c0060c011701070301000000000000000000",
+          "octets": 18,
+          "crob_octets": 11,
+          "metadata_octets_available": 0,
+          "carries_authorization": false
+        },
+        "terminal_outcome": "INDETERMINATE",
+        "reason": "DIRECT_OPERATE_NR supplies no protocol acknowledgement."
+      },
+      "negative_cases": [
+        {
+          "field": "index",
+          "value": 8,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:6c4e33b8cf86b0e03198ccb6d248f59eaa1d0682992ef623a230681ae56a85f2"
+        },
+        {
+          "field": "control_octet",
+          "value": 67,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:2878f01239eec563b3871dfd2342ff1edf10ce9a8b2e6e6c770f1102807a36cf"
+        },
+        {
+          "field": "on_time_ms",
+          "value": 100,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:27149be0faf41fe4e21aa4d68da3618bf2272b362432393b1d5b8674ac482378"
+        },
+        {
+          "field": "off_time_ms",
+          "value": 100,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:988d52b4c2d798e788e7b845f27ae1048a865f5c510846f279f1a33afd39cc90"
+        },
+        {
+          "field": "application_function",
+          "value": 6,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:d51674c0773d6713f3a64b14376ac06aeaab9144decfb9d88126c30a1fa7e161"
+        },
+        {
+          "field": "outstation_address",
+          "value": 13,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:169d99c62a16ca5e264f03319bec7c3a062afd2fe956dd979ddd228a3d0441af"
+        }
+      ]
+    },
+    {
+      "id": "opcua-call-method-v1",
+      "transport_profile": {
+        "transport": "opc-ua",
+        "envelope_capacity": "extensible",
+        "carries_authorization_inline": true,
+        "binding_mode": "inline",
+        "extension_point": "request-header extension object (modeled here as a JSON member)",
+        "metadata_octets_available": null,
+        "why": "The request structure has an extension slot, so an authorization can ride with the call."
+      },
+      "action": {
+        "action_type": "ot.opcua.call_method",
+        "transport": "opc-ua",
+        "site": "ep:site:demo-lift-station",
+        "device": "ep:device:dcs-1",
+        "object_id": "ns=2;s=LiftStation.PumpTrain",
+        "method_id": "ns=2;s=SetInterlock",
+        "argument_name": "Enabled",
+        "argument_value": 1
+      },
+      "action_digest": "sha256:4e657b4e2fe4f9ad58ca6d12a8d9e01a8aae4036ba29383535f299e920ca3f01",
+      "native_command": {
+        "transport": "opc-ua",
+        "request": {
+          "service": "Call",
+          "request_header": {
+            "request_handle": 1,
+            "additional_header": {
+              "type_id": "urn:emilia-protocol:EP-OT-COMMAND-BINDING-v1",
+              "body": {
+                "ep_receipt": {
+                  "@type": "EP-OT-AUTHORIZATION-REFERENCE-v0",
+                  "artifact_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "note": "Illustrative carriage reference only; not a valid authorization receipt."
+                }
+              }
+            }
+          },
+          "methods_to_call": [
+            {
+              "object_id": "ns=2;s=LiftStation.PumpTrain",
+              "method_id": "ns=2;s=SetInterlock",
+              "input_arguments": [
+                {
+                  "name": "Enabled",
+                  "value": 1
+                }
+              ]
+            }
+          ]
+        },
+        "octets": 524,
+        "authorization_octets": 218,
+        "metadata_octets_available": null,
+        "carries_authorization": true
+      },
+      "inline_authorization_reference": {
+        "@type": "EP-OT-AUTHORIZATION-REFERENCE-v0",
+        "artifact_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "note": "Illustrative carriage reference only; not a valid authorization receipt."
+      },
+      "negative_cases": [
+        {
+          "field": "object_id",
+          "value": "ns=2;s=LiftStation.OtherPump",
+          "expected": "different-action-digest",
+          "action_digest": "sha256:4eb2b4e952c0117d496099caffd4022f5e948bc20c18b719cb6c87103635ac3b"
+        },
+        {
+          "field": "method_id",
+          "value": "ns=2;s=DisableInterlock",
+          "expected": "different-action-digest",
+          "action_digest": "sha256:3db4f9356217f5905e78c930a6c8c358110413a31f34ffdbd2daf88dc2791d3b"
+        },
+        {
+          "field": "argument_value",
+          "value": 0,
+          "expected": "different-action-digest",
+          "action_digest": "sha256:924abda88a60b3d4aa20c77c1ab5f82ecde0def85c153a78b22a56bc8a198881"
+        }
+      ]
+    }
+  ]
+}
