@@ -83,11 +83,11 @@
     },
     {
       "path": "conformance/refinement/adapters/evidence-challenge-lifecycle.mjs",
-      "sha256": "2f50fcdf35234abd73191ac12c6d336bfbe9a18fa018027c09f0b487f6db90c9"
+      "sha256": "644645304339a393dfec2f896b9fe2acfe525d8c1e989a054c20ce45fc3db63a"
     },
     {
       "path": "conformance/refinement/adapters/evidence-challenge-lifecycle.mts",
-      "sha256": "184c0a6b01db23ad06ff57dfeb73399621f851a8110e3301703b013b49545d2e"
+      "sha256": "2f1906e528ebc91f30e58be3f7ab801abda65c08d1b74e8606c5005b332fed22"
     },
     {
       "path": "conformance/refinement/adapters/five-claim-bridge.mjs",
@@ -231,7 +231,7 @@
     },
     {
       "path": "formal/check-evidence-challenge-lifecycle.mjs",
-      "sha256": "8b31ab3211b437c0971ee0643eeaca8bcfab11565c12fb40b744aa467000223f"
+      "sha256": "dd8bc8a7a3b225fa9be2c40a20deec6ad6e5327ef22dda8364d152acbed5de56"
     },
     {
       "path": "formal/check-outcome-authority-join.mjs",
@@ -311,7 +311,7 @@
     },
     {
       "path": "formal/evidence-challenge-lifecycle.model.mjs",
-      "sha256": "ed07103b168566a5657390d0726615f4a80e9924c8570e903e13e83edebb54be"
+      "sha256": "e083c40bdcdf8e46d9830a79a156667ae01c80323daafdda44b2aa6c2f5c5268"
     },
     {
       "path": "formal/outcome-authority-join.model.mjs",
@@ -323,7 +323,7 @@
     },
     {
       "path": "formal/runtime-scenarios.v2.json",
-      "sha256": "0d21eb5c352ffe4a3c427ed4240c17d899c410d35f30d32908b845e0e758e9ab"
+      "sha256": "e4b0e75818c0b487a131b401f91c50a0bb2ed452eb87c34d0fbb8504e6f5b0ea"
     },
     {
       "path": "formal/two-claim-assurance.model.mjs",
@@ -483,11 +483,11 @@
     },
     {
       "path": "lib/negotiate/evidence-challenge.js",
-      "sha256": "1450561c09c9b8eceb16eaff12392911c67501a573fdc33d0205eaff509479a1"
+      "sha256": "4d4ae190ed647699ed29ce65e9e75b74000c9e865282467d1f3bd591eabd0629"
     },
     {
       "path": "lib/negotiate/evidence-challenge.ts",
-      "sha256": "ee75cf9a0b93843b618eb124741283504efc3fb0d82db363840fb514b26bfc04"
+      "sha256": "cec12f0f6295b96641a67a27be47c3d5712c6cf578d7b774638e22b89a3d745f"
     },
     {
       "path": "lib/strict-json.js",
@@ -607,7 +607,7 @@
     },
     {
       "path": "packages/gate/dist/challenge-store.js",
-      "sha256": "011bddb89b3f9def9a16a6d8b8cdcb866ee0b1d356c86d7bff7c01d161fc4645"
+      "sha256": "800c30494c01e7ffa84e50d16f8746f7b830693d58c69d388f9fcac1b08fa403"
     },
     {
       "path": "packages/gate/dist/consequence-actuator.js",
@@ -831,7 +831,7 @@
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
-      "sha256": "e64ffa948c9d073f0900bb2152eb59d78fdaa207305af60659d75401c04ea3c8"
+      "sha256": "654818309ed50ddaf78d0cfc8e9c1ab738a59902d81b17f65cc6b6858ca6569c"
     },
     {
       "path": "packages/gate/src/consequence-actuator.ts",
@@ -3611,6 +3611,125 @@
         "checker": "formal/check-evidence-challenge-lifecycle.mjs",
         "checks": [
           {
+            "mutation_counterexample_sha256": "sha256:b78159e065f5dda2dd1b15bf54ddfc60974cf19f4fb1d1ec9e60bb29ddbeb6b6",
+            "mutation_states_checked": 1008,
+            "obligation": "ExactActionDigestBound",
+            "states_checked": 1024
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:c2b98750ccf7b7948866bca89d219248d40fec162a81ce909a1a5ddfa0729caf",
+            "mutation_states_checked": 1,
+            "obligation": "ActionMismatchIsInert",
+            "states_checked": 1
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:e206ac9be416201a9421592028ab9f7deeef650c97620aba84999233c7084e56",
+            "mutation_states_checked": 1,
+            "obligation": "InvalidAttemptIsInert",
+            "states_checked": 1
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:d2add3aa9bb9aded20ea4279e900ad8ad21b5435af1f0516948a69d1ed32e33e",
+            "mutation_states_checked": 1,
+            "obligation": "ConcurrentConsumptionIsOneTime",
+            "states_checked": 1
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:c542a17d400c87ddbc6ae2a1e62a81e4cee239f49ce015fca2e67dbc706e164b",
+            "mutation_states_checked": 1,
+            "obligation": "ConsumedStatePersistsAcrossRestart",
+            "states_checked": 1
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:701f402e4d33789adfd089002b26e552e13b1b3f4be36be3392ba403354ab698",
+            "mutation_states_checked": 896,
+            "obligation": "ExpiryBound",
+            "states_checked": 1024
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:d28959403a74091f8b7ea3fd7a4f5a9011841810c6ed0d8065a60b85902ddffa",
+            "mutation_states_checked": 768,
+            "obligation": "NonceBound",
+            "states_checked": 1024
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:0ce0f5ff95f9b7fc05c07ab2e0a2fb360be89c956c3f03255d8e85e754c81eaa",
+            "mutation_states_checked": 512,
+            "obligation": "PresentationMethodBound",
+            "states_checked": 1024
+          }
+        ],
+        "control": {
+          "kind": "formal_mutation_counterexample",
+          "mutant_input_accepted": true,
+          "obligation": "ActionMismatchIsInert",
+          "sound_input_refused": true
+        },
+        "model_version": "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v1",
+        "obligation": "ActionMismatchIsInert",
+        "status": "counterexample_detected"
+      },
+      "id": "evidence-challenge-action-swap-is-inert",
+      "kind": "paired_negative_control",
+      "matched": true,
+      "model": "formal/evidence-challenge-lifecycle.model.mjs",
+      "relation": {
+        "fields": [
+          "accepted",
+          "consumed",
+          "replayRefused"
+        ],
+        "formal_projection": {
+          "accepted": false,
+          "consumed": false,
+          "replayRefused": false
+        },
+        "runtime_projection": {
+          "accepted": false,
+          "consumed": false,
+          "replayRefused": false
+        },
+        "shared_input": {
+          "action_agrees": false,
+          "atomic_registration": true,
+          "body_bound_storage": true,
+          "challenge_valid": true,
+          "durable_storage": true,
+          "exact_action_digest": true,
+          "expiry": true,
+          "freshness_policy_context": true,
+          "missing_evidence": true,
+          "nonce": true,
+          "permanent_consumption": true,
+          "presentation_admissible": false,
+          "presentation_method": true
+        },
+        "status": "matched"
+      },
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "RefuseActionMismatchWithoutConsumption",
+            "projection": {
+              "challengeState": "open",
+              "presentation": "action_mismatch"
+            }
+          }
+        ]
+      },
+      "scenario": "evidence-challenge-action-swap-is-inert"
+    },
+    {
+      "adapter": "evidence-challenge-lifecycle",
+      "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
+      "control_semantics": "paired_formal_counterexample_runtime_refusal",
+      "formal": {
+        "backend": "bounded_exhaustive_state_exploration",
+        "checker": "formal/check-evidence-challenge-lifecycle.mjs",
+        "checks": [
+          {
             "mutation_counterexample_sha256": "sha256:8ee51e8a3776b60a08066fb6a60a498172f24d5e05ee472bb2593bf59a65dac1",
             "mutation_states_checked": 1020,
             "obligation": "BodyBoundStorageRequired",
@@ -3816,132 +3935,6 @@
         ]
       },
       "scenario": "evidence-challenge-durable-once"
-    },
-    {
-      "adapter": "evidence-challenge-lifecycle",
-      "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
-      "control_semantics": "paired_formal_counterexample_runtime_refusal",
-      "formal": {
-        "backend": "bounded_exhaustive_state_exploration",
-        "checker": "formal/check-evidence-challenge-lifecycle.mjs",
-        "checks": [
-          {
-            "mutation_counterexample_sha256": "sha256:b78159e065f5dda2dd1b15bf54ddfc60974cf19f4fb1d1ec9e60bb29ddbeb6b6",
-            "mutation_states_checked": 1008,
-            "obligation": "ExactActionDigestBound",
-            "states_checked": 1024
-          },
-          {
-            "mutation_counterexample_sha256": "sha256:71c3b3b10b777b2800ebb0e0d03db263d6657049262bc76f340ed49e5d3f583b",
-            "mutation_states_checked": 1,
-            "obligation": "FirstValidAttemptConsumes",
-            "states_checked": 1
-          },
-          {
-            "mutation_counterexample_sha256": "sha256:e206ac9be416201a9421592028ab9f7deeef650c97620aba84999233c7084e56",
-            "mutation_states_checked": 1,
-            "obligation": "InvalidAttemptIsInert",
-            "states_checked": 1
-          },
-          {
-            "mutation_counterexample_sha256": "sha256:d2add3aa9bb9aded20ea4279e900ad8ad21b5435af1f0516948a69d1ed32e33e",
-            "mutation_states_checked": 1,
-            "obligation": "ConcurrentConsumptionIsOneTime",
-            "states_checked": 1
-          },
-          {
-            "mutation_counterexample_sha256": "sha256:c542a17d400c87ddbc6ae2a1e62a81e4cee239f49ce015fca2e67dbc706e164b",
-            "mutation_states_checked": 1,
-            "obligation": "ConsumedStatePersistsAcrossRestart",
-            "states_checked": 1
-          },
-          {
-            "mutation_counterexample_sha256": "sha256:701f402e4d33789adfd089002b26e552e13b1b3f4be36be3392ba403354ab698",
-            "mutation_states_checked": 896,
-            "obligation": "ExpiryBound",
-            "states_checked": 1024
-          },
-          {
-            "mutation_counterexample_sha256": "sha256:d28959403a74091f8b7ea3fd7a4f5a9011841810c6ed0d8065a60b85902ddffa",
-            "mutation_states_checked": 768,
-            "obligation": "NonceBound",
-            "states_checked": 1024
-          },
-          {
-            "mutation_counterexample_sha256": "sha256:0ce0f5ff95f9b7fc05c07ab2e0a2fb360be89c956c3f03255d8e85e754c81eaa",
-            "mutation_states_checked": 512,
-            "obligation": "PresentationMethodBound",
-            "states_checked": 1024
-          }
-        ],
-        "control": {
-          "kind": "formal_mutation_counterexample",
-          "mutant_input_accepted": true,
-          "obligation": "FirstValidAttemptConsumes",
-          "sound_input_refused": true
-        },
-        "model_version": "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v1",
-        "obligation": "FirstValidAttemptConsumes",
-        "status": "counterexample_detected"
-      },
-      "id": "evidence-challenge-first-valid-action-swap-consumes",
-      "kind": "paired_negative_control",
-      "matched": true,
-      "model": "formal/evidence-challenge-lifecycle.model.mjs",
-      "relation": {
-        "fields": [
-          "accepted",
-          "consumed",
-          "replayRefused"
-        ],
-        "formal_projection": {
-          "accepted": false,
-          "consumed": true,
-          "replayRefused": true
-        },
-        "runtime_projection": {
-          "accepted": false,
-          "consumed": true,
-          "replayRefused": true
-        },
-        "shared_input": {
-          "atomic_registration": true,
-          "body_bound_storage": true,
-          "challenge_valid": true,
-          "durable_storage": true,
-          "exact_action_digest": true,
-          "expiry": true,
-          "freshness_policy_context": true,
-          "missing_evidence": true,
-          "nonce": true,
-          "permanent_consumption": true,
-          "presentation_admissible": false,
-          "presentation_method": true
-        },
-        "status": "matched"
-      },
-      "runtime": {
-        "status": "matched",
-        "steps": [
-          {
-            "accepted": false,
-            "operator": "ConsumeFirstValidAttempt",
-            "projection": {
-              "challengeState": "consumed",
-              "presentation": "action_mismatch"
-            }
-          },
-          {
-            "accepted": false,
-            "operator": "RefuseConsumedChallengeReplay",
-            "projection": {
-              "challengeState": "consumed",
-              "replayRefused": true
-            }
-          }
-        ]
-      },
-      "scenario": "evidence-challenge-first-valid-action-swap-consumes"
     },
     {
       "adapter": "evidence-challenge-lifecycle",

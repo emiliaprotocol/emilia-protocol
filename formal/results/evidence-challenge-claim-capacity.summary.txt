@@ -1,0 +1,50 @@
+EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v1
+Status: local same-team bounded model result; not deployed or independently reviewed
+Method: deterministic finite state exploration with explicit unsafe mutations
+Execution date: 2026-08-10
+Runtime: Node.js
+Model SHA-256: 5eeaffb2d7f940e84c95874f791f8adbfcc4f5062ff5d521a5c060cedade88a4
+Runner SHA-256: 9d5b69ce8157ea44fde1bbc8af62e96df566e3f78fab9db54e2a25815117beed
+
+Checked states and edges: 18.
+
+Verified properties:
+- one duplicate presentation claims and reserves once;
+- an exact-body replay adds no capacity debit;
+- a capacity refusal does not claim or burn the nonce;
+- a different body under the same issuer-and-nonce key is a collision;
+- owner uncertainty is reported as unavailability while preserving both
+  possible authoritative outcomes;
+- an otherwise unclaimed expired challenge claims and reserves nothing;
+- a retained claimed replay is classified before expiry while the first
+  evaluation remains in flight;
+- a stale reservation owner cannot finalize after reassignment;
+- retry timing plus maximum jitter remains strictly before expiry; and
+- the authenticated returning presenter matches the challenge audience.
+
+Obligations:
+CompoundClaimAndCapacityAtomic (9 states): verified
+DuplicateReservesOnce (1 transition): verified
+CapacityRefusalDoesNotClaim (1 transition): verified
+BodyCollisionIsNotReplay (1 transition): verified
+OwnerUncertaintyIsUnavailable (1 transition): verified
+ExpiredDoesNotClaimOrReserve (1 transition): verified
+ClaimedReplayPrecedesExpiry (1 transition): verified
+GlobalCapIsConservedAcrossShards (1 transition): verified
+RecoveryFinalizationIsFenced (1 transition): verified
+RetryWindowPrecedesExpiry (3 states): verified
+PresenterMatchesAudience (2 states): verified
+
+Mutation counterexamples:
+- checking expiry before retained claim state masks a concurrent replay;
+- reserving before a separate claim leaks or over-allocates capacity;
+- claiming before a separate cap decision burns a nonce at capacity;
+- independent shards without a coordinator or bounded quota over-allocate a
+  global cap; and
+- ignoring fencing lets a stale worker publish state after recovery.
+
+Scope: finite same-team logic evidence for the AE-CHALLENGE owner transition.
+It is not a database refinement proof. Storage-driver correctness, transaction
+isolation, stateful open registration, transfer of an existing outstanding
+debit, authentication, current-action derivation, evidence verification, and
+policy correctness remain acceptance roots.

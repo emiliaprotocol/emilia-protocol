@@ -31,6 +31,7 @@ export const LIFECYCLE_OBLIGATIONS = Object.freeze([
   "ConcurrentRegistrationIsUnique",
   "FirstValidAttemptConsumes",
   "InvalidAttemptIsInert",
+  "ActionMismatchIsInert",
   "ConcurrentConsumptionIsOneTime",
   "ConsumedStatePersistsAcrossRestart",
 ]);
@@ -84,6 +85,9 @@ export const UNSAFE_CHALLENGE_VARIANTS = Object.freeze({
   }),
   InvalidAttemptIsInert: Object.freeze({
     consume_invalid_attempt: true,
+  }),
+  ActionMismatchIsInert: Object.freeze({
+    consume_action_mismatch: true,
   }),
   ConcurrentConsumptionIsOneTime: Object.freeze({
     non_atomic_consumption: true,
@@ -143,6 +147,7 @@ export function simulateChallengeLifecycle(
   input,
   {
     challenge_valid = true,
+    action_agrees = true,
     presentation_admissible = true,
     restart_before_attempt = false,
     restart_after_attempt = false,
@@ -167,6 +172,8 @@ export function simulateChallengeLifecycle(
   if (registration.exposed && registered) {
     if (!challenge_valid) {
       if (semantics.consume_invalid_attempt === true) consumed = true;
+    } else if (!action_agrees) {
+      if (semantics.consume_action_mismatch === true) consumed = true;
     } else {
       evaluated = true;
       if (semantics.skip_first_valid_consumption !== true) consumed = true;

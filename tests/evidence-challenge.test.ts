@@ -113,7 +113,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
         verifiers,
         as_of: AS_OF,
         consumedNonces: new Set(),
-        expected_audience: 'travel.example',
+        authenticated_presenter: 'travel.example',
       },
     );
     expect(result.verdict).toBe('admissible');
@@ -185,7 +185,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
       verifiers,
       as_of: AS_OF,
       consumedNonces: new Set(),
-      expected_audience: 'payments.example',
+      authenticated_presenter: 'payments.example',
     });
     expect(result.verdict).toBe('refused');
     expect(result.reasons.join(' ')).toContain('audience');

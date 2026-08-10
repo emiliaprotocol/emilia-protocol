@@ -1,10 +1,10 @@
 EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-v1
 Status: local same-team bounded model result; not deployed or independently reviewed
 Method: deterministic finite exhaustive state exploration
-Execution date: 2026-07-24
+Execution date: 2026-08-10
 Runtime: Node.js
-Model SHA-256: ed07103b168566a5657390d0726615f4a80e9924c8570e903e13e83edebb54be
-Runner SHA-256: 8b31ab3211b437c0971ee0643eeaca8bcfab11565c12fb40b744aa467000223f
+Model SHA-256: e083c40bdcdf8e46d9830a79a156667ae01c80323daafdda44b2aa6c2f5c5268
+Runner SHA-256: dd8bc8a7a3b225fa9be2c40a20deec6ad6e5327ef22dda8364d152acbed5de56
 
 Configuration: 1,024 independent wire/storage capability configurations plus
 bounded registration, restart, first-attempt, concurrency, and permanent
@@ -26,12 +26,13 @@ RegistrationPersistsAcrossRestart (1 transition): verified
 ConcurrentRegistrationIsUnique (1 transition): verified
 FirstValidAttemptConsumes (1 transition): verified
 InvalidAttemptIsInert (1 transition): verified
+ActionMismatchIsInert (1 transition): verified
 ConcurrentConsumptionIsOneTime (1 transition): verified
 ConsumedStatePersistsAcrossRestart (1 transition): verified
 
 Negative controls: weakening any required wire/storage field, exposing before
 registration, losing state at restart, reusing a valid attempt, consuming an
-invalid attempt, or admitting concurrent consumption produces a concrete
+invalid attempt, consuming an action mismatch, or admitting concurrent consumption produces a concrete
 counterexample.
 
 Scope: bounded same-team exploration of the standalone AE-CHALLENGE-v1

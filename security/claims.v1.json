@@ -1196,7 +1196,8 @@
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "uses the Postgres durable backend across adapter restart and admits one of 64 concurrent presentations", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "requires every production storage capability and permits only explicit test-only ephemeral mode", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "binds action, missing evidence, freshness/policy, expiry, nonce, and presentation method", "runner": "vitest" },
-        { "file": "tests/evidence-challenge-durable.test.ts", "title": "consumes the first valid challenge attempt even when its presentation swaps the action", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-durable.test.ts", "title": "refuses an action swap without consuming the registered challenge", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-durable.test.ts", "title": "treats the nonce as the replay key even when challenge_id changes", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "refuses policy drift without consuming the registered challenge", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "propagates backend outage without an in-memory fallback", "runner": "vitest" }
       ],
@@ -1234,6 +1235,7 @@
             "ConcurrentRegistrationIsUnique",
             "FirstValidAttemptConsumes",
             "InvalidAttemptIsInert",
+            "ActionMismatchIsInert",
             "ConcurrentConsumptionIsOneTime",
             "ConsumedStatePersistsAcrossRestart"
           ],
@@ -1245,7 +1247,7 @@
           "covered_actions": [
             "AttemptTamperedChallengeBody",
             "ConsumeChallengeOnce",
-            "ConsumeFirstValidAttempt",
+            "RefuseActionMismatchWithoutConsumption",
             "RefuseConsumedChallengeReplay",
             "RefuseIncapableProductionStore",
             "RegisterChallengeBeforeExposure",
@@ -1263,6 +1265,7 @@
             "FirstValidAttemptConsumes",
             "FreshnessPolicyContextBound",
             "InvalidAttemptIsInert",
+            "ActionMismatchIsInert",
             "MissingEvidenceBound",
             "NonceBound",
             "PermanentConsumptionRequired",
@@ -1270,9 +1273,30 @@
             "RegistrationPersistsAcrossRestart",
             "RegistrationPrecedesExposure"
           ]
+        },
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/evidence-challenge-claim-capacity.model.mjs",
+          "runner": "formal/check-evidence-challenge-claim-capacity.mjs",
+          "result_evidence": "formal/results/evidence-challenge-claim-capacity.summary.txt",
+          "obligations": [
+            "CompoundClaimAndCapacityAtomic",
+            "DuplicateReservesOnce",
+            "CapacityRefusalDoesNotClaim",
+            "BodyCollisionIsNotReplay",
+            "OwnerUncertaintyIsUnavailable",
+            "ExpiredDoesNotClaimOrReserve",
+            "ClaimedReplayPrecedesExpiry",
+            "GlobalCapIsConservedAcrossShards",
+            "RecoveryFinalizationIsFenced",
+            "RetryWindowPrecedesExpiry",
+            "PresenterMatchesAudience"
+          ],
+          "scope": "Bounded finite same-team logic evidence for the owner-side nonce-claim-and-capacity-reservation transition and selected retry and audience invariants. It does not model stateful open registration or transfer of an existing outstanding-state debit, is not a database refinement proof, and the compound transition is not yet implemented by the reference runtime."
         }
       ],
-      "assumptions": ["the backend linearizes registration and compare-and-set", "the challenge-store backend is shared by all relying-party workers"],
+      "assumptions": ["the backend linearizes registration and compare-and-set", "the challenge-store backend is shared by all relying-party workers", "every alias and replica able to validate one issuer's challenge maps it to one stable authenticated issuer identity and replay domain"],
       "exclusions": ["the legacy Set-based evaluator remains only for compatibility and is not a durable production path"],
       "release_artifacts": ["gate-sdk", "security-evidence"]
     },

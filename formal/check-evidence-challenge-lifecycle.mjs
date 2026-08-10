@@ -176,6 +176,29 @@ function checkInvalidAttempt() {
   );
 }
 
+function checkActionMismatch() {
+  const options = {
+    challenge_valid: true,
+    action_agrees: false,
+    presentation_admissible: true,
+  };
+  const sound = simulateChallengeLifecycle(
+    SOUND_CHALLENGE_CONFIGURATION,
+    options,
+  );
+  const unsafe = simulateChallengeLifecycle(
+    SOUND_CHALLENGE_CONFIGURATION,
+    options,
+    UNSAFE_CHALLENGE_VARIANTS.ActionMismatchIsInert,
+  );
+  return row(
+    1,
+    1,
+    !sound.evaluated && !sound.consumed ? undefined : { sound },
+    unsafe.consumed ? { sound, unsafe } : undefined,
+  );
+}
+
 function checkConcurrentConsumption() {
   const sound = evaluateConcurrentValidAttempts(
     SOUND_CHALLENGE_CONFIGURATION,
@@ -236,6 +259,7 @@ const LIFECYCLE_CHECKERS = Object.freeze({
   ConcurrentRegistrationIsUnique: checkConcurrentRegistration,
   FirstValidAttemptConsumes: checkFirstValidAttempt,
   InvalidAttemptIsInert: checkInvalidAttempt,
+  ActionMismatchIsInert: checkActionMismatch,
   ConcurrentConsumptionIsOneTime: checkConcurrentConsumption,
   ConsumedStatePersistsAcrossRestart: checkConsumedPersistence,
 });

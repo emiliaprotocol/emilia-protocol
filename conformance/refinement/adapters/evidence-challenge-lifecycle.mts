@@ -174,7 +174,7 @@ export async function runEvidenceChallengeLifecycleScenario(
       "evidence-challenge-durable-once",
       "evidence-challenge-body-tamper-refused",
       "evidence-challenge-production-capability-refused",
-      "evidence-challenge-first-valid-action-swap-consumes",
+      "evidence-challenge-action-swap-is-inert",
     ].includes(scenario)
   ) {
     throw new Error(
@@ -304,16 +304,17 @@ export async function runEvidenceChallengeLifecycleScenario(
 
   if (
     scenario ===
-    "evidence-challenge-first-valid-action-swap-consumes"
+    "evidence-challenge-action-swap-is-inert"
   ) {
     const sharedInput = {
       ...SOUND_CHALLENGE_CONFIGURATION,
       challenge_valid: true,
+      action_agrees: false,
       presentation_admissible: false,
     };
     const formal = simulateChallengeLifecycle(
       SOUND_CHALLENGE_CONFIGURATION,
-      { challenge_valid: true, presentation_admissible: false },
+      { challenge_valid: true, action_agrees: false, presentation_admissible: false },
     );
     const swapped = {
       ...completeGraph(),
@@ -330,7 +331,7 @@ export async function runEvidenceChallengeLifecycleScenario(
         production: true,
       },
     );
-    const replay = await evaluateRegisteredPresentation(
+    const retry = await evaluateRegisteredPresentation(
       challenge,
       completeGraph(),
       POLICY,
@@ -344,9 +345,8 @@ export async function runEvidenceChallengeLifecycleScenario(
     assertRuntime(
       first.verdict === "refused" &&
         first.reasons.join(" ").includes("action swap") &&
-        replay.verdict === "refused" &&
-        replay.reasons.join(" ").includes("replay"),
-      "the first valid action-swap attempt did not consume permanently",
+        retry.verdict === "admissible",
+      "an action-swap attempt consumed the valid challenge",
     );
     const formalProjection = {
       accepted: formal.accepted,
@@ -355,26 +355,18 @@ export async function runEvidenceChallengeLifecycleScenario(
     };
     const runtimeProjection = {
       accepted: first.verdict === "admissible",
-      consumed: replay.reasons.join(" ").includes("replay"),
-      replayRefused: replay.verdict === "refused",
+      consumed: false,
+      replayRefused: false,
     };
     return {
       scenario,
       steps: [
         {
-          operator: "ConsumeFirstValidAttempt",
+          operator: "RefuseActionMismatchWithoutConsumption",
           accepted: false,
           projection: {
-            challengeState: "consumed",
+            challengeState: "open",
             presentation: "action_mismatch",
-          },
-        },
-        {
-          operator: "RefuseConsumedChallengeReplay",
-          accepted: false,
-          projection: {
-            challengeState: "consumed",
-            replayRefused: true,
           },
         },
       ],
@@ -429,7 +421,7 @@ export async function runEvidenceChallengeLifecycleScenario(
   const runtimeProjection = {
     admittedAttempts,
     consumed: [...postgres.rows.values()].some((row) =>
-      row.state.startsWith("challenge-consumed:v1:"),
+      row.state.startsWith("challenge-consumed:v2:"),
     ),
     replayRefused,
   };

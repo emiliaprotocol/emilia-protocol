@@ -606,7 +606,7 @@
       "actions": {
         "RefuseIncapableProductionStore": "RefuseIncapableProductionStore",
         "AttemptTamperedChallengeBody": "AttemptTamperedChallengeBody",
-        "ConsumeFirstValidAttempt": "ConsumeFirstValidAttempt",
+        "RefuseActionMismatchWithoutConsumption": "RefuseActionMismatchWithoutConsumption",
         "RefuseConsumedChallengeReplay": "RefuseConsumedChallengeReplay",
         "RegisterChallengeBeforeExposure": "RegisterChallengeBeforeExposure",
         "RestartChallengeWorkers": "RestartChallengeWorkers",
@@ -4264,11 +4264,11 @@
       }
     },
     {
-      "id": "evidence-challenge-first-valid-action-swap-consumes",
+      "id": "evidence-challenge-action-swap-is-inert",
       "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
       "model": "formal/evidence-challenge-lifecycle.model.mjs",
       "adapter": "evidence-challenge-lifecycle",
-      "scenario": "evidence-challenge-first-valid-action-swap-consumes",
+      "scenario": "evidence-challenge-action-swap-is-inert",
       "kind": "paired_negative_control",
       "runtime_sources": [
         "formal/evidence-challenge-lifecycle.model.mjs",
@@ -4278,7 +4278,7 @@
       ],
       "obligations": [
         "ExactActionDigestBound",
-        "FirstValidAttemptConsumes",
+        "ActionMismatchIsInert",
         "InvalidAttemptIsInert",
         "ConcurrentConsumptionIsOneTime",
         "ConsumedStatePersistsAcrossRestart",
@@ -4288,26 +4288,18 @@
       ],
       "steps": [
         {
-          "operator": "ConsumeFirstValidAttempt",
+          "operator": "RefuseActionMismatchWithoutConsumption",
           "accepted": false,
           "projection": {
-            "challengeState": "consumed",
+            "challengeState": "open",
             "presentation": "action_mismatch"
           }
-        },
-        {
-          "operator": "RefuseConsumedChallengeReplay",
-          "accepted": false,
-          "projection": {
-            "challengeState": "consumed",
-            "replayRefused": true
-          }
-        }
-      ],
+	        }
+	      ],
       "mutation": {
-        "operator": "DoNotConsumeFirstValidAttempt",
+        "operator": "ConsumeActionMismatch",
         "defined_in_model": true,
-        "obligation": "FirstValidAttemptConsumes"
+        "obligation": "ActionMismatchIsInert"
       }
     }
   ]

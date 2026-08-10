@@ -1,0 +1,1680 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                            10 August 2026
+Expires: 11 February 2027
+
+
+    An Authorization Evidence Challenge for High-Risk Agent Actions
+                     draft-schrock-ae-challenge-07
+
+Abstract
+
+   When a relying party refuses a consequential agent action because
+   authorization evidence is missing, stale, or unverifiable, the agent
+   needs a machine-readable description of what remains necessary.  This
+   document defines a transport-neutral Authorization Evidence Challenge
+   data model bound to the relying party's exact action.  The challenge
+   identifies outstanding evidence requirements, freshness and status
+   constraints, acceptable presentation profiles, and retry state.  It
+   authorizes nothing, transfers no admission ownership, and provides no
+   promise that a later request will execute.
+
+   The document also defines an HTTP binding using 403 Forbidden and RFC
+   9457 Problem Details, and describes an informative gateway-handoff
+   profile for DMSC-style federation.  The gateway profile communicates
+   evidence requirements; it does not solve conserved admission or
+   double-admission across independently operated gateways.
+
+   A challenge can synchronize corrected retries and amplify load.  The
+   core therefore defines optional retry timing with per-challenge
+   jitter, and the HTTP binding maps its lower bound to Retry-After.
+   Retry timing controls presentation attempts only; it does not
+   authorize the action or make an uncertain action safe to repeat.
+
+   Single-use processing also places state on the refusal path.  The
+   core therefore requires bounded outstanding and replay state, fail-
+   closed behavior when state cannot be claimed, and retention of live
+   replay records until they are no longer security-relevant.  Nonce
+   claim and refusal-path capacity reservation are one atomic owner-side
+   transition before native evidence verification, and a binding
+   capacity refusal reveals no remaining evidence requirements.  In a
+   sharded replay domain, only the authoritative owner can classify a
+   nonce as already claimed; inability to reach that owner is
+   unavailability, not replay.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+
+
+Schrock                 Expires 11 February 2027                [Page 1]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 11 February 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+     1.1.  Boundary with OAuth Transaction Authorization . . . . . .   3
+     1.2.  Requirements Language . . . . . . . . . . . . . . . . . .   4
+     1.3.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   4
+   2.  Transport-Neutral Core Data Model . . . . . . . . . . . . . .   5
+     2.1.  Required Members and JSON Types . . . . . . . . . . . . .   6
+     2.2.  Action and Policy Binding . . . . . . . . . . . . . . . .   6
+     2.3.  Evidence Requirements and Presentation  . . . . . . . . .   9
+     2.4.  Validation and Resource Limits  . . . . . . . . . . . . .  10
+     2.5.  Lifecycle, Replay, and Retry  . . . . . . . . . . . . . .  10
+     2.6.  State Bounds and Exhaustion . . . . . . . . . . . . . . .  13
+       2.6.1.  State Exhaustion Conformance Cases  . . . . . . . . .  15
+     2.7.  Extensibility . . . . . . . . . . . . . . . . . . . . . .  17
+     2.8.  Carrier Semantics . . . . . . . . . . . . . . . . . . . .  17
+   3.  HTTP Binding  . . . . . . . . . . . . . . . . . . . . . . . .  17
+     3.1.  OAuth Non-Substitution Conformance Case . . . . . . . . .  20
+   4.  Informative DMSC Gateway Profile  . . . . . . . . . . . . . .  20
+     4.1.  Gateway Conformance Case  . . . . . . . . . . . . . . . .  21
+   5.  Security Considerations . . . . . . . . . . . . . . . . . . .  22
+   6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  24
+   7.  Interoperability Questions for Review . . . . . . . . . . . .  24
+   8.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  25
+   9.  Changes since -06 . . . . . . . . . . . . . . . . . . . . . .  25
+
+
+
+Schrock                 Expires 11 February 2027                [Page 2]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   10. Normative References  . . . . . . . . . . . . . . . . . . . .  26
+   11. Informative References  . . . . . . . . . . . . . . . . . . .  26
+   Appendix A.  Relationship to Existing Mechanisms  . . . . . . . .  28
+   Appendix B.  Implementation Status  . . . . . . . . . . . . . . .  28
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  30
+
+1.  Introduction
+
+   Evidence formats describe artifacts such as receipts, permits,
+   attestations, and logs.  They do not by themselves define the live
+   interaction that follows when a relying party finds the presented
+   evidence insufficient.  Without a common challenge, each agent
+   protocol invents its own vocabulary for missing evidence, acceptable
+   presentations, freshness, status checking, and retry.
+
+   This document defines the challenge as an application data model,
+   independent of HTTP, a particular agent protocol, and any one
+   evidence format.  OAuth step-up authentication [RFC9470] lets a
+   resource identify stronger authentication requirements.  OAuth
+   Transaction Authorization Challenge [OAUTH-TXN-CHALLENGE] defines a
+   signed, OAuth-specific challenge that an authorization server turns
+   into a transaction-bound access token after obtaining any required
+   approval.  AE-CHALLENGE does not replace either mechanism.  It
+   describes missing authorization evidence for an exact proposed action
+   when an application needs a transport-neutral evidence-negotiation
+   object.
+
+   A challenge is a refusal with information.  It is not an
+   authorization decision, reservation, capability, ownership transfer,
+   or promise of execution.  Satisfying it causes the relying party to
+   evaluate a new presentation under its live local policy.
+
+1.1.  Boundary with OAuth Transaction Authorization
+
+   When the required next step is issuance of a transaction-specific
+   OAuth grant, an implementation SHOULD use OAuth Transaction
+   Authorization Challenge.  It MUST NOT substitute an AE-CHALLENGE, its
+   nonce, or a successfully presented evidence object for that signed
+   OAuth challenge, its transaction identifier, the authorization-server
+   decision, or the resulting access token.  Satisfying AE-CHALLENGE
+   never satisfies a native OAuth grant requirement.
+
+   AE-CHALLENGE remains applicable outside OAuth and when a relying
+   party needs evidence that a native authorization protocol does not
+   itself negotiate, such as a current status proof, quorum receipt,
+   hardware attestation, or separately verified policy artifact.  An
+   OAuth application profile MAY carry or reference both mechanisms, but
+   that profile MUST define their exact action and audience join, which
+
+
+
+Schrock                 Expires 11 February 2027                [Page 3]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   challenge is primary for each refusal, and how native grant state
+   remains separate from AE-CHALLENGE replay state.  Without such a
+   profile, the mechanisms are separate and neither is silently
+   converted into the other.
+
+   The single-use property in this document applies only to one
+   evidence-presentation attempt under an AE-CHALLENGE nonce.  It does
+   not consume an OAuth transaction, invalidate an access token, reserve
+   an action, or establish one-time admission at an executor.
+
+1.2.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+1.3.  Terminology
+
+   Relying party:  The component that decides whether evidence satisfies
+      its requirements for a proposed action.
+
+   Presenter:  The agent, gateway, or other component that receives a
+      challenge and may later present evidence.
+
+   Exact action:  The relying-party-derived material action that would
+      be admitted, including every field its selected action profile
+      treats as consequential.
+
+   Challenge:  A single-use, expiring description of evidence still
+      required for one exact action.
+
+   Claim:  The authoritative transition that assigns one challenge nonce
+      to one structurally valid, exact-action presentation attempt.  A
+      successful claim consumes the challenge even if later evidence or
+      policy evaluation refuses the action.
+
+   Consumed challenge:  A challenge whose nonce has been claimed.
+      Consumption does not mean that evidence was sufficient, that the
+      action was authorized, or that any external effect was attempted.
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027                [Page 4]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+2.  Transport-Neutral Core Data Model
+
+   The AE-CHALLENGE-v1 data model is independent of its carrier.  A
+   transport binding MUST preserve every member that the relying party
+   uses when registering or reconstructing and later consuming the
+   challenge.  A binding MUST also provide authenticated integrity and
+   peer identification, or carry the challenge in an authenticated
+   envelope that provides those properties.
+
+   The JSON format defined by [RFC8259] is the reference serialization
+   of the core model.  A non-JSON binding MUST define an unambiguous
+   mapping to the same members and value types.
+
+   {
+     "@version": "AE-CHALLENGE-v1",
+     "challenge_id": "7a3120d1-65b4-4d1a-85d4-9128adf76b41",
+     "nonce": "a4f279a26bf64b0e96aa9081ee8ec94b",
+     "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "action_profile": "https://example.net/action/payment-v3",
+     "audience": "https://gateway-b.example",
+     "policy_id": "https://gateway-b.example/policies/high-risk-v4",
+     "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "required_evidence": [
+       {
+         "requirement_id": "human-approval",
+         "type": "https://example.net/e/authorization-receipt",
+         "profiles": ["https://example.net/profiles/receipt-v1"],
+         "max_age_sec": 300,
+         "status": "current"
+       }
+     ],
+     "present_as": ["https://example.net/p/ep-aec-v1"],
+     "obtain_hints": [
+       {
+         "requirement_id": "human-approval",
+         "mechanism": "https://example.net/flows/approval-v1",
+         "uri": "https://approver.example/tasks/123"
+       }
+     ],
+     "retry_timing": {
+       "not_before": "2026-08-09T23:50:30Z",
+       "jitter_sec": 20
+     },
+     "expires_at": "2026-08-10T00:05:00Z"
+   }
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027                [Page 5]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+2.1.  Required Members and JSON Types
+
+   A core challenge MUST contain @version, challenge_id, nonce,
+   action_digest, action_profile, audience, policy_id, policy_digest,
+   required_evidence, present_as, and expires_at.  The obtain_hints,
+   retry_timing, and critical members are OPTIONAL.  A member defined as
+   an array MUST be a JSON array, not a scalar promoted by the
+   recipient.
+
+   challenge_id, nonce, and audience are non-empty JSON strings.  The
+   binding or profile defines the audience identifier namespace and
+   comparison rule. action_profile and policy_id are absolute-URI
+   strings. action_digest and policy_digest use the case-sensitive form
+   sha256: followed by 64 lowercase hexadecimal digits.  The action
+   profile defines the canonical action bytes hashed for action_digest.
+   The relying party defines a deterministic representation of its local
+   policy for policy_digest; the digest identifies the policy state that
+   produced the challenge and does not transfer that policy to the
+   presenter.
+
+   Each required_evidence element is a JSON object whose required
+   requirement_id and type members are strings.  If present, profiles
+   and proof_predicates are non-empty arrays of unique absolute-URI
+   strings, max_age_sec is a non-negative integer, and status is a non-
+   empty string.  This document defines current; a recipient refuses any
+   other status value unless an applicable profile defines it.
+
+   If present, obtain_hints is an array of JSON objects.  Each object
+   MUST contain string requirement_id, mechanism, and uri members;
+   mechanism and uri are absolute URIs.  If present, retry_timing is a
+   JSON object with the members and types defined in Section 2.5.  If
+   present, critical is an array of unique non-empty JSON strings
+   governed by Section 2.7.
+
+2.2.  Action and Policy Binding
+
+   @version MUST equal AE-CHALLENGE-v1.  A recipient that does not
+   implement this version MUST refuse automated processing.
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027                [Page 6]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   challenge_id is a non-empty opaque correlation identifier.
+   Authorization decisions MUST NOT depend on its global uniqueness.
+   nonce MUST be generated with a cryptographically secure random source
+   consistent with [RFC4086], MUST contain at least 128 bits of
+   unpredictability, MUST be non-empty, and MUST be single-use within
+   the authenticated issuer's replay domain.  The security replay key is
+   the authenticated issuer identity and nonce; challenge_id is not part
+   of that key.  A live replay key MUST NOT be overwritten.  Reuse of
+   one replay key with a different authenticated body is an integrity or
+   issuer collision failure, not a replay of the exact body.
+
+   Each binding or profile MUST define the stable authenticated issuer
+   identity used in that replay key.  Every alias, front end, and
+   replica that can validate the same issuer-protected challenge MUST
+   map it to the same issuer identity and authoritative replay domain.
+   A presenter-controlled host name, forwarding field, routing hint, or
+   unauthenticated alias MUST NOT select or split that identity.
+
+   Before exposing a challenge, the relying party MUST either register a
+   durable record that binds the nonce to the complete challenge body,
+   or protect the complete body with an issuer-authenticated, self-
+   describing mechanism defined by the applicable profile.  The latter
+   mechanism MUST let the relying party reconstruct and validate the
+   exact body without trusting presenter-supplied fields.  A bare
+   challenge body carried only under a transport session is not a self-
+   describing mechanism after that session ends.
+
+   Each binding or profile MUST define one deterministic procedure for
+   computing the complete authenticated challenge-body digest used by
+   registration, replay equality, and collision classification.  That
+   procedure MUST cover every core and extension member, including
+   unknown members, after duplicate-member rejection.  It MAY hash exact
+   encoded bytes only when the binding guarantees those bytes are
+   preserved; otherwise it MUST define a deterministic representation of
+   the complete data model.  Stateful registration and returned
+   presentations MUST use the same procedure.  A transport
+   reserialization, member-order change, or non-JSON mapping MUST NOT
+   silently switch digest procedures.
+
+   Self-describing issuance can avoid retaining one record for every
+   unanswered challenge.  It does not remove single-use state.  On the
+   first returned presentation, the relying party still MUST claim the
+   nonce through the compound authoritative transition in Section 2.6
+   before evidence evaluation.
+
+   action_digest MUST be computed by the relying party from the exact
+   action it would admit.  It MUST NOT be copied from the presenter or
+   from presented evidence. action_profile MUST be present, MUST be an
+
+
+
+Schrock                 Expires 11 February 2027                [Page 7]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   absolute URI as defined by [RFC3986], and identifies the
+   canonicalization or mapping profile used to derive the digest.  It is
+   descriptive to the presenter; it does not let the presenter select or
+   weaken that profile.  If two parties cannot establish the same
+   material action under an understood profile, the challenge cannot
+   repair the disagreement and the relying party MUST refuse automated
+   admission.
+
+   The relying party MUST pin the semantics of the selected
+   action_profile for the lifetime of the challenge.  It MUST NOT fetch
+   mutable profile content at evaluation time and silently apply
+   different canonicalization or material-field rules under the same
+   profile identifier.  A deployment using resolvable profile documents
+   needs an immutable version, authenticated content digest, or
+   equivalent local pin.
+
+   audience identifies the component that is expected to answer the
+   challenge.  A binding or authenticated envelope MUST let the
+   presenter establish the challenge issuer and its own effective
+   audience.  Before following an obtain hint or disclosing evidence,
+   the presenter MUST authenticate the issuer and verify that the
+   effective audience identifies that presenter.  On return, the relying
+   party MUST authenticate the presenter and bind that identity to the
+   effective audience before claiming the nonce.  A profile that
+   intentionally permits a transferable or anonymous presentation MUST
+   state that exception and define its confidentiality, replay, and
+   denial-of-service consequences.
+
+   policy_id and policy_digest identify the local policy state from
+   which the requirements were derived.  They do not transfer policy
+   authority to the presenter.  At evaluation time the relying party
+   MUST use its authenticated live policy and MUST NOT use a policy
+   supplied in the response.
+
+   Delegation, translation, or task rewriting does not preserve one
+   action binding across hops.  Each receiving relying party MUST re-
+   evaluate the action it is asked to admit under its own policy and
+   action profile.  If that relying party issues a challenge, it MUST
+   derive a new action_digest and register its own challenge binding.  A
+   prior hop's challenge or decision record MAY be presented as evidence
+   or context, but it MUST NOT substitute for the receiving relying
+   party's binding to a rewritten action.  A chain of per-hop records
+   does not by itself prove that the actions at different hops are
+   semantically equivalent.
+
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027                [Page 8]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+2.3.  Evidence Requirements and Presentation
+
+   Each required_evidence entry MUST contain a requirement_id and type.
+   Requirement identifiers are unique within one challenge and correlate
+   requirements with acquisition hints and diagnostics.  Every evidence
+   type, evidence profiles entry, and present_as entry MUST be an
+   absolute URI as defined by [RFC3986] so that the same identifier has
+   portable meaning across transport protocols and conformance corpora.
+   Unless the defining specification says otherwise, these identifiers
+   are compared as exact strings.  A recipient MUST NOT infer security
+   semantics from URI prefixes or substring matches; it uses only
+   locally configured semantics for the complete identifier.
+
+   An entry MAY contain profiles, proof_predicates, max_age_sec, and
+   status.  Every entry in required_evidence is a conjunctive
+   requirement: the relying party MUST NOT treat the challenge as
+   satisfied unless every entry is satisfied.  Within one entry,
+   profiles are alternatives, so one locally accepted listed profile is
+   sufficient for that dimension.  Every listed proof_predicates value
+   is conjunctive and MUST be satisfied.  The max_age_sec and status
+   constraints, when present, are also conjunctive with the evidence
+   type, selected profile, and proof predicates.  An application profile
+   that needs disjunction across evidence types MUST define a new
+   evidence type or other explicit expression; it MUST NOT reinterpret
+   the core array as disjunctive. max_age_sec is measured at the relying
+   party's evaluation time using the issuance or observation time
+   defined by the selected evidence profile. status equal to current
+   requires a separately authenticated status result satisfying the
+   relying party's freshness policy; it does not mean that absence from
+   an unauthenticated revocation list is sufficient.
+
+   present_as lists alternative presentation profiles.  The order
+   expresses the relying party's preference, not a security ranking.
+   Supporting a presentation profile does not imply support for every
+   evidence type named by the challenge.  The presenter selects one
+   mutually supported profile and includes enough information for the
+   relying party to match every component to a requirement.
+
+   obtain_hints are untrusted routing hints.  Following a hint,
+   authenticating to its URI, or receiving an "approved" response
+   confers no authority at the relying party.  Evidence obtained through
+   a hint remains subject to native verification, exact-action matching,
+   freshness and status checks, policy evaluation, and one-time
+   consumption.  A presenter MUST NOT send credentials or evidence to a
+   hinted endpoint unless its own policy independently authorizes the
+   endpoint, scheme, redirect behavior, and disclosed material.  Each
+   hint requirement_id MUST identify an entry in the same challenge.
+   Unknown transports MAY omit obtain hints entirely.
+
+
+
+Schrock                 Expires 11 February 2027                [Page 9]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   Capability discovery MAY advertise evidence types, presentation
+   profiles, or acquisition mechanisms that an implementation supports.
+   Such discovery is not an authorization decision and does not
+   establish that any advertised choice is sufficient for a particular
+   action.  The relying party MUST determine sufficiency using its
+   authenticated local policy at evaluation time.  A cached discovery
+   response, a mutually supported profile, or a successful acquisition
+   flow MUST NOT waive an unsatisfied local requirement.
+
+2.4.  Validation and Resource Limits
+
+   A JSON recipient MUST reject duplicate member names at every object
+   depth before authenticating, hashing, registering, or evaluating a
+   challenge.  A self-describing profile MUST define one deterministic
+   serialization or canonicalization for the complete authenticated
+   body.  Parser behavior that silently keeps the first or last
+   duplicate member does not satisfy complete-body binding.
+
+   required_evidence and present_as MUST be non-empty arrays.
+   Requirement identifiers MUST be non-empty and unique.  profiles,
+   proof_predicates, present_as, and critical arrays MUST contain unique
+   values.  max_age_sec and jitter_sec, when present, MUST be integers
+   from 0 through 2147483647 inclusive.  A recipient MUST refuse a
+   requirement whose status or proof_predicates semantics it does not
+   understand; it MUST NOT treat an unknown value as satisfied.
+
+   Every binding and implementation MUST enforce finite limits on the
+   encoded message size, nesting depth, number of requirements and
+   hints, array lengths, and string lengths before expensive
+   cryptographic, native evidence, network-status, or policy work.  A
+   profile intended for interoperable deployment SHOULD publish those
+   limits.  State caps do not bound parser, canonicalization, signature-
+   verification, or transport costs incurred before the owner-side state
+   transition.
+
+2.5.  Lifecycle, Replay, and Retry
+
+   expires_at MUST be an Internet timestamp as defined by [RFC3339].
+   The relying party MUST refuse an expired challenge before evidence or
+   policy evaluation.  Challenge expiry does not extend the validity of
+   any evidence and evidence expiry does not extend the challenge.
+
+   Evaluation is ordered: bounded parsing and structure; authenticated
+   issuer and presenter-to-audience binding; validation of the
+   registered or self-describing body; current exact-action agreement;
+   authoritative routing; one atomic expiry-check, nonce-claim, and
+   capacity-reservation transition; native evidence verification; and
+   local policy evaluation.  Before that transition, the relying party
+
+
+
+Schrock                 Expires 11 February 2027               [Page 10]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   refuses without claiming a nonce or reserving refusal-path capacity
+   when bounded syntax or structure fails, the issuer or returning
+   presenter cannot be authenticated and bound as required, the
+   challenge cannot be associated with a registered replay key or valid
+   issuer-protected self-describing body, the presentation does not
+   identify an advertised and understood presentation profile, or the
+   current proposed action does not agree with the registered exact
+   action.  The relying party MUST rederive the action digest from the
+   current proposed action it is being asked to admit.  A stored
+   challenge digest or a digest copied from the presentation is not that
+   rederivation.  Once pre-transition validation succeeds, Section 2.5
+   defines the indivisible owner-side transition that precedes evidence
+   evaluation.  For stateful issuance, authoritative equality between
+   the returned body digest and the registered body digest is decided
+   inside that transition.  A non-authoritative cache comparison MUST
+   NOT replace or preempt the transition's body-collision result.
+
+   A concurrent duplicate that arrives after another presentation has
+   claimed the nonce, whether that first evaluation is still in flight
+   or has completed, MUST be refused as a replay.  It MUST NOT receive a
+   second evidence evaluation, an indeterminate result merely because
+   the first evaluation is in flight, or a second admission.  An
+   implementation MAY distinguish in-flight from completed consumption
+   internally for operations and audit, but that distinction does not
+   reopen the challenge.
+
+   Every verifier instance that accepts presentations for one challenge
+   issuer MUST use the same authoritative replay domain, or a
+   deterministic partition in which exactly one authoritative shard owns
+   each issuer-and-nonce replay key.  A process-local cache or
+   eventually consistent replica does not satisfy atomic nonce claim.
+   If the authoritative replay domain is unavailable or its result is
+   uncertain, the relying party MUST refuse without evidence evaluation
+   or admission; it MUST NOT fall back to fresh local state.
+
+   A profile using deterministic partitioning MUST define how the
+   authoritative owner is derived from issuer-protected challenge state.
+   A presenter-controlled routing value outside the authenticated
+   challenge body or authenticated issuer context MUST NOT select the
+   owner.  A front end or non-owning shard MUST route the claim to the
+   owner before classifying the nonce.  Only an authoritative owner
+   result that the exact registered body was already claimed is a replay
+   result.  Failure, timeout, partition, or an uncertain result while
+   reaching the owner is temporary unavailability, not replay, and MUST
+   NOT be reported as an already-claimed nonce.
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 11]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   If evidence remains missing, stale, or unverifiable, the relying
+   party MAY issue a follow-up challenge.  Before doing so, it MUST
+   rederive the current proposed action under its pinned action profile.
+   If that digest no longer equals the consumed challenge digest, it
+   MUST NOT issue a follow-up for the old action.  A valid follow-up
+   MUST use a fresh challenge identifier and nonce, MUST remain bound to
+   the same locally rederived action digest and action profile, and MUST
+   derive its requirements and policy identifiers from authenticated
+   live policy.  It SHOULD list only the requirements that remain
+   unsatisfied.  It is a new refusal, not a continuation of the consumed
+   nonce.
+
+   retry_timing is OPTIONAL.  When present, it MUST contain a not_before
+   Internet timestamp as defined by [RFC3339] and MAY contain a non-
+   negative integer jitter_sec. not_before MUST precede expires_at, and
+   adding jitter_sec to not_before MUST still produce an instant before
+   expires_at.  A presenter that processes this member MUST NOT send the
+   challenge response before not_before.  When jitter_sec is greater
+   than zero, the presenter SHOULD add an independently selected delay
+   between zero and that many seconds.  The selected delay SHOULD vary
+   for each challenge and MUST NOT be treated as extending expires_at.
+   The not_before value is only the earliest time to present corrected
+   evidence.  It is not a promise of capacity, evidence sufficiency,
+   admission, or execution.  After waiting, the presenter can receive
+   the same refusal, a different refusal, or an overload response.
+
+   A relying party that expects many correlated refusals SHOULD issue
+   recipient-specific or challenge-specific retry schedules rather than
+   one common retry instant.  It SHOULD provide a jitter interval wide
+   enough for its expected population and recovery capacity.  A
+   presenter remains responsible for its own backoff and rate limits
+   when timing is absent.  A challenge MUST NOT be issued solely to
+   signal overload when the carrying protocol has a distinct overload
+   response.  If evidence insufficiency and load pressure coexist, retry
+   timing can pace the new evidence presentation without changing the
+   refusal semantics.  The presenter can therefore spend effort
+   acquiring third-party evidence and still be refused or shed after the
+   lower bound; timing guidance does not assert which constraint will be
+   decisive later.
+
+   Ignoring retry_timing does not make evidence sufficient or authorize
+   an action, but it can defeat the issuer's load-control goal.  It does
+   not change the semantic meaning of the challenge and therefore MUST
+   NOT appear in critical.  An issuer that needs to enforce pacing uses
+   carrier-level overload handling, admission control, rate limiting, or
+   refusal.  A presenter that cannot establish whether not_before has
+   passed MUST NOT infer permission to send early; it uses its local
+   backoff policy or declines automated retry.
+
+
+
+Schrock                 Expires 11 February 2027               [Page 12]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   Expiry is tested as part of the owner-side claim transition.  A
+   presentation claimed before expiry MAY finish evaluation after that
+   instant, but challenge expiry never extends evidence validity or
+   permits admission under stale policy.  Implementations MUST place a
+   finite deadline on native verification and finalization.  Reclaiming
+   an abandoned reservation requires an ownership fence that prevents
+   the old worker from later committing a follow-up or other refusal-
+   path state.
+
+   Unknown acquisition status, timeout, transport failure, or an
+   unverifiable response is indeterminate.  It MUST NOT be interpreted
+   as evidence satisfaction or permission to retry an action whose
+   effect may already have occurred.
+
+2.6.  State Bounds and Exhaustion
+
+   A relying party MUST configure a finite aggregate upper bound on
+   challenge state retained in one authoritative replay domain.  The
+   bound MUST account for outstanding stateful challenges and in-flight
+   or consumed replay records.  Where a presenter is authenticated
+   before challenge issuance, the relying party SHOULD also apply per-
+   presenter and per-audience bounds.  Multi-tenant deployments SHOULD
+   apply an administrative bound per tenant so one tenant cannot consume
+   the aggregate allowance.
+
+   Admission control for a stateful challenge MUST occur before the
+   challenge is exposed.  If the relying party cannot allocate the
+   required outstanding record, it MUST NOT issue that challenge.  It
+   returns a carrier-appropriate overload or generic refusal without an
+   authorization-evidence challenge.
+
+   For self-describing issuance, the relying party MUST enforce the
+   replay-state bound when the first returned presentation attempts to
+   claim the nonce.  If it cannot durably and atomically claim replay
+   state, it MUST refuse without native evidence verification, policy
+   evaluation, or admission.  It MUST NOT issue a replacement stateful
+   challenge on that path.  Self-describing issuance reduces unanswered
+   outstanding state; it does not make replay processing stateless.
+
+   A relying party that knows its authoritative replay-state bound is
+   currently exhausted MUST NOT issue a self-describing challenge whose
+   return cannot be claimed.  It uses the carrier's overload or generic
+   refusal path until capacity is available.
+
+
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 13]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   An implementation MUST NOT evict a live in-flight or consumed nonce
+   record to admit a newer challenge.  Such a record MUST remain in the
+   authoritative replay domain until the later of expires_at and
+   completion of the in-flight evaluation.  Expired unconsumed records
+   MAY be removed.  Longer retention for audit or abuse detection is a
+   deployment choice.
+
+   Challenge lifetimes SHOULD be no longer than the expected evidence-
+   acquisition workflow requires.  Rate limiting, authentication where
+   available, self-describing issuance, and short lifetimes can reduce
+   state pressure, but none permits fail-open nonce handling.
+
+   For a returned presentation, the authoritative owner MUST perform
+   nonce claim and refusal-path capacity reservation as one indivisible
+   transition.  Its security inputs are the authenticated issuer
+   identity, nonce, exact authenticated body digest, current time, every
+   applicable aggregate, per-presenter, per-audience, and per-tenant cap
+   bucket, and the maximum refusal-path state the evaluation can create.
+   The authoritative owner's current time and the challenge expiry are
+   also inputs, so an expiry check cannot race a later claim.  A read-
+   only capacity check, a reservation followed by a separate nonce
+   claim, or a nonce claim followed by a separate capacity debit does
+   not satisfy this requirement.
+
+   The transition has the following mutually exclusive results.  If a
+   claimed replay record exists, replay or collision classification
+   takes precedence over expiry while that record is retained.  Expiry
+   applies to an otherwise open or absent claim.  This precedence
+   preserves the replay classification for a duplicate arriving after
+   expiry while the first claimed evaluation is still in flight.
+
+   *  claimed-with-capacity: a statefully registered exact body was
+      open, or a valid self-describing exact body had no replay record,
+      and sufficient capacity existed.  The nonce claim and the
+      reservation or debit across every applicable cap bucket commit
+      together.
+
+   *  exact-body-replay: the authenticated issuer-and-nonce key was
+      already in claimed state for the same body digest.  No new
+      capacity is reserved or debited.
+
+   *  body-collision: the same open or claimed replay key exists for a
+      different body digest.  The request is refused as an integrity or
+      issuer collision failure, never as successful replay
+      classification, and no new capacity is reserved or debited.
+
+   *  capacity-refused: one or more applicable cap buckets lack
+      capacity.  No nonce is claimed and no partial debit remains.
+
+
+
+Schrock                 Expires 11 February 2027               [Page 14]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   *  expired: authoritative owner time is at or after expires_at.  No
+      nonce is claimed and no capacity is reserved or debited.
+
+   *  unavailable: the owner cannot complete the transition or the
+      outcome is uncertain.  The caller reports temporary unavailability
+      and MUST NOT infer whether authoritative state changed.
+
+   For a statefully issued challenge, an existing outstanding-state
+   debit MAY be transferred into the in-flight reservation in the same
+   transaction; it MUST NOT be lost, counted twice without need, or
+   released before replacement state is secured.  For self-describing
+   issuance, the transition creates the first replay record and
+   reservation together.  The reservation covers the maximum additional
+   state, including a follow-up challenge where supported.  Finalization
+   atomically commits the actual resulting state and releases only
+   unused capacity.  A worker crash or uncertain finalization retains
+   the conservative reservation unless a fenced recovery transition
+   proves that the old worker can no longer publish state.
+
+   Every cap bucket changed by the transition MUST be in the same atomic
+   coordination domain as the replay claim.  A sharded deployment MAY
+   use preallocated owner quotas only when the sum of live quotas cannot
+   exceed the global cap and quota transfer itself is safe under
+   failure.  Two shards independently reading a global counter do not
+   satisfy this rule.  If an applicable cap cannot participate
+   atomically or through a safe preallocated quota, the result is
+   unavailability.  Capacity uncertainty fails closed.
+
+   When a hard cap is binding for an unclaimed exact body, capacity
+   handling controls the response even if the supplied evidence is also
+   missing, stale, or unverifiable.  The relying party MUST NOT perform
+   native evidence verification or local policy evaluation, and MUST NOT
+   return a follow-up challenge, a stateless list of remaining
+   requirements, obtain hints, or any other evidence-sufficiency detail.
+   Withholding those details prevents an unauthenticated or weakly
+   authenticated load probe from using exhaustion handling as a policy-
+   discovery oracle.  An authoritative exact-body-replay result can be
+   returned without a capacity debit; it does not invoke evidence or
+   policy evaluation.
+
+2.6.1.  State Exhaustion Conformance Cases
+
+   A conforming implementation demonstrates all of the following:
+
+   *  At the outstanding-state cap, a stateful issuer returns no new
+      challenge and allocates no additional outstanding record.
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 15]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   *  At the replay-state cap, a returned self-describing challenge
+      receives no evidence evaluation, no admission, and no requirements
+      or obtain hints.
+
+   *  When evidence is insufficient and a hard cap is also binding, the
+      capacity response wins: native verifiers and local policy are not
+      invoked and no follow-up or stateless requirements hint is
+      returned.
+
+   *  Two verifier replicas concurrently receiving the same nonce and
+      exact body produce one claimed-with-capacity result, one exact-
+      body-replay result, and exactly one capacity debit.
+
+   *  At a binding cap, an unclaimed body receives capacity-refused, the
+      nonce remains unclaimed, and no partial aggregate, presenter,
+      audience, or tenant debit remains.
+
+   *  An otherwise open or absent claim that reaches the owner at or
+      after expiry receives expired, leaves the nonce unclaimed, and
+      changes no capacity bucket.  A retained claimed record follows the
+      replay-or-collision precedence above.
+
+   *  Reuse of an issuer-and-nonce key with a different body produces
+      body-collision, not replay, and changes no capacity bucket.
+
+   *  Two owner shards cannot each reserve against one shared global
+      slot.  The case passes only with one coordinating transaction or
+      preallocated quotas whose live sum is bounded by the global cap.
+
+   *  After a reservation is reassigned during recovery, a late worker
+      using the old fencing token cannot publish a follow-up or finalize
+      state.
+
+   *  A front end that reaches the authoritative owner and receives an
+      already-claimed result reports replay.  The same front end, given
+      an owner timeout, partition, or uncertain response, reports
+      unavailability and does not report replay or evaluate evidence.
+
+   *  Allocating a new challenge never evicts an in-flight or unexpired
+      consumed nonce.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 16]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+2.7.  Extensibility
+
+   Recipients MUST ignore an unknown member unless its name appears in
+   the optional critical array.  A recipient that does not understand
+   every member named by critical MUST refuse automated processing.
+   Every name in critical MUST identify a member actually present in the
+   same challenge, and core members MUST NOT be named there.  A
+   specification defining an extension MUST state whether that extension
+   is safe to ignore and how it is bound to the registered challenge
+   body.  The core retry_timing member is safe to ignore for challenge
+   semantics and MUST NOT be named by critical.
+
+2.8.  Carrier Semantics
+
+   A transport binding SHOULD carry a challenge as a structured refusal
+   or error payload when the carrying protocol provides such a facility.
+   A binding that uses a message part, task-state extension, or other
+   carrier MUST preserve the same refusal semantics and scope the
+   challenge to the identified attempt.  It MUST NOT represent the
+   challenge as a successful task result, output artifact,
+   authorization, or durable state that silently applies to later
+   attempts.  These rules constrain carrier semantics without requiring
+   every transport to use the same envelope.
+
+3.  HTTP Binding
+
+   This 403 Problem Details binding is not the OAuth transaction-
+   authorization response.  When a protected resource requires the
+   native transaction-specific OAuth grant defined by
+   [OAUTH-TXN-CHALLENGE], it uses that specification's
+   transaction_authorization_required response and signed
+   transaction_challenge, normally carried with WWW-Authenticate and
+   status 401.  It MUST NOT return only this document's 403 response and
+   then accept AE evidence as a substitute for the missing OAuth grant.
+
+   An HTTP origin server that refuses an action because authorization
+   evidence is missing, stale, or unverifiable SHOULD return 403
+   Forbidden as defined by [RFC9110].  The response body MUST be an
+   application/problem+json Problem Details object as defined by
+   [RFC9457].  Status 428 is not used: it is defined for requests that
+   the origin server requires to be conditional, not for authorization-
+   evidence negotiation.
+
+   If temporary overload is the sole reason for refusal, the origin
+   server MUST NOT fabricate an authorization-evidence challenge.  It
+   uses 503 Service Unavailable, or another response appropriate to the
+   actual failure, and MAY use Retry-After as defined by [RFC9110].  A
+   403 AE-CHALLENGE is appropriate when evidence is actually
+
+
+
+Schrock                 Expires 11 February 2027               [Page 17]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   insufficient and no applicable hard cap is binding; non-binding load
+   pressure can still make pacing the corrected presentation necessary.
+   If a hard cap is binding, or the server cannot allocate, reserve,
+   route to, or claim the state required by Section 2.6, it uses 503 and
+   MUST NOT include evidence_challenge, remaining requirements, obtain
+   hints, or other evidence-sufficiency details.  This rule applies even
+   when the server suspects that evidence is also insufficient.  The
+   server MAY include Retry-After without disclosing authorization
+   policy.
+
+   The ae-required problem type MUST be used only when the server is
+   returning a fresh evidence challenge after a successful claimed-with-
+   capacity transition or when issuing a newly registered stateful
+   challenge or a valid newly issuer-protected self-describing
+   challenge.  An exact-body-replay, body-collision, or expired result
+   MUST NOT be represented as a fresh AE-CHALLENGE and MUST NOT include
+   a replacement challenge on that response.  An HTTP implementation MAY
+   use 409 Conflict for those disclosed state conflicts or a less
+   revealing refusal allowed by its application policy. capacity-refused
+   and unavailable use 503 as described above.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 18]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   HTTP/1.1 403 Forbidden
+   Content-Type: application/problem+json
+   Cache-Control: no-store
+   Date: Sun, 09 Aug 2026 23:50:00 GMT
+   Retry-After: 30
+
+   {
+   "type":"https://iana.org/assignments/http-problem-types#ae-required",
+     "title": "Authorization Evidence Required",
+     "status": 403,
+     "detail": "Required evidence is unavailable.",
+     "evidence_challenge": {
+       "@version": "AE-CHALLENGE-v1",
+       "challenge_id": "7a3120d1-65b4-4d1a-85d4-9128adf76b41",
+       "nonce": "a4f279a26bf64b0e96aa9081ee8ec94b",
+       "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "action_profile": "https://example.net/action/payment-v3",
+       "audience": "https://agent.example",
+       "policy_id": "https://resource.example/policies/high-risk-v4",
+       "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+       "required_evidence": [
+         { "requirement_id": "human-approval",
+           "type": "https://example.net/e/authorization-receipt",
+           "max_age_sec": 300,
+           "status": "current" }
+       ],
+       "present_as": ["https://example.net/p/ep-aec-v1"],
+       "obtain_hints": [],
+       "retry_timing": {
+         "not_before": "2026-08-09T23:50:30Z",
+         "jitter_sec": 20
+       },
+       "expires_at": "2026-08-10T00:05:00Z"
+     }
+   }
+
+   The Problem Details type and title MUST have the values shown above.
+   The HTTP status code and the optional status member MUST both be 403.
+   The core challenge MUST appear in the evidence_challenge extension
+   member.  Human-readable detail text is advisory and MUST NOT be
+   parsed for protocol semantics.
+
+   The origin server MUST send Cache-Control: no-store.  A generic
+   intermediary can still transform an HTTP response, so a client MUST
+   validate the Problem Details object and the authenticated origin
+   before acting on hints or presenting evidence.
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 19]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   When the core challenge contains retry_timing, the origin server
+   SHOULD send a Retry-After field as defined by [RFC9110].  Its HTTP-
+   date or delay-seconds value MUST NOT permit a follow-up request
+   earlier than not_before.  If the header and core member identify
+   different lower bounds, a client MUST use the later bound and then
+   apply jitter_sec.  If that computed instant is not before expires_at,
+   the client MUST NOT submit the expired challenge and can request a
+   new interaction under its carrier.  Retry-After does not carry the
+   jitter value and does not change the challenge expiry, authorize the
+   action, promise capacity or acceptance, or make a retry safe after an
+   uncertain effect.
+
+3.1.  OAuth Non-Substitution Conformance Case
+
+   A protected resource requires a transaction-specific OAuth grant.
+   The presenter supplies a valid AE-CHALLENGE response but no native
+   transaction-bound access token.  The protected resource MUST refuse
+   the action.  It MUST NOT treat the AE challenge identifier or nonce
+   as the OAuth transaction identifier, and it MUST NOT report the
+   evidence presentation as satisfying the native grant requirement.
+   The case passes only when the protected resource continues the native
+   OAuth flow or refuses.
+
+4.  Informative DMSC Gateway Profile
+
+   Agent gateways can carry the transport-neutral challenge during
+   federation or handoff.  The receiving gateway is the relying party:
+   it derives the exact action, applies its own trust anchors and
+   policy, and issues a challenge when evidence is missing, stale, or
+   unverifiable.  The sending gateway or agent can obtain evidence and
+   return a new presentation using a DMSC-defined extension point or
+   error carrier.
+
+   If the receiving gateway's required next step is a native OAuth
+   transaction grant, the DMSC carrier preserves that native challenge
+   rather than wrapping it as AE-CHALLENGE.  A DMSC application profile
+   can carry both only under the explicit composition rules in
+   Section 1.1.
+
+   If a gateway rewrites or translates the proposed action, the next
+   gateway re-evaluates that locally derived action and, when necessary,
+   issues its own binding.  The prior gateway's action digest does not
+   survive the rewrite as the receiving gateway's binding.  Any claim
+   that the two actions are equivalent requires a separately defined
+   mapping or transformation proof.
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 20]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   When a receiving gateway refuses an action because required
+   authorization evidence is missing, stale, or unverifiable, it may
+   return a structured evidence challenge identifying the exact action,
+   outstanding evidence requirements, applicable freshness or status
+   constraints, and supported presentation profiles.  The challenge does
+   not authorize the action or transfer admission ownership; conserved
+   admission across gateway boundaries remains a separate requirement.
+   The gap analysis in [DMSC-GAPS] provides deployment context, but this
+   document does not depend on an unpublished section number or future
+   revision.
+
+   In particular, AE-CHALLENGE does not prevent Gateway A and Gateway B
+   from admitting the same single-use right.  It does not copy, fence,
+   or relinquish consumption state and does not establish which gateway
+   owns admission during a partition.  The separate handoff property is
+   not a race to decide which gateway admitted first; it is an invariant
+   that committed capacity is not over-allocated under any interleaving
+   of admissions and releases.  A DMSC handoff profile MUST solve that
+   property separately.  If the receiving gateway cannot establish the
+   required exclusivity, its safe result is refusal or indeterminate,
+   not acceptance based on the challenge.
+
+4.1.  Gateway Conformance Case
+
+   Gateway A forwards a proposed action to Gateway B.  Gateway B derives
+   the exact action under its pinned action profile and refuses because
+   a current approval artifact is missing.  B returns an AE-CHALLENGE
+   bound to B's action digest and local evidence requirement.  A obtains
+   and presents the artifact.  B verifies it under B's trust anchors,
+   matches it to the same action, and reevaluates B's policy.  The case
+   passes only if A never treats the challenge as authorization and B
+   refuses an action-digest mismatch, stale status, replayed nonce, or
+   unsupported presentation profile.
+
+   A second case attempts concurrent admission of one single-use right
+   at both gateways.  AE-CHALLENGE alone MUST NOT be reported as passing
+   that case.  The case passes only when a separate conserved-admission
+   mechanism establishes exclusivity, or when the receiving gateway
+   refuses or returns indeterminate because exclusivity cannot be
+   established.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 21]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+5.  Security Considerations
+
+   *Challenge forgery and evidence exfiltration.* A forged challenge
+   cannot authorize an action, but it can redirect a presenter, induce
+   unnecessary approval work, or solicit sensitive evidence.  Presenters
+   authenticate the issuer and verify that they are the effective
+   audience before following obtain hints or disclosing evidence.
+   Relying parties authenticate the returning presenter against that
+   same audience before claiming state.  A bare JSON object copied
+   outside its authenticated carrier has no origin authenticity.
+
+   *Hint SSRF and credential forwarding.* An authenticated issuer can
+   still be compromised or misconfigured, and a hint can target
+   loopback, link-local, private, metadata-service, or attacker-
+   controlled endpoints.  Presenters apply independent URI, origin,
+   redirect, credential, and evidence-disclosure policy.  Challenge
+   authentication never makes a hinted endpoint trusted.
+
+   *Action substitution.* The relying party computes the challenge
+   action digest from the action it would admit and recomputes the
+   digest from the current proposed action before claiming the
+   challenge.  A stored challenge digest, a digest supplied by the
+   presenter, or an action profile selected by the presenter defeats the
+   purpose of the protocol.
+
+   *Replay and state exhaustion.* Stateful issuance binds the complete
+   body before exposure; self-describing issuance defers storage but
+   still requires an atomic replay claim before evidence evaluation.
+   The owner claims the issuer-and-nonce key and reserves all applicable
+   refusal-path capacity as one atomic transition.  Separating those
+   operations permits duplicate reservations, nonce burn, or global cap
+   over-allocation.  An attacker can provoke refusals cheaply or consume
+   a structurally valid challenge.  Aggregate and scoped bounds, short
+   expiries, authentication where available, and rate limits are
+   therefore required operational controls.  Exhaustion or replay-store
+   uncertainty fails closed.  Live replay state is never evicted to make
+   room for new work.  Hard-cap capacity and the nonce claim commit
+   together before evidence verification so an attacker cannot force
+   expensive signature or status work after the state budget is
+   exhausted.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 22]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   *Replica consistency.* Per-process replay caches permit two verifier
+   replicas to accept the same nonce.  Verifiers for one issuer need one
+   atomic replay domain or an exclusive deterministic shard.  During
+   partition or store failure they refuse rather than create local
+   replacement state.  Only the owning shard's authoritative already-
+   claimed result is replay; routing failure is unavailability and is
+   not relabeled as attacker replay.  An uncertain owner response does
+   not prove that the transition failed to commit; callers retain the
+   unavailable result and do not create local replacement state.
+
+   *Parser and pre-claim work amplification.* State caps apply only at
+   the owner-side transition.  They do not protect an unbounded JSON
+   parser, duplicate-member ambiguity, canonicalization, envelope
+   verification, or action derivation.  Finite pre-cryptographic limits
+   and duplicate-member refusal are therefore independent requirements.
+
+   *Retry synchronization and load amplification.* A precise challenge
+   tells a presenter how to correct a request, so a population receiving
+   similar refusals can retry in a synchronized burst.  An issuer under
+   pressure SHOULD combine recipient-specific retry timing, a non-zero
+   jitter interval, admission control, and rate limiting.  A presenter
+   SHOULD retain exponential backoff or equivalent local load control
+   even when a challenge supplies a lower bound.  Timing guidance paces
+   only a new evidence presentation and MUST NOT be interpreted as
+   evidence satisfaction, authorization, or a promise that capacity or
+   admission will exist after not_before.
+
+   *Information disclosure.* Evidence requirements, policy identifiers,
+   action profiles, and obtain hints can reveal sensitive policy
+   structure.  A relying party SHOULD disclose only the minimum
+   information needed for remediation.  The HTTP binding requires Cache-
+   Control: no-store.  When a hard cap is binding, the relying party
+   discloses no requirements, obtain hints, or evidence-sufficiency
+   details.  Returning a stateless hint in that state would turn
+   overload handling into a policy oracle.  Deployments SHOULD
+   authenticate or otherwise authorize a requester before disclosing
+   policy details when the requirements themselves reveal sensitive
+   resources, roles, or controls; otherwise they use a generic refusal
+   or a deliberately reduced challenge.
+
+   *Stale facts and uncertain effects.* A satisfied challenge proves
+   only that the relying party's evidence requirement was met at
+   evaluation time.  It does not prove that external facts remain true,
+   that an action executed, or that an uncertain action is safe to
+   retry.  Status rechecking, execution custody, effect observation, and
+   reconciliation remain separate controls.
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 23]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   *Gateway split brain.* An authenticated challenge from a receiving
+   gateway does not transfer a single-use authorization or its
+   consumption ledger.  Implementations MUST NOT claim cross-gateway
+   double-admission prevention merely because both gateways implement
+   this challenge.
+
+6.  IANA Considerations
+
+   IANA is requested to add the following entry to the "HTTP Problem
+   Types" registry established by [RFC9457].  That registry uses the
+   Specification Required policy defined by [RFC8126]; this request does
+   not require IETF Review or Standards Action.
+
+   Type URI:
+      https://iana.org/assignments/http-problem-types#ae-required
+
+   Title:  Authorization Evidence Required
+
+   Recommended HTTP status code:  403
+
+   Reference:  This document.
+
+   This revision withdraws the earlier request for a new application/
+   authorization-evidence-challenge+json media type.  The HTTP binding
+   reuses the registered application/problem+json media type.  Non-HTTP
+   bindings define their own carriage without changing the core data
+   model.
+
+7.  Interoperability Questions for Review
+
+   This revision resolves the transport layering, HTTP status and media
+   type, gateway-ownership boundary, acquisition-protocol coupling,
+   retry synchronization, retry criticality, bounded replay state, and
+   per-hop binding questions raised through revision -05.  It also
+   resolves the ordering of hard-cap enforcement before evidence
+   evaluation, the atomic join between nonce claim and capacity
+   reservation, and the distinction between authoritative replay and
+   owner unavailability.  Review is requested on the following remaining
+   choices:
+
+   *  Which Agent2Agent and AgentProto error carriers can preserve the
+      complete challenge, authenticated issuer, audience, and retry
+      timing, and whether either protocol needs an additional attempt
+      identifier.
+
+   *  Whether a DMSC gateway profile should carry the core object
+      directly or reference it by an authenticated, digest-bound URI.
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 24]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   *  Which application profiles, if any, need both a native OAuth
+      transaction challenge and an AE-CHALLENGE, and how those profiles
+      should expose the two independent replay domains.
+
+8.  Acknowledgments
+
+   Thanks to Sumit P.  Ahuja for identifying synchronized retry and load
+   amplification as a consequence of precise challenge guidance, for
+   correcting retry criticality and non-promissory timing semantics, and
+   for identifying refusal-path state exhaustion, cap-before-
+   verification ordering, policy-oracle risk under load, and the
+   distinction between an authoritative replay result and failure to
+   reach the owning shard.  Thanks to Guigui Wang for implementation
+   feedback on structured error payloads, per-hop action rebinding, and
+   the separation of capability discovery from local authority.  Thanks
+   to Henri Sirkkavaara for review of replay ordering, concurrent-
+   presentation behavior, diagnostic ordering, and portable identifier
+   semantics.
+
+9.  Changes since -06
+
+   *  Replaces separate capacity-reservation and nonce-claim steps with
+      one atomic owner-side transition and defines its six closed
+      results.
+
+   *  Prevents duplicate capacity debit, nonce burn on capacity refusal,
+      cross-shard cap over-allocation, and stale-worker finalization
+      through coordinated cap buckets, conservative reservations, and
+      fencing.
+
+   *  Scopes replay to authenticated issuer identity plus nonce, defines
+      different-body collision behavior, and excludes challenge_id from
+      the security key.
+
+   *  Binds the authenticated returning presenter to the challenge
+      audience and requires current exact-action rederivation before
+      claim.
+
+   *  Adds duplicate-member rejection, finite pre-cryptographic resource
+      limits, deterministic complete-body digesting, interoperable
+      integer bounds, explicit conjunction and alternative rules for
+      evidence requirements, hint SSRF protections, and satisfiable
+      retry-window rules.
+
+   *  Requires follow-ups to use the current exact action and live
+      policy, and removes dependency on an unpublished DMSC section
+      number.
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 25]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+10.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
+              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
+              <https://www.rfc-editor.org/info/rfc3339>.
+
+   [RFC3986]  Berners-Lee, T., Fielding, R. T., and L. Masinter,
+              "Uniform Resource Identifier (URI): Generic Syntax",
+              STD 66, RFC 3986, DOI 10.17487/RFC3986, January 2005,
+              <https://www.rfc-editor.org/info/rfc3986>.
+
+   [RFC4086]  Eastlake 3rd, D., Schiller, J., and S. Crocker,
+              "Randomness Requirements for Security", BCP 106, RFC 4086,
+              DOI 10.17487/RFC4086, June 2005,
+              <https://www.rfc-editor.org/info/rfc4086>.
+
+   [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
+              Writing an IANA Considerations Section in RFCs", BCP 26,
+              RFC 8126, DOI 10.17487/RFC8126, June 2017,
+              <https://www.rfc-editor.org/info/rfc8126>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8259]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
+              Interchange Format", STD 90, RFC 8259,
+              DOI 10.17487/RFC8259, December 2017,
+              <https://www.rfc-editor.org/info/rfc8259>.
+
+   [RFC9110]  Fielding, R., Ed., Nottingham, M., Ed., and J. Reschke,
+              Ed., "HTTP Semantics", STD 97, RFC 9110,
+              DOI 10.17487/RFC9110, June 2022,
+              <https://www.rfc-editor.org/info/rfc9110>.
+
+   [RFC9457]  Nottingham, M., Wilde, E., and S. Dalal, "Problem Details
+              for HTTP APIs", RFC 9457, DOI 10.17487/RFC9457, July 2023,
+              <https://www.rfc-editor.org/info/rfc9457>.
+
+11.  Informative References
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 26]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   [AEB]      Schrock, I., "The Action Evidence Boundary for
+              Consequential Agent Effects", Work in Progress, Internet-
+              Draft, draft-schrock-action-evidence-boundary-03, August
+              2026, <https://datatracker.ietf.org/doc/draft-schrock-
+              action-evidence-boundary/>.
+
+   [AEC]      Schrock, I., "Authorization Evidence Chains: Composing
+              Heterogeneous Agent-Action Evidence (EP-AEC)", Work in
+              Progress, Internet-Draft, draft-schrock-ep-authorization-
+              evidence-chain-05, August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-evidence-chain/>.
+
+   [AUTH-RECEIPTS]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-11, 9 August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-receipts/>.
+
+   [BCR]      Schrock, I., "Bounded Capability Receipts and Durable
+              Spend Control for Agent Actions", Work in Progress,
+              Internet-Draft, draft-schrock-ep-bounded-capability-
+              receipts-03, August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              bounded-capability-receipts/>.
+
+   [CAID]     Schrock, I., "The Canonical Action Identifier (CAID)",
+              Work in Progress, Internet-Draft, draft-schrock-canonical-
+              action-identifier-02, August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-canonical-
+              action-identifier/>.
+
+   [DMSC-GAPS]
+              Dunbar, L., Wang, Y., Schrock, I., and B. Liu, "Deployment
+              Scenarios and Gap Analysis for AI Agent Gateway", Work in
+              Progress, Internet-Draft, draft-dunbar-dmsc-gw-scenarios-
+              gap-analysis-03, August 2026,
+              <https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-
+              scenarios-gap-analysis/>.
+
+   [KLRC]     Kasselman, P., Lombardo, J., Rosomakho, Y., Campbell, B.,
+              Steele, N., and A. Parecki, "AI Agent Authentication and
+              Authorization", Work in Progress, Internet-Draft, draft-
+              klrc-aiagent-auth-03, 6 July 2026,
+              <https://datatracker.ietf.org/doc/draft-klrc-aiagent-
+              auth/>.
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 27]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   [OAUTH-TXN-CHALLENGE]
+              Rosomakho, Y., Campbell, B., McGuinness, K., and P.
+              Kasselman, "OAuth Transaction Authorization Challenge",
+              Work in Progress, Internet-Draft, draft-rosomakho-oauth-
+              txn-challenge-00, 25 June 2026,
+              <https://datatracker.ietf.org/doc/draft-rosomakho-oauth-
+              txn-challenge/>.
+
+   [RFC9470]  Bertocci, V. and B. Campbell, "OAuth 2.0 Step Up
+              Authentication Challenge Protocol", RFC 9470,
+              DOI 10.17487/RFC9470, September 2023,
+              <https://www.rfc-editor.org/info/rfc9470>.
+
+Appendix A.  Relationship to Existing Mechanisms
+
+   CAID [CAID] is one mechanism for deriving and mapping exact material
+   actions.  AEB [AEB] defines executor-side evidence verification,
+   refusal, and one-time consumption.  Bounded Capability Receipts [BCR]
+   define durable single-domain reservation and consumption.  AEC [AEC]
+   is one possible presentation profile.  None is required by the core
+   challenge, and the challenge does not extend any of them across
+   independently operated admission domains.
+
+   OAuth Transaction Authorization Challenge [OAUTH-TXN-CHALLENGE]
+   supplies the OAuth-native choreography and transaction-bound grant
+   that this document explicitly does not define.  The KLRC architecture
+   [KLRC] describes broader agent authentication and authorization
+   requirements, including human-in-the-loop and externalized
+   authorization patterns.  Authorization Receipts [AUTH-RECEIPTS] are
+   one possible portable human- evidence type that an AE-CHALLENGE can
+   request; neither the receipt nor AE-CHALLENGE replaces a native OAuth
+   grant or a relying party's final policy decision.
+
+Appendix B.  Implementation Status
+
+   The EMILIA Protocol repository contains a same-team reference
+   implementation of the AE-CHALLENGE-v1 core lifecycle, including
+   relying-party-derived action binding, policy-derived requirements,
+   durable body-bound registration, single-use consumption, expiry,
+   follow-up challenges, and action-swap refusal.  Revision -03 added a
+   serializer and parser for the RFC 9457 HTTP binding and tests that
+   pin status 403, application/problem+json, Cache-Control: no-store,
+   and the evidence_challenge extension.
+
+   Revision -04 specifies retry timing, per-hop rebinding, discovery
+   separation, carrier semantics, portable absolute-URI identifiers, and
+   action-before-consumption replay ordering.  The reference runtime now
+   refuses a presentation action mismatch before nonce consumption.  The
+
+
+
+Schrock                 Expires 11 February 2027               [Page 28]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   remaining additions are based in part on external implementer review,
+   including experience with structured error payloads and per-verifier
+   decision bindings.  They are not yet fully implemented by the same-
+   team reference implementation and are not claimed as an independent
+   implementation of this specification.
+
+   Revision -05 adds optional self-describing issuance, mandatory state
+   bounds and cap behavior, authoritative replay-domain requirements,
+   and state-exhaustion conformance cases.  The same-team implementation
+   uses durable stateful issuance and atomic consumption across workers
+   and restarts, but does not yet implement the -05 configurable cap
+   behavior or self-describing issuance path.  No implementation claim
+   is made for those additions.
+
+   Revision -06 adds binding cap-before-verification ordering, no-
+   requirements disclosure while a hard cap is binding, and an explicit
+   distinction between an authoritative already-claimed replay result
+   and inability to reach the owning shard.  These requirements and
+   their conformance cases are not yet implemented by the same-team
+   reference implementation, and no implementation claim is made for
+   them.
+
+   Revision -07 replaces that two-step ordering with one atomic nonce-
+   claim-and-capacity-reservation transition and adds presenter binding,
+   collision, retry-window, parser-limit, and fenced-recovery
+   requirements.  A same-team finite model exercises duplicate claims,
+   capacity refusal, uncertain owner results, stale fencing tokens, and
+   independent-shard over-allocation, including mutation
+   counterexamples.  The reference runtime does not yet implement the
+   compound transition, hard-cap buckets, self-describing issuance,
+   fenced reservation recovery, stable issuer-alias mapping, immutable
+   action-profile pinning, or an explicit separately held current-action
+   input to challenge claim, and no implementation claim is made for
+   them.  Within its single issuer-scoped store, the runtime keys its
+   replay record by nonce rather than the correlation-only challenge
+   identifier and leaves an action-mismatched presentation unconsumed.
+   Its v2 nonce-key namespace is not rolling-upgrade compatible with v1;
+   deployment requires a fail-closed drain of v1 challenges or an atomic
+   backend-specific migration before v2 issuance.  Its object-level API
+   does not reject duplicate names in raw JSON or enforce the pre-parse
+   message limits in this revision.  Legacy API options can also omit
+   audience, emit a null policy_id, use local non-URI evidence and
+   presentation identifiers, or construct an empty requirements list;
+   those paths do not claim revision -07 conformance.
+
+   The OAuth boundary and non-substitution case in revision -05 are
+   normative text and conformance requirements.  The same-team reference
+   implementation does not convert an AE-CHALLENGE into an OAuth
+
+
+
+Schrock                 Expires 11 February 2027               [Page 29]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
+   challenge or grant, and no such conversion is planned.  It does not
+   yet implement a composed application profile carrying both
+   mechanisms.
+
+   This is same-team implementation evidence.  No independent
+   implementation or interoperability is claimed.  The implementation
+   does not yet provide a DMSC carrier or conserved-admission mechanism.
+   Its current local evidence and presentation identifiers are not the
+   absolute URIs required by this revision.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 30]

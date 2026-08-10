@@ -1,4 +1,4 @@
-export declare const DURABLE_CHALLENGE_STORE_VERSION = "EP-DURABLE-CHALLENGE-STORE-v1";
+export declare const DURABLE_CHALLENGE_STORE_VERSION = "EP-DURABLE-CHALLENGE-STORE-v2";
 export declare function challengeStorageKey(challenge: any): string;
 export declare function challengeBodyDigest(challenge: any): string;
 export declare function createDurableChallengeStore(backend: any): {

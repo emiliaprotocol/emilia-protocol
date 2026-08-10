@@ -6,7 +6,7 @@ import {
 } from '../lib/negotiate/evidence-challenge.js';
 import { artifactDigest } from '../lib/evidence/evidence-graph.js';
 import { getPolicyPack } from '../lib/evidence/policy-packs.js';
-import { createDurableChallengeStore } from '../packages/gate/challenge-store.js';
+import { challengeStorageKey, createDurableChallengeStore } from '../packages/gate/challenge-store.js';
 import { createMemoryBackend } from '../packages/gate/store.js';
 import {
   CONSUMPTION_SQL,
@@ -78,6 +78,22 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     expect(results.filter(Boolean)).toHaveLength(1);
   });
 
+  it('treats the nonce as the replay key even when challenge_id changes', async () => {
+    const backend = createMemoryBackend();
+    const store = createDurableChallengeStore(backend);
+    const first = {
+      '@version': 'AE-CHALLENGE-v1', challenge_id: 'correlation-a', nonce: 'nonce-shared-across-ids-0001',
+      action_digest: artifactDigest(action), expires_at: expiresAt,
+    };
+    const second = { ...first, challenge_id: 'correlation-b' };
+    expect(challengeStorageKey(first)).toMatch(/^ae-challenge:v2:/);
+    expect(challengeStorageKey(second)).toBe(challengeStorageKey(first));
+    expect(await store.register(first)).toBe(true);
+    expect(await store.register(second)).toBe(false);
+    expect(await store.consume(second)).toBe(false);
+    expect(await store.consume(first)).toBe(true);
+  });
+
   it('survives restart and admits exactly one concurrent presentation', async () => {
     const backend = createMemoryBackend();
     const issuerStore = createDurableChallengeStore(backend);
@@ -127,7 +143,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
 
     expect(results.filter((result) => result.verdict === 'admissible')).toHaveLength(1);
     expect(results.filter((result) => result.verdict === 'refused')).toHaveLength(63);
-    expect([...postgres.rows.values()].at(-1)?.state).toMatch(/^challenge-consumed:v1:/);
+    expect([...postgres.rows.values()].at(-1)?.state).toMatch(/^challenge-consumed:v2:/);
   });
 
   it('requires every production storage capability and permits only explicit test-only ephemeral mode', async () => {
@@ -205,7 +221,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     expect(original.verdict).toBe('admissible');
   });
 
-  it('consumes the first valid challenge attempt even when its presentation swaps the action', async () => {
+  it('refuses an action swap without consuming the registered challenge', async () => {
     const store = createDurableChallengeStore(createMemoryBackend());
     const challenge = await createRegisteredEvidenceChallenge(action, policy, {
       challengeStore: store,
@@ -230,8 +246,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
       verifiers,
       as_of: asOf,
     });
-    expect(retry.verdict).toBe('refused');
-    expect(retry.reasons.join(' ')).toContain('replay');
+    expect(retry.verdict).toBe('admissible');
   });
 
   it('refuses policy drift without consuming the registered challenge', async () => {

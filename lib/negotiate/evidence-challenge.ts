@@ -152,6 +152,9 @@ type EvidenceChallengeOpts = {
   action_profile?: string;
   /** Closed presentation method identifiers accepted by a profile-specific consumer. */
   present_as?: string[];
+  /** Authenticated identity of the component returning the presentation. */
+  authenticated_presenter?: string;
+  /** @deprecated Use authenticated_presenter. Retained for source compatibility. */
   expected_audience?: string;
   keysByType?: Record<string, any>;
   policiesByType?: Record<string, any>;
@@ -435,16 +438,17 @@ export async function createRegisteredFollowupEvidenceChallenge(challenge, polic
 }
 
 function validateAudience(challenge, opts: EvidenceChallengeOpts): string | null {
-  if (challenge?.audience === undefined && opts.expected_audience === undefined) return null;
+  const presenter = opts.authenticated_presenter ?? opts.expected_audience;
+  if (challenge?.audience === undefined && presenter === undefined) return null;
   if (typeof challenge?.audience !== 'string' || !challenge.audience.trim()) {
     return 'challenge audience missing or invalid';
   }
-  if (typeof opts.expected_audience !== 'string' || !opts.expected_audience.trim()) {
-    return 'expected audience is required for an audience-bound challenge';
+  if (typeof presenter !== 'string' || !presenter.trim()) {
+    return 'authenticated presenter is required for an audience-bound challenge';
   }
-  return challenge.audience === opts.expected_audience
+  return challenge.audience === presenter
     ? null
-    : 'challenge audience does not match this relying party';
+    : 'challenge audience does not match the authenticated presenter';
 }
 
 function validPresentationContract(challenge): boolean {
@@ -496,8 +500,8 @@ function supportedPresentationDocument(presentation): boolean {
 
 /**
  * Server side: evaluate a presentation against the challenge it answers.
- * FAIL-CLOSED, in order: version/structure -> expiry -> nonce single-use ->
- * action agreement (TOCTOU) -> policy replay. On a non-admissible verdict,
+ * FAIL-CLOSED, in order: version/structure -> expiry -> action agreement
+ * (TOCTOU) -> nonce single-use -> policy replay. On a non-admissible verdict,
  * a follow-up challenge (same action, remaining evidence, fresh nonce) is
  * returned so the loop continues machine-readably.
  *
@@ -528,7 +532,6 @@ export function evaluatePresentation(challenge, graphDoc, policy, opts: Evidence
   const nonces = opts.consumedNonces;
   if (!(nonces instanceof Set)) return refuse('nonce ledger required (consumedNonces)');
   if (nonces.has(challenge.nonce)) return refuse('challenge nonce already consumed (replay)');
-  nonces.add(challenge.nonce); // consumed on FIRST evaluation attempt, success or not
 
   if (!supportedPresentationDocument(graphDoc)) {
     return refuse('presented evidence uses a method not advertised by the challenge');
@@ -540,6 +543,7 @@ export function evaluatePresentation(challenge, graphDoc, policy, opts: Evidence
   if (presentationDigest !== challenge.action_digest) {
     return refuse('presented evidence binds a different action than the challenge (action swap)');
   }
+  nonces.add(challenge.nonce); // consumed on first structurally and action-valid attempt
 
   const result = evaluateEvidencePresentation(challenge, graphDoc, policy, opts);
   let next_challenge: ReturnType<typeof createFollowupEvidenceChallenge> | null = null;
@@ -576,9 +580,6 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
   if (Number.isNaN(asOf)) return refuse('valid evaluation time (as_of) is required');
   if (asOf >= expiresAt) return refuse('challenge expired');
 
-  if (await store.consume(challenge) !== true) {
-    return refuse('challenge is unregistered, tampered, or already consumed (replay)');
-  }
   if (!supportedPresentationDocument(graphDoc)) {
     return refuse('presented evidence uses a method not advertised by the challenge');
   }
@@ -588,6 +589,9 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
   }
   if (presentationDigest !== challenge.action_digest) {
     return refuse('presented evidence binds a different action than the challenge (action swap)');
+  }
+  if (await store.consume(challenge) !== true) {
+    return refuse('challenge is unregistered, tampered, or already consumed (replay)');
   }
 
   const result = evaluateEvidencePresentation(challenge, graphDoc, policy, opts);

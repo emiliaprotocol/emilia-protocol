@@ -10,9 +10,9 @@
  * reuses the challenge id and nonce.
  */
 import { hashCanonical } from './execution-binding.js';
-export const DURABLE_CHALLENGE_STORE_VERSION = 'EP-DURABLE-CHALLENGE-STORE-v1';
-const OPEN_PREFIX = 'challenge-open:v1:';
-const CONSUMED_PREFIX = 'challenge-consumed:v1:';
+export const DURABLE_CHALLENGE_STORE_VERSION = 'EP-DURABLE-CHALLENGE-STORE-v2';
+const OPEN_PREFIX = 'challenge-open:v2:';
+const CONSUMED_PREFIX = 'challenge-consumed:v2:';
 function assertChallenge(challenge) {
     if (!challenge || typeof challenge !== 'object' || Array.isArray(challenge)) {
         throw new Error('challenge must be an object');
@@ -26,7 +26,11 @@ function assertChallenge(challenge) {
 }
 export function challengeStorageKey(challenge) {
     assertChallenge(challenge);
-    return `ae-challenge:${hashCanonical({ challenge_id: challenge.challenge_id, nonce: challenge.nonce })}`;
+    // The backend is the authoritative replay domain for one issuer.  The nonce,
+    // not the correlation-only challenge_id, is the security key.  Using
+    // challenge_id here would let one issuer accidentally register the same nonce
+    // twice under different correlation identifiers.
+    return `ae-challenge:v2:${hashCanonical({ nonce: challenge.nonce })}`;
 }
 export function challengeBodyDigest(challenge) {
     assertChallenge(challenge);
