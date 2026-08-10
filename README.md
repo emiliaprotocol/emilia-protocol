@@ -52,13 +52,13 @@ fallback; it is not authority to withhold medically necessary care.
 ## Engineering evidence, not architecture claims
 
 EMILIA ships a security case that reviewers can execute. The current repository resolves **35
-security claims over 259 hashed evidence files**, verifies **20 Tamarin lemmas across two composed
+security claims over 262 hashed evidence files**, verifies **20 Tamarin lemmas across two composed
 Dolev-Yao models — 17 all-traces obligations and 3 exists-trace reachability witnesses** — and
 preserves **8 deliberately weakened variants that produce concrete
 attack traces when load-bearing checks are removed**. The live same-team conformance corpus contains **21 suites and
 331 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
 **16-suite/164-vector** bundle and a **359-case hostility campaign**. The broader suite contains
-**8,865 automated tests across 533 files**.
+**8,866 automated tests across 533 files**.
 
 Production JavaScript and JSDoc surfaces are compiler-checked with TypeScript
 `checkJs`; the secure app has its own compatibility compiler project, while
@@ -339,7 +339,7 @@ Three same-team reference ports (JS / Python / Go) agree across all 21 suites an
 
 | Metric | Value |
 |---|---|
-| Automated test cases | 8,865 across 533 files; all platform-applicable cases must pass |
+| Automated test cases | 8,866 across 533 files; all platform-applicable cases must pass |
 | TLA+ safety properties | 26 bounded invariants held in the configured state space; not an implementation-refinement or unbounded proof — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
 | Alloy relational assertions | 35 facts + 32 assertions across four models — verified in CI |
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
