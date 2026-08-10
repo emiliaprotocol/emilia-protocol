@@ -13,7 +13,7 @@
  * @license Apache-2.0
  */
 
-import { canonicalizeStrictJson, strictJsonGate } from './strict-json.js';
+import { canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate } from './strict-json.js';
 
 type JsonObject = Record<string, any>;
 
@@ -25,6 +25,7 @@ interface WebOptions {
   allowUnsigned?: boolean;
   previousSignCount?: number;
   counterPolicy?: 'observe' | 'enforce';
+  mode?: 'relying-party' | 'offline-integrity';
 }
 
 interface MerkleStep {
@@ -179,6 +180,20 @@ function derEcdsaToRawP256(der: Uint8Array): Uint8Array | null {
 export async function verifyReceipt(doc: JsonObject, publicKeyBase64url: string, opts: WebOptions = {}) {
   const checks: { version: boolean; signature: boolean; anchor: boolean | null } = { version: false, signature: false, anchor: null };
 
+  // Parity with the Node verifier (index.ts): inspect the COMPLETE caller-supplied
+  // object before reading any member. This rejects documents whose (even unsigned)
+  // fields fall outside the closed EP canonicalization profile — non-safe-integer
+  // numbers, non-plain objects, accessors, symbols, cycles — so the browser and
+  // Node verifiers never disagree on the same document. Without this gate a doc
+  // that Node refuses would verify here, giving two different published answers.
+  if (!isStrictCanonicalJson(doc)) {
+    return {
+      valid: false,
+      checks,
+      error: 'Receipt is outside the EP canonicalization profile; only plain JSON data is accepted',
+    };
+  }
+
   if (!doc?.['@version'] || !SUPPORTED_VERSIONS.includes(doc['@version'])) {
     return { valid: false, checks, error: `Unsupported version: ${doc?.['@version']}` };
   }
@@ -186,6 +201,13 @@ export async function verifyReceipt(doc: JsonObject, publicKeyBase64url: string,
 
   if (!doc.payload || !doc.signature?.value || !doc.signature?.algorithm) {
     return { valid: false, checks, error: 'Missing payload or signature' };
+  }
+  if (!isStrictCanonicalJson(doc.payload)) {
+    return {
+      valid: false,
+      checks,
+      error: 'Payload is outside the EP canonicalization profile; use strings or safe integers in signed material',
+    };
   }
 
   try {
@@ -291,6 +313,19 @@ function counterPolicyError(metadata: ReturnType<typeof authenticatorMetadata>, 
 /**
  * Verify a Class A (approver-held key) signoff fully offline, in the browser.
  * Mirrors index.js verifyWebAuthnSignoff.
+ *
+ * `opts.mode` selects the verification posture:
+ *   - 'relying-party': an authoritative relying-party check. `rpId` AND
+ *     `allowedOrigins` are REQUIRED; omitting either fails the verdict with
+ *     'rp_pins_required' and `checks.rp_id_hash === false`. This makes it
+ *     impossible for a caller that intends an authoritative check to silently
+ *     skip origin/rp scoping by forgetting the pins.
+ *   - 'offline-integrity' (default): today's portable integrity check —
+ *     challenge/action/nonce binding, ceremony type, UP/UV flags, and the
+ *     device signature are verified; origin is asserted only when the caller
+ *     supplies pins, and `checks.rp_id_hash` stays null when unpinned. This is
+ *     the documented posture for the public /verify page and demos, which have
+ *     no out-of-band relying-party trust profile.
  * @returns {Promise<{valid:boolean, checks:object, error?:string}>}
  */
 export async function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicKeySpkiB64u: string, opts: WebOptions = {}) {
@@ -308,6 +343,22 @@ export async function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicK
     signature: false,
   };
   let authenticator: ReturnType<typeof authenticatorMetadata> | null = null;
+
+  if (opts.mode !== undefined && opts.mode !== 'relying-party' && opts.mode !== 'offline-integrity') {
+    return { valid: false, checks, authenticator, error: 'mode must be "relying-party" or "offline-integrity"' };
+  }
+  if (opts.mode === 'relying-party') {
+    const rpIdPinned = typeof opts.rpId === 'string' && opts.rpId.length > 0;
+    const originsPinned = Array.isArray(opts.allowedOrigins)
+      && opts.allowedOrigins.length > 0
+      && opts.allowedOrigins.every((origin) => typeof origin === 'string' && origin.length > 0);
+    if (!rpIdPinned || !originsPinned) {
+      // An authoritative origin check was requested but cannot be performed.
+      // rp_id_hash is false (not null): the pin requirement itself failed.
+      checks.rp_id_hash = false;
+      return { valid: false, checks, authenticator, error: 'rp_pins_required' };
+    }
+  }
 
   try {
     if (!signoff?.context || !signoff?.webauthn) {
@@ -439,6 +490,13 @@ export async function verifyCommitmentProof(proof: JsonObject, publicKeyBase64ur
 export async function verifyReceiptBundle(bundle: JsonObject, publicKeyBase64url: string) {
   if (bundle?.['@version'] !== 'EP-BUNDLE-v1') {
     return { valid: false, total: 0, verified: 0, failed: ['Invalid bundle version'] };
+  }
+  // Parity with the Node verifier (index.ts): a bundle with the right version but
+  // no document array is malformed input, not an exceptional condition. Refuse it
+  // without dereferencing attacker-controlled shape so a caller cannot be crashed
+  // with an uncaught TypeError (the browser build has no surrounding try/catch).
+  if (!Array.isArray(bundle.documents)) {
+    return { valid: false, total: 0, verified: 0, failed: ['Bundle documents must be an array'] };
   }
   const failed: string[] = [];
   let verified = 0;

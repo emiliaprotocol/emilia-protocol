@@ -53,3 +53,7 @@ copyFileSync(
   '../../conformance/vectors/aeb-consequence-conformance.v1.json',
   'aeb-consequence-conformance.v1.json',
 );
+copyFileSync(
+  '../../conformance/vectors/authorization-bundle.v1.json',
+  'authorization-bundle.v1.json',
+);

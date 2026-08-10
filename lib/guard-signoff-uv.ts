@@ -63,12 +63,14 @@ export function deriveSignoffUserVerification({
   expectedActionHash,
   rpId,
   allowedOrigins,
+  mode,
 }: {
   decision?: SignoffDecision | null;
   approverPublicKeySpki?: string;
   expectedActionHash?: string;
   rpId?: string;
   allowedOrigins?: string[];
+  mode?: 'relying-party' | 'offline-integrity';
 } = {}) {
   if (!decision || typeof decision !== 'object') {
     return { verified: false, reason: 'missing_decision' };
@@ -110,6 +112,7 @@ export function deriveSignoffUserVerification({
   };
 
   const result = verifyWebAuthnSignoff(signoff, approverPublicKeySpki, {
+    ...(mode ? { mode } : {}),
     ...(rpId ? { rpId } : {}),
     ...(Array.isArray(allowedOrigins) ? { allowedOrigins } : {}),
   });

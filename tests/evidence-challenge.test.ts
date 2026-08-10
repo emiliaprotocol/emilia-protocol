@@ -6,6 +6,7 @@ import {
   createEvidenceChallenge, createFollowupEvidenceChallenge,
   createEvidenceChallengeProblem, parseEvidenceChallengeProblem,
   evaluatePresentation, deriveRequiredEvidence,
+  selectAuthorizationChallengeMechanism,
 } from '../lib/negotiate/evidence-challenge.js';
 import { artifactDigest } from '../lib/evidence/evidence-graph.js';
 import { getPolicyPack } from '../lib/evidence/policy-packs.js';
@@ -423,6 +424,30 @@ describe('evaluatePresentation — structural refusals before any policy runs', 
 });
 
 describe('AE-CHALLENGE -03 HTTP binding', () => {
+  it('never substitutes AE evidence for a required native OAuth transaction grant', () => {
+    expect(selectAuthorizationChallengeMechanism({
+      native_transaction_authorization_required: true,
+      independent_evidence_insufficient: true,
+    })).toEqual({
+      primary: 'oauth-transaction-authorization',
+      ae_challenge_allowed: false,
+      substitution_allowed: false,
+    });
+    expect(selectAuthorizationChallengeMechanism({
+      native_transaction_authorization_required: true,
+      independent_evidence_insufficient: true,
+      explicit_composition_profile: true,
+    })).toEqual({
+      primary: 'oauth-transaction-authorization',
+      ae_challenge_allowed: true,
+      substitution_allowed: false,
+    });
+    expect(selectAuthorizationChallengeMechanism({
+      independent_evidence_insufficient: true,
+    }).primary).toBe('ae-challenge');
+    expect(selectAuthorizationChallengeMechanism({}).primary).toBe('none');
+  });
+
   it('uses RFC 9457 Problem Details with 403 and no-store', () => {
     const challenge = createEvidenceChallenge(ACTION, policy, {
       expires_at: EXPIRES,

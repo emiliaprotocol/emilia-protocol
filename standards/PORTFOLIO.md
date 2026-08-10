@@ -85,10 +85,10 @@ through host-record binding and scoped authority, to relying-party evidence
 satisfaction:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-10`](posted/draft-schrock-ep-authorization-receipts-10.xml)
+   [`draft-schrock-ep-authorization-receipts-11`](posted/draft-schrock-ep-authorization-receipts-11.xml)
    defines one action-bound organizational approval-evidence profile and its
    extension seam. Snapshot SHA-256:
-   `4800fffb1d03df4aaef95bde97f2cdf9c4e4821b406068c5deca544b5a218d43`.
+   `7dc112e2481b03dc4e017216c168e143cb32b878e70265f2a0402e483bea1a45`.
 2. **Human Authorization Binding** —
    [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact by value or reference into an
@@ -210,6 +210,11 @@ landed first; Receipts-10 then normatively pinned it. The capability revision
 adds explicit shared-state-domain and per-action authorization composition.
 Model-to-Matter-04 adds the seventh physical-state attestation role while
 preserving the source-claim, not physical-truth, boundary.
+
+On **August 10, 2026**, Authorization Receipts-11 was published and verified
+byte-for-byte against the immutable IETF archive. It keeps the closed
+Authorization Bundle transport-neutral, treats native evidence verification as
+role-specific input, and moves OAuth RAR into an optional binding profile.
 
 The published line also retains Authority Introduction-03, Quorum-03, Bounded
 Capability Receipts-02, and the other current individual drafts listed in

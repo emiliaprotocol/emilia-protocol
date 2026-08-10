@@ -6,6 +6,7 @@ import test from 'node:test';
 import {
   TRANSPORT_PROFILES,
   commandDigest,
+  commandDigestHex,
   decodeDnp3ControlRelay,
   decodeModbusWriteRegister,
   dnp3ControlRelayAction,
@@ -13,11 +14,13 @@ import {
   encodeModbusWriteRegister,
   encodeOpcuaCall,
   extractOpcuaAuthorization,
+  modbusWriteMultipleRegistersAction,
   modbusWriteRegisterAction,
 } from './commands.mjs';
 import {
   EXACT_COMMANDS,
   createEnforcementPoint,
+  createOutOfBandAuthorizationIndex,
   runOtCommandBindingLab,
 } from './scenario.mjs';
 
@@ -93,16 +96,18 @@ test('every command shape and one-field variant has its own digest', () => {
   }
 });
 
-test('a Modbus write to 40001 value 1 on unit 3 is stable, and each field moves it', () => {
+test('a Modbus write binds the zero-based wire address, not a 4xxxxx display label', () => {
   const base = modbusWriteRegisterAction({
-    site: 'ep:site:demo-lift-station', device: 'ep:device:plc-3', unitId: 3, register: 40001, value: 1,
+    site: 'ep:site:demo-lift-station', device: 'ep:device:plc-3', unitId: 3, protocolAddress: 0, value: 1,
   });
   assert.equal(commandDigest(base), commandDigest(EXACT_COMMANDS['modbus-tcp']));
+  assert.equal(base.protocol_address, 0);
+  assert.equal(Object.hasOwn(base, 'register'), false);
   const digests = new Set([commandDigest(base)]);
   for (const variant of [
-    { unitId: 3, register: 40002, value: 1 },
-    { unitId: 3, register: 40001, value: 0 },
-    { unitId: 4, register: 40001, value: 1 },
+    { unitId: 3, protocolAddress: 1, value: 1 },
+    { unitId: 3, protocolAddress: 0, value: 0 },
+    { unitId: 4, protocolAddress: 0, value: 1 },
   ]) {
     const digest = commandDigest(modbusWriteRegisterAction({
       site: 'ep:site:demo-lift-station', device: 'ep:device:plc-3', ...variant,
@@ -113,18 +118,77 @@ test('a Modbus write to 40001 value 1 on unit 3 is stable, and each field moves 
   assert.equal(digests.size, 4);
 });
 
-test('a DNP3 CROB digest moves with its index and its control code', () => {
+test('Modbus FC 0x06 and FC 0x10 quantity one remain encoding-scoped authorities', () => {
+  const fc06 = EXACT_COMMANDS['modbus-tcp'];
+  const fc10 = modbusWriteMultipleRegistersAction({
+    site: fc06.site,
+    device: fc06.device,
+    unitId: fc06.unit_id,
+    protocolAddress: fc06.protocol_address,
+    values: [fc06.value],
+  });
+  assert.equal(fc10.quantity, 1);
+  assert.equal(fc10.values[0], fc06.value);
+  assert.notEqual(commandDigest(fc10), commandDigest(fc06));
+});
+
+test('a Modbus unit-id mismatch with conduit device context is refused during decode', () => {
+  const encoded = encodeModbusWriteRegister(EXACT_COMMANDS['modbus-tcp']);
+  assert.throws(
+    () => decodeModbusWriteRegister(encoded.hex, {
+      site: 'ep:site:demo-lift-station',
+      device: 'ep:device:plc-3',
+      unit_id: 4,
+    }),
+    /unit id does not match conduit device context/,
+  );
+});
+
+test('a DNP3 CROB digest binds the complete control octet, timing, count, and function', () => {
   const link = { site: 'ep:site:demo-lift-station', device: 'ep:device:rtu-12', outstationAddress: 12 };
-  const base = dnp3ControlRelayAction({ ...link, index: 7, controlCode: 'LATCH_ON' });
+  const base = dnp3ControlRelayAction({
+    ...link,
+    index: 7,
+    applicationFunction: 5,
+    controlOctet: 0x03,
+    operationCount: 1,
+    onTimeMs: 0,
+    offTimeMs: 0,
+  });
   assert.equal(commandDigest(base), commandDigest(EXACT_COMMANDS.dnp3));
   assert.notEqual(
-    commandDigest(dnp3ControlRelayAction({ ...link, index: 8, controlCode: 'LATCH_ON' })),
+    commandDigest(dnp3ControlRelayAction({ ...link, index: 8, applicationFunction: 5, controlOctet: 0x03, operationCount: 1, onTimeMs: 0, offTimeMs: 0 })),
     commandDigest(base),
   );
   assert.notEqual(
-    commandDigest(dnp3ControlRelayAction({ ...link, index: 7, controlCode: 'LATCH_OFF' })),
+    commandDigest(dnp3ControlRelayAction({ ...link, index: 7, applicationFunction: 5, controlOctet: 0x43, operationCount: 1, onTimeMs: 0, offTimeMs: 0 })),
     commandDigest(base),
   );
+  for (const variant of [
+    { applicationFunction: 6, controlOctet: 0x03, operationCount: 1, onTimeMs: 0, offTimeMs: 0 },
+    { applicationFunction: 5, controlOctet: 0x03, operationCount: 2, onTimeMs: 0, offTimeMs: 0 },
+    { applicationFunction: 5, controlOctet: 0x03, operationCount: 1, onTimeMs: 100, offTimeMs: 0 },
+    { applicationFunction: 5, controlOctet: 0x03, operationCount: 1, onTimeMs: 0, offTimeMs: 100 },
+  ]) {
+    assert.notEqual(
+      commandDigest(dnp3ControlRelayAction({ ...link, index: 7, ...variant })),
+      commandDigest(base),
+    );
+  }
+});
+
+test('detached evidence distinguishes two authorizations for the same exact action', () => {
+  const index = createOutOfBandAuthorizationIndex({ defaultRequestContext: 'session-a' });
+  const action = EXACT_COMMANDS['modbus-tcp'];
+  const first = { payload: { receipt_id: 'attempt-1' } };
+  const second = { payload: { receipt_id: 'attempt-2' } };
+  const heldFirst = index.hold(action, first);
+  const heldSecond = index.hold(action, second);
+  assert.notEqual(heldFirst.attempt_ref, heldSecond.attempt_ref);
+  assert.equal(index.size, 2);
+  assert.equal(index.lookup(heldFirst.attempt_ref, commandDigestHex(action)), first);
+  assert.equal(index.lookup(heldSecond.attempt_ref, commandDigestHex(action)), second);
+  assert.equal(index.lookup(heldFirst.attempt_ref, commandDigestHex(action), 'session-b'), null);
 });
 
 test('the digest is canonical, so key order cannot move it', () => {
@@ -181,7 +245,7 @@ test('one authorization admits one exact command once on every transport', () =>
   }
 });
 
-test('the two out-of-band transports carry no authorization on the wire', () => {
+test('the two detached transports bind a conduit attempt reference and the exact-action digest', () => {
   const outOfBand = AUTHORIZED.transports.filter((entry: any) => entry.binding_mode === 'out-of-band-digest');
   assert.equal(outOfBand.length, 2);
   for (const entry of outOfBand) {
@@ -190,6 +254,8 @@ test('the two out-of-band transports carry no authorization on the wire', () => 
     // The out-of-band index key is exactly the digest the gate authorized.
     assert.equal(entry.out_of_band_key, entry.observed_digest);
     assert.equal(entry.out_of_band_key, entry.recorded_action_digest);
+    assert.equal(typeof entry.out_of_band_attempt_ref, 'string');
+    assert.ok(entry.out_of_band_attempt_ref.length > 0);
   }
   const inline = AUTHORIZED.transports.filter((entry: any) => entry.binding_mode === 'inline');
   assert.equal(inline.length, 1);
@@ -216,7 +282,7 @@ test('a command that differs in one field is refused with an action-binding reas
 
 test('a valve address off by one never reaches the device', () => {
   const registerDrift = DRIFT.cases.find(
-    (item: any) => item.transport === 'modbus-tcp' && item.drifted_field === 'register',
+    (item: any) => item.transport === 'modbus-tcp' && item.drifted_field === 'protocol_address',
   );
   assert.ok(registerDrift);
   assert.equal(registerDrift.allowed, false);
@@ -235,7 +301,7 @@ test('refusing drift does not burn the operator authorization', () => {
   }
 });
 
-test('the out-of-band channel is keyed by the digest, so an unauthorized command finds nothing', () => {
+test('detached lookup requires an attempt reference whose held digest matches the command', () => {
   assert.equal(DRIFT.out_of_band_lookup.length, 2);
   for (const item of DRIFT.out_of_band_lookup) {
     assert.equal(item.index_size, 1);
@@ -256,6 +322,15 @@ test('a command dispatched to a PLC that goes quiet is recorded as indeterminate
   assert.equal(UNRESOLVED.dispatch.allowed, false);
   assert.equal(UNRESOLVED.dispatch.terminal_outcome, 'indeterminate');
   assert.equal(UNRESOLVED.dispatch.reason, 'effect_attempted_outcome_unknown');
+});
+
+test('DNP3 DIRECT_OPERATE_NR is an ordinary indeterminate terminal result', () => {
+  const noAck = UNRESOLVED.dnp3_direct_operate_no_ack;
+  assert.equal(noAck.application_function, 6);
+  assert.equal(noAck.device_entered, true);
+  assert.equal(noAck.terminal_outcome, 'indeterminate');
+  assert.equal(noAck.reason, 'effect_attempted_outcome_unknown');
+  assert.equal(noAck.store_state, 'committed:v2');
 });
 
 test('the indeterminate outcome is in the evidence log, not just in a message', () => {

@@ -44,11 +44,35 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add the transport- and evidence-format-neutral `./consequence-boundary`
+  facade. It re-verifies a signed AEB join for one frozen action, applies local
+  policy, atomically fences native replay units, records provider-attempt
+  custody, and reports only `EXECUTED`, authoritative `FAILED`, or
+  `INDETERMINATE` after provider entry.
 - Add `./bounded-execution-acceptance`, a relying-party-signed acceptance
   profile and portable evidence pack over signed bounded-execution reports.
   Evaluation preserves unresolved work as `INDETERMINATE` and deliberately
   makes no legal-compliance, external-effect, safety, or complete-mediation
   claim.
+
+### Security
+
+- Scope legacy receipt consumption by the canonical signed
+  `[tenant_id, receipt_id]` pair. Every reserve, consume, commit, and release
+  transition now uses the same recorded composite key, preventing one
+  tenant's receipt identifier from colliding with another tenant in a shared
+  store.
+- Require an explicit relying-party verification mode when WebAuthn RP and
+  origin pins are authoritative; omitted pins now fail closed instead of
+  silently producing an integrity-only result.
+
+### Compatibility
+
+- Pre-composite stores contain bare `receipt_id` rows that the new composite
+  keyspace does not consult. Before upgrading a deployment that cannot accept
+  one additional admission during the configured `maxAgeSec` window, drain
+  in-flight receipts or refuse admission for one complete `maxAgeSec`
+  interval. Fresh stores are unaffected.
 
 ## 0.23.9 (2026-08-03)
 

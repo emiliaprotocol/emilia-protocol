@@ -101,6 +101,7 @@ function decisionRecord(gatewayId, decision) {
         reason: decision.reason ?? null,
         observed_action_hash: decision.evidence?.observed_action_hash ?? null,
         receipt_id: decision.evidence?.receipt_id ?? null,
+        consumption_key: decision.evidence?.consumption_key ?? null,
     };
 }
 async function gatewayACheck(gatewayA, action, receipt) {
@@ -526,7 +527,13 @@ export async function runCrossGatewayLab() {
     await present(indeterminateArtifact, currentWindow());
     const { record: bRetry } = await gatewayBExecute(EXACT_ACTION, indeterminateArtifact);
     const aStillFenced = await gatewayAHoldLeg(gatewayA, EXACT_ACTION, indeterminateArtifact);
-    const consumptionKey = indeterminateArtifact.payload.receipt_id;
+    const consumptionKey = attempt.terminal?.authorizationEvidence?.consumption_key;
+    if (typeof consumptionKey !== 'string' || consumptionKey.length === 0) {
+        throw new Error('indeterminate authorization omitted its exact consumption key');
+    }
+    if (aLeg.consumption_key !== consumptionKey) {
+        throw new Error('gateway legs did not bind the same tenant-scoped consumption key');
+    }
     cases.push({
         id: 'indeterminate-does-not-reopen-a',
         title: 'Gateway B\'s provider leaves the outcome unresolved; the authorization is committed at B, the retry is refused, and Gateway A\'s leg is untouched',

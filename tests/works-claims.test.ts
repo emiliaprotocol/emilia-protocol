@@ -18,7 +18,7 @@ import {
 const ARTIFACT_SOURCE = {
   kind: 'content_addressed_artifact',
   reference: 'https://example.com/repo/blob/abc/manifest.json',
-  sha256: 'e011fb3538f973cfcea6d02df79500af1d7ab74ee85667b46790633063294058',
+  sha256: '70896da9789ab31f144ffdb8ac4b82bf4900d7a79f6de7666516ed72023acc80',
 };
 
 function baseClaim(overrides: Record<string, unknown> = {}): Record<string, unknown> {

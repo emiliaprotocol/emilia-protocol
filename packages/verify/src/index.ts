@@ -43,6 +43,8 @@ export * from './aeb-oauth-transaction-challenge-adapter.js';
 export * from './aeb-discovery-permit-adapter.js';
 export * from './aeb-wimse-oauth-adapter.js';
 export * from './authorization-server-confirmation.js';
+export * from './authorization-bundle.js';
+export * from './oauth-rar-authorization-binding.js';
 export * from './policy-decision-evidence.js';
 export * from './aeb-native-adapters.js';
 export * from './aeb-oasnt-adapter.js';
@@ -493,8 +495,19 @@ function webauthnCounterPolicyError(metadata: Obj, opts: any): string | null {
  *     signature: string,           // b64u (DER ECDSA)
  *   }
  * }
+ * `opts.mode` selects the verification posture:
+ *   - 'relying-party': an authoritative relying-party check. `rpId` AND
+ *     `allowedOrigins` are REQUIRED; omitting either fails the verdict with
+ *     'rp_pins_required' and `checks.rp_id_hash === false`. This makes it
+ *     impossible for a caller that intends an authoritative check to silently
+ *     skip origin/rp scoping by forgetting the pins.
+ *   - 'offline-integrity' (default): today's portable integrity check —
+ *     challenge/action/nonce binding, ceremony type, UP/UV flags, and the
+ *     device signature are verified; origin is asserted only when the caller
+ *     supplies pins, and `checks.rp_id_hash` stays null when unpinned.
+ *
  * @param {string} approverPublicKeySpkiB64u - enrolled P-256 key, SPKI DER b64u
- * @param {{ rpId?: string, allowedOrigins?: string[] }} [opts]
+ * @param {{ rpId?: string, allowedOrigins?: string[], mode?: 'relying-party'|'offline-integrity' }} [opts]
  * @returns {{ valid: boolean, checks: object, error?: string }}
  */
 export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: string, opts: any = {}): Obj {
@@ -508,6 +521,22 @@ export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: s
     signature: false,
   };
   let authenticator: Obj | null = null;
+
+  if (opts.mode !== undefined && opts.mode !== 'relying-party' && opts.mode !== 'offline-integrity') {
+    return { valid: false, checks, authenticator, error: 'mode must be "relying-party" or "offline-integrity"' };
+  }
+  if (opts.mode === 'relying-party') {
+    const rpIdPinned = typeof opts.rpId === 'string' && opts.rpId.length > 0;
+    const originsPinned = Array.isArray(opts.allowedOrigins)
+      && opts.allowedOrigins.length > 0
+      && opts.allowedOrigins.every((origin: unknown) => typeof origin === 'string' && origin.length > 0);
+    if (!rpIdPinned || !originsPinned) {
+      // An authoritative origin check was requested but cannot be performed.
+      // rp_id_hash is false (not null): the pin requirement itself failed.
+      checks.rp_id_hash = false;
+      return { valid: false, checks, authenticator, error: 'rp_pins_required' };
+    }
+  }
 
   try {
     if (!signoff?.context || !signoff?.webauthn) {

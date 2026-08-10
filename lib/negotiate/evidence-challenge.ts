@@ -13,9 +13,9 @@
  *
  *   declare -> attempt -> CHALLENGE -> obtain -> present -> replay -> consume
  *
- * Framing: RFC 9470 (OAuth step-up) generalized from authentication to
- * EVIDENCE. A confirmation-interaction flow (CHEQ-style) composes as one
- * obtain_hints entry, not a competitor.
+ * Framing: a transport-neutral evidence-negotiation object. It does not
+ * replace OAuth Transaction Authorization Challenge or turn evidence into a
+ * native OAuth grant. An explicit application profile can compose the two.
  *
  * TRUST BOUNDARIES
  * - The SERVER computes the action digest into the challenge. The agent
@@ -53,6 +53,41 @@ const REQUIRED_PRODUCTION_STORE_CAPABILITIES = Object.freeze([
   'bodyBound',
   'permanentConsumption',
 ]);
+
+export type AuthorizationChallengeMechanism =
+  | 'oauth-transaction-authorization'
+  | 'ae-challenge'
+  | 'none';
+
+/**
+ * Pure routing guard for integrations that support both mechanisms. The
+ * caller derives these facts from native protocol state and local policy.
+ * This helper never validates an OAuth challenge or evidence artifact.
+ */
+export function selectAuthorizationChallengeMechanism(input: {
+  native_transaction_authorization_required?: boolean;
+  independent_evidence_insufficient?: boolean;
+  explicit_composition_profile?: boolean;
+}): {
+  primary: AuthorizationChallengeMechanism;
+  ae_challenge_allowed: boolean;
+  substitution_allowed: false;
+} {
+  const nativeRequired = input?.native_transaction_authorization_required === true;
+  const evidenceInsufficient = input?.independent_evidence_insufficient === true;
+  if (nativeRequired) {
+    return {
+      primary: 'oauth-transaction-authorization',
+      ae_challenge_allowed: evidenceInsufficient && input?.explicit_composition_profile === true,
+      substitution_allowed: false,
+    };
+  }
+  return {
+    primary: evidenceInsufficient ? 'ae-challenge' : 'none',
+    ae_challenge_allowed: evidenceInsufficient,
+    substitution_allowed: false,
+  };
+}
 
 function validSha256Digest(value) {
   return typeof value === 'string' && SHA256_DIGEST_RE.test(value);

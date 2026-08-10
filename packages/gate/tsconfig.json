@@ -102,6 +102,7 @@
     "src/proposal-to-effect-status.ts",
     "src/proposal-to-effect-status-head-store.ts",
     "src/proposal-to-effect-postgres.ts",
+    "src/consequence-boundary.ts",
     "src/aeb-consumption-store.ts",
     "src/authority-allocation.ts",
     "src/autonomy-control-plane-profile.ts",

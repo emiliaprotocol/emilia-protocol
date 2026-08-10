@@ -12,14 +12,17 @@
  * What is concrete here: signed approve/deny decisions, a distinct UV-gated
  * Class-A assertion format, exact scope/profile/registry terms, a fresh
  * challenge registered before exposure and represented by linear state, and a
- * canonical action-only execution key reserved across symbolic workers.
+ * canonical action-only execution key reserved across symbolic workers. Each
+ * modeled action instance is registered once with one linear availability
+ * fact; reservation consumes that fact rather than assuming uniqueness in a
+ * trace restriction.
  *
  * What remains external: WebAuthn internals and attestation, enrollment truth,
  * policy authorship, amount inequalities, clocks, transparency completeness,
  * database durability and owner fencing, crash recovery, and downstream
  * exactly-once effects. `validity` is an exact authenticated policy token, not
- * a wall-clock judgment. The action-reservation restriction is the explicit
- * abstraction of one shared atomic non-expiring backend, not a database proof.
+ * a wall-clock judgment. The linear action-availability transition abstracts
+ * one shared atomic non-expiring backend; it is not a database proof.
  */
 
 theory ep_six_claim_composed
@@ -99,8 +102,38 @@ rule Pin_Roots_Profile_And_Scope:
 
 /* ---------------- challenge registration and exposure ----------------- */
 
+/* The system of record creates one canonical action instance and one linear
+ * availability fact. The fresh instance member prevents a second registration
+ * from denoting the same action. Challenges for that action may be issued more
+ * than once, but every worker competes for this one shared fact. */
+rule Register_Executable_Action:
+    [ In(<family, resource, operation, amount, currency, organization>)
+    , Fr(~instance) ]
+  --[ ExecutableActionRegistered(
+        <'ep_action_v1', family, resource, operation, amount, currency,
+          organization, ~instance>,
+        <'aec_action_key_v1',
+          <'caid_v1',
+            h(<'ep_action_v1', family, resource, operation, amount, currency,
+                organization, ~instance>)>>) ]->
+    [ !RegisteredExecutableAction(
+        <'ep_action_v1', family, resource, operation, amount, currency,
+          organization, ~instance>,
+        <'aec_action_key_v1',
+          <'caid_v1',
+            h(<'ep_action_v1', family, resource, operation, amount, currency,
+                organization, ~instance>)>>)
+    , ActionKeyAvailable(
+        <'aec_action_key_v1',
+          <'caid_v1',
+            h(<'ep_action_v1', family, resource, operation, amount, currency,
+                organization, ~instance>)>>)
+    , Out(<'ep_action_v1', family, resource, operation, amount, currency,
+            organization, ~instance>) ]
+
 rule Register_Challenge:
-    [ !RPLtk(RP, ltkRP), In(<H, action, profile, audience>), Fr(~nonce) ]
+    [ !RPLtk(RP, ltkRP), In(<H, action, profile, audience>), Fr(~nonce)
+    , !RegisteredExecutableAction(action, actionKey) ]
   --[ ChallengeRegistered(
         <RP, ~nonce>,
         <'ep_challenge_v3', RP, H, action,
@@ -431,7 +464,8 @@ rule Authorize_Strict_Reliance:
         worker, V, caid, <RP, nonce>, <'aec_action_key_v1', caid>) ]
 
 rule Reserve_Canonical_Action_Key:
-    [ ExecutionCandidate(worker, V, caid, challengeKey, actionKey) ]
+    [ ExecutionCandidate(worker, V, caid, challengeKey, actionKey)
+    , ActionKeyAvailable(actionKey) ]
   --[ ActionKeyReserved(worker, actionKey, challengeKey) ]->
     [ ReservedExecution(worker, V, caid, challengeKey, actionKey) ]
 
@@ -562,13 +596,6 @@ restriction OneProfilePerVerifier:
       ProfilePinned(V, profile1, spec1) @ #i
     & ProfilePinned(V, profile2, spec2) @ #j
     ==> profile1 = profile2 & spec1 = spec2"
-
-/* Explicit shared-backend acceptance root across all symbolic workers. */
-restriction ActionKeyReservedOnce:
-  "All worker1 worker2 actionKey challengeKey1 challengeKey2 #i #j.
-      ActionKeyReserved(worker1, actionKey, challengeKey1) @ #i
-    & ActionKeyReserved(worker2, actionKey, challengeKey2) @ #j
-    ==> #i = #j"
 
 /* ------------------------- dedicated obligations ----------------------- */
 
