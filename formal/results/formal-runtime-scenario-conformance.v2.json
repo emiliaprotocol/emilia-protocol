@@ -651,7 +651,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "ea615918060d0cb7b19264d8d12dc0caaebd48408dea82666a7bad136e28a1cc"
+      "sha256": "6142cf62ef5a95392282963099ba82f980bfa1fea39a1695ab911938d9680238"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -843,7 +843,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "fe631e3ba9c59a89e64b60961990eacc47d3a2eab1b2edd88111072d5a99486d"
+      "sha256": "a2baa24176e301957693d9c49ca6261b068e1ebf9b15cc764e65b30bf56fe7a8"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -915,7 +915,7 @@
     },
     {
       "path": "packages/mobile/dist/index.js",
-      "sha256": "6a70c5320a7535c7c79297a3408e1699bfeceab7272736a7f45368a5d1c054d0"
+      "sha256": "ad770bce58fe726e9650a6d60b885be34989485f2f551fb0706545cd8e78d605"
     },
     {
       "path": "packages/mobile/dist/presentation.js",
@@ -983,7 +983,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "bffc6a74d84213c03e680d5063aec8e191802fcd3169f5ec9812a06677720ca4"
+      "sha256": "1f3bf845f285539a8cba244e7aa51e03470077e582e91e95f2d015eb9999eac4"
     },
     {
       "path": "packages/verify/dist/aeb-aps-adapter.js",
@@ -1040,6 +1040,10 @@
     {
       "path": "packages/verify/dist/authority-proof.js",
       "sha256": "78a6a3400c01ecb6c330215a2159050002dccbc81d68021fcaf5936f0913ef83"
+    },
+    {
+      "path": "packages/verify/dist/authorization-bundle.js",
+      "sha256": "3f9775c47d82cc88461f358b5e67758e656c37cc9a2e9a0271431201b60864c5"
     },
     {
       "path": "packages/verify/dist/authorization-server-confirmation.js",
@@ -1099,7 +1103,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "46ef13a7110b75d59830232775c09dbfda7c055f44ff5e53a99da67a81a0e1fb"
+      "sha256": "8ec92dd2f4785a0745fe3f6bec00e3199d810215040f78da23e0f8c4e7010a96"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1108,6 +1112,10 @@
     {
       "path": "packages/verify/dist/memory-projection.js",
       "sha256": "fa175c754c1b132d25fe46994f583cde715db9f1790bfdedf88195e557226ca9"
+    },
+    {
+      "path": "packages/verify/dist/oauth-rar-authorization-binding.js",
+      "sha256": "dfb24079e66190bbc23050be4b1e557aed2a807dd0b0f4658dd3e45c5ade360a"
     },
     {
       "path": "packages/verify/dist/orprg.js",
@@ -1195,7 +1203,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "e83795a007ba68ad90771ad8c8465c38118bf9283668b933231b31c0be523677"
+      "sha256": "7725f2aa2499c33853b328ad363aa13605c97cb98f18b94c074d6bd7b9f93f94"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
@@ -1207,7 +1215,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "2c8f325d6d44cd65a080a081f0532bf26294acdc421956d1d5e245921e0ae087"
+      "sha256": "0d4cb11337dbde848526f8c64101f7447c4055e110331bacceb5489cb564f110"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

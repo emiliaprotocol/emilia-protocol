@@ -9,11 +9,12 @@ const evidenceChainLayout = readFileSync(resolve(ROOT, 'app/evidence-chain/layou
 
 describe('/spec source contract', () => {
   it('renders the current posted authorization-receipts revision from an existing file', () => {
-    const source = 'standards/posted/draft-schrock-ep-authorization-receipts-10.xml';
+    const source = 'standards/posted/draft-schrock-ep-authorization-receipts-11.xml';
 
     expect(existsSync(resolve(ROOT, source))).toBe(true);
-    expect(page).toContain("join(process.cwd(), 'standards', 'posted', 'draft-schrock-ep-authorization-receipts-10.xml')");
-    expect(page).toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-10');
+    expect(page).toContain("join(process.cwd(), 'standards', 'posted', 'draft-schrock-ep-authorization-receipts-11.xml')");
+    expect(page).toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-11');
+    expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-10');
     expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-09');
     expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-08');
     expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-07');
@@ -21,7 +22,7 @@ describe('/spec source contract', () => {
     expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-03');
   });
 
-  it('places Receipts -10 at the start of the canonical path without overstating its claim', () => {
+  it('places Receipts -11 at the start of the canonical path without overstating its claim', () => {
     expect(page).toContain('Canonical path · 01 of 04');
     expect(page).toContain('href="/protocol"');
     expect(page).toContain('Next: Human Authorization Binding -00');

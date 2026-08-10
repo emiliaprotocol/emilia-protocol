@@ -277,7 +277,9 @@ export default function TryPage(): React.ReactElement {
       setSignMs(Math.round(performance.now() - t0));
       // cred was set by begin() before phase became 'ready', which gates this button.
       const c = cred as any;
-      const res = await verifyWebAuthnSignoff(so, c.spkiB64u, { rpId: h });
+      // Demo posture: the page derives the rpId from its own host and has no
+      // out-of-band origin pin, so this is explicitly NOT a relying-party check.
+      const res = await verifyWebAuthnSignoff(so, c.spkiB64u, { mode: 'offline-integrity', rpId: h });
       setSignoff(so);
       setResult(res);
       setPhase('signed');
@@ -301,7 +303,7 @@ export default function TryPage(): React.ReactElement {
       // An attacker who intercepts the signed approval tries to inflate the amount,
       // reusing the exact same device signature. The challenge no longer matches.
       const tampered = { ...so, context: { ...so.context, amount: '820000.00' } };
-      const res = await verifyWebAuthnSignoff(tampered, c.spkiB64u, { rpId: h });
+      const res = await verifyWebAuthnSignoff(tampered, c.spkiB64u, { mode: 'offline-integrity', rpId: h });
       setForged({ signoff: tampered, result: res });
       setPhase('forged');
     } catch (e: any) {

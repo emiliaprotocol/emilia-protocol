@@ -117,10 +117,10 @@ team@emiliaprotocol.ai
 ## 2. application/ep-authorization-receipt+json
 
 **Status: CARRIED BY CURRENT DRAFT.** The active
-`draft-schrock-ep-authorization-receipts-10`, Section 13, requests this media
+`draft-schrock-ep-authorization-receipts-11`, Section 13, requests this media
 type and carries the complete registration template. Process the registration
 with the Standards Track document. The older proposed name
-`application/ep-receipt+json` is not the name selected by -10 and must not be
+`application/ep-receipt+json` is not the name selected by -11 and must not be
 filed as an alias.
 
 ### Registration template (RFC 6838 §5.6)
@@ -137,7 +137,7 @@ filed as an alias.
 encoded as UTF-8 according to RFC 8259.
 
 **Security considerations:** See the Security Considerations section of
-draft-schrock-ep-authorization-receipts-10. Receipt verification requires
+draft-schrock-ep-authorization-receipts-11. Receipt verification requires
 independently selected log, approver, directory, and policy trust inputs. A
 valid receipt is evidence, not current authorization, proof of execution, or
 proof of human comprehension. Implementations must also apply the draft's
@@ -148,7 +148,7 @@ duplicate-member, Unicode-scalar, depth, and number restrictions.
 algorithm are defined by the draft. The shorter identifier `EP-RECEIPT-v1`
 names a different generic envelope and is not an alias.
 
-**Published specification:** draft-schrock-ep-authorization-receipts-10,
+**Published specification:** draft-schrock-ep-authorization-receipts-11,
 "Authorization Receipts for High-Risk Agent Actions" (an active individual
 Internet-Draft, not IETF-adopted or endorsed; intended status Standards Track).
 

@@ -3,7 +3,7 @@
   "updated": "2026-08-10",
   "active_datatracker_count": 23,
   "active_schrock_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. AE-CHALLENGE-05, Bounded Capability Receipts-03, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. Authorization Receipts-11, AE-CHALLENGE-05, Bounded Capability Receipts-03, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -33,10 +33,10 @@
         "order": 1,
         "label": "Authorization Receipts",
         "draft": "draft-schrock-ep-authorization-receipts",
-        "revision": "10",
-        "source": "standards/posted/draft-schrock-ep-authorization-receipts-10.xml",
+        "revision": "11",
+        "source": "standards/posted/draft-schrock-ep-authorization-receipts-11.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-        "snapshot_sha256": "4800fffb1d03df4aaef95bde97f2cdf9c4e4821b406068c5deca544b5a218d43",
+        "snapshot_sha256": "7dc112e2481b03dc4e017216c168e143cb32b878e70265f2a0402e483bea1a45",
         "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
         "boundary": "One approval-evidence profile and extension seam; it does not establish scoped authority or evidence satisfaction by itself."
       },
@@ -259,10 +259,10 @@
     },
     {
       "draft": "draft-schrock-ep-authorization-receipts",
-      "revision": "10",
+      "revision": "11",
       "layer": "authorization_evidence",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published August 6; use -10 for the Standards Track receipt profile, normative CAID mapping, presentation binding, and the media-type request"
+      "next_action": "Published August 10; use -11 for the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request"
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts",
@@ -649,16 +649,24 @@
   },
   "august_10_2026_maintenance_wave": {
     "filing_date": "2026-08-10",
-    "item_count": 1,
+    "item_count": 2,
     "publication_status": "published_and_ietf_archive_verified_2026_08_10",
     "filing_order": [
+      "draft-schrock-ep-authorization-receipts-11",
       "draft-schrock-ae-challenge-05"
     ],
-    "verification": "The listed XML and TXT are byte-for-byte identical to their immutable IETF archive artifacts.",
+    "verification": "The listed XML snapshots, and the AE Challenge TXT snapshot, are byte-for-byte identical to their immutable IETF archive artifacts.",
     "provenance_packets": [
+      "standards/staged/NEXT-AUTHORIZATION-RECEIPTS-11",
       "standards/staged/NEXT-AE-CHALLENGE-05"
     ],
     "items": [
+      {
+        "draft": "draft-schrock-ep-authorization-receipts-11",
+        "source": "standards/posted/draft-schrock-ep-authorization-receipts-11.xml",
+        "snapshot_sha256": "7dc112e2481b03dc4e017216c168e143cb32b878e70265f2a0402e483bea1a45",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
       {
         "draft": "draft-schrock-ae-challenge-05",
         "source": "standards/posted/draft-schrock-ae-challenge-05.xml",
