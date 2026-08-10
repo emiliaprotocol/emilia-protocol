@@ -1,7 +1,7 @@
 # Preprint staging: Action-Bound Injective Authorization
 
-**Status: APPROVED FOR IACR RESUBMISSION AFTER MATERIAL SECURITY-ARGUMENT
-REPAIR; COMPLETE LOCAL PACKAGE GATES PASSED ON 10 AUGUST 2026.**
+**Status: RESUBMITTED TO IACR AS `xxxx/111011`; AUTHOR EMAIL CONFIRMED;
+AWAITING EDITOR REVIEW.**
 Historical submission `xxxx/110952` was received on 5 August 2026 PT and rejected
 on 6 August 2026 with the editor's note: "Unclear or insufficient contribution
 to the field of cryptology." No public ePrint number was assigned. The revised
@@ -22,6 +22,7 @@ with SHA-256 `99d667231d9c596920bdf8ad7c445a26d7211e84606b6bd2b0ca8b27114449e5`.
 The current working source is materially different from the rejected package.
 The checked submission artifact is `main.pdf`, 27 pages, SHA-256
 `f851d7e8a7ccf472d22a04eef8707743d446d30300d2c7d48cf505d4bea2bc9b`.
+It was submitted and author-confirmed on 10 August 2026 as `xxxx/111011`.
 
 **Venue:** arXiv (cs.CR) is locked for this topic for us and requires an
 endorsement we do not have, so this package targets the **IACR Cryptology ePrint
@@ -76,7 +77,7 @@ source with the same Tectonic toolchain are byte-identical.
 - **Moderation:** light human moderation for scope and contribution, no peer
   review; posting is not guaranteed by a conformance or implementation record.
 
-**Future resubmission metadata (only after an explicit approval gate):**
+**Metadata used for resubmission `xxxx/111011`:**
 1. Author: Iman Schrock; ORCID `0009-0004-0290-5433`; affiliation EMILIA
    Protocol, Inc.; public contact `team@emiliaprotocol.ai`.
 2. Category: `Cryptographic protocols`.
@@ -85,7 +86,8 @@ source with the same Tectonic toolchain are byte-identical.
 4. License: CC BY.
 5. PDF: the checker-gated 27-page `main.pdf` in this directory.
 6. Prior submission: `xxxx/110966`; author email ownership was confirmed, then
-   the package was rejected. The private confirmation code remains only in the
+   the package was rejected. Resubmission `xxxx/111011` is author-confirmed and
+   awaiting editor review. Private confirmation codes remain only in the
    author's IACR email, not this repo.
 
 ## Fallback venue — Zenodo (zenodo.org)
