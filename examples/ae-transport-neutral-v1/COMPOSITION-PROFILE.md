@@ -1,10 +1,12 @@
-# OAuth Transaction Challenge and AE-CHALLENGE Coexistence Note
+# OAuth Transaction Challenge and AE-CHALLENGE Composition Profile
 
-Status: experimental implementation note. Both referenced documents are
-active individual Internet-Drafts, not IETF working-group documents. This
-note records one tested coexistence shape. It does not modify either draft,
-define an OAuth application profile, or assign executor admission semantics
-to the OAuth transaction challenge.
+Status: experimental application profile and implementation note. Both
+referenced documents are active individual Internet-Drafts, not IETF
+working-group documents. This profile records one tested coexistence shape.
+It supplies the composition rules required by AE Section 1.1 when both
+mechanisms are carried or referenced together. It does not modify either
+draft or assign executor admission semantics to the OAuth transaction
+challenge.
 
 Referenced specifications:
 
@@ -22,7 +24,8 @@ AE is transport-neutral evidence negotiation. A relying party describes
 evidence that is missing, stale, or unverifiable and the presentation
 profiles it can evaluate. An AE challenge is not a grant and does not replace
 the TXN challenge, the authorization server's decision, or the resulting
-access token.
+access token. This is the non-substitution boundary in AE Sections 1.1 and
+3.1.
 
 This note applies only when one protected resource deployment uses both
 mechanisms for one refused operation.
@@ -45,9 +48,10 @@ The resulting routing is:
    evidence forms accepted by local policy.
 
 The protected resource never offers AE presentation as a substitute for a
-required OAuth transaction authorization.
+required OAuth transaction authorization. In routing case 2, TXN is the
+primary challenge for the native grant refusal.
 
-## 3. Exact-action join
+## 3. Exact-action and audience join
 
 Before inspecting presented evidence, the protected resource derives one
 snapshot of the operation it is actually being asked to perform. From that
@@ -63,15 +67,21 @@ The protected resource must reject a presentation when either mechanism
 describes a materially different operation from the operation it freshly
 rederives at evaluation time.
 
+The audience join is also conjunctive, not equality. The TXN challenge
+audience identifies the selected authorization server, and the resulting
+access token is verified for the protected resource under TXN. The AE
+challenge audience identifies the expected presenter; on return, the relying
+party authenticates that presenter and binds it to the pinned effective
+audience under AE. A combined evaluation succeeds only when both native
+audience checks succeed. No audience value from one mechanism is substituted
+for an audience value from the other.
+
 ## 4. Non-substitution and state separation
 
 The two mechanisms retain separate identifiers, audiences, and state:
 
 - an AE challenge identifier or nonce is not a TXN `txn` value;
 - a TXN `txn` value is not an AE challenge identifier or nonce;
-- the TXN challenge audience identifies the selected authorization server,
-  while the AE challenge audience identifies its relying party under the
-  selected presentation profile;
 - consuming an AE presentation attempt does not consume, reserve, invalidate,
   or advance an OAuth transaction or access token; and
 - OAuth replay state does not satisfy the AE presentation-attempt replay
@@ -82,7 +92,10 @@ the presenter cannot choose or use to substitute one mechanism for the other.
 
 TXN Section 6.2 already states the protected resource's single-use and replay
 state requirements where those semantics apply. This note does not redefine
-that requirement or prescribe its storage mechanism.
+that requirement or prescribe its storage mechanism. A deployment may use a
+shared durable storage service for native TXN replay state and downstream
+admission state, but the state keys and transitions remain protocol-specific,
+and neither is inferred from consumption of an AE nonce.
 
 ## 5. Executor admission remains downstream
 
@@ -109,8 +122,8 @@ the same.
 
 ## 7. Tested negative cases
 
-The runnable demonstration in this directory exercises the coexistence
-boundary, including:
+The runnable demonstration in this directory exercises the Section 1.1
+composition boundary, including:
 
 - AE presentation cannot satisfy a required native OAuth grant;
 - AE and TXN identifiers cannot substitute for one another;
