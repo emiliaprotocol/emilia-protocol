@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d",
+  "evidence_bundle_sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2",
   "claim_count": 35,
-  "evidence_file_count": 265,
+  "evidence_file_count": 266,
   "execution": {
     "required": true,
     "status": "passed",
@@ -864,6 +864,16 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/evidence-challenge-07-redteam.test.ts",
+        "titles": [
+          "rejects a caller-selected production follow-up nonce before claiming owner state",
+          "terminalizes owner state when a local follow-up configuration is malformed",
+          "uses authoritative owner time, not caller time, for evidence freshness"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/evidence-challenge-durable.test.ts",
         "titles": [
           "atomically registers one exact challenge across 100 concurrent workers",
@@ -882,6 +892,7 @@
         "runner": "vitest",
         "file": "tests/evidence-challenge-owner-postgres.test.ts",
         "titles": [
+          "does not depend on JavaScript and PostgreSQL using the same collation order",
           "reports schema readiness and executes issue, claim, and fenced finalization"
         ],
         "result": "passed"
@@ -894,7 +905,9 @@
           "claims one duplicate, reports the other as replay, and debits once",
           "fences a stale worker after deadline-gated recovery",
           "leaves the nonce open and all counters unchanged when reservation capacity is full",
-          "refuses a follow-up that changes the owner-bound action or complete requirement set"
+          "preserves replay and capacity invariants across randomized bucket sets",
+          "refuses a follow-up that changes the owner-bound action or complete requirement set",
+          "rejects nonconforming wire bodies before allocating replay or capacity state"
         ],
         "result": "passed"
       },
@@ -1101,7 +1114,7 @@
       "package": "@emilia-protocol/gate",
       "version": "0.23.14",
       "filename": "emilia-protocol-gate-0.23.14.tgz",
-      "sha256": "c75c364945ad776d8729f4b109a4e0b5e0587ad82ad9546ccf89d2f22cb9c7dc",
+      "sha256": "159ff4cab4c4951453d990719baa32d4d36bcad625f402e46076795101cc427c",
       "file_count": 736
     },
     "mobile-sdk": {
@@ -1115,8 +1128,8 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d",
-      "file_count": 265
+      "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2",
+      "file_count": 266
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -1279,7 +1292,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -1542,7 +1555,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -1651,7 +1664,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -1817,7 +1830,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -1941,7 +1954,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -2136,7 +2149,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -2493,11 +2506,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c75c364945ad776d8729f4b109a4e0b5e0587ad82ad9546ccf89d2f22cb9c7dc"
+          "sha256": "159ff4cab4c4951453d990719baa32d4d36bcad625f402e46076795101cc427c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -2698,7 +2711,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -2881,7 +2894,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -3101,7 +3114,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -3335,7 +3348,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -3560,7 +3573,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -3669,13 +3682,13 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
     {
       "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
-      "statement": "An AE-CHALLENGE binds the canonical action and governing policy and is exposed only after owner-side registration of its exact body and applicable capacity. The -07 reference owner uses one transaction for authoritative expiry, nonce claim, every applicable cap bucket, and an opaque generation-bound reservation. It atomically finalizes a terminal result or fresh follow-up, and deadline-gated authorized recovery fences the old worker. Production refuses copied stores and caller-declared capability booleans.",
+      "statement": "An AE-CHALLENGE binds the canonical action and governing policy and is exposed only after owner-side registration of its exact body and applicable capacity. The -07 reference owner validates its decoded wire object before state allocation, pins issuance identities and capacity scope, and uses one transaction for authoritative expiry, nonce claim, every applicable cap bucket, and an opaque generation-bound reservation. Owner time also controls native evidence freshness. It atomically finalizes a terminal result or fresh follow-up, and deadline-gated authorized recovery fences the old worker. Production refuses copied stores, caller-declared capability booleans, and caller-selected follow-up nonces.",
       "acceptance_roots": [
         "one shared transactional owner backend spanning every applicable replay and capacity row",
         "a constructor-pinned issuer identity, capacity policy, and recovery authorizer",
@@ -3817,6 +3830,16 @@
         },
         {
           "file": "tests/evidence-challenge-owner-store.test.ts",
+          "title": "preserves replay and capacity invariants across randomized bucket sets",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-owner-store.test.ts",
+          "title": "rejects nonconforming wire bodies before allocating replay or capacity state",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-owner-store.test.ts",
           "title": "leaves the nonce open and all counters unchanged when reservation capacity is full",
           "runner": "vitest"
         },
@@ -3838,6 +3861,26 @@
         {
           "file": "tests/evidence-challenge-owner-postgres.test.ts",
           "title": "reports schema readiness and executes issue, claim, and fenced finalization",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-owner-postgres.test.ts",
+          "title": "does not depend on JavaScript and PostgreSQL using the same collation order",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-07-redteam.test.ts",
+          "title": "uses authoritative owner time, not caller time, for evidence freshness",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-07-redteam.test.ts",
+          "title": "rejects a caller-selected production follow-up nonce before claiming owner state",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-07-redteam.test.ts",
+          "title": "terminalizes owner state when a local follow-up configuration is malformed",
           "runner": "vitest"
         }
       ],
@@ -3918,15 +3961,16 @@
         },
         {
           "status": "not_modeled",
-          "gap": "The -07 compound claim, reservation, finalization, and recovery path has same-team executable contract tests and a finite scenario harness with mutation counterexamples, but no exhaustive formal verification, storage-driver refinement, or independent implementation; it is therefore not counted as formal evidence."
+          "gap": "The -07 compound claim, pinned-scope reservation, finalization, and recovery path has same-team executable contract tests, randomized property checks, and a finite scenario harness with mutation counterexamples, but no exhaustive formal verification, storage-driver refinement, or independent implementation; it is therefore not counted as formal evidence."
         }
       ],
       "operational_evidence": [
         {
           "file": "formal/evidence-challenge-claim-capacity.model.mjs",
           "contains": [
-            "EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v2",
+            "EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v3",
             "StatefulDebitTransfersWithoutDoubleCount",
+            "PinnedScopedDebitSurvivesClaim",
             "ReplayKeyTupleIsUnambiguous"
           ]
         },
@@ -3934,13 +3978,13 @@
           "file": "formal/check-evidence-challenge-claim-capacity.mjs",
           "contains": [
             "finite_scenario_enumeration_with_mutation_counterexamples",
-            "states_checked: states + 16"
+            "states_checked: states + 17"
           ]
         },
         {
           "file": "formal/results/evidence-challenge-claim-capacity.summary.txt",
           "contains": [
-            "Checked finite scenarios: 113.",
+            "Checked finite scenarios: 114.",
             "Checked properties, not proved obligations:",
             "same-team reference owner state"
           ]
@@ -3950,12 +3994,15 @@
         "the PostgreSQL service runs the documented operations on one transaction-capable primary or equivalently linearizable owner",
         "the challenge-owner backend is shared by all relying-party workers in one authority domain",
         "the constructor-pinned capacity policy names every applicable bucket and stable issuer/audience/tenant identity",
+        "the carrier applies bounded raw-message parsing and duplicate-member rejection before calling the decoded-object helpers",
         "database roles restrict recovery to the locally authorized operator path"
       ],
       "exclusions": [
         "the legacy Set-based evaluator remains only for compatibility and is not a durable production path",
         "the split durable classify-then-consume compatibility path is not production -07 claim-and-capacity conformance",
-        "the same-team PostgreSQL adapter tests are not a deployed database audit, isolation proof, or independent implementation",
+        "the decoded-object helpers do not detect duplicate members already collapsed by an ordinary JSON parser",
+        "the same-team PostgreSQL adapter tests are not a deployed database audit, isolation proof, privilege review, or independent implementation",
+        "the reference owner does not include an expiry collector or authenticated audience-alias resolver",
         "the reference owner currently implements stateful issuance and does not claim the optional self-describing issuance mode"
       ],
       "release_artifacts": [
@@ -3965,11 +4012,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c75c364945ad776d8729f4b109a4e0b5e0587ad82ad9546ccf89d2f22cb9c7dc"
+          "sha256": "159ff4cab4c4951453d990719baa32d4d36bcad625f402e46076795101cc427c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -4107,11 +4154,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c75c364945ad776d8729f4b109a4e0b5e0587ad82ad9546ccf89d2f22cb9c7dc"
+          "sha256": "159ff4cab4c4951453d990719baa32d4d36bcad625f402e46076795101cc427c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -4524,11 +4571,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c75c364945ad776d8729f4b109a4e0b5e0587ad82ad9546ccf89d2f22cb9c7dc"
+          "sha256": "159ff4cab4c4951453d990719baa32d4d36bcad625f402e46076795101cc427c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -4685,11 +4732,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c75c364945ad776d8729f4b109a4e0b5e0587ad82ad9546ccf89d2f22cb9c7dc"
+          "sha256": "159ff4cab4c4951453d990719baa32d4d36bcad625f402e46076795101cc427c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -4932,11 +4979,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c75c364945ad776d8729f4b109a4e0b5e0587ad82ad9546ccf89d2f22cb9c7dc"
+          "sha256": "159ff4cab4c4951453d990719baa32d4d36bcad625f402e46076795101cc427c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -5070,7 +5117,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -5193,7 +5240,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -5329,7 +5376,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -5560,7 +5607,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -5774,7 +5821,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -5990,7 +6037,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -6294,7 +6341,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -6506,7 +6553,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -6672,7 +6719,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -6851,7 +6898,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -7026,7 +7073,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -7176,7 +7223,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -7317,7 +7364,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -7516,7 +7563,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -7926,11 +7973,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c75c364945ad776d8729f4b109a4e0b5e0587ad82ad9546ccf89d2f22cb9c7dc"
+          "sha256": "159ff4cab4c4951453d990719baa32d4d36bcad625f402e46076795101cc427c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -8307,11 +8354,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c75c364945ad776d8729f4b109a4e0b5e0587ad82ad9546ccf89d2f22cb9c7dc"
+          "sha256": "159ff4cab4c4951453d990719baa32d4d36bcad625f402e46076795101cc427c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     },
@@ -8510,11 +8557,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c75c364945ad776d8729f4b109a4e0b5e0587ad82ad9546ccf89d2f22cb9c7dc"
+          "sha256": "159ff4cab4c4951453d990719baa32d4d36bcad625f402e46076795101cc427c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "70f3e11a730eb27884d1b05108f69645c7f393b50522c77a8be13c85903a4c8d"
+          "sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
         }
       ]
     }
@@ -8698,7 +8745,7 @@
     },
     {
       "path": "formal/check-evidence-challenge-claim-capacity.mjs",
-      "sha256": "243f0534e4d24c0fc76f70fe59842d5d5fd7ae77530da833b72152818717d65d"
+      "sha256": "6178cbadeec353914ac5e9b651c20577a48d7014ed1ac0c5d137023460364477"
     },
     {
       "path": "formal/check-evidence-challenge-lifecycle.mjs",
@@ -8806,7 +8853,7 @@
     },
     {
       "path": "formal/evidence-challenge-claim-capacity.model.mjs",
-      "sha256": "3b974049376ae85eefa4299aae3087e2104a2353d66711bfe89356ac686606d0"
+      "sha256": "19adb5afdd68bdb3fb222ac46c91d2804837f61bac96196b70c5bbbd213f8ed1"
     },
     {
       "path": "formal/evidence-challenge-lifecycle.model.mjs",
@@ -8882,7 +8929,7 @@
     },
     {
       "path": "formal/results/evidence-challenge-claim-capacity.summary.txt",
-      "sha256": "dd4fb5a62af12525f754901099e5337b2fa328cd937bd31395f4c1dcf4052f56"
+      "sha256": "7dbeedea0592831deb11957a7281cb850a5b614d70286526a61f1f79ee71d9d1"
     },
     {
       "path": "formal/results/evidence-challenge-lifecycle.summary.txt",
@@ -8890,7 +8937,7 @@
     },
     {
       "path": "formal/results/formal-runtime-scenario-conformance.v2.json",
-      "sha256": "d9763b158bcbb415d61d1fe9285b5cb6a7d6905fc2febd1a638bb70ccffc8a0b"
+      "sha256": "735aec86fd1ac6deb85c032ffb0441d1d861a26c27c0f3f3b84b32be2c65b387"
     },
     {
       "path": "formal/results/outcome-authority-join.summary.txt",
@@ -8954,7 +9001,7 @@
     },
     {
       "path": "lib/frontier/model-to-matter.ts",
-      "sha256": "e6dccaee8130401b12b92944991ae350001519a02d2650b5b5ce6dc91cfc58bc"
+      "sha256": "f83897cff564b3bd3d2c7f1bd669c6a4f847d9a1e57fd09239381bca40c8a6c1"
     },
     {
       "path": "lib/grace/mobile-grid.ts",
@@ -8986,7 +9033,7 @@
     },
     {
       "path": "lib/negotiate/evidence-challenge.ts",
-      "sha256": "a66e7e534effb9115032d2b5c384c4586bae9d1ba497ecb08d5d798676b71d90"
+      "sha256": "9f8097a43c06cbeb09b230b1c1835ece229c5a8a9deed6ed31184aeea4d4afaa"
     },
     {
       "path": "lib/signoff/decision-evidence.ts",
@@ -9126,11 +9173,11 @@
     },
     {
       "path": "packages/gate/src/challenge-store-postgres.ts",
-      "sha256": "bdebded74e69faa63ac25af5a201fc2dd3c6101ba994a99bb97d8f244f5fe746"
+      "sha256": "d1d915664121c74ab960ad8a46a94f41e997c6c65db47d55b2a85e6d0d30096c"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
-      "sha256": "ed3450a9dfaf7ef8463ca58e74cfd0d70a7bf4587c1091db8ab6fc09477196b5"
+      "sha256": "1b777253b0d28bcd988eaa555d744bf176b53046bda77362189071f888865240"
     },
     {
       "path": "packages/gate/src/consequence-actuator.ts",
@@ -9438,7 +9485,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "8b2c0fc07b48474c3b2b2588eb42519f593ed59b7d88723d352984ca3308c58c"
+      "sha256": "4a4dbf221a0032c8c769ab7dd8d85c85dadb6ea5c4ca08b71863bab48c652675"
     },
     {
       "path": "security/vectors.v1.json",
@@ -9501,16 +9548,20 @@
       "sha256": "246974e4ac3c2fcd7e8f9bf2673235f776b00d0336b2c1b53be479eb2c160150"
     },
     {
+      "path": "tests/evidence-challenge-07-redteam.test.ts",
+      "sha256": "96b0c9ab959f4f976bcb7189e69ead517af77697003889842bff9b4aaaec1f40"
+    },
+    {
       "path": "tests/evidence-challenge-durable.test.ts",
       "sha256": "31900fd5ddf4c2be48e844b36ba5a2348468d05936b0686473e347479d4e9124"
     },
     {
       "path": "tests/evidence-challenge-owner-postgres.test.ts",
-      "sha256": "fa141065aaec309fa7ff3d4b97915ebb45984512eb65bcb9621958ca1e5e8ce3"
+      "sha256": "1f5154f326a1d0a4feb792e796d95bfff1fde81152736272d80b20b677bbed25"
     },
     {
       "path": "tests/evidence-challenge-owner-store.test.ts",
-      "sha256": "4eabd77668413899ae1d953594f585d76393ca1428f78c8acb62fe75dd87ef77"
+      "sha256": "df3ec5a1d8b1e5407b23bd052f81d643a8834ae65bf6355ee08cbe7a0046c4de"
     },
     {
       "path": "tests/grace-mobile-grid.test.ts",
@@ -9526,7 +9577,7 @@
     },
     {
       "path": "tests/model-to-matter.test.ts",
-      "sha256": "f9fca8d672db025d1898f62dd1f179f325bdaf17c56a26bfd21fc4478cdec1f8"
+      "sha256": "625939b6c6c626c66f761b1381cc39e1088605eb64267b4cef130443d16787b6"
     },
     {
       "path": "tests/ncpdp-privacy.test.ts",
@@ -9566,7 +9617,7 @@
     },
     {
       "path": "tests/two-claim-bounded-assurance.test.ts",
-      "sha256": "e93a4c3d5ea306ca2d832885dd891bc7bc81e2d2b99c278472b4541c366ffef3"
+      "sha256": "d031da47f8f45603ec187f8fa9bc534fa2e185c41cac74a4ebcde0b38a5b5305"
     },
     {
       "path": "tests/v1-api.test.ts",
