@@ -410,6 +410,24 @@ SHA-256(JCS({
       does not cover the pinned profile's complete declared finite domain, the
       verifier <bcp14>MUST</bcp14> report the comparison as local-only. This
       requirement does not require enumeration at admission time.</t>
+      <t>A verifier relying on a prior run <bcp14>MUST</bcp14> compare the
+      establishment record's pinned profile and rule, complete-domain digest,
+      and deterministic procedure version with the exact profile, rule,
+      domain, and procedure selected for the current evaluation. The profile
+      and rule in both places <bcp14>MUST</bcp14> be versioned or
+      content-digest-pinned. A mismatch, or an inability to perform that
+      comparison, makes the record stale for this evaluation. Authenticated
+      integrity proves what the earlier run reported; it does not establish
+      that the earlier result remains applicable after a profile, rule,
+      domain, or procedure revision. A stale record <bcp14>MUST NOT</bcp14>
+      support a chain-wide non-widening claim and <bcp14>MUST</bcp14> yield a
+      local-only result.</t>
+      <t>Reliance on an authenticated, matching prior conformance run is
+      deliberately permitted. This document assigns no automatic trust rank
+      to verifier-performed enumeration and relied-on enumeration; the
+      disclosed reliance mode lets the relying party apply its own policy.
+      Implementations <bcp14>SHOULD NOT</bcp14> repeat an otherwise acceptable
+      complete enumeration solely to avoid reporting the relied-on mode.</t>
       <t>Scope comparison is evaluated per component and relative to the
       verifier that produced it. A comparison report <bcp14>MUST</bcp14>
       record each component, the deciding verifier, the pinned profile and
@@ -756,6 +774,13 @@ remaining = total - consumed - reserved
       <bcp14>MUST</bcp14> refuse chain-wide promotion when that prior record is
       unavailable, invalid, or does not cover the complete declared finite
       domain.</t>
+      <t>The conformance set <bcp14>MUST</bcp14> include an authenticated prior
+      record that differs from the current evaluation in the profile or rule
+      version or digest, complete-domain digest, or deterministic procedure
+      version, and demonstrate that every such mismatch yields a local-only
+      result. It <bcp14>MUST</bcp14> also demonstrate that a matching prior
+      record can support chain composition without repeating the enumeration,
+      subject to relying-party policy.</t>
       <t>The parent-over-allocation case <bcp14>MUST</bcp14> include at least
       three sibling child-creation attempts whose individually valid amounts
       collectively exceed the parent's available balance, with concurrent
@@ -1009,9 +1034,14 @@ remaining = total - consumed - reserved
         <li>Prevented local hop comparisons from being promoted into a
         chain-wide non-widening claim without a definition-derived or
         mechanically established transitive relation.</li>
-        <li>Required mechanical-establishment provenance, including whether
-        the deciding verifier ran the complete enumeration or relied on an
-        authenticated prior conformance run.</li>
+      <li>Required mechanical-establishment provenance, including whether
+      the deciding verifier ran the complete enumeration or relied on an
+      authenticated prior conformance run.</li>
+      <li>Bound prior-run applicability to the exact profile, rule, complete
+      domain, and procedure selected for the current evaluation; stale
+      mismatches now yield local-only results.</li>
+      <li>Clarified that reliance on an authenticated matching prior run is
+      deliberately permitted and remains subject to relying-party policy.</li>
       </ul>
     </section>
 
