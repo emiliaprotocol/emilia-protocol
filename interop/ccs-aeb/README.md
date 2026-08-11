@@ -110,3 +110,9 @@ actually exports its public-key L1 receipt implementation. That revision needs
 one unambiguous signed-byte definition, full material-action digest coverage,
 issuer and audience binding, freshness, and a replay identity. AEB can then
 consume the native result without changing CCS's semantics.
+
+CCS 1.1.1 subsequently closed the missing-module and version mismatch. The
+separate [1.1.1 L1 release audit](./CCS-1.1.1-L1-AUDIT.md) records the remaining
+canonicalization, digest-width, closed-schema, required-field, and trust-root
+questions. The 1.1.0 adapter remains source-locked; it has not been silently
+retargeted to different native bytes.
