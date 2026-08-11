@@ -15,9 +15,8 @@
  *                       by the repo's draft-rosomakho-oauth-txn-challenge
  *                       AEB adapter. "OAuth as ONE evidence form."
  *   PATH 2 (non-OAuth): a human-key-signed EP authorization receipt
- *                       (Ed25519, packages/issue + packages/verify), with no
- *                       authorization server anywhere in the loop. "Evidence
- *                       OAuth cannot produce."
+ *                       (Ed25519, packages/issue + packages/verify), obtained
+ *                       and verified independently of an authorization server.
  *
  * One line: OAuth and others, not others instead of OAuth.
  *
@@ -42,8 +41,8 @@
  *   - The "human" approver key is a locally generated Ed25519 key pair.
  *
  * The evaluator keeps three outcomes distinct and never collapses them:
- *   ADMIT          evidence verified, denotes this exact action, authority
- *                  consumed exactly once, effect confirmed
+ *   ADMIT          evidence verified, denotes this exact action, one provider
+ *                  entry admitted under the local authority state, effect confirmed
  *   REFUSE         a check failed closed with a reason
  *   INDETERMINATE  the truth is unknown (effect response lost, or a prior
  *                  reservation is unresolved); authority is NOT released
@@ -81,11 +80,13 @@ import {
 
 export const DEMO_VERSION = 'EP-AE-TRANSPORT-NEUTRAL-DEMO-v1';
 
-// Evidence-form identifiers. The challenge's present_as advertises which
-// profile-specific presentation methods this relying party consumes; the
-// AE-CHALLENGE core stays transport-neutral either way.
-export const OAUTH_EVIDENCE_FORM = 'oauth-txn-challenge-v1';
-export const RECEIPT_EVIDENCE_FORM = 'ep-receipt-v1';
+// Absolute-URI presentation-profile identifiers. AE-CHALLENGE advertises
+// profiles, not raw evidence formats, in present_as. The selected profile
+// tells the relying party how the returned artifact maps to the requirement.
+export const OAUTH_EVIDENCE_FORM = 'https://datatracker.ietf.org/doc/draft-rosomakho-oauth-txn-challenge/00/';
+export const RECEIPT_EVIDENCE_FORM = 'https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/11/';
+export const ACTION_AUTHORIZATION_REQUIREMENT = 'urn:emilia:evidence:action-authorization-v1';
+const HUMAN_AUTHORIZATION_REQUIREMENT = 'urn:emilia:evidence:human-authorization-v1';
 
 const NOW = '2026-08-11T12:00:30Z';
 const NOW_MS = Date.parse(NOW);
@@ -94,6 +95,8 @@ const iso = (deltaMs) => new Date(NOW_MS + deltaMs).toISOString().replace(/\.\d{
 
 const RS_AUDIENCE = 'https://rs.example/payments';
 const OTHER_RS_AUDIENCE = 'https://other-rs.example/payments';
+const PRESENTER_AUDIENCE = 'https://client.example/agent-client-42';
+const OTHER_PRESENTER_AUDIENCE = 'https://client.example/other-agent';
 const AUTHORIZATION_SERVER = 'https://as.example';
 const OAUTH_CLIENT_ID = 'agent-client-42';
 const OAUTH_SUBJECT = 'principal:treasurer-9';
@@ -238,9 +241,8 @@ export async function issueHumanReceipt({ keys, action }) {
 /**
  * @param {object} opts
  * @param {ReturnType<typeof generateWorldKeys>} opts.keys
- * @param {string} opts.policyRequirement evidence requirement expression for
- *   the AE-CHALLENGE policy (e.g. 'transaction-authorization OR
- *   human-authorization-receipt').
+ * @param {string} opts.policyRequirement absolute-URI evidence requirement
+ *   identifier for the AE-CHALLENGE policy.
  * @param {string[]} opts.acceptedForms which evidence forms THIS relying
  *   party admits. This is the evidence-neutrality control point: dropping
  *   OAUTH_EVIDENCE_FORM from the list refuses AS-issued tokens outright,
@@ -361,22 +363,41 @@ export function createRelyingParty({ keys, acceptedForms, policyRequirement }) {
   };
   const logPublicKey = publicKeyToSpkiB64u(keys.log.publicKey);
 
-  // Reserve-before-effect consumption state (packages/verify reference
-  // store; @emilia-protocol/gate ships the durable equivalents).
+  // Downstream reserve-before-effect admission state. This is AEB/Gate
+  // composition, not a property claimed by AE-CHALLENGE itself.
   const consumption = new InMemoryAebConsumptionStore();
+  // AE replay state is deliberately separate from OAuth transaction state
+  // and downstream authority-consumption state. The registered body digest
+  // prevents a presenter from changing a challenge after issuance.
+  const registeredChallenges = new Map();
+  const claimedChallengeNonces = new Set();
+  const nativeTxnByChallenge = new Map();
   let effectCount = 0;
 
   function challengeFor(action, opts = {}) {
     const challenge = createEvidenceChallenge(action, policy, {
       expires_at: opts.expires_at ?? iso(120_000),
-      audience: opts.audience ?? RS_AUDIENCE,
+      audience: opts.audience ?? PRESENTER_AUDIENCE,
       present_as: acceptedForms,
       obtain_hints: [
-        { form: OAUTH_EVIDENCE_FORM, hint: `POST ${AUTHORIZATION_SERVER}/token (txn challenge flow)` },
-        { form: RECEIPT_EVIDENCE_FORM, hint: 'obtain an EP authorization receipt from an enrolled approver' },
-      ].filter((entry) => acceptedForms.includes(entry.form)),
+        {
+          requirement_id: policyRequirement,
+          mechanism: OAUTH_EVIDENCE_FORM,
+          uri: `${AUTHORIZATION_SERVER}/transaction-authorization`,
+        },
+        {
+          requirement_id: policyRequirement,
+          mechanism: RECEIPT_EVIDENCE_FORM,
+          uri: 'https://approver.example/authorization-requests',
+        },
+      ].filter((entry) => acceptedForms.includes(entry.mechanism)),
     });
-    return { challenge, problem: createEvidenceChallengeProblem(challenge) };
+    registeredChallenges.set(challenge.challenge_id, digestAeb(challenge));
+    // The OAuth txn is native state and MUST NOT be the AE challenge id or
+    // nonce. The server owns this correlation; the presenter cannot choose it.
+    const oauthTxn = `txn-${crypto.randomUUID()}`;
+    nativeTxnByChallenge.set(challenge.challenge_id, oauthTxn);
+    return { challenge, problem: createEvidenceChallengeProblem(challenge), oauth_txn: oauthTxn };
   }
 
   function refuse(reason) {
@@ -384,12 +405,14 @@ export function createRelyingParty({ keys, acceptedForms, policyRequirement }) {
   }
 
   function verifyOAuthLeg(evidence, proposedAction, challenge, expectedCaid) {
+    const nativeTxn = nativeTxnByChallenge.get(challenge.challenge_id);
+    if (typeof nativeTxn !== 'string') return refuse('oauth_transaction_state_missing');
     const expectedAction = {
       action_type: ACTION_TYPE,
       oauth_transaction: {
-        // The AE-CHALLENGE id doubles as the OAuth transaction identifier in
-        // this composition: the token must be bound to THIS negotiation.
-        txn: challenge.challenge_id,
+        // Native OAuth state is correlated to this AE challenge only through
+        // server-owned profile state. The wire identifiers never substitute.
+        txn: nativeTxn,
         authorization_details: rarDetailsFor(proposedAction),
       },
     };
@@ -467,7 +490,7 @@ export function createRelyingParty({ keys, acceptedForms, policyRequirement }) {
    * The single relying-party evaluator, fail-closed and form-neutral:
    * rederive the action commitment from the CURRENT proposed action, verify
    * the evidence natively, confirm it denotes the same action, check the
-   * audience, then consume the authority exactly once before the effect.
+   * audience, then use downstream admission state before provider entry.
    */
   function evaluate(challenge, presentation, proposedAction, opts = {}) {
     const effect = opts.effect ?? (() => ({ ok: true }));
@@ -475,7 +498,11 @@ export function createRelyingParty({ keys, acceptedForms, policyRequirement }) {
     if (challenge?.['@version'] !== CHALLENGE_VERSION) return refuse('unknown_challenge_version');
     const expiresAt = Date.parse(challenge?.expires_at ?? '');
     if (!Number.isFinite(expiresAt) || NOW_MS >= expiresAt) return refuse('challenge_expired');
-    if (challenge?.audience !== RS_AUDIENCE) return refuse('challenge_audience_mismatch');
+    if (challenge?.audience !== PRESENTER_AUDIENCE) return refuse('challenge_audience_mismatch');
+    if (presentation?.presenter !== PRESENTER_AUDIENCE) return refuse('challenge_presenter_mismatch');
+    if (registeredChallenges.get(challenge?.challenge_id) !== digestAeb(challenge)) {
+      return refuse('challenge_body_not_registered');
+    }
 
     // Rederive the action commitment from the action about to execute. A
     // presented digest is never trusted; a challenge minted for a different
@@ -494,6 +521,9 @@ export function createRelyingParty({ keys, acceptedForms, policyRequirement }) {
       return refuse('evidence_form_not_accepted_by_relying_party');
     }
 
+    if (claimedChallengeNonces.has(challenge.nonce)) return refuse('ae_challenge_replay');
+    claimedChallengeNonces.add(challenge.nonce);
+
     let leg;
     if (form === OAUTH_EVIDENCE_FORM) {
       leg = verifyOAuthLeg(presentation.evidence, proposedAction, challenge, expectedCaid);
@@ -504,7 +534,8 @@ export function createRelyingParty({ keys, acceptedForms, policyRequirement }) {
     }
     if (leg.outcome !== 'VERIFIED') return leg;
 
-    // Consume the authority exactly once: reserve BEFORE the effect. A key
+    // Admit at most one provider entry under this local authority state:
+    // reserve BEFORE the effect. A key
     // already CONSUMED is a replay; a key still RESERVED is an unresolved
     // earlier attempt whose truth is unknown, so the only honest answer is
     // INDETERMINATE, not a retry.
@@ -559,28 +590,30 @@ export function generateWorldKeys() {
 export async function runAeTransportNeutralDemo() {
   const keys = generateWorldKeys();
   const bothForms = [OAUTH_EVIDENCE_FORM, RECEIPT_EVIDENCE_FORM];
-  const eitherRequirement = 'transaction-authorization OR human-authorization-receipt';
+  const eitherRequirement = ACTION_AUTHORIZATION_REQUIREMENT;
   const cases = [];
 
-  const record = (id, expected, result, note) => {
-    cases.push({ id, expected, outcome: result.outcome, reason: result.reason ?? null, note });
+  const record = (id, expected, result, note, details = {}) => {
+    cases.push({ id, expected, outcome: result.outcome, reason: result.reason ?? null, note, ...details });
     return result;
   };
+  const presentation = (form, evidence, presenter = PRESENTER_AUDIENCE) => ({ form, evidence, presenter });
 
   // HAPPY PATH 1: the SAME challenge shape, satisfied by simulated-OAuth
   // evidence, evaluated by the transport-neutral evaluator.
   {
     const rs = createRelyingParty({ keys, acceptedForms: bothForms, policyRequirement: eitherRequirement });
-    const { challenge, problem } = rs.challengeFor(ACTION_A);
+    const { challenge, problem, oauth_txn: oauthTxn } = rs.challengeFor(ACTION_A);
     // The agent receives the RFC 9457 refusal and parses the SAME challenge
     // object back out of it: the negotiation loop is machine-readable.
     const parsed = parseEvidenceChallengeProblem(problem);
-    const evidence = mintSimulatedOAuthEvidence({ keys, txn: parsed.challenge_id, action: ACTION_A });
+    const evidence = mintSimulatedOAuthEvidence({ keys, txn: oauthTxn, action: ACTION_A });
     record(
       'admit-oauth-evidence-for-action-a',
       'ADMIT',
-      rs.evaluate(parsed, { form: OAUTH_EVIDENCE_FORM, evidence }, ACTION_A),
+      rs.evaluate(parsed, presentation(OAUTH_EVIDENCE_FORM, evidence), ACTION_A),
       'OAuth transaction-bound token satisfies the challenge: OAuth is one evidence form.',
+      { ae_challenge_id: parsed.challenge_id, oauth_txn: oauthTxn },
     );
   }
 
@@ -593,20 +626,20 @@ export async function runAeTransportNeutralDemo() {
     record(
       'admit-human-receipt-for-action-a',
       'ADMIT',
-      rs.evaluate(challenge, { form: RECEIPT_EVIDENCE_FORM, evidence: receipt }, ACTION_A),
-      'Human-key Ed25519 receipt satisfies the SAME challenge: evidence OAuth cannot produce.',
+      rs.evaluate(challenge, presentation(RECEIPT_EVIDENCE_FORM, receipt), ACTION_A),
+      'Human-key Ed25519 receipt satisfies the same negotiation outside the OAuth flow.',
     );
   }
 
   // HOSTILE 1: OAuth token issued for action B, presented against action A.
   {
     const rs = createRelyingParty({ keys, acceptedForms: bothForms, policyRequirement: eitherRequirement });
-    const { challenge } = rs.challengeFor(ACTION_A);
-    const evidence = mintSimulatedOAuthEvidence({ keys, txn: challenge.challenge_id, action: ACTION_B });
+    const { challenge, oauth_txn: oauthTxn } = rs.challengeFor(ACTION_A);
+    const evidence = mintSimulatedOAuthEvidence({ keys, txn: oauthTxn, action: ACTION_B });
     record(
       'refuse-oauth-token-for-different-action',
       'REFUSE',
-      rs.evaluate(challenge, { form: OAUTH_EVIDENCE_FORM, evidence }, ACTION_A),
+      rs.evaluate(challenge, presentation(OAUTH_EVIDENCE_FORM, evidence), ACTION_A),
       'The granted authorization_details recompute to action B, not the action about to execute.',
     );
   }
@@ -616,12 +649,12 @@ export async function runAeTransportNeutralDemo() {
     const rs = createRelyingParty({ keys, acceptedForms: bothForms, policyRequirement: eitherRequirement });
     const receipt = await issueHumanReceipt({ keys, action: ACTION_A });
     const first = rs.challengeFor(ACTION_A).challenge;
-    const firstResult = rs.evaluate(first, { form: RECEIPT_EVIDENCE_FORM, evidence: receipt }, ACTION_A);
+    const firstResult = rs.evaluate(first, presentation(RECEIPT_EVIDENCE_FORM, receipt), ACTION_A);
     const second = rs.challengeFor(ACTION_A).challenge; // fresh challenge, same receipt
     record(
       'refuse-receipt-replay-after-consume',
       'REFUSE',
-      rs.evaluate(second, { form: RECEIPT_EVIDENCE_FORM, evidence: receipt }, ACTION_A),
+      rs.evaluate(second, presentation(RECEIPT_EVIDENCE_FORM, receipt), ACTION_A),
       `First presentation was ${firstResult.outcome}; the replay hits consumed authority.`,
     );
   }
@@ -629,25 +662,26 @@ export async function runAeTransportNeutralDemo() {
   // HOSTILE 3: evidence for the wrong audience.
   {
     const rs = createRelyingParty({ keys, acceptedForms: bothForms, policyRequirement: eitherRequirement });
-    const { challenge } = rs.challengeFor(ACTION_A);
+    const { challenge, oauth_txn: oauthTxn } = rs.challengeFor(ACTION_A);
     const evidence = mintSimulatedOAuthEvidence({
-      keys, txn: challenge.challenge_id, action: ACTION_A, audience: OTHER_RS_AUDIENCE,
+      keys, txn: oauthTxn, action: ACTION_A, audience: OTHER_RS_AUDIENCE,
     });
     record(
       'refuse-evidence-for-wrong-audience',
       'REFUSE',
-      rs.evaluate(challenge, { form: OAUTH_EVIDENCE_FORM, evidence }, ACTION_A),
+      rs.evaluate(challenge, presentation(OAUTH_EVIDENCE_FORM, evidence), ACTION_A),
       'Access token audience names a different relying party.',
     );
     // Challenge-level audience binding refuses independently of the token: a
-    // challenge minted for another relying party is dead on arrival here.
-    const foreign = rs.challengeFor(ACTION_A, { audience: OTHER_RS_AUDIENCE }).challenge;
-    const goodEvidence = mintSimulatedOAuthEvidence({ keys, txn: foreign.challenge_id, action: ACTION_A });
+    // challenge minted for another presenter is dead on arrival here.
+    const foreignState = rs.challengeFor(ACTION_A, { audience: OTHER_PRESENTER_AUDIENCE });
+    const foreign = foreignState.challenge;
+    const goodEvidence = mintSimulatedOAuthEvidence({ keys, txn: foreignState.oauth_txn, action: ACTION_A });
     record(
       'refuse-challenge-bound-to-other-audience',
       'REFUSE',
-      rs.evaluate(foreign, { form: OAUTH_EVIDENCE_FORM, evidence: goodEvidence }, ACTION_A),
-      'The challenge itself is audience-bound; valid evidence cannot rescue it.',
+      rs.evaluate(foreign, presentation(OAUTH_EVIDENCE_FORM, goodEvidence), ACTION_A),
+      'The challenge is bound to a different presenter; valid evidence cannot rescue it.',
     );
   }
 
@@ -659,14 +693,14 @@ export async function runAeTransportNeutralDemo() {
     const rs = createRelyingParty({
       keys,
       acceptedForms: [RECEIPT_EVIDENCE_FORM],
-      policyRequirement: 'human-authorization-receipt',
+      policyRequirement: HUMAN_AUTHORIZATION_REQUIREMENT,
     });
-    const { challenge } = rs.challengeFor(ACTION_A);
-    const evidence = mintSimulatedOAuthEvidence({ keys, txn: challenge.challenge_id, action: ACTION_A });
+    const { challenge, oauth_txn: oauthTxn } = rs.challengeFor(ACTION_A);
+    const evidence = mintSimulatedOAuthEvidence({ keys, txn: oauthTxn, action: ACTION_A });
     record(
       'refuse-oauth-when-policy-requires-human-key',
       'REFUSE',
-      rs.evaluate(challenge, { form: OAUTH_EVIDENCE_FORM, evidence }, ACTION_A),
+      rs.evaluate(challenge, presentation(OAUTH_EVIDENCE_FORM, evidence), ACTION_A),
       'Evidence-neutrality control point: the RS pins which forms count; the AS cannot override it.',
     );
   }
@@ -687,12 +721,12 @@ export async function runAeTransportNeutralDemo() {
     const lost = record(
       'indeterminate-when-effect-response-lost',
       'INDETERMINATE',
-      rs.evaluate(first, { form: RECEIPT_EVIDENCE_FORM, evidence: receipt }, ACTION_A, { effect: lossyEffect }),
+      rs.evaluate(first, presentation(RECEIPT_EVIDENCE_FORM, receipt), ACTION_A, { effect: lossyEffect }),
       'Truth unknown: neither admitted nor refused, and the authority is not released.',
     );
     const retry = rs.evaluate(
       rs.challengeFor(ACTION_A).challenge,
-      { form: RECEIPT_EVIDENCE_FORM, evidence: receipt },
+      presentation(RECEIPT_EVIDENCE_FORM, receipt),
       ACTION_A,
       { effect: lossyEffect },
     );

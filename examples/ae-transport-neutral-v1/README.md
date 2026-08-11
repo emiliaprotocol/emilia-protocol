@@ -1,9 +1,10 @@
 # AE-CHALLENGE Transport-Neutral Evidence Negotiation
 
 Runnable interop demo for one claim: AE-CHALLENGE is transport-neutral
-evidence negotiation. OAuth is one admissible evidence form among several,
-and the same negotiation also consumes evidence OAuth cannot produce. In one
-line: OAuth and others, not others instead of OAuth.
+evidence negotiation. OAuth transaction authorization can be one admissible
+presentation profile, and the same negotiation model can also consume
+independently verifiable evidence obtained outside OAuth. In one line: OAuth
+and others, not others instead of OAuth.
 
 ```bash
 node examples/ae-transport-neutral-v1/demo.mjs
@@ -32,17 +33,17 @@ SAME relying-party evaluator:
    and a relying-party-pinned `authorization_details` verifier.
 2. **Non-OAuth path.** A human-key-signed EP authorization receipt (Ed25519,
    issued by `packages/issue`, verified by `packages/verify`) bound to the
-   same action object. No authorization server participates in this leg at
-   all. This is evidence an OAuth deployment cannot mint: a portable,
-   offline-verifiable signature by an enrolled human approver key over the
-   exact action content.
+   same action object. No authorization server participates in this leg. It
+   is a portable, offline-verifiable signature by an enrolled human approver
+   key over the exact action content.
 
 For each path the evaluator, in order: rederives the action digest and CAID
 from the action it is about to execute (a presented digest is never
 trusted), verifies the evidence under that form's own native rules, confirms
 the evidence denotes the same action by recomputing the CAID from the signed
-content, checks the audience binding, and then consumes the authority
-exactly once with a reserve-before-effect store. The three outcomes stay
+content, checks the audience binding, and then uses a downstream AEB/Gate
+store to admit at most one provider entry under the local authority state.
+That admission step is composition outside AE-CHALLENGE. The three outcomes stay
 distinct: ADMIT, REFUSE, and INDETERMINATE are never collapsed into one
 "verified" flag.
 
@@ -53,9 +54,9 @@ distinct: ADMIT, REFUSE, and INDETERMINATE are never collapsed into one
 | `admit-oauth-evidence-for-action-a` | ADMIT | OAuth transaction authorization satisfies the challenge. OAuth is a first-class evidence form, not a competitor. |
 | `admit-human-receipt-for-action-a` | ADMIT | The same evaluator admits human-key evidence with no authorization server in the loop. The negotiation layer is transport-neutral. |
 | `refuse-oauth-token-for-different-action` | REFUSE | A token issued for action B cannot execute action A. The granted `authorization_details` recompute to a different CAID than the action about to run. |
-| `refuse-receipt-replay-after-consume` | REFUSE | Authority is consumed exactly once. Replaying the receipt against a fresh challenge hits the consumed reservation. |
+| `refuse-receipt-replay-after-consume` | REFUSE | Downstream admission state blocks reuse after commit. Replaying the receipt against a fresh challenge hits the consumed reservation. |
 | `refuse-evidence-for-wrong-audience` | REFUSE | An access token whose audience names another relying party fails native verification. |
-| `refuse-challenge-bound-to-other-audience` | REFUSE | The challenge itself is audience-bound; otherwise-valid evidence cannot rescue a challenge minted for a different relying party. |
+| `refuse-challenge-bound-to-other-audience` | REFUSE | The challenge is bound to its expected presenter; otherwise-valid evidence cannot rescue a challenge minted for a different presenter. |
 | `refuse-oauth-when-policy-requires-human-key` | REFUSE | The load-bearing case. The relying party's policy admits only human-key evidence, so a perfectly valid AS-issued token is refused before it is parsed. The relying party, not the authorization server, decides which evidence forms count. |
 | `indeterminate-when-effect-response-lost` | INDETERMINATE | The effect ran but its response was lost. The evaluator reports the truth (unknown) and holds the reservation instead of releasing the authority. |
 | `indeterminate-blind-retry-not-reexecuted` | INDETERMINATE | A blind retry with the same evidence does not re-execute the effect. The unresolved reservation forces reconciliation; the effect count stays at one. |
@@ -63,17 +64,37 @@ distinct: ADMIT, REFUSE, and INDETERMINATE are never collapsed into one
 ## Relationship to draft-rosomakho-oauth-txn-challenge
 
 This demo composes with the OAuth transaction challenge draft; it does not
-replace it. The OAuth leg is consumed exactly as that draft defines it: the
+replace it. The OAuth leg is consumed in the shape that draft defines: the
 protected resource's challenge JWT plus the AS-issued transaction-bound
 access token, verified as a pair. AE-CHALLENGE sits at a different layer. It
 is the relying party's machine-readable statement of what evidence is
 missing and which forms it will accept, and one of those forms can be the
 output of the OAuth transaction challenge flow. Where the deployment's
 native protocol already requires OAuth transaction authorization, that
-requirement stands; the routing guard in
+requirement stands, and the AE challenge identifier and nonce remain
+separate from the OAuth `txn`. The routing guard in
 `lib/negotiate/evidence-challenge.ts`
 (`selectAuthorizationChallengeMechanism`) makes substitution explicitly
 unavailable.
+
+The routing rule is intentionally asymmetric:
+
+- If native OAuth transaction authorization is the only missing requirement,
+  the protected resource uses the OAuth transaction challenge without an AE
+  challenge.
+- If native OAuth authorization is required and independent evidence is also
+  missing, OAuth remains primary. An explicit composition profile may add a
+  separate AE challenge, with separate identifiers and replay state.
+- If no native OAuth grant is required, an application may use AE-CHALLENGE
+  to negotiate whichever independently verifiable evidence forms its local
+  policy accepts.
+
+For graph and loop orchestrators, control-flow continuity never implies
+authority continuity. Each receiving executor rederives the concrete action
+after task decomposition or rewriting and applies its own routing rule. A
+prior token, receipt, or challenge may be input evidence, but it does not
+authorize a materially changed graph node. A blind retry after an unknown
+provider outcome goes to reconciliation rather than back through admission.
 
 ## What is real and what is simulated
 
