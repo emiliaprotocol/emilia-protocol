@@ -313,4 +313,4 @@ is the next interoperability gate.
 - `draft-morrison-ot-command-authority-01`
 - `draft-schrock-canonical-action-identifier-02`
 - `draft-schrock-action-evidence-boundary-03`
-- `draft-schrock-ep-bounded-capability-receipts-03`
+- `draft-schrock-ep-bounded-capability-receipts-04`

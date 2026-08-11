@@ -278,9 +278,9 @@ authoritative for revision and status.
 
 For reader navigation, the canonical evidence path is:
 
-1. [Authorization Receipts-10](standards/posted/draft-schrock-ep-authorization-receipts-10.xml)
+1. [Authorization Receipts-11](standards/posted/draft-schrock-ep-authorization-receipts-11.xml)
    defines the action-bound approval-evidence profile. The current posted
-   revision is -10, filed as a Standards Track candidate individual submission.
+   revision is -11, filed as a Standards Track candidate individual submission.
 2. [Human Authorization Binding-00](standards/posted/draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact into an adjacent host record.
 3. [Authority Introduction-03](standards/posted/draft-schrock-ep-authority-introduction-03.xml)
