@@ -13,7 +13,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="August" day="10"/>
+    <date year="2026" month="August" day="11"/>
     <area>Security</area>
     <keyword>agent authorization</keyword>
     <keyword>capability</keyword>
@@ -29,7 +29,8 @@
       reserve-execute-commit protocol. The receipt binds an issuance
       authorization, a closed action scope, a budget with explicit units, a
       holder proof, an expiry, and any parent capability. The state protocol
-      atomically refuses overspend and replay, fences concurrent owners, and
+      atomically refuses overspend and operation-key replay, fences concurrent
+      owners, and
       charges an indeterminate operation when an external effect may have
       occurred. Delegation transfers rather than copies authority: all direct
       child allocations are funded by committed parent operations before child
@@ -123,8 +124,9 @@
         bound. A state-domain identifier is deployment context, not portable
         proof of global uniqueness.</dd>
         <dt>Operation ID:</dt>
-        <dd>A globally unique identifier for one attempted capability-funded
-        operation within a capability-store domain.</dd>
+        <dd>An identifier unique for one attempted operation under one
+        capability receipt. The authoritative operation key is the tuple of
+        capability receipt digest and operation ID inside the state domain.</dd>
         <dt>Reservation token:</dt>
         <dd>An unguessable owner-fencing value returned by a successful
         reservation and required for its commitment.</dd>
@@ -151,7 +153,7 @@
       This protocol makes those trust dependencies explicit; it does not
       remove them.</t>
       <t>All capability-store participants that can authorize a capability or
-      allocate, register, reserve, commit, reconcile, suspend, revoke, or report
+      allocate, register, reserve, commit, reconcile, revoke, or report
       any ancestor or descendant drawing on that capability's authority
       <bcp14>MUST</bcp14> use one shared authoritative atomic state domain.
       Independent stores cannot prevent each other from accepting or
@@ -392,6 +394,23 @@ SHA-256(JCS({
       by which a verifier or conformance suite can enumerate the required
       triples. An asserted claim is profile-author testimony, not a
       demonstrated algebraic property.</t>
+      <t>Every profile identifier used in a signed scope <bcp14>MUST</bcp14>
+      identify immutable comparison semantics. An identifier fixed by
+      immutable standards text satisfies this requirement. Any other
+      application-profile identifier <bcp14>MUST</bcp14> be content-addressed.
+      A mutable alias or version label alone is insufficient. The relying
+      party <bcp14>MUST</bcp14> pin the exact profile definition selected by
+      that identifier and refuse if the definition cannot be resolved without
+      ambiguity or has changed.</t>
+      <t>Action membership and attenuation are separate decisions. Membership
+      returns <tt>IN_SCOPE</tt>, <tt>OUT_OF_SCOPE</tt>, or
+      <tt>INDETERMINATE</tt>. Attenuation returns <tt>NO_BROADER</tt>,
+      <tt>BROADER</tt>, or <tt>INDETERMINATE</tt>. A composite scope is no
+      broader only when every mandatory component returns
+      <tt>NO_BROADER</tt>. Any <tt>BROADER</tt> component makes the composite
+      broader; otherwise any undecided component makes the composite
+      indeterminate. Missing components <bcp14>MUST NOT</bcp14> be treated as
+      successful comparisons.</t>
       <t>A verifier <bcp14>MUST NOT</bcp14> promote per-hop comparisons into a
       chain-wide non-widening claim unless transitivity is either derived
       from the relation definition or mechanically established over the
@@ -399,35 +418,69 @@ SHA-256(JCS({
       non-transitive, asserted-transitive, or unknown-transitivity relation
       is local to the reported hop. It can be useful evidence, but it does
       not compose by induction across a delegation chain.</t>
+      <t>A <tt>definition-derived</tt> classification is permitted only when
+      the immutable profile definition specifies a relation whose
+      transitivity follows by construction. Merely labeling a relation
+      transitive, including in authenticated profile metadata, is an
+      <tt>asserted</tt> basis. For a mechanically established classification,
+      every scope value used in the composed chain <bcp14>MUST</bcp14> be a
+      member of the exact finite domain covered by the establishment record.
+      A value outside that domain makes the mechanical result inapplicable to
+      that chain.</t>
       <t>For a mechanically established result, the verifier
       <bcp14>MUST</bcp14> disclose whether it performed the complete
       enumeration itself or relied on a prior conformance run. The
       establishment record <bcp14>MUST</bcp14> identify the runner, completion
-      time, pinned profile and rule, a digest of the complete declared finite
-      domain, the deterministic procedure and version used, and the result.
+      time, immutable profile and relation-rule identifiers and content
+      digests, the canonical encoding, digest algorithm, digest, and
+      cardinality of the complete declared finite domain, the deterministic
+      procedure identifier, version, and content digest, and the result.
       A verifier relying on a prior run <bcp14>MUST</bcp14> authenticate and
-      integrity-check that record. If the record is unavailable, invalid, or
+      integrity-check that record and <bcp14>MUST</bcp14> accept the runner
+      under relying-party-pinned trust policy. A self-authenticated or
+      otherwise untrusted runner is insufficient. If the record is
+      unavailable, invalid, untrusted, or
       does not cover the pinned profile's complete declared finite domain, the
-      verifier <bcp14>MUST</bcp14> report the comparison as local-only. This
-      requirement does not require enumeration at admission time.</t>
+      verifier <bcp14>MUST NOT</bcp14> use it for chain composition. A current
+      per-hop comparison may still be reported local-only. This requirement
+      does not require enumeration at admission time.</t>
       <t>A verifier relying on a prior run <bcp14>MUST</bcp14> compare the
-      establishment record's pinned profile and rule, complete-domain digest,
-      and deterministic procedure version with the exact profile, rule,
-      domain, and procedure selected for the current evaluation. The profile
-      and rule in both places <bcp14>MUST</bcp14> be versioned or
-      content-digest-pinned. A mismatch, or an inability to perform that
+      establishment record's profile and relation-rule content digests,
+      complete-domain encoding, digest algorithm, digest, and cardinality,
+      and deterministic procedure identifier, version, and content digest
+      with the exact profile, rule, domain, and procedure selected for the
+      current evaluation. A mutable version label without an immutable content
+      binding is not an exact match. A mismatch, or an inability to perform that
       comparison, makes the record stale for this evaluation. Authenticated
       integrity proves what the earlier run reported; it does not establish
       that the earlier result remains applicable after a profile, rule,
       domain, or procedure revision. A stale record <bcp14>MUST NOT</bcp14>
-      support a chain-wide non-widening claim and <bcp14>MUST</bcp14> yield a
-      local-only result.</t>
+      support a chain-wide non-widening claim and contributes no current
+      comparison result. A verifier may report <tt>local-only</tt> only after
+      it separately performs the current per-hop comparison; if it cannot do
+      so, it <bcp14>MUST</bcp14> report <tt>INDETERMINATE</tt>.</t>
       <t>Reliance on an authenticated, matching prior conformance run is
       deliberately permitted. This document assigns no automatic trust rank
       to verifier-performed enumeration and relied-on enumeration; the
       disclosed reliance mode lets the relying party apply its own policy.
       Implementations <bcp14>SHOULD NOT</bcp14> repeat an otherwise acceptable
       complete enumeration solely to avoid reporting the relied-on mode.</t>
+      <t>For each mandatory component of a delegation path containing more
+      than one edge, every adjacent comparison used for a chain-wide claim
+      <bcp14>MUST</bcp14> use the same immutable profile definition,
+      relation-rule definition, finite-domain identity where applicable, and
+      transitivity basis. Transitivity established separately for two
+      different relations does not prove that those relations compose. This
+      document defines no cross-relation composition rule. A path that changes
+      any of those relation inputs is local-only across that boundary.</t>
+      <t>A local-only report may be retained as diagnostic evidence, but it
+      <bcp14>MUST NOT</bcp14> establish descendant authority across a path of
+      more than one delegation edge. Registration or admission of that
+      descendant <bcp14>MUST</bcp14> refuse when the current comparison is
+      broader and <bcp14>MUST</bcp14> refuse or return
+      <tt>INDETERMINATE</tt> when chain composition cannot be established.
+      A single delegation edge requires a current successful local comparison
+      but does not require transitive induction.</t>
       <t>Scope comparison is evaluated per component and relative to the
       verifier that produced it. A comparison report <bcp14>MUST</bcp14>
       record each component, the deciding verifier, the pinned profile and
@@ -478,6 +531,21 @@ SHA-256(JCS({
       <bcp14>MUST</bcp14> succeed only when every immutable field and receipt
       digest is identical. Any mismatch is a collision and
       <bcp14>MUST</bcp14> refuse.</t>
+      <t>Consumption of the issuance authorization and registration of its
+      exact capability receipt <bcp14>MUST</bcp14> form one idempotent logical
+      operation bound to the capability receipt digest. If both transitions
+      cannot share one atomic state transaction, the issuance-authorization
+      consumption record <bcp14>MUST</bcp14> identify the registration
+      operation and exact capability receipt digest, and both domains
+      <bcp14>MUST</bcp14> retain enough state to query and reconcile an
+      ambiguous result. A crash after consumption <bcp14>MUST NOT</bcp14>
+      permit the authorization to issue a different capability or to be
+      silently restored.</t>
+      <t>Retry of that registration may return the existing identical
+      capability only after verifying the same issuance-consumption record.
+      An absent or conflicting record <bcp14>MUST</bcp14> refuse or return
+      <tt>INDETERMINATE</tt>; it <bcp14>MUST NOT</bcp14> create a second root
+      capability from uncertain issuance state.</t>
       <t>Mutable counters in a presented receipt are not authoritative.
       Remaining budget is computed only from the shared store:</t>
       <sourcecode type="text"><![CDATA[
@@ -499,12 +567,16 @@ remaining = total - consumed - reserved
       <section anchor="reserve">
         <name>Reserve</name>
         <t>A reservation request contains the capability ID, capability
-        receipt digest, globally unique operation ID, the immutable canonical
-        exercise-action digest and CAID where used, positive integer amount,
+        receipt digest, operation ID unique under that capability, the
+        immutable canonical exercise-action digest and CAID where used,
+        positive integer amount,
         unit, scale, and authenticated holder proof. The same immutable action
         snapshot <bcp14>MUST</bcp14> be used for scope evaluation,
         authorization, reservation accounting, and the effect callback; a
         mutable caller object <bcp14>MUST NOT</bcp14> cross those boundaries.
+        Validity and expiry <bcp14>MUST</bcp14> be evaluated from one
+        authoritative time sample obtained inside the same state transaction;
+        caller-supplied time is not authoritative.
         In one serializable transaction, or while holding an equivalent row
         lock, the store <bcp14>MUST</bcp14>:</t>
         <ol spacing="normal">
@@ -516,8 +588,8 @@ remaining = total - consumed - reserved
           <li>reject when any revoked ancestor has
           <tt>revocation_mode</tt> equal to <tt>cascade</tt>;</li>
           <li>reject a unit or scale mismatch;</li>
-          <li>reject any already-seen operation ID, regardless of its previous
-          capability or outcome;</li>
+          <li>reject any already-seen operation key for that capability,
+          regardless of its previous outcome;</li>
           <li>verify that the amount is positive and no greater than
           <tt>total - consumed - reserved</tt>;</li>
           <li>increase <tt>reserved</tt> by the amount; and</li>
@@ -566,6 +638,15 @@ remaining = total - consumed - reserved
         effect evidence. It may restore budget only when it can prove the
         effect boundary was never crossed. In every other case it
         <bcp14>MUST</bcp14> commit <tt>indeterminate</tt>.</t>
+        <t>When non-entry is proved, the store <bcp14>MUST</bcp14> use one
+        atomic transition to verify the reservation owner and exact action,
+        decrease <tt>reserved</tt> without increasing <tt>consumed</tt>, and
+        make the operation terminal with outcome <tt>not_entered</tt>. The
+        operation key and its action binding <bcp14>MUST</bcp14> remain as a
+        replay tombstone after budget restoration. A later presentation of
+        that operation key <bcp14>MUST NOT</bcp14> create a new reservation.
+        Repeated reconciliation is idempotent only for the same terminal
+        outcome and authenticated evidence binding.</t>
       </section>
     </section>
 
@@ -776,11 +857,29 @@ remaining = total - consumed - reserved
       domain.</t>
       <t>The conformance set <bcp14>MUST</bcp14> include an authenticated prior
       record that differs from the current evaluation in the profile or rule
-      version or digest, complete-domain digest, or deterministic procedure
-      version, and demonstrate that every such mismatch yields a local-only
-      result. It <bcp14>MUST</bcp14> also demonstrate that a matching prior
+      content digest, complete-domain encoding, digest algorithm, digest or
+      cardinality, or deterministic procedure identifier, version or content
+      digest, and demonstrate that every such mismatch prevents chain-wide
+      promotion. It <bcp14>MUST</bcp14> show that a stale record contributes no
+      current local result, while a separately executed current comparison can
+      still be reported local-only. It <bcp14>MUST</bcp14> also demonstrate
+      that a matching prior
       record can support chain composition without repeating the enumeration,
       subject to relying-party policy.</t>
+      <t>The conformance set <bcp14>MUST</bcp14> reject an establishment record
+      from an authenticated but untrusted runner, a record using the same
+      mutable version label over different profile or rule content, a chain
+      value outside the mechanically enumerated domain, and a multi-hop chain
+      whose adjacent comparisons use different relations that are each
+      independently transitive. It <bcp14>MUST</bcp14> demonstrate that a
+      local-only multi-hop result cannot establish descendant authority.</t>
+      <t>The conformance set <bcp14>MUST</bcp14> cover a crash between
+      issuance-authorization consumption and root-capability registration, an
+      exact retry that resolves to the existing capability, and a conflicting
+      retry that refuses. It <bcp14>MUST</bcp14> also show that authenticated
+      proof of provider non-entry restores reserved budget while retaining a
+      terminal replay tombstone, and that the same raw operation ID under a
+      different capability is not by itself a replay.</t>
       <t>The parent-over-allocation case <bcp14>MUST</bcp14> include at least
       three sibling child-creation attempts whose individually valid amounts
       collectively exceed the parent's available balance, with concurrent
@@ -856,9 +955,9 @@ remaining = total - consumed - reserved
       payment authorization scope and requires verification before settlement.
       It is adjacent and complementary work: this document does not define
       hardware attestation or transparency registration, while that document
-      does not define shared-domain aggregate conservation, durable
-      reserve-execute-commit, parent-funded narrowing delegation, or
-      indeterminate-effect charging. A deployment can compose the two by
+      does not specify the authoritative shared-state, reserve-and-commit,
+      parent-funded delegation, and post-entry uncertainty machinery defined
+      here. A deployment can compose the two by
       binding their decisions to the same exact exercise-action digest without
       making either verifier consume the other's evidence as a trust anchor.</t>
     </section>
@@ -885,6 +984,29 @@ remaining = total - consumed - reserved
       <t><strong>Crash ambiguity.</strong> Restoring budget after a timeout can
       authorize duplicate external effects. Once the effect boundary may have
       been crossed, uncertainty is charged as <tt>indeterminate</tt>.</t>
+      <t><strong>External predicate freshness.</strong> Reservation protects
+      the bounded budget; it does not make mutable world facts current. If an
+      action depends on a record, counterparty status, market condition, or
+      other external predicate that can change after scope evaluation, the
+      deployment <bcp14>MUST</bcp14> require freshness-bound live evidence or
+      re-evaluate that predicate in boundary policy before provider entry. A
+      short reserve-to-effect interval reduces exposure but is not a
+      correctness mechanism. If the re-evaluation refuses before provider
+      entry, budget may be restored only through the authenticated
+      <tt>not_entered</tt> transition in
+      <xref target="reconciliation"/>.</t>
+      <t><strong>Operation-key scope.</strong> Operation IDs are unique under
+      one capability receipt rather than globally attacker-reserved across the
+      state domain. The store <bcp14>MUST</bcp14> bind the capability receipt
+      digest and operation ID as one operation key. Preventing the same
+      material action from being admitted under two independently valid
+      capabilities is a separate relying-party policy and action-fencing
+      concern. Replay refusal in this document means refusal of an already-seen
+      operation key. It does not prohibit two otherwise authorized operations
+      with different operation IDs from carrying the same action digest. A
+      deployment requiring one occurrence per material action
+      <bcp14>MUST</bcp14> add a durable action fence or bind a unique occurrence
+      identifier into the material action.</t>
       <t><strong>Bearer and share theft.</strong> A raw holder secret or enough
       unauthenticated shares can authorize possession. Secret shares require
       confidential distribution, authenticated participants, compromise
@@ -917,6 +1039,15 @@ remaining = total - consumed - reserved
       non-narrowing lineage. Verifiers apply the complete traversal and
       refusal rules in <xref target="delegation"/> to imported chains and
       chains reconstructed from storage.</t>
+      <t><strong>Comparison-proof substitution and exhaustion.</strong> A
+      signed conformance record from an untrusted runner does not establish a
+      relation property. Profiles that permit mechanical establishment
+      <bcp14>MUST</bcp14> bound domain cardinality and procedure work, define
+      one canonical domain encoding, and reject values outside the established
+      domain for chain-composition purposes. Implementations
+      <bcp14>MUST</bcp14> apply bounded parsing before processing a presented
+      record and <bcp14>MUST NOT</bcp14> perform attacker-sized enumeration on
+      the admission path.</t>
       <t><strong>Semantic limits.</strong> A valid capability does not prove
       that an action is safe, lawful, beneficial, or correctly executed.
       Local policy and domain controls remain necessary.</t>
@@ -992,7 +1123,13 @@ remaining = total - consumed - reserved
       yet emit per-component decidability records, relation reflexivity,
       transitivity classification or basis, mechanical-establishment
       provenance, or the local-only versus chain-composable result. No
-      implementation or conformance claim is made for those additions.</t>
+      implementation or conformance claim is made for those additions. The
+      -04 atomic root-issuance registration rule is also not implemented as a
+      conforming protocol operation because the prototype does not yet bind
+      and consume the full issuance authorization described here. The
+      capability-scoped operation key and terminal budget-restoring
+      <tt>not_entered</tt> behavior are implemented in the reference stores,
+      but that implementation evidence does not close the other -04 gaps.</t>
       <t>The reference implementation does reject repeated delegation identifiers,
       repeated parent capability identifiers, a leaf named as its own parent,
       and increasing amounts within the delegation chain presented at mint or
@@ -1034,12 +1171,23 @@ remaining = total - consumed - reserved
         <li>Prevented local hop comparisons from being promoted into a
         chain-wide non-widening claim without a definition-derived or
         mechanically established transitive relation.</li>
+      <li>Required one immutable comparison context across every hop used for
+      chain composition and prohibited local-only multi-hop evidence from
+      establishing descendant authority.</li>
       <li>Required mechanical-establishment provenance, including whether
       the deciding verifier ran the complete enumeration or relied on an
       authenticated prior conformance run.</li>
       <li>Bound prior-run applicability to the exact profile, rule, complete
       domain, and procedure selected for the current evaluation; stale
-      mismatches now yield local-only results.</li>
+      records now contribute no current comparison result.</li>
+      <li>Added relying-party trust of the conformance runner, complete-domain
+      membership, immutable semantic pins, and resource bounds.</li>
+      <li>Made operation identity capability-scoped, defined terminal
+      <tt>not_entered</tt> restoration with a retained replay tombstone, and
+      made issuance consumption plus root registration one idempotent logical
+      operation.</li>
+      <li>Separated bounded-budget reservation from freshness of mutable
+      external predicates.</li>
       <li>Clarified that reliance on an authenticated matching prior run is
       deliberately permitted and remains subject to relying-party policy.</li>
       </ul>

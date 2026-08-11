@@ -16,7 +16,8 @@
       reserve-execute-commit protocol. The receipt binds an issuance
       authorization, a closed action scope, a budget with explicit units, a
       holder proof, an expiry, and any parent capability. The state protocol
-      atomically refuses overspend and replay, fences concurrent owners, and
+      atomically refuses overspend and operation-key replay, fences concurrent
+      owners, and
       charges an indeterminate operation when an external effect may have
       occurred. Delegation transfers rather than copies authority: all direct
       child allocations are funded by committed parent operations before child
@@ -1242,7 +1243,7 @@ li > p:last-of-type:only-child {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Schrock</td>
-<td class="center">Expires 11 February 2027</td>
+<td class="center">Expires 12 February 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1255,12 +1256,12 @@ li > p:last-of-type:only-child {
 <dd class="internet-draft">draft-schrock-ep-bounded-capability-receipts-04</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-10" class="published">10 August 2026</time>
+<time datetime="2026-08-11" class="published">11 August 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Experimental</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-11">11 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-02-12">12 February 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1282,7 +1283,8 @@ li > p:last-of-type:only-child {
       reserve-execute-commit protocol. The receipt binds an issuance
       authorization, a closed action scope, a budget with explicit units, a
       holder proof, an expiry, and any parent capability. The state protocol
-      atomically refuses overspend and replay, fences concurrent owners, and
+      atomically refuses overspend and operation-key replay, fences concurrent
+      owners, and
       charges an indeterminate operation when an external effect may have
       occurred. Delegation transfers rather than copies authority: all direct
       child allocations are funded by committed parent operations before child
@@ -1313,7 +1315,7 @@ li > p:last-of-type:only-child {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 11 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 12 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1571,8 +1573,9 @@ li > p:last-of-type:only-child {
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-1.15">Operation ID:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-1.16">A globally unique identifier for one attempted capability-funded
-        operation within a capability-store domain.<a href="#section-2-1.16" class="pilcrow">¶</a>
+        <dd style="margin-left: 1.5em" id="section-2-1.16">An identifier unique for one attempted operation under one
+        capability receipt. The authoritative operation key is the tuple of
+        capability receipt digest and operation ID inside the state domain.<a href="#section-2-1.16" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-1.17">Reservation token:</dt>
@@ -1610,7 +1613,7 @@ li > p:last-of-type:only-child {
       This protocol makes those trust dependencies explicit; it does not
       remove them.<a href="#section-3-2" class="pilcrow">¶</a></p>
 <p id="section-3-3">All capability-store participants that can authorize a capability or
-      allocate, register, reserve, commit, reconcile, suspend, revoke, or report
+      allocate, register, reserve, commit, reconcile, revoke, or report
       any ancestor or descendant drawing on that capability's authority
       <span class="bcp14">MUST</span> use one shared authoritative atomic state domain.
       Independent stores cannot prevent each other from accepting or
@@ -1921,43 +1924,94 @@ SHA-256(JCS({
       by which a verifier or conformance suite can enumerate the required
       triples. An asserted claim is profile-author testimony, not a
       demonstrated algebraic property.<a href="#section-7-3" class="pilcrow">¶</a></p>
-<p id="section-7-4">A verifier <span class="bcp14">MUST NOT</span> promote per-hop comparisons into a
+<p id="section-7-4">Every profile identifier used in a signed scope <span class="bcp14">MUST</span>
+      identify immutable comparison semantics. An identifier fixed by
+      immutable standards text satisfies this requirement. Any other
+      application-profile identifier <span class="bcp14">MUST</span> be content-addressed.
+      A mutable alias or version label alone is insufficient. The relying
+      party <span class="bcp14">MUST</span> pin the exact profile definition selected by
+      that identifier and refuse if the definition cannot be resolved without
+      ambiguity or has changed.<a href="#section-7-4" class="pilcrow">¶</a></p>
+<p id="section-7-5">Action membership and attenuation are separate decisions. Membership
+      returns <code>IN_SCOPE</code>, <code>OUT_OF_SCOPE</code>, or
+      <code>INDETERMINATE</code>. Attenuation returns <code>NO_BROADER</code>,
+      <code>BROADER</code>, or <code>INDETERMINATE</code>. A composite scope is no
+      broader only when every mandatory component returns
+      <code>NO_BROADER</code>. Any <code>BROADER</code> component makes the composite
+      broader; otherwise any undecided component makes the composite
+      indeterminate. Missing components <span class="bcp14">MUST NOT</span> be treated as
+      successful comparisons.<a href="#section-7-5" class="pilcrow">¶</a></p>
+<p id="section-7-6">A verifier <span class="bcp14">MUST NOT</span> promote per-hop comparisons into a
       chain-wide non-widening claim unless transitivity is either derived
       from the relation definition or mechanically established over the
       profile's complete declared finite domain. A comparison under a
       non-transitive, asserted-transitive, or unknown-transitivity relation
       is local to the reported hop. It can be useful evidence, but it does
-      not compose by induction across a delegation chain.<a href="#section-7-4" class="pilcrow">¶</a></p>
-<p id="section-7-5">For a mechanically established result, the verifier
+      not compose by induction across a delegation chain.<a href="#section-7-6" class="pilcrow">¶</a></p>
+<p id="section-7-7">A <code>definition-derived</code> classification is permitted only when
+      the immutable profile definition specifies a relation whose
+      transitivity follows by construction. Merely labeling a relation
+      transitive, including in authenticated profile metadata, is an
+      <code>asserted</code> basis. For a mechanically established classification,
+      every scope value used in the composed chain <span class="bcp14">MUST</span> be a
+      member of the exact finite domain covered by the establishment record.
+      A value outside that domain makes the mechanical result inapplicable to
+      that chain.<a href="#section-7-7" class="pilcrow">¶</a></p>
+<p id="section-7-8">For a mechanically established result, the verifier
       <span class="bcp14">MUST</span> disclose whether it performed the complete
       enumeration itself or relied on a prior conformance run. The
       establishment record <span class="bcp14">MUST</span> identify the runner, completion
-      time, pinned profile and rule, a digest of the complete declared finite
-      domain, the deterministic procedure and version used, and the result.
+      time, immutable profile and relation-rule identifiers and content
+      digests, the canonical encoding, digest algorithm, digest, and
+      cardinality of the complete declared finite domain, the deterministic
+      procedure identifier, version, and content digest, and the result.
       A verifier relying on a prior run <span class="bcp14">MUST</span> authenticate and
-      integrity-check that record. If the record is unavailable, invalid, or
+      integrity-check that record and <span class="bcp14">MUST</span> accept the runner
+      under relying-party-pinned trust policy. A self-authenticated or
+      otherwise untrusted runner is insufficient. If the record is
+      unavailable, invalid, untrusted, or
       does not cover the pinned profile's complete declared finite domain, the
-      verifier <span class="bcp14">MUST</span> report the comparison as local-only. This
-      requirement does not require enumeration at admission time.<a href="#section-7-5" class="pilcrow">¶</a></p>
-<p id="section-7-6">A verifier relying on a prior run <span class="bcp14">MUST</span> compare the
-      establishment record's pinned profile and rule, complete-domain digest,
-      and deterministic procedure version with the exact profile, rule,
-      domain, and procedure selected for the current evaluation. The profile
-      and rule in both places <span class="bcp14">MUST</span> be versioned or
-      content-digest-pinned. A mismatch, or an inability to perform that
+      verifier <span class="bcp14">MUST NOT</span> use it for chain composition. A current
+      per-hop comparison may still be reported local-only. This requirement
+      does not require enumeration at admission time.<a href="#section-7-8" class="pilcrow">¶</a></p>
+<p id="section-7-9">A verifier relying on a prior run <span class="bcp14">MUST</span> compare the
+      establishment record's profile and relation-rule content digests,
+      complete-domain encoding, digest algorithm, digest, and cardinality,
+      and deterministic procedure identifier, version, and content digest
+      with the exact profile, rule, domain, and procedure selected for the
+      current evaluation. A mutable version label without an immutable content
+      binding is not an exact match. A mismatch, or an inability to perform that
       comparison, makes the record stale for this evaluation. Authenticated
       integrity proves what the earlier run reported; it does not establish
       that the earlier result remains applicable after a profile, rule,
       domain, or procedure revision. A stale record <span class="bcp14">MUST NOT</span>
-      support a chain-wide non-widening claim and <span class="bcp14">MUST</span> yield a
-      local-only result.<a href="#section-7-6" class="pilcrow">¶</a></p>
-<p id="section-7-7">Reliance on an authenticated, matching prior conformance run is
+      support a chain-wide non-widening claim and contributes no current
+      comparison result. A verifier may report <code>local-only</code> only after
+      it separately performs the current per-hop comparison; if it cannot do
+      so, it <span class="bcp14">MUST</span> report <code>INDETERMINATE</code>.<a href="#section-7-9" class="pilcrow">¶</a></p>
+<p id="section-7-10">Reliance on an authenticated, matching prior conformance run is
       deliberately permitted. This document assigns no automatic trust rank
       to verifier-performed enumeration and relied-on enumeration; the
       disclosed reliance mode lets the relying party apply its own policy.
       Implementations <span class="bcp14">SHOULD NOT</span> repeat an otherwise acceptable
-      complete enumeration solely to avoid reporting the relied-on mode.<a href="#section-7-7" class="pilcrow">¶</a></p>
-<p id="section-7-8">Scope comparison is evaluated per component and relative to the
+      complete enumeration solely to avoid reporting the relied-on mode.<a href="#section-7-10" class="pilcrow">¶</a></p>
+<p id="section-7-11">For each mandatory component of a delegation path containing more
+      than one edge, every adjacent comparison used for a chain-wide claim
+      <span class="bcp14">MUST</span> use the same immutable profile definition,
+      relation-rule definition, finite-domain identity where applicable, and
+      transitivity basis. Transitivity established separately for two
+      different relations does not prove that those relations compose. This
+      document defines no cross-relation composition rule. A path that changes
+      any of those relation inputs is local-only across that boundary.<a href="#section-7-11" class="pilcrow">¶</a></p>
+<p id="section-7-12">A local-only report may be retained as diagnostic evidence, but it
+      <span class="bcp14">MUST NOT</span> establish descendant authority across a path of
+      more than one delegation edge. Registration or admission of that
+      descendant <span class="bcp14">MUST</span> refuse when the current comparison is
+      broader and <span class="bcp14">MUST</span> refuse or return
+      <code>INDETERMINATE</code> when chain composition cannot be established.
+      A single delegation edge requires a current successful local comparison
+      but does not require transitive induction.<a href="#section-7-12" class="pilcrow">¶</a></p>
+<p id="section-7-13">Scope comparison is evaluated per component and relative to the
       verifier that produced it. A comparison report <span class="bcp14">MUST</span>
       record each component, the deciding verifier, the pinned profile and
       rule, the values compared, the local result, whether the relation is
@@ -1970,11 +2024,11 @@ SHA-256(JCS({
       rather than assumed. A structural chain result and a scope comparison
       result <span class="bcp14">MUST NOT</span> be combined into an overall validity
       claim unless both reports, including their decidability and composition
-      limits, travel with the claim.<a href="#section-7-8" class="pilcrow">¶</a></p>
-<p id="section-7-9">Profiles that intentionally use a non-reflexive relation
+      limits, travel with the claim.<a href="#section-7-13" class="pilcrow">¶</a></p>
+<p id="section-7-14">Profiles that intentionally use a non-reflexive relation
       <span class="bcp14">MUST</span> state that an unchanged scope will be refused.
       Profiles that cannot decide either action membership or attenuation
-      <span class="bcp14">MUST</span> return <code>INDETERMINATE</code>.<a href="#section-7-9" class="pilcrow">¶</a></p>
+      <span class="bcp14">MUST</span> return <code>INDETERMINATE</code>.<a href="#section-7-14" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="holder-proof">
@@ -2013,14 +2067,29 @@ SHA-256(JCS({
       <span class="bcp14">MUST</span> succeed only when every immutable field and receipt
       digest is identical. Any mismatch is a collision and
       <span class="bcp14">MUST</span> refuse.<a href="#section-9-2" class="pilcrow">¶</a></p>
-<p id="section-9-3">Mutable counters in a presented receipt are not authoritative.
-      Remaining budget is computed only from the shared store:<a href="#section-9-3" class="pilcrow">¶</a></p>
-<div class="lang-text sourcecode" id="section-9-4">
+<p id="section-9-3">Consumption of the issuance authorization and registration of its
+      exact capability receipt <span class="bcp14">MUST</span> form one idempotent logical
+      operation bound to the capability receipt digest. If both transitions
+      cannot share one atomic state transaction, the issuance-authorization
+      consumption record <span class="bcp14">MUST</span> identify the registration
+      operation and exact capability receipt digest, and both domains
+      <span class="bcp14">MUST</span> retain enough state to query and reconcile an
+      ambiguous result. A crash after consumption <span class="bcp14">MUST NOT</span>
+      permit the authorization to issue a different capability or to be
+      silently restored.<a href="#section-9-3" class="pilcrow">¶</a></p>
+<p id="section-9-4">Retry of that registration may return the existing identical
+      capability only after verifying the same issuance-consumption record.
+      An absent or conflicting record <span class="bcp14">MUST</span> refuse or return
+      <code>INDETERMINATE</code>; it <span class="bcp14">MUST NOT</span> create a second root
+      capability from uncertain issuance state.<a href="#section-9-4" class="pilcrow">¶</a></p>
+<p id="section-9-5">Mutable counters in a presented receipt are not authoritative.
+      Remaining budget is computed only from the shared store:<a href="#section-9-5" class="pilcrow">¶</a></p>
+<div class="lang-text sourcecode" id="section-9-6">
 <pre>
 remaining = total - consumed - reserved
-</pre><a href="#section-9-4" class="pilcrow">¶</a>
+</pre><a href="#section-9-6" class="pilcrow">¶</a>
 </div>
-<p id="section-9-5">The authoritative state <span class="bcp14">MUST</span> maintain the invariant
+<p id="section-9-7">The authoritative state <span class="bcp14">MUST</span> maintain the invariant
       <code>reserved + consumed &lt;= total</code> for every capability. For a
       parent capability, each registered child allocation
       <span class="bcp14">MUST</span> be covered by one or more distinct terminal
@@ -2028,7 +2097,7 @@ remaining = total - consumed - reserved
       registration. The aggregate amount of registered direct children
       <span class="bcp14">MUST NOT</span> exceed the amount committed by those distinct
       parent delegation operations, and each operation identifier
-      <span class="bcp14">MUST NOT</span> fund more than one child receipt digest.<a href="#section-9-5" class="pilcrow">¶</a></p>
+      <span class="bcp14">MUST NOT</span> fund more than one child receipt digest.<a href="#section-9-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="state-machine">
@@ -2042,12 +2111,16 @@ remaining = total - consumed - reserved
 <a href="#section-10.1" class="section-number selfRef">10.1. </a><a href="#name-reserve" class="section-name selfRef">Reserve</a>
         </h3>
 <p id="section-10.1-1">A reservation request contains the capability ID, capability
-        receipt digest, globally unique operation ID, the immutable canonical
-        exercise-action digest and CAID where used, positive integer amount,
+        receipt digest, operation ID unique under that capability, the
+        immutable canonical exercise-action digest and CAID where used,
+        positive integer amount,
         unit, scale, and authenticated holder proof. The same immutable action
         snapshot <span class="bcp14">MUST</span> be used for scope evaluation,
         authorization, reservation accounting, and the effect callback; a
         mutable caller object <span class="bcp14">MUST NOT</span> cross those boundaries.
+        Validity and expiry <span class="bcp14">MUST</span> be evaluated from one
+        authoritative time sample obtained inside the same state transaction;
+        caller-supplied time is not authoritative.
         In one serializable transaction, or while holding an equivalent row
         lock, the store <span class="bcp14">MUST</span>:<a href="#section-10.1-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-10.1-2">
@@ -2064,8 +2137,8 @@ remaining = total - consumed - reserved
 </li>
           <li id="section-10.1-2.5">reject a unit or scale mismatch;<a href="#section-10.1-2.5" class="pilcrow">¶</a>
 </li>
-          <li id="section-10.1-2.6">reject any already-seen operation ID, regardless of its previous
-          capability or outcome;<a href="#section-10.1-2.6" class="pilcrow">¶</a>
+          <li id="section-10.1-2.6">reject any already-seen operation key for that capability,
+          regardless of its previous outcome;<a href="#section-10.1-2.6" class="pilcrow">¶</a>
 </li>
           <li id="section-10.1-2.7">verify that the amount is positive and no greater than
           <code>total - consumed - reserved</code>;<a href="#section-10.1-2.7" class="pilcrow">¶</a>
@@ -2127,6 +2200,15 @@ remaining = total - consumed - reserved
         effect evidence. It may restore budget only when it can prove the
         effect boundary was never crossed. In every other case it
         <span class="bcp14">MUST</span> commit <code>indeterminate</code>.<a href="#section-10.4-1" class="pilcrow">¶</a></p>
+<p id="section-10.4-2">When non-entry is proved, the store <span class="bcp14">MUST</span> use one
+        atomic transition to verify the reservation owner and exact action,
+        decrease <code>reserved</code> without increasing <code>consumed</code>, and
+        make the operation terminal with outcome <code>not_entered</code>. The
+        operation key and its action binding <span class="bcp14">MUST</span> remain as a
+        replay tombstone after budget restoration. A later presentation of
+        that operation key <span class="bcp14">MUST NOT</span> create a new reservation.
+        Repeated reconciliation is idempotent only for the same terminal
+        outcome and authenticated evidence binding.<a href="#section-10.4-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2389,12 +2471,30 @@ remaining = total - consumed - reserved
       domain.<a href="#section-15-4" class="pilcrow">¶</a></p>
 <p id="section-15-5">The conformance set <span class="bcp14">MUST</span> include an authenticated prior
       record that differs from the current evaluation in the profile or rule
-      version or digest, complete-domain digest, or deterministic procedure
-      version, and demonstrate that every such mismatch yields a local-only
-      result. It <span class="bcp14">MUST</span> also demonstrate that a matching prior
+      content digest, complete-domain encoding, digest algorithm, digest or
+      cardinality, or deterministic procedure identifier, version or content
+      digest, and demonstrate that every such mismatch prevents chain-wide
+      promotion. It <span class="bcp14">MUST</span> show that a stale record contributes no
+      current local result, while a separately executed current comparison can
+      still be reported local-only. It <span class="bcp14">MUST</span> also demonstrate
+      that a matching prior
       record can support chain composition without repeating the enumeration,
       subject to relying-party policy.<a href="#section-15-5" class="pilcrow">¶</a></p>
-<p id="section-15-6">The parent-over-allocation case <span class="bcp14">MUST</span> include at least
+<p id="section-15-6">The conformance set <span class="bcp14">MUST</span> reject an establishment record
+      from an authenticated but untrusted runner, a record using the same
+      mutable version label over different profile or rule content, a chain
+      value outside the mechanically enumerated domain, and a multi-hop chain
+      whose adjacent comparisons use different relations that are each
+      independently transitive. It <span class="bcp14">MUST</span> demonstrate that a
+      local-only multi-hop result cannot establish descendant authority.<a href="#section-15-6" class="pilcrow">¶</a></p>
+<p id="section-15-7">The conformance set <span class="bcp14">MUST</span> cover a crash between
+      issuance-authorization consumption and root-capability registration, an
+      exact retry that resolves to the existing capability, and a conflicting
+      retry that refuses. It <span class="bcp14">MUST</span> also show that authenticated
+      proof of provider non-entry restores reserved budget while retaining a
+      terminal replay tombstone, and that the same raw operation ID under a
+      different capability is not by itself a replay.<a href="#section-15-7" class="pilcrow">¶</a></p>
+<p id="section-15-8">The parent-over-allocation case <span class="bcp14">MUST</span> include at least
       three sibling child-creation attempts whose individually valid amounts
       collectively exceed the parent's available balance, with concurrent
       reservation ordering chosen by the implementation. At most a
@@ -2402,12 +2502,12 @@ remaining = total - consumed - reserved
       cover one operation identifier presented for two different child receipt
       digests and an orphaned child-registration failure after parent
       commitment. The former refuses as operation replay; the latter leaves
-      the committed parent amount consumed pending reconciliation.<a href="#section-15-6" class="pilcrow">¶</a></p>
-<p id="section-15-7">A wire-format implementation that does not implement one shared
+      the committed parent amount consumed pending reconciliation.<a href="#section-15-8" class="pilcrow">¶</a></p>
+<p id="section-15-9">A wire-format implementation that does not implement one shared
       atomic store is a receipt verifier, not a conforming spend-control
       implementation. A store implementation that accepts a capability without
       pinned issuer verification, issuance authorization, and scope matching
-      is not conforming.<a href="#section-15-7" class="pilcrow">¶</a></p>
+      is not conforming.<a href="#section-15-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="relationship">
@@ -2472,9 +2572,9 @@ remaining = total - consumed - reserved
       payment authorization scope and requires verification before settlement.
       It is adjacent and complementary work: this document does not define
       hardware attestation or transparency registration, while that document
-      does not define shared-domain aggregate conservation, durable
-      reserve-execute-commit, parent-funded narrowing delegation, or
-      indeterminate-effect charging. A deployment can compose the two by
+      does not specify the authoritative shared-state, reserve-and-commit,
+      parent-funded delegation, and post-entry uncertainty machinery defined
+      here. A deployment can compose the two by
       binding their decisions to the same exact exercise-action digest without
       making either verifier consume the other's evidence as a trust anchor.<a href="#section-16-10" class="pilcrow">¶</a></p>
 </section>
@@ -2504,11 +2604,34 @@ remaining = total - consumed - reserved
 <p id="section-17-4"><strong>Crash ambiguity.</strong> Restoring budget after a timeout can
       authorize duplicate external effects. Once the effect boundary may have
       been crossed, uncertainty is charged as <code>indeterminate</code>.<a href="#section-17-4" class="pilcrow">¶</a></p>
-<p id="section-17-5"><strong>Bearer and share theft.</strong> A raw holder secret or enough
+<p id="section-17-5"><strong>External predicate freshness.</strong> Reservation protects
+      the bounded budget; it does not make mutable world facts current. If an
+      action depends on a record, counterparty status, market condition, or
+      other external predicate that can change after scope evaluation, the
+      deployment <span class="bcp14">MUST</span> require freshness-bound live evidence or
+      re-evaluate that predicate in boundary policy before provider entry. A
+      short reserve-to-effect interval reduces exposure but is not a
+      correctness mechanism. If the re-evaluation refuses before provider
+      entry, budget may be restored only through the authenticated
+      <code>not_entered</code> transition in
+      <a href="#reconciliation" class="auto internal xref">Section 10.4</a>.<a href="#section-17-5" class="pilcrow">¶</a></p>
+<p id="section-17-6"><strong>Operation-key scope.</strong> Operation IDs are unique under
+      one capability receipt rather than globally attacker-reserved across the
+      state domain. The store <span class="bcp14">MUST</span> bind the capability receipt
+      digest and operation ID as one operation key. Preventing the same
+      material action from being admitted under two independently valid
+      capabilities is a separate relying-party policy and action-fencing
+      concern. Replay refusal in this document means refusal of an already-seen
+      operation key. It does not prohibit two otherwise authorized operations
+      with different operation IDs from carrying the same action digest. A
+      deployment requiring one occurrence per material action
+      <span class="bcp14">MUST</span> add a durable action fence or bind a unique occurrence
+      identifier into the material action.<a href="#section-17-6" class="pilcrow">¶</a></p>
+<p id="section-17-7"><strong>Bearer and share theft.</strong> A raw holder secret or enough
       unauthenticated shares can authorize possession. Secret shares require
       confidential distribution, authenticated participants, compromise
-      response, and rate limiting. Threshold custody is not human quorum.<a href="#section-17-5" class="pilcrow">¶</a></p>
-<p id="section-17-6"><strong>Revocation.</strong> Expiry and exhausted budget are not
+      response, and rate limiting. Threshold custody is not human quorum.<a href="#section-17-7" class="pilcrow">¶</a></p>
+<p id="section-17-8"><strong>Revocation.</strong> Expiry and exhausted budget are not
       revocation. A deployment that requires early invalidation
       <span class="bcp14">MUST</span> consult a separately authenticated revocation or
       status source before reservation and define its freshness policy.
@@ -2517,16 +2640,16 @@ remaining = total - consumed - reserved
       survives. An immediate cascade claim requires the ancestor revocation
       transition and descendant reservation to be serialized in the same
       authoritative atomic state domain. Notification or eventual cache
-      refresh cannot supply that guarantee.<a href="#section-17-6" class="pilcrow">¶</a></p>
-<p id="section-17-7"><strong>Units and arithmetic.</strong> All accounting uses integers
+      refresh cannot supply that guarantee.<a href="#section-17-8" class="pilcrow">¶</a></p>
+<p id="section-17-9"><strong>Units and arithmetic.</strong> All accounting uses integers
       with signed unit and scale. Floating-point arithmetic, implicit currency
       conversion, and caller-selected rounding <span class="bcp14">MUST NOT</span> occur
-      in the authoritative budget path.<a href="#section-17-7" class="pilcrow">¶</a></p>
-<p id="section-17-8"><strong>Database authority.</strong> The capability tables contain
+      in the authoritative budget path.<a href="#section-17-9" class="pilcrow">¶</a></p>
+<p id="section-17-10"><strong>Database authority.</strong> The capability tables contain
       authorization state. Deployments <span class="bcp14">MUST</span> restrict writes to
       the enforcement service, use least-privilege credentials, protect
-      backups, and audit administrative changes.<a href="#section-17-8" class="pilcrow">¶</a></p>
-<p id="section-17-9"><strong>Delegation lineage.</strong> Local uniqueness checks over one
+      backups, and audit administrative changes.<a href="#section-17-10" class="pilcrow">¶</a></p>
+<p id="section-17-11"><strong>Delegation lineage.</strong> Local uniqueness checks over one
       presented receipt do not establish graph-wide acyclicity or complete
       ancestry. Separately presented receipts can omit links, substitute a
       parent operation, or form a cycle unless each parent edge is
@@ -2535,14 +2658,23 @@ remaining = total - consumed - reserved
       <span class="bcp14">MUST</span> fail closed on incomplete, cyclic, substituted, or
       non-narrowing lineage. Verifiers apply the complete traversal and
       refusal rules in <a href="#delegation" class="auto internal xref">Section 12</a> to imported chains and
-      chains reconstructed from storage.<a href="#section-17-9" class="pilcrow">¶</a></p>
-<p id="section-17-10"><strong>Semantic limits.</strong> A valid capability does not prove
+      chains reconstructed from storage.<a href="#section-17-11" class="pilcrow">¶</a></p>
+<p id="section-17-12"><strong>Comparison-proof substitution and exhaustion.</strong> A
+      signed conformance record from an untrusted runner does not establish a
+      relation property. Profiles that permit mechanical establishment
+      <span class="bcp14">MUST</span> bound domain cardinality and procedure work, define
+      one canonical domain encoding, and reject values outside the established
+      domain for chain-composition purposes. Implementations
+      <span class="bcp14">MUST</span> apply bounded parsing before processing a presented
+      record and <span class="bcp14">MUST NOT</span> perform attacker-sized enumeration on
+      the admission path.<a href="#section-17-12" class="pilcrow">¶</a></p>
+<p id="section-17-13"><strong>Semantic limits.</strong> A valid capability does not prove
       that an action is safe, lawful, beneficial, or correctly executed.
-      Local policy and domain controls remain necessary.<a href="#section-17-10" class="pilcrow">¶</a></p>
-<p id="section-17-11"><strong>Cryptographic scope.</strong> This version uses SHA-256 and
+      Local policy and domain controls remain necessary.<a href="#section-17-13" class="pilcrow">¶</a></p>
+<p id="section-17-14"><strong>Cryptographic scope.</strong> This version uses SHA-256 and
       Ed25519. It does not provide a post-quantum signature profile or a
       zero-knowledge receipt. Algorithm agility and long-term preservation are
-      separate concerns.<a href="#section-17-11" class="pilcrow">¶</a></p>
+      separate concerns.<a href="#section-17-14" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="privacy">
@@ -2617,7 +2749,13 @@ remaining = total - consumed - reserved
       yet emit per-component decidability records, relation reflexivity,
       transitivity classification or basis, mechanical-establishment
       provenance, or the local-only versus chain-composable result. No
-      implementation or conformance claim is made for those additions.<a href="#section-19-4" class="pilcrow">¶</a></p>
+      implementation or conformance claim is made for those additions. The
+      -04 atomic root-issuance registration rule is also not implemented as a
+      conforming protocol operation because the prototype does not yet bind
+      and consume the full issuance authorization described here. The
+      capability-scoped operation key and terminal budget-restoring
+      <code>not_entered</code> behavior are implemented in the reference stores,
+      but that implementation evidence does not close the other -04 gaps.<a href="#section-19-4" class="pilcrow">¶</a></p>
 <p id="section-19-5">The reference implementation does reject repeated delegation identifiers,
       repeated parent capability identifiers, a leaf named as its own parent,
       and increasing amounts within the delegation chain presented at mint or
@@ -2664,16 +2802,31 @@ remaining = total - consumed - reserved
         chain-wide non-widening claim without a definition-derived or
         mechanically established transitive relation.<a href="#section-20-1.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-20-1.3">Required mechanical-establishment provenance, including whether
+        <li class="normal" id="section-20-1.3">Required one immutable comparison context across every hop used for
+      chain composition and prohibited local-only multi-hop evidence from
+      establishing descendant authority.<a href="#section-20-1.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-20-1.4">Required mechanical-establishment provenance, including whether
       the deciding verifier ran the complete enumeration or relied on an
-      authenticated prior conformance run.<a href="#section-20-1.3" class="pilcrow">¶</a>
+      authenticated prior conformance run.<a href="#section-20-1.4" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-20-1.4">Bound prior-run applicability to the exact profile, rule, complete
+        <li class="normal" id="section-20-1.5">Bound prior-run applicability to the exact profile, rule, complete
       domain, and procedure selected for the current evaluation; stale
-      mismatches now yield local-only results.<a href="#section-20-1.4" class="pilcrow">¶</a>
+      records now contribute no current comparison result.<a href="#section-20-1.5" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-20-1.5">Clarified that reliance on an authenticated matching prior run is
-      deliberately permitted and remains subject to relying-party policy.<a href="#section-20-1.5" class="pilcrow">¶</a>
+        <li class="normal" id="section-20-1.6">Added relying-party trust of the conformance runner, complete-domain
+      membership, immutable semantic pins, and resource bounds.<a href="#section-20-1.6" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-20-1.7">Made operation identity capability-scoped, defined terminal
+      <code>not_entered</code> restoration with a retained replay tombstone, and
+      made issuance consumption plus root registration one idempotent logical
+      operation.<a href="#section-20-1.7" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-20-1.8">Separated bounded-budget reservation from freshness of mutable
+      external predicates.<a href="#section-20-1.8" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-20-1.9">Clarified that reliance on an authenticated matching prior run is
+      deliberately permitted and remains subject to relying-party policy.<a href="#section-20-1.9" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
