@@ -30,6 +30,13 @@ relying party. It wraps the frozen v1 verifier rather than replacing its WIT,
 WPT, HTTP Message Signature, OAuth Txn-Token, SPT, freshness, replay, or CAID
 checks.
 
+When local policy requires proof that the presentation belongs to the current
+TLS connection, the profile can also require the `tls-exporter` channel-binding
+type defined by [RFC 9266][rfc9266]. Channel binding remains separate from
+workload
+identity and action authority. It proves neither who the workload is nor what
+the workload may do.
+
 The delegating principal is not automatically the system owner, terminal
 accountable authority, or per-action human approver. A deployment that requires
 one of those roles carries it as a separate evidence leg and proves the
@@ -147,7 +154,47 @@ The executable test and checked-in vector cover:
 - confirmation-key rotation without an updated relying-party pin;
 - tool substitution;
 - resource-server or executor substitution; and
-- missing relationship evidence returning `INDETERMINATE`.
+- missing relationship evidence returning `INDETERMINATE`;
+- a presentation from TLS channel A replayed on TLS channel B;
+- a presenter-supplied exporter value when the relying party cannot obtain the
+  current connection's exporter independently; and
+- an exporter field omitted from the verified WIMSE HTTP Message Signature.
+
+## 8. Optional TLS exporter binding
+
+The relying party pins one of two modes in `tls_exporter_binding`:
+
+- `not-required`; or
+- `required-single-authentication-instance`.
+
+The second mode uses the 32-byte `tls-exporter` Exported Keying Material defined
+by [RFC 9266][rfc9266] for TLS 1.3. The presenter encodes the value as canonical
+unpadded
+base64url in the `wimse-tls-exporter` request field and includes that field in
+the verified WIMSE HTTP Message Signature. The relying party obtains the value
+for the current TLS connection from its own TLS terminator and supplies it to
+the adapter separately from the artifact. Equality is checked in constant
+time.
+
+A value copied from the presentation is not an independent current-channel
+observation. If the profile requires binding and the relying party cannot
+obtain the current value, acceptance is `INDETERMINATE`. A covered value from a
+different TLS connection is `REJECTED`. An uncovered field is also `REJECTED`.
+
+RFC 9266 provides connection uniqueness, not uniqueness for multiple
+upper-layer authentication instances on one TLS connection. This experimental
+mode therefore applies only when the integration runs one authentication
+mechanism instance on the connection and closes the TLS connection when that
+instance concludes, as RFC 9266 requires. Persistent-connection or multiplexed
+deployments need a separately reviewed stronger construction. This profile
+does not invent one or treat the RFC 9266 channel-binding data as a secret key.
+
+The adapter compares channel-binding inputs. It does not implement TLS, derive
+the exporter, verify that a reverse proxy forwarded the correct connection
+value, or turn channel binding into identity, delegation, human approval, or
+authorization.
 
 The profile is experimental and same-team tested. It is not an independent
 implementation or an interoperability claim.
+
+[rfc9266]: https://www.rfc-editor.org/rfc/rfc9266.html

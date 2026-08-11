@@ -43,6 +43,9 @@ export const WIMSE_OAUTH_PRINCIPAL_BINDING_VERSION =
   'EP-WIMSE-OAUTH-PRINCIPAL-BINDING-v2';
 export const WIMSE_OAUTH_PRINCIPAL_BINDING_CLAIM =
   'https://emiliaprotocol.ai/claims/wimse-principal-binding-v2';
+export const WIMSE_TLS_EXPORTER_BINDING_VERSION =
+  'EP-WIMSE-TLS-EXPORTER-BINDING-v1';
+export const WIMSE_TLS_EXPORTER_HEADER = 'wimse-tls-exporter';
 
 const B64URL_RE = /^[A-Za-z0-9_-]+$/;
 const TOKEN_RE = /^[A-Za-z0-9][A-Za-z0-9._~+:/%?-]{0,255}$/;
@@ -60,7 +63,20 @@ const BINDING_KEYS = new Set([
   'tool_id',
 ]);
 const PRINCIPAL_KEYS = new Set(['id', 'kind']);
-const CONFIG_KEYS = new Set(['@version', 'base', 'principal_binding']);
+const CONFIG_KEYS = new Set([
+  '@version',
+  'base',
+  'principal_binding',
+  'tls_exporter_binding',
+]);
+const TLS_EXPORTER_POLICY_KEYS = new Set(['mode']);
+const TLS_EXPORTER_BINDING_KEYS = new Set([
+  '@version',
+  'type',
+  'tls_version',
+  'value',
+]);
+const CONSTRUCTOR_KEYS = new Set(['config', 'trust_roots', 'current_tls_exporter']);
 const ARTIFACT_KEYS = new Set(['wit', 'wpt', 'txn_token', 'request', 'spt_txn', 'spt_intent']);
 
 export type WimseSubjectSemantics = 'logical-agent' | 'workload-instance';
@@ -96,11 +112,29 @@ export interface WimseOAuthPrincipalAdapterConfig {
   base: WimseOAuthSptAdapterConfig;
   /** Exact relationship values accepted by this relying party. */
   principal_binding: WimseOAuthPrincipalBinding;
+  /** Explicit relying-party policy. There is no ambient downgrade to optional. */
+  tls_exporter_binding: {
+    mode: 'not-required' | 'required-single-authentication-instance';
+  };
+}
+
+export interface WimseTlsExporterBinding {
+  '@version': typeof WIMSE_TLS_EXPORTER_BINDING_VERSION;
+  type: 'tls-exporter';
+  tls_version: '1.3';
+  /** Canonical unpadded base64url encoding of the 32-byte RFC 9266 EKM. */
+  value: string;
 }
 
 export interface WimseOAuthPrincipalConstructorPins {
   config: WimseOAuthPrincipalAdapterConfig;
   trust_roots: readonly WimseOAuthSptTrustRoot[];
+  /**
+   * Independently obtained from the current TLS connection by the relying
+   * party's TLS terminator. A value copied from the presentation is not an
+   * acceptable source for this input.
+   */
+  current_tls_exporter?: WimseTlsExporterBinding;
 }
 
 interface ParsedPins {
@@ -109,6 +143,7 @@ interface ParsedPins {
   configDigest: string;
   rootsDigest: string;
   baseAdapter: AebAdapter;
+  currentTlsExporter: WimseTlsExporterBinding | null;
 }
 
 interface RelationshipFailure {
@@ -161,6 +196,25 @@ function bindingShape(value: unknown): value is WimseOAuthPrincipalBinding {
     && nonEmptyString(value.tool_id);
 }
 
+function tlsExporterPolicyShape(
+  value: unknown,
+): value is WimseOAuthPrincipalAdapterConfig['tls_exporter_binding'] {
+  return isRecord(value)
+    && exactKeys(value, TLS_EXPORTER_POLICY_KEYS)
+    && (value.mode === 'not-required'
+      || value.mode === 'required-single-authentication-instance');
+}
+
+function tlsExporterBindingShape(value: unknown): value is WimseTlsExporterBinding {
+  return isRecord(value)
+    && exactKeys(value, TLS_EXPORTER_BINDING_KEYS)
+    && value['@version'] === WIMSE_TLS_EXPORTER_BINDING_VERSION
+    && value.type === 'tls-exporter'
+    && value.tls_version === '1.3'
+    && typeof value.value === 'string'
+    && decodeB64url(value.value)?.length === 32;
+}
+
 function subjectNamedByBinding(binding: WimseOAuthPrincipalBinding): string {
   return binding.wimse_subject_semantics === 'logical-agent'
     ? binding.logical_agent_id
@@ -168,7 +222,10 @@ function subjectNamedByBinding(binding: WimseOAuthPrincipalBinding): string {
 }
 
 function parseConstructorPins(value: WimseOAuthPrincipalConstructorPins): ParsedPins {
-  if (!isRecord(value) || !exactKeys(value, new Set(['config', 'trust_roots']))) {
+  if (!isRecord(value)
+      || !Object.keys(value).every((key) => CONSTRUCTOR_KEYS.has(key))
+      || !Object.hasOwn(value, 'config')
+      || !Object.hasOwn(value, 'trust_roots')) {
     throw new TypeError('invalid WIMSE/OAuth principal constructor pins');
   }
   const rawConfig = value.config;
@@ -176,8 +233,13 @@ function parseConstructorPins(value: WimseOAuthPrincipalConstructorPins): Parsed
       || !exactKeys(rawConfig, CONFIG_KEYS)
       || rawConfig['@version'] !== WIMSE_OAUTH_PRINCIPAL_CONFIG_VERSION
       || !isRecord(rawConfig.base)
-      || !bindingShape(rawConfig.principal_binding)) {
+      || !bindingShape(rawConfig.principal_binding)
+      || !tlsExporterPolicyShape(rawConfig.tls_exporter_binding)) {
     throw new TypeError('invalid WIMSE/OAuth principal constructor config');
+  }
+  if (value.current_tls_exporter !== undefined
+      && !tlsExporterBindingShape(value.current_tls_exporter)) {
+    throw new TypeError('invalid current TLS exporter binding');
   }
   const config = structuredClone(rawConfig) as unknown as WimseOAuthPrincipalAdapterConfig;
   if (config.base.subject.native_id !== subjectNamedByBinding(config.principal_binding)) {
@@ -195,6 +257,9 @@ function parseConstructorPins(value: WimseOAuthPrincipalConstructorPins): Parsed
     configDigest: digestAeb(config),
     rootsDigest: digestAeb(trustRoots),
     baseAdapter,
+    currentTlsExporter: value.current_tls_exporter === undefined
+      ? null
+      : structuredClone(value.current_tls_exporter),
   };
 }
 
@@ -250,6 +315,56 @@ function reject(reason: string): RelationshipFailure {
 
 function indeterminate(reason: string): RelationshipFailure {
   return { acceptance: 'INDETERMINATE', reason: `wimse-oauth-principal:${reason}` };
+}
+
+function normalizedRequestHeaders(artifact: Obj): Map<string, string> | null {
+  if (!isRecord(artifact.request) || !isRecord(artifact.request.headers)) return null;
+  const headers = new Map<string, string>();
+  for (const [rawName, rawValue] of Object.entries(artifact.request.headers)) {
+    if (typeof rawValue !== 'string') return null;
+    const name = rawName.toLowerCase();
+    if (headers.has(name)) return null;
+    headers.set(name, rawValue.trim());
+  }
+  return headers;
+}
+
+function signatureInputCovers(signatureInput: string, component: string): boolean {
+  if (!signatureInput.startsWith('wimse=(')) return false;
+  const close = signatureInput.indexOf(')');
+  if (close < 'wimse=('.length) return false;
+  const rawComponents = signatureInput.slice('wimse=('.length, close);
+  const matches = [...rawComponents.matchAll(/"([^"\\]+)"/g)];
+  if (matches.length === 0
+      || matches.map((match) => match[0]).join(' ') !== rawComponents) return false;
+  return matches.some((match) => match[1] === component);
+}
+
+function validateTlsExporterBinding(
+  artifact: Obj,
+  pins: ParsedPins,
+): RelationshipFailure | null {
+  if (pins.config.tls_exporter_binding.mode === 'not-required') return null;
+  if (pins.currentTlsExporter === null) {
+    return indeterminate('current_tls_exporter_unavailable');
+  }
+  const headers = normalizedRequestHeaders(artifact);
+  if (headers === null) return indeterminate('tls_exporter_presentation_unavailable');
+  const presentedValue = headers.get(WIMSE_TLS_EXPORTER_HEADER);
+  if (presentedValue === undefined) return indeterminate('tls_exporter_presentation_missing');
+  const signatureInput = headers.get('signature-input');
+  if (signatureInput === undefined
+      || !signatureInputCovers(signatureInput, WIMSE_TLS_EXPORTER_HEADER)) {
+    return reject('tls_exporter_not_signature_covered');
+  }
+  const presented = decodeB64url(presentedValue);
+  const current = decodeB64url(pins.currentTlsExporter.value);
+  if (presented?.length !== 32 || current?.length !== 32) {
+    return indeterminate('tls_exporter_presentation_malformed');
+  }
+  return crypto.timingSafeEqual(presented, current)
+    ? null
+    : reject('tls_exporter_mismatch');
 }
 
 function validateRelationships(
@@ -341,9 +456,20 @@ function verifyNative(
   }
   if (base.native_verification !== 'VERIFIED' || base.acceptance !== 'ACCEPTED') return base;
   const relationship = validateRelationships(input.artifact, pins);
-  return relationship === null
+  if (relationship !== null) {
+    return { ...base, acceptance: relationship.acceptance, reasons: [relationship.reason] };
+  }
+  if (!isRecord(input.artifact)) {
+    return {
+      ...base,
+      acceptance: 'INDETERMINATE',
+      reasons: ['wimse-oauth-principal:tls_exporter_presentation_unavailable'],
+    };
+  }
+  const channelBinding = validateTlsExporterBinding(input.artifact, pins);
+  return channelBinding === null
     ? base
-    : { ...base, acceptance: relationship.acceptance, reasons: [relationship.reason] };
+    : { ...base, acceptance: channelBinding.acceptance, reasons: [channelBinding.reason] };
 }
 
 function mapAction(

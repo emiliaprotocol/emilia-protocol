@@ -10,7 +10,7 @@ import test from 'node:test';
 import { computeCaid } from './vendor/caid.mjs';
 import { InMemoryAebConsumptionStore, canonicalizeAeb, digestAeb, } from './aeb-adapter-contract.js';
 import { OAUTH_TRANSACTION_TOKENS_REVISION, WIMSE_OAUTH_SPT_AEB_ADAPTER_ID, WIMSE_OAUTH_SPT_AEB_ADAPTER_VERSION, WIMSE_OAUTH_SPT_AEB_CONFIG_VERSION, WIMSE_OAUTH_SPT_CAID_MAPPER_ID, WIMSE_OAUTH_SPT_CAID_MAPPING_VERSION, WIMSE_OAUTH_SPT_TRUST_ROOT_VERSION, createWimseOAuthSptAebAdapter, createWimseOAuthSptActionDefinition, } from './aeb-wimse-oauth-adapter.js';
-import { WIMSE_OAUTH_PRINCIPAL_BINDING_CLAIM, WIMSE_OAUTH_PRINCIPAL_BINDING_VERSION, WIMSE_OAUTH_PRINCIPAL_CONFIG_VERSION, createWimseOAuthPrincipalAebAdapter, } from './aeb-wimse-oauth-principal-adapter.js';
+import { WIMSE_TLS_EXPORTER_BINDING_VERSION, WIMSE_TLS_EXPORTER_HEADER, WIMSE_OAUTH_PRINCIPAL_BINDING_CLAIM, WIMSE_OAUTH_PRINCIPAL_BINDING_VERSION, WIMSE_OAUTH_PRINCIPAL_CONFIG_VERSION, createWimseOAuthPrincipalAebAdapter, } from './aeb-wimse-oauth-principal-adapter.js';
 const NOW = '2026-07-24T12:00:00Z';
 const NOW_SECONDS = Math.floor(Date.parse(NOW) / 1000);
 const WORKLOAD_SUBJECT = 'wimse://payments.example/workloads/release-agent';
@@ -296,6 +296,11 @@ function makeFixture(options = {}) {
         'content-digest',
         'txn-token',
         'workload-identity-token',
+        ...(options.tlsExporterPresentation !== undefined
+            && options.tlsExporterPresentation !== null
+            && options.tlsExporterCovered !== false
+            ? [WIMSE_TLS_EXPORTER_HEADER]
+            : []),
     ];
     const signatureParams = `(${components.map((component) => JSON.stringify(component)).join(' ')})`
         + `;created=${NOW_SECONDS - 3};expires=${NOW_SECONDS + 57}`
@@ -310,6 +315,10 @@ function makeFixture(options = {}) {
         'Workload-Proof-Token': wpt,
         'Signature-Input': `wimse=${signatureParams}`,
     };
+    if (options.tlsExporterPresentation !== undefined
+        && options.tlsExporterPresentation !== null) {
+        headers[WIMSE_TLS_EXPORTER_HEADER] = options.tlsExporterPresentation;
+    }
     const requestSignature = crypto.sign(null, Buffer.from(signatureBase(components, signatureParams, method, requestTarget, headers), 'utf8'), holder.privateKey).toString('base64');
     headers.Signature = `wimse=:${requestSignature}:`;
     const includeSpt = options.includeSpt !== false;
@@ -397,10 +406,25 @@ function makeV2Fixture(options = {}) {
         '@version': WIMSE_OAUTH_PRINCIPAL_CONFIG_VERSION,
         base: fixture.config,
         principal_binding: principalPins,
+        tls_exporter_binding: {
+            mode: options.tlsExporterRequired === true
+                ? 'required-single-authentication-instance'
+                : 'not-required',
+        },
     };
     const adapter = createWimseOAuthPrincipalAebAdapter({
         config,
         trust_roots: fixture.trustRoots,
+        ...(options.currentTlsExporter !== undefined && options.currentTlsExporter !== null
+            ? {
+                current_tls_exporter: {
+                    '@version': WIMSE_TLS_EXPORTER_BINDING_VERSION,
+                    type: 'tls-exporter',
+                    tls_version: '1.3',
+                    value: options.currentTlsExporter,
+                },
+            }
+            : {}),
     });
     return {
         ...fixture,
@@ -753,6 +777,54 @@ test('v2 treats discovered authorization-server metadata as input, not trust', (
     assert.equal(native.acceptance, 'INDETERMINATE');
     assert.ok(native.reasons.includes('wimse-oauth-principal:constructor_pin_mismatch'));
 });
+test('v2 binds a covered presentation to the current TLS 1.3 connection', () => {
+    const channelA = Buffer.alloc(32, 0x41).toString('base64url');
+    const channelB = Buffer.alloc(32, 0x42).toString('base64url');
+    const fixture = makeV2Fixture({
+        tlsExporterPresentation: channelA,
+        tlsExporterRequired: true,
+        currentTlsExporter: channelA,
+    });
+    const accepted = verifyFixture(fixture);
+    assert.equal(accepted.native_verification, 'VERIFIED', accepted.reasons.join('; '));
+    assert.equal(accepted.acceptance, 'ACCEPTED', accepted.reasons.join('; '));
+    const channelBAdapter = createWimseOAuthPrincipalAebAdapter({
+        config: fixture.v2Config,
+        trust_roots: fixture.trustRoots,
+        current_tls_exporter: {
+            '@version': WIMSE_TLS_EXPORTER_BINDING_VERSION,
+            type: 'tls-exporter',
+            tls_version: '1.3',
+            value: channelB,
+        },
+    });
+    const substituted = channelBAdapter.verifyNative(fixture.input);
+    assert.equal(substituted.native_verification, 'VERIFIED');
+    assert.equal(substituted.acceptance, 'REJECTED');
+    assert.ok(substituted.reasons.includes('wimse-oauth-principal:tls_exporter_mismatch'));
+});
+test('v2 refuses to invent a required channel binding from presenter input alone', () => {
+    const channelA = Buffer.alloc(32, 0x41).toString('base64url');
+    const unavailable = makeV2Fixture({
+        tlsExporterPresentation: channelA,
+        tlsExporterRequired: true,
+        currentTlsExporter: null,
+    });
+    const unsigned = makeV2Fixture({
+        tlsExporterPresentation: channelA,
+        tlsExporterCovered: false,
+        tlsExporterRequired: true,
+        currentTlsExporter: channelA,
+    });
+    const unavailableResult = verifyFixture(unavailable);
+    assert.equal(unavailableResult.native_verification, 'VERIFIED');
+    assert.equal(unavailableResult.acceptance, 'INDETERMINATE');
+    assert.ok(unavailableResult.reasons.includes('wimse-oauth-principal:current_tls_exporter_unavailable'));
+    const unsignedResult = verifyFixture(unsigned);
+    assert.equal(unsignedResult.native_verification, 'VERIFIED');
+    assert.equal(unsignedResult.acceptance, 'REJECTED');
+    assert.ok(unsignedResult.reasons.includes('wimse-oauth-principal:tls_exporter_not_signature_covered'));
+});
 test('checked-in vector enumerates the positive and required hostile classes', () => {
     const vectorPath = new URL('../../conformance/vectors/wimse-oauth-spt-aeb.v1.json', import.meta.url);
     const vector = JSON.parse(fs.readFileSync(vectorPath, 'utf8'));
@@ -788,6 +860,10 @@ test('v2 checked-in vector covers every principal-confusion class', () => {
         'reject_discovered_unpinned_authorization_server',
         'reject_tool_substitution',
         'reject_resource_server_substitution',
+        'accept_current_tls_exporter_binding',
+        'reject_tls_channel_substitution',
+        'indeterminate_unavailable_current_tls_exporter',
+        'reject_unsigned_tls_exporter_presentation',
     ]) {
         assert.ok(ids.has(id), `missing v2 vector ${id}`);
     }

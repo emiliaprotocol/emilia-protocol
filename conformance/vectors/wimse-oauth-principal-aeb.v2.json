@@ -100,6 +100,45 @@
         "acceptance": "REJECTED",
         "reason": "executor_mismatch"
       }
+    },
+    {
+      "id": "accept_current_tls_exporter_binding",
+      "class": "channel-binding-positive",
+      "input": "The relying party requires channel binding, independently obtains the RFC 9266 tls-exporter value from the current TLS 1.3 connection, and receives the same canonical 32-byte value in a WIMSE HTTP Message Signature-covered wimse-tls-exporter field.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "reject_tls_channel_substitution",
+      "class": "channel-substitution",
+      "input": "A presentation signed on TLS channel A is replayed on TLS channel B. The covered wimse-tls-exporter value from channel A does not match the value independently obtained by the relying party from channel B.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "reason": "tls_exporter_mismatch"
+      }
+    },
+    {
+      "id": "indeterminate_unavailable_current_tls_exporter",
+      "class": "missing-channel-evidence",
+      "input": "The relying party requires channel binding but its TLS integration does not provide the exporter value for the current connection. A presenter-supplied field alone is not accepted as proof of the current channel.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "INDETERMINATE",
+        "reason": "current_tls_exporter_unavailable"
+      }
+    },
+    {
+      "id": "reject_unsigned_tls_exporter_presentation",
+      "class": "channel-binding-coverage",
+      "input": "The request carries wimse-tls-exporter but the verified WIMSE HTTP Message Signature does not cover that field.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "reason": "tls_exporter_not_signature_covered"
+      }
     }
   ]
 }

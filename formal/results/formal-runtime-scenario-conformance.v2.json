@@ -1043,7 +1043,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-principal-adapter.js",
-      "sha256": "744affe275a2983966a98407d3d1f001972358af5269534cb13570b2263eb53d"
+      "sha256": "6cbda65a3d845217b304ad08eb167b7c7fb8aee927edda302654184243b69589"
     },
     {
       "path": "packages/verify/dist/agent-edge-continuity.js",
