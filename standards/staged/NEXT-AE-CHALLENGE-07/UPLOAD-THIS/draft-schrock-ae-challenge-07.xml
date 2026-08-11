@@ -559,11 +559,28 @@
 	      <t>An implementation that automatically issues follow-up challenges or
 	      restarts a challenge after a claimed presentation MUST enforce a finite
 	      reissue budget bound at least to the authenticated issuer, effective
-	      presenter or audience, action profile and digest, and policy. A fresh
-	      challenge identifier or nonce does not reset that budget. When the
-	      budget is exhausted, the relying party MUST stop automatic reissue and
-	      use a generic refusal or a separately authorized out-of-band recovery
-	      path. It MUST NOT reopen or reuse a consumed nonce.</t>
+	      presenter or audience, action profile and digest, and policy. The budget
+	      applies to automatic follow-up issuance caused by a claimed
+	      presentation. An initial challenge, including a later initial challenge
+	      authorized through a separate out-of-band recovery decision, is not a
+	      reissue merely because it has the same action digest. Capacity policy
+	      therefore distinguishes initial issuance, presentation claim, and
+	      follow-up issuance. An implementation MUST NOT relabel an automatic
+	      follow-up as initial issuance to bypass an exhausted budget; a later
+	      initial challenge requires a separate authenticated policy or recovery
+	      decision.</t>
+	      <t>A fresh challenge identifier or nonce does not reset the automatic
+	      reissue budget. A follow-up charged to that budget remains charged if it
+	      later expires without a presentation; removing its expired nonce record
+	      does not refund the reissue unit. When the budget is exhausted, the
+	      relying party MUST stop automatic reissue and use a generic refusal or
+	      a separately authorized out-of-band recovery path. Exhaustion ends the
+	      automatic recovery chain; it does not permanently prohibit a new
+	      initial authorization decision for the action. A deployment MAY begin a
+	      new budget generation only through authenticated owner-side policy or a
+	      separately authorized recovery operation. Presenter-controlled fields,
+	      including a fresh nonce, MUST NOT select that generation. The relying
+	      party MUST NOT reopen or reuse a consumed nonce.</t>
         <t><tt>retry_timing</tt> is OPTIONAL. When present, it MUST contain a
         <tt>not_before</tt> Internet timestamp as defined by
         <xref target="RFC3339"/> and MAY contain a non-negative integer
@@ -649,7 +666,11 @@
         record to admit a newer challenge. Such a record MUST remain in the
         authoritative replay domain until the later of <tt>expires_at</tt> and
         completion of the in-flight evaluation. Expired unconsumed records
-        MAY be removed. A deployment that wants to return the protocol's
+        MAY be removed. Removing an expired unconsumed initial challenge can
+        release its ordinary outstanding-state capacity because initial
+        issuance does not consume the automatic follow-up budget. Removing an
+        expired follow-up challenge MUST NOT refund the automatic reissue unit
+        charged to its recovery chain. A deployment that wants to return the protocol's
         <tt>expired</tt> result during a late-arrival horizon MUST retain an
         authenticated minimal tombstone binding the replay key, body digest,
         and expiry for that horizon. If a stateful record is removed without
@@ -1159,7 +1180,9 @@ Retry-After: 30
 	      turns that behavior into a denial-of-approval loop. Implementations
 	      therefore enforce the finite reissue budget in
 	      <xref target="core-lifecycle"/> and stop automatic reissue when it is
-	      exhausted. This availability failure does not make the consumed nonce
+	      exhausted. The budget applies to follow-ups created from a claimed
+	      presentation, not to independently authorized initial challenges, and
+	      expiry does not silently refund it. This availability failure does not make the consumed nonce
 	      reusable and MUST NOT be reported as replay by the party whose first
 	      claim succeeded.</t>
       <t><strong>Replica consistency.</strong> Per-process replay caches permit

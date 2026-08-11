@@ -44,6 +44,9 @@ Revision -07 repairs the load-bearing defects found after -06:
 - authenticated presenter binding occurs before claim, while automatic
   follow-ups are bounded by an exact-action reissue budget that a fresh nonce
   cannot reset;
+- capacity policy separates initial issuance, claim, and automatic follow-up,
+  so the reissue bound cannot become a lifetime ban on a separately authorized
+  initial approval;
 - enforced pacing remains a carrier-level control and never relies on the
   non-critical `retry_timing` hint.
 

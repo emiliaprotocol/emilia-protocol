@@ -132,6 +132,12 @@ artifact.
     enforceable protocol state. An issuer relying on enforced pacing must now
     enforce it through carrier overload handling, admission control, rate
     limiting, or refusal.
+39. The first action-scoped budget example charged initial issuance and could
+    turn two abandoned challenges into a lifetime denial of the same action.
+    Capacity policy now distinguishes initial issuance, claim, and automatic
+    follow-up phases. Only automatic follow-ups consume the reissue budget;
+    expiry does not refund those units, while a separately authorized initial
+    decision is not silently blocked or treated as a nonce-based reset.
 
 ## Runtime defects caught and bounded
 

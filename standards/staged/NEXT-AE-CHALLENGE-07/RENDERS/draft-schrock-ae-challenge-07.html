@@ -2008,12 +2008,29 @@ li > p:last-of-type:only-child {
 <p id="section-2.5-7">An implementation that automatically issues follow-up challenges or
        restarts a challenge after a claimed presentation MUST enforce a finite
        reissue budget bound at least to the authenticated issuer, effective
-       presenter or audience, action profile and digest, and policy. A fresh
-       challenge identifier or nonce does not reset that budget. When the
-       budget is exhausted, the relying party MUST stop automatic reissue and
-       use a generic refusal or a separately authorized out-of-band recovery
-       path. It MUST NOT reopen or reuse a consumed nonce.<a href="#section-2.5-7" class="pilcrow">¶</a></p>
-<p id="section-2.5-8"><code>retry_timing</code> is OPTIONAL. When present, it MUST contain a
+       presenter or audience, action profile and digest, and policy. The budget
+       applies to automatic follow-up issuance caused by a claimed
+       presentation. An initial challenge, including a later initial challenge
+       authorized through a separate out-of-band recovery decision, is not a
+       reissue merely because it has the same action digest. Capacity policy
+       therefore distinguishes initial issuance, presentation claim, and
+       follow-up issuance. An implementation MUST NOT relabel an automatic
+       follow-up as initial issuance to bypass an exhausted budget; a later
+       initial challenge requires a separate authenticated policy or recovery
+       decision.<a href="#section-2.5-7" class="pilcrow">¶</a></p>
+<p id="section-2.5-8">A fresh challenge identifier or nonce does not reset the automatic
+       reissue budget. A follow-up charged to that budget remains charged if it
+       later expires without a presentation; removing its expired nonce record
+       does not refund the reissue unit. When the budget is exhausted, the
+       relying party MUST stop automatic reissue and use a generic refusal or
+       a separately authorized out-of-band recovery path. Exhaustion ends the
+       automatic recovery chain; it does not permanently prohibit a new
+       initial authorization decision for the action. A deployment MAY begin a
+       new budget generation only through authenticated owner-side policy or a
+       separately authorized recovery operation. Presenter-controlled fields,
+       including a fresh nonce, MUST NOT select that generation. The relying
+       party MUST NOT reopen or reuse a consumed nonce.<a href="#section-2.5-8" class="pilcrow">¶</a></p>
+<p id="section-2.5-9"><code>retry_timing</code> is OPTIONAL. When present, it MUST contain a
         <code>not_before</code> Internet timestamp as defined by
         <span>[<a href="#RFC3339" class="cite xref">RFC3339</a>]</span> and MAY contain a non-negative integer
          <code>jitter_sec</code>. <code>not_before</code> MUST precede
@@ -2028,8 +2045,8 @@ li > p:last-of-type:only-child {
         the earliest time to present corrected evidence. It is not a promise
         of capacity, evidence sufficiency, admission, or execution. After
         waiting, the presenter can receive the same refusal, a different
-        refusal, or an overload response.<a href="#section-2.5-8" class="pilcrow">¶</a></p>
-<p id="section-2.5-9">A relying party that expects many correlated refusals SHOULD issue
+        refusal, or an overload response.<a href="#section-2.5-9" class="pilcrow">¶</a></p>
+<p id="section-2.5-10">A relying party that expects many correlated refusals SHOULD issue
         recipient-specific or challenge-specific retry schedules rather than
         one common retry instant. It SHOULD provide a jitter interval wide
         enough for its expected population and recovery capacity. A presenter
@@ -2040,8 +2057,8 @@ li > p:last-of-type:only-child {
         evidence presentation without changing the refusal semantics. The
         presenter can therefore spend effort acquiring third-party evidence
         and still be refused or shed after the lower bound; timing guidance
-        does not assert which constraint will be decisive later.<a href="#section-2.5-9" class="pilcrow">¶</a></p>
-<p id="section-2.5-10">Ignoring <code>retry_timing</code> does not make evidence sufficient or
+        does not assert which constraint will be decisive later.<a href="#section-2.5-10" class="pilcrow">¶</a></p>
+<p id="section-2.5-11">Ignoring <code>retry_timing</code> does not make evidence sufficient or
         authorize an action, but it can defeat the issuer's load-control goal.
         It does not change the semantic meaning of the challenge and therefore
         MUST NOT appear in <code>critical</code>. An issuer that relies on enforced
@@ -2049,18 +2066,18 @@ li > p:last-of-type:only-child {
         admission control, rate limiting, or refusal; it MUST NOT rely on
         <code>retry_timing</code> as an enforcement control. A presenter that cannot establish whether
         <code>not_before</code> has passed MUST NOT infer permission to send early;
-         it uses its local backoff policy or declines automated retry.<a href="#section-2.5-10" class="pilcrow">¶</a></p>
-<p id="section-2.5-11">Expiry is tested as part of the owner-side claim transition. A
+         it uses its local backoff policy or declines automated retry.<a href="#section-2.5-11" class="pilcrow">¶</a></p>
+<p id="section-2.5-12">Expiry is tested as part of the owner-side claim transition. A
          presentation claimed before expiry MAY finish evaluation after that
          instant, but challenge expiry never extends evidence validity or permits
          admission under stale policy. Implementations MUST place a finite
          deadline on native verification and finalization. Reclaiming an
          abandoned reservation requires an ownership fence that prevents the old
-         worker from later committing a follow-up or other refusal-path state.<a href="#section-2.5-11" class="pilcrow">¶</a></p>
-<p id="section-2.5-12">Unknown acquisition status, timeout, transport failure, or an
+         worker from later committing a follow-up or other refusal-path state.<a href="#section-2.5-12" class="pilcrow">¶</a></p>
+<p id="section-2.5-13">Unknown acquisition status, timeout, transport failure, or an
         unverifiable response is indeterminate. It MUST NOT be interpreted as
         evidence satisfaction or permission to retry an action whose effect
-        may already have occurred.<a href="#section-2.5-12" class="pilcrow">¶</a></p>
+        may already have occurred.<a href="#section-2.5-13" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="state-bounds">
@@ -2101,7 +2118,11 @@ li > p:last-of-type:only-child {
         record to admit a newer challenge. Such a record MUST remain in the
         authoritative replay domain until the later of <code>expires_at</code> and
         completion of the in-flight evaluation. Expired unconsumed records
-        MAY be removed. A deployment that wants to return the protocol's
+        MAY be removed. Removing an expired unconsumed initial challenge can
+        release its ordinary outstanding-state capacity because initial
+        issuance does not consume the automatic follow-up budget. Removing an
+        expired follow-up challenge MUST NOT refund the automatic reissue unit
+        charged to its recovery chain. A deployment that wants to return the protocol's
         <code>expired</code> result during a late-arrival horizon MUST retain an
         authenticated minimal tombstone binding the replay key, body digest,
         and expiry for that horizon. If a stateful record is removed without
@@ -2673,7 +2694,9 @@ Retry-After: 30
        turns that behavior into a denial-of-approval loop. Implementations
        therefore enforce the finite reissue budget in
        <a href="#core-lifecycle" class="auto internal xref">Section 2.5</a> and stop automatic reissue when it is
-       exhausted. This availability failure does not make the consumed nonce
+       exhausted. The budget applies to follow-ups created from a claimed
+       presentation, not to independently authorized initial challenges, and
+       expiry does not silently refund it. This availability failure does not make the consumed nonce
        reusable and MUST NOT be reported as replay by the party whose first
        claim succeeded.<a href="#section-5-6" class="pilcrow">¶</a></p>
 <p id="section-5-7"><strong>Replica consistency.</strong> Per-process replay caches permit

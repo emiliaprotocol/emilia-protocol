@@ -370,12 +370,13 @@ export function createAuthoritativeChallengeOwnerStore(backend, { issuerIdentity
         throw new Error('authoritative challenge recoveryAfterMs is invalid');
     }
     const issuer = normalizedIssuerIdentity(issuerIdentity);
-    function bucketsFor(challenge, authenticatedPresenter) {
+    function bucketsFor(challenge, authenticatedPresenter, phase) {
         if (authenticatedPresenter !== undefined && !nonEmptyString(authenticatedPresenter, 512)) {
             throw new Error('authenticated presenter identity is invalid');
         }
         return normalizedBuckets(capacityPolicy(challenge, {
             authenticated_presenter: authenticatedPresenter,
+            phase,
         }));
     }
     function freshOwnerToken() {
@@ -391,7 +392,7 @@ export function createAuthoritativeChallengeOwnerStore(backend, { issuerIdentity
         const expiresAt = strictTimestamp(challenge.expires_at);
         const key = challengeStorageKey(challenge, issuer);
         const bodyDigest = challengeBodyDigest(challenge);
-        const buckets = bucketsFor(challenge, context.authenticated_presenter);
+        const buckets = bucketsFor(challenge, context.authenticated_presenter, 'issuance');
         const capacityLimits = limitsFor(buckets);
         return backend.transaction(async (tx) => {
             await tx.lockChallenge(key);
@@ -448,7 +449,7 @@ export function createAuthoritativeChallengeOwnerStore(backend, { issuerIdentity
                 && record.authenticated_presenter !== context.authenticated_presenter) {
                 return { result: 'owner_unavailable' };
             }
-            const buckets = bucketsFor(challenge, context.authenticated_presenter);
+            const buckets = bucketsFor(challenge, context.authenticated_presenter, 'claim');
             const capacityLimits = mergeLimits(record.capacity_limits, limitsFor(buckets));
             const locked = await tx.lockCapacity(bucketsFromLimits(capacityLimits));
             const target = addVectors(record.retained_units, vectorFor(buckets, 1));
@@ -521,7 +522,7 @@ export function createAuthoritativeChallengeOwnerStore(backend, { issuerIdentity
                 if (await tx.readChallenge(followupKey)) {
                     throw new Error('follow-up challenge replay key already exists');
                 }
-                followupBuckets = bucketsFor(followup, record.authenticated_presenter ?? undefined);
+                followupBuckets = bucketsFor(followup, record.authenticated_presenter ?? undefined, 'followup');
                 followupUnits = vectorFor(followupBuckets, 1);
                 followupRecord = {
                     record_version: AUTHORITATIVE_CHALLENGE_RECORD_VERSION,

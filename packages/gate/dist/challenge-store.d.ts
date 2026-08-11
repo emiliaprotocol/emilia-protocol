@@ -5,6 +5,11 @@ export type ChallengeCapacityBucket = Readonly<{
     key: string;
     limit: number;
 }>;
+export type ChallengeCapacityPhase = 'issuance' | 'claim' | 'followup';
+export type ChallengeCapacityContext = Readonly<{
+    authenticated_presenter?: string;
+    phase: ChallengeCapacityPhase;
+}>;
 type CapacityBucket = ChallengeCapacityBucket;
 type CapacityVector = Readonly<Record<string, number>>;
 export type ChallengeOwnerRecord = {
@@ -53,9 +58,7 @@ type OwnerBackend = ChallengeOwnerBackend;
  */
 export declare function createAuthoritativeChallengeOwnerStore(backend: OwnerBackend, { issuerIdentity, capacityPolicy, ownerTokenFactory, recoveryAuthorizer, recoveryAfterMs, }: {
     issuerIdentity: string;
-    capacityPolicy: (challenge: any, context: {
-        authenticated_presenter?: string;
-    }) => CapacityBucket[];
+    capacityPolicy: (challenge: any, context: ChallengeCapacityContext) => CapacityBucket[];
     ownerTokenFactory?: () => string;
     recoveryAuthorizer: (authorization: unknown) => boolean | Promise<boolean>;
     recoveryAfterMs?: number;

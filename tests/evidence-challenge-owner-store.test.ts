@@ -159,7 +159,7 @@ describe('AE-CHALLENGE authoritative owner contract', () => {
     expect(backend.capacity.get(`presenter:${authenticatedPresenter}`)?.used).toBe(1);
   });
 
-  it('supports an action-scoped reissue budget that fresh nonces cannot reset', async () => {
+  it('bounds automatic reissue by action without blocking a new initial approval', async () => {
     const backend = createMemoryChallengeOwnerBackend({
       now: () => Date.parse('2026-07-03T12:01:00Z'),
     });
@@ -168,28 +168,59 @@ describe('AE-CHALLENGE authoritative owner contract', () => {
       {
         issuerIdentity: 'https://issuer.example',
         capacityPolicy: (value, context) => {
+          const buckets = [{ key: 'outstanding', limit: 64 }];
+          if (context.phase !== 'followup') return buckets;
           const scope = crypto.createHash('sha256').update(JSON.stringify([
             context.authenticated_presenter,
             value.action_profile,
             value.action_digest,
             value.policy_digest,
           ])).digest('hex');
-          return [{ key: `reissue:${scope}`, limit: 2 }];
+          return [...buckets, { key: `reissue:${scope}`, limit: 2 }];
         },
         recoveryAuthorizer: () => false,
       },
     );
     const presenter = 'principal:alice';
 
-    expect(await store.registerOutstanding(challenge('reissue-1'), {
+    const first = challenge('reissue-1');
+    expect(await store.registerOutstanding(first, {
       authenticated_presenter: presenter,
     })).toBe(true);
-    expect(await store.registerOutstanding(challenge('reissue-2'), {
+    const firstClaim = await store.compoundClaimAndCapacity(first, {
+      authenticated_presenter: presenter,
+    });
+    expect(firstClaim.result).toBe('claimed_with_capacity');
+
+    const second = challenge('reissue-2');
+    expect(await store.finalizeReservation(firstClaim.reservation, {
+      outcome: 'insufficient',
+      followup: second,
+    })).toMatchObject({ result: 'finalized' });
+    const secondClaim = await store.compoundClaimAndCapacity(second, {
+      authenticated_presenter: presenter,
+    });
+    expect(secondClaim.result).toBe('claimed_with_capacity');
+
+    const third = challenge('reissue-3');
+    expect(await store.finalizeReservation(secondClaim.reservation, {
+      outcome: 'insufficient',
+      followup: third,
+    })).toMatchObject({ result: 'finalized' });
+    const thirdClaim = await store.compoundClaimAndCapacity(third, {
+      authenticated_presenter: presenter,
+    });
+    expect(thirdClaim.result).toBe('claimed_with_capacity');
+
+    await expect(store.finalizeReservation(thirdClaim.reservation, {
+      outcome: 'insufficient',
+      followup: challenge('reissue-4'),
+    })).rejects.toThrow('reserved challenge capacity was insufficient for finalization');
+
+    const independent = challenge('independent-initial');
+    expect(await store.registerOutstanding(independent, {
       authenticated_presenter: presenter,
     })).toBe(true);
-    expect(await store.registerOutstanding(challenge('reissue-3'), {
-      authenticated_presenter: presenter,
-    })).toBe(false);
 
     const differentAction = {
       ...challenge('different-action'),
@@ -198,6 +229,54 @@ describe('AE-CHALLENGE authoritative owner contract', () => {
     expect(await store.registerOutstanding(differentAction, {
       authenticated_presenter: presenter,
     })).toBe(true);
+    const differentClaim = await store.compoundClaimAndCapacity(differentAction, {
+      authenticated_presenter: presenter,
+    });
+    expect(differentClaim.result).toBe('claimed_with_capacity');
+    expect(await store.finalizeReservation(differentClaim.reservation, {
+      outcome: 'insufficient',
+      followup: {
+        ...challenge('different-action-followup'),
+        action_digest: differentAction.action_digest,
+      },
+    })).toMatchObject({ result: 'finalized' });
+  });
+
+  it('does not charge expired unclaimed initial challenges to the automatic reissue budget', async () => {
+    let now = Date.parse('2026-07-03T12:01:00Z');
+    const backend = createMemoryChallengeOwnerBackend({ now: () => now });
+    const store = createAuthoritativeChallengeOwnerStore(
+      { ...backend, durable: true },
+      {
+        issuerIdentity: 'https://issuer.example',
+        capacityPolicy: (value, context) => {
+          const buckets = [{ key: 'outstanding', limit: 64 }];
+          if (context.phase !== 'followup') return buckets;
+          return [...buckets, {
+            key: `reissue:${value.action_digest}`,
+            limit: 2,
+          }];
+        },
+        recoveryAuthorizer: () => false,
+      },
+    );
+    const presenter = 'principal:alice';
+
+    expect(await store.registerOutstanding(challenge(
+      'abandoned-1',
+      '2026-07-03T12:02:00Z',
+    ), { authenticated_presenter: presenter })).toBe(true);
+    expect(await store.registerOutstanding(challenge(
+      'abandoned-2',
+      '2026-07-03T12:02:00Z',
+    ), { authenticated_presenter: presenter })).toBe(true);
+
+    now = Date.parse('2026-07-03T12:03:00Z');
+    expect(await store.registerOutstanding(challenge(
+      'separately-authorized-after-expiry',
+      '2026-07-03T12:10:00Z',
+    ), { authenticated_presenter: presenter })).toBe(true);
+    expect([...backend.capacity.keys()].some((key) => key.startsWith('reissue:'))).toBe(false);
   });
 
   it('accounts safely for valid bucket names that collide with Object.prototype', async () => {
