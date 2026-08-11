@@ -7,6 +7,14 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `./aeb-ccs-adapter`, an experimental, source-locked mapping from the HMAC
+  result actually shipped by `ccs-verifier==1.1.0` (runtime `0.4.1`) into one
+  AEB `machine-policy-decision` leg. The adapter independently re-derives the
+  exact tool-and-parameters action, keeps CCS replay separate from execution
+  authority, and does not treat a policy allow as authorization or effect
+  evidence. A package-generated positive fixture and hostile substitution,
+  pinning, freshness, outcome-promotion, and authority-reuse cases document
+  the limited local-HMAC composition.
 - `EP-AUTHORIZATION-BUNDLE-v1`, a closed pre-execution verifier for portable
   human approval evidence with exact-action, audience, transport-neutral native
   authorization binding, policy-selected approvers, current-policy and status

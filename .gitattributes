@@ -563,6 +563,7 @@ packages/verify/a2a-receipt-binding.test.js linguist-generated=true
 packages/verify/aeb-acceptance-profile.test.js linguist-generated=true
 packages/verify/aeb-adapter-contract.test.js linguist-generated=true
 packages/verify/aeb-aps-adapter.test.js linguist-generated=true
+packages/verify/aeb-ccs-adapter.test.js linguist-generated=true
 packages/verify/aeb-consequence-conformance.test.js linguist-generated=true
 packages/verify/aeb-discovery-permit-adapter.test.js linguist-generated=true
 packages/verify/aeb-execution-conditions.test.js linguist-generated=true

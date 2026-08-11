@@ -155,6 +155,10 @@
       "types": "./dist/aeb-oasnt-adapter.d.ts",
       "import": "./aeb-oasnt-adapter.js"
     },
+    "./aeb-ccs-adapter": {
+      "types": "./dist/aeb-ccs-adapter.d.ts",
+      "import": "./aeb-ccs-adapter.js"
+    },
     "./aeb-psea-adapter": {
       "types": "./dist/aeb-psea-adapter.d.ts",
       "import": "./aeb-psea-adapter.js"
@@ -253,6 +257,7 @@
     "policy-decision-evidence.js",
     "aeb-native-adapters.js",
     "aeb-oasnt-adapter.js",
+    "aeb-ccs-adapter.js",
     "aeb-psea-adapter.js",
     "fido-ap2-bridge.js",
     "a2a-receipt-binding.js",
@@ -298,7 +303,7 @@
     "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test": "node --test test.js hostile-input.test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js status.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js platform-attestation.test.js memory-projection.test.js agent-binding.test.js agentroa.test.js orprg.test.js outcome-binding.test.js authority-program.test.js aeb-adapter-contract.test.js aeb-acceptance-profile.test.js aeb-execution-conditions.test.js aeb-aps-adapter.test.js aeb-consequence-conformance.test.js aeb-mcgraw-delegation-adapter.test.js aeb-oauth-transaction-challenge-adapter.test.js aeb-wimse-oauth-adapter.test.js authorization-server-confirmation.test.js authorization-bundle.test.js oauth-rar-authorization-binding.test.js policy-decision-evidence.test.js aeb-native-adapters.test.js aeb-oasnt-adapter.test.js pedigree-aeb-composition.test.js aeb-psea-adapter.test.js fido-ap2-bridge.test.js discovery-permit-contract.test.js aeb-discovery-permit-adapter.test.js agent-edge-continuity.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js && npm run test:qualification",
+    "test": "node --test test.js hostile-input.test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js status.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js platform-attestation.test.js memory-projection.test.js agent-binding.test.js agentroa.test.js orprg.test.js outcome-binding.test.js authority-program.test.js aeb-adapter-contract.test.js aeb-acceptance-profile.test.js aeb-execution-conditions.test.js aeb-aps-adapter.test.js aeb-consequence-conformance.test.js aeb-mcgraw-delegation-adapter.test.js aeb-oauth-transaction-challenge-adapter.test.js aeb-wimse-oauth-adapter.test.js authorization-server-confirmation.test.js authorization-bundle.test.js oauth-rar-authorization-binding.test.js policy-decision-evidence.test.js aeb-native-adapters.test.js aeb-oasnt-adapter.test.js aeb-ccs-adapter.test.js pedigree-aeb-composition.test.js aeb-psea-adapter.test.js fido-ap2-bridge.test.js discovery-permit-contract.test.js aeb-discovery-permit-adapter.test.js agent-edge-continuity.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js && npm run test:qualification",
     "test:qualification": "tsx --test gate-qualification.test.ts gate-qualification-promptfoo.test.ts a2a-receipt-binding.test.ts ap2-native-adapter.test.ts a2a-evidence-challenge.test.ts"
   },
   "bin": {
