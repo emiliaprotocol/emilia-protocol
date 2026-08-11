@@ -756,6 +756,121 @@ test('AEB freezes indeterminate execution and consumes a satisfied authorization
   assert.equal(replay.program_digest, satisfied.record.evaluator.pinned_config_digest);
 });
 
+test('AEB releases a provisional reservation on pre-commit refusal and consumes only after commitment', () => {
+  const satisfied = evaluate(setup());
+  const store = new InMemoryAebConsumptionStore();
+
+  const provisional = authorizeAebExecution(satisfied.record, {
+    verification: boundVerification(satisfied.record), local_authorization: true, store,
+  });
+  assert.equal(provisional.state, 'AUTHORIZED');
+  assert.equal(store.state(provisional.reservation_key), 'RESERVED');
+
+  const refusedBeforeProviderCommit = reconcileAebExecution(
+    store,
+    provisional.reservation_key,
+    'NOT_COMMITTED',
+  );
+  assert.deepEqual(refusedBeforeProviderCommit, {
+    state: 'AVAILABLE',
+    retry_allowed: true,
+    reason: 'execution_not_committed',
+  });
+  assert.equal(store.state(provisional.reservation_key), 'AVAILABLE');
+
+  const retried = authorizeAebExecution(satisfied.record, {
+    verification: boundVerification(satisfied.record), local_authorization: true, store,
+  });
+  assert.equal(retried.state, 'AUTHORIZED');
+  assert.equal(retried.reservation_key, provisional.reservation_key);
+
+  const committed = reconcileAebExecution(store, retried.reservation_key, 'COMMITTED');
+  assert.deepEqual(committed, {
+    state: 'CONSUMED',
+    retry_allowed: false,
+    reason: 'execution_committed',
+  });
+  assert.equal(store.state(retried.reservation_key), 'CONSUMED');
+
+  const replay = authorizeAebExecution(satisfied.record, {
+    verification: boundVerification(satisfied.record), local_authorization: true, store,
+  });
+  assert.equal(replay.state, 'REFUSED');
+  assert.equal(replay.reason, 'consumption_conflict');
+});
+
+test('durable AEB releases a provisional reservation on pre-commit refusal and consumes only after commitment', async () => {
+  const satisfied = evaluate(setup());
+  const states = new Map<string, 'RESERVED' | 'CONSUMED'>();
+  const replayOwners = new Map<string, string>();
+  const store = {
+    durable: true as const,
+    ownershipFenced: true as const,
+    permanentConsumption: true as const,
+    atomicReplayFenced: true as const,
+    async reserve(key: string, replayKeys: readonly string[]) {
+      if (states.has(key)) return 'CONSUMPTION_CONFLICT' as const;
+      if (replayKeys.some((replayKey) => replayOwners.has(replayKey))) {
+        return 'NATIVE_REPLAY_CONFLICT' as const;
+      }
+      states.set(key, 'RESERVED');
+      for (const replayKey of replayKeys) replayOwners.set(replayKey, key);
+      return 'RESERVED' as const;
+    },
+    async commit(key: string) {
+      if (states.get(key) !== 'RESERVED') return false;
+      states.set(key, 'CONSUMED');
+      return true;
+    },
+    async release(key: string) {
+      if (states.get(key) !== 'RESERVED') return false;
+      states.delete(key);
+      for (const [replayKey, owner] of replayOwners) {
+        if (owner === key) replayOwners.delete(replayKey);
+      }
+      return true;
+    },
+  };
+
+  const provisional = await authorizeAebExecutionDurable(satisfied.record, {
+    verification: boundVerification(satisfied.record), local_authorization: true, store,
+  });
+  assert.equal(provisional.state, 'AUTHORIZED');
+  assert.equal(states.get(provisional.reservation_key), 'RESERVED');
+
+  const refusedBeforeProviderCommit = await reconcileAebExecutionDurable(
+    store,
+    provisional.reservation_key,
+    'NOT_COMMITTED',
+  );
+  assert.deepEqual(refusedBeforeProviderCommit, {
+    state: 'AVAILABLE',
+    retry_allowed: true,
+    reason: 'execution_not_committed',
+  });
+  assert.equal(states.has(provisional.reservation_key), false);
+  assert.equal(replayOwners.size, 0);
+
+  const retried = await authorizeAebExecutionDurable(satisfied.record, {
+    verification: boundVerification(satisfied.record), local_authorization: true, store,
+  });
+  assert.equal(retried.state, 'AUTHORIZED');
+  assert.equal(retried.reservation_key, provisional.reservation_key);
+
+  const committed = await reconcileAebExecutionDurable(store, retried.reservation_key, 'COMMITTED');
+  assert.deepEqual(committed, {
+    state: 'CONSUMED',
+    retry_allowed: false,
+    reason: 'execution_committed',
+  });
+
+  const replay = await authorizeAebExecutionDurable(satisfied.record, {
+    verification: boundVerification(satisfied.record), local_authorization: true, store,
+  });
+  assert.equal(replay.state, 'REFUSED');
+  assert.equal(replay.reason, 'consumption_conflict');
+});
+
 test('AEB execution conditions fail closed before authority is reserved', () => {
   const satisfied = evaluate(setup());
   const store = new InMemoryAebConsumptionStore();
