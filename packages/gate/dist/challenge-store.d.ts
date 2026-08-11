@@ -1,5 +1,6 @@
 export declare const DURABLE_CHALLENGE_STORE_VERSION = "EP-DURABLE-CHALLENGE-STORE-v3";
-export declare const AUTHORITATIVE_CHALLENGE_OWNER_VERSION = "EP-AE-CHALLENGE-OWNER-v1";
+export declare const AUTHORITATIVE_CHALLENGE_OWNER_VERSION = "EP-AE-CHALLENGE-OWNER-v2";
+export declare const AUTHORITATIVE_CHALLENGE_RECORD_VERSION = "EP-AE-CHALLENGE-OWNER-RECORD-v2";
 export type ChallengeCapacityBucket = Readonly<{
     key: string;
     limit: number;
@@ -7,10 +8,18 @@ export type ChallengeCapacityBucket = Readonly<{
 type CapacityBucket = ChallengeCapacityBucket;
 type CapacityVector = Readonly<Record<string, number>>;
 export type ChallengeOwnerRecord = {
+    record_version: typeof AUTHORITATIVE_CHALLENGE_RECORD_VERSION;
     body_digest: string;
     challenge: any;
     state: 'open' | 'reserved' | 'finalized';
+    /** Current capacity charged to this record. */
     units: Record<string, number>;
+    /** Capacity retained after an evaluation reservation is finalized. */
+    retained_units: Record<string, number>;
+    /** Constructor-pinned limits for every bucket represented by this record. */
+    capacity_limits: Record<string, number>;
+    /** Stable presenter identity used by presenter-scoped capacity policy. */
+    authenticated_presenter: string | null;
     owner_token_digest: string | null;
     generation: number;
     reserved_at_ms: number | null;
@@ -51,26 +60,32 @@ export declare function createAuthoritativeChallengeOwnerStore(backend: OwnerBac
     recoveryAuthorizer: (authorization: unknown) => boolean | Promise<boolean>;
     recoveryAfterMs?: number;
 }): Readonly<{
-    version: "EP-AE-CHALLENGE-OWNER-v1";
+    version: "EP-AE-CHALLENGE-OWNER-v2";
     durable: boolean;
     issuerIdentity: string;
-    register: (challenge: any) => Promise<boolean>;
-    registerOutstanding: (challenge: any) => Promise<boolean>;
+    register: (challenge: any, context?: {
+        authenticated_presenter?: string;
+    }) => Promise<boolean>;
+    registerOutstanding: (challenge: any, context?: {
+        authenticated_presenter?: string;
+    }) => Promise<boolean>;
     compoundClaimAndCapacity: (challenge: any, context?: {
         audience?: string;
         authenticated_presenter?: string;
     }) => Promise<{
         result: string;
         reservation?: undefined;
+        authoritative_at_ms?: undefined;
     } | {
         result: string;
         reservation: Readonly<{
-            version: "EP-AE-CHALLENGE-OWNER-v1";
+            version: "EP-AE-CHALLENGE-OWNER-v2";
             replay_key: string;
             body_digest: string;
             generation: number;
             owner_token: string;
         }>;
+        authoritative_at_ms: number;
     }>;
     finalizeReservation: (handle: any, { outcome, followup, }: {
         outcome: string;
@@ -84,7 +99,7 @@ export declare function createAuthoritativeChallengeOwnerStore(backend: OwnerBac
     }) => Promise<{
         result: string;
         reservation: Readonly<{
-            version: "EP-AE-CHALLENGE-OWNER-v1";
+            version: "EP-AE-CHALLENGE-OWNER-v2";
             replay_key: string;
             body_digest: string;
             generation: number;

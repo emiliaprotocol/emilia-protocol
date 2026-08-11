@@ -1,12 +1,12 @@
-EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v2
+EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v3
 Status: local same-team bounded model result; not deployed or independently reviewed
 Method: finite scenario enumeration with explicit mutation counterexamples
 Execution date: 2026-08-10
 Runtime: Node.js
-Model SHA-256: 3b974049376ae85eefa4299aae3087e2104a2353d66711bfe89356ac686606d0
-Runner SHA-256: 243f0534e4d24c0fc76f70fe59842d5d5fd7ae77530da833b72152818717d65d
+Model SHA-256: 19adb5afdd68bdb3fb222ac46c91d2804837f61bac96196b70c5bbbd213f8ed1
+Runner SHA-256: 6178cbadeec353914ac5e9b651c20577a48d7014ed1ac0c5d137023460364477
 
-Checked finite scenarios: 113.
+Checked finite scenarios: 114.
 
 Checked properties, not proved obligations:
 CompoundClaimAndCapacityAtomic (97 states): checked
@@ -18,6 +18,7 @@ ExpiredDoesNotClaimOrReserve (2 states): checked
 ClaimedReplayPrecedesExpiry (2 states): checked
 SingleOwnerCapacityConserved (1 state): checked
 StatefulDebitTransfersWithoutDoubleCount (2 states): checked
+PinnedScopedDebitSurvivesClaim (1 state): checked
 ReplayKeyTupleIsUnambiguous (1 state): checked
 ReservationTokenMismatchRefused (1 state): checked
 RetryWindowPrecedesExpiry (3 states): checked
@@ -28,13 +29,15 @@ Mutation counterexamples exposed:
 - split_capacity_before_claim;
 - claim_before_capacity;
 - independent_shards_without_quota_or_coordinator;
-- stateful_outstanding_debit_counted_twice; and
+- stateful_outstanding_debit_counted_twice;
+- claim_recomputed_and_dropped_pinned_scope; and
 - stale_owner_without_fence.
 
 Scope: finite same-team scenario evidence for the AE-CHALLENGE owner
 transition. The model checks four named capacity buckets, transfer of an
-existing stateful outstanding debit, a structured issuer-and-nonce replay key,
-owner fencing, retry timing, and presenter/audience equality. It is not a
+existing stateful outstanding debit, preservation of pinned scope buckets, a
+structured issuer-and-nonce replay key, owner fencing, retry timing, and
+presenter/audience equality. It is not a
 storage-driver or database-isolation refinement proof. Crash atomicity, quota
 transfer, authenticated alias mapping, self-describing envelope verification,
 evidence verification, policy correctness, and transport authentication remain

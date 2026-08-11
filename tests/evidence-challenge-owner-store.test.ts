@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import fc from 'fast-check';
 import {
   createAuthoritativeChallengeOwnerStore,
   createMemoryChallengeOwnerBackend,
@@ -19,11 +20,15 @@ function challenge(label, expiresAt = '2026-07-03T12:10:00Z') {
     nonce: nonce(label),
     action_digest: actionDigest,
     action_profile: 'https://emiliaprotocol.ai/profiles/artifact-digest-v1',
+    policy_id: 'https://issuer.example/policies/test-v1',
     policy_digest: policyDigest,
     expires_at: expiresAt,
     audience: 'https://presenter.example',
-    present_as: ['ep-aec-v1'],
-    required_evidence: [],
+    present_as: ['https://emiliaprotocol.ai/profiles/ep-aec-v1'],
+    required_evidence: [{
+      requirement_id: 'authorization',
+      type: 'https://emiliaprotocol.ai/ns/evidence-type/authorization_receipt',
+    }],
     body_digest: bodyDigest,
   };
 }
@@ -45,6 +50,24 @@ function fixture({ cap = 8, now = Date.parse('2026-07-03T12:01:00Z') } = {}) {
   return { backend, clock, store };
 }
 
+function presenterScopedFixture({ cap = 8 } = {}) {
+  const backend = createMemoryChallengeOwnerBackend({
+    now: () => Date.parse('2026-07-03T12:01:00Z'),
+  });
+  const store = createAuthoritativeChallengeOwnerStore(
+    { ...backend, durable: true },
+    {
+      issuerIdentity: 'https://issuer.example',
+      capacityPolicy: (_challenge, context) => [
+        { key: 'aggregate', limit: cap },
+        { key: `presenter:${context.authenticated_presenter ?? 'anonymous'}`, limit: cap },
+      ],
+      recoveryAuthorizer: () => false,
+    },
+  );
+  return { backend, store };
+}
+
 describe('AE-CHALLENGE authoritative owner contract', () => {
   it('does not let a spread copy impersonate the branded production store', () => {
     const { store } = fixture();
@@ -64,6 +87,107 @@ describe('AE-CHALLENGE authoritative owner contract', () => {
     expect(backend.capacity.get('aggregate')?.used).toBe(2);
   });
 
+  it('preserves replay and capacity invariants across randomized bucket sets', async () => {
+    await fc.assert(fc.asyncProperty(
+      fc.integer({ min: 2, max: 8 }),
+      fc.uniqueArray(fc.constantFrom(
+        'aggregate', 'constructor', 'toString', 'A-upper', 'a-lower', 'tenant:1',
+      ), { minLength: 1, maxLength: 6 }),
+      fc.integer({ min: 0, max: 1_000_000 }),
+      async (cap, bucketKeys, sample) => {
+        const backend = createMemoryChallengeOwnerBackend({
+          now: () => Date.parse('2026-07-03T12:01:00Z'),
+        });
+        const store = createAuthoritativeChallengeOwnerStore(
+          { ...backend, durable: true },
+          {
+            issuerIdentity: 'https://issuer.example',
+            capacityPolicy: () => bucketKeys.map((key) => ({ key, limit: cap })),
+            recoveryAuthorizer: () => false,
+          },
+        );
+        const value = challenge(`property-${sample}`);
+        expect(await store.registerOutstanding(value, {
+          authenticated_presenter: value.audience,
+        })).toBe(true);
+
+        const attempts = await Promise.all([
+          store.compoundClaimAndCapacity(value, { authenticated_presenter: value.audience }),
+          store.compoundClaimAndCapacity(value, { authenticated_presenter: value.audience }),
+        ]);
+        expect(attempts.map(({ result }) => result).sort()).toEqual([
+          'claimed_with_capacity', 'exact_body_replay',
+        ]);
+        for (const key of bucketKeys) expect(backend.capacity.get(key)?.used).toBe(2);
+
+        const collision = await store.compoundClaimAndCapacity({
+          ...value,
+          challenge_id: `${value.challenge_id}-collision`,
+        }, { authenticated_presenter: value.audience });
+        expect(collision.result).toBe('nonce_body_collision');
+        for (const key of bucketKeys) expect(backend.capacity.get(key)?.used).toBe(2);
+
+        const claimed = attempts.find(({ result }) => result === 'claimed_with_capacity');
+        await expect(store.finalizeReservation(claimed?.reservation, {
+          outcome: 'property_terminal',
+        })).resolves.toMatchObject({ result: 'finalized' });
+        for (const key of bucketKeys) expect(backend.capacity.get(key)?.used).toBe(1);
+      },
+    ), { numRuns: 100 });
+  });
+
+  it('pins authenticated presenter capacity at issuance and preserves it through finalization', async () => {
+    const { backend, store } = presenterScopedFixture({ cap: 2 });
+    const value = challenge('stable-presenter-capacity');
+    const authenticatedPresenter = 'principal:alice';
+
+    expect(await store.registerOutstanding(value, {
+      authenticated_presenter: authenticatedPresenter,
+    })).toBe(true);
+    expect(backend.capacity.get(`presenter:${authenticatedPresenter}`)?.used).toBe(1);
+    expect(backend.capacity.has(`presenter:${value.audience}`)).toBe(false);
+
+    const claimed = await store.compoundClaimAndCapacity(value, {
+      authenticated_presenter: authenticatedPresenter,
+    });
+    expect(claimed.result).toBe('claimed_with_capacity');
+    expect(backend.capacity.get(`presenter:${authenticatedPresenter}`)?.used).toBe(2);
+
+    await expect(store.finalizeReservation(claimed.reservation, {
+      outcome: 'admissible',
+    })).resolves.toMatchObject({ result: 'finalized' });
+    expect(backend.capacity.get(`presenter:${authenticatedPresenter}`)?.used).toBe(1);
+  });
+
+  it('accounts safely for valid bucket names that collide with Object.prototype', async () => {
+    const backend = createMemoryChallengeOwnerBackend({
+      now: () => Date.parse('2026-07-03T12:01:00Z'),
+    });
+    const store = createAuthoritativeChallengeOwnerStore(
+      { ...backend, durable: true },
+      {
+        issuerIdentity: 'https://issuer.example',
+        capacityPolicy: () => [
+          { key: 'constructor', limit: 2 },
+          { key: 'toString', limit: 2 },
+        ],
+        recoveryAuthorizer: () => false,
+      },
+    );
+    const value = challenge('prototype-shaped-capacity-keys');
+
+    expect(await store.registerOutstanding(value)).toBe(true);
+    const claimed = await store.compoundClaimAndCapacity(value, {
+      authenticated_presenter: value.audience,
+    });
+    expect(claimed.result).toBe('claimed_with_capacity');
+    await expect(store.finalizeReservation(claimed.reservation, {
+      outcome: 'admissible',
+    })).resolves.toMatchObject({ result: 'finalized' });
+    expect(backend.capacity.get('constructor')?.used).toBe(1);
+    expect(backend.capacity.get('toString')?.used).toBe(1);
+  });
+
   it('leaves the nonce open and all counters unchanged when reservation capacity is full', async () => {
     const { backend, store } = fixture({ cap: 1 });
     const value = challenge('capacity-refusal');
@@ -81,6 +205,72 @@ describe('AE-CHALLENGE authoritative owner contract', () => {
     const { store } = fixture({ now: Date.parse('2026-07-03T12:11:00Z') });
     const value = challenge('owner-expired');
     expect(await store.registerOutstanding(value)).toBe(false);
+  });
+
+  it('rejects nonconforming wire bodies before allocating replay or capacity state', async () => {
+    const mutations = [
+      { present_as: ['ep-aec-v1'] },
+      { required_evidence: [{ requirement_id: 'x', type: 'authorization_receipt' }] },
+      {
+        required_evidence: [
+          { requirement_id: 'same', type: 'https://example.net/evidence/a' },
+          { requirement_id: 'same', type: 'https://example.net/evidence/b' },
+        ],
+      },
+      {
+        required_evidence: [{
+          requirement_id: 'x',
+          type: 'https://example.net/evidence/a',
+          attacker_extension: true,
+        }],
+      },
+      { retry_timing: { not_before: '2026-07-03T12:09:59Z', jitter_sec: 2 } },
+      { critical: ['experimental_extension'], experimental_extension: true },
+    ];
+
+    for (const [index, mutation] of mutations.entries()) {
+      const { backend, store } = fixture();
+      await expect(store.registerOutstanding({
+        ...challenge(`malformed-${index}`),
+        ...mutation,
+      })).rejects.toThrow();
+      expect(backend.records.size).toBe(0);
+      expect(backend.capacity.size).toBe(0);
+    }
+  });
+
+  it('detects stored body corruption before claim or evidence evaluation', async () => {
+    const { backend, store } = fixture();
+    const value = challenge('stored-body-corruption');
+    await store.registerOutstanding(value);
+    const [key, record] = [...backend.records.entries()][0];
+    backend.records.set(key, {
+      ...record,
+      challenge: {
+        ...record.challenge,
+        policy_id: 'https://attacker.example/weakened-policy',
+      },
+    });
+
+    await expect(store.compoundClaimAndCapacity(value, {
+      authenticated_presenter: value.audience,
+    })).rejects.toThrow(/body binding/);
+    expect(backend.capacity.get('aggregate')?.used).toBe(1);
+  });
+
+  it('rejects non-record capacity vectors returned by the owner backend', async () => {
+    const { backend, store } = fixture();
+    const value = challenge('stored-vector-corruption');
+    await store.registerOutstanding(value);
+    const [key, record] = [...backend.records.entries()][0];
+    backend.records.set(key, {
+      ...record,
+      units: [1] as unknown as Record<string, number>,
+    });
+
+    await expect(store.compoundClaimAndCapacity(value, {
+      authenticated_presenter: value.audience,
+    })).rejects.toThrow(/malformed record/);
   });
 
   it('atomically finalizes a follow-up and keeps only the exact resulting capacity', async () => {
@@ -116,7 +306,13 @@ describe('AE-CHALLENGE authoritative owner contract', () => {
     })).rejects.toThrow(/changed the bound action/);
     await expect(store.finalizeReservation(claimed.reservation, {
       outcome: 'missing_evidence',
-      followup: { ...followup, required_evidence: [{ type: 'only-new-evidence' }] },
+      followup: {
+        ...followup,
+        required_evidence: [{
+          requirement_id: 'only-new-evidence',
+          type: 'https://example.net/evidence/only-new-evidence',
+        }],
+      },
     })).rejects.toThrow(/changed the bound action/);
     await expect(store.finalizeReservation(claimed.reservation, {
       outcome: 'missing_evidence',

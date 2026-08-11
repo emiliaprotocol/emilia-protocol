@@ -1169,7 +1169,7 @@
     },
     {
       "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
-      "statement": "An AE-CHALLENGE binds the canonical action and governing policy and is exposed only after owner-side registration of its exact body and applicable capacity. The -07 reference owner uses one transaction for authoritative expiry, nonce claim, every applicable cap bucket, and an opaque generation-bound reservation. It atomically finalizes a terminal result or fresh follow-up, and deadline-gated authorized recovery fences the old worker. Production refuses copied stores and caller-declared capability booleans.",
+      "statement": "An AE-CHALLENGE binds the canonical action and governing policy and is exposed only after owner-side registration of its exact body and applicable capacity. The -07 reference owner validates its decoded wire object before state allocation, pins issuance identities and capacity scope, and uses one transaction for authoritative expiry, nonce claim, every applicable cap bucket, and an opaque generation-bound reservation. Owner time also controls native evidence freshness. It atomically finalizes a terminal result or fresh follow-up, and deadline-gated authorized recovery fences the old worker. Production refuses copied stores, caller-declared capability booleans, and caller-selected follow-up nonces.",
       "acceptance_roots": ["one shared transactional owner backend spanning every applicable replay and capacity row", "a constructor-pinned issuer identity, capacity policy, and recovery authorizer", "PostgreSQL transaction time and row-lock behavior match the documented backend contract"],
       "enforcement_path": [
         { "language": "javascript", "file": "lib/negotiate/evidence-challenge.ts", "symbol": "createRegisteredEvidenceChallenge", "exported": true },
@@ -1203,11 +1203,17 @@
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "refuses policy drift without consuming the registered challenge", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "propagates backend outage without an in-memory fallback", "runner": "vitest" },
         { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "claims one duplicate, reports the other as replay, and debits once", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "preserves replay and capacity invariants across randomized bucket sets", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "rejects nonconforming wire bodies before allocating replay or capacity state", "runner": "vitest" },
         { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "leaves the nonce open and all counters unchanged when reservation capacity is full", "runner": "vitest" },
         { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "atomically finalizes a follow-up and keeps only the exact resulting capacity", "runner": "vitest" },
         { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "refuses a follow-up that changes the owner-bound action or complete requirement set", "runner": "vitest" },
         { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "fences a stale worker after deadline-gated recovery", "runner": "vitest" },
-        { "file": "tests/evidence-challenge-owner-postgres.test.ts", "title": "reports schema readiness and executes issue, claim, and fenced finalization", "runner": "vitest" }
+        { "file": "tests/evidence-challenge-owner-postgres.test.ts", "title": "reports schema readiness and executes issue, claim, and fenced finalization", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-owner-postgres.test.ts", "title": "does not depend on JavaScript and PostgreSQL using the same collation order", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-07-redteam.test.ts", "title": "uses authoritative owner time, not caller time, for evidence freshness", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-07-redteam.test.ts", "title": "rejects a caller-selected production follow-up nonce before claiming owner state", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-07-redteam.test.ts", "title": "terminalizes owner state when a local follow-up configuration is malformed", "runner": "vitest" }
       ],
       "formal": [
         {
@@ -1286,16 +1292,16 @@
         },
         {
           "status": "not_modeled",
-          "gap": "The -07 compound claim, reservation, finalization, and recovery path has same-team executable contract tests and a finite scenario harness with mutation counterexamples, but no exhaustive formal verification, storage-driver refinement, or independent implementation; it is therefore not counted as formal evidence."
+          "gap": "The -07 compound claim, pinned-scope reservation, finalization, and recovery path has same-team executable contract tests, randomized property checks, and a finite scenario harness with mutation counterexamples, but no exhaustive formal verification, storage-driver refinement, or independent implementation; it is therefore not counted as formal evidence."
         }
       ],
       "operational_evidence": [
-        { "file": "formal/evidence-challenge-claim-capacity.model.mjs", "contains": ["EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v2", "StatefulDebitTransfersWithoutDoubleCount", "ReplayKeyTupleIsUnambiguous"] },
-        { "file": "formal/check-evidence-challenge-claim-capacity.mjs", "contains": ["finite_scenario_enumeration_with_mutation_counterexamples", "states_checked: states + 16"] },
-        { "file": "formal/results/evidence-challenge-claim-capacity.summary.txt", "contains": ["Checked finite scenarios: 113.", "Checked properties, not proved obligations:", "same-team reference owner state"] }
+        { "file": "formal/evidence-challenge-claim-capacity.model.mjs", "contains": ["EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v3", "StatefulDebitTransfersWithoutDoubleCount", "PinnedScopedDebitSurvivesClaim", "ReplayKeyTupleIsUnambiguous"] },
+        { "file": "formal/check-evidence-challenge-claim-capacity.mjs", "contains": ["finite_scenario_enumeration_with_mutation_counterexamples", "states_checked: states + 17"] },
+        { "file": "formal/results/evidence-challenge-claim-capacity.summary.txt", "contains": ["Checked finite scenarios: 114.", "Checked properties, not proved obligations:", "same-team reference owner state"] }
       ],
-      "assumptions": ["the PostgreSQL service runs the documented operations on one transaction-capable primary or equivalently linearizable owner", "the challenge-owner backend is shared by all relying-party workers in one authority domain", "the constructor-pinned capacity policy names every applicable bucket and stable issuer/audience/tenant identity", "database roles restrict recovery to the locally authorized operator path"],
-      "exclusions": ["the legacy Set-based evaluator remains only for compatibility and is not a durable production path", "the split durable classify-then-consume compatibility path is not production -07 claim-and-capacity conformance", "the same-team PostgreSQL adapter tests are not a deployed database audit, isolation proof, or independent implementation", "the reference owner currently implements stateful issuance and does not claim the optional self-describing issuance mode"],
+      "assumptions": ["the PostgreSQL service runs the documented operations on one transaction-capable primary or equivalently linearizable owner", "the challenge-owner backend is shared by all relying-party workers in one authority domain", "the constructor-pinned capacity policy names every applicable bucket and stable issuer/audience/tenant identity", "the carrier applies bounded raw-message parsing and duplicate-member rejection before calling the decoded-object helpers", "database roles restrict recovery to the locally authorized operator path"],
+      "exclusions": ["the legacy Set-based evaluator remains only for compatibility and is not a durable production path", "the split durable classify-then-consume compatibility path is not production -07 claim-and-capacity conformance", "the decoded-object helpers do not detect duplicate members already collapsed by an ordinary JSON parser", "the same-team PostgreSQL adapter tests are not a deployed database audit, isolation proof, privilege review, or independent implementation", "the reference owner does not include an expiry collector or authenticated audience-alias resolver", "the reference owner currently implements stateful issuance and does not claim the optional self-describing issuance mode"],
       "release_artifacts": ["gate-sdk", "security-evidence"]
     },
     {

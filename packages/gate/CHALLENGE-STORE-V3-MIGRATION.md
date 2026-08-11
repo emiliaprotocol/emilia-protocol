@@ -27,3 +27,20 @@ it.
 The package provides no generic migration because the minimal backend contract
 does not expose record enumeration or a multi-key transaction. A deployment
 must prove its backend-specific migration or use the drain procedure above.
+
+## Authoritative owner record v2
+
+The unpublished `EP-AE-CHALLENGE-OWNER-v1` prototype recomputed capacity
+buckets from mutable call context. `EP-AE-CHALLENGE-OWNER-v2` instead stores an
+`EP-AE-CHALLENGE-OWNER-RECORD-v2` record containing the issuance debit, pinned
+bucket limits, and the authenticated presenter identity. Claim and finalization
+lock the union of those stored buckets and any newly applicable buckets. They
+never infer the issuance presenter from the challenge's audience string.
+
+The v2 owner rejects v1 record JSON. Because v1 was never a published wire or
+storage format, the supported upgrade is to stop issuance, drain every v1
+challenge and reservation, remove the prototype owner records and counters
+under an operator-reviewed transaction, then enable the v2 owner. A deployment
+that has retained v1 records MUST NOT rewrite them in place without proving
+that each original authenticated presenter and capacity bucket can be
+reconstructed unambiguously.

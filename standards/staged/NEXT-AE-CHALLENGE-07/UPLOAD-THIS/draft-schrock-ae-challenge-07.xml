@@ -154,7 +154,7 @@
 {
   "@version": "AE-CHALLENGE-v1",
   "challenge_id": "7a3120d1-65b4-4d1a-85d4-9128adf76b41",
-  "nonce": "a4f279a26bf64b0e96aa9081ee8ec94b",
+  "nonce": "ABEiM0RVZneImaq7zN3u_w",
   "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "action_profile": "https://example.net/action/payment-v3",
   "audience": "https://gateway-a.example",
@@ -271,6 +271,11 @@
 	        use those pinned procedures. A transport reserialization, member-order
 	        change, non-JSON mapping, or mutable local configuration MUST NOT
 	        silently switch digest or canonicalization procedures.</t>
+	        <t>The reference HTTP helpers consume already decoded objects. They
+	        begin only after the carrier has applied a bounded raw-message parser
+	        and duplicate-member detection. Those helpers are not evidence that an
+	        ordinary JSON parser supplied by a generic HTTP framework satisfies
+	        these requirements.</t>
         <t>Self-describing issuance can avoid retaining one record for every
         unanswered challenge. It does not remove single-use state. On the
 	        first returned presentation, the relying party still MUST claim the
@@ -385,6 +390,15 @@
         <tt>current</tt> requires a separately authenticated status result
         satisfying the relying party's freshness policy; it does not mean
         that absence from an unauthenticated revocation list is sufficient.</t>
+	        <t>The evaluation-time source used for <tt>max_age_sec</tt>, status
+	        freshness, and policy replay MUST be selected by the relying party or
+	        its authoritative owner. A presenter, verifier worker, request field,
+	        or caller-supplied replay timestamp MUST NOT move that time backward
+	        or otherwise make stale evidence appear fresh. A binding or profile
+	        MUST define the trustworthy time source and the instant at which the
+	        evaluation snapshot is taken. An implementation using the owner-side
+	        transition in <xref target="state-bounds"/> can use the authoritative
+	        transaction time returned by the successful claim as that snapshot.</t>
         <t><tt>present_as</tt> lists alternative presentation profiles. The
         order expresses the relying party's preference, not a security
         ranking. Supporting a presentation profile does not imply support for
@@ -642,8 +656,12 @@
 	        authoritative owner, an implementation MUST apply a separate finite
 	        anti-abuse budget appropriate to the authenticated requester, source,
 	        tenant, or deployment. That budget covers parsing, authentication,
-	        owner routing, and issuance work that the replay-state cap cannot
-	        protect. Exhausting it produces a generic refusal, rate-limit response,
+	        owner routing, initial native evidence or policy evaluation used to
+	        decide whether a challenge is needed, and issuance work that the
+	        replay-state cap cannot protect. If the implementation already knows
+	        that its replay-state bound is exhausted, it MUST take the generic
+	        refusal or overload path before starting such native evidence or policy
+	        work. Exhausting the separate budget produces a generic refusal, rate-limit response,
 	        or temporary-overload response without a challenge body.</t>
 	        <t>For a returned presentation, the authoritative owner MUST perform
 	        nonce claim and refusal-path capacity reservation as one indivisible
@@ -697,7 +715,14 @@
 	        transaction. Only the positive incremental delta between that debit and
 	        the conservative in-flight reservation is added to each applicable cap
 	        bucket. The existing debit MUST NOT be lost, counted twice, or released
-	        before replacement state is secured. For self-describing issuance, the
+	        before replacement state is secured. The issuance transition MUST pin
+	        the authenticated identities, bucket keys, and bucket limits that
+	        produced that debit. Claim and finalization MUST lock and preserve those
+	        stored buckets; they MUST NOT recompute and replace them from a mutable
+	        audience alias, directory result, or caller context. Newly applicable
+	        buckets, such as an authenticated presenter bucket first available on
+	        return, are added to the pinned issuance vector in the same transition.
+	        For self-describing issuance, the
 	        transition creates the first replay record and reservation together.
 	        The reservation covers the maximum additional state, including a
 	        follow-up challenge where supported. Finalization atomically commits the
@@ -766,6 +791,12 @@
 	            outstanding debit and adds only the positive incremental delta; it
 	            neither double-counts the old debit nor refuses a zero-increment
 	            transfer merely because the bucket is at its cap.</li>
+	            <li>When issuance and return use different capacity dimensions,
+	            such as an audience alias at issuance and a stable authenticated
+	            presenter at return, claim and finalization preserve the pinned
+	            issuance debit and add the presenter debit atomically. They do not
+	            drop the old scope, update an unlocked bucket, or recompute a
+	            stored limit.</li>
 	            <li>Two owner shards cannot each reserve against one shared global
 	            slot. The case passes only with one coordinating transaction or
 	            preallocated quotas whose live sum is bounded by the global cap.</li>
@@ -776,6 +807,13 @@
             an already-claimed result reports replay. The same front end, given
             an owner timeout, partition, or uncertain response, reports
             unavailability and does not report replay or evaluate evidence.</li>
+	            <li>A caller-supplied old timestamp cannot make stale evidence
+	            fresh. The replay record and freshness verdict use the trustworthy
+	            evaluation-time source defined by the binding or profile.</li>
+	            <li>A challenge containing a relative evidence type, presentation
+	            profile, or proof-predicate identifier, a duplicate requirement
+	            identifier, an unknown nested core member, or an unsatisfiable retry
+	            window is rejected before replay or capacity state is allocated.</li>
             <li>Allocating a new challenge never evicts an in-flight or
             unexpired consumed nonce.</li>
           </ul>
@@ -784,19 +822,40 @@
           <name>Reference Evidence Boundary</name>
           <t>The same-team TypeScript reference includes an owner state machine
           and a PostgreSQL transaction backend for the stateful path above. The
-          owner store registers issuance with capacity before exposure, uses
-          PostgreSQL transaction time for expiry and recovery, locks replay and
+          owner store registers issuance with capacity before exposure, stores
+          the issuance debit, bucket limits, and authenticated presenter instead
+          of recomputing them from the audience, uses PostgreSQL transaction time
+          for expiry, evidence-freshness evaluation, and recovery, locks replay and
           capacity rows, returns an opaque generation-bound reservation, and
           atomically finalizes a terminal result or a fresh follow-up. Recovery
           is deadline-gated, requires a constructor-pinned local authorizer, and
           replaces the reservation generation so an old token cannot finalize.
           The production evaluator accepts only the owner-store object created
           by that factory; copied objects and caller-declared capability flags
-          are refused.</t>
+          are refused. Capacity-row validation does not assume that JavaScript
+          and PostgreSQL use the same collation. Caller-selected production
+          follow-up nonces are rejected before claim, and a local follow-up
+          construction failure triggers terminal finalization without exposing
+          replacement state. If that finalization is uncertain, the evaluator
+          returns unavailability rather than claiming terminal state.</t>
+          <t>The reference owner rejects a challenge larger than 65536 UTF-8
+          octets, more than 64 evidence requirements or obtain hints, more than
+          16 presentation or per-requirement profile identifiers, or more than
+          32 proof-predicate or critical identifiers. It also rejects relative
+          security identifiers, duplicate requirement identifiers, unknown
+          nested core members, non-canonical durable nonces, and invalid retry
+          windows before allocating state. Local evidence-type tokens are mapped
+          to exact absolute URIs under <tt>https://emiliaprotocol.ai/ns/</tt> for
+          its experimental profile; consumers use the complete URI and do not
+          infer semantics from that prefix. If authenticated live policy changes,
+          the reference starts a fresh interaction rather than treating old
+          verification work as a continuation.</t>
           <t>Executable tests cover duplicate claim, capacity refusal without
-          nonce burn, authoritative expiry, terminal release of unused capacity,
+          nonce burn, authoritative expiry and freshness time, terminal release of unused capacity,
           atomic follow-up creation, stale-worker fencing, and the PostgreSQL
-          transaction adapter. A separate finite same-team harness checks 113
+          transaction adapter. They also exercise profile-native verification
+          through the Model-to-Matter path using owner-supplied time. A separate
+          finite same-team harness checks 114
           small scenarios and exposes unsafe mutations. Neither artifact is an
           independent implementation, a deployment audit, a proof of PostgreSQL
           isolation, or a mechanized refinement proof. Deployments remain
@@ -906,7 +965,7 @@ Retry-After: 30
   "evidence_challenge": {
     "@version": "AE-CHALLENGE-v1",
     "challenge_id": "7a3120d1-65b4-4d1a-85d4-9128adf76b41",
-    "nonce": "a4f279a26bf64b0e96aa9081ee8ec94b",
+    "nonce": "ABEiM0RVZneImaq7zN3u_w",
     "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "action_profile": "https://example.net/action/payment-v3",
     "audience": "https://agent.example",
@@ -1093,8 +1152,11 @@ Retry-After: 30
 	      <t><strong>Parser and pre-claim work amplification.</strong> State caps
 	      apply only at the owner-side transition. They do not protect an unbounded
 	      JSON parser, duplicate-member ambiguity, canonicalization, envelope
-	      verification, or action derivation. Finite pre-cryptographic limits and
-	      duplicate-member refusal are therefore independent requirements.</t>
+	      verification, action derivation, or an initial evidence evaluation used
+	      to decide whether to issue a challenge. Finite pre-cryptographic limits,
+	      duplicate-member refusal, and a separate pre-owner computation budget are
+	      therefore independent requirements. A known-exhausted replay-state bound
+	      is handled before starting optional native verification.</t>
       <t><strong>Retry synchronization and load amplification.</strong> A
       precise challenge tells a presenter how to correct a request, so a
       population receiving similar refusals can retry in a synchronized burst.
@@ -1199,7 +1261,8 @@ Retry-After: 30
 	        cross-shard cap over-allocation, and stale-worker finalization through
 	        coordinated cap buckets, conservative reservations, and fencing.</li>
 	        <li>Adds a same-team transactional owner implementation and PostgreSQL
-	        backend with authoritative database time, atomic follow-up
+	        backend with authoritative database time for expiry and evidence
+	        freshness, pinned issuance and presenter capacity vectors, atomic follow-up
 	        finalization, deadline-gated authorized recovery, and executable
 	        contract tests; bounded model results remain explicitly non-proof
 	        evidence.</li>
@@ -1213,6 +1276,9 @@ Retry-After: 30
 	        bounds, explicit conjunction and alternative rules for evidence
 	        requirements, hint SSRF protections, and satisfiable retry-window
 	        rules.</li>
+	        <li>Aligns the reference wire with the core's absolute-URI rules,
+	        rejects malformed nested challenge objects before state allocation,
+	        and prevents a caller-selected timestamp from freshening evidence.</li>
 	        <li>Requires follow-ups to use the current exact action and live policy,
 	        repeats the complete evidence requirement set unless an explicit
 	        authenticated continuation profile binds prior evidence and state, and

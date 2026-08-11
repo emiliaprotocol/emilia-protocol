@@ -81,6 +81,49 @@ artifact.
 26. The lifecycle model represented durability but not the concrete
     authoritative-owner boundary. It now varies that property explicitly and
     the runtime bridge refuses an unbranded production store.
+27. Issuance used the challenge audience as though it were an authenticated
+    presenter, while claim used the actual presenter. A scoped capacity policy
+    could therefore lock one bucket set while updating another. Owner record v2
+    now stores the authenticated presenter, issuance debit, and bucket limits,
+    locks their union, and preserves the original scope through finalization.
+28. Production evidence freshness used caller-supplied `as_of`. A caller could
+    move evaluation backward and freshen stale evidence. The successful owner
+    claim now returns authoritative transaction time, and production policy
+    replay uses that time instead.
+29. The runtime emitted relative evidence and presentation identifiers while
+    the draft required absolute URIs. The reference now emits exact absolute
+    identifiers and keeps the internal policy token in `requirement_id`.
+30. The public owner accepted only a version, identifier, and nonce before
+    allocating state. It now rejects malformed digests, relative security
+    identifiers, duplicate requirements, unknown nested members, bad retry
+    windows, non-canonical data, and over-limit bodies before capacity changes.
+31. The pre-owner budget did not explicitly cover an initial evidence
+    evaluation used to decide whether to issue a challenge. The text now does,
+    and requires a known-exhausted replay-state bound to win before optional
+    native verification starts.
+32. Model-to-Matter constructed native verifiers around caller time before the
+    owner claim. A caller could therefore keep native evidence current while
+    the generic replay record claimed owner time. Production verifier factories
+    now run only after the owner returns its authoritative evaluation instant.
+33. Capacity arithmetic read inherited JavaScript object properties. A valid
+    constructor-pinned bucket named `constructor` or `toString` could therefore
+    fail or corrupt arithmetic. Every vector lookup now uses own properties,
+    and malformed non-record vectors from storage fail closed.
+34. The object-level reference helpers cannot detect duplicate JSON members
+    after a generic framework parser has collapsed them. The draft now states
+    the raw-carrier boundary explicitly: bounded parsing and duplicate-member
+    rejection happen before those helpers. This is a deployment obligation,
+    not a property claimed by the object-level tests.
+35. The PostgreSQL adapter compared database row order with JavaScript locale
+    order. A collation difference could fail a valid capacity transaction. The
+    adapter now uses deterministic bytewise client ordering for writes and
+    validates locked rows as an exact key-to-limit set, independent of return
+    order.
+36. Caller-selected follow-up state could be rejected only after the owner had
+    claimed the nonce, and a malformed follow-up could strand its reservation.
+    Production caller nonces are now refused before claim. Follow-up
+    construction failure terminalizes the existing reservation without issuing
+    replacement state; an uncertain finalization remains unavailable.
 
 ## Runtime defects caught and bounded
 
@@ -107,7 +150,7 @@ artifact.
 The repaired stateful reference is same-team executable evidence. Its
 PostgreSQL adapter has transaction-contract tests, not a live database
 isolation audit or a production role and privilege review. The finite
-claim-and-capacity harness checks 113 small scenarios and unsafe mutations; it
+claim-and-capacity harness checks 114 small scenarios and unsafe mutations; it
 does not claim exhaustive verification, arbitrary-shard conservation, crash
 refinement, or database correctness. The older lifecycle checker is also a
 bounded abstraction, and its owner field is tied to runtime tests rather than

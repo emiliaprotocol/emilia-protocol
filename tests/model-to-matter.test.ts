@@ -36,7 +36,11 @@ import {
   observedEffectsDigest,
 } from '../packages/verify/index.js';
 import { predictedEffectsDigest } from '../packages/verify/effect-predicates.js';
-import { createDurableChallengeStore } from '../packages/gate/challenge-store.js';
+import {
+  createAuthoritativeChallengeOwnerStore,
+  createDurableChallengeStore,
+  createMemoryChallengeOwnerBackend,
+} from '../packages/gate/challenge-store.js';
 import { createDurableConsumptionStore, createMemoryBackend } from '../packages/gate/store.js';
 import { artifactDigest } from '../lib/evidence/evidence-graph.js';
 
@@ -439,7 +443,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const challenge = await createRegisteredModelToMatterChallenge(a, profile(), {
       challengeStore: store(), expires_at: CHALLENGE_EXPIRES, nonce: challengeNonce('m2m-required-evidence'),
     });
-    expect(challenge.required_evidence.map((item) => item.type)).toEqual(M2M_EVIDENCE_TYPES);
+    expect(challenge.required_evidence.map((item) => item.requirement_id)).toEqual(M2M_EVIDENCE_TYPES);
     expect(challenge.action_digest).toBe(modelToMatterActionDigest(a));
   });
 
@@ -473,6 +477,47 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     expect(results[0]['@version']).toBe(M2M_CLEARANCE_VERSION);
     expect(new Set(results.map((result) => result.action_caid)))
       .toEqual(new Set([modelToMatterCaid(a).caid]));
+  });
+
+  it('uses owner time inside native evidence verifiers in the production path', async () => {
+    const ownerNow = Date.parse('2026-07-11T16:11:00Z');
+    const backend = createMemoryChallengeOwnerBackend({ now: () => ownerNow });
+    const owner = createAuthoritativeChallengeOwnerStore(
+      { ...backend, durable: true },
+      {
+        issuerIdentity: 'https://m2m-owner.example',
+        capacityPolicy: () => [{ key: 'aggregate', limit: 8 }],
+        recoveryAuthorizer: () => false,
+      },
+    );
+    const a = action();
+    const p = profile();
+    const presenter = 'https://m2m-presenter.example';
+    const challenge = await createRegisteredModelToMatterChallenge(a, p, {
+      challengeStore: owner,
+      expires_at: '2026-07-11T16:20:00Z',
+      audience: presenter,
+      authenticated_presenter: presenter,
+      production: true,
+    });
+
+    const result = await evaluateRegisteredModelToMatterPresentation({
+      action: a,
+      challenge,
+      graph: buildModelToMatterGraph(a, evidenceSet(a)),
+      profile: p,
+      // A caller-selected old time would keep the evidence inside its window.
+      as_of: NOW,
+      challengeStore: owner,
+      clearanceStore: actionStore(),
+      revokedEvidenceDigests: new Set(),
+      retiredPhysicalMeasurementDigests: new Set(),
+      authenticated_presenter: presenter,
+      production: true,
+    });
+
+    expect(result.verdict).not.toBe('clear_to_execute');
+    expect(result.base_verdict).toBe('unverifiable');
   });
 
   it('admits at most one clearance across distinct challenges for the same action', async () => {
@@ -587,7 +632,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
       retiredPhysicalMeasurementDigests: new Set(),
     });
     expect(result.verdict).toBe('do_not_execute_missing_evidence');
-    expect(result.next_challenge.required_evidence.map((item) => item.type))
+    expect(result.next_challenge.required_evidence.map((item) => item.requirement_id))
       .toEqual(M2M_EVIDENCE_TYPES);
   });
 

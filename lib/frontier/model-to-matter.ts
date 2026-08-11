@@ -1104,14 +1104,17 @@ export async function evaluateRegisteredModelToMatterPresentation(input: any = {
       profile,
       {
         challengeStore: input.challengeStore,
-        verifiers: graphVerifiers(
+        verifierFactory: ({ as_of }) => graphVerifiers(
           action,
           profile,
-          input.as_of,
+          as_of,
           revokedEvidenceDigests,
           retiredPhysicalMeasurementDigests,
         ),
         as_of: input.as_of,
+        production: input.production === true,
+        authenticated_presenter: input.authenticated_presenter,
+        current_action: action,
         nonce: input.next_nonce,
         next_expires_at: input.next_expires_at,
       },

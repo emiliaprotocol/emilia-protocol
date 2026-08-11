@@ -419,11 +419,11 @@
     },
     {
       "path": "lib/frontier/model-to-matter.js",
-      "sha256": "64c5470a4c1551c87b2c780e62e71d5388c20bc4a77bf7c8b1cd88b6d4b60945"
+      "sha256": "c7bee2cccb30a65df102ab04b57db36f341baac6ba59da14978730056b6c43d3"
     },
     {
       "path": "lib/frontier/model-to-matter.ts",
-      "sha256": "e6dccaee8130401b12b92944991ae350001519a02d2650b5b5ce6dc91cfc58bc"
+      "sha256": "f83897cff564b3bd3d2c7f1bd669c6a4f847d9a1e57fd09239381bca40c8a6c1"
     },
     {
       "path": "lib/grace/curtailment.js",
@@ -483,11 +483,11 @@
     },
     {
       "path": "lib/negotiate/evidence-challenge.js",
-      "sha256": "3acab90baf1ea8ab77126d0971c3e2e3c558d661a10387b3b61ec4a2210be6f0"
+      "sha256": "11c71d13eac0345f276409488226e56b0ebe32f7d1faae6492d8ae34e5fbd589"
     },
     {
       "path": "lib/negotiate/evidence-challenge.ts",
-      "sha256": "a66e7e534effb9115032d2b5c384c4586bae9d1ba497ecb08d5d798676b71d90"
+      "sha256": "9f8097a43c06cbeb09b230b1c1835ece229c5a8a9deed6ed31184aeea4d4afaa"
     },
     {
       "path": "lib/strict-json.js",
@@ -607,11 +607,11 @@
     },
     {
       "path": "packages/gate/dist/challenge-store-postgres.js",
-      "sha256": "807340e173e4a2f7d42b703c67d80c07ecd4db6b32014b071983cca4ba7d97c5"
+      "sha256": "0f71daa30bd228faeeffeb0526da5b0d338eb35100a60f452cd7826c58bfdb84"
     },
     {
       "path": "packages/gate/dist/challenge-store.js",
-      "sha256": "dcdcd99c4ef2f18b24b5dd561b3cb96c7122feb4102b27fe94d35ac0057dcca9"
+      "sha256": "bf374d6dd61d71e53d17114486981eee4e00acf506f0dd38203b411c8788a11e"
     },
     {
       "path": "packages/gate/dist/consequence-actuator.js",
@@ -835,7 +835,7 @@
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
-      "sha256": "ed3450a9dfaf7ef8463ca58e74cfd0d70a7bf4587c1091db8ab6fc09477196b5"
+      "sha256": "1b777253b0d28bcd988eaa555d744bf176b53046bda77362189071f888865240"
     },
     {
       "path": "packages/gate/src/consequence-actuator.ts",

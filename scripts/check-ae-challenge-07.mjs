@@ -74,6 +74,17 @@ for (const required of [
   'Only the positive incremental delta',
   'zero-increment transfer',
   'separate finite anti-abuse budget',
+  'initial native evidence or policy evaluation used to decide whether a challenge is needed',
+  'caller-supplied replay timestamp MUST NOT move that time backward',
+  'reference HTTP helpers consume already decoded objects',
+  'bounded raw-message parser',
+  'ordinary JSON parser supplied by a generic HTTP framework',
+  'Capacity-row validation does not assume that JavaScript and PostgreSQL use the same collation',
+  'Caller-selected production follow-up nonces are rejected before claim',
+  'follow-up construction failure triggers terminal finalization',
+  'returns unavailability rather than claiming terminal state',
+  'MUST pin the authenticated identities, bucket keys, and bucket limits',
+  'https://emiliaprotocol.ai/ns/',
   'reduces the value of exhaustion handling as a policy-discovery oracle',
   'Detailed diagnostics are limited to authenticated and locally authorized operational channels',
   'Digests do not make low-entropy values secret',
@@ -128,6 +139,8 @@ for (const required of [
   'positive incremental delta',
   'zero-increment transfer',
   'separate finite anti-abuse budget',
+  'caller-supplied replay timestamp MUST NOT move that time backward',
+  'bucket keys, and bucket limits',
   'reduces the value',
   'Digests do not make low-entropy values secret',
   'claimed-with-capacity',
@@ -171,6 +184,10 @@ for (const required of [
   'production challenge nonces are generated internally',
   'authenticated presenter is required for production evaluation',
   "challenge.present_as.includes(CHALLENGE_PRESENTATION_METHOD)",
+  "CHALLENGE_PRESENTATION_METHOD = 'https://emiliaprotocol.ai/profiles/ep-aec-v1'",
+  'authoritativeInstant(transition.authoritative_at_ms)',
+  'verifierFactory',
+  "outcome: 'followup_construction_error'",
   "verdict: 'unavailable'",
   "state_changed: 'unknown'",
 ]) invariant(implementation.includes(required), `runtime hardening is missing: ${required}`);
@@ -186,6 +203,22 @@ for (const required of [
   "verdict: 'unavailable'",
 ]) invariant(generatedImplementation.includes(required), `generated runtime is stale: ${required}`);
 invariant(!implementation.includes('compoundClaimAndCapacity: true'), 'a boolean capability must not impersonate the compound transition');
+const productionEvaluation = implementation.slice(
+  implementation.indexOf('export async function evaluateRegisteredPresentation'),
+);
+invariant(
+  productionEvaluation.indexOf('production follow-up nonces are generated internally')
+    < productionEvaluation.indexOf('store.compoundClaimAndCapacity(challenge'),
+  'production caller nonce guard must run before the authoritative claim',
+);
+
+const modelToMatter = readFileSync(new URL('../lib/frontier/model-to-matter.ts', import.meta.url), 'utf8');
+for (const required of [
+  'verifierFactory:',
+  'production: input.production === true',
+  'authenticated_presenter: input.authenticated_presenter',
+  'current_action: action',
+]) invariant(modelToMatter.includes(required), `Model-to-Matter owner-time propagation is missing: ${required}`);
 
 const challengeStore = readFileSync(new URL('../packages/gate/src/challenge-store.ts', import.meta.url), 'utf8');
 for (const required of [
@@ -197,7 +230,8 @@ for (const required of [
   'challenge-consumed:v3:',
   "'open-body-collision'",
   "'claimed-body-collision'",
-  "AUTHORITATIVE_CHALLENGE_OWNER_VERSION = 'EP-AE-CHALLENGE-OWNER-v1'",
+  "AUTHORITATIVE_CHALLENGE_OWNER_VERSION = 'EP-AE-CHALLENGE-OWNER-v2'",
+  "AUTHORITATIVE_CHALLENGE_RECORD_VERSION = 'EP-AE-CHALLENGE-OWNER-RECORD-v2'",
   'new WeakSet<object>()',
   'createAuthoritativeChallengeOwnerStore',
   'authoritativeNowMs',
@@ -205,6 +239,9 @@ for (const required of [
   'finalizeReservation',
   'recoverReservation',
   'recoveryAuthorizer',
+  'retained_units',
+  'capacity_limits',
+  'assertAuthoritativeChallenge',
 ]) invariant(challengeStore.includes(required), `challenge store hardening is missing: ${required}`);
 
 const postgresOwner = readFileSync(new URL('../packages/gate/src/challenge-store-postgres.ts', import.meta.url), 'utf8');
@@ -214,7 +251,10 @@ for (const required of [
   'ORDER BY bucket_key FOR UPDATE',
   'BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE',
   'createPostgresChallengeOwnerBackend',
+  'Object.create(null)',
+  'expected.has(row.bucket_key)',
 ]) invariant(postgresOwner.includes(required), `PostgreSQL owner contract is missing: ${required}`);
+invariant(!postgresOwner.includes('localeCompare'), 'PostgreSQL owner must not depend on process locale ordering');
 
 const migration = readFileSync(new URL('../packages/gate/CHALLENGE-STORE-V3-MIGRATION.md', import.meta.url), 'utf8');
 for (const required of [
@@ -222,14 +262,17 @@ for (const required of [
   'wait until every v2 challenge has expired',
   'backend-specific atomic migration',
   'leaves v3 issuance disabled',
+  'EP-AE-CHALLENGE-OWNER-v2',
+  'never infer the issuance presenter from the challenge',
 ]) invariant(migration.includes(required), `v3 migration guidance is missing: ${required}`);
 
 const model = readFileSync(new URL('../formal/evidence-challenge-claim-capacity.model.mjs', import.meta.url), 'utf8');
 for (const required of [
-  'BOUNDED-MODEL-v2',
+  'BOUNDED-MODEL-v3',
   'CAP_BUCKETS',
   'registerOutstanding',
   'positive incremental delta',
+  'PinnedScopedDebitSurvivesClaim',
   'JSON.stringify([issuer, nonce])',
   'owner_token,',
   'CHECKED_PROPERTIES',

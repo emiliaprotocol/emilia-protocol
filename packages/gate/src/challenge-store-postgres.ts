@@ -82,6 +82,10 @@ function exactOne(result: QueryResult, operation: string) {
   return result.rows[0];
 }
 
+function compareCapacityKeys(left: string, right: string) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function ownerId(value: unknown) {
   if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') < 1
       || Buffer.byteLength(value, 'utf8') > 512 || /[\u0000-\u001f\u007f]/.test(value)) {
@@ -182,7 +186,7 @@ export function createPostgresChallengeOwnerBackend({
           }
         },
         async lockCapacity(buckets: ChallengeCapacityBucket[]) {
-          const sorted = [...buckets].sort((a, b) => a.key.localeCompare(b.key));
+          const sorted = [...buckets].sort((a, b) => compareCapacityKeys(a.key, b.key));
           for (const bucket of sorted) {
             const result = await client.query(AE_CHALLENGE_POSTGRES_SQL.ensureCapacity, [owner, bucket.key, bucket.limit]);
             if (!result || typeof result.rowCount !== 'number') {
@@ -194,20 +198,25 @@ export function createPostgresChallengeOwnerBackend({
               || result.rows.length !== sorted.length) {
             throw new Error('AE challenge PostgreSQL capacity lock is incomplete');
           }
-          const rows: Record<string, { used: number; limit: number }> = {};
-          for (const [index, row] of result.rows.entries()) {
+          const expected = new Map(sorted.map(({ key, limit }) => [key, limit]));
+          const rows: Record<string, { used: number; limit: number }> = Object.create(null);
+          for (const row of result.rows) {
             const used = typeof row.used_units === 'string' ? Number(row.used_units) : row.used_units;
             const limit = typeof row.hard_limit === 'string' ? Number(row.hard_limit) : row.hard_limit;
-            if (row.bucket_key !== sorted[index].key || limit !== sorted[index].limit
+            if (typeof row.bucket_key !== 'string' || !expected.has(row.bucket_key)
+                || Object.hasOwn(rows, row.bucket_key) || limit !== expected.get(row.bucket_key)
                 || !Number.isSafeInteger(used) || used < 0 || !Number.isSafeInteger(limit) || limit < 1) {
               throw new Error('AE challenge PostgreSQL capacity row violates the pinned policy');
             }
             rows[row.bucket_key] = { used, limit };
           }
+          if (Object.keys(rows).length !== sorted.length) {
+            throw new Error('AE challenge PostgreSQL capacity lock omitted a pinned bucket');
+          }
           return rows;
         },
         async writeCapacity(used) {
-          for (const [key, value] of Object.entries(used).sort(([a], [b]) => a.localeCompare(b))) {
+          for (const [key, value] of Object.entries(used).sort(([a], [b]) => compareCapacityKeys(a, b))) {
             const result = await client.query(AE_CHALLENGE_POSTGRES_SQL.writeCapacity, [owner, key, value]);
             if (!result || result.rowCount !== 1) {
               throw new Error('AE challenge PostgreSQL capacity update lost its row lock or exceeded its cap');

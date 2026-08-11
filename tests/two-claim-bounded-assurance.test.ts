@@ -190,15 +190,15 @@ describe("bounded assurance closure for exactly two claims", () => {
     expect(projection.challenge.required_evidence).toEqual([
       {
         requirement_id: "authorization_receipt",
-        type: "authorization_receipt",
+        type: "https://emiliaprotocol.ai/ns/evidence-type/authorization_receipt",
         max_age_sec: 300,
-        profiles: ["EP-TRUST-RECEIPT-v1"],
+        profiles: ["https://emiliaprotocol.ai/ns/evidence-profile/EP-TRUST-RECEIPT-v1"],
       },
       {
         requirement_id: "workload_identity",
-        type: "workload_identity",
+        type: "https://emiliaprotocol.ai/ns/evidence-type/workload_identity",
         max_age_sec: 60,
-        profiles: ["EP-WORKLOAD-IDENTITY-v1"],
+        profiles: ["https://emiliaprotocol.ai/ns/evidence-profile/EP-WORKLOAD-IDENTITY-v1"],
       },
     ]);
     expect(projection.challenge.policy_id).toBe(policy.policy_id);
@@ -212,7 +212,9 @@ describe("bounded assurance closure for exactly two claims", () => {
       "2026-07-24T20:05:00.000Z",
     );
     expect(projection.challenge.nonce).toBe("challenge_nonce_123456");
-    expect(projection.challenge.present_as).toEqual(["ep-aec-v1"]);
+    expect(projection.challenge.present_as).toEqual([
+      "https://emiliaprotocol.ai/profiles/ep-aec-v1",
+    ]);
     expect(projection.preserved).toEqual(projection.challenge);
   });
 });

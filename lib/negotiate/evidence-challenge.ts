@@ -41,7 +41,7 @@ export const CHALLENGE_MEDIA_TYPE = 'application/problem+json';
 export const CHALLENGE_HTTP_STATUS = 403;
 export const CHALLENGE_PROBLEM_TYPE = 'https://iana.org/assignments/http-problem-types#ae-required';
 export const CHALLENGE_PROBLEM_TITLE = 'Authorization Evidence Required';
-export const CHALLENGE_PRESENTATION_METHOD = 'ep-aec-v1';
+export const CHALLENGE_PRESENTATION_METHOD = 'https://emiliaprotocol.ai/profiles/ep-aec-v1';
 export const CHALLENGE_ACTION_PROFILE = 'https://emiliaprotocol.ai/profiles/artifact-digest-v1';
 const CHALLENGE_PRESENTATION_DOCUMENT_VERSION = 'EP-AEC-v1';
 const LEGACY_GRAPH_DOCUMENT_VERSION = 'EP-AEG-v1';
@@ -49,6 +49,7 @@ const LEGACY_GRAPH_DOCUMENT_VERSION = 'EP-AEG-v1';
 const SHA256_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const DURABLE_NONCE_RE = /^[A-Za-z0-9_-]{22,128}$/;
 const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
+const EMILIA_IDENTIFIER_BASE = 'https://emiliaprotocol.ai/ns';
 export type AuthorizationChallengeMechanism =
   | 'oauth-transaction-authorization'
   | 'ae-challenge'
@@ -113,6 +114,33 @@ function parseTimestamp(value) {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
+function absoluteUri(value: unknown): value is string {
+  if (typeof value !== 'string' || !value || /[\u0000-\u0020\u007f]/.test(value)) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol.length > 1;
+  } catch {
+    return false;
+  }
+}
+
+function portableIdentifier(kind: 'evidence-type' | 'evidence-profile' | 'proof-predicate', value: unknown) {
+  if (absoluteUri(value)) return value;
+  if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(value)) {
+    throw new Error(`${kind} identifier MUST be an absolute URI or a supported local token`);
+  }
+  return `${EMILIA_IDENTIFIER_BASE}/${kind}/${encodeURIComponent(value)}`;
+}
+
+function authoritativeInstant(epochMs: unknown) {
+  if (!Number.isSafeInteger(epochMs) || (epochMs as number) < 0) {
+    throw new Error('authoritative challenge owner time is invalid');
+  }
+  const date = new Date(epochMs as number);
+  if (Number.isNaN(date.valueOf())) throw new Error('authoritative challenge owner time is outside the timestamp range');
+  return date.toISOString();
+}
+
 function digestPolicy(policy) {
   return artifactDigest(policy ?? null);
 }
@@ -142,7 +170,10 @@ type EvidenceChallengeOpts = {
   challengeStore?: {
     register: (challenge: any) => boolean | Promise<boolean>;
     consume?: (challenge: any) => boolean | Promise<boolean>;
-    registerOutstanding?: (challenge: any) => boolean | Promise<boolean>;
+    registerOutstanding?: (
+      challenge: any,
+      context?: { authenticated_presenter?: string },
+    ) => boolean | Promise<boolean>;
     durable?: boolean;
     atomicRegistration?: boolean;
     bodyBound?: boolean;
@@ -170,6 +201,7 @@ type EvidenceChallengeOpts = {
         generation: number;
         owner_token: string;
       };
+      authoritative_at_ms?: number;
     }>;
     finalizeReservation?: (
       reservation: any,
@@ -180,6 +212,8 @@ type EvidenceChallengeOpts = {
   production?: boolean;
   test_only_ephemeral?: boolean;
   verifiers?: Record<string, any>;
+  /** Build native verifiers only after the authoritative evaluation time is known. */
+  verifierFactory?: (context: { as_of: string }) => Record<string, any>;
   as_of?: string;
   consumedNonces?: Set<string>;
   next_expires_at?: string;
@@ -306,23 +340,34 @@ export function deriveRequiredEvidence(policy, priorResult: { satisfied_by?: str
   const tokens = missingTypes(parseRequirementExpression(policy?.requirement), satisfied);
   const assuranceByType = [policy?.required_assurance, policy?.assurance_class, policy?.assurance_classes]
     .find((v) => v && typeof v === 'object') ?? {};
-  return [...new Set(tokens)].map((type) => ({
-    requirement_id: type,
-    type,
-    ...(typeof assuranceByType[type] === 'string' ? { assurance_class: assuranceByType[type] } : {}),
-    ...(Number.isSafeInteger(policy?.freshness_sec?.[type])
-      && policy.freshness_sec[type] >= 0
-      && policy.freshness_sec[type] <= 2147483647 ? {
-      max_age_sec: policy.freshness_sec[type],
-    } : {}),
-    ...(policy?.revocation_required?.includes(type) ? {
-      status: 'current',
-    } : {}),
-    ...(typeof policy?.profiles?.[type] === 'string' ? { profiles: [policy.profiles[type]] } : {}),
-    ...(Array.isArray(policy?.proof_predicates?.[type])
-      ? { proof_predicates: [...policy.proof_predicates[type]] }
-      : {}),
-  }));
+  return [...new Set(tokens)].map((type) => {
+    const predicateTokens = [
+      ...(typeof assuranceByType[type] === 'string'
+        ? [`assurance-${assuranceByType[type]}`]
+        : []),
+      ...(Array.isArray(policy?.proof_predicates?.[type])
+        ? policy.proof_predicates[type]
+        : []),
+    ];
+    const proofPredicates = [...new Set(predicateTokens
+      .map((value) => portableIdentifier('proof-predicate', value)))];
+    return {
+      requirement_id: type,
+      type: portableIdentifier('evidence-type', type),
+      ...(Number.isSafeInteger(policy?.freshness_sec?.[type])
+        && policy.freshness_sec[type] >= 0
+        && policy.freshness_sec[type] <= 2147483647 ? {
+        max_age_sec: policy.freshness_sec[type],
+      } : {}),
+      ...(policy?.revocation_required?.includes(type) ? {
+        status: 'current',
+      } : {}),
+      ...(typeof policy?.profiles?.[type] === 'string' ? {
+        profiles: [portableIdentifier('evidence-profile', policy.profiles[type])],
+      } : {}),
+      ...(proofPredicates.length > 0 ? { proof_predicates: proofPredicates } : {}),
+    };
+  });
 }
 
 /**
@@ -444,7 +489,9 @@ export async function createRegisteredEvidenceChallenge(action, policy, opts: Ev
     throw new Error('durable challenge nonce MUST canonically encode at least 16 octets as 22-128 unpadded base64url characters');
   }
   const registered = productionMode(opts)
-    ? await store.registerOutstanding?.(challenge)
+    ? await store.registerOutstanding?.(challenge, {
+      authenticated_presenter: opts.authenticated_presenter,
+    })
     : await store.register(challenge);
   if (registered !== true) {
     throw new Error('challenge registration collision or replay');
@@ -493,7 +540,9 @@ export async function createRegisteredFollowupEvidenceChallenge(challenge, polic
     throw new Error('durable challenge nonce MUST canonically encode at least 16 octets as 22-128 unpadded base64url characters');
   }
   const registered = productionMode(opts)
-    ? await store.registerOutstanding?.(next)
+    ? await store.registerOutstanding?.(next, {
+      authenticated_presenter: opts.authenticated_presenter,
+    })
     : await store.register(next);
   if (registered !== true) {
     throw new Error('follow-up challenge registration collision or replay');
@@ -560,17 +609,26 @@ function validPresentationContract(challenge): boolean {
 }
 
 function evaluateEvidencePresentation(challenge, presentation, policy, opts: EvidenceChallengeOpts) {
+  if (typeof opts.verifierFactory === 'function' && typeof opts.as_of !== 'string') {
+    throw new Error('authoritative evaluation time is required before constructing native verifiers');
+  }
+  const verifiers = typeof opts.verifierFactory === 'function'
+    ? opts.verifierFactory({ as_of: opts.as_of as string })
+    : opts.verifiers;
+  if (verifiers === null || typeof verifiers !== 'object' || Array.isArray(verifiers)) {
+    throw new Error('native evidence verifiers are missing or invalid');
+  }
   // The active -00 AEC profile explicitly permits carrying the graph
   // serialization used by the earlier implementation. It remains one AEC
   // presentation profile, not a second satisfaction protocol.
   if (presentation?.['@version'] === LEGACY_GRAPH_DOCUMENT_VERSION) {
     return evaluateEvidenceGraph(presentation, policy, {
-      verifiers: opts.verifiers,
+      verifiers,
       as_of: opts.as_of,
     });
   }
   return evaluateChainAdmissibility(presentation, policy, {
-    verifiers: opts.verifiers,
+    verifiers,
     keysByType: opts.keysByType,
     policiesByType: opts.policiesByType,
     expectedActionDigest: challenge.action_digest,
@@ -679,6 +737,9 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
   if (challenge?.['@version'] !== CHALLENGE_VERSION) return refuse('unknown challenge version');
   if (typeof challenge?.nonce !== 'string' || !challenge.nonce.trim()) return refuse('challenge nonce missing or invalid');
   if (!validDurableNonce(challenge.nonce)) return refuse('durable challenge nonce missing, non-canonical, or too weak');
+  if (productionMode(opts) && opts.nonce !== undefined && opts.test_only_ephemeral !== true) {
+    return refuse('production follow-up nonces are generated internally');
+  }
   if (!validSha256Digest(challenge.action_digest)) return refuse('challenge action_digest missing or invalid');
   if (!policyMatchesChallenge(challenge, policy)) return refuse('challenge policy_digest missing or policy changed');
   if (!validPresentationContract(challenge)) return refuse('challenge presentation method is not the AE-CHALLENGE-v1 ep-aec-v1 profile');
@@ -686,8 +747,10 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
   if (audienceError) return refuse(audienceError);
   const expiresAt = parseTimestamp(challenge.expires_at);
   if (Number.isNaN(expiresAt)) return refuse('challenge expires_at missing or invalid');
-  const asOf = parseTimestamp(opts.as_of);
-  if (Number.isNaN(asOf)) return refuse('valid evaluation time (as_of) is required');
+  const callerAsOf = parseTimestamp(opts.as_of);
+  if (!productionMode(opts) && Number.isNaN(callerAsOf)) {
+    return refuse('valid evaluation time (as_of) is required');
+  }
 
   if (!supportedPresentationDocument(graphDoc)) {
     return refuse('presented evidence uses a method not advertised by the challenge');
@@ -703,6 +766,7 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
   if (currentActionError) return refuse(currentActionError);
 
   let reservation: any = null;
+  let evaluationOpts = opts;
   if (productionMode(opts)) {
     let transition;
     try {
@@ -717,6 +781,14 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
       case 'claimed_with_capacity':
         if (!transition.reservation) return unavailable();
         reservation = transition.reservation;
+        try {
+          evaluationOpts = {
+            ...opts,
+            as_of: authoritativeInstant(transition.authoritative_at_ms),
+          };
+        } catch {
+          return unavailable();
+        }
         break;
       case 'exact_body_replay':
         return refuse('challenge nonce already consumed (replay)');
@@ -742,7 +814,7 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
     if (beforeClaim === 'claimed-exact') return refuse('challenge nonce already consumed (replay)');
     if (beforeClaim === 'claimed-body-collision') return refuse('challenge nonce body collision');
     if (beforeClaim === 'absent') return refuse('challenge is not registered in the authoritative replay domain');
-    if (asOf >= expiresAt) return refuse('challenge expired');
+    if (callerAsOf >= expiresAt) return refuse('challenge expired');
     if (beforeClaim === 'open-body-collision') return refuse('challenge nonce body collision');
 
     let consumed;
@@ -769,7 +841,7 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
 
   let result;
   try {
-    result = evaluateEvidencePresentation(challenge, graphDoc, policy, opts);
+    result = evaluateEvidencePresentation(challenge, graphDoc, policy, evaluationOpts);
   } catch {
     if (reservation !== null) {
       try {
@@ -793,22 +865,33 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
     return refuse(currentActionAfterEvaluation);
   }
   if (result.verdict !== 'admissible') {
-    if (productionMode(opts)) {
-      if (opts.nonce !== undefined && opts.test_only_ephemeral !== true) {
-        return refuse('production follow-up nonces are generated internally');
+    try {
+      if (productionMode(opts)) {
+        next_challenge = createFollowupEvidenceChallenge(challenge, policy, result, {
+          ...opts,
+          expires_at: opts.next_expires_at ?? challenge.expires_at,
+          nonce: opts.nonce,
+        });
+      } else {
+        next_challenge = await createRegisteredFollowupEvidenceChallenge(challenge, policy, result, {
+          ...opts,
+          expires_at: opts.next_expires_at ?? challenge.expires_at,
+          nonce: opts.nonce,
+          challengeStore: store,
+        });
       }
-      next_challenge = createFollowupEvidenceChallenge(challenge, policy, result, {
-        ...opts,
-        expires_at: opts.next_expires_at ?? challenge.expires_at,
-        nonce: opts.nonce,
-      });
-    } else {
-      next_challenge = await createRegisteredFollowupEvidenceChallenge(challenge, policy, result, {
-        ...opts,
-        expires_at: opts.next_expires_at ?? challenge.expires_at,
-        nonce: opts.nonce,
-        challengeStore: store,
-      });
+    } catch {
+      if (reservation !== null) {
+        try {
+          await store.finalizeReservation(reservation, {
+            outcome: 'followup_construction_error',
+            followup: null,
+          });
+        } catch {
+          return unavailable();
+        }
+      }
+      return refuse('follow-up challenge could not be safely created');
     }
   }
   if (reservation !== null) {

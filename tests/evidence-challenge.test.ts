@@ -56,14 +56,14 @@ function legacyGraphFor(types, overrides = {}) {
 describe('AE-CHALLENGE — the negotiation loop', () => {
   it('derives the go-get list from the policy, with freshness and revocation flags', () => {
     const req = deriveRequiredEvidence(policy);
-    const types = req.map((r) => r.type);
+    const types = req.map((r) => r.requirement_id);
     expect(types).toContain('authorization_receipt');
     expect(types).toContain('policy_permit');
     expect(types).toContain('workload_identity');
-    expect(req.find((r) => r.type === 'authorization_receipt').max_age_sec).toBe(300);
-    expect(req.find((r) => r.type === 'authorization_receipt').status).toBe('current');
-    expect(req.find((r) => r.type === 'authorization_receipt').fresh_max_sec).toBeUndefined();
-    expect(req.find((r) => r.type === 'authorization_receipt').revocation_checked).toBeUndefined();
+    expect(req.find((r) => r.requirement_id === 'authorization_receipt').max_age_sec).toBe(300);
+    expect(req.find((r) => r.requirement_id === 'authorization_receipt').status).toBe('current');
+    expect(req.find((r) => r.requirement_id === 'authorization_receipt').fresh_max_sec).toBeUndefined();
+    expect(req.find((r) => r.requirement_id === 'authorization_receipt').revocation_checked).toBeUndefined();
   });
 
   it('carries per-type assurance constraints when the policy supplies them', () => {
@@ -71,8 +71,9 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
       ...policy,
       required_assurance: { authorization_receipt: 'class_a' },
     });
-    expect(req.find((r) => r.type === 'authorization_receipt').assurance_class).toBe('class_a');
-    expect(req.find((r) => r.type === 'policy_permit').assurance_class).toBeUndefined();
+    expect(req.find((r) => r.requirement_id === 'authorization_receipt').proof_predicates)
+      .toEqual(['https://emiliaprotocol.ai/ns/proof-predicate/assurance-class_a']);
+    expect(req.find((r) => r.requirement_id === 'policy_permit').proof_predicates).toBeUndefined();
   });
 
   it('the full circuit: a follow-up repeats the complete requirement set and never relies on ambient prior evidence', () => {
@@ -86,7 +87,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     const partial = evaluatePresentation(ch, graphFor(['authorization_receipt']), policy,
       { verifiers, as_of: AS_OF, consumedNonces: nonces, nonce: 'n2' });
     expect(partial.verdict).toBe('missing_evidence');
-    const missing = partial.next_challenge.required_evidence.map((r) => r.type);
+    const missing = partial.next_challenge.required_evidence.map((r) => r.requirement_id);
     expect(missing).toContain('policy_permit');
     expect(missing).toContain('workload_identity');
     expect(missing).toContain('authorization_receipt');
@@ -139,7 +140,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
       },
     );
     expect(result.verdict).toBe('admissible');
-    expect(ch.present_as).toEqual(['ep-aec-v1']);
+    expect(ch.present_as).toEqual([CHALLENGE_PRESENTATION_METHOD]);
     expect(ch).not.toHaveProperty('authorization');
     expect(ch).not.toHaveProperty('aeb');
     expect(ch).not.toHaveProperty('aec');
@@ -174,7 +175,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
       { verifiers, as_of: AS_OF, consumedNonces: new Set() },
     );
     expect(result.verdict).toBe('admissible');
-    expect(ch.present_as).toEqual(['ep-aec-v1']);
+    expect(ch.present_as).toEqual([CHALLENGE_PRESENTATION_METHOD]);
   });
 
   it('refuses an unadvertised presentation method', () => {
@@ -281,7 +282,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     const r = evaluatePresentation(ch, staleAuth, policy,
       { verifiers, as_of: AS_OF, consumedNonces: nonces, nonce: 'n2' });
     expect(r.verdict).toBe('stale');
-    const missing = r.next_challenge.required_evidence.map((x) => x.type);
+    const missing = r.next_challenge.required_evidence.map((x) => x.requirement_id);
     expect(missing).toEqual(expect.arrayContaining([
       'authorization_receipt',
       'policy_permit',
@@ -373,18 +374,24 @@ describe('deriveRequiredEvidence — edge cases fail safe', () => {
 
   it('a prior result already satisfying a type removes it from the go-get list', () => {
     const req = deriveRequiredEvidence(policy, { satisfied_by: ['authorization_receipt'] });
-    const types = req.map((r) => r.type);
+    const types = req.map((r) => r.requirement_id);
     expect(types).not.toContain('authorization_receipt');
     expect(types).toContain('policy_permit');
   });
 
   it('requests only the least-disclosing unsatisfied branch of an OR policy', () => {
     expect(deriveRequiredEvidence({ requirement: 'authorization_receipt OR policy_permit' }))
-      .toEqual([{ requirement_id: 'authorization_receipt', type: 'authorization_receipt' }]);
+      .toEqual([{
+        requirement_id: 'authorization_receipt',
+        type: 'https://emiliaprotocol.ai/ns/evidence-type/authorization_receipt',
+      }]);
     expect(deriveRequiredEvidence(
       { requirement: 'authorization_receipt OR (policy_permit AND workload_identity)' },
       { satisfied_by: ['policy_permit'] },
-    )).toEqual([{ requirement_id: 'authorization_receipt', type: 'authorization_receipt' }]);
+    )).toEqual([{
+      requirement_id: 'authorization_receipt',
+      type: 'https://emiliaprotocol.ai/ns/evidence-type/authorization_receipt',
+    }]);
   });
 
   it('carries the active draft -00 profile and proof-predicate constraints', () => {
@@ -394,9 +401,12 @@ describe('deriveRequiredEvidence — edge cases fail safe', () => {
       proof_predicates: { authorization_receipt: ['signature_valid', 'not_revoked'] },
     })).toEqual([{
       requirement_id: 'authorization_receipt',
-      type: 'authorization_receipt',
-      profiles: ['ep-receipt-v1'],
-      proof_predicates: ['signature_valid', 'not_revoked'],
+      type: 'https://emiliaprotocol.ai/ns/evidence-type/authorization_receipt',
+      profiles: ['https://emiliaprotocol.ai/ns/evidence-profile/ep-receipt-v1'],
+      proof_predicates: [
+        'https://emiliaprotocol.ai/ns/proof-predicate/signature_valid',
+        'https://emiliaprotocol.ai/ns/proof-predicate/not_revoked',
+      ],
     }]);
   });
 
@@ -405,7 +415,7 @@ describe('deriveRequiredEvidence — edge cases fail safe', () => {
     // any freshness_sec entry omits the field entirely.
     const req = deriveRequiredEvidence({ requirement: 'authorization_receipt AND policy_permit' });
     for (const r of req) expect(r.max_age_sec).toBeUndefined();
-    expect(req.map((r) => r.type)).toEqual(['authorization_receipt', 'policy_permit']);
+    expect(req.map((r) => r.requirement_id)).toEqual(['authorization_receipt', 'policy_permit']);
   });
 });
 

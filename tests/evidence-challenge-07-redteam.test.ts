@@ -2,7 +2,9 @@
 import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  CHALLENGE_PRESENTATION_METHOD,
   createRegisteredEvidenceChallenge,
+  createEvidenceChallenge,
   evaluateRegisteredPresentation,
 } from '../lib/negotiate/evidence-challenge.js';
 import { artifactDigest } from '../lib/evidence/evidence-graph.js';
@@ -76,6 +78,27 @@ function createTestOwner(now = () => Date.parse(beforeExpiry), cap = 8) {
 }
 
 describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
+  it('emits only absolute URI identifiers in the transport-neutral wire object', () => {
+    const challenge = createEvidenceChallenge(actionA, policy, {
+      expires_at: expiresAt,
+      audience: 'https://presenter.example',
+    });
+    const absolute = (value) => {
+      expect(() => new URL(value)).not.toThrow();
+      expect(new URL(value).protocol.length).toBeGreaterThan(1);
+    };
+
+    absolute(challenge.action_profile);
+    absolute(challenge.policy_id);
+    expect(challenge.present_as).toEqual([CHALLENGE_PRESENTATION_METHOD]);
+    challenge.present_as.forEach(absolute);
+    for (const requirement of challenge.required_evidence) {
+      absolute(requirement.type);
+      requirement.profiles?.forEach(absolute);
+      requirement.proof_predicates?.forEach(absolute);
+    }
+  });
+
   it('scopes one nonce independently under two authenticated issuer identities', async () => {
     const backend = createMemoryBackend();
     const issuerA = createDurableChallengeStore(backend, {
@@ -354,6 +377,82 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
       production: true,
     });
     expect(result.verdict).toBe('admissible');
+    expect(backend.capacity.get('aggregate')?.used).toBe(1);
+  });
+
+  it('uses authoritative owner time, not caller time, for evidence freshness', async () => {
+    const ownerTime = Date.parse('2026-07-03T12:09:00Z');
+    const { store } = createTestOwner(() => ownerTime);
+    const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
+      challengeStore: store,
+      challenge_id: 'authoritative-evidence-time',
+      expires_at: expiresAt,
+      audience: 'https://presenter.example',
+      production: true,
+    });
+
+    const result = await evaluateRegisteredPresentation(challenge, completeGraph(), policy, {
+      challengeStore: store,
+      verifiers,
+      // A caller-controlled old time would incorrectly make the receipt look fresh.
+      as_of: beforeExpiry,
+      current_action: actionA,
+      authenticated_presenter: 'https://presenter.example',
+      production: true,
+    });
+    expect(result.verdict).toBe('stale');
+    expect(result.result.replay.as_of).toBe('2026-07-03T12:09:00.000Z');
+  });
+
+  it('rejects a caller-selected production follow-up nonce before claiming owner state', async () => {
+    const { backend, store } = createTestOwner();
+    const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
+      challengeStore: store,
+      expires_at: expiresAt,
+      audience: 'https://presenter.example',
+      production: true,
+    });
+    const result = await evaluateRegisteredPresentation(challenge, completeGraph(), policy, {
+      challengeStore: store,
+      verifiers,
+      as_of: beforeExpiry,
+      current_action: actionA,
+      authenticated_presenter: 'https://presenter.example',
+      production: true,
+      nonce: testNonce('attacker-selected-followup'),
+    });
+
+    expect(result.verdict).toBe('refused');
+    expect(result.reasons.join(' ')).toContain('generated internally');
+    expect([...backend.records.values()][0]?.state).toBe('open');
+    expect(backend.capacity.get('aggregate')?.used).toBe(1);
+  });
+
+  it('terminalizes owner state when a local follow-up configuration is malformed', async () => {
+    const { backend, store } = createTestOwner();
+    const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
+      challengeStore: store,
+      expires_at: expiresAt,
+      audience: 'https://presenter.example',
+      production: true,
+    });
+    const partial = {
+      ...completeGraph(),
+      components: completeGraph().components.slice(0, 1),
+    };
+    const result = await evaluateRegisteredPresentation(challenge, partial, policy, {
+      challengeStore: store,
+      verifiers,
+      as_of: beforeExpiry,
+      current_action: actionA,
+      authenticated_presenter: 'https://presenter.example',
+      production: true,
+      next_expires_at: 'not-a-timestamp',
+    });
+
+    expect(result.verdict).toBe('refused');
+    expect(result.reasons.join(' ')).toContain('follow-up challenge could not be safely created');
+    expect([...backend.records.values()][0]?.state).toBe('finalized');
     expect(backend.capacity.get('aggregate')?.used).toBe(1);
   });
 

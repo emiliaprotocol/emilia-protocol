@@ -10,7 +10,10 @@ import {
   createPostgresChallengeOwnerBackend,
 } from '../packages/gate/challenge-store-postgres.js';
 
-function fakePool(nowMs = Date.parse('2026-07-03T12:01:00Z')) {
+function fakePool(
+  nowMs = Date.parse('2026-07-03T12:01:00Z'),
+  { reverseCapacityRows = false } = {},
+) {
   const locks = new Set<string>();
   const records = new Map<string, string>();
   const capacity = new Map<string, { used: number; limit: number }>();
@@ -93,6 +96,7 @@ function fakePool(nowMs = Date.parse('2026-07-03T12:01:00Z')) {
           }
           if (text === AE_CHALLENGE_POSTGRES_SQL.lockCapacity) {
             const keys = [...params[1]].sort();
+            if (reverseCapacityRows) keys.reverse();
             return {
               rowCount: keys.length,
               rows: keys.map((key) => {
@@ -126,11 +130,15 @@ function value(label) {
     nonce: Buffer.from(`nonce:${label}:0123456789`).toString('base64url'),
     action_digest: `sha256:${'ab'.repeat(32)}`,
     action_profile: 'https://emiliaprotocol.ai/profiles/artifact-digest-v1',
+    policy_id: 'https://issuer.example/policies/test-v1',
     policy_digest: `sha256:${'cd'.repeat(32)}`,
     expires_at: '2026-07-03T12:10:00Z',
     audience: 'https://presenter.example',
-    present_as: ['ep-aec-v1'],
-    required_evidence: [],
+    present_as: ['https://emiliaprotocol.ai/profiles/ep-aec-v1'],
+    required_evidence: [{
+      requirement_id: 'authorization',
+      type: 'https://emiliaprotocol.ai/ns/evidence-type/authorization_receipt',
+    }],
   };
 }
 
@@ -164,5 +172,27 @@ describe('AE-CHALLENGE PostgreSQL owner backend', () => {
       authenticated_presenter: challenge.audience,
     })).result).toBe('exact_body_replay');
     expect(pool.state.capacity.get('tenant-a\u0000aggregate')?.used).toBe(1);
+  });
+
+  it('does not depend on JavaScript and PostgreSQL using the same collation order', async () => {
+    const pool = fakePool(Date.parse('2026-07-03T12:01:00Z'), {
+      reverseCapacityRows: true,
+    });
+    const backend = createPostgresChallengeOwnerBackend({ pool, ownerId: 'tenant-collation' });
+    const store = createAuthoritativeChallengeOwnerStore(backend, {
+      issuerIdentity: 'https://issuer.example',
+      capacityPolicy: () => [
+        { key: 'A-upper', limit: 2 },
+        { key: 'a-lower', limit: 2 },
+      ],
+      recoveryAuthorizer: () => false,
+    });
+    const challenge = value('postgres-collation');
+
+    expect(await store.registerOutstanding(challenge)).toBe(true);
+    const claimed = await store.compoundClaimAndCapacity(challenge, {
+      authenticated_presenter: challenge.audience,
+    });
+    expect(claimed.result).toBe('claimed_with_capacity');
   });
 });

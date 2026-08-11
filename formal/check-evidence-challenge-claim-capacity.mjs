@@ -9,6 +9,7 @@ import {
   claimAndReserve,
   claimBeforeCapacity,
   claimWithDoubleCountedOutstanding,
+  claimWithRecomputedBuckets,
   claimWithExpiryFirst,
   finalizeReservation,
   initialState,
@@ -180,6 +181,24 @@ export function runClaimCapacityChecks() {
   invariant(allBucketsEqual(doubleCounted.state.used, 3), 'double-count mutation did not expose the leaked debit');
   mutations.push('stateful_outstanding_debit_counted_twice');
 
+  const scopedRegistration = registerOutstanding(initialState({ cap: 2 }), {
+    ...base,
+    units: { aggregate: 1, presenter: 0, audience: 1, tenant: 1 },
+  });
+  const scopedTransfer = claimAndReserve(scopedRegistration.state, {
+    ...base,
+    units: { aggregate: 2, presenter: 1, audience: 1, tenant: 2 },
+  });
+  invariant(scopedTransfer.result === CLAIM_RESULTS.CLAIMED, 'scoped stateful debit did not transfer');
+  invariant(scopedTransfer.state.used.audience === 1, 'claim dropped the pinned audience debit');
+  invariant(scopedTransfer.state.used.presenter === 1, 'claim omitted the authenticated presenter debit');
+  const recomputedScope = claimWithRecomputedBuckets(scopedRegistration.state, {
+    ...base,
+    units: { aggregate: 2, presenter: 1, audience: 0, tenant: 2 },
+  });
+  invariant(recomputedScope.state.used.audience === 0, 'scope-recompute mutation did not drop the pinned audience debit');
+  mutations.push('claim_recomputed_and_dropped_pinned_scope');
+
   const tupleA = replayKey('a\u0000b', 'c');
   const tupleB = replayKey('a', 'b\u0000c');
   invariant(tupleA !== tupleB, 'structured replay key admitted delimiter collision');
@@ -207,7 +226,7 @@ export function runClaimCapacityChecks() {
     method: 'finite_scenario_enumeration_with_mutation_counterexamples',
     scenario_check_complete: true,
     verified: false,
-    states_checked: states + 16,
+    states_checked: states + 17,
     mutation_counterexamples: mutations,
     checked_properties: {
       CompoundClaimAndCapacityAtomic: checkedProperty(states, {
@@ -250,6 +269,11 @@ export function runClaimCapacityChecks() {
         mutation: 'stateful_outstanding_debit_counted_twice',
         sound_used: transferred.state.used,
         mutated_used: doubleCounted.state.used,
+      }),
+      PinnedScopedDebitSurvivesClaim: checkedProperty(1, {
+        mutation: 'claim_recomputed_and_dropped_pinned_scope',
+        sound_used: scopedTransfer.state.used,
+        mutated_used: recomputedScope.state.used,
       }),
       ReplayKeyTupleIsUnambiguous: checkedProperty(1, {
         mutation: 'nul_delimiter_tuple_collision',

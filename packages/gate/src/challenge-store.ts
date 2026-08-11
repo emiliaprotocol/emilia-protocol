@@ -9,25 +9,46 @@
  * reuses the challenge id and nonce.
  */
 import crypto from 'node:crypto';
-import { hashCanonical } from './execution-binding.js';
+import { canonicalize, hashCanonical } from './execution-binding.js';
 
 export const DURABLE_CHALLENGE_STORE_VERSION = 'EP-DURABLE-CHALLENGE-STORE-v3';
-export const AUTHORITATIVE_CHALLENGE_OWNER_VERSION = 'EP-AE-CHALLENGE-OWNER-v1';
+export const AUTHORITATIVE_CHALLENGE_OWNER_VERSION = 'EP-AE-CHALLENGE-OWNER-v2';
+export const AUTHORITATIVE_CHALLENGE_RECORD_VERSION = 'EP-AE-CHALLENGE-OWNER-RECORD-v2';
 const OPEN_PREFIX = 'challenge-open:v3:';
 const CONSUMED_PREFIX = 'challenge-consumed:v3:';
 const LEGACY_SINGLE_ISSUER_IDENTITY = 'urn:emilia:challenge-issuer:legacy-single-store';
 const AUTHORITATIVE_OWNER_STORES = new WeakSet<object>();
 const CAPACITY_KEY_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$/;
 const DIGEST_RE = /^(?:sha256:)?[0-9a-f]{64}$/;
+const CORE_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
+const DURABLE_NONCE_RE = /^[A-Za-z0-9_-]{22,128}$/;
+const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
+const REQUIREMENT_KEYS = new Set([
+  'requirement_id', 'type', 'profiles', 'proof_predicates', 'max_age_sec', 'status',
+]);
+const HINT_KEYS = new Set(['requirement_id', 'mechanism', 'uri']);
+const RETRY_KEYS = new Set(['not_before', 'jitter_sec']);
+
+function compareCapacityKeys(left: string, right: string) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
 
 export type ChallengeCapacityBucket = Readonly<{ key: string; limit: number }>;
 type CapacityBucket = ChallengeCapacityBucket;
 type CapacityVector = Readonly<Record<string, number>>;
 export type ChallengeOwnerRecord = {
+  record_version: typeof AUTHORITATIVE_CHALLENGE_RECORD_VERSION;
   body_digest: string;
   challenge: any;
   state: 'open' | 'reserved' | 'finalized';
+  /** Current capacity charged to this record. */
   units: Record<string, number>;
+  /** Capacity retained after an evaluation reservation is finalized. */
+  retained_units: Record<string, number>;
+  /** Constructor-pinned limits for every bucket represented by this record. */
+  capacity_limits: Record<string, number>;
+  /** Stable presenter identity used by presenter-scoped capacity policy. */
+  authenticated_presenter: string | null;
   owner_token_digest: string | null;
   generation: number;
   reserved_at_ms: number | null;
@@ -52,6 +73,141 @@ type OwnerBackend = ChallengeOwnerBackend;
 
 function tokenDigest(value: string) {
   return `sha256:${crypto.createHash('sha256').update(value, 'utf8').digest('hex')}`;
+}
+
+function strictTimestamp(value: unknown) {
+  if (typeof value !== 'string') return NaN;
+  const match = value.match(RFC3339_INSTANT);
+  if (!match) return NaN;
+  const [, year, month, day, hour, minute, second, , offsetHour, offsetMinute] = match;
+  const local = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(Number(year), Number(month) - 1, Number(day));
+  calendar.setUTCHours(Number(hour), Number(minute), Number(second), 0);
+  if (calendar.toISOString().slice(0, 19) !== local) return NaN;
+  if (offsetHour !== undefined && (Number(offsetHour) > 23 || Number(offsetMinute) > 59)) return NaN;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function absoluteUri(value: unknown) {
+  if (typeof value !== 'string' || !value || value.length > 1024
+      || /[\u0000-\u0020\u007f]/.test(value)) return false;
+  try {
+    return new URL(value).protocol.length > 1;
+  } catch {
+    return false;
+  }
+}
+
+function nonEmptyString(value: unknown, max: number) {
+  return typeof value === 'string' && value.length > 0 && value.length <= max
+    && !/[\u0000-\u001f\u007f]/.test(value);
+}
+
+function uniqueStrings(value: unknown, { min = 0, max = 32, uri = false } = {}) {
+  return Array.isArray(value) && value.length >= min && value.length <= max
+    && new Set(value).size === value.length
+    && value.every((entry) => nonEmptyString(entry, 1024) && (!uri || absoluteUri(entry)));
+}
+
+function onlyKeys(value: Record<string, unknown>, allowed: Set<string>) {
+  return Object.keys(value).every((key) => allowed.has(key));
+}
+
+function assertAuthoritativeChallenge(challenge) {
+  assertChallenge(challenge);
+  let encoded: string;
+  try {
+    encoded = canonicalize(challenge);
+  } catch {
+    throw new Error('challenge is outside the canonical JSON domain');
+  }
+  if (Buffer.byteLength(encoded, 'utf8') > 65_536) {
+    throw new Error('challenge exceeds the 65536-octet reference limit');
+  }
+  if (!nonEmptyString(challenge.challenge_id, 256)) throw new Error('challenge_id is invalid');
+  if (!DURABLE_NONCE_RE.test(challenge.nonce)) throw new Error('challenge nonce syntax is invalid');
+  try {
+    const decoded = Buffer.from(challenge.nonce, 'base64url');
+    if (decoded.length < 16 || decoded.toString('base64url') !== challenge.nonce) throw new Error('weak');
+  } catch {
+    throw new Error('challenge nonce is not canonical base64url with at least 16 octets');
+  }
+  if (!CORE_DIGEST_RE.test(challenge.action_digest)) throw new Error('challenge action_digest is invalid');
+  if (!absoluteUri(challenge.action_profile)) throw new Error('challenge action_profile is not an absolute URI');
+  if (!nonEmptyString(challenge.audience, 512)) throw new Error('challenge audience is invalid');
+  if (!absoluteUri(challenge.policy_id)) throw new Error('challenge policy_id is not an absolute URI');
+  if (!CORE_DIGEST_RE.test(challenge.policy_digest)) throw new Error('challenge policy_digest is invalid');
+  if (!uniqueStrings(challenge.present_as, { min: 1, max: 16, uri: true })) {
+    throw new Error('challenge present_as is invalid');
+  }
+  if (!Array.isArray(challenge.required_evidence)
+      || challenge.required_evidence.length < 1 || challenge.required_evidence.length > 64) {
+    throw new Error('challenge required_evidence must contain 1-64 entries');
+  }
+  const requirementIds = new Set<string>();
+  for (const requirement of challenge.required_evidence) {
+    if (!requirement || typeof requirement !== 'object' || Array.isArray(requirement)
+        || !onlyKeys(requirement, REQUIREMENT_KEYS)
+        || !nonEmptyString(requirement.requirement_id, 256)
+        || requirementIds.has(requirement.requirement_id)
+        || !absoluteUri(requirement.type)) {
+      throw new Error('challenge required_evidence entry is invalid');
+    }
+    requirementIds.add(requirement.requirement_id);
+    if (requirement.profiles !== undefined
+        && !uniqueStrings(requirement.profiles, { min: 1, max: 16, uri: true })) {
+      throw new Error('challenge evidence profiles are invalid');
+    }
+    if (requirement.proof_predicates !== undefined
+        && !uniqueStrings(requirement.proof_predicates, { min: 1, max: 32, uri: true })) {
+      throw new Error('challenge proof predicates are invalid');
+    }
+    if (requirement.max_age_sec !== undefined
+        && (!Number.isSafeInteger(requirement.max_age_sec)
+          || requirement.max_age_sec < 0 || requirement.max_age_sec > 2147483647)) {
+      throw new Error('challenge max_age_sec is invalid');
+    }
+    if (requirement.status !== undefined && requirement.status !== 'current') {
+      throw new Error('challenge status is unsupported by the reference owner');
+    }
+  }
+  if (challenge.obtain_hints !== undefined) {
+    if (!Array.isArray(challenge.obtain_hints) || challenge.obtain_hints.length > 64) {
+      throw new Error('challenge obtain_hints is invalid');
+    }
+    for (const hint of challenge.obtain_hints) {
+      if (!hint || typeof hint !== 'object' || Array.isArray(hint)
+          || !onlyKeys(hint, HINT_KEYS)
+          || !requirementIds.has(hint.requirement_id)
+          || !absoluteUri(hint.mechanism) || !absoluteUri(hint.uri)) {
+        throw new Error('challenge obtain hint is invalid');
+      }
+    }
+  }
+  const expiresAt = strictTimestamp(challenge.expires_at);
+  if (Number.isNaN(expiresAt)) throw new Error('challenge expires_at is invalid');
+  if (challenge.retry_timing !== undefined) {
+    const retry = challenge.retry_timing;
+    if (!retry || typeof retry !== 'object' || Array.isArray(retry)
+        || !onlyKeys(retry, RETRY_KEYS)) throw new Error('challenge retry_timing is invalid');
+    const notBefore = strictTimestamp(retry.not_before);
+    const jitterSec = retry.jitter_sec ?? 0;
+    if (Number.isNaN(notBefore) || !Number.isSafeInteger(jitterSec) || jitterSec < 0
+        || jitterSec > 2147483647 || notBefore >= expiresAt
+        || notBefore + jitterSec * 1000 >= expiresAt) {
+      throw new Error('challenge retry_timing interval is invalid');
+    }
+  }
+  if (challenge.critical !== undefined
+      && !uniqueStrings(challenge.critical, { min: 1, max: 32 })) {
+    throw new Error('challenge critical extensions are invalid');
+  }
+  if (challenge.critical !== undefined) {
+    throw new Error('challenge critical extension is unsupported by the reference owner');
+  }
+  return challenge;
 }
 
 function defaultOwnerToken() {
@@ -80,7 +236,7 @@ function normalizedBuckets(value: unknown): CapacityBucket[] {
     seen.add(entry.key);
     return Object.freeze({ key: entry.key, limit: entry.limit });
   });
-  return buckets.sort((a, b) => a.key.localeCompare(b.key));
+  return buckets.sort((a, b) => compareCapacityKeys(a.key, b.key));
 }
 
 function vectorFor(buckets: CapacityBucket[], units: number): Record<string, number> {
@@ -90,22 +246,102 @@ function vectorFor(buckets: CapacityBucket[], units: number): Record<string, num
 function addVectors(...vectors: CapacityVector[]) {
   const out: Record<string, number> = {};
   for (const vector of vectors) {
-    for (const [key, units] of Object.entries(vector)) out[key] = (out[key] ?? 0) + units;
+    for (const [key, units] of Object.entries(vector)) {
+      const current = Object.hasOwn(out, key) ? out[key] : 0;
+      out[key] = current + units;
+    }
   }
   return out;
 }
 
+function equalVectors(left: CapacityVector, right: CapacityVector) {
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  return [...keys].every((key) => (
+    (Object.hasOwn(left, key) ? left[key] : 0)
+      === (Object.hasOwn(right, key) ? right[key] : 0)
+  ));
+}
+
+function limitsFor(buckets: CapacityBucket[]): Record<string, number> {
+  return Object.fromEntries(buckets.map(({ key, limit }) => [key, limit]));
+}
+
+function mergeLimits(...limits: Readonly<Record<string, number>>[]) {
+  const out: Record<string, number> = {};
+  for (const vector of limits) {
+    for (const [key, limit] of Object.entries(vector)) {
+      if (!CAPACITY_KEY_RE.test(key) || !Number.isSafeInteger(limit) || limit < 1) {
+        throw new Error('challenge capacity limit state is malformed');
+      }
+      if (Object.hasOwn(out, key) && out[key] !== limit) {
+        throw new Error('challenge capacity policy changed a bucket limit');
+      }
+      out[key] = limit;
+    }
+  }
+  return out;
+}
+
+function bucketsFromLimits(limits: Readonly<Record<string, number>>): CapacityBucket[] {
+  return Object.entries(limits)
+    .map(([key, limit]) => Object.freeze({ key, limit }))
+    .sort((a, b) => compareCapacityKeys(a.key, b.key));
+}
+
 function validateOwnerRecord(record: OwnerRecord) {
-  if (!record || typeof record !== 'object' || !DIGEST_RE.test(record.body_digest)
+  if (!record || typeof record !== 'object'
+      || Array.isArray(record)
+      || record.record_version !== AUTHORITATIVE_CHALLENGE_RECORD_VERSION
+      || !DIGEST_RE.test(record.body_digest)
       || !['open', 'reserved', 'finalized'].includes(record.state)
       || !Number.isSafeInteger(record.generation) || record.generation < 0
-      || !record.units || typeof record.units !== 'object') {
+      || !record.units || typeof record.units !== 'object' || Array.isArray(record.units)
+      || !record.retained_units || typeof record.retained_units !== 'object'
+      || Array.isArray(record.retained_units)
+      || !record.capacity_limits || typeof record.capacity_limits !== 'object'
+      || Array.isArray(record.capacity_limits)
+      || (record.authenticated_presenter !== null
+        && !nonEmptyString(record.authenticated_presenter, 512))) {
     throw new Error('authoritative challenge owner returned a malformed record');
   }
-  for (const [key, units] of Object.entries(record.units)) {
-    if (!CAPACITY_KEY_RE.test(key) || !Number.isSafeInteger(units) || units < 0) {
-      throw new Error('authoritative challenge owner returned malformed capacity state');
+  const limits = mergeLimits(record.capacity_limits);
+  for (const vector of [record.units, record.retained_units]) {
+    for (const [key, units] of Object.entries(vector)) {
+      if (!CAPACITY_KEY_RE.test(key) || !Number.isSafeInteger(units) || units < 0
+          || !Object.hasOwn(limits, key) || units > limits[key]) {
+        throw new Error('authoritative challenge owner returned malformed capacity state');
+      }
     }
+  }
+  for (const key of Object.keys(record.retained_units)) {
+    if (record.retained_units[key] > (Object.hasOwn(record.units, key) ? record.units[key] : 0)) {
+      throw new Error('authoritative challenge owner retained capacity exceeds current capacity');
+    }
+  }
+  try {
+    assertAuthoritativeChallenge(record.challenge);
+    if (challengeBodyDigest(record.challenge) !== record.body_digest) {
+      throw new Error('body digest mismatch');
+    }
+  } catch {
+    throw new Error('authoritative challenge owner record body binding is invalid');
+  }
+  const sameUnits = equalVectors(record.units, record.retained_units);
+  if (record.state === 'open'
+      && (record.generation !== 0 || record.owner_token_digest !== null
+        || record.reserved_at_ms !== null || record.outcome !== null || !sameUnits)) {
+    throw new Error('authoritative challenge owner open-state invariants failed');
+  }
+  if (record.state === 'reserved'
+      && (record.generation < 1 || !CORE_DIGEST_RE.test(record.owner_token_digest ?? '')
+        || !Number.isSafeInteger(record.reserved_at_ms) || (record.reserved_at_ms as number) < 0
+        || record.outcome !== null)) {
+    throw new Error('authoritative challenge owner reserved-state invariants failed');
+  }
+  if (record.state === 'finalized'
+      && (record.owner_token_digest !== null || record.reserved_at_ms !== null
+        || typeof record.outcome !== 'string' || !record.outcome || !sameUnits)) {
+    throw new Error('authoritative challenge owner finalized-state invariants failed');
   }
   return record;
 }
@@ -122,7 +358,9 @@ function applyCapacity(
     if (!row || !Number.isSafeInteger(row.used) || !Number.isSafeInteger(row.limit)) {
       throw new Error('authoritative challenge capacity row is malformed');
     }
-    const value = row.used - (previous[key] ?? 0) + (next[key] ?? 0);
+    const previousUnits = Object.hasOwn(previous, key) ? previous[key] : 0;
+    const nextUnits = Object.hasOwn(next, key) ? next[key] : 0;
+    const value = row.used - previousUnits + nextUnits;
     if (!Number.isSafeInteger(value) || value < 0 || value > row.limit) return null;
     result[key] = value;
   }
@@ -194,6 +432,9 @@ export function createAuthoritativeChallengeOwnerStore(
   const issuer = normalizedIssuerIdentity(issuerIdentity);
 
   function bucketsFor(challenge, authenticatedPresenter?: string) {
+    if (authenticatedPresenter !== undefined && !nonEmptyString(authenticatedPresenter, 512)) {
+      throw new Error('authenticated presenter identity is invalid');
+    }
     return normalizedBuckets(capacityPolicy(challenge, {
       authenticated_presenter: authenticatedPresenter,
     }));
@@ -208,13 +449,15 @@ export function createAuthoritativeChallengeOwnerStore(
     return token;
   }
 
-  async function registerOutstanding(challenge) {
-    assertChallenge(challenge);
-    const expiresAt = Date.parse(challenge.expires_at);
-    if (!Number.isFinite(expiresAt)) throw new Error('challenge expires_at is invalid');
+  async function registerOutstanding(challenge, context: {
+    authenticated_presenter?: string;
+  } = {}) {
+    assertAuthoritativeChallenge(challenge);
+    const expiresAt = strictTimestamp(challenge.expires_at);
     const key = challengeStorageKey(challenge, issuer);
     const bodyDigest = challengeBodyDigest(challenge);
-    const buckets = bucketsFor(challenge, challenge.audience);
+    const buckets = bucketsFor(challenge, context.authenticated_presenter);
+    const capacityLimits = limitsFor(buckets);
     return backend.transaction(async (tx) => {
       await tx.lockChallenge(key);
       const nowMs = safeEpochMs(await tx.authoritativeNowMs(), 'authoritative challenge owner time');
@@ -225,10 +468,14 @@ export function createAuthoritativeChallengeOwnerStore(
       const updated = applyCapacity(locked, {}, units);
       if (updated === null) return false;
       const inserted = await tx.insertChallenge(key, {
+        record_version: AUTHORITATIVE_CHALLENGE_RECORD_VERSION,
         body_digest: bodyDigest,
         challenge,
         state: 'open',
         units,
+        retained_units: units,
+        capacity_limits: capacityLimits,
+        authenticated_presenter: context.authenticated_presenter ?? null,
         owner_token_digest: null,
         generation: 0,
         reserved_at_ms: null,
@@ -244,12 +491,10 @@ export function createAuthoritativeChallengeOwnerStore(
     audience?: string;
     authenticated_presenter?: string;
   } = {}) {
-    assertChallenge(challenge);
-    const expiresAt = Date.parse(challenge.expires_at);
-    if (!Number.isFinite(expiresAt)) throw new Error('challenge expires_at is invalid');
+    assertAuthoritativeChallenge(challenge);
+    const expiresAt = strictTimestamp(challenge.expires_at);
     const key = challengeStorageKey(challenge, issuer);
     const bodyDigest = challengeBodyDigest(challenge);
-    const buckets = bucketsFor(challenge, context.authenticated_presenter);
     return backend.transaction(async (tx) => {
       await tx.lockChallenge(key);
       const record = await tx.readChallenge(key);
@@ -261,8 +506,14 @@ export function createAuthoritativeChallengeOwnerStore(
       if (!record) return { result: 'owner_unavailable' };
       validateOwnerRecord(record);
       if (record.body_digest !== bodyDigest) return { result: 'nonce_body_collision' };
-      const locked = await tx.lockCapacity(buckets);
-      const target = vectorFor(buckets, 2);
+      if (record.authenticated_presenter !== null
+          && record.authenticated_presenter !== context.authenticated_presenter) {
+        return { result: 'owner_unavailable' };
+      }
+      const buckets = bucketsFor(challenge, context.authenticated_presenter);
+      const capacityLimits = mergeLimits(record.capacity_limits, limitsFor(buckets));
+      const locked = await tx.lockCapacity(bucketsFromLimits(capacityLimits));
+      const target = addVectors(record.retained_units, vectorFor(buckets, 1));
       const updated = applyCapacity(locked, record.units, target);
       if (updated === null) return { result: 'capacity_refused' };
       const ownerToken = freshOwnerToken();
@@ -270,6 +521,9 @@ export function createAuthoritativeChallengeOwnerStore(
         ...record,
         state: 'reserved',
         units: target,
+        capacity_limits: capacityLimits,
+        authenticated_presenter: context.authenticated_presenter
+          ?? record.authenticated_presenter,
         owner_token_digest: tokenDigest(ownerToken),
         generation: record.generation + 1,
         reserved_at_ms: nowMs,
@@ -279,6 +533,7 @@ export function createAuthoritativeChallengeOwnerStore(
       return {
         result: 'claimed_with_capacity',
         reservation: reservationHandle(key, next, ownerToken),
+        authoritative_at_ms: nowMs,
       };
     });
   }
@@ -296,7 +551,7 @@ export function createAuthoritativeChallengeOwnerStore(
     if (typeof outcome !== 'string' || !outcome.trim() || outcome.length > 128) {
       throw new Error('challenge reservation outcome is invalid');
     }
-    if (followup !== null) assertChallenge(followup);
+    if (followup !== null) assertAuthoritativeChallenge(followup);
     const followupKey = followup === null ? null : challengeStorageKey(followup, issuer);
     const followupDigest = followup === null ? null : challengeBodyDigest(followup);
     if (followupKey === handle.replay_key) throw new Error('follow-up challenge must use a fresh replay key');
@@ -321,37 +576,34 @@ export function createAuthoritativeChallengeOwnerStore(
       let followupRecord: OwnerRecord | null = null;
       let followupBuckets: CapacityBucket[] = [];
       if (followup !== null) {
-        const expiresAt = Date.parse(followup.expires_at);
-        if (!Number.isFinite(expiresAt) || nowMs >= expiresAt) {
+        const expiresAt = strictTimestamp(followup.expires_at);
+        if (nowMs >= expiresAt) {
           throw new Error('follow-up challenge is already expired at authoritative owner time');
         }
         if (await tx.readChallenge(followupKey as string)) {
           throw new Error('follow-up challenge replay key already exists');
         }
-        followupBuckets = bucketsFor(followup, followup.audience);
+        followupBuckets = bucketsFor(followup, record.authenticated_presenter ?? undefined);
         followupUnits = vectorFor(followupBuckets, 1);
         followupRecord = {
+          record_version: AUTHORITATIVE_CHALLENGE_RECORD_VERSION,
           body_digest: followupDigest as string,
           challenge: followup,
           state: 'open',
           units: followupUnits,
+          retained_units: followupUnits,
+          capacity_limits: limitsFor(followupBuckets),
+          authenticated_presenter: record.authenticated_presenter,
           owner_token_digest: null,
           generation: 0,
           reserved_at_ms: null,
           outcome: null,
         };
       }
-      const retainedUnits = Object.fromEntries(Object.keys(record.units).map((key) => [key, 1]));
+      const retainedUnits = record.retained_units;
       const target = addVectors(retainedUnits, followupUnits);
-      const bucketLimits = new Map<string, number>();
-      for (const bucket of [...bucketsFor(record.challenge, record.challenge.audience), ...followupBuckets]) {
-        const existing = bucketLimits.get(bucket.key);
-        if (existing !== undefined && existing !== bucket.limit) {
-          throw new Error('challenge capacity policy changed a bucket limit during finalization');
-        }
-        bucketLimits.set(bucket.key, bucket.limit);
-      }
-      const locked = await tx.lockCapacity([...bucketLimits].map(([key, limit]) => ({ key, limit })));
+      const capacityLimits = mergeLimits(record.capacity_limits, limitsFor(followupBuckets));
+      const locked = await tx.lockCapacity(bucketsFromLimits(capacityLimits));
       const updated = applyCapacity(locked, record.units, target);
       if (updated === null) throw new Error('reserved challenge capacity was insufficient for finalization');
       if (followupRecord && !(await tx.insertChallenge(followupKey as string, followupRecord))) {
@@ -371,7 +623,7 @@ export function createAuthoritativeChallengeOwnerStore(
   }
 
   async function recoverReservation(challenge, { authorization }: { authorization?: unknown } = {}) {
-    assertChallenge(challenge);
+    assertAuthoritativeChallenge(challenge);
     if (await recoveryAuthorizer(authorization) !== true) {
       return { result: 'recovery_unauthorized' };
     }
@@ -490,7 +742,7 @@ function assertChallenge(challenge) {
 
 function normalizedIssuerIdentity(issuerIdentity?: string) {
   if (issuerIdentity === undefined) return LEGACY_SINGLE_ISSUER_IDENTITY;
-  if (typeof issuerIdentity !== 'string' || !issuerIdentity.trim()) {
+  if (!nonEmptyString(issuerIdentity, 512)) {
     throw new Error('authenticated issuer identity must be a non-empty string');
   }
   return issuerIdentity;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v2
+ * EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v3
  *
  * A finite executable model of the owner-side transition added after the -06
  * hostile review. Replay classification, expiry, transfer of a stateful-open
@@ -9,7 +9,7 @@
  */
 
 export const FORMAL_MODEL_VERSION =
-  'EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v2';
+  'EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v3';
 
 export const CAP_BUCKETS = Object.freeze([
   'aggregate',
@@ -28,6 +28,7 @@ export const CHECKED_PROPERTIES = Object.freeze([
   'ClaimedReplayPrecedesExpiry',
   'SingleOwnerCapacityConserved',
   'StatefulDebitTransfersWithoutDoubleCount',
+  'PinnedScopedDebitSurvivesClaim',
   'ReplayKeyTupleIsUnambiguous',
   'ReservationTokenMismatchRefused',
   'RetryWindowPrecedesExpiry',
@@ -283,6 +284,19 @@ export function claimWithDoubleCountedOutstanding(state, input) {
   const next = cloneState(state);
   const requested = vector(input.units ?? 1);
   if (capacityAvailable(next, requested)) addVector(next.used, requested);
+  return { state: next };
+}
+
+/** Mutation: recomputing claim buckets replaces and releases the pinned issuance scope. */
+/** @param {ClaimState} state @param {ClaimInput} input */
+export function claimWithRecomputedBuckets(state, input) {
+  const next = cloneState(state);
+  const key = replayKey(input.issuer, input.nonce);
+  const existing = next.outstanding.get(key)?.units ?? vector(0);
+  const requested = vector(input.units ?? 1);
+  for (const bucket of CAP_BUCKETS) {
+    next.used[bucket] = next.used[bucket] - existing[bucket] + requested[bucket];
+  }
   return { state: next };
 }
 
