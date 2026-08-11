@@ -22,6 +22,8 @@
     "lint": "next lint",
     "test": "vitest",
     "test:run": "vitest run",
+    "demo:ae-transport-neutral": "node examples/ae-transport-neutral-v1/demo.mjs",
+    "test:ae-transport-neutral": "node --test examples/ae-transport-neutral-v1/demo.test.mjs",
     "demo:authority-loop": "node examples/authority-loop-v1/demo.mjs",
     "demo:receipt-program": "node examples/receipt-program/demo.mjs",
     "demo:recovery-admission": "node examples/recovery-admission/demo.mjs",
