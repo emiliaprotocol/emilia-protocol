@@ -42,7 +42,7 @@ The frozen XML SHA-256 is
 - Executable security case from clean committed private bytes: PASS, 35
   executable claims and 266 hashed evidence files, including release-byte
   reproducibility.
-- Full repository Vitest suite from a clean checkout: PASS, 8,799 passed and
+- Full repository Vitest suite from a clean checkout: PASS, 8,801 passed and
   103 environment-gated skips across 536 files, with zero failures. The clean
   run includes release-byte reproducibility.
 - Production `next build`: PASS, including type/lint validation and generation
