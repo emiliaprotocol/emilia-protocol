@@ -131,6 +131,10 @@
       "types": "./dist/aeb-wimse-oauth-adapter.d.ts",
       "import": "./aeb-wimse-oauth-adapter.js"
     },
+    "./aeb-wimse-oauth-principal-adapter": {
+      "types": "./dist/aeb-wimse-oauth-principal-adapter.d.ts",
+      "import": "./aeb-wimse-oauth-principal-adapter.js"
+    },
     "./authorization-server-confirmation": {
       "types": "./dist/authorization-server-confirmation.d.ts",
       "import": "./authorization-server-confirmation.js"
@@ -245,6 +249,7 @@
     "aeb-consequence-conformance.v1.json",
     "aeb-discovery-permit-adapter.js",
     "aeb-wimse-oauth-adapter.js",
+    "aeb-wimse-oauth-principal-adapter.js",
     "authorization-server-confirmation.js",
     "authorization-server-confirmation.v1.json",
     "authorization-bundle.js",

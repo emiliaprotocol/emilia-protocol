@@ -1,0 +1,95 @@
+{
+  "@version": "WIMSE-OAUTH-PRINCIPAL-AEB-v2",
+  "status": "experimental",
+  "profile": "docs/protocol/wimse-oauth-principal-aeb-profile-v2.md",
+  "adapter": {
+    "id": "native:wimse-oauth-principal-separation",
+    "version": "2",
+    "config_version": "AEB-WIMSE-OAUTH-PRINCIPAL-CONFIG-v2",
+    "base_adapter": "native:wimse-http-signature-oauth-txn-spt-intent@1"
+  },
+  "scope_note": "These cases test principal separation and acceptance on top of the revision-pinned v1 cryptographic verifier. They do not change CAID action material and do not turn OAuth sub or SPT human_anchor into human authorization.",
+  "vectors": [
+    {
+      "id": "accept_separated_principals",
+      "class": "positive",
+      "input": "A verified OAuth Txn-Token carries the closed v2 relationship claim. Logical agent, live workload instance, OAuth client, delegating principal, executor, and tool all match relying-party pins; the WIT confirmation key thumbprint and SPT tool independently agree.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "mapping": "MATCH",
+        "caid_identity_fields": false,
+        "role": "delegated-workload"
+      }
+    },
+    {
+      "id": "indeterminate_missing_principal_relationship",
+      "class": "missing-evidence",
+      "input": "The native bundle verifies, but the signed relationship claim or one required relationship member is absent or malformed.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "INDETERMINATE"
+      }
+    },
+    {
+      "id": "reject_same_agent_different_instance",
+      "class": "instance-substitution",
+      "input": "The logical agent is unchanged but the signed live workload instance differs from the pinned instance and WIT subject relationship.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "reason": "workload_instance_mismatch"
+      }
+    },
+    {
+      "id": "reject_same_sub_different_client",
+      "class": "client-substitution",
+      "input": "OAuth sub is unchanged while the signed OAuth client identity differs from the client pinned for this grant.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "reason": "oauth_client_mismatch"
+      }
+    },
+    {
+      "id": "reject_changed_grant_semantics",
+      "class": "subject-semantics",
+      "input": "The same sub is replayed under a different grant type or a different declared meaning of sub.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "reason": "oauth_grant_semantics_mismatch_or_oauth_sub_semantics_mismatch"
+      }
+    },
+    {
+      "id": "reject_unpinned_key_rotation",
+      "class": "key-continuity",
+      "input": "The live workload instance claim names a confirmation-key thumbprint that does not match both the relying-party pin and the verified WIT cnf.jwk.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "reason": "workload_confirmation_key_mismatch"
+      }
+    },
+    {
+      "id": "reject_tool_substitution",
+      "class": "tool-substitution",
+      "input": "The signed relationship claim names a different tool from the independently verified SPT intent used by the material action.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "reason": "tool_mismatch"
+      }
+    },
+    {
+      "id": "reject_resource_server_substitution",
+      "class": "executor-substitution",
+      "input": "The signed executor identity differs from the executor pinned together with the OAuth and WIMSE audiences.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "reason": "executor_mismatch"
+      }
+    }
+  ]
+}

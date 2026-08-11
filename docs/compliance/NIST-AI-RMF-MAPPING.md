@@ -72,10 +72,10 @@ This document maps EMILIA Protocol capabilities to the four core functions of th
 | MANAGE 2.2 | Mechanisms are in place for risk management | EP four-layer enforcement: Eye observes → Handshake verifies → Signoff owns → Commit seals. Each layer is independently auditable. |
 | MANAGE 2.4 | Mechanisms are in place for safe decommission | EP Commit revocation, delegation revocation, entity suspension — all with mandatory audit trail and reason recording. |
 | MANAGE 3.1 | AI risks and benefits are communicated | EP Trust Decisions include human-readable `reasons` array. Commitment proofs enable privacy-preserving trust communication. |
-| MANAGE 3.2 | AI risk management is communicated to stakeholders | EP audit_events and protocol_events tables provide complete, append-only, SIEM-forwardable audit trail for every trust-changing operation. |
+| MANAGE 3.2 | AI risk management is communicated to stakeholders | For operations mediated through covered EMILIA Gate paths, EP audit_events and protocol_events provide append-only, SIEM-forwardable records of the trust-changing operations those paths actually record. This does not establish completeness for operations that bypass Gate. |
 | MANAGE 4.1 | Post-deployment monitoring is planned | EP Eye OBSERVE→SHADOW→ENFORCE lifecycle provides progressive monitoring. Eye observations are stored and queryable. |
 | MANAGE 4.2 | Incidents are documented and reported | EP audit trail + protocol events + SIEM forwarder. Dispute lifecycle documents every incident from filing through resolution and appeal. |
-| MANAGE 4.3 | AI system decommission is documented | EP Commit revocation + entity suspension audit trail. All state transitions are logged in protocol_events before execution. |
+| MANAGE 4.3 | AI system decommission is documented | EP Commit revocation + entity suspension audit trail. Covered Gate paths record their mediated state transitions in protocol_events before the corresponding controlled execution step. |
 
 ---
 

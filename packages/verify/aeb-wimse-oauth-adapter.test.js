@@ -10,6 +10,7 @@ import test from 'node:test';
 import { computeCaid } from './vendor/caid.mjs';
 import { InMemoryAebConsumptionStore, canonicalizeAeb, digestAeb, } from './aeb-adapter-contract.js';
 import { OAUTH_TRANSACTION_TOKENS_REVISION, WIMSE_OAUTH_SPT_AEB_ADAPTER_ID, WIMSE_OAUTH_SPT_AEB_ADAPTER_VERSION, WIMSE_OAUTH_SPT_AEB_CONFIG_VERSION, WIMSE_OAUTH_SPT_CAID_MAPPER_ID, WIMSE_OAUTH_SPT_CAID_MAPPING_VERSION, WIMSE_OAUTH_SPT_TRUST_ROOT_VERSION, createWimseOAuthSptAebAdapter, createWimseOAuthSptActionDefinition, } from './aeb-wimse-oauth-adapter.js';
+import { WIMSE_OAUTH_PRINCIPAL_BINDING_CLAIM, WIMSE_OAUTH_PRINCIPAL_BINDING_VERSION, WIMSE_OAUTH_PRINCIPAL_CONFIG_VERSION, createWimseOAuthPrincipalAebAdapter, } from './aeb-wimse-oauth-principal-adapter.js';
 const NOW = '2026-07-24T12:00:00Z';
 const NOW_SECONDS = Math.floor(Date.parse(NOW) / 1000);
 const WORKLOAD_SUBJECT = 'wimse://payments.example/workloads/release-agent';
@@ -33,6 +34,14 @@ function sha256Base64url(value) {
     // OAuth token-binding test commitment, not password or credential storage.
     // codeql[js/insufficient-password-hash]
     return crypto.createHash('sha256').update(Buffer.from(value, 'ascii')).digest('base64url');
+}
+function holderJkt(jwk) {
+    assert.equal(jwk.kty, 'OKP');
+    assert.equal(jwk.crv, 'Ed25519');
+    assert.equal(typeof jwk.x, 'string');
+    return crypto.createHash('sha256')
+        .update(Buffer.from(canonicalizeAeb({ crv: jwk.crv, kty: jwk.kty, x: jwk.x }), 'utf8'))
+        .digest('base64url');
 }
 function contentDigest(body) {
     return `sha-256=:${crypto.createHash('sha256').update(Buffer.from(body, 'utf8')).digest('base64')}:`;
@@ -192,6 +201,25 @@ function makeFixture(options = {}) {
         amount_minor: '50000',
         currency: 'USD',
     };
+    const principalBinding = {
+        '@version': WIMSE_OAUTH_PRINCIPAL_BINDING_VERSION,
+        logical_agent_id: 'wimse://payments.example/agents/release-agent',
+        workload_instance_id: WORKLOAD_SUBJECT,
+        wimse_subject_semantics: 'workload-instance',
+        workload_confirmation_jkt: holderJkt(holderJwk),
+        oauth_client_id: 'client:release-agent-runtime',
+        oauth_grant_type: 'urn:example:grant:delegated-payment',
+        oauth_sub_semantics: 'delegating-principal',
+        delegating_principal: {
+            id: OAUTH_SUBJECT,
+            kind: 'human',
+        },
+        executor_id: 'executor:payments-commit',
+        tool_id: 'payment.release',
+    };
+    Object.assign(principalBinding, options.principalBindingOverrides ?? {});
+    for (const key of options.principalBindingDelete ?? [])
+        delete principalBinding[key];
     const oauthTimes = options.oauthTimes ?? {
         iat: NOW_SECONDS - 10,
         nbf: NOW_SECONDS - 10,
@@ -199,7 +227,7 @@ function makeFixture(options = {}) {
     };
     const oauthClaims = {
         iss: 'https://tts.payments.example',
-        sub: OAUTH_SUBJECT,
+        sub: options.oauthSubject ?? OAUTH_SUBJECT,
         aud: options.oauthAudience ?? OAUTH_AUDIENCE,
         ...oauthTimes,
         txn: 'txn-payment-release-0001',
@@ -207,6 +235,9 @@ function makeFixture(options = {}) {
         req_wl: WORKLOAD_SUBJECT,
         tctx: transactionContext,
     };
+    if (options.includePrincipalBinding === true) {
+        oauthClaims[WIMSE_OAUTH_PRINCIPAL_BINDING_CLAIM] = principalBinding;
+    }
     const txnToken = compactJws({
         alg: 'EdDSA',
         typ: 'txntoken+jwt',
@@ -332,7 +363,51 @@ function makeFixture(options = {}) {
         expected_action: expectedAction,
         now: NOW,
     };
-    return { adapter, artifact, config, trustRoots, expectedAction, profile, input };
+    return {
+        adapter,
+        artifact,
+        config,
+        trustRoots,
+        expectedAction,
+        profile,
+        input,
+        principalBinding,
+    };
+}
+function makeV2Fixture(options = {}) {
+    const fixture = makeFixture({ ...options, includePrincipalBinding: options.includePrincipalBinding ?? true });
+    const principalPins = {
+        '@version': WIMSE_OAUTH_PRINCIPAL_BINDING_VERSION,
+        logical_agent_id: 'wimse://payments.example/agents/release-agent',
+        workload_instance_id: WORKLOAD_SUBJECT,
+        wimse_subject_semantics: 'workload-instance',
+        workload_confirmation_jkt: fixture.principalBinding.workload_confirmation_jkt,
+        oauth_client_id: 'client:release-agent-runtime',
+        oauth_grant_type: 'urn:example:grant:delegated-payment',
+        oauth_sub_semantics: 'delegating-principal',
+        delegating_principal: {
+            id: OAUTH_SUBJECT,
+            kind: 'human',
+        },
+        executor_id: 'executor:payments-commit',
+        tool_id: 'payment.release',
+    };
+    Object.assign(principalPins, options.principalPinsOverrides ?? {});
+    const config = {
+        '@version': WIMSE_OAUTH_PRINCIPAL_CONFIG_VERSION,
+        base: fixture.config,
+        principal_binding: principalPins,
+    };
+    const adapter = createWimseOAuthPrincipalAebAdapter({
+        config,
+        trust_roots: fixture.trustRoots,
+    });
+    return {
+        ...fixture,
+        adapter,
+        v2Config: config,
+        input: { ...fixture.input, adapter_config: config },
+    };
 }
 function verifyFixture(fixture) {
     return fixture.adapter.verifyNative(fixture.input);
@@ -532,6 +607,140 @@ test('identity, possession, OAuth context, and SPT human_anchor cannot substitut
         trust_roots: fixture.trustRoots,
     }), /constructor config/);
 });
+test('v2 pins six distinct principals without adding identity to the CAID action', () => {
+    const fixture = makeV2Fixture();
+    const native = verifyFixture(fixture);
+    assert.equal(native.native_verification, 'VERIFIED', native.reasons.join('; '));
+    assert.equal(native.acceptance, 'ACCEPTED', native.reasons.join('; '));
+    assert.equal(native.evidence_role, 'delegated-workload');
+    assert.equal(native.subject.kind, 'workload');
+    const mapped = fixture.adapter.mapAction({
+        ...fixture.input,
+        profile: fixture.profile,
+        native,
+    });
+    assert.equal(mapped.mapping, 'MATCH', mapped.reasons.join('; '));
+    assert.equal(mapped.action_digest, digestAeb(fixture.expectedAction));
+    assert.equal(JSON.stringify(fixture.expectedAction).includes('logical_agent'), false);
+    assert.equal(JSON.stringify(fixture.expectedAction).includes('delegating_principal'), false);
+});
+test('v2 identity changes alter acceptance pins but never the material-action CAID', () => {
+    const first = makeV2Fixture();
+    const changed = {
+        logical_agent_id: 'wimse://payments.example/agents/release-agent-v2',
+        oauth_client_id: 'client:release-agent-runtime-v2',
+    };
+    const second = makeV2Fixture({
+        principalBindingOverrides: changed,
+        principalPinsOverrides: changed,
+    });
+    const results = [first, second].map((fixture) => {
+        const native = verifyFixture(fixture);
+        assert.equal(native.acceptance, 'ACCEPTED', native.reasons.join('; '));
+        return fixture.adapter.mapAction({
+            ...fixture.input,
+            profile: fixture.profile,
+            native,
+        });
+    });
+    assert.equal(results[0].mapping, 'MATCH');
+    assert.equal(results[1].mapping, 'MATCH');
+    assert.equal(results[0].caid, results[1].caid);
+    assert.equal(results[0].action_digest, results[1].action_digest);
+});
+test('v2 returns INDETERMINATE when a required relationship is absent or malformed', () => {
+    const missing = makeV2Fixture({ includePrincipalBinding: false });
+    const malformed = makeV2Fixture({ principalBindingDelete: ['oauth_sub_semantics'] });
+    for (const fixture of [missing, malformed]) {
+        const native = verifyFixture(fixture);
+        assert.equal(native.native_verification, 'VERIFIED', native.reasons.join('; '));
+        assert.equal(native.acceptance, 'INDETERMINATE');
+        assert.match(native.reasons.join(';'), /principal_binding_(missing|malformed)/);
+    }
+});
+test('v2 rejects same logical agent with a substituted live workload instance', () => {
+    const fixture = makeV2Fixture({
+        principalBindingOverrides: {
+            workload_instance_id: 'wimse://payments.example/workloads/release-agent-2',
+        },
+    });
+    const native = verifyFixture(fixture);
+    assert.equal(native.native_verification, 'VERIFIED');
+    assert.equal(native.acceptance, 'REJECTED');
+    assert.ok(native.reasons.includes('wimse-oauth-principal:workload_instance_mismatch'));
+});
+test('v2 rejects the same OAuth sub under a substituted client or changed grant semantics', () => {
+    const client = makeV2Fixture({
+        principalBindingOverrides: { oauth_client_id: 'client:attacker-runtime' },
+    });
+    const grant = makeV2Fixture({
+        principalBindingOverrides: { oauth_grant_type: 'client_credentials' },
+    });
+    for (const [fixture, reason] of [
+        [client, 'wimse-oauth-principal:oauth_client_mismatch'],
+        [grant, 'wimse-oauth-principal:oauth_grant_semantics_mismatch'],
+    ]) {
+        const native = verifyFixture(fixture);
+        assert.equal(native.native_verification, 'VERIFIED');
+        assert.equal(native.acceptance, 'REJECTED');
+        assert.ok(native.reasons.includes(reason));
+    }
+});
+test('v2 rejects confirmation-key rotation that is not reflected in the pinned instance binding', () => {
+    const fixture = makeV2Fixture({
+        principalBindingOverrides: {
+            workload_confirmation_jkt: 'A'.repeat(43),
+        },
+    });
+    const native = verifyFixture(fixture);
+    assert.equal(native.native_verification, 'VERIFIED');
+    assert.equal(native.acceptance, 'REJECTED');
+    assert.ok(native.reasons.includes('wimse-oauth-principal:workload_confirmation_key_mismatch'));
+});
+test('v2 rejects tool and resource-server substitution independently', () => {
+    const tool = makeV2Fixture({
+        principalBindingOverrides: { tool_id: 'payment.refund' },
+    });
+    const executor = makeV2Fixture({
+        principalBindingOverrides: { executor_id: 'executor:attacker' },
+    });
+    for (const [fixture, reason] of [
+        [tool, 'wimse-oauth-principal:tool_mismatch'],
+        [executor, 'wimse-oauth-principal:executor_mismatch'],
+    ]) {
+        const native = verifyFixture(fixture);
+        assert.equal(native.native_verification, 'VERIFIED');
+        assert.equal(native.acceptance, 'REJECTED');
+        assert.ok(native.reasons.includes(reason));
+    }
+});
+test('v2 never infers human from OAuth sub and enforces the declared subject semantics', () => {
+    const fixture = makeV2Fixture({
+        principalBindingOverrides: { oauth_sub_semantics: 'oauth-client' },
+    });
+    const native = verifyFixture(fixture);
+    assert.equal(native.native_verification, 'VERIFIED');
+    assert.equal(native.acceptance, 'REJECTED');
+    assert.ok(native.reasons.includes('wimse-oauth-principal:oauth_sub_semantics_mismatch'));
+    assert.equal(native.evidence_role, 'delegated-workload');
+    assert.equal(native.subject.kind, 'workload');
+});
+test('v2 mapper re-verifies principal acceptance instead of trusting a forged native result', () => {
+    const fixture = makeV2Fixture({
+        principalBindingOverrides: { oauth_client_id: 'client:attacker-runtime' },
+    });
+    const rejected = verifyFixture(fixture);
+    assert.equal(rejected.acceptance, 'REJECTED');
+    const forged = { ...rejected, acceptance: 'ACCEPTED', reasons: [] };
+    const mapped = fixture.adapter.mapAction({
+        ...fixture.input,
+        profile: fixture.profile,
+        native: forged,
+    });
+    assert.equal(mapped.mapping, 'INDETERMINATE');
+    assert.equal(mapped.caid, null);
+    assert.ok(mapped.reasons.includes('native_acceptance_required'));
+});
 test('checked-in vector enumerates the positive and required hostile classes', () => {
     const vectorPath = new URL('../../conformance/vectors/wimse-oauth-spt-aeb.v1.json', import.meta.url);
     const vector = JSON.parse(fs.readFileSync(vectorPath, 'utf8'));
@@ -551,5 +760,22 @@ test('checked-in vector enumerates the positive and required hostile classes', (
         'reject_human_role_substitution',
     ]) {
         assert.ok(ids.has(id), `missing vector ${id}`);
+    }
+});
+test('v2 checked-in vector covers every principal-confusion class', () => {
+    const vectorPath = new URL('../../conformance/vectors/wimse-oauth-principal-aeb.v2.json', import.meta.url);
+    const vector = JSON.parse(fs.readFileSync(vectorPath, 'utf8'));
+    const ids = new Set(vector.vectors.map((entry) => entry.id));
+    for (const id of [
+        'accept_separated_principals',
+        'indeterminate_missing_principal_relationship',
+        'reject_same_agent_different_instance',
+        'reject_same_sub_different_client',
+        'reject_changed_grant_semantics',
+        'reject_unpinned_key_rotation',
+        'reject_tool_substitution',
+        'reject_resource_server_substitution',
+    ]) {
+        assert.ok(ids.has(id), `missing v2 vector ${id}`);
     }
 });

@@ -1,0 +1,327 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * Experimental WIMSE/OAuth principal-separation profile v2 for AEB.
+ *
+ * The v1 adapter remains the cryptographic verifier and CAID mapper. This
+ * profile adds relying-party-pinned relationships among the logical agent,
+ * live workload instance, OAuth client, delegating principal, executor, and
+ * tool. Those identities are evidence metadata and never enter the CAID
+ * action projection.
+ *
+ * A missing or malformed relationship is INDETERMINATE. A well-formed signed
+ * relationship that conflicts with a relying-party pin is REJECTED. OAuth
+ * `sub` is interpreted only according to the grant-specific semantics carried
+ * in this profile; it is never inferred to be a human.
+ */
+import crypto from 'node:crypto';
+import { canonicalizeAeb, digestAeb, } from './aeb-adapter-contract.js';
+import { createWimseOAuthSptAebAdapter, } from './aeb-wimse-oauth-adapter.js';
+import { strictJsonGate } from './strict-json.js';
+export const WIMSE_OAUTH_PRINCIPAL_AEB_ADAPTER_ID = 'native:wimse-oauth-principal-separation';
+export const WIMSE_OAUTH_PRINCIPAL_AEB_ADAPTER_VERSION = '2';
+export const WIMSE_OAUTH_PRINCIPAL_CONFIG_VERSION = 'AEB-WIMSE-OAUTH-PRINCIPAL-CONFIG-v2';
+export const WIMSE_OAUTH_PRINCIPAL_BINDING_VERSION = 'EP-WIMSE-OAUTH-PRINCIPAL-BINDING-v2';
+export const WIMSE_OAUTH_PRINCIPAL_BINDING_CLAIM = 'https://emiliaprotocol.ai/claims/wimse-principal-binding-v2';
+const B64URL_RE = /^[A-Za-z0-9_-]+$/;
+const TOKEN_RE = /^[A-Za-z0-9][A-Za-z0-9._~+:/%?-]{0,255}$/;
+const BINDING_KEYS = new Set([
+    '@version',
+    'logical_agent_id',
+    'workload_instance_id',
+    'wimse_subject_semantics',
+    'workload_confirmation_jkt',
+    'oauth_client_id',
+    'oauth_grant_type',
+    'oauth_sub_semantics',
+    'delegating_principal',
+    'executor_id',
+    'tool_id',
+]);
+const PRINCIPAL_KEYS = new Set(['id', 'kind']);
+const CONFIG_KEYS = new Set(['@version', 'base', 'principal_binding']);
+const ARTIFACT_KEYS = new Set(['wit', 'wpt', 'txn_token', 'request', 'spt_txn', 'spt_intent']);
+function isRecord(value) {
+    if (value === null || typeof value !== 'object' || Array.isArray(value))
+        return false;
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+}
+function exactKeys(value, expected) {
+    const actual = Object.keys(value);
+    return actual.length === expected.size && actual.every((key) => expected.has(key));
+}
+function nonEmptyString(value, max = 1024) {
+    return typeof value === 'string'
+        && value.length > 0
+        && value.length <= max
+        && !/[\u0000-\u001f\u007f\ufffd]/.test(value);
+}
+function bindingShape(value) {
+    return isRecord(value)
+        && exactKeys(value, BINDING_KEYS)
+        && value['@version'] === WIMSE_OAUTH_PRINCIPAL_BINDING_VERSION
+        && nonEmptyString(value.logical_agent_id)
+        && nonEmptyString(value.workload_instance_id)
+        && value.logical_agent_id !== value.workload_instance_id
+        && (value.wimse_subject_semantics === 'logical-agent'
+            || value.wimse_subject_semantics === 'workload-instance')
+        && typeof value.workload_confirmation_jkt === 'string'
+        && decodeB64url(value.workload_confirmation_jkt)?.length === 32
+        && nonEmptyString(value.oauth_client_id)
+        && typeof value.oauth_grant_type === 'string'
+        && TOKEN_RE.test(value.oauth_grant_type)
+        && (value.oauth_sub_semantics === 'delegating-principal'
+            || value.oauth_sub_semantics === 'oauth-client'
+            || value.oauth_sub_semantics === 'workload-instance')
+        && isRecord(value.delegating_principal)
+        && exactKeys(value.delegating_principal, PRINCIPAL_KEYS)
+        && nonEmptyString(value.delegating_principal.id)
+        && (value.delegating_principal.kind === 'human'
+            || value.delegating_principal.kind === 'organization'
+            || value.delegating_principal.kind === 'system')
+        && nonEmptyString(value.executor_id)
+        && nonEmptyString(value.tool_id);
+}
+function subjectNamedByBinding(binding) {
+    return binding.wimse_subject_semantics === 'logical-agent'
+        ? binding.logical_agent_id
+        : binding.workload_instance_id;
+}
+function parseConstructorPins(value) {
+    if (!isRecord(value) || !exactKeys(value, new Set(['config', 'trust_roots']))) {
+        throw new TypeError('invalid WIMSE/OAuth principal constructor pins');
+    }
+    const rawConfig = value.config;
+    if (!isRecord(rawConfig)
+        || !exactKeys(rawConfig, CONFIG_KEYS)
+        || rawConfig['@version'] !== WIMSE_OAUTH_PRINCIPAL_CONFIG_VERSION
+        || !isRecord(rawConfig.base)
+        || !bindingShape(rawConfig.principal_binding)) {
+        throw new TypeError('invalid WIMSE/OAuth principal constructor config');
+    }
+    const config = structuredClone(rawConfig);
+    if (config.base.subject.native_id !== subjectNamedByBinding(config.principal_binding)) {
+        throw new TypeError('WIMSE subject semantics do not identify the pinned native subject');
+    }
+    const basePins = {
+        config: config.base,
+        trust_roots: value.trust_roots,
+    };
+    const baseAdapter = createWimseOAuthSptAebAdapter(basePins);
+    const trustRoots = structuredClone(value.trust_roots);
+    return {
+        config,
+        trustRoots,
+        configDigest: digestAeb(config),
+        rootsDigest: digestAeb(trustRoots),
+        baseAdapter,
+    };
+}
+function decodeB64url(segment) {
+    if (!B64URL_RE.test(segment) || segment.length % 4 === 1)
+        return null;
+    try {
+        const decoded = Buffer.from(segment, 'base64url');
+        return decoded.length > 0 && decoded.toString('base64url') === segment ? decoded : null;
+    }
+    catch {
+        return null;
+    }
+}
+function compactClaims(token) {
+    if (typeof token !== 'string' || token.length > 65_536)
+        return null;
+    const parts = token.split('.');
+    if (parts.length !== 3 || parts.some((part) => part.length === 0))
+        return null;
+    const payload = decodeB64url(parts[1]);
+    if (!payload)
+        return null;
+    let text;
+    try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(payload);
+    }
+    catch {
+        return null;
+    }
+    if (!strictJsonGate(text).ok)
+        return null;
+    try {
+        const value = JSON.parse(text);
+        return isRecord(value) ? value : null;
+    }
+    catch {
+        return null;
+    }
+}
+function jwkThumbprint(value) {
+    if (!isRecord(value)
+        || value.kty !== 'OKP'
+        || value.crv !== 'Ed25519'
+        || typeof value.x !== 'string'
+        || !B64URL_RE.test(value.x))
+        return null;
+    try {
+        return crypto.createHash('sha256')
+            .update(Buffer.from(canonicalizeAeb({ crv: value.crv, kty: value.kty, x: value.x }), 'utf8'))
+            .digest('base64url');
+    }
+    catch {
+        return null;
+    }
+}
+function reject(reason) {
+    return { acceptance: 'REJECTED', reason: `wimse-oauth-principal:${reason}` };
+}
+function indeterminate(reason) {
+    return { acceptance: 'INDETERMINATE', reason: `wimse-oauth-principal:${reason}` };
+}
+function validateRelationships(artifact, pins) {
+    if (!isRecord(artifact)
+        || !Object.keys(artifact).every((key) => ARTIFACT_KEYS.has(key))) {
+        return indeterminate('principal_binding_unavailable');
+    }
+    const oauth = compactClaims(artifact.txn_token);
+    const wit = compactClaims(artifact.wit);
+    if (!oauth || !wit)
+        return indeterminate('principal_binding_unavailable');
+    const rawBinding = oauth[WIMSE_OAUTH_PRINCIPAL_BINDING_CLAIM];
+    if (rawBinding === undefined)
+        return indeterminate('principal_binding_missing');
+    if (!bindingShape(rawBinding))
+        return indeterminate('principal_binding_malformed');
+    const binding = rawBinding;
+    const expected = pins.config.principal_binding;
+    if (binding.logical_agent_id !== expected.logical_agent_id)
+        return reject('logical_agent_mismatch');
+    if (binding.workload_instance_id !== expected.workload_instance_id
+        || binding.wimse_subject_semantics !== expected.wimse_subject_semantics) {
+        return reject('workload_instance_mismatch');
+    }
+    if (binding.oauth_client_id !== expected.oauth_client_id)
+        return reject('oauth_client_mismatch');
+    if (binding.oauth_grant_type !== expected.oauth_grant_type) {
+        return reject('oauth_grant_semantics_mismatch');
+    }
+    if (binding.oauth_sub_semantics !== expected.oauth_sub_semantics
+        || binding.delegating_principal.id !== expected.delegating_principal.id
+        || binding.delegating_principal.kind !== expected.delegating_principal.kind) {
+        return reject('oauth_sub_semantics_mismatch');
+    }
+    if (binding.executor_id !== expected.executor_id)
+        return reject('executor_mismatch');
+    if (binding.tool_id !== expected.tool_id)
+        return reject('tool_mismatch');
+    const expectedSub = binding.oauth_sub_semantics === 'delegating-principal'
+        ? binding.delegating_principal.id
+        : binding.oauth_sub_semantics === 'oauth-client'
+            ? binding.oauth_client_id
+            : binding.workload_instance_id;
+    if (oauth.sub !== expectedSub)
+        return reject('oauth_sub_semantics_mismatch');
+    if (oauth.req_wl !== binding.workload_instance_id)
+        return reject('workload_instance_mismatch');
+    const cnf = isRecord(wit.cnf) ? wit.cnf : null;
+    const confirmationJkt = cnf ? jwkThumbprint(cnf.jwk) : null;
+    if (confirmationJkt === null)
+        return indeterminate('workload_confirmation_key_unprovable');
+    if (binding.workload_confirmation_jkt !== expected.workload_confirmation_jkt
+        || binding.workload_confirmation_jkt !== confirmationJkt) {
+        return reject('workload_confirmation_key_mismatch');
+    }
+    if (!isRecord(artifact.spt_intent) || artifact.spt_intent.tool !== binding.tool_id) {
+        return indeterminate('tool_binding_unprovable');
+    }
+    return null;
+}
+function pinnedInvocation(input, pins) {
+    try {
+        return digestAeb(input.adapter_config) === pins.configDigest
+            && digestAeb(input.trust_roots) === pins.rootsDigest;
+    }
+    catch {
+        return false;
+    }
+}
+function baseInput(input, pins) {
+    return { ...input, adapter_config: pins.config.base };
+}
+function verifyNative(input, pins) {
+    const base = pins.baseAdapter.verifyNative(baseInput(input, pins));
+    if (!pinnedInvocation(input, pins)) {
+        return {
+            ...base,
+            native_verification: 'FAILED',
+            acceptance: 'INDETERMINATE',
+            reasons: ['wimse-oauth-principal:constructor_pin_mismatch'],
+        };
+    }
+    if (base.native_verification !== 'VERIFIED' || base.acceptance !== 'ACCEPTED')
+        return base;
+    const relationship = validateRelationships(input.artifact, pins);
+    return relationship === null
+        ? base
+        : { ...base, acceptance: relationship.acceptance, reasons: [relationship.reason] };
+}
+function mapAction(input, pins) {
+    if (!pinnedInvocation(input, pins)) {
+        return {
+            mapping: 'INDETERMINATE',
+            caid: null,
+            action_digest: null,
+            reasons: ['wimse-oauth-principal:mapping_constructor_pin_mismatch'],
+        };
+    }
+    const reverified = verifyNative(input, pins);
+    if (input.native.native_verification !== 'VERIFIED'
+        || input.native.acceptance !== 'ACCEPTED'
+        || reverified.native_verification !== 'VERIFIED'
+        || reverified.acceptance !== 'ACCEPTED') {
+        return {
+            mapping: 'INDETERMINATE',
+            caid: null,
+            action_digest: null,
+            reasons: ['native_acceptance_required'],
+        };
+    }
+    return pins.baseAdapter.mapAction({
+        ...input,
+        adapter_config: pins.config.base,
+        native: reverified,
+    });
+}
+export function createWimseOAuthPrincipalAebAdapter(constructorPins) {
+    const pins = parseConstructorPins(constructorPins);
+    return Object.freeze({
+        id: WIMSE_OAUTH_PRINCIPAL_AEB_ADAPTER_ID,
+        version: WIMSE_OAUTH_PRINCIPAL_AEB_ADAPTER_VERSION,
+        verifyNative(input) {
+            try {
+                return verifyNative(input, pins);
+            }
+            catch {
+                const base = pins.baseAdapter.verifyNative(baseInput(input, pins));
+                return {
+                    ...base,
+                    native_verification: 'FAILED',
+                    acceptance: 'INDETERMINATE',
+                    reasons: ['wimse-oauth-principal:unexpected_adapter_error'],
+                };
+            }
+        },
+        mapAction(input) {
+            try {
+                return mapAction(input, pins);
+            }
+            catch {
+                return {
+                    mapping: 'INDETERMINATE',
+                    caid: null,
+                    action_digest: null,
+                    reasons: ['wimse-oauth-principal:unexpected_mapping_error'],
+                };
+            }
+        },
+    });
+}
+//# sourceMappingURL=aeb-wimse-oauth-principal-adapter.js.map

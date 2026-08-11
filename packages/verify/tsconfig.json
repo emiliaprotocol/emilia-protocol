@@ -57,6 +57,8 @@
     "src/aeb-mcgraw-delegation-adapter.ts",
     "src/aeb-native-adapters.ts",
     "src/aeb-oauth-transaction-challenge-adapter.ts",
+    "src/aeb-wimse-oauth-adapter.ts",
+    "src/aeb-wimse-oauth-principal-adapter.ts",
     "src/aeb-oasnt-adapter.ts",
     "src/aeb-psea-adapter.ts",
     "src/fido-ap2-bridge.ts",
