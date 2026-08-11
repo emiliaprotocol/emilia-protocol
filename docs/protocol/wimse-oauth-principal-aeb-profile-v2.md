@@ -30,6 +30,12 @@ relying party. It wraps the frozen v1 verifier rather than replacing its WIT,
 WPT, HTTP Message Signature, OAuth Txn-Token, SPT, freshness, replay, or CAID
 checks.
 
+The delegating principal is not automatically the system owner, terminal
+accountable authority, or per-action human approver. A deployment that requires
+one of those roles carries it as a separate evidence leg and proves the
+relationship explicitly. This profile does not overload the workload
+credential with an undifferentiated `owner` claim.
+
 ## 2. Carried relationship claim
 
 The application profile uses this collision-resistant private JWT claim in the
@@ -103,7 +109,21 @@ The profile preserves the AEB decision layers:
 The verifier does not guess a missing client, grant meaning, key relationship,
 executor, or tool.
 
-## 5. CAID boundary
+## 5. Discovery is not trust
+
+Discovery of an authorization server, metadata document, JWKS endpoint, or
+supported grant does not establish that the relying party accepts that server,
+its keys, or its claim semantics. Discovery locates material. Acceptance comes
+only from the relying party's configured trust roots and the exact semantic
+pins in this profile.
+
+A newly encountered authorization server therefore remains unaccepted until a
+separate trust-introduction process authorizes its issuer, keys, audiences,
+grant semantics, and any relevant identity relationships. A cryptographically
+valid token from a merely discovered server cannot satisfy this profile by
+itself.
+
+## 6. CAID boundary
 
 CAID continues to identify the material action. The principal-binding claim is
 top-level transaction-token evidence metadata and is not copied into the v1
@@ -117,7 +137,7 @@ AEB joins that action to separately verified identity, delegation, and approval
 legs. Changing an identity must change profile acceptance, not silently change
 the meaning of the material action identifier.
 
-## 6. Hostile cases
+## 7. Hostile cases
 
 The executable test and checked-in vector cover:
 

@@ -852,6 +852,19 @@ test('v2 mapper re-verifies principal acceptance instead of trusting a forged na
   assert.ok(mapped.reasons.includes('native_acceptance_required'));
 });
 
+test('v2 treats discovered authorization-server metadata as input, not trust', () => {
+  const fixture = makeV2Fixture();
+  const discoveredRoots = structuredClone(fixture.trustRoots);
+  discoveredRoots[1].issuer = 'https://discovered-as.example';
+  const native = fixture.adapter.verifyNative({
+    ...fixture.input,
+    trust_roots: discoveredRoots,
+  });
+  assert.equal(native.native_verification, 'FAILED');
+  assert.equal(native.acceptance, 'INDETERMINATE');
+  assert.ok(native.reasons.includes('wimse-oauth-principal:constructor_pin_mismatch'));
+});
+
 test('checked-in vector enumerates the positive and required hostile classes', () => {
   const vectorPath = new URL('../../conformance/vectors/wimse-oauth-spt-aeb.v1.json', import.meta.url);
   const vector = JSON.parse(fs.readFileSync(vectorPath, 'utf8')) as Obj;
@@ -888,6 +901,7 @@ test('v2 checked-in vector covers every principal-confusion class', () => {
     'reject_same_sub_different_client',
     'reject_changed_grant_semantics',
     'reject_unpinned_key_rotation',
+    'reject_discovered_unpinned_authorization_server',
     'reject_tool_substitution',
     'reject_resource_server_substitution',
   ]) {

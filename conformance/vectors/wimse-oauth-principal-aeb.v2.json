@@ -72,6 +72,16 @@
       }
     },
     {
+      "id": "reject_discovered_unpinned_authorization_server",
+      "class": "trust-introduction",
+      "input": "Authorization-server metadata and verification material are discovered, but the server and its claim semantics are absent from the relying party's constructor pins.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "INDETERMINATE",
+        "reason": "constructor_pin_mismatch"
+      }
+    },
+    {
       "id": "reject_tool_substitution",
       "class": "tool-substitution",
       "input": "The signed relationship claim names a different tool from the independently verified SPT intent used by the material action.",

@@ -1,0 +1,3 @@
+776f173b64a0c149c447ff2cd64aef3b5c35a307c6d555f9378b07cfc0058d85  UPLOAD-THIS/draft-schrock-human-authorization-binding-01.xml
+91f4380edcd71c9043bfa4184eb8a1f7eea86da2e2c38d661ef9c8d2161a4229  RENDERS/draft-schrock-human-authorization-binding-01.html
+4c0a0a8d5da884c7631986a49baad9bb16a1525560de252808d51aaa71e2c5b6  RENDERS/draft-schrock-human-authorization-binding-01.txt

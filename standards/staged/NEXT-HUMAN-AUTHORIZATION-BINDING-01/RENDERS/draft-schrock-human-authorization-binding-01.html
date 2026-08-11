@@ -1,0 +1,1974 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>Binding Named-Human Authorization Evidence into Agent-Action Records</title>
+<meta content="Iman Schrock" name="author">
+<meta content="
+       A recurring pattern spans the agent-action record formats now in
+      development: a record about an agent's action reserves a place for
+      &quot;the human authorization&quot; — an approver disposition, an authority
+      context, a human-override field, an actor slot, a signed grant, an
+      approval reference — and leaves its semantics undefined. Each
+      format, reasonably, does not want to specify human-authorization
+      evidence itself; none, so far, says what filling the slot means.
+      This document defines that one thing, host-agnostically: how any
+      record binds named-human authorization evidence, either BY
+      REFERENCE (a content digest of the authorization artifact's
+      canonical bytes) or EMBEDDED (a compact, self-describing claim
+      carrying named approvals and optional distinct-human quorum
+      semantics), with seven requirements that make the binding mean the
+      same thing in every host: digest grounding, action agreement,
+      verified-versus-accepted discipline, fail-closed absence, and
+      embedded/referenced consistency, authoritative approver
+      attribution, and role non-equivalence. The SCITT signed-statement host
+      family is expressed concretely (digest selection, and the
+      observed-absence statement that is the only way absence of
+      authorization becomes evidence); an informative appendix maps the
+      binding onto the reserved slots of eleven current documents.
+      This document defines no new authorization format: the referenced
+      evidence verifies under its own specification. 
+    " name="description">
+<meta content="xml2rfc 3.34.0" name="generator">
+<meta content="AI agents" name="keyword">
+<meta content="human authorization" name="keyword">
+<meta content="binding" name="keyword">
+<meta content="evidence" name="keyword">
+<meta content="draft-schrock-human-authorization-binding-01" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.34.0
+    Python 3.14.5
+    ConfigArgParse 1.7.5
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.10.0
+    pycountry 26.2.16
+    PyYAML 6.0.3
+    requests 2.34.2
+    wcwidth 0.8.1
+-->
+<link href="draft-schrock-human-authorization-binding-01.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">/*
+
+  NOTE: Changes at the bottom of this file overrides some earlier settings.
+
+  Once the style has stabilized and has been adopted as an official RFC style,
+  this can be consolidated so that style settings occur only in one place, but
+  for now the contents of this file consists first of the initial CSS work as
+  provided to the RFC Formatter (xml2rfc) work, followed by itemized and
+  commented changes found necessary during the development of the v3
+  formatters.
+
+*/
+
+/* fonts */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
+
+:root {
+  --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
+  --font-serif: 'Noto Serif', 'Times', 'Times New Roman', serif;
+  --font-mono: 'Roboto Mono', Courier, 'Courier New', monospace;
+}
+
+@viewport {
+  zoom: 1.0;
+}
+@-ms-viewport {
+  width: extend-to-zoom;
+  zoom: 1.0;
+}
+/* general and mobile first */
+html {
+}
+body {
+  max-width: 90%;
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  overflow-wrap: break-word;
+}
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  line-height: 1.3;
+}
+#title {
+  clear: both;
+  border-bottom: 1px solid #ddd;
+  margin: 0 0 0.5em 0;
+  padding: 1em 0 0.5em;
+}
+.author {
+  padding-bottom: 4px;
+}
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  margin-top: -20px;  /* provide offset for in-page anchors */
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h5, h6 {
+  font-size: 14px;
+}
+#n-copyright-notice {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+/* general structure */
+p {
+  padding: 0;
+  margin: 0 0 1em 0;
+  text-align: left;
+}
+div, span {
+  position: relative;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+@media print {
+  svg {
+    max-height: 850px;
+    max-width: 660px;
+  }
+}
+svg[font-family~="serif" i], svg [font-family~="serif" i] {
+  font-family: var(--font-serif);
+}
+svg[font-family~="sans-serif" i], svg [font-family~="sans-serif" i] {
+  font-family: var(--font-sans);
+}
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  display: table;
+  border: none;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 1em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.ulBare, li.ulBare {
+  margin-left: 0em !important;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+/* 
+dl.nohang > dt {
+  float: none;
+}
+*/
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+/* XXX probably not this:
+a.selfRef:hover {
+  background-color: transparent;
+  cursor: default;
+} */
+
+/* Figures */
+tt, code, pre {
+  background-color: #f9f9f9;
+  font-family: var(--font-mono);
+}
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption {
+  font-style: italic;
+  margin: 0 0 1em 0;
+}
+@media screen {
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    max-width: calc(100% - 22px);
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 1.2em 2em;
+}
+blockquote {
+  background-color: #f9f9f9;
+  color: #111; /* Arlen: WCAG 2019 */
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin: 1em 0;
+}
+blockquote > *:last-child {
+  margin-bottom: 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+.xref {
+  overflow-wrap: normal;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+table p {
+  /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
+     be allowed within tables more generally, it would be far better to select on a class. */
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  color: #666; /* Arlen: AHDJ 2019 */
+  text-decoration: none;
+  visibility: hidden;
+  user-select: none;
+  -ms-user-select: none;
+  -o-user-select:none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media screen {
+  aside:hover > a.pilcrow,
+  p:hover > a.pilcrow,
+  blockquote:hover > a.pilcrow,
+  div:hover > a.pilcrow,
+  li:hover > a.pilcrow,
+  pre:hover > a.pilcrow {
+    visibility: visible;
+  }
+  a.pilcrow:hover {
+    background-color: transparent;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: 0.9em;
+}
+#identifiers dt {
+  width: 3em;
+  clear: left;
+}
+#identifiers dd {
+  float: left;
+  margin-bottom: 0;
+}
+/* Fix PDF info block run off issue */
+@media print {
+  #identifiers dd {
+    max-width: 100%;
+  }
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #666; /* Arlen: WCAG 2019 */
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc  {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+nav.toc ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+nav.toc li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.refSubseries {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 600px) {
+  .index ul {
+    -moz-column-count: 2;
+    -moz-column-gap: 20px;
+  }
+  .index ul ul {
+    -moz-column-count: 1;
+    -moz-column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  font-family: var(--font-sans);
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+
+/* temporary notes */
+.rfcEditorRemove::before {
+  position: absolute;
+  top: 0.2em;
+  right: 0.2em;
+  padding: 0.2em;
+  content: "The RFC Editor will remove this note";
+  color: #9e2a00; /* Arlen: WCAG 2019 */
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+}
+.rfcEditorRemove {
+  position: relative;
+  padding-top: 1.8em;
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  border-radius: 3px;
+}
+.cref {
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 1023px) {
+  body {
+    padding-top: 2em;
+  }
+  #title {
+    padding: 1em 0;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: -18px;  /* provide offset for in-page anchors */
+    padding-top: 38px;
+  }
+  #identifiers dd {
+    max-width: 60%;
+  }
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    border-bottom: 1px solid #ccc;
+  }
+  #toc h2 {
+    margin: -1px 0 0 0;
+    padding: 4px 0 4px 6px;
+    padding-right: 1em;
+    min-width: 190px;
+    font-size: 1.1em;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 6px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 1024px) {
+  body {
+    max-width: 724px;
+    margin: 42px auto;
+    padding-left: 1.5em;
+    padding-right: 29em;
+  }
+  #toc {
+    position: fixed;
+    top: 42px;
+    right: 42px;
+    width: 25%;
+    margin: 0;
+    padding: 0 1em;
+    z-index: 1;
+  }
+  #toc h2 {
+    border-top: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 0;
+    overflow: auto;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  .breakable pre {
+    break-inside: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* This is commented out here, as the string-set: doesn't
+   pass W3C validation currently */
+/*
+.ears thead .left {
+  string-set: ears-top-left content();
+}
+
+.ears thead .center {
+  string-set: ears-top-center content();
+}
+
+.ears thead .right {
+  string-set: ears-top-right content();
+}
+
+.ears tfoot .left {
+  string-set: ears-bottom-left content();
+}
+
+.ears tfoot .center {
+  string-set: ears-bottom-center content();
+}
+
+.ears tfoot .right {
+  string-set: ears-bottom-right content();
+}
+*/
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+  /* The following is commented out here, but set appropriately by in code, as
+     the content depends on the document */
+  /*
+  @top-left {
+    content: 'Internet-Draft';
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-left {
+    content: string(ears-top-left);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-center {
+    content: string(ears-top-center);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-right {
+    content: string(ears-top-right);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @bottom-left {
+    content: string(ears-bottom-left);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-center {
+    content: string(ears-bottom-center);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-right {
+      content: '[Page ' counter(page) ']';
+      vertical-align: top;
+      border-top: solid 1px #ccc;
+  }
+  */
+
+}
+
+/* Changes introduced to fix issues found during implementation */
+/* Make sure links are clickable even if overlapped by following H* */
+a {
+  z-index: 2;
+}
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Leave room in document info to show Internet-Draft on one line */
+#identifiers dt {
+  width: 8em;
+}
+
+/* Don't waste quite as much whitespace between label and value in doc info */
+#identifiers dd {
+  margin-left: 1em;
+}
+
+/* Give floating toc a background color (needed when it's a div inside section */
+#toc {
+  background-color: white;
+}
+
+/* Make the collapsed ToC header render white on gray also when it's a link */
+@media screen and (max-width: 1023px) {
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+}
+
+/* Give the bottom of the ToC some whitespace */
+@media screen and (min-width: 1024px) {
+  #toc {
+    padding: 0 0 1em 1em;
+  }
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* prevent monospace from becoming overly large */
+tt, code, pre {
+  font-size: 95%;
+}
+
+/* Fix the height/width aspect for ascii art*/
+.sourcecode pre,
+.art-text pre {
+  line-height: 1.12;
+}
+
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin-right: 0.5em;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 30em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Provide table alignment support.  We can't use the alignX classes above
+   since they do unwanted things with caption and other styling. */
+table.right {
+ margin-left: auto;
+ margin-right: 0;
+}
+table.center {
+ margin-left: auto;
+ margin-right: auto;
+}
+table.left {
+ margin-left: 0;
+ margin-right: auto;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+caption a[href] {
+  color: #222;
+}
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+/* Tweak the invisible space above H* in order not to overlay links in text above */
+ h2 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 31px;
+ }
+ h3 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+ h4 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+/* Float artwork pilcrow to the right */
+@media screen {
+  .artwork a.pilcrow {
+    display: block;
+    line-height: 0.7;
+    margin-top: 0.15em;
+  }
+}
+/* Make pilcrows on dd visible */
+@media screen {
+  dd:hover > a.pilcrow {
+    visibility: visible;
+  }
+}
+/* Make the placement of figcaption match that of a table's caption
+   by removing the figure's added bottom margin */
+.alignLeft.art-text,
+.alignCenter.art-text,
+.alignRight.art-text {
+   margin-bottom: 0;
+}
+.alignLeft,
+.alignCenter,
+.alignRight {
+  margin: 1em 0 0 0;
+}
+/* In print, the pilcrow won't show on hover, so prevent it from taking up space,
+   possibly even requiring a new line */
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+/* Styling for the external metadata */
+div#external-metadata {
+  background-color: #eee;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  display: none;
+}
+div#internal-metadata {
+  padding: 0.5em;                       /* to match the external-metadata padding */
+}
+/* Styling for title RFC Number */
+h1#rfcnum {
+  clear: both;
+  margin: 0 0 -1em;
+  padding: 1em 0 0 0;
+}
+/* Make .olPercent look the same as <ol><li> */
+dl.olPercent > dd {
+  margin-bottom: 0.25em;
+  min-height: initial;
+}
+/* Give aside some styling to set it apart */
+aside {
+  border-left: 1px solid #ddd;
+  margin: 1em 0 1em 2em;
+  padding: 0.2em 2em;
+}
+aside > dl,
+aside > ol,
+aside > ul,
+aside > table,
+aside > p {
+  margin-bottom: 0.5em;
+}
+/* Additional page break settings */
+@media print {
+  figcaption, table caption {
+    page-break-before: avoid;
+  }
+}
+/* Font size adjustments for print */
+@media print {
+  body  { font-size: 10pt;      line-height: normal; max-width: 96%; }
+  h1    { font-size: 1.72em;    padding-top: 1.5em; } /* 1*1.2*1.2*1.2 */
+  h2    { font-size: 1.44em;    padding-top: 1.5em; } /* 1*1.2*1.2 */
+  h3    { font-size: 1.2em;     padding-top: 1.5em; } /* 1*1.2 */
+  h4    { font-size: 1em;       padding-top: 1.5em; }
+  h5, h6 { font-size: 1em;      margin: initial; padding: 0.5em 0 0.3em; }
+}
+/* Sourcecode margin in print, when there's no pilcrow */
+@media print {
+  .artwork,
+  .artwork > pre,
+  .sourcecode {
+    margin-bottom: 1em;
+  }
+}
+/* Avoid narrow tables forcing too narrow table captions, which may render badly */
+table {
+  min-width: 20em;
+}
+/* ol type a */
+ol.type-a { list-style-type: lower-alpha; }
+ol.type-A { list-style-type: upper-alpha; }
+ol.type-i { list-style-type: lower-roman; }
+ol.type-I { list-style-type: upper-roman; }
+/* Apply the print table and row borders in general, on request from the RPC,
+and increase the contrast between border and odd row background slightly */
+table {
+  border: 1px solid #ddd;
+}
+td {
+  border-top: 1px solid #ddd;
+}
+tr {
+  break-inside: avoid;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f8f8f8;
+}
+/* Use style rules to govern display of the TOC. */
+@media screen and (max-width: 1023px) {
+  #toc nav { display: none; }
+  #toc.active nav { display: block; }
+}
+/* Add support for keepWithNext */
+.keepWithNext {
+  break-after: avoid-page;
+  break-after: avoid-page;
+}
+/* Add support for keepWithPrevious */
+.keepWithPrevious {
+  break-before: avoid-page;
+}
+/* Change the approach to avoiding breaks inside artwork etc. */
+figure, pre, table, .artwork, .sourcecode  {
+  break-before: auto;
+  break-after: auto;
+}
+/* Avoid breaks between <dt> and <dd> */
+dl {
+  break-before: auto;
+  break-inside: auto;
+}
+dt {
+  break-before: auto;
+  break-after: avoid-page;
+}
+dd {
+  break-before: avoid-page;
+  break-after: auto;
+  orphans: 3;
+  widows: 3
+}
+span.break, dd.break {
+  margin-bottom: 0;
+  min-height: 0;
+  break-before: auto;
+  break-inside: auto;
+  break-after: auto;
+}
+/* Undo break-before ToC */
+@media print {
+  #toc {
+    break-before: auto;
+  }
+}
+/* Text in compact lists should not get extra bottom margin space,
+   since that would makes the list not compact */
+ul.compact p, .ulCompact p,
+ol.compact p, .olCompact p {
+ margin: 0;
+}
+/* But the list as a whole needs the extra space at the end */
+section ul.compact,
+section .ulCompact,
+section ol.compact,
+section .olCompact {
+  margin-bottom: 1em;                    /* same as p not within ul.compact etc. */
+}
+/* The tt and code background above interferes with for instance table cell
+   backgrounds.  Changed to something a bit more selective. */
+tt, code {
+  background-color: transparent;
+}
+p tt, p code, li tt, li code, dt tt, dt code {
+  background-color: #f8f8f8;
+}
+/* Tweak the pre margin -- 0px doesn't come out well */
+pre {
+   margin-top: 0.5px;
+}
+/* Tweak the compact list text */
+ul.compact, .ulCompact,
+ol.compact, .olCompact,
+dl.compact, .dlCompact {
+  line-height: normal;
+}
+/* Don't add top margin for nested lists */
+li > ul, li > ol, li > dl,
+dd > ul, dd > ol, dd > dl,
+dl > dd > dl {
+  margin-top: initial;
+}
+/* Elements that should not be rendered on the same line as a <dt> */
+/* This should match the element list in writer.text.TextWriter.render_dl() */
+dd > div.artwork:first-child,
+dd > aside:first-child,
+dd > blockquote:first-child,
+dd > figure:first-child,
+dd > ol:first-child,
+dd > div.sourcecode:first-child,
+dd > table:first-child,
+dd > ul:first-child {
+  clear: left;
+}
+/* fix for weird browser behaviour when <dd/> is empty */
+dt+dd:empty::before{
+  content: "\00a0";
+}
+/* Make paragraph spacing inside <li> smaller than in body text, to fit better within the list */
+li > p {
+  margin-bottom: 0.5em
+}
+/* Don't let p margin spill out from inside list items */
+li > p:last-of-type:only-child {
+  margin-bottom: 0;
+}
+</style>
+<link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">Human-Authorization Binding</td>
+<td class="right">August 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Schrock</td>
+<td class="center">Expires 12 February 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Network Working Group</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-schrock-human-authorization-binding-01</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-08-11" class="published">11 August 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Informational</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-02-12">12 February 2027</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">I. Schrock</div>
+<div class="org">EMILIA Protocol, Inc.</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">Binding Named-Human Authorization Evidence into Agent-Action Records</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">A recurring pattern spans the agent-action record formats now in
+      development: a record about an agent's action reserves a place for
+      "the human authorization" — an approver disposition, an authority
+      context, a human-override field, an actor slot, a signed grant, an
+      approval reference — and leaves its semantics undefined. Each
+      format, reasonably, does not want to specify human-authorization
+      evidence itself; none, so far, says what filling the slot means.
+      This document defines that one thing, host-agnostically: how any
+      record binds named-human authorization evidence, either BY
+      REFERENCE (a content digest of the authorization artifact's
+      canonical bytes) or EMBEDDED (a compact, self-describing claim
+      carrying named approvals and optional distinct-human quorum
+      semantics), with seven requirements that make the binding mean the
+      same thing in every host: digest grounding, action agreement,
+      verified-versus-accepted discipline, fail-closed absence, and
+      embedded/referenced consistency, authoritative approver
+      attribution, and role non-equivalence. The SCITT signed-statement host
+      family is expressed concretely (digest selection, and the
+      observed-absence statement that is the only way absence of
+      authorization becomes evidence); an informative appendix maps the
+      binding onto the reserved slots of eleven current documents.
+      This document defines no new authorization format: the referenced
+      evidence verifies under its own specification.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 12 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1" class="keepWithNext"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-binding-by-reference" class="internal xref">Binding by Reference</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-the-embedded-claim" class="internal xref">The Embedded Claim</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-binding-requirements" class="internal xref">Binding Requirements</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-terminal-accountability-is-" class="internal xref">Terminal Accountability Is Not Per-Action Human Authorization</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-mid-execution-acquisition-a" class="internal xref">Mid-Execution Acquisition and Resource-Server Challenges</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-expression-for-scitt-signed" class="internal xref">Expression for SCITT Signed Statements</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.1">
+                <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-denial-absence-and-observed" class="internal xref">Denial, Absence, and Observed Absence</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-claim-naming" class="internal xref">Claim Naming</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
+                <p id="section-toc.1-1.11.2.1.1"><a href="#section-11.1" class="auto internal xref">11.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
+                <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-host-format-mappings-inform" class="internal xref">Host-Format Mappings (Informative)</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#appendix-C" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="intro">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">Record formats for agent actions are proliferating, and almost
+      all of them make the same, sound scoping decision: human
+      authorization is somebody else's format. The result is a set of
+      reserved-but-empty slots. A post-execution action capsule carries
+      an approver disposition whose authority is opaque; a pre-execution
+      permit stubs an authority context; audit-trail records carry a
+      human-override field with a privacy carve-out where the human
+      should be; a provenance graph has an optional actor; an audit
+      architecture requires a "signed grant" whose format is an
+      unassigned work item; an intent chain names an approval reference
+      with no semantics. Each slot is an invitation. Eleven invitations
+      with eleven ad-hoc answers would be worse than none.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">This document is the single answer: a host-agnostic definition
+      of what it means to bind named-human authorization evidence into
+      any record, plus the small set of requirements that keep the
+      binding trustworthy regardless of host. The reserved slots this
+      profile serves appear, at this writing, in
+      draft-mih-scitt-agent-action-capsule,
+      draft-munoz-scitt-permit-profile, draft-sharif-agent-audit-trail,
+      draft-bates-atp, draft-aylward-aiga,
+      draft-nelson-agent-delegation-receipts,
+      draft-rosenberg-aiproto-cheq, draft-yossif-psea,
+      draft-kuehlewind-audit-architecture, the ACP charter, and the
+      SPICE-adjacent intent-chain work — the mappings in
+      <a href="#mappings" class="auto internal xref">Appendix A</a> are offered for those authors to
+      correct or adopt. It deliberately does not
+      define the authorization evidence itself — a bound artifact
+      verifies under its own specification (for example
+      <span>[<a href="#I-D.schrock-ep-authorization-receipts" class="cite xref">I-D.schrock-ep-authorization-receipts</a>]</span> for
+      named-human receipts and quorum) — and the appendix mappings to
+      host formats are informative descriptions of public slot fields,
+      offered for host authors to correct or adopt.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<div id="terms">
+<section id="section-1.1">
+        <h3 id="name-terminology">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+        </h3>
+<p id="section-1.1-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span>
+          <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they appear in
+        all capitals, as shown here.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">Host record: any signed or logged record about an agent
+        action that carries the binding (a capsule, permit, audit
+        record, provenance node, token, or chain). Authorization
+        artifact: the evidence being bound (a named-human authorization
+        receipt, a quorum receipt, or an equivalent artifact defined
+        elsewhere).<a href="#section-1.1-2" class="pilcrow">¶</a></p>
+<p id="section-1.1-3">This document distinguishes the system or asset owner, the
+        delegating principal, the terminal accountable authority, the
+        per-action human approver, the logical agent, the live workload
+        instance, the OAuth client, the executor or resource server, and
+        the target tool and material action. These are separate roles.
+        The same party MAY occupy more than one role, but a verifier MUST
+        NOT infer such equality without separately verified evidence that
+        establishes the relationship required by relying-party policy.<a href="#section-1.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="reference">
+<section id="section-2">
+      <h2 id="name-binding-by-reference">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-binding-by-reference" class="section-name selfRef">Binding by Reference</a>
+      </h2>
+<p id="section-2-1">The reference form is a JSON member (claim name
+      "human_authorization_ref"; see <a href="#naming" class="auto internal xref">Section 8</a>) carried
+      anywhere in the host record the host format designates:<a href="#section-2-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-2-2">
+<pre>
+"human_authorization_ref": {
+  "digest": "sha256:&lt;hex of the artifact's canonical bytes&gt;",
+  "format": "ep-receipt | ep-quorum | &lt;other artifact type&gt;",
+  "locator": "&lt;OPTIONAL hint URI; acquisition is out of scope&gt;"
+}
+</pre><a href="#section-2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-2-3">The digest MUST be computed over the authorization artifact's
+      canonical bytes as defined by the artifact's own specification
+      (for EP artifacts, the JCS <span>[<a href="#RFC8785" class="cite xref">RFC8785</a>]</span> I-JSON
+      profile). The locator is a hint only: a verifier obtains the
+      artifact through whatever channel the deployment provides, and
+      relies on digest equality, never on the channel. The reference
+      form supports disclosure minimization: a host record can travel
+      without the artifact, and a relying party that requires the
+      evidence fails closed until the bytes are produced.<a href="#section-2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="embedded">
+<section id="section-3">
+      <h2 id="name-the-embedded-claim">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-the-embedded-claim" class="section-name selfRef">The Embedded Claim</a>
+      </h2>
+<p id="section-3-1">The embedded form carries the evidence inline as a compact,
+      self-describing claim (claim name "human_authorization"):<a href="#section-3-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-3-2">
+<pre>
+"human_authorization": {
+  "v": "EP-HAC-v1",
+  "action_digest": "sha256:&lt;hex&gt;",
+  "mode": "single | quorum",
+  "approvals": [
+    { "approver": "&lt;named accountable principal&gt;",
+      "role": "&lt;OPTIONAL&gt;",
+      "key_class": "A | B | C",
+      "identity_evidence": {
+        "format": "&lt;native enrollment or identity format&gt;",
+        "digest": "sha256:&lt;hex of canonical evidence bytes&gt;"
+      },
+      "signoff": { "...the approver's own signature object..." } }
+  ],
+  "policy": "&lt;OPTIONAL policy identifier&gt;",
+  "quorum": { "required": 2, "distinct_humans": true,
+              "ordered": false }
+}
+</pre><a href="#section-3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-3-3">Each approval names a per-action human approver and carries
+      that principal's own signature over the action binding, verifiable
+      offline under the artifact specification the claim profiles. The
+      identity_evidence member binds the approver identifier and signing
+      key to enrollment or identity evidence defined by its native
+      specification; its digest follows the same canonical-byte rule as
+      <a href="#reference" class="auto internal xref">Section 2</a>. When
+      mode is "quorum", the distinct-humans and ordering semantics of
+      <span>[<a href="#I-D.schrock-ep-quorum" class="cite xref">I-D.schrock-ep-quorum</a>]</span> apply: the required number
+      of DISTINCT enrolled human approvers, not merely distinct signatures.
+      Key classes classify key custody as defined by the receipts
+      specification and imply nothing about assurance levels.<a href="#section-3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="reqs">
+<section id="section-4">
+      <h2 id="name-binding-requirements">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-binding-requirements" class="section-name selfRef">Binding Requirements</a>
+      </h2>
+<p id="section-4-1">Seven requirements hold for every host, and they are what make
+      the binding mean the same thing everywhere:<a href="#section-4-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-4-2">
+        <li id="section-4-2.1">B1: Digest grounding. A binding is credited only against
+        artifact bytes: the reference form by digest equality, the
+        embedded form by verifying the contained signatures. A host
+        field that merely asserts "a human approved" without either
+        MUST NOT be treated as human-authorization evidence.<a href="#section-4-2.1" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.2">B2: Action agreement. When the host record binds an
+        action (via an action digest, a subject digest, or
+        equivalent), the
+        authorization artifact's action binding MUST agree with it. An
+        artifact authorizing a different action MUST invalidate the
+        binding, not merely weaken it.<a href="#section-4-2.2" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.3">B3: Verified versus accepted. Verifying the binding
+        (digests and signatures hold) is distinct from accepting it
+        (the relying party trusts the artifact's issuer via
+        out-of-band pinned key material). A verifier MUST report the
+        two separately, and a binding from an unpinned issuer MUST NOT
+        be accepted. Discovery of issuer metadata, endpoints,
+        credentials, or verification keys locates material but does
+        not establish trust. Acceptance requires a relying-party
+        configured or independently verified trust root and the
+        identifier semantics assigned to that issuer.<a href="#section-4-2.3" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.4">B4: Fail-closed absence. The absence of a binding is the
+        absence of evidence, never a default. A relying party whose
+        policy requires human authorization MUST treat an unbound or
+        unresolvable binding as insufficient. Absence becomes positive
+        evidence only through a signed observed-absence statement
+        naming the search performed.<a href="#section-4-2.4" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.5">B5: Consistency. When a host record carries both forms,
+        the embedded claim's canonical bytes MUST hash to the
+        reference's digest; a mismatch invalidates both.<a href="#section-4-2.5" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.6">B6: Authoritative approver attribution. A valid signature
+        proves control of a key; it does not by itself prove that the
+        key holder is the named human. The authorization artifact MUST
+        carry or reference enrollment or identity evidence that binds
+        the approver identifier and signing key under a trust root and
+        identity profile accepted by the relying party. A self-asserted
+        name, self-issued key, workload identifier, or OAuth subject
+        claim MUST NOT establish named-human identity by itself.<a href="#section-4-2.6" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.7">B7: Role non-equivalence. A verifier MUST keep owner,
+        delegator, terminal accountable authority, per-action human
+        approver, logical agent, workload instance, OAuth client,
+        executor, and target tool or action distinct. When
+        relying-party policy requires a relationship among those roles,
+        the relationship MUST be separately verified. If it is absent,
+        malformed, stale, or not independently provable, the binding
+        MUST be reported as insufficient or indeterminate, not
+        accepted.<a href="#section-4-2.7" class="pilcrow">¶</a>
+</li>
+      </ol>
+</section>
+</div>
+<div id="terminal-accountability">
+<section id="section-5">
+      <h2 id="name-terminal-accountability-is-">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-terminal-accountability-is-" class="section-name selfRef">Terminal Accountability Is Not Per-Action Human Authorization</a>
+      </h2>
+<p id="section-5-1">A delegation chain can terminate in a resolvable standing grant
+      that names an accountable human or organizational authority without
+      establishing that a human approved every action. The accountable
+      authority also need not be the initiating actor. This distinction is
+      independently expressed in the proposed IA-9(T) assessment overlay
+      <span>[<a href="#MuraliBradleyIA9" class="cite xref">MuraliBradleyIA9</a>]</span> and is essential for scheduled,
+      monitoring, and remediation workloads that legitimately operate
+      unattended.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-2">Where relying-party policy does not require per-action human
+      approval, the terminal grant can support unattended operation and
+      this binding need not be present. Where policy does require
+      per-action human approval, human_authorization or
+      human_authorization_ref carries the separate named-human or quorum
+      artifact bound to the exact action. That artifact supplements the
+      terminal grant; it does not replace the grant, identify the
+      initiating actor, prove system ownership, or convert an
+      organizational authority into a human approver.<a href="#section-5-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="mid-execution-acquisition">
+<section id="section-6">
+      <h2 id="name-mid-execution-acquisition-a">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-mid-execution-acquisition-a" class="section-name selfRef">Mid-Execution Acquisition and Resource-Server Challenges</a>
+      </h2>
+<p id="section-6-1">Section 10.7 of <span>[<a href="#I-D.klrc-aiagent-auth" class="cite xref">I-D.klrc-aiagent-auth</a>]</span>
+      identifies a case in which an agent reaches a protected resource
+      during execution and additional user authorization is required.
+      It describes CIBA and other authorization-server-mediated step-up
+      mechanisms, and notes that additional work can be needed when the
+      need for confirmation is discovered mid-execution. This document
+      does not replace those mechanisms or move the final authorization
+      decision out of the authorization system selected by the
+      deployment.<a href="#section-6-1" class="pilcrow">¶</a></p>
+<p id="section-6-2">When the resource server discovers that evidence required by
+      its policy is missing, stale, or unverifiable, it MAY return an
+      Authorization Evidence Challenge
+      <span>[<a href="#I-D.schrock-ae-challenge" class="cite xref">I-D.schrock-ae-challenge</a>]</span> bound to the exact
+      action. The challenge identifies the evidence requirement and
+      supported presentation profiles. It does not authorize the
+      action, assert that a human approved it, transfer admission
+      ownership, or establish trust in a discovered authorization
+      server.<a href="#section-6-2" class="pilcrow">¶</a></p>
+<p id="section-6-3">The agent can then use CIBA, another native authorization
+      mechanism, or a deployment-specific human-signing ceremony to
+      obtain the required evidence. Every returned artifact verifies
+      under its own specification and trust model. Where policy accepts
+      an authorization-server-issued grant, that grant remains a
+      separate evidence leg. Where policy requires portable evidence of
+      a named human's own act, the binding defined here carries that
+      separate artifact. In either case, the resource server MUST bind
+      the returned evidence to the same material action and apply its
+      current relying-party policy before admitting the action.<a href="#section-6-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="scitt">
+<section id="section-7">
+      <h2 id="name-expression-for-scitt-signed">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-expression-for-scitt-signed" class="section-name selfRef">Expression for SCITT Signed Statements</a>
+      </h2>
+<p id="section-7-1">Transparency-logged agent-action statements (SCITT
+      <span>[<a href="#RFC9943" class="cite xref">RFC9943</a>]</span>: capsules, permits, audit records) are
+      the binding's most developed host family, and their expression is
+      specified here concretely. The reference form's digest is one of
+      the following, selected per deployment and FIXED for a given
+      host-statement profile so that both sides bind identical bytes:<a href="#section-7-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-7-2.1">receipt_payload_digest — SHA-256 over the JCS canonical
+        bytes of the authorization receipt's payload; used for offline
+        composition, where the relying party holds or can fetch the
+        receipt directly.<a href="#section-7-2.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-7-2.2">statement_digest — SHA-256 over the COSE_Sign1
+        <span>[<a href="#RFC9052" class="cite xref">RFC9052</a>]</span> bytes of the receipt expressed as a
+        SCITT Signed Statement; RECOMMENDED when the receipt is
+        registered in a transparency service, so the reference also
+        resolves to a logged, inclusion-proofed entry.<a href="#section-7-2.2" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-7-3">The COSE encoding of the receipt as a Signed Statement
+      (canonical payload, content type) is the EP SCITT profile's job
+      and out of scope here: this section specifies only the digest a
+      host statement embeds and the verification that B1-B7 already
+      require. A host profile defines its own concrete carrier (a
+      dedicated field, a capsule's opaque authority reference, a
+      permit's authority context); this document mandates the digest
+      semantics, never the carrier's name. The verifier obtains the
+      receipt through whatever channel the deployment provides — held
+      locally, conveyed with the statement, or fetched from the
+      transparency service — and relies on digest equality, never on
+      the channel.<a href="#section-7-3" class="pilcrow">¶</a></p>
+<div id="absence">
+<section id="section-7.1">
+        <h3 id="name-denial-absence-and-observed">
+<a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-denial-absence-and-observed" class="section-name selfRef">Denial, Absence, and Observed Absence</a>
+        </h3>
+<p id="section-7.1-1">B4 (fail-closed absence) has one elaboration worth stating
+        normatively for this host family, because settlement and audit
+        flows rely on refusals as much as approvals. Three states,
+        only two of which are evidence: a DENIAL (a named human
+        refused, an approval was revoked, or a validity window lapsed
+        and the expiry was recorded) is a signed event, and a host
+        statement MAY reference a denied authorization exactly as it
+        references an approval — "an accountable human refused this
+        action" is a positive, verifiable fact. ABSENCE is not
+        evidence and cannot be made so by assertion: the mere failure
+        to present an authorization proves nothing. Absence becomes
+        positive evidence only through a signed OBSERVED-ABSENCE
+        statement — an attestation that the verifier performed a
+        defined search against defined sources at a stated time and
+        found no qualifying authorization; it attests the search and
+        its emptiness, never a universal negative. A deterministic
+        observed-absence vector ships with the reference
+        implementation (examples/scitt/observed-absence-vector.mjs).<a href="#section-7.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="naming">
+<section id="section-8">
+      <h2 id="name-claim-naming">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-claim-naming" class="section-name selfRef">Claim Naming</a>
+      </h2>
+<p id="section-8-1">The canonical claim names are "human_authorization_ref" and
+      "human_authorization". The claim was first deployed under the
+      vendor-prefixed name "ep_human_authorization"; implementations
+      SHOULD accept it and MUST treat it as an alias of the embedded
+      form. Host formats that already name their slot (an authority
+      context, an actor, an approval reference) MAY carry the binding
+      object under their own member name; the object's members, not the
+      slot's name, are what this document defines.<a href="#section-8-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security">
+<section id="section-9">
+      <h2 id="name-security-considerations">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<p id="section-9-1">The slot is a target. An attacker who can fill a host record's
+      authorization slot chooses what a relying party later treats as
+      the human's approval; every defense here exists for that reason.
+      B1 removes assertion-only filling; B2 defeats splicing a genuine
+      artifact from a different action (the confused-deputy case); B3
+      prevents a self-issued artifact from being self-accepted; B4
+      prevents silence from being read as consent; B5 prevents the two
+      forms from telling two stories; B6 prevents a self-asserted key,
+      workload identifier, or OAuth subject from being relabeled as a
+      named human; and B7 prevents owner, delegator, approver, workload,
+      client, executor, and tool roles from being silently collapsed.
+      Discovery of metadata or keys cannot substitute for relying-party
+      trust introduction. Replay and one-time-use semantics
+      belong to the authorization artifact and its enforcement point; a
+      host record MUST NOT extend an artifact's validity by carrying
+      it. The reference form additionally serves privacy: the named
+      human travels only in the artifact, which can be withheld until a
+      relying party with a need to know requires it — at the cost,
+      by B4, of the evidence not counting until produced.<a href="#section-9-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="iana">
+<section id="section-10">
+      <h2 id="name-iana-considerations">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-10-1">This document has no IANA actions. Registration of the claim
+      names in the JWT and CWT claims registries is anticipated for a
+      future revision, after host-format feedback.<a href="#section-10-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-11">
+      <h2 id="name-references">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<section id="section-11.1">
+        <h3 id="name-normative-references">
+<a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+        <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8785">[RFC8785]</dt>
+      <dd>
+<span class="refAuthor">Rundgren, A.</span>, <span class="refAuthor">Jordan, B.</span>, and <span class="refAuthor">S. Erdtman</span>, <span class="refTitle">"JSON Canonicalization Scheme (JCS)"</span>, <span class="seriesInfo">RFC 8785</span>, <span class="seriesInfo">DOI 10.17487/RFC8785</span>, <time datetime="2020-06" class="refDate">June 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8785">https://www.rfc-editor.org/info/rfc8785</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<section id="section-11.2">
+        <h3 id="name-informative-references">
+<a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="I-D.klrc-aiagent-auth">[I-D.klrc-aiagent-auth]</dt>
+        <dd>
+<span class="refAuthor">Kasselman, P.</span>, <span class="refAuthor">Lombardo, J.</span>, <span class="refAuthor">Rosomakho, Y.</span>, <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Steele, N.</span>, and <span class="refAuthor">A. Parecki</span>, <span class="refTitle">"AI Agent Authentication and Authorization"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-klrc-aiagent-auth-03</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-klrc-aiagent-auth/">https://datatracker.ietf.org/doc/draft-klrc-aiagent-auth/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.schrock-ae-challenge">[I-D.schrock-ae-challenge]</dt>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Evidence Challenge Protocol"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ae-challenge-06</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/">https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.schrock-ep-authorization-receipts">[I-D.schrock-ep-authorization-receipts]</dt>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Receipts for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-receipts-11</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.schrock-ep-quorum">[I-D.schrock-ep-quorum]</dt>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Multi-Party Human Authorization (EP-QUORUM)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-quorum-03</span>, <time datetime="2026-06" class="refDate">June 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="MuraliBradleyIA9">[MuraliBradleyIA9]</dt>
+        <dd>
+<span class="refAuthor">Murali, T.</span> and <span class="refAuthor">B. B</span>, <span class="refTitle">"Identification, Authentication, and Delegated Authority for Non-Person Actors in AI Systems"</span>, <span class="seriesInfo">Version 1.0</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://doi.org/10.5281/zenodo.21875505">https://doi.org/10.5281/zenodo.21875505</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9052">[RFC9052]</dt>
+        <dd>
+<span class="refAuthor">Schaad, J.</span>, <span class="refTitle">"CBOR Object Signing and Encryption (COSE): Structures and Process"</span>, <span class="seriesInfo">STD 96</span>, <span class="seriesInfo">RFC 9052</span>, <span class="seriesInfo">DOI 10.17487/RFC9052</span>, <time datetime="2022-08" class="refDate">August 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9052">https://www.rfc-editor.org/info/rfc9052</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9943">[RFC9943]</dt>
+      <dd>
+<span class="refAuthor">Birkholz, H.</span>, <span class="refAuthor">Delignat-Lavaud, A.</span>, <span class="refAuthor">Fournet, C.</span>, <span class="refAuthor">Deshpande, Y.</span>, and <span class="refAuthor">S. Lasker</span>, <span class="refTitle">"An Architecture for Trustworthy and Transparent Digital Supply Chains"</span>, <span class="seriesInfo">RFC 9943</span>, <span class="seriesInfo">DOI 10.17487/RFC9943</span>, <time datetime="2026-06" class="refDate">June 2026</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9943">https://www.rfc-editor.org/info/rfc9943</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</section>
+<div id="mappings">
+<section id="appendix-A">
+      <h2 id="name-host-format-mappings-inform">
+<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-host-format-mappings-inform" class="section-name selfRef">Host-Format Mappings (Informative)</a>
+      </h2>
+<p id="appendix-A-1">The following mappings describe, from each cited document's
+      public text, where the binding fits. They are informative,
+      derived from the revisions named, and offered for the host
+      authors to correct or adopt; absence of a format from this list
+      implies nothing, and no mapping asserts a host author's
+      endorsement.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-A-2.1">draft-mih-scitt-agent-action-capsule-01: a capsule whose
+        disposition reports a human approver carries
+        human_authorization_ref alongside the disposition; B2 binds it
+        to the capsule's action digest.<a href="#appendix-A-2.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-2.2">draft-munoz-scitt-permit-profile-00: the authority_context
+        member carries the reference form; the permit's decision then
+        rests on evidence, not assertion.<a href="#appendix-A-2.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-2.3">draft-sharif-agent-audit-trail-00: the human_override field
+        carries the reference form, giving the named-but-privacy-carved
+        human an artifact rather than an inline identity.<a href="#appendix-A-2.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-2.4">draft-bates-atp-00: a provenance node's actor field carries
+        the reference form; validators add B1-B7 to lineage checks.<a href="#appendix-A-2.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-2.5">draft-aylward-aiga-00: the reserved X.509v3 extension slot
+        carries the reference digest, binding machine identity to the
+        human authorization behind its issuance.<a href="#appendix-A-2.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-2.6">draft-nelson-agent-delegation-receipts-10: a delegation
+        receipt carries the embedded claim as a co-signing layer where
+        multi-party approval is required (multi-party is out of the
+        host's scope by its own statement).<a href="#appendix-A-2.6" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-2.7">draft-rosenberg-aiproto-cheq-00: the confirmation object's
+        signature, left TBD by the host, is the embedded claim; a
+        quorum of confirmations aggregates under mode "quorum".<a href="#appendix-A-2.7" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-2.8">draft-yossif-psea-02: a Verifier's attestation-result
+        object (out of the host's scope) carries the reference form
+        binding the presence proof to the authorization it evidenced.<a href="#appendix-A-2.8" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-2.9">draft-kuehlewind-audit-architecture-00: the "signed grant"
+        work item (WI-5) and step-up approval responses are instances
+        of the embedded claim; Authorization Transition Records carry
+        the reference form.<a href="#appendix-A-2.9" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-2.10">The ACP (agent communication protocols) charter's
+        "confirmation and evidence requirements for AI agent
+        operations": the confirmation step's evidence is the embedded
+        claim; scoped access tokens carry the reference form.<a href="#appendix-A-2.10" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-2.11">SPICE-adjacent intent chains: the approval_ref member is
+        the reference form's digest, giving the named field its
+        missing semantics.<a href="#appendix-A-2.11" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="appendix-A-3">One adjacent family fits differently and deserves saying
+      precisely. WIMSE workload credentials (WIT/WIC, and the WPT
+      request binding) do not reserve a human-authorization slot;
+      their working group is deliberately chartered for workload
+      identity and explicitly does not define personal identities.
+      They are, however, carry-capable: a WIT or transaction context
+      is a JWT, and a deployment MAY carry human_authorization_ref as
+      a claim alongside the workload identity. A deployment MUST keep
+      the logical agent separate from the live workload instance that
+      controls the current confirmation key, and MUST apply the
+      grant-specific semantics of an OAuth subject rather than infer
+      that it names a human. The workload credential then proves the
+      authenticated workload leg, while the bound artifact proves the
+      named human's per-action authorization leg when policy requires
+      it. Neither leg by itself proves system ownership, a terminal
+      accountable grant, or the relationship among owner, delegator,
+      approver, executor, and target tool. Those relationships require
+      separate evidence under B7.<a href="#appendix-A-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="impl">
+<section id="appendix-B">
+      <h2 id="name-implementation-status">
+<a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
+      </h2>
+<p id="appendix-B-1">The embedded claim profiles a shipped format (the EP receipt
+      and quorum artifacts, three-language verifier suite with shared
+      conformance vectors in one repository). The binding checks
+      (digest grounding, action agreement, verified-versus-accepted,
+      fail-closed absence, embedded/reference consistency,
+      authoritative approver attribution, and role non-equivalence)
+      are exercised by the reference
+      implementation's evidence-graph layer and by a deterministic
+      binding vector published with the repository
+      (examples/binding/human-authorization-binding-vector.mjs). The
+      vector includes negatives for action substitution, unpinned
+      discovery, digest tampering, absent evidence, self-asserted
+      identity, and enrolled-subject relabeling.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-C">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Iman Schrock</span></div>
+<div dir="auto" class="left"><span class="org">EMILIA Protocol, Inc.</span></div>
+<div dir="auto" class="left"><span class="country-name">United States of America</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:team@emiliaprotocol.ai" class="email">team@emiliaprotocol.ai</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

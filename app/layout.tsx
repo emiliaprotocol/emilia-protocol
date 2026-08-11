@@ -1,6 +1,12 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
+import '@fontsource/ibm-plex-sans/300.css';
+import '@fontsource/ibm-plex-sans/400.css';
+import '@fontsource/ibm-plex-sans/500.css';
+import '@fontsource/ibm-plex-sans/600.css';
+import '@fontsource/ibm-plex-sans/700.css';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
 import EuAiActBanner from '@/components/EuAiActBanner';
 import proofStats from '@/lib/proof-stats.json';
 import './ep.css';
@@ -9,22 +15,6 @@ const TEST_CASES = Number(proofStats.tests.total).toLocaleString('en-US');
 const PROOF_SUMMARY = `${proofStats.securityCase.claims} executable security claims, `
   + `${proofStats.tamarin.verifiedObligations} composed Tamarin obligations, `
   + `${proofStats.conformance.vectors} current conformance vectors, and ${TEST_CASES} automated tests`;
-
-// Self-host IBM Plex via next/font so the browser does not block on the
-// Google Fonts CSS request and so we eliminate the @next/next/no-page-custom-font
-// lint warning. The font name strings used by ep.css (`IBM Plex Sans`,
-// `IBM Plex Mono`) are matched verbatim by next/font's font-family output,
-// so existing `font-family: 'IBM Plex Sans'` rules continue to work.
-const ibmPlexSans = IBM_Plex_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-});
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  display: 'swap',
-});
 
 // Site-wide SEO metadata. Per-page `export const metadata` overrides the
 // fields it sets and inherits the rest. Open Graph + Twitter defaults give
@@ -153,16 +143,12 @@ const WEBSITE_JSONLD = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const nonce = (await headers()).get('x-nonce') ?? '';
 
-  // ibmPlexSans/ibmPlexMono are referenced for their side-effect of
-  // injecting the @font-face CSS via next/font; the className string is
-  // applied to <html> so font-family lookups in ep.css resolve.
-  const fontClass = `${ibmPlexSans.className} ${ibmPlexMono.className}`;
   // Reference nonce so the lint pass keeps the headers() call (its true
   // purpose is forcing dynamic rendering for CSP nonce injection).
   void nonce;
 
   return (
-    <html lang="en" className={fontClass}>
+    <html lang="en">
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon.ico" sizes="32x32" />

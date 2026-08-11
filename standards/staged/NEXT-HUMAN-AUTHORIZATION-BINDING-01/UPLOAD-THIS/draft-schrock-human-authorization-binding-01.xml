@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-human-authorization-binding-01"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Human-Authorization Binding">Binding Named-Human Authorization Evidence into Agent-Action Records</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-human-authorization-binding-01"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="August" day="11"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>human authorization</keyword>
+    <keyword>binding</keyword>
+    <keyword>evidence</keyword>
+    <abstract>
+      <t>A recurring pattern spans the agent-action record formats now in
+      development: a record about an agent's action reserves a place for
+      "the human authorization" — an approver disposition, an authority
+      context, a human-override field, an actor slot, a signed grant, an
+      approval reference — and leaves its semantics undefined. Each
+      format, reasonably, does not want to specify human-authorization
+      evidence itself; none, so far, says what filling the slot means.
+      This document defines that one thing, host-agnostically: how any
+      record binds named-human authorization evidence, either BY
+      REFERENCE (a content digest of the authorization artifact's
+      canonical bytes) or EMBEDDED (a compact, self-describing claim
+      carrying named approvals and optional distinct-human quorum
+      semantics), with seven requirements that make the binding mean the
+      same thing in every host: digest grounding, action agreement,
+      verified-versus-accepted discipline, fail-closed absence, and
+      embedded/referenced consistency, authoritative approver
+      attribution, and role non-equivalence. The SCITT signed-statement host
+      family is expressed concretely (digest selection, and the
+      observed-absence statement that is the only way absence of
+      authorization becomes evidence); an informative appendix maps the
+      binding onto the reserved slots of eleven current documents.
+      This document defines no new authorization format: the referenced
+      evidence verifies under its own specification.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>Record formats for agent actions are proliferating, and almost
+      all of them make the same, sound scoping decision: human
+      authorization is somebody else's format. The result is a set of
+      reserved-but-empty slots. A post-execution action capsule carries
+      an approver disposition whose authority is opaque; a pre-execution
+      permit stubs an authority context; audit-trail records carry a
+      human-override field with a privacy carve-out where the human
+      should be; a provenance graph has an optional actor; an audit
+      architecture requires a "signed grant" whose format is an
+      unassigned work item; an intent chain names an approval reference
+      with no semantics. Each slot is an invitation. Eleven invitations
+      with eleven ad-hoc answers would be worse than none.</t>
+      <t>This document is the single answer: a host-agnostic definition
+      of what it means to bind named-human authorization evidence into
+      any record, plus the small set of requirements that keep the
+      binding trustworthy regardless of host. The reserved slots this
+      profile serves appear, at this writing, in
+      draft-mih-scitt-agent-action-capsule,
+      draft-munoz-scitt-permit-profile, draft-sharif-agent-audit-trail,
+      draft-bates-atp, draft-aylward-aiga,
+      draft-nelson-agent-delegation-receipts,
+      draft-rosenberg-aiproto-cheq, draft-yossif-psea,
+      draft-kuehlewind-audit-architecture, the ACP charter, and the
+      SPICE-adjacent intent-chain work — the mappings in
+      <xref target="mappings"/> are offered for those authors to
+      correct or adopt. It deliberately does not
+      define the authorization evidence itself — a bound artifact
+      verifies under its own specification (for example
+      <xref target="I-D.schrock-ep-authorization-receipts"/> for
+      named-human receipts and quorum) — and the appendix mappings to
+      host formats are informative descriptions of public slot fields,
+      offered for host authors to correct or adopt.</t>
+      <section anchor="terms">
+        <name>Terminology</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/> when, and only when, they appear in
+        all capitals, as shown here.</t>
+        <t>Host record: any signed or logged record about an agent
+        action that carries the binding (a capsule, permit, audit
+        record, provenance node, token, or chain). Authorization
+        artifact: the evidence being bound (a named-human authorization
+        receipt, a quorum receipt, or an equivalent artifact defined
+        elsewhere).</t>
+        <t>This document distinguishes the system or asset owner, the
+        delegating principal, the terminal accountable authority, the
+        per-action human approver, the logical agent, the live workload
+        instance, the OAuth client, the executor or resource server, and
+        the target tool and material action. These are separate roles.
+        The same party MAY occupy more than one role, but a verifier MUST
+        NOT infer such equality without separately verified evidence that
+        establishes the relationship required by relying-party policy.</t>
+      </section>
+    </section>
+    <section anchor="reference">
+      <name>Binding by Reference</name>
+      <t>The reference form is a JSON member (claim name
+      "human_authorization_ref"; see <xref target="naming"/>) carried
+      anywhere in the host record the host format designates:</t>
+      <sourcecode type="json"><![CDATA[
+"human_authorization_ref": {
+  "digest": "sha256:<hex of the artifact's canonical bytes>",
+  "format": "ep-receipt | ep-quorum | <other artifact type>",
+  "locator": "<OPTIONAL hint URI; acquisition is out of scope>"
+}
+]]></sourcecode>
+      <t>The digest MUST be computed over the authorization artifact's
+      canonical bytes as defined by the artifact's own specification
+      (for EP artifacts, the JCS <xref target="RFC8785"/> I-JSON
+      profile). The locator is a hint only: a verifier obtains the
+      artifact through whatever channel the deployment provides, and
+      relies on digest equality, never on the channel. The reference
+      form supports disclosure minimization: a host record can travel
+      without the artifact, and a relying party that requires the
+      evidence fails closed until the bytes are produced.</t>
+    </section>
+    <section anchor="embedded">
+      <name>The Embedded Claim</name>
+      <t>The embedded form carries the evidence inline as a compact,
+      self-describing claim (claim name "human_authorization"):</t>
+      <sourcecode type="json"><![CDATA[
+"human_authorization": {
+  "v": "EP-HAC-v1",
+  "action_digest": "sha256:<hex>",
+  "mode": "single | quorum",
+  "approvals": [
+    { "approver": "<named accountable principal>",
+      "role": "<OPTIONAL>",
+      "key_class": "A | B | C",
+      "identity_evidence": {
+        "format": "<native enrollment or identity format>",
+        "digest": "sha256:<hex of canonical evidence bytes>"
+      },
+      "signoff": { "...the approver's own signature object..." } }
+  ],
+  "policy": "<OPTIONAL policy identifier>",
+  "quorum": { "required": 2, "distinct_humans": true,
+              "ordered": false }
+}
+]]></sourcecode>
+      <t>Each approval names a per-action human approver and carries
+      that principal's own signature over the action binding, verifiable
+      offline under the artifact specification the claim profiles. The
+      identity_evidence member binds the approver identifier and signing
+      key to enrollment or identity evidence defined by its native
+      specification; its digest follows the same canonical-byte rule as
+      <xref target="reference"/>. When
+      mode is "quorum", the distinct-humans and ordering semantics of
+      <xref target="I-D.schrock-ep-quorum"/> apply: the required number
+      of DISTINCT enrolled human approvers, not merely distinct signatures.
+      Key classes classify key custody as defined by the receipts
+      specification and imply nothing about assurance levels.</t>
+    </section>
+    <section anchor="reqs">
+      <name>Binding Requirements</name>
+      <t>Seven requirements hold for every host, and they are what make
+      the binding mean the same thing everywhere:</t>
+      <ol>
+        <li>B1: Digest grounding. A binding is credited only against
+        artifact bytes: the reference form by digest equality, the
+        embedded form by verifying the contained signatures. A host
+        field that merely asserts "a human approved" without either
+        MUST NOT be treated as human-authorization evidence.</li>
+        <li>B2: Action agreement. When the host record binds an
+        action (via an action digest, a subject digest, or
+        equivalent), the
+        authorization artifact's action binding MUST agree with it. An
+        artifact authorizing a different action MUST invalidate the
+        binding, not merely weaken it.</li>
+        <li>B3: Verified versus accepted. Verifying the binding
+        (digests and signatures hold) is distinct from accepting it
+        (the relying party trusts the artifact's issuer via
+        out-of-band pinned key material). A verifier MUST report the
+        two separately, and a binding from an unpinned issuer MUST NOT
+        be accepted. Discovery of issuer metadata, endpoints,
+        credentials, or verification keys locates material but does
+        not establish trust. Acceptance requires a relying-party
+        configured or independently verified trust root and the
+        identifier semantics assigned to that issuer.</li>
+        <li>B4: Fail-closed absence. The absence of a binding is the
+        absence of evidence, never a default. A relying party whose
+        policy requires human authorization MUST treat an unbound or
+        unresolvable binding as insufficient. Absence becomes positive
+        evidence only through a signed observed-absence statement
+        naming the search performed.</li>
+        <li>B5: Consistency. When a host record carries both forms,
+        the embedded claim's canonical bytes MUST hash to the
+        reference's digest; a mismatch invalidates both.</li>
+        <li>B6: Authoritative approver attribution. A valid signature
+        proves control of a key; it does not by itself prove that the
+        key holder is the named human. The authorization artifact MUST
+        carry or reference enrollment or identity evidence that binds
+        the approver identifier and signing key under a trust root and
+        identity profile accepted by the relying party. A self-asserted
+        name, self-issued key, workload identifier, or OAuth subject
+        claim MUST NOT establish named-human identity by itself.</li>
+        <li>B7: Role non-equivalence. A verifier MUST keep owner,
+        delegator, terminal accountable authority, per-action human
+        approver, logical agent, workload instance, OAuth client,
+        executor, and target tool or action distinct. When
+        relying-party policy requires a relationship among those roles,
+        the relationship MUST be separately verified. If it is absent,
+        malformed, stale, or not independently provable, the binding
+        MUST be reported as insufficient or indeterminate, not
+        accepted.</li>
+      </ol>
+    </section>
+    <section anchor="terminal-accountability">
+      <name>Terminal Accountability Is Not Per-Action Human Authorization</name>
+      <t>A delegation chain can terminate in a resolvable standing grant
+      that names an accountable human or organizational authority without
+      establishing that a human approved every action. The accountable
+      authority also need not be the initiating actor. This distinction is
+      independently expressed in the proposed IA-9(T) assessment overlay
+      <xref target="MuraliBradleyIA9"/> and is essential for scheduled,
+      monitoring, and remediation workloads that legitimately operate
+      unattended.</t>
+      <t>Where relying-party policy does not require per-action human
+      approval, the terminal grant can support unattended operation and
+      this binding need not be present. Where policy does require
+      per-action human approval, human_authorization or
+      human_authorization_ref carries the separate named-human or quorum
+      artifact bound to the exact action. That artifact supplements the
+      terminal grant; it does not replace the grant, identify the
+      initiating actor, prove system ownership, or convert an
+      organizational authority into a human approver.</t>
+    </section>
+    <section anchor="mid-execution-acquisition">
+      <name>Mid-Execution Acquisition and Resource-Server Challenges</name>
+      <t>Section 10.7 of <xref target="I-D.klrc-aiagent-auth"/>
+      identifies a case in which an agent reaches a protected resource
+      during execution and additional user authorization is required.
+      It describes CIBA and other authorization-server-mediated step-up
+      mechanisms, and notes that additional work can be needed when the
+      need for confirmation is discovered mid-execution. This document
+      does not replace those mechanisms or move the final authorization
+      decision out of the authorization system selected by the
+      deployment.</t>
+      <t>When the resource server discovers that evidence required by
+      its policy is missing, stale, or unverifiable, it MAY return an
+      Authorization Evidence Challenge
+      <xref target="I-D.schrock-ae-challenge"/> bound to the exact
+      action. The challenge identifies the evidence requirement and
+      supported presentation profiles. It does not authorize the
+      action, assert that a human approved it, transfer admission
+      ownership, or establish trust in a discovered authorization
+      server.</t>
+      <t>The agent can then use CIBA, another native authorization
+      mechanism, or a deployment-specific human-signing ceremony to
+      obtain the required evidence. Every returned artifact verifies
+      under its own specification and trust model. Where policy accepts
+      an authorization-server-issued grant, that grant remains a
+      separate evidence leg. Where policy requires portable evidence of
+      a named human's own act, the binding defined here carries that
+      separate artifact. In either case, the resource server MUST bind
+      the returned evidence to the same material action and apply its
+      current relying-party policy before admitting the action.</t>
+    </section>
+    <section anchor="scitt">
+      <name>Expression for SCITT Signed Statements</name>
+      <t>Transparency-logged agent-action statements (SCITT
+      <xref target="RFC9943"/>: capsules, permits, audit records) are
+      the binding's most developed host family, and their expression is
+      specified here concretely. The reference form's digest is one of
+      the following, selected per deployment and FIXED for a given
+      host-statement profile so that both sides bind identical bytes:</t>
+      <ul>
+        <li>receipt_payload_digest — SHA-256 over the JCS canonical
+        bytes of the authorization receipt's payload; used for offline
+        composition, where the relying party holds or can fetch the
+        receipt directly.</li>
+        <li>statement_digest — SHA-256 over the COSE_Sign1
+        <xref target="RFC9052"/> bytes of the receipt expressed as a
+        SCITT Signed Statement; RECOMMENDED when the receipt is
+        registered in a transparency service, so the reference also
+        resolves to a logged, inclusion-proofed entry.</li>
+      </ul>
+      <t>The COSE encoding of the receipt as a Signed Statement
+      (canonical payload, content type) is the EP SCITT profile's job
+      and out of scope here: this section specifies only the digest a
+      host statement embeds and the verification that B1-B7 already
+      require. A host profile defines its own concrete carrier (a
+      dedicated field, a capsule's opaque authority reference, a
+      permit's authority context); this document mandates the digest
+      semantics, never the carrier's name. The verifier obtains the
+      receipt through whatever channel the deployment provides — held
+      locally, conveyed with the statement, or fetched from the
+      transparency service — and relies on digest equality, never on
+      the channel.</t>
+      <section anchor="absence">
+        <name>Denial, Absence, and Observed Absence</name>
+        <t>B4 (fail-closed absence) has one elaboration worth stating
+        normatively for this host family, because settlement and audit
+        flows rely on refusals as much as approvals. Three states,
+        only two of which are evidence: a DENIAL (a named human
+        refused, an approval was revoked, or a validity window lapsed
+        and the expiry was recorded) is a signed event, and a host
+        statement MAY reference a denied authorization exactly as it
+        references an approval — "an accountable human refused this
+        action" is a positive, verifiable fact. ABSENCE is not
+        evidence and cannot be made so by assertion: the mere failure
+        to present an authorization proves nothing. Absence becomes
+        positive evidence only through a signed OBSERVED-ABSENCE
+        statement — an attestation that the verifier performed a
+        defined search against defined sources at a stated time and
+        found no qualifying authorization; it attests the search and
+        its emptiness, never a universal negative. A deterministic
+        observed-absence vector ships with the reference
+        implementation (examples/scitt/observed-absence-vector.mjs).</t>
+      </section>
+    </section>
+    <section anchor="naming">
+      <name>Claim Naming</name>
+      <t>The canonical claim names are "human_authorization_ref" and
+      "human_authorization". The claim was first deployed under the
+      vendor-prefixed name "ep_human_authorization"; implementations
+      SHOULD accept it and MUST treat it as an alias of the embedded
+      form. Host formats that already name their slot (an authority
+      context, an actor, an approval reference) MAY carry the binding
+      object under their own member name; the object's members, not the
+      slot's name, are what this document defines.</t>
+    </section>
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>The slot is a target. An attacker who can fill a host record's
+      authorization slot chooses what a relying party later treats as
+      the human's approval; every defense here exists for that reason.
+      B1 removes assertion-only filling; B2 defeats splicing a genuine
+      artifact from a different action (the confused-deputy case); B3
+      prevents a self-issued artifact from being self-accepted; B4
+      prevents silence from being read as consent; B5 prevents the two
+      forms from telling two stories; B6 prevents a self-asserted key,
+      workload identifier, or OAuth subject from being relabeled as a
+      named human; and B7 prevents owner, delegator, approver, workload,
+      client, executor, and tool roles from being silently collapsed.
+      Discovery of metadata or keys cannot substitute for relying-party
+      trust introduction. Replay and one-time-use semantics
+      belong to the authorization artifact and its enforcement point; a
+      host record MUST NOT extend an artifact's validity by carrying
+      it. The reference form additionally serves privacy: the named
+      human travels only in the artifact, which can be withheld until a
+      relying party with a need to know requires it — at the cost,
+      by B4, of the evidence not counting until produced.</t>
+    </section>
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions. Registration of the claim
+      names in the JWT and CWT claims registries is anticipated for a
+      future revision, after host-format feedback.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9052.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9943.xml"/>
+        <reference anchor="I-D.schrock-ep-authorization-receipts" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
+          <front>
+            <title>Authorization Receipts for High-Risk Agent Actions</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-11"/>
+        </reference>
+        <reference anchor="I-D.schrock-ep-quorum" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
+          <front>
+            <title>Multi-Party Human Authorization (EP-QUORUM)</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="June"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-quorum-03"/>
+        </reference>
+        <reference anchor="I-D.schrock-ae-challenge" target="https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/">
+          <front>
+            <title>Authorization Evidence Challenge Protocol</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="August"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ae-challenge-06"/>
+        </reference>
+        <reference anchor="I-D.klrc-aiagent-auth" target="https://datatracker.ietf.org/doc/draft-klrc-aiagent-auth/">
+          <front>
+            <title>AI Agent Authentication and Authorization</title>
+            <author initials="P." surname="Kasselman"><organization>Defakto Security</organization></author>
+            <author initials="J." surname="Lombardo"><organization>AWS</organization></author>
+            <author initials="Y." surname="Rosomakho"><organization>Zscaler</organization></author>
+            <author initials="B." surname="Campbell"><organization>Ping Identity</organization></author>
+            <author initials="N." surname="Steele"><organization>OpenAI</organization></author>
+            <author initials="A." surname="Parecki"><organization>Okta</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-klrc-aiagent-auth-03"/>
+        </reference>
+        <reference anchor="MuraliBradleyIA9" target="https://doi.org/10.5281/zenodo.21875505">
+          <front>
+            <title>Identification, Authentication, and Delegated Authority for Non-Person Actors in AI Systems</title>
+            <author fullname="Thadi Murali"/>
+            <author fullname="Bradley B"/>
+            <date year="2026" month="August"/>
+          </front>
+          <seriesInfo name="Version" value="1.0"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="mappings">
+      <name>Host-Format Mappings (Informative)</name>
+      <t>The following mappings describe, from each cited document's
+      public text, where the binding fits. They are informative,
+      derived from the revisions named, and offered for the host
+      authors to correct or adopt; absence of a format from this list
+      implies nothing, and no mapping asserts a host author's
+      endorsement.</t>
+      <ul>
+        <li>draft-mih-scitt-agent-action-capsule-01: a capsule whose
+        disposition reports a human approver carries
+        human_authorization_ref alongside the disposition; B2 binds it
+        to the capsule's action digest.</li>
+        <li>draft-munoz-scitt-permit-profile-00: the authority_context
+        member carries the reference form; the permit's decision then
+        rests on evidence, not assertion.</li>
+        <li>draft-sharif-agent-audit-trail-00: the human_override field
+        carries the reference form, giving the named-but-privacy-carved
+        human an artifact rather than an inline identity.</li>
+        <li>draft-bates-atp-00: a provenance node's actor field carries
+        the reference form; validators add B1-B7 to lineage checks.</li>
+        <li>draft-aylward-aiga-00: the reserved X.509v3 extension slot
+        carries the reference digest, binding machine identity to the
+        human authorization behind its issuance.</li>
+        <li>draft-nelson-agent-delegation-receipts-10: a delegation
+        receipt carries the embedded claim as a co-signing layer where
+        multi-party approval is required (multi-party is out of the
+        host's scope by its own statement).</li>
+        <li>draft-rosenberg-aiproto-cheq-00: the confirmation object's
+        signature, left TBD by the host, is the embedded claim; a
+        quorum of confirmations aggregates under mode "quorum".</li>
+        <li>draft-yossif-psea-02: a Verifier's attestation-result
+        object (out of the host's scope) carries the reference form
+        binding the presence proof to the authorization it evidenced.</li>
+        <li>draft-kuehlewind-audit-architecture-00: the "signed grant"
+        work item (WI-5) and step-up approval responses are instances
+        of the embedded claim; Authorization Transition Records carry
+        the reference form.</li>
+        <li>The ACP (agent communication protocols) charter's
+        "confirmation and evidence requirements for AI agent
+        operations": the confirmation step's evidence is the embedded
+        claim; scoped access tokens carry the reference form.</li>
+        <li>SPICE-adjacent intent chains: the approval_ref member is
+        the reference form's digest, giving the named field its
+        missing semantics.</li>
+      </ul>
+      <t>One adjacent family fits differently and deserves saying
+      precisely. WIMSE workload credentials (WIT/WIC, and the WPT
+      request binding) do not reserve a human-authorization slot;
+      their working group is deliberately chartered for workload
+      identity and explicitly does not define personal identities.
+      They are, however, carry-capable: a WIT or transaction context
+      is a JWT, and a deployment MAY carry human_authorization_ref as
+      a claim alongside the workload identity. A deployment MUST keep
+      the logical agent separate from the live workload instance that
+      controls the current confirmation key, and MUST apply the
+      grant-specific semantics of an OAuth subject rather than infer
+      that it names a human. The workload credential then proves the
+      authenticated workload leg, while the bound artifact proves the
+      named human's per-action authorization leg when policy requires
+      it. Neither leg by itself proves system ownership, a terminal
+      accountable grant, or the relationship among owner, delegator,
+      approver, executor, and target tool. Those relationships require
+      separate evidence under B7.</t>
+    </section>
+    <section anchor="impl">
+      <name>Implementation Status</name>
+      <t>The embedded claim profiles a shipped format (the EP receipt
+      and quorum artifacts, three-language verifier suite with shared
+      conformance vectors in one repository). The binding checks
+      (digest grounding, action agreement, verified-versus-accepted,
+      fail-closed absence, embedded/reference consistency,
+      authoritative approver attribution, and role non-equivalence)
+      are exercised by the reference
+      implementation's evidence-graph layer and by a deterministic
+      binding vector published with the repository
+      (examples/binding/human-authorization-binding-vector.mjs). The
+      vector includes negatives for action substitution, unpinned
+      discovery, digest tampering, absent evidence, self-asserted
+      identity, and enrolled-subject relabeling.</t>
+    </section>
+  </back>
+</rfc>
