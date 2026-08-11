@@ -324,6 +324,29 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     }
   });
 
+  it('refuses a different authenticated presenter before the owner claim', async () => {
+    const { backend, store } = createTestOwner();
+    const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
+      challengeStore: store,
+      expires_at: expiresAt,
+      audience: 'https://presenter.example',
+      authenticated_presenter: 'https://presenter.example',
+      production: true,
+    });
+
+    const result = await evaluateRegisteredPresentation(challenge, completeGraph(), policy, {
+      challengeStore: store,
+      verifiers,
+      current_action: actionA,
+      authenticated_presenter: 'https://attacker.example',
+      production: true,
+    });
+
+    expect(result.verdict).toBe('refused');
+    expect(result.reasons.join(' ')).toContain('audience does not match');
+    expect([...backend.records.values()][0]?.state).toBe('open');
+  });
+
   it('returns typed unavailability when a claim may have committed before timeout', async () => {
     const raw = createDurableChallengeStore(createMemoryBackend(), {
       issuerIdentity: 'https://issuer.example',

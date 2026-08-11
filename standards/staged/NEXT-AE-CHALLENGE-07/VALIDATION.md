@@ -3,7 +3,7 @@
 Private candidate only. Not published, uploaded, or represented as live.
 
 The frozen XML SHA-256 is
-`521dd0ec532d3865a897f916bd515120a31d536964058d97ad52506b0cd4d7c9`.
+`4794cc7497ed110ebc58dff8887da972f9fb6f167de62399c73a97ee41fb2024`.
 
 - `xmllint --noout`: PASS.
 - `xml2rfc --text` and `--html`: PASS. The renderer reports four long
@@ -14,13 +14,14 @@ The frozen XML SHA-256 is
 - `node scripts/check-ae-challenge-07.mjs`: PASS, including immutable -06,
   current normative text, runtime fail-closed guards, v3 migration, finite-
   model source/result binding, renders, and packet checksums.
-- Expanded AE-CHALLENGE and Model-to-Matter hostile suite: PASS, 122 of 122
+- Expanded AE-CHALLENGE and Model-to-Matter hostile suite: PASS, 131 of 131
   tests across eight files. This includes owner issuance, duplicate claim,
   capacity refusal without nonce burn, authoritative expiry, exact follow-up
   binding, fenced recovery, PostgreSQL transaction behavior, action swap,
-  replay, and acknowledgement-loss cases. A property test also exercised 100
-  randomized capacity-limit and bucket-set combinations, including prototype-
-  shaped and mixed-case capacity identifiers.
+  replay, wrong-presenter refusal before claim, action-scoped reissue limits,
+  and acknowledgement-loss cases. A property test also exercised 100 randomized
+  capacity-limit and bucket-set combinations, including prototype-shaped and
+  mixed-case capacity identifiers.
 - `node formal/check-evidence-challenge-claim-capacity.mjs`: PASS over 114
   finite same-team scenarios with explicit mutation counterexamples. This is
   scenario evidence, not exhaustive formal verification or a database-

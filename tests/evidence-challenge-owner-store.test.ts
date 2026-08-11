@@ -159,6 +159,47 @@ describe('AE-CHALLENGE authoritative owner contract', () => {
     expect(backend.capacity.get(`presenter:${authenticatedPresenter}`)?.used).toBe(1);
   });
 
+  it('supports an action-scoped reissue budget that fresh nonces cannot reset', async () => {
+    const backend = createMemoryChallengeOwnerBackend({
+      now: () => Date.parse('2026-07-03T12:01:00Z'),
+    });
+    const store = createAuthoritativeChallengeOwnerStore(
+      { ...backend, durable: true },
+      {
+        issuerIdentity: 'https://issuer.example',
+        capacityPolicy: (value, context) => {
+          const scope = crypto.createHash('sha256').update(JSON.stringify([
+            context.authenticated_presenter,
+            value.action_profile,
+            value.action_digest,
+            value.policy_digest,
+          ])).digest('hex');
+          return [{ key: `reissue:${scope}`, limit: 2 }];
+        },
+        recoveryAuthorizer: () => false,
+      },
+    );
+    const presenter = 'principal:alice';
+
+    expect(await store.registerOutstanding(challenge('reissue-1'), {
+      authenticated_presenter: presenter,
+    })).toBe(true);
+    expect(await store.registerOutstanding(challenge('reissue-2'), {
+      authenticated_presenter: presenter,
+    })).toBe(true);
+    expect(await store.registerOutstanding(challenge('reissue-3'), {
+      authenticated_presenter: presenter,
+    })).toBe(false);
+
+    const differentAction = {
+      ...challenge('different-action'),
+      action_digest: `sha256:${'12'.repeat(32)}`,
+    };
+    expect(await store.registerOutstanding(differentAction, {
+      authenticated_presenter: presenter,
+    })).toBe(true);
+  });
+
   it('accounts safely for valid bucket names that collide with Object.prototype', async () => {
     const backend = createMemoryChallengeOwnerBackend({
       now: () => Date.parse('2026-07-03T12:01:00Z'),

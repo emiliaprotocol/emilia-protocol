@@ -124,6 +124,14 @@ artifact.
     Production caller nonces are now refused before claim. Follow-up
     construction failure terminalizes the existing reservation without issuing
     replacement state; an uncertain finalization remains unavailable.
+37. A valid but insufficient presentation could force an unbounded sequence of
+    fresh challenges. The core now requires a finite reissue budget bound to the
+    issuer, presenter or audience, exact action, and policy; a fresh nonce does
+    not reset it. A focused test exercises an action-scoped budget.
+38. `retry_timing` was correctly non-critical but could still be mistaken for
+    enforceable protocol state. An issuer relying on enforced pacing must now
+    enforce it through carrier overload handling, admission control, rate
+    limiting, or refusal.
 
 ## Runtime defects caught and bounded
 
@@ -157,8 +165,8 @@ bounded abstraction, and its owner field is tied to runtime tests rather than
 trusted self-declaration.
 
 No independent implementation, external interoperability result, deployed
-capacity policy, expiry collector, authenticated alias resolver, safe quota-
-transfer system, or pre-owner abuse-control deployment is claimed. The
+capacity or reissue policy, expiry collector, authenticated alias resolver,
+safe quota-transfer system, or pre-owner abuse-control deployment is claimed. The
 reference implements the stateful path. The self-describing alternative is a
 protocol option, not a reference-runtime claim.
 

@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-10T19:35:38.871Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "75b7939d7ad308ab0e08b1b5fe0b3cd725c7bd8538d087e33d4325a6c924e47f",
+    "input_digest_sha256": "f8d15ac9d9346de6facb07fdaabd547d21e6a353f448288404ad5e6116b90934",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "8451580ea87f6c5878257094645fbae903b148b3ba9ce958d2a940febb1fca11",
-        "bytes": 253070
+        "sha256": "4a4dbf221a0032c8c769ab7dd8d85c85dadb6ea5c4ca08b71863bab48c652675",
+        "bytes": 257080
       },
       {
         "path": "security/security-case.json",
-        "sha256": "fb888bfb0549bd31f2620cadba515f92c42a6d40e0ec7fc7e339b3a82eef5ea9",
-        "bytes": 388756
+        "sha256": "f2cbb3865c15e9eccec04a008115d18fde4125455ac226c703c19fcb328e5c1c",
+        "bytes": 395199
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -399,8 +399,8 @@
     "security_case": {
       "status": "passed",
       "claims": 35,
-      "evidence_files": 262,
-      "evidence_bundle_sha256": "1f58384d2fb55befb612377572c9beb4b1325dd1c6be348a33d8a63eb6722562"
+      "evidence_files": 266,
+      "evidence_bundle_sha256": "3f13d24f38c0e4c8da1be9cca0b0feeb1cdbed1da15db61e537e53ea3db3e7d2"
     },
     "caid": {
       "core_vectors": 48,
@@ -1856,9 +1856,11 @@
     },
     {
       "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
-      "statement": "An AE-CHALLENGE binds the canonical action and governing policy, is exposed only after atomic durable registration of its exact body, and is consumed on the first valid evaluation attempt across workers and restarts.",
+      "statement": "An AE-CHALLENGE binds the canonical action and governing policy and is exposed only after owner-side registration of its exact body and applicable capacity. The -07 reference owner validates its decoded wire object before state allocation, pins issuance identities and capacity scope, and uses one transaction for authoritative expiry, nonce claim, every applicable cap bucket, and an opaque generation-bound reservation. Owner time also controls native evidence freshness. It atomically finalizes a terminal result or fresh follow-up, and deadline-gated authorized recovery fences the old worker. Production refuses copied stores, caller-declared capability booleans, and caller-selected follow-up nonces.",
       "acceptance_roots": [
-        "an atomic shared backend implementing insert-if-absent and compare-and-set"
+        "one shared transactional owner backend spanning every applicable replay and capacity row",
+        "a constructor-pinned issuer identity, capacity policy, and recovery authorizer",
+        "PostgreSQL transaction time and row-lock behavior match the documented backend contract"
       ],
       "enforcement_path": [
         {
@@ -1870,7 +1872,13 @@
         {
           "language": "javascript",
           "file": "packages/gate/src/challenge-store.ts",
-          "symbol": "createDurableChallengeStore",
+          "symbol": "createAuthoritativeChallengeOwnerStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/challenge-store-postgres.ts",
+          "symbol": "createPostgresChallengeOwnerBackend",
           "exported": true
         },
         {
@@ -1883,7 +1891,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/evidence-challenge-durable.test.ts"
+          "evidence": "tests/evidence-challenge-owner-postgres.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1930,6 +1938,7 @@
           "runner": "formal/check-evidence-challenge-lifecycle.mjs",
           "result_evidence": "formal/results/evidence-challenge-lifecycle.summary.txt",
           "obligations": [
+            "AuthoritativeOwnerRequired",
             "DurableStorageRequired",
             "AtomicRegistrationRequired",
             "BodyBoundStorageRequired",
@@ -1949,7 +1958,7 @@
             "ConcurrentConsumptionIsOneTime",
             "ConsumedStatePersistsAcrossRestart"
           ],
-          "scope": "Bounded same-team exploration of all 1,024 wire/storage configurations plus restart, registration, first-attempt, and concurrent-consumption transitions. Selected scenarios exercise the standalone AE-CHALLENGE-v1 production APIs and PostgreSQL adapter. The challenge requests evidence and authorizes nothing. This is not a refinement proof of the TypeScript or deployed database implementation.",
+          "scope": "Bounded same-team exploration of all 2,048 wire/storage configurations plus restart, registration, first-attempt, and concurrent-consumption transitions. Selected scenarios exercise both the durable compatibility path and refusal of an unbranded production store; separate owner-store tests cover production -07 claim-and-capacity behavior. The challenge requests evidence and authorizes nothing. This is not a refinement proof of the TypeScript or deployed database implementation.",
           "scenario_evidence": "formal/runtime-scenarios.v2.json",
           "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
           "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
@@ -1959,11 +1968,12 @@
             "ConsumeChallengeOnce",
             "RefuseActionMismatchWithoutConsumption",
             "RefuseConsumedChallengeReplay",
-            "RefuseIncapableProductionStore",
+            "RefuseUnbrandedProductionStore",
             "RegisterChallengeBeforeExposure",
             "RestartChallengeWorkers"
           ],
           "covered_obligations": [
+            "AuthoritativeOwnerRequired",
             "AtomicRegistrationRequired",
             "BodyBoundStorageRequired",
             "ConcurrentConsumptionIsOneTime",
@@ -1985,34 +1995,24 @@
           ]
         },
         {
-          "status": "partial",
-          "method": "bounded_exhaustive_state_exploration",
-          "model": "formal/evidence-challenge-claim-capacity.model.mjs",
-          "runner": "formal/check-evidence-challenge-claim-capacity.mjs",
-          "result_evidence": "formal/results/evidence-challenge-claim-capacity.summary.txt",
-          "obligations": [
-            "CompoundClaimAndCapacityAtomic",
-            "DuplicateReservesOnce",
-            "CapacityRefusalDoesNotClaim",
-            "BodyCollisionIsNotReplay",
-            "OwnerUncertaintyIsUnavailable",
-            "ExpiredDoesNotClaimOrReserve",
-            "ClaimedReplayPrecedesExpiry",
-            "GlobalCapIsConservedAcrossShards",
-            "RecoveryFinalizationIsFenced",
-            "RetryWindowPrecedesExpiry",
-            "PresenterMatchesAudience"
-          ],
-          "scope": "Bounded finite same-team logic evidence for the owner-side nonce-claim-and-capacity-reservation transition and selected retry and audience invariants. It does not model stateful open registration or transfer of an existing outstanding-state debit, is not a database refinement proof, and the compound transition is not yet implemented by the reference runtime."
+          "status": "not_modeled",
+          "gap": "The -07 compound claim, pinned-scope reservation, finalization, and recovery path has same-team executable contract tests, randomized property checks, and a finite scenario harness with mutation counterexamples, but no exhaustive formal verification, storage-driver refinement, or independent implementation; it is therefore not counted as formal evidence."
         }
       ],
       "assumptions": [
-        "the backend linearizes registration and compare-and-set",
-        "the challenge-store backend is shared by all relying-party workers",
-        "every alias and replica able to validate one issuer's challenge maps it to one stable authenticated issuer identity and replay domain"
+        "the PostgreSQL service runs the documented operations on one transaction-capable primary or equivalently linearizable owner",
+        "the challenge-owner backend is shared by all relying-party workers in one authority domain",
+        "the constructor-pinned capacity policy names every applicable bucket and stable issuer/audience/tenant identity",
+        "the carrier applies bounded raw-message parsing and duplicate-member rejection before calling the decoded-object helpers",
+        "database roles restrict recovery to the locally authorized operator path"
       ],
       "exclusions": [
-        "the legacy Set-based evaluator remains only for compatibility and is not a durable production path"
+        "the legacy Set-based evaluator remains only for compatibility and is not a durable production path",
+        "the split durable classify-then-consume compatibility path is not production -07 claim-and-capacity conformance",
+        "the decoded-object helpers do not detect duplicate members already collapsed by an ordinary JSON parser",
+        "the same-team PostgreSQL adapter tests are not a deployed database audit, isolation proof, privilege review, or independent implementation",
+        "the reference owner does not include an expiry collector or authenticated audience-alias resolver",
+        "the reference owner currently implements stateful issuance and does not claim the optional self-describing issuance mode"
       ]
     },
     {

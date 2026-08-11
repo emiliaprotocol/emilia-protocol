@@ -556,6 +556,14 @@
 	        satisfying <xref target="core-requirements"/> is explicitly in use. It
 	        is a new refusal with new authoritative state, never an implicit
 	        continuation of the consumed nonce or ambient prior evidence.</t>
+	      <t>An implementation that automatically issues follow-up challenges or
+	      restarts a challenge after a claimed presentation MUST enforce a finite
+	      reissue budget bound at least to the authenticated issuer, effective
+	      presenter or audience, action profile and digest, and policy. A fresh
+	      challenge identifier or nonce does not reset that budget. When the
+	      budget is exhausted, the relying party MUST stop automatic reissue and
+	      use a generic refusal or a separately authorized out-of-band recovery
+	      path. It MUST NOT reopen or reuse a consumed nonce.</t>
         <t><tt>retry_timing</tt> is OPTIONAL. When present, it MUST contain a
         <tt>not_before</tt> Internet timestamp as defined by
         <xref target="RFC3339"/> and MAY contain a non-negative integer
@@ -587,9 +595,10 @@
         <t>Ignoring <tt>retry_timing</tt> does not make evidence sufficient or
         authorize an action, but it can defeat the issuer's load-control goal.
         It does not change the semantic meaning of the challenge and therefore
-        MUST NOT appear in <tt>critical</tt>. An issuer that needs to enforce
-        pacing uses carrier-level overload handling, admission control, rate
-        limiting, or refusal. A presenter that cannot establish whether
+        MUST NOT appear in <tt>critical</tt>. An issuer that relies on enforced
+        pacing MUST enforce it through carrier-level overload handling,
+        admission control, rate limiting, or refusal; it MUST NOT rely on
+        <tt>retry_timing</tt> as an enforcement control. A presenter that cannot establish whether
         <tt>not_before</tt> has passed MUST NOT infer permission to send early;
 	        it uses its local backoff policy or declines automated retry.</t>
 	        <t>Expiry is tested as part of the owner-side claim transition. A
@@ -1140,6 +1149,19 @@ Retry-After: 30
 	      do not run after the state budget is exhausted. Envelope and presenter
 	      authentication that occur before the owner transition remain protected
 	      only by the separate pre-owner anti-abuse budget.</t>
+	      <t><strong>Targeted attempt burning.</strong> The claim-before-evaluation
+	      order means a structurally valid, exact-action presentation spends the
+	      challenge even when its evidence is insufficient. Authenticating the
+	      returning presenter against the effective audience before claim prevents
+	      an unrelated caller from spending an audience-bound challenge, but an
+	      authorized, compromised, or transferable presenter can still consume an
+	      attempt deliberately. Automatic reissue without an action-scoped bound
+	      turns that behavior into a denial-of-approval loop. Implementations
+	      therefore enforce the finite reissue budget in
+	      <xref target="core-lifecycle"/> and stop automatic reissue when it is
+	      exhausted. This availability failure does not make the consumed nonce
+	      reusable and MUST NOT be reported as replay by the party whose first
+	      claim succeeded.</t>
       <t><strong>Replica consistency.</strong> Per-process replay caches permit
       two verifier replicas to accept the same nonce. Verifiers for one issuer
       need one atomic replay domain or an exclusive deterministic shard.
@@ -1194,7 +1216,9 @@ Retry-After: 30
       a receiving gateway does not transfer a single-use authorization or its
       consumption ledger. Implementations MUST NOT claim cross-gateway
       double-admission prevention merely because both gateways implement this
-      challenge.</t>
+      challenge. A separate conserved-admission protocol MAY transfer or fence
+      admission ownership, but AE-CHALLENGE neither defines nor implies that
+      protocol.</t>
     </section>
 
     <section anchor="iana">

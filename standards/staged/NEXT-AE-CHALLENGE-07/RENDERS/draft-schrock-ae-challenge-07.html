@@ -2005,7 +2005,15 @@ li > p:last-of-type:only-child {
          satisfying <a href="#core-requirements" class="auto internal xref">Section 2.3</a> is explicitly in use. It
          is a new refusal with new authoritative state, never an implicit
          continuation of the consumed nonce or ambient prior evidence.<a href="#section-2.5-6" class="pilcrow">¶</a></p>
-<p id="section-2.5-7"><code>retry_timing</code> is OPTIONAL. When present, it MUST contain a
+<p id="section-2.5-7">An implementation that automatically issues follow-up challenges or
+       restarts a challenge after a claimed presentation MUST enforce a finite
+       reissue budget bound at least to the authenticated issuer, effective
+       presenter or audience, action profile and digest, and policy. A fresh
+       challenge identifier or nonce does not reset that budget. When the
+       budget is exhausted, the relying party MUST stop automatic reissue and
+       use a generic refusal or a separately authorized out-of-band recovery
+       path. It MUST NOT reopen or reuse a consumed nonce.<a href="#section-2.5-7" class="pilcrow">¶</a></p>
+<p id="section-2.5-8"><code>retry_timing</code> is OPTIONAL. When present, it MUST contain a
         <code>not_before</code> Internet timestamp as defined by
         <span>[<a href="#RFC3339" class="cite xref">RFC3339</a>]</span> and MAY contain a non-negative integer
          <code>jitter_sec</code>. <code>not_before</code> MUST precede
@@ -2020,8 +2028,8 @@ li > p:last-of-type:only-child {
         the earliest time to present corrected evidence. It is not a promise
         of capacity, evidence sufficiency, admission, or execution. After
         waiting, the presenter can receive the same refusal, a different
-        refusal, or an overload response.<a href="#section-2.5-7" class="pilcrow">¶</a></p>
-<p id="section-2.5-8">A relying party that expects many correlated refusals SHOULD issue
+        refusal, or an overload response.<a href="#section-2.5-8" class="pilcrow">¶</a></p>
+<p id="section-2.5-9">A relying party that expects many correlated refusals SHOULD issue
         recipient-specific or challenge-specific retry schedules rather than
         one common retry instant. It SHOULD provide a jitter interval wide
         enough for its expected population and recovery capacity. A presenter
@@ -2032,26 +2040,27 @@ li > p:last-of-type:only-child {
         evidence presentation without changing the refusal semantics. The
         presenter can therefore spend effort acquiring third-party evidence
         and still be refused or shed after the lower bound; timing guidance
-        does not assert which constraint will be decisive later.<a href="#section-2.5-8" class="pilcrow">¶</a></p>
-<p id="section-2.5-9">Ignoring <code>retry_timing</code> does not make evidence sufficient or
+        does not assert which constraint will be decisive later.<a href="#section-2.5-9" class="pilcrow">¶</a></p>
+<p id="section-2.5-10">Ignoring <code>retry_timing</code> does not make evidence sufficient or
         authorize an action, but it can defeat the issuer's load-control goal.
         It does not change the semantic meaning of the challenge and therefore
-        MUST NOT appear in <code>critical</code>. An issuer that needs to enforce
-        pacing uses carrier-level overload handling, admission control, rate
-        limiting, or refusal. A presenter that cannot establish whether
+        MUST NOT appear in <code>critical</code>. An issuer that relies on enforced
+        pacing MUST enforce it through carrier-level overload handling,
+        admission control, rate limiting, or refusal; it MUST NOT rely on
+        <code>retry_timing</code> as an enforcement control. A presenter that cannot establish whether
         <code>not_before</code> has passed MUST NOT infer permission to send early;
-         it uses its local backoff policy or declines automated retry.<a href="#section-2.5-9" class="pilcrow">¶</a></p>
-<p id="section-2.5-10">Expiry is tested as part of the owner-side claim transition. A
+         it uses its local backoff policy or declines automated retry.<a href="#section-2.5-10" class="pilcrow">¶</a></p>
+<p id="section-2.5-11">Expiry is tested as part of the owner-side claim transition. A
          presentation claimed before expiry MAY finish evaluation after that
          instant, but challenge expiry never extends evidence validity or permits
          admission under stale policy. Implementations MUST place a finite
          deadline on native verification and finalization. Reclaiming an
          abandoned reservation requires an ownership fence that prevents the old
-         worker from later committing a follow-up or other refusal-path state.<a href="#section-2.5-10" class="pilcrow">¶</a></p>
-<p id="section-2.5-11">Unknown acquisition status, timeout, transport failure, or an
+         worker from later committing a follow-up or other refusal-path state.<a href="#section-2.5-11" class="pilcrow">¶</a></p>
+<p id="section-2.5-12">Unknown acquisition status, timeout, transport failure, or an
         unverifiable response is indeterminate. It MUST NOT be interpreted as
         evidence satisfaction or permission to retry an action whose effect
-        may already have occurred.<a href="#section-2.5-11" class="pilcrow">¶</a></p>
+        may already have occurred.<a href="#section-2.5-12" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="state-bounds">
@@ -2654,7 +2663,20 @@ Retry-After: 30
        do not run after the state budget is exhausted. Envelope and presenter
        authentication that occur before the owner transition remain protected
        only by the separate pre-owner anti-abuse budget.<a href="#section-5-5" class="pilcrow">¶</a></p>
-<p id="section-5-6"><strong>Replica consistency.</strong> Per-process replay caches permit
+<p id="section-5-6"><strong>Targeted attempt burning.</strong> The claim-before-evaluation
+       order means a structurally valid, exact-action presentation spends the
+       challenge even when its evidence is insufficient. Authenticating the
+       returning presenter against the effective audience before claim prevents
+       an unrelated caller from spending an audience-bound challenge, but an
+       authorized, compromised, or transferable presenter can still consume an
+       attempt deliberately. Automatic reissue without an action-scoped bound
+       turns that behavior into a denial-of-approval loop. Implementations
+       therefore enforce the finite reissue budget in
+       <a href="#core-lifecycle" class="auto internal xref">Section 2.5</a> and stop automatic reissue when it is
+       exhausted. This availability failure does not make the consumed nonce
+       reusable and MUST NOT be reported as replay by the party whose first
+       claim succeeded.<a href="#section-5-6" class="pilcrow">¶</a></p>
+<p id="section-5-7"><strong>Replica consistency.</strong> Per-process replay caches permit
       two verifier replicas to accept the same nonce. Verifiers for one issuer
       need one atomic replay domain or an exclusive deterministic shard.
       During partition or store failure they refuse rather than create local
@@ -2662,16 +2684,16 @@ Retry-After: 30
        result is replay; routing failure is unavailability and is not relabeled
        as attacker replay. An uncertain owner response does not prove that the
        transition failed to commit; callers retain the unavailable result and do
-       not create local replacement state.<a href="#section-5-6" class="pilcrow">¶</a></p>
-<p id="section-5-7"><strong>Parser and pre-claim work amplification.</strong> State caps
+       not create local replacement state.<a href="#section-5-7" class="pilcrow">¶</a></p>
+<p id="section-5-8"><strong>Parser and pre-claim work amplification.</strong> State caps
        apply only at the owner-side transition. They do not protect an unbounded
        JSON parser, duplicate-member ambiguity, canonicalization, envelope
        verification, action derivation, or an initial evidence evaluation used
        to decide whether to issue a challenge. Finite pre-cryptographic limits,
        duplicate-member refusal, and a separate pre-owner computation budget are
        therefore independent requirements. A known-exhausted replay-state bound
-       is handled before starting optional native verification.<a href="#section-5-7" class="pilcrow">¶</a></p>
-<p id="section-5-8"><strong>Retry synchronization and load amplification.</strong> A
+       is handled before starting optional native verification.<a href="#section-5-8" class="pilcrow">¶</a></p>
+<p id="section-5-9"><strong>Retry synchronization and load amplification.</strong> A
       precise challenge tells a presenter how to correct a request, so a
       population receiving similar refusals can retry in a synchronized burst.
       An issuer under pressure SHOULD combine recipient-specific retry timing,
@@ -2680,8 +2702,8 @@ Retry-After: 30
       control even when a challenge supplies a lower bound. Timing guidance
       paces only a new evidence presentation and MUST NOT be interpreted as
       evidence satisfaction, authorization, or a promise that capacity or
-       admission will exist after <code>not_before</code>.<a href="#section-5-8" class="pilcrow">¶</a></p>
-<p id="section-5-9"><strong>Information disclosure.</strong> Evidence requirements,
+       admission will exist after <code>not_before</code>.<a href="#section-5-9" class="pilcrow">¶</a></p>
+<p id="section-5-10"><strong>Information disclosure.</strong> Evidence requirements,
       policy identifiers, action profiles, and obtain hints can reveal
       sensitive policy structure. A relying party SHOULD disclose only the
       minimum information needed for remediation. The HTTP carrier requires
@@ -2696,19 +2718,21 @@ Retry-After: 30
        routing information, the binding or authenticated envelope MUST also
        provide confidentiality appropriate to the deployment. Digests do not
        make low-entropy values secret: equality tests and dictionary attacks can
-       reveal guessed actions, policies, or requirements.<a href="#section-5-9" class="pilcrow">¶</a></p>
-<p id="section-5-10"><strong>Stale facts and uncertain effects.</strong> A satisfied
+       reveal guessed actions, policies, or requirements.<a href="#section-5-10" class="pilcrow">¶</a></p>
+<p id="section-5-11"><strong>Stale facts and uncertain effects.</strong> A satisfied
        challenge means only that the relying party concluded, under its live
        local policy at evaluation time, that the evidence requirement was met.
        It does not prove that external facts remain
       true, that an action executed, or that an uncertain action is safe to
       retry. Status rechecking, execution custody, effect observation, and
-      reconciliation remain separate controls.<a href="#section-5-10" class="pilcrow">¶</a></p>
-<p id="section-5-11"><strong>Gateway split brain.</strong> An authenticated challenge from
+      reconciliation remain separate controls.<a href="#section-5-11" class="pilcrow">¶</a></p>
+<p id="section-5-12"><strong>Gateway split brain.</strong> An authenticated challenge from
       a receiving gateway does not transfer a single-use authorization or its
       consumption ledger. Implementations MUST NOT claim cross-gateway
       double-admission prevention merely because both gateways implement this
-      challenge.<a href="#section-5-11" class="pilcrow">¶</a></p>
+      challenge. A separate conserved-admission protocol MAY transfer or fence
+      admission ownership, but AE-CHALLENGE neither defines nor implies that
+      protocol.<a href="#section-5-12" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="iana">

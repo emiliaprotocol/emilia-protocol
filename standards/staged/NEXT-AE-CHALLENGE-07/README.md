@@ -41,6 +41,11 @@ Revision -07 repairs the load-bearing defects found after -06:
   validation is independent of database collation;
 - caller-selected production follow-up nonces are refused before claim, and a
   malformed follow-up is terminalized without silently stranding authority.
+- authenticated presenter binding occurs before claim, while automatic
+  follow-ups are bounded by an exact-action reissue budget that a fresh nonce
+  cannot reset;
+- enforced pacing remains a carrier-level control and never relies on the
+  non-critical `retry_timing` hint.
 
 The finite same-team model explores four coordinated cap buckets, transfer of
 stateful-open debits, tuple-safe replay keys, recovery fencing, and explicit
