@@ -39,14 +39,22 @@ stateful-open debits, tuple-safe replay keys, recovery fencing, and explicit
 unsafe mutations. It is not a database isolation or storage-driver refinement
 proof.
 
-The current reference runtime is deliberately blocked from claiming production
--07 conformance. It does not implement atomic stateful issuance, authoritative
-owner time, reservation finalization, fenced recovery, or a contract-tested
-compound store. Boolean capability declarations and a callback-shaped method
-are not evidence that a backend implements those semantics.
+The reference runtime now implements the stateful owner path through one
+factory-created owner state machine and a PostgreSQL transaction backend. The
+owner uses database transaction time, registers issuance before exposure,
+claims and reserves atomically, finalizes a terminal result or bound follow-up
+atomically, and fences recovery with a generation-bound owner token. Production
+evaluation refuses copied stores and caller-declared capability booleans. The
+packed package exposes the PostgreSQL backend and its generated declarations.
 
-Publication remains blocked. The exact candidate requires a new validation
-record after the implementation claims and finite-model evidence are narrowed,
-the runtime safety repairs are complete, and an independent reviewer examines
-the final frozen bytes. The render and validation files are evidence only
-after regeneration from those bytes.
+This remains a same-team reference, not an independently reproduced
+implementation or a deployed-database audit. The finite model is small-bound
+scenario evidence and is labeled that way. Self-describing issuance, database
+role configuration, expiry collection, authenticated alias resolution,
+preallocated shard quotas, and pre-owner abuse controls remain deployment or
+future-profile work unless separately implemented and tested.
+
+The frozen candidate passes its local publication, type, package, formal-
+runtime, security-case, and repository test gates. It is fit for external
+review, but remains private and unpublished pending an explicit filing
+decision. No upload or Datatracker claim is implied by this packet.

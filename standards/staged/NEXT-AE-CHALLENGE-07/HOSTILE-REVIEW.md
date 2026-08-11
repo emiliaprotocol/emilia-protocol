@@ -63,6 +63,24 @@ artifact.
 21. The HTTP carrier conflicted with HEAD and mapped every owner failure to
     503. HEAD is excluded, while 502, 503, and 504 retain their distinct HTTP
     meanings without carrying evidence details.
+22. Production trusted a callback name plus caller-declared capability
+    booleans. It now accepts only the owner object created by the supported
+    factory, and a copied object cannot inherit that identity.
+23. The old store interface could not represent reservation finalization,
+    acknowledgement loss, or fenced recovery. The owner now returns an opaque
+    generation-bound reservation, atomically finalizes terminal or follow-up
+    state, and invalidates a stale worker after authorized recovery.
+24. A worker could ask the owner to finalize a narrowed or substituted
+    follow-up. The owner now compares the action, action profile, policy,
+    complete requirement set, audience, and presentation method before it
+    accepts follow-up state.
+25. Owner expiry relied on worker time and the generated fixtures used strings
+    that did not satisfy the canonical nonce grammar. PostgreSQL transaction
+    time now decides owner expiry and the fixtures generate canonical random-
+    byte encodings.
+26. The lifecycle model represented durability but not the concrete
+    authoritative-owner boundary. It now varies that property explicitly and
+    the runtime bridge refuses an unbranded production store.
 
 ## Runtime defects caught and bounded
 
@@ -84,26 +102,26 @@ artifact.
 - Follow-ups refuse reuse of the prior identifier or a changed action profile,
   and recheck the current action after evidence evaluation before registration.
 
-## Deliberately unclaimed and publication-blocking
+## Deliberately unclaimed and remaining review boundaries
 
-An independent runtime pass found that the existing callback surface cannot
-implement normative reservation finalization or fenced recovery, trusts
-self-declared capability properties, delegates authoritative time to caller
-input, and has no contract-tested production backend. The production posture
-was also transaction-downgradable; that downgrade and the missing domain
-separation in the body digest are repaired on this private branch. The larger
-compound-store and finalization gaps remain. Production -07 conformance is
-blocked and MUST NOT be inferred from the current scaffolding or tests.
+The repaired stateful reference is same-team executable evidence. Its
+PostgreSQL adapter has transaction-contract tests, not a live database
+isolation audit or a production role and privilege review. The finite
+claim-and-capacity harness checks 113 small scenarios and unsafe mutations; it
+does not claim exhaustive verification, arbitrary-shard conservation, crash
+refinement, or database correctness. The older lifecycle checker is also a
+bounded abstraction, and its owner field is tied to runtime tests rather than
+trusted self-declaration.
 
-The finite model is same-team scenario exploration over small bounds. It does
-not prove database isolation, crash atomicity, alias authentication, quota
-transfer, or implementation refinement. No independent implementation or
-interoperability result is claimed.
+No independent implementation, external interoperability result, deployed
+capacity policy, expiry collector, authenticated alias resolver, safe quota-
+transfer system, or pre-owner abuse-control deployment is claimed. The
+reference implements the stateful path. The self-describing alternative is a
+protocol option, not a reference-runtime claim.
 
-The finite-model report also labels several design demonstrations as verified
-obligations without a sound coordinator or recovery state machine. Those claims
-must be narrowed or replaced before this packet can support publication.
-
-The candidate must remain unpublished until the runtime and formal claims are
-made exact, source, renders, checksums, and validation are regenerated together,
-and the final packet receives independent review.
+No known local build, package, state-machine, or publication-format blocker
+remains in the frozen bytes. Independent security review and implementation
+reproduction would materially strengthen the evidence and should precede any
+claim of operational maturity. The candidate remains unpublished only because
+filing requires an explicit decision, not because the earlier callback and
+formal-claim defects are still open.
