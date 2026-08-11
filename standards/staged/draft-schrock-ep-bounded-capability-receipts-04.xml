@@ -399,12 +399,24 @@ SHA-256(JCS({
       non-transitive, asserted-transitive, or unknown-transitivity relation
       is local to the reported hop. It can be useful evidence, but it does
       not compose by induction across a delegation chain.</t>
+      <t>For a mechanically established result, the verifier
+      <bcp14>MUST</bcp14> disclose whether it performed the complete
+      enumeration itself or relied on a prior conformance run. The
+      establishment record <bcp14>MUST</bcp14> identify the runner, completion
+      time, pinned profile and rule, a digest of the complete declared finite
+      domain, the deterministic procedure and version used, and the result.
+      A verifier relying on a prior run <bcp14>MUST</bcp14> authenticate and
+      integrity-check that record. If the record is unavailable, invalid, or
+      does not cover the pinned profile's complete declared finite domain, the
+      verifier <bcp14>MUST</bcp14> report the comparison as local-only. This
+      requirement does not require enumeration at admission time.</t>
       <t>Scope comparison is evaluated per component and relative to the
       verifier that produced it. A comparison report <bcp14>MUST</bcp14>
       record each component, the deciding verifier, the pinned profile and
       rule, the values compared, the local result, whether the relation is
-      reflexive, the transitivity classification and basis, and whether the
-      result is local-only or chain-composable. An undecided result
+      reflexive, the transitivity classification and basis, any mechanical
+      establishment record and reliance mode, and whether the result is
+      local-only or chain-composable. An undecided result
       <bcp14>MUST</bcp14> distinguish a component for which no order is
       defined from one whose governing profile was unavailable to that
       verifier. Mandatory-profile components <bcp14>MUST</bcp14> be reported
@@ -738,7 +750,12 @@ remaining = total - consumed - reserved
       relation that passes every adjacent hop but fails transitivity, and
       demonstrate that the verifier labels those hop results local-only and
       refuses to claim chain-wide non-widening. An asserted-transitive profile
-      <bcp14>MUST NOT</bcp14> be reported as demonstrably transitive.</t>
+      <bcp14>MUST NOT</bcp14> be reported as demonstrably transitive. The set
+      <bcp14>MUST</bcp14> cover both a verifier-performed enumeration and
+      reliance on an authenticated prior conformance run, and
+      <bcp14>MUST</bcp14> refuse chain-wide promotion when that prior record is
+      unavailable, invalid, or does not cover the complete declared finite
+      domain.</t>
       <t>The parent-over-allocation case <bcp14>MUST</bcp14> include at least
       three sibling child-creation attempts whose individually valid amounts
       collectively exceed the parent's available balance, with concurrent
@@ -948,9 +965,9 @@ remaining = total - consumed - reserved
       <t>The -04 scope-profile contract and comparison-reporting rules are not
       yet implemented. In particular, the reference implementation does not
       yet emit per-component decidability records, relation reflexivity,
-      transitivity classification or basis, or the local-only versus
-      chain-composable result. No implementation or conformance claim is made
-      for those additions.</t>
+      transitivity classification or basis, mechanical-establishment
+      provenance, or the local-only versus chain-composable result. No
+      implementation or conformance claim is made for those additions.</t>
       <t>The reference implementation does reject repeated delegation identifiers,
       repeated parent capability identifiers, a leaf named as its own parent,
       and increasing amounts within the delegation chain presented at mint or
@@ -984,19 +1001,25 @@ remaining = total - consumed - reserved
       scheduled.</t>
     </section>
 
-    <section anchor="changes-since-02">
-      <name>Changes Since -02</name>
+    <section anchor="changes-since-03">
+      <name>Changes Since -03</name>
       <ul spacing="normal">
-        <li>Added a signed <tt>revocation_mode</tt> that distinguishes direct
-        revocation from cascade revocation of future descendant authority
-        claims.</li>
-        <li>Required ancestor revocation and descendant reservation to
-        serialize in one authoritative atomic state domain, with explicit race
-        and unavailable-status behavior.</li>
-        <li>Separated revocation from in-flight reconciliation and from any
-        separately authorized wind-down authority, and added corresponding
-        failure codes and conformance cases.</li>
+        <li>Defined the mandatory CAID-set scope relation and required profiles
+        to state reflexivity, transitivity, and the basis for transitivity.</li>
+        <li>Prevented local hop comparisons from being promoted into a
+        chain-wide non-widening claim without a definition-derived or
+        mechanically established transitive relation.</li>
+        <li>Required mechanical-establishment provenance, including whether
+        the deciding verifier ran the complete enumeration or relied on an
+        authenticated prior conformance run.</li>
       </ul>
+    </section>
+
+    <section anchor="acknowledgments">
+      <name>Acknowledgments</name>
+      <t>The author thanks Sumit P. Ahuja for the scope-comparison analysis
+      that led to the transitivity-basis, mechanical-establishment provenance,
+      and chain-composition requirements in <xref target="scope-evaluation"/>.</t>
     </section>
 
     <section anchor="iana">

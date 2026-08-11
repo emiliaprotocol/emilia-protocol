@@ -1438,24 +1438,27 @@ li > p:last-of-type:only-child {
             <p id="section-toc.1-1.19.1"><a href="#section-19" class="auto internal xref">19</a>. <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20">
-            <p id="section-toc.1-1.20.1"><a href="#section-20" class="auto internal xref">20</a>. <a href="#name-changes-since-02" class="internal xref">Changes Since -02</a></p>
+            <p id="section-toc.1-1.20.1"><a href="#section-20" class="auto internal xref">20</a>. <a href="#name-changes-since-03" class="internal xref">Changes Since -03</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21">
-            <p id="section-toc.1-1.21.1"><a href="#section-21" class="auto internal xref">21</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+            <p id="section-toc.1-1.21.1"><a href="#section-21" class="auto internal xref">21</a>. <a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22">
-            <p id="section-toc.1-1.22.1"><a href="#section-22" class="auto internal xref">22</a>. <a href="#name-references" class="internal xref">References</a></p>
-<ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.1">
-                <p id="section-toc.1-1.22.2.1.1"><a href="#section-22.1" class="auto internal xref">22.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+            <p id="section-toc.1-1.22.1"><a href="#section-22" class="auto internal xref">22</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.2">
-                <p id="section-toc.1-1.22.2.2.1"><a href="#section-22.2" class="auto internal xref">22.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23">
+            <p id="section-toc.1-1.23.1"><a href="#section-23" class="auto internal xref">23</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.1">
+                <p id="section-toc.1-1.23.2.1.1"><a href="#section-23.1" class="auto internal xref">23.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.2">
+                <p id="section-toc.1-1.23.2.2.1"><a href="#section-23.2" class="auto internal xref">23.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
 </li>
             </ul>
 </li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23">
-            <p id="section-toc.1-1.23.1"><a href="#appendix-A" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.24">
+            <p id="section-toc.1-1.24.1"><a href="#appendix-A" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
 </li>
         </ul>
 </nav>
@@ -1925,23 +1928,35 @@ SHA-256(JCS({
       non-transitive, asserted-transitive, or unknown-transitivity relation
       is local to the reported hop. It can be useful evidence, but it does
       not compose by induction across a delegation chain.<a href="#section-7-4" class="pilcrow">¶</a></p>
-<p id="section-7-5">Scope comparison is evaluated per component and relative to the
+<p id="section-7-5">For a mechanically established result, the verifier
+      <span class="bcp14">MUST</span> disclose whether it performed the complete
+      enumeration itself or relied on a prior conformance run. The
+      establishment record <span class="bcp14">MUST</span> identify the runner, completion
+      time, pinned profile and rule, a digest of the complete declared finite
+      domain, the deterministic procedure and version used, and the result.
+      A verifier relying on a prior run <span class="bcp14">MUST</span> authenticate and
+      integrity-check that record. If the record is unavailable, invalid, or
+      does not cover the pinned profile's complete declared finite domain, the
+      verifier <span class="bcp14">MUST</span> report the comparison as local-only. This
+      requirement does not require enumeration at admission time.<a href="#section-7-5" class="pilcrow">¶</a></p>
+<p id="section-7-6">Scope comparison is evaluated per component and relative to the
       verifier that produced it. A comparison report <span class="bcp14">MUST</span>
       record each component, the deciding verifier, the pinned profile and
       rule, the values compared, the local result, whether the relation is
-      reflexive, the transitivity classification and basis, and whether the
-      result is local-only or chain-composable. An undecided result
+      reflexive, the transitivity classification and basis, any mechanical
+      establishment record and reliance mode, and whether the result is
+      local-only or chain-composable. An undecided result
       <span class="bcp14">MUST</span> distinguish a component for which no order is
       defined from one whose governing profile was unavailable to that
       verifier. Mandatory-profile components <span class="bcp14">MUST</span> be reported
       rather than assumed. A structural chain result and a scope comparison
       result <span class="bcp14">MUST NOT</span> be combined into an overall validity
       claim unless both reports, including their decidability and composition
-      limits, travel with the claim.<a href="#section-7-5" class="pilcrow">¶</a></p>
-<p id="section-7-6">Profiles that intentionally use a non-reflexive relation
+      limits, travel with the claim.<a href="#section-7-6" class="pilcrow">¶</a></p>
+<p id="section-7-7">Profiles that intentionally use a non-reflexive relation
       <span class="bcp14">MUST</span> state that an unchanged scope will be refused.
       Profiles that cannot decide either action membership or attenuation
-      <span class="bcp14">MUST</span> return <code>INDETERMINATE</code>.<a href="#section-7-6" class="pilcrow">¶</a></p>
+      <span class="bcp14">MUST</span> return <code>INDETERMINATE</code>.<a href="#section-7-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="holder-proof">
@@ -2348,7 +2363,12 @@ remaining = total - consumed - reserved
       relation that passes every adjacent hop but fails transitivity, and
       demonstrate that the verifier labels those hop results local-only and
       refuses to claim chain-wide non-widening. An asserted-transitive profile
-      <span class="bcp14">MUST NOT</span> be reported as demonstrably transitive.<a href="#section-15-4" class="pilcrow">¶</a></p>
+      <span class="bcp14">MUST NOT</span> be reported as demonstrably transitive. The set
+      <span class="bcp14">MUST</span> cover both a verifier-performed enumeration and
+      reliance on an authenticated prior conformance run, and
+      <span class="bcp14">MUST</span> refuse chain-wide promotion when that prior record is
+      unavailable, invalid, or does not cover the complete declared finite
+      domain.<a href="#section-15-4" class="pilcrow">¶</a></p>
 <p id="section-15-5">The parent-over-allocation case <span class="bcp14">MUST</span> include at least
       three sibling child-creation attempts whose individually valid amounts
       collectively exceed the parent's available balance, with concurrent
@@ -2570,9 +2590,9 @@ remaining = total - consumed - reserved
 <p id="section-19-4">The -04 scope-profile contract and comparison-reporting rules are not
       yet implemented. In particular, the reference implementation does not
       yet emit per-component decidability records, relation reflexivity,
-      transitivity classification or basis, or the local-only versus
-      chain-composable result. No implementation or conformance claim is made
-      for those additions.<a href="#section-19-4" class="pilcrow">¶</a></p>
+      transitivity classification or basis, mechanical-establishment
+      provenance, or the local-only versus chain-composable result. No
+      implementation or conformance claim is made for those additions.<a href="#section-19-4" class="pilcrow">¶</a></p>
 <p id="section-19-5">The reference implementation does reject repeated delegation identifiers,
       repeated parent capability identifiers, a leaf named as its own parent,
       and increasing amounts within the delegation chain presented at mint or
@@ -2606,45 +2626,54 @@ remaining = total - consumed - reserved
       scheduled.<a href="#section-19-7" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="changes-since-02">
+<div id="changes-since-03">
 <section id="section-20">
-      <h2 id="name-changes-since-02">
-<a href="#section-20" class="section-number selfRef">20. </a><a href="#name-changes-since-02" class="section-name selfRef">Changes Since -02</a>
+      <h2 id="name-changes-since-03">
+<a href="#section-20" class="section-number selfRef">20. </a><a href="#name-changes-since-03" class="section-name selfRef">Changes Since -03</a>
       </h2>
 <ul class="normal">
-<li class="normal" id="section-20-1.1">Added a signed <code>revocation_mode</code> that distinguishes direct
-        revocation from cascade revocation of future descendant authority
-        claims.<a href="#section-20-1.1" class="pilcrow">¶</a>
+<li class="normal" id="section-20-1.1">Defined the mandatory CAID-set scope relation and required profiles
+        to state reflexivity, transitivity, and the basis for transitivity.<a href="#section-20-1.1" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-20-1.2">Required ancestor revocation and descendant reservation to
-        serialize in one authoritative atomic state domain, with explicit race
-        and unavailable-status behavior.<a href="#section-20-1.2" class="pilcrow">¶</a>
+        <li class="normal" id="section-20-1.2">Prevented local hop comparisons from being promoted into a
+        chain-wide non-widening claim without a definition-derived or
+        mechanically established transitive relation.<a href="#section-20-1.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-20-1.3">Separated revocation from in-flight reconciliation and from any
-        separately authorized wind-down authority, and added corresponding
-        failure codes and conformance cases.<a href="#section-20-1.3" class="pilcrow">¶</a>
+        <li class="normal" id="section-20-1.3">Required mechanical-establishment provenance, including whether
+        the deciding verifier ran the complete enumeration or relied on an
+        authenticated prior conformance run.<a href="#section-20-1.3" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
 </div>
-<div id="iana">
+<div id="acknowledgments">
 <section id="section-21">
-      <h2 id="name-iana-considerations">
-<a href="#section-21" class="section-number selfRef">21. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      <h2 id="name-acknowledgments">
+<a href="#section-21" class="section-number selfRef">21. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
       </h2>
-<p id="section-21-1">This document has no IANA actions. A future revision may request a
-      media type and registries for receipt versions, scope profiles, holder
-      methods, and failure codes after implementation experience stabilizes
-      the protocol.<a href="#section-21-1" class="pilcrow">¶</a></p>
+<p id="section-21-1">The author thanks Sumit P. Ahuja for the scope-comparison analysis
+      that led to the transitivity-basis, mechanical-establishment provenance,
+      and chain-composition requirements in <a href="#scope-evaluation" class="auto internal xref">Section 7</a>.<a href="#section-21-1" class="pilcrow">¶</a></p>
 </section>
 </div>
+<div id="iana">
 <section id="section-22">
-      <h2 id="name-references">
-<a href="#section-22" class="section-number selfRef">22. </a><a href="#name-references" class="section-name selfRef">References</a>
+      <h2 id="name-iana-considerations">
+<a href="#section-22" class="section-number selfRef">22. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
       </h2>
-<section id="section-22.1">
+<p id="section-22-1">This document has no IANA actions. A future revision may request a
+      media type and registries for receipt versions, scope profiles, holder
+      methods, and failure codes after implementation experience stabilizes
+      the protocol.<a href="#section-22-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-23">
+      <h2 id="name-references">
+<a href="#section-23" class="section-number selfRef">23. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<section id="section-23.1">
         <h3 id="name-normative-references">
-<a href="#section-22.1" class="section-number selfRef">22.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+<a href="#section-23.1" class="section-number selfRef">23.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
         </h3>
 <dl class="references">
 <dt id="BCP14">[BCP14]</dt>
@@ -2673,9 +2702,9 @@ remaining = total - consumed - reserved
 <dd class="break"></dd>
 </dl>
 </section>
-<section id="section-22.2">
+<section id="section-23.2">
         <h3 id="name-informative-references">
-<a href="#section-22.2" class="section-number selfRef">22.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+<a href="#section-23.2" class="section-number selfRef">23.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
         </h3>
 <dl class="references">
 <dt id="AIP">[AIP]</dt>
