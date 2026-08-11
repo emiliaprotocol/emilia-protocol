@@ -120,6 +120,16 @@ the Authorization Bundle transport-neutral and moves OAuth RAR into an
 optional binding profile. Its isolated packet remains under
 `staged/NEXT-AUTHORIZATION-RECEIPTS-11` as publication provenance.
 
+## August 11 maintenance revision
+
+`draft-schrock-ep-bounded-capability-receipts-04` was published on August 11,
+2026. Its XML and TXT were checked byte-for-byte against the immutable IETF
+archive. Revision -04 adds immutable scope-comparison semantics, composition
+proof provenance, bounded provider-entry recovery, atomic issuance
+registration, and an operation-bound Ed25519 holder method while retaining
+explicit shared-domain and implementation limits. Its isolated packet remains
+under `staged/NEXT-BOUNDED-CAPABILITY-04` as publication provenance.
+
 ## New-filing freeze
 
 A 90-day freeze on new Internet-Draft names and `-00` filings is in effect from

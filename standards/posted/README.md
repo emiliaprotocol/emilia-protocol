@@ -12,7 +12,8 @@ Do not upload a file from this directory as a new draft. Maintenance revisions
 may be prepared in `../staged/`, rendered and tested, then filed through the
 Datatracker. The August 3 packet, four isolated August 6 packets, two isolated
 August 8 packets, and the isolated Authorization Receipts-11,
-AE-CHALLENGE-05, and AE-CHALLENGE-06 packets from August 10 are
+AE-CHALLENGE-05, AE-CHALLENGE-06, and Bounded Capability Receipts-04 packets
+from August 10-11 are
 retained exact-submission provenance. Despite retained `UPLOAD-THIS` directory
 names, they are not upload candidates or a filing queue.
 
@@ -43,7 +44,7 @@ authoritative for rendered forms.
 - `draft-schrock-ep-authority-introduction-03`
 - `draft-schrock-ep-authorization-evidence-chain-05`
 - `draft-schrock-ep-authorization-receipts-11`
-- `draft-schrock-ep-bounded-capability-receipts-03`
+- `draft-schrock-ep-bounded-capability-receipts-04`
 - `draft-schrock-ep-bounded-execution-program-00`
 - `draft-schrock-ep-evidence-record-01`
 - `draft-schrock-ep-outcome-binding-00`
@@ -173,3 +174,13 @@ and checksums as publication provenance. The superseded
 `draft-schrock-ep-authorization-receipts-10`,
 `draft-schrock-ae-challenge-03`, and `draft-schrock-ae-challenge-05`
 snapshots are retained in `../archive/`.
+
+## August 11, 2026 maintenance set
+
+The `draft-schrock-ep-bounded-capability-receipts-04` XML and TXT snapshots
+were verified byte-for-byte against the immutable IETF archive before
+promotion. The retained HTML is a whitespace-normalized local xml2rfc 3.34.0
+render because the archive delivery path injected transient Cloudflare
+markup. The `../staged/NEXT-BOUNDED-CAPABILITY-04` packet preserves the exact
+submitted XML, checksum-pinned review renders, validation record, and
+checksums. Revision -03 is retained in `../archive/`.

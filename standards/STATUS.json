@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-08-10",
+  "updated": "2026-08-11",
   "active_datatracker_count": 23,
   "active_schrock_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. Authorization Receipts-11, AE-CHALLENGE-06, Bounded Capability Receipts-03, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. Bounded Capability Receipts-04, Authorization Receipts-11, AE-CHALLENGE-06, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -266,10 +266,10 @@
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts",
-      "revision": "03",
+      "revision": "04",
       "layer": "delegation_capability_policy",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published August 8; use -03 for shared state-domain binding, single-executor fallback, optional exact-action human-authorization composition, and serialized revocation inheritance for delegated authority"
+      "next_action": "Published August 11; use -04 for immutable scope-comparison semantics, composable relation-proof provenance, capability-scoped operation identity, bounded provider entry, atomic issuance registration, operation-bound holder signatures, and explicit implementation limits"
     },
     {
       "draft": "draft-schrock-ep-bounded-execution-program",
@@ -641,7 +641,7 @@
       },
       {
         "draft": "draft-schrock-ep-bounded-capability-receipts-03",
-        "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-03.xml",
+        "source": "standards/archive/draft-schrock-ep-bounded-capability-receipts-03.xml",
         "snapshot_sha256": "8f9dc9c3fbc7dfbe9f6c8f63d7dfd662773e8a118834f6b92bef9ed7148696a1",
         "state": "published_ietf_archive_verified_exact_local_match"
       }
@@ -679,6 +679,26 @@
         "draft": "draft-schrock-ae-challenge-06",
         "source": "standards/posted/draft-schrock-ae-challenge-06.xml",
         "snapshot_sha256": "aa189344c491948a1df2d18d9bff529d696e618ebb2f73ebe607445031744433",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      }
+    ]
+  },
+  "august_11_2026_maintenance_wave": {
+    "filing_date": "2026-08-11",
+    "item_count": 1,
+    "publication_status": "published_and_ietf_archive_verified_2026_08_11",
+    "filing_order": [
+      "draft-schrock-ep-bounded-capability-receipts-04"
+    ],
+    "verification": "The XML and TXT snapshots are byte-for-byte identical to their immutable IETF archive artifacts. The retained HTML is a whitespace-normalized local xml2rfc 3.34.0 render because the archive delivery path injected transient Cloudflare markup; the checksum-pinned exact render remains in the provenance packet.",
+    "provenance_packets": [
+      "standards/staged/NEXT-BOUNDED-CAPABILITY-04"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-ep-bounded-capability-receipts-04",
+        "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-04.xml",
+        "snapshot_sha256": "c89f36202208ea82b877d7e9f69738b9d1b6bc052d368a6a51cdb60533289fd8",
         "state": "published_ietf_archive_verified_exact_local_match"
       }
     ]
