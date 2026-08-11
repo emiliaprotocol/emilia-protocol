@@ -37,7 +37,7 @@ The frozen XML SHA-256 is
 - Protocol and write discipline: PASS with 15 pre-existing route-size
   warnings and no critical finding.
 - Executable security case from clean committed private bytes: PASS, 35 executable
-  claims and 262 hashed evidence files, including release-byte
+  claims and 265 hashed evidence files, including release-byte
   reproducibility.
 - Full repository Vitest suite from a clean checkout: PASS with 0 failures;
   11 files and 103 tests were explicitly environment-gated. The clean run
