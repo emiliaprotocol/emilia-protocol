@@ -2,7 +2,8 @@
 /**
  * Revision-pinned OASNT adapter for AEB-ADAPTER-v1.
  *
- * Source lock: draft-thallapelly-oasnt-01.
+ * Source locks: draft-thallapelly-oasnt-01 and its CAID companion
+ * draft-thallapelly-oasnt-caid-01.
  *
  * OASNT proves a native, single-use human authorization token. This adapter
  * verifies that token under relying-party-pinned enrolled keys, recomputes its
@@ -17,6 +18,7 @@ import { computeCaid } from '../vendor/caid.mjs';
 import { digestAeb, } from './aeb-adapter-contract.js';
 import { strictJsonGate } from './strict-json.js';
 export const OASNT_DRAFT_REVISION = 'draft-thallapelly-oasnt-01';
+export const OASNT_CAID_DRAFT_REVISION = 'draft-thallapelly-oasnt-caid-01';
 export const OASNT_AEB_ADAPTER_ID = 'native:oasnt';
 export const OASNT_AEB_ADAPTER_VERSION = '1';
 export const OASNT_AEB_CONFIG_VERSION = 'AEB-OASNT-CONFIG-v1';
@@ -245,6 +247,10 @@ export function computeOasntActionDigest(type, parameters) {
     const pairs = Object.keys(parameters).sort(utf8Compare)
         .map((key) => `${actionEscape(key)}=${actionEscape(parameters[key])}`);
     return sha256Base64url(`${actionEscape(type)}|${pairs.join('&')}`);
+}
+/** OASNT-CAID-01 Section 3.2 identifier; profile-specific, never an EMILIA join key. */
+export function computeOasntCaid(type, parameters) {
+    return `oasnt:caid:1:${computeOasntActionDigest(type, parameters)}`;
 }
 export function computeOasntDisplayDigest(type, parameters) {
     if (!nonEmptyString(type) || !validParameters(parameters)) {

@@ -1,6 +1,7 @@
 import { type AebAdapter, type AebDigest } from './aeb-adapter-contract.js';
 type Obj = Record<string, unknown>;
 export declare const OASNT_DRAFT_REVISION = "draft-thallapelly-oasnt-01";
+export declare const OASNT_CAID_DRAFT_REVISION = "draft-thallapelly-oasnt-caid-01";
 export declare const OASNT_AEB_ADAPTER_ID = "native:oasnt";
 export declare const OASNT_AEB_ADAPTER_VERSION = "1";
 export declare const OASNT_AEB_CONFIG_VERSION = "AEB-OASNT-CONFIG-v1";
@@ -52,6 +53,8 @@ export interface OasntRequestBinding {
     body_sha256: string;
 }
 export declare function computeOasntActionDigest(type: string, parameters: Record<string, string>): string;
+/** OASNT-CAID-01 Section 3.2 identifier; profile-specific, never an EMILIA join key. */
+export declare function computeOasntCaid(type: string, parameters: Record<string, string>): string;
 export declare function computeOasntDisplayDigest(type: string, parameters: Record<string, string>): string;
 export declare function computeOasntRequestFingerprint(request: OasntRequestBinding): string;
 export declare function createOasntActionDefinition(actionType: string, requireRequestBinding: boolean): Obj;

@@ -125,7 +125,10 @@ Four revision-pinned foreign-proof adapters are available:
 - `aeb-oasnt-adapter` verifies the OASNT-01 compact authorization token against
   an enrolled hardware-attested P-256 key and recomputes its action, display,
   and protected-request commitments. OASNT's native CAID namespace remains
-  distinct from the EMILIA CAID projection.
+  distinct from the EMILIA CAID projection. The executable OASNT-CAID-01
+  vectors cover refusal without consumption, release after `NOT_COMMITTED`,
+  committed replay refusal, and executor-owned dual-profile joins without
+  comparing the two profile-specific identifiers directly.
 - `aeb-aps-adapter` verifies the APS-03 signed ActionIntent and PolicyDecision
   chain, preserves the complete `aps-action-ref-v2` material, recomputes the
   decision reference, and delegates authority-chain semantics to a separately

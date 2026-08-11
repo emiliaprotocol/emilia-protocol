@@ -3,10 +3,12 @@
 /* eslint-disable */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import test from 'node:test';
 import { InMemoryAebConsumptionStore, adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest, pinnedConfigDigest, reconcileAebExecution, registryEntryDigest, unifiedRegistryDigest, verifyAebEvaluation, } from './aeb-adapter-contract.js';
 import { AEB_ACCEPTANCE_PROFILE_VERSION, aebAcceptanceReservationKey, applyAebAcceptanceProfile, defineAebAcceptanceProfile, verifyAebAcceptanceProfile, } from './aeb-acceptance-profile.js';
 import { OASNT_AEB_ADAPTER_ID, OASNT_AEB_ADAPTER_VERSION, OASNT_AEB_CONFIG_VERSION, OASNT_CAID_MAPPER_ID, OASNT_CAID_MAPPING_VERSION, OASNT_TRUST_ROOT_VERSION, createOasntActionDefinition, createOasntAebAdapter, } from './aeb-oasnt-adapter.js';
+const oasntCaidVectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/oasnt-caid-aeb.v1.json', import.meta.url), 'utf8'));
 const NOW = new Date(1_800_000_000 * 1000).toISOString();
 const LATER = new Date(1_800_000_001 * 1000).toISOString();
 const ACTION_TYPE = 'payment.transfer.1';
@@ -314,6 +316,91 @@ test('attempt -> challenge -> approve -> consume -> execute -> reconcile is one 
     assert.equal(effects, 1);
     assert.deepEqual(stages, ['attempt', 'challenge', 'approve', 'consume', 'execute', 'reconcile']);
 });
+const lifecycleVectorHandlers = {
+    near_miss_refusal_preserves_authority() {
+        const { adapter, acceptanceProfile, evaluation, verification } = buildFixture();
+        const store = new InMemoryAebConsumptionStore();
+        const changedAction = structuredClone(expectedAction);
+        changedAction.native_action.parameters.amount = '1000.00';
+        const refused = adapter.verifyNative({
+            artifact: TOKEN,
+            artifact_ref: ARTIFACT_REF,
+            status: status(),
+            trust_roots: [trustRoot],
+            adapter_config: adapterConfig,
+            expected_action: changedAction,
+            now: NOW,
+        });
+        assert.equal(refused.acceptance, 'REJECTED');
+        assert.ok(refused.reasons.includes('oasnt:action_digest_mismatch'));
+        assert.equal(store.state(aebAcceptanceReservationKey(evaluation.record)), 'AVAILABLE');
+        const legitimate = applyAebAcceptanceProfile(acceptanceProfile, evaluation.record, {
+            mode: 'enforce',
+            expected_profile_digest: acceptanceProfile.profile_digest,
+            verification,
+            local_authorization: true,
+            store,
+        });
+        assert.equal(legitimate.state, 'AUTHORIZED');
+        assert.equal(legitimate.invoke_allowed, true);
+    },
+    not_committed_release_allows_retry() {
+        const { acceptanceProfile, evaluation, verification } = buildFixture();
+        const store = new InMemoryAebConsumptionStore();
+        const first = applyAebAcceptanceProfile(acceptanceProfile, evaluation.record, {
+            mode: 'enforce',
+            expected_profile_digest: acceptanceProfile.profile_digest,
+            verification,
+            local_authorization: true,
+            store,
+        });
+        assert.equal(first.state, 'AUTHORIZED');
+        assert.ok(first.reservation_key);
+        assert.equal(reconcileAebExecution(store, first.reservation_key, 'NOT_COMMITTED').state, 'AVAILABLE');
+        const retry = applyAebAcceptanceProfile(acceptanceProfile, evaluation.record, {
+            mode: 'enforce',
+            expected_profile_digest: acceptanceProfile.profile_digest,
+            verification,
+            local_authorization: true,
+            store,
+        });
+        assert.equal(retry.state, 'AUTHORIZED');
+        assert.equal(retry.invoke_allowed, true);
+    },
+    committed_admission_consumes_and_replay_refuses() {
+        const { acceptanceProfile, evaluation, verification } = buildFixture();
+        const store = new InMemoryAebConsumptionStore();
+        const admitted = applyAebAcceptanceProfile(acceptanceProfile, evaluation.record, {
+            mode: 'enforce',
+            expected_profile_digest: acceptanceProfile.profile_digest,
+            verification,
+            local_authorization: true,
+            store,
+        });
+        assert.equal(admitted.state, 'AUTHORIZED');
+        assert.ok(admitted.reservation_key);
+        assert.equal(reconcileAebExecution(store, admitted.reservation_key, 'COMMITTED').state, 'CONSUMED');
+        const replay = applyAebAcceptanceProfile(acceptanceProfile, evaluation.record, {
+            mode: 'enforce',
+            expected_profile_digest: acceptanceProfile.profile_digest,
+            verification,
+            local_authorization: true,
+            store,
+        });
+        assert.equal(replay.state, 'REFUSED');
+        assert.equal(replay.reason, 'consumption_conflict');
+        assert.equal(replay.invoke_allowed, false);
+    },
+};
+for (const vector of oasntCaidVectors.vectors.filter((candidate) => candidate.section === '4.1')) {
+    test(`OASNT-CAID-01 section 4.1: ${vector.id}`, () => {
+        assert.equal(oasntCaidVectors['@version'], 'OASNT-CAID-AEB-VECTORS-v1');
+        assert.equal(oasntCaidVectors.source, 'draft-thallapelly-oasnt-caid-01');
+        const run = lifecycleVectorHandlers[vector.id];
+        assert.equal(typeof run, 'function', `missing executable handler for ${vector.id}`);
+        run();
+    });
+}
 test('profile refuses presenter-swapped requirements, adapter pins, or local authority', () => {
     const { acceptanceProfile, evaluation, verification } = buildFixture();
     const store = new InMemoryAebConsumptionStore();

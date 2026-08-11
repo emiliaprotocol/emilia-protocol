@@ -1,0 +1,47 @@
+{
+  "@version": "OASNT-CAID-AEB-VECTORS-v1",
+  "source": "draft-thallapelly-oasnt-caid-01",
+  "description": "Executable OASNT-CAID Section 4.1 lifecycle and Section 6.4 dual-profile join vectors.",
+  "vectors": [
+    {
+      "id": "near_miss_refusal_preserves_authority",
+      "section": "4.1",
+      "expect": "the refused near-miss action does not consume the valid OASNT authority"
+    },
+    {
+      "id": "not_committed_release_allows_retry",
+      "section": "4.1",
+      "expect": "a reserved attempt reconciled NOT_COMMITTED releases the authority for retry"
+    },
+    {
+      "id": "committed_admission_consumes_and_replay_refuses",
+      "section": "4.1",
+      "expect": "a committed admission consumes the authority and a replay is refused"
+    },
+    {
+      "id": "profile_specific_identifiers_are_not_direct_join_keys",
+      "section": "6.4",
+      "expect": "the OASNT CAID and EMILIA CAID for one action remain unequal profile-specific identifiers"
+    },
+    {
+      "id": "executor_owned_mapping_joins_one_material_action",
+      "section": "6.4",
+      "expect": "independent profile derivations join only through the executor-owned material action"
+    },
+    {
+      "id": "namespace_collision_refuses",
+      "section": "6.4",
+      "expect": "substituting an EMILIA identifier into the OASNT namespace fails closed"
+    },
+    {
+      "id": "profile_identifier_mismatch_refuses",
+      "section": "6.4",
+      "expect": "a changed identifier in either profile fails closed"
+    },
+    {
+      "id": "changed_material_action_refuses",
+      "section": "6.4",
+      "expect": "identifiers derived for the original action cannot join a changed material action"
+    }
+  ]
+}
