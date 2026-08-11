@@ -653,6 +653,9 @@
 	        the maximum refusal-path state the evaluation can create. The
 	        authoritative owner's current time and the challenge expiry are also
 	        inputs, so an expiry check cannot race a later claim. A read-only
+	        front end, presenter, or verifier-worker timestamp MUST NOT determine
+	        this expiry result; current time MUST come from the same authoritative
+	        transaction that claims the nonce and changes capacity. A read-only
 	        capacity check, a reservation followed by a separate nonce claim, or a
 	        nonce claim followed by a separate capacity debit does not satisfy this
 	        requirement.</t>
@@ -776,6 +779,29 @@
             <li>Allocating a new challenge never evicts an in-flight or
             unexpired consumed nonce.</li>
           </ul>
+        </section>
+        <section anchor="reference-evidence-boundary">
+          <name>Reference Evidence Boundary</name>
+          <t>The same-team TypeScript reference includes an owner state machine
+          and a PostgreSQL transaction backend for the stateful path above. The
+          owner store registers issuance with capacity before exposure, uses
+          PostgreSQL transaction time for expiry and recovery, locks replay and
+          capacity rows, returns an opaque generation-bound reservation, and
+          atomically finalizes a terminal result or a fresh follow-up. Recovery
+          is deadline-gated, requires a constructor-pinned local authorizer, and
+          replaces the reservation generation so an old token cannot finalize.
+          The production evaluator accepts only the owner-store object created
+          by that factory; copied objects and caller-declared capability flags
+          are refused.</t>
+          <t>Executable tests cover duplicate claim, capacity refusal without
+          nonce burn, authoritative expiry, terminal release of unused capacity,
+          atomic follow-up creation, stale-worker fencing, and the PostgreSQL
+          transaction adapter. A separate finite same-team harness checks 113
+          small scenarios and exposes unsafe mutations. Neither artifact is an
+          independent implementation, a deployment audit, a proof of PostgreSQL
+          isolation, or a mechanized refinement proof. Deployments remain
+          responsible for installing the schema, pinning the capacity policy,
+          isolating the owner role, and verifying the database configuration.</t>
         </section>
       </section>
 
@@ -1172,6 +1198,11 @@ Retry-After: 30
 	        <li>Prevents duplicate capacity debit, nonce burn on capacity refusal,
 	        cross-shard cap over-allocation, and stale-worker finalization through
 	        coordinated cap buckets, conservative reservations, and fencing.</li>
+	        <li>Adds a same-team transactional owner implementation and PostgreSQL
+	        backend with authoritative database time, atomic follow-up
+	        finalization, deadline-gated authorized recovery, and executable
+	        contract tests; bounded model results remain explicitly non-proof
+	        evidence.</li>
 	        <li>Scopes replay to authenticated issuer identity plus nonce, defines
 	        different-body collision behavior, and excludes
 	        <tt>challenge_id</tt> from the security key.</li>

@@ -242,6 +242,7 @@ function checkConsumedPersistence() {
 
 const REGISTRATION_CHECKERS = Object.freeze({
   DurableStorageRequired: checkRegistrationObligation,
+  AuthoritativeOwnerRequired: checkRegistrationObligation,
   AtomicRegistrationRequired: checkRegistrationObligation,
   BodyBoundStorageRequired: checkRegistrationObligation,
   PermanentConsumptionRequired: checkRegistrationObligation,
@@ -297,7 +298,7 @@ export function runFormalChecks() {
       process_restarts: 2,
     },
     assumptions: [
-      "The backend capability flags truthfully describe one shared storage domain.",
+      "The authoritative-owner field denotes the concrete owner transition contract exercised separately by runtime tests; it is not a self-declared capability flag.",
       "Atomic registration is insert-if-absent and atomic consumption is compare-and-set over the exact body digest.",
       "A valid attempt means the challenge structure, policy context, audience, and expiry already passed before consumption.",
       "Presentation admissibility is evaluated only after the valid challenge is consumed.",

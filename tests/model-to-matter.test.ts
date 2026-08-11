@@ -571,7 +571,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     expect(retried.verdict).toBe('clear_to_execute');
   });
 
-  it('returns a machine-readable follow-up challenge for only missing evidence', async () => {
+  it('returns a machine-readable follow-up challenge with the complete requirement set', async () => {
     const a = action();
     const p = profile();
     const challengeStore = store();
@@ -588,7 +588,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     });
     expect(result.verdict).toBe('do_not_execute_missing_evidence');
     expect(result.next_challenge.required_evidence.map((item) => item.type))
-      .toEqual(['biosafety_review', 'domain_screening']);
+      .toEqual(M2M_EVIDENCE_TYPES);
   });
 
   it('refuses action mutation before consuming the registered challenge', async () => {

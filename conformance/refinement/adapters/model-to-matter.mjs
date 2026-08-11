@@ -14,6 +14,9 @@ const OTHER_CAID = "caid:other-action";
 function digest(label) {
     return `sha256:${crypto.createHash("sha256").update(label).digest("hex")}`;
 }
+function challengeNonce(label) {
+    return crypto.createHash("sha256").update(`ae-challenge:${label}`).digest("base64url");
+}
 function deterministicPrivateKey(label) {
     const seed = crypto
         .createHash("sha256")
@@ -191,7 +194,7 @@ async function clearanceOnceScenario() {
     const action = createAction();
     const gate = createExecutor();
     const challenge = await gate.issueChallenge(action, {
-        nonce: "m2m-refinement-clearance-once",
+        nonce: challengeNonce("m2m-refinement-clearance-once"),
     });
     const graph = buildModelToMatterGraph(action, evidenceSet(action));
     let effectCalls = 0;
@@ -256,7 +259,7 @@ async function mismatchRefusedScenario() {
     });
     const gate = createExecutor();
     const challenge = await gate.issueChallenge(action, {
-        nonce: "m2m-refinement-mismatch",
+        nonce: challengeNonce("m2m-refinement-mismatch"),
     });
     const graph = buildModelToMatterGraph(action, evidenceSet(action, "domain_screening", otherAction));
     let effectCalls = 0;

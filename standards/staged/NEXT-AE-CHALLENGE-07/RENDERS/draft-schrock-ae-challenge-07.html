@@ -1395,6 +1395,9 @@ li > p:last-of-type:only-child {
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.6.2.1">
                     <p id="section-toc.1-1.2.2.6.2.1.1"><a href="#section-2.6.1" class="auto internal xref">2.6.1</a>.  <a href="#name-state-exhaustion-conformanc" class="internal xref">State Exhaustion Conformance Cases</a></p>
 </li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.6.2.2">
+                    <p id="section-toc.1-1.2.2.6.2.2.1"><a href="#section-2.6.2" class="auto internal xref">2.6.2</a>.  <a href="#name-reference-evidence-boundary" class="internal xref">Reference Evidence Boundary</a></p>
+</li>
                 </ul>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.7">
@@ -2102,6 +2105,9 @@ li > p:last-of-type:only-child {
          the maximum refusal-path state the evaluation can create. The
          authoritative owner's current time and the challenge expiry are also
          inputs, so an expiry check cannot race a later claim. A read-only
+         front end, presenter, or verifier-worker timestamp MUST NOT determine
+         this expiry result; current time MUST come from the same authoritative
+         transaction that claims the nonce and changes capacity. A read-only
          capacity check, a reservation followed by a separate nonce claim, or a
          nonce claim followed by a separate capacity debit does not satisfy this
          requirement.<a href="#section-2.6-8" class="pilcrow">¶</a></p>
@@ -2253,6 +2259,33 @@ li > p:last-of-type:only-child {
             unexpired consumed nonce.<a href="#section-2.6.1-2.13" class="pilcrow">¶</a>
 </li>
           </ul>
+</section>
+</div>
+<div id="reference-evidence-boundary">
+<section id="section-2.6.2">
+          <h4 id="name-reference-evidence-boundary">
+<a href="#section-2.6.2" class="section-number selfRef">2.6.2. </a><a href="#name-reference-evidence-boundary" class="section-name selfRef">Reference Evidence Boundary</a>
+          </h4>
+<p id="section-2.6.2-1">The same-team TypeScript reference includes an owner state machine
+          and a PostgreSQL transaction backend for the stateful path above. The
+          owner store registers issuance with capacity before exposure, uses
+          PostgreSQL transaction time for expiry and recovery, locks replay and
+          capacity rows, returns an opaque generation-bound reservation, and
+          atomically finalizes a terminal result or a fresh follow-up. Recovery
+          is deadline-gated, requires a constructor-pinned local authorizer, and
+          replaces the reservation generation so an old token cannot finalize.
+          The production evaluator accepts only the owner-store object created
+          by that factory; copied objects and caller-declared capability flags
+          are refused.<a href="#section-2.6.2-1" class="pilcrow">¶</a></p>
+<p id="section-2.6.2-2">Executable tests cover duplicate claim, capacity refusal without
+          nonce burn, authoritative expiry, terminal release of unused capacity,
+          atomic follow-up creation, stale-worker fencing, and the PostgreSQL
+          transaction adapter. A separate finite same-team harness checks 113
+          small scenarios and exposes unsafe mutations. Neither artifact is an
+          independent implementation, a deployment audit, a proof of PostgreSQL
+          isolation, or a mechanized refinement proof. Deployments remain
+          responsible for installing the schema, pinning the capacity policy,
+          isolating the owner role, and verifying the database configuration.<a href="#section-2.6.2-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2701,47 +2734,53 @@ Retry-After: 30
          cross-shard cap over-allocation, and stale-worker finalization through
          coordinated cap buckets, conservative reservations, and fencing.<a href="#section-9-1.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.3">Scopes replay to authenticated issuer identity plus nonce, defines
+        <li class="normal" id="section-9-1.3">Adds a same-team transactional owner implementation and PostgreSQL
+         backend with authoritative database time, atomic follow-up
+         finalization, deadline-gated authorized recovery, and executable
+         contract tests; bounded model results remain explicitly non-proof
+         evidence.<a href="#section-9-1.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-9-1.4">Scopes replay to authenticated issuer identity plus nonce, defines
          different-body collision behavior, and excludes
-         <code>challenge_id</code> from the security key.<a href="#section-9-1.3" class="pilcrow">¶</a>
+         <code>challenge_id</code> from the security key.<a href="#section-9-1.4" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.4">Binds the authenticated returning presenter to the challenge
-         audience and requires current exact-action rederivation before claim.<a href="#section-9-1.4" class="pilcrow">¶</a>
+        <li class="normal" id="section-9-1.5">Binds the authenticated returning presenter to the challenge
+         audience and requires current exact-action rederivation before claim.<a href="#section-9-1.5" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.5">Adds duplicate-member rejection, finite pre-cryptographic resource
+        <li class="normal" id="section-9-1.6">Adds duplicate-member rejection, finite pre-cryptographic resource
          limits, deterministic complete-body digesting, interoperable integer
          bounds, explicit conjunction and alternative rules for evidence
          requirements, hint SSRF protections, and satisfiable retry-window
-         rules.<a href="#section-9-1.5" class="pilcrow">¶</a>
+         rules.<a href="#section-9-1.6" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.6">Requires follow-ups to use the current exact action and live policy,
+        <li class="normal" id="section-9-1.7">Requires follow-ups to use the current exact action and live policy,
          repeats the complete evidence requirement set unless an explicit
          authenticated continuation profile binds prior evidence and state, and
-         removes dependency on an unpublished DMSC section number.<a href="#section-9-1.6" class="pilcrow">¶</a>
+         removes dependency on an unpublished DMSC section number.<a href="#section-9-1.7" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.7">Makes the action profile and digest one authenticated security
+        <li class="normal" id="section-9-1.8">Makes the action profile and digest one authenticated security
          binding, requires complete material-field coverage, and pins audience
-         namespace and alias semantics for the challenge lifetime.<a href="#section-9-1.7" class="pilcrow">¶</a>
+         namespace and alias semantics for the challenge lifetime.<a href="#section-9-1.8" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.8">Makes stateful issuance atomically register the complete body and
+        <li class="normal" id="section-9-1.9">Makes stateful issuance atomically register the complete body and
          debit every applicable state-cap bucket before exposure, including the
-         concurrent last-slot case.<a href="#section-9-1.8" class="pilcrow">¶</a>
+         concurrent last-slot case.<a href="#section-9-1.9" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.9">Defines an unambiguous base64url nonce syntax, a total
+        <li class="normal" id="section-9-1.10">Defines an unambiguous base64url nonce syntax, a total
          replay-collision-expiry ordering, and mandatory transfer of a
-         stateful-open debit into the in-flight reservation.<a href="#section-9-1.9" class="pilcrow">¶</a>
+         stateful-open debit into the in-flight reservation.<a href="#section-9-1.10" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.10">Narrows the HTTP section to a 403 challenge-response carrier,
+        <li class="normal" id="section-9-1.11">Narrows the HTTP section to a 403 challenge-response carrier,
          aligns Problem Details metadata with RFC 9457, separates 401, 403,
-         409, 429, and 503 semantics, and defines Retry-After conversion.<a href="#section-9-1.10" class="pilcrow">¶</a>
+         409, 429, and 503 semantics, and defines Retry-After conversion.<a href="#section-9-1.11" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.11">Makes the DMSC material illustrative, closes nested core objects,
+        <li class="normal" id="section-9-1.12">Makes the DMSC material illustrative, closes nested core objects,
          scopes critical extensions to the top level, and adds confidentiality
-         and final-action-fencing requirements.<a href="#section-9-1.11" class="pilcrow">¶</a>
+         and final-action-fencing requirements.<a href="#section-9-1.12" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.12">Withdraws the earlier request for
+        <li class="normal" id="section-9-1.13">Withdraws the earlier request for
          <code>application/authorization-evidence-challenge+json</code> and reuses
-         <code>application/problem+json</code> for HTTP carriage.<a href="#section-9-1.12" class="pilcrow">¶</a>
+         <code>application/problem+json</code> for HTTP carriage.<a href="#section-9-1.13" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>

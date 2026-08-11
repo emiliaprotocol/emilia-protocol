@@ -166,18 +166,21 @@ for (const forbidden of [
 const implementation = readFileSync(new URL('../lib/negotiate/evidence-challenge.ts', import.meta.url), 'utf8');
 for (const required of [
   "const DURABLE_NONCE_RE = /^[A-Za-z0-9_-]{22,128}$/",
-  'typeof store.compoundClaimAndCapacity',
+  'isAuthoritativeChallengeOwnerStore(store)',
+  'store.finalizeReservation(reservation',
   'production challenge nonces are generated internally',
   'authenticated presenter is required for production evaluation',
   "challenge.present_as.includes(CHALLENGE_PRESENTATION_METHOD)",
   "verdict: 'unavailable'",
   "state_changed: 'unknown'",
 ]) invariant(implementation.includes(required), `runtime hardening is missing: ${required}`);
+invariant(!implementation.includes('REQUIRED_PRODUCTION_STORE_CAPABILITIES'), 'production must not trust self-declared capability booleans');
 
 const generatedImplementation = readFileSync(new URL('../lib/negotiate/evidence-challenge.js', import.meta.url), 'utf8');
 for (const required of [
   "const DURABLE_NONCE_RE = /^[A-Za-z0-9_-]{22,128}$/",
-  'typeof store.compoundClaimAndCapacity',
+  'isAuthoritativeChallengeOwnerStore(store)',
+  'store.finalizeReservation(reservation',
   'production challenge nonces are generated internally',
   'authenticated presenter is required for production evaluation',
   "verdict: 'unavailable'",
@@ -194,7 +197,24 @@ for (const required of [
   'challenge-consumed:v3:',
   "'open-body-collision'",
   "'claimed-body-collision'",
+  "AUTHORITATIVE_CHALLENGE_OWNER_VERSION = 'EP-AE-CHALLENGE-OWNER-v1'",
+  'new WeakSet<object>()',
+  'createAuthoritativeChallengeOwnerStore',
+  'authoritativeNowMs',
+  'compoundClaimAndCapacity',
+  'finalizeReservation',
+  'recoverReservation',
+  'recoveryAuthorizer',
 ]) invariant(challengeStore.includes(required), `challenge store hardening is missing: ${required}`);
+
+const postgresOwner = readFileSync(new URL('../packages/gate/src/challenge-store-postgres.ts', import.meta.url), 'utf8');
+for (const required of [
+  "AE_CHALLENGE_POSTGRES_OWNER_VERSION = 'EP-AE-CHALLENGE-PG-OWNER-v1'",
+  'transaction_timestamp()',
+  'ORDER BY bucket_key FOR UPDATE',
+  'BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE',
+  'createPostgresChallengeOwnerBackend',
+]) invariant(postgresOwner.includes(required), `PostgreSQL owner contract is missing: ${required}`);
 
 const migration = readFileSync(new URL('../packages/gate/CHALLENGE-STORE-V3-MIGRATION.md', import.meta.url), 'utf8');
 for (const required of [
@@ -212,11 +232,14 @@ for (const required of [
   'positive incremental delta',
   'JSON.stringify([issuer, nonce])',
   'owner_token,',
+  'CHECKED_PROPERTIES',
 ]) invariant(model.includes(required), `finite owner-transition model is missing: ${required}`);
 const modelRunnerBytes = readFileSync(new URL('../formal/check-evidence-challenge-claim-capacity.mjs', import.meta.url));
 const modelResult = readFileSync(new URL('../formal/results/evidence-challenge-claim-capacity.summary.txt', import.meta.url), 'utf8');
 invariant(modelResult.includes(`Model SHA-256: ${sha256(Buffer.from(model))}`), 'finite model result is not bound to current model bytes');
 invariant(modelResult.includes(`Runner SHA-256: ${sha256(modelRunnerBytes)}`), 'finite model result is not bound to current runner bytes');
+invariant(modelResult.includes('Checked properties, not proved obligations:'), 'finite model result overstates checked properties as proof obligations');
+invariant(!modelResult.includes(': verified'), 'finite model result still labels bounded scenarios as verified');
 
 invariant(
   sha256(readFileSync(published06)) === published06Sha256,

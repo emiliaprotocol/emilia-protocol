@@ -100,12 +100,12 @@ Table of Contents
      2.5.  Lifecycle, Replay, and Retry  . . . . . . . . . . . . . .  12
      2.6.  State Bounds and Exhaustion . . . . . . . . . . . . . . .  14
        2.6.1.  State Exhaustion Conformance Cases  . . . . . . . . .  18
-     2.7.  Extensibility . . . . . . . . . . . . . . . . . . . . . .  19
-     2.8.  Carrier Semantics . . . . . . . . . . . . . . . . . . . .  19
+       2.6.2.  Reference Evidence Boundary . . . . . . . . . . . . .  19
+     2.7.  Extensibility . . . . . . . . . . . . . . . . . . . . . .  20
+     2.8.  Carrier Semantics . . . . . . . . . . . . . . . . . . . .  20
    3.  HTTP Challenge Response Carrier . . . . . . . . . . . . . . .  20
      3.1.  OAuth Non-Substitution Conformance Case . . . . . . . . .  23
    4.  Informative DMSC Gateway Illustration . . . . . . . . . . . .  23
-     4.1.  Illustrative Gateway Case . . . . . . . . . . . . . . . .  24
 
 
 
@@ -114,6 +114,7 @@ Schrock                 Expires 11 February 2027                [Page 2]
 Internet-Draft             Evidence Challenge                August 2026
 
 
+     4.1.  Illustrative Gateway Case . . . . . . . . . . . . . . . .  24
    5.  Security Considerations . . . . . . . . . . . . . . . . . . .  25
    6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  27
    7.  Future Work . . . . . . . . . . . . . . . . . . . . . . . . .  27
@@ -122,7 +123,7 @@ Internet-Draft             Evidence Challenge                August 2026
    10. Normative References  . . . . . . . . . . . . . . . . . . . .  29
    11. Informative References  . . . . . . . . . . . . . . . . . . .  31
    Appendix A.  Relationship to Existing Mechanisms  . . . . . . . .  32
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  32
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  33
 
 1.  Introduction
 
@@ -159,7 +160,6 @@ Internet-Draft             Evidence Challenge                August 2026
    identifier or equivalent correlation value, the authorization-server
    decision, or the resulting access token.  Satisfying AE-CHALLENGE
    never satisfies a native OAuth grant requirement.
-
 
 
 
@@ -858,9 +858,12 @@ Internet-Draft             Evidence Challenge                August 2026
    bucket, and the maximum refusal-path state the evaluation can create.
    The authoritative owner's current time and the challenge expiry are
    also inputs, so an expiry check cannot race a later claim.  A read-
-   only capacity check, a reservation followed by a separate nonce
-   claim, or a nonce claim followed by a separate capacity debit does
-   not satisfy this requirement.
+   only front end, presenter, or verifier-worker timestamp MUST NOT
+   determine this expiry result; current time MUST come from the same
+   authoritative transaction that claims the nonce and changes capacity.
+   A read-only capacity check, a reservation followed by a separate
+   nonce claim, or a nonce claim followed by a separate capacity debit
+   does not satisfy this requirement.
 
    The transition has the following mutually exclusive results and total
    ordering.  First, a retained claimed record produces exact-body-
@@ -885,11 +888,8 @@ Internet-Draft             Evidence Challenge                August 2026
       already in claimed state for the same body digest.  No new
       capacity is reserved or debited.
 
-   *  body-collision: the same retained claimed replay key, or an
-      unexpired open replay key, exists for a different body digest.
-      The request is refused as an integrity or issuer collision
-      failure, never as successful replay classification, and no new
-      capacity is reserved or debited.
+
+
 
 
 
@@ -897,6 +897,12 @@ Schrock                 Expires 11 February 2027               [Page 16]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+   *  body-collision: the same retained claimed replay key, or an
+      unexpired open replay key, exists for a different body digest.
+      The request is refused as an integrity or issuer collision
+      failure, never as successful replay classification, and no new
+      capacity is reserved or debited.
 
    *  capacity-refused: one or more applicable cap buckets lack
       capacity.  No nonce is claimed and no partial debit remains.
@@ -940,12 +946,6 @@ Internet-Draft             Evidence Challenge                August 2026
    requirements, obtain hints, or any other evidence-sufficiency detail.
    Withholding and coalescing those details reduces the value of
    exhaustion handling as a policy-discovery oracle; it does not
-   eliminate timing or traffic-analysis signals.  Detailed diagnostics
-   are limited to authenticated and locally authorized operational
-   channels.  An authoritative exact-body-replay result can be returned
-   without a capacity debit; it does not invoke evidence or policy
-   evaluation.
-
 
 
 
@@ -953,6 +953,12 @@ Schrock                 Expires 11 February 2027               [Page 17]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+   eliminate timing or traffic-analysis signals.  Detailed diagnostics
+   are limited to authenticated and locally authorized operational
+   channels.  An authoritative exact-body-replay result can be returned
+   without a capacity debit; it does not invoke evidence or policy
+   evaluation.
 
 2.6.1.  State Exhaustion Conformance Cases
 
@@ -996,12 +1002,6 @@ Internet-Draft             Evidence Challenge                August 2026
       the open record is unexpired, and changes no capacity bucket.  An
       expired open record produces expired.
 
-   *  Claiming a statefully issued challenge transfers the existing
-      outstanding debit and adds only the positive incremental delta; it
-      neither double-counts the old debit nor refuses a zero-increment
-      transfer merely because the bucket is at its cap.
-
-
 
 
 
@@ -1009,6 +1009,11 @@ Schrock                 Expires 11 February 2027               [Page 18]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+   *  Claiming a statefully issued challenge transfers the existing
+      outstanding debit and adds only the positive incremental delta; it
+      neither double-counts the old debit nor refuses a zero-increment
+      transfer merely because the bucket is at its cap.
 
    *  Two owner shards cannot each reserve against one shared global
       slot.  The case passes only with one coordinating transaction or
@@ -1025,6 +1030,41 @@ Internet-Draft             Evidence Challenge                August 2026
 
    *  Allocating a new challenge never evicts an in-flight or unexpired
       consumed nonce.
+
+2.6.2.  Reference Evidence Boundary
+
+   The same-team TypeScript reference includes an owner state machine
+   and a PostgreSQL transaction backend for the stateful path above.
+   The owner store registers issuance with capacity before exposure,
+   uses PostgreSQL transaction time for expiry and recovery, locks
+   replay and capacity rows, returns an opaque generation-bound
+   reservation, and atomically finalizes a terminal result or a fresh
+   follow-up.  Recovery is deadline-gated, requires a constructor-pinned
+   local authorizer, and replaces the reservation generation so an old
+   token cannot finalize.  The production evaluator accepts only the
+   owner-store object created by that factory; copied objects and
+   caller-declared capability flags are refused.
+
+   Executable tests cover duplicate claim, capacity refusal without
+   nonce burn, authoritative expiry, terminal release of unused
+   capacity, atomic follow-up creation, stale-worker fencing, and the
+   PostgreSQL transaction adapter.  A separate finite same-team harness
+   checks 113 small scenarios and exposes unsafe mutations.  Neither
+   artifact is an independent implementation, a deployment audit, a
+   proof of PostgreSQL isolation, or a mechanized refinement proof.
+   Deployments remain responsible for installing the schema, pinning the
+   capacity policy, isolating the owner role, and verifying the database
+   configuration.
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 19]
+
+Internet-Draft             Evidence Challenge                August 2026
+
 
 2.7.  Extensibility
 
@@ -1054,18 +1094,6 @@ Internet-Draft             Evidence Challenge                August 2026
    attempts.  These rules constrain carrier semantics without requiring
    every transport to use the same envelope.
 
-
-
-
-
-
-
-
-Schrock                 Expires 11 February 2027               [Page 19]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
 3.  HTTP Challenge Response Carrier
 
    This section defines only the HTTP refusal response that carries a
@@ -1084,6 +1112,15 @@ Internet-Draft             Evidence Challenge                August 2026
    substitute for the missing native grant.  OAuth Transaction
    Authorization Challenge [OAUTH-TXN-CHALLENGE] is one example of that
    separate native flow.
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 20]
+
+Internet-Draft             Evidence Challenge                August 2026
+
 
    This carrier applies only after HTTP authentication has succeeded or
    is inapplicable and the origin server understood the request but
@@ -1112,16 +1149,6 @@ Internet-Draft             Evidence Challenge                August 2026
    requirements, obtain hints, or evidence-sufficiency details merely
    because evidence might also be insufficient.
 
-
-
-
-
-
-Schrock                 Expires 11 February 2027               [Page 20]
-
-Internet-Draft             Evidence Challenge                August 2026
-
-
    The following example omits HTTP message-framing fields such as
    Content-Length.  A sender still supplies framing required by the HTTP
    version and connection in use.
@@ -1137,33 +1164,6 @@ Internet-Draft             Evidence Challenge                August 2026
    the target resource's current state that the requester can resolve;
    replay, expiry, and body collision do not by themselves establish
    that condition.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1551,15 +1551,15 @@ Internet-Draft             Evidence Challenge                August 2026
       through coordinated cap buckets, conservative reservations, and
       fencing.
 
+   *  Adds a same-team transactional owner implementation and PostgreSQL
+      backend with authoritative database time, atomic follow-up
+      finalization, deadline-gated authorized recovery, and executable
+      contract tests; bounded model results remain explicitly non-proof
+      evidence.
+
    *  Scopes replay to authenticated issuer identity plus nonce, defines
       different-body collision behavior, and excludes challenge_id from
       the security key.
-
-   *  Binds the authenticated returning presenter to the challenge
-      audience and requires current exact-action rederivation before
-      claim.
-
-
 
 
 
@@ -1569,6 +1569,10 @@ Schrock                 Expires 11 February 2027               [Page 28]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+   *  Binds the authenticated returning presenter to the challenge
+      audience and requires current exact-action rederivation before
+      claim.
 
    *  Adds duplicate-member rejection, finite pre-cryptographic resource
       limits, deterministic complete-body digesting, interoperable
@@ -1613,10 +1617,6 @@ Internet-Draft             Evidence Challenge                August 2026
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/info/rfc2119>.
 
-   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
-              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
-              <https://www.rfc-editor.org/info/rfc3339>.
-
 
 
 
@@ -1625,6 +1625,10 @@ Schrock                 Expires 11 February 2027               [Page 29]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
+              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
+              <https://www.rfc-editor.org/info/rfc3339>.
 
    [RFC3986]  Berners-Lee, T., Fielding, R. T., and L. Masinter,
               "Uniform Resource Identifier (URI): Generic Syntax",
@@ -1668,10 +1672,6 @@ Internet-Draft             Evidence Challenge                August 2026
               DOI 10.17487/RFC9110, June 2022,
               <https://www.rfc-editor.org/info/rfc9110>.
 
-   [RFC9111]  Fielding, R. T., Nottingham, M., and J. Reschke, "HTTP
-              Caching", RFC 9111, STD 98, DOI 10.17487/RFC9111, June
-              2022, <https://www.rfc-editor.org/info/rfc9111>.
-
 
 
 
@@ -1681,6 +1681,10 @@ Schrock                 Expires 11 February 2027               [Page 30]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+   [RFC9111]  Fielding, R. T., Nottingham, M., and J. Reschke, "HTTP
+              Caching", RFC 9111, STD 98, DOI 10.17487/RFC9111, June
+              2022, <https://www.rfc-editor.org/info/rfc9111>.
 
    [RFC9457]  Nottingham, M., Wilde, E., and S. Dalal, "Problem Details
               for HTTP APIs", RFC 9457, DOI 10.17487/RFC9457, July 2023,
@@ -1721,13 +1725,9 @@ Internet-Draft             Evidence Challenge                August 2026
               <https://datatracker.ietf.org/doc/draft-schrock-canonical-
               action-identifier/>.
 
-   [DMSC-GAPS]
-              Dunbar, L., Wang, Y., Schrock, I., and B. Liu, "Deployment
-              Scenarios and Gap Analysis for AI Agent Gateway", Work in
-              Progress, Internet-Draft, draft-dunbar-dmsc-gw-scenarios-
-              gap-analysis-03, August 2026,
-              <https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-
-              scenarios-gap-analysis/>.
+
+
+
 
 
 
@@ -1737,6 +1737,14 @@ Schrock                 Expires 11 February 2027               [Page 31]
 
 Internet-Draft             Evidence Challenge                August 2026
 
+
+   [DMSC-GAPS]
+              Dunbar, L., Wang, Y., Schrock, I., and B. Liu, "Deployment
+              Scenarios and Gap Analysis for AI Agent Gateway", Work in
+              Progress, Internet-Draft, draft-dunbar-dmsc-gw-scenarios-
+              gap-analysis-03, August 2026,
+              <https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-
+              scenarios-gap-analysis/>.
 
    [KLRC]     Kasselman, P., Lombardo, J., Rosomakho, Y., Campbell, B.,
               Steele, N., and A. Parecki, "AI Agent Authentication and
@@ -1778,6 +1786,14 @@ Appendix A.  Relationship to Existing Mechanisms
    request; neither the receipt nor AE-CHALLENGE replaces a native OAuth
    grant or a relying party's final policy decision.
 
+
+
+
+Schrock                 Expires 11 February 2027               [Page 32]
+
+Internet-Draft             Evidence Challenge                August 2026
+
+
 Author's Address
 
    Iman Schrock
@@ -1789,4 +1805,44 @@ Author's Address
 
 
 
-Schrock                 Expires 11 February 2027               [Page 32]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 11 February 2027               [Page 33]

@@ -31,6 +31,7 @@
 import crypto from 'node:crypto';
 import { artifactDigest, evaluateEvidenceGraph } from '../evidence/evidence-graph.js';
 import { evaluateChainAdmissibility } from '../evidence/admissibility.js';
+import { isAuthoritativeChallengeOwnerStore } from '../../packages/gate/challenge-store.js';
 
 export const CHALLENGE_VERSION = 'AE-CHALLENGE-v1';
 // draft-schrock-ae-challenge-03 separates the transport-neutral challenge
@@ -48,15 +49,6 @@ const LEGACY_GRAPH_DOCUMENT_VERSION = 'EP-AEG-v1';
 const SHA256_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const DURABLE_NONCE_RE = /^[A-Za-z0-9_-]{22,128}$/;
 const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
-const REQUIRED_PRODUCTION_STORE_CAPABILITIES = Object.freeze([
-  'durable',
-  'atomicRegistration',
-  'bodyBound',
-  'permanentConsumption',
-  'authoritativeClassification',
-  'issuerScoped',
-]);
-
 export type AuthorizationChallengeMechanism =
   | 'oauth-transaction-authorization'
   | 'ae-challenge'
@@ -149,7 +141,8 @@ type EvidenceChallengeOpts = {
   obtain_hints?: any[];
   challengeStore?: {
     register: (challenge: any) => boolean | Promise<boolean>;
-    consume: (challenge: any) => boolean | Promise<boolean>;
+    consume?: (challenge: any) => boolean | Promise<boolean>;
+    registerOutstanding?: (challenge: any) => boolean | Promise<boolean>;
     durable?: boolean;
     atomicRegistration?: boolean;
     bodyBound?: boolean;
@@ -159,7 +152,6 @@ type EvidenceChallengeOpts = {
     compoundClaimAndCapacity?: (
       challenge: any,
       context: {
-        as_of: string;
         audience?: string;
         authenticated_presenter?: string;
       },
@@ -171,7 +163,18 @@ type EvidenceChallengeOpts = {
         | 'capacity_refused'
         | 'expired'
         | 'owner_unavailable';
+      reservation?: {
+        version: string;
+        replay_key: string;
+        body_digest: string;
+        generation: number;
+        owner_token: string;
+      };
     }>;
+    finalizeReservation?: (
+      reservation: any,
+      result: { outcome: string; followup?: any | null },
+    ) => Promise<{ result: 'finalized'; authoritative_at_ms: number }>;
     classify?: (challenge: any) => string | Promise<string>;
   };
   production?: boolean;
@@ -404,8 +407,8 @@ export function parseEvidenceChallengeProblem(response) {
 }
 
 function requireChallengeStore(store, opts: EvidenceChallengeOpts = {}) {
-  if (typeof store?.register !== 'function' || typeof store?.consume !== 'function') {
-    throw new Error('durable challengeStore with register() and consume() is required');
+  if (typeof store?.register !== 'function') {
+    throw new Error('challengeStore with register() is required');
   }
   // Production posture is monotonic. A transaction-scoped false value cannot
   // disable safeguards selected by the process environment.
@@ -415,17 +418,13 @@ function requireChallengeStore(store, opts: EvidenceChallengeOpts = {}) {
     throw new Error('test_only_ephemeral challenge storage is allowed only under NODE_ENV=test');
   }
   if (production && !testOnlyEphemeral) {
-    const missing = REQUIRED_PRODUCTION_STORE_CAPABILITIES.filter(
-      (capability) => store[capability] !== true,
-    );
-    if (typeof store.compoundClaimAndCapacity !== 'function') {
-      missing.push('compoundClaimAndCapacity()');
+    if (!isAuthoritativeChallengeOwnerStore(store)) {
+      throw new Error('production challengeStore must be an authoritative owner store created by the supported factory');
     }
-    if (missing.length > 0) {
-      throw new Error(
-        `production challengeStore lacks required durable lifecycle capabilities: ${missing.join(', ')}`,
-      );
-    }
+  } else if (production && (typeof store.compoundClaimAndCapacity !== 'function'
+      || typeof store.finalizeReservation !== 'function'
+      || typeof store.registerOutstanding !== 'function')) {
+    throw new Error('test-only production challengeStore lacks the owner transition, finalization, or issuance contract');
   }
   return store;
 }
@@ -444,7 +443,10 @@ export async function createRegisteredEvidenceChallenge(action, policy, opts: Ev
   if (!validDurableNonce(challenge.nonce)) {
     throw new Error('durable challenge nonce MUST canonically encode at least 16 octets as 22-128 unpadded base64url characters');
   }
-  if (await store.register(challenge) !== true) {
+  const registered = productionMode(opts)
+    ? await store.registerOutstanding?.(challenge)
+    : await store.register(challenge);
+  if (registered !== true) {
     throw new Error('challenge registration collision or replay');
   }
   return challenge;
@@ -490,7 +492,10 @@ export async function createRegisteredFollowupEvidenceChallenge(challenge, polic
   if (!validDurableNonce(next.nonce)) {
     throw new Error('durable challenge nonce MUST canonically encode at least 16 octets as 22-128 unpadded base64url characters');
   }
-  if (await store.register(next) !== true) {
+  const registered = productionMode(opts)
+    ? await store.registerOutstanding?.(next)
+    : await store.register(next);
+  if (registered !== true) {
     throw new Error('follow-up challenge registration collision or replay');
   }
   return next;
@@ -697,11 +702,11 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
   const currentActionError = validateCurrentAction(challenge, opts);
   if (currentActionError) return refuse(currentActionError);
 
+  let reservation: any = null;
   if (productionMode(opts)) {
     let transition;
     try {
       transition = await store.compoundClaimAndCapacity(challenge, {
-        as_of: opts.as_of,
         audience: challenge.audience,
         authenticated_presenter: opts.authenticated_presenter,
       });
@@ -710,6 +715,8 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
     }
     switch (transition?.result) {
       case 'claimed_with_capacity':
+        if (!transition.reservation) return unavailable();
+        reservation = transition.reservation;
         break;
       case 'exact_body_replay':
         return refuse('challenge nonce already consumed (replay)');
@@ -760,17 +767,60 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
     }
   }
 
-  const result = evaluateEvidencePresentation(challenge, graphDoc, policy, opts);
+  let result;
+  try {
+    result = evaluateEvidencePresentation(challenge, graphDoc, policy, opts);
+  } catch {
+    if (reservation !== null) {
+      try {
+        await store.finalizeReservation(reservation, { outcome: 'evaluation_error', followup: null });
+      } catch {
+        return unavailable();
+      }
+    }
+    return refuse('native evidence evaluation failed');
+  }
   let next_challenge: Awaited<ReturnType<typeof createRegisteredFollowupEvidenceChallenge>> | null = null;
+  const currentActionAfterEvaluation = validateCurrentAction(challenge, opts);
+  if (currentActionAfterEvaluation) {
+    if (reservation !== null) {
+      try {
+        await store.finalizeReservation(reservation, { outcome: 'current_action_changed', followup: null });
+      } catch {
+        return unavailable();
+      }
+    }
+    return refuse(currentActionAfterEvaluation);
+  }
   if (result.verdict !== 'admissible') {
-    const currentActionAfterEvaluation = validateCurrentAction(challenge, opts);
-    if (currentActionAfterEvaluation) return refuse(currentActionAfterEvaluation);
-    next_challenge = await createRegisteredFollowupEvidenceChallenge(challenge, policy, result, {
-      ...opts,
-      expires_at: opts.next_expires_at ?? challenge.expires_at,
-      nonce: opts.nonce,
-      challengeStore: store,
-    });
+    if (productionMode(opts)) {
+      if (opts.nonce !== undefined && opts.test_only_ephemeral !== true) {
+        return refuse('production follow-up nonces are generated internally');
+      }
+      next_challenge = createFollowupEvidenceChallenge(challenge, policy, result, {
+        ...opts,
+        expires_at: opts.next_expires_at ?? challenge.expires_at,
+        nonce: opts.nonce,
+      });
+    } else {
+      next_challenge = await createRegisteredFollowupEvidenceChallenge(challenge, policy, result, {
+        ...opts,
+        expires_at: opts.next_expires_at ?? challenge.expires_at,
+        nonce: opts.nonce,
+        challengeStore: store,
+      });
+    }
+  }
+  if (reservation !== null) {
+    try {
+      const finalized = await store.finalizeReservation(reservation, {
+        outcome: String(result.verdict),
+        followup: next_challenge,
+      });
+      if (finalized?.result !== 'finalized') return unavailable();
+    } catch {
+      return unavailable();
+    }
   }
   return { verdict: result.verdict, reasons: result.reasons, replay_digest: result.replay_digest, result, next_challenge };
 }

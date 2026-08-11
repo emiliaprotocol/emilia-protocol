@@ -18,7 +18,7 @@ export const CAP_BUCKETS = Object.freeze([
   'tenant',
 ]);
 
-export const FORMAL_OBLIGATIONS = Object.freeze([
+export const CHECKED_PROPERTIES = Object.freeze([
   'CompoundClaimAndCapacityAtomic',
   'DuplicateReservesOnce',
   'CapacityRefusalDoesNotClaim',
@@ -26,10 +26,10 @@ export const FORMAL_OBLIGATIONS = Object.freeze([
   'OwnerUncertaintyIsUnavailable',
   'ExpiredDoesNotClaimOrReserve',
   'ClaimedReplayPrecedesExpiry',
-  'GlobalCapIsConservedAcrossShards',
+  'SingleOwnerCapacityConserved',
   'StatefulDebitTransfersWithoutDoubleCount',
   'ReplayKeyTupleIsUnambiguous',
-  'RecoveryFinalizationIsFenced',
+  'ReservationTokenMismatchRefused',
   'RetryWindowPrecedesExpiry',
   'PresenterMatchesAudience',
 ]);
@@ -43,13 +43,41 @@ export const CLAIM_RESULTS = Object.freeze({
   UNAVAILABLE: 'owner_unavailable',
 });
 
+/** @typedef {Record<string, number>} CapacityVector */
+/**
+ * @typedef {object} ClaimInput
+ * @property {string} issuer
+ * @property {string} nonce
+ * @property {string} body_digest
+ * @property {number|CapacityVector} [units]
+ * @property {number} [now_ms]
+ * @property {number} [expires_at_ms]
+ * @property {boolean} [owner_reachable]
+ * @property {boolean} [owner_result_certain]
+ */
+/**
+ * @typedef {object} ClaimState
+ * @property {CapacityVector} caps
+ * @property {CapacityVector} used
+ * @property {Map<string, any>} replay
+ * @property {Map<string, any>} outstanding
+ * @property {Map<string, any>} reservations
+ */
+
+/**
+ * @param {number|CapacityVector|null|undefined} value
+ * @param {number} [fallback]
+ * @returns {CapacityVector}
+ */
 function vector(value, fallback = 0) {
   if (Number.isSafeInteger(value)) {
-    return Object.fromEntries(CAP_BUCKETS.map((bucket) => [bucket, value]));
+    const scalar = /** @type {number} */ (value);
+    return Object.fromEntries(CAP_BUCKETS.map((bucket) => [bucket, scalar]));
   }
+  const source = value && typeof value === 'object' ? value : {};
   return Object.fromEntries(CAP_BUCKETS.map((bucket) => [
     bucket,
-    Number.isSafeInteger(value?.[bucket]) ? value[bucket] : fallback,
+    Number.isSafeInteger(source[bucket]) ? source[bucket] : fallback,
   ]));
 }
 
@@ -59,6 +87,10 @@ export function replayKey(issuer, nonce) {
   return JSON.stringify([issuer, nonce]);
 }
 
+/**
+ * @param {{cap?: number, caps?: number|CapacityVector, used?: number|CapacityVector}} [input]
+ * @returns {ClaimState}
+ */
 export function initialState({ cap = 1, caps, used = 0 } = {}) {
   return {
     caps: vector(caps ?? cap),
@@ -69,6 +101,7 @@ export function initialState({ cap = 1, caps, used = 0 } = {}) {
   };
 }
 
+/** @param {ClaimState} state @returns {ClaimState} */
 function cloneState(state) {
   return {
     caps: { ...state.caps },
@@ -79,6 +112,7 @@ function cloneState(state) {
   };
 }
 
+/** @param {ClaimState} state */
 export function withinCaps(state) {
   return CAP_BUCKETS.every((bucket) => (
     Number.isSafeInteger(state.used[bucket])
@@ -88,6 +122,7 @@ export function withinCaps(state) {
   ));
 }
 
+/** @param {ClaimState} state @param {CapacityVector} delta */
 function capacityAvailable(state, delta) {
   return CAP_BUCKETS.every((bucket) => (
     Number.isSafeInteger(delta[bucket])
@@ -96,11 +131,13 @@ function capacityAvailable(state, delta) {
   ));
 }
 
+/** @param {CapacityVector} target @param {CapacityVector} delta */
 function addVector(target, delta) {
   for (const bucket of CAP_BUCKETS) target[bucket] += delta[bucket];
 }
 
 /** Register and debit a stateful-open challenge before it is exposed. */
+/** @param {ClaimState} state @param {ClaimInput} input */
 export function registerOutstanding(state, {
   issuer,
   nonce,
@@ -124,6 +161,7 @@ export function registerOutstanding(state, {
  * outstanding debit is transferred and only the positive incremental delta is
  * added. Every bucket commits with the replay claim or none does.
  */
+/** @param {ClaimState} state @param {ClaimInput} input */
 export function claimAndReserve(
   state,
   {
@@ -201,6 +239,7 @@ export function claimAndReserve(
   return { result: CLAIM_RESULTS.CLAIMED, owner_token, state: next };
 }
 
+/** @param {ClaimInput} input @param {ClaimState} [state] */
 export function twoConcurrentDuplicatesSound(input, state = initialState()) {
   const first = claimAndReserve(state, input);
   const second = claimAndReserve(first.state, input);
@@ -208,6 +247,7 @@ export function twoConcurrentDuplicatesSound(input, state = initialState()) {
 }
 
 /** Mutation: two workers reserve from the same snapshot before either claims. */
+/** @param {ClaimInput} input @param {ClaimState} [state] */
 export function twoConcurrentDuplicatesSplit(input, state = initialState()) {
   const key = replayKey(input.issuer, input.nonce);
   const units = vector(input.units ?? 1);
@@ -238,6 +278,7 @@ export function twoIndependentShardClaims({ global_cap = 1, units = 1 } = {}) {
 }
 
 /** Mutation: a stateful-open debit is counted again rather than transferred. */
+/** @param {ClaimState} state @param {ClaimInput} input */
 export function claimWithDoubleCountedOutstanding(state, input) {
   const next = cloneState(state);
   const requested = vector(input.units ?? 1);
@@ -246,6 +287,7 @@ export function claimWithDoubleCountedOutstanding(state, input) {
 }
 
 /** Mutation: claim is committed before the cap decision. */
+/** @param {ClaimInput} input @param {ClaimState} [state] */
 export function claimBeforeCapacity(input, state = initialState()) {
   const next = cloneState(state);
   const key = replayKey(input.issuer, input.nonce);
@@ -260,9 +302,11 @@ export function claimBeforeCapacity(input, state = initialState()) {
 }
 
 /** Mutation: expiry is classified before a retained claimed replay record. */
+/** @param {ClaimState} state @param {ClaimInput} input */
 export function claimWithExpiryFirst(state, input) {
   const next = cloneState(state);
-  if (input.now_ms >= input.expires_at_ms) {
+  if (Number.isSafeInteger(input.now_ms) && Number.isSafeInteger(input.expires_at_ms)
+      && /** @type {number} */ (input.now_ms) >= /** @type {number} */ (input.expires_at_ms)) {
     return { result: CLAIM_RESULTS.EXPIRED, state: next };
   }
   return claimAndReserve(state, input);

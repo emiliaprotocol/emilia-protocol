@@ -3,25 +3,25 @@ Status: local same-team bounded model result; not deployed or independently revi
 Method: finite scenario enumeration with explicit mutation counterexamples
 Execution date: 2026-08-10
 Runtime: Node.js
-Model SHA-256: dd4cd710e87b0e872d62d10c9b4c7373d6b51843ac782f2663f939fd8f3d06b1
-Runner SHA-256: bd587f8e40a63c48be1002715c815fae66212791c0f1c69211f3c48500b5244a
+Model SHA-256: 3b974049376ae85eefa4299aae3087e2104a2353d66711bfe89356ac686606d0
+Runner SHA-256: 243f0534e4d24c0fc76f70fe59842d5d5fd7ae77530da833b72152818717d65d
 
 Checked finite scenarios: 113.
 
-Obligations:
-CompoundClaimAndCapacityAtomic (97 states): verified
-DuplicateReservesOnce (1 state): verified
-CapacityRefusalDoesNotClaim (1 state): verified
-BodyCollisionIsNotReplay (2 states): verified
-OwnerUncertaintyIsUnavailable (1 state): verified
-ExpiredDoesNotClaimOrReserve (2 states): verified
-ClaimedReplayPrecedesExpiry (2 states): verified
-GlobalCapIsConservedAcrossShards (1 state): verified
-StatefulDebitTransfersWithoutDoubleCount (2 states): verified
-ReplayKeyTupleIsUnambiguous (1 state): verified
-RecoveryFinalizationIsFenced (1 state): verified
-RetryWindowPrecedesExpiry (3 states): verified
-PresenterMatchesAudience (2 states): verified
+Checked properties, not proved obligations:
+CompoundClaimAndCapacityAtomic (97 states): checked
+DuplicateReservesOnce (1 state): checked
+CapacityRefusalDoesNotClaim (1 state): checked
+BodyCollisionIsNotReplay (2 states): checked
+OwnerUncertaintyIsUnavailable (1 state): checked
+ExpiredDoesNotClaimOrReserve (2 states): checked
+ClaimedReplayPrecedesExpiry (2 states): checked
+SingleOwnerCapacityConserved (1 state): checked
+StatefulDebitTransfersWithoutDoubleCount (2 states): checked
+ReplayKeyTupleIsUnambiguous (1 state): checked
+ReservationTokenMismatchRefused (1 state): checked
+RetryWindowPrecedesExpiry (3 states): checked
+PresenterMatchesAudience (2 states): checked
 
 Mutation counterexamples exposed:
 - expiry_before_retained_claim;
@@ -38,5 +38,7 @@ owner fencing, retry timing, and presenter/audience equality. It is not a
 storage-driver or database-isolation refinement proof. Crash atomicity, quota
 transfer, authenticated alias mapping, self-describing envelope verification,
 evidence verification, policy correctness, and transport authentication remain
-outside this model. No current reference backend implements the compound
-production transition.
+outside this model. The repository includes a same-team reference owner state
+machine and PostgreSQL transaction backend with executable contract tests;
+those tests are implementation evidence, not a database-isolation proof or an
+independent implementation.

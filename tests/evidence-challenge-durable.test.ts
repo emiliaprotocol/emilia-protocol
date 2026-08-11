@@ -7,7 +7,13 @@ import {
 } from '../lib/negotiate/evidence-challenge.js';
 import { artifactDigest } from '../lib/evidence/evidence-graph.js';
 import { getPolicyPack } from '../lib/evidence/policy-packs.js';
-import { challengeBodyDigest, challengeStorageKey, createDurableChallengeStore } from '../packages/gate/challenge-store.js';
+import {
+  challengeBodyDigest,
+  challengeStorageKey,
+  createAuthoritativeChallengeOwnerStore,
+  createDurableChallengeStore,
+  createMemoryChallengeOwnerBackend,
+} from '../packages/gate/challenge-store.js';
 import { hashCanonical } from '../packages/gate/execution-binding.js';
 import { createMemoryBackend } from '../packages/gate/store.js';
 import {
@@ -168,7 +174,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     expect([...postgres.rows.values()].at(-1)?.state).toMatch(/^challenge-consumed:v3:/);
   });
 
-  it('requires every production storage capability and permits only explicit test-only ephemeral mode', async () => {
+  it('requires a factory-branded owner store instead of trusting capability booleans', async () => {
     const ephemeral = createDurableChallengeStore(createMemoryBackend());
     await expect(createRegisteredEvidenceChallenge(action, policy, {
       challengeStore: ephemeral,
@@ -176,17 +182,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
       nonce: testNonce('production-refused'),
       expires_at: expiresAt,
       production: true,
-    })).rejects.toThrow(/durable lifecycle capabilities: durable/);
-
-    const testOnly = await createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: ephemeral,
-      challenge_id: 'challenge-test-only-ephemeral',
-      nonce: testNonce('test-only-ephemeral'),
-      expires_at: expiresAt,
-      production: true,
-      test_only_ephemeral: true,
-    });
-    expect(testOnly.challenge_id).toBe('challenge-test-only-ephemeral');
+    })).rejects.toThrow(/authoritative owner store/);
 
     const postgres = createLocalPostgresHarness();
     const secure = createDurableChallengeStore(createPostgresBackend({
@@ -194,38 +190,46 @@ describe('durable AE-CHALLENGE lifecycle', () => {
       now: () => Date.parse(asOf),
     }), { issuerIdentity: 'https://issuer.example' });
 
-    await expect(createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: secure,
-      expires_at: expiresAt,
-      production: true,
-    })).rejects.toThrow(/compoundClaimAndCapacity/);
-
     const declared = {
       ...secure,
+      durable: true,
+      atomicRegistration: true,
+      bodyBound: true,
+      permanentConsumption: true,
+      authoritativeClassification: true,
+      issuerScoped: true,
       async compoundClaimAndCapacity() {
         return { result: 'owner_unavailable' };
       },
+      async finalizeReservation() {
+        return { result: 'finalized', authoritative_at_ms: Date.parse(asOf) };
+      },
+      async registerOutstanding(value) {
+        return secure.register(value);
+      },
     };
-    for (const capability of [
-      'durable',
-      'atomicRegistration',
-      'bodyBound',
-      'permanentConsumption',
-      'authoritativeClassification',
-      'issuerScoped',
-    ]) {
-      await expect(createRegisteredEvidenceChallenge(action, policy, {
-        challengeStore: { ...declared, [capability]: false },
-        challenge_id: `challenge-missing-${capability}`,
-        expires_at: expiresAt,
-        production: true,
-      })).rejects.toThrow(new RegExp(capability));
-    }
     await expect(createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: { ...declared, compoundClaimAndCapacity: undefined },
+      challengeStore: declared,
       expires_at: expiresAt,
       production: true,
-    })).rejects.toThrow(/compoundClaimAndCapacity\(\)/);
+    })).rejects.toThrow(/authoritative owner store/);
+
+    const ownerBackend = createMemoryChallengeOwnerBackend({ now: () => Date.parse(asOf) });
+    const ownerStore = createAuthoritativeChallengeOwnerStore(
+      { ...ownerBackend, durable: true },
+      {
+        issuerIdentity: 'https://issuer.example',
+        capacityPolicy: () => [{ key: 'aggregate', limit: 8 }],
+        recoveryAuthorizer: () => false,
+      },
+    );
+    const accepted = await createRegisteredEvidenceChallenge(action, policy, {
+      challengeStore: ownerStore,
+      expires_at: expiresAt,
+      audience: 'https://presenter.example',
+      production: true,
+    });
+    expect(accepted['@version']).toBe('AE-CHALLENGE-v1');
   });
 
   it('binds action, missing evidence, freshness/policy, expiry, nonce, and presentation method', async () => {

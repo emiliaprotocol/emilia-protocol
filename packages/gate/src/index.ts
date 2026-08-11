@@ -169,7 +169,22 @@ export {
   isSecureConsumptionStore,
   DURABLE_CONSUMPTION_VERSION,
 } from './store.js';
-export { createDurableChallengeStore, challengeStorageKey, challengeBodyDigest, DURABLE_CHALLENGE_STORE_VERSION } from './challenge-store.js';
+export {
+  createDurableChallengeStore,
+  createAuthoritativeChallengeOwnerStore,
+  createMemoryChallengeOwnerBackend,
+  isAuthoritativeChallengeOwnerStore,
+  challengeStorageKey,
+  challengeBodyDigest,
+  DURABLE_CHALLENGE_STORE_VERSION,
+  AUTHORITATIVE_CHALLENGE_OWNER_VERSION,
+} from './challenge-store.js';
+export {
+  createPostgresChallengeOwnerBackend,
+  AE_CHALLENGE_POSTGRES_OWNER_VERSION,
+  AE_CHALLENGE_OWNER_DDL,
+  AE_CHALLENGE_POSTGRES_SQL,
+} from './challenge-store-postgres.js';
 export { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 export { classifyRetention, buildRetentionExport, RETENTION_EXPORT_VERSION } from './retention.js';
 export { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest };

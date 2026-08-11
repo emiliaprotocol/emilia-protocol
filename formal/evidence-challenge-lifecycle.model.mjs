@@ -10,10 +10,11 @@
  */
 
 export const FORMAL_MODEL_VERSION =
-  "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v1";
+  "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v2";
 
 export const REGISTRATION_OBLIGATIONS = Object.freeze([
   "DurableStorageRequired",
+  "AuthoritativeOwnerRequired",
   "AtomicRegistrationRequired",
   "BodyBoundStorageRequired",
   "PermanentConsumptionRequired",
@@ -43,6 +44,7 @@ export const FORMAL_OBLIGATIONS = Object.freeze([
 
 const REGISTRATION_FIELDS = Object.freeze({
   DurableStorageRequired: "durable_storage",
+  AuthoritativeOwnerRequired: "authoritative_owner",
   AtomicRegistrationRequired: "atomic_registration",
   BodyBoundStorageRequired: "body_bound_storage",
   PermanentConsumptionRequired: "permanent_consumption",

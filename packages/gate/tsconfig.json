@@ -62,6 +62,7 @@
     "src/retention.ts",
     "src/network-witness.ts",
     "src/challenge-store.ts",
+    "src/challenge-store-postgres.ts",
     "src/formal-runtime-map.ts",
     "src/runtime-monitor.ts",
     "src/key-registry.ts",

@@ -7,7 +7,11 @@ import {
 } from '../lib/negotiate/evidence-challenge.js';
 import { artifactDigest } from '../lib/evidence/evidence-graph.js';
 import { getPolicyPack } from '../lib/evidence/policy-packs.js';
-import { createDurableChallengeStore } from '../packages/gate/challenge-store.js';
+import {
+  createAuthoritativeChallengeOwnerStore,
+  createDurableChallengeStore,
+  createMemoryChallengeOwnerBackend,
+} from '../packages/gate/challenge-store.js';
 import { createMemoryBackend } from '../packages/gate/store.js';
 
 const policy = getPolicyPack('ep:pack:wire-transfer:v1');
@@ -53,6 +57,22 @@ function completeGraph(action = actionA) {
     requirement: policy.requirement,
     components: artifacts.map((evidence) => ({ type: evidence.typ, evidence })),
   };
+}
+
+function createTestOwner(now = () => Date.parse(beforeExpiry), cap = 8) {
+  const backend = createMemoryChallengeOwnerBackend({ now });
+  const store = createAuthoritativeChallengeOwnerStore(
+    { ...backend, durable: true },
+    {
+      issuerIdentity: 'https://issuer.example',
+      capacityPolicy: (challenge) => [
+        { key: 'aggregate', limit: cap },
+        { key: `audience:${challenge.audience ?? 'none'}`, limit: cap },
+      ],
+      recoveryAuthorizer: () => false,
+    },
+  );
+  return { backend, store };
 }
 
 describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
@@ -233,26 +253,18 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
       nonce: 'production-issuer-scope-0000001',
       expires_at: expiresAt,
       production: true,
-    })).rejects.toThrow(/issuerScoped/);
+    })).rejects.toThrow(/authoritative owner store/);
 
-    const store = createDurableChallengeStore({ ...createMemoryBackend(), durable: true }, {
-      issuerIdentity: 'https://issuer.example',
-    });
+    const { store } = createTestOwner();
     const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
       challengeStore: store,
       challenge_id: 'production-current-action',
-      nonce: testNonce('production-current-action'),
       expires_at: expiresAt,
       audience: 'https://presenter.example',
-      production: false,
+      production: true,
     });
     const result = await evaluateRegisteredPresentation(challenge, completeGraph(), policy, {
-      challengeStore: {
-        ...store,
-        async compoundClaimAndCapacity() {
-          return { result: 'owner_unavailable' };
-        },
-      },
+      challengeStore: store,
       verifiers,
       as_of: beforeExpiry,
       production: true,
@@ -266,24 +278,16 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
     const previous = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
     try {
-      const raw = createDurableChallengeStore({ ...createMemoryBackend(), durable: true }, {
-        issuerIdentity: 'https://issuer.example',
-      });
-      const declared = {
-        ...raw,
-        async compoundClaimAndCapacity() {
-          return { result: 'owner_unavailable' };
-        },
-      };
+      const { store } = createTestOwner();
       const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
-        challengeStore: declared,
+        challengeStore: store,
         challenge_id: 'effective-production-mode',
         expires_at: expiresAt,
         audience: 'https://presenter.example',
         production: false,
       });
       const result = await evaluateRegisteredPresentation(challenge, completeGraph(), policy, {
-        challengeStore: declared,
+        challengeStore: store,
         verifiers,
         as_of: beforeExpiry,
         current_action: actionA,
@@ -333,39 +337,16 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
   });
 
   it('uses only the compound owner transition in production evaluation', async () => {
-    const raw = createDurableChallengeStore({ ...createMemoryBackend(), durable: true }, {
-      issuerIdentity: 'https://issuer.example',
-    });
+    const { backend, store } = createTestOwner();
     const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
-      challengeStore: raw,
+      challengeStore: store,
       challenge_id: 'compound-production-path',
-      nonce: testNonce('compound-production-path'),
       expires_at: expiresAt,
       audience: 'https://presenter.example',
-      production: false,
+      production: true,
     });
-    let compoundCalls = 0;
-    const productionStore = {
-      ...raw,
-      async classify() {
-        throw new Error('split classification must not run');
-      },
-      async consume() {
-        throw new Error('split consume must not run');
-      },
-      async compoundClaimAndCapacity(value, context) {
-        compoundCalls += 1;
-        expect(value).toBe(challenge);
-        expect(context).toEqual({
-          as_of: beforeExpiry,
-          audience: 'https://presenter.example',
-          authenticated_presenter: 'https://presenter.example',
-        });
-        return { result: 'claimed_with_capacity' };
-      },
-    };
     const result = await evaluateRegisteredPresentation(challenge, completeGraph(), policy, {
-      challengeStore: productionStore,
+      challengeStore: store,
       verifiers,
       as_of: beforeExpiry,
       current_action: actionA,
@@ -373,6 +354,50 @@ describe('AE-CHALLENGE -07 hostile runtime obligations', () => {
       production: true,
     });
     expect(result.verdict).toBe('admissible');
-    expect(compoundCalls).toBe(1);
+    expect(backend.capacity.get('aggregate')?.used).toBe(1);
+  });
+
+  it('returns no follow-up when owner finalization committed but its acknowledgement was lost', async () => {
+    const base = createMemoryChallengeOwnerBackend({ now: () => Date.parse(beforeExpiry) });
+    let transactions = 0;
+    const uncertainBackend = {
+      ...base,
+      durable: true,
+      async transaction(work) {
+        transactions += 1;
+        const result = await base.transaction(work);
+        if (transactions === 3) throw new Error('finalization_ack_lost');
+        return result;
+      },
+    };
+    const store = createAuthoritativeChallengeOwnerStore(uncertainBackend, {
+      issuerIdentity: 'https://issuer.example',
+      capacityPolicy: () => [{ key: 'aggregate', limit: 4 }],
+      recoveryAuthorizer: () => false,
+    });
+    const challenge = await createRegisteredEvidenceChallenge(actionA, policy, {
+      challengeStore: store,
+      expires_at: expiresAt,
+      audience: 'https://presenter.example',
+      production: true,
+    });
+    const partial = {
+      ...completeGraph(),
+      components: completeGraph().components.slice(0, 1),
+    };
+    const result = await evaluateRegisteredPresentation(challenge, partial, policy, {
+      challengeStore: store,
+      verifiers,
+      as_of: beforeExpiry,
+      current_action: actionA,
+      authenticated_presenter: 'https://presenter.example',
+      production: true,
+    });
+    expect(result).toMatchObject({
+      verdict: 'unavailable',
+      state_changed: 'unknown',
+      next_challenge: null,
+    });
+    expect(base.records.size).toBe(2);
   });
 });

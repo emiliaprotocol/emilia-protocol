@@ -26,12 +26,13 @@ function invariant(condition, message) {
   if (!condition) throw new Error(`${FORMAL_MODEL_VERSION}: ${message}`);
 }
 
-function obligation(states_checked, mutation_counterexample) {
+function checkedProperty(states_checked, mutation_counterexample) {
   return {
     states_checked,
     mutation_states_checked: 1,
-    verified: true,
-    counterexample: null,
+    checked: true,
+    verified: false,
+    claim_boundary: 'finite same-team scenarios only; not a proof of arbitrary executions or storage refinement',
     mutation_counterexample,
   };
 }
@@ -104,9 +105,10 @@ export function runClaimCapacityChecks() {
     ...base,
     owner_result_certain: false,
   });
+  const possibleStates = unavailable.possible_states ?? [];
   invariant(unavailable.result === CLAIM_RESULTS.UNAVAILABLE, 'uncertain owner result was classified as a verdict');
-  invariant(unavailable.possible_states.length === 2, 'uncertain result did not preserve both authoritative possibilities');
-  invariant(unavailable.possible_states.every(withinCaps), 'uncertain result admitted an over-cap authoritative state');
+  invariant(possibleStates.length === 2, 'uncertain result did not preserve both authoritative possibilities');
+  invariant(possibleStates.every(withinCaps), 'uncertain result admitted an over-cap authoritative state');
 
   const expired = claimAndReserve(initialState({ cap: 1 }), {
     ...base,
@@ -182,8 +184,13 @@ export function runClaimCapacityChecks() {
   const tupleB = replayKey('a', 'b\u0000c');
   invariant(tupleA !== tupleB, 'structured replay key admitted delimiter collision');
 
+  if (typeof transferred.owner_token !== 'string') {
+    throw new Error(`${FORMAL_MODEL_VERSION}: claimed transition omitted its owner token`);
+  }
   const reservation = transferred.state.reservations.get(transferred.owner_token);
-  invariant(reservation?.owner_token === transferred.owner_token, 'reservation omitted its fencing token');
+  if (!reservation || reservation.owner_token !== transferred.owner_token) {
+    throw new Error(`${FORMAL_MODEL_VERSION}: reservation omitted its fencing token`);
+  }
   invariant(!finalizeReservation(reservation, 'worker-a').accepted, 'stale worker passed fencing');
   invariant(finalizeReservation(reservation, 'worker-a', { ignore_fence: true }).accepted, 'fence mutation was not exposed');
   mutations.push('stale_owner_without_fence');
@@ -198,68 +205,69 @@ export function runClaimCapacityChecks() {
   return {
     model: FORMAL_MODEL_VERSION,
     method: 'finite_scenario_enumeration_with_mutation_counterexamples',
-    verified: true,
+    scenario_check_complete: true,
+    verified: false,
     states_checked: states + 16,
     mutation_counterexamples: mutations,
-    obligations: {
-      CompoundClaimAndCapacityAtomic: obligation(states, {
+    checked_properties: {
+      CompoundClaimAndCapacityAtomic: checkedProperty(states, {
         mutation: 'split_capacity_before_claim',
         observed_used: split.state.used,
         caps: split.state.caps,
       }),
-      DuplicateReservesOnce: obligation(1, {
+      DuplicateReservesOnce: checkedProperty(1, {
         mutation: 'split_capacity_before_claim',
         leaked_reservation: 'worker-b-leaked',
       }),
-      CapacityRefusalDoesNotClaim: obligation(1, {
+      CapacityRefusalDoesNotClaim: checkedProperty(1, {
         mutation: 'claim_before_capacity',
         replay_records_after_refusal: burned.state.replay.size,
       }),
-      BodyCollisionIsNotReplay: obligation(2, {
+      BodyCollisionIsNotReplay: checkedProperty(2, {
         mutation: 'treat_different_body_as_exact_replay',
         conflicting_body: 'sha256:body-b',
       }),
-      OwnerUncertaintyIsUnavailable: obligation(1, {
+      OwnerUncertaintyIsUnavailable: checkedProperty(1, {
         mutation: 'collapse_uncertainty_to_unclaimed',
-        authoritative_possibilities: unavailable.possible_states.length,
+        authoritative_possibilities: possibleStates.length,
       }),
-      ExpiredDoesNotClaimOrReserve: obligation(2, {
+      ExpiredDoesNotClaimOrReserve: checkedProperty(2, {
         mutation: 'check_expiry_outside_owner_transition',
         now_ms: 2_000,
         expires_at_ms: base.expires_at_ms,
       }),
-      ClaimedReplayPrecedesExpiry: obligation(2, {
+      ClaimedReplayPrecedesExpiry: checkedProperty(2, {
         mutation: 'check_expiry_before_retained_claimed_record',
         now_ms: 2_000,
         expires_at_ms: base.expires_at_ms,
       }),
-      GlobalCapIsConservedAcrossShards: obligation(1, {
+      SingleOwnerCapacityConserved: checkedProperty(1, {
         mutation: 'independent_shards_without_quota_or_coordinator',
         global_used: splitShards.global_used,
         global_cap: splitShards.global_cap,
       }),
-      StatefulDebitTransfersWithoutDoubleCount: obligation(2, {
+      StatefulDebitTransfersWithoutDoubleCount: checkedProperty(2, {
         mutation: 'stateful_outstanding_debit_counted_twice',
         sound_used: transferred.state.used,
         mutated_used: doubleCounted.state.used,
       }),
-      ReplayKeyTupleIsUnambiguous: obligation(1, {
+      ReplayKeyTupleIsUnambiguous: checkedProperty(1, {
         mutation: 'nul_delimiter_tuple_collision',
         first_key: tupleA,
         second_key: tupleB,
       }),
-      RecoveryFinalizationIsFenced: obligation(1, {
+      ReservationTokenMismatchRefused: checkedProperty(1, {
         mutation: 'stale_owner_without_fence',
         stale_owner: 'worker-a',
         current_owner: reservation.owner_token,
       }),
-      RetryWindowPrecedesExpiry: obligation(3, {
+      RetryWindowPrecedesExpiry: checkedProperty(3, {
         mutation: 'jitter_reaches_expiry',
         not_before_ms: 1_000,
         jitter_sec: 2,
         expires_at_ms: 3_000,
       }),
-      PresenterMatchesAudience: obligation(2, {
+      PresenterMatchesAudience: checkedProperty(2, {
         mutation: 'accept_wrong_authenticated_presenter',
         audience: 'agent-a',
         authenticated_presenter: 'agent-b',
@@ -283,8 +291,8 @@ if (invokedAsScript) {
     console.log(`${result.model}: PASS`);
     console.log(`finite scenarios checked: ${result.states_checked}`);
     console.log(`unsafe mutations exposed: ${result.mutation_counterexamples.join(', ')}`);
-    for (const [name, row] of Object.entries(result.obligations)) {
-      console.log(`${name}: ${row.verified ? 'passed' : 'FAILED'}`);
+    for (const [name, row] of Object.entries(result.checked_properties)) {
+      console.log(`${name}: ${row.checked ? 'checked in bounded scenarios' : 'FAILED'}`);
     }
   }
 }

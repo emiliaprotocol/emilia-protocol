@@ -142,6 +142,10 @@
       "types": "./dist/challenge-store.d.ts",
       "import": "./challenge-store.js"
     },
+    "./challenge-store-postgres": {
+      "types": "./dist/challenge-store-postgres.d.ts",
+      "import": "./challenge-store-postgres.js"
+    },
     "./store-postgres": {
       "types": "./dist/store-postgres.d.ts",
       "import": "./store-postgres.js"
@@ -434,6 +438,7 @@
     "strict-json.js",
     "store.js",
     "challenge-store.js",
+    "challenge-store-postgres.js",
     "store-postgres.js",
     "evidence-postgres.js",
     "witness-postgres.js",

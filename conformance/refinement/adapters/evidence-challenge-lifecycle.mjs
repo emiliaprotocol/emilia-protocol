@@ -8,6 +8,7 @@ import { getPolicyPack } from "../../../lib/evidence/policy-packs.js";
 import { createDurableChallengeStore } from "../../../packages/gate/challenge-store.js";
 import { createMemoryBackend } from "../../../packages/gate/store.js";
 import { CONSUMPTION_SQL, createPostgresBackend, } from "../../../packages/gate/store-postgres.js";
+import crypto from "node:crypto";
 const ACTION = Object.freeze({
     type: "urn:ep:action:payments.wire_transfer",
     amount: "250000.00",
@@ -17,6 +18,9 @@ const POLICY = getPolicyPack("ep:pack:wire-transfer:v1");
 const AS_OF = "2026-07-03T12:01:00Z";
 const EXPIRES_AT = "2026-07-03T12:10:00Z";
 const ISSUER_IDENTITY = "https://issuer.example";
+function challengeNonce(label) {
+    return crypto.createHash("sha256").update(`ae-challenge:${label}`).digest("base64url");
+}
 const VERIFIERS = Object.freeze({
     authorization_receipt: (artifact) => ({
         valid: true,
@@ -145,7 +149,7 @@ export async function runEvidenceChallengeLifecycleScenario(scenario) {
     if (scenario === "evidence-challenge-production-capability-refused") {
         const sharedInput = {
             ...SOUND_CHALLENGE_CONFIGURATION,
-            durable_storage: false,
+            authoritative_owner: false,
         };
         const formal = evaluateChallengeRegistration(sharedInput);
         let refused = false;
@@ -153,32 +157,33 @@ export async function runEvidenceChallengeLifecycleScenario(scenario) {
             await createRegisteredEvidenceChallenge(ACTION, POLICY, {
                 challengeStore: createDurableChallengeStore(createMemoryBackend()),
                 challenge_id: "challenge-runtime-capability",
-                nonce: "nonce-runtime-capability-0001",
+                nonce: challengeNonce("nonce-runtime-capability-0001"),
                 expires_at: EXPIRES_AT,
                 production: true,
             });
         }
         catch (error) {
-            refused = /durable lifecycle capabilities/u.test(String(error.message));
+            refused = /authoritative owner store created by the supported factory/u.test(String(error.message));
         }
-        assertRuntime(refused, "ephemeral production storage was not refused");
+        assertRuntime(refused, "unbranded production storage was not refused");
         const formalProjection = {
             accepted: formal.accepted,
             failedObligation: formal.failed_obligation ?? "none",
         };
         const runtimeProjection = {
             accepted: !refused,
-            failedObligation: refused ? "DurableStorageRequired" : "none",
+            failedObligation: refused ? "AuthoritativeOwnerRequired" : "none",
         };
         return {
             scenario,
             steps: [
                 {
-                    operator: "RefuseIncapableProductionStore",
+                    operator: "RefuseUnbrandedProductionStore",
                     accepted: false,
                     projection: {
                         challengeState: "unregistered",
-                        durable: false,
+                        durable: true,
+                        authoritativeOwner: false,
                     },
                 },
             ],
@@ -186,7 +191,7 @@ export async function runEvidenceChallengeLifecycleScenario(scenario) {
         };
     }
     const postgres = localPostgresQuery();
-    const challenge = await durableChallenge(`challenge-${scenario}`, `nonce-${scenario}-0001`, postgres.query);
+    const challenge = await durableChallenge(`challenge-${scenario}`, challengeNonce(`nonce-${scenario}-0001`), postgres.query);
     const restartedStore = () => createDurableChallengeStore(createPostgresBackend({
         query: postgres.query,
         now: () => Date.parse(AS_OF),

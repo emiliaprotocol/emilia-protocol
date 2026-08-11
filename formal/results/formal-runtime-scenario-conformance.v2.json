@@ -83,11 +83,11 @@
     },
     {
       "path": "conformance/refinement/adapters/evidence-challenge-lifecycle.mjs",
-      "sha256": "89650cae28773fbf6c2ff3f92b13e6db27de5a720e7885a4b4729ffca31e758d"
+      "sha256": "0c9701a5cb173797b1eff67d4487e1bfb611b8b0052e6059b48938e267f8e501"
     },
     {
       "path": "conformance/refinement/adapters/evidence-challenge-lifecycle.mts",
-      "sha256": "97e2aa832c512377ef3343874f3f991bc22cbd72daeee0993f7205671deec550"
+      "sha256": "236fb5b5a3d766a0e3ee0b07d701b2ff1f7aa659b37e5bf854636313b6c5862d"
     },
     {
       "path": "conformance/refinement/adapters/five-claim-bridge.mjs",
@@ -127,11 +127,11 @@
     },
     {
       "path": "conformance/refinement/adapters/model-to-matter.mjs",
-      "sha256": "17d1326a8e0ed71df2cd0832cf1eb26f2cf073002ee42cfab3f9dd1c4335bac7"
+      "sha256": "f7c8b4b8012bde0b10bee8db2c18c32ef34d8f7ff98ed902cde3f6f8aff5d280"
     },
     {
       "path": "conformance/refinement/adapters/model-to-matter.mts",
-      "sha256": "f27d8948e79aed897a0c57a34ad81f01532e91fb08efa7aafda90a1f33d259fc"
+      "sha256": "9f3339b6c2f2498b64382db5eac124e02f203596627b74121104ea1e5c1664e8"
     },
     {
       "path": "conformance/refinement/adapters/network-witness.mjs",
@@ -231,7 +231,7 @@
     },
     {
       "path": "formal/check-evidence-challenge-lifecycle.mjs",
-      "sha256": "dd8bc8a7a3b225fa9be2c40a20deec6ad6e5327ef22dda8364d152acbed5de56"
+      "sha256": "30d7186f760ded4d3efcf008c981c62cef32f879951f6a875bcfc75f40105da1"
     },
     {
       "path": "formal/check-outcome-authority-join.mjs",
@@ -311,7 +311,7 @@
     },
     {
       "path": "formal/evidence-challenge-lifecycle.model.mjs",
-      "sha256": "e083c40bdcdf8e46d9830a79a156667ae01c80323daafdda44b2aa6c2f5c5268"
+      "sha256": "fd338dd91fcc80833577bd8315d4d42b480d7393f91af7b7ca868d21676e06a1"
     },
     {
       "path": "formal/outcome-authority-join.model.mjs",
@@ -323,7 +323,7 @@
     },
     {
       "path": "formal/runtime-scenarios.v2.json",
-      "sha256": "e4b0e75818c0b487a131b401f91c50a0bb2ed452eb87c34d0fbb8504e6f5b0ea"
+      "sha256": "94e0b5e44f60e945f7fa3391159f7a8ba900f57bff549da9dc3e6d290553e500"
     },
     {
       "path": "formal/two-claim-assurance.model.mjs",
@@ -483,11 +483,11 @@
     },
     {
       "path": "lib/negotiate/evidence-challenge.js",
-      "sha256": "f225e5e6f403baaacb6d10c0e973c536c215635d105e1d0156fcb9f33889c2d7"
+      "sha256": "3acab90baf1ea8ab77126d0971c3e2e3c558d661a10387b3b61ec4a2210be6f0"
     },
     {
       "path": "lib/negotiate/evidence-challenge.ts",
-      "sha256": "4226f54ed823d330b4afe044cdbec7d83004f1e17e2fb8b4948872908bd893bb"
+      "sha256": "a66e7e534effb9115032d2b5c384c4586bae9d1ba497ecb08d5d798676b71d90"
     },
     {
       "path": "lib/strict-json.js",
@@ -606,8 +606,12 @@
       "sha256": "424cfa28cabc777ddcc482b42cf4f817ff4c09ba311e4ab8705d13fbf82cc3e4"
     },
     {
+      "path": "packages/gate/dist/challenge-store-postgres.js",
+      "sha256": "807340e173e4a2f7d42b703c67d80c07ecd4db6b32014b071983cca4ba7d97c5"
+    },
+    {
       "path": "packages/gate/dist/challenge-store.js",
-      "sha256": "590dfc82f30e5d592ee7a9b4f3fc8a5e228e73cb61150d46dec82b03d57b1d62"
+      "sha256": "96a87cebbe5ea8a8960259d6070437f6b8f1f587c15f8210203ea152ef0a0c0f"
     },
     {
       "path": "packages/gate/dist/consequence-actuator.js",
@@ -655,7 +659,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "51bedd9cf2615dd6649d7451f3d933c22ecddaf6d160ca9c1e70421b15eb9a71"
+      "sha256": "8075d8b4cf9c8c671ba159c4d3fef5b63c29f5f4cee6b8bc3a3db034ab223454"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -831,7 +835,7 @@
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
-      "sha256": "bd417a4cae8af4a66c0caa1e04998768d80e1a5e7a00d9d351fe936263cea716"
+      "sha256": "ebcf4421ee9466ef075581c3665bf0b36c8a4c24e51643c9db28aedff2cb420d"
     },
     {
       "path": "packages/gate/src/consequence-actuator.ts",
@@ -847,7 +851,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "d30ca49cf7d78388c7d34b27ce3c41b749e33c9a6e0b2ab57a4b8e421b9d6f46"
+      "sha256": "4e562983f75c94be6bf07da1b5c042267ddfc4c9021bcc40bd24916748005ce4"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -3611,52 +3615,52 @@
         "checker": "formal/check-evidence-challenge-lifecycle.mjs",
         "checks": [
           {
-            "mutation_counterexample_sha256": "sha256:b78159e065f5dda2dd1b15bf54ddfc60974cf19f4fb1d1ec9e60bb29ddbeb6b6",
-            "mutation_states_checked": 1008,
+            "mutation_counterexample_sha256": "sha256:bfbe3966054751be0b7a095c15888080685be45a23dd23d7cdd6b6fd24f3c69b",
+            "mutation_states_checked": 2016,
             "obligation": "ExactActionDigestBound",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:c2b98750ccf7b7948866bca89d219248d40fec162a81ce909a1a5ddfa0729caf",
+            "mutation_counterexample_sha256": "sha256:32b0ebf5fd4ce696ffa2b3fe192c72380d492b3a7c3d3d127e513e8a1949b70e",
             "mutation_states_checked": 1,
             "obligation": "ActionMismatchIsInert",
             "states_checked": 1
           },
           {
-            "mutation_counterexample_sha256": "sha256:e206ac9be416201a9421592028ab9f7deeef650c97620aba84999233c7084e56",
+            "mutation_counterexample_sha256": "sha256:05685a9cc40852c3988c0c82801b149cc6777ba74d9dbc4c26dd6c5616d9e39f",
             "mutation_states_checked": 1,
             "obligation": "InvalidAttemptIsInert",
             "states_checked": 1
           },
           {
-            "mutation_counterexample_sha256": "sha256:d2add3aa9bb9aded20ea4279e900ad8ad21b5435af1f0516948a69d1ed32e33e",
+            "mutation_counterexample_sha256": "sha256:a94a00436a30df45ca479c1919facdb8c7b6ac7ce520de9d166c9bc34ba97441",
             "mutation_states_checked": 1,
             "obligation": "ConcurrentConsumptionIsOneTime",
             "states_checked": 1
           },
           {
-            "mutation_counterexample_sha256": "sha256:c542a17d400c87ddbc6ae2a1e62a81e4cee239f49ce015fca2e67dbc706e164b",
+            "mutation_counterexample_sha256": "sha256:376acafc0885dc85df2a461c13cebf4b16c7ed3f56c48754d25a5381f519f7ea",
             "mutation_states_checked": 1,
             "obligation": "ConsumedStatePersistsAcrossRestart",
             "states_checked": 1
           },
           {
-            "mutation_counterexample_sha256": "sha256:701f402e4d33789adfd089002b26e552e13b1b3f4be36be3392ba403354ab698",
-            "mutation_states_checked": 896,
+            "mutation_counterexample_sha256": "sha256:65b8cae072376414af4d06c27b58957c714851c7a5c192fcd95c3d969d7d37b5",
+            "mutation_states_checked": 1792,
             "obligation": "ExpiryBound",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:d28959403a74091f8b7ea3fd7a4f5a9011841810c6ed0d8065a60b85902ddffa",
-            "mutation_states_checked": 768,
+            "mutation_counterexample_sha256": "sha256:3813e37397b80e93c0d7877a071f40d07149aa5940b4bdce68227dfafff9243a",
+            "mutation_states_checked": 1536,
             "obligation": "NonceBound",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:0ce0f5ff95f9b7fc05c07ab2e0a2fb360be89c956c3f03255d8e85e754c81eaa",
-            "mutation_states_checked": 512,
+            "mutation_counterexample_sha256": "sha256:dfaab48eab9129e18bff94adce210dfc8488dad1f9ab7ea20ff2cf1ad6f832f6",
+            "mutation_states_checked": 1024,
             "obligation": "PresentationMethodBound",
-            "states_checked": 1024
+            "states_checked": 2048
           }
         ],
         "control": {
@@ -3665,7 +3669,7 @@
           "obligation": "ActionMismatchIsInert",
           "sound_input_refused": true
         },
-        "model_version": "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v1",
+        "model_version": "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v2",
         "obligation": "ActionMismatchIsInert",
         "status": "counterexample_detected"
       },
@@ -3692,6 +3696,7 @@
         "shared_input": {
           "action_agrees": false,
           "atomic_registration": true,
+          "authoritative_owner": true,
           "body_bound_storage": true,
           "challenge_valid": true,
           "durable_storage": true,
@@ -3730,22 +3735,22 @@
         "checker": "formal/check-evidence-challenge-lifecycle.mjs",
         "checks": [
           {
-            "mutation_counterexample_sha256": "sha256:8ee51e8a3776b60a08066fb6a60a498172f24d5e05ee472bb2593bf59a65dac1",
-            "mutation_states_checked": 1020,
+            "mutation_counterexample_sha256": "sha256:65e86e2f80522bbdbaaf1e64e4e4761422df7a87ad45a5d7107a964b31e4cf34",
+            "mutation_states_checked": 2040,
             "obligation": "BodyBoundStorageRequired",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:fdcac9a362b89cfabef64026fd6340fa5f63220897d16c77ecd849e1e9da9ef7",
-            "mutation_states_checked": 992,
+            "mutation_counterexample_sha256": "sha256:081139ec6cda01db5b0e3ca6108689dfc94f55fc19018b7717424d9c35ec5931",
+            "mutation_states_checked": 1984,
             "obligation": "MissingEvidenceBound",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:eb798155793113acbf667176c00352f798b0719a6a9496d48293a8936d864d86",
-            "mutation_states_checked": 960,
+            "mutation_counterexample_sha256": "sha256:660de0baed4773d41bf44369e78889c5620f0fc52f54d521f299fc84fc6a0773",
+            "mutation_states_checked": 1920,
             "obligation": "FreshnessPolicyContextBound",
-            "states_checked": 1024
+            "states_checked": 2048
           }
         ],
         "control": {
@@ -3754,7 +3759,7 @@
           "obligation": "BodyBoundStorageRequired",
           "sound_input_refused": true
         },
-        "model_version": "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v1",
+        "model_version": "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v2",
         "obligation": "BodyBoundStorageRequired",
         "status": "counterexample_detected"
       },
@@ -3777,6 +3782,7 @@
         },
         "shared_input": {
           "atomic_registration": true,
+          "authoritative_owner": true,
           "body_bound_storage": true,
           "durable_storage": true,
           "exact_action_digest": true,
@@ -3812,61 +3818,61 @@
         "checker": "formal/check-evidence-challenge-lifecycle.mjs",
         "checks": [
           {
-            "mutation_counterexample_sha256": "sha256:466e586d3341317910580b3d37f47f09563d4e5cdb4fb63e5758377530063d63",
-            "mutation_states_checked": 1023,
+            "mutation_counterexample_sha256": "sha256:4f0bafc483571fd2c86229bedf06fce2268669c9665dd28e87a66895bc7399ea",
+            "mutation_states_checked": 2047,
             "obligation": "DurableStorageRequired",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:ef4be7d6aa3e7600653619d908cded181ed1ecd3ee1cfb8b966de9b3d73eb7e6",
-            "mutation_states_checked": 1022,
+            "mutation_counterexample_sha256": "sha256:8021f7d0dc26ac4d998a88c68e407b487f0819a1714be24770bca273c091bc2a",
+            "mutation_states_checked": 2044,
             "obligation": "AtomicRegistrationRequired",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:8ee51e8a3776b60a08066fb6a60a498172f24d5e05ee472bb2593bf59a65dac1",
-            "mutation_states_checked": 1020,
+            "mutation_counterexample_sha256": "sha256:65e86e2f80522bbdbaaf1e64e4e4761422df7a87ad45a5d7107a964b31e4cf34",
+            "mutation_states_checked": 2040,
             "obligation": "BodyBoundStorageRequired",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:d0f578d0b4dbe317bbe9d57cb48c373ded8ef9bcb2585de6c96e7e39feaa4b8b",
-            "mutation_states_checked": 1016,
+            "mutation_counterexample_sha256": "sha256:8ffe7bdba0040b435322bf1089cadae8a15f04180389782705c870f921387e2d",
+            "mutation_states_checked": 2032,
             "obligation": "PermanentConsumptionRequired",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:4772eb6f8e9aaa9355808d34e78c1fe4a8b5ec84ff011b5031332460aa397529",
+            "mutation_counterexample_sha256": "sha256:0fc5d4a9dd218526f703c6fe1f5ecd4a1f815ef09416377357357f3bdfde60a6",
             "mutation_states_checked": 1,
             "obligation": "RegistrationPrecedesExposure",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:a01f23edd7d664e442ce58c639045df0ff00c66a0a76b25e7f2d0aa45b258979",
+            "mutation_counterexample_sha256": "sha256:36bf6c1fdddf9169b292ed6f6efac2f88757698b4cf03635eac544d9a891c8a5",
             "mutation_states_checked": 1,
             "obligation": "RegistrationPersistsAcrossRestart",
             "states_checked": 1
           },
           {
-            "mutation_counterexample_sha256": "sha256:82b02a1688372f88bdb9494d1663ec717cb2f15aada18f7d8f0d91d038c3a210",
+            "mutation_counterexample_sha256": "sha256:5f46deed9a0dc433636fe13dc68cda0b289e16f664881088ad0845b23d66a3ab",
             "mutation_states_checked": 1,
             "obligation": "ConcurrentRegistrationIsUnique",
             "states_checked": 1
           },
           {
-            "mutation_counterexample_sha256": "sha256:d2add3aa9bb9aded20ea4279e900ad8ad21b5435af1f0516948a69d1ed32e33e",
+            "mutation_counterexample_sha256": "sha256:a94a00436a30df45ca479c1919facdb8c7b6ac7ce520de9d166c9bc34ba97441",
             "mutation_states_checked": 1,
             "obligation": "ConcurrentConsumptionIsOneTime",
             "states_checked": 1
           },
           {
-            "mutation_counterexample_sha256": "sha256:c542a17d400c87ddbc6ae2a1e62a81e4cee239f49ce015fca2e67dbc706e164b",
+            "mutation_counterexample_sha256": "sha256:376acafc0885dc85df2a461c13cebf4b16c7ed3f56c48754d25a5381f519f7ea",
             "mutation_states_checked": 1,
             "obligation": "ConsumedStatePersistsAcrossRestart",
             "states_checked": 1
           }
         ],
-        "model_version": "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v1",
+        "model_version": "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v2",
         "obligation": null,
         "status": "matched"
       },
@@ -3892,6 +3898,7 @@
         },
         "shared_input": {
           "atomic_registration": true,
+          "authoritative_owner": true,
           "body_bound_storage": true,
           "concurrent_attempts": 32,
           "durable_storage": true,
@@ -3945,38 +3952,44 @@
         "checker": "formal/check-evidence-challenge-lifecycle.mjs",
         "checks": [
           {
-            "mutation_counterexample_sha256": "sha256:466e586d3341317910580b3d37f47f09563d4e5cdb4fb63e5758377530063d63",
-            "mutation_states_checked": 1023,
+            "mutation_counterexample_sha256": "sha256:839310a19a72266bb517b5d861c65a90a354e7e6b79576dab2d7406c855a4f7c",
+            "mutation_states_checked": 2046,
+            "obligation": "AuthoritativeOwnerRequired",
+            "states_checked": 2048
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:4f0bafc483571fd2c86229bedf06fce2268669c9665dd28e87a66895bc7399ea",
+            "mutation_states_checked": 2047,
             "obligation": "DurableStorageRequired",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:ef4be7d6aa3e7600653619d908cded181ed1ecd3ee1cfb8b966de9b3d73eb7e6",
-            "mutation_states_checked": 1022,
+            "mutation_counterexample_sha256": "sha256:8021f7d0dc26ac4d998a88c68e407b487f0819a1714be24770bca273c091bc2a",
+            "mutation_states_checked": 2044,
             "obligation": "AtomicRegistrationRequired",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:8ee51e8a3776b60a08066fb6a60a498172f24d5e05ee472bb2593bf59a65dac1",
-            "mutation_states_checked": 1020,
+            "mutation_counterexample_sha256": "sha256:65e86e2f80522bbdbaaf1e64e4e4761422df7a87ad45a5d7107a964b31e4cf34",
+            "mutation_states_checked": 2040,
             "obligation": "BodyBoundStorageRequired",
-            "states_checked": 1024
+            "states_checked": 2048
           },
           {
-            "mutation_counterexample_sha256": "sha256:d0f578d0b4dbe317bbe9d57cb48c373ded8ef9bcb2585de6c96e7e39feaa4b8b",
-            "mutation_states_checked": 1016,
+            "mutation_counterexample_sha256": "sha256:8ffe7bdba0040b435322bf1089cadae8a15f04180389782705c870f921387e2d",
+            "mutation_states_checked": 2032,
             "obligation": "PermanentConsumptionRequired",
-            "states_checked": 1024
+            "states_checked": 2048
           }
         ],
         "control": {
           "kind": "formal_mutation_counterexample",
           "mutant_input_accepted": true,
-          "obligation": "DurableStorageRequired",
+          "obligation": "AuthoritativeOwnerRequired",
           "sound_input_refused": true
         },
-        "model_version": "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v1",
-        "obligation": "DurableStorageRequired",
+        "model_version": "EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-MODEL-v2",
+        "obligation": "AuthoritativeOwnerRequired",
         "status": "counterexample_detected"
       },
       "id": "evidence-challenge-production-capability-refused",
@@ -3990,16 +4003,17 @@
         ],
         "formal_projection": {
           "accepted": false,
-          "failedObligation": "DurableStorageRequired"
+          "failedObligation": "AuthoritativeOwnerRequired"
         },
         "runtime_projection": {
           "accepted": false,
-          "failedObligation": "DurableStorageRequired"
+          "failedObligation": "AuthoritativeOwnerRequired"
         },
         "shared_input": {
           "atomic_registration": true,
+          "authoritative_owner": false,
           "body_bound_storage": true,
-          "durable_storage": false,
+          "durable_storage": true,
           "exact_action_digest": true,
           "expiry": true,
           "freshness_policy_context": true,
@@ -4015,10 +4029,11 @@
         "steps": [
           {
             "accepted": false,
-            "operator": "RefuseIncapableProductionStore",
+            "operator": "RefuseUnbrandedProductionStore",
             "projection": {
+              "authoritativeOwner": false,
               "challengeState": "unregistered",
-              "durable": false
+              "durable": true
             }
           }
         ]

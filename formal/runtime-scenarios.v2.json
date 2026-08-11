@@ -601,10 +601,11 @@
         "presentation": "presentation",
         "replayRefused": "replayRefused",
         "wireVersion": "wireVersion",
-        "admittedAttempts": "admittedAttempts"
+        "admittedAttempts": "admittedAttempts",
+        "authoritativeOwner": "authoritativeOwner"
       },
       "actions": {
-        "RefuseIncapableProductionStore": "RefuseIncapableProductionStore",
+        "RefuseUnbrandedProductionStore": "RefuseUnbrandedProductionStore",
         "AttemptTamperedChallengeBody": "AttemptTamperedChallengeBody",
         "RefuseActionMismatchWithoutConsumption": "RefuseActionMismatchWithoutConsumption",
         "RefuseConsumedChallengeReplay": "RefuseConsumedChallengeReplay",
@@ -4242,6 +4243,7 @@
         "packages/gate/src/challenge-store.ts"
       ],
       "obligations": [
+        "AuthoritativeOwnerRequired",
         "DurableStorageRequired",
         "AtomicRegistrationRequired",
         "BodyBoundStorageRequired",
@@ -4249,18 +4251,19 @@
       ],
       "steps": [
         {
-          "operator": "RefuseIncapableProductionStore",
+          "operator": "RefuseUnbrandedProductionStore",
           "accepted": false,
           "projection": {
             "challengeState": "unregistered",
-            "durable": false
+            "durable": true,
+            "authoritativeOwner": false
           }
         }
       ],
       "mutation": {
-        "operator": "AcceptEphemeralProductionStore",
+        "operator": "AcceptUnbrandedProductionStore",
         "defined_in_model": true,
-        "obligation": "DurableStorageRequired"
+        "obligation": "AuthoritativeOwnerRequired"
       }
     },
     {

@@ -29,6 +29,10 @@ function digest(label: string): string {
   return `sha256:${crypto.createHash("sha256").update(label).digest("hex")}`;
 }
 
+function challengeNonce(label: string): string {
+  return crypto.createHash("sha256").update(`ae-challenge:${label}`).digest("base64url");
+}
+
 function deterministicPrivateKey(label: string): crypto.KeyObject {
   const seed = crypto
     .createHash("sha256")
@@ -225,7 +229,7 @@ async function clearanceOnceScenario(): Promise<RuntimeScenarioResult> {
   const action = createAction();
   const gate = createExecutor();
   const challenge = await gate.issueChallenge(action, {
-    nonce: "m2m-refinement-clearance-once",
+    nonce: challengeNonce("m2m-refinement-clearance-once"),
   });
   const graph = buildModelToMatterGraph(action, evidenceSet(action));
   let effectCalls = 0;
@@ -298,7 +302,7 @@ async function mismatchRefusedScenario(): Promise<RuntimeScenarioResult> {
   });
   const gate = createExecutor();
   const challenge = await gate.issueChallenge(action, {
-    nonce: "m2m-refinement-mismatch",
+    nonce: challengeNonce("m2m-refinement-mismatch"),
   });
   const graph = buildModelToMatterGraph(
     action,

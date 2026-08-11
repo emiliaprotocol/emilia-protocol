@@ -1,27 +1,28 @@
-EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-v1
+EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-v2
 Status: local same-team bounded model result; not deployed or independently reviewed
 Method: deterministic finite exhaustive state exploration
 Execution date: 2026-08-10
 Runtime: Node.js
-Model SHA-256: e083c40bdcdf8e46d9830a79a156667ae01c80323daafdda44b2aa6c2f5c5268
-Runner SHA-256: dd8bc8a7a3b225fa9be2c40a20deec6ad6e5327ef22dda8364d152acbed5de56
+Model SHA-256: fd338dd91fcc80833577bd8315d4d42b480d7393f91af7b7ca868d21676e06a1
+Runner SHA-256: 30d7186f760ded4d3efcf008c981c62cef32f879951f6a875bcfc75f40105da1
 
-Configuration: 1,024 independent wire/storage capability configurations plus
+Configuration: 2,048 independent wire/storage and authoritative-owner configurations plus
 bounded registration, restart, first-attempt, concurrency, and permanent
 consumption transitions.
 
 Obligations:
-DurableStorageRequired (1,024 states): verified
-AtomicRegistrationRequired (1,024 states): verified
-BodyBoundStorageRequired (1,024 states): verified
-PermanentConsumptionRequired (1,024 states): verified
-ExactActionDigestBound (1,024 states): verified
-MissingEvidenceBound (1,024 states): verified
-FreshnessPolicyContextBound (1,024 states): verified
-ExpiryBound (1,024 states): verified
-NonceBound (1,024 states): verified
-PresentationMethodBound (1,024 states): verified
-RegistrationPrecedesExposure (1,024 states): verified
+DurableStorageRequired (2,048 states): verified
+AuthoritativeOwnerRequired (2,048 states): verified
+AtomicRegistrationRequired (2,048 states): verified
+BodyBoundStorageRequired (2,048 states): verified
+PermanentConsumptionRequired (2,048 states): verified
+ExactActionDigestBound (2,048 states): verified
+MissingEvidenceBound (2,048 states): verified
+FreshnessPolicyContextBound (2,048 states): verified
+ExpiryBound (2,048 states): verified
+NonceBound (2,048 states): verified
+PresentationMethodBound (2,048 states): verified
+RegistrationPrecedesExposure (2,048 states): verified
 RegistrationPersistsAcrossRestart (1 transition): verified
 ConcurrentRegistrationIsUnique (1 transition): verified
 FirstValidAttemptConsumes (1 transition): verified

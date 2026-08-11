@@ -1169,19 +1169,21 @@
     },
     {
       "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
-      "statement": "An AE-CHALLENGE binds the canonical action and governing policy and is exposed only after atomic durable registration of its exact body. The reference compatibility path consumes it on the first valid evaluation attempt across workers and restarts. Production -07 evaluation fails closed unless the owner supplies one compound nonce-claim-and-capacity transition; no current reference backend advertises that production capability.",
-      "acceptance_roots": ["an atomic shared backend implementing insert-if-absent and compare-and-set", "for production -07, one owner-side compound claim-and-capacity transition spanning every applicable cap bucket"],
+      "statement": "An AE-CHALLENGE binds the canonical action and governing policy and is exposed only after owner-side registration of its exact body and applicable capacity. The -07 reference owner uses one transaction for authoritative expiry, nonce claim, every applicable cap bucket, and an opaque generation-bound reservation. It atomically finalizes a terminal result or fresh follow-up, and deadline-gated authorized recovery fences the old worker. Production refuses copied stores and caller-declared capability booleans.",
+      "acceptance_roots": ["one shared transactional owner backend spanning every applicable replay and capacity row", "a constructor-pinned issuer identity, capacity policy, and recovery authorizer", "PostgreSQL transaction time and row-lock behavior match the documented backend contract"],
       "enforcement_path": [
         { "language": "javascript", "file": "lib/negotiate/evidence-challenge.ts", "symbol": "createRegisteredEvidenceChallenge", "exported": true },
-        { "language": "javascript", "file": "packages/gate/src/challenge-store.ts", "symbol": "createDurableChallengeStore", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/challenge-store.ts", "symbol": "createAuthoritativeChallengeOwnerStore", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/challenge-store-postgres.ts", "symbol": "createPostgresChallengeOwnerBackend", "exported": true },
         { "language": "javascript", "file": "lib/negotiate/evidence-challenge.ts", "symbol": "evaluateRegisteredPresentation", "exported": true }
       ],
       "implementations": [
-        { "language": "javascript", "file": "packages/gate/src/challenge-store.ts", "export": "createDurableChallengeStore" },
+        { "language": "javascript", "file": "packages/gate/src/challenge-store.ts", "export": "createAuthoritativeChallengeOwnerStore" },
+        { "language": "javascript", "file": "packages/gate/src/challenge-store-postgres.ts", "export": "createPostgresChallengeOwnerBackend" },
         { "language": "javascript", "file": "lib/negotiate/evidence-challenge.ts", "export": "evaluateRegisteredPresentation" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/evidence-challenge-durable.test.ts" },
+        "javascript": { "status": "covered", "evidence": "tests/evidence-challenge-owner-postgres.test.ts" },
         "python": { "status": "not_applicable", "reason": "Challenge lifecycle state belongs to the Node relying-party enforcement service, not the offline Python verifier." },
         "go": { "status": "not_applicable", "reason": "Challenge lifecycle state belongs to the Node relying-party enforcement service, not the offline Go verifier." }
       },
@@ -1194,12 +1196,18 @@
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "atomically registers one exact challenge across 100 concurrent workers", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "survives restart and admits exactly one concurrent presentation", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "uses the Postgres durable backend across adapter restart and admits one of 64 concurrent nonconforming legacy presentations", "runner": "vitest" },
-        { "file": "tests/evidence-challenge-durable.test.ts", "title": "requires every production storage capability and permits only explicit test-only ephemeral mode", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-durable.test.ts", "title": "requires a factory-branded owner store instead of trusting capability booleans", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "binds action, missing evidence, freshness/policy, expiry, nonce, and presentation method", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "refuses an action swap without consuming the registered challenge", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "treats the nonce as the replay key even when challenge_id changes", "runner": "vitest" },
         { "file": "tests/evidence-challenge-durable.test.ts", "title": "refuses policy drift without consuming the registered challenge", "runner": "vitest" },
-        { "file": "tests/evidence-challenge-durable.test.ts", "title": "propagates backend outage without an in-memory fallback", "runner": "vitest" }
+        { "file": "tests/evidence-challenge-durable.test.ts", "title": "propagates backend outage without an in-memory fallback", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "claims one duplicate, reports the other as replay, and debits once", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "leaves the nonce open and all counters unchanged when reservation capacity is full", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "atomically finalizes a follow-up and keeps only the exact resulting capacity", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "refuses a follow-up that changes the owner-bound action or complete requirement set", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-owner-store.test.ts", "title": "fences a stale worker after deadline-gated recovery", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-owner-postgres.test.ts", "title": "reports schema readiness and executes issue, claim, and fenced finalization", "runner": "vitest" }
       ],
       "formal": [
         {
@@ -1220,6 +1228,7 @@
           "runner": "formal/check-evidence-challenge-lifecycle.mjs",
           "result_evidence": "formal/results/evidence-challenge-lifecycle.summary.txt",
           "obligations": [
+            "AuthoritativeOwnerRequired",
             "DurableStorageRequired",
             "AtomicRegistrationRequired",
             "BodyBoundStorageRequired",
@@ -1239,7 +1248,7 @@
             "ConcurrentConsumptionIsOneTime",
             "ConsumedStatePersistsAcrossRestart"
           ],
-          "scope": "Bounded same-team exploration of all 1,024 wire/storage configurations plus restart, registration, first-attempt, and concurrent-consumption transitions. Selected scenarios exercise the durable compatibility path and PostgreSQL adapter, not production -07 claim-and-capacity conformance. The challenge requests evidence and authorizes nothing. This is not a refinement proof of the TypeScript or deployed database implementation.",
+          "scope": "Bounded same-team exploration of all 2,048 wire/storage configurations plus restart, registration, first-attempt, and concurrent-consumption transitions. Selected scenarios exercise both the durable compatibility path and refusal of an unbranded production store; separate owner-store tests cover production -07 claim-and-capacity behavior. The challenge requests evidence and authorizes nothing. This is not a refinement proof of the TypeScript or deployed database implementation.",
           "scenario_evidence": "formal/runtime-scenarios.v2.json",
           "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
           "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
@@ -1249,11 +1258,12 @@
             "ConsumeChallengeOnce",
             "RefuseActionMismatchWithoutConsumption",
             "RefuseConsumedChallengeReplay",
-            "RefuseIncapableProductionStore",
+            "RefuseUnbrandedProductionStore",
             "RegisterChallengeBeforeExposure",
             "RestartChallengeWorkers"
           ],
           "covered_obligations": [
+            "AuthoritativeOwnerRequired",
             "AtomicRegistrationRequired",
             "BodyBoundStorageRequired",
             "ConcurrentConsumptionIsOneTime",
@@ -1276,16 +1286,16 @@
         },
         {
           "status": "not_modeled",
-          "gap": "The -07 compound claim-and-capacity transition has a finite same-team scenario harness with mutation counterexamples, but it is not exhaustive formal verification or a storage-driver refinement and is therefore not counted as formal evidence."
+          "gap": "The -07 compound claim, reservation, finalization, and recovery path has same-team executable contract tests and a finite scenario harness with mutation counterexamples, but no exhaustive formal verification, storage-driver refinement, or independent implementation; it is therefore not counted as formal evidence."
         }
       ],
       "operational_evidence": [
         { "file": "formal/evidence-challenge-claim-capacity.model.mjs", "contains": ["EP-AE-CHALLENGE-CLAIM-CAPACITY-BOUNDED-MODEL-v2", "StatefulDebitTransfersWithoutDoubleCount", "ReplayKeyTupleIsUnambiguous"] },
         { "file": "formal/check-evidence-challenge-claim-capacity.mjs", "contains": ["finite_scenario_enumeration_with_mutation_counterexamples", "states_checked: states + 16"] },
-        { "file": "formal/results/evidence-challenge-claim-capacity.summary.txt", "contains": ["Checked finite scenarios: 113.", "No current reference backend implements the compound"] }
+        { "file": "formal/results/evidence-challenge-claim-capacity.summary.txt", "contains": ["Checked finite scenarios: 113.", "Checked properties, not proved obligations:", "same-team reference owner state"] }
       ],
-      "assumptions": ["the backend linearizes registration and compare-and-set", "the challenge-store backend is shared by all relying-party workers", "every alias and replica able to validate one issuer's challenge maps it to one stable authenticated issuer identity and replay domain"],
-      "exclusions": ["the legacy Set-based evaluator remains only for compatibility and is not a durable production path", "the split durable classify-then-consume compatibility path is not production -07 claim-and-capacity conformance", "no production -07 reference backend or database-isolation refinement is claimed"],
+      "assumptions": ["the PostgreSQL service runs the documented operations on one transaction-capable primary or equivalently linearizable owner", "the challenge-owner backend is shared by all relying-party workers in one authority domain", "the constructor-pinned capacity policy names every applicable bucket and stable issuer/audience/tenant identity", "database roles restrict recovery to the locally authorized operator path"],
+      "exclusions": ["the legacy Set-based evaluator remains only for compatibility and is not a durable production path", "the split durable classify-then-consume compatibility path is not production -07 claim-and-capacity conformance", "the same-team PostgreSQL adapter tests are not a deployed database audit, isolation proof, or independent implementation", "the reference owner currently implements stateful issuance and does not claim the optional self-describing issuance mode"],
       "release_artifacts": ["gate-sdk", "security-evidence"]
     },
     {
