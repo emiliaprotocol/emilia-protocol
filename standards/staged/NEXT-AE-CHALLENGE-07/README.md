@@ -20,6 +20,8 @@ Revision -07 repairs the load-bearing defects found after -06:
 - audience namespace and alias semantics are pinned for the challenge lifetime;
 - stateful issuance atomically registers the exact body and debits every
   applicable capacity bucket before exposure;
+- issuance, claim, and finalization preserve one authenticated-presenter scope,
+  pinned capacity limits, and owner-authoritative transaction time;
 - follow-ups repeat the full requirement set unless a separately specified
   continuation profile authenticates all predecessor evidence and state;
 - replay, collision, expiry, capacity refusal, and owner uncertainty have a
@@ -33,6 +35,12 @@ Revision -07 repairs the load-bearing defects found after -06:
 - the DMSC material is illustrative and does not claim a gateway profile;
 - nested objects, top-level critical extensions, Retry-After conversion,
   confidentiality, diagnostics, and pre-owner anti-abuse budgets are explicit.
+- malformed objects are rejected before owner allocation; raw HTTP parsing must
+  reject duplicate members before object-level helpers run;
+- PostgreSQL writes use deterministic bytewise key order while locked-row
+  validation is independent of database collation;
+- caller-selected production follow-up nonces are refused before claim, and a
+  malformed follow-up is terminalized without silently stranding authority.
 
 The finite same-team model explores four coordinated cap buckets, transfer of
 stateful-open debits, tuple-safe replay keys, recovery fencing, and explicit
