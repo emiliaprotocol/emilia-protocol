@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 
-import { createHash } from 'node:crypto';
+import { createHash, createPublicKey, generateKeyPairSync, sign, verify } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
+import { canonicalize } from '../lib/canonical-json.js';
 
 const root = new URL('../standards/staged/NEXT-BOUNDED-CAPABILITY-04/', import.meta.url);
 const basename = 'draft-schrock-ep-bounded-capability-receipts-04';
@@ -82,6 +83,16 @@ for (const required of [
   'An asserted-transitive profile',
   'atomic root-issuance registration rule is also not implemented',
   'capability-scoped operation key and terminal budget-restoring',
+  'provider-entry deadline equal to the earlier of capability expiry',
+  'does not invalidate accounting for an operation that entered the provider beforehand',
+  'identify a concrete reconciliation profile',
+  'bearer-equivalent interoperability baseline',
+  '<tt>ed25519-operation-proof</tt>',
+  'changing the operation ID, action, amount, unit, scale, audience, or state domain requires a new signature',
+  'portable <tt>threshold</tt> value <bcp14>MUST</bcp14> be <tt>m=1, n=1</tt>',
+  'contention and denial-of-service hot spot',
+  'does not encode arbitrary-precision decimal values',
+  'holder method is not yet implemented by the reference capability API',
   '<name>Implementation Status</name>',
 ]) {
   invariant(xmlText.includes(required), `XML is missing required -04 text: ${required}`);
@@ -128,6 +139,16 @@ for (const required of [
   'not yet emit per-component decidability records',
   'atomic root-issuance registration rule is also not implemented',
   'capability-scoped operation key and terminal budget-restoring',
+  'provider-entry deadline equal to the earlier of capability expiry',
+  'does not invalidate accounting for an operation that entered the provider beforehand',
+  'identify a concrete reconciliation profile',
+  'bearer-equivalent interoperability baseline',
+  'ed25519-operation-proof',
+  'changing the operation ID, action, amount, unit, scale, audience, or state domain requires a new signature',
+  'portable threshold value MUST be m=1, n=1',
+  'contention and denial-of-service hot spot',
+  'does not encode arbitrary-precision decimal values',
+  'holder method is not yet implemented by the reference capability API',
   'Implementation Status',
 ]) {
   invariant(txtText.includes(required), `TXT rendering is stale or missing: ${required}`);
@@ -292,6 +313,88 @@ invariant(restored.state === 'not_entered' && restored.reserved === 0 && restore
 const uncertain = reconcile(reserved, 'unknown');
 invariant(uncertain.state === 'indeterminate' && uncertain.reserved === 0 && uncertain.consumed === 7 && uncertain.tombstone,
   'post-entry uncertainty must consume capacity and retain a tombstone');
+
+function canEnterProvider({ now, entryDeadline, state }) {
+  return state === 'reserved' && now < entryDeadline;
+}
+
+invariant(canEnterProvider({ now: 99, entryDeadline: 100, state: 'reserved' }),
+  'a live owned reservation must be able to enter before its deadline');
+invariant(!canEnterProvider({ now: 100, entryDeadline: 100, state: 'reserved' }),
+  'provider entry at the exclusive deadline must refuse');
+invariant(!canEnterProvider({ now: 99, entryDeadline: 100, state: 'provider_entered' }),
+  'provider entry is a one-way transition');
+invariant(reconcile({ state: 'provider_entered', amount: 7, reserved: 0, consumed: 7, tombstone: true }, 'unknown').state === 'provider_entered',
+  'expiry does not reopen or erase an already entered operation');
+
+const HOLDER_PROOF_VERSION = 'EP-BOUNDED-CAPABILITY-HOLDER-PROOF-v1';
+const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
+
+function rawEd25519PublicKey(publicKey) {
+  const der = publicKey.export({ type: 'spki', format: 'der' });
+  invariant(der.subarray(0, ED25519_SPKI_PREFIX.length).equals(ED25519_SPKI_PREFIX), 'unexpected Ed25519 SPKI prefix');
+  return der.subarray(ED25519_SPKI_PREFIX.length);
+}
+
+function verifyHolderProof({ request, publicKeyRaw, signature, commitment }) {
+  if (!Buffer.isBuffer(publicKeyRaw) || publicKeyRaw.length !== 32) return false;
+  if (!Buffer.isBuffer(signature) || signature.length !== 64) return false;
+  if (`sha256:${sha256(publicKeyRaw)}` !== commitment) return false;
+  const publicKey = createPublicKey({
+    key: Buffer.concat([ED25519_SPKI_PREFIX, publicKeyRaw]),
+    type: 'spki',
+    format: 'der',
+  });
+  return verify(null, Buffer.from(canonicalize(request), 'utf8'), publicKey, signature);
+}
+
+const holderRequest = {
+  '@version': HOLDER_PROOF_VERSION,
+  capability_receipt_digest: `sha256:${'11'.repeat(32)}`,
+  operation_id: 'op-1',
+  exercise_action_digest: `sha256:${'22'.repeat(32)}`,
+  amount: 7,
+  unit: 'iso4217:USD',
+  scale: 2,
+  audience: 'https://executor.example',
+  state_domain_digest: `sha256:${'33'.repeat(32)}`,
+};
+const holderKeys = generateKeyPairSync('ed25519');
+const holderPublicRaw = rawEd25519PublicKey(holderKeys.publicKey);
+const holderCommitment = `sha256:${sha256(holderPublicRaw)}`;
+const holderSignature = sign(null, Buffer.from(canonicalize(holderRequest), 'utf8'), holderKeys.privateKey);
+invariant(verifyHolderProof({
+  request: holderRequest,
+  publicKeyRaw: holderPublicRaw,
+  signature: holderSignature,
+  commitment: holderCommitment,
+}), 'valid Ed25519 operation holder proof must verify');
+
+for (const [field, replacement] of [
+  ['capability_receipt_digest', `sha256:${'44'.repeat(32)}`],
+  ['operation_id', 'op-2'],
+  ['exercise_action_digest', `sha256:${'55'.repeat(32)}`],
+  ['amount', 8],
+  ['unit', 'iso4217:EUR'],
+  ['scale', 3],
+  ['audience', 'https://other.example'],
+  ['state_domain_digest', `sha256:${'66'.repeat(32)}`],
+]) {
+  invariant(!verifyHolderProof({
+    request: { ...holderRequest, [field]: replacement },
+    publicKeyRaw: holderPublicRaw,
+    signature: holderSignature,
+    commitment: holderCommitment,
+  }), `Ed25519 holder proof must refuse ${field} substitution`);
+}
+const substitutedKey = Buffer.from(holderPublicRaw);
+substitutedKey[0] ^= 1;
+invariant(!verifyHolderProof({
+  request: holderRequest,
+  publicKeyRaw: substitutedKey,
+  signature: holderSignature,
+  commitment: holderCommitment,
+}), 'Ed25519 holder proof must refuse public-key substitution');
 
 const manifest = readFileSync(new URL('SHA256SUMS.txt', root), 'utf8').trim().split('\n');
 const expectedPaths = [
