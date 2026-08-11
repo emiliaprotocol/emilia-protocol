@@ -236,6 +236,7 @@ examples/crash-test.mjs linguist-generated=true
 examples/cross-gateway/demo.mjs linguist-generated=true
 examples/cross-gateway/dmsc-physical-action.mjs linguist-generated=true
 examples/delegation-integrity/demo.mjs linguist-generated=true
+examples/dodo-refund-gate-v1/demo.mjs linguist-generated=true
 examples/ep-over-agtp/demo.mjs linguist-generated=true
 examples/ep-over-atp/demo.mjs linguist-generated=true
 examples/eve-receipt-required/agent/agent.js linguist-generated=true
