@@ -7,6 +7,7 @@ DTC_FORMAL_TEMP="$(mktemp -d /tmp/emilia-dtc-formal.XXXXXX)"
 trap 'rm -rf "$DTC_FORMAL_TEMP"' EXIT
 
 TLA_VERSION="v1.7.4"
+TLA_ASSET_ID="184694200"
 TLA_SHA256="936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
 ALLOY_VERSION="v6.2.0"
 ALLOY_SHA256="6b8c1cb5bc93bedfc7c61435c4e1ab6e688a242dc702a394628d9a9801edb78d"
@@ -26,9 +27,8 @@ verify_sha256() {
   fi
 }
 
-curl --fail --silent --show-error --location --retry 3 -o "$DTC_FORMAL_TEMP/tla2tools.jar" \
-  "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
-verify_sha256 "$TLA_SHA256" "$DTC_FORMAL_TEMP/tla2tools.jar"
+export TLA_VERSION TLA_ASSET_ID TLA_SHA256
+"$DTC_REPOSITORY_ROOT/scripts/download-tla2tools.sh" "$DTC_FORMAL_TEMP/tla2tools.jar"
 
 (
   cd "$DTC_PACKAGE_ROOT/formal"
