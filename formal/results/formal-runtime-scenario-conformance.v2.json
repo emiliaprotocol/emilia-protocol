@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "47f72996489038ce7fb5a427c8128f18e8ee4c0a75b280c44bc668fc10fd90e9"
+      "sha256": "ab3125a0f9348308030c5df6d22f03e398475954a13bdf3baeb0d2b3f96bab63"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1042,6 +1042,10 @@
       "sha256": "66a033cfdedbaeb880456236a69dcc6805d9e8ee20913d16a661079f2caf50c0"
     },
     {
+      "path": "packages/verify/dist/aeb-wimse-oauth-principal-adapter.js",
+      "sha256": "6cbda65a3d845217b304ad08eb167b7c7fb8aee927edda302654184243b69589"
+    },
+    {
       "path": "packages/verify/dist/agent-edge-continuity.js",
       "sha256": "3304da3daf94f7754dde5cf590daf6b0d4ad17b0b92cde243c52d2b8c0812680"
     },
@@ -1123,7 +1127,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "cef09ddc86c83af909eb6c142f0ae2d1b937b92ead751c76ba4ce6775ae89286"
+      "sha256": "2707ae0bd54d0955afca1ef1e138a567fea5ee0c947836b3246c40c39a93b7b1"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1235,7 +1239,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "6b3fb11dca0d4a539ed5de8d84d0cdff833aa1550a495e56a199d7d0a16af5be"
+      "sha256": "c8dd99bee6b7ecb9691431a4219cf1914cea79260b97981631c80bbb43258097"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
