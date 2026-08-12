@@ -10,6 +10,7 @@ import {
   commandDigest,
   dnp3ControlRelayAction,
   encodeDnp3ControlRelay,
+  encodeModbusWriteMultipleRegisters,
   encodeModbusWriteRegister,
   encodeOpcuaCall,
   modbusWriteMultipleRegistersAction,
@@ -60,6 +61,10 @@ export function buildOtCommandBindingVectors() {
   });
   const dnp3Sequence0 = encodeDnp3ControlRelay(dnp3, { sequence: 0 });
   const dnp3Sequence9 = encodeDnp3ControlRelay(dnp3, { sequence: 9 });
+  const modbusFc16QuantityOneWire = encodeModbusWriteMultipleRegisters(
+    modbusFc16QuantityOne,
+    { transactionId: 1 },
+  );
   const encodedOpcua = encodeOpcuaCall(opcua, { receipt: INLINE_REFERENCE });
 
   return {
@@ -81,8 +86,9 @@ export function buildOtCommandBindingVectors() {
       digest_is_secret: false,
       repeated_action_rule: 'two authorizations for the same action use distinct attempt references',
       failure_domain: 'attempt holder and authoritative consumption record are conduit-owned',
-      equivalence_boundary:
-        'inline and detached modes can provide equivalent agreement, verification, and consumption; request-instance binding depends on the secure channel or authenticated conduit context plus attempt reference',
+      cross_transport_equivalence: 'not-claimed',
+      profile_locality:
+        'Each binding is evaluated only under its pinned transport encoding profile and request-instance mechanism.',
     },
     freshness: {
       clock: 'conduit-owned',
@@ -113,8 +119,11 @@ export function buildOtCommandBindingVectors() {
         },
         encoding_scope: {
           fc06_and_fc16_quantity_one_are_distinct: true,
-          equivalent_effect_action: modbusFc16QuantityOne,
-          equivalent_effect_action_digest: commandDigest(modbusFc16QuantityOne),
+          fc16_quantity_one: {
+            action: modbusFc16QuantityOne,
+            action_digest: commandDigest(modbusFc16QuantityOne),
+            native_command: modbusFc16QuantityOneWire,
+          },
           note: 'The profile binds native encoding and does not normalize FC 0x06 into FC 0x10 quantity one.',
         },
         negative_cases: [
@@ -142,6 +151,7 @@ export function buildOtCommandBindingVectors() {
           correlation_only: ['application_control.sequence'],
           fixed_or_derived: [
             'application_control.FIR=1', 'application_control.FIN=1',
+            'application_control.CON=0', 'application_control.UNS=0',
             'qualifier=0x17', 'object_count=1', 'status=0',
           ],
         },
