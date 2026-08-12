@@ -10,9 +10,8 @@ import {
 } from '@/lib/commercial-offer';
 import { styles, color, font, radius } from '@/lib/tokens';
 
-// Public investor-contact surface only. Business model, moat, revenue, and
-// vertical-pricing material are intentionally NOT published here; they live in
-// the private strategy vault and are shared directly under NDA on request.
+// Public investor-contact surface. Claim boundaries remain visible; detailed
+// financing assumptions and private operating material are shared directly.
 export default function InvestorsPage() {
   const [form, setForm] = useState({ name: '', firm: '', title: '', email: '', website: '', whyEmilia: '', helpOffer: '', notes: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -54,29 +53,30 @@ export default function InvestorsPage() {
 
       <SiteNav activePage="" />
 
-      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56, maxWidth: 640 }}>
+      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56, maxWidth: 760 }}>
         <div className="ep-tag" style={{ color: color.gold, fontFamily: font.mono || font.sans, fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 20 }}>Investor Inquiries</div>
-        <h1 style={{ fontFamily: font.sans, fontSize: 40, fontWeight: 700, color: '#0C0A09', lineHeight: 1.1, marginBottom: 20, maxWidth: 560 }}>
-          AI workers need authority. Not constant supervision.
+        <h1 style={{ fontFamily: font.sans, fontSize: 44, fontWeight: 700, color: '#0C0A09', lineHeight: 1.06, marginBottom: 20, maxWidth: 700 }}>
+          AI agents are becoming workers. EMILIA is their authority control plane.
         </h1>
-        <p style={{ fontFamily: font.sans, fontSize: 17, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
-          EMILIA is the authority control plane for autonomous work. A human or institution defines
-          a finite operating mandate once; agents work unattended inside it; Gate enforces each
-          consequential unit of work where money, code, permissions, records, or infrastructure can change.
+        <p style={{ fontFamily: font.sans, fontSize: 18, lineHeight: 1.55, color: '#44403C', maxWidth: 700, marginBottom: 12 }}>
+          Gate sits at the consequence boundary, where autonomous software turns credentials into
+          changes to money, code, permissions, records, or infrastructure. It verifies the exact
+          action against a customer-owned mandate before the protected provider path can begin.
         </p>
-        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 560, marginBottom: 12 }}>
-          Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed
-          approval systems, then enforces them once at the executor. The A2A/AP2 integration is
-          experimental; independent interoperability is not yet claimed.
+        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 700, marginBottom: 12 }}>
+          Identity systems establish who. Policy engines decide what is generally allowed. Workflow
+          systems try to make execution durable. EMILIA controls the missing moment: whether this
+          exact consequential action has valid, finite authority now.
         </p>
         <div style={{ display: 'grid', gap: 18, marginTop: 32, marginBottom: 24 }}>
           {[
-            ['The problem', 'Identity proves who or what is present. Policy describes what is generally allowed. Neither defines the finite job an autonomous worker may perform under current limits.'],
-            ['The product', 'The customer defines mission, limits, evidence, expiry, delegation, and exception rules once. Gate verifies the exact unit of work, reserves bounded authority, and controls provider entry through a customer- or partner-controlled executor adapter. Local risk signals may tighten, review, suspend, or refuse—never expand the mandate.'],
-            ['The adoption loop', 'The open local Authority Brain maps supported declared action surfaces and names blind spots. The owner selects one consequence boundary; paid Gate implementation makes that path preventive.'],
-            ['The first paid wedge', `A ${PILOT_OFFER.durationLabel.toLowerCase()} ${PILOT_OFFER.priceLabel} pilot protects one payer adverse medical-necessity determination workflow. Agent and MCP vendors plus consultancies create distribution leverage. ${IMPLEMENTATION_OFFER.priceLabel} implementation and ${PRODUCTION_GATE.priceLabel} operated Gate follow only after the boundary is accepted.`],
-            ['Why this can compound', 'The Protocol stays open and portable. Models and agent processes change; the customer\'s mandate, consumption, revocation, uncertainty, and work history survive. Every identity system, policy engine, approval method, agent rail, and evidence source can feed the same neutral boundary instead of being replaced by it.'],
-            ['What the round proves', 'One paid protected-workflow pilot, one limited-production boundary, independent operation, and repeatable deployment evidence. Public tests and external reproduction are engineering evidence—not customer adoption.'],
+            ['The inevitable shift', 'Models are becoming agents, agents are receiving credentials, and software is moving from recommendation to consequence. The new control point is not the model. It is the boundary before effect.'],
+            ['The product', 'The customer defines mission, limits, required evidence, expiry, delegation, and exception rules. Gate matches the exact action, reserves its authority before provider entry, and requires authenticated reconciliation instead of a blind retry when the result is unknown.'],
+            ['The entry wedge', 'GitHub makes the product legible with almost no procurement friction. The open Authority Map finds declared authority gaps; the exact-commit Merge Gate can protect a required merge check. This is a distribution experiment, not claimed traction.'],
+            ['The expansion', 'The same boundary applies when agents change cloud infrastructure, production code, permissions, payer records, treasury state, or industrial commands. Gate composes with native evidence rather than asking enterprises to replace identity, OAuth, policy, or workflow systems.'],
+            ['Why this can become infrastructure', 'The protocol stays open and portable while the paid control plane owns durable admission, integrations, mandate operations, evidence lifecycle, and service levels. Models and agent frameworks can change without moving the customer\'s authority boundary.'],
+            ['The commercial motion', `The current offer is a ${PILOT_OFFER.durationLabel.toLowerCase()} ${PILOT_OFFER.priceLabel} protected-workflow pilot. ${IMPLEMENTATION_OFFER.priceLabel} implementation and ${PRODUCTION_GATE.priceLabel} operated Gate are management hypotheses until buyers validate them.`],
+            ['What the round proves', 'One independent reproduction, one buyer-funded protected workflow, one limited-production boundary, and a repeatable deployment path. Public tests, informative citations, and same-team integrations are engineering evidence, not customer adoption.'],
           ].map(([title, body]) => (
             <div key={title} style={{ borderLeft: `2px solid ${color.gold}`, paddingLeft: 16 }}>
               <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 15, color: '#0C0A09', marginBottom: 5 }}>{title}</div>
@@ -84,19 +84,19 @@ export default function InvestorsPage() {
             </div>
           ))}
         </div>
-        <p style={{ fontFamily: font.sans, fontSize: 14, lineHeight: 1.55, color: '#78716C', maxWidth: 560, marginBottom: 12 }}>
+        <p style={{ fontFamily: font.sans, fontSize: 14, lineHeight: 1.55, color: '#78716C', maxWidth: 700, marginBottom: 12 }}>
           The engineering asset is public and falsifiable. The customer evidence is not yet: EMILIA
-          currently claims no customer traction, recurring revenue, live payer integration,
-          certification, RFC status, or standards-body endorsement. The financing converts software
-          proof into the first external reliance event and repeatable operated deployment.
+          currently claims no customer traction, recurring revenue, production deployment,
+          certification, RFC status, or standards-body endorsement. GitHub and the payer workflow are
+          go-to-market hypotheses until an external organization relies on the boundary.
         </p>
-        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 560 }}>
+        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 700 }}>
           The technical and narrative investor materials are shared directly. Tell us a little below,
           or reach us at <a href="mailto:team@emiliaprotocol.ai" style={{ color: color.gold, textDecoration: 'none' }}>team@emiliaprotocol.ai</a>.
         </p>
       </section>
 
-      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 100, maxWidth: 640 }}>
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 100, maxWidth: 760 }}>
         {submitted ? (
           <div style={{ fontFamily: font.sans, fontSize: 17, color: '#0C0A09', border: `1px solid ${color.border || '#D6D3D1'}`, borderTop: `2px solid ${color.gold}`, borderRadius: radius.base || 4, padding: 28, background: '#FAFAF9' }}>
             Thank you. We received your note and will follow up from team@emiliaprotocol.ai.

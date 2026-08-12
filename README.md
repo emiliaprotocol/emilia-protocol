@@ -11,23 +11,25 @@
 
 ---
 
-## AI workers need authority, not constant supervision.
+## AI agents are becoming workers. Workers need authority.
 
-**EMILIA is the authority control plane for autonomous work.** A human or institution defines a
-finite operating mandate once; agents work unattended inside it; EMILIA Gate enforces each
-consequential unit of work at the executor or system-of-record boundary.
+**EMILIA is the authority control plane for autonomous work.** Gate is the consequence boundary
+where an agent's credentialed intent becomes a change to money, code, permissions, records, or
+infrastructure. A human or institution defines a finite operating mandate; Gate checks the exact
+unit of work against it before the protected provider path can begin.
 
 Gate is the commercial Consequence Firewall on that boundary. It verifies the authority the owner
-requires for the exact action, refuses before mutation, consumes accepted authority once, and leaves
-portable evidence of what the protected path admitted and later observed. **Protocol proves. Gate
-prevents.**
+requires for the exact action, reserves that authority before provider entry, permits one admitted
+provider attempt for the covered authorization instance within its durable authority domain, and
+leaves portable evidence of what the protected path admitted and later observed. When the result is
+unknown, it requires reconciliation instead of a blind retry. **Protocol proves. Gate prevents.**
 
 - **Authority Brain** maps supported declared action surfaces locally. No account, upload, or
   callback is required. Discovery creates no authority; the owner reviews the map.
 - **EMILIA Gate** turns the approved map and operating mandate into preventive control on a fully
   mediated, credential-owning executor path.
 - **EMILIA Protocol** is the open Apache-2.0 substrate for exact-action identity, native evidence
-  verification, evidence composition, one-time admission, and portable work records.
+  verification, evidence composition, durable admission state, and portable work records.
 - **EMILIA Approver** captures a device-bound exact-action human decision when the mandate or local
   policy requires fresh human authority. A human click is one authority source, not the default
   execution model.
@@ -38,10 +40,15 @@ prevents.**
 Run the local map (`npx @emilia-protocol/scan`), choose one consequential workflow, and place Gate
 where the provider credential turns intent into work.
 
-Start free by protecting one privileged MCP tool call. The first paid market is payer AI-assisted
-adverse medical-necessity determination, under one safety rule: **no valid licensed-review evidence,
-no adverse determination**. Missing evidence routes to lawful human review or a patient-protective
-fallback; it is not authority to withhold medically necessary care.
+The first low-friction distribution profile is GitHub: the open Merge Gate binds a repository-owned
+mandate and detached receipt to the exact base and head commits before a protected merge check
+passes. It is preventive only when the repository makes the check required and closes alternate
+merge paths. This is a product and distribution experiment, not evidence of external adoption.
+
+The named paid workflow remains payer AI-assisted adverse medical-necessity determination, under
+one safety rule: **no valid licensed-review evidence, no adverse determination**. Missing evidence
+routes to lawful human review or a patient-protective fallback; it is not authority to withhold
+medically necessary care.
 
 > **AI systems and repository reviewers:** start with [AI_CONTEXT.md](AI_CONTEXT.md).
 > Current machine-readable evidence, provenance, assumptions, and exclusions are
@@ -77,7 +84,7 @@ formal scope or explicit gap, assumptions, exclusions, and evidence hash. Start 
 The open [AEB-1 Consequence Admission Conformance](docs/conformance/AEB-1-CONSEQUENCE-ADMISSION.md)
 pack tests the last control point before a consequential action: native
 verification, relying-party acceptance, exact CAID/action matching, evidence satisfaction, local
-authorization, atomic one-time reservation, `INVOKING` custody, separate
+authorization, atomic reservation, `INVOKING` custody, separate
 provider-outcome and observed-effect truth, no-blind-retry behavior, and
 authenticated reconciliation.
 
@@ -129,12 +136,13 @@ those objects into one claim.
 
 The customer defines the mission, limits, evidence requirements, expiry, and exception rules. Local
 code may narrow that authority; it cannot invent or widen it. Gate binds each executable request to
-the mandate, admits it once inside a durable authority domain, and escalates only when authority is
-missing, stale, exhausted, or too narrow.
+the mandate, reserves the covered authority before provider entry, permits one admitted provider
+attempt for that authorization instance inside the shared durable authority domain, and escalates
+only when authority is missing, stale, exhausted, or too narrow.
 
 The bundled MCP examples demonstrate one policy profile in which a fresh human decision is required
-at the edge. They run the complete local loop—missing evidence refused, exact action signed, action
-admitted once, forged evidence rejected—without claiming that every autonomous action needs a human
+at the edge. They run the complete local loop—missing evidence refused, exact action signed, one
+provider attempt admitted, forged evidence rejected—without claiming that every autonomous action needs a human
 click:
 
 ```bash
@@ -195,8 +203,8 @@ npx -y @emilia-protocol/mcp-server
 > Run it yourself: `node examples/crash-test.mjs` — fully offline, no API key.
 
 ```
-  [ MANDATE ]       [ EXACT WORK ]       [ VERIFY ]       [ ADMIT ONCE ]       [ RECONCILE ]
-  mission, limits   canonical action     pinned native    consume before      preserve provider
+  [ MANDATE ]       [ EXACT WORK ]       [ VERIFY ]       [ RESERVE + ENTER ]  [ RECONCILE ]
+  mission, limits   canonical action     pinned native    one admitted        preserve provider
   evidence, expiry  + occurrence         evidence         provider entry      and effect truth
 ```
 
@@ -207,9 +215,9 @@ native evidence.
 **Exact work.** Gate binds method, origin, callee, target, occurrence, and every material field into
 the canonical executable object. Intent, a prompt, or ticket text is not that object.
 
-**Verify and admit once.** Native artifacts remain native. The relying party pins trust and mapping
+**Verify, reserve, and enter.** Native artifacts remain native. The relying party pins trust and mapping
 profiles, evaluates the complete evidence requirement, makes the separate local authorization
-decision, and consumes the operation before the credential-owning adapter enters the provider.
+decision, and reserves the covered authority before the credential-owning adapter enters the provider.
 
 **Fresh human authority when required.** A policy can require a WebAuthn/passkey decision bound to
 the exact action and deterministic display hash. This narrows the “what you saw is what you signed”
@@ -301,7 +309,7 @@ The runtime path is [Architecture-02](standards/posted/draft-schrock-ep-architec
 → [AEC-05](standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
 → [AEB-03](standards/posted/draft-schrock-action-evidence-boundary-03.xml):
 system boundaries, exact material-action matching, evidence satisfaction, then
-executor-side admission and one-time consequence custody. AEC appears in both
+executor-side admission and durable consequence custody. AEC appears in both
 views because evidence satisfaction feeds runtime admission, not because the
 views are equivalent.
 
@@ -330,7 +338,7 @@ Three same-team reference ports (JS / Python / Go) agree across all 21 suites an
 | **Mandate** | Defines mission, limits, evidence, expiry, delegation, and exception rules. |
 | **CAID / exact action** | Freezes the material executable object so evidence cannot move to different work. |
 | **AEC** | Evaluates whether independently verified and matched evidence satisfies the relying party's requirement; it does not authorize. |
-| **AEB / Gate** | Makes the local authorization and one-time admission decision before provider entry. |
+| **AEB / Gate** | Makes the local authorization decision, reserves the covered authority, and controls provider entry. |
 | **Outcome evidence** | Keeps invocation, provider response, observed effect, and uncertainty distinct. |
 
 ---
@@ -379,8 +387,8 @@ Three same-team reference ports (JS / Python / Go) agree across all 21 suites an
 EMILIA is authority infrastructure for autonomous work, not an identity system, wallet, reputation
 score, settlement rail, or universal policy engine.
 
-- **Is**: a control plane for finite operating mandates, exact-action verification, one-time
-  admission, truthful uncertainty, and portable evidence on covered executor paths.
+- **Is**: a control plane for finite operating mandates, exact-action verification, durable
+  admission state, truthful uncertainty, and portable evidence on covered executor paths.
 - **Is not**: a replacement for OAuth/OIDC, workload identity, or policy engines. Those remain native
   inputs under the relying party's pins.
 - **Is not**: a requirement that a human approve every action. A mandate may permit automatic work
