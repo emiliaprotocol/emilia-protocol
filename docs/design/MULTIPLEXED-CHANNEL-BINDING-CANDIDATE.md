@@ -164,6 +164,32 @@ The exporter key can be cached once per connection, but nonce replay state is
 still mandatory. The earlier claim that connection-local state is only the
 32-byte key was incorrect.
 
+Single-connection identity invariant. Step 2 finds the nonce record by the
+connection it was issued for, and step 5 derives `K_bind` from "the current TLS
+connection." Those two connection references MUST be the same physical TLS
+connection. A deployment where a pooled or proxy-assigned handle can name one
+connection at issuance and a different one at verification would validate one
+connection's nonce against another connection's key. The mismatch fails closed
+at the step 5 tag comparison, so it is not a forgery, but the connection
+identity used in step 2 and step 5 MUST be established from the same trusted
+termination boundary, and a deployment that cannot guarantee that identity MUST
+return `INDETERMINATE` rather than substitute a handle. The loose "or local
+connection handle" wording above is acceptable only when the handle is a
+faithful one-to-one name for that exact TLS connection.
+
+Nonce-issuance denial of service. The replay store is bounded and expiring, and
+the relying party generates every nonce. The candidate does not yet state who
+may trigger issuance. If issuance is reachable before the presenter is
+authenticated, a flood of issuance requests either exhausts memory or, under a
+bounded store, evicts legitimate `OPEN` nonces and denies real authentications.
+Question 4 covers the consume step; this is the upstream issue step. There is a
+real fork the reviewer should weigh: a stateful store carries this issuance-DoS
+surface, while a stateless nonce (for example a relying-party-keyed MAC over the
+connection identity and a timestamp, verified without storage) removes it but
+reintroduces the multi-use replay the store exists to prevent. The profile MUST
+pick one and state why; if it keeps the store, issuance MUST be authenticated or
+per-connection rate limited.
+
 ## Key and channel lifecycle
 
 The public RFC 9266 `EXPORTER-Channel-Binding` value is never used as a secret
@@ -205,6 +231,14 @@ claim is made about where high-value traffic normally terminates.
    presenter-controlled metadata?
 6. What formal or mechanized model is required before this construction can be
    called more than an experimental profile?
+7. Should nonce issuance be stateful (bounded store, authenticated or
+   rate-limited issuance) or stateless (relying-party-keyed MAC nonce with no
+   issuance state), given that the stateful form carries an issuance-flood
+   surface and the stateless form weakens single-use consumption?
+8. Under what conditions may the verifier accept a nonce whose issuance-time
+   connection identity and verification-time exporter derivation could refer
+   to different TLS connections, and is `INDETERMINATE` the only safe answer
+   when that identity cannot be established?
 
 ## Registration and publication boundary
 
