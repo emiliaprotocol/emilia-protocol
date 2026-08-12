@@ -1,0 +1,48 @@
+name: EMILIA Merge Gate
+description: Refuse a protected merge unless a base-pinned mandate and signed receipt bind the exact head commit.
+author: EMILIA Protocol
+
+inputs:
+  base-sha:
+    description: Exact 40-character base commit SHA.
+    required: true
+  head-sha:
+    description: Exact 40-character pull-request head commit SHA.
+    required: true
+  repository:
+    description: Repository in owner/name form.
+    required: true
+  base-ref:
+    description: Full base ref, for example refs/heads/main.
+    required: true
+  mandate-path:
+    description: Repository-relative mandate path read from the base commit.
+    required: false
+    default: .emilia/merge-mandate.json
+  receipt-path:
+    description: Path to the detached signed EP receipt.
+    required: true
+  issuer-public-key:
+    description: Relying-party-pinned Ed25519 issuer public key in base64url SPKI DER form.
+    required: true
+  evaluation-time:
+    description: Optional RFC 3339 verifier time. Defaults to the runner clock.
+    required: false
+
+outputs:
+  admitted:
+    description: true only when every check passes.
+  reason:
+    description: Closed refusal or admission reason.
+  caid:
+    description: Recomputed exact-action CAID for this merge.
+  mandate-digest:
+    description: Digest of the mandate loaded from the base commit.
+
+runs:
+  using: node24
+  main: main.mjs
+
+branding:
+  icon: shield
+  color: purple
