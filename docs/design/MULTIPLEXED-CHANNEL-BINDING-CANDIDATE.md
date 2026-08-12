@@ -166,8 +166,8 @@ still mandatory. The earlier claim that connection-local state is only the
 
 Single-connection identity invariant. Step 2 finds the nonce record by the
 connection it was issued for, and step 5 derives `K_bind` from "the current TLS
-connection." Those two connection references MUST be the same physical TLS
-connection. A deployment where a pooled or proxy-assigned handle can name one
+connection." Those two connection references MUST be the same TLS connection
+instance. A deployment where a pooled or proxy-assigned handle can name one
 connection at issuance and a different one at verification would validate one
 connection's nonce against another connection's key. The mismatch fails closed
 at the step 5 tag comparison, so it is not a forgery, but the connection
@@ -182,13 +182,20 @@ the relying party generates every nonce. The candidate does not yet state who
 may trigger issuance. If issuance is reachable before the presenter is
 authenticated, a flood of issuance requests either exhausts memory or, under a
 bounded store, evicts legitimate `OPEN` nonces and denies real authentications.
-Question 4 covers the consume step; this is the upstream issue step. There is a
-real fork the reviewer should weigh: a stateful store carries this issuance-DoS
-surface, while a stateless nonce (for example a relying-party-keyed MAC over the
-connection identity and a timestamp, verified without storage) removes it but
-reintroduces the multi-use replay the store exists to prevent. The profile MUST
-pick one and state why; if it keeps the store, issuance MUST be authenticated or
-per-connection rate limited.
+Question 4 covers the consume step; this is the upstream issue step. The
+stateful baseline therefore requires authenticated or per-connection
+rate-limited issuance and an eviction policy that cannot displace live records
+for already authenticated presenters.
+
+A stateless issuance token is a separate candidate, not a replay-free shortcut.
+For example, the relying party could MAC a random nonce together with the exact
+connection identity, audience, CAID, and expiry, then allocate no `OPEN` record.
+After verifying the token and presentation, it would still need an atomic
+insert-if-absent record for the consumed token digest. This shifts state
+allocation from issuance to successful presentation and preserves single-use,
+but it retains consumption state and adds a token-key lifecycle and transcript
+that require their own review. The earlier statement that stateless issuance
+necessarily reintroduces multi-use replay was too broad.
 
 ## Key and channel lifecycle
 
@@ -231,14 +238,23 @@ claim is made about where high-value traffic normally terminates.
    presenter-controlled metadata?
 6. What formal or mechanized model is required before this construction can be
    called more than an experimental profile?
-7. Should nonce issuance be stateful (bounded store, authenticated or
-   rate-limited issuance) or stateless (relying-party-keyed MAC nonce with no
-   issuance state), given that the stateful form carries an issuance-flood
-   surface and the stateless form weakens single-use consumption?
+7. Should nonce issuance remain stateful with authenticated or rate-limited
+   allocation, or use a MAC-protected stateless issuance token plus an atomic
+   consumed-token set, given their different denial-of-service and key-
+   lifecycle surfaces?
 8. Under what conditions may the verifier accept a nonce whose issuance-time
    connection identity and verification-time exporter derivation could refer
    to different TLS connections, and is `INDETERMINATE` the only safe answer
    when that identity cannot be established?
+9. Is the RFC 9266 one-authentication-instance-per-connection baseline
+   operationally inadequate in measured target deployments, or is this
+   multiplexed construction unnecessary complexity?
+10. Is the nonce cryptographically load-bearing inside `M` once the workload
+    signature already covers the nonce and tag and the relying party enforces
+    single-use, or should it remain only to make the tag itself instance-unique?
+11. What measured exporter, HMAC, lock, and tail-latency costs justify choosing
+    nonce-in-message over nonce-in-exporter-context in the actual target TLS
+    libraries? No performance ordering is assumed before that benchmark.
 
 ## Registration and publication boundary
 
