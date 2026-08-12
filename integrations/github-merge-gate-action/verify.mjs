@@ -51,10 +51,19 @@ function parseStrictJson(raw, kind) {
   }
 }
 
-function git(workspace, arguments_, encoding = 'utf8') {
+function gitText(workspace, arguments_) {
   return execFileSync('git', arguments_, {
     cwd: workspace,
-    encoding,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
+function gitBuffer(workspace, arguments_) {
+  return execFileSync('git', arguments_, {
+    cwd: workspace,
+    encoding: 'buffer',
     maxBuffer: 16 * 1024 * 1024,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -119,7 +128,7 @@ function mandateAtBase(workspace, baseSha, mandatePath) {
   }
   let raw;
   try {
-    raw = git(workspace, ['show', `${baseSha}:${mandatePath}`], 'buffer');
+    raw = gitBuffer(workspace, ['show', `${baseSha}:${mandatePath}`]);
   } catch {
     return refuse('mandate_missing_at_base');
   }
@@ -134,7 +143,7 @@ function mandateAtBase(workspace, baseSha, mandatePath) {
 function parseDiff(workspace, baseSha, headSha) {
   let raw;
   try {
-    raw = git(workspace, ['diff', '--numstat', '--no-renames', '-z', baseSha, headSha, '--'], 'buffer');
+    raw = gitBuffer(workspace, ['diff', '--numstat', '--no-renames', '-z', baseSha, headSha, '--']);
   } catch {
     return refuse('git_diff_unavailable');
   }
@@ -158,7 +167,7 @@ function parseDiff(workspace, baseSha, headSha) {
 
   let rawModes;
   try {
-    rawModes = git(workspace, ['diff', '--raw', '--no-renames', '--no-abbrev', '-z', baseSha, headSha, '--'], 'buffer');
+    rawModes = gitBuffer(workspace, ['diff', '--raw', '--no-renames', '--no-abbrev', '-z', baseSha, headSha, '--']);
   } catch {
     return refuse('git_raw_diff_unavailable');
   }
@@ -234,6 +243,7 @@ function checkDiff(diff, mandate) {
   return { admitted: true };
 }
 
+/** @param {unknown} value @param {BufferEncoding} [encoding] */
 function digest(value, encoding = 'hex') {
   return crypto.createHash('sha256').update(canonicalize(value)).digest(encoding);
 }
@@ -301,6 +311,21 @@ function verifyMergeReceipt({ raw, issuerPublicKey, expected, now, maxAgeSeconds
   return { admitted: true, receipt_id: payload.receipt_id ?? null };
 }
 
+/**
+ * @typedef {{
+ *   workspace?: string,
+ *   baseSha?: string,
+ *   headSha?: string,
+ *   repository?: string,
+ *   baseRef?: string,
+ *   mandatePath?: string,
+ *   receiptPath?: string,
+ *   issuerPublicKey?: string,
+ *   now?: string,
+ * }} MergeGateInput
+ */
+
+/** @param {MergeGateInput} [input] */
 export async function evaluateMergeGate({
   workspace,
   baseSha,
@@ -317,27 +342,29 @@ export async function evaluateMergeGate({
   if (!SHA.test(headSha ?? '')) return refuse('head_sha_invalid');
   if (!REPOSITORY.test(repository ?? '')) return refuse('repository_invalid');
   if (!BASE_REF.test(baseRef ?? '')) return refuse('base_ref_invalid');
+  if (typeof mandatePath !== 'string') return refuse('mandate_path_invalid');
+  if (typeof receiptPath !== 'string' || receiptPath.length === 0) return refuse('receipt_path_required');
   if (typeof issuerPublicKey !== 'string' || issuerPublicKey.length < 32) return refuse('issuer_public_key_required');
-  if (!Number.isFinite(Date.parse(now))) return refuse('evaluation_time_invalid');
+  if (typeof now !== 'string' || !Number.isFinite(Date.parse(now))) return refuse('evaluation_time_invalid');
   try {
-    git(workspace, ['cat-file', '-e', `${baseSha}^{commit}`]);
-    git(workspace, ['cat-file', '-e', `${headSha}^{commit}`]);
+    gitText(workspace, ['cat-file', '-e', `${baseSha}^{commit}`]);
+    gitText(workspace, ['cat-file', '-e', `${headSha}^{commit}`]);
   } catch {
     return refuse('commit_unavailable');
   }
   try {
-    git(workspace, ['merge-base', '--is-ancestor', baseSha, headSha]);
+    gitText(workspace, ['merge-base', '--is-ancestor', baseSha, headSha]);
   } catch {
     return refuse('base_not_ancestor_of_head');
   }
   const loadedMandate = mandateAtBase(workspace, baseSha, mandatePath);
-  if (!loadedMandate.admitted) return loadedMandate;
+  if (!loadedMandate.admitted || !('mandate' in loadedMandate)) return loadedMandate;
   const mandate = loadedMandate.mandate;
   if (mandate.repository !== repository) return refuse('mandate_repository_mismatch');
   if (!mandate.allowed_base_refs.includes(baseRef)) return refuse('base_ref_outside_mandate');
   const mandateDigest = `sha256:${digest(mandate)}`;
   const diffResult = parseDiff(workspace, baseSha, headSha);
-  if (!diffResult.admitted) return diffResult;
+  if (!diffResult.admitted || !('diff' in diffResult)) return diffResult;
   const policyResult = checkDiff(diffResult.diff, mandate);
   if (!policyResult.admitted) return policyResult;
   const action = actionFor({ repository, baseRef, baseSha, headSha, mandateDigest });
@@ -363,7 +390,7 @@ export async function evaluateMergeGate({
     issuerKeyId: mandate.issuer_key_id,
     expected: { ...action, caid, decision: 'AUTHORIZED' },
   });
-  if (!receiptResult.admitted) return receiptResult;
+  if (!receiptResult.admitted || !('receipt_id' in receiptResult)) return receiptResult;
   return {
     admitted: true,
     reason: 'admitted',
