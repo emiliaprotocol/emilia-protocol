@@ -179,6 +179,12 @@ function relationContextKey(context) {
   ].join('|');
 }
 
+/**
+ * @param {{
+ *   hops: Array<{ parent: string, child: string, localResult: string, context: Record<string, unknown> }>,
+ *   establishment?: { authenticated: boolean, runnerTrusted: boolean, exactContextMatch: boolean, domain: string[] }
+ * }} input
+ */
 function chainComposable({ hops, establishment }) {
   if (hops.length === 0) return false;
   if (hops.some((hop) => hop.localResult !== 'NO_BROADER')) return false;

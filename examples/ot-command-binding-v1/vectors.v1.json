@@ -17,7 +17,8 @@
     "digest_is_secret": false,
     "repeated_action_rule": "two authorizations for the same action use distinct attempt references",
     "failure_domain": "attempt holder and authoritative consumption record are conduit-owned",
-    "equivalence_boundary": "inline and detached modes can provide equivalent agreement, verification, and consumption; request-instance binding depends on the secure channel or authenticated conduit context plus attempt reference"
+    "cross_transport_equivalence": "not-claimed",
+    "profile_locality": "Each binding is evaluated only under its pinned transport encoding profile and request-instance mechanism."
   },
   "freshness": {
     "clock": "conduit-owned",
@@ -29,12 +30,21 @@
       "id": "modbus-write-single-register-v1",
       "transport_profile": {
         "transport": "modbus-tcp",
+        "encoding_profile": {
+          "id": "EP-OT-MODBUS-TCP-WRITE-ENCODING-v1",
+          "scope": "native-encoding",
+          "function_codes": [
+            6,
+            16
+          ],
+          "normalization": "none"
+        },
         "envelope_capacity": "none",
         "carries_authorization_inline": false,
         "binding_mode": "out-of-band-digest",
         "extension_point": null,
         "metadata_octets_available": 0,
-        "why": "A write is unit id, function code, register address, and value. Length is fixed by the function code; nothing else fits on the wire."
+        "why": "A write is unit id, function code, register address, and function-defined write fields. Length is fixed by those fields; nothing else fits on the wire."
       },
       "action": {
         "action_type": "ot.modbus.write_single_register",
@@ -92,21 +102,33 @@
       },
       "encoding_scope": {
         "fc06_and_fc16_quantity_one_are_distinct": true,
-        "equivalent_effect_action": {
-          "action_type": "ot.modbus.write_multiple_registers",
-          "transport": "modbus-tcp",
-          "site": "ep:site:demo-lift-station",
-          "device": "ep:device:plc-3",
-          "unit_id": 3,
-          "function_code": 16,
-          "protocol_address": 0,
-          "quantity": 1,
-          "byte_count": 2,
-          "values": [
-            1
-          ]
+        "fc16_quantity_one": {
+          "action": {
+            "action_type": "ot.modbus.write_multiple_registers",
+            "transport": "modbus-tcp",
+            "site": "ep:site:demo-lift-station",
+            "device": "ep:device:plc-3",
+            "unit_id": 3,
+            "function_code": 16,
+            "protocol_address": 0,
+            "quantity": 1,
+            "byte_count": 2,
+            "values": [
+              1
+            ]
+          },
+          "action_digest": "sha256:6b802c5e2cf9b9e55368a5358c55691f364ac64cc749c7ebf732fcd91b8bcbd2",
+          "native_command": {
+            "transport": "modbus-tcp",
+            "hex": "000100000009031000000001020001",
+            "octets": 15,
+            "protocol_address": 0,
+            "quantity": 1,
+            "byte_count": 2,
+            "metadata_octets_available": 0,
+            "carries_authorization": false
+          }
         },
-        "equivalent_effect_action_digest": "sha256:6b802c5e2cf9b9e55368a5358c55691f364ac64cc749c7ebf732fcd91b8bcbd2",
         "note": "The profile binds native encoding and does not normalize FC 0x06 into FC 0x10 quantity one."
       },
       "negative_cases": [
@@ -134,6 +156,24 @@
       "id": "dnp3-direct-operate-crob-v1",
       "transport_profile": {
         "transport": "dnp3",
+        "encoding_profile": {
+          "id": "EP-OT-DNP3-CROB-DIRECT-OPERATE-ENCODING-v1",
+          "scope": "native-encoding",
+          "object_header": {
+            "qualifier": 23,
+            "object_count": 1,
+            "index_octets": 1,
+            "index_min": 0,
+            "index_max": 255
+          },
+          "application_control_flags": {
+            "FIR": 1,
+            "FIN": 1,
+            "CON": 0,
+            "UNS": 0
+          },
+          "request_status": 0
+        },
         "envelope_capacity": "fixed-object-space",
         "carries_authorization_inline": false,
         "binding_mode": "out-of-band-digest",
@@ -195,6 +235,8 @@
         "fixed_or_derived": [
           "application_control.FIR=1",
           "application_control.FIN=1",
+          "application_control.CON=0",
+          "application_control.UNS=0",
           "qualifier=0x17",
           "object_count=1",
           "status=0"

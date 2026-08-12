@@ -17,6 +17,7 @@ import {
   modbusWriteMultipleRegistersAction,
   modbusWriteRegisterAction,
 } from './commands.mjs';
+import * as commandCodecs from './commands.mjs';
 import {
   EXACT_COMMANDS,
   createEnforcementPoint,
@@ -41,6 +42,11 @@ test('only OPC-UA can carry an authorization on the wire', () => {
     assert.equal(TRANSPORT_PROFILES[transport].binding_mode, 'out-of-band-digest');
     assert.equal(TRANSPORT_PROFILES[transport].metadata_octets_available, 0);
   }
+});
+
+test('the Modbus and DNP3 authorities are explicitly native-encoding-profile scoped', () => {
+  assert.equal(TRANSPORT_PROFILES['modbus-tcp'].encoding_profile.scope, 'native-encoding');
+  assert.equal(TRANSPORT_PROFILES.dnp3.encoding_profile.scope, 'native-encoding');
 });
 
 test('the Modbus frame is fully occupied by protocol fields', () => {
@@ -132,6 +138,78 @@ test('Modbus FC 0x06 and FC 0x10 quantity one remain encoding-scoped authorities
   assert.notEqual(commandDigest(fc10), commandDigest(fc06));
 });
 
+test('Modbus FC 0x10 quantity one has a native wire encode/decode round trip', () => {
+  const fc06 = EXACT_COMMANDS['modbus-tcp'];
+  const fc10 = modbusWriteMultipleRegistersAction({
+    site: fc06.site,
+    device: fc06.device,
+    unitId: fc06.unit_id,
+    protocolAddress: fc06.protocol_address,
+    values: [fc06.value],
+  });
+  assert.equal(typeof commandCodecs.encodeModbusWriteMultipleRegisters, 'function');
+  assert.equal(typeof commandCodecs.decodeModbusWriteMultipleRegisters, 'function');
+  const encoded = commandCodecs.encodeModbusWriteMultipleRegisters(fc10, { transactionId: 9 });
+  assert.equal(encoded.octets, 15);
+  assert.equal(encoded.metadata_octets_available, 0);
+  assert.deepEqual(
+    commandCodecs.decodeModbusWriteMultipleRegisters(encoded.hex, {
+      site: fc10.site,
+      device: fc10.device,
+      unit_id: fc10.unit_id,
+    }),
+    fc10,
+  );
+});
+
+test('Modbus FC 0x10 refuses malformed quantity and byte-count fields', () => {
+  const valid = Buffer.from('000100000009031000000001020001', 'hex');
+  const missingQuantity = Buffer.from(valid);
+  missingQuantity.writeUInt16BE(0, 10);
+  assert.throws(
+    () => commandCodecs.decodeModbusWriteMultipleRegisters(missingQuantity.toString('hex'), {
+      site: 'ep:site:demo-lift-station',
+      device: 'ep:device:plc-3',
+      unit_id: 3,
+    }),
+    /quantity/,
+  );
+
+  const wrongByteCount = Buffer.from(valid);
+  wrongByteCount.writeUInt8(4, 12);
+  assert.throws(
+    () => commandCodecs.decodeModbusWriteMultipleRegisters(wrongByteCount.toString('hex'), {
+      site: 'ep:site:demo-lift-station',
+      device: 'ep:device:plc-3',
+      unit_id: 3,
+    }),
+    /byte count/,
+  );
+});
+
+test('Modbus decoders refuse a wire unit id without conduit-owned unit mapping', () => {
+  const fc06 = EXACT_COMMANDS['modbus-tcp'];
+  const fc10 = modbusWriteMultipleRegistersAction({
+    site: fc06.site,
+    device: fc06.device,
+    unitId: fc06.unit_id,
+    protocolAddress: fc06.protocol_address,
+    values: [fc06.value],
+  });
+  for (const [encoded, decode] of [
+    [encodeModbusWriteRegister(fc06), decodeModbusWriteRegister],
+    [commandCodecs.encodeModbusWriteMultipleRegisters(fc10), commandCodecs.decodeModbusWriteMultipleRegisters],
+  ] as const) {
+    assert.throws(
+      () => decode(encoded.hex, {
+        site: 'ep:site:demo-lift-station',
+        device: 'ep:device:plc-3',
+      }),
+      /unit id mapping is required/,
+    );
+  }
+});
+
 test('a Modbus unit-id mismatch with conduit device context is refused during decode', () => {
   const encoded = encodeModbusWriteRegister(EXACT_COMMANDS['modbus-tcp']);
   assert.throws(
@@ -177,6 +255,67 @@ test('a DNP3 CROB digest binds the complete control octet, timing, count, and fu
   }
 });
 
+for (const hostile of [
+  { name: 'FIN cleared', offset: 0, value: 0x80, reason: /application control/ },
+  { name: 'CON set', offset: 0, value: 0xe0, reason: /application control/ },
+  { name: 'UNS set', offset: 0, value: 0xd0, reason: /application control/ },
+  { name: 'request status nonzero', offset: 17, value: 1, reason: /request status/ },
+]) {
+  test(`DNP3 refuses a hostile request with ${hostile.name}`, () => {
+    const fragment = Buffer.from(encodeDnp3ControlRelay(EXACT_COMMANDS.dnp3).hex, 'hex');
+    fragment.writeUInt8(hostile.value, hostile.offset);
+    assert.throws(
+      () => decodeDnp3ControlRelay(fragment.toString('hex'), {
+        site: EXACT_COMMANDS.dnp3.site,
+        device: EXACT_COMMANDS.dnp3.device,
+        outstation_address: EXACT_COMMANDS.dnp3.outstation_address,
+      }),
+      hostile.reason,
+    );
+  });
+}
+
+test('DNP3 v1 pins qualifier 0x17, count one, and one-octet index range', () => {
+  assert.deepEqual(TRANSPORT_PROFILES.dnp3.encoding_profile.object_header, {
+    qualifier: 0x17,
+    object_count: 1,
+    index_octets: 1,
+    index_min: 0,
+    index_max: 0xff,
+  });
+  assert.deepEqual(TRANSPORT_PROFILES.dnp3.encoding_profile.application_control_flags, {
+    FIR: 1,
+    FIN: 1,
+    CON: 0,
+    UNS: 0,
+  });
+  assert.equal(TRANSPORT_PROFILES.dnp3.encoding_profile.request_status, 0);
+  const maxIndex = dnp3ControlRelayAction({
+    site: EXACT_COMMANDS.dnp3.site,
+    device: EXACT_COMMANDS.dnp3.device,
+    outstationAddress: EXACT_COMMANDS.dnp3.outstation_address,
+    index: 0xff,
+    applicationFunction: 5,
+    controlOctet: 0x03,
+  });
+  const encoded = encodeDnp3ControlRelay(maxIndex);
+  assert.equal(Buffer.from(encoded.hex, 'hex').readUInt8(4), 0x17);
+  assert.equal(Buffer.from(encoded.hex, 'hex').readUInt8(5), 1);
+  assert.deepEqual(decodeDnp3ControlRelay(encoded.hex, {
+    site: maxIndex.site,
+    device: maxIndex.device,
+    outstation_address: maxIndex.outstation_address,
+  }), maxIndex);
+  assert.throws(() => dnp3ControlRelayAction({
+    site: maxIndex.site,
+    device: maxIndex.device,
+    outstationAddress: maxIndex.outstation_address,
+    index: 0x100,
+    applicationFunction: 5,
+    controlOctet: 0x03,
+  }), /index must be an integer in \[0, 255\]/);
+});
+
 test('detached evidence distinguishes two authorizations for the same exact action', () => {
   const index = createOutOfBandAuthorizationIndex({ defaultRequestContext: 'session-a' });
   const action = EXACT_COMMANDS['modbus-tcp'];
@@ -207,7 +346,7 @@ test('the per-request correlation id is not part of the act', () => {
 });
 
 test('the wire round-trips through the decoder without moving the digest', () => {
-  const link = { site: 'ep:site:demo-lift-station', device: 'ep:device:plc-3' };
+  const link = { site: 'ep:site:demo-lift-station', device: 'ep:device:plc-3', unit_id: 3 };
   const modbus = encodeModbusWriteRegister(EXACT_COMMANDS['modbus-tcp'], { transactionId: 7 });
   assert.deepEqual(
     decodeModbusWriteRegister(modbus.hex, link),

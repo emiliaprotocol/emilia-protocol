@@ -32,12 +32,12 @@ other autonomous safety actions MUST NOT depend on this binding.
    correlation. A correlation-only field MUST NOT change the action digest.
 3. The conduit MUST compare the observed action identifier with the action
    authorized by the evidence before forwarding the command.
-4. Inline and detached evidence carriage MUST provide equivalent action
-   agreement, evidence verification, and consumption properties. They do not
-   provide request-instance binding the same way: inline carriage depends on
-   the authenticated channel, while detached carriage depends on a
+4. Each binding MUST be evaluated only under its pinned transport encoding and
+   request-instance-binding profile. Inline carriage depends on the
+   authenticated channel, while detached carriage depends on a
    conduit-established attempt reference bound to authenticated request or
-   session context. An unbound reference is not proof by itself.
+   session context. An unbound reference is not proof by itself. This document
+   makes no equivalence claim across transports or carriage modes.
 5. A detached-evidence binding MUST resolve evidence by both a distinct attempt
    reference and the collision-resistant digest of the exact action. The action
    digest is not secret and MUST NOT be used as the request-instance key. Two
@@ -67,14 +67,18 @@ those properties.
 
 ## Initial binding profiles
 
+The Modbus TCP and DNP3 v1 bindings below are native-encoding profiles, not
+effect-normalization profiles. Authority for one native encoding does not admit
+another encoding unless a later profile defines that normalization explicitly.
+
 ### Modbus TCP transport binding
 
 #### Applicability
 
-This profile binds a Modbus TCP write to holding registers, function code 0x06
-(Write Single Register) and function code 0x10 (Write Multiple Registers).
-Modbus carries no envelope space in either function, so evidence is detached in
-both cases.
+This native-encoding profile binds a Modbus TCP write to holding registers,
+function code 0x06 (Write Single Register) and function code 0x10 (Write
+Multiple Registers). Modbus carries no envelope space in either function, so
+evidence is detached in both cases.
 
 Modbus TCP supplies no device authentication, no message integrity, and no
 replay protection. The conduit therefore establishes every fact about WHO and
@@ -117,9 +121,10 @@ address in the digest.
 The unit identifier is both a material field and a routing field. Behind a
 serial gateway it selects the physical device, and the conduit has already
 established which device its link context refers to. The conduit MUST refuse a
-request whose wire unit identifier does not agree with the unit mapped to its
-established device context, and MUST refuse it before any evidence lookup.
-Resolving the disagreement in favour of either source is a conformance failure.
+request if that context has no conduit-owned unit mapping or if the wire unit
+identifier does not agree with the mapped unit, and MUST refuse it before any
+evidence lookup. Resolving a missing or inconsistent mapping in favour of the
+sender is a conformance failure.
 
 #### Encoding scope
 
@@ -149,11 +154,16 @@ A conforming implementation demonstrates that:
 3. changing only the MBAP transaction identifier yields the same action
    identifier;
 4. a 4xxxxx label never appears in the digest input;
-5. a wire unit identifier inconsistent with conduit device context is refused
-   before evidence lookup;
+5. a missing conduit-owned unit mapping, or a wire unit identifier inconsistent
+   with that mapping, is refused before evidence lookup;
 6. function code 0x06 and function code 0x10 with quantity one yield different
-   action identifiers; and
-7. a request whose MBAP protocol identifier is non-zero, or whose length field
+   action identifiers;
+7. a function code 0x10 quantity-one request round-trips through its native
+   encoder and decoder;
+8. a function code 0x10 request with quantity outside 1 through 123, byte count
+   other than twice the quantity, or frame length inconsistent with byte count
+   is refused as malformed; and
+9. a request whose MBAP protocol identifier is non-zero, or whose length field
    disagrees with the function code, is refused as malformed rather than
    admitted.
 
@@ -161,9 +171,9 @@ A conforming implementation demonstrates that:
 
 #### Applicability
 
-This profile binds DNP3 Control Relay Output Block operations, object group 12
-variation 1, carried by application function DIRECT_OPERATE (5) and
-DIRECT_OPERATE_NR (6).
+This native-encoding profile binds DNP3 Control Relay Output Block operations,
+object group 12 variation 1, carried by application function DIRECT_OPERATE
+(5) and DIRECT_OPERATE_NR (6).
 
 SELECT followed by OPERATE (functions 3 and 4) is outside this profile. A
 profile adding it MUST bind both phases to a single authorisation and MUST
@@ -183,7 +193,7 @@ digest rather than binding the first.
 | material | application function, object group, variation, object index, control octet, CROB operation count, on-time, off-time |
 | conduit context | site, device, outstation address |
 | correlation only | application control sequence number |
-| fixed or derived | qualifier code, qualifier object count, CROB status field |
+| fixed or derived | application control FIR 1, FIN 1, CON 0, UNS 0; qualifier code 0x17; qualifier object count 1; CROB status field 0 |
 
 The outstation address is conduit context rather than a decoded field. An
 application fragment begins at the application control octet and carries no
@@ -196,7 +206,7 @@ part of the physical act. It is the DNP3 analogue of the Modbus transaction
 identifier and MUST NOT contribute to the digest.
 
 The CROB status field is a response field, zero in a request, and MUST NOT be
-bound.
+bound. A non-zero request status MUST be refused as malformed.
 
 #### The control octet
 
@@ -223,6 +233,15 @@ silently bring unbound timing into effect.
 The CROB operation count MUST be bound and MUST be named distinctly from the
 qualifier object count. The two are unrelated: the first is how many times the
 point operates, the second is how many objects the request carries.
+
+#### Encoding scope
+
+This v1 profile admits only qualifier `0x17`, qualifier object count one, and a
+one-octet object index in the range 0 through 255. Other qualifier, count, or
+index encodings are outside this profile even if they could identify a similar
+control object. A request fragment MUST have FIR and FIN set and CON and UNS
+clear. Any other application-control flag combination is malformed for this
+single-fragment request profile.
 
 #### Evidence carriage
 
@@ -258,9 +277,12 @@ A conforming implementation demonstrates that:
    identifier;
 5. a SELECT or OPERATE function code is refused as out of profile rather than
    admitted as a direct operate;
-6. a request carrying more than one control object is refused as out of profile;
-   and
-7. a DIRECT_OPERATE_NR request that is forwarded terminates `INDETERMINATE`, its
+6. a request whose qualifier is not 0x17, whose qualifier object count is not
+   one, or whose index is not representable in one octet is refused as out of
+   profile;
+7. a request with FIN clear, CON set, UNS set, or non-zero request status is
+   refused as malformed; and
+8. a DIRECT_OPERATE_NR request that is forwarded terminates `INDETERMINATE`, its
    authorisation stays consumed, and no retry is issued.
 
 ### OPC-UA Call
@@ -288,6 +310,8 @@ A conforming implementation demonstrates at least the following:
   count, on-time, or off-time changes the action identifier;
 - changing only the DNP3 application sequence changes the fragment bytes but
   not the action identifier;
+- a DNP3 request with FIN clear, CON set, UNS set, or non-zero request status is
+  refused as malformed;
 - two authorizations for the same exact action remain separately addressable by
   distinct conduit attempt references;
 - DNP3 DIRECT_OPERATE_NR enters the device and terminates `INDETERMINATE`;
@@ -302,11 +326,12 @@ Pinned experimental vectors and executable checks are in
 
 ## Current implementation status
 
-The repository contains synthetic encoders and decoders for the three command
-shapes and executable tests for the requirements above. They are not certified
-protocol stacks and have not been exercised against a live PLC, RTU, DCS, or
-safety system. Independent reproduction against one production-quality stack
-is the next interoperability gate.
+The repository contains synthetic encoders and decoders for Modbus FC 0x06,
+Modbus FC 0x10, DNP3 CROB direct operate, and OPC-UA Call, plus executable tests
+for the requirements above. They are not certified protocol stacks and have
+not been exercised against a live PLC, RTU, DCS, or safety system. Independent
+reproduction against one production-quality stack is the next interoperability
+gate.
 
 ## Source documents
 
