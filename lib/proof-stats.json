@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-12T18:12:35.458Z",
+  "generatedAt": "2026-08-12T23:50:03.832Z",
   "tests": {
     "total": 8865,
     "files": 533,
@@ -21,7 +21,7 @@
     "coveredModelActions": 28,
     "actionCompleteModels": 1,
     "formalMutationOperators": 51,
-    "evidenceSha256": "3555a75e7f1865553c7b12b9434c532f2d6284339925cb295e9a258f9e9afdd4",
+    "evidenceSha256": "53401682de1e778e9578ae9a9e50477def0f6121bce9b68a4ca3dbaa323b32c8",
     "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
   },
   "formalEvidenceCoverage": {
@@ -105,7 +105,7 @@
     "status": "passed",
     "claims": 35,
     "evidenceFiles": 259,
-    "evidenceBundleSha256": "40cfc1015dd683a8a840b514e481f03c1993d6d4e3e1ddb292b38c79329aab58"
+    "evidenceBundleSha256": "d5aeeb45c73e4d81306347a8a1e84192a41bb05d87324b08d8e9c25b6c27cdaf"
   },
   "conformance": {
     "suites": 21,
