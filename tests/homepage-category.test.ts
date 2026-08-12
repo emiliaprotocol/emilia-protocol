@@ -33,8 +33,8 @@ describe('homepage category contract', () => {
     expect(route).toContain('Authority Control Plane for Autonomous Work | EMILIA');
     expect(route).toContain('Set a finite operating mandate once');
     expect(page).toContain('EMILIA <span>· Authority control plane for autonomous work</span>');
-    expect(page).toContain('Set authority once. Let agents work.');
-    expect(page).toContain('Not every action needs a human. Every consequential action needs valid authority.');
+    expect(page).toContain('AI agents are becoming workers. Workers need authority.');
+    expect(page).toContain('Identity says who. Policy says what is generally allowed. EMILIA answers whether');
     expect(page).toContain('Protocol proves. Gate prevents.');
     expect(page).toContain('Identity tells you who. Authority defines the work.');
     expect(page).toContain('Existing authorization stack');
@@ -115,9 +115,9 @@ describe('homepage category contract', () => {
     expect(gate).toContain('RECEIPT PROGRAMS');
     expect(gate).toContain('npm run demo:receipt-program');
     expect(gate).toContain('It is not a ZK proof, consensus result, provider attestation');
-    expect(investors).toContain('EMILIA is the authority control plane for autonomous work.');
-    expect(investors).toContain('Policy describes what is generally allowed. Neither defines the finite job an autonomous worker may perform under current limits.');
-    expect(investors).toContain('currently claims no customer traction, recurring revenue, live payer integration');
+    expect(investors).toContain('AI agents are becoming workers. EMILIA is their authority control plane.');
+    expect(investors).toContain('Identity systems establish who. Policy engines decide what is generally allowed. Workflow');
+    expect(investors).toContain('currently claims no customer traction, recurring revenue, production deployment');
     expect(investors).toContain('certification, RFC status, or standards-body endorsement.');
     expect(productBrief).toContain('No independently administered operator has produced external witness evidence');
     expect(productBrief).toContain('they do not prove the deployed service, provider, or physical world.');

@@ -54,7 +54,7 @@ const PRODUCTS = [
   {
     label: 'Protect',
     title: 'EMILIA Gate',
-    body: 'The commercial consequence firewall. Gate sits on a completely mediated, credential-owning executor path and admits one exact action once—or refuses.',
+    body: 'The commercial consequence firewall. Gate sits on a completely mediated, credential-owning executor path and permits one provider attempt for the authorized action—or refuses.',
     href: '/gate',
     accent: color.gold,
   },
@@ -78,13 +78,13 @@ const LIFECYCLE = [
   ['01', 'Define the mandate', 'Set mission, limits, required evidence, expiry, delegation, and exception rules outside the agent process.'],
   ['02', 'Bind the unit of work', 'Freeze the canonical amount, target, record, tool call, material fields, and occurrence.'],
   ['03', 'Verify and authorize', 'Check pinned native evidence, then make the separate local decision for this exact action.'],
-  ['04', 'Consume before entry', 'Gate durably takes the one-time authority before the credentialed adapter can enter the provider.'],
+  ['04', 'Reserve before entry', 'Gate durably reserves the covered authority before the credentialed adapter can enter the provider.'],
   ['05', 'Preserve the result', 'Record provider and observer evidence separately. Unknown stays unknown; any remedy is a new authorized action.'],
 ];
 
 const OUTCOMES = [
   ['REFUSED', 'The protected adapter did not enter the provider.'],
-  ['ADMITTED', 'Required authority was accepted and consumed. This is not proof of success.'],
+  ['ADMITTED', 'Required authority was accepted, reserved, and used to admit provider entry. This is not proof of success.'],
   ['OBSERVED', 'A pinned provider or observer supplied the stated evidence. Scope remains explicit.'],
   ['INDETERMINATE', 'Provider entry may have occurred, but the result is unresolved. Never retry blindly.'],
 ];
@@ -108,19 +108,18 @@ export default function HomePage(): React.ReactElement {
               <div className="ep-home-calm-kicker">
                 EMILIA <span>· Authority control plane for autonomous work</span>
               </div>
-              <h1 id="home-trust-thesis">Set authority once. Let agents work.</h1>
+              <h1 id="home-trust-thesis">AI agents are becoming workers. Workers need authority.</h1>
               <p className="ep-home-calm-lede ep-home-lede-desktop">
-                A human or institution defines a finite operating mandate. Agents work unattended
-                inside it. EMILIA Gate enforces each consequential unit of work before money, code,
-                permissions, records, or infrastructure can change.
+                EMILIA Gate is the consequence boundary where agent intent becomes a change to
+                money, code, permissions, records, or infrastructure. It verifies the exact action
+                against a customer-owned mandate before the protected provider path can begin.
               </p>
               <p className="ep-home-calm-lede ep-home-lede-mobile">
-                Define a finite mandate once. Gate enforces every consequential unit of work on the
-                protected path.
+                Gate verifies the exact action against a finite mandate before the protected path begins.
               </p>
               <p className="ep-home-calm-detail">
-                Not every action needs a human. Every consequential action needs valid authority.
-                {' '}Protocol proves. Gate prevents.
+                Identity says who. Policy says what is generally allowed. EMILIA answers whether
+                this exact consequence is authorized now. Protocol proves. Gate prevents.
               </p>
               <div className="ep-home-calm-actions">
                 <Link href="/scan" className="ep-home-hero-primary">Run the local Authority Map</Link>

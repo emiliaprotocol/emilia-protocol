@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   commandDigest,
   decodeDnp3ControlRelay,
+  decodeModbusWriteMultipleRegisters,
   decodeModbusWriteRegister,
   decodeOpcuaCall,
   extractOpcuaAuthorization,
@@ -64,6 +65,19 @@ test('Modbus correlation changes native bytes without changing the action', () =
   assert.equal(commandDigest(decodeModbusWriteRegister(vector.correlation_variant.native_command.hex, link)), vector.action_digest);
 });
 
+test('the pinned Modbus FC 0x10 quantity-one command decodes under its native encoding profile', () => {
+  const vector = pinned.vectors.find((candidate: any) => candidate.id === 'modbus-write-single-register-v1');
+  const fc16 = vector.encoding_scope.fc16_quantity_one;
+  const observed = decodeModbusWriteMultipleRegisters(fc16.native_command.hex, {
+    site: fc16.action.site,
+    device: fc16.action.device,
+    unit_id: fc16.action.unit_id,
+  });
+  assert.deepEqual(observed, fc16.action);
+  assert.equal(commandDigest(observed), fc16.action_digest);
+  assert.notEqual(fc16.action_digest, vector.action_digest);
+});
+
 test('DNP3 application sequence changes native bytes without changing the action', () => {
   const vector = pinned.vectors.find((candidate: any) => candidate.id === 'dnp3-direct-operate-crob-v1');
   assert.notEqual(vector.native_command.hex, vector.correlation_variant.native_command.hex);
@@ -82,15 +96,36 @@ test('the pinned profiles state their normalization and request-instance boundar
   assert.equal(modbus.action.protocol_address, 0);
   assert.equal(Object.hasOwn(modbus.action, 'register'), false);
   assert.equal(modbus.encoding_scope.fc06_and_fc16_quantity_one_are_distinct, true);
+  assert.equal(modbus.transport_profile.encoding_profile.scope, 'native-encoding');
   assert.equal(dnp3.action.application_function, 5);
   assert.equal(dnp3.action.control_octet, 3);
   assert.equal(dnp3.action.operation_count, 1);
   assert.equal(dnp3.action.on_time_ms, 0);
   assert.equal(dnp3.action.off_time_ms, 0);
   assert.equal(dnp3.profile_scope.select_operate_supported, false);
+  assert.equal(dnp3.transport_profile.encoding_profile.scope, 'native-encoding');
+  assert.deepEqual(dnp3.transport_profile.encoding_profile.object_header, {
+    qualifier: 0x17,
+    object_count: 1,
+    index_octets: 1,
+    index_min: 0,
+    index_max: 0xff,
+  });
+  assert.deepEqual(dnp3.transport_profile.encoding_profile.application_control_flags, {
+    FIR: 1,
+    FIN: 1,
+    CON: 0,
+    UNS: 0,
+  });
+  assert.equal(dnp3.transport_profile.encoding_profile.request_status, 0);
   assert.equal(pinned.detached_evidence.request_instance_binding, 'authenticated-conduit-context-plus-attempt-reference');
   assert.equal(pinned.detached_evidence.digest_is_secret, false);
   assert.equal(pinned.freshness.clock, 'conduit-owned');
+});
+
+test('the pinned vectors make no cross-transport equivalence claim', () => {
+  assert.equal(pinned.detached_evidence.cross_transport_equivalence, 'not-claimed');
+  assert.equal(Object.hasOwn(pinned.detached_evidence, 'equivalence_boundary'), false);
 });
 
 test('the OPC-UA vector demonstrates carriage but never pretends its reference is authorization', () => {

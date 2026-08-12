@@ -495,11 +495,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "dd5f2bf32f48a6b780fa1c1a5cb5b547409396933afd0c8626da74bceffa70c8"
+      "sha256": "11734a2337a32b8ac06f99613e5c0b86c5652ffa2d6effa1376ff7a2d4373b2d"
     },
     {
       "path": "package.json",
-      "sha256": "01145f6724208e39d65981d43c75ce98e1293c61cabb375ae4419bbb92b14811"
+      "sha256": "47f72996489038ce7fb5a427c8128f18e8ee4c0a75b280c44bc668fc10fd90e9"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1027,7 +1027,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-oasnt-adapter.js",
-      "sha256": "68e5dbec73d3c8e25c7e8a68b5693bc3ad23eb9231555d9f820b7272e88230da"
+      "sha256": "3eb8d46896109fcc458b618e69280e71897663ba839bdf825a4b3e3bc15c4a06"
     },
     {
       "path": "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js",
@@ -1040,10 +1040,6 @@
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
       "sha256": "66a033cfdedbaeb880456236a69dcc6805d9e8ee20913d16a661079f2caf50c0"
-    },
-    {
-      "path": "packages/verify/dist/aeb-wimse-oauth-principal-adapter.js",
-      "sha256": "6cbda65a3d845217b304ad08eb167b7c7fb8aee927edda302654184243b69589"
     },
     {
       "path": "packages/verify/dist/agent-edge-continuity.js",
@@ -1127,7 +1123,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "2707ae0bd54d0955afca1ef1e138a567fea5ee0c947836b3246c40c39a93b7b1"
+      "sha256": "cef09ddc86c83af909eb6c142f0ae2d1b937b92ead751c76ba4ce6775ae89286"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1239,7 +1235,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "c8dd99bee6b7ecb9691431a4219cf1914cea79260b97981631c80bbb43258097"
+      "sha256": "6b3fb11dca0d4a539ed5de8d84d0cdff833aa1550a495e56a199d7d0a16af5be"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

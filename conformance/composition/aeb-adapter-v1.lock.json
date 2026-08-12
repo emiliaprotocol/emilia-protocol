@@ -1,0 +1,20 @@
+{
+  "@version": "AEB-ADAPTER-CONTRACT-LOCK-v1",
+  "contract_version": "AEB-ADAPTER-v1",
+  "verify_package_version": "3.20.1",
+  "files": [
+    {
+      "path": "packages/verify/src/aeb-adapter-contract.ts",
+      "sha256": "7725f2aa2499c33853b328ad363aa13605c97cb98f18b94c074d6bd7b9f93f94"
+    },
+    {
+      "path": "docs/protocol/aeb-adapter-contract-v1.md",
+      "sha256": "e5ac1ea0a1bdbd5b94c9afe8b4529c27842f9dd007933f49fa4c77cde363b5a3"
+    },
+    {
+      "path": "conformance/vectors/aeb-adapter.v1.json",
+      "sha256": "9e3f6fafb290a135132b8febd2b12af2593b4f313a898e8622ca851643828083"
+    }
+  ],
+  "compatibility_policy": "An incompatible contract change requires AEB-ADAPTER-v2. A compatible change requires an explicit lock refresh and rerun of every dependent composition profile."
+}

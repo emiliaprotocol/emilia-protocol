@@ -1,12 +1,5 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import '@fontsource/ibm-plex-sans/300.css';
-import '@fontsource/ibm-plex-sans/400.css';
-import '@fontsource/ibm-plex-sans/500.css';
-import '@fontsource/ibm-plex-sans/600.css';
-import '@fontsource/ibm-plex-sans/700.css';
-import '@fontsource/ibm-plex-mono/400.css';
-import '@fontsource/ibm-plex-mono/500.css';
 import EuAiActBanner from '@/components/EuAiActBanner';
 import proofStats from '@/lib/proof-stats.json';
 import './ep.css';

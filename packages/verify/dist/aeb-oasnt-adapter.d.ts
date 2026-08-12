@@ -1,6 +1,7 @@
 import { type AebAdapter, type AebDigest } from './aeb-adapter-contract.js';
 type Obj = Record<string, unknown>;
 export declare const OASNT_DRAFT_REVISION = "draft-thallapelly-oasnt-01";
+export declare const OASNT_DRAFT_TXT_SHA256 = "sha256:7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19";
 export declare const OASNT_AEB_ADAPTER_ID = "native:oasnt";
 export declare const OASNT_AEB_ADAPTER_VERSION = "1";
 export declare const OASNT_AEB_CONFIG_VERSION = "AEB-OASNT-CONFIG-v1";
