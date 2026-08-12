@@ -3,12 +3,12 @@
   "evidence_snapshot_at": "2026-08-10T15:45:38.805Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "9824d74543e40106e033dab11045e94a26c95be75c492a4665590145eca5e4fd",
+    "input_digest_sha256": "697ba2c4b536504d7c1e6dcc422f17497f44f5d6e0d9377250794d2e1cbc15fa",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "cc567905b9e705aa7c5e81d94b2647870bde0c7e7c84cc5354110c904f0b179c",
-        "bytes": 46186
+        "sha256": "128faa089c49b63a28518be11d0a64697047449b24ba304fc0b175f98223e29b",
+        "bytes": 46205
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -22,7 +22,7 @@
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "a7d9bf7d3c383c825a606540c7bf681ce7af3bb80536742784449c30365f8312",
+        "sha256": "bde10b42672a37d752d402ef75483476610e6cd37ac18a564dff37e8f1891312",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "3581a14fcfd4995237ea65276fc9625c7737910931717cd79d73fc59cc384d85",
+        "sha256": "67ac0a5f18b4497eaef0c4a5a3148c8d4fffd7184616d0301ee790e043d0a6e3",
         "bytes": 385871
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "d1fb6132c3c7118d73f70b52fba0d10472a6d24fcc5a0bacdefe51490d0c045b",
-        "bytes": 41671
+        "sha256": "7af7a63c05123db0a1a2930c89b340693f8fefd2ea822736b40d7d94c3effa82",
+        "bytes": 42776
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -298,7 +298,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "0f2b70533372e84a3fd88d74360e0814aa2e92e645e17a3a84a2473a84cb0dc6",
+      "manifest_sha256": "d3df9af13e96ad4926f7a49dcd4a960aed71d79fb8a03fee15127ddddc2d2c14",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -4591,9 +4591,9 @@
     },
     {
       "identifier": "draft-schrock-ep-bounded-capability-receipts",
-      "revision_at_snapshot": "03",
+      "revision_at_snapshot": "04",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published August 8; use -03 for shared state-domain binding, single-executor fallback, optional exact-action human-authorization composition, and serialized revocation inheritance for delegated authority",
+      "next_action": "Published August 11; use -04 for immutable scope-comparison semantics, composable relation-proof provenance, capability-scoped operation identity, bounded provider entry, atomic issuance registration, operation-bound holder signatures, and explicit implementation limits",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4695,7 +4695,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-08-10",
+    "updated": "2026-08-11",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -5279,7 +5279,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 6, the repository tracks 23 active records: 20 draft-schrock series and three coauthored series. Current revisions include CAID -02, Authorization Receipts -10, Bounded Capability Receipts -03, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, and DMSC Agent Gateway Gap Analysis -03. Never call them RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 11, the repository tracks 23 active records: 20 draft-schrock series and three coauthored series. Current revisions include CAID -02, Authorization Receipts -11, Bounded Capability Receipts -04, AE Challenge -06, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, and DMSC Agent Gateway Gap Analysis -03. Never call them RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",
