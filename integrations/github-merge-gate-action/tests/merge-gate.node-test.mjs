@@ -246,6 +246,16 @@ test('refuses oversized one-line blobs that evade line-count limits', async () =
   assert.equal(result.reason, 'changed_bytes_limit_exceeded');
 });
 
+test('refuses control characters in changed paths before reporting them', async () => {
+  const item = await fixture();
+  await writeFile(path.join(item.workspace, 'src', 'hostile\nname.js'), 'export {};\n');
+  git(item.workspace, 'add', '.');
+  git(item.workspace, 'commit', '-m', 'hostile path');
+  const result = await evaluate(item, { headSha: git(item.workspace, 'rev-parse', 'HEAD') });
+  assert.equal(result.admitted, false);
+  assert.equal(result.reason, 'git_diff_path_invalid');
+});
+
 test('action metadata makes branch protection and detached evidence boundaries explicit', async () => {
   const action = await readFile(path.join(actionRoot, 'action.yml'), 'utf8');
   const readme = await readFile(path.join(actionRoot, 'README.md'), 'utf8');

@@ -74,6 +74,7 @@ function safePrefix(value) {
   return typeof value === 'string'
     && value.length > 0
     && value.length <= 240
+    && !/[\u0000-\u001f\u007f]/.test(value)
     && !value.startsWith('/')
     && !value.includes('\\')
     && !value.split('/').includes('..');
