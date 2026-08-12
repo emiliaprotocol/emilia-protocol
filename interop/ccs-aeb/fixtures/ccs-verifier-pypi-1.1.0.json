@@ -1,0 +1,40 @@
+{
+  "@version": "CCS-PYPI-0.4.1-RESULT-v1",
+  "command": {
+    "agent_id": "agent-overnight-1",
+    "params": {
+      "amount_minor": 12550,
+      "currency": "USD",
+      "payee": "merchant-7"
+    },
+    "timestamp": 1786388398,
+    "tool": "release_payment",
+    "trace_id": "0011223344556677"
+  },
+  "result": {
+    "block_reason": "",
+    "error_code": -32000,
+    "params_hash": "11841931cced17ab",
+    "receipt": "5712658439a2dc61ddda501aa82ff4af",
+    "rule_results": [
+      {
+        "error_code": -32000,
+        "latency_us": 7,
+        "reason": "",
+        "rule_name": "ssrf_protection",
+        "verdict": "allow"
+      },
+      {
+        "error_code": -32000,
+        "latency_us": 8,
+        "reason": "",
+        "rule_name": "rce_protection",
+        "verdict": "allow"
+      }
+    ],
+    "tool": "release_payment",
+    "trace_id": "0011223344556677",
+    "verdict": "allow",
+    "verified_at": 1786388399
+  }
+}
