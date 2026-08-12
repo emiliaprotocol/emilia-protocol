@@ -30,6 +30,7 @@ import {
   type AebPinnedProfile,
   type AebRegistryEntry,
   type AebStatusInput,
+  type AebUnifiedRegistry,
 } from '../../../packages/verify/aeb-adapter-contract.js';
 import {
   CCS_AEB_ADAPTER_ID,
@@ -190,15 +191,15 @@ const PUBLISHED_OASNT_ROOT: OasntTrustRoot = Object.freeze({
   use: 'enrolled-oasnt-signing-key',
   native_subject: 'agent-1',
   public_jwk: {
-    kty: 'EC',
-    crv: 'P-256',
+    kty: 'EC' as const,
+    crv: 'P-256' as const,
     x: 'P7Vp3OZi4XYii2VHo4T08zkjKrKhCt-gY-oAATkXaao',
     y: 'QNEaWqPG2EI5-2AdT8oX-S4odj8TH9wj_JW2I2ILBoc',
   },
   jwk_thumbprint: 'xcDbc2-MsRIENQynAYGtJ0Vc0xPTBdfj_1iAeI9MMFo',
   enrollment: {
-    hardware_attested: true,
-    evidence_digest: `sha256:${'a'.repeat(64)}`,
+    hardware_attested: true as const,
+    evidence_digest: `sha256:${'a'.repeat(64)}` as `sha256:${string}`,
   },
 });
 
@@ -464,7 +465,7 @@ function buildComposition() {
       { role: 'human-authorization', subject_kinds: ['human'] },
     ),
   };
-  const registry = {
+  const registry: AebUnifiedRegistry = {
     '@version': AEB_REGISTRY_VERSION,
     registry_id: 'registry:ccs-oasnt-aeb-v1',
     epoch: 1,
@@ -718,7 +719,10 @@ export function signReport(report: any, privateKey: crypto.KeyLike, keyId: strin
   const privateKeyObject = privateKey instanceof KeyObject
     ? privateKey
     : crypto.createPrivateKey(privateKey);
-  const publicKey = crypto.createPublicKey(privateKeyObject);
+  const publicKey = crypto.createPublicKey(privateKeyObject.export({
+    type: 'pkcs8',
+    format: 'pem',
+  }));
   return {
     report,
     signature: {

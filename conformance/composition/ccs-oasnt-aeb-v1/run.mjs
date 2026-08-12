@@ -558,7 +558,10 @@ export function signReport(report, privateKey, keyId) {
     const privateKeyObject = privateKey instanceof KeyObject
         ? privateKey
         : crypto.createPrivateKey(privateKey);
-    const publicKey = crypto.createPublicKey(privateKeyObject);
+    const publicKey = crypto.createPublicKey(privateKeyObject.export({
+        type: 'pkcs8',
+        format: 'pem',
+    }));
     return {
         report,
         signature: {
