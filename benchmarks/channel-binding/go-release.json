@@ -1,0 +1,6 @@
+{
+  "@version": "EP-GO-MODULE-RELEASE-v1",
+  "module": "emiliaprotocol.ai/channel-binding-benchmark",
+  "private": true,
+  "reason": "Repository-local differential benchmark harness; not a public canonical Go import path."
+}
