@@ -198,26 +198,28 @@ that require their own review. The earlier statement that stateless issuance
 necessarily reintroduces multi-use replay was too broad.
 
 That consumed-token set carries a retention floor that MUST be stated
-explicitly: a consumed-token record MUST be retained until the token it
-records has expired. Dropping it earlier makes the token presentable again.
-A consumed set that is bounded by capacity and evicts under pressure therefore
-inherits the issuance-flood problem it was meant to avoid: an attacker mints
-fresh tokens until eviction discards an older consumed record, then replays
-that still-unexpired token. Capacity eviction of consumed records is a replay
-vulnerability, not a resource-management choice.
+explicitly: while the connection remains live, a consumed-token record MUST be
+retained until the token it records has expired. Dropping it earlier makes the
+token presentable again. A capacity-bounded set that evicts under pressure
+therefore creates a replay vulnerability: a presenter can cause enough valid
+tokens to be consumed on one live connection to evict an older record, then
+replay that still-unexpired token. Capacity pressure MUST refuse new work or
+apply an admission limit before consumption; it MUST NOT discard an unexpired
+record on a live connection.
 
 The connection binding bounds that cost. Because the token commits to the exact
 connection identity, and the verifier rejects a token whose committed identity
 is not the current connection, a consumed record can never match a presentation
 on any other connection. Consumed records may therefore be scoped to their
 connection and discarded in full when that connection closes, and the required
-retention is the shorter of token expiry and connection lifetime. Two
-conditions make that safe: the profile MUST reject a token whose expiry exceeds
-its connection's maximum lifetime rather than silently extending retention, and
-the connection identity MUST be unique per physical TLS connection, never a
-handle that can be recycled after close. A recycled identifier would make an
-unexpired token from a closed connection presentable on its successor. This is
-the same identity requirement stated above for the stateful form.
+retention is the earlier of token expiry and observed connection close. TLS
+does not define a general maximum connection lifetime, so the enforceable time
+bound is a profile-pinned maximum token TTL. The verifier MUST reject a token
+whose expiry exceeds that TTL. The connection identity MUST also be unique per
+TLS connection instance and MUST NOT be a recyclable application or proxy
+handle. A recycled identifier could make an unexpired token from a closed
+connection appear to belong to its successor. This is the same identity
+requirement stated above for the stateful form.
 
 ## Key and channel lifecycle
 
