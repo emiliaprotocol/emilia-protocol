@@ -182,10 +182,10 @@ function relationContextKey(context) {
 /**
  * @param {{
  *   hops: Array<{ parent: string, child: string, localResult: string, context: Record<string, unknown> }>,
- *   establishment?: { authenticated: boolean, runnerTrusted: boolean, exactContextMatch: boolean, domain: string[] }
+ *   establishment?: { authenticated: boolean, runnerTrusted: boolean, exactContextMatch: boolean, domain: string[] } | null
  * }} input
  */
-function chainComposable({ hops, establishment }) {
+function chainComposable({ hops, establishment = null }) {
   if (hops.length === 0) return false;
   if (hops.some((hop) => hop.localResult !== 'NO_BROADER')) return false;
   if (hops.length === 1) return true;
