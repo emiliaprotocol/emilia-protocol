@@ -5,8 +5,8 @@ This file maps the public evidence a technical, security, standards, or
 procurement reviewer can reproduce. It is not a certification, legal opinion,
 or substitute for the company's private corporate data room.
 
-- **Reviewed technical baseline:** [`632c425b`](https://github.com/emiliaprotocol/emilia-protocol/commit/632c425b)
-- **Reviewed:** 2026-08-07 PDT
+- **Reviewed technical baseline:** [`f6f6a1c7`](https://github.com/emiliaprotocol/emilia-protocol/commit/f6f6a1c771a12f794144e1d04faffe42ce7d4184)
+- **Reviewed:** 2026-08-12 PDT
 - **Scope:** source, tests, conformance, formal models, executable security
   evidence, repository controls, release process, and attribution provenance
 - **Not established:** production deployment parity, customer adoption,
@@ -20,16 +20,27 @@ baseline. It changes the evidence map, not the reviewed implementation.
 
 | Area | Current public evidence | Remaining diligence item |
 | --- | --- | --- |
-| Tests and build | **8,755 tests across 521 files** in [`lib/proof-stats.json`](lib/proof-stats.json); the production Next.js build passes. | Passing tests are scoped regression evidence, not whole-system proof. |
-| Executable security case | **35 claims over 259 hashed evidence files**, execution passed, bundle SHA-256 `93c45678c5812ae07cb62a6eeb1f5193689589a2346887671db0c3425f5f6596`. | Repository-defined assurance is not an accredited audit. |
+| Tests and build | **8,865 tests across 533 files** in [`lib/proof-stats.json`](lib/proof-stats.json); the production Next.js build is rerun during the release gate. | Passing tests are scoped regression evidence, not whole-system proof. |
+| Executable security case | **35 claims over 259 hashed evidence files**, execution passed, bundle SHA-256 `97e0819213534bbae070b9356c6a121fc28a41cc221232c8005227e1f62c7792`. | Repository-defined assurance is not an accredited audit. |
 | Conformance | **21 suites and 331 vectors** across JavaScript, Python, and Go same-team ports; a source-free 30-file clean-room v2 kit rebuilds byte-for-byte. | Strict independent clean-room acceptance remains false until a separately attested implementation is accepted. |
 | Formal evidence | 26 principal TLC invariants; 78 selected model/runtime scenarios with 51 paired negative controls; 20 Tamarin obligations and 8 deliberately unsafe counterexamples; 35 Alloy facts and 32 assertions. | These are bounded or symbolic models under stated assumptions, not mechanized whole-program refinement. |
 | Dependencies and releases | Root and nested production audits report zero known vulnerabilities; release-chain validation covers **26 packages**; packed exports pass for 12 packages. | Publish an SBOM and third-party notice bundle with each release. |
 | Secrets and licensing | Full-history Gitleaks scan found no secret; repository-boundary and Apache-2.0 header checks pass; every public package manifest declares a license. | Repeat scans in CI and during a transaction-specific data-room export. |
-| GitHub controls | `main` has 16 strict required checks, one approval, Code Owner and latest-push review, stale-review dismissal, conversation resolution, no force-push, no deletion, read-only workflow tokens, and immutable release-tag rules. | Add a second human owner/reviewer, enforce rules for administrators, require signed commits, verify the organization domain, and then consider two approvals. |
+| GitHub controls | `main` has 16 strict required checks, one approval, conversation resolution, no force-push, no deletion, read-only workflow tokens, two-factor authentication required at the organization, and immutable release-tag rules. | Add a second human owner/reviewer, require Code Owner and latest-push approval, dismiss stale reviews, enforce rules for administrators, require signed commits, and verify the organization domain. |
 | AI-assisted development | Human accountability and future attribution rules are public in [`docs/AI-ASSISTED-DEVELOPMENT.md`](docs/AI-ASSISTED-DEVELOPMENT.md). | Complete counsel-led chain-of-title review in the private data room. |
 
-## Security hardening in this review
+## Live CodeQL disposition
+
+The 2026-08-12 live check found one open high-severity CodeQL alert,
+`js/insufficient-password-hash`. The dataflow ended at
+[`packages/verify/src/aeb-adapter-contract.ts`](packages/verify/src/aeb-adapter-contract.ts),
+where SHA-256 computes a compatibility-frozen protocol content commitment over
+canonicalized action and evidence objects. The helper does not accept, derive,
+or store passwords or credentials. The alert was dismissed as a verified false
+positive with that scope recorded in GitHub. The live open CodeQL count was zero
+after disposition.
+
+## Prior security hardening
 
 Commit [`40a4044c`](https://github.com/emiliaprotocol/emilia-protocol/commit/40a4044c)
 closes a pre-authentication denial-of-service control defect: an unverified
@@ -65,7 +76,7 @@ boundaries rather than treating aggregate counts as proof.
 
 Current measured evidence includes:
 
-- 8,755 tests across 521 files;
+- 8,865 tests across 533 files;
 - 35 executable claims over 259 content-addressed evidence files;
 - 21 suites and 331 conformance vectors;
 - 78 selected model/runtime scenarios, 51 paired negative controls, and 21
@@ -106,28 +117,23 @@ in this review. Adding both is the remaining supply-chain documentation task.
 
 ## Repository governance
 
-Live GitHub settings on 2026-08-07 established:
+Live GitHub settings on 2026-08-12 established:
 
 - 16 strict required checks on `main`;
-- one approval, Code Owner review, latest-push approval, stale-review dismissal,
-  and conversation resolution;
+- one approval and conversation resolution;
 - force-push and branch deletion disabled;
-- workflow tokens read-only and unable to approve pull requests; and
+- workflow tokens read-only and unable to approve pull requests;
+- organization-level two-factor authentication required; and
 - immutable release-tag rules without a bypass actor.
 
 The repository is not yet independently governed. The organization has one
-member, administrator enforcement is disabled, required signed commits are
-disabled, and the organization domain is not verified. These are governance
-gaps, not cryptographic defects. Add a genuine second human maintainer before
-turning on controls that would otherwise make the sole-owner workflow
-inoperable.
+member. Code Owner review, latest-push approval, stale-review dismissal,
+administrator enforcement, and required signed commits are disabled, and the
+organization domain is not verified. These are governance gaps, not
+cryptographic defects. Add a genuine second human maintainer before turning on
+controls that would otherwise make the sole-owner workflow inoperable.
 
-Six pull requests were open at the start of the review. PRs #522 and #524 were
-closed as superseded after their verified security and dependency changes were
-confirmed on `main`. Four remain: #520 and #523 are conflicting review branches,
-while #525 and #526 are draft branches behind `main`. Each should be resolved or
-closed on its own technical merits so an acquirer does not have to infer status
-from branch age.
+No pull requests were open at the 2026-08-12 audit snapshot.
 
 ## AI attribution and human responsibility
 
@@ -135,12 +141,11 @@ The tracked repository contains tool instructions such as `AGENTS.md`,
 `CLAUDE.md`, and `GEMINI.md`. They are reproducibility and operating controls,
 not corporate titles or ownership claims, and should remain public.
 
-The history contains **1,141 commits** with a Claude or Anthropic
-`Co-authored-by` trailer and no Codex or OpenAI co-author trailers as of this
-review. Those trailers are conspicuous provenance metadata. They are not a
-substitute for human authorship, DCO sign-off, invention records, or assignment.
-Published history should not be rewritten to remove them: rewriting would
-change commit and tag identities and weaken release provenance.
+The published history contains AI-assistance metadata. Those trailers are
+conspicuous provenance metadata. They are not a substitute for human authorship,
+DCO sign-off, invention records, or assignment. Published history should not be
+rewritten to remove them: rewriting would change commit and tag identities and
+weaken release provenance.
 
 Going forward, commits must identify the accountable natural person, carry that
 person's DCO sign-off, and must not name an AI system as co-author. Optional
