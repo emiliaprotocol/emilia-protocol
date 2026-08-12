@@ -18,7 +18,7 @@ Control protocols differ in whether they can carry an authorization at all.
 | Transport | What it can carry | What it cannot carry | Binding mode |
 | --- | --- | --- | --- |
 | OPC-UA | Request structures have an extension slot, so an authorization travels with the call. In this example the receipt rides in the request header's extension object. | Nothing relevant. | Inline |
-| Modbus TCP | Unit id, function code, protocol address, value. That is the whole write. | Anything else. The frame this example encodes is 12 octets and every one of them is a protocol-defined field; the MBAP length field pins the rest of the frame at 6 octets, so there is no optional field to grow into. | Out of band, keyed by a conduit attempt reference plus the command digest |
+| Modbus TCP | Unit id, function code, protocol address, and function-defined write fields. That is the whole write. | Anything else. FC 0x06 is 12 octets; FC 0x10 is length-pinned by quantity and byte count. Every octet is protocol-defined, so there is no optional field to grow into. | Out of band, keyed by a conduit attempt reference plus the command digest |
 | DNP3 | A typed object in a typed object space. The control relay output block this example encodes is a fixed 11 octets inside an 18-octet application fragment. | Anything else. No octet of the fragment is free for an envelope. | Out of band, keyed by a conduit attempt reference plus the command digest |
 
 For Modbus and DNP3 the authorization cannot travel with the command, so it is
@@ -33,9 +33,10 @@ That only works if the digest is recomputable from what actually reached the
 wire. So every transport here has a decoder, and the enforcement point sits in
 front of the device: it decodes the frame it is about to forward, and derives
 the observed action from those bytes plus the link facts it owns because it
-terminates the connection (site and device, the Modbus unit-to-device mapping,
-and for DNP3 the outstation address, a data-link field). The observed action,
-never the requester's description of it,
+terminates the connection (site and device, the required Modbus unit-to-device
+mapping, and for DNP3 the outstation address, a data-link field). A missing or
+inconsistent Modbus unit mapping is refused before evidence lookup. The
+observed action, never the requester's description of it,
 is what the gate binds. `commands.mjs` exposes that as `commandDigest()`, which
 is `hashCanonical` from `@emilia-protocol/gate` — the same function the gate
 uses to record `observed_action_hash`, so the index key and the authorized
@@ -56,15 +57,19 @@ exactly as an out-of-band lookup for a different digest would be
 | 4. `unresolved-after-dispatch` | The command is accepted and dispatched, the PLC goes quiet, and the outcome is recorded as indeterminate. A blind retry is refused and the authorization does not return to the pool. Recovery is a new human authorization, not a retry. | `gate.run` throwing `EMILIA_GATE_TERMINAL_OUTCOME` with `outcome: 'indeterminate'`, the consumption store backend read directly, and the hash-chained evidence log |
 | 5. `spent-once` | Freshness and single-use are different properties. An authorization still inside its freshness window but already consumed is refused, and under a different name than one that is merely stale. | `gate.run` reasons `replay_refused` and `receipt_rejected:receipt_expired`, cross-checked by `verifyEmiliaReceipt` from `@emilia-protocol/require-receipt` |
 
-The pinned profile is intentionally encoding-scoped. Modbus FC 0x06 and FC
-0x10 with quantity one are different authorities even when they can have the
-same register effect. The Modbus action binds the zero-based protocol address;
-the familiar 4xxxxx register label is display metadata. The DNP3 action binds
-the application function, complete CROB control octet, operation count,
-on-time, and off-time. DIRECT_OPERATE_NR is modeled as `INDETERMINATE` after
-dispatch because it has no protocol acknowledgement. SELECT/OPERATE is outside
-this first profile; adding it requires one state machine for both phases and the
-arm timer.
+The Modbus and DNP3 authorities are explicitly scoped to their pinned native
+encoding profiles. Modbus FC 0x06 and FC 0x10 with quantity one are different
+authorities even when they can have the same register effect. FC 0x10 quantity
+one has its own native encode/decode vector, and malformed quantity or byte
+count is refused. The Modbus action binds the zero-based protocol address; the
+familiar 4xxxxx register label is display metadata. DNP3 v1 admits only
+qualifier `0x17`, object count one, and a one-octet object index from 0 through
+255. The DNP3 action binds the application function, complete CROB control
+octet, operation count, on-time, and off-time. Requests also require FIR and
+FIN set, CON and UNS clear, and status zero. DIRECT_OPERATE_NR is modeled as
+`INDETERMINATE` after dispatch because it has no protocol acknowledgement.
+SELECT/OPERATE is outside this first profile; adding it requires one state
+machine for both phases and the arm timer.
 
 Scene 4 is the one the Command Authority Envelope does not currently cover. The
 repository mechanism is `gate.run()` in `packages/gate/src/index.ts`. Once the
@@ -115,11 +120,10 @@ Author the `.mts` sources; the `.mjs` companions are generated by
   and permanent but not shared durable state; the gate is constructed with
   `allowEphemeralStore: true` for that reason. A deployed enforcement point
   requires a durable backend and drops that flag.
-- Inline and detached modes demonstrate equivalent action agreement,
-  verification, and consumption. They do not obtain request-instance binding
-  the same way: inline carriage relies on the authenticated channel, while
-  detached carriage relies on an attempt reference bound to the conduit's
-  authenticated request or session context. The synthetic context in this
-  example models that binding; it does not implement channel authentication.
+- Each transport is evaluated only under its pinned encoding and
+  request-instance-binding profile. No cross-transport equivalence is claimed
+  between inline OPC-UA carriage and detached Modbus or DNP3 evidence. The
+  synthetic context in this example models the required channel or conduit
+  binding; it does not implement channel authentication.
 - The issuer and approver keys are generated per run by the EG-1 harness. No
   real operator approved anything.
