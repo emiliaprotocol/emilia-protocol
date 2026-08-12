@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { computeCaid } from '../../../packages/verify/vendor/caid.mjs';
 import { AEB_ADAPTER_VERSION, AEB_REGISTRY_VERSION, AEB_REQUIREMENT_VERSION, InMemoryAebConsumptionStore, adapterPinDigest, authorizeAebExecution, digestAeb, evaluateAebEvidence, mappingProfileDigest, reconcileAebExecution, registryEntryDigest, unifiedRegistryDigest, verifyAebEvaluation, } from '../../../packages/verify/aeb-adapter-contract.js';
 import { CCS_AEB_ADAPTER_ID, CCS_AEB_ADAPTER_VERSION, CCS_AEB_CONFIG_VERSION, CCS_AEB_TRUST_ROOT_VERSION, CCS_CAID_MAPPER_ID, CCS_CAID_MAPPING_VERSION, CCS_PYPI_DISTRIBUTION_VERSION, CCS_PYPI_RUNTIME_VERSION, createCcsNativeActionDefinition, createCcsPyPiHmacAebAdapter, } from '../../../packages/verify/aeb-ccs-adapter.js';
-import { OASNT_AEB_ADAPTER_ID, OASNT_AEB_ADAPTER_VERSION, OASNT_AEB_CONFIG_VERSION, OASNT_CAID_MAPPER_ID, OASNT_CAID_MAPPING_VERSION, OASNT_DRAFT_REVISION, OASNT_TRUST_ROOT_VERSION, computeOasntActionDigest, computeOasntDisplayDigest, createOasntActionDefinition, createOasntAebAdapter, } from '../../../packages/verify/aeb-oasnt-adapter.js';
+import { OASNT_AEB_ADAPTER_ID, OASNT_AEB_ADAPTER_VERSION, OASNT_AEB_CONFIG_VERSION, OASNT_CAID_MAPPER_ID, OASNT_CAID_MAPPING_VERSION, OASNT_DRAFT_REVISION, OASNT_DRAFT_TXT_SHA256, OASNT_TRUST_ROOT_VERSION, computeOasntActionDigest, computeOasntDisplayDigest, createOasntActionDefinition, createOasntAebAdapter, } from '../../../packages/verify/aeb-oasnt-adapter.js';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
 const LOCK_PATH = resolve(ROOT, 'conformance/composition/aeb-adapter-v1.lock.json');
@@ -525,6 +525,7 @@ export function runSuite(input) {
             ccs_distribution: CCS_PYPI_DISTRIBUTION_VERSION,
             ccs_runtime: CCS_PYPI_RUNTIME_VERSION,
             oasnt_revision: OASNT_DRAFT_REVISION,
+            oasnt_archived_txt_sha256: OASNT_DRAFT_TXT_SHA256,
         },
         source_protocol_checks: sourceProtocolChecks,
         aeb_composition_checks: aebCompositionChecks,
@@ -545,7 +546,7 @@ export function runSuite(input) {
         known_limits: [
             'This run executes the EMILIA reference implementation and is not an independent implementation.',
             'The CCS checks are pinned to ccs-verifier distribution 1.1.0 whose installed runtime reports 0.4.1; they do not claim conformance to later CCS draft text.',
-            'One OASNT native check is pinned to the published draft-thallapelly-oasnt-01 token vector; the two-leg composition uses a synthetic action-only token under the same verifier rules.',
+            `One OASNT native check is pinned to the published ${OASNT_DRAFT_REVISION} token vector and archived text ${OASNT_DRAFT_TXT_SHA256}; the two-leg composition uses a synthetic action-only token under the same verifier rules.`,
             'A passing report is not IETF adoption, endorsement, certification, or proof of deployment.',
         ],
     };

@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { digestAeb, } from './aeb-adapter-contract.js';
-import { OASNT_AEB_ADAPTER_ID, OASNT_AEB_ADAPTER_VERSION, OASNT_AEB_CONFIG_VERSION, OASNT_CAID_MAPPER_ID, OASNT_CAID_MAPPING_VERSION, OASNT_DRAFT_REVISION, OASNT_TRUST_ROOT_VERSION, computeOasntActionDigest, computeOasntDisplayDigest, computeOasntRequestFingerprint, createOasntActionDefinition, createOasntAebAdapter, } from './aeb-oasnt-adapter.js';
+import { OASNT_AEB_ADAPTER_ID, OASNT_AEB_ADAPTER_VERSION, OASNT_AEB_CONFIG_VERSION, OASNT_CAID_MAPPER_ID, OASNT_CAID_MAPPING_VERSION, OASNT_DRAFT_REVISION, OASNT_DRAFT_TXT_SHA256, OASNT_TRUST_ROOT_VERSION, computeOasntActionDigest, computeOasntDisplayDigest, computeOasntRequestFingerprint, createOasntActionDefinition, createOasntAebAdapter, } from './aeb-oasnt-adapter.js';
 const NOW = new Date(1_800_000_000 * 1000).toISOString();
 const ACTION_TYPE = 'payment.transfer.1';
 const OASNT_ACTION_TYPE = 'payment.transfer';
@@ -153,4 +153,5 @@ test('OASNT constructor pins cannot be replaced by presenter-selected roots', ()
 });
 test('OASNT source lock is the current reviewed draft', () => {
     assert.equal(OASNT_DRAFT_REVISION, 'draft-thallapelly-oasnt-01');
+    assert.equal(OASNT_DRAFT_TXT_SHA256, 'sha256:7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19');
 });
