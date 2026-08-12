@@ -39,6 +39,7 @@ import {
   CCS_PYPI_DISTRIBUTION_VERSION,
   CCS_PYPI_RUNTIME_VERSION,
   createCcsAebActionDefinition,
+  createCcsNativeActionDefinition,
   createCcsPyPiHmacAebAdapter,
   type CcsAebAdapterConfig,
   type CcsAebHmacTrustRoot,
@@ -163,6 +164,33 @@ function profile(): AebPinnedProfile {
   return pin;
 }
 
+function nativeActionProfile(actionType: string): AebPinnedProfile {
+  const pin: AebPinnedProfile = {
+    version: CCS_CAID_MAPPING_VERSION,
+    definition: createCcsNativeActionDefinition(actionType),
+    registry_entry_ref: 'mapping:ccs-native-action',
+    mapper_id: CCS_CAID_MAPPER_ID,
+    resolver: {
+      id: CCS_CAID_MAPPER_ID,
+      version: '1',
+      implementation_digest: digestAeb({ implementation: CCS_CAID_MAPPER_ID, version: '1' }),
+    },
+    semantic_equivalence: {
+      assertion: 'EQUIVALENT_UNDER_PROFILE',
+      loss_policy: 'NO_MATERIAL_FIELD_LOSS',
+      omitted_material_fields: [],
+      omitted_nonmaterial_fields: [
+        'command.agent_id', 'command.timestamp', 'command.trace_id',
+        'result.block_reason', 'result.rule_results.reason', 'result.rule_results.latency_us',
+        'result.error_code',
+      ],
+    },
+    profile_digest: digestAeb(null),
+  };
+  pin.profile_digest = mappingProfileDigest('ccs-native-action', pin);
+  return pin;
+}
+
 function fixture() {
   const config: CcsAebAdapterConfig = {
     '@version': CCS_AEB_CONFIG_VERSION,
@@ -229,6 +257,41 @@ test('current CCS HMAC result becomes accepted machine-policy evidence for one e
     suite: 'jcs-sha256', definitions: (profile().definition as any).definitions,
   });
   assert.equal(mapping.caid, computed.caid);
+});
+
+test('CCS maps its exact command into the shared native-action projection used by another evidence leg', () => {
+  const f = fixture();
+  const actionType = 'payment.transfer.1';
+  const artifact = mintArtifact({
+    tool: 'release_payment',
+    params: { amount: '100.00', payee: 'acct_9' },
+  });
+  const config = { ...f.config, action_type: actionType };
+  const expected_action = {
+    action_type: actionType,
+    native_action: {
+      type: artifact.command.tool,
+      parameters: artifact.command.params,
+    },
+  };
+  const adapter = createCcsPyPiHmacAebAdapter({ config, trust_roots: [f.root] });
+  const input = {
+    ...f.input,
+    artifact,
+    adapter_config: config,
+    expected_action,
+  };
+  const native = adapter.verifyNative(input);
+  assert.equal(native.native_verification, 'VERIFIED');
+  assert.equal(native.acceptance, 'ACCEPTED');
+  const mapping = adapter.mapAction({
+    ...input,
+    profile: nativeActionProfile(actionType),
+    native,
+  });
+  assert.equal(mapping.mapping, 'MATCH');
+  assert.equal(mapping.action_digest, digestAeb(expected_action));
+  assert.match(mapping.caid ?? '', /^caid:1:payment\.transfer\.1:jcs-sha256:/);
 });
 
 test('approve A execute B and changed command bytes fail independently', () => {

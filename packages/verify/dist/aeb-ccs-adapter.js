@@ -365,7 +365,16 @@ function combineAcceptance(left, right) {
         return 'INDETERMINATE';
     return 'ACCEPTED';
 }
-function actionFromArtifact(artifact, actionType) {
+function actionFromArtifact(artifact, actionType, projection) {
+    if (projection === 'native-action') {
+        return {
+            action_type: actionType,
+            native_action: {
+                type: artifact.command.tool,
+                parameters: artifact.command.params,
+            },
+        };
+    }
     return {
         action_type: actionType,
         parameters: {
@@ -374,9 +383,23 @@ function actionFromArtifact(artifact, actionType) {
         },
     };
 }
-function canonicalAction(value, actionType) {
-    if (!isRecord(value) || value.action_type !== actionType || !isRecord(value.parameters)
-        || !validCcsToken(value.parameters.tool) || canonicalParams(value.parameters.arguments) === null)
+function canonicalAction(value, actionType, projection) {
+    if (!isRecord(value) || value.action_type !== actionType)
+        return null;
+    if (projection === 'native-action') {
+        if (!exactKeys(value, new Set(['action_type', 'native_action']))
+            || !isRecord(value.native_action)
+            || !exactKeys(value.native_action, new Set(['type', 'parameters']))
+            || !validCcsToken(value.native_action.type)
+            || canonicalParams(value.native_action.parameters) === null)
+            return null;
+        return strictJsonClone(value);
+    }
+    if (!exactKeys(value, new Set(['action_type', 'parameters']))
+        || !isRecord(value.parameters)
+        || !exactKeys(value.parameters, new Set(['tool', 'arguments']))
+        || !validCcsToken(value.parameters.tool)
+        || canonicalParams(value.parameters.arguments) === null)
         return null;
     return strictJsonClone(value);
 }
@@ -398,6 +421,29 @@ export function createCcsAebActionDefinition(actionType) {
             }],
     };
 }
+/**
+ * Define the shared native-action projection used when CCS policy evidence is
+ * joined with another independently verified evidence leg for the same action.
+ */
+export function createCcsNativeActionDefinition(actionType) {
+    if (!ACTION_TYPE_RE.test(actionType))
+        throw new TypeError('valid CAID action type required');
+    return {
+        '@version': CCS_CAID_MAPPING_VERSION,
+        source: CCS_PYPI_SOURCE_LOCK,
+        projection: 'ccs-native-action-v1',
+        action_type: actionType,
+        suite: 'jcs-sha256',
+        definitions: [{
+                action_type: actionType,
+                required_fields: [
+                    { name: 'action_type', type: 'string' },
+                    { name: 'native_action', type: 'object' },
+                ],
+                optional_fields: [],
+            }],
+    };
+}
 function validMappingProfile(profile, actionType) {
     if (!isRecord(profile) || profile.version !== CCS_CAID_MAPPING_VERSION
         || profile.mapper_id !== CCS_CAID_MAPPER_ID
@@ -410,10 +456,15 @@ function validMappingProfile(profile, actionType) {
         || profile.semantic_equivalence.omitted_material_fields.length !== 0
         || !Array.isArray(profile.semantic_equivalence.omitted_nonmaterial_fields)
         || !isRecord(profile.definition)
-        || !sameDigest(profile.definition, createCcsAebActionDefinition(actionType))
         || !Array.isArray(profile.definition.definitions))
         return null;
-    return profile.definition.definitions;
+    if (sameDigest(profile.definition, createCcsAebActionDefinition(actionType))) {
+        return { definitions: profile.definition.definitions, projection: 'tool-invocation' };
+    }
+    if (sameDigest(profile.definition, createCcsNativeActionDefinition(actionType))) {
+        return { definitions: profile.definition.definitions, projection: 'native-action' };
+    }
+    return null;
 }
 function fallback(input, pins) {
     const evidenceDigest = safeDigest(input.artifact);
@@ -477,16 +528,16 @@ export function createCcsPyPiHmacAebAdapter(constructorPins) {
                     || safeDigest(input.trust_roots) !== pins.rootsDigest) {
                     return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['mapping_constructor_pin_mismatch'] };
                 }
-                const definitions = validMappingProfile(input.profile, pins.config.action_type);
-                if (!definitions) {
+                const mappingProfile = validMappingProfile(input.profile, pins.config.action_type);
+                if (!mappingProfile) {
                     return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['mapping_profile_invalid'] };
                 }
                 const verified = verifyArtifact(input.artifact, pins, input.now);
                 if (!verified.ok || verified.value.artifact.result.verdict !== 'allow') {
                     return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['accepted_allow_statement_required'] };
                 }
-                const projected = canonicalAction(actionFromArtifact(verified.value.artifact, pins.config.action_type), pins.config.action_type);
-                const expected = canonicalAction(input.expected_action, pins.config.action_type);
+                const projected = canonicalAction(actionFromArtifact(verified.value.artifact, pins.config.action_type, mappingProfile.projection), pins.config.action_type, mappingProfile.projection);
+                const expected = canonicalAction(input.expected_action, pins.config.action_type, mappingProfile.projection);
                 if (!projected || !expected) {
                     return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['missing_or_ambiguous_exact_action'] };
                 }
@@ -496,7 +547,10 @@ export function createCcsPyPiHmacAebAdapter(constructorPins) {
                 }
                 let computed;
                 try {
-                    computed = computeCaid(projected, { suite: 'jcs-sha256', definitions });
+                    computed = computeCaid(projected, {
+                        suite: 'jcs-sha256',
+                        definitions: mappingProfile.definitions,
+                    });
                 }
                 catch {
                     computed = null;

@@ -1,0 +1,218 @@
+{
+  "@version": "CCS-OASNT-AEB-COMPOSITION-REPORT-v1",
+  "profile": "ccs-oasnt-aeb-v1",
+  "runner": {
+    "name": "EMILIA reference runner",
+    "affiliation": "EMILIA Protocol",
+    "revision": "agent/ccs-aeb-interop-repair",
+    "executed_at": "2026-08-11T20:00:00Z",
+    "execution_owner": "runner-asserted",
+    "implementation_owner": "EMILIA Protocol",
+    "independent_implementation": false
+  },
+  "pins": {
+    "aeb_contract": "AEB-ADAPTER-v1",
+    "aeb_contract_lock": "sha256:152e77324c60e593d2075ce07ecfb1c6229ee3b4b7dc945d9ddf6a4101d1d80f",
+    "ccs_distribution": "1.1.0",
+    "ccs_runtime": "0.4.1",
+    "oasnt_revision": "draft-thallapelly-oasnt-01"
+  },
+  "source_protocol_checks": [
+    {
+      "id": "CCS-PINNED-HMAC-ACCEPT",
+      "protocol": "CCS",
+      "description": "Pinned CCS 1.1.0 distribution/runtime 0.4.1 HMAC artifact verifies as machine-policy evidence.",
+      "passed": true,
+      "observed": {
+        "verification": "VERIFIED",
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "CCS-MUTATED-PARAMS-REFUSE",
+      "protocol": "CCS",
+      "description": "Mutation after receipt creation is refused by the pinned CCS adapter.",
+      "passed": true,
+      "observed": {
+        "acceptance": "REJECTED",
+        "reasons": [
+          "ccs:params_hash_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "CCS-NATIVE-ACTION-MAP",
+      "protocol": "CCS",
+      "description": "CCS command material maps losslessly to the shared native-action projection.",
+      "passed": true,
+      "observed": {
+        "mapping": "MATCH",
+        "caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg"
+      }
+    },
+    {
+      "id": "OASNT-01-TOKEN-ACCEPT",
+      "protocol": "OASNT",
+      "description": "Published OASNT-01 compact token verifies under the pinned enrolled key.",
+      "passed": true,
+      "observed": {
+        "verification": "VERIFIED",
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "OASNT-COMPOSITION-TOKEN-ACCEPT",
+      "protocol": "OASNT",
+      "description": "Synthetic action-only OASNT-01 token verifies under its pinned enrolled key for this composition.",
+      "passed": true,
+      "observed": {
+        "verification": "VERIFIED",
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "OASNT-ACTION-SUBSTITUTION-REFUSE",
+      "protocol": "OASNT",
+      "description": "Changing the expected action makes the published token fail closed.",
+      "passed": true,
+      "observed": {
+        "acceptance": "REJECTED",
+        "reasons": [
+          "oasnt:action_digest_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "OASNT-NATIVE-ACTION-MAP",
+      "protocol": "OASNT",
+      "description": "OASNT maps the signed native action to the pinned AEB profile.",
+      "passed": true,
+      "observed": {
+        "mapping": "MATCH",
+        "caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg"
+      }
+    }
+  ],
+  "aeb_composition_checks": [
+    {
+      "id": "AEB-CONTRACT-LOCK",
+      "protocol": "AEB",
+      "description": "The compatibility lock matches AEB-ADAPTER-v1 contract bytes.",
+      "passed": true,
+      "observed": {
+        "lock_digest": "sha256:152e77324c60e593d2075ce07ecfb1c6229ee3b4b7dc945d9ddf6a4101d1d80f",
+        "files": [
+          {
+            "path": "packages/verify/src/aeb-adapter-contract.ts",
+            "expected": "7725f2aa2499c33853b328ad363aa13605c97cb98f18b94c074d6bd7b9f93f94",
+            "actual": "7725f2aa2499c33853b328ad363aa13605c97cb98f18b94c074d6bd7b9f93f94",
+            "matched": true
+          },
+          {
+            "path": "docs/protocol/aeb-adapter-contract-v1.md",
+            "expected": "e5ac1ea0a1bdbd5b94c9afe8b4529c27842f9dd007933f49fa4c77cde363b5a3",
+            "actual": "e5ac1ea0a1bdbd5b94c9afe8b4529c27842f9dd007933f49fa4c77cde363b5a3",
+            "matched": true
+          },
+          {
+            "path": "conformance/vectors/aeb-adapter.v1.json",
+            "expected": "9e3f6fafb290a135132b8febd2b12af2593b4f313a898e8622ca851643828083",
+            "actual": "9e3f6fafb290a135132b8febd2b12af2593b4f313a898e8622ca851643828083",
+            "matched": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "AEB-COMPOSE-SAME-ACTION",
+      "protocol": "AEB",
+      "description": "Both native legs independently map to one CAID and action digest.",
+      "passed": true,
+      "observed": {
+        "ccs_caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
+        "oasnt_caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
+        "ccs_action_digest": "sha256:c9bc87b03e7ec2d90536707a8b9c549a5f24e27dc02b801c4d8b6213867e98a8",
+        "oasnt_action_digest": "sha256:c9bc87b03e7ec2d90536707a8b9c549a5f24e27dc02b801c4d8b6213867e98a8"
+      }
+    },
+    {
+      "id": "AEB-COMPOSE-ROLES-PRESERVED",
+      "protocol": "AEB",
+      "description": "Machine policy and human authorization remain separate required roles.",
+      "passed": true,
+      "observed": {
+        "roles": [
+          "human-authorization",
+          "machine-policy-decision"
+        ]
+      }
+    },
+    {
+      "id": "AEB-COMPOSE-ADMISSION",
+      "protocol": "AEB",
+      "description": "A satisfied signed evaluation authorizes one reserved provider admission.",
+      "passed": true,
+      "observed": {
+        "verdict": "SATISFIED",
+        "admission": "AUTHORIZED"
+      }
+    },
+    {
+      "id": "AEB-COMPOSE-APPROVE-A-EXECUTE-B",
+      "protocol": "AEB",
+      "description": "A signed evaluation for action A cannot authorize changed action B.",
+      "passed": true,
+      "observed": {
+        "execution_authorizing": false,
+        "reasons": [
+          "evaluation_not_rederivable",
+          "verdict_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "AEB-COMPOSE-INDETERMINATE",
+      "protocol": "AEB",
+      "description": "A lost provider outcome remains reconciliation-required rather than guessed.",
+      "passed": true,
+      "observed": {
+        "state": "RECONCILIATION_REQUIRED"
+      }
+    },
+    {
+      "id": "AEB-COMPOSE-REPLAY-AFTER-INDETERMINATE",
+      "protocol": "AEB",
+      "description": "A second operation cannot re-admit the same native authority after an indeterminate attempt.",
+      "passed": true,
+      "observed": {
+        "state": "REFUSED",
+        "reason": "consumption_conflict"
+      }
+    }
+  ],
+  "composition": {
+    "action_digest": "sha256:c9bc87b03e7ec2d90536707a8b9c549a5f24e27dc02b801c4d8b6213867e98a8",
+    "caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
+    "ccs_action_digest": "sha256:c9bc87b03e7ec2d90536707a8b9c549a5f24e27dc02b801c4d8b6213867e98a8",
+    "ccs_caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
+    "oasnt_action_digest": "sha256:c9bc87b03e7ec2d90536707a8b9c549a5f24e27dc02b801c4d8b6213867e98a8",
+    "oasnt_caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
+    "evidence_roles": [
+      "human-authorization",
+      "machine-policy-decision"
+    ],
+    "evaluation_verdict": "SATISFIED",
+    "first_admission": "AUTHORIZED",
+    "first_outcome": "RECONCILIATION_REQUIRED",
+    "replay_admission": "REFUSED"
+  },
+  "passed": true,
+  "known_limits": [
+    "This run executes the EMILIA reference implementation and is not an independent implementation.",
+    "The CCS checks are pinned to ccs-verifier distribution 1.1.0 whose installed runtime reports 0.4.1; they do not claim conformance to later CCS draft text.",
+    "One OASNT native check is pinned to the published draft-thallapelly-oasnt-01 token vector; the two-leg composition uses a synthetic action-only token under the same verifier rules.",
+    "A passing report is not IETF adoption, endorsement, certification, or proof of deployment."
+  ],
+  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference composition at agent/ccs-aeb-interop-repair on 2026-08-11T20:00:00Z: 7/7 pinned native-protocol checks and 7/7 AEB composition checks passed against AEB-ADAPTER-v1 (sha256:152e77324c60e593d2075ce07ecfb1c6229ee3b4b7dc945d9ddf6a4101d1d80f). This is a reproduction of the EMILIA reference runner, not an independent implementation or IETF endorsement.",
+  "report_digest": "sha256:46ccc974fb13d57200014267f578d1fca79e4ed266a66cab29324c275c9d9988"
+}

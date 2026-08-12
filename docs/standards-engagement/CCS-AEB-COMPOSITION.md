@@ -36,6 +36,21 @@ The unsigned CCS `agent_id` is not action material in this profile and does not
 establish initiator identity; the AEB executor authenticates and records its
 initiator separately.
 
+When CCS is composed with another native evidence format, the adapter can use
+the stricter shared `native_action` projection:
+
+```text
+CCS command.tool    -> observed_action.native_action.type
+CCS command.params  -> observed_action.native_action.parameters
+```
+
+The runnable
+[`CCS + OASNT to AEB composition`](../../conformance/composition/ccs-oasnt-aeb-v1/README.md)
+proves that the CCS machine-policy leg and an independently verified OASNT
+human-authorization leg map to the same CAID and action digest before AEB
+evaluates the relying party's two-role requirement. It also exercises
+action substitution, indeterminate outcome, and replay after indeterminate.
+
 ## Replay and authority are separate
 
 The CCS result identity fences replay of one native CCS decision. It does not
@@ -61,6 +76,12 @@ authenticated observations after provider entry.
 This is an experimental same-team composition profile plus synthetic hostile
 cases. It is not an independent CCS implementation, CCS author review, an
 interoperability result, or a reason to change either draft's reference class.
+
+An external author can run the same kit and obtain a digest-bound report plus
+paste-ready Implementation Status text. That proves external reproduction of
+the EMILIA reference composition, not independent implementation. The report
+keeps the pinned CCS-native checks separate from AEB composition checks and can
+be signed with a runner-controlled Ed25519 key.
 
 If implementing CCS requires an AEB profile after the source author reproduces
 the composition, the CCS authors can classify that dependency according to

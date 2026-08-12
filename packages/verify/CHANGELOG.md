@@ -5,6 +5,12 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Added a shared native-action projection to the experimental CCS adapter so a
+  pinned CCS machine-policy result and another native evidence leg can map to
+  the same CAID without role substitution. Added a runnable CCS + OASNT AEB
+  composition report with compatibility locking, hostile substitution and
+  replay cases, and optional runner signatures.
+
 ### Added
 
 - `./aeb-ccs-adapter`, an experimental, source-locked mapping from the HMAC

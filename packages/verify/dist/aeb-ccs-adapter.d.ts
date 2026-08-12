@@ -62,6 +62,11 @@ export interface CcsAebHmacTrustRoot {
     secret_base64url: string;
 }
 export declare function createCcsAebActionDefinition(actionType: string): Obj;
+/**
+ * Define the shared native-action projection used when CCS policy evidence is
+ * joined with another independently verified evidence leg for the same action.
+ */
+export declare function createCcsNativeActionDefinition(actionType: string): Obj;
 /** Build a local-HMAC CCS adapter from relying-party-owned pins. */
 export declare function createCcsPyPiHmacAebAdapter(constructorPins: {
     config: CcsAebAdapterConfig;
