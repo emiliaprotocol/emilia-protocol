@@ -1,6 +1,5 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { JetBrains_Mono, Outfit, Space_Grotesk } from 'next/font/google';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import {
@@ -8,16 +7,6 @@ import {
   renderInlineMarkdown as inlineFormat,
   sanitizeCodeLanguage,
 } from '@/lib/spec-markdown';
-
-// Self-host the spec page's three custom fonts so the spec renders without
-// blocking on Google Fonts CSS and so the @next/next/no-page-custom-font
-// lint rule stays clear. The font-family strings (`JetBrains Mono`,
-// `Outfit`, `Space Grotesk`) used in the inline <style> tag below match
-// next/font's emitted family names verbatim.
-const jetBrainsMono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' });
-const outfit = Outfit({ subsets: ['latin'], weight: ['700', '800', '900'], display: 'swap' });
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' });
-const SPEC_FONT_CLASS = `${jetBrainsMono.className} ${outfit.className} ${spaceGrotesk.className}`;
 
 export const metadata = {
   // This page renders the posted Internet-Draft. "Internet-Draft", not "RFC" —
@@ -93,7 +82,7 @@ export default function SpecPage() {
   const html = mdToHtml(`\`\`\`text\n${draft}\n\`\`\``);
 
   return (
-    <div className={SPEC_FONT_CLASS}>
+    <div>
       <style dangerouslySetInnerHTML={{ __html: `
         body { background: #05060a; color: #e8eaf0; font-family: 'Space Grotesk', sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.8; margin: 0; }
         a { color: #00d4ff; text-decoration: none; }
