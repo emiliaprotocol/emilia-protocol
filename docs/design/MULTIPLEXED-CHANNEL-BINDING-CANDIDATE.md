@@ -197,6 +197,28 @@ but it retains consumption state and adds a token-key lifecycle and transcript
 that require their own review. The earlier statement that stateless issuance
 necessarily reintroduces multi-use replay was too broad.
 
+That consumed-token set carries a retention floor that MUST be stated
+explicitly: a consumed-token record MUST be retained until the token it
+records has expired. Dropping it earlier makes the token presentable again.
+A consumed set that is bounded by capacity and evicts under pressure therefore
+inherits the issuance-flood problem it was meant to avoid: an attacker mints
+fresh tokens until eviction discards an older consumed record, then replays
+that still-unexpired token. Capacity eviction of consumed records is a replay
+vulnerability, not a resource-management choice.
+
+The connection binding bounds that cost. Because the token commits to the exact
+connection identity, and the verifier rejects a token whose committed identity
+is not the current connection, a consumed record can never match a presentation
+on any other connection. Consumed records may therefore be scoped to their
+connection and discarded in full when that connection closes, and the required
+retention is the shorter of token expiry and connection lifetime. Two
+conditions make that safe: the profile MUST reject a token whose expiry exceeds
+its connection's maximum lifetime rather than silently extending retention, and
+the connection identity MUST be unique per physical TLS connection, never a
+handle that can be recycled after close. A recycled identifier would make an
+unexpired token from a closed connection presentable on its successor. This is
+the same identity requirement stated above for the stateful form.
+
 ## Key and channel lifecycle
 
 The public RFC 9266 `EXPORTER-Channel-Binding` value is never used as a secret

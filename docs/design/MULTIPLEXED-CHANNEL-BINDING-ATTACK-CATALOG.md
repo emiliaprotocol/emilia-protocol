@@ -37,6 +37,8 @@ The candidate under review is defined in
 | MCB-22 | Submit two valid presentations for one stateless issuance token, if that alternative is implemented | Atomic insert-if-absent permits one success and refuses the other |
 | MCB-23 | Use the experimental label with a verifier configured for a future registered label, or change the exporter context | HMAC comparison fails; the two versions cannot silently interoperate |
 | MCB-24 | Close the TLS connection with outstanding nonces and try to use them later | Key and outstanding instance state are destroyed; later use cannot pass |
+| MCB-25 | Flood the consumed-token set until capacity eviction discards an unexpired consumed record, then replay that token, if the stateless alternative is implemented | Replay is refused; consumed records are retained until token expiry or connection close, and capacity pressure never discards an unexpired record on a live connection |
+| MCB-26 | Present an unexpired stateless token from a closed connection after its connection identifier has been recycled for a new connection, if the stateless alternative is implemented | Identity is unique per physical connection; the recycled identifier does not revive the token |
 
 ## Differential cases that decide the construction
 
