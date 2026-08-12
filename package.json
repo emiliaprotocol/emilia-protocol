@@ -33,6 +33,8 @@
     "test:gateway-authz": "node --test packages/gateway-authz/*.test.mjs",
     "test:transport-adapters": "node --test packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs",
     "test:github-authority-map": "node --test integrations/github-authority-map-action/tests/*.node-test.mjs",
+    "test:channel-binding-benchmark": "node --test benchmarks/channel-binding/test/*.node-test.mjs",
+    "bench:channel-binding": "node benchmarks/channel-binding/run.mjs --samples 200",
     "test:ot-command-binding": "node --test examples/ot-command-binding-v1/*.test.mjs",
     "demo:ot-command-binding": "node examples/ot-command-binding-v1/demo.mjs",
     "sync:ot-command-binding-vectors": "node examples/ot-command-binding-v1/generate-vectors.mjs --write",

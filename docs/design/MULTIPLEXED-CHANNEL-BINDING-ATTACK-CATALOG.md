@@ -70,6 +70,13 @@ output is used directly as the channel-binding authenticator or is followed by
 an additional HMAC. Comparing one construction with an unnecessary extra HMAC
 would not be a valid benchmark.
 
+The runnable differential harness is in `benchmarks/channel-binding/`. It uses
+the exporter output directly for the context variant, runs both Node.js/OpenSSL
+and Go `crypto/tls`, and emits a time-pinned JSON report. Its output is local
+performance evidence only. It is not an executable hostile vector, a security
+proof, or an interoperability result, and the repository does not freeze one
+machine's measurements as protocol claims.
+
 ## Cryptographic assumptions, not runnable collision tests
 
 The following are assumptions or review questions and must not be reported as
