@@ -208,16 +208,11 @@ jobs:
       - name: Download pinned TLC model checker for governed image inputs
         env:
           TLA_VERSION: v1.7.4
+          TLA_ASSET_ID: '184694200'
           TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -fsSL \
-            --retry 5 \
-            --retry-delay 2 \
-            --retry-all-errors \
-            --connect-timeout 20 \
-            -o "$TLA2TOOLS_JAR" \
-            "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
-          echo "${TLA_SHA256}  ${TLA2TOOLS_JAR}" | sha256sum -c -
+          scripts/download-tla2tools.sh "$TLA2TOOLS_JAR"
       - name: Build all production images from the governed release inputs
         run: |
           deploy/consequence-control-cloud-run/build-release-images.sh \
@@ -478,16 +473,11 @@ jobs:
       - name: Download pinned TLC model checker
         env:
           TLA_VERSION: v1.7.4
+          TLA_ASSET_ID: '184694200'
           TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -fsSL \
-            --retry 5 \
-            --retry-delay 2 \
-            --retry-all-errors \
-            --connect-timeout 20 \
-            -o tla2tools.jar \
-            "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
-          echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -
+          scripts/download-tla2tools.sh tla2tools.jar
       - name: Execute exact claims and require the checked-in security case to be current
         env:
           # Every claim's implementations[] entry is dynamically import()ed to
@@ -566,16 +556,11 @@ jobs:
       - name: Download pinned TLC model checker
         env:
           TLA_VERSION: v1.7.4
+          TLA_ASSET_ID: '184694200'
           TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -fsSL \
-            --retry 5 \
-            --retry-delay 2 \
-            --retry-all-errors \
-            --connect-timeout 20 \
-            -o tla2tools.jar \
-            "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
-          echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -
+          scripts/download-tla2tools.sh tla2tools.jar
       - name: Rebuild governed TypeScript runtimes and refuse drift
         run: |
           npm run build:ts-runtime
@@ -1132,17 +1117,19 @@ jobs:
         # Pin the version AND verify the SHA-256 (from the release's published
         # checksums.txt) so a re-cut/compromised asset can't inject a binary.
         # To bump: change GITLEAKS_VERSION and update GITLEAKS_SHA256.
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           GITLEAKS_VERSION=8.21.2
+          GITLEAKS_ASSET_ID=202338480
           GITLEAKS_SHA256=5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba
           url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          asset_url="https://api.github.com/repos/gitleaks/gitleaks/releases/assets/${GITLEAKS_ASSET_ID}"
           # --fail: error out on HTTP 4xx/5xx instead of saving an error page that
           # tar then chokes on (a rate-limited download saved as HTML — not a real
           # leak — was the historical "exit code 2"). Retry transient 429/5xx.
-          curl --fail --location --show-error --silent \
-            --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 20 \
-            "$url" -o gitleaks.tar.gz
-          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          scripts/download-pinned-github-asset.sh \
+            "$url" "$asset_url" "$GITLEAKS_SHA256" gitleaks.tar.gz
           tar xzf gitleaks.tar.gz
           sudo mv gitleaks /usr/local/bin/
           gitleaks version

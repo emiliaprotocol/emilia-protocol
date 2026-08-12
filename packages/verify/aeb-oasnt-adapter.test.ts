@@ -14,6 +14,7 @@ import {
   OASNT_CAID_MAPPER_ID,
   OASNT_CAID_MAPPING_VERSION,
   OASNT_DRAFT_REVISION,
+  OASNT_DRAFT_TXT_SHA256,
   OASNT_TRUST_ROOT_VERSION,
   computeOasntActionDigest,
   computeOasntDisplayDigest,
@@ -195,4 +196,8 @@ test('OASNT constructor pins cannot be replaced by presenter-selected roots', ()
 
 test('OASNT source lock is the current reviewed draft', () => {
   assert.equal(OASNT_DRAFT_REVISION, 'draft-thallapelly-oasnt-01');
+  assert.equal(
+    OASNT_DRAFT_TXT_SHA256,
+    'sha256:7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19',
+  );
 });

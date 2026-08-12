@@ -2,7 +2,8 @@
 /**
  * Revision-pinned OASNT adapter for AEB-ADAPTER-v1.
  *
- * Source lock: draft-thallapelly-oasnt-01.
+ * Source lock: draft-thallapelly-oasnt-01, archived text SHA-256
+ * 7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19.
  *
  * OASNT proves a native, single-use human authorization token. This adapter
  * verifies that token under relying-party-pinned enrolled keys, recomputes its
@@ -31,6 +32,7 @@ import { strictJsonGate } from './strict-json.js';
 type Obj = Record<string, unknown>;
 
 export const OASNT_DRAFT_REVISION = 'draft-thallapelly-oasnt-01';
+export const OASNT_DRAFT_TXT_SHA256 = 'sha256:7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19';
 export const OASNT_AEB_ADAPTER_ID = 'native:oasnt';
 export const OASNT_AEB_ADAPTER_VERSION = '1';
 export const OASNT_AEB_CONFIG_VERSION = 'AEB-OASNT-CONFIG-v1';
