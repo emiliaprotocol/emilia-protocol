@@ -108,6 +108,9 @@ export default defineConfig({
       'interop/apertomemory-emilia/verify.test.mjs',
       'interop/aae-psea-gate/verify.test.mjs',
       'interop/aae-psea-gate/reperform.test.mjs',
+      // The CCS/OASNT composition suite is a portable node:test program.
+      // CI runs it through `npm run conformance:composition:ccs-oasnt`.
+      'conformance/composition/ccs-oasnt-aeb-v1/run.test.mts',
       // The public forgery corpus deliberately uses node:test so the pinned
       // bounty command runs without Vitest. CI executes it explicitly below.
       'tests/verifier-forgery/**',
