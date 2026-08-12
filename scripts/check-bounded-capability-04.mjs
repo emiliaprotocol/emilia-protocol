@@ -181,8 +181,8 @@ function relationContextKey(context) {
 
 /**
  * @param {{
- *   hops: Array<{parent: string, child: string, localResult: string, context: Record<string, string>}>,
- *   establishment?: {authenticated: boolean, runnerTrusted: boolean, exactContextMatch: boolean, domain: string[]} | null,
+ *   hops: Array<{ parent: string, child: string, localResult: string, context: Record<string, unknown> }>,
+ *   establishment?: { authenticated: boolean, runnerTrusted: boolean, exactContextMatch: boolean, domain: string[] } | null
  * }} input
  */
 function chainComposable({ hops, establishment = null }) {

@@ -44,15 +44,34 @@ export const TRANSPORT_PROFILES = Object.freeze({
     }),
     'modbus-tcp': Object.freeze({
         transport: 'modbus-tcp',
+        encoding_profile: Object.freeze({
+            id: 'EP-OT-MODBUS-TCP-WRITE-ENCODING-v1',
+            scope: 'native-encoding',
+            function_codes: Object.freeze([0x06, 0x10]),
+            normalization: 'none',
+        }),
         envelope_capacity: 'none',
         carries_authorization_inline: false,
         binding_mode: 'out-of-band-digest',
         extension_point: null,
         metadata_octets_available: 0,
-        why: 'A write is unit id, function code, register address, and value. Length is fixed by the function code; nothing else fits on the wire.',
+        why: 'A write is unit id, function code, register address, and function-defined write fields. Length is fixed by those fields; nothing else fits on the wire.',
     }),
     dnp3: Object.freeze({
         transport: 'dnp3',
+        encoding_profile: Object.freeze({
+            id: 'EP-OT-DNP3-CROB-DIRECT-OPERATE-ENCODING-v1',
+            scope: 'native-encoding',
+            object_header: Object.freeze({
+                qualifier: 0x17,
+                object_count: 1,
+                index_octets: 1,
+                index_min: 0,
+                index_max: 0xff,
+            }),
+            application_control_flags: Object.freeze({ FIR: 1, FIN: 1, CON: 0, UNS: 0 }),
+            request_status: 0,
+        }),
         envelope_capacity: 'fixed-object-space',
         carries_authorization_inline: false,
         binding_mode: 'out-of-band-digest',
@@ -192,11 +211,23 @@ export const BOUND_FIELDS = Object.freeze({
 // Modbus TCP
 // ---------------------------------------------------------------------------
 const MODBUS_FC_WRITE_SINGLE_REGISTER = 0x06;
+const MODBUS_FC_WRITE_MULTIPLE_REGISTERS = 0x10;
 /** Transaction id (2) + protocol id (2) + length (2) + unit id (1). */
 const MODBUS_MBAP_OCTETS = 7;
 /** Function code (1) + register address (2) + register value (2). */
 const MODBUS_FC06_PDU_OCTETS = 5;
-const MODBUS_ADU_OCTETS = MODBUS_MBAP_OCTETS + MODBUS_FC06_PDU_OCTETS;
+const MODBUS_FC06_ADU_OCTETS = MODBUS_MBAP_OCTETS + MODBUS_FC06_PDU_OCTETS;
+/** Function code (1) + address (2) + quantity (2) + byte count (1). */
+const MODBUS_FC16_FIXED_PDU_OCTETS = 6;
+function requireMappedModbusUnit(unitId, link) {
+    if (link?.unit_id === undefined) {
+        throw new TypeError('Modbus unit id mapping is required from conduit device context');
+    }
+    const mappedUnitId = requireSafeInt(link.unit_id, 'link.unit_id', 0, 247);
+    if (unitId !== mappedUnitId) {
+        throw new TypeError('Modbus unit id does not match conduit device context');
+    }
+}
 /**
  * Encode the Modbus TCP application data unit for a write-single-register.
  *
@@ -210,7 +241,7 @@ export function encodeModbusWriteRegister(action, { transactionId = 1 } = {}) {
     }
     const protocolAddress = requireSafeInt(action.protocol_address, 'protocolAddress', 0, 0xffff);
     requireSafeInt(transactionId, 'transactionId', 0, 0xffff);
-    const frame = Buffer.alloc(MODBUS_ADU_OCTETS);
+    const frame = Buffer.alloc(MODBUS_FC06_ADU_OCTETS);
     frame.writeUInt16BE(transactionId, 0); // MBAP transaction id
     frame.writeUInt16BE(0, 2); // MBAP protocol id
     frame.writeUInt16BE(6, 4); // MBAP length: unit id + 5-octet PDU
@@ -236,7 +267,7 @@ export function encodeModbusWriteRegister(action, { transactionId = 1 } = {}) {
  */
 export function decodeModbusWriteRegister(hex, link) {
     const frame = Buffer.from(requireString(hex, 'hex'), 'hex');
-    if (frame.length !== MODBUS_ADU_OCTETS)
+    if (frame.length !== MODBUS_FC06_ADU_OCTETS)
         throw new TypeError('unexpected Modbus ADU length');
     if (frame.readUInt16BE(2) !== 0)
         throw new TypeError('unexpected Modbus protocol id');
@@ -246,15 +277,88 @@ export function decodeModbusWriteRegister(hex, link) {
         throw new TypeError('unexpected Modbus function code');
     }
     const unitId = frame.readUInt8(6);
-    if (link?.unit_id !== undefined && unitId !== link.unit_id) {
-        throw new TypeError('Modbus unit id does not match conduit device context');
-    }
+    requireMappedModbusUnit(unitId, link);
     return modbusWriteRegisterAction({
         site: link?.site,
         device: link?.device,
         unitId,
         protocolAddress: frame.readUInt16BE(8),
         value: frame.readUInt16BE(10),
+    });
+}
+/** Encode a Modbus TCP FC 0x10 write-multiple-registers request. */
+export function encodeModbusWriteMultipleRegisters(action, { transactionId = 1 } = {}) {
+    if (action?.transport !== 'modbus-tcp'
+        || action?.function_code !== MODBUS_FC_WRITE_MULTIPLE_REGISTERS) {
+        throw new TypeError('encodeModbusWriteMultipleRegisters requires a modbus-tcp write-multiple-registers action');
+    }
+    if (!Array.isArray(action.values)) {
+        throw new TypeError('values must be an array');
+    }
+    const quantity = requireSafeInt(action.quantity, 'quantity', 1, 123);
+    if (action.values.length !== quantity) {
+        throw new TypeError('Modbus quantity does not match register values');
+    }
+    const byteCount = requireSafeInt(action.byte_count, 'byteCount', 2, 246);
+    if (byteCount !== quantity * 2) {
+        throw new TypeError('Modbus byte count does not match quantity');
+    }
+    const protocolAddress = requireSafeInt(action.protocol_address, 'protocolAddress', 0, 0xffff);
+    const unitId = requireSafeInt(action.unit_id, 'unitId', 0, 247);
+    requireSafeInt(transactionId, 'transactionId', 0, 0xffff);
+    const values = action.values.map((value, index) => (requireSafeInt(value, `values[${index}]`, 0, 0xffff)));
+    const frame = Buffer.alloc(MODBUS_MBAP_OCTETS + MODBUS_FC16_FIXED_PDU_OCTETS + byteCount);
+    frame.writeUInt16BE(transactionId, 0);
+    frame.writeUInt16BE(0, 2);
+    frame.writeUInt16BE(frame.length - 6, 4);
+    frame.writeUInt8(unitId, 6);
+    frame.writeUInt8(MODBUS_FC_WRITE_MULTIPLE_REGISTERS, 7);
+    frame.writeUInt16BE(protocolAddress, 8);
+    frame.writeUInt16BE(quantity, 10);
+    frame.writeUInt8(byteCount, 12);
+    values.forEach((value, index) => frame.writeUInt16BE(value, 13 + (index * 2)));
+    return Object.freeze({
+        transport: 'modbus-tcp',
+        hex: frame.toString('hex'),
+        octets: frame.length,
+        protocol_address: protocolAddress,
+        quantity,
+        byte_count: byteCount,
+        metadata_octets_available: frame.length - MODBUS_MBAP_OCTETS - MODBUS_FC16_FIXED_PDU_OCTETS - byteCount,
+        carries_authorization: false,
+    });
+}
+/** Decode a Modbus TCP FC 0x10 request into its encoding-scoped action. */
+export function decodeModbusWriteMultipleRegisters(hex, link) {
+    const frame = Buffer.from(requireString(hex, 'hex'), 'hex');
+    if (frame.length < MODBUS_MBAP_OCTETS + MODBUS_FC16_FIXED_PDU_OCTETS + 2) {
+        throw new TypeError('unexpected Modbus ADU length');
+    }
+    if (frame.readUInt16BE(2) !== 0)
+        throw new TypeError('unexpected Modbus protocol id');
+    if (frame.readUInt16BE(4) !== frame.length - 6) {
+        throw new TypeError('unexpected Modbus length field');
+    }
+    if (frame.readUInt8(7) !== MODBUS_FC_WRITE_MULTIPLE_REGISTERS) {
+        throw new TypeError('unexpected Modbus function code');
+    }
+    const quantity = requireSafeInt(frame.readUInt16BE(10), 'quantity', 1, 123);
+    const byteCount = frame.readUInt8(12);
+    if (byteCount !== quantity * 2) {
+        throw new TypeError('Modbus byte count does not match quantity');
+    }
+    if (frame.length !== MODBUS_MBAP_OCTETS + MODBUS_FC16_FIXED_PDU_OCTETS + byteCount) {
+        throw new TypeError('unexpected Modbus ADU length for byte count');
+    }
+    const unitId = frame.readUInt8(6);
+    requireMappedModbusUnit(unitId, link);
+    const values = Array.from({ length: quantity }, (_, index) => frame.readUInt16BE(13 + (index * 2)));
+    return modbusWriteMultipleRegistersAction({
+        site: link?.site,
+        device: link?.device,
+        unitId,
+        protocolAddress: frame.readUInt16BE(8),
+        values,
     });
 }
 // ---------------------------------------------------------------------------
@@ -319,6 +423,9 @@ export function decodeDnp3ControlRelay(hex, link) {
     const fragment = Buffer.from(requireString(hex, 'hex'), 'hex');
     if (fragment.length !== DNP3_FRAGMENT_OCTETS)
         throw new TypeError('unexpected DNP3 fragment length');
+    if ((fragment.readUInt8(0) & 0xf0) !== 0xc0) {
+        throw new TypeError('unexpected DNP3 application control for single-fragment request');
+    }
     const applicationFunction = fragment.readUInt8(1);
     if (applicationFunction !== DNP3_FC_DIRECT_OPERATE
         && applicationFunction !== DNP3_FC_DIRECT_OPERATE_NO_ACK) {
@@ -329,6 +436,9 @@ export function decodeDnp3ControlRelay(hex, link) {
     }
     if (fragment.readUInt8(4) !== 0x17 || fragment.readUInt8(5) !== 1) {
         throw new TypeError('unexpected DNP3 qualifier or object count');
+    }
+    if (fragment.readUInt8(17) !== 0) {
+        throw new TypeError('DNP3 request status must be zero');
     }
     return dnp3ControlRelayAction({
         site: link?.site,
@@ -417,6 +527,8 @@ export default {
     opcuaCallMethodAction,
     encodeModbusWriteRegister,
     decodeModbusWriteRegister,
+    encodeModbusWriteMultipleRegisters,
+    decodeModbusWriteMultipleRegisters,
     encodeDnp3ControlRelay,
     decodeDnp3ControlRelay,
     encodeOpcuaCall,

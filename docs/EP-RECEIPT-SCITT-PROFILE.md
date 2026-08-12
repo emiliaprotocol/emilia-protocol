@@ -98,7 +98,50 @@ observed-evidence freshness, plus one-time consumption, plus the Transparency Se
 non-equivocation (a re-registered/forked statement is detectable in the append-only log). State it in
 those terms — not as "decay physics."
 
-## 6. Status
+## 6. Registration order and attested effect order
+
+A transparency receipt establishes registration of a statement. Its timestamp
+or sequence position does not, by itself, establish when the event described by
+that statement occurred. In particular, registering statement A before
+statement B proves registration order, even when one service sequences both;
+an emitter can delay statement A until after the event it describes.
+
+A `PENDING_BEFORE_EFFECT` statement closes the absence-at-entry gap by proving
+that the statement was registered before its own attempted effect. Two such
+entries still do not establish completion order because their effects can
+complete in the opposite order.
+
+This profile therefore recognizes four cases:
+
+1. One sequencer, with an authenticated, exact-operation terminal record that
+   carries independently verified `EFFECT_CONFIRMED` evidence for operation A,
+   ordered before the authenticated pre-effect entry for operation B:
+   A-before-B order is established for those attested effect claims.
+2. One sequencer without that terminal-before-entry relation: registration
+   order only; effect order remains unproved. A terminal outcome of
+   `INDETERMINATE` does not establish physical effect order.
+3. Related logs: order only where an independently verified cross-log
+   relationship binds the exact record digests and establishes that A's
+   terminal record precedes B's entry.
+4. Independent or unrelated logs: the records can be correlated, but their
+   relative effect order is not established.
+
+The obligation to emit an entry before provider effect belongs to the emitter
+or executor profile. A Transparency Service can verify the bytes and their log
+position; it cannot unilaterally verify that the emitter registered before
+effect. These ordering rules do not extend BCR conservation beyond one
+authoritative atomic state domain.
+
+This classification establishes order between authenticated claims under the
+configured trust policy. A signed or transparent statement does not, by itself,
+prove that its account of a physical event is true or complete. The executable
+classifier consumes already verified adapter results; it does not verify log
+receipts, signatures, emitter truthfulness, or cross-log cryptography.
+
+Executable cases are in
+`examples/scitt/registration-event-order.test.mjs`.
+
+## 7. Status
 
 - **EMILIA** — `draft-schrock-ep-authorization-receipts` (individual I-D, Apache-2.0). Reference
   verifiers JS/Python/Go; JWS profile shipped (`EP-RECEIPT-JWS-PROFILE-v1`).
