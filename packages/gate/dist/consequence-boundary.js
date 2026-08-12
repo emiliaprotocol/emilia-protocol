@@ -293,6 +293,16 @@ export function createConsequenceBoundary(options) {
             now: decisionNow,
         });
         if (!verification.valid || !verification.execution_authorizing) {
+            const composition = dataRecord(evaluation.composition);
+            if (verification.checks.schema
+                && verification.checks.signature
+                && verification.checks.pinned_config
+                && verification.checks.current_status
+                && composition
+                && digest(composition.action_digest)
+                && composition.action_digest !== digestAeb(action)) {
+                return refused('exact_action_binding_mismatch');
+            }
             return refused(verification.reasons[0] ?? 'evaluation_not_verified');
         }
         let localAuthorization = false;

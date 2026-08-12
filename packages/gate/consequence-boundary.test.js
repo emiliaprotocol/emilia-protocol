@@ -253,7 +253,7 @@ function executedEvidence() {
         evidence_digest: digestAeb({ provider: 'bank', outcome: 'executed', id: 1 }),
     };
 }
-function makeBoundary({ f = fixture(), aebStore = durableAebStore(), attempts = attemptStore(), invoke = async () => ({ state: 'EXECUTED', evidence: executedEvidence(), result: { id: 'effect-1' } }), } = {}) {
+function makeBoundary({ f = fixture(), aebStore = durableAebStore(), attempts = attemptStore(), localAuthorize = () => true, invoke = async () => ({ state: 'EXECUTED', evidence: executedEvidence(), result: { id: 'effect-1' } }), } = {}) {
     let attemptCounter = 0;
     const boundary = createConsequenceBoundary({
         executor_id: EXECUTOR,
@@ -271,7 +271,7 @@ function makeBoundary({ f = fixture(), aebStore = durableAebStore(), attempts = 
                 return { ...structuredClone(row.binding), owner: row.owner };
             },
         },
-        local_authorize: () => true,
+        local_authorize: localAuthorize,
         invoke,
         now: () => NOW,
     });
@@ -282,6 +282,14 @@ test('neutral consequence boundary executes native mandate evidence without requ
     let calls = 0;
     const h = makeBoundary({
         f,
+        localAuthorize: (context) => {
+            assert.equal(Object.isFrozen(context), true);
+            assert.equal(Object.isFrozen(context.action), true);
+            assert.deepEqual(context.action, ACTION);
+            assert.equal(context.evaluation.operation_id, f.evaluation.operation_id);
+            assert.equal(context.provider.provider_account_id, PROVIDER.provider_account_id);
+            return true;
+        },
         invoke: async (context) => {
             calls += 1;
             assert.equal(Object.isFrozen(context), true);
@@ -327,14 +335,107 @@ test('provider idempotency key is canonical, provider-scoped, and bound to one e
 });
 test('approve-A execute-B substitution is refused before the provider callback', async () => {
     const f = fixture();
+    let localCalls = 0;
     let calls = 0;
-    const h = makeBoundary({ f, invoke: async () => {
+    const h = makeBoundary({
+        f,
+        localAuthorize: () => {
+            localCalls += 1;
+            return true;
+        },
+        invoke: async () => {
             calls += 1;
             return { state: 'EXECUTED', evidence: executedEvidence(), result: null };
-        } });
+        },
+    });
     const result = await h.boundary.run(input(f, { ...ACTION, amount: '5000.00' }));
     assert.equal(result.state, 'REFUSED');
     assert.equal(result.invoked, false);
+    assert.equal(result.reason, 'exact_action_binding_mismatch');
+    assert.equal(localCalls, 0);
+    assert.equal(h.aebStore.operations.size, 0);
+    assert.equal(calls, 0);
+});
+test('an untrusted evaluation cannot obtain the trusted exact-action mismatch reason', async () => {
+    const f = fixture({ operationId: 'operation:untrusted-substitution', replayId: 'native-mandate:untrusted-substitution' });
+    const evaluation = structuredClone(f.evaluation);
+    evaluation.signature.value = `${evaluation.signature.value[0] === 'A' ? 'B' : 'A'}${evaluation.signature.value.slice(1)}`;
+    let localCalls = 0;
+    let calls = 0;
+    const h = makeBoundary({
+        f,
+        localAuthorize: () => {
+            localCalls += 1;
+            return true;
+        },
+        invoke: async () => {
+            calls += 1;
+            return { state: 'EXECUTED', evidence: executedEvidence(), result: null };
+        },
+    });
+    const result = await h.boundary.run({
+        ...input(f, { ...ACTION, amount: '5000.00' }),
+        evaluation,
+    });
+    assert.equal(result.state, 'REFUSED');
+    assert.equal(result.invoked, false);
+    assert.notEqual(result.reason, 'exact_action_binding_mismatch');
+    assert.equal(localCalls, 0);
+    assert.equal(h.aebStore.operations.size, 0);
+    assert.equal(calls, 0);
+});
+test('local authorization denial is load-bearing and blocks provider entry', async () => {
+    const f = fixture({ operationId: 'operation:local-refusal', replayId: 'native-mandate:local-refusal' });
+    let calls = 0;
+    const h = makeBoundary({
+        f,
+        localAuthorize: () => false,
+        invoke: async () => {
+            calls += 1;
+            return { state: 'EXECUTED', evidence: executedEvidence(), result: null };
+        },
+    });
+    const result = await h.boundary.run(input(f));
+    assert.equal(result.state, 'REFUSED');
+    assert.equal(result.invoked, false);
+    assert.equal(result.reason, 'local_authorization_denied');
+    assert.equal(h.aebStore.operations.size, 0);
+    assert.equal(calls, 0);
+});
+test('local authorization exceptions fail closed before provider entry', async () => {
+    const f = fixture({ operationId: 'operation:local-error', replayId: 'native-mandate:local-error' });
+    let calls = 0;
+    const h = makeBoundary({
+        f,
+        localAuthorize: () => { throw new Error('policy_unavailable'); },
+        invoke: async () => {
+            calls += 1;
+            return { state: 'EXECUTED', evidence: executedEvidence(), result: null };
+        },
+    });
+    const result = await h.boundary.run(input(f));
+    assert.equal(result.state, 'REFUSED');
+    assert.equal(result.invoked, false);
+    assert.equal(result.reason, 'local_authorization_denied');
+    assert.equal(h.aebStore.operations.size, 0);
+    assert.equal(calls, 0);
+});
+test('local authorization requires the exact boolean true', async () => {
+    const f = fixture({ operationId: 'operation:local-truthy', replayId: 'native-mandate:local-truthy' });
+    let calls = 0;
+    const h = makeBoundary({
+        f,
+        localAuthorize: () => 1,
+        invoke: async () => {
+            calls += 1;
+            return { state: 'EXECUTED', evidence: executedEvidence(), result: null };
+        },
+    });
+    const result = await h.boundary.run(input(f));
+    assert.equal(result.state, 'REFUSED');
+    assert.equal(result.invoked, false);
+    assert.equal(result.reason, 'local_authorization_denied');
+    assert.equal(h.aebStore.operations.size, 0);
     assert.equal(calls, 0);
 });
 test('same native mandate cannot be wrapped under a new operation and admitted twice', async () => {
@@ -381,14 +482,24 @@ test('authoritative FAILED burns the one-time authorization and requires a new a
 });
 test('evaluation for another executor is refused before local policy and effect', async () => {
     const f = fixture({ executorId: 'executor:other' });
+    let localCalls = 0;
     let calls = 0;
-    const h = makeBoundary({ f, invoke: async () => {
+    const h = makeBoundary({
+        f,
+        localAuthorize: () => {
+            localCalls += 1;
+            return true;
+        },
+        invoke: async () => {
             calls += 1;
             return { state: 'EXECUTED', evidence: executedEvidence(), result: null };
-        } });
+        },
+    });
     const result = await h.boundary.run(input(f));
     assert.equal(result.state, 'REFUSED');
     assert.equal(result.reason, 'executor_binding_mismatch');
+    assert.equal(localCalls, 0);
+    assert.equal(h.aebStore.operations.size, 0);
     assert.equal(calls, 0);
 });
 test('concurrent admission invokes the provider exactly once', async () => {
