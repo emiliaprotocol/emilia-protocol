@@ -2251,7 +2251,14 @@ li > p:last-of-type:only-child {
         supplies implementation experience for staged orchestration. This
         architecture does not standardize those APIs, claim independent
         implementations, or assert that any specific deployment completely
-        mediates all consequential paths.<a href="#section-9-2.9" class="pilcrow">¶</a>
+        mediates all consequential paths. The Gate capability-store reference
+        now implements an optional local admission-control domain whose epoch is
+        captured at reservation and rechecked in the atomic provider-entry
+        transaction. Freeze and restore each advance that epoch. Same-team
+        memory and ephemeral PostgreSQL race tests cover both freeze/entry
+        orderings. This does not implement disconnected-edge leases, produce a
+        portable signed freeze-event artifact, or prove that an adapter path
+        omitted from the domain is mediated.<a href="#section-9-2.9" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-9-2.10">DTC names a broader deployment pattern. It is not a protocol or a
         deployment claim in this document.<a href="#section-9-2.10" class="pilcrow">¶</a>

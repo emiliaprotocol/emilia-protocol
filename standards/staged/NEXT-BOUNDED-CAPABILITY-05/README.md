@@ -17,8 +17,13 @@ for disconnected leased executors. It does not claim to stop computation, undo
 an external effect, freeze independent state domains instantly, or prove that
 an action was unauthorized merely because a receipt is absent.
 
-The admission-control epoch profile is not yet implemented. The included
-checker is an executable editorial decision model for the normative race table,
-not an implementation-conformance result or a live PostgreSQL concurrency test.
+The local admission-control epoch profile is implemented in the in-memory and
+PostgreSQL reference stores for explicitly covered operations. The hostile
+suite includes a live ephemeral PostgreSQL 17 race test for both freeze versus
+provider-entry orderings. This is same-team implementation evidence, not an
+independent reproduction, production deployment, disconnected-edge lease, or
+portable signed freeze-event artifact. The included checker also runs an
+executable editorial decision model for the normative race table and pins the
+required source and hostile-test surfaces.
 
 This packet is staged only. It has not been submitted to the Datatracker.

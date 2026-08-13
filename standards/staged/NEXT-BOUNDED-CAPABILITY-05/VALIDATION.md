@@ -17,8 +17,10 @@ reservation and provider entry, provider entry before freeze, wrong-holder
 retention, no relabeling after provider entry, old-epoch refusal after restore,
 continued reconciliation, exact idempotent retry after authority consumption,
 conflicting operation identifiers, and one budget transition without double
-debit. They are not a substitute for live-store concurrency tests.
+debit. The reference hostile suite separately executes both freeze/provider
+entry serializations against an ephemeral live PostgreSQL 17 instance.
 
-The Implementation Status section explicitly identifies the existing
-provider-entry budget transition and identifies the admission-control epoch,
-freeze transaction, edge lease, and signed freeze-event artifact as unimplemented.
+The Implementation Status section identifies the local admission-control epoch
+and freeze transaction as same-team reference implementation evidence. It keeps
+the disconnected-edge lease, portable signed freeze-event artifact, and atomic
+portable detector-capability consumption explicitly unimplemented.

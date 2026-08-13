@@ -118,9 +118,9 @@ Internet-Draft               EP Architecture                 August 2026
      8.3.  Disputes  . . . . . . . . . . . . . . . . . . . . . . . .  14
      8.4.  Compensating Actions  . . . . . . . . . . . . . . . . . .  14
    9.  Component Boundaries and Implementation Status  . . . . . . .  14
-   10. Relationship to Adjacent Work . . . . . . . . . . . . . . . .  15
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  16
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  17
+   10. Relationship to Adjacent Work . . . . . . . . . . . . . . . .  16
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  17
+   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  18
    13. Operational Considerations  . . . . . . . . . . . . . . . . .  18
    14. Changes from -02  . . . . . . . . . . . . . . . . . . . . . .  18
    15. Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  19
@@ -820,10 +820,27 @@ Internet-Draft               EP Architecture                 August 2026
       build supplies implementation experience for staged orchestration.
       This architecture does not standardize those APIs, claim
       independent implementations, or assert that any specific
-      deployment completely mediates all consequential paths.
+      deployment completely mediates all consequential paths.  The Gate
+      capability-store reference now implements an optional local
+      admission-control domain whose epoch is captured at reservation
+      and rechecked in the atomic provider-entry transaction.  Freeze
+      and restore each advance that epoch.  Same-team memory and
+      ephemeral PostgreSQL race tests cover both freeze/entry orderings.
+      This does not implement disconnected-edge leases, produce a
+      portable signed freeze-event artifact, or prove that an adapter
+      path omitted from the domain is mediated.
 
    *  DTC names a broader deployment pattern.  It is not a protocol or a
       deployment claim in this document.
+
+
+
+
+
+Schrock                 Expires 13 February 2027               [Page 15]
+
+Internet-Draft               EP Architecture                 August 2026
+
 
 10.  Relationship to Adjacent Work
 
@@ -833,14 +850,6 @@ Internet-Draft               EP Architecture                 August 2026
    *  The DMSC Agent Gateway gap-analysis draft [DMSC-GW] provides
       concrete multi-domain and physical-action gateway scenarios.  It
       is an individual draft, not a claim of IETF consensus.
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 15]
-
-Internet-Draft               EP Architecture                 August 2026
-
 
    *  WIMSE Condition-Bounded Credentials [WIMSE-CBC] establish workload
       identity and channel-possession properties.  They do not by
@@ -877,15 +886,6 @@ Internet-Draft               EP Architecture                 August 2026
       evidence that can be carried or referenced by that transport and
       checked after the live channel is gone.
 
-11.  Security Considerations
-
-   The primary architectural failure is category collapse.  A valid
-   signature can authenticate an untrusted assertion; it does not make
-   the assertion authoritative.  A current credential does not prove a
-   human approved one exact action.  A policy ALLOW does not prove a
-   named human approved.  A matching CAID does not prove either artifact
-   is valid.  A satisfied evidence requirement does not prove an action
-   is lawful, safe, wise, or correctly executed.
 
 
 
@@ -897,6 +897,16 @@ Schrock                 Expires 13 February 2027               [Page 16]
 
 Internet-Draft               EP Architecture                 August 2026
 
+
+11.  Security Considerations
+
+   The primary architectural failure is category collapse.  A valid
+   signature can authenticate an untrusted assertion; it does not make
+   the assertion authoritative.  A current credential does not prove a
+   human approved one exact action.  A policy ALLOW does not prove a
+   named human approved.  A matching CAID does not prove either artifact
+   is valid.  A satisfied evidence requirement does not prove an action
+   is lawful, safe, wise, or correctly executed.
 
    Trust inputs MUST NOT be silently imported from the artifact being
    judged.  Native verifier exceptions, missing trust configuration,
@@ -935,6 +945,15 @@ Internet-Draft               EP Architecture                 August 2026
    software TPM fixture must not be described as independent or
    physical-hardware proof.
 
+
+
+
+
+Schrock                 Expires 13 February 2027               [Page 17]
+
+Internet-Draft               EP Architecture                 August 2026
+
+
 12.  Privacy Considerations
 
    Action objects and evidence chains can expose identities,
@@ -946,14 +965,6 @@ Internet-Draft               EP Architecture                 August 2026
    Profiles SHOULD minimize portable fields, prefer pairwise identifiers
    where correlation is not required, separate evidence references from
    raw source records, define retention and disclosure policy, and avoid
-
-
-
-Schrock                 Expires 13 February 2027               [Page 17]
-
-Internet-Draft               EP Architecture                 August 2026
-
-
    placing secrets or bearer claim tokens in logs.  Selective-disclosure
    mechanisms do not remove the need to bind every disclosed projection
    to the exact action and relying-party requirement.
@@ -991,17 +1002,6 @@ Internet-Draft               EP Architecture                 August 2026
    *  defines serialized emergency freeze, restoration, and
       reconciliation behavior for the three freeze-versus-entry races;
 
-   *  states the disconnected-edge stale-admission window and rejects
-      immediate global-freeze claims; and
-
-   *  adds idempotency, wrong-holder, receipt-absence, and unsigned-
-      event claim boundaries.
-
-
-
-
-
-
 
 
 
@@ -1009,6 +1009,12 @@ Schrock                 Expires 13 February 2027               [Page 18]
 
 Internet-Draft               EP Architecture                 August 2026
 
+
+   *  states the disconnected-edge stale-admission window and rejects
+      immediate global-freeze claims; and
+
+   *  adds idempotency, wrong-holder, receipt-absence, and unsigned-
+      event claim boundaries.
 
 15.  Acknowledgments
 
@@ -1051,12 +1057,6 @@ Internet-Draft               EP Architecture                 August 2026
               28 June 2026, <https://datatracker.ietf.org/doc/draft-
               hood-independent-agtp/>.
 
-   [AUTHZEN-AARP]
-              McGuinness, K., "AuthZEN Access Request and Approval
-              Profile - Draft 1", 9 July 2026,
-              <https://openid.github.io/authzen/authzen-access-request-
-              approval-profile-1_0.html>.
-
 
 
 
@@ -1065,6 +1065,12 @@ Schrock                 Expires 13 February 2027               [Page 19]
 
 Internet-Draft               EP Architecture                 August 2026
 
+
+   [AUTHZEN-AARP]
+              McGuinness, K., "AuthZEN Access Request and Approval
+              Profile - Draft 1", 9 July 2026,
+              <https://openid.github.io/authzen/authzen-access-request-
+              approval-profile-1_0.html>.
 
    [CAID]     Schrock, I., "The Canonical Action Identifier (CAID)",
               Work in Progress, Internet-Draft, draft-schrock-canonical-
@@ -1107,12 +1113,6 @@ Internet-Draft               EP Architecture                 August 2026
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               quorum/>.
 
-   [EP-RECEIPTS]
-              Schrock, I., "Authorization Receipts for High-Risk Agent
-              Actions", Work in Progress, Internet-Draft, draft-schrock-
-              ep-authorization-receipts-11, July 2026,
-              <https://datatracker.ietf.org/doc/draft-schrock-ep-
-              authorization-receipts/>.
 
 
 
@@ -1121,6 +1121,13 @@ Schrock                 Expires 13 February 2027               [Page 20]
 
 Internet-Draft               EP Architecture                 August 2026
 
+
+   [EP-RECEIPTS]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-11, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-receipts/>.
 
    [EP-REVOCATION]
               Schrock, I., "Portable Revocation Statements for Action-
@@ -1158,13 +1165,6 @@ Internet-Draft               EP Architecture                 August 2026
               <https://datatracker.ietf.org/doc/draft-winmagic-wimse-
               condition-bounded-credentials/>.
 
-   [WIMSE-EVIDENCE]
-              Munoz, C., "Signed Authorization-Evidence Records for
-              WIMSE-Authorized AI Agent Actions", Work in Progress,
-              Internet-Draft, draft-munoz-wimse-authorization-evidence-
-              01, July 2026, <https://datatracker.ietf.org/doc/draft-
-              munoz-wimse-authorization-evidence/>.
-
 
 
 
@@ -1177,6 +1177,13 @@ Schrock                 Expires 13 February 2027               [Page 21]
 
 Internet-Draft               EP Architecture                 August 2026
 
+
+   [WIMSE-EVIDENCE]
+              Munoz, C., "Signed Authorization-Evidence Records for
+              WIMSE-Authorized AI Agent Actions", Work in Progress,
+              Internet-Draft, draft-munoz-wimse-authorization-evidence-
+              01, July 2026, <https://datatracker.ietf.org/doc/draft-
+              munoz-wimse-authorization-evidence/>.
 
    [WIMSE-HTTP-SIG]
               Salowey, J. A. and Y. Sheffer, "WIMSE Workload-to-Workload
@@ -1191,13 +1198,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
 
 
 

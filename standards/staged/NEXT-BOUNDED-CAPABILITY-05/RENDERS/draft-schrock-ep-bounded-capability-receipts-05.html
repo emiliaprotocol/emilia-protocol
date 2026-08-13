@@ -2993,12 +2993,22 @@ remaining = total - consumed - reserved
 <p id="section-19-2">The reference stores move an operation amount from
       <code>reserved_amount</code> to <code>consumed_amount</code> in the same
       transaction that records provider entry, and later outcome commit does
-      not debit the budget again. The admission-control domain status and epoch
-      profile added in -05 is not yet implemented. There are no live
-      PostgreSQL race results for freeze versus reservation or provider entry,
-      no disconnected-edge lease implementation, and no signed freeze-event
-      artifact. Those additions are protocol requirements and implementation
-      targets, not current conformance claims.<a href="#section-19-2" class="pilcrow">¶</a></p>
+      not debit the budget again. The in-memory and PostgreSQL reference stores
+      implement the -05 admission-control domain status and monotonic epoch on
+      explicitly covered operations. Reservation captures the current epoch;
+      provider entry locks and rechecks the same domain before changing held
+      budget to consumed budget; freeze and restore each advance the epoch; and
+      a pre-freeze reservation that has not entered is released as
+      <code>not_entered</code> only under its reservation-owner check. Same-team
+      hostile tests exercise both serializations of freeze versus provider
+      entry against an ephemeral live PostgreSQL 17 instance, wrong-holder
+      release refusal, restore non-revival, idempotent authenticated freeze
+      retry, and the no-second-debit rule. This is local implementation
+      experience, not independent interoperability or production evidence.
+      There is no disconnected-edge lease implementation and no signed
+      freeze-event artifact. Control transitions use a trusted verifier
+      callback; the reference store does not yet atomically consume a portable
+      detector capability in the same transaction.<a href="#section-19-2" class="pilcrow">¶</a></p>
 <p id="section-19-3">The prototype wire format predates this document and does not yet
       implement all mandatory fields in this version, including full issuance
       authorization digest binding, an explicit action-scope profile, and

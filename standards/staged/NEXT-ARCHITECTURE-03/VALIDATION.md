@@ -12,6 +12,8 @@
   staged sources and their renders.
 - `npm run check:repository-boundary`: pass.
 
-This architecture revision states protocol boundaries. It does not claim that
-the admission-control epoch profile, live PostgreSQL freeze races, disconnected
-edge leases, or independently verifiable freeze events are implemented.
+This architecture revision states protocol boundaries. It records same-team
+reference implementation and ephemeral PostgreSQL race evidence for the local
+admission-control epoch profile. It does not claim disconnected-edge leases,
+independently verifiable freeze events, independent reproduction, or complete
+mediation of every adapter path.

@@ -1,6 +1,6 @@
 # Product Marketing Context
 
-*Last updated: 2026-08-08*
+*Last updated: 2026-08-12*
 
 ## Product Overview
 
@@ -8,7 +8,7 @@
 
 **One-liner:** EMILIA is the authority control plane that gives autonomous software a customer-owned, finite operating mandate and enforces it at the moment consequential work reaches a real system.
 
-**What it does:** Humans and institutions define the mission, limits, evidence rules, trust roots, expiry, and exception path. Agents work unattended while each consequential unit of work remains inside that mandate. EMILIA Gate sits immediately before a system that can mutate money, code, permissions, regulated records, infrastructure, energy, or physical state. Missing, stale, or insufficient authority produces a closed refusal and an action-bound evidence challenge. Admitted work executes at most once and leaves portable evidence that can be checked independently.
+**What it does:** Humans and institutions define the mission, limits, evidence rules, trust roots, expiry, and exception path. Agents work unattended while each consequential unit of work remains inside that mandate. EMILIA Gate sits immediately before a system that can mutate money, code, permissions, regulated records, infrastructure, energy, or physical state. Missing, stale, or insufficient authority produces a closed refusal and an action-bound evidence challenge. On covered shared-durable paths, Gate permits one admitted provider attempt per authorization instance and preserves portable evidence, including authenticated uncertainty when the provider outcome cannot be established.
 
 **Product architecture:**
 
@@ -42,7 +42,7 @@ Use this order in product, repository, sales, and machine-facing explanations:
 
 1. **Outcome:** Put autonomous software to work while the customer keeps authority.
 2. **Mandate:** The customer defines mission, limits, evidence, trust roots, expiry, and exceptions once; agents work unattended inside those bounds.
-3. **Enforcement:** Gate mediates consequential work at the executor boundary, challenges for exact evidence, verifies, consumes once, and records the result.
+3. **Enforcement:** Gate mediates consequential work at the executor boundary, challenges for exact evidence, verifies, reserves before provider entry, admits one covered provider attempt, and records the result without inventing certainty.
 4. **Neutrality:** EMILIA Protocol makes the evidence independently verifiable under the customer's own pinned rules and keys.
 5. **Exception ceremony:** EMILIA Approver can capture a device-bound decision when policy requires a person or the requested work exceeds the standing mandate.
 6. **Operational proof:** EMILIA Assurance Plane re-performs decisions and produces scoped evidence for auditors, insurers, regulators, and customers.

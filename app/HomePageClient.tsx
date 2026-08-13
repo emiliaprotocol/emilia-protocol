@@ -303,6 +303,37 @@ export default function HomePage(): React.ReactElement {
           </C>
         </section>
 
+        <section style={{ padding: '104px 0', borderBottom: `1px solid ${color.border}`, background: '#F5F5F4' }}>
+          <C>
+            <motion.div {...reveal()} style={{ maxWidth: 840 }}>
+              <div style={eyebrow}>Emergency Authority Freeze</div>
+              <h2 style={{ ...styles.h2, maxWidth: 800 }}>The agent may keep running. Its authority stops.</h2>
+              <p style={{ ...styles.body, maxWidth: 720, marginTop: 18 }}>
+                Continuous and self-improving agents can keep reasoning after an owner needs their
+                consequences to stop. Inside a covered Gate control domain, a freeze blocks new
+                reservations and prevents an older reservation from entering after the control epoch
+                changes. Restore advances the epoch again, so old authority does not revive.
+              </p>
+              <div className="ep-home-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 30 }}>
+                <div style={{ borderTop: `3px solid ${color.green}`, padding: '24px 22px', background: color.card, borderRadius: radius.base }}>
+                  <div style={{ ...eyebrow, color: color.green }}>What Gate controls</div>
+                  <p style={{ ...styles.body, fontSize: 14.5, marginTop: 12 }}>
+                    New reservation, provider-entry admission, control epoch, and reconciliation state
+                    on completely mediated paths backed by one authoritative durable domain.
+                  </p>
+                </div>
+                <div style={{ borderTop: `3px solid ${color.gold}`, padding: '24px 22px', background: color.card, borderRadius: radius.base }}>
+                  <div style={eyebrow}>What it does not claim</div>
+                  <p style={{ ...styles.body, fontSize: 14.5, marginTop: 12 }}>
+                    It does not stop computation, undo an entered effect, or instantly reach a
+                    disconnected leased edge. Entry-first operations remain consumed and reconcilable.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </C>
+        </section>
+
         <section style={{ padding: '104px 0', background: '#1C1917', color: '#FAFAF9' }}>
           <C>
             <div className="ep-home-grid-2" style={{ display: 'grid', gridTemplateColumns: '1.05fr 0.95fr', gap: 72, alignItems: 'start' }}>

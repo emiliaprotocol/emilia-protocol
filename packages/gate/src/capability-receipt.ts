@@ -77,6 +77,7 @@ type ReserveSpendOptions = {
   actionFenceDigest?: string;
   amount: number;
   currency: string;
+  controlDomainId?: string;
   allowanceStatus?: AllowanceStatusAssertion;
   now?: number | (() => number);
 };
@@ -93,8 +94,31 @@ type BeginProviderEntryOptions = {
   operationNamespace?: string;
   operationId?: string;
   reservationToken?: string;
+  controlDomainId?: string;
   now?: number | (() => number);
 };
+type ControlTransitionVerification = {
+  authenticated: boolean;
+  authorized: boolean;
+  authority_instance_digest?: string;
+  action_digest?: string;
+};
+type ControlTransitionOptions = {
+  controlDomainId?: string;
+  operationId?: string;
+  actionDigest?: string;
+  authorization?: unknown;
+  now?: number | (() => number);
+};
+type VerifyControlTransition = (
+  input: Readonly<{
+    event_type: 'freeze' | 'restore';
+    control_domain_id: string;
+    operation_id: string;
+    action_digest: string;
+    authorization: unknown;
+  }>,
+) => ControlTransitionVerification | Promise<ControlTransitionVerification>;
 type RecoverPreEntrySpendOptions = {
   capabilityId?: string;
   operationNamespace?: string;
@@ -151,6 +175,7 @@ type ExecuteWithCapabilityOptions = {
   humanAuthorizationPins?: Record<string, any> | null;
   verifyHumanAuthorization?: ((artifact: unknown, context: HumanAuthorizationVerificationContext) => any) | null;
   allowanceStatus?: AllowanceStatusAssertion;
+  controlDomainId?: string;
   operationId?: string | null;
   now?: number | (() => number);
   thresholdSecretVerified?: boolean;
@@ -285,6 +310,48 @@ function validateOperationNamespace(operationNamespace) {
     throw new TypeError('operation_namespace must be a bounded non-empty string');
   }
   return operationNamespace;
+}
+
+function validateControlDomainId(controlDomainId) {
+  if (!boundedIdentifier(controlDomainId)) {
+    throw new TypeError('control_domain_id must be a bounded non-empty identifier');
+  }
+  return controlDomainId;
+}
+
+async function verifyControlTransitionRequest(
+  verifier: VerifyControlTransition | undefined,
+  eventType: 'freeze' | 'restore',
+  request: ControlTransitionOptions,
+) {
+  if (typeof verifier !== 'function') {
+    return { authenticated: false, authorized: false };
+  }
+  try {
+    const result = await verifier(Object.freeze({
+      event_type: eventType,
+      control_domain_id: request.controlDomainId as string,
+      operation_id: request.operationId as string,
+      action_digest: request.actionDigest as string,
+      authorization: request.authorization,
+    }));
+    if (!isRecord(result) || result.authenticated !== true) {
+      return { authenticated: false, authorized: false };
+    }
+    if (typeof result.authority_instance_digest !== 'string'
+        || !ACTION_DIGEST_RE.test(result.authority_instance_digest)
+        || result.action_digest !== request.actionDigest) {
+      return { authenticated: false, authorized: false };
+    }
+    return {
+      authenticated: true,
+      authorized: result.authorized === true,
+      authority_instance_digest: result.authority_instance_digest,
+      action_digest: result.action_digest,
+    };
+  } catch {
+    return { authenticated: false, authorized: false };
+  }
 }
 
 function validateProviderEntryTimeoutMs(value) {
@@ -1281,12 +1348,18 @@ export function isSecureCapabilityStore(store) {
  */
 export function createMemoryCapabilityStore({
   providerEntryTimeoutMs = DEFAULT_PROVIDER_ENTRY_TIMEOUT_MS,
-}: { providerEntryTimeoutMs?: number } = {}) {
+  verifyControlTransition,
+}: {
+  providerEntryTimeoutMs?: number;
+  verifyControlTransition?: VerifyControlTransition;
+} = {}) {
   const entryTimeoutMs = validateProviderEntryTimeoutMs(providerEntryTimeoutMs);
   const stateDomainDigest = capabilityStateDomainDigest();
   const states = new Map();
   const operations = new Map();
   const allowanceStatuses = new Map();
+  const controlDomains = new Map<string, Record<string, any>>();
+  const controlDomainEvents = new Map<string, Record<string, any>>();
   const operationKey = (operationNamespace, operationId) =>
     JSON.stringify([operationNamespace, operationId]);
   const actionKey = (operationNamespace, actionFenceDigest) =>
@@ -1297,6 +1370,93 @@ export function createMemoryCapabilityStore({
   // why nothing here has to be deleted on release: a stale hint self-heals, and
   // an index maintained at every transition would not.
   const actionHolders = new Map();
+  async function transitionMemoryControlDomain(
+    eventType: 'freeze' | 'restore',
+    options: ControlTransitionOptions,
+  ) {
+    try {
+      validateControlDomainId(options.controlDomainId);
+      validateOperationId(options.operationId);
+      validateActionDigest(options.actionDigest);
+    } catch {
+      return { ok: false, reason: 'control_transition_refused' };
+    }
+    const controlDomainId = options.controlDomainId as string;
+    const operationId = options.operationId as string;
+    const actionDigest = options.actionDigest as string;
+    const verified = await verifyControlTransitionRequest(
+      verifyControlTransition,
+      eventType,
+      options,
+    );
+    if (!verified.authenticated) {
+      return { ok: false, reason: 'control_transition_refused' };
+    }
+    const existing = controlDomainEvents.get(operationId);
+    if (existing) {
+      const matches = existing.event_type === eventType
+        && existing.control_domain_id === controlDomainId
+        && existing.action_digest === actionDigest
+        && existing.authority_instance_digest === verified.authority_instance_digest;
+      return matches
+        ? { ...existing.result, idempotent: true }
+        : { ok: false, reason: 'control_transition_refused' };
+    }
+    if (!verified.authorized) {
+      return { ok: false, reason: 'control_transition_refused' };
+    }
+    const domain = controlDomains.get(controlDomainId);
+    if (!domain) return { ok: false, reason: 'control_transition_refused' };
+    const at = nowMs(options.now ?? Date.now);
+    if (eventType === 'freeze' && domain.status === 'frozen') {
+      const result = {
+        ok: true,
+        idempotent: false,
+        status: 'already_frozen',
+        control_domain_id: domain.control_domain_id,
+        epoch: domain.epoch,
+      };
+      controlDomainEvents.set(operationId, {
+        operation_id: operationId,
+        control_domain_id: controlDomainId,
+        event_type: eventType,
+        epoch_at_event: domain.epoch,
+        action_digest: options.actionDigest,
+        authority_instance_digest: verified.authority_instance_digest,
+        committed_at: at,
+        result,
+      });
+      return result;
+    }
+    if (eventType === 'restore' && domain.status !== 'frozen') {
+      return { ok: false, reason: 'control_transition_refused' };
+    }
+    domain.status = eventType === 'freeze' ? 'frozen' : 'active';
+    domain.epoch += 1;
+    domain.frozen_at = eventType === 'freeze' ? at : null;
+    domain.frozen_by_digest = eventType === 'freeze'
+      ? verified.authority_instance_digest
+      : null;
+    domain.updated_at = at;
+    const result = {
+      ok: true,
+      idempotent: false,
+      status: domain.status,
+      control_domain_id: domain.control_domain_id,
+      epoch: domain.epoch,
+    };
+    controlDomainEvents.set(operationId, {
+      operation_id: operationId,
+      control_domain_id: controlDomainId,
+      event_type: eventType,
+      epoch_at_event: domain.epoch,
+      action_digest: options.actionDigest,
+      authority_instance_digest: verified.authority_instance_digest,
+      committed_at: at,
+      result,
+    });
+    return result;
+  }
   return {
     durable: false,
     atomicStateDomainCapable: true,
@@ -1305,6 +1465,45 @@ export function createMemoryCapabilityStore({
     revocationInheritanceCapable: true,
     allowanceCurrentnessCapable: true,
     providerEntryDispositionCapable: true,
+    controlDomainCapable: true,
+    async registerControlDomain({
+      controlDomainId,
+      now = Date.now,
+    }: { controlDomainId?: string; now?: number | (() => number) } = {}) {
+      validateControlDomainId(controlDomainId);
+      const validatedControlDomainId = controlDomainId as string;
+      const existing = controlDomains.get(validatedControlDomainId);
+      if (existing) {
+        return {
+          ok: true,
+          idempotent: true,
+          control_domain_id: validatedControlDomainId,
+          status: existing.status,
+          epoch: existing.epoch,
+        };
+      }
+      controlDomains.set(validatedControlDomainId, {
+        control_domain_id: validatedControlDomainId,
+        status: 'active',
+        epoch: 1,
+        frozen_at: null,
+        frozen_by_digest: null,
+        updated_at: nowMs(now),
+      });
+      return {
+        ok: true,
+        idempotent: false,
+        control_domain_id: validatedControlDomainId,
+        status: 'active',
+        epoch: 1,
+      };
+    },
+    async freezeControlDomain(options: ControlTransitionOptions = {}) {
+      return transitionMemoryControlDomain('freeze', options);
+    },
+    async restoreControlDomain(options: ControlTransitionOptions = {}) {
+      return transitionMemoryControlDomain('restore', options);
+    },
     registerCapability(capabilityReceipt) {
       const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
       if (!verified.ok) return false;
@@ -1389,13 +1588,22 @@ export function createMemoryCapabilityStore({
       });
       return { ok: true, idempotent: false };
     },
-    async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, actionFenceDigest = actionDigest, amount, currency, allowanceStatus, now = Date.now }: ReserveSpendOptions) {
+    async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, actionFenceDigest = actionDigest, amount, currency, controlDomainId, allowanceStatus, now = Date.now }: ReserveSpendOptions) {
       validateOperationId(operationId);
       validateOperationNamespace(operationNamespace);
       validateActionDigest(actionDigest);
       validateActionDigest(actionFenceDigest);
       validateSpendAmount(amount);
       validateCurrency(currency);
+      let controlDomain: Record<string, any> | null = null;
+      if (controlDomainId !== undefined) {
+        validateControlDomainId(controlDomainId);
+        controlDomain = controlDomains.get(controlDomainId) ?? null;
+        if (!controlDomain) return { ok: false, reason: 'capability_control_domain_not_found' };
+        if (controlDomain.status !== 'active') {
+          return { ok: false, reason: 'capability_control_domain_frozen' };
+        }
+      }
       const state = states.get(capabilityId);
       if (!state) return { ok: false, reason: 'capability_not_registered' };
       if (state.capability_fingerprint !== capabilityFingerprint) return { ok: false, reason: 'capability_envelope_mismatch' };
@@ -1471,6 +1679,8 @@ export function createMemoryCapabilityStore({
         allowance_revision: allowanceStatus?.revision ?? null,
         allowance_status_epoch: allowanceStatus?.status_epoch ?? null,
         allowance_status_head_digest: allowanceStatus?.status_head_digest ?? null,
+        control_domain_id: controlDomain?.control_domain_id ?? null,
+        reserved_control_epoch: controlDomain?.epoch ?? null,
       });
       state.reserved_amount += amount;
       actionHolders.set(actionKey(operationNamespace, actionFenceDigest), key);
@@ -1481,10 +1691,12 @@ export function createMemoryCapabilityStore({
         action_fence_digest: actionFenceDigest,
         reservation_token: reservationToken,
         entry_deadline_at: entryDeadlineAt,
+        control_domain_id: controlDomain?.control_domain_id ?? null,
+        reserved_control_epoch: controlDomain?.epoch ?? null,
         remaining: state.budget_amount - state.consumed_amount - state.reserved_amount,
       };
     },
-    async beginProviderEntry({ capabilityId, operationNamespace = capabilityId, operationId, reservationToken, now = Date.now }: BeginProviderEntryOptions = {}) {
+    async beginProviderEntry({ capabilityId, operationNamespace = capabilityId, operationId, reservationToken, controlDomainId, now = Date.now }: BeginProviderEntryOptions = {}) {
       validateOperationId(operationId);
       validateOperationNamespace(operationNamespace);
       if (typeof reservationToken !== 'string' || reservationToken.length < 16) {
@@ -1503,6 +1715,38 @@ export function createMemoryCapabilityStore({
         };
       }
       if (operation.reservation_token !== reservationToken) return { ok: false, reason: 'capability_reservation_owner_mismatch' };
+      if (operation.control_domain_id !== null) {
+        if (controlDomainId === undefined) {
+          return { ok: false, reason: 'capability_control_domain_required' };
+        }
+        if (controlDomainId !== operation.control_domain_id) {
+          return { ok: false, reason: 'capability_control_domain_binding_mismatch' };
+        }
+        const controlDomain = controlDomains.get(operation.control_domain_id);
+        if (!controlDomain) {
+          return { ok: false, reason: 'capability_control_domain_unavailable' };
+        }
+        if (controlDomain.status !== 'active'
+            || controlDomain.epoch !== operation.reserved_control_epoch) {
+          operation.status = 'released';
+          operation.outcome = 'not_entered';
+          operation.release_reason = controlDomain.status === 'frozen'
+            ? 'control_domain_frozen'
+            : 'control_domain_epoch_mismatch';
+          operation.released_at = nowMs(now);
+          state.reserved_amount -= operation.amount;
+          return {
+            ok: false,
+            reason: controlDomain.status === 'frozen'
+              ? 'capability_control_domain_frozen'
+              : 'capability_control_domain_epoch_mismatch',
+            outcome: 'not_entered',
+            reservation: 'released',
+          };
+        }
+      } else if (controlDomainId !== undefined) {
+        return { ok: false, reason: 'capability_control_domain_binding_mismatch' };
+      }
       const reservedAllowanceStatus = reservedAllowanceStatusAssertion(state, operation);
       if (typeof state.allowance_profile_id === 'string'
           && operationNamespace === state.allowance_profile_id) {
@@ -1744,6 +1988,14 @@ export function createMemoryCapabilityStore({
       const status = allowanceStatuses.get(allowanceProfileId);
       return status ? Object.freeze({ ...status }) : null;
     },
+    getControlDomain(controlDomainId) {
+      const domain = controlDomains.get(controlDomainId);
+      return domain ? Object.freeze({ ...domain }) : null;
+    },
+    getControlDomainEvent(operationId) {
+      const event = controlDomainEvents.get(operationId);
+      return event ? Object.freeze({ ...event, result: Object.freeze({ ...event.result }) }) : null;
+    },
     getOperation(operationId, capabilityId = null, operationNamespace = capabilityId) {
       let operation = capabilityId === null
         ? null
@@ -1763,6 +2015,8 @@ export function createMemoryCapabilityStore({
 export const CAPABILITY_STATE_TABLE = 'ep_capability_state';
 export const CAPABILITY_OPERATION_TABLE = 'ep_capability_operations';
 export const CAPABILITY_ALLOWANCE_STATUS_TABLE = 'ep_gate_allowance_status';
+export const CAPABILITY_CONTROL_DOMAIN_TABLE = 'ep_gate_control_domains';
+export const CAPABILITY_CONTROL_DOMAIN_EVENT_TABLE = 'ep_gate_control_domain_events';
 export const CAPABILITY_STATE_DDL = `CREATE TABLE IF NOT EXISTS ${CAPABILITY_STATE_TABLE} (
   capability_id TEXT PRIMARY KEY,
   capability_fingerprint TEXT NOT NULL CHECK (capability_fingerprint ~ '^sha256:[0-9a-f]{64}$'),
@@ -1840,6 +2094,30 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_ALLOWANCE_STATUS_TABLE} (
   status TEXT NOT NULL CHECK (status IN ('active', 'suspended', 'revoked')),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS ${CAPABILITY_CONTROL_DOMAIN_TABLE} (
+  control_domain_id TEXT PRIMARY KEY,
+  status TEXT NOT NULL CHECK (status IN ('active', 'frozen')),
+  epoch BIGINT NOT NULL DEFAULT 1 CHECK (epoch > 0),
+  frozen_at TIMESTAMPTZ,
+  frozen_by_digest TEXT CHECK (frozen_by_digest ~ '^sha256:[0-9a-f]{64}$'),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (
+    (status = 'active' AND frozen_at IS NULL AND frozen_by_digest IS NULL)
+    OR
+    (status = 'frozen' AND frozen_at IS NOT NULL AND frozen_by_digest IS NOT NULL)
+  )
+);
+CREATE TABLE IF NOT EXISTS ${CAPABILITY_CONTROL_DOMAIN_EVENT_TABLE} (
+  operation_id TEXT NOT NULL,
+  control_domain_id TEXT NOT NULL REFERENCES ${CAPABILITY_CONTROL_DOMAIN_TABLE}(control_domain_id),
+  event_type TEXT NOT NULL CHECK (event_type IN ('freeze', 'restore')),
+  epoch_at_event BIGINT NOT NULL CHECK (epoch_at_event > 0),
+  action_digest TEXT NOT NULL CHECK (action_digest ~ '^sha256:[0-9a-f]{64}$'),
+  authority_instance_digest TEXT NOT NULL CHECK (authority_instance_digest ~ '^sha256:[0-9a-f]{64}$'),
+  result JSONB NOT NULL,
+  committed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (operation_id)
+);
 CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   operation_namespace TEXT NOT NULL,
   operation_id TEXT NOT NULL,
@@ -1865,6 +2143,8 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   release_reason TEXT,
   release_evidence_profile TEXT,
   release_evidence_digest TEXT CHECK (release_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
+  control_domain_id TEXT REFERENCES ${CAPABILITY_CONTROL_DOMAIN_TABLE}(control_domain_id),
+  reserved_control_epoch BIGINT CHECK (reserved_control_epoch > 0),
   CHECK (
     (reconciliation_outcome IS NULL AND reconciliation_evidence_digest IS NULL AND reconciled_at IS NULL)
     OR
@@ -1875,6 +2155,7 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
     OR
     (allowance_revision IS NOT NULL AND allowance_status_epoch IS NOT NULL AND allowance_status_head_digest IS NOT NULL)
   ),
+  CHECK ((control_domain_id IS NULL) = (reserved_control_epoch IS NULL)),
   PRIMARY KEY (operation_namespace, operation_id)
 );
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS operation_namespace TEXT;
@@ -1884,6 +2165,12 @@ ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS released_at T
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS release_reason TEXT;
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS release_evidence_profile TEXT;
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS release_evidence_digest TEXT CHECK (release_evidence_digest ~ '^sha256:[0-9a-f]{64}$');
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS control_domain_id TEXT REFERENCES ${CAPABILITY_CONTROL_DOMAIN_TABLE}(control_domain_id);
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS reserved_control_epoch BIGINT CHECK (reserved_control_epoch > 0);
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY_OPERATION_TABLE}_control_domain_binding_check;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
+  ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_control_domain_binding_check
+  CHECK ((control_domain_id IS NULL) = (reserved_control_epoch IS NULL));
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY_OPERATION_TABLE}_action_digest_check;
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
   ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_action_digest_check
@@ -2198,7 +2485,13 @@ export const CAPABILITY_SQL = Object.freeze({
   readAllowanceStatus: `SELECT allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status FROM ${CAPABILITY_ALLOWANCE_STATUS_TABLE} WHERE allowance_profile_id = $1 FOR UPDATE`,
   insertAllowanceStatus: `INSERT INTO ${CAPABILITY_ALLOWANCE_STATUS_TABLE} (allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (allowance_profile_id) DO NOTHING`,
   updateAllowanceStatus: `UPDATE ${CAPABILITY_ALLOWANCE_STATUS_TABLE} SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3`,
-  readOperation: `SELECT operation_namespace, operation_id, capability_id, action_digest, action_fence_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE`,
+  insertControlDomain: `INSERT INTO ${CAPABILITY_CONTROL_DOMAIN_TABLE} (control_domain_id, status, epoch, updated_at) VALUES ($1, 'active', 1, $2) ON CONFLICT (control_domain_id) DO NOTHING RETURNING control_domain_id, status, epoch`,
+  readControlDomain: `SELECT control_domain_id, status, epoch, frozen_at, frozen_by_digest, updated_at FROM ${CAPABILITY_CONTROL_DOMAIN_TABLE} WHERE control_domain_id = $1 FOR UPDATE`,
+  readControlDomainEvent: `SELECT operation_id, control_domain_id, event_type, epoch_at_event, action_digest, authority_instance_digest, result, committed_at FROM ${CAPABILITY_CONTROL_DOMAIN_EVENT_TABLE} WHERE operation_id = $1`,
+  freezeControlDomain: `UPDATE ${CAPABILITY_CONTROL_DOMAIN_TABLE} SET status = 'frozen', epoch = epoch + 1, frozen_at = $2, frozen_by_digest = $3, updated_at = $2 WHERE control_domain_id = $1 AND status = 'active' RETURNING control_domain_id, status, epoch`,
+  restoreControlDomain: `UPDATE ${CAPABILITY_CONTROL_DOMAIN_TABLE} SET status = 'active', epoch = epoch + 1, frozen_at = NULL, frozen_by_digest = NULL, updated_at = $2 WHERE control_domain_id = $1 AND status = 'frozen' RETURNING control_domain_id, status, epoch`,
+  insertControlDomainEvent: `INSERT INTO ${CAPABILITY_CONTROL_DOMAIN_EVENT_TABLE} (operation_id, control_domain_id, event_type, epoch_at_event, action_digest, authority_instance_digest, result, committed_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)`,
+  readOperation: `SELECT operation_namespace, operation_id, capability_id, action_digest, action_fence_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest, control_domain_id, reserved_control_epoch FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE`,
   // Is this material-action fence already held by SOME operation, whatever its
   // id? An existing holder is row-locked here. Same-capability reservations also
   // serialize on readState. For custom namespaces spanning capability rows, the
@@ -2206,13 +2499,14 @@ export const CAPABILITY_SQL = Object.freeze({
   // repository migration) is the authoritative race backstop because
   // PostgreSQL cannot lock a row that does not exist yet.
   readActionHolder: `SELECT operation_id, status, action_digest, action_fence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND action_fence_digest = $2 AND status IN ('reserved', 'provider_entered', 'committed') LIMIT 1 FOR UPDATE`,
-  insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, action_fence_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, $7, 'reserved', $8, $9, $10, $11, $12, $13)`,
+  insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, action_fence_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest, control_domain_id, reserved_control_epoch) VALUES ($1, $2, $3, $4, $5, $6, $7, 'reserved', $8, $9, $10, $11, $12, $13, $14, $15)`,
   reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND semantic_fence_ready IS TRUE AND revocation_state_ready IS TRUE AND revocation_mode IN ('direct', 'cascade') AND revoked_at IS NULL AND budget_amount - consumed_amount - reserved_amount >= $2`,
   beginProviderEntry: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5`,
   commitOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6`,
   reconcileOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET reconciliation_outcome = $4, reconciliation_evidence_digest = $5, reconciled_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'committed' AND outcome = 'indeterminate' AND reconciliation_outcome IS NULL`,
   recoverPreEntryOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'released', outcome = 'not_entered', release_reason = 'pre_entry_deadline_elapsed', released_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND status = 'reserved' AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $5`,
   releaseGuardRefusedOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'released', outcome = 'not_entered', release_reason = 'provider_entry_guard_release', released_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND reservation_token = $5 AND status = 'reserved'`,
+  releaseControlBlockedOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'released', outcome = 'not_entered', release_reason = $6, released_at = $7 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND reservation_token = $4 AND status = 'reserved' AND control_domain_id = $5`,
   releaseReservedOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'released', outcome = 'not_entered', release_reason = 'authenticated_final_provider_non_entry', release_evidence_profile = $5, release_evidence_digest = $6, released_at = $8 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $7 AND $7 <= $8 AND status = 'reserved'`,
   commitState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount - $2, consumed_amount = consumed_amount + $2 WHERE capability_id = $1 AND reserved_amount >= $2`,
   releaseReservedState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount - $2 WHERE capability_id = $1 AND reserved_amount >= $2`,
@@ -2231,14 +2525,121 @@ export function createPostgresCapabilityStore({
   transaction,
   providerEntryTimeoutMs = DEFAULT_PROVIDER_ENTRY_TIMEOUT_MS,
   stateDomainDigest = null,
+  verifyControlTransition,
 }: {
   transaction?: (callback: (query: Function) => any) => any;
   providerEntryTimeoutMs?: number;
   stateDomainDigest?: string | null;
+  verifyControlTransition?: VerifyControlTransition;
 } = {}) {
   if (typeof transaction !== 'function') throw new TypeError('createPostgresCapabilityStore requires a transaction(callback) function');
   const entryTimeoutMs = validateProviderEntryTimeoutMs(providerEntryTimeoutMs);
   const configuredStateDomainDigest = normalizeOptionalStateDomainDigest(stateDomainDigest);
+  async function transitionPostgresControlDomain(
+    eventType: 'freeze' | 'restore',
+    options: ControlTransitionOptions,
+  ) {
+    try {
+      validateControlDomainId(options.controlDomainId);
+      validateOperationId(options.operationId);
+      validateActionDigest(options.actionDigest);
+    } catch {
+      return { ok: false, reason: 'control_transition_refused' };
+    }
+    const verified = await verifyControlTransitionRequest(
+      verifyControlTransition,
+      eventType,
+      options,
+    );
+    if (!verified.authenticated) {
+      return { ok: false, reason: 'control_transition_refused' };
+    }
+    const controlDomainId = options.controlDomainId as string;
+    const operationId = options.operationId as string;
+    const actionDigest = options.actionDigest as string;
+    try {
+      return await transaction!(async (query) => {
+        // The control-domain row is the first durable lock for every covered
+        // transition. It serializes freeze, restore, reserve, and provider entry.
+        const domainResult = await query(CAPABILITY_SQL.readControlDomain, [controlDomainId]);
+        const domain = domainResult?.rows?.[0];
+        if (!domain) return { ok: false, reason: 'control_transition_refused' };
+        const existingResult = await query(CAPABILITY_SQL.readControlDomainEvent, [operationId]);
+        const existing = existingResult?.rows?.[0];
+        if (existing) {
+          const matches = existing.event_type === eventType
+            && existing.control_domain_id === controlDomainId
+            && existing.action_digest === actionDigest
+            && existing.authority_instance_digest === verified.authority_instance_digest;
+          if (!matches) return { ok: false, reason: 'control_transition_refused' };
+          const stored = typeof existing.result === 'string'
+            ? JSON.parse(existing.result)
+            : existing.result;
+          return { ...stored, idempotent: true };
+        }
+        if (!verified.authorized) {
+          return { ok: false, reason: 'control_transition_refused' };
+        }
+        const at = nowMs(options.now ?? Date.now);
+        if (eventType === 'freeze' && domain.status === 'frozen') {
+          const result = {
+            ok: true,
+            idempotent: false,
+            status: 'already_frozen',
+            control_domain_id: controlDomainId,
+            epoch: Number(domain.epoch),
+          };
+          await query(CAPABILITY_SQL.insertControlDomainEvent, [
+            operationId,
+            controlDomainId,
+            eventType,
+            domain.epoch,
+            actionDigest,
+            verified.authority_instance_digest,
+            JSON.stringify(result),
+            new Date(at).toISOString(),
+          ]);
+          return result;
+        }
+        if (eventType === 'restore' && domain.status !== 'frozen') {
+          return { ok: false, reason: 'control_transition_refused' };
+        }
+        const transitionSql = eventType === 'freeze'
+          ? CAPABILITY_SQL.freezeControlDomain
+          : CAPABILITY_SQL.restoreControlDomain;
+        const transitionedResult = await query(
+          transitionSql,
+          eventType === 'freeze'
+            ? [controlDomainId, new Date(at).toISOString(), verified.authority_instance_digest]
+            : [controlDomainId, new Date(at).toISOString()],
+        );
+        const transitioned = transitionedResult?.rows?.[0];
+        if (!transitioned) {
+          throw new Error('control-domain transition lost serialization ownership');
+        }
+        const result = {
+          ok: true,
+          idempotent: false,
+          status: transitioned.status,
+          control_domain_id: transitioned.control_domain_id,
+          epoch: Number(transitioned.epoch),
+        };
+        await query(CAPABILITY_SQL.insertControlDomainEvent, [
+          operationId,
+          controlDomainId,
+          eventType,
+          transitioned.epoch,
+          actionDigest,
+          verified.authority_instance_digest,
+          JSON.stringify(result),
+          new Date(at).toISOString(),
+        ]);
+        return result;
+      });
+    } catch {
+      return { ok: false, reason: 'control_transition_refused' };
+    }
+  }
   return {
     durable: true,
     atomicStateDomainCapable: true,
@@ -2247,6 +2648,39 @@ export function createPostgresCapabilityStore({
     revocationInheritanceCapable: true,
     allowanceCurrentnessCapable: true,
     providerEntryDispositionCapable: true,
+    controlDomainCapable: true,
+    async registerControlDomain({
+      controlDomainId,
+      now = Date.now,
+    }: { controlDomainId?: string; now?: number | (() => number) } = {}) {
+      validateControlDomainId(controlDomainId);
+      const validatedControlDomainId = controlDomainId as string;
+      const at = nowMs(now);
+      return transaction(async (query) => {
+        const inserted = await query(CAPABILITY_SQL.insertControlDomain, [
+          validatedControlDomainId,
+          new Date(at).toISOString(),
+        ]);
+        const result = inserted?.rows?.[0]
+          ? inserted
+          : await query(CAPABILITY_SQL.readControlDomain, [validatedControlDomainId]);
+        const domain = result?.rows?.[0];
+        if (!domain) throw new Error('control-domain registration unavailable');
+        return {
+          ok: true,
+          idempotent: inserted?.rowCount !== 1,
+          control_domain_id: domain.control_domain_id,
+          status: domain.status,
+          epoch: Number(domain.epoch),
+        };
+      });
+    },
+    async freezeControlDomain(options: ControlTransitionOptions = {}) {
+      return transitionPostgresControlDomain('freeze', options);
+    },
+    async restoreControlDomain(options: ControlTransitionOptions = {}) {
+      return transitionPostgresControlDomain('restore', options);
+    },
     async registerCapability(capabilityReceipt) {
       const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
       if (!verified.ok) return false;
@@ -2395,13 +2829,23 @@ export function createPostgresCapabilityStore({
         return { ok: true, idempotent: false };
       });
     },
-    async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, actionFenceDigest = actionDigest, amount, currency, allowanceStatus, now = Date.now }: ReserveSpendOptions) {
+    async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, actionFenceDigest = actionDigest, amount, currency, controlDomainId, allowanceStatus, now = Date.now }: ReserveSpendOptions) {
       validateOperationId(operationId); validateOperationNamespace(operationNamespace); validateSpendAmount(amount); validateCurrency(currency);
       validateActionDigest(actionDigest);
       validateActionDigest(actionFenceDigest);
       const at = nowMs(now);
       try {
         return await transaction(async (query) => {
+        let controlDomain: Record<string, any> | null = null;
+        if (controlDomainId !== undefined) {
+          validateControlDomainId(controlDomainId);
+          const domainResult = await query(CAPABILITY_SQL.readControlDomain, [controlDomainId]);
+          controlDomain = domainResult?.rows?.[0] ?? null;
+          if (!controlDomain) return { ok: false, reason: 'capability_control_domain_not_found' };
+          if (controlDomain.status !== 'active') {
+            return { ok: false, reason: 'capability_control_domain_frozen' };
+          }
+        }
         const stateResult = await query(CAPABILITY_SQL.readState, [capabilityId]);
         const state = stateResult?.rows?.[0];
         if (!state) return { ok: false, reason: 'capability_not_registered' };
@@ -2483,6 +2927,8 @@ export function createPostgresCapabilityStore({
           assertedAllowanceStatus?.revision ?? null,
           assertedAllowanceStatus?.status_epoch ?? null,
           assertedAllowanceStatus?.status_head_digest ?? null,
+          controlDomain?.control_domain_id ?? null,
+          controlDomain?.epoch ?? null,
         ]);
         return {
           ok: true,
@@ -2491,6 +2937,8 @@ export function createPostgresCapabilityStore({
           action_fence_digest: actionFenceDigest,
           reservation_token: token,
           entry_deadline_at: entryDeadlineAt,
+          control_domain_id: controlDomain?.control_domain_id ?? null,
+          reserved_control_epoch: controlDomain === null ? null : Number(controlDomain.epoch),
           remaining: available - amount,
         };
         });
@@ -2521,14 +2969,20 @@ export function createPostgresCapabilityStore({
         throw error;
       }
     },
-    async beginProviderEntry({ capabilityId, operationNamespace = capabilityId, operationId, reservationToken, now = Date.now }: BeginProviderEntryOptions = {}) {
+    async beginProviderEntry({ capabilityId, operationNamespace = capabilityId, operationId, reservationToken, controlDomainId, now = Date.now }: BeginProviderEntryOptions = {}) {
       validateOperationId(operationId); validateOperationNamespace(operationNamespace);
       if (typeof reservationToken !== 'string' || reservationToken.length < 16) return { ok: false, reason: 'capability_reservation_token_invalid' };
       const at = nowMs(now);
       return transaction(async (query) => {
-        // Match reserveSpend's lock order (capability -> allowance status ->
-        // operation). The status row remains locked until provider entry is
-        // committed, so a concurrent panic/suspension cannot race this check.
+        // Covered paths lock control domain first, then capability, allowance,
+        // and operation. A supplied domain is only a lock locator; the locked
+        // operation binding is rechecked below before any release or entry.
+        let controlDomain: Record<string, any> | null = null;
+        if (controlDomainId !== undefined) {
+          validateControlDomainId(controlDomainId);
+          const domainResult = await query(CAPABILITY_SQL.readControlDomain, [controlDomainId]);
+          controlDomain = domainResult?.rows?.[0] ?? null;
+        }
         const stateResult = await query(CAPABILITY_SQL.readState, [capabilityId]);
         const state = stateResult?.rows?.[0];
         if (!state) return { ok: false, reason: 'capability_not_registered' };
@@ -2551,6 +3005,50 @@ export function createPostgresCapabilityStore({
           };
         }
         if (operation.reservation_token !== reservationToken) return { ok: false, reason: 'capability_reservation_owner_mismatch' };
+        if (operation.control_domain_id !== null
+            && operation.control_domain_id !== undefined) {
+          if (controlDomainId === undefined) {
+            return { ok: false, reason: 'capability_control_domain_required' };
+          }
+          if (operation.control_domain_id !== controlDomainId) {
+            return { ok: false, reason: 'capability_control_domain_binding_mismatch' };
+          }
+          if (!controlDomain) {
+            return { ok: false, reason: 'capability_control_domain_unavailable' };
+          }
+          if (controlDomain.status !== 'active'
+              || Number(controlDomain.epoch) !== Number(operation.reserved_control_epoch)) {
+            const releaseReason = controlDomain.status === 'frozen'
+              ? 'control_domain_frozen'
+              : 'control_domain_epoch_mismatch';
+            const released = await query(CAPABILITY_SQL.releaseControlBlockedOperation, [
+              operationNamespace,
+              operationId,
+              capabilityId,
+              reservationToken,
+              controlDomainId,
+              releaseReason,
+              new Date(at).toISOString(),
+            ]);
+            if (released?.rowCount !== 1) {
+              throw new Error('control-domain release lost operation ownership; transaction must roll back');
+            }
+            const restored = await query(CAPABILITY_SQL.releaseReservedState, [capabilityId, operation.amount]);
+            if (restored?.rowCount !== 1) {
+              throw new Error('control-domain release lost budget ownership; transaction must roll back');
+            }
+            return {
+              ok: false,
+              reason: controlDomain.status === 'frozen'
+                ? 'capability_control_domain_frozen'
+                : 'capability_control_domain_epoch_mismatch',
+              outcome: 'not_entered',
+              reservation: 'released',
+            };
+          }
+        } else if (controlDomainId !== undefined) {
+          return { ok: false, reason: 'capability_control_domain_binding_mismatch' };
+        }
         if (typeof state.allowance_profile_id === 'string'
             && operationNamespace === state.allowance_profile_id) {
           const reservedAllowanceStatus = reservedAllowanceStatusAssertion(state, operation);
@@ -2809,6 +3307,22 @@ export function createPostgresCapabilityStore({
         return { ok: true, idempotent: false, outcome };
       });
     },
+    async getControlDomain(controlDomainId) {
+      validateControlDomainId(controlDomainId);
+      return transaction(async (query) => {
+        const result = await query(CAPABILITY_SQL.readControlDomain, [controlDomainId]);
+        const domain = result?.rows?.[0];
+        return domain ? Object.freeze({ ...domain, epoch: Number(domain.epoch) }) : null;
+      });
+    },
+    async getControlDomainEvent(operationId) {
+      validateOperationId(operationId);
+      return transaction(async (query) => {
+        const result = await query(CAPABILITY_SQL.readControlDomainEvent, [operationId]);
+        const event = result?.rows?.[0];
+        return event ? Object.freeze({ ...event, epoch_at_event: Number(event.epoch_at_event) }) : null;
+      });
+    },
   };
 }
 
@@ -2865,6 +3379,7 @@ function capabilityAmount(action, capability, verifiedAction = action) {
  *   after the atomic budget reservation and immediately before provider entry.
  *   A refusal atomically releases, burns, or holds the pre-entry reservation
  *   according to the guard's closed disposition; it never invokes the provider.
+ * @param {string} [options.controlDomainId] optional Gate execution-control domain
  * @param {string|null} [options.operationId]
  * @param {number|(() => number)} [options.now]
  * @param {boolean} [options.thresholdSecretVerified]
@@ -2889,6 +3404,7 @@ export async function executeWithCapability({
   verifyHumanAuthorization = undefined,
   providerEntryGuard = null,
   allowanceStatus,
+  controlDomainId,
   operationId = null,
   now = Date.now,
   thresholdSecretVerified = false,
@@ -3012,6 +3528,7 @@ export async function executeWithCapability({
     amount: spend.amount,
     currency: spend.currency,
     ...(allowanceStatus ? { allowanceStatus } : {}),
+    ...(controlDomainId ? { controlDomainId } : {}),
     now,
   });
   if (!reserved?.ok) {
@@ -3113,6 +3630,7 @@ export async function executeWithCapability({
     operationNamespace: scope.operation_namespace ?? verified.capability.id,
     operationId,
     reservationToken: reserved.reservation_token,
+    ...(controlDomainId ? { controlDomainId } : {}),
     now,
   }).catch(() => ({ ok: false, reason: 'capability_provider_entry_indeterminate' }));
   if (!providerEntry?.ok) {

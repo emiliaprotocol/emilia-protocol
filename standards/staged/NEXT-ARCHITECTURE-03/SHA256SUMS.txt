@@ -1,3 +1,3 @@
-7997eb0ce46731bb4a3524a1275d42966cabaa5a31514bfcf80ec6229a955b5a  UPLOAD-THIS/draft-schrock-ep-architecture-03.xml
-9b8e088f82b888c6861b84868351d486a07f6d9689563c28fee6cab64e8564d2  RENDERS/draft-schrock-ep-architecture-03.html
-b80d530fb8f7b94c251fd8d102159aeb1cceab4050a6042f440a3e820e4f5e89  RENDERS/draft-schrock-ep-architecture-03.txt
+98680019d32289ba0fdfeb8120bb7d0b9ce460601327c51437675d0c68676da4  UPLOAD-THIS/draft-schrock-ep-architecture-03.xml
+2afbbc8929e1a91bbb16e6f05eb45ac3e9c605f6a7c999afc09de946fb6996ca  RENDERS/draft-schrock-ep-architecture-03.html
+ad985e56faa1e0705e86bc68dd7e1f062b730e6afdab2b966dbc11915f0697b6  RENDERS/draft-schrock-ep-architecture-03.txt

@@ -3543,3 +3543,677 @@ test('matching atomic domain and native exact-action human authorization admit o
     state_domain_digest: store.stateDomainDigest,
   });
 });
+
+const FREEZE_ACTION_DIGEST = `sha256:${'a1'.repeat(32)}`;
+const RESTORE_ACTION_DIGEST = `sha256:${'b2'.repeat(32)}`;
+const CONTROL_AUTHORITY_DIGEST = `sha256:${'c3'.repeat(32)}`;
+
+test('real PostgreSQL serializes emergency freeze against provider entry and preserves accounting', {
+  skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
+}, async () => {
+  const { Pool } = require('pg') as { Pool: new (options: Record<string, unknown>) => any };
+  const pool = new Pool({ connectionString: capabilityPostgresUrl, max: 8 });
+  const schema = `ep_control_domain_${process.pid}_${Date.now()}`;
+  function latch() {
+    let release!: () => void;
+    const waiting = new Promise<void>((resolve) => { release = resolve; });
+    return { waiting, release };
+  }
+  const transactionFor = (hooks: {
+    before?: (sql: string, params: any[]) => Promise<void> | void;
+    after?: (sql: string, params: any[]) => Promise<void> | void;
+  } = {}) => async (callback) => {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(`SET LOCAL search_path TO ${schema}, public`);
+        const result = await callback(async (sql, params = []) => {
+          await hooks.before?.(sql, params);
+          const queried = await client.query(sql, [...params]);
+          await hooks.after?.(sql, params);
+          return { rowCount: queried.rowCount ?? 0, rows: queried.rows };
+        });
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    };
+  const transaction = transactionFor();
+
+  try {
+    await pool.query(`CREATE SCHEMA ${schema}`);
+    const setup = await pool.connect();
+    try {
+      await setup.query(`SET search_path TO ${schema}, public`);
+      await setup.query(CAPABILITY_STATE_DDL);
+    } finally {
+      setup.release();
+    }
+
+    const keys = issuer();
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+      issuerPrivateKey: keys.privateKey,
+      capabilityId: 'postgres_control_domain_capability',
+    }));
+    const store = createPostgresCapabilityStore({ transaction, verifyControlTransition });
+    assert.equal(await store.registerCapability(minted.capabilityReceipt), true);
+    assert.equal((await store.registerControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      now: NOW,
+    })).epoch, 1);
+    const capabilityId = minted.capabilityReceipt.capability.id;
+    const memory = createMemoryCapabilityStore();
+    assert.equal(memory.registerCapability(minted.capabilityReceipt), true);
+    const fingerprint = memory.getState(capabilityId).capability_fingerprint;
+
+    const preFreezeAction = scopedAction('postgres_control_pre_entry', { amount: 10 });
+    const held = await store.reserveSpend({
+      capabilityId,
+      capabilityFingerprint: fingerprint,
+      controlDomainId: 'postgres_control_domain',
+      operationId: preFreezeAction.operation_id,
+      actionDigest: capabilityActionDigest(preFreezeAction),
+      amount: 10,
+      currency: 'USD',
+      now: NOW,
+    });
+    assert.equal(held.ok, true);
+    assert.equal(held.reserved_control_epoch, 1);
+
+    const freeze = await store.freezeControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      operationId: 'postgres_freeze_1',
+      actionDigest: FREEZE_ACTION_DIGEST,
+      authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+      now: NOW + 1,
+    });
+    assert.equal(freeze.epoch, 2);
+    const alreadyFrozen = await store.freezeControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      operationId: 'postgres_freeze_already_frozen',
+      actionDigest: FREEZE_ACTION_DIGEST,
+      authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+      now: NOW + 1,
+    });
+    assert.equal(alreadyFrozen.status, 'already_frozen');
+    assert.equal(alreadyFrozen.epoch, 2);
+    assert.equal((await store.beginProviderEntry({
+      capabilityId,
+      controlDomainId: 'postgres_control_domain',
+      operationId: preFreezeAction.operation_id,
+      reservationToken: held.reservation_token,
+      now: NOW + 2,
+    })).reservation, 'released');
+
+    const releasedState = await pool.query(`
+      SELECT consumed_amount, reserved_amount FROM ${schema}.ep_capability_state
+      WHERE capability_id = $1
+    `, [capabilityId]);
+    assert.deepEqual(releasedState.rows[0], { consumed_amount: '0', reserved_amount: '0' });
+    const releasedOperation = await pool.query(`
+      SELECT status, outcome, release_reason FROM ${schema}.ep_capability_operations
+      WHERE operation_id = $1
+    `, [preFreezeAction.operation_id]);
+    assert.deepEqual(releasedOperation.rows[0], {
+      status: 'released',
+      outcome: 'not_entered',
+      release_reason: 'control_domain_frozen',
+    });
+
+    const restore = await store.restoreControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      operationId: 'postgres_restore_1',
+      actionDigest: RESTORE_ACTION_DIGEST,
+      authorization: controlAuthorization(RESTORE_ACTION_DIGEST),
+      now: NOW + 3,
+    });
+    assert.equal(restore.epoch, 3);
+    const alreadyFrozenRetry = await store.freezeControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      operationId: 'postgres_freeze_already_frozen',
+      actionDigest: FREEZE_ACTION_DIGEST,
+      authorization: controlAuthorization(FREEZE_ACTION_DIGEST, { currently_authorized: false }),
+      now: NOW + 4,
+    });
+    assert.deepEqual(alreadyFrozenRetry, { ...alreadyFrozen, idempotent: true });
+    assert.equal((await store.getControlDomain('postgres_control_domain')).status, 'active');
+    assert.equal((await store.beginProviderEntry({
+      capabilityId,
+      controlDomainId: 'postgres_control_domain',
+      operationId: preFreezeAction.operation_id,
+      reservationToken: held.reservation_token,
+      now: NOW + 4,
+    })).reason, 'capability_operation_already_finalized');
+
+    const enteredAction = scopedAction('postgres_control_entered', { amount: 10 });
+    const next = await store.reserveSpend({
+      capabilityId,
+      capabilityFingerprint: fingerprint,
+      controlDomainId: 'postgres_control_domain',
+      operationId: enteredAction.operation_id,
+      actionDigest: capabilityActionDigest(enteredAction),
+      amount: 10,
+      currency: 'USD',
+      now: NOW + 5,
+    });
+    assert.equal((await store.beginProviderEntry({
+      capabilityId,
+      controlDomainId: 'postgres_control_domain',
+      operationId: enteredAction.operation_id,
+      reservationToken: next.reservation_token,
+      now: NOW + 6,
+    })).ok, true);
+    assert.equal((await store.freezeControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      operationId: 'postgres_freeze_2',
+      actionDigest: FREEZE_ACTION_DIGEST,
+      authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+      now: NOW + 7,
+    })).epoch, 4);
+    assert.equal((await store.commitSpend({
+      capabilityId,
+      operationId: enteredAction.operation_id,
+      reservationToken: next.reservation_token,
+      outcome: 'indeterminate',
+      now: NOW + 8,
+    })).ok, true);
+    const enteredState = await pool.query(`
+      SELECT consumed_amount, reserved_amount FROM ${schema}.ep_capability_state
+      WHERE capability_id = $1
+    `, [capabilityId]);
+    assert.deepEqual(enteredState.rows[0], { consumed_amount: '10', reserved_amount: '0' });
+
+    const retry = await store.freezeControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      operationId: 'postgres_freeze_2',
+      actionDigest: FREEZE_ACTION_DIGEST,
+      authorization: controlAuthorization(FREEZE_ACTION_DIGEST, { currently_authorized: false }),
+      now: NOW + 9,
+    });
+    assert.equal(retry.idempotent, true);
+    assert.equal(retry.epoch, 4);
+    const events = await pool.query(`
+      SELECT count(*)::int AS count FROM ${schema}.ep_gate_control_domain_events
+      WHERE operation_id = 'postgres_freeze_2'
+    `);
+    assert.equal(events.rows[0].count, 1);
+
+    assert.equal((await store.restoreControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      operationId: 'postgres_restore_2',
+      actionDigest: RESTORE_ACTION_DIGEST,
+      authorization: controlAuthorization(RESTORE_ACTION_DIGEST),
+      now: NOW + 10,
+    })).epoch, 5);
+    const entryFirstAction = scopedAction('postgres_entry_wins_race', { amount: 10 });
+    const entryFirstReservation = await store.reserveSpend({
+      capabilityId,
+      capabilityFingerprint: fingerprint,
+      controlDomainId: 'postgres_control_domain',
+      operationId: entryFirstAction.operation_id,
+      actionDigest: capabilityActionDigest(entryFirstAction),
+      amount: 10,
+      currency: 'USD',
+      now: NOW + 11,
+    });
+    const entryLocked = latch();
+    const releaseEntry = latch();
+    const freezeReachedLock = latch();
+    let entryHeld = false;
+    const entryFirstStore = createPostgresCapabilityStore({
+      transaction: transactionFor({
+        async after(sql) {
+          if (!entryHeld && sql === CAPABILITY_SQL.readControlDomain) {
+            entryHeld = true;
+            entryLocked.release();
+            await releaseEntry.waiting;
+          }
+        },
+      }),
+      verifyControlTransition,
+    });
+    const lateFreezeStore = createPostgresCapabilityStore({
+      transaction: transactionFor({
+        before(sql) {
+          if (sql === CAPABILITY_SQL.readControlDomain) freezeReachedLock.release();
+        },
+      }),
+      verifyControlTransition,
+    });
+    const entering = entryFirstStore.beginProviderEntry({
+      capabilityId,
+      controlDomainId: 'postgres_control_domain',
+      operationId: entryFirstAction.operation_id,
+      reservationToken: entryFirstReservation.reservation_token,
+      now: NOW + 12,
+    });
+    await entryLocked.waiting;
+    const freezingAfterEntry = lateFreezeStore.freezeControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      operationId: 'postgres_freeze_entry_race',
+      actionDigest: FREEZE_ACTION_DIGEST,
+      authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+      now: NOW + 13,
+    });
+    await freezeReachedLock.waiting;
+    releaseEntry.release();
+    assert.equal((await entering).ok, true);
+    assert.equal((await freezingAfterEntry).epoch, 6);
+    assert.equal((await store.commitSpend({
+      capabilityId,
+      operationId: entryFirstAction.operation_id,
+      reservationToken: entryFirstReservation.reservation_token,
+      outcome: 'indeterminate',
+      now: NOW + 14,
+    })).ok, true);
+
+    assert.equal((await store.restoreControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      operationId: 'postgres_restore_3',
+      actionDigest: RESTORE_ACTION_DIGEST,
+      authorization: controlAuthorization(RESTORE_ACTION_DIGEST),
+      now: NOW + 15,
+    })).epoch, 7);
+    const freezeFirstAction = scopedAction('postgres_freeze_wins_race', { amount: 10 });
+    const freezeFirstReservation = await store.reserveSpend({
+      capabilityId,
+      capabilityFingerprint: fingerprint,
+      controlDomainId: 'postgres_control_domain',
+      operationId: freezeFirstAction.operation_id,
+      actionDigest: capabilityActionDigest(freezeFirstAction),
+      amount: 10,
+      currency: 'USD',
+      now: NOW + 16,
+    });
+    const freezeLocked = latch();
+    const releaseFreeze = latch();
+    const entryReachedLock = latch();
+    let freezeHeld = false;
+    const freezeFirstStore = createPostgresCapabilityStore({
+      transaction: transactionFor({
+        async after(sql) {
+          if (!freezeHeld && sql === CAPABILITY_SQL.readControlDomain) {
+            freezeHeld = true;
+            freezeLocked.release();
+            await releaseFreeze.waiting;
+          }
+        },
+      }),
+      verifyControlTransition,
+    });
+    const lateEntryStore = createPostgresCapabilityStore({
+      transaction: transactionFor({
+        before(sql) {
+          if (sql === CAPABILITY_SQL.readControlDomain) entryReachedLock.release();
+        },
+      }),
+      verifyControlTransition,
+    });
+    const freezingFirst = freezeFirstStore.freezeControlDomain({
+      controlDomainId: 'postgres_control_domain',
+      operationId: 'postgres_freeze_first_race',
+      actionDigest: FREEZE_ACTION_DIGEST,
+      authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+      now: NOW + 17,
+    });
+    await freezeLocked.waiting;
+    const enteringLate = lateEntryStore.beginProviderEntry({
+      capabilityId,
+      controlDomainId: 'postgres_control_domain',
+      operationId: freezeFirstAction.operation_id,
+      reservationToken: freezeFirstReservation.reservation_token,
+      now: NOW + 18,
+    });
+    await entryReachedLock.waiting;
+    releaseFreeze.release();
+    assert.equal((await freezingFirst).epoch, 8);
+    assert.equal((await enteringLate).reservation, 'released');
+  } finally {
+    await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+    await pool.end();
+  }
+});
+
+function verifyControlTransition(input) {
+  const authorization = input.authorization;
+  if (!authorization || authorization.authenticated !== true) {
+    return { authenticated: false, authorized: false };
+  }
+  return {
+    authenticated: true,
+    authorized: authorization.currently_authorized === true,
+    authority_instance_digest: authorization.authority_instance_digest,
+    action_digest: authorization.action_digest,
+  };
+}
+
+function controlAuthorization(actionDigest, overrides = {}) {
+  return {
+    authenticated: true,
+    currently_authorized: true,
+    authority_instance_digest: CONTROL_AUTHORITY_DIGEST,
+    action_digest: actionDigest,
+    ...overrides,
+  };
+}
+
+async function controlDomainHarness(prefix) {
+  const keys = issuer();
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: `${prefix}_capability`,
+  }));
+  const store = createMemoryCapabilityStore({ verifyControlTransition });
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+  assert.deepEqual(await store.registerControlDomain({
+    controlDomainId: `${prefix}_domain`,
+    now: NOW,
+  }), {
+    ok: true,
+    idempotent: false,
+    control_domain_id: `${prefix}_domain`,
+    status: 'active',
+    epoch: 1,
+  });
+  return { keys, minted, store, controlDomainId: `${prefix}_domain` };
+}
+
+test('capability accounting moves held budget to spent at provider entry and never debits again at commit', async () => {
+  const { minted, store, controlDomainId } = await controlDomainHarness('entry_debit');
+  const action = scopedAction('op_4', { amount: 10 });
+  const capabilityId = minted.capabilityReceipt.capability.id;
+  const reserved = await store.reserveSpend({
+    capabilityId,
+    capabilityFingerprint: store.getState(capabilityId).capability_fingerprint,
+    controlDomainId,
+    operationId: action.operation_id,
+    actionDigest: capabilityActionDigest(action),
+    amount: 10,
+    currency: 'USD',
+    now: NOW,
+  });
+  assert.equal(reserved.ok, true);
+  assert.deepEqual(
+    { reserved: store.getState(capabilityId).reserved_amount, consumed: store.getState(capabilityId).consumed_amount },
+    { reserved: 10, consumed: 0 },
+  );
+  assert.equal(store.getOperation(action.operation_id, capabilityId).reserved_control_epoch, 1);
+
+  assert.deepEqual(await store.beginProviderEntry({
+    capabilityId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    now: NOW + 1,
+  }), { ok: false, reason: 'capability_control_domain_required' });
+  assert.deepEqual(
+    { reserved: store.getState(capabilityId).reserved_amount, consumed: store.getState(capabilityId).consumed_amount },
+    { reserved: 10, consumed: 0 },
+  );
+
+  assert.equal((await store.beginProviderEntry({
+    capabilityId,
+    controlDomainId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    now: NOW + 1,
+  })).ok, true);
+  assert.deepEqual(
+    { reserved: store.getState(capabilityId).reserved_amount, consumed: store.getState(capabilityId).consumed_amount },
+    { reserved: 0, consumed: 10 },
+  );
+
+  assert.equal((await store.commitSpend({
+    capabilityId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    outcome: 'executed',
+    now: NOW + 2,
+  })).ok, true);
+  assert.deepEqual(
+    { reserved: store.getState(capabilityId).reserved_amount, consumed: store.getState(capabilityId).consumed_amount },
+    { reserved: 0, consumed: 10 },
+  );
+});
+
+test('freeze after reservation establishes non-entry, releases held budget, and restore never revives the old reservation', async () => {
+  const { minted, store, controlDomainId } = await controlDomainHarness('freeze_before_entry');
+  const capabilityId = minted.capabilityReceipt.capability.id;
+  const action = scopedAction('crash_before_provider_entry', { amount: 10 });
+  const reserved = await store.reserveSpend({
+    capabilityId,
+    capabilityFingerprint: store.getState(capabilityId).capability_fingerprint,
+    controlDomainId,
+    operationId: action.operation_id,
+    actionDigest: capabilityActionDigest(action),
+    amount: 10,
+    currency: 'USD',
+    now: NOW,
+  });
+  assert.equal(reserved.ok, true);
+
+  const frozen = await store.freezeControlDomain({
+    controlDomainId,
+    operationId: 'freeze_1',
+    actionDigest: FREEZE_ACTION_DIGEST,
+    authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+    now: NOW + 1,
+  });
+  assert.deepEqual(frozen, {
+    ok: true,
+    idempotent: false,
+    status: 'frozen',
+    control_domain_id: controlDomainId,
+    epoch: 2,
+  });
+
+  const stopped = await store.beginProviderEntry({
+    capabilityId,
+    controlDomainId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    now: NOW + 2,
+  });
+  assert.deepEqual(stopped, {
+    ok: false,
+    reason: 'capability_control_domain_frozen',
+    outcome: 'not_entered',
+    reservation: 'released',
+  });
+  assert.equal(store.getOperation(action.operation_id, capabilityId).status, 'released');
+  assert.deepEqual(
+    { reserved: store.getState(capabilityId).reserved_amount, consumed: store.getState(capabilityId).consumed_amount },
+    { reserved: 0, consumed: 0 },
+  );
+
+  const restored = await store.restoreControlDomain({
+    controlDomainId,
+    operationId: 'restore_1',
+    actionDigest: RESTORE_ACTION_DIGEST,
+    authorization: controlAuthorization(RESTORE_ACTION_DIGEST),
+    now: NOW + 3,
+  });
+  assert.deepEqual(restored, {
+    ok: true,
+    idempotent: false,
+    status: 'active',
+    control_domain_id: controlDomainId,
+    epoch: 3,
+  });
+  assert.equal((await store.beginProviderEntry({
+    capabilityId,
+    controlDomainId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    now: NOW + 4,
+  })).reason, 'capability_operation_already_finalized');
+});
+
+test('provider entry that wins the freeze race stays consumed and reconcilable', async () => {
+  const { minted, store, controlDomainId } = await controlDomainHarness('entry_before_freeze');
+  const capabilityId = minted.capabilityReceipt.capability.id;
+  const action = scopedAction('post_entry_negative_evidence', { amount: 10 });
+  const reserved = await store.reserveSpend({
+    capabilityId,
+    capabilityFingerprint: store.getState(capabilityId).capability_fingerprint,
+    controlDomainId,
+    operationId: action.operation_id,
+    actionDigest: capabilityActionDigest(action),
+    amount: 10,
+    currency: 'USD',
+    now: NOW,
+  });
+  assert.equal((await store.beginProviderEntry({
+    capabilityId,
+    controlDomainId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    now: NOW + 1,
+  })).ok, true);
+  assert.equal((await store.freezeControlDomain({
+    controlDomainId,
+    operationId: 'freeze_after_entry',
+    actionDigest: FREEZE_ACTION_DIGEST,
+    authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+    now: NOW + 2,
+  })).ok, true);
+  assert.equal((await store.commitSpend({
+    capabilityId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    outcome: 'indeterminate',
+    now: NOW + 3,
+  })).ok, true);
+  assert.equal(store.getOperation(action.operation_id, capabilityId).outcome, 'indeterminate');
+  assert.deepEqual(
+    { reserved: store.getState(capabilityId).reserved_amount, consumed: store.getState(capabilityId).consumed_amount },
+    { reserved: 0, consumed: 10 },
+  );
+});
+
+test('wrong holder cannot use a freeze to release another owner reservation', async () => {
+  const { minted, store, controlDomainId } = await controlDomainHarness('wrong_holder_freeze');
+  const capabilityId = minted.capabilityReceipt.capability.id;
+  const action = scopedAction('crash_before_provider_entry', { amount: 10 });
+  const reserved = await store.reserveSpend({
+    capabilityId,
+    capabilityFingerprint: store.getState(capabilityId).capability_fingerprint,
+    controlDomainId,
+    operationId: action.operation_id,
+    actionDigest: capabilityActionDigest(action),
+    amount: 10,
+    currency: 'USD',
+    now: NOW,
+  });
+  await store.freezeControlDomain({
+    controlDomainId,
+    operationId: 'freeze_wrong_holder',
+    actionDigest: FREEZE_ACTION_DIGEST,
+    authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+    now: NOW + 1,
+  });
+
+  assert.equal((await store.beginProviderEntry({
+    capabilityId,
+    controlDomainId,
+    operationId: action.operation_id,
+    reservationToken: '00000000-0000-4000-8000-000000000000',
+    now: NOW + 2,
+  })).reason, 'capability_reservation_owner_mismatch');
+  assert.equal(store.getOperation(action.operation_id, capabilityId).status, 'reserved');
+  assert.equal(store.getState(capabilityId).reserved_amount, 10);
+
+  assert.equal((await store.beginProviderEntry({
+    capabilityId,
+    controlDomainId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    now: NOW + 3,
+  })).reservation, 'released');
+});
+
+test('control transition idempotency authenticates before returning a prior result', async () => {
+  const { store, controlDomainId } = await controlDomainHarness('freeze_idempotency');
+  const request = {
+    controlDomainId,
+    operationId: 'freeze_idempotent',
+    actionDigest: FREEZE_ACTION_DIGEST,
+    authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+    now: NOW,
+  };
+  const first = await store.freezeControlDomain(request);
+  assert.equal(first.idempotent, false);
+
+  const expiredRetry = await store.freezeControlDomain({
+    ...request,
+    authorization: controlAuthorization(FREEZE_ACTION_DIGEST, { currently_authorized: false }),
+    now: NOW + 60_000,
+  });
+  assert.deepEqual(expiredRetry, { ...first, idempotent: true });
+
+  const unauthenticated = await store.freezeControlDomain({
+    ...request,
+    authorization: { authenticated: false },
+    now: NOW + 60_001,
+  });
+  assert.deepEqual(unauthenticated, { ok: false, reason: 'control_transition_refused' });
+
+  const substitutedAuthority = await store.freezeControlDomain({
+    ...request,
+    authorization: controlAuthorization(FREEZE_ACTION_DIGEST, {
+      authority_instance_digest: `sha256:${'d4'.repeat(32)}`,
+    }),
+    now: NOW + 60_002,
+  });
+  assert.deepEqual(substitutedAuthority, { ok: false, reason: 'control_transition_refused' });
+  assert.equal(store.getControlDomain(controlDomainId).epoch, 2);
+});
+
+test('an already-frozen transition is recorded and cannot be replayed after restore', async () => {
+  const { store, controlDomainId } = await controlDomainHarness('already_frozen_idempotency');
+  assert.equal((await store.freezeControlDomain({
+    controlDomainId,
+    operationId: 'freeze_primary',
+    actionDigest: FREEZE_ACTION_DIGEST,
+    authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+    now: NOW,
+  })).status, 'frozen');
+
+  const whileFrozen = await store.freezeControlDomain({
+    controlDomainId,
+    operationId: 'freeze_while_already_frozen',
+    actionDigest: FREEZE_ACTION_DIGEST,
+    authorization: controlAuthorization(FREEZE_ACTION_DIGEST),
+    now: NOW + 1,
+  });
+  assert.deepEqual(whileFrozen, {
+    ok: true,
+    idempotent: false,
+    status: 'already_frozen',
+    control_domain_id: controlDomainId,
+    epoch: 2,
+  });
+  assert.equal(store.getControlDomainEvent('freeze_while_already_frozen').epoch_at_event, 2);
+
+  assert.equal((await store.restoreControlDomain({
+    controlDomainId,
+    operationId: 'restore_after_already_frozen',
+    actionDigest: RESTORE_ACTION_DIGEST,
+    authorization: controlAuthorization(RESTORE_ACTION_DIGEST),
+    now: NOW + 2,
+  })).status, 'active');
+
+  const retry = await store.freezeControlDomain({
+    controlDomainId,
+    operationId: 'freeze_while_already_frozen',
+    actionDigest: FREEZE_ACTION_DIGEST,
+    authorization: controlAuthorization(FREEZE_ACTION_DIGEST, { currently_authorized: false }),
+    now: NOW + 3,
+  });
+  assert.deepEqual(retry, { ...whileFrozen, idempotent: true });
+  assert.equal(store.getControlDomain(controlDomainId).status, 'active');
+  assert.equal(store.getControlDomain(controlDomainId).epoch, 3);
+});

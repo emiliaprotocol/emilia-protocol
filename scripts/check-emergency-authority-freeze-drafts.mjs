@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 
 const root = new URL('../standards/staged/', import.meta.url);
+const repositoryRoot = new URL('../', import.meta.url);
 
 function invariant(condition, message) {
   if (!condition) throw new Error(`Emergency authority freeze drafts: ${message}`);
@@ -64,6 +65,14 @@ const bcrName = 'draft-schrock-ep-bounded-capability-receipts-05';
 const architectureName = 'draft-schrock-ep-architecture-03';
 const bcr = readPacket('NEXT-BOUNDED-CAPABILITY-05', bcrName);
 const architecture = readPacket('NEXT-ARCHITECTURE-03', architectureName);
+const capabilitySource = readFileSync(
+  new URL('packages/gate/src/capability-receipt.ts', repositoryRoot),
+  'utf8',
+);
+const capabilityTests = readFileSync(
+  new URL('packages/gate/capability-receipt.test.ts', repositoryRoot),
+  'utf8',
+);
 
 for (const [name, packet] of [['BCR-05', bcr], ['Architecture-03', architecture]]) {
   invariant(packet.xml.includes(`docName="${name === 'BCR-05' ? bcrName : architectureName}"`), `${name} XML identity drifted`);
@@ -94,6 +103,21 @@ for (const required of [
   'does not stop computation, undo effects',
   'Absence of a receipt in one examined evidence domain does not prove',
 ]) invariant(architecture.xml.includes(required), `Architecture-03 missing ${required}`);
+
+for (const required of [
+  'CAPABILITY_CONTROL_DOMAIN_TABLE',
+  'reserved_control_epoch',
+  'releaseControlBlockedOperation',
+  "controlDomain.status !== 'active'",
+  'controlDomain.epoch',
+]) invariant(capabilitySource.includes(required), `Gate implementation missing ${required}`);
+
+for (const required of [
+  'real PostgreSQL serializes emergency freeze against provider entry and preserves accounting',
+  'capability accounting moves held budget to spent at provider entry and never debits again at commit',
+  'wrong holder cannot use a freeze to release another owner reservation',
+  'provider entry that wins the freeze race stays consumed and reconcilable',
+]) invariant(capabilityTests.includes(required), `Gate hostile suite missing ${required}`);
 
 for (const forbidden of [
   'exactly-once physical execution',

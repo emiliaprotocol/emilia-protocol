@@ -1769,13 +1769,30 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
    The reference stores move an operation amount from reserved_amount to
    consumed_amount in the same transaction that records provider entry,
-   and later outcome commit does not debit the budget again.  The
-   admission-control domain status and epoch profile added in -05 is not
-   yet implemented.  There are no live PostgreSQL race results for
-   freeze versus reservation or provider entry, no disconnected-edge
-   lease implementation, and no signed freeze-event artifact.  Those
-   additions are protocol requirements and implementation targets, not
-   current conformance claims.
+   and later outcome commit does not debit the budget again.  The in-
+   memory and PostgreSQL reference stores implement the -05 admission-
+   control domain status and monotonic epoch on explicitly covered
+   operations.  Reservation captures the current epoch; provider entry
+   locks and rechecks the same domain before changing held budget to
+   consumed budget; freeze and restore each advance the epoch; and a
+   pre-freeze reservation that has not entered is released as
+   not_entered only under its reservation-owner check.  Same-team
+   hostile tests exercise both serializations of freeze versus provider
+   entry against an ephemeral live PostgreSQL 17 instance, wrong-holder
+   release refusal, restore non-revival, idempotent authenticated freeze
+   retry, and the no-second-debit rule.  This is local implementation
+   experience, not independent interoperability or production evidence.
+   There is no disconnected-edge lease implementation and no signed
+   freeze-event artifact.  Control transitions use a trusted verifier
+   callback; the reference store does not yet atomically consume a
+   portable detector capability in the same transaction.
+
+
+
+Schrock                 Expires 13 February 2027               [Page 32]
+
+Internet-Draft           EP Bounded Capabilities             August 2026
+
 
    The prototype wire format predates this document and does not yet
    implement all mandatory fields in this version, including full
@@ -1786,14 +1803,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    implementation experience, not a claim of conformance.  There is no
    independent implementation, interoperability event, production
    transaction history, post-quantum profile, or zero-knowledge
-
-
-
-Schrock                 Expires 13 February 2027               [Page 32]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
-
    implementation.  The executor-domain participant binding and per-
    action human-authorization composition added in -02 are protocol
    requirements and composition rules.  The reference execution path now
@@ -1833,6 +1842,14 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    establishment provenance, or the local-only versus chain-composable
    result.  No implementation or conformance claim is made for those
    additions.  The -04 atomic root-issuance registration rule is also
+
+
+
+Schrock                 Expires 13 February 2027               [Page 33]
+
+Internet-Draft           EP Bounded Capabilities             August 2026
+
+
    not implemented as a conforming protocol operation because the
    prototype does not yet bind and consume the full issuance
    authorization described here.  The capability-scoped operation key
@@ -1841,14 +1858,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    the other -04 gaps.  The ed25519-operation-proof holder method is not
    yet implemented by the reference capability API; no implementation
    claim is made for it.
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 33]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
 
    The reference implementation does reject repeated delegation
    identifiers, repeated parent capability identifiers, a leaf named as
@@ -1888,6 +1897,15 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 20.  Changes Since -04
 
+
+
+
+
+Schrock                 Expires 13 February 2027               [Page 34]
+
+Internet-Draft           EP Bounded Capabilities             August 2026
+
+
    *  Moved the reserved-to-consumed budget transition to the atomic
       provider-entry boundary for external effects and prohibited a
       second debit at outcome commit.
@@ -1897,14 +1915,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
    *  Defined an optional admission-control domain and monotonic epoch
       captured at reservation and rechecked at provider entry.
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 34]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
 
    *  Defined serialized freeze, restoration, wrong-holder, non-entry,
       and pre-freeze reconciliation behavior without claiming that
@@ -1943,16 +1953,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/info/rfc2119>.
 
-   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
-              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
-              <https://www.rfc-editor.org/info/rfc3339>.
-
-   [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
-              Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
-              <https://www.rfc-editor.org/info/rfc4648>.
-
-
-
 
 
 
@@ -1961,6 +1961,14 @@ Schrock                 Expires 13 February 2027               [Page 35]
 
 Internet-Draft           EP Bounded Capabilities             August 2026
 
+
+   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
+              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
+              <https://www.rfc-editor.org/info/rfc3339>.
+
+   [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
+              Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
+              <https://www.rfc-editor.org/info/rfc4648>.
 
    [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
               Signature Algorithm (EdDSA)", RFC 8032,
@@ -2002,14 +2010,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
               Authorization", 2026, <https://datatracker.ietf.org/doc/
               draft-nelson-agent-delegation-receipts/>.
 
-   [EP-QUORUM]
-              Schrock, I., "Multi-Party Authorization (Quorum) for the
-              EMILIA Protocol", 2026, <https://datatracker.ietf.org/doc/
-              draft-schrock-ep-quorum/>.
-
-
-
-
 
 
 
@@ -2017,6 +2017,11 @@ Schrock                 Expires 13 February 2027               [Page 36]
 
 Internet-Draft           EP Bounded Capabilities             August 2026
 
+
+   [EP-QUORUM]
+              Schrock, I., "Multi-Party Authorization (Quorum) for the
+              EMILIA Protocol", 2026, <https://datatracker.ietf.org/doc/
+              draft-schrock-ep-quorum/>.
 
    [HAWKINS]  Hawkins, W., "Attested Payment Authorization for
               Autonomous Agents", Work in Progress, Internet-Draft,
@@ -2052,11 +2057,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
 
 
 
