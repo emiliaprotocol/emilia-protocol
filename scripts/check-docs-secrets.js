@@ -149,6 +149,13 @@ const SAFE_HOSTS = new Set([
     "mcp.so",
     "smithery.ai",
     "glama.ai",
+    // Self-improvement governance and supply-chain security references
+    // (cited in docs/research/SELF-MODIFICATION-GATE-DUE-DILIGENCE-2026-08-12.md)
+    "deepmind.google",
+    "microsoft.com", // covers opensource.microsoft.com via safe-suffix
+    "kubernetes.io",
+    "in-toto.io",
+    "sigstore.dev", // covers docs.sigstore.dev via safe-suffix
     "wikipedia.org",
     "mozilla.org",
     "w3.org",
