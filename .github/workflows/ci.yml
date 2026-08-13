@@ -134,7 +134,7 @@ jobs:
         # dedicated step so a green CI actually means the demos run.
         run: |
           npm run check:standalone-runtimes
-          node --test examples/action-escrow/scenario.test.mjs examples/action-escrow/standalone.test.mjs examples/receipt-program/demo.test.mjs examples/authority-loop-v1/demo.test.mjs examples/ot-command-binding-v1/scenario.test.mjs
+          node --test examples/action-escrow/scenario.test.mjs examples/action-escrow/standalone.test.mjs examples/receipt-program/demo.test.mjs examples/authority-loop-v1/demo.test.mjs examples/ot-command-binding-v1/scenario.test.mjs examples/self-modification-gate-v1/scenario.test.mjs examples/self-modification-gate-v1/run.test.mjs
       # Runs the public Gate proof command on the repository's minimum Node
       # version. The command refuses stale compiled or standalone runtimes
       # before exercising allowance, indeterminate reconciliation, HTTP Gate,

@@ -37,6 +37,8 @@
     "test:github-merge-gate": "node --test integrations/github-merge-gate-action/tests/*.node-test.mjs",
     "test:ot-command-binding": "node --test examples/ot-command-binding-v1/*.test.mjs",
     "demo:ot-command-binding": "node examples/ot-command-binding-v1/demo.mjs",
+    "test:self-modification-gate": "node --test examples/self-modification-gate-v1/*.test.mjs",
+    "demo:self-modification-gate": "node examples/self-modification-gate-v1/run.mjs",
     "sync:ot-command-binding-vectors": "node examples/ot-command-binding-v1/generate-vectors.mjs --write",
     "check:ot-command-binding-vectors": "node examples/ot-command-binding-v1/generate-vectors.mjs --check",
     "test:checkout-evidence": "node --test packages/checkout-evidence/test.mjs",
