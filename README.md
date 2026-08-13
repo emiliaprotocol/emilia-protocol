@@ -45,6 +45,21 @@ mandate and detached receipt to the exact base and head commits before a protect
 passes. It is preventive only when the repository makes the check required and closes alternate
 merge paths. This is a product and distribution experiment, not evidence of external adoption.
 
+### The agent may keep running. Its authority stops.
+
+Continuous and self-improving agents create a control problem that process termination alone cannot
+solve: the owner may need to stop new consequences without claiming that computation stopped or that
+an external effect was reversed. Gate's Emergency Authority Freeze makes that a durable authority
+transition. Inside a covered Gate control domain, freeze blocks new reservations and prevents an
+older reservation from entering after the control epoch changes. If provider entry serialized first,
+the operation remains consumed and must be reconciled; restore advances the epoch again and does not
+revive old authority.
+
+This guarantee requires complete mediation and authoritative shared state. It does not stop the agent,
+undo an entered effect, or provide instant freeze across a disconnected leased domain. The current
+reference implementation covers the local in-memory and PostgreSQL control domain; leased-edge
+propagation and portable signed freeze-event evidence remain explicit implementation gaps.
+
 The named paid workflow remains payer AI-assisted adverse medical-necessity determination, under
 one safety rule: **no valid licensed-review evidence, no adverse determination**. Missing evidence
 routes to lawful human review or a patient-protective fallback; it is not authority to withhold

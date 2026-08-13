@@ -52,7 +52,17 @@ EMILIA Assurance Plane re-performs the deployment's claims
 
 **Role:** The commercial product and enforcement plane.
 
-Gate belongs immediately before the system that can mutate state: an MCP tool, API handler, payment rail, cloud control, clinical determination workflow, grid actuator, or physical controller. It checks the relying party's evidence requirements and local policy before calling the executor. Missing or insufficient evidence produces a closed refusal and an action-bound challenge. Accepted evidence authorizes only the exact action and is consumed once. Gate reserves bounded authority before provider entry, preserves uncertainty when the provider outcome cannot be established, refuses blind replay, and accepts reconciliation only from authenticated evidence bound to the same operation and material action. Disputes, returns, refunds, reversals, and other remedies remain append-only: they are new, separately authorized actions and never rewrite the original effect.
+Gate belongs immediately before the system that can mutate state: an MCP tool, API handler, payment rail, cloud control, clinical determination workflow, grid actuator, or physical controller. It checks the relying party's evidence requirements and local policy before calling the executor. Missing or insufficient evidence produces a closed refusal and an action-bound challenge. Accepted evidence authorizes only the exact action. Gate reserves bounded authority before provider entry, permits one admitted provider attempt for the covered authorization instance inside its shared durable authority domain, preserves uncertainty when the provider outcome cannot be established, refuses blind replay, and accepts reconciliation only from authenticated evidence bound to the same operation and material action. Disputes, returns, refunds, reversals, and other remedies remain append-only: they are new, separately authorized actions and never rewrite the original effect.
+
+#### Emergency Authority Freeze
+
+Continuous and self-improving agents may keep computing after an owner decides they must stop causing new consequences. Gate therefore treats emergency control as an authority transition, not as a process-kill promise:
+
+> **The agent may keep running. Its authority stops.**
+
+Inside a covered Gate control domain, a freeze advances the control epoch, blocks new reservations, and prevents an older reservation from entering the provider after the epoch changes. If provider entry serialized first, Gate does not relabel or erase it; the operation remains consumed and must be reconciled. Restore advances the epoch again, so old authority does not revive.
+
+This is a local-domain guarantee under complete mediation and authoritative shared state. It does not stop computation, undo an entered effect, or instantly reach a disconnected leased edge. Any future edge profile must disclose the maximum period during which stale leased authority can still admit work. Emergency Authority Freeze is a Gate capability and protocol hardening, not a new company category.
 
 **What customers buy:** Managed or BYOC operation, policy compilation, trust and revocation configuration, approver-directory integrations, durable consumption, outcome reconciliation, dispute and remedy operations, evidence retention, deployment coverage, integrations, support, SLA, and a separately contracted warranty where offered.
 
@@ -136,7 +146,7 @@ This is the adoption on-ramp:
 1. An agent calls a consequential MCP tool.
 2. The protected tool refuses with an evidence challenge.
 3. A human or authorized service supplies the required evidence.
-4. The tool executes the exact action once.
+4. Gate permits one admitted provider attempt for the covered authorization instance.
 5. Replay, substitution, and tampering are refused.
 
 The value is speed, developer visibility, integrations, and installed surface. It is not assumed to carry the first enterprise contract.
