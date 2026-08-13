@@ -37,11 +37,12 @@ function readPacket(directory, basename) {
     `RENDERS/${basename}.html`,
     `RENDERS/${basename}.txt`,
   ];
+  /** @type {Map<string, string>} */
   const manifest = new Map(
     readFileSync(new URL('SHA256SUMS.txt', packet), 'utf8').trim().split('\n').map((line) => {
       const match = /^([a-f0-9]{64})  (.+)$/.exec(line);
-      invariant(match, `${directory} has malformed checksum line ${line}`);
-      return [match[2], match[1]];
+      if (!match) throw new Error(`Emergency authority freeze drafts: ${directory} has malformed checksum line ${line}`);
+      return /** @type {[string, string]} */ ([match[2], match[1]]);
     }),
   );
   invariant(
@@ -74,10 +75,13 @@ const capabilityTests = readFileSync(
   'utf8',
 );
 
-for (const [name, packet] of [['BCR-05', bcr], ['Architecture-03', architecture]]) {
-  invariant(packet.xml.includes(`docName="${name === 'BCR-05' ? bcrName : architectureName}"`), `${name} XML identity drifted`);
-  invariant(packet.txt.includes(name === 'BCR-05' ? bcrName : architectureName), `${name} TXT identity drifted`);
-  invariant(packet.html.includes(name === 'BCR-05' ? bcrName : architectureName), `${name} HTML identity drifted`);
+for (const { name, basename, packet } of [
+  { name: 'BCR-05', basename: bcrName, packet: bcr },
+  { name: 'Architecture-03', basename: architectureName, packet: architecture },
+]) {
+  invariant(packet.xml.includes(`docName="${basename}"`), `${name} XML identity drifted`);
+  invariant(packet.txt.includes(basename), `${name} TXT identity drifted`);
+  invariant(packet.html.includes(basename), `${name} HTML identity drifted`);
 }
 
 for (const required of [
