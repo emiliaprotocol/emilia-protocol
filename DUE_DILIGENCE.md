@@ -29,6 +29,34 @@ baseline. It changes the evidence map, not the reviewed implementation.
 | GitHub controls | `main` has 16 strict required checks, one approval, conversation resolution, no force-push, no deletion, read-only workflow tokens, two-factor authentication required at the organization, and immutable release-tag rules. | Add a second human owner/reviewer, require Code Owner and latest-push approval, dismiss stale reviews, enforce rules for administrators, require signed commits, and verify the organization domain. |
 | AI-assisted development | Human accountability and future attribution rules are public in [`docs/AI-ASSISTED-DEVELOPMENT.md`](docs/AI-ASSISTED-DEVELOPMENT.md). | Complete counsel-led chain-of-title review in the private data room. |
 
+## Emergency Authority Freeze implementation baseline
+
+Commit [`143d4d0c`](https://github.com/emiliaprotocol/emilia-protocol/commit/143d4d0c)
+adds the first same-team implementation of a local Gate control domain. A freeze
+and provider entry serialize on one authoritative PostgreSQL control-domain row;
+reservations capture its epoch; and provider entry rechecks the same epoch before
+moving held budget to spent. Freeze and restore each advance the epoch, so a
+pre-freeze reservation cannot enter after restore. An operation that entered
+first remains consumed and reconcilable.
+
+Reproducible evidence for that baseline includes:
+
+- 336 passing Gate qualification tests with 13 environment-gated skips;
+- a separately executed live PostgreSQL test covering both orderings of the
+  freeze-versus-provider-entry race, held-to-spent accounting, owner isolation,
+  restore non-revival, and authenticated idempotent retry;
+- a clean execution of the Supabase migration against PostgreSQL, including the
+  immutable control-event trigger;
+- a successful production Next.js build; and
+- clean staged-draft packet, checksum, XML, and idnits validation for
+  Bounded Capability Receipts -05 and the Architecture -03 packet.
+
+The scope is intentionally limited. The transition verifier is a trusted local
+callback; atomic consumption of a portable detector capability, disconnected-edge
+leases, and independently verifiable signed freeze-event artifacts are not yet
+implemented. The mechanism does not stop agent computation, undo an entered
+effect, or provide instant freeze across a disconnected state domain.
+
 ## Live CodeQL disposition
 
 The 2026-08-12 live check found one open high-severity CodeQL alert,
