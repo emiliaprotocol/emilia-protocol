@@ -111,6 +111,9 @@ export default defineConfig({
       // The CCS/OASNT composition suite is a portable node:test program.
       // CI runs it through `npm run conformance:composition:ccs-oasnt`.
       'conformance/composition/ccs-oasnt-aeb-v1/run.test.mts',
+      // The WAG composition suite is also a portable node:test program.
+      // CI runs it through `npm run conformance:composition:wag`.
+      'conformance/composition/wag-aeb-v1/run.test.mts',
       // The public forgery corpus deliberately uses node:test so the pinned
       // bounty command runs without Vitest. CI executes it explicitly below.
       'tests/verifier-forgery/**',

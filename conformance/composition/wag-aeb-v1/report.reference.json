@@ -1,0 +1,216 @@
+{
+  "@version": "WAG-AEB-COMPOSITION-REPORT-v1",
+  "profile": "wag-aeb-v1",
+  "runner": {
+    "name": "EMILIA reference runner",
+    "affiliation": "EMILIA Protocol",
+    "revision": "agent/wag-aeb-interop",
+    "executed_at": "2026-08-13T20:00:00Z",
+    "execution_owner": "runner-asserted",
+    "implementation_owner": "EMILIA Protocol",
+    "independent_implementation": false
+  },
+  "pins": {
+    "wag_revision": "draft-carleton-workload-authz-grant-00",
+    "wag_source_commit": "13f516a5e458b89ca30f7ea47a802091dd9d4154",
+    "wag_published_txt_sha256": "sha256:4b92283fefdce2093e11f70bbfce5aa00af9191f7b278d498f30f2b34a78f798",
+    "wag_source_sha256": "sha256:195fa249380052324d78c8dbfbdeb4ff7b7c5b3bd5d9a9f4d9abf110e944e4e2",
+    "aeb_adapter_version": "1",
+    "mapping_version": "AEB-WAG-TOKEN-ISSUANCE-CAID-MAPPING-v1",
+    "source_lock_sha256": "sha256:38d7afea8823234a537e7defdf8a18552eacae4d640368d57bbd433dc294bfb9",
+    "profile_sha256": "sha256:e0c69ee240c3be9df6b9ccedced610c71ffc4d6ce5fd03f68e406d2cfa873c33",
+    "vectors_sha256": "sha256:94c3cc453eadfa1eab840995de9e1913500ee7c1ba6cbeeb034228b4733cea2e"
+  },
+  "checks": [
+    {
+      "id": "WAG-00-SOURCE-PIN",
+      "category": "source",
+      "description": "The adapter pins the exact reviewed WAG -00 source and published bytes.",
+      "passed": true,
+      "observed": {
+        "revision": "draft-carleton-workload-authz-grant-00",
+        "source_commit": "13f516a5e458b89ca30f7ea47a802091dd9d4154"
+      }
+    },
+    {
+      "id": "WAG-VALID-TOKEN-ISSUANCE",
+      "category": "positive",
+      "description": "A valid per-tenancy WAG grant maps to one exact token-issuance CAID.",
+      "passed": true,
+      "observed": {
+        "acceptance": "ACCEPTED",
+        "mapping": "MATCH",
+        "caid": "caid:1:oauth.access-token.issue.1:jcs-sha256:LJ7Vb8hPnLOw6QbNaUejbtuuIlES882SPdF7wcUmLLM"
+      }
+    },
+    {
+      "id": "WAG-ISSUER-SUBSTITUTION",
+      "category": "hostile",
+      "description": "A different issuer cannot use the pinned tenancy key.",
+      "passed": true,
+      "observed": {
+        "acceptance": "REJECTED",
+        "reasons": [
+          "wag:issuer_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "WAG-TENANT-KEY-SUBSTITUTION",
+      "category": "hostile",
+      "description": "A presenter cannot substitute a root from another tenancy.",
+      "passed": true,
+      "observed": {
+        "acceptance": "REJECTED",
+        "reasons": [
+          "wag:constructor_pin_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "WAG-UNSEEN-SUBJECT-ACCEPT",
+      "category": "positive",
+      "description": "A newly seen signed subject under the allowlisted issuer is accepted without per-agent registration.",
+      "passed": true,
+      "observed": {
+        "acceptance": "ACCEPTED",
+        "mapping": "MATCH",
+        "caid": "caid:1:oauth.access-token.issue.1:jcs-sha256:yPbAxMCZH4ulzvUROiFl05Mqlii131iLMfCUrzHYONo"
+      }
+    },
+    {
+      "id": "WAG-SUBJECT-SUBSTITUTION",
+      "category": "hostile",
+      "description": "A child or sibling agent identifier cannot inherit the pinned subject implicitly.",
+      "passed": true,
+      "observed": {
+        "acceptance": "REJECTED",
+        "reasons": [
+          "wag:token_request_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "WAG-AUDIENCE-SUBSTITUTION",
+      "category": "hostile",
+      "description": "The grant must address the pinned authorization server.",
+      "passed": true,
+      "observed": {
+        "acceptance": "REJECTED",
+        "reasons": [
+          "wag:audience_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "WAG-RESOURCE-SUBSTITUTION",
+      "category": "hostile",
+      "description": "Changing the observed RFC 8707 target resource refuses the token request.",
+      "passed": true,
+      "observed": {
+        "acceptance": "REJECTED",
+        "reasons": [
+          "wag:resource_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "WAG-PROPERTY-SUBSTITUTION",
+      "category": "hostile",
+      "description": "A material signed Property mismatch refuses rather than granting local permission.",
+      "passed": true,
+      "observed": {
+        "acceptance": "REJECTED",
+        "reasons": [
+          "wag:token_request_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "WAG-EXPIRED-GRANT",
+      "category": "hostile",
+      "description": "An expired grant is rejected under the pinned clock policy.",
+      "passed": true,
+      "observed": {
+        "acceptance": "REJECTED",
+        "reasons": [
+          "wag:grant_expired"
+        ]
+      }
+    },
+    {
+      "id": "WAG-STATUS-UNAVAILABLE",
+      "category": "hostile",
+      "description": "Unavailable current status yields INDETERMINATE, never a guessed acceptance.",
+      "passed": true,
+      "observed": {
+        "acceptance": "INDETERMINATE",
+        "reasons": [
+          "status_unavailable"
+        ]
+      }
+    },
+    {
+      "id": "WAG-REPLAY-IDENTITY",
+      "category": "replay",
+      "description": "Wrapper changes do not change the native replay identity.",
+      "passed": true,
+      "observed": {
+        "replay_unit": "sha256:68f7f5629045ab13f499f867d33c634f40b34d66ed0bd0569704a2e9f6368234"
+      }
+    },
+    {
+      "id": "WAG-SECOND-TOKEN-ISSUANCE",
+      "category": "replay",
+      "description": "The AEB consumption store refuses a second reservation of the same WAG replay unit.",
+      "passed": true,
+      "observed": {
+        "first_reserved": true,
+        "second_reserved": false
+      }
+    },
+    {
+      "id": "WAG-DOWNSTREAM-ACTION-NON-SUBSTITUTION",
+      "category": "boundary",
+      "description": "WAG alone is indeterminate for a downstream tool action.",
+      "passed": true,
+      "observed": {
+        "acceptance": "INDETERMINATE",
+        "reasons": [
+          "wag:does_not_bind_downstream_action"
+        ]
+      }
+    },
+    {
+      "id": "WAG-NOT-HUMAN-APPROVAL",
+      "category": "boundary",
+      "description": "The evidence subject and role remain workload-only.",
+      "passed": true,
+      "observed": {
+        "subject_kind": "workload",
+        "evidence_role": "workload-authorization-grant"
+      }
+    }
+  ],
+  "composition": {
+    "action_type": "oauth.access-token.issue.1",
+    "action_digest": "sha256:2c9ed56fc84f9cb3b0e906cd6947a36edbae225112f3cd923dd17bc1c5262cb3",
+    "caid": "caid:1:oauth.access-token.issue.1:jcs-sha256:LJ7Vb8hPnLOw6QbNaUejbtuuIlES882SPdF7wcUmLLM",
+    "evidence_role": "workload-authorization-grant",
+    "subject_kind": "workload",
+    "replay_unit": "sha256:68f7f5629045ab13f499f867d33c634f40b34d66ed0bd0569704a2e9f6368234",
+    "first_admission": "RESERVED",
+    "replay_admission": "REFUSED"
+  },
+  "passed": true,
+  "known_limits": [
+    "This run executes the EMILIA reference implementation and is not an independent implementation.",
+    "WAG -00 is an early exploratory individual draft and may change or be withdrawn.",
+    "The WAG signature does not cover the RFC 8707 resource parameter. This profile binds the authorization-server-observed resource into the token-issuance CAID.",
+    "One-time consumption is an EMILIA composition rule, not a WAG -00 conformance requirement.",
+    "WAG proves a workload authorization grant. It does not prove human approval or authorize a downstream tool action by itself.",
+    "A passing report is not IETF adoption, employer endorsement, certification, or production-readiness evidence."
+  ],
+  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA WAG -00 to AEB token-issuance profile at agent/wag-aeb-interop on 2026-08-13T20:00:00Z: 15/15 checks passed against draft-carleton-workload-authz-grant-00 (sha256:4b92283fefdce2093e11f70bbfce5aa00af9191f7b278d498f30f2b34a78f798). The run verified per-tenancy issuer and key pinning, exact token-request projection, stable replay identity, second replay-unit reservation refusal, and downstream-action non-substitution. This is a reproduction of the EMILIA reference implementation, not an independent implementation, IETF adoption, or employer endorsement.",
+  "report_digest": "sha256:6b6a7fb8117afa8d45c931662d5d832d58783d69077062f6ebcccfa16b56a0d1"
+}
