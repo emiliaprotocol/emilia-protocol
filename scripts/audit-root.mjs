@@ -26,6 +26,20 @@ if (minimumRank === undefined) {
 const REVIEWED_ADVISORY = 'https://github.com/advisories/GHSA-mh99-v99m-4gvg';
 const REVIEWED_BRACE_EXPANSION = new Set(['2.1.3', '5.0.8']);
 
+// GHSA-2v37-7h3g-55p8: nanoid custom generators can loop indefinitely when
+// size is zero. Our only dependent is next -> postcss, whose sole call is
+// nanoid(6) from nanoid/non-secure (postcss/lib/input.js): the standard
+// generator with a fixed nonzero size. The custom-generator zero-size path is
+// not reachable from installed code. The fixed 3.3.18 was published
+// 2026-08-07T16:41Z; this repository's min-release-age=7 quarantine
+// (.npmrc) correctly refuses to resolve it before 2026-08-14T16:41Z, so the
+// upgrade cannot land at review time. This acceptance is version-pinned and
+// EXPIRES: once the date below passes, the audit fails again until nanoid is
+// upgraded and this block is removed.
+const REVIEWED_NANOID_ADVISORY = 'https://github.com/advisories/GHSA-2v37-7h3g-55p8';
+const REVIEWED_NANOID_VERSIONS = new Set(['3.3.17']);
+const REVIEWED_NANOID_EXPIRES_UTC = Date.UTC(2026, 7, 18); // 2026-08-18T00:00Z
+
 let report;
 try {
   const stdout = execFileSync('npm', ['audit', '--json'], {
@@ -79,9 +93,50 @@ for (const vulnerability of Object.values(report.vulnerabilities)) {
   }
 }
 
-const unexpected = [...observed].filter((url) => url !== REVIEWED_ADVISORY);
+const unexpected = [...observed].filter(
+  (url) => url !== REVIEWED_ADVISORY && url !== REVIEWED_NANOID_ADVISORY,
+);
 if (unexpected.length > 0) {
   throw new Error(JSON.stringify({ unexpected }, null, 2));
+}
+
+if (observed.has(REVIEWED_NANOID_ADVISORY)) {
+  if (Date.now() >= REVIEWED_NANOID_EXPIRES_UTC) {
+    throw new Error(
+      'nanoid advisory acceptance expired: the min-release-age quarantine on '
+      + 'nanoid 3.3.18 has lapsed; upgrade nanoid and remove this acceptance',
+    );
+  }
+  // npm redacts token-shaped path segments in its output (a working
+  // directory containing a UUID becomes "***"), so absolute paths from
+  // `npm ls --parseable` are not trustworthy. Re-anchor each reported
+  // location at the first node_modules segment under the current root.
+  const nanoidPaths = execFileSync(
+    'npm',
+    ['ls', 'nanoid', '--all', '--parseable'],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  ).trim().split(/\r?\n/).filter(Boolean).map((reported) => {
+    const anchor = reported.indexOf('node_modules');
+    return anchor === -1 ? reported : join(process.cwd(), reported.slice(anchor));
+  });
+  if (nanoidPaths.length === 0) throw new Error('nanoid advisory observed without an installed package');
+
+  const requireNanoid = createRequire(import.meta.url);
+  for (const packagePath of nanoidPaths) {
+    const manifest = JSON.parse(readFileSync(join(packagePath, 'package.json'), 'utf8'));
+    if (!REVIEWED_NANOID_VERSIONS.has(manifest.version)) {
+      throw new Error(`unreviewed nanoid version under advisory: ${manifest.version}`);
+    }
+    // Demonstrate the reviewed usage path: the standard non-secure generator
+    // with a fixed nonzero size, exactly as postcss calls it. The vulnerable
+    // path requires a custom generator invoked with size zero, which no
+    // installed dependent does.
+    const { nanoid: standardGenerator } = requireNanoid(join(packagePath, 'non-secure'));
+    const sample = standardGenerator(6);
+    if (typeof sample !== 'string' || sample.length !== 6) {
+      throw new Error(`nanoid ${manifest.version} failed the reviewed-path generation check`);
+    }
+  }
 }
 
 if (observed.has(REVIEWED_ADVISORY)) {
