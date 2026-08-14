@@ -8,6 +8,7 @@ TRUST="$LANE_DIR/release-trust.py"
 MODE=
 EXPECTED_COMMIT=
 OUTPUT=
+GOVERNED_EVIDENCE_PREVERIFIED=0
 while (($#)); do
   case "$1" in
     --ci)
@@ -28,6 +29,10 @@ while (($#)); do
       OUTPUT=$2
       shift 2
       ;;
+    --governed-evidence-preverified)
+      GOVERNED_EVIDENCE_PREVERIFIED=1
+      shift
+      ;;
     *)
       printf 'error: unknown argument: %s\n' "$1" >&2
       exit 2
@@ -39,6 +44,13 @@ done
 [[ "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { printf 'error: --expected-commit must be a lowercase Git SHA\n' >&2; exit 2; }
 [[ -n "$OUTPUT" && "$OUTPUT" == /* ]] || { printf 'error: --output must be absolute\n' >&2; exit 2; }
 [[ ! -e "$OUTPUT" ]] || { printf 'error: output already exists: %s\n' "$OUTPUT" >&2; exit 2; }
+if [[ "$GOVERNED_EVIDENCE_PREVERIFIED" == 1 ]]; then
+  [[ "$MODE" == ci ]] || { printf 'error: preverified governed evidence is CI-only\n' >&2; exit 2; }
+  [[ "${GITHUB_ACTIONS:-}" == true ]] || { printf 'error: preverified governed evidence requires GitHub Actions\n' >&2; exit 2; }
+  GITHUB_SHA=${GITHUB_SHA:-}
+  [[ "$GITHUB_SHA" == "$EXPECTED_COMMIT" ]] \
+    || { printf 'error: preverified governed evidence SHA mismatch\n' >&2; exit 2; }
+fi
 command -v docker >/dev/null
 command -v node >/dev/null
 command -v npm >/dev/null
@@ -58,10 +70,14 @@ VERIFY_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECT
 GATE_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package gate --output-dir "$WORK")
 REQUIRE_RECEIPT_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package require-receipt --output-dir "$WORK")
 
-npm run check:standalone-runtimes
-npm run check:security-case
-npm run conformance:manifest:check
-npm run check:proof-stats
+if [[ "$GOVERNED_EVIDENCE_PREVERIFIED" != 1 ]]; then
+  npm run check:standalone-runtimes
+  npm run check:security-case
+  npm run conformance:manifest:check
+  npm run check:proof-stats
+else
+  printf 'governed evidence already verified by SHA-bound CI dependencies: %s\n' "$EXPECTED_COMMIT"
+fi
 npm --prefix packages/verify run build
 npm --prefix packages/gate run build
 git diff --exit-code -- packages/verify/dist packages/gate/dist \

@@ -36,7 +36,7 @@ test.describe('Homepage', () => {
   test('technical foundation and enforcement invariant are visible', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: 'One creates intent. The other enforces authority.' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'AI gave software intelligence. EMILIA puts authority in force.' })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByText('Required evidence verifies—or the mutation stays locked.', { exact: true })).toBeVisible({
