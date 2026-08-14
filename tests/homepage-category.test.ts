@@ -25,22 +25,22 @@ function compact(value) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with the authority control plane, keeps Gate as the enforcement product, and keeps Authority Brain as the free entry point', () => {
+  it('leads with the two-system separation, keeps Gate as enforcement, and keeps Authority Map as the free entry point', () => {
     const page = read('app/HomePageClient.js');
     const route = read('app/page.js');
     const css = read('app/ep.css');
 
-    expect(route).toContain('Authority Control Plane for Autonomous Work | EMILIA');
-    expect(route).toContain('Set a finite operating mandate once');
-    expect(page).toContain('EMILIA <span>· Authority control plane for autonomous work</span>');
-    expect(page).toContain('AI agents are becoming workers. Workers need authority.');
-    expect(page).toContain('Identity says who. Policy says what is generally allowed. EMILIA answers whether');
-    expect(page).toContain('Protocol proves. Gate prevents.');
-    expect(page).toContain('Identity tells you who. Authority defines the work.');
-    expect(page).toContain('Existing authorization stack');
-    expect(page).toContain('EMILIA authority control plane');
+    expect(route).toContain('Authority System for Autonomous Work | EMILIA');
+    expect(route).toContain('AI gave software intelligence. On covered paths, EMILIA puts customer authority in force');
+    expect(page).toContain('EMILIA <span>· The authority system for autonomous work</span>');
+    expect(page).toContain('AI gave software intelligence. EMILIA puts authority in force.');
+    expect(page).toContain('Think of it as the authority brain outside the model.');
+    expect(page).toContain('One creates intent. The other enforces authority.');
+    expect(page).toContain('Intelligence system');
+    expect(page).toContain('Authority system');
+    expect(page).toContain('Intelligence is not authority.');
     expect(page).toContain('Mandate loaded');
-    expect(page).toContain('Once before credentialed provider entry');
+    expect(page).toContain('One admitted provider attempt or refusal');
     expect(page).toContain('No invented certainty.');
     expect(page).toContain('This is not proof of success.');
     expect(page).toContain('Never retry blindly.');
@@ -48,6 +48,7 @@ describe('homepage category contract', () => {
     expect(page).toContain('Public evidence');
     expect(page).toContain('unsafe counterexamples');
     expect(page).toContain("href: '/authority-brain'");
+    expect(page).toContain("title: 'Authority Map'");
     expect(page).toContain('href="/scan"');
     expect(page).toContain('href="/pilot"');
     expect(page).toContain('href="/gate/live"');
@@ -115,8 +116,8 @@ describe('homepage category contract', () => {
     expect(gate).toContain('RECEIPT PROGRAMS');
     expect(gate).toContain('npm run demo:receipt-program');
     expect(gate).toContain('It is not a ZK proof, consensus result, provider attestation');
-    expect(investors).toContain('AI agents are becoming workers. EMILIA is their authority control plane.');
-    expect(investors).toContain('Identity systems establish who. Policy engines decide what is generally allowed. Workflow');
+    expect(investors).toContain('AI gave software intelligence. EMILIA puts authority in force.');
+    expect(investors).toContain('Autonomous work needs two independent systems.');
     expect(investors).toContain('currently claims no customer traction, recurring revenue, production deployment');
     expect(investors).toContain('certification, RFC status, or standards-body endorsement.');
     expect(productBrief).toContain('No independently administered operator has produced external witness evidence');

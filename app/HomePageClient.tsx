@@ -46,7 +46,7 @@ const eyebrow: React.CSSProperties = {
 const PRODUCTS = [
   {
     label: 'Discover + map',
-    title: 'Authority Brain',
+    title: 'Authority Map',
     body: 'Free, local discovery of supported declared action surfaces and blind spots. The scanner proposes; the owner reviews. A map is not protection.',
     href: '/authority-brain',
     accent: color.green,
@@ -106,20 +106,20 @@ export default function HomePage(): React.ReactElement {
           <C>
             <motion.div className="ep-home-calm-copy" {...heroIn()}>
               <div className="ep-home-calm-kicker">
-                EMILIA <span>· Authority control plane for autonomous work</span>
+                EMILIA <span>· The authority system for autonomous work</span>
               </div>
-              <h1 id="home-trust-thesis">AI agents are becoming workers. Workers need authority.</h1>
+              <h1 id="home-trust-thesis">AI gave software intelligence. EMILIA puts authority in force.</h1>
               <p className="ep-home-calm-lede ep-home-lede-desktop">
-                EMILIA Gate is the consequence boundary where agent intent becomes a change to
-                money, code, permissions, records, or infrastructure. It verifies the exact action
-                against a customer-owned mandate before the protected provider path can begin.
+                Models decide what to do. Humans and institutions decide what may be done. EMILIA
+                Gate enforces that separation on covered paths before agent intent changes money,
+                code, permissions, records, or infrastructure.
               </p>
               <p className="ep-home-calm-lede ep-home-lede-mobile">
-                Gate verifies the exact action against a finite mandate before the protected path begins.
+                Models create intent. On covered paths, EMILIA enforces authority before intent becomes consequence.
               </p>
               <p className="ep-home-calm-detail">
-                Identity says who. Policy says what is generally allowed. EMILIA answers whether
-                this exact consequence is authorized now. Protocol proves. Gate prevents.
+                Think of it as the authority brain outside the model. It does not decide what is
+                wise. It enforces the mandate and evidence bar the customer defined.
               </p>
               <div className="ep-home-calm-actions">
                 <Link href="/scan" className="ep-home-hero-primary">Run the local Authority Map</Link>
@@ -185,31 +185,31 @@ export default function HomePage(): React.ReactElement {
         <section className="ep-home-auth-bridge" style={{ padding: '104px 0 0' }}>
           <C>
             <motion.div {...reveal()} style={{ maxWidth: 780 }}>
-              <div style={eyebrow}>Identity is not a job description</div>
-              <h2 style={{ ...styles.h2, maxWidth: 760 }}>Identity tells you who. Authority defines the work.</h2>
+              <div style={eyebrow}>Two independent systems</div>
+              <h2 style={{ ...styles.h2, maxWidth: 760 }}>One creates intent. The other enforces authority.</h2>
               <p style={{ ...styles.body, maxWidth: 700, marginTop: 18 }}>
-                Identity, OAuth, policy engines, and monitoring remain essential. None alone defines
-                the agent&apos;s finite mission, limits, evidence, expiry, and exception rules—or proves
-                that this exact consequential unit of work may enter now, once.
+                The intelligence system can plan, delegate, loop, and improve. The authority system
+                remains outside it. Identity brings the caller to the door; Gate decides whether this
+                exact consequence may cross.
               </p>
             </motion.div>
             <motion.div className="ep-home-auth-map" {...reveal(0.08)}>
               <div className="ep-home-auth-column ep-home-auth-column-existing">
-                <div className="ep-home-auth-label">Existing authorization stack</div>
-                <div className="ep-home-auth-item"><span>01</span><strong>Identity verified</strong><em>Who or what is calling?</em></div>
-                <div className="ep-home-auth-item"><span>02</span><strong>Credential issued</strong><em>What broad reach exists?</em></div>
-                <div className="ep-home-auth-item"><span>03</span><strong>Policy permits</strong><em>What is generally allowed?</em></div>
-                <div className="ep-home-auth-stop">The finite job and exact consequence are still undefined.</div>
+                <div className="ep-home-auth-label">Intelligence system</div>
+                <div className="ep-home-auth-item"><span>01</span><strong>Plans the action</strong><em>Models propose intent</em></div>
+                <div className="ep-home-auth-item"><span>02</span><strong>Improves its strategy</strong><em>Loops, tools, and self-correction</em></div>
+                <div className="ep-home-auth-item"><span>03</span><strong>Operates continuously</strong><em>The system may change between decisions</em></div>
+                <div className="ep-home-auth-stop">Intelligence is not authority.</div>
               </div>
               <div className="ep-home-auth-handoff" aria-hidden="true">
-                <span>executor boundary</span>
+                <span>Gate boundary</span>
                 <strong>→</strong>
               </div>
               <div className="ep-home-auth-column ep-home-auth-column-emilia">
-                <div className="ep-home-auth-label">EMILIA authority control plane</div>
+                <div className="ep-home-auth-label">Authority system</div>
                 <div className="ep-home-auth-item"><span>04</span><strong>Mandate loaded</strong><em>Mission, limits, evidence, expiry</em></div>
-                <div className="ep-home-auth-item"><span>05</span><strong>Exact work verified</strong><em>Owner-pinned action and authority</em></div>
-                <div className="ep-home-auth-item"><span>06</span><strong>Authority consumed</strong><em>Once before credentialed provider entry</em></div>
+                <div className="ep-home-auth-item"><span>05</span><strong>Exact work verified</strong><em>Action joined to required evidence</em></div>
+                <div className="ep-home-auth-item"><span>06</span><strong>Provider entry serialized</strong><em>One admitted provider attempt or refusal</em></div>
                 <div className="ep-home-auth-result">Required evidence verifies—or the mutation stays locked.</div>
               </div>
             </motion.div>

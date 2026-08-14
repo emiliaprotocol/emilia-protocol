@@ -22,7 +22,7 @@ describe('/authority-brain public product route', () => {
   it('renders the canonical promise, local command, and explicit synthetic boundary', () => {
     const markup = renderToStaticMarkup(<AuthorityBrainExperience />);
 
-    expect(markup).toContain('See where your AI can act. Put a human in control before it matters.');
+    expect(markup).toContain('See where your AI can act. Decide what needs authority.');
     expect(markup).toContain('Discover → Map → Protect → Prove');
     expect(markup).toContain('SYNTHETIC LOCAL DEMO');
     expect(markup).toContain('has not scanned your device');
@@ -37,9 +37,9 @@ describe('/authority-brain public product route', () => {
     expect(experienceSource).toContain('range.selectNodeContents(commandRef.current)');
   });
 
-  it('publishes metadata for the Authority Brain route', () => {
+  it('publishes Authority Map metadata on the stable route', () => {
     expect(pageSource).toContain("canonical: '/authority-brain'");
-    expect(pageSource).toContain('Authority Brain — Map and Protect AI Agent Actions');
+    expect(pageSource).toContain('Authority Map: Discover and Protect AI Agent Actions');
     expect(pageSource).toContain('https://www.emiliaprotocol.ai/authority-brain');
     expect(pageSource).toContain('generate a reviewed MCP protection scaffold');
   });

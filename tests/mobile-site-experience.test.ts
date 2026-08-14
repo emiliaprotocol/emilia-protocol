@@ -28,13 +28,13 @@ describe('mobile public-site experience contract', () => {
     expect(css).toContain('.ep-protocol-detail-row');
   });
 
-  it('keeps the authority category and identity-to-mandate handoff visible on phones', () => {
+  it('keeps the authority-system frame and Gate handoff visible on phones', () => {
     const homepage = read('app/HomePageClient.tsx');
     const css = read('app/ep.css');
 
-    expect(homepage).toContain('EMILIA <span>· Authority control plane for autonomous work</span>');
+    expect(homepage).toContain('EMILIA <span>· The authority system for autonomous work</span>');
     expect(homepage).toContain('ep-home-lede-mobile');
-    expect(homepage).toContain('Identity tells you who. Authority defines the work.');
+    expect(homepage).toContain('One creates intent. The other enforces authority.');
     expect(homepage).toContain('ep-home-auth-map');
     expect(css).toContain('.ep-home-calm-kicker span');
     expect(css).toContain('.ep-home-auth-handoff');

@@ -140,8 +140,8 @@ export default function GatePage() {
         {/* Hero */}
         <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 56 }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA GATE · THE CONSEQUENCE FIREWALL</div>
-            <h1 style={{ ...styles.h1, marginTop: 16 }}>Put a refusal boundary in front of consequential machine action.</h1>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA GATE · AUTHORITY AT THE POINT OF CONSEQUENCE</div>
+            <h1 style={{ ...styles.h1, marginTop: 16 }}>Put customer authority where agent intent enters the protected system.</h1>
             <p style={{ fontFamily: font.mono, color: color.gold, fontSize: 14, fontWeight: 600, marginTop: 18 }}>
               Protocol proves. Gate prevents.
             </p>

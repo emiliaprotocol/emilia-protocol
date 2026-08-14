@@ -23,7 +23,7 @@ node emilia/verify-setup.mjs --emit-handoff \
   --action '<reviewed-tool-name>'                  # replace placeholders after review
 ```
 
-## Local Authority Brain
+## Local Authority Map
 
 **See where your AI can act. Put a human in control before it matters.**
 
