@@ -33,6 +33,8 @@ describe('homepage category contract', () => {
     expect(route).toContain('Authority System for Autonomous Work | EMILIA');
     expect(route).toContain('AI gave software intelligence. On covered paths, EMILIA puts customer authority in force');
     expect(page).toContain('EMILIA <span>· The authority system for autonomous work</span>');
+    expect(page).toContain('Even if AI writes the binary, it cannot write its own authority.');
+    expect(page).toContain('The system may change how it decides. It cannot quietly expand what it is authorized to do.');
     expect(page).toContain('AI gave software intelligence. EMILIA puts authority in force.');
     expect(page).toContain('Think of it as the authority brain outside the model.');
     expect(page).toContain('One creates intent. The other enforces authority.');

@@ -67,6 +67,9 @@ export default function InvestorsPage() {
           Authority brain is the mental model. EMILIA Gate is the product. It verifies the exact
           action against a customer-owned mandate before the protected provider path can begin.
         </p>
+        <p style={{ fontFamily: font.sans, fontSize: 17, lineHeight: 1.5, fontWeight: 700, color: color.gold, maxWidth: 700, marginBottom: 12 }}>
+          Even if AI writes the binary, it cannot write its own authority.
+        </p>
         <div style={{ display: 'grid', gap: 18, marginTop: 32, marginBottom: 24 }}>
           {[
             ['The investable separation', 'Models are becoming agents, agents are receiving credentials, and software is moving from recommendation to consequence. Intelligence can keep changing. Customer authority must remain independently enforceable.'],
