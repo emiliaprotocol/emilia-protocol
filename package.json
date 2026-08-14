@@ -30,6 +30,7 @@
     "test:composition-capsule": "node --test examples/composition/caid-aec-aeb-capsule-v1/run.test.mjs",
     "test:composition-conformance": "node --test examples/composition/cross-slot-conformance-v1/run.test.mjs",
     "conformance:composition:ccs-oasnt": "node --test conformance/composition/ccs-oasnt-aeb-v1/run.test.mjs && node conformance/composition/ccs-oasnt-aeb-v1/run.mjs",
+    "conformance:composition:chap-aeb": "node --test conformance/composition/chap-aeb-v1/run.node-test.mjs && node conformance/composition/chap-aeb-v1/run.mjs",
     "test:grpc-guard": "node --test packages/grpc-guard/*.test.mjs",
     "test:gateway-authz": "node --test packages/gateway-authz/*.test.mjs",
     "test:transport-adapters": "node --test packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs",
