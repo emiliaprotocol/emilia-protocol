@@ -381,6 +381,8 @@ export async function runConservedAdmissionLab() {
     //    artifact arrive at B a second time. B's own consumption ledger
     //    refuses the replay; the executor does not run again.
     {
+        if (throughHandoff === null)
+            throw new Error('conserved_admission:through_handoff_missing');
         const before = { ...executions };
         const bDuplicate = await admitAt(gatewayB, 'b', throughHandoff.receipt);
         cases.push({

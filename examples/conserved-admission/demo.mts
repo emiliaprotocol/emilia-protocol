@@ -53,6 +53,8 @@ import {
   buildStatusArtifact,
   deriveRevokerKeyId,
 } from '../../lib/revocation/status.js';
+import type { ProviderEntryGuard } from '../../packages/gate/src/provider-entry.js';
+import type { StatusState } from '../../packages/verify/src/status.js';
 
 export const LAB_VERSION = 'EP-CONSERVED-ADMISSION-LAB-v1';
 
@@ -97,7 +99,11 @@ const QUORUM = Object.freeze({
  * exclusivity is never assumed from shared state, which is exactly why a
  * handoff has to establish it.
  */
-function makeGateway(gatewayId, pins, { providerEntryGuard = null } = {}) {
+function makeGateway(
+  gatewayId,
+  pins,
+  { providerEntryGuard = null }: { providerEntryGuard?: ProviderEntryGuard | null } = {},
+) {
   const store = new MemoryConsumptionStore();
   return {
     gatewayId,
@@ -173,7 +179,14 @@ async function createStatusAuthority(at) {
         usage: 'authorization',
       };
     },
-    async issue(receipt, { issuedAt, nextUpdate, status = 'not_revoked' }) {
+    async issue(
+      receipt,
+      { issuedAt, nextUpdate, status = 'not_revoked' }: {
+        issuedAt: string;
+        nextUpdate: string | null;
+        status?: StatusState;
+      },
+    ) {
       return buildStatusArtifact({
         authorityPin,
         certificate,
@@ -194,7 +207,7 @@ async function createStatusAuthority(at) {
  * 'revoked' refuses. A revoked statement is valid evidence; it is evidence
  * FOR refusal.
  */
-function statusGuard(authority, presentedStatus) {
+function statusGuard(authority, presentedStatus): ProviderEntryGuard {
   return (context) => {
     const receiptId = context.authorization?.evidence?.receipt_id ?? null;
     const presentation = receiptId === null ? null : presentedStatus.get(receiptId);
@@ -284,7 +297,7 @@ export async function runConservedAdmissionLab() {
     return { closed: true, asset: EXACT_ACTION.asset };
   };
 
-  async function admitAt(gateway, side, receipt, action = EXACT_ACTION) {
+  async function admitAt(gateway, side, receipt, action: Record<string, any> = EXACT_ACTION) {
     const outcome = await gateway.gate.run(
       { selector: { ...SELECTOR }, receipt, observedAction: action },
       executorAt(side),
@@ -360,7 +373,7 @@ export async function runConservedAdmissionLab() {
   //    same artifact under its own anchors and admits once in its own
   //    ledger. Re-presentation at A after disposal refuses by name. The
   //    transfer and admission records join by action digest and handoff id.
-  let throughHandoff = null;
+  let throughHandoff: { receipt: any; handoff: any } | null = null;
   {
     const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
     await present(receipt, currentWindow());
@@ -410,6 +423,7 @@ export async function runConservedAdmissionLab() {
   //    artifact arrive at B a second time. B's own consumption ledger
   //    refuses the replay; the executor does not run again.
   {
+    if (throughHandoff === null) throw new Error('conserved_admission:through_handoff_missing');
     const before = { ...executions };
     const bDuplicate = await admitAt(gatewayB, 'b', throughHandoff.receipt);
     cases.push({
