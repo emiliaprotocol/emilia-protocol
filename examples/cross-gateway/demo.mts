@@ -266,6 +266,22 @@ function statusFreshnessGuard(authority, presentedStatus) {
         },
       };
     }
+    // An AUTHENTIC bundle whose outcome is 'revoked' is valid evidence FOR
+    // refusal: valid=true means the statement is real, not that the
+    // authorization stands. Refuse before the currency check ever runs.
+    if (statusCheck.outcome !== 'current_not_revoked') {
+      return {
+        ok: false,
+        reason: 'status_revoked',
+        status: 409,
+        reservation: 'release',
+        evidence: {
+          mechanism: 'EP-STATUS-v1',
+          status_outcome: statusCheck.outcome,
+          evaluated_at: context.checked_at,
+        },
+      };
+    }
     // EP-CURRENCY-v1: the bundle is internally valid, but is it recent enough
     // for THIS receiver? Only a head inside B's own bound reaches 'fresh'.
     const currency = evaluateCurrency({

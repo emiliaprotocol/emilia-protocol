@@ -232,6 +232,7 @@ examples/composition/caid-aec-aeb-capsule-v1/run.mjs linguist-generated=true
 examples/composition/caid-aec-aeb-capsule-v1/run.test.mjs linguist-generated=true
 examples/composition/cross-slot-conformance-v1/run.mjs linguist-generated=true
 examples/composition/cross-slot-conformance-v1/run.test.mjs linguist-generated=true
+examples/conserved-admission/demo.mjs linguist-generated=true
 examples/crash-test.mjs linguist-generated=true
 examples/cross-gateway/demo.mjs linguist-generated=true
 examples/cross-gateway/dmsc-physical-action.mjs linguist-generated=true
