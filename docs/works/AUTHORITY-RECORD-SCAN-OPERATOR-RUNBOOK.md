@@ -3,6 +3,13 @@
 This workflow prepares owner-private evidence. It does not create a public
 listing, send an invitation, certify a project, or authorize publication.
 
+Repository scanning is the beta collector, not the permanent evidence limit.
+Use the source-agnostic private observation envelope described in
+`AUTHORITY-RECORD-EVIDENCE-SOURCES-v1.md` for signed releases, build
+provenance, tool schemas, deployment manifests, runtime attestations, and
+observed action interfaces. Do not project those observations into a public
+v1 record until the public schema and owner-proof path support the source.
+
 ## Prepare an immutable private package
 
 Clone the owner repository over canonical GitHub HTTPS, check out the exact
