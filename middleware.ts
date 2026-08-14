@@ -101,6 +101,22 @@ const ROUTE_POLICIES = {
 
   // EMILIA Marketplace (flag-gated: routes 404 unless WORKS_V0=1). Create/edit are
   // cloud-API-key authenticated in-route; rate-limit on key + IP.
+  // Consent-first Authority Records. The admin draft route uses an EP API key.
+  // Claim, owner, and billing routes authenticate dedicated one-time or owner
+  // capabilities in-route, so the edge limiter remains IP-scoped until that
+  // capability has been verified. Demand verification and Stripe webhooks are
+  // public signed/capability ceremonies with their own in-route checks.
+  'POST /api/works/authority-records/drafts':              { rateCategory: 'submit', useAuth: true },
+  'POST /api/works/authority-records/claim':               { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/authority-records/requests/verify':     { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/authority-records/*':                   { rateCategory: 'submit', useAuth: false },
+  'PATCH /api/works/authority-records/*':                  { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/authority-records/*/approve':           { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/authority-records/*/withdraw':          { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/authority-records/*/requests':          { rateCategory: 'pilot_request', useAuth: false },
+  'POST /api/works/authority-records/*/billing/checkout':  { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/authority-records/*/billing/reconcile': { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/billing/webhook':                       { rateCategory: 'submit', useAuth: false },
   'POST /api/works/*':                       { rateCategory: 'submit', useAuth: true },
   'PATCH /api/works/*/*':                    { rateCategory: 'submit', useAuth: true },
 
