@@ -1027,7 +1027,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-oasnt-adapter.js",
-      "sha256": "3eb8d46896109fcc458b618e69280e71897663ba839bdf825a4b3e3bc15c4a06"
+      "sha256": "6a633cd298096d4ba0b7d7a2d7344616ee7b9cdc6d39ea460c6b9a6bd3370390"
     },
     {
       "path": "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js",
