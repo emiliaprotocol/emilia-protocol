@@ -15,9 +15,25 @@ the relying party's complete AEC requirement, makes a separate local
 authorization decision, and reserves every replay identity before provider
 entry.
 
-## Current runnable profile
+## Current runnable profiles
 
-The runnable adapter is source-locked to the PyPI distribution labeled
+The current public-key profile is source-locked to
+`ccs-verifier==1.1.14`. It verifies the published Ed25519 L1 reference receipt
+under a relying-party-pinned issuer key and checks its audience, expiry, rule
+version, action, and tool. AEB reconstructs the exact imminent action at the
+executor and compares the signed full `args_digest` before deriving the CAID.
+
+Run its eight pinned and hostile cases with:
+
+```bash
+npm run conformance:composition:ccs-l1-aeb
+```
+
+The older local-HMAC profile below remains source-locked for historical
+reproduction and for the existing CCS + OASNT two-leg runner. It is not
+silently relabeled as 1.1.14.
+
+The legacy runnable adapter is source-locked to the PyPI distribution labeled
 `ccs-verifier==1.1.0` whose installed runtime reports version `0.4.1`. It
 verifies the HMAC bytes emitted by that package. Because this is a shared-key
 artifact, the key is pinned to one relying party and one audience. The profile
@@ -44,7 +60,7 @@ CCS command.tool    -> observed_action.native_action.type
 CCS command.params  -> observed_action.native_action.parameters
 ```
 
-The runnable
+The legacy runnable
 [`CCS + OASNT to AEB composition`](../../conformance/composition/ccs-oasnt-aeb-v1/README.md)
 proves that the CCS machine-policy leg and an independently verified OASNT
 human-authorization leg map to the same CAID and action digest before AEB
@@ -73,9 +89,10 @@ authenticated observations after provider entry.
 
 ## Publication and reference boundary
 
-This is an experimental same-team composition profile plus synthetic hostile
-cases. It is not an independent CCS implementation, CCS author review, an
-interoperability result, or a reason to change either draft's reference class.
+These are experimental EMILIA reference profiles plus synthetic hostile
+cases. They are not an independent CCS implementation, CCS author review, an
+interoperability result, or by themselves a reason to change either draft's
+reference class.
 
 An external author can run the same kit and obtain a digest-bound report plus
 paste-ready Implementation Status text. That proves external reproduction of
