@@ -114,6 +114,9 @@ export default defineConfig({
       // The WAG composition suite is also a portable node:test program.
       // CI runs it through `npm run conformance:composition:wag`.
       'conformance/composition/wag-aeb-v1/run.test.mts',
+      // The CCS 1.1.14 L1/AEB composition suite is likewise a portable
+      // node:test program executed by its dedicated conformance command.
+      'conformance/composition/ccs-l1-aeb-v1/run.test.mts',
       // The public forgery corpus deliberately uses node:test so the pinned
       // bounty command runs without Vitest. CI executes it explicitly below.
       'tests/verifier-forgery/**',

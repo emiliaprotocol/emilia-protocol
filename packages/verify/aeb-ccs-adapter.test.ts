@@ -38,11 +38,27 @@ import {
   CCS_PYPI_ARTIFACT_VERSION,
   CCS_PYPI_DISTRIBUTION_VERSION,
   CCS_PYPI_RUNTIME_VERSION,
+  CCS_L1_AEB_ADAPTER_ID,
+  CCS_L1_AEB_ADAPTER_VERSION,
+  CCS_L1_AEB_CONFIG_VERSION,
+  CCS_L1_AEB_TRUST_ROOT_VERSION,
+  CCS_L1_CAID_MAPPER_ID,
+  CCS_L1_CAID_MAPPING_VERSION,
+  CCS_L1_PYPI_DISTRIBUTION_VERSION,
+  CCS_L1_PYPI_SDIST_SHA256,
+  CCS_L1_PYPI_SOURCE_LOCK,
+  CCS_L1_PYPI_WHEEL_SHA256,
+  CCS_L1_REFERENCE_VECTOR_SHA256,
+  createCcsL1AebActionDefinition,
+  createCcsPyPiL1AebAdapter,
   createCcsAebActionDefinition,
   createCcsNativeActionDefinition,
   createCcsPyPiHmacAebAdapter,
   type CcsAebAdapterConfig,
   type CcsAebHmacTrustRoot,
+  type CcsL1AebAdapterConfig,
+  type CcsL1Ed25519TrustRoot,
+  type CcsL1Receipt,
   type CcsPyPiArtifact,
 } from './aeb-ccs-adapter.js';
 
@@ -56,6 +72,15 @@ const PACKAGE_FIXTURE = JSON.parse(readFileSync(
   new URL('../../interop/ccs-aeb/fixtures/ccs-verifier-pypi-1.1.0.json', import.meta.url),
   'utf8',
 )) as CcsPyPiArtifact;
+const L1_VECTOR = JSON.parse(readFileSync(
+  new URL('../../interop/ccs-aeb/fixtures/ccs-verifier-pypi-1.1.14-reference-signed-001.json', import.meta.url),
+  'utf8',
+)) as {
+  package_version: string;
+  public_key_fingerprint_sha256_16: string;
+  public_key_raw_b64: string;
+  receipt: CcsL1Receipt;
+};
 
 function spki(key: KeyObject): string {
   return key.export({ type: 'spki', format: 'der' }).toString('base64url');
@@ -236,6 +261,189 @@ function fixture() {
   } satisfies Omit<AebAdapterInput, 'profile'>;
   return { config, root, artifact, action, adapter, input };
 }
+
+function l1Profile(actionType = ACTION_TYPE): AebPinnedProfile {
+  const pin: AebPinnedProfile = {
+    version: CCS_L1_CAID_MAPPING_VERSION,
+    definition: createCcsL1AebActionDefinition(actionType),
+    registry_entry_ref: 'mapping:ccs-l1-tool-action',
+    mapper_id: CCS_L1_CAID_MAPPER_ID,
+    resolver: {
+      id: CCS_L1_CAID_MAPPER_ID,
+      version: '1',
+      implementation_digest: digestAeb({ implementation: CCS_L1_CAID_MAPPER_ID, version: '1' }),
+    },
+    semantic_equivalence: {
+      assertion: 'EQUIVALENT_UNDER_PROFILE',
+      loss_policy: 'NO_MATERIAL_FIELD_LOSS',
+      omitted_material_fields: [],
+      omitted_nonmaterial_fields: [
+        'trace_id', 'timestamp', 'tool_call_id', 'params_hash', 'rule_summary',
+        'request_hash', 'response_hash', 'runtime_context_hash', 'config_hash',
+        'verifier_source_class', 'deployment_mode', 'nonce', 'sequence',
+        'issued_at', 'expires_at', 'max_clock_skew', 'verified_at', 'latency_us',
+      ],
+    },
+    profile_digest: digestAeb(null),
+  };
+  pin.profile_digest = mappingProfileDigest('ccs-l1-tool-action', pin);
+  return pin;
+}
+
+function l1Fixture() {
+  const config: CcsL1AebAdapterConfig = {
+    '@version': CCS_L1_AEB_CONFIG_VERSION,
+    evidence_role: 'machine-policy-decision',
+    subject: { id: 'system:ccs-reference-verifier', kind: 'system' },
+    issuer: 'ccs-verifier/reference',
+    audience: 'public',
+    action_type: ACTION_TYPE,
+    allowed_actions: ['shell.execute'],
+    allowed_tools: ['shell'],
+    required_rule_version: '1.1.14',
+    max_receipt_age_seconds: 300,
+    max_clock_skew_seconds: 5,
+    deployment_scope: 'pinned-ed25519-issuer',
+  };
+  const root: CcsL1Ed25519TrustRoot = {
+    '@version': CCS_L1_AEB_TRUST_ROOT_VERSION,
+    issuer: 'ccs-verifier/reference',
+    key_id: 'ccs-reference-ed25519-1',
+    algorithm: 'Ed25519',
+    public_key_raw_base64: L1_VECTOR.public_key_raw_b64,
+    public_key_fingerprint_sha256_16: L1_VECTOR.public_key_fingerprint_sha256_16,
+  };
+  const action = {
+    action_type: ACTION_TYPE,
+    parameters: {
+      action: 'shell.execute',
+      tool: 'shell',
+      arguments: { command: 'echo reference' },
+    },
+  };
+  const adapter = createCcsPyPiL1AebAdapter({ config, trust_roots: [root] });
+  const input = {
+    artifact: structuredClone(L1_VECTOR.receipt),
+    artifact_ref: 'ccs:l1:reference-signed-001',
+    status: {
+      checked_at: '2030-01-01T00:02:00Z',
+      expires_at: '2030-01-01T00:04:00Z',
+      revocation_checked: true,
+      revoked: false,
+      consumed: false,
+    },
+    trust_roots: [root],
+    adapter_config: config,
+    expected_action: action,
+    now: '2030-01-01T00:02:00Z',
+  } satisfies Omit<AebAdapterInput, 'profile'>;
+  return { config, root, action, adapter, input };
+}
+
+test('CCS 1.1.14 source lock pins the exact published PyPI artifacts', () => {
+  assert.equal(CCS_L1_PYPI_DISTRIBUTION_VERSION, '1.1.14');
+  assert.equal(CCS_L1_PYPI_SDIST_SHA256, '9f75676e5b3d6ace8e91742d8b78b6d15b2d4250414326c17cc9e1aa361ec318');
+  assert.equal(CCS_L1_PYPI_WHEEL_SHA256, '04a7857253bac2fca25611d17280cebf92fd0a7a2987a4d7ece973d492b17c83');
+  assert.equal(CCS_L1_REFERENCE_VECTOR_SHA256, '5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f');
+  assert.match(CCS_L1_PYPI_SOURCE_LOCK, /1\.1\.14/);
+  assert.equal(L1_VECTOR.package_version, CCS_L1_PYPI_DISTRIBUTION_VERSION);
+});
+
+test('CCS 1.1.14 Ed25519 receipt verifies, is accepted under the pinned issuer, and maps one exact action', () => {
+  const f = l1Fixture();
+  assert.equal(f.adapter.id, CCS_L1_AEB_ADAPTER_ID);
+  assert.equal(f.adapter.version, CCS_L1_AEB_ADAPTER_VERSION);
+  const native = f.adapter.verifyNative(f.input);
+  assert.equal(native.native_verification, 'VERIFIED', JSON.stringify(native));
+  assert.equal(native.acceptance, 'ACCEPTED', JSON.stringify(native));
+  assert.equal(native.evidence_role, 'machine-policy-decision');
+  const mapped = f.adapter.mapAction({ ...f.input, profile: l1Profile(), native });
+  assert.equal(mapped.mapping, 'MATCH', JSON.stringify(mapped));
+  assert.equal(mapped.action_digest, digestAeb(f.action));
+  assert.match(mapped.caid ?? '', /^caid:1:agent\.tool-invocation\.1:jcs-sha256:/);
+});
+
+test('CCS 1.1.14 signature, issuer pin, expiry, exact arguments, action, and tool fail independently', () => {
+  const f = l1Fixture();
+
+  const signatureTamper = structuredClone(f.input.artifact) as CcsL1Receipt;
+  signatureTamper.signature = `${signatureTamper.signature[0] === 'A' ? 'B' : 'A'}${signatureTamper.signature.slice(1)}`;
+  const invalidSignature = f.adapter.verifyNative({ ...f.input, artifact: signatureTamper });
+  assert.equal(invalidSignature.native_verification, 'FAILED');
+  assert.ok(invalidSignature.reasons.includes('ccs:l1_signature_invalid'));
+
+  const fractionalButTampered = structuredClone(f.input.artifact) as CcsL1Receipt;
+  fractionalButTampered.latency_us = 0.5;
+  const fractionalResult = f.adapter.verifyNative({ ...f.input, artifact: fractionalButTampered });
+  assert.ok(fractionalResult.reasons.includes('ccs:l1_signature_invalid'));
+
+  const wrongRoot: CcsL1Ed25519TrustRoot = {
+    ...f.root,
+    public_key_raw_base64: Buffer.alloc(32, 7).toString('base64'),
+    public_key_fingerprint_sha256_16: crypto.createHash('sha256').update(Buffer.alloc(32, 7)).digest('hex').slice(0, 16),
+  };
+  const wrongRootAdapter = createCcsPyPiL1AebAdapter({ config: f.config, trust_roots: [wrongRoot] });
+  const untrusted = wrongRootAdapter.verifyNative({
+    ...f.input,
+    adapter_config: f.config,
+    trust_roots: [wrongRoot],
+  });
+  assert.equal(untrusted.native_verification, 'VERIFIED');
+  assert.equal(untrusted.acceptance, 'REJECTED');
+  assert.ok(untrusted.reasons.includes('ccs:l1_untrusted_signing_key'));
+
+  const expired = f.adapter.verifyNative({ ...f.input, now: '2030-01-01T00:05:01Z' });
+  assert.equal(expired.native_verification, 'VERIFIED');
+  assert.equal(expired.acceptance, 'REJECTED');
+  assert.ok(expired.reasons.includes('ccs:l1_receipt_expired'));
+
+  const native = f.adapter.verifyNative(f.input);
+  for (const expected_action of [
+    { ...f.action, parameters: { ...f.action.parameters, arguments: { command: 'echo substituted' } } },
+    { ...f.action, parameters: { ...f.action.parameters, action: 'shell.delete' } },
+    { ...f.action, parameters: { ...f.action.parameters, tool: 'delete_repository' } },
+  ]) {
+    const mapped = f.adapter.mapAction({ ...f.input, expected_action, profile: l1Profile(), native });
+    assert.equal(mapped.mapping, 'MISMATCH', JSON.stringify(mapped));
+  }
+});
+
+test('CCS 1.1.14 status uncertainty and presenter pin replacement never become accepted evidence', () => {
+  const f = l1Fixture();
+  const unavailable = f.adapter.verifyNative({
+    ...f.input,
+    status: { ...f.input.status, unavailable: true },
+  });
+  assert.equal(unavailable.native_verification, 'VERIFIED');
+  assert.equal(unavailable.acceptance, 'INDETERMINATE');
+
+  const replacedConfig = { ...f.config, audience: 'attacker' };
+  const pinSwap = f.adapter.verifyNative({ ...f.input, adapter_config: replacedConfig });
+  assert.equal(pinSwap.acceptance, 'REJECTED');
+  assert.ok(pinSwap.reasons.includes('ccs:l1_constructor_pin_mismatch'));
+
+  const native = f.adapter.verifyNative(f.input);
+  const resolverSwap = l1Profile();
+  resolverSwap.resolver.implementation_digest = digestAeb({ implementation: 'attacker', version: '1' });
+  resolverSwap.profile_digest = mappingProfileDigest('ccs-l1-tool-action', resolverSwap);
+  const relabeledResolver = f.adapter.mapAction({
+    ...f.input,
+    profile: resolverSwap,
+    native,
+  });
+  assert.equal(relabeledResolver.mapping, 'INDETERMINATE');
+  assert.ok(relabeledResolver.reasons.includes('mapping_profile_invalid'));
+
+  const digestSwap = l1Profile();
+  digestSwap.profile_digest = digestAeb({ profile: 'attacker' });
+  const relabeledProfile = f.adapter.mapAction({
+    ...f.input,
+    profile: digestSwap,
+    native,
+  });
+  assert.equal(relabeledProfile.mapping, 'INDETERMINATE');
+  assert.ok(relabeledProfile.reasons.includes('mapping_profile_invalid'));
+});
 
 test('source lock names the PyPI label and the runtime bytes separately', () => {
   assert.equal(CCS_PYPI_DISTRIBUTION_VERSION, '1.1.0');
