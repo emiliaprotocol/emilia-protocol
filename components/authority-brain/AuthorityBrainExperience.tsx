@@ -221,7 +221,7 @@ export default function AuthorityBrainExperience(): React.ReactElement {
 
   return (
     <div className={styles.page}>
-      <SiteNav activePage="Authority Brain" />
+      <SiteNav activePage="map" />
       <main>
         <section className={styles.hero}>
           <div className={styles.gridField} aria-hidden="true" />
@@ -229,9 +229,9 @@ export default function AuthorityBrainExperience(): React.ReactElement {
             <div className={styles.heroCopy}>
               <div className={styles.heroKicker}>
                 <span className={styles.liveDot} />
-                EMILIA Authority Brain · Local-first
+                EMILIA Authority Map · Local-first
               </div>
-              <h1>See where your AI can act. Put a human in control before it matters.</h1>
+              <h1>See where your AI can act. Decide what needs authority.</h1>
               <p>
                 Discover the declared actions your scanner can see. Review the proposed Authority Map.
                 Put customer-controlled Gate in front of one consequential action. Preserve evidence
@@ -502,7 +502,7 @@ export default function AuthorityBrainExperience(): React.ReactElement {
               <div className={styles.eyebrow}>Deliberately bounded</div>
               <h2 id="honesty-heading">The unknowns stay visible.</h2>
               <p>
-                Authority Brain reduces the cost of finding and reviewing declared action surfaces.
+                Authority Map reduces the cost of finding and reviewing declared action surfaces.
                 It does not turn incomplete visibility into a safety score.
               </p>
             </div>
@@ -550,7 +550,7 @@ export default function AuthorityBrainExperience(): React.ReactElement {
               <div className={styles.commandLine}>
                 <span aria-hidden="true">$</span>
                 <code ref={commandRef} tabIndex={0}>{COMMAND}</code>
-                <button type="button" onClick={copyCommand} aria-label="Copy Authority Brain command">
+                <button type="button" onClick={copyCommand} aria-label="Copy Authority Map command">
                   {copyState === 'copied' ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}
                   <span>{copyState === 'copied' ? 'Copied' : copyState === 'selected' ? 'Selected' : 'Copy'}</span>
                 </button>

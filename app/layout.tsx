@@ -16,12 +16,12 @@ const PROOF_SUMMARY = `${proofStats.securityCase.claims} executable security cla
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.emiliaprotocol.ai'),
   title: {
-    default: 'EMILIA — Authority Control Plane for Autonomous Work',
+    default: 'EMILIA | Authority System for Autonomous Work',
     template: '%s | EMILIA',
   },
   description:
-    'Define a finite operating mandate once, let agents work inside it, and enforce each '
-    + 'consequential unit of work with EMILIA Gate.',
+    'AI gave software intelligence. On covered paths, EMILIA puts customer authority in force before '
+    + 'autonomous intent becomes an external consequence.',
   applicationName: 'EMILIA Gate',
   keywords: [
     'AI agent authorization',
@@ -49,9 +49,9 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://www.emiliaprotocol.ai',
     siteName: 'EMILIA Protocol',
-    title: 'EMILIA — Authority Control Plane for Autonomous Work',
+    title: 'EMILIA | Authority System for Autonomous Work',
     description:
-      `AI workers need authority, not constant supervision. Protocol proves. Gate prevents. Machine-verifiable evidence: ${PROOF_SUMMARY}.`,
+      `Models decide what to do. EMILIA enforces what may be done. Machine-verifiable evidence: ${PROOF_SUMMARY}.`,
     images: [
       {
         url: '/og-sequence.jpg',
@@ -63,9 +63,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA — Authority Control Plane for Autonomous Work',
+    title: 'EMILIA | Authority System for Autonomous Work',
     description:
-      `Protocol proves. Gate prevents. ${PROOF_SUMMARY}.`,
+      `AI gave software intelligence. EMILIA puts authority in force. ${PROOF_SUMMARY}.`,
     images: ['/og-sequence.jpg'],
   },
   robots: {
@@ -99,7 +99,7 @@ const ORGANIZATION_JSONLD = {
   url: 'https://www.emiliaprotocol.ai',
   logo: 'https://www.emiliaprotocol.ai/logo.png',
   description:
-    'EMILIA is the authority control plane for autonomous work. The commercial Gate enforcement '
+    'EMILIA is the independent authority system for autonomous work. The commercial Gate enforcement '
     + 'product runs on the open Apache-2.0 EMILIA Protocol proof substrate.',
   foundingDate: '2026-06-03',
   sameAs: [

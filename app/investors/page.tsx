@@ -56,21 +56,20 @@ export default function InvestorsPage() {
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56, maxWidth: 760 }}>
         <div className="ep-tag" style={{ color: color.gold, fontFamily: font.mono || font.sans, fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 20 }}>Investor Inquiries</div>
         <h1 style={{ fontFamily: font.sans, fontSize: 44, fontWeight: 700, color: '#0C0A09', lineHeight: 1.06, marginBottom: 20, maxWidth: 700 }}>
-          AI agents are becoming workers. EMILIA is their authority control plane.
+          AI gave software intelligence. EMILIA puts authority in force.
         </h1>
         <p style={{ fontFamily: font.sans, fontSize: 18, lineHeight: 1.55, color: '#44403C', maxWidth: 700, marginBottom: 12 }}>
-          Gate sits at the consequence boundary, where autonomous software turns credentials into
-          changes to money, code, permissions, records, or infrastructure. It verifies the exact
-          action against a customer-owned mandate before the protected provider path can begin.
+          Autonomous work needs two independent systems. The intelligence system plans, delegates,
+          loops, and learns. The authority system remains outside it and controls the crossing from
+          intent into changes to money, code, permissions, records, or infrastructure.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 700, marginBottom: 12 }}>
-          Identity systems establish who. Policy engines decide what is generally allowed. Workflow
-          systems try to make execution durable. EMILIA controls the missing moment: whether this
-          exact consequential action has valid, finite authority now.
+          Authority brain is the mental model. EMILIA Gate is the product. It verifies the exact
+          action against a customer-owned mandate before the protected provider path can begin.
         </p>
         <div style={{ display: 'grid', gap: 18, marginTop: 32, marginBottom: 24 }}>
           {[
-            ['The inevitable shift', 'Models are becoming agents, agents are receiving credentials, and software is moving from recommendation to consequence. The new control point is not the model. It is the boundary before effect.'],
+            ['The investable separation', 'Models are becoming agents, agents are receiving credentials, and software is moving from recommendation to consequence. Intelligence can keep changing. Customer authority must remain independently enforceable.'],
             ['The product', 'The customer defines mission, limits, required evidence, expiry, delegation, and exception rules. Gate matches the exact action, reserves its authority before provider entry, and requires authenticated reconciliation instead of a blind retry when the result is unknown.'],
             ['The control that survives continuous loops', 'The agent may keep running while its authority stops. Inside a covered Gate control domain, Emergency Authority Freeze blocks new reservations and prevents older reservations from entering after the epoch changes. It does not stop computation, undo entered effects, or claim instant reach across disconnected leased domains.'],
             ['The entry wedge', 'GitHub makes the product legible with almost no procurement friction. The open Authority Map finds declared authority gaps; the exact-commit Merge Gate can protect a required merge check. This is a distribution experiment, not claimed traction.'],

@@ -11,8 +11,26 @@ import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 const check = process.argv.includes("--check");
 const bootstrapDerivedEvidence = process.argv.includes("--bootstrap-derived-evidence");
+const securityCasePreverified = process.argv.includes("--security-case-preverified");
 if (check && bootstrapDerivedEvidence) {
     throw new Error("bootstrap-derived-evidence cannot be used in check mode");
+}
+if (securityCasePreverified) {
+    if (!check) {
+        throw new Error("security-case-preverified is check-mode only");
+    }
+    if (process.env.GITHUB_ACTIONS !== "true") {
+        throw new Error("security-case-preverified requires GitHub Actions");
+    }
+    const expectedSha = process.env.SECURITY_CASE_PREVERIFIED_SHA || "";
+    const head = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" });
+    if (head.error)
+        throw head.error;
+    if (head.status !== 0 || !/^[0-9a-f]{40}$/.test(expectedSha)
+        || head.stdout.trim() !== expectedSha
+        || process.env.GITHUB_SHA !== expectedSha) {
+        throw new Error("security-case-preverified SHA does not match the checkout");
+    }
 }
 let j;
 if (bootstrapDerivedEvidence) {
@@ -79,19 +97,21 @@ else {
         process.exit(1);
     }
 }
-const liveSecurityCase = spawnSync(process.execPath, [
-    "--import",
-    "./scripts/ts-loader/register.mjs",
-    "scripts/verify-security-case.mjs",
-    "--execute",
-], {
-    encoding: "utf8",
-    maxBuffer: 1e9,
-});
-if (liveSecurityCase.error)
-    throw liveSecurityCase.error;
-if (liveSecurityCase.status !== 0) {
-    throw new Error(`The live machine-verifiable security case failed:\n${liveSecurityCase.stderr || liveSecurityCase.stdout}`);
+if (!securityCasePreverified) {
+    const liveSecurityCase = spawnSync(process.execPath, [
+        "--import",
+        "./scripts/ts-loader/register.mjs",
+        "scripts/verify-security-case.mjs",
+        "--execute",
+    ], {
+        encoding: "utf8",
+        maxBuffer: 1e9,
+    });
+    if (liveSecurityCase.error)
+        throw liveSecurityCase.error;
+    if (liveSecurityCase.status !== 0) {
+        throw new Error(`The live machine-verifiable security case failed:\n${liveSecurityCase.stderr || liveSecurityCase.stdout}`);
+    }
 }
 const cfg = readFileSync("formal/ep_handshake.cfg", "utf8");
 const composedLifecycleCfg = readFileSync("formal/ep_composed_trust_lifecycle.cfg", "utf8");

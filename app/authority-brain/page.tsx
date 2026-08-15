@@ -3,9 +3,9 @@ import type { Metadata } from 'next';
 import AuthorityBrainExperience from '@/components/authority-brain/AuthorityBrainExperience';
 
 export const metadata: Metadata = {
-  title: 'Authority Brain — Map and Protect AI Agent Actions',
+  title: 'Authority Map: Discover and Protect AI Agent Actions',
   description:
-    'Run EMILIA Authority Brain locally to discover visible AI-agent action surfaces, review proposed authority requirements and blind spots, and generate a reviewed MCP protection scaffold.',
+    'Run EMILIA Authority Map locally to discover visible AI-agent action surfaces, review proposed authority requirements and blind spots, and generate a reviewed MCP protection scaffold.',
   alternates: { canonical: '/authority-brain' },
   keywords: [
     'AI agent authority map',
@@ -18,14 +18,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'See where your AI can act',
     description:
-      'Discover visible action surfaces, review the Authority Map, and put a human in control before a consequential machine action.',
+      'Discover visible action surfaces, review the Authority Map, and put customer authority in force before a consequential machine action.',
     url: 'https://www.emiliaprotocol.ai/authority-brain',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA Authority Brain',
-    description: 'See where your AI can act. Put a human in control before it matters.',
+    title: 'EMILIA Authority Map',
+    description: 'See where your AI can act. Put customer authority in force before it matters.',
   },
 };
 

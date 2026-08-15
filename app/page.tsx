@@ -2,24 +2,24 @@ import type { Metadata } from 'next';
 import HomePageClient from './HomePageClient';
 
 export const metadata: Metadata = {
-  title: { absolute: 'Authority Control Plane for Autonomous Work | EMILIA' },
+  title: { absolute: 'Authority System for Autonomous Work | EMILIA' },
   description:
-    'Set a finite operating mandate once, let agents work inside it, and enforce each consequential '
-    + 'unit of work at the protected executor with EMILIA Gate.',
+    'AI gave software intelligence. On covered paths, EMILIA puts customer authority in force before '
+    + 'autonomous intent changes money, code, permissions, records, or infrastructure.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Authority Control Plane for Autonomous Work | EMILIA',
+    title: 'Authority System for Autonomous Work | EMILIA',
     description:
-      'AI workers need authority, not constant supervision. Protocol proves. Gate prevents.',
+      'Models decide what to do. Humans and institutions decide what may be done. EMILIA Gate enforces the separation.',
     url: 'https://www.emiliaprotocol.ai/',
     type: 'website',
     images: ['/og-sequence.jpg'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Authority Control Plane for Autonomous Work | EMILIA',
+    title: 'Authority System for Autonomous Work | EMILIA',
     description:
-      'Set authority once. Let agents work.',
+      'AI gave software intelligence. EMILIA puts authority in force.',
     images: ['/og-sequence.jpg'],
   },
 };

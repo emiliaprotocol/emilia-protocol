@@ -184,7 +184,7 @@ export default function AuthorityScanPage(): React.ReactElement {
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 28 }}>
-                <Link href="/authority-brain" style={cta.primary}>Open the Authority Brain</Link>
+                <Link href="/authority-brain" style={cta.primary}>Open the Authority Map</Link>
                 <Link href="/agent-guard" style={cta.secondary}>Protect a flagged MCP tool</Link>
                 <Link href="/mcp" style={cta.secondary}>See the MCP integration</Link>
               </div>
