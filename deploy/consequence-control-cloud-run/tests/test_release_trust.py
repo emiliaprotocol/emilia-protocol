@@ -1184,6 +1184,30 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertIn("build-release-images.sh", workflow)
         self.assertIn("--expected-commit \"$GITHUB_SHA\"", workflow)
 
+    def test_ci_release_sealing_reuses_governed_evidence_only_after_dependencies_pass(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        gate_product = workflow.split("  gate-product:", 1)[1].split("\n  build:", 1)[0]
+        self.assertIn("needs: [security-case, language-governance]", gate_product)
+        self.assertIn("--governed-evidence-preverified", gate_product)
+
+        language_governance = workflow.split("  language-governance:", 1)[1].split(
+            "\n  license-headers:", 1
+        )[0]
+        self.assertIn("needs: [security-case]", language_governance)
+        self.assertIn("SECURITY_CASE_PREVERIFIED_SHA: ${{ github.sha }}", language_governance)
+        self.assertIn("npm run check:proof-stats -- --security-case-preverified", language_governance)
+
+        builder = (
+            ROOT / "deploy/consequence-control-cloud-run/build-release-images.sh"
+        ).read_text()
+        self.assertIn("--governed-evidence-preverified", builder)
+        self.assertIn('[[ "$GITHUB_SHA" == "$EXPECTED_COMMIT" ]]', builder)
+        self.assertIn('if [[ "$GOVERNED_EVIDENCE_PREVERIFIED" != 1 ]]', builder)
+
+        proof_generator = (ROOT / "scripts/generate-proof-stats.mts").read_text()
+        self.assertIn('"--security-case-preverified"', proof_generator)
+        self.assertIn("SECURITY_CASE_PREVERIFIED_SHA", proof_generator)
+
     def test_release_builder_seals_before_removing_generated_ignored_state(self) -> None:
         builder = (
             ROOT / "deploy/consequence-control-cloud-run/build-release-images.sh"
