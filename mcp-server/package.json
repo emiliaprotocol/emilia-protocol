@@ -25,8 +25,8 @@
   "overrides": {
     "@hono/node-server": "2.0.10",
     "body-parser": "2.3.0",
-    "fast-uri": "3.1.4",
-    "hono": "4.12.27"
+    "fast-uri": "3.1.5",
+    "hono": "4.12.34"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
