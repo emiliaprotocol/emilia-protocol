@@ -222,6 +222,12 @@ export function buildCommitment(policy, inputs, evaluatorProfile = EVALUATOR_PRO
   };
 }
 
+/**
+ * @param {string} status
+ * @param {string | null} reason
+ * @param {string | null} [derivedVerdict]
+ * @param {string | null} [classifiedVerdict]
+ */
 function result(status, reason, derivedVerdict = null, classifiedVerdict = null) {
   return {
     status,

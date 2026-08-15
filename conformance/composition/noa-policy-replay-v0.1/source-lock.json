@@ -38,7 +38,7 @@
     },
     {
       "path": "conformance/composition/noa-policy-replay-v0.1/run.mjs",
-      "sha256": "c75217f0359ebd7b1e4a31c30d9a1ac03efb9ee4a40efc78cf0aa982d80c9e0b"
+      "sha256": "669971ef741f262668ef08078f867567cbf91d81fb41ba8bd74adb0ae1574198"
     },
     {
       "path": "conformance/composition/noa-policy-replay-v0.1/vectors.json",
