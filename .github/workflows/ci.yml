@@ -104,6 +104,11 @@ jobs:
 
   # ── Job 1b: Consequence Firewall product + deployment ───────────
   gate-product:
+    # The release-image builder normally executes the governed security case,
+    # conformance manifest, and proof-stat suite itself. In this workflow those
+    # checks run in the SHA-identical jobs below, so wait for them and pass the
+    # explicit CI-only preverification flag instead of executing them twice.
+    needs: [security-case, language-governance]
     runs-on: ubuntu-latest
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
@@ -217,6 +222,7 @@ jobs:
         run: |
           deploy/consequence-control-cloud-run/build-release-images.sh \
             --ci \
+            --governed-evidence-preverified \
             --expected-commit "$GITHUB_SHA" \
             --output "$RUNNER_TEMP/consequence-control-release-ci"
       - name: Import-smoke the consequence-control image
@@ -536,6 +542,10 @@ jobs:
 
   # ── Job 5: Language governance ───────────────────────────────────
   language-governance:
+    # Proof-stat measurement consumes the checked-in security-case data after
+    # this exact SHA's executable security job succeeds. This prevents the
+    # generator from executing that seven-minute case a second time.
+    needs: [security-case]
     runs-on: ubuntu-latest
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
@@ -571,6 +581,7 @@ jobs:
         run: npm run check:public-conformance-claims
       - name: Check published proof statistics against an executed test run
         env:
+          SECURITY_CASE_PREVERIFIED_SHA: ${{ github.sha }}
           # generate-proof-stats.mjs runs the full vitest suite, and
           # tests/grace-curtailment.test.ts execFileSync-spawns
           # examples/grace/proof-of-curtailment-vector.mjs as a bare `node`
@@ -579,7 +590,7 @@ jobs:
           # still needs the loader hook to resolve .js specifiers renamed to
           # .ts during the migration.
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
-        run: npm run check:proof-stats
+        run: npm run check:proof-stats -- --security-case-preverified
       - name: Check generated LLM context against current evidence manifests
         run: npm run check:llm-context
       - name: Check standards observatory snapshot freshness
