@@ -1,0 +1,165 @@
+{
+  "@profile": "EP-GAP6-EXECUTION-EVIDENCE-PROFILE-v0.1",
+  "reference": "draft-chen-oauth-agent-authz-use-cases-02, Section 5, Gap 6 (Execution-Layer Evidence); Use Case 11 execution-evidence requirement",
+  "claim_model": {
+    "approval": "what the named human(s) approved, verified under pinned anchors",
+    "admission": "whether this boundary admitted that exact action, once",
+    "execution": "whether the effect was entered and with what outcome, bound to the admitted decision"
+  },
+  "action": {
+    "action_type": "finops.vendor.bank_detail_change",
+    "vendor_id": "V-88012",
+    "erp": "netsuite.prod.example",
+    "change_ticket": "CHG-2026-4471",
+    "new_routing_digest": "sha256:8c1f00a3b7e2d94c5a6b1e0f2d3c4b5a6978e0d1c2b3a4958677e8f9a0b1c2d3",
+    "new_account_digest": "sha256:1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809"
+  },
+  "action_hash": "8d4222413de80d9632dde44e06b822515b7b9e1cb0386108daa5059373b63d16",
+  "cases": [
+    {
+      "id": "through-exact-human-exact-action-once",
+      "title": "Two named approvers, the exact change, one admitted attempt, execution bound to the decision",
+      "boundary_reason": null,
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "admission": {
+        "verdict": "admitted",
+        "allow": true,
+        "reason": "allow"
+      },
+      "execution": {
+        "verdict": "executed",
+        "effect_ran": true
+      }
+    },
+    {
+      "id": "missing-human-evidence",
+      "title": "No authorization artifact: approval unprovable, boundary refuses by name",
+      "boundary_reason": "receipt_required",
+      "approval": {
+        "verdict": "indeterminate",
+        "reason": "no_evidence_presented"
+      },
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "receipt_required"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "fabricated-approval-refused",
+      "title": "Software asserts a quorum without per-signer evidence; the tier is not credited",
+      "boundary_reason": "assurance_too_low",
+      "approval": {
+        "verdict": "not_credited",
+        "reason": "self_asserted_quorum_without_signer_evidence"
+      },
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "assurance_too_low"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "wrong-approver-refused",
+      "title": "Valid-looking artifact from unpinned keys; verification fails under this boundary's anchors",
+      "boundary_reason": "receipt_rejected:untrusted_or_invalid_signature",
+      "approval": {
+        "verdict": "not_credited",
+        "reason": "signature_not_under_pinned_anchors"
+      },
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "receipt_rejected:untrusted_or_invalid_signature"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "action-substitution-refused",
+      "title": "The routing digest changed between approval and execution; the exact-action binding refuses",
+      "boundary_reason": "execution_binding_failed",
+      "approval": {
+        "verdict": "proven_for_different_action",
+        "reason": null
+      },
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "execution_binding_failed"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "replay-refused",
+      "title": "The consumed authorization cannot drive a second execution",
+      "boundary_reason": "replay_refused",
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "replay_refused"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "lost-acknowledgement-indeterminate",
+      "title": "Provider goes silent after entry; outcome INDETERMINATE, authority stays spent, blind retry refused",
+      "boundary_reason": "effect_attempted_outcome_unknown",
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "admission": {
+        "verdict": "admitted_then_committed",
+        "allow": null,
+        "reason": null
+      },
+      "execution": {
+        "verdict": "indeterminate",
+        "effect_ran": null
+      }
+    },
+    {
+      "id": "false-execution-claim-rejected",
+      "title": "An asserted result without a decision binding is not execution evidence",
+      "boundary_reason": null,
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "admission": {
+        "verdict": "admitted",
+        "allow": null,
+        "reason": null
+      },
+      "execution": {
+        "verdict": "claim_not_credited",
+        "effect_ran": null
+      }
+    }
+  ],
+  "results_digest": "sha256:a3af48443a603613a421d4b15cd7a7b518ced0c8d314dc39e00fd1b78bb959fb"
+}
