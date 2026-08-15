@@ -39,7 +39,7 @@ Maps to `standards/posted/draft-schrock-ep-authorization-receipts-04.txt`:
 
 ## Machine-checked result
 
-Verbatim `summary of summaries` from the repaired run on 2026-08-09
+Verbatim `summary of summaries` from the extended run on 2026-08-15
 (tamarin-prover 1.10.0, Maude 3.4, all wellformedness checks successful):
 
 ```
@@ -49,6 +49,7 @@ analyzed: ep_receipt_core.spthy
 
   executable_honest_receipt (exists-trace): verified (9 steps)
   core_authenticity_uv_gated (all-traces): verified (11 steps)
+  acceptance_prefix_integrity_after_later_reveal (all-traces): verified (12 steps)
   no_replay_across_actions (all-traces): verified (11 steps)
   injective_acceptance_with_consumption (all-traces): verified (11 steps)
   unchecked_acceptance_is_injective (all-traces): falsified - found trace (11 steps)
@@ -60,6 +61,7 @@ What each result means:
 |---|---|---|
 | `executable_honest_receipt` | verified | Sanity trace exists: an honest UV-gated receipt is accepted with no key compromise. The model is not vacuous. |
 | `core_authenticity_uv_gated` | verified | If a relying party accepts a receipt under an uncompromised key, a prior UV event and signature exist over the exact action, policy, initiator, audience, nonce, validity token, and approver slot. |
+| `acceptance_prefix_integrity_after_later_reveal` | verified | If acceptance occurs without any prior reveal and the key is revealed later, prior UV and signing events over the exact accepted context remain in the acceptance prefix. This is not an offline anti-backdating claim. |
 | `no_replay_across_actions` | verified | Honest signatures harvested over other contexts cannot be transplanted onto a different accepted context. |
 | `injective_acceptance_with_consumption` | verified | Each checked acceptance has a preceding honest signature and no second checked acceptance of the same complete context exists; this follows from consuming the linear `AdmissionAvailable` fact. |
 | `unchecked_acceptance_is_injective` | falsified | Expected and kept deliberately, see below. |
@@ -87,6 +89,13 @@ This is precisely the failure mode the spec's one-time consumption record
 (Section 6, G3) exists to prevent. The checked rule restores injectivity by
 consuming protocol state, not by excluding replay traces with a restriction
 (`injective_acceptance_with_consumption`, verified).
+
+The later-reveal lemma is intentionally limited to trace-prefix integrity. The
+model orders a real acceptance before a later key reveal and proves that the
+matching UV-gated signature occurred before that acceptance. It does not let an
+offline verifier distinguish a genuinely pre-reveal receipt from one minted and
+backdated after compromise. That stronger property requires an independently
+ordered witness, an append-only checkpoint, or forward-secure signatures.
 
 ## Out of scope (honest boundary)
 
@@ -310,16 +319,16 @@ same pinned image. Exact model and runner hashes are in
 `results/ep_reliance_composed.summary.txt`.
 
 ```
-executable_composed_reliance (exists-trace): verified (19 steps)
-execution_requires_full_composition (all-traces): verified (97 steps)
+executable_composed_reliance (exists-trace): verified (20 steps)
+execution_requires_full_composition (all-traces): verified (101 steps)
 caid_binds_family_and_material (all-traces): verified (2 steps)
 initiator_cannot_self_approve (all-traces): verified (4 steps)
 no_single_signer_fills_quorum (all-traces): verified (2 steps)
-no_issuer_laundering (all-traces): verified (781 steps)
+no_issuer_laundering (all-traces): verified (785 steps)
 strict_registry_view_is_exact (all-traces): verified (25 steps)
-no_cross_action_profile_or_audience_replay (all-traces): verified (37 steps)
-execution_has_honest_approvals_or_prior_compromise (all-traces): verified (170 steps)
-injective_execution_with_consumption (all-traces): verified (2 steps)
+no_cross_action_profile_or_audience_replay (all-traces): verified (41 steps)
+execution_has_honest_approvals_or_prior_compromise (all-traces): verified (178 steps)
+injective_execution_with_consumption (all-traces): verified (250 steps)
 unchecked_composition_is_injective (all-traces): falsified - found trace (31 steps)
 unchecked_registry_view_is_current (all-traces): falsified - found trace (20 steps)
 ```
