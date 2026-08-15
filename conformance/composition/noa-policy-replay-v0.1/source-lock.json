@@ -1,0 +1,48 @@
+{
+  "@version": "NOA-POLICY-REPLAY-SOURCE-LOCK-v0.1",
+  "noa_repository_revision": "df777a69a268f99a8998cac12dbeb0aa2251b2f6",
+  "emilia_evaluator_base_revision": "d717d6a7886dae9574243ed99bff3638445ee885",
+  "ietf_archives": [
+    {
+      "name": "draft-noa-scitt-ai-agent-receipt-01",
+      "url": "https://www.ietf.org/archive/id/draft-noa-scitt-ai-agent-receipt-01.txt",
+      "sha256": "246b5da4c6ab0045e20d50f7f60ba41db03d49518255b360d8bf39b6ac0560a4"
+    },
+    {
+      "name": "draft-toraman-noa-action-digest-01",
+      "url": "https://www.ietf.org/archive/id/draft-toraman-noa-action-digest-01.txt",
+      "sha256": "e0e64cfabc6b2a1027dfd2e90c8103c821543a726ef48d06e360dff7042f87ae"
+    },
+    {
+      "name": "draft-toraman-noa-settlement-evidence-01",
+      "url": "https://www.ietf.org/archive/id/draft-toraman-noa-settlement-evidence-01.txt",
+      "sha256": "655964dbc0b794772cf9a8a47e3bd5421e9048600a80534066be04e25954f25a"
+    }
+  ],
+  "local_files": [
+    {
+      "path": "lib/evidence/admissibility.ts",
+      "sha256": "6cbe69a1d2de931510efe395c686fad955667a70b8191da2d12da277ecc82124"
+    },
+    {
+      "path": "lib/evidence/admissibility.js",
+      "sha256": "52588758e67dfdf3a92055242ab5d62f3cb5da7f8212d236ddf6ca7b7cbb1419"
+    },
+    {
+      "path": "packages/verify/src/strict-json.ts",
+      "sha256": "3697adba911cb19759e047db42dafadcf2a41bfee8f75a0df4088d1116d0b068"
+    },
+    {
+      "path": "packages/verify/dist/strict-json.js",
+      "sha256": "333e0dfcce807d97727f1a349258c7241295001389273f4010a5c88c42636d29"
+    },
+    {
+      "path": "conformance/composition/noa-policy-replay-v0.1/run.mjs",
+      "sha256": "c75217f0359ebd7b1e4a31c30d9a1ac03efb9ee4a40efc78cf0aa982d80c9e0b"
+    },
+    {
+      "path": "conformance/composition/noa-policy-replay-v0.1/vectors.json",
+      "sha256": "a91c6ffe7afd9e05950434944ff0e8e86838574fc91ee57b43c13e1278c9ce76"
+    }
+  ]
+}

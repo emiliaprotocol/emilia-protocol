@@ -1,0 +1,267 @@
+{
+  "@version": "NOA-POLICY-REPLAY-CORPUS-v0.1",
+  "evaluator_profile": "ep-admissibility-noa-replay/0.1",
+  "fixtures": {
+    "policy": {
+      "@version": "EP-ADMISSIBILITY-POLICY-v1",
+      "policy_id": "rp:money-movement:v1",
+      "reliance_purpose": "money_movement",
+      "requirement": "authorization_receipt AND policy_permit",
+      "freshness_sec": {
+        "authorization_receipt": 900,
+        "policy_permit": 300
+      },
+      "revocation_required": [
+        "authorization_receipt",
+        "policy_permit"
+      ],
+      "require_action_agreement": true
+    },
+    "policy_changed": {
+      "@version": "EP-ADMISSIBILITY-POLICY-v1",
+      "policy_id": "rp:money-movement:v2",
+      "reliance_purpose": "money_movement",
+      "requirement": "authorization_receipt",
+      "freshness_sec": {
+        "authorization_receipt": 900
+      },
+      "revocation_required": [
+        "authorization_receipt"
+      ],
+      "require_action_agreement": true
+    },
+    "inputs_allow": {
+      "@version": "NOA-POLICY-REPLAY-INPUT-v0.1",
+      "as_of": "2026-08-14T12:05:00Z",
+      "bundle": {
+        "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "components": [
+          {
+            "type": "authorization_receipt",
+            "verified": true,
+            "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "issued_at": "2026-08-14T12:00:00Z",
+            "outcome": "allow",
+            "revoked": false
+          },
+          {
+            "type": "policy_permit",
+            "verified": true,
+            "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "issued_at": "2026-08-14T12:04:00Z",
+            "outcome": "allow",
+            "revoked": false
+          }
+        ]
+      }
+    },
+    "inputs_deny": {
+      "@version": "NOA-POLICY-REPLAY-INPUT-v0.1",
+      "as_of": "2026-08-14T12:05:00Z",
+      "bundle": {
+        "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "components": [
+          {
+            "type": "authorization_receipt",
+            "verified": true,
+            "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "issued_at": "2026-08-14T12:00:00Z",
+            "outcome": "allow",
+            "revoked": false
+          }
+        ]
+      }
+    },
+    "inputs_changed": {
+      "@version": "NOA-POLICY-REPLAY-INPUT-v0.1",
+      "as_of": "2026-08-14T12:05:01Z",
+      "bundle": {
+        "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "components": [
+          {
+            "type": "authorization_receipt",
+            "verified": true,
+            "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "issued_at": "2026-08-14T12:00:00Z",
+            "outcome": "allow",
+            "revoked": false
+          },
+          {
+            "type": "policy_permit",
+            "verified": true,
+            "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "issued_at": "2026-08-14T12:04:00Z",
+            "outcome": "allow",
+            "revoked": false
+          }
+        ]
+      }
+    },
+    "commitment_allow": {
+      "policyHash": "sha256:6bcf75036dd1e3a0b2a0ee148b53199a2bf8dd3c0ebc09d0052d0a450301ec4a",
+      "readSetHash": "sha256:67fe92b412c7c7addeaa81a2048296e6ff7519adec1fa417b4a0db9e5ea3a523",
+      "inputsHash": "sha256:58745e9d1588d4b72d4a7bc676ddb505f65e1b4fdd45c363e72ba09d3878fe24",
+      "verdict": "ALLOW"
+    },
+    "commitment_deny": {
+      "policyHash": "sha256:6bcf75036dd1e3a0b2a0ee148b53199a2bf8dd3c0ebc09d0052d0a450301ec4a",
+      "readSetHash": "sha256:67fe92b412c7c7addeaa81a2048296e6ff7519adec1fa417b4a0db9e5ea3a523",
+      "inputsHash": "sha256:8226c046198af91121f2edd8bc8972c246785cdd54e6a10f8ac6a6276fab50f1",
+      "verdict": "DENY"
+    }
+  },
+  "cases": [
+    {
+      "id": "construct-allow",
+      "direction": "construct",
+      "evaluator_profile": "ep-admissibility-noa-replay/0.1",
+      "policy_ref": "policy",
+      "inputs_ref": "inputs_allow",
+      "expected": {
+        "commitment": {
+          "policyHash": "sha256:6bcf75036dd1e3a0b2a0ee148b53199a2bf8dd3c0ebc09d0052d0a450301ec4a",
+          "readSetHash": "sha256:67fe92b412c7c7addeaa81a2048296e6ff7519adec1fa417b4a0db9e5ea3a523",
+          "inputsHash": "sha256:58745e9d1588d4b72d4a7bc676ddb505f65e1b4fdd45c363e72ba09d3878fe24",
+          "verdict": "ALLOW"
+        }
+      }
+    },
+    {
+      "id": "construct-deny",
+      "direction": "construct",
+      "evaluator_profile": "ep-admissibility-noa-replay/0.1",
+      "policy_ref": "policy",
+      "inputs_ref": "inputs_deny",
+      "expected": {
+        "commitment": {
+          "policyHash": "sha256:6bcf75036dd1e3a0b2a0ee148b53199a2bf8dd3c0ebc09d0052d0a450301ec4a",
+          "readSetHash": "sha256:67fe92b412c7c7addeaa81a2048296e6ff7519adec1fa417b4a0db9e5ea3a523",
+          "inputsHash": "sha256:8226c046198af91121f2edd8bc8972c246785cdd54e6a10f8ac6a6276fab50f1",
+          "verdict": "DENY"
+        }
+      }
+    },
+    {
+      "id": "verify-allow-match",
+      "direction": "verify",
+      "evaluator_profile": "ep-admissibility-noa-replay/0.1",
+      "commitment_ref": "commitment_allow",
+      "policy_ref": "policy",
+      "inputs_ref": "inputs_allow",
+      "expected": {
+        "status": "MATCH",
+        "reason": null,
+        "derived_verdict": "ALLOW",
+        "classified_verdict": "admissible"
+      }
+    },
+    {
+      "id": "verify-deny-match",
+      "direction": "verify",
+      "evaluator_profile": "ep-admissibility-noa-replay/0.1",
+      "commitment_ref": "commitment_deny",
+      "policy_ref": "policy",
+      "inputs_ref": "inputs_deny",
+      "expected": {
+        "status": "MATCH",
+        "reason": null,
+        "derived_verdict": "DENY",
+        "classified_verdict": "missing_evidence"
+      }
+    },
+    {
+      "id": "verify-policy-substitution",
+      "direction": "verify",
+      "evaluator_profile": "ep-admissibility-noa-replay/0.1",
+      "commitment_ref": "commitment_allow",
+      "policy_ref": "policy_changed",
+      "inputs_ref": "inputs_allow",
+      "expected": {
+        "status": "MISMATCH",
+        "reason": "policy_hash_mismatch",
+        "derived_verdict": null,
+        "classified_verdict": null
+      }
+    },
+    {
+      "id": "verify-input-substitution",
+      "direction": "verify",
+      "evaluator_profile": "ep-admissibility-noa-replay/0.1",
+      "commitment_ref": "commitment_allow",
+      "policy_ref": "policy",
+      "inputs_ref": "inputs_changed",
+      "expected": {
+        "status": "MISMATCH",
+        "reason": "inputs_hash_mismatch",
+        "derived_verdict": null,
+        "classified_verdict": null
+      }
+    },
+    {
+      "id": "verify-read-set-substitution",
+      "direction": "verify",
+      "evaluator_profile": "ep-admissibility-noa-replay/0.1",
+      "commitment": {
+        "policyHash": "sha256:6bcf75036dd1e3a0b2a0ee148b53199a2bf8dd3c0ebc09d0052d0a450301ec4a",
+        "readSetHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "inputsHash": "sha256:58745e9d1588d4b72d4a7bc676ddb505f65e1b4fdd45c363e72ba09d3878fe24",
+        "verdict": "ALLOW"
+      },
+      "policy_ref": "policy",
+      "inputs_ref": "inputs_allow",
+      "expected": {
+        "status": "MISMATCH",
+        "reason": "read_set_hash_mismatch",
+        "derived_verdict": null,
+        "classified_verdict": null
+      }
+    },
+    {
+      "id": "verify-verdict-substitution",
+      "direction": "verify",
+      "evaluator_profile": "ep-admissibility-noa-replay/0.1",
+      "commitment": {
+        "policyHash": "sha256:6bcf75036dd1e3a0b2a0ee148b53199a2bf8dd3c0ebc09d0052d0a450301ec4a",
+        "readSetHash": "sha256:67fe92b412c7c7addeaa81a2048296e6ff7519adec1fa417b4a0db9e5ea3a523",
+        "inputsHash": "sha256:58745e9d1588d4b72d4a7bc676ddb505f65e1b4fdd45c363e72ba09d3878fe24",
+        "verdict": "DENY"
+      },
+      "policy_ref": "policy",
+      "inputs_ref": "inputs_allow",
+      "expected": {
+        "status": "MISMATCH",
+        "reason": "verdict_mismatch",
+        "derived_verdict": "ALLOW",
+        "classified_verdict": "admissible"
+      }
+    },
+    {
+      "id": "verify-missing-inputs",
+      "direction": "verify",
+      "evaluator_profile": "ep-admissibility-noa-replay/0.1",
+      "commitment_ref": "commitment_allow",
+      "policy_ref": "policy",
+      "inputs": null,
+      "expected": {
+        "status": "UNRESOLVED",
+        "reason": "inputs_unavailable",
+        "derived_verdict": null,
+        "classified_verdict": null
+      }
+    },
+    {
+      "id": "verify-unknown-evaluator",
+      "direction": "verify",
+      "evaluator_profile": "unregistered-evaluator/9",
+      "commitment_ref": "commitment_allow",
+      "policy_ref": "policy",
+      "inputs_ref": "inputs_allow",
+      "expected": {
+        "status": "UNRESOLVED",
+        "reason": "evaluator_profile_unavailable",
+        "derived_verdict": null,
+        "classified_verdict": null
+      }
+    }
+  ]
+}
