@@ -32,6 +32,25 @@ assert(
   `PDF digest ${pdfDigest} is not pinned in README.md and VERIFICATION.md`,
 );
 
+const sourceArtifacts = [
+  "formal/tamarin/ep_receipt_core.spthy",
+  "formal/tamarin/ep_quorum_core.spthy",
+  "formal/tamarin/ep_reliance_composed.spthy",
+  "formal/tamarin/ep_six_claim_composed.spthy",
+  "formal/tamarin/run-receipt-core.sh",
+  "formal/tamarin/run-quorum.sh",
+  "formal/tamarin/run-composed.sh",
+];
+
+for (const relative of sourceArtifacts) {
+  const bytes = await readFile(join(repo, relative));
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  assert(
+    verification.includes(`| \`${relative}\` | \`${digest}\` |`),
+    `VERIFICATION.md does not pin the current digest for ${relative}: ${digest}`,
+  );
+}
+
 const requiredSource = [
   "Action-Bound Injective Authorization",
   "signer-harvesting",
