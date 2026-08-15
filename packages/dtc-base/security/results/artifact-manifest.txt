@@ -4,7 +4,7 @@ Files: 32
 Generated deterministically by npm run artifacts:refresh; timestamps are intentionally omitted.
 
 ae667371df03ca579cf43eb586efdbf9db7264fe11f4186d64d92dd87851e579  .env.example
-ffcf2f1a07cffd4fda1bf641384357d61c8ef773817462552d6adb61137304d2  .gitignore
+f8821b1be8a7d3be10df57fcd7ecc126d62f440cb58e80981960805d5e79708f  .gitignore
 1be8f1d5cb80f6a7022f19fbe7afe1fe3186dea0e011de45c710db5298a3dabe  .solhint.json
 77c4c05035b616358b668ca0614bde9d897a46c491e2658f34335dc080f0b762  contracts/DTCBaseSettlement.sol
 2e763a971e1a8f23d8b9d4d245ba46bc72f4d1949ad47e9820c99ca8fec93484  contracts/interfaces/IDTCBaseSettlement.sol
