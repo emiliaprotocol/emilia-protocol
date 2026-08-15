@@ -18,7 +18,9 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-local-authentication"
+      "expo-local-authentication",
+      "expo-asset",
+      "expo-status-bar"
     ]
   }
 }
