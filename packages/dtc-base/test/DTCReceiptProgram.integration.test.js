@@ -1,7 +1,10 @@
-const assert = require('node:assert/strict');
-const { generateKeyPairSync } = require('node:crypto');
-const { expect } = require('chai');
-const { ethers } = require('hardhat');
+import assert from 'node:assert/strict';
+import { generateKeyPairSync } from 'node:crypto';
+
+import { expect } from 'chai';
+import { network } from 'hardhat';
+
+const { ethers } = await network.create();
 
 describe('DTC Base x EMILIA receipt-program kernel', function () {
   async function fixture(label) {

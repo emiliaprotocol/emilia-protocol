@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 import type {} from '@nomicfoundation/hardhat-ethers';
-import hre from 'hardhat';
+import { network } from 'hardhat';
 
 import {
   AUTHORIZATION_TYPES,
@@ -11,7 +11,7 @@ import {
   connectDtcBaseSettlementContract,
 } from '../lib/receipt-program-bridge.js';
 
-const { ethers } = hre;
+const { ethers } = await network.create();
 
 async function latestTimestamp(): Promise<bigint> {
   const block = await ethers.provider.getBlock('latest');
