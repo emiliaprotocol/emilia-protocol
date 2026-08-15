@@ -54,12 +54,26 @@ import { manifestFromPack } from '../../../packages/gate/adapters/_kit.js';
 export const PROFILE = 'EP-GAP6-EXECUTION-EVIDENCE-PROFILE-v0.1';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+type ExactActionRecord = Readonly<{
+  action_type: string;
+  vendor_id: string;
+  erp: string;
+  change_ticket: string;
+  new_routing_digest: string;
+  new_account_digest: string;
+}>;
+
+type EffectResult = {
+  changed: boolean;
+  vendor_id?: string;
+};
+
 /**
  * The exact material action. Routing and account numbers appear only as
  * digests: the approver's device shows the human the cleartext out of band,
  * the evidence layer commits to it without carrying it.
  */
-export const EXACT_ACTION = Object.freeze({
+export const EXACT_ACTION: ExactActionRecord = Object.freeze({
   action_type: 'finops.vendor.bank_detail_change',
   vendor_id: 'V-88012',
   erp: 'netsuite.prod.example',
@@ -107,6 +121,13 @@ function admissionRecord(decision) {
   };
 }
 
+function requireOutcome<T>(outcome: T | null): T {
+  if (outcome === null) {
+    throw new Error('expected a gate outcome but received a terminal error');
+  }
+  return outcome;
+}
+
 /** Named humans a receipt's quorum evidence carries, or null when it cannot be credited. */
 function creditedApprovers(receipt) {
   const quorum = receipt?.payload?.quorum;
@@ -134,11 +155,11 @@ export async function runProfile() {
   const actionHash = hashCanonical(EXACT_ACTION);
 
   const executions: any[] = [];
-  const executor = async () => {
+  const executor = async (): Promise<EffectResult> => {
     executions.push(structuredClone(EXACT_ACTION));
     return { changed: true, vendor_id: EXACT_ACTION.vendor_id };
   };
-  const unresolvedProvider = async () => {
+  const unresolvedProvider = async (): Promise<EffectResult> => {
     executions.push(structuredClone(EXACT_ACTION));
     await new Promise((_, reject) => {
       setTimeout(() => reject(new Error('provider deadline exceeded, outcome unknown')), PROVIDER_DEADLINE_MS);
@@ -146,7 +167,11 @@ export async function runProfile() {
     return { changed: true };
   };
 
-  async function admit(receipt, action = EXACT_ACTION, effect = executor) {
+  async function admit(
+    receipt,
+    action: ExactActionRecord = EXACT_ACTION,
+    effect: () => Promise<EffectResult> = executor,
+  ) {
     try {
       const outcome = await gate.run(
         { selector: { ...SELECTOR }, receipt, observedAction: action },
@@ -167,7 +192,8 @@ export async function runProfile() {
   {
     const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
     const before = executions.length;
-    const { outcome } = await admit(receipt);
+    const admitted = await admit(receipt);
+    const outcome = requireOutcome(admitted.outcome);
     const admission = admissionRecord(outcome.authorization);
     cases.push({
       id: 'through-exact-human-exact-action-once',
@@ -198,7 +224,8 @@ export async function runProfile() {
   //    name, not an error and not an execution.
   {
     const before = executions.length;
-    const { outcome } = await admit(null);
+    const admitted = await admit(null);
+    const outcome = requireOutcome(admitted.outcome);
     cases.push({
       id: 'missing-human-evidence',
       title: 'No authorization artifact: approval unprovable, boundary refuses by name',
@@ -217,7 +244,8 @@ export async function runProfile() {
   {
     const receipt = harness.mint({ outcome: 'allow', fakeQuorum: true });
     const before = executions.length;
-    const { outcome } = await admit(receipt);
+    const admitted = await admit(receipt);
+    const outcome = requireOutcome(admitted.outcome);
     cases.push({
       id: 'fabricated-approval-refused',
       title: 'Software asserts a quorum without per-signer evidence; the tier is not credited',
@@ -236,7 +264,8 @@ export async function runProfile() {
     const rogue = createEg1Harness({ action: /** @type {any} */ (EXACT_ACTION), idPrefix: 'gap6_rogue' });
     const receipt = rogue.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
     const before = executions.length;
-    const { outcome } = await admit(receipt);
+    const admitted = await admit(receipt);
+    const outcome = requireOutcome(admitted.outcome);
     cases.push({
       id: 'wrong-approver-refused',
       title: 'Valid-looking artifact from unpinned keys; verification fails under this boundary\'s anchors',
@@ -259,7 +288,8 @@ export async function runProfile() {
       new_routing_digest: 'sha256:eeee00a3b7e2d94c5a6b1e0f2d3c4b5a6978e0d1c2b3a4958677e8f9a0b1eeee',
     };
     const before = executions.length;
-    const { outcome } = await admit(receipt, substituted);
+    const admitted = await admit(receipt, substituted);
+    const outcome = requireOutcome(admitted.outcome);
     cases.push({
       id: 'action-substitution-refused',
       title: 'The routing digest changed between approval and execution; the exact-action binding refuses',
@@ -278,7 +308,8 @@ export async function runProfile() {
     const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
     await admit(receipt);
     const before = executions.length;
-    const { outcome } = await admit(receipt);
+    const admitted = await admit(receipt);
+    const outcome = requireOutcome(admitted.outcome);
     cases.push({
       id: 'replay-refused',
       title: 'The consumed authorization cannot drive a second execution',
@@ -299,7 +330,8 @@ export async function runProfile() {
     const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
     const { terminal } = await admit(receipt, EXACT_ACTION, unresolvedProvider);
     const consumptionKey = terminal?.authorizationEvidence?.consumption_key ?? null;
-    const { outcome: retry } = await admit(receipt);
+    const retryAttempt = await admit(receipt);
+    const retry = requireOutcome(retryAttempt.outcome);
     cases.push({
       id: 'lost-acknowledgement-indeterminate',
       title: 'Provider goes silent after entry; outcome INDETERMINATE, authority stays spent, blind retry refused',
@@ -329,7 +361,8 @@ export async function runProfile() {
   //    never by the assertion's existence.
   {
     const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
-    const { outcome } = await admit(receipt);
+    const admitted = await admit(receipt);
+    const outcome = requireOutcome(admitted.outcome);
     const admittedDecisionHash = outcome.packet?.summary?.decision_hash ?? null;
     const forged = {
       kind: 'asserted_execution_result',
@@ -396,7 +429,7 @@ export async function runProfile() {
 }
 
 function runnerIdentity() {
-  let commit = null;
+  let commit: string | null = null;
   try {
     commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: HERE, encoding: 'utf8' }).trim();
   } catch {
@@ -452,7 +485,7 @@ if (isMain) {
   };
   writeFileSync(resolve(HERE, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
 
-  let matchesReference = null;
+  let matchesReference: boolean | null = null;
   try {
     const reference = JSON.parse(readFileSync(resolve(HERE, 'report.reference.json'), 'utf8'));
     matchesReference = reference.results_digest === result.results_digest;
