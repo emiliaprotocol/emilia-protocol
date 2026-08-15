@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-15T17:19:29.088Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "7878e926e69c8886d86d5524777156e14cb1f5a7c450165ee348802db4ae274a",
+    "input_digest_sha256": "06e756eaf96fdfc6f6ea82bed47592f191d6e82a326097b0c5e4451773e031f7",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -22,7 +22,7 @@
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "a39113533f3edc0a4e81139bff1b34ec3fcbbc0f02af0f1e4389f558b3f74cb3",
+        "sha256": "30980542c27eaabd0a7f9c5f1ac15ab2e3ce27d20192be18b2e2dc515aba83af",
         "bytes": 6361
       },
       {
@@ -32,12 +32,12 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "63b1d5ebc19259da41ed4760556009d914ceac80bb3300ea3b93b48946c7e054",
+        "sha256": "b5f321d8003071d8756dd5eb77aaa68ffc62e7aaabeebbac52f6514f0ce2b08b",
         "bytes": 251460
       },
       {
         "path": "security/security-case.json",
-        "sha256": "eba6ca3367c7d54f0e244e401739c1404e5f2e5eed0efa29a43c638d58972385",
+        "sha256": "8e8a1ce42cbc3f9a52a0e6530ea896caa514c5af976adf45147fde338b5e7148",
         "bytes": 385871
       },
       {
@@ -298,7 +298,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "fe66bcc4e4f05af9e678bbf0d8b028fe2674e9c1298f0e54fe7d50df393d2f49",
+      "manifest_sha256": "e965b7db057e7864c0985e69c212c52b429c1d47143b730d46c6cbf2047d8979",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -400,7 +400,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "b4535079a4ad7c26d3e9e6873ce17cb58f014dff576d840188b64a69cab1d8bb"
+      "evidence_bundle_sha256": "6c8bfdb907bdad01dc27d34d25bfb71a040c997ee7eca37c224fc7465fcf43cd"
     },
     "caid": {
       "core_vectors": 48,
