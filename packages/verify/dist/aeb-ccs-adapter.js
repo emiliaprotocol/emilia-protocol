@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Experimental CCS PyPI 1.1.0 (runtime 0.4.1) adapter for AEB-ADAPTER-v1.
+ * Source-locked CCS adapters for AEB-ADAPTER-v1.
  *
- * The published wheel currently emits the older HMAC result shape. This
- * adapter therefore verifies exactly those shipped bytes and deliberately
- * does not claim support for the Ed25519/extended receipt described by the
- * CCS Internet-Drafts. The HMAC key must be scoped to one relying party and
- * one audience; this is a local composition profile, not a portable receipt.
+ * The current profile verifies the Ed25519 L1 receipt published with
+ * ccs-verifier 1.1.14 under a relying-party-pinned issuer key. The historical
+ * 1.1.0 profile remains available only for reproducing the older HMAC result
+ * shape; it is not silently upgraded or relabeled.
  *
  * A CCS ALLOW is exposed only as machine-policy-decision evidence. It is not
  * human authorization, execution authority, provider entry, or effect proof.
@@ -15,7 +14,8 @@ import crypto from 'node:crypto';
 // The CAID reference implementation intentionally has no TypeScript surface.
 // @ts-expect-error -- narrowed and cross-checked below.
 import { computeCaid } from '../vendor/caid.mjs';
-import { canonicalizeAeb, digestAeb, } from './aeb-adapter-contract.js';
+import { canonicalizeAeb, digestAeb, mappingProfileDigest, } from './aeb-adapter-contract.js';
+import { canonicalizeFiniteJson } from './strict-json.js';
 export const CCS_PYPI_DISTRIBUTION_VERSION = '1.1.0';
 export const CCS_PYPI_RUNTIME_VERSION = '0.4.1';
 export const CCS_PYPI_SOURCE_LOCK = 'ccs-verifier-pypi-1.1.0-runtime-0.4.1';
@@ -26,6 +26,17 @@ export const CCS_AEB_CONFIG_VERSION = 'AEB-CCS-PYPI-HMAC-CONFIG-v1';
 export const CCS_AEB_TRUST_ROOT_VERSION = 'AEB-CCS-PYPI-HMAC-ROOT-v1';
 export const CCS_CAID_MAPPING_VERSION = 'AEB-CCS-TOOL-ACTION-MAPPING-v1';
 export const CCS_CAID_MAPPER_ID = 'mapper:ccs-pypi-tool-action-v1';
+export const CCS_L1_PYPI_DISTRIBUTION_VERSION = '1.1.14';
+export const CCS_L1_PYPI_SDIST_SHA256 = '9f75676e5b3d6ace8e91742d8b78b6d15b2d4250414326c17cc9e1aa361ec318';
+export const CCS_L1_PYPI_WHEEL_SHA256 = '04a7857253bac2fca25611d17280cebf92fd0a7a2987a4d7ece973d492b17c83';
+export const CCS_L1_REFERENCE_VECTOR_SHA256 = '5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f';
+export const CCS_L1_PYPI_SOURCE_LOCK = 'ccs-verifier-pypi-1.1.14-ed25519-l1';
+export const CCS_L1_AEB_ADAPTER_ID = 'native:ccs-pypi-ed25519-l1-1.1.14';
+export const CCS_L1_AEB_ADAPTER_VERSION = '1';
+export const CCS_L1_AEB_CONFIG_VERSION = 'AEB-CCS-PYPI-ED25519-CONFIG-v1';
+export const CCS_L1_AEB_TRUST_ROOT_VERSION = 'AEB-CCS-PYPI-ED25519-ROOT-v1';
+export const CCS_L1_CAID_MAPPING_VERSION = 'AEB-CCS-L1-TOOL-ACTION-MAPPING-v1';
+export const CCS_L1_CAID_MAPPER_ID = 'mapper:ccs-pypi-l1-tool-action-v1';
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const HEX_16_RE = /^[0-9a-f]{16}$/;
 const HEX_32_RE = /^[0-9a-f]{32}$/;
@@ -566,6 +577,414 @@ export function createCcsPyPiHmacAebAdapter(constructorPins) {
             }
             catch {
                 return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['ccs:unexpected_mapping_error'] };
+            }
+        },
+    });
+}
+const CCS_L1_RECEIPT_KEYS = new Set([
+    'trace_id', 'receipt_version', 'verdict', 'timestamp', 'tool', 'tool_call_id',
+    'params_hash', 'args_digest', 'rule_summary', 'rule_version', 'request_hash',
+    'response_hash', 'runtime_context_hash', 'config_hash', 'verifier_source_class',
+    'deployment_mode', 'issuer', 'audience', 'nonce', 'sequence', 'issued_at',
+    'expires_at', 'max_clock_skew', 'action', 'signature', 'signing_algorithm',
+    'public_key_fingerprint', 'public_key', 'verified_at', 'latency_us',
+]);
+const CCS_L1_CONFIG_KEYS = new Set([
+    '@version', 'evidence_role', 'subject', 'issuer', 'audience', 'action_type',
+    'allowed_actions', 'allowed_tools', 'required_rule_version',
+    'max_receipt_age_seconds', 'max_clock_skew_seconds', 'deployment_scope',
+]);
+const CCS_L1_ROOT_KEYS = new Set([
+    '@version', 'issuer', 'key_id', 'algorithm', 'public_key_raw_base64',
+    'public_key_fingerprint_sha256_16',
+]);
+const CCS_L1_ACTION_KEYS = new Set(['action_type', 'parameters']);
+const CCS_L1_ACTION_PARAMETER_KEYS = new Set(['action', 'tool', 'arguments']);
+const CCS_L1_PROFILE_KEYS = new Set([
+    'version', 'definition', 'registry_entry_ref', 'mapper_id', 'resolver',
+    'semantic_equivalence', 'profile_digest',
+]);
+const CCS_L1_RESOLVER_KEYS = new Set(['id', 'version', 'implementation_digest']);
+const CCS_L1_EQUIVALENCE_KEYS = new Set([
+    'assertion', 'loss_policy', 'omitted_material_fields', 'omitted_nonmaterial_fields',
+]);
+const CCS_L1_MAPPING_PROFILE_ID = 'ccs-l1-tool-action';
+const CCS_L1_MAPPING_REGISTRY_REF = 'mapping:ccs-l1-tool-action';
+const CCS_L1_OMITTED_NONMATERIAL_FIELDS = Object.freeze([
+    'trace_id', 'timestamp', 'tool_call_id', 'params_hash', 'rule_summary',
+    'request_hash', 'response_hash', 'runtime_context_hash', 'config_hash',
+    'verifier_source_class', 'deployment_mode', 'nonce', 'sequence',
+    'issued_at', 'expires_at', 'max_clock_skew', 'verified_at', 'latency_us',
+]);
+const HEX_64_RE = /^[0-9a-f]{64}$/;
+const HEX_FP16_RE = /^[0-9a-f]{16}$/;
+const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
+function decodeCanonicalBase64(value, length) {
+    if (typeof value !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)
+        || value.length % 4 !== 0)
+        return null;
+    try {
+        const decoded = Buffer.from(value, 'base64');
+        return decoded.length === length && decoded.toString('base64') === value ? decoded : null;
+    }
+    catch {
+        return null;
+    }
+}
+function strictFiniteJsonClone(value) {
+    try {
+        return JSON.parse(canonicalizeFiniteJson(value));
+    }
+    catch {
+        return null;
+    }
+}
+function validOptionalHash(value) {
+    return value === '' || (typeof value === 'string' && HEX_64_RE.test(value));
+}
+function parseL1Receipt(value) {
+    if (!isRecord(value) || !exactKeys(value, CCS_L1_RECEIPT_KEYS)
+        || !validIdentifier(value.trace_id)
+        || value.receipt_version !== '1.1'
+        || !['allow', 'deny', 'escalate'].includes(String(value.verdict))
+        || !finiteNonNegative(value.timestamp)
+        || !validCcsToken(value.tool)
+        || !(value.tool_call_id === '' || validIdentifier(value.tool_call_id))
+        || !validText(value.params_hash) || value.params_hash.length === 0
+        || typeof value.args_digest !== 'string' || !HEX_64_RE.test(value.args_digest)
+        || !validText(value.rule_summary) || value.rule_summary.length === 0
+        || !validIdentifier(value.rule_version)
+        || !validOptionalHash(value.request_hash) || !validOptionalHash(value.response_hash)
+        || !validOptionalHash(value.runtime_context_hash) || !validOptionalHash(value.config_hash)
+        || !validIdentifier(value.verifier_source_class) || !validIdentifier(value.deployment_mode)
+        || !validIdentifier(value.issuer) || !validIdentifier(value.audience)
+        || !validIdentifier(value.nonce) || !safeInteger(value.sequence)
+        || !finiteNonNegative(value.issued_at) || !finiteNonNegative(value.expires_at)
+        || !finiteNonNegative(value.max_clock_skew) || !validIdentifier(value.action)
+        || value.signing_algorithm !== 'Ed25519'
+        || typeof value.public_key_fingerprint !== 'string'
+        || !HEX_FP16_RE.test(value.public_key_fingerprint)
+        || decodeCanonicalBase64(value.public_key, 32) === null
+        || decodeCanonicalBase64(value.signature, 64) === null
+        || !finiteNonNegative(value.verified_at) || !finiteNonNegative(value.latency_us))
+        return null;
+    return strictFiniteJsonClone(value);
+}
+function parseL1Config(value) {
+    if (!isRecord(value) || !exactKeys(value, CCS_L1_CONFIG_KEYS)
+        || value['@version'] !== CCS_L1_AEB_CONFIG_VERSION
+        || typeof value.evidence_role !== 'string' || !ROLE_RE.test(value.evidence_role)
+        || !isRecord(value.subject) || !exactKeys(value.subject, SUBJECT_KEYS)
+        || !validIdentifier(value.subject.id) || value.subject.kind !== 'system'
+        || !validIdentifier(value.issuer) || !validIdentifier(value.audience)
+        || typeof value.action_type !== 'string' || !ACTION_TYPE_RE.test(value.action_type)
+        || !sortedUniqueStrings(value.allowed_actions, validIdentifier)
+        || !sortedUniqueStrings(value.allowed_tools, validCcsToken)
+        || !validIdentifier(value.required_rule_version)
+        || !safeInteger(value.max_receipt_age_seconds) || Number(value.max_receipt_age_seconds) === 0
+        || !safeInteger(value.max_clock_skew_seconds)
+        || value.deployment_scope !== 'pinned-ed25519-issuer')
+        return null;
+    return strictJsonClone(value);
+}
+function parseL1Root(value, config) {
+    if (!isRecord(value) || !exactKeys(value, CCS_L1_ROOT_KEYS)
+        || value['@version'] !== CCS_L1_AEB_TRUST_ROOT_VERSION
+        || value.issuer !== config.issuer || !validIdentifier(value.key_id)
+        || value.algorithm !== 'Ed25519'
+        || typeof value.public_key_fingerprint_sha256_16 !== 'string'
+        || !HEX_FP16_RE.test(value.public_key_fingerprint_sha256_16))
+        return null;
+    const key = decodeCanonicalBase64(value.public_key_raw_base64, 32);
+    if (!key)
+        return null;
+    const fingerprint = crypto.createHash('sha256').update(key).digest('hex').slice(0, 16);
+    if (fingerprint !== value.public_key_fingerprint_sha256_16)
+        return null;
+    const root = strictJsonClone(value);
+    return root ? { root, key } : null;
+}
+function parseL1Pins(input) {
+    const config = parseL1Config(input?.config);
+    if (!config || !Array.isArray(input?.trust_roots) || input.trust_roots.length !== 1) {
+        throw new TypeError('one valid relying-party-pinned CCS Ed25519 root is required');
+    }
+    const parsedRoot = parseL1Root(input.trust_roots[0], config);
+    if (!parsedRoot)
+        throw new TypeError('valid issuer-scoped CCS Ed25519 root required');
+    return {
+        config,
+        root: parsedRoot.root,
+        rootKey: parsedRoot.key,
+        configDigest: digestAeb(config),
+        rootsDigest: digestAeb(input.trust_roots),
+    };
+}
+function l1SignatureValid(receipt) {
+    const embedded = decodeCanonicalBase64(receipt.public_key, 32);
+    const signature = decodeCanonicalBase64(receipt.signature, 64);
+    if (!embedded || !signature)
+        return false;
+    const fingerprint = crypto.createHash('sha256').update(embedded).digest('hex').slice(0, 16);
+    if (fingerprint !== receipt.public_key_fingerprint)
+        return false;
+    let publicKey;
+    try {
+        publicKey = crypto.createPublicKey({
+            key: Buffer.concat([ED25519_SPKI_PREFIX, embedded]),
+            format: 'der',
+            type: 'spki',
+        });
+    }
+    catch {
+        return false;
+    }
+    const payload = { ...receipt };
+    delete payload.signature;
+    try {
+        return crypto.verify(null, Buffer.from(canonicalizeFiniteJson(payload), 'utf8'), publicKey, signature);
+    }
+    catch {
+        return false;
+    }
+}
+function verifyL1Artifact(value, pins, now) {
+    const receipt = parseL1Receipt(value);
+    if (!receipt) {
+        return { ok: false, verified: false, acceptance: 'REJECTED', reason: 'ccs:l1_artifact_malformed' };
+    }
+    if (!l1SignatureValid(receipt)) {
+        return { ok: false, verified: false, acceptance: 'REJECTED', reason: 'ccs:l1_signature_invalid' };
+    }
+    const embedded = decodeCanonicalBase64(receipt.public_key, 32);
+    if (!embedded || receipt.issuer !== pins.config.issuer
+        || receipt.public_key_fingerprint !== pins.root.public_key_fingerprint_sha256_16
+        || embedded.length !== pins.rootKey.length
+        || !crypto.timingSafeEqual(embedded, pins.rootKey)) {
+        return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:l1_untrusted_signing_key' };
+    }
+    if (receipt.audience !== pins.config.audience) {
+        return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:l1_audience_mismatch' };
+    }
+    if (!pins.config.allowed_actions.includes(receipt.action)) {
+        return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:l1_action_not_pinned' };
+    }
+    if (!pins.config.allowed_tools.includes(receipt.tool)) {
+        return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:l1_tool_not_pinned' };
+    }
+    if (receipt.rule_version !== pins.config.required_rule_version) {
+        return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:l1_rule_version_mismatch' };
+    }
+    if (receipt.max_clock_skew > pins.config.max_clock_skew_seconds
+        || receipt.expires_at <= receipt.issued_at
+        || receipt.timestamp < receipt.issued_at
+        || receipt.verified_at < receipt.issued_at
+        || receipt.timestamp > receipt.expires_at + receipt.max_clock_skew
+        || receipt.verified_at > receipt.expires_at + receipt.max_clock_skew) {
+        return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:l1_time_bounds_invalid' };
+    }
+    const nowSeconds = Date.parse(now) / 1000;
+    if (!Number.isFinite(nowSeconds)) {
+        return { ok: false, verified: true, acceptance: 'INDETERMINATE', reason: 'ccs:l1_current_time_invalid' };
+    }
+    if (nowSeconds > receipt.expires_at + receipt.max_clock_skew) {
+        return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:l1_receipt_expired' };
+    }
+    if (receipt.issued_at > nowSeconds + receipt.max_clock_skew) {
+        return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:l1_receipt_not_yet_valid' };
+    }
+    if (nowSeconds - receipt.issued_at > pins.config.max_receipt_age_seconds) {
+        return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:l1_receipt_too_old' };
+    }
+    return {
+        ok: true,
+        value: {
+            receipt,
+            replayUnit: digestAeb({
+                source: CCS_L1_PYPI_SOURCE_LOCK,
+                issuer: receipt.issuer,
+                audience: receipt.audience,
+                public_key_fingerprint: receipt.public_key_fingerprint,
+                nonce: receipt.nonce,
+                sequence: receipt.sequence,
+                signature: receipt.signature,
+            }),
+        },
+    };
+}
+function canonicalL1Action(value, actionType) {
+    if (!isRecord(value) || !exactKeys(value, CCS_L1_ACTION_KEYS)
+        || value.action_type !== actionType || !isRecord(value.parameters)
+        || !exactKeys(value.parameters, CCS_L1_ACTION_PARAMETER_KEYS)
+        || !validIdentifier(value.parameters.action) || !validCcsToken(value.parameters.tool))
+        return null;
+    const argumentsValue = normalizeCcsInteropJson(value.parameters.arguments);
+    if (!isRecord(argumentsValue))
+        return null;
+    return strictJsonClone({
+        action_type: actionType,
+        parameters: {
+            action: value.parameters.action,
+            tool: value.parameters.tool,
+            arguments: argumentsValue,
+        },
+    });
+}
+function l1ArgsDigest(value) {
+    try {
+        return crypto.createHash('sha256')
+            .update(canonicalizeFiniteJson(value), 'utf8')
+            .digest('hex');
+    }
+    catch {
+        return null;
+    }
+}
+export function createCcsL1AebActionDefinition(actionType) {
+    if (!ACTION_TYPE_RE.test(actionType))
+        throw new TypeError('valid CAID action type required');
+    return {
+        '@version': CCS_L1_CAID_MAPPING_VERSION,
+        source: CCS_L1_PYPI_SOURCE_LOCK,
+        projection: 'ccs-l1-signed-action-and-args-digest-v1',
+        action_type: actionType,
+        suite: 'jcs-sha256',
+        definitions: [{
+                action_type: actionType,
+                required_fields: [
+                    { name: 'action_type', type: 'string' },
+                    { name: 'parameters', type: 'object' },
+                ],
+                optional_fields: [],
+            }],
+    };
+}
+function validL1MappingProfile(profile, actionType) {
+    const expectedResolverDigest = digestAeb({
+        implementation: CCS_L1_CAID_MAPPER_ID,
+        version: '1',
+    });
+    if (!isRecord(profile) || !exactKeys(profile, CCS_L1_PROFILE_KEYS)
+        || profile.version !== CCS_L1_CAID_MAPPING_VERSION
+        || profile.registry_entry_ref !== CCS_L1_MAPPING_REGISTRY_REF
+        || profile.mapper_id !== CCS_L1_CAID_MAPPER_ID
+        || !isRecord(profile.resolver) || !exactKeys(profile.resolver, CCS_L1_RESOLVER_KEYS)
+        || profile.resolver.id !== CCS_L1_CAID_MAPPER_ID
+        || profile.resolver.version !== '1'
+        || profile.resolver.implementation_digest !== expectedResolverDigest
+        || !isRecord(profile.semantic_equivalence)
+        || !exactKeys(profile.semantic_equivalence, CCS_L1_EQUIVALENCE_KEYS)
+        || profile.semantic_equivalence.assertion !== 'EQUIVALENT_UNDER_PROFILE'
+        || profile.semantic_equivalence.loss_policy !== 'NO_MATERIAL_FIELD_LOSS'
+        || !Array.isArray(profile.semantic_equivalence.omitted_material_fields)
+        || profile.semantic_equivalence.omitted_material_fields.length !== 0
+        || !Array.isArray(profile.semantic_equivalence.omitted_nonmaterial_fields)
+        || !sameDigest(profile.semantic_equivalence.omitted_nonmaterial_fields, CCS_L1_OMITTED_NONMATERIAL_FIELDS)
+        || !isRecord(profile.definition) || !Array.isArray(profile.definition.definitions)
+        || !sameDigest(profile.definition, createCcsL1AebActionDefinition(actionType))
+        || profile.profile_digest !== mappingProfileDigest(CCS_L1_MAPPING_PROFILE_ID, profile))
+        return null;
+    return profile.definition.definitions;
+}
+function fallbackL1(input, pins) {
+    const evidenceDigest = safeDigest(input.artifact);
+    return {
+        native_verification: 'FAILED',
+        acceptance: 'REJECTED',
+        evidence_digest: evidenceDigest,
+        status_digest: statusDigest(input.status),
+        evidence_role: pins.config.evidence_role,
+        subject: { ...pins.config.subject },
+        replay_unit: evidenceDigest,
+        reasons: [],
+    };
+}
+/** Build a source-locked CCS 1.1.14 Ed25519 L1 adapter from relying-party pins. */
+export function createCcsPyPiL1AebAdapter(constructorPins) {
+    const pins = parseL1Pins(constructorPins);
+    return Object.freeze({
+        id: CCS_L1_AEB_ADAPTER_ID,
+        version: CCS_L1_AEB_ADAPTER_VERSION,
+        verifyNative(input) {
+            const result = fallbackL1(input, pins);
+            try {
+                if (safeDigest(input.adapter_config) !== pins.configDigest
+                    || safeDigest(input.trust_roots) !== pins.rootsDigest) {
+                    result.reasons = ['ccs:l1_constructor_pin_mismatch'];
+                    return result;
+                }
+                const verified = verifyL1Artifact(input.artifact, pins, input.now);
+                if (!verified.ok) {
+                    result.native_verification = verified.verified ? 'VERIFIED' : 'FAILED';
+                    result.acceptance = verified.acceptance;
+                    result.reasons = [verified.reason];
+                    return result;
+                }
+                result.native_verification = 'VERIFIED';
+                result.replay_unit = verified.value.replayUnit;
+                const status = statusDisposition(input.status, input.now);
+                const decisionAcceptance = verified.value.receipt.verdict === 'allow'
+                    ? 'ACCEPTED'
+                    : verified.value.receipt.verdict === 'deny' ? 'REJECTED' : 'INDETERMINATE';
+                result.acceptance = combineAcceptance(decisionAcceptance, status.acceptance);
+                result.reasons = [
+                    ...(verified.value.receipt.verdict === 'allow'
+                        ? [] : [`ccs:${verified.value.receipt.verdict}`]),
+                    ...status.reasons,
+                ];
+                return result;
+            }
+            catch {
+                result.reasons = ['ccs:l1_unexpected_adapter_error'];
+                return result;
+            }
+        },
+        mapAction(input) {
+            try {
+                if (input.native.native_verification !== 'VERIFIED' || input.native.acceptance !== 'ACCEPTED') {
+                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['native_acceptance_required'] };
+                }
+                if (safeDigest(input.adapter_config) !== pins.configDigest
+                    || safeDigest(input.trust_roots) !== pins.rootsDigest) {
+                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['mapping_constructor_pin_mismatch'] };
+                }
+                const definitions = validL1MappingProfile(input.profile, pins.config.action_type);
+                if (!definitions) {
+                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['mapping_profile_invalid'] };
+                }
+                const verified = verifyL1Artifact(input.artifact, pins, input.now);
+                if (!verified.ok || verified.value.receipt.verdict !== 'allow') {
+                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['accepted_allow_statement_required'] };
+                }
+                const expected = canonicalL1Action(input.expected_action, pins.config.action_type);
+                if (!expected || !isRecord(expected.parameters) || !isRecord(expected.parameters.arguments)) {
+                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['missing_or_ambiguous_exact_action'] };
+                }
+                const receipt = verified.value.receipt;
+                const digest = l1ArgsDigest(expected.parameters.arguments);
+                const semanticMatch = expected.parameters.action === receipt.action
+                    && expected.parameters.tool === receipt.tool
+                    && digest === receipt.args_digest;
+                const actionDigest = digestAeb(expected);
+                if (!semanticMatch) {
+                    return { mapping: 'MISMATCH', caid: null, action_digest: actionDigest, reasons: ['exact_action_projection_mismatch'] };
+                }
+                let computed;
+                try {
+                    computed = computeCaid(expected, { suite: 'jcs-sha256', definitions });
+                }
+                catch {
+                    computed = null;
+                }
+                if (!isRecord(computed) || typeof computed.caid !== 'string'
+                    || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)
+                    || computed.digest !== actionDigest) {
+                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+                }
+                return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
+            }
+            catch {
+                return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['ccs:l1_unexpected_mapping_error'] };
             }
         },
     });
