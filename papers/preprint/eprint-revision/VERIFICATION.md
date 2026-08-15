@@ -20,7 +20,7 @@ The PDF was built twice with Tectonic using `SOURCE_DATE_EPOCH=1786752000`. The 
 |---|---|
 | `formal/tamarin/ep_receipt_core.spthy` | `99777fe702d58a731fcb35f3879459f867c8869e14113c810d3997172e4b2da1` |
 | `formal/tamarin/ep_quorum_core.spthy` | `c71a116bd0bc1326876e569b893f2b197f736d9fbf76f787938e87137355cc20` |
-| `formal/tamarin/ep_reliance_composed.spthy` | `7c6f623e6cec025a49054e42b2f2e01b38275d1fdc47ccdd587561315e8835e640f` |
+| `formal/tamarin/ep_reliance_composed.spthy` | `7c6f623e6cec025a49054e42b2b384a16cbea98f4d1d0e05c6fd4c4ff077e968` |
 | `formal/tamarin/ep_six_claim_composed.spthy` | `80c64c9b85eaa4781542d5cbf8f2f9e54ea62d3cbf2e8efa8723f1e41c847e3b` |
 | `formal/tamarin/run-receipt-core.sh` | `b710f30b1ae4e62a2eeef39c00ef9b7322901e43185860c51bd930b2a5c63a26` |
 | `formal/tamarin/run-quorum.sh` | `3dcaf37a0d1fa047bc655319ee35959b3f4ee6fc6afde358b7487eb5227691d7` |
