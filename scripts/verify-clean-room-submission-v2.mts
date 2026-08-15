@@ -11,9 +11,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE_RELATIVE_PATH = 'conformance/clean-room/v2/bundle.v2.json';
 const EXPECTED_MANIFEST_SHA256 =
-  '228d586bf9f23ee9d8686d8118aa0ffc33bd59b52ef7cf97c7edc6469e52d8ef';
+  'a39113533f3edc0a4e81139bff1b34ec3fcbbc0f02af0f1e4389f558b3f74cb3';
 const EXPECTED_MANIFEST_CLAIM_SHA256 =
-  '4d5864b44c497276b3653c455268110c30aa2c5ca014fb5aa4a527f0198da157';
+  'fe66bcc4e4f05af9e678bbf0d8b028fe2674e9c1298f0e54fe7d50df393d2f49';
 const EXPECTED_AUTHORITY_COMPANION_SHA256 =
   '121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959';
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
