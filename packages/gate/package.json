@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.23.14",
+  "version": "0.23.15",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -583,7 +583,7 @@
   "dependencies": {
     "@noble/curves": "2.2.0",
     "@emilia-protocol/require-receipt": "0.8.0",
-    "@emilia-protocol/verify": "3.20.1"
+    "@emilia-protocol/verify": "3.20.2"
   },
   "keywords": [
     "emilia",
