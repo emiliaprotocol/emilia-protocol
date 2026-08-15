@@ -17,7 +17,7 @@ export declare const RECEIPT_PROGRAM_SIGNATURE_ALGORITHM = "Ed25519";
  * options.now: number|(() => number), default Date.now
  */
 export declare function createReceiptProgramKernel({ gate, resolveCaid, operationIdField, certificatePrivateKey, certificateSigner, certificateContext, projectResult, effectTimeoutMs, allowEphemeralState, now, }?: any): Readonly<{
-    version: string;
+    version: "EP-RECEIPT-PROGRAM-v1";
     signer_public_key: any;
     certificate_context: any;
     /**
