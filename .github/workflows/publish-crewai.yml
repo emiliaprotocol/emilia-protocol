@@ -155,14 +155,15 @@ jobs:
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: release-artifacts/crewai/
+          skip-existing: true
 
       - name: Verify PyPI bytes match the attested artifacts
         run: |
           VERSION=$(python -c "import tomllib; print(tomllib.load(open('packages/crewai/pyproject.toml','rb'))['project']['version'])")
           mkdir -p registry-copy
-          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if python -m pip download --no-deps --only-binary=:all: --dest registry-copy "emilia-crewai==$VERSION" \
-              && python -m pip download --no-deps --no-binary=:all: --no-build-isolation --dest registry-copy "emilia-crewai==$VERSION"; then
+          for attempt in {1..36}; do
+            if python -m pip download --no-cache-dir --no-deps --only-binary=:all: --dest registry-copy "emilia-crewai==$VERSION" \
+              && python -m pip download --no-cache-dir --no-deps --no-binary=:all: --no-build-isolation --dest registry-copy "emilia-crewai==$VERSION"; then
               break
             fi
             sleep 5
