@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 2.4.3 (2026-08-15)
+
+### Fixed
+
+- Align the Go conformance reason code with the JavaScript and Python
+  evaluators when `predicted_effects` is present but is not an array. The
+  malformed value now reports `effect_commitment_missing` instead of
+  `effect_incomparable`; the fail-closed verdict is unchanged.
+
 ## 2.4.2 (2026-08-01)
 
 ### Security
