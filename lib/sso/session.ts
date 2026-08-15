@@ -23,7 +23,7 @@ import * as jose from 'jose';
 import { getSsoConfig } from '../env.js';
 
 export const SESSION_COOKIE = 'ep_session';
-const SESSION_TTL = '8h';
+const SESSION_TTL_SECONDS = 8 * 60 * 60;
 const ISSUER = 'ep:sso';
 const DEVELOPMENT_SESSION_SECRET = crypto.randomBytes(32).toString('base64url');
 
@@ -55,6 +55,10 @@ export interface SsoIdentity {
  */
 export async function mintSession(identity: SsoIdentity): Promise<string> {
   if (!identity?.tenant || !identity?.subject) throw new Error('mintSession requires tenant and subject');
+  // Capture one instant for both claims. Calling jose's relative-time helpers
+  // separately can cross a second boundary and silently mint a 28,801-second
+  // session instead of the declared eight-hour lifetime.
+  const issuedAt = Math.floor(Date.now() / 1000);
   return new jose.SignJWT({
     tenant: identity.tenant,
     email: identity.email,
@@ -68,8 +72,8 @@ export async function mintSession(identity: SsoIdentity): Promise<string> {
     // list (logout-all-devices / compromised-account containment) can target a
     // single token instead of rotating the global secret.
     .setJti(crypto.randomUUID())
-    .setIssuedAt()
-    .setExpirationTime(SESSION_TTL)
+    .setIssuedAt(issuedAt)
+    .setExpirationTime(issuedAt + SESSION_TTL_SECONDS)
     .sign(sessionKey());
 }
 
@@ -194,5 +198,5 @@ export const SESSION_COOKIE_OPTIONS = {
   secure: true,
   sameSite: 'lax',
   path: '/',
-  maxAge: 8 * 60 * 60,
+  maxAge: SESSION_TTL_SECONDS,
 } as const;
