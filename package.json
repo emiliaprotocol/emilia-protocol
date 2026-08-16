@@ -45,6 +45,8 @@
     "demo:ot-command-binding": "node examples/ot-command-binding-v1/demo.mjs",
     "test:self-modification-gate": "node --test examples/self-modification-gate-v1/*.test.mjs",
     "demo:self-modification-gate": "node examples/self-modification-gate-v1/run.mjs",
+    "test:supply-chain-authority": "node --test examples/supply-chain-authority-v1/*.test.mjs",
+    "demo:supply-chain-authority": "node examples/supply-chain-authority-v1/run.mjs",
     "sync:ot-command-binding-vectors": "node examples/ot-command-binding-v1/generate-vectors.mjs --write",
     "check:ot-command-binding-vectors": "node examples/ot-command-binding-v1/generate-vectors.mjs --check",
     "test:checkout-evidence": "node --test packages/checkout-evidence/test.mjs",

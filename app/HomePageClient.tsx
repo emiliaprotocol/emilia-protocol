@@ -192,6 +192,9 @@ export default function HomePage(): React.ReactElement {
                 remains outside it. Identity brings the caller to the door; Gate decides whether this
                 exact consequence may cross.
               </p>
+              <p style={{ ...styles.body, maxWidth: 700, marginTop: 18, color: color.gold, fontWeight: 700 }}>
+                Even if AI writes the binary, it cannot write its own authority.
+              </p>
             </motion.div>
             <motion.div className="ep-home-auth-map" {...reveal(0.08)}>
               <div className="ep-home-auth-column ep-home-auth-column-existing">
@@ -199,7 +202,10 @@ export default function HomePage(): React.ReactElement {
                 <div className="ep-home-auth-item"><span>01</span><strong>Plans the action</strong><em>Models propose intent</em></div>
                 <div className="ep-home-auth-item"><span>02</span><strong>Improves its strategy</strong><em>Loops, tools, and self-correction</em></div>
                 <div className="ep-home-auth-item"><span>03</span><strong>Operates continuously</strong><em>The system may change between decisions</em></div>
-                <div className="ep-home-auth-stop">Intelligence is not authority.</div>
+                <div className="ep-home-auth-stop">
+                  <strong>Intelligence is not authority.</strong>{' '}
+                  The system may change how it decides. It cannot quietly expand what it is authorized to do.
+                </div>
               </div>
               <div className="ep-home-auth-handoff" aria-hidden="true">
                 <span>Gate boundary</span>
