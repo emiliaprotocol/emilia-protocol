@@ -75,6 +75,7 @@ const adapterConfig: OasntAdapterConfig = Object.freeze({
   clock_skew_seconds: 5,
   max_token_lifetime_seconds: 120,
   max_status_age_seconds: 120,
+  required_assurance_level: null,
 });
 
 const trustRoot: OasntTrustRoot = Object.freeze({

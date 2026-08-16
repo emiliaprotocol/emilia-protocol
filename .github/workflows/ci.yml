@@ -279,7 +279,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Next.js production build
-        run: npx next build
+        run: npm run build
 
   # ── Job 2c: Security-core type gate (tsc --checkJs, zero errors) ─
   # The security core (packages/verify, lib/handshake, packages/gate) is kept
@@ -471,7 +471,7 @@ jobs:
           python-version: '3.12'
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.22'
+          go-version: '1.26.6'
       - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - run: npm ci --ignore-scripts
       - name: Prove generated Node 20 runtimes match their TypeScript sources
@@ -820,7 +820,7 @@ jobs:
           python-version: '3.11'
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.22'
+          go-version: '1.26.6'
       - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - name: Cross-language conformance (EP-RECEIPT-v1, JS + Python + Go)
         env:

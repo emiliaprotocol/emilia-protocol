@@ -1,10 +1,17 @@
 import { type AebAdapter, type AebDigest } from './aeb-adapter-contract.js';
 type Obj = Record<string, unknown>;
-export declare const OASNT_DRAFT_REVISION = "draft-thallapelly-oasnt-01";
-export declare const OASNT_DRAFT_TXT_SHA256 = "sha256:7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19";
+export declare const OASNT_DRAFT_REVISION = "draft-thallapelly-oasnt-02";
+export declare const OASNT_DRAFT_TXT_SHA256 = "sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603";
 export declare const OASNT_AEB_ADAPTER_ID = "native:oasnt";
-export declare const OASNT_AEB_ADAPTER_VERSION = "1";
-export declare const OASNT_AEB_CONFIG_VERSION = "AEB-OASNT-CONFIG-v1";
+export declare const OASNT_AEB_ADAPTER_VERSION = "2";
+export declare const OASNT_AEB_CONFIG_VERSION = "AEB-OASNT-CONFIG-v2";
+/**
+ * The "OASNT Assurance Levels" registry, initial contents (draft sec 10.2).
+ * Compared by rank; larger is stronger. Values are case-sensitive and match
+ * [a-z][a-z0-9-]*. An asl value outside this table is syntactically legal but
+ * carries NO assurance statement (sec 5.4.2): never inferred, never floored.
+ */
+export declare const OASNT_ASSURANCE_LEVELS: Readonly<Record<string, number>>;
 export declare const OASNT_TRUST_ROOT_VERSION = "AEB-OASNT-ENROLLED-P256-ROOT-v1";
 export declare const OASNT_CAID_MAPPING_VERSION = "AEB-OASNT-CAID-MAPPING-v1";
 export declare const OASNT_CAID_MAPPER_ID = "mapper:oasnt-exact-action-v1";
@@ -22,6 +29,13 @@ export interface OasntAdapterConfig {
     clock_skew_seconds: number;
     max_token_lifetime_seconds: number;
     max_status_age_seconds: number;
+    /**
+     * Relying-party assurance floor (draft sec 5.4: "A threshold is not a
+     * property of the token"). A registered level name, or null for an
+     * explicit, deliberate "no assurance requirement" (sec 5.4.2: a relying
+     * party with no requirement evaluates neither absent nor unrecognized asl).
+     */
+    required_assurance_level: string | null;
 }
 export interface OasntTrustRoot {
     '@version': typeof OASNT_TRUST_ROOT_VERSION;

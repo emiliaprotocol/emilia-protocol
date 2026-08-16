@@ -182,6 +182,7 @@ jobs:
       - name: Validate Expo dependency compatibility
         working-directory: apps/secure-app
         run: |
+          npm run check:expo-quarantine
           npx expo install --check
           npx expo-doctor
       - name: Export deterministic iOS and Android bundles

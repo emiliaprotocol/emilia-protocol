@@ -14,16 +14,23 @@
     "incremental": true,
     "module": "esnext",
     "esModuleInterop": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
-    "baseUrl": ".",
+    "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./*"],
-      "viem": ["./stubs/viem.d.ts"],
-      "viem/accounts": ["./stubs/viem-accounts.d.ts"],
-      "viem/chains": ["./stubs/viem-chains.d.ts"]
+      "@/*": [
+        "./*"
+      ],
+      "viem": [
+        "./stubs/viem.d.ts"
+      ],
+      "viem/accounts": [
+        "./stubs/viem-accounts.d.ts"
+      ],
+      "viem/chains": [
+        "./stubs/viem-chains.d.ts"
+      ]
     },
     "plugins": [
       {
@@ -35,7 +42,8 @@
     "next-env.d.ts",
     ".next/types/**/*.ts",
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

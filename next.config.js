@@ -1,7 +1,6 @@
 const { withSentryConfig } = require('@sentry/nextjs');
 const path = require('node:path');
 
-/** @type {import('next').NextConfig} */
 // CSP is set dynamically per-request in middleware.js using a nonce,
 // removing 'unsafe-inline' from script-src (resolves HIGH-09 pentest finding).
 // These static headers cover everything CSP does not.
@@ -14,6 +13,7 @@ const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
 ];
 
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
   // Trust Desk questionnaire parsers (xlsx/pdf-parse/mammoth) are heavy,

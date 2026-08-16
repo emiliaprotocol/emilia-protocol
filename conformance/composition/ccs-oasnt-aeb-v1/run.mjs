@@ -250,6 +250,10 @@ function buildComposition() {
         clock_skew_seconds: 5,
         max_token_lifetime_seconds: 120,
         max_status_age_seconds: 120,
+        // Deliberate null floor: the -02 published V5 token carries no asl claim,
+        // and this composition profile exercises binding and consumption, not
+        // relying-party assurance policy.
+        required_assurance_level: null,
     };
     const publishedOasntConfig = {
         ...oasntConfig,
