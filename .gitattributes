@@ -333,6 +333,8 @@ conformance/composition/gap6-execution-evidence-v0.1/pilot-kit.test.mjs linguist
 conformance/composition/gap6-execution-evidence-v0.1/run.mjs linguist-generated=true
 conformance/composition/gap6-execution-evidence-v0.1/run.test.mjs linguist-generated=true
 conformance/composition/gap6-execution-evidence-v0.1/verify-pilot-kit.mjs linguist-generated=true
+conformance/composition/wag-aeb-v1/run.mjs linguist-generated=true
+conformance/composition/wag-aeb-v1/run.test.mjs linguist-generated=true
 conformance/conformance.test.js linguist-generated=true
 conformance/ep-conformance-test.js linguist-generated=true
 conformance/federation.mjs linguist-generated=true
@@ -594,6 +596,7 @@ packages/verify/aeb-native-adapters.test.js linguist-generated=true
 packages/verify/aeb-oasnt-adapter.test.js linguist-generated=true
 packages/verify/aeb-oauth-transaction-challenge-adapter.test.js linguist-generated=true
 packages/verify/aeb-psea-adapter.test.js linguist-generated=true
+packages/verify/aeb-wag-adapter.test.js linguist-generated=true
 packages/verify/aeb-wimse-oauth-adapter.test.js linguist-generated=true
 packages/verify/agent-binding.test.js linguist-generated=true
 packages/verify/agent-edge-continuity.test.js linguist-generated=true

@@ -1,0 +1,22 @@
+{
+  "@version": "EP-WAG-SOURCE-LOCK-v1",
+  "draft": "draft-carleton-workload-authz-grant-00",
+  "published_txt": {
+    "url": "https://www.ietf.org/archive/id/draft-carleton-workload-authz-grant-00.txt",
+    "sha256": "4b92283fefdce2093e11f70bbfce5aa00af9191f7b278d498f30f2b34a78f798"
+  },
+  "source": {
+    "repository": "https://github.com/pcarleton/draft-carleton-workload-authz-grant",
+    "commit": "13f516a5e458b89ca30f7ea47a802091dd9d4154",
+    "path": "draft-carleton-workload-authz-grant.md",
+    "sha256": "195fa249380052324d78c8dbfbdeb4ff7b7c5b3bd5d9a9f4d9abf110e944e4e2"
+  },
+  "reviewed_scope": [
+    "agent identity model",
+    "RFC 7523 authorization grant",
+    "per-tenancy issuer trust establishment",
+    "properties",
+    "retirement and lifecycle",
+    "security considerations"
+  ]
+}
