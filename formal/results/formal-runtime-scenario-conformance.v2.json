@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "eb1c53ce03f030c437753b0aa4276021fc7bf6b571b454447638c64b7c5024a7"
+      "sha256": "7984db384f6a95d30bd6316c0c3d17879c3fa2c617b2b348daefa646807f3802"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -646,6 +646,10 @@
       "sha256": "f20f9e3c6a8c45834a5e10aa0308de91ccb2122125aab4b93f8db4376c8c9c4a"
     },
     {
+      "path": "packages/gate/dist/field-origin-evidence.js",
+      "sha256": "97ca9833cefa6ebbb2e7323e70faec91fa625a71cfe1f6576173695488b50e3f"
+    },
+    {
       "path": "packages/gate/dist/formal-runtime-map.js",
       "sha256": "0eaa10dcf81c1f645c021392f73b587d6b8fbf61d580bc724d2e1d256d1e48c4"
     },
@@ -655,7 +659,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "51bedd9cf2615dd6649d7451f3d933c22ecddaf6d160ca9c1e70421b15eb9a71"
+      "sha256": "06bb54f9be4addf43ee0b0d47cecb48a1f1790f1d67e750a878a1d7f10a8a401"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -847,7 +851,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "d30ca49cf7d78388c7d34b27ce3c41b749e33c9a6e0b2ab57a4b8e421b9d6f46"
+      "sha256": "189c3c4e124a051c481d26bb160245c52fe0b215c7ef742c4ce5d5a2c5bfc82d"
     },
     {
       "path": "packages/gate/src/network-witness.ts",

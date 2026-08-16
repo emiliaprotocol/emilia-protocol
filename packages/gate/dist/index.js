@@ -41,6 +41,8 @@ import { classifyRetention, buildRetentionExport } from './retention.js';
 import { ACTION_CONTROL_MANIFEST_VERSION, createDefaultActionControlManifest, findActionControl, resolveActionControl, validateActionControlManifest, } from './action-control-manifest.js';
 import { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS, } from './runtime-monitor.js';
 import { evaluateProviderEntryGuard, providerEntryContext, } from './provider-entry.js';
+import { fieldOriginProfileDigest, pinFieldOriginProfile, pinFieldOriginTrustedKeys, verifyFieldOriginEvidence, } from './field-origin-evidence.js';
+import { verifyBoundedExecutionProgram, } from './bounded-execution-program.js';
 import { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
 import { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, CAPABILITY_REVOCATION_MODES, CAPABILITY_ALLOWANCE_STATUS_TABLE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, } from './capability-receipt.js';
 import { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';
@@ -102,6 +104,7 @@ export { PROPOSAL_TO_EFFECT_POSTGRES_DDL, PROPOSAL_TO_EFFECT_POSTGRES_SQL, propo
 export { AEB_PG_CONSUMPTION_STORE_VERSION, AEB_CONSUMPTION_OPERATION_TABLE, AEB_CONSUMPTION_REPLAY_TABLE, AEB_CONSUMPTION_DDL, AEB_CONSUMPTION_SQL, createPostgresAebDurableConsumptionStore, } from './aeb-consumption-store.js';
 export * from './consequence-actuator.js';
 export * from './discovery-permit-resolver.js';
+export * from './field-origin-evidence.js';
 export * from './recovery-admission.js';
 export * from './recovery-admission-postgres.js';
 export * from './recovery-admission-remedy.js';
@@ -652,7 +655,7 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
     }
     return base;
 }
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], capabilityCaidResolver = null, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }), providerEntryGuard = null } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], capabilityCaidResolver = null, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, requiredFieldOriginProfile = null, fieldOriginTrustedKeys = {}, fieldOriginExecutionProgram = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }), providerEntryGuard = null } = {}) {
     // Production key custody: a registry (rotation + revocation) supersedes a flat
     // trustedKeys list. A flat list is coerced to an always-valid registry, so
     // existing callers are unchanged.
@@ -712,6 +715,64 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     }
     if (providerEntryGuard !== null && typeof providerEntryGuard !== 'function') {
         throw new Error('EMILIA Gate providerEntryGuard must be a function when configured');
+    }
+    let pinnedFieldOriginProfile = null;
+    let pinnedFieldOriginTrustedKeys = {};
+    let pinnedFieldOriginProgramBinding = null;
+    if (requiredFieldOriginProfile) {
+        try {
+            fieldOriginProfileDigest(requiredFieldOriginProfile);
+        }
+        catch (error) {
+            throw new Error(`EMILIA Gate: invalid requiredFieldOriginProfile: ${String(error?.message ?? error)}`);
+        }
+        if (!fieldOriginTrustedKeys || typeof fieldOriginTrustedKeys !== 'object'
+            || Array.isArray(fieldOriginTrustedKeys)
+            || Object.keys(fieldOriginTrustedKeys).length === 0) {
+            throw new Error('EMILIA Gate: requiredFieldOriginProfile requires pinned fieldOriginTrustedKeys');
+        }
+        try {
+            pinnedFieldOriginProfile = pinFieldOriginProfile(requiredFieldOriginProfile);
+            pinnedFieldOriginTrustedKeys = pinFieldOriginTrustedKeys(fieldOriginTrustedKeys);
+        }
+        catch (error) {
+            throw new Error(`EMILIA Gate: invalid fieldOriginTrustedKeys: ${String(error?.message ?? error)}`);
+        }
+    }
+    if (fieldOriginExecutionProgram) {
+        if (!pinnedFieldOriginProfile) {
+            throw new Error('EMILIA Gate: fieldOriginExecutionProgram requires requiredFieldOriginProfile');
+        }
+        if (!fieldOriginExecutionProgram || typeof fieldOriginExecutionProgram !== 'object'
+            || Array.isArray(fieldOriginExecutionProgram)
+            || typeof fieldOriginExecutionProgram.node_id !== 'string'
+            || !fieldOriginExecutionProgram.node_id) {
+            throw new Error('EMILIA Gate: fieldOriginExecutionProgram is invalid');
+        }
+        const verifiedProgram = verifyBoundedExecutionProgram(fieldOriginExecutionProgram.artifact, fieldOriginExecutionProgram.verification_options);
+        if (!verifiedProgram.accepted || !verifiedProgram.program || !verifiedProgram.program_digest) {
+            throw new Error(`EMILIA Gate: fieldOriginExecutionProgram refused: ${verifiedProgram.reason}`);
+        }
+        const node = verifiedProgram.program.nodes.find((candidate) => candidate.node_id === fieldOriginExecutionProgram.node_id);
+        const profileDigest = fieldOriginProfileDigest(pinnedFieldOriginProfile);
+        if (!node || node.action.mode !== 'profile'
+            || node.action.profile_id !== pinnedFieldOriginProfile.profile_id
+            || node.action.profile_digest !== profileDigest) {
+            throw new Error('EMILIA Gate: fieldOriginExecutionProgram node does not pin the required field-origin profile');
+        }
+        pinnedFieldOriginProgramBinding = Object.freeze({
+            program_id: verifiedProgram.program.program_id,
+            program_version: verifiedProgram.program.version,
+            program_digest: verifiedProgram.program_digest,
+            authorizer_id: verifiedProgram.authorizer_id,
+            authorization_digest: verifiedProgram.program.authorization_digest,
+            tenant_id: verifiedProgram.program.tenant_id,
+            audience: verifiedProgram.program.audience,
+            node_id: node.node_id,
+            profile_id: node.action.profile_id,
+            profile_digest: node.action.profile_digest,
+            claim_boundary: verifiedProgram.claim_boundary,
+        });
     }
     if (providerEntryGuard !== null && typeof consumption?.release !== 'function') {
         throw new Error('EMILIA Gate providerEntryGuard requires a consumption store with release() for pre-effect refusals');
@@ -779,7 +840,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             actionHash: observedHash ? `sha256:${observedHash}` : undefined,
         };
     }
-    async function check({ selector = {}, receipt = null, observedAction = null, consumptionMode = 'consume', admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}) {
+    async function check({ selector = {}, receipt = null, observedAction = null, fieldOriginEvidence = null, consumptionMode = 'consume', admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}) {
         const requirement = /** @type {any} */ (resolveRequirement(selector));
         const action = requirement?.action_type || selector.action_type || selector.action || null;
         const guarded = Boolean(requirement && requirement.receipt_required !== false);
@@ -1031,6 +1092,35 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         if (!executionBinding.ok) {
             return decide(false, RECEIPT_REQUIRED_STATUS, 'execution_binding_failed', { execution_binding: executionBinding, have_tier: have, assurance_tier_source: 'cryptographic_verification' });
         }
+        let verifiedFieldOrigin = null;
+        if (pinnedFieldOriginProfile) {
+            if (!fieldOriginEvidence) {
+                return decide(false, RECEIPT_REQUIRED_STATUS, 'field_origin_evidence_required', {
+                    field_origin: null,
+                    ...(pinnedFieldOriginProgramBinding
+                        ? { field_origin_program_binding: pinnedFieldOriginProgramBinding } : {}),
+                    have_tier: have,
+                    assurance_tier_source: 'cryptographic_verification',
+                });
+            }
+            const clock = typeof now === 'function' ? now() : now;
+            verifiedFieldOrigin = verifyFieldOriginEvidence(fieldOriginEvidence, {
+                trusted_keys: pinnedFieldOriginTrustedKeys,
+                pinned_profile: pinnedFieldOriginProfile,
+                expected_relying_party_id: pinnedFieldOriginProfile.relying_party_id,
+                observed_action: observed,
+                now: new Date(clock).toISOString(),
+            });
+            if (!verifiedFieldOrigin.accepted) {
+                return decide(false, RECEIPT_REQUIRED_STATUS, verifiedFieldOrigin.reason, {
+                    field_origin: verifiedFieldOrigin,
+                    ...(pinnedFieldOriginProgramBinding
+                        ? { field_origin_program_binding: pinnedFieldOriginProgramBinding } : {}),
+                    have_tier: have,
+                    assurance_tier_source: 'cryptographic_verification',
+                });
+            }
+        }
         // OPT-IN admissibility pinning. When the caller pins a required admissibility
         // profile {id, profile_hash} (gate-level requiredAdmissibilityProfile, a
         // per-call admissibilityProfile, or selector.admissibilityProfile), the gate
@@ -1124,6 +1214,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             have_tier: have,
             assurance_tier_source: 'cryptographic_verification',
             execution_binding: executionBinding,
+            ...(verifiedFieldOrigin ? { field_origin: verifiedFieldOrigin } : {}),
+            ...(pinnedFieldOriginProgramBinding
+                ? { field_origin_program_binding: pinnedFieldOriginProgramBinding } : {}),
             consumption_mode: consumptionMode,
             // The exact store key this decision reserved/consumed, so commit/release
             // later transition the SAME tenant-scoped key (never a re-derivation
@@ -1164,6 +1257,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         const observedAction = typeof opts.observedAction === 'function'
             ? await opts.observedAction(req)
             : (opts.observedAction || req.emiliaObservedAction || null);
+        const fieldOriginEvidence = typeof opts.fieldOriginEvidence === 'function'
+            ? await opts.fieldOriginEvidence(req)
+            : (opts.fieldOriginEvidence || req.emiliaFieldOriginEvidence || null);
         const admissibilityProfile = typeof opts.admissibilityProfile === 'function'
             ? await opts.admissibilityProfile(req)
             : (opts.admissibilityProfile ?? null);
@@ -1173,7 +1269,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         const capability = typeof opts.capability === 'function'
             ? await opts.capability(req)
             : (opts.capability ?? req.emiliaCapability ?? req.body?.emilia_capability ?? null);
-        return { selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, capability };
+        return { selector, receipt, observedAction, fieldOriginEvidence, admissibilityProfile, reliancePacket: presentedPacket, capability };
     }
     function sendRefusal(res, authorization) {
         if (typeof res?.setHeader === 'function' && authorization.header) {
@@ -1318,7 +1414,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
      * successful effect commits the reservation, while an exception commits it
      * as indeterminate so the budget can never silently reopen.
      */
-    async function runCapability({ selector = {}, receipt = null, observedAction = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}, fn, opts = {}) {
+    async function runCapability({ selector = {}, receipt = null, observedAction = null, fieldOriginEvidence = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}, fn, opts = {}) {
         if (!capabilityStore)
             return capabilityRefusal({ capability, reason: 'capability_store_required', status: 500 });
         if (!capability || typeof capability !== 'object' || Array.isArray(capability)
@@ -1341,6 +1437,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         const capabilityGate = {
             check: (input = {}) => check({
                 ...input,
+                fieldOriginEvidence,
                 capability: {
                     capabilityReceipt: context.capabilityReceipt,
                     action: context.action,
@@ -1498,13 +1595,13 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
      * never released automatically. Callers that need retries must make the
      * downstream effect idempotent under the receipt id and reconcile its result.
      */
-    async function run({ selector = {}, receipt = null, observedAction = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}, fn, opts = {}) {
+    async function run({ selector = {}, receipt = null, observedAction = null, fieldOriginEvidence = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}, fn, opts = {}) {
         if (typeof fn !== 'function')
             throw new Error('EMILIA Gate run(): fn is required');
         if (capability) {
-            return runCapability({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }, fn, opts);
+            return runCapability({ selector, receipt, observedAction, fieldOriginEvidence, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }, fn, opts);
         }
-        const authorization = await check({ selector, receipt, observedAction, consumptionMode: 'reserve', admissibilityProfile, reliancePacket: presentedPacket, admissibility });
+        const authorization = await check({ selector, receipt, observedAction, fieldOriginEvidence, consumptionMode: 'reserve', admissibilityProfile, reliancePacket: presentedPacket, admissibility });
         if (!authorization.allow) {
             return { ok: false, status: authorization.status, body: authorization.challenge, authorization };
         }
@@ -1677,6 +1774,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             const observedAction = typeof opts.observedAction === 'function'
                 ? await opts.observedAction(...args)
                 : (opts.observedAction || selector.observedAction || null);
+            const fieldOriginEvidence = typeof opts.fieldOriginEvidence === 'function'
+                ? await opts.fieldOriginEvidence(...args)
+                : (opts.fieldOriginEvidence ?? null);
             const admissibilityProfile = typeof opts.admissibilityProfile === 'function'
                 ? await opts.admissibilityProfile(...args)
                 : (opts.admissibilityProfile ?? null);
@@ -1686,7 +1786,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             const capability = typeof opts.capability === 'function'
                 ? await opts.capability(...args)
                 : (opts.capability ?? null);
-            const out = await run({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, capability }, () => fn(...args), { recordExecution: opts.recordExecution });
+            const out = await run({ selector, receipt, observedAction, fieldOriginEvidence, admissibilityProfile, reliancePacket: presentedPacket, capability }, () => fn(...args), { recordExecution: opts.recordExecution });
             if (!out.ok) {
                 const refusal = out.refusal || out.authorization;
                 const e = new Error(`EMILIA Gate refused (${refusal.reason})`);
