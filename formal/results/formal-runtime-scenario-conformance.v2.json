@@ -1046,10 +1046,6 @@
       "sha256": "6127e4ebec1e1e6c91492db52262eebff764a9319046358d396991d1522c8c06"
     },
     {
-      "path": "packages/verify/dist/aeb-wag-adapter.js",
-      "sha256": "2b55ea395ddaf5f57bfa58c6aef3737d7b71932cd899599a6b98d7b2dd830781"
-    },
-    {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
       "sha256": "66a033cfdedbaeb880456236a69dcc6805d9e8ee20913d16a661079f2caf50c0"
     },
