@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "7984db384f6a95d30bd6316c0c3d17879c3fa2c617b2b348daefa646807f3802"
+      "sha256": "c18a47b3dbb2d71f4775b05cd7b5057a73fd4ef5219123a75a61aa56dc22bf9f"
     },
     {
       "path": "packages/gate/aec-execution.js",
