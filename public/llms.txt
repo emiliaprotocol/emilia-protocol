@@ -8,7 +8,7 @@ Prevention boundary: Gate prevents only on action paths under complete mediation
 
 ## Engineering Evidence
 
-EMILIA is implemented security infrastructure, not architecture-only: 8,886 automated tests across 537 files; 35 executable security claims over 259 hashed evidence files; 20 verified obligations across 2 composed Tamarin models, with 8 deliberately weakened variants producing concrete attack traces; and 78 content-addressed selected model/runtime scenarios across 14 bounded models and 21 claims, including 51 paired formal-counterexample/runtime-refusal controls.
+EMILIA is implemented security infrastructure, not architecture-only: 8,892 automated tests across 539 files; 35 executable security claims over 259 hashed evidence files; 20 verified obligations across 2 composed Tamarin models, with 8 deliberately weakened variants producing concrete attack traces; and 78 content-addressed selected model/runtime scenarios across 14 bounded models and 21 claims, including 51 paired formal-counterexample/runtime-refusal controls.
 
 Interoperability evidence: 21 conformance suites and 331 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
 
