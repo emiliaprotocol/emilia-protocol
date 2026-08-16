@@ -102,6 +102,20 @@ const OPENAPI_EXEMPT_ROUTES = [
   '/api/sso/oidc/callback',
   '/api/sso/connections',
   '/api/sso/session',
+  // Consent-first EMILIA Works private-beta product surfaces. These are not
+  // EMILIA protocol API operations and remain feature-flagged.
+  '/api/works/authority-records',
+  '/api/works/authority-records/drafts',
+  '/api/works/authority-records/claim',
+  '/api/works/authority-records/requests/verify',
+  '/api/works/authority-records/[recordId]',
+  '/api/works/authority-records/[recordId]/approve',
+  '/api/works/authority-records/[recordId]/withdraw',
+  '/api/works/authority-records/[recordId]/badge',
+  '/api/works/authority-records/[recordId]/requests',
+  '/api/works/authority-records/[recordId]/billing/checkout',
+  '/api/works/authority-records/[recordId]/billing/reconcile',
+  '/api/works/billing/webhook',
 ];
 
 function countRouteFiles() {

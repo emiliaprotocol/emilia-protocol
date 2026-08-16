@@ -78,3 +78,52 @@ Use this if you want the checkout to launch from your own button/flow.
 
 > The existing AI Trust Desk uses the same pattern with
 > `NEXT_PUBLIC_STRIPE_PACKET / RETAINER / FULL / EMERGENCY` payment links.
+
+---
+
+## EMILIA Works Authority Record monitoring
+
+This is a separate, active private-beta flow. It sells recurring watched-ref
+monitoring, freshness history, and presentation depth for an owner-claimed
+Authority Record. It never sells a favorable conclusion, certification, trust
+score, or safety label.
+
+Create a recurring USD Price for **$29/month** in the EMILIA Stripe account,
+then configure these server-only values:
+
+```bash
+vercel env add STRIPE_PRICE_AUTHORITY_RECORD_MONITOR production  # price_...
+vercel env add STRIPE_WORKS_WEBHOOK_SECRET production             # whsec_...
+```
+
+`STRIPE_SECRET_KEY` is shared with the existing server-side Stripe client. The
+canonical `NEXT_PUBLIC_APP_URL` must be HTTPS in the deployed environment.
+
+Configure the dedicated webhook endpoint:
+
+`POST https://www.emiliaprotocol.ai/api/works/billing/webhook`
+
+Subscribe it only to:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+
+The endpoint verifies the exact raw body with `STRIPE_WORKS_WEBHOOK_SECRET`,
+deduplicates Stripe event IDs in PostgreSQL, and retrieves current subscription
+state before applying non-deletion events. An owner can invoke the separate
+reconciliation route when a webhook outcome is uncertain. Reconciliation does
+not manufacture a Stripe event.
+
+Required non-Stripe Works settings:
+
+```bash
+vercel env add WORKS_DEMAND_HMAC_KEY production  # at least 32 random bytes
+vercel env add WORKS_FROM_EMAIL production       # verified Resend sender
+vercel env add WORKS_V0 production               # 1 only when private beta gates pass
+```
+
+Before enabling `WORKS_V0`, verify one real test-mode payment end to end: owner
+checkout, signed webhook, entitlement projection, cancellation, and owner-led
+reconciliation. A configured Price ID is not evidence that payment works.

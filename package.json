@@ -41,6 +41,7 @@
     "test:gateway-authz": "node --test packages/gateway-authz/*.test.mjs",
     "test:transport-adapters": "node --test packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs",
     "test:github-authority-map": "node --test integrations/github-authority-map-action/tests/*.node-test.mjs",
+    "works:prepare-private-scan": "node scripts/prepare-works-authority-scan.mjs",
     "test:github-merge-gate": "node --test integrations/github-merge-gate-action/tests/*.node-test.mjs",
     "test:ot-command-binding": "node --test examples/ot-command-binding-v1/*.test.mjs",
     "demo:ot-command-binding": "node examples/ot-command-binding-v1/demo.mjs",

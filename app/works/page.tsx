@@ -12,6 +12,8 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 import { isWorksV0Enabled } from '@/lib/works/env';
 import { listWorksRecords } from '@/lib/works/store';
+import { createSupabaseAuthorityRecordStore } from '@/lib/works/authority-record-store';
+import { listPublicAuthorityRecords } from '@/lib/works/authority-record-service';
 import type {
   ActivityRecord,
   BuilderRecord,
@@ -63,11 +65,12 @@ export default async function WorksDirectory({ searchParams }: {
     activity: one(params.activity),
   };
 
-  const [listingsRes, buildersRes, cardsRes, activityRes] = await Promise.all([
+  const [listingsRes, buildersRes, cardsRes, activityRes, authorityRecords] = await Promise.all([
     listWorksRecords('listings'),
     listWorksRecords('builders'),
     listWorksRecords('cards'),
     listWorksRecords('activity'),
+    listPublicAuthorityRecords({ store: createSupabaseAuthorityRecordStore() }),
   ]);
   const listings = (listingsRes.ok ? listingsRes.records : []) as ListingRecord[];
   const builders = (buildersRes.ok ? buildersRes.records : []) as BuilderRecord[];
@@ -92,6 +95,12 @@ export default async function WorksDirectory({ searchParams }: {
     return true;
   });
   const filtersActive = Object.values(filters).some(Boolean);
+  const visibleAuthorityRecords = authorityRecords.filter((record) => {
+    if (!filters.q) return true;
+    const subject = record.projection.subject;
+    return `${subject.name} ${subject.builder_name} ${subject.repository_url}`
+      .toLowerCase().includes(filters.q.toLowerCase());
+  });
 
   return (
     <div style={styles.page}>
@@ -112,7 +121,41 @@ export default async function WorksDirectory({ searchParams }: {
             <Link href="/works/join" style={cta.primary} className="ep-cta">List your work</Link>
             <Link href="/works/opportunities/new" style={cta.secondary} className="ep-cta-secondary">Post an opportunity</Link>
             <a href="#works-listings" style={cta.ghost} className="ep-cta-ghost">Browse listings</a>
+            <a href="#authority-records" style={cta.ghost} className="ep-cta-ghost">Browse Authority Records</a>
             <Link href="/works/opportunities" style={cta.ghost} className="ep-cta-ghost">Browse and respond</Link>
+          </div>
+        </div>
+      </section>
+
+      <section id="authority-records" style={{ borderBottom: `1px solid ${color.border}` }}>
+        <div style={{ ...styles.sectionWide, paddingTop: 48, paddingBottom: 56 }}>
+          <div style={styles.eyebrow}>Owner-claimed · version-pinned</div>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Authority Records</h2>
+          <p style={{ ...styles.body, maxWidth: 760 }}>
+            Public records appear only after the named repository proves control and its owner
+            approves the exact current bytes. Payment can buy monitoring and freshness, never a favorable result.
+          </p>
+          <div style={{ display: 'grid', gap: 14 }}>
+            {visibleAuthorityRecords.map((record) => (
+              <Link key={record.record_id} href={`/works/records/${record.record_id}`} style={{
+                display: 'grid', gap: 8, padding: 20, color: color.t1,
+                textDecoration: 'none', border: `1px solid ${color.border}`,
+                borderRadius: radius.base, background: color.card,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <strong>{record.projection.subject.name}</strong>
+                  <span style={{ fontFamily: font.mono, fontSize: 11, color: color.t3 }}>
+                    mapped {record.projection.provenance.observed_at.slice(0, 10)} · commit {record.projection.provenance.resolved_revision.slice(0, 12)}
+                  </span>
+                </div>
+                <span style={{ color: color.t3, fontSize: 13 }}>{record.projection.subject.builder_name}</span>
+              </Link>
+            ))}
+            {visibleAuthorityRecords.length === 0 ? (
+              <div style={{ ...styles.card, color: color.t3, fontSize: 14 }}>
+                No owner-approved Authority Records are public yet. Private scans never appear here.
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
