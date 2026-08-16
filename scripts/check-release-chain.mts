@@ -18,6 +18,11 @@ const RELEASE_ACTION_REFS = Object.freeze({
   pypiPublish: 'pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33',
 });
 
+export function isCanonicalNpmRepositoryUrl(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  return value === REPOSITORY_URL || value === `git+${REPOSITORY_URL}`;
+}
+
 interface ReleaseSurface {
   ecosystem: string;
   package: string;
@@ -647,7 +652,7 @@ export function auditReleaseChain(root = ROOT) {
 
     if (entry.ecosystem === 'npm') {
       const metadata = JSON.parse(fs.readFileSync(path.join(packagePath, 'package.json'), 'utf8'));
-      if (metadata.name !== entry.package || metadata.repository?.url !== REPOSITORY_URL) {
+      if (metadata.name !== entry.package || !isCanonicalNpmRepositoryUrl(metadata.repository?.url)) {
         throw new Error(`${entry.package} package metadata is not bound to the EMILIA GitHub repository`);
       }
       if (typeof metadata.scripts?.test !== 'string' || !metadata.scripts.test.trim()) {

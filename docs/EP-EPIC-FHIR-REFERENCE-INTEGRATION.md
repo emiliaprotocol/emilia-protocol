@@ -6,15 +6,22 @@ A receipt-backed authorization-evidence record was filed into a sandbox
 patient chart and read back, using only public, self-service Epic developer
 resources. No Epic partnership, membership, or fee was required.
 
+The public, secret-free client that reproduces the OAuth/FHIR path is in
+`examples/epic-fhir/epic_sandbox_client.py`; its write command requires an
+explicit `--confirm-write`. On 2026-08-16, the client re-authenticated against
+the live sandbox and read the configured test patient successfully. That
+read-only check did not create or modify a FHIR resource.
+
 ## What this proves
 
-An EMILIA authorization receipt (EP-RECEIPT-v1,
-draft-schrock-ep-receipts) can be carried into an Epic chart as a standard
+An EMILIA authorization receipt can be carried into an Epic chart as a standard
 FHIR `DocumentReference`, so the proof that a named human authorized an AI
 agent's action lives *inside the EHR record* while remaining verifiable
-offline, by anyone, with only the published approver keys. Receipts carry no
-PHI; the note body anchors the evidence to the patient and encounter, and the
-receipt binds the exact canonical action bytes.
+offline under relying-party-pinned approver keys. The exercised demonstration
+receipt carries no patient content; the generic client does not classify
+caller-supplied receipt bytes as PHI-free. The FHIR resource anchors the
+evidence to the patient and encounter, while the receipt binds exact canonical
+action bytes.
 
 ## The flow
 
@@ -41,6 +48,29 @@ receipt binds the exact canonical action bytes.
 5. **Read it back.** `DocumentReference.Read (R4)` returns the filed record
    (`current`/`final`), closing the loop.
 
+## Reproduce the path
+
+```bash
+cd examples/epic-fhir
+python -m unittest test_epic_sandbox_client.py
+
+export EPIC_FHIR_CLIENT_ID='your-client-id'
+export EPIC_FHIR_KID='your-jwks-key-id'
+export EPIC_FHIR_KEY_PATH='/absolute/path/to/nonproduction-private-key.pem'
+
+python epic_sandbox_client.py check-patient \
+  --patient-id YOUR_SANDBOX_PATIENT_ID
+
+python epic_sandbox_client.py file-receipt \
+  --patient-id YOUR_SANDBOX_PATIENT_ID \
+  --encounter-id YOUR_SANDBOX_ENCOUNTER_ID \
+  --receipt-file /absolute/path/to/receipt.json \
+  --confirm-write
+```
+
+The client prints only token metadata, FHIR ids, and status fields. It does not
+print the bearer token or private key.
+
 ## Gotchas for implementers
 
 - **JWK Set URL must not redirect.** Epic's fetcher refuses 30x. Serve the
@@ -66,3 +96,7 @@ and insurance review can verify authorization years later without access to
 any vendor system. Epic's R4 surface exposes no public AuditEvent write and
 read-only Provenance, which makes `DocumentReference` the practical evidence
 carrier today.
+
+This artifact does not prove a live customer deployment, medical correctness,
+legal permission, Epic review, Connection Hub eligibility, complete mediation,
+or that the external clinical effect occurred.

@@ -1,54 +1,94 @@
-# EMILIA × Epic (FHIR) — reference integration
+# EMILIA × Epic on FHIR (R4) — reference integration
 
-A minimal, runnable reference showing how EMILIA Protocol adds a **verifiable
-human-authorization layer** to clinical actions in an Epic environment, built
-entirely on the **free** [open.epic.com](https://open.epic.com) FHIR tier — no
-Vendor Services fee and no Epic permission required to build.
+A minimal, runnable reference showing how an Epic customer or integrator can
+carry EMILIA exact-action authorization evidence through the public
+[Epic on FHIR](https://fhir.epic.com) R4 sandbox surface. This is an independent
+open-source integration, not an Epic endorsement, partnership, or production
+deployment.
 
 ## The pattern
 
-When an agent (or clinician) takes a high-risk clinical action — a high-alert
-medication override, a coverage determination, a benefit/payment change — a named
-clinician's device-bound signoff (WebAuthn / Face ID in production) produces an
-EMILIA receipt over the **exact** action. The receipt is then surfaced back into
-the chart as a **FHIR `Provenance`** resource (or `AuditEvent`), so it is
-discoverable from the Epic record and verifiable by anyone, offline, with no trust
-in Epic, EMILIA, or any server.
+When an agent or clinician proposes a high-risk clinical action, a relying
+party can require evidence that an enrolled clinician approved the exact
+action. The receipt can then be surfaced back into the chart. The local example
+shows the natural FHIR `Provenance` shape. The exercised Epic sandbox path uses
+a `DocumentReference` because Epic's public R4 surface exposes Provenance as
+read-only. The receipt remains independently verifiable under the relying
+party's pinned keys.
 
-It maps directly onto controls Epic customers already run:
-- the **ISMP / Joint Commission high-alert-medication independent double-check**
-- **segregation of duties** (the initiator cannot be the sole approver)
+This can support controls such as an independent double-check or segregation
+of duties. The receipt does not by itself establish medical correctness, legal
+permission, or that the clinical effect occurred.
 
-## PHI-free by construction
+## Data boundary
 
-The receipt carries only **references and hashes** — the FHIR resource id and a
-content hash of the canonical resource (which stays in Epic) — plus the action
-type and the authorizing clinician identifier. **No patient data ever enters the
-receipt.** That is what makes it safe to verify outside the Epic trust boundary.
+The included demonstration receipt carries references and hashes rather than
+patient content. The generic client does not decide whether caller-supplied
+receipt bytes contain PHI; a deployment must enforce its own data policy before
+filing or exporting evidence.
 
 ## FHIR hooks
 
-- **`Provenance`** — the natural carrier: `target` = the order/resource, `agent` =
-  the clinician, `signature.data` = the portable EP receipt. (Demonstrated here.)
-- **`AuditEvent`** — for the audit-trail surface; reference the receipt id.
-- Read the triggering resource (e.g. `MedicationRequest`, `Task`) via the standard
-  USCDIv1 FHIR APIs; write back the `Provenance`.
+- **`DocumentReference`** — the exercised Epic sandbox write/readback carrier.
+- **`Provenance`** — the natural model when a target environment permits writes;
+  Epic's public R4 sandbox exposes it read-only.
+- **`AuditEvent`** — a possible audit-trail reference where the target permits
+  the required operation; it is not exercised here.
 
-## Run
+## Run the local receipt demonstration
 
 ```bash
 pip install pynacl jcs
 python epic_fhir_receipt.py
 ```
 
-You'll see a receipt issued and verified, the FHIR `Provenance` written back, and
-two refusals — a **tampered dose** and a **forged signature** — both rejected.
+The local runner issues and verifies a receipt, constructs the synthetic FHIR
+`Provenance`, and rejects a changed dose and forged signature. It does not
+contact Epic.
 
-## Why this exists (the go-to-market path)
+## Run the Epic sandbox client
 
-Epic is customer-driven: you can list on the
-[Connection Hub](https://fhir.epic.com/ConnectionHub) **once your integration is
-live with at least one Epic customer.** This reference makes EMILIA
-**integration-ready today**, so the moment a health system or an Epic-shop AI
-vendor says yes, the path is: *land one customer → go live → list*. Build first,
-so the customer's "yes" is the only thing on the critical path.
+Register a backend application through Epic on FHIR, grant the required R4
+scopes, and keep the private key outside the repository. Then set:
+
+```bash
+pip install cryptography
+```
+
+Configure the non-production backend application:
+
+```bash
+export EPIC_FHIR_CLIENT_ID='your-client-id'
+export EPIC_FHIR_KID='your-jwks-key-id'
+export EPIC_FHIR_KEY_PATH='/absolute/path/to/nonproduction-private-key.pem'
+```
+
+Read one sandbox patient without printing the access token or key:
+
+```bash
+python epic_sandbox_client.py check-patient --patient-id YOUR_SANDBOX_PATIENT_ID
+```
+
+Create a Clinical Notes `DocumentReference` carrying an exact receipt, then read
+it back. The explicit confirmation flag prevents an accidental write:
+
+```bash
+python epic_sandbox_client.py file-receipt \
+  --patient-id YOUR_SANDBOX_PATIENT_ID \
+  --encounter-id YOUR_SANDBOX_ENCOUNTER_ID \
+  --receipt-file /absolute/path/to/receipt.json \
+  --confirm-write
+```
+
+Run the secret-free unit tests:
+
+```bash
+python -m unittest test_epic_sandbox_client.py
+```
+
+## Connection Hub boundary
+
+Epic's stated route is customer-driven: a product can request a Connection Hub
+listing after its integration is live with at least one Epic customer. This
+artifact establishes a tested integration path; it does not establish a live
+customer deployment, Connection Hub eligibility, or Epic review.

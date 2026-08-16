@@ -1,0 +1,175 @@
+{
+  "@version": "CAPLEASE-EMILIA-COMPARISON-REPORT-v0.1",
+  "profile": "CAPLEASE-EMILIA-COMPARISON-v0.1",
+  "passed": true,
+  "summary": {
+    "passed": 8,
+    "total": 8,
+    "compatible": 5,
+    "different": 2,
+    "unsupported": 1
+  },
+  "source_basis": {
+    "caplease": {
+      "arxiv_id": "2608.01710",
+      "version": "v1",
+      "pdf_sha256": "f3baaaf4711b98a6fb9eff605ac037a7d01c7a827799746981000be4bc802527",
+      "tex_source_archive_sha256": "12c4b061e4b44b463f8b9affe125dfd87e7149f4e4072702a9bc315cdcd6f33e",
+      "implementation_kind": "paper-derived-executable-model",
+      "official_repository": null,
+      "availability_note": "No official code artifact or repository is identified by the arXiv v1 metadata or source archive."
+    },
+    "emilia": {
+      "repository": "https://github.com/emiliaprotocol/emilia-protocol",
+      "base_revision": "bfd130f61a132f29ee6e74dd1dbe63c46a4edacc",
+      "implementation_kind": "repository-runtime",
+      "runtime": "packages/gate/capability-receipt.js",
+      "store": "createMemoryCapabilityStore",
+      "store_durable": false
+    }
+  },
+  "checks": [
+    {
+      "id": "CL-EP-01",
+      "description": "One exact action is admitted and consumed once under the supported assumptions.",
+      "relation": "COMPATIBLE",
+      "passed": true,
+      "caplease": {
+        "final_state": "COMMITTED",
+        "admissions": 1,
+        "effects": 1
+      },
+      "emilia": {
+        "final_state": "committed",
+        "outcome": "executed",
+        "admissions": 1
+      }
+    },
+    {
+      "id": "CL-EP-02",
+      "description": "Fresh identifiers do not create a second admission, but the durable identity keys differ.",
+      "relation": "COMPATIBLE_WITH_DIFFERENT_IDENTITY_KEYS",
+      "passed": true,
+      "caplease": {
+        "fresh_artifact_result": "EXISTING_AUTHORIZATION",
+        "replay_prepare_reason": "slot_not_issued",
+        "admissions": 1
+      },
+      "emilia": {
+        "fresh_operation_result": "REFUSED",
+        "reason": "action_already_committed",
+        "holding_operation_id": "operation:payment:001"
+      }
+    },
+    {
+      "id": "CL-EP-03",
+      "description": "Material amount or destination substitution is refused before admission.",
+      "relation": "COMPATIBLE",
+      "passed": true,
+      "caplease": {
+        "result": "REFUSED",
+        "reason": "action_identity_mismatch"
+      },
+      "emilia": {
+        "result": "REFUSED",
+        "reason": "capability_action_out_of_scope"
+      }
+    },
+    {
+      "id": "CL-EP-04",
+      "description": "Expired authority cannot begin a new admission.",
+      "relation": "COMPATIBLE",
+      "passed": true,
+      "caplease": {
+        "result": "REFUSED",
+        "reason": "authorization_expired"
+      },
+      "emilia": {
+        "result": "REFUSED",
+        "reason": "capability_expired"
+      }
+    },
+    {
+      "id": "CL-EP-05",
+      "description": "Revocation that wins before admission prevents provider entry.",
+      "relation": "COMPATIBLE",
+      "passed": true,
+      "caplease": {
+        "result": "REFUSED",
+        "reason": "authorization_revoked"
+      },
+      "emilia": {
+        "result": "REFUSED",
+        "reason": "capability_revoked"
+      }
+    },
+    {
+      "id": "CL-EP-06",
+      "description": "Lost acknowledgement consumes one admission in both systems but recovery contracts differ.",
+      "relation": "DIFFERENT_RECOVERY_CONTRACT",
+      "passed": true,
+      "caplease": {
+        "first_result": "ACK_LOST",
+        "recovery": "RETRIED_SAME_KEY",
+        "final_state": "COMMITTED",
+        "sink_calls": 2,
+        "effects": 1
+      },
+      "emilia": {
+        "first_result": "INDETERMINATE",
+        "blind_replay": "REFUSED",
+        "replay_reason": "operation_already_committed",
+        "final_state": "committed",
+        "original_outcome": "indeterminate",
+        "reconciliation": "executed",
+        "effects": 1,
+        "reexecuted": false
+      }
+    },
+    {
+      "id": "CL-EP-07",
+      "description": "The CapLease v1 paper does not specify EMILIA-style evidence-only post-entry reconciliation.",
+      "relation": "CAPLEASE_UNSUPPORTED_BY_PAPER",
+      "passed": true,
+      "caplease": {
+        "status": "UNSUPPORTED",
+        "paper_behavior": "recover Prepared by invoking the sink again with the same stable key"
+      },
+      "emilia": {
+        "status": "SUPPORTED",
+        "behavior": "verify same-action provider evidence and append reconciliation without reexecution"
+      }
+    },
+    {
+      "id": "CL-EP-08",
+      "description": "EMILIA action fencing is not proof of CapLease authorization-instance uniqueness.",
+      "relation": "EMILIA_NOT_EQUIVALENT",
+      "passed": true,
+      "caplease": {
+        "identity_key": "(sigma, confirmation_event)",
+        "property": "unique durable authorization record across fresh artifacts"
+      },
+      "emilia": {
+        "identity_key": "(operation_namespace, action_fence_digest)",
+        "property": "duplicate-action admission fence over active or committed operations",
+        "confirmation_event_uniqueness": "NOT_CLAIMED"
+      }
+    }
+  ],
+  "assumptions": [
+    "CapLease behavior is limited to arXiv v1 Sections 3-4 and is not author-supplied code.",
+    "CapLease action canonicalization, authenticated principals and confirmation events, and durable linearizable non-rollback storage are trusted as stated by the paper.",
+    "CapLease duplicate-effect recovery assumes the sink enforces idempotency over the stable key.",
+    "EMILIA executes its actual in-memory atomic reference store; the run demonstrates semantics, not production durability.",
+    "EMILIA material-action fencing is supplied by the relying-party projection used by this bounded fixture.",
+    "The EMILIA reconciliation fixture verifies an Ed25519 provider statement bound to the same operation and action digest."
+  ],
+  "limitations": [
+    "This is neither an independent CapLease implementation nor execution of an official CapLease artifact.",
+    "No comparison result upgrades admission control into exactly-once physical execution.",
+    "A non-idempotent CapLease sink remains outside the effect guarantee stated in the paper.",
+    "EMILIA INDETERMINATE is not proof that the effect happened or did not happen.",
+    "The package does not claim CapLease and EMILIA share an authorization identity, wire format, ledger schema, or recovery protocol."
+  ],
+  "report_digest": "sha256:8b2198e85e3412c176c214cf7eca8490ce3b3425acd970e00893c3a0620a5162"
+}
