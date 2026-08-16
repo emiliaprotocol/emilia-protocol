@@ -34,7 +34,7 @@ before promotion. TXT and HTML snapshots are conveniences; the archive is
 authoritative for rendered forms.
 
 - `draft-ferro-schrock-memory-projection-record-01`
-- `draft-schrock-ae-challenge-06`
+- `draft-schrock-ae-challenge-07`
 - `draft-schrock-action-evidence-boundary-03`
 - `draft-schrock-action-remedy-receipts-00`
 - `draft-schrock-agent-qualification-statements-00`
@@ -165,15 +165,18 @@ verified byte-for-byte against the immutable IETF archive before promotion
 into this directory:
 
 - `draft-schrock-ep-authorization-receipts-11`
-- `draft-schrock-ae-challenge-06`
+- `draft-schrock-ae-challenge-07`
 
 The retained `../staged/NEXT-AUTHORIZATION-RECEIPTS-11`,
 `../staged/NEXT-AE-CHALLENGE-05`, and `../staged/NEXT-AE-CHALLENGE-06`
 packets preserve the exact submitted XML, review renders, validation records,
-and checksums as publication provenance. The superseded
+and checksums as publication provenance through -06. The -07 current XML, TXT,
+and HTML snapshots were fetched from the immutable IETF archive and verified
+locally. The superseded
 `draft-schrock-ep-authorization-receipts-10`,
 `draft-schrock-ae-challenge-03`, and `draft-schrock-ae-challenge-05`
-snapshots are retained in `../archive/`.
+snapshots, together with `draft-schrock-ae-challenge-06`, are retained in
+`../archive/`.
 
 ## August 11, 2026 maintenance set
 

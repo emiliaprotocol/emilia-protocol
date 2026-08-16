@@ -23,7 +23,7 @@ Interoperability evidence: 21 conformance suites and 331 current vectors across 
 
 ## Specifications
 
-- [draft-schrock-ae-challenge](https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/): Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing; snapshot revision -06, check Datatracker for current status.
+- [draft-schrock-ae-challenge](https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/): Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing; snapshot revision -07, check Datatracker for current status.
 - [draft-schrock-action-evidence-boundary](https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/): Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation; snapshot revision -03, check Datatracker for current status.
 - [draft-schrock-action-remedy-receipts](https://datatracker.ietf.org/doc/draft-schrock-action-remedy-receipts/): Dispute, decision, and fresh CAID-bound compensating-action evidence without rewriting the original effect; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-agent-qualification-statements](https://datatracker.ietf.org/doc/draft-schrock-agent-qualification-statements/): Task- and policy-bounded qualification evidence that never authorizes by itself; snapshot revision -00, check Datatracker for current status.

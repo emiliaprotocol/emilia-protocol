@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-16T08:07:13.693Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "b95281b893a1b65569f772b159df040d6a0b7c3b408c6ae9b52b7cf27459be91",
+    "input_digest_sha256": "44be1c5b2549896136c2d4e33079cb4df110ab0419eb5953f04d08f34afb45e7",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "7af7a63c05123db0a1a2930c89b340693f8fefd2ea822736b40d7d94c3effa82",
-        "bytes": 42776
+        "sha256": "4efd4bb554959a6d0cb277420adb46904efd9e775be787235f1fdc59432b1eec",
+        "bytes": 43180
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4511,9 +4511,9 @@
   "standards": [
     {
       "identifier": "draft-schrock-ae-challenge",
-      "revision_at_snapshot": "06",
+      "revision_at_snapshot": "07",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 10; use -06 as the cap-first refusal, no-policy-hint overload, authoritative replay-owner, retry-pacing, and bounded-state baseline while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues",
+      "next_action": "Published August 10; use -07 as the cap-first, owner-serialized refusal baseline with bounded claim and reissue state, no policy hints on capacity refusal, authoritative replay ownership, and retry pacing while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4695,7 +4695,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-08-11",
+    "updated": "2026-08-16",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",

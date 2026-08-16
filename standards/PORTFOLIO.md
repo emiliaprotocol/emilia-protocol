@@ -138,6 +138,11 @@ satisfaction feeds runtime admission, not because the views are equivalent.
 Exact revisions, source paths, Datatracker URLs, and snapshot digests for both
 views are recorded in `STATUS.json`.
 
+The extension-agnostic responsibility, input/output, claim-boundary, external
+dependency, and overlap review for all 20 active `draft-schrock-*` series is in
+[`PORTFOLIO-RESPONSIBILITY-MATRIX.md`](PORTFOLIO-RESPONSIBILITY-MATRIX.md).
+That matrix is the required input to any future consolidation proposal.
+
 ## The matching claim
 
 Direct digest equality works only when two formats emit identical canonical

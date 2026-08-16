@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-08-11",
+  "updated": "2026-08-16",
   "active_datatracker_count": 23,
   "active_schrock_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. Bounded Capability Receipts-04, Authorization Receipts-11, AE-CHALLENGE-06, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. Bounded Capability Receipts-04, Authorization Receipts-11, AE-CHALLENGE-07, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Retained submission packets in standards/staged are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -196,10 +196,10 @@
   "active_datatracker": [
     {
       "draft": "draft-schrock-ae-challenge",
-      "revision": "06",
+      "revision": "07",
       "layer": "execution_lifecycle",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 10; use -06 as the cap-first refusal, no-policy-hint overload, authoritative replay-owner, retry-pacing, and bounded-state baseline while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues"
+      "next_action": "Published August 10; use -07 as the cap-first, owner-serialized refusal baseline with bounded claim and reissue state, no policy hints on capacity refusal, authoritative replay ownership, and retry pacing while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues"
     },
     {
       "draft": "draft-schrock-action-evidence-boundary",
@@ -649,12 +649,13 @@
   },
   "august_10_2026_maintenance_wave": {
     "filing_date": "2026-08-10",
-    "item_count": 3,
+    "item_count": 4,
     "publication_status": "published_and_ietf_archive_verified_2026_08_10",
     "filing_order": [
       "draft-schrock-ep-authorization-receipts-11",
       "draft-schrock-ae-challenge-05",
-      "draft-schrock-ae-challenge-06"
+      "draft-schrock-ae-challenge-06",
+      "draft-schrock-ae-challenge-07"
     ],
     "verification": "Each listed XML snapshot, and the AE Challenge TXT snapshots, is byte-for-byte identical to its immutable IETF archive artifact.",
     "provenance_packets": [
@@ -677,8 +678,14 @@
       },
       {
         "draft": "draft-schrock-ae-challenge-06",
-        "source": "standards/posted/draft-schrock-ae-challenge-06.xml",
+        "source": "standards/archive/draft-schrock-ae-challenge-06.xml",
         "snapshot_sha256": "aa189344c491948a1df2d18d9bff529d696e618ebb2f73ebe607445031744433",
+        "state": "published_ietf_archive_verified_exact_local_match_superseded_by_07"
+      },
+      {
+        "draft": "draft-schrock-ae-challenge-07",
+        "source": "standards/posted/draft-schrock-ae-challenge-07.xml",
+        "snapshot_sha256": "2bfb675ec652487bd90addbb95dda15551e69f4c022fc83a45195fee6d8d8e34",
         "state": "published_ietf_archive_verified_exact_local_match"
       }
     ]

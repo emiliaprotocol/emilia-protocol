@@ -1,0 +1,5 @@
+0905891f2d653b1af5c0b0f06608d7ad87f5560122ee928f85cf51bea3b71ac9  README.md
+f51d2adfcc5213d2e7643c29a1e6c6353d07b1cca9384e82d3333ded5206f52d  VALIDATION.md
+66eaa988d974f8535063b35efadc5140331006679b5946bc372d50a16efef52d  UPLOAD-THIS/draft-schrock-ep-authorization-receipts-12.xml
+d6cd68bcb92ab0c1b168f431b7d87b668c9ab79b8104be03fa92c297926cf60c  RENDERS/draft-schrock-ep-authorization-receipts-12.txt
+784147c186fad6acb518778b2745b599d8f8258331f88fe61e80501f70681c67  RENDERS/draft-schrock-ep-authorization-receipts-12.html

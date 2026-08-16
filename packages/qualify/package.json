@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
-    "ep-qualify": "./cli.mjs"
+    "ep-qualify": "cli.mjs"
   },
   "files": [
     "cli.mjs",
