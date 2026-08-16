@@ -108,13 +108,13 @@ Deployment is not audit, production authorization, or permission to hold custome
 
 - `contracts/DTCBaseSettlement.sol` — settlement and evidence state machine.
 - `contracts/interfaces/IDTCBaseSettlement.sol` — stable contract surface.
-- `test/DTCBaseSettlement.test.cjs` — functional acceptance suite.
-- `test/DTCBaseSettlement.hostile.test.cjs` — adversarial and replay suite.
+- `test/DTCBaseSettlement.test.js` — functional acceptance suite.
+- `test/DTCBaseSettlement.hostile.test.js` — adversarial and replay suite.
 - `scripts/demo.ts` — typed, runnable indeterminate-to-reconciled scenario.
 - `scripts/deploy.ts` — typed, fail-closed Base Sepolia deployment.
 - `lib/receipt-program-bridge.ts` — strict TypeScript Gate receipt-program to Base saga adapter and public types.
-- `test/DTCReceiptProgram.integration.test.cjs` — executed/indeterminate/pre-effect cross-ledger vectors.
-- `test/ReceiptProgramBridge.characterization.test.cjs` — deterministic-hash and fail-closed API contract.
+- `test/DTCReceiptProgram.integration.test.js` — executed/indeterminate/pre-effect cross-ledger vectors.
+- `test/ReceiptProgramBridge.characterization.test.js` — deterministic-hash and fail-closed API contract.
 - `tsconfig.json` — strict NodeNext compiler contract; generated `dist/` output is local and ignored.
 - `formal/dtc_base_settlement.tla` — bounded transition-system model.
 - `formal/dtc_base_escrow.als` — relational transition model.

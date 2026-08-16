@@ -9,6 +9,8 @@ import { classifyRetention, buildRetentionExport } from './retention.js';
 import { createDefaultActionControlManifest, findActionControl, resolveActionControl, validateActionControlManifest } from './action-control-manifest.js';
 import { createRuntimeMonitor } from './runtime-monitor.js';
 import { type ProviderEntryGuard } from './provider-entry.js';
+import { type FieldOriginVerificationContext } from './field-origin-evidence.js';
+import { type ExecutionProgramVerificationOptions } from './bounded-execution-program.js';
 import { capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation } from './capability-receipt.js';
 import { deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt } from './zk-range-proof.js';
 import { mintBreakGlassAuthorization, verifyBreakGlass, consumeBreakGlass, buildBreakGlassEvidence, runBreakGlass, BREAKGLASS_VERSION, BREAKGLASS_EVIDENCE_KIND } from './breakglass.js';
@@ -21,6 +23,7 @@ interface GateCallOpts {
     action?: any;
     receipt?: any;
     observedAction?: any;
+    fieldOriginEvidence?: any;
     admissibilityProfile?: any;
     reliancePacket?: any;
     admissibility?: any;
@@ -85,6 +88,7 @@ export { PROPOSAL_TO_EFFECT_POSTGRES_DDL, PROPOSAL_TO_EFFECT_POSTGRES_SQL, propo
 export { AEB_PG_CONSUMPTION_STORE_VERSION, AEB_CONSUMPTION_OPERATION_TABLE, AEB_CONSUMPTION_REPLAY_TABLE, AEB_CONSUMPTION_DDL, AEB_CONSUMPTION_SQL, createPostgresAebDurableConsumptionStore, } from './aeb-consumption-store.js';
 export * from './consequence-actuator.js';
 export * from './discovery-permit-resolver.js';
+export * from './field-origin-evidence.js';
 export * from './recovery-admission.js';
 export * from './recovery-admission-postgres.js';
 export * from './recovery-admission-remedy.js';
@@ -304,6 +308,10 @@ export declare function verifyBusinessAuthorization({ requirement, receipt, assu
  * @param {object|null} [opts.approver_keys] legacy snake_case alias for opts.approverKeys
  * @param {function|null} [opts.verifyAssurance] caller-supplied assurance verifier (assurance-proof path a)
  * @param {object} [opts.requiredAdmissibilityProfile] gate-level pinned admissibility profile {id, profile_hash}
+ * @param {object} [opts.requiredFieldOriginProfile] gate-level field-origin profile pinned before admission
+ * @param {object} [opts.fieldOriginTrustedKeys] issuer key pins for signed field-origin evidence
+ * @param {object} [opts.fieldOriginExecutionProgram] optional customer-signed
+ *   Bounded Execution Program whose named profile node pins the field-origin profile
  * @param {object} [opts.runtimeMonitor] runtime invariant monitor (defaults to createRuntimeMonitor)
  */
 interface CreateGateOptions {
@@ -329,16 +337,24 @@ interface CreateGateOptions {
     quorumPolicies?: Obj;
     requiredAdmissibilityProfile?: Obj | null;
     verifyAdmissibilityPacket?: ((...args: any[]) => any) | null;
+    requiredFieldOriginProfile?: Obj | null;
+    fieldOriginTrustedKeys?: FieldOriginVerificationContext['trusted_keys'];
+    fieldOriginExecutionProgram?: {
+        artifact: Obj;
+        verification_options: ExecutionProgramVerificationOptions;
+        node_id: string;
+    } | null;
     allowEmbeddedApproverKeys?: boolean;
     runtimeMonitor?: ReturnType<typeof createRuntimeMonitor> | null;
     providerEntryGuard?: ProviderEntryGuard | null;
 }
-export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, log, capabilityStore, capabilityTrustedIssuerKeys, capabilityCaidResolver, allowInlineKey, allowEphemeralStore, strictEvidence, now, keyRegistry, approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, quorumPolicy, quorumPolicies, requiredAdmissibilityProfile, verifyAdmissibilityPacket, allowEmbeddedApproverKeys, runtimeMonitor, providerEntryGuard }?: CreateGateOptions): {
-    check: ({ selector, receipt, observedAction, consumptionMode, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }?: {
+export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, log, capabilityStore, capabilityTrustedIssuerKeys, capabilityCaidResolver, allowInlineKey, allowEphemeralStore, strictEvidence, now, keyRegistry, approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, quorumPolicy, quorumPolicies, requiredAdmissibilityProfile, verifyAdmissibilityPacket, requiredFieldOriginProfile, fieldOriginTrustedKeys, fieldOriginExecutionProgram, allowEmbeddedApproverKeys, runtimeMonitor, providerEntryGuard }?: CreateGateOptions): {
+    check: ({ selector, receipt, observedAction, fieldOriginEvidence, consumptionMode, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }?: {
         selector?: any;
         receipt?: any;
         observedAction?: any;
         consumptionMode?: string;
+        fieldOriginEvidence?: any;
         admissibilityProfile?: any;
         reliancePacket?: any;
         admissibility?: any;
@@ -354,18 +370,20 @@ export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, lo
         header?: string;
         _runtime_cycle_id?: any;
     }>;
-    run: ({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }: {
+    run: ({ selector, receipt, observedAction, fieldOriginEvidence, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }: {
         selector?: any;
         receipt?: any;
         observedAction?: any;
+        fieldOriginEvidence?: any;
         admissibilityProfile?: any;
         reliancePacket?: any;
         admissibility?: any;
         capability?: any;
-    } | undefined, fn: any, opts?: GateCallOpts) => Promise<Awaited<ReturnType<({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }: {
+    } | undefined, fn: any, opts?: GateCallOpts) => Promise<Awaited<ReturnType<({ selector, receipt, observedAction, fieldOriginEvidence, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }: {
         selector?: any;
         receipt?: any;
         observedAction?: any;
+        fieldOriginEvidence?: any;
         admissibilityProfile?: any;
         reliancePacket?: any;
         admissibility?: any;
@@ -553,11 +571,12 @@ export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, lo
     };
 };
 export declare function createTrustedActionFirewall(opts?: CreateGateOptions): {
-    check: ({ selector, receipt, observedAction, consumptionMode, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }?: {
+    check: ({ selector, receipt, observedAction, fieldOriginEvidence, consumptionMode, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }?: {
         selector?: any;
         receipt?: any;
         observedAction?: any;
         consumptionMode?: string;
+        fieldOriginEvidence?: any;
         admissibilityProfile?: any;
         reliancePacket?: any;
         admissibility?: any;
@@ -573,18 +592,20 @@ export declare function createTrustedActionFirewall(opts?: CreateGateOptions): {
         header?: string;
         _runtime_cycle_id?: any;
     }>;
-    run: ({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }: {
+    run: ({ selector, receipt, observedAction, fieldOriginEvidence, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }: {
         selector?: any;
         receipt?: any;
         observedAction?: any;
+        fieldOriginEvidence?: any;
         admissibilityProfile?: any;
         reliancePacket?: any;
         admissibility?: any;
         capability?: any;
-    } | undefined, fn: any, opts?: GateCallOpts) => Promise<Awaited<ReturnType<({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }: {
+    } | undefined, fn: any, opts?: GateCallOpts) => Promise<Awaited<ReturnType<({ selector, receipt, observedAction, fieldOriginEvidence, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }: {
         selector?: any;
         receipt?: any;
         observedAction?: any;
+        fieldOriginEvidence?: any;
         admissibilityProfile?: any;
         reliancePacket?: any;
         admissibility?: any;

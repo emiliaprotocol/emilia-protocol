@@ -1,9 +1,10 @@
 import type {} from '@nomicfoundation/hardhat-ethers';
-import hre from 'hardhat';
+import { network } from 'hardhat';
 
 import { asDtcBaseSettlementContract } from '../lib/receipt-program-bridge.js';
 
-const { ethers, network } = hre;
+const connection = await network.create(process.env.HARDHAT_NETWORK);
+const { ethers } = connection;
 
 const DEPLOY_ACK = 'I_UNDERSTAND_THIS_IS_EXPERIMENTAL_UNAUDITED_CODE';
 const ALLOWED_REMOTE_CHAIN = 84532n;
@@ -18,7 +19,7 @@ function requiredAddress(name: string): string {
 
 async function main(): Promise<void> {
   const chainId = (await ethers.provider.getNetwork()).chainId;
-  const isLocal = network.name === 'hardhat' || network.name === 'localhost';
+  const isLocal = connection.networkName === 'hardhatMainnet' || connection.networkName === 'localhost';
   if (!isLocal) {
     if (chainId !== ALLOWED_REMOTE_CHAIN) {
       throw new Error(`refusing unsupported chain ${chainId}; this script permits Base Sepolia only`);
@@ -73,7 +74,7 @@ async function main(): Promise<void> {
 
   process.stdout.write(`${JSON.stringify({
     status: 'DEPLOYED_EXPERIMENTAL_UNAUDITED',
-    network: network.name,
+    network: connection.networkName,
     chainId: chainId.toString(),
     contract: address,
     admin,

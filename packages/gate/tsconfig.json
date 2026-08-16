@@ -9,7 +9,6 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "baseUrl": ".",
     "paths": {
       "@emilia-protocol/verify/gate-qualification": [
         "../verify/dist/gate-qualification.d.ts"
@@ -117,6 +116,7 @@
     "src/gate-qualification-v2.ts",
     "src/fido-ap2-bridge.ts",
     "src/a2a-ap2-gate.ts",
+    "src/field-origin-evidence.ts",
     "src/referee.ts",
     "src/referee-runner.ts",
     "src/reliance-risk-crypto.ts",

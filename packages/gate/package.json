@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.23.14",
+  "version": "0.23.15",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -306,6 +306,10 @@
       "types": "./dist/a2a-ap2-gate.d.ts",
       "import": "./a2a-ap2-gate.js"
     },
+    "./field-origin-evidence": {
+      "types": "./dist/field-origin-evidence.d.ts",
+      "import": "./field-origin-evidence.js"
+    },
     "./discovery-permit-resolver": {
       "types": "./dist/discovery-permit-resolver.d.ts",
       "import": "./discovery-permit-resolver.js"
@@ -475,6 +479,7 @@
     "consequence-actuator.js",
     "consequence-boundary.js",
     "a2a-ap2-gate.js",
+    "field-origin-evidence.js",
     "discovery-permit-resolver.js",
     "authority-allocation.js",
     "autonomy-control-plane-profile.js",
@@ -575,7 +580,7 @@
     "pretest": "npm run build",
     "test": "node --test --test-concurrency=1 && npm run test:qualification",
     "check:allowance-security-test-coverage": "node check-allowance-security-test-coverage.mjs",
-    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 consequence-boundary.test.ts allowance.test.ts capability-receipt.test.ts action-fence-runtime-regression.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/github-deployment.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts bounded-execution-acceptance.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts recovery-admission.test.ts recovery-admission-postgres.test.ts recovery-admission-remedy.test.ts a2a-ap2-gate.test.ts",
+    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 consequence-boundary.test.ts allowance.test.ts capability-receipt.test.ts action-fence-runtime-regression.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/github-deployment.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts bounded-execution-acceptance.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts recovery-admission.test.ts recovery-admission-postgres.test.ts recovery-admission-remedy.test.ts a2a-ap2-gate.test.ts field-origin-evidence.test.ts",
     "demo": "node demo.mjs",
     "eg1": "node eg1.mjs",
     "cf1": "node cf1.mjs"
@@ -583,7 +588,7 @@
   "dependencies": {
     "@noble/curves": "2.2.0",
     "@emilia-protocol/require-receipt": "0.8.0",
-    "@emilia-protocol/verify": "3.20.1"
+    "@emilia-protocol/verify": "3.20.2"
   },
   "keywords": [
     "emilia",
