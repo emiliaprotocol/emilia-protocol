@@ -28,6 +28,7 @@ export * from './oauth-rar-authorization-binding.js';
 export * from './policy-decision-evidence.js';
 export * from './aeb-native-adapters.js';
 export * from './aeb-oasnt-adapter.js';
+export * from './aeb-chap-adapter.js';
 export * from './aeb-psea-adapter.js';
 export * from './fido-ap2-bridge.js';
 export * from './a2a-receipt-binding.js';

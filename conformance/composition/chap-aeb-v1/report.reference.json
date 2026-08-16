@@ -1,0 +1,113 @@
+{
+  "report_version": "CHAP-AEB-CONFORMANCE-REPORT-v1",
+  "profile": "CHAP-AEB-COMPOSITION-v1",
+  "passed": true,
+  "summary": {
+    "passed": 11,
+    "total": 11
+  },
+  "runner": {
+    "runner_name": "EMILIA reference runner",
+    "runner_affiliation": "EMILIA Protocol",
+    "runner_revision": "9e7af2b811d3368b4afba7c6d318764959c2fd0d",
+    "executed_at": "2026-08-14T18:00:00Z",
+    "execution_owner": "runner-asserted",
+    "implementation_owner": "EMILIA Protocol",
+    "independent_implementation": false
+  },
+  "source_pins": {
+    "repository": "https://github.com/BrightbeamAI/chap",
+    "commit": "9e7af2b811d3368b4afba7c6d318764959c2fd0d",
+    "review_profile_sha256": "sha256:2a971b084ea192daafcdac275b5aa1b9e6ceb60d0cb3879db0df06ee7b430539",
+    "security_signed_profile_sha256": "sha256:83f455763b08d0d9993fecf3c5ddf94d2cd6266d79b42a574f52ce94a313aee2",
+    "patch_implementation_sha256": "sha256:78ff3b3d898f58e5d043582705e46c06833336f411ef0caf08d11221148da7ff",
+    "wire_profile": "chap-jsonrpc-security-signed-1.0"
+  },
+  "adapter": {
+    "id": "native:chap",
+    "version": "1"
+  },
+  "result": {
+    "evidence_role": "human-authorization",
+    "caid": "caid:1:payment.transfer.1:jcs-sha256:e1jA_T8cqXmp4cnmGD7L0eHpgWxkmnacLdP7W9X7PlE",
+    "action_digest": "sha256:7b58c0fd3f1ca979a9e1c9e6183ecbd1e1e9816c649a769c2dd3fb5bd5fb3e51",
+    "replay_unit": "sha256:9cbd1b5c23ac3a162af3056a660c4010b901462cbc31f84b6ef0ba78005069c3"
+  },
+  "checks": [
+    {
+      "id": "CHAP-AEB-01",
+      "description": "signed override verifies under the relying-party-pinned reviewer key",
+      "passed": true,
+      "observed": "VERIFIED/ACCEPTED"
+    },
+    {
+      "id": "CHAP-AEB-02",
+      "description": "override patch result maps to the exact expected action and CAID",
+      "passed": true,
+      "observed": "MATCH/caid:1:payment.transfer.1:jcs-sha256:e1jA_T8cqXmp4cnmGD7L0eHpgWxkmnacLdP7W9X7PlE"
+    },
+    {
+      "id": "CHAP-AEB-03",
+      "description": "current plain approve remains indeterminate without an artifact binding",
+      "passed": true,
+      "observed": "INDETERMINATE/chap:approve_artifact_binding_missing"
+    },
+    {
+      "id": "CHAP-AEB-04",
+      "description": "signature-covered approved_artefact_digest makes approve exact-action mappable",
+      "passed": true,
+      "observed": "ACCEPTED/MATCH"
+    },
+    {
+      "id": "CHAP-AEB-05",
+      "description": "post-signature patch tampering is rejected",
+      "passed": true,
+      "observed": "REJECTED/chap:signature_invalid"
+    },
+    {
+      "id": "CHAP-AEB-06",
+      "description": "a valid decision cannot be substituted onto another action",
+      "passed": true,
+      "observed": "REJECTED/chap:approved_artifact_mismatch"
+    },
+    {
+      "id": "CHAP-AEB-07",
+      "description": "prototype-polluting JSON Pointer segments are rejected",
+      "passed": true,
+      "observed": "REJECTED/chap:patch_invalid"
+    },
+    {
+      "id": "CHAP-AEB-08",
+      "description": "a signer outside the pinned root cannot authenticate a decision",
+      "passed": true,
+      "observed": "REJECTED/chap:signature_invalid"
+    },
+    {
+      "id": "CHAP-AEB-09",
+      "description": "stale status remains indeterminate rather than accepted",
+      "passed": true,
+      "observed": "INDETERMINATE"
+    },
+    {
+      "id": "CHAP-AEB-10",
+      "description": "a consumed native decision is rejected",
+      "passed": true,
+      "observed": "REJECTED/evidence_consumed"
+    },
+    {
+      "id": "CHAP-AEB-11",
+      "description": "the native replay identity is stable for the same signed decision",
+      "passed": true,
+      "observed": "sha256:9cbd1b5c23ac3a162af3056a660c4010b901462cbc31f84b6ef0ba78005069c3"
+    }
+  ],
+  "limitations": [
+    "This run executes the EMILIA reference adapter, not an independent implementation.",
+    "CHAP decide.override is exact-action mappable under this profile.",
+    "Current plain decide.approve remains indeterminate unless its signature covers approved_artefact_digest.",
+    "Integrity of a present CHAP record does not prove that every decision that should exist was emitted.",
+    "A passing mapping does not authorize or execute the action."
+  ],
+  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference CHAP-to-AEB composition at 9e7af2b811d3368b4afba7c6d318764959c2fd0d: 11/11 pinned checks passed. This was an external execution of the EMILIA reference runner, not an independent implementation.",
+  "report_digest": "sha256:a895d986ebd10c5f6bc20f9796d8ba7ca43fa350e8eb1eb68089353e4c208618"
+}
