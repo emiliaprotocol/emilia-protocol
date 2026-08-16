@@ -31,7 +31,7 @@ All three pinned runners were executed again on 16 August 2026. The receipt-core
 
 ## Publication state
 
-This manuscript is the v3 successor to the live Zenodo v2 record `10.5281/zenodo.21520973`, under the all-versions concept DOI `10.5281/zenodo.21520972`. Zenodo reserved version DOI `10.5281/zenodo.21968577` on 16 August 2026. The rejected IACR ePrint PDF was not reused.
+This manuscript is the published v3 successor to the live Zenodo v2 record `10.5281/zenodo.21520973`, under the all-versions concept DOI `10.5281/zenodo.21520972`. Zenodo published version DOI `10.5281/zenodo.21968577` on 16 August 2026. The rejected IACR ePrint PDF was not reused.
 
 ## Final artifact
 
