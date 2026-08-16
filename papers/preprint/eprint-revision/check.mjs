@@ -55,12 +55,14 @@ const requiredSource = [
   "Action-Bound Injective Authorization",
   "signer-harvesting",
   "\\begin{definition}[Transplantation]",
+  "\\mathsf{SignCtx}_j(x)",
+  "\\mathsf{Signed}(j,x^*,m(x^*))",
   "\\begin{definition}[Duplicate admission]",
   "\\begin{definition}[Quorum substitution]",
   "\\begin{theorem}[ABIA composition]",
   "Forger B_j(pk*, Sign*)",
   "Nine machine-found separations",
-  "\\begin{lemma}[Acceptance-prefix integrity]",
+  "\\begin{lemma}[Trace-prefix authenticity]",
   "\\begin{proposition}[Offline anti-backdating is impossible here]",
   "Signature Instantiations and Context Strings",
   "Symbolic-to-computational correspondence",
@@ -71,8 +73,13 @@ const requiredSource = [
   "ep_quorum_core.spthy",
   "Policy-Compliant Signatures",
   "Stateful Least Privilege Authorization for the Cloud",
+  "Comparse: Provably Secure Formats for Cryptographic Protocols",
+  "Transparency Overlays and Applications",
+  "Secure Audit Logs with Verifiable Excerpts",
+  "Formal Security Analysis of the OpenID FAPI 2.0 Family of Protocols",
   "Module-Lattice-Based Digital Signature Standard",
   "The TAMARIN Prover for the Symbolic Analysis of Security Protocols",
+  "10.5281/zenodo.21968577",
 ];
 
 for (const text of requiredSource) {
@@ -83,6 +90,8 @@ const forbiddenSource = [
   "awaiting editor review",
   "IETF-adopted",
   "exactly-once physical execution is guaranteed",
+  "evidentiary forward-integrity statement",
+  "the signing oracle for that key was never queried on $m_{b^*,v^*}$",
 ];
 
 for (const text of forbiddenSource) {

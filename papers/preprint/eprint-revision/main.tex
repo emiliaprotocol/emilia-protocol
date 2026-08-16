@@ -45,7 +45,8 @@
 EMILIA Protocol, Inc.\\
 \texttt{team@emiliaprotocol.ai}\\
 ORCID: \href{https://orcid.org/0009-0004-0290-5433}{0009-0004-0290-5433}}
-\date{Preprint. August 2026.}
+\date{Preprint v3. August 2026.\\
+\href{https://doi.org/10.5281/zenodo.21968577}{doi:10.5281/zenodo.21968577}}
 
 \begin{document}
 \maketitle
@@ -66,9 +67,10 @@ transplantation or quorum substitution yields a signature forgery or hash
 collision, while duplicate admission yields an atomicity failure or enforcement
 bypass. The result deliberately separates cryptographic authenticity from the
 state-service assumption and does not claim exactly-once physical execution. We
-also characterize four load-bearing assumptions by concrete attacks, give an
-acceptance-prefix integrity result with an explicit anti-backdating boundary, and
-show how Ed25519 and ML-DSA context strings instantiate the construction. Four
+also characterize four load-bearing assumptions by concrete attacks, state the
+exact trace-prefix authenticity retained across a later key reveal, and prove
+that ordinary signatures alone cannot support offline anti-backdating. We show
+how Ed25519 and ML-DSA context strings instantiate the construction. Four
 Tamarin models check the corresponding symbolic properties against an attacker
 that can solicit honest signatures on arbitrary contexts. Nine deliberately
 weakened variants produce concrete counterexample traces without weakening the
@@ -133,9 +135,9 @@ valid signatures on adaptively chosen authorization contexts;
 admission and from complete provider mediation;
 \item necessity results for injective encoding, consume-if-unused state,
 initiator binding and exclusion, and fresh non-recreatable registration;
-\item an acceptance-prefix integrity theorem that survives later key reveal,
-paired with an impossibility result for offline anti-backdating under ordinary
-signatures alone;
+\item a precise separation between trace-prefix authenticity after a later key
+reveal and the stronger offline anti-backdating property that ordinary
+signatures alone cannot provide;
 \item symbolic confirmation in Tamarin, including negative models that expose
 same-authorization replay, stale registry views, downgrade, authority expansion,
 profile substitution, and action-key substitution when their checks are removed;
@@ -398,6 +400,8 @@ $x_v=(b,v,n_v,w_v)$ and the signed message is
 \[
 m_{b,v}=\Enc(\code{ABIA-SIGN-v1},H(\Enc(a)),p,i,r,q,v,n_v,w_v).
 \]
+We write $m(x_v)=m_{b,v}$ for this deterministic mapping from a well-typed
+semantic slot context to its signed byte string.
 
 The shared $q$ binds all slot signatures to one ceremony. Distinct $n_v$ values
 keep the slot contexts distinct. The relying party or another trusted component
@@ -512,8 +516,8 @@ adversary controls the network, operator, request transport, signature collector
 and artifact presenter. It may:
 
 \begin{itemize}[leftmargin=*]
-\item adaptively query $\mathsf{Sign}_j(m)$ for any message under any
-uncompromised approver key $j$;
+\item adaptively query $\mathsf{SignCtx}_j(x)$ for any well-typed slot context
+$x$ under any uncompromised approver key $j$;
 \item request issuance of honest authorization instances for chosen
 $(a,p,i,r)$ tuples;
 \item replay, suppress, reorder, and splice every returned artifact;
@@ -522,10 +526,15 @@ $(a,p,i,r)$ tuples;
 for that key.
 \end{itemize}
 
-The signing oracle models signer harvesting. It deliberately does not assume that
-an honest approver signs only a semantically good request. The theorem asks a
-narrower question: if a context is accepted under an unrevealed key, was that exact
-context signed?
+On a query $\mathsf{SignCtx}_j(x)$, the challenger strictly parses $x$, computes
+the protocol message $m(x)$, records $\mathsf{Signed}(j,x,m(x))$, and returns
+$\Sign(sk_j,m(x))$. Malformed or out-of-schema contexts are rejected. This
+semantic-context oracle models signer harvesting without assuming that an honest
+approver signs only a desirable action. The theorem asks a narrower question: if
+a context is accepted under an unrevealed key, did that exact semantic context
+appear in a prior signing event? Recording $x$ as well as $m(x)$ is essential:
+otherwise a non-injective encoding transplant would be mislabeled as an ordinary
+signing query on the same byte string.
 
 \subsection{Trace events and corruption timing}
 
@@ -567,28 +576,30 @@ $(d,u_b,a)$ relation. It does not require the provider to complete, acknowledge,
 or produce the intended downstream effect. Those later events are outside the
 ABIA experiment.
 
-\subsection{Acceptance-prefix integrity and the anti-backdating boundary}
+\subsection{Trace-prefix authenticity and the anti-backdating boundary}
 
-We call the following property \emph{acceptance-prefix integrity}. It is the
-evidentiary forward-integrity statement supported by the present assumptions: a
-key reveal after an already recorded acceptance does not change which exact
-context had to be signed before that acceptance.
+The following corollary fixes the temporal scope of the authenticity experiment.
+It is a trace-prefix statement, not a forward-secure logging or offline
+anti-backdating property: a key reveal after an already recorded acceptance does
+not change which exact context had to be signed before that acceptance.
 
-\begin{lemma}[Acceptance-prefix integrity]
+\begin{lemma}[Trace-prefix authenticity]
 Suppose an acceptance under pinned key $pk_j$ occurs at trace position $t_a$, no
 reveal of $sk_j$ precedes $t_a$, and a reveal occurs later at $t_r>t_a$. Except
 with probability bounded by
 $\Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B_j)+
-\Adv^{\mathrm{cr}}_H(\mathcal C_H)$, a signing-oracle query for the exact accepted
-slot context occurred before $t_a$.
+\Adv^{\mathrm{cr}}_H(\mathcal C_H)$, a
+$\mathsf{Signed}(j,x^*,m(x^*))$ event for the exact accepted slot context occurred
+before $t_a$.
 \end{lemma}
 
 \begin{proof}
 Stop the experiment at $t_a$. The later reveal is outside this prefix and cannot
-affect its distribution. If the accepted message was not queried to the signing
-oracle before $t_a$, the pair is an EUF-CMA forgery for $j$. If it was queried,
-injective encoding and collision resistance make the queried context equal to
-the accepted context. The later
+affect its distribution. If the accepted message was not produced by a prior
+semantic-context query before $t_a$, the pair is an EUF-CMA forgery for $j$. If
+the same bytes were produced for another recorded context, injective outer
+encoding and collision resistance make that context equal to the accepted
+context. The later
 reveal changes what the adversary can sign after $t_r$, but it cannot insert a
 new signing event into the already ordered prefix.
 \end{proof}
@@ -619,8 +630,10 @@ so the paper makes the prefix claim and not the stronger offline claim.
 
 \begin{definition}[Transplantation]
 $\mathcal A$ wins $\mathsf{Transplant}$ if the verifier accepts
-$x^*=(b^*,v^*,n^*,w^*)$ under an unrevealed pinned key, but the signing oracle for
-that key was never queried on $m_{b^*,v^*}$.
+$x^*=(b^*,v^*,n^*,w^*)$ under an unrevealed pinned key $j$, but no event
+$\mathsf{Signed}(j,x^*,m(x^*))$ precedes that acceptance. A signing event for a
+different semantic context $x\neq x^*$ does not defeat the winning condition,
+even if a defective encoding maps $x$ and $x^*$ to the same bytes.
 \end{definition}
 
 \begin{definition}[Duplicate admission]
@@ -631,8 +644,9 @@ the same domain $d$ are both labeled by the same admission key $u_b$.
 \begin{definition}[Quorum substitution]
 $\mathcal A$ wins $\mathsf{QuorumSub}$ if a 2-of-2 provider entry occurs while at
 least one of the following is true: fewer than two distinct pinned approver
-identifiers and keys were accepted; a required unrevealed key did not sign its
-accepted slot message; the two slots do not share byte-identical $b$; or the
+identifiers and keys were accepted; a required unrevealed key has no prior
+signing event for its exact accepted slot context; the two slots do not share
+byte-identical $b$; or the
 signed initiator occupies an approver slot.
 \end{definition}
 
@@ -671,9 +685,9 @@ $\mathcal B_j$ and a collision finder $\mathcal C_H$ such that
 
 \begin{proof}
 The reduction is made explicit in the game sequence below. In short, an accepted
-signature under unrevealed key $pk_j$ either has no matching signing-oracle query,
-in which case it is an EUF-CMA forgery for $j$, or has a matching query on the
-same bytes. In the latter case the exact-context-binding lemma makes the accepted
+signature under unrevealed key $pk_j$ either has no prior semantic signing event,
+in which case its message is an EUF-CMA forgery for $j$, or has a recorded query
+on the same bytes. In the latter case the exact-context-binding lemma makes the accepted
 context equal to the signed context unless a hash collision occurred. A union
 bound over the pinned required keys and the collision event gives the inequality.
 \end{proof}
@@ -696,7 +710,7 @@ implies either a state-service failure or a path around the service.
 
 We now give the hybrids underlying the concrete bound. Each game returns one if
 the real ABIA experiment returns one, except where the game explicitly aborts.
-The challenger records every signing query as a pair $(j,m)$ and every issued
+The challenger records every semantic signing query as a triple $(j,x,m(x))$ and every issued
 authorization as $(d,a,p,i,r,q,u_b)$. It also records the linearization point and
 return value of every register and consume operation. This bookkeeping is not
 visible to the adversary.
@@ -710,8 +724,8 @@ Thus
 \]
 
 \paragraph{Game $G_1$: exclude action-hash collisions.}
-The challenger aborts if two distinct canonical action encodings queried or
-accepted during the experiment have the same hash. An algorithm $\mathcal C_H$
+The challenger aborts if two distinct canonical action encodings appearing in
+recorded signing contexts or accepted contexts have the same hash. An algorithm $\mathcal C_H$
 that runs $G_0$ and outputs the first such pair is a collision finder. Therefore
 \[
   \left|\Pr[G_0=1]-\Pr[G_1=1]\right|
@@ -721,21 +735,31 @@ Conditioned on no abort, equality of action digests implies equality of canonica
 action encodings. Together with injectivity of $\Enc$, equality of signed-message
 bytes implies equality of every field in the slot context.
 
-\paragraph{Game $G_2$: exclude accepted unqueried messages.}
+\paragraph{Game $G_2$: exclude accepted semantically unsigned contexts.}
 For each unrevealed pinned key $j$, the challenger aborts if verification accepts
-$(m,\sigma)$ under $pk_j$ while $(j,m)$ is absent from the signing-query table.
+$(x^*,m^*,\sigma)$ under $pk_j$ while $(j,x^*,m^*)$ is absent from the
+signing-query table. Under the $G_1$ condition and injectivity of the outer
+encoding, absence of that triple also means that no query under $j$ produced
+$m^*$: a different recorded context with the same message would contradict the
+exact-context-binding lemma.
 The reduction for one slot is the following explicit algorithm.
 
 \begin{protocol}
 Forger B_j(pk*, Sign*):
     set pk_j <- pk*; generate (sk_k, pk_k) for every k != j
     initialize the ABIA experiment and run A on all public inputs
-    on A.Sign(j, m):       record (j,m); return Sign*(m)
-    on A.Sign(k, m), k!=j: record (k,m); return Sign(sk_k,m)
+    on A.SignCtx(j, x):
+        reject unless x is well-typed; m <- m(x)
+        record (j,x,m); return Sign*(m)
+    on A.SignCtx(k, x), k!=j:
+        reject unless x is well-typed; m <- m(x)
+        record (k,x,m); return Sign(sk_k,m)
     on A.Reveal(k), k!=j:  return sk_k
     on A.Reveal(j):        abort this fixed-j reduction
-    on accepted (m,sigma) under pk_j before Reveal(j):
-        if (j,m) is absent from the query table, output (m,sigma)
+    on accepted (x*,m*,sigma) under pk_j before Reveal(j):
+        if (j,x*,m*) is absent from the query table:
+            assert no row (j,x,m*) exists, by G1 and exact-context binding
+            output (m*,sigma)
         otherwise continue the simulation
 \end{protocol}
 
@@ -744,8 +768,10 @@ exactly. The fixed-$j$ simulation is perfect up to either the first reveal of
 $j$ or the accepted-unqueried event. A reveal before that event removes $j$ from
 the experiment's authenticity claim. If the event occurs first, $\mathcal B_j$
 stops immediately, so it never needs to reveal the EUF-CMA challenge secret. The
-message was not queried to its oracle and the signature verifies, which is a
-valid EUF-CMA forgery.
+message was not queried to its EUF-CMA oracle and the signature verifies, which
+is a valid forgery. This is exactly where the semantic query record matters: an
+equal-byte query from a different context is ruled out by the encoding and hash
+conditions rather than silently counted as authorization of $x^*$.
 
 The standard multi-user union bound gives
 \[
@@ -758,10 +784,10 @@ reveal removes that key from the authenticity claim instead of asking the
 reduction to simulate a forbidden reveal of its challenge secret.
 
 \paragraph{Game $G_3$: replace accepted slots by recorded exact contexts.}
-In $G_2$, every accepted slot under an unrevealed key has a matching signing query
-on exactly the accepted message bytes. The challenger now associates that slot
-with the corresponding recorded query. This is a conceptual rewrite and changes
-no probability. By the closed-schema checks, injectivity of $\Enc$, and the
+In $G_2$, every accepted slot under an unrevealed key has a matching recorded
+triple $(j,x^*,m(x^*))$. The challenger now associates that slot with the
+corresponding semantic query. This is a conceptual rewrite and changes no
+probability. By the closed-schema checks, injectivity of $\Enc$, and the
 no-collision condition from $G_1$, the recorded query and accepted slot agree on
 the action, policy commitment, initiator, audience, authorization instance, slot,
 slot nonce, and validity object. Transplantation is therefore impossible in
@@ -780,8 +806,8 @@ $\textsc{unused}$ to $\textsc{admitted}$; the second cannot succeed. Duplicate
 admission is therefore impossible.
 
 The verifier's deterministic distinctness, shared-base-context, pinned-key, and
-initiator-exclusion checks remain. In $G_3$ every accepted unrevealed slot is an
-exact recorded signing query, so those checks also make quorum substitution
+initiator-exclusion checks remain. In $G_3$ every accepted unrevealed slot has an
+exact recorded semantic signing event, so those checks also make quorum substitution
 impossible. Hence $\Pr[G_4=1]=0$.
 
 \begin{table}[ht]
@@ -793,8 +819,8 @@ impossible. Hence $\Pr[G_4=1]=0$.
 Transition & Bad event & Reduction or assumption & Probability charge \\
 \midrule
 $G_0\to G_1$ & distinct canonical actions share one digest & collision finder $\mathcal C_H$ & $\Adv_H^{\mathrm{cr}}(\mathcal C_H)$ \\
-$G_1\to G_2$ & an unrevealed required key accepts an unqueried message & one explicit forger $\mathcal B_j$ per required key & $\sum_j\Adv_{\mathsf{Sig}}^{\mathrm{euf\mbox{-}cma}}(\mathcal B_j)$ \\
-$G_2\to G_3$ & replace accepted slots by their recorded equal-byte queries & injectivity and the $G_1$ condition & $0$ \\
+$G_1\to G_2$ & an unrevealed required key accepts a context without its exact signing event & one explicit forger $\mathcal B_j$ per required key & $\sum_j\Adv_{\mathsf{Sig}}^{\mathrm{euf\mbox{-}cma}}(\mathcal B_j)$ \\
+$G_2\to G_3$ & associate accepted slots with recorded semantic contexts & injectivity and the $G_1$ condition & $0$ \\
 $G_3\to G_4$ & atomic state fails or provider entry bypasses mediation & deployment contract & $\Pr[\mathsf{AtomicityFail}_d\lor\mathsf{MediationBypass}_d]$ \\
 $G_4$ & any ABIA winning condition remains & deterministic verifier checks & $0$ \\
 \bottomrule
@@ -832,8 +858,8 @@ algorithm cannot satisfy $\mathsf{QuorumSub}$ for unrevealed required keys.
 The algorithm checks identifier, key, slot, and nonce distinctness and rejects the
 signed initiator in either approver slot. It checks byte equality of the base
 context before verifying one signature for each pinned slot key. If a required
-slot message was not queried to that key's signing oracle, its accepted signature
-is a forgery. If both queries exist, exact-context binding makes both signed slot
+slot context has no prior semantic signing event under that key, its accepted
+signature is a forgery. If both events exist, exact-context binding makes both signed slot
 contexts equal to the accepted contexts. The explicit base-context check then
 makes both signatures authorize the same action, policy, initiator, audience, and
 authorization instance. The explicit distinctness and initiator-exclusion checks
@@ -857,11 +883,11 @@ keys required by the accepted policy.
 
 \begin{proof}
 Games $G_0$ and $G_1$ differ only on an action-hash collision. Games $G_1$ and
-$G_2$ differ only on an accepted signature under an unrevealed pinned key whose
-message was not queried to that key's signing oracle. The reductions above bound
+$G_2$ differ only on an accepted context under an unrevealed pinned key without
+an exact prior semantic signing event. The reductions above bound
 those differences by the collision and per-key EUF-CMA advantages. Game $G_3$ is
-identical to $G_2$ but uses exact-context binding to name the matching signing
-queries, so transplantation and the signature-dependent quorum conditions cannot
+identical to $G_2$ but uses exact-context binding to name the matching semantic
+signing events, so transplantation and the signature-dependent quorum conditions cannot
 occur. Game $G_4$ additionally conditions on successful atomic admission and
 complete mediation, which excludes duplicate admission. The verifier's remaining
 quorum conditions are deterministic checks. Thus $G_4$ has zero success
@@ -885,8 +911,8 @@ single key or signed initiator fills both slots.
 
 \begin{proof}
 Apply Games $G_1$ through $G_3$ to the two required slots. In $G_2$, an accepted
-slot without a matching oracle query is a forgery under that slot's key. In
-$G_3$, each matching query binds the exact accepted slot fields. The verifier
+slot without a matching semantic signing event is a forgery under that slot's
+key. In $G_3$, each matching event binds the exact accepted slot fields. The verifier
 checks byte equality of $b$, distinct slot identifiers, distinct approver
 identifiers, distinct pinned keys, distinct nonces, and exclusion of the signed
 initiator. Those deterministic checks give the stated 2-of-2 property. The
@@ -973,14 +999,14 @@ table identifies which Tamarin state or event realizes each object in the games.
 \toprule
 Tamarin object & Computational object & Shared security meaning \\
 \midrule
-\code{Human\_Sign\_Receipt}, \code{Signed} & $\mathsf{Sign}_j(m)$ query and query-table row & the attacker may harvest genuine signatures on chosen contexts \\
+\code{Human\_Sign\_Receipt}, \code{Signed} & $\mathsf{SignCtx}_j(x)$ query and semantic query-table row & the attacker may harvest genuine signatures on chosen contexts \\
 \code{Eq(verify(...),true)} under \code{PinnedKey} & $\Verify(pk_j,m,\sigma)$ under a pinned slot key & accepted bytes verify for the required key \\
 \code{UV} before \code{Signed} & approver-side signing precondition & user verification gates signing, but does not prove rendering fidelity \\
 \code{RevealLtk} ordered before or after \code{Accept} & weak-corruption boundary at acceptance & later reveal does not alter the accepted prefix; earlier reveal removes authenticity \\
 \code{AdmissionAvailable} as a linear fact & successful $\Register_d(u)$ with state $\textsc{unused}$ & one fresh authorization instance has one consumable admission state \\
 \code{AcceptChecked} consuming that fact & successful $\Consume_d(u)$ before provider entry & injectivity comes from mutable state, not signature algebra \\
-Core authenticity and cross-action lemmas & Games $G_1$--$G_3$ & exact accepted context has a prior matching signing query \\
-Later-reveal prefix lemma & acceptance-prefix lemma & a later key reveal does not rewrite the already recorded trace prefix \\
+Core authenticity and cross-action lemmas & Games $G_1$--$G_3$ & exact accepted context has a prior semantic signing event \\
+Later-reveal prefix lemma & trace-prefix authenticity lemma & a later key reveal does not rewrite the already recorded trace prefix \\
 Injective checked-acceptance lemma & Game $G_4$ & one registered key precedes at most one checked admission \\
 Unchecked-injectivity comparison & $\mathsf{Duplicate}$ without the state contract & removing consumption yields a concrete replay \\
 Quorum commit and distinct-slot lemmas & $\mathsf{QuorumSub}$ and its corollary & two distinct pinned keys sign one byte-identical base authorization, excluding the initiator \\
@@ -1147,6 +1173,31 @@ The contribution is the adversary query pattern and the paired positive and
 negative models: the attacker may collect signatures on arbitrary contexts, and
 the same ideal signing theory is used on both sides of each separation result.
 
+\paragraph{Secure formats and semantic messages.}
+Comparse treats concrete protocol formats as part of the security argument and
+lifts bit-string assumptions to typed messages whose encodings satisfy explicit
+format properties~\cite{comparse}. ABIA relies on the same core lesson: the
+semantic authorization context must remain visible to the experiment, and a
+byte-level signing query is not enough to define transplantation. We assume a
+closed injective format rather than contributing a new verified parser framework.
+
+\paragraph{Transparency, audit logs, and temporal evidence.}
+Transparency overlays formalize append-only, externally checkable views using
+signatures and dynamic list commitments, while forward-secure audit-log schemes
+protect whole logs and verifiable excerpts after later compromise
+~\cite{transparencyoverlays,secureauditlogs}. Those mechanisms can supply the
+independent ordering evidence that ABIA intentionally omits. The trace-prefix
+lemma only conditions on the experiment's already ordered events; it must not be
+read as a transparency, secure-logging, or offline anti-backdating construction.
+
+\paragraph{Web authorization and replay.}
+The formal analysis of the OpenID FAPI 2.0 family shows how strong web attackers,
+sender-constrained tokens, and replay-relevant protocol details belong in an
+authorization proof tied to a standardization process~\cite{fapi2formal}. ABIA
+studies a different boundary: an operator that can solicit genuine signatures on
+many semantic action contexts. Its state term concerns atomic single-use provider
+admission, not OAuth token presentation.
+
 \section{Limitations}
 
 ABIA proves that an unrevealed enrolled key signed an exact context. It does not
@@ -1187,6 +1238,14 @@ removed, and they do not stop initiator relabeling when the initiator is not
 signed.
 
 \section*{Artifact Availability}
+
+This manuscript is archived as version v3 of the single-use authorization-receipt
+preprint series at
+\href{https://doi.org/10.5281/zenodo.21968577}{Zenodo record 21968577}.
+It succeeds the shorter symbolic-analysis version at
+\href{https://doi.org/10.5281/zenodo.21520973}{Zenodo record 21520973}; the
+all-versions concept DOI is
+\href{https://doi.org/10.5281/zenodo.21520972}{10.5281/zenodo.21520972}.
 
 The four Tamarin theories, replay traces, exact tool summaries, and pinned rerun
 scripts are available in the public repository:
@@ -1302,6 +1361,31 @@ the Cloud,'' \emph{NDSS}, 2014.
 L. Cao, L. Meng, D. Stefan, and E. Fernandes,
 ``Stateful Least Privilege Authorization for the Cloud,''
 \emph{33rd USENIX Security Symposium}, pp. 3477--3495, 2024.
+
+\bibitem{comparse}
+T. Wallez, J. Protzenko, and K. Bhargavan,
+``Comparse: Provably Secure Formats for Cryptographic Protocols,''
+\emph{ACM CCS}, 2023.
+\url{https://doi.org/10.1145/3576915.3623201}.
+
+\bibitem{transparencyoverlays}
+M. Chase and S. Meiklejohn,
+``Transparency Overlays and Applications,''
+\emph{ACM CCS}, 2016.
+\url{https://eprint.iacr.org/2016/915}.
+
+\bibitem{secureauditlogs}
+G. Hartung,
+``Secure Audit Logs with Verifiable Excerpts,''
+\emph{CT-RSA}, 2016.
+\url{https://doi.org/10.1007/978-3-319-29485-8_11}.
+
+\bibitem{fapi2formal}
+P. Hosseyni, R. K\"usters, and T. W\"urtele,
+``Formal Security Analysis of the OpenID FAPI 2.0 Family of Protocols:
+Accompanying a Standardization Process,''
+\emph{ACM Transactions on Privacy and Security}, 2024.
+\url{https://eprint.iacr.org/2024/1540}.
 
 \end{thebibliography}
 

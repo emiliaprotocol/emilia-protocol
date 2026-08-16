@@ -1,8 +1,8 @@
 # Verification receipt
 
-Date: 15 August 2026
+Date: 16 August 2026
 
-This receipt identifies the exact source, model, proof, and PDF evidence reviewed for the focused cryptology revision. It does not assert that the paper has been submitted, posted, or accepted.
+This receipt identifies the exact source, model, proof, and PDF evidence reviewed for the focused authorization-protocol revision. It does not assert acceptance by a refereed or editorial venue.
 
 ## Toolchain
 
@@ -12,7 +12,7 @@ The Tamarin runs used the repository-pinned image:
 lmandrelli/tamarin-prover-and-batch@sha256:dff2af961e192e2b8eef3faa0484a0075c380b476bd0e79c160a5619b2519083
 ```
 
-The PDF was built twice with Tectonic using `SOURCE_DATE_EPOCH=1786752000`. The two clean outputs were byte-identical. Text extraction and the focused artifact guard used Poppler `pdftotext` and Node.js.
+The PDF was built twice with Tectonic using `SOURCE_DATE_EPOCH=1786752000`. The two clean outputs were byte-identical. Text extraction and the focused artifact guard used Poppler `pdftotext` and Node.js. The version DOI `10.5281/zenodo.21968577` was reserved before the final build and is embedded in the PDF.
 
 ## Source digests
 
@@ -37,7 +37,7 @@ injective_acceptance_with_consumption (all-traces): verified (11 steps)
 unchecked_acceptance_is_injective (all-traces): falsified (11-step trace)
 ```
 
-The new later-reveal result is deliberately an acceptance-prefix property. The model also requires that no reveal occurred before acceptance. It does not claim offline anti-backdating after compromise.
+The later-reveal result is deliberately a trace-prefix authenticity property. The model also requires that no reveal occurred before acceptance. It does not claim forward-secure logging or offline anti-backdating after compromise.
 
 ## Quorum-core results
 
@@ -71,9 +71,9 @@ unchecked_unregistered_challenge_is_registered (all-traces): falsified (14-step 
 | Property | Value |
 |---|---|
 | File | `papers/preprint/eprint-revision/main.pdf` |
-| Pages | 18 |
-| Bytes | 165,866 |
-| SHA-256 | `0f5bdabe86ce164341d7cad8eb5f71574ef12834267050517813e51213fba24a` |
+| Pages | 19 |
+| Bytes | 172,068 |
+| SHA-256 | `f158dbcd36f8831cc8f39aa7d37cfd505679483b57b29bb33dc676a9af75867e` |
 
 ## Reproduction commands
 
@@ -91,4 +91,4 @@ cp build-a/main.pdf main.pdf
 node check.mjs
 ```
 
-The rejected PDF for temporary submission `xxxx/111011` remains separate and was not reused.
+The rejected PDF for temporary submission `xxxx/111097` remains separate and was not reused. This corrected paper records semantic contexts in the signing experiment and is packaged as Zenodo v3 rather than resubmitted to the same ePrint queue.
