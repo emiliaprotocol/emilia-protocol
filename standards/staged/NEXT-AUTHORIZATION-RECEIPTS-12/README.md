@@ -1,8 +1,10 @@
-# Authorization Receipts -12 candidate packet
+# Authorization Receipts -12 publication-provenance packet
 
-This packet contains an unposted candidate for
-`draft-schrock-ep-authorization-receipts-12`. It has not been filed with the
-IETF Datatracker.
+This packet contains the exact source submitted as
+`draft-schrock-ep-authorization-receipts-12`. It was posted by the IETF
+Datatracker on 2026-08-16 as submission 167791. The immutable archive XML is
+byte-for-byte identical to
+`UPLOAD-THIS/draft-schrock-ep-authorization-receipts-12.xml`.
 
 Revision -12 adds three narrowly separated security properties:
 
@@ -17,3 +19,5 @@ Revision -12 adds three narrowly separated security properties:
 The formal model proves only the first property under its stated trace and
 acceptance assumptions. It does not claim trusted time, forward security,
 offline anti-backdating, current authorization, or current policy acceptance.
+
+This retained packet is publication provenance, not an upload candidate.

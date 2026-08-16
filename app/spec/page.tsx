@@ -11,7 +11,7 @@ import {
 export const metadata = {
   // This page renders the posted Internet-Draft. "Internet-Draft", not "RFC" —
   // claiming RFC status for an individual I-D overstates IETF standing.
-  title: 'draft-schrock-ep-authorization-receipts-11 — EMILIA Protocol Specification',
+  title: 'draft-schrock-ep-authorization-receipts-12 — EMILIA Protocol Specification',
   description: 'EMILIA Protocol specification (IETF Internet-Draft) — verifiable human-authorization receipts for high-risk agent actions.',
   alternates: { canonical: '/spec' },
 };
@@ -77,7 +77,7 @@ function mdToHtml(md: string): string {
 }
 
 export default function SpecPage() {
-  const draftPath = join(process.cwd(), 'standards', 'posted', 'draft-schrock-ep-authorization-receipts-11.xml');
+  const draftPath = join(process.cwd(), 'standards', 'posted', 'draft-schrock-ep-authorization-receipts-12.xml');
   const draft = readFileSync(draftPath, 'utf8');
   const html = mdToHtml(`\`\`\`text\n${draft}\n\`\`\``);
 
@@ -120,7 +120,7 @@ export default function SpecPage() {
             Next: Human Authorization Binding -00 ↗
           </a>
         </nav>
-        <div className="spec-badge">DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-11 · STANDARDS TRACK CANDIDATE · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
+        <div className="spec-badge">DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-12 · STANDARDS TRACK CANDIDATE · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
         <p className="spec-summary">
           Document 01 defines one action-bound organizational approval-evidence profile. Gate can
           verify that evidence for the exact material action at a protected boundary, but this draft
@@ -130,7 +130,7 @@ export default function SpecPage() {
         <p style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 12, color: '#7a809a', marginBottom: 8 }}>Canonical copy on the <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/" target="_blank" rel="noopener noreferrer">IETF datatracker</a>. Conformance vectors: <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/CONFORMANCE.md" target="_blank" rel="noopener noreferrer">CONFORMANCE.md</a>. Multi-party companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-quorum</a>. Composition companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-authorization-evidence-chain</a>. Preprint: <a href="https://doi.org/10.5281/zenodo.20780638" target="_blank" rel="noopener noreferrer">Zenodo DOI</a>. Canonical path: <a href="/protocol">four-document hub</a>.</p>
         <div dangerouslySetInnerHTML={{ __html: html }} />
         <div className="spec-footer">
-          EMILIA Protocol — draft-schrock-ep-authorization-receipts-11 — Apache 2.0 License
+          EMILIA Protocol — draft-schrock-ep-authorization-receipts-12 — Apache 2.0 License
         </div>
       </div>
       <SiteFooter />
