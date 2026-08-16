@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# Execution-Layer Evidence composition profile, first cut
+# Execution-Layer Evidence and field-origin composition profile
 
 Status: source-pinned discussion artifact for review by the authors of
 `draft-chen-oauth-agent-authz-use-cases-02`. It is not an Internet-Draft, not a
@@ -36,6 +36,26 @@ case reports a verdict per claim, so the difference between "approved,"
 "admitted," and "occurred" is visible in the output rather than asserted in
 prose.
 
+## M01 field-origin evidence
+
+The profile now adds a fourth, narrower claim at the admission boundary:
+where a pinned issuer says each exact action field came from, and whether the
+field was read as immutable data or as a snapshot of mutable state. The signed
+`EP-FIELD-ORIGIN-v0.1` object is bound to the exact observed action and to a
+relying-party-pinned profile.
+
+Effect-relevant control fields may come only from the origin classes the
+profile permits. Derived control values must name the exact pinned transform
+id, version, and digest. `unknown` stays unknown. Untrusted bytes may still
+fill a bounded data field such as `memo`, which keeps the rule discriminating
+instead of turning it into a blanket content ban.
+
+The prior art is [CaMeL, "Defeating Prompt Injections by Design"](https://arxiv.org/abs/2503.18813),
+which separates trusted control flow from untrusted data inside an agent
+runtime. This profile does not claim to solve prompt injection. Its narrower
+delta is a signed field-origin assertion evaluated at executor admission and
+carried as evidence that a relying party can verify afterward.
+
 ## The demonstration boundary
 
 The exact action is a finance-operations boundary: a **vendor bank-detail
@@ -48,6 +68,7 @@ account numbers enter the evidence only as digests.
 ```bash
 node conformance/composition/gap6-execution-evidence-v0.1/run.mjs          # demonstration
 node conformance/composition/gap6-execution-evidence-v0.1/run.mjs --json   # full report
+npm run pilot:finance-field-origin                                      # paid-pilot bundle
 ```
 
 One execution emits three outputs:
@@ -74,9 +95,17 @@ One execution emits three outputs:
 | 6 | `replay-refused` | still proven (verification is not admission) | refused `replay_refused` | not entered |
 | 7 | `lost-acknowledgement-indeterminate` | proven | admitted, then committed | **indeterminate**, bound to the admitted decision; blind retry refused |
 | 8 | `false-execution-claim-rejected` | proven | admitted | claim not credited: asserted result binds no admitted decision |
+| 9 | `m01-injected-email-payee-change-refused` | proven | refused `field_origin_control_untrusted:/vendor_id` | not entered |
+| 10 | `m01-webpage-target-change-refused` | proven | refused `field_origin_control_untrusted:/erp` | not entered |
+| 11 | `m01-transformed-control-substitution-refused` | proven | refused `field_origin_transform_unpinned:/new_account_digest` | not entered |
+| 12 | `m01-unknown-origin-refused` | proven | refused `field_origin_unknown:/change_ticket` | not entered |
+| 13 | `m01-profile-downgrade-refused` | proven | refused `field_origin_profile_mismatch` | not entered |
+| 14 | `m01-bounded-untrusted-memo-admitted` | proven | admitted | executed; untrusted memo remained bounded data |
 
 Every refusal reason in the output is the one the mechanism produced, not one
-this file chose. The executor runs exactly four times across all eight cases.
+this file chose. The executor runs exactly five times across all fourteen
+cases. Only the bounded-data M01 case reaches the effect among the six M01
+cases.
 
 ## Limits (what each output does not prove)
 
@@ -93,9 +122,31 @@ this file chose. The executor runs exactly four times across all eight cases.
   Cross-gateway authority transfer is a distinct, open problem (see
   `draft-dunbar-dmsc-gw-scenarios-gap-analysis-04`, Section 7.8, and
   `examples/conserved-admission/`).
+- Field-origin evidence authenticates a pinned issuer's assertion about field
+  provenance and snapshot caveats. It does not establish source truth, detect
+  prompt injection, authorize the action, or prove an external effect.
+- A trust key carried inside a pilot bundle is not self-authenticating. An
+  external verifier must pin that key out of band.
+
+## Paid-pilot bundle
+
+`npm run pilot:finance-field-origin` writes the signed field-origin evidence,
+the pinned profile and public trust key, the exact observed action, the Gate
+hash chain, the deterministic fourteen-case report, an auditor workpaper, an
+underwriter control attestation, and a digest manifest. The generated
+`PILOT-REPORT.md` explains the five refusals and the bounded-data positive
+case in buyer language while preserving the claim boundary.
+
+Verify a bundle without network access from the source commit recorded in its
+manifest:
+
+```bash
+npm run verify:finance-field-origin-pilot -- /path/to/pilot-kit
+```
 
 ## Tests
 
 ```bash
 npx vitest run conformance/composition/gap6-execution-evidence-v0.1/run.test.mts
+npx tsx --test conformance/composition/gap6-execution-evidence-v0.1/pilot-kit.test.mts
 ```

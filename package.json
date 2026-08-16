@@ -34,6 +34,8 @@
     "conformance:composition:ccs-oasnt": "node --test conformance/composition/ccs-oasnt-aeb-v1/run.test.mjs && node conformance/composition/ccs-oasnt-aeb-v1/run.mjs",
     "conformance:composition:ccs-l1-aeb": "node --test conformance/composition/ccs-l1-aeb-v1/run.test.mjs && node conformance/composition/ccs-l1-aeb-v1/run.mjs --check",
     "conformance:composition:noa-policy-replay": "vitest run conformance/composition/noa-policy-replay-v0.1/run.test.mjs && node conformance/composition/noa-policy-replay-v0.1/run.mjs",
+    "pilot:finance-field-origin": "node conformance/composition/gap6-execution-evidence-v0.1/export-pilot-kit.mjs",
+    "verify:finance-field-origin-pilot": "node conformance/composition/gap6-execution-evidence-v0.1/verify-pilot-kit.mjs",
     "test:grpc-guard": "node --test packages/grpc-guard/*.test.mjs",
     "test:gateway-authz": "node --test packages/gateway-authz/*.test.mjs",
     "test:transport-adapters": "node --test packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs",
