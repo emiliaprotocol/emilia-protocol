@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "7984db384f6a95d30bd6316c0c3d17879c3fa2c617b2b348daefa646807f3802"
+      "sha256": "826dcd13a196a9591b2750854a91e9011fef90cfeeb12771a4020e2ccd2c5ed1"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1044,6 +1044,10 @@
     {
       "path": "packages/verify/dist/aeb-psea-adapter.js",
       "sha256": "6127e4ebec1e1e6c91492db52262eebff764a9319046358d396991d1522c8c06"
+    },
+    {
+      "path": "packages/verify/dist/aeb-wag-adapter.js",
+      "sha256": "2b55ea395ddaf5f57bfa58c6aef3737d7b71932cd899599a6b98d7b2dd830781"
     },
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",

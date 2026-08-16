@@ -111,6 +111,9 @@ export default defineConfig({
       // The CCS/OASNT composition suite is a portable node:test program.
       // CI runs it through `npm run conformance:composition:ccs-oasnt`.
       'conformance/composition/ccs-oasnt-aeb-v1/run.test.mts',
+      // The WAG composition suite is also a portable node:test program.
+      // CI runs it through `npm run conformance:composition:wag`.
+      'conformance/composition/wag-aeb-v1/run.test.mts',
       // The CCS 1.1.14 L1/AEB composition suite is likewise a portable
       // node:test program executed by its dedicated conformance command.
       'conformance/composition/ccs-l1-aeb-v1/run.test.mts',

@@ -155,6 +155,10 @@
       "types": "./dist/aeb-oasnt-adapter.d.ts",
       "import": "./aeb-oasnt-adapter.js"
     },
+    "./aeb-wag-adapter": {
+      "types": "./dist/aeb-wag-adapter.d.ts",
+      "import": "./aeb-wag-adapter.js"
+    },
     "./aeb-ccs-adapter": {
       "types": "./dist/aeb-ccs-adapter.d.ts",
       "import": "./aeb-ccs-adapter.js"
@@ -261,6 +265,7 @@
     "policy-decision-evidence.js",
     "aeb-native-adapters.js",
     "aeb-oasnt-adapter.js",
+    "aeb-wag-adapter.js",
     "aeb-ccs-adapter.js",
     "aeb-chap-adapter.js",
     "aeb-psea-adapter.js",

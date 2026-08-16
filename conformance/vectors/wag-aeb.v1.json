@@ -1,0 +1,22 @@
+{
+  "@version": "EP-WAG-AEB-VECTORS-v1",
+  "source_lock": "standards/observatory/wag-00-source-lock.v1.json",
+  "profile": "docs/protocol/wag-aeb-token-issuance-profile-v1.md",
+  "cases": [
+    { "id": "WAG-00-SOURCE-PIN", "kind": "source", "expected": "MATCH" },
+    { "id": "WAG-VALID-TOKEN-ISSUANCE", "kind": "positive", "expected": "MATCH" },
+    { "id": "WAG-ISSUER-SUBSTITUTION", "kind": "hostile", "expected": "REJECTED" },
+    { "id": "WAG-TENANT-KEY-SUBSTITUTION", "kind": "hostile", "expected": "REJECTED" },
+    { "id": "WAG-UNSEEN-SUBJECT-ACCEPT", "kind": "positive", "expected": "MATCH" },
+    { "id": "WAG-SUBJECT-SUBSTITUTION", "kind": "hostile", "expected": "REJECTED" },
+    { "id": "WAG-AUDIENCE-SUBSTITUTION", "kind": "hostile", "expected": "REJECTED" },
+    { "id": "WAG-RESOURCE-SUBSTITUTION", "kind": "hostile", "expected": "REJECTED" },
+    { "id": "WAG-PROPERTY-SUBSTITUTION", "kind": "hostile", "expected": "REJECTED" },
+    { "id": "WAG-EXPIRED-GRANT", "kind": "hostile", "expected": "REJECTED" },
+    { "id": "WAG-STATUS-UNAVAILABLE", "kind": "hostile", "expected": "INDETERMINATE" },
+    { "id": "WAG-REPLAY-IDENTITY", "kind": "replay", "expected": "STABLE" },
+    { "id": "WAG-SECOND-TOKEN-ISSUANCE", "kind": "replay", "expected": "REFUSED" },
+    { "id": "WAG-DOWNSTREAM-ACTION-NON-SUBSTITUTION", "kind": "boundary", "expected": "INDETERMINATE" },
+    { "id": "WAG-NOT-HUMAN-APPROVAL", "kind": "boundary", "expected": "WORKLOAD_ONLY" }
+  ]
+}

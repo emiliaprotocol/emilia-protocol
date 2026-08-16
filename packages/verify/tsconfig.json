@@ -59,6 +59,7 @@
     "src/aeb-native-adapters.ts",
     "src/aeb-oauth-transaction-challenge-adapter.ts",
     "src/aeb-oasnt-adapter.ts",
+    "src/aeb-wag-adapter.ts",
     "src/aeb-ccs-adapter.ts",
     "src/aeb-chap-adapter.ts",
     "src/aeb-psea-adapter.ts",
