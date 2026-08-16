@@ -8,15 +8,15 @@ import {
   createEg1Harness,
   createGate,
   MemoryConsumptionStore,
-} from './src/index.js';
+} from './index.js';
 import {
   FIELD_ORIGIN_CLAIM_BOUNDARY,
   FIELD_ORIGIN_EVIDENCE_VERSION,
   fieldOriginProfileDigest,
   signFieldOriginEvidence,
   verifyFieldOriginEvidence,
-} from './src/field-origin-evidence.js';
-import { signBoundedExecutionProgram } from './src/bounded-execution-program.js';
+} from './field-origin-evidence.js';
+import { signBoundedExecutionProgram } from './bounded-execution-program.js';
 
 const NOW = '2026-08-15T22:30:00.000Z';
 const NOW_MS = Date.parse(NOW);

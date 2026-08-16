@@ -5,9 +5,9 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
 import test from 'node:test';
 import { manifestFromPack } from './adapters/_kit.js';
-import { createEg1Harness, createGate, MemoryConsumptionStore, } from './src/index.js';
-import { FIELD_ORIGIN_CLAIM_BOUNDARY, FIELD_ORIGIN_EVIDENCE_VERSION, fieldOriginProfileDigest, signFieldOriginEvidence, verifyFieldOriginEvidence, } from './src/field-origin-evidence.js';
-import { signBoundedExecutionProgram } from './src/bounded-execution-program.js';
+import { createEg1Harness, createGate, MemoryConsumptionStore, } from './index.js';
+import { FIELD_ORIGIN_CLAIM_BOUNDARY, FIELD_ORIGIN_EVIDENCE_VERSION, fieldOriginProfileDigest, signFieldOriginEvidence, verifyFieldOriginEvidence, } from './field-origin-evidence.js';
+import { signBoundedExecutionProgram } from './bounded-execution-program.js';
 const NOW = '2026-08-15T22:30:00.000Z';
 const NOW_MS = Date.parse(NOW);
 const BASE_ACTION = Object.freeze({
