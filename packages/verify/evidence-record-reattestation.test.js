@@ -11,10 +11,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { EVIDENCE_RECORD_VERSION, REATTESTATION_VERSION, createReattestation, verifyEvidenceRecord, verifyReattestationChain, } from './src/evidence-record.js';
-import { canonicalize } from './src/index.js';
-import { TIME_ATTESTATION_VERSION } from './src/time-attestation.js';
-import { AGILITY_REASONS } from './src/pq-signature-agility.js';
+import { EVIDENCE_RECORD_VERSION, REATTESTATION_VERSION, createReattestation, verifyEvidenceRecord, verifyReattestationChain, } from './dist/evidence-record.js';
+import { canonicalize } from './dist/index.js';
+import { TIME_ATTESTATION_VERSION } from './dist/time-attestation.js';
+import { AGILITY_REASONS } from './dist/pq-signature-agility.js';
 // --- fixtures ---------------------------------------------------------------
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const edPair = crypto.generateKeyPairSync('ed25519');
