@@ -76,6 +76,9 @@ const B64URL_RE = /^[A-Za-z0-9_-]+$/;
 const RFC3339_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/;
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const CONTENT_DIGEST_RE = /^sha-256=:([A-Za-z0-9+/]+={0,2}):$/;
+const WORKLOAD_SUBJECT_RE = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]+)(\/[^?#]*)$/;
+const WORKLOAD_PATH_SEGMENT_RE = /^[A-Za-z0-9._~-]+$/;
+const MAX_WORKLOAD_SUBJECT_OCTETS = 2_048;
 
 const CONFIG_KEYS = new Set([
   '@version',
@@ -365,6 +368,23 @@ function absoluteHttpsUrl(value: unknown): boolean {
   }
 }
 
+/**
+ * Conservative relying-party profile for the generic WIMSE Workload
+ * Identifier URI. The scheme remains deployment-selected, including `spiffe`,
+ * while the exact spelling accepted by this adapter has one comparison form.
+ */
+function canonicalWorkloadSubject(value: unknown, trustDomain: string): boolean {
+  if (!nonEmptyString(value)
+      || Buffer.byteLength(value, 'utf8') > MAX_WORKLOAD_SUBJECT_OCTETS) return false;
+  const match = WORKLOAD_SUBJECT_RE.exec(value);
+  if (!match || match[2] !== trustDomain) return false;
+  const segments = match[3].slice(1).split('/');
+  return segments.length > 0
+    && segments.every((segment) => segment !== '.'
+      && segment !== '..'
+      && WORKLOAD_PATH_SEGMENT_RE.test(segment));
+}
+
 function parseConfig(value: unknown): WimseOAuthSptAdapterConfig | null {
   if (!isRecord(value)
       || !exactKeys(value, CONFIG_KEYS)
@@ -396,18 +416,7 @@ function parseConfig(value: unknown): WimseOAuthSptAdapterConfig | null {
       || Object.values(value.max_age_seconds).some((age) => Number(age) > 86_400)) {
     return null;
   }
-  let subjectUrl: URL;
-  try {
-    subjectUrl = new URL(value.subject.native_id);
-  } catch {
-    return null;
-  }
-  if (subjectUrl.username !== ''
-      || subjectUrl.password !== ''
-      || subjectUrl.host !== value.trust_domain
-      || subjectUrl.pathname === '/'
-      || subjectUrl.search !== ''
-      || subjectUrl.hash !== '') return null;
+  if (!canonicalWorkloadSubject(value.subject.native_id, value.trust_domain)) return null;
   return structuredClone(value) as unknown as WimseOAuthSptAdapterConfig;
 }
 
@@ -757,18 +766,7 @@ function claimsIssuerSubject(
 }
 
 function trustDomainMatches(subject: unknown, trustDomain: string): boolean {
-  if (!nonEmptyString(subject)) return false;
-  try {
-    const parsed = new URL(subject);
-    return parsed.username === ''
-      && parsed.password === ''
-      && parsed.host === trustDomain
-      && parsed.pathname !== '/'
-      && parsed.search === ''
-      && parsed.hash === '';
-  } catch {
-    return false;
-  }
+  return canonicalWorkloadSubject(subject, trustDomain);
 }
 
 function witConfirmationMatches(claims: Obj, holder: ParsedHolderRoot): boolean {

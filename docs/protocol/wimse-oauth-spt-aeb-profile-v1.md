@@ -63,6 +63,11 @@ newer Datatracker revision does not silently change this implementation.
 Supporting another revision requires a new lock, profile review, vectors, and
 adapter version.
 
+Open WIMSE working-group changes published after the source lock are review
+inputs, not normative dependencies of this profile. Their counterexamples can
+justify stricter relying-party checks, but they do not silently alter the
+locked wire semantics.
+
 RFC 9421 supplies the native HTTP Message Signature construction, RFC 9530
 supplies `Content-Digest`, RFC 7515/7519 supply compact JWS/JWT processing, and
 RFC 8785 supplies JCS for the SPT intent digest and CAID action.
@@ -135,6 +140,15 @@ fail closed.
 The constructor refuses any evidence role other than `delegated-workload` and
 any subject kind other than `workload`.
 
+The workload subject uses a conservative, scheme-generic comparison profile.
+The adapter accepts deployment-selected lowercase schemes, including `wimse`
+and `spiffe`, while requiring an exact lowercase trust-domain authority and
+non-empty ASCII URI-unreserved path segments. It rejects percent encoding,
+dot segments, empty segments, trailing slashes, user information, ports,
+queries, fragments, non-ASCII spelling, and values longer than 2,048 octets.
+This is a local relying-party admission rule. It is not a new WIMSE wire
+format or a claim that all deployments must use the same scheme.
+
 ## 5. Native verification
 
 ### 5.1 Time
@@ -167,10 +181,18 @@ The adapter:
 4. requires `alg = EdDSA` and `typ = wit+jwt`;
 5. verifies the signature with the constructor-selected WIT issuer key;
 6. requires exact `iss` and `sub`;
-7. parses `sub` as a workload URI;
-8. requires its URI authority to equal the constructor trust domain; and
+7. requires `sub` to satisfy the constructor's canonical workload-subject
+   comparison profile;
+8. requires its exact URI authority to equal the constructor trust domain; and
 9. requires `cnf.jwk` to be the exact pinned Ed25519 workload-holder key with
    `alg = EdDSA`.
+
+The adapter compares the complete URI. It performs no prefix, wildcard,
+ancestor, or descendant match. A different scheme at the same authority and a
+sibling path sharing the pinned prefix are different subjects and fail closed.
+The relying party verifies the pinned issuer's signed subject assertion and
+the pinned holder key. It does not independently establish where the workload
+bytes originated or how the issuer assigned the identifier.
 
 The WIT is validated before the HTTP Message Signature, as required by the
 locked WIMSE HTTP-signature revision.
@@ -356,6 +378,13 @@ cannot create a new native transaction authority. Gate must atomically reserve
 this replay unit before effect. The adapter is pure and does not mutate a
 replay cache itself.
 
+Origin-wide identifier uniqueness and safe reassignment remain issuer and
+deployment lifecycle properties. This adapter does not infer either property
+from a valid signature. If the authenticated external status needed to
+establish a current, unconsumed assignment is unavailable or stale, native
+cryptography may still be `VERIFIED`, but admission is `INDETERMINATE` and the
+effect must not proceed.
+
 ## 8. AEB outcomes
 
 The adapter keeps these decisions separate:
@@ -384,14 +413,17 @@ the positive path. Hostile cases cover:
 - unexpected `alg`;
 - wrong pinned key;
 - wrong WPT, OAuth, SPT, and WIMSE audiences;
-- wrong workload subject and trust domain;
+- non-canonical constructor workload subjects;
+- wrong scheme, sibling workload subject, and trust domain;
+- issuer-signed rebinding to an unpinned confirmation key;
 - expired, not-yet-valid, and over-age tokens;
 - missing HTTP method/target/content-digest/Txn-Token coverage;
 - changed body bytes;
 - wrong WPT `tth`;
 - wrong SPT intent digest;
 - missing and mismatched exact action;
-- replay under a new AEB wrapper; and
+- replay under a new AEB wrapper;
+- unavailable or stale identifier-lifecycle status; and
 - attempted substitution into a human-authorization role.
 
 The adapter is exported through
