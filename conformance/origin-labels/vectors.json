@@ -1,0 +1,183 @@
+{
+  "vocabulary": "EP-ORIGIN-LABELS-v1",
+  "vector_set": "ORIGIN-LABELS-v1-laundering",
+  "version": 1,
+  "claim_boundary": "producer_asserted_origin_labels_checked_for_closed_vocabulary_internal_consistency_and_policy_trust_floor_at_admission_not_source_truth_not_producer_honesty",
+  "notes": "Executed by packages/gate/field-origin-evidence.test.ts against evaluateOriginLabelAssertions. Cases marked kind=residual document a laundering shape this vocabulary structurally CANNOT refuse; their expected result is admitted:true and that honesty is part of the conformance bar.",
+  "cases": [
+    {
+      "id": "closed-set-unknown-label",
+      "kind": "structural",
+      "description": "A label outside the closed ORIGIN-LABELS-v1 set is refused, path-precise.",
+      "input": {
+        "assertions": [
+          { "path": "/vendor_id", "label": "trusted", "derived_from": null, "value_digest": null }
+        ],
+        "policy": { "rules": [] }
+      },
+      "expect": { "admitted": false, "reason": "unknown_origin_label:/vendor_id" }
+    },
+    {
+      "id": "launder-a-summary-without-derivation-set",
+      "kind": "laundering",
+      "description": "Retrieved-untrusted content is summarized by a model and the summary is re-asserted as derived WITHOUT derived_from, hiding the retrieved-untrusted source. Refused: a derived assertion must carry its derivation set.",
+      "input": {
+        "assertions": [
+          { "path": "/inbound_email_body", "label": "retrieved-untrusted", "derived_from": null, "value_digest": null },
+          { "path": "/payment_note", "label": "derived", "derived_from": null, "value_digest": null }
+        ],
+        "policy": { "rules": [] }
+      },
+      "expect": { "admitted": false, "reason": "derivation_unspecified:/payment_note" }
+    },
+    {
+      "id": "launder-b-conflicting-reassertion-of-source-path",
+      "kind": "laundering",
+      "description": "A derived value lists derived_from [user-stated], but the pipeline's own ingest step asserted the source path retrieved-untrusted, and the laundering step re-asserts that same path user-stated to back the claim. The set is internally inconsistent: same path, conflicting labels.",
+      "input": {
+        "assertions": [
+          { "path": "/wire_reference", "label": "retrieved-untrusted", "derived_from": null, "value_digest": null },
+          { "path": "/wire_reference", "label": "user-stated", "derived_from": null, "value_digest": null },
+          { "path": "/payment_memo", "label": "derived", "derived_from": ["user-stated"], "value_digest": null }
+        ],
+        "policy": { "rules": [] }
+      },
+      "expect": { "admitted": false, "reason": "origin_conflict:/wire_reference" }
+    },
+    {
+      "id": "launder-c-trust-floor-violation-on-control-field",
+      "kind": "laundering",
+      "description": "Policy requires operator-config or better for /beneficiary_account. The assertion is derived with retrieved-untrusted in its derivation set, so its effective floor is retrieved-untrusted. Taint preservation: the transform never upgrades the label.",
+      "input": {
+        "assertions": [
+          { "path": "/beneficiary_account", "label": "derived", "derived_from": ["operator-config", "retrieved-untrusted"], "value_digest": null }
+        ],
+        "policy": {
+          "rules": [
+            { "path": "/beneficiary_account", "minimum_label": "operator-config" }
+          ]
+        }
+      },
+      "expect": { "admitted": false, "reason": "origin_trust_floor_violation:/beneficiary_account" }
+    },
+    {
+      "id": "launder-d-byte-identical-value-upgraded-across-copy",
+      "kind": "laundering",
+      "description": "The exact same value bytes (equal sha256 digests) are asserted retrieved-untrusted at one path and user-stated at another. Byte-identical copy laundering is detectable through digest equality and is refused naming the upgraded path.",
+      "input": {
+        "assertions": [
+          { "path": "/scraped_notes", "label": "retrieved-untrusted", "derived_from": null, "value_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+          { "path": "/approver_comment", "label": "user-stated", "derived_from": null, "value_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+        ],
+        "policy": { "rules": [] }
+      },
+      "expect": { "admitted": false, "reason": "value_origin_conflict:/approver_comment" }
+    },
+    {
+      "id": "residual-renamed-value-laundering-not-detectable",
+      "kind": "residual",
+      "description": "STATED RESIDUAL: the same untrusted content, altered by even one byte (rephrased, reformatted, re-encoded), carries a different digest. The vocabulary structurally CANNOT link the two values, so a producer that lies consistently about the copy admits. Accountability for the lie is the producer signature over the assertion set, not the label system.",
+      "input": {
+        "assertions": [
+          { "path": "/scraped_notes", "label": "retrieved-untrusted", "derived_from": null, "value_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+          { "path": "/approver_comment", "label": "user-stated", "derived_from": null, "value_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+        ],
+        "policy": { "rules": [] }
+      },
+      "expect": { "admitted": true, "reason": null }
+    },
+    {
+      "id": "structural-derivation-set-on-non-derived-label",
+      "kind": "structural",
+      "description": "derived_from on a non-derived label is refused: derivation sets belong only to derived.",
+      "input": {
+        "assertions": [
+          { "path": "/amount", "label": "user-stated", "derived_from": ["operator-config"], "value_digest": null }
+        ],
+        "policy": { "rules": [] }
+      },
+      "expect": { "admitted": false, "reason": "derivation_unexpected:/amount" }
+    },
+    {
+      "id": "structural-derivation-set-naming-derived",
+      "kind": "structural",
+      "description": "A derivation set names base label classes only; nesting derived inside derived_from is refused.",
+      "input": {
+        "assertions": [
+          { "path": "/summary", "label": "derived", "derived_from": ["derived"], "value_digest": null }
+        ],
+        "policy": { "rules": [] }
+      },
+      "expect": { "admitted": false, "reason": "derivation_source_invalid:/summary" }
+    },
+    {
+      "id": "structural-policy-path-unasserted",
+      "kind": "structural",
+      "description": "A policy rule over a path with no assertion never admits: INDETERMINATE is a refusal.",
+      "input": {
+        "assertions": [
+          { "path": "/amount", "label": "user-stated", "derived_from": null, "value_digest": null }
+        ],
+        "policy": {
+          "rules": [
+            { "path": "/beneficiary_account", "minimum_label": "operator-config" }
+          ]
+        }
+      },
+      "expect": { "admitted": false, "reason": "origin_unasserted:/beneficiary_account" }
+    },
+    {
+      "id": "benign-e1-clean-pipeline-admits",
+      "kind": "benign",
+      "description": "Control: a correct pipeline admits. Pinned account from operator config, human-entered amount, and an invoice summary derived from a counterparty document whose floor (counterparty-document) satisfies its rule.",
+      "input": {
+        "assertions": [
+          { "path": "/beneficiary_account", "label": "operator-config", "derived_from": null, "value_digest": null },
+          { "path": "/amount", "label": "user-stated", "derived_from": null, "value_digest": null },
+          { "path": "/invoice_summary", "label": "derived", "derived_from": ["counterparty-document"], "value_digest": null }
+        ],
+        "policy": {
+          "rules": [
+            { "path": "/beneficiary_account", "minimum_label": "operator-config" },
+            { "path": "/amount", "minimum_label": "user-stated" },
+            { "path": "/invoice_summary", "minimum_label": "counterparty-document" }
+          ]
+        }
+      },
+      "expect": {
+        "admitted": true,
+        "reason": null,
+        "floors": {
+          "/amount": "user-stated",
+          "/beneficiary_account": "operator-config",
+          "/invoice_summary": "counterparty-document"
+        }
+      }
+    },
+    {
+      "id": "benign-e2-multi-source-floor-at-exact-boundary",
+      "kind": "benign",
+      "description": "Control: a derivation from user-stated and counterparty-document sources floors at counterparty-document; a policy minimum of exactly counterparty-document admits, and a bounded untrusted memo admits under a retrieved-untrusted minimum.",
+      "input": {
+        "assertions": [
+          { "path": "/reconciliation_line", "label": "derived", "derived_from": ["user-stated", "counterparty-document"], "value_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+          { "path": "/memo", "label": "retrieved-untrusted", "derived_from": null, "value_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }
+        ],
+        "policy": {
+          "rules": [
+            { "path": "/reconciliation_line", "minimum_label": "counterparty-document" },
+            { "path": "/memo", "minimum_label": "retrieved-untrusted" }
+          ]
+        }
+      },
+      "expect": {
+        "admitted": true,
+        "reason": null,
+        "floors": {
+          "/memo": "retrieved-untrusted",
+          "/reconciliation_line": "counterparty-document"
+        }
+      }
+    }
+  ]
+}

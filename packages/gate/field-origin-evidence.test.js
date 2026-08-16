@@ -3,10 +3,13 @@
 /* eslint-disable */
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { manifestFromPack } from './adapters/_kit.js';
 import { createEg1Harness, createGate, MemoryConsumptionStore, } from './index.js';
-import { FIELD_ORIGIN_CLAIM_BOUNDARY, FIELD_ORIGIN_EVIDENCE_VERSION, fieldOriginProfileDigest, signFieldOriginEvidence, verifyFieldOriginEvidence, } from './field-origin-evidence.js';
+import { FIELD_ORIGIN_CLAIM_BOUNDARY, FIELD_ORIGIN_EVIDENCE_VERSION, ORIGIN_LABEL_DEFINITIONS, ORIGIN_LABEL_TRUST_ORDER, ORIGIN_LABELS, ORIGIN_LABELS_CLAIM_BOUNDARY, ORIGIN_LABELS_V01_PROFILE_MAP, ORIGIN_LABELS_VERSION, evaluateOriginLabelAssertions, fieldOriginProfileDigest, originLabelTrustFloor, signFieldOriginEvidence, verifyFieldOriginEvidence, } from './field-origin-evidence.js';
 import { signBoundedExecutionProgram } from './bounded-execution-program.js';
 const NOW = '2026-08-15T22:30:00.000Z';
 const NOW_MS = Date.parse(NOW);
@@ -323,4 +326,192 @@ test('a pinned field-origin profile cannot be configured without issuer trust pi
         fieldOriginExecutionProgram: executionProgramHarness(`sha256:${'9'.repeat(64)}`),
         allowEphemeralStore: true,
     }), /does not pin the required field-origin profile/);
+});
+// ORIGIN-LABELS-v1: closed vocabulary, taint-preserving floors, laundering vectors.
+function labelAssertion(path, label, overrides = {}) {
+    return { path, label, derived_from: null, value_digest: null, ...overrides };
+}
+test('ORIGIN-LABELS-v1 is a closed versioned vocabulary with one definition per label', () => {
+    assert.equal(ORIGIN_LABELS_VERSION, 'EP-ORIGIN-LABELS-v1');
+    assert.deepEqual([...ORIGIN_LABELS].sort(), [
+        'counterparty-document',
+        'derived',
+        'model-generated',
+        'operator-config',
+        'retrieved-untrusted',
+        'user-stated',
+    ]);
+    assert.deepEqual([...ORIGIN_LABEL_TRUST_ORDER], [
+        'operator-config',
+        'user-stated',
+        'counterparty-document',
+        'model-generated',
+        'retrieved-untrusted',
+    ]);
+    assert.deepEqual(Object.keys(ORIGIN_LABEL_DEFINITIONS).sort(), [...ORIGIN_LABELS].sort());
+    for (const definition of Object.values(ORIGIN_LABEL_DEFINITIONS)) {
+        assert.equal(typeof definition, 'string');
+        assert.ok(definition.length > 0);
+    }
+    assert.ok(Object.isFrozen(ORIGIN_LABELS));
+    assert.ok(Object.isFrozen(ORIGIN_LABEL_TRUST_ORDER));
+    // The informative v0.1 profile map covers exactly the admitting v0.1 classes.
+    assert.deepEqual(ORIGIN_LABELS_V01_PROFILE_MAP, {
+        operator_pinned: 'operator-config',
+        approver_supplied: 'user-stated',
+        untrusted_bounded: 'retrieved-untrusted',
+        derived_via_versioned_transform: 'derived',
+    });
+    for (const target of Object.values(ORIGIN_LABELS_V01_PROFILE_MAP)) {
+        assert.ok(ORIGIN_LABELS.includes(target));
+    }
+});
+test('originLabelTrustFloor is taint-preserving and never upgrades a derivation', () => {
+    assert.deepEqual(originLabelTrustFloor('operator-config'), { floor: 'operator-config', reason: null });
+    assert.deepEqual(originLabelTrustFloor('derived', ['operator-config', 'user-stated']), { floor: 'user-stated', reason: null });
+    assert.deepEqual(originLabelTrustFloor('derived', ['operator-config', 'retrieved-untrusted']), { floor: 'retrieved-untrusted', reason: null });
+    assert.deepEqual(originLabelTrustFloor('derived', ['model-generated', 'counterparty-document']), { floor: 'model-generated', reason: null });
+    assert.deepEqual(originLabelTrustFloor('derived', null), { floor: null, reason: 'derivation_unspecified' });
+    assert.deepEqual(originLabelTrustFloor('derived', []), { floor: null, reason: 'derivation_unspecified' });
+    assert.deepEqual(originLabelTrustFloor('derived', ['derived']), { floor: null, reason: 'derivation_source_invalid' });
+    assert.deepEqual(originLabelTrustFloor('derived', ['user-stated', 'user-stated']), { floor: null, reason: 'derivation_source_invalid' });
+    assert.deepEqual(originLabelTrustFloor('user-stated', ['operator-config']), { floor: null, reason: 'derivation_unexpected' });
+    assert.deepEqual(originLabelTrustFloor('trusted'), { floor: null, reason: 'unknown_origin_label' });
+    assert.deepEqual(originLabelTrustFloor(42), { floor: null, reason: 'unknown_origin_label' });
+});
+test('evaluateOriginLabelAssertions fails closed with structured refusals, never a throw', () => {
+    for (const hostile of [
+        undefined,
+        null,
+        'assertions',
+        { assertions: [labelAssertion('/a', 'user-stated')] },
+        { assertions: [], policy: { rules: [] } },
+        { assertions: [labelAssertion('/a', 'user-stated')], policy: { rules: [] }, extra: true },
+        { assertions: { not: 'an array' }, policy: { rules: [] } },
+        { assertions: [{ circular: undefined }], policy: { rules: [] } },
+    ]) {
+        const result = evaluateOriginLabelAssertions(hostile);
+        assert.equal(result.admitted, false);
+        assert.ok(typeof result.reason === 'string' && result.reason.length > 0);
+        assert.equal(result.claim_boundary, ORIGIN_LABELS_CLAIM_BOUNDARY);
+        assert.ok(Object.isFrozen(result));
+    }
+    const badPolicy = evaluateOriginLabelAssertions({
+        assertions: [labelAssertion('/a', 'user-stated')],
+        policy: { rules: [{ path: '/a', minimum_label: 'derived' }] },
+    });
+    assert.equal(badPolicy.reason, 'origin_policy_invalid');
+    const dupRule = evaluateOriginLabelAssertions({
+        assertions: [labelAssertion('/a', 'user-stated')],
+        policy: { rules: [{ path: '/a', minimum_label: 'user-stated' }, { path: '/a', minimum_label: 'operator-config' }] },
+    });
+    assert.equal(dupRule.reason, 'origin_policy_invalid');
+    const badDigest = evaluateOriginLabelAssertions({
+        assertions: [labelAssertion('/a', 'user-stated', { value_digest: 'sha256:short' })],
+        policy: { rules: [] },
+    });
+    assert.equal(badDigest.reason, 'origin_value_digest_invalid:/a');
+    const duplicate = evaluateOriginLabelAssertions({
+        assertions: [labelAssertion('/a', 'user-stated'), labelAssertion('/a', 'user-stated')],
+        policy: { rules: [] },
+    });
+    assert.equal(duplicate.reason, 'duplicate_origin_assertion:/a');
+});
+test('every ORIGIN-LABELS-v1 conformance vector reproduces its pinned result', () => {
+    const vectorsPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'conformance', 'origin-labels', 'vectors.json');
+    const pack = JSON.parse(readFileSync(vectorsPath, 'utf8'));
+    assert.equal(pack.vocabulary, ORIGIN_LABELS_VERSION);
+    assert.equal(pack.claim_boundary, ORIGIN_LABELS_CLAIM_BOUNDARY);
+    assert.ok(Array.isArray(pack.cases) && pack.cases.length >= 10);
+    const kinds = new Set(pack.cases.map((entry) => entry.kind));
+    for (const required of ['laundering', 'benign', 'structural', 'residual']) {
+        assert.ok(kinds.has(required), `vector pack must include a ${required} case`);
+    }
+    for (const vector of pack.cases) {
+        const result = evaluateOriginLabelAssertions(vector.input);
+        assert.equal(result.admitted, vector.expect.admitted, `${vector.id}: admitted`);
+        assert.equal(result.reason, vector.expect.reason, `${vector.id}: reason`);
+        if (vector.expect.floors) {
+            assert.deepEqual(result.floors, vector.expect.floors, `${vector.id}: floors`);
+        }
+        assert.equal(result.vocabulary, ORIGIN_LABELS_VERSION);
+        assert.equal(result.claim_boundary, ORIGIN_LABELS_CLAIM_BOUNDARY);
+    }
+});
+test('label laundering refusals are path-precise and benign pipelines admit', () => {
+    // (b) internally inconsistent set: same path, conflicting labels.
+    const conflicting = evaluateOriginLabelAssertions({
+        assertions: [
+            labelAssertion('/wire_reference', 'retrieved-untrusted'),
+            labelAssertion('/wire_reference', 'user-stated'),
+        ],
+        policy: { rules: [] },
+    });
+    assert.equal(conflicting.admitted, false);
+    assert.equal(conflicting.reason, 'origin_conflict:/wire_reference');
+    // (c) trust floor: derived floor is the least-trusted source, and the
+    // refusal names the exact path.
+    const floorViolation = evaluateOriginLabelAssertions({
+        assertions: [
+            labelAssertion('/beneficiary_account', 'derived', {
+                derived_from: ['operator-config', 'retrieved-untrusted'],
+            }),
+        ],
+        policy: { rules: [{ path: '/beneficiary_account', minimum_label: 'operator-config' }] },
+    });
+    assert.equal(floorViolation.reason, 'origin_trust_floor_violation:/beneficiary_account');
+    // (d) byte-identical copy laundering via digest equality names the
+    // upgraded path, and the derived floor participates in the comparison.
+    const digest = `sha256:${'a'.repeat(64)}`;
+    const copyLaundering = evaluateOriginLabelAssertions({
+        assertions: [
+            labelAssertion('/scraped_notes', 'retrieved-untrusted', { value_digest: digest }),
+            labelAssertion('/summary', 'derived', {
+                derived_from: ['retrieved-untrusted'],
+                value_digest: digest,
+            }),
+            labelAssertion('/approver_comment', 'user-stated', { value_digest: digest }),
+        ],
+        policy: { rules: [] },
+    });
+    assert.equal(copyLaundering.reason, 'value_origin_conflict:/approver_comment');
+    // Equal floors with equal digests are not a conflict: a faithful copy of
+    // untrusted content that stays labeled untrusted admits.
+    const faithfulCopy = evaluateOriginLabelAssertions({
+        assertions: [
+            labelAssertion('/scraped_notes', 'retrieved-untrusted', { value_digest: digest }),
+            labelAssertion('/quoted_notes', 'derived', {
+                derived_from: ['retrieved-untrusted'],
+                value_digest: digest,
+            }),
+        ],
+        policy: { rules: [{ path: '/quoted_notes', minimum_label: 'retrieved-untrusted' }] },
+    });
+    assert.equal(faithfulCopy.admitted, true);
+    assert.deepEqual(faithfulCopy.floors, {
+        '/quoted_notes': 'retrieved-untrusted',
+        '/scraped_notes': 'retrieved-untrusted',
+    });
+    // (e) benign multi-source derivation admits at the exact policy boundary.
+    const benign = evaluateOriginLabelAssertions({
+        assertions: [
+            labelAssertion('/beneficiary_account', 'operator-config'),
+            labelAssertion('/reconciliation_line', 'derived', {
+                derived_from: ['user-stated', 'counterparty-document'],
+            }),
+        ],
+        policy: {
+            rules: [
+                { path: '/beneficiary_account', minimum_label: 'operator-config' },
+                { path: '/reconciliation_line', minimum_label: 'counterparty-document' },
+            ],
+        },
+    });
+    assert.equal(benign.admitted, true);
+    assert.equal(benign.reason, null);
+    assert.deepEqual(benign.floors, {
+        '/beneficiary_account': 'operator-config',
+        '/reconciliation_line': 'counterparty-document',
+    });
+    assert.ok(Object.isFrozen(benign));
 });
