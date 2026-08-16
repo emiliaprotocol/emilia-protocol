@@ -1,16 +1,18 @@
 {
   "schema_version": "EP-MIGRATION-HISTORY-v1",
-  "as_of": "2026-08-12",
+  "as_of": "2026-08-14",
   "remote_head": "20260809063111",
   "private_remote_versions": [
     "20260723192504"
   ],
   "retroactive_pending_versions": [],
   "forward_pending_versions": [
-    "20260813010000"
+    "20260813010000",
+    "20260814070000"
   ],
   "deployment_sequence": [
-    "20260813010000"
+    "20260813010000",
+    "20260814070000"
   ],
   "requires_include_all": false,
   "remote_versions": [
@@ -409,6 +411,7 @@
     "20260807010000_capability_revocation_inheritance.sql": "76bb3eef12a13b3d308de9fcdf531ab98799201fce4d874d1a78de3d084c7f9d",
     "20260808233000_github_deployment_delivery_queue.sql": "64ff2ea3e40f9c56281dd6c7d0af97cba6fa15efaeec500acbcede00541d7423",
     "20260809063111_works_records.sql": "1c4bc077bfa7dc4bd3cf5667169db9be91c5ac132cef9f4816e68d403de09aa7",
-    "20260813010000_gate_emergency_authority_freeze.sql": "e9261d3635ba1cae7e4b95ba293ce611d4cbe54b472e64444987e4f828df3658"
+    "20260813010000_gate_emergency_authority_freeze.sql": "e9261d3635ba1cae7e4b95ba293ce611d4cbe54b472e64444987e4f828df3658",
+    "20260814070000_works_authority_records.sql": "71e0bc908fa946c81ffa0083ab1c021bfdbb936729be4d2113470b07699824be"
   }
 }

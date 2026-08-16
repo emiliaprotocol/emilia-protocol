@@ -63,6 +63,7 @@ const AUTHZ_SIGNALS = [
   'authorizeAgentAdoptionRequest', // bearer-or-HttpOnly recovery capability with exact-origin mutation guard
   'revokeAgentRecord',      // record-specific owner capability is hashed and checked inside the store RPC
   'authenticateWorksRead',  // Works helper: optional public projection plus owner/opportunity-owner private access
+  'ownerBearer',           // Authority Record helper: hashes and checks the exact record-owner capability in the service RPC
 ];
 
 // Reviewed public-by-design routes: intentionally unauthenticated OR intentionally
@@ -83,6 +84,8 @@ const PUBLIC_BY_DESIGN = new Set([
   'app/api/arena/refusals/[shareId]/route.ts',        // explicit opt-in, privacy-minimized integrity record behind 160-bit share id
   'app/api/adopt/shares/[shareId]/route.ts',          // opt-in Operating Bond projection behind a 160-bit capability id; no session, credential, or identity fields
   'app/api/agent-records/[recordId]/route.ts',         // unlisted factual projection behind a 160-bit opaque id; exact lookup only, no list/search surface
+  'app/api/works/authority-records/[recordId]/badge/route.ts', // public badge derived only from the owner-approved public projection
+  'app/api/works/authority-records/[recordId]/requests/route.ts', // public verified-interest ceremony for an already public record; no raw requester identity returned
   'app/api/score/[entityId]/route.ts',                // RETIRED — returns HTTP 410 Gone (score surface removed)
   'app/api/score/[entityId]/history/route.ts',        // RETIRED — returns HTTP 410 Gone
 ]);

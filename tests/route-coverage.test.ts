@@ -118,6 +118,21 @@ const MUTATING_POLICY_EXEMPTIONS = [
  * openapi.yaml because they are internal / not part of the public API.
  */
 const OPENAPI_EXEMPTIONS = [
+  // Flag-gated EMILIA Works private-beta product surfaces. These are not the
+  // public EMILIA protocol API; consent, owner capability, demand verification,
+  // and Stripe signature contracts are covered by dedicated tests.
+  '/api/works/authority-records',
+  '/api/works/authority-records/[recordId]',
+  '/api/works/authority-records/claim',
+  '/api/works/authority-records/drafts',
+  '/api/works/authority-records/[recordId]/approve',
+  '/api/works/authority-records/[recordId]/badge',
+  '/api/works/authority-records/[recordId]/requests',
+  '/api/works/authority-records/[recordId]/withdraw',
+  '/api/works/authority-records/requests/verify',
+  '/api/works/authority-records/[recordId]/billing/checkout',
+  '/api/works/authority-records/[recordId]/billing/reconcile',
+  '/api/works/billing/webhook',
   // Public lead form (marketing intake), not a protocol surface.
   '/api/pilot/request',
   // Self-serve observe-mode pilot sandbox (provision + report), not a protocol surface.
