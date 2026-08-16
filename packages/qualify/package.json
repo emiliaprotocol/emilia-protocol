@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
-    "ep-qualify": "./cli.mjs"
+    "ep-qualify": "cli.mjs"
   },
   "files": [
     "cli.mjs",
@@ -29,7 +29,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "url": "git+https://github.com/emiliaprotocol/emilia-protocol.git",
     "directory": "packages/qualify"
   },
   "homepage": "https://emiliaprotocol.ai",
