@@ -14,6 +14,7 @@ import path from 'node:path';
 import {
   auditReleaseChain,
   discoverReleaseSurfaces,
+  isCanonicalNpmRepositoryUrl,
   validateCredentialRotationGuideText,
   validateGoTagWorkflowText,
   validateNpmDirect,
@@ -25,6 +26,14 @@ import {
 import YAML from 'yaml';
 
 describe('release-chain coverage', () => {
+  it('accepts only the canonical EMILIA npm repository URL and its standard git transport form', () => {
+    expect(isCanonicalNpmRepositoryUrl('https://github.com/emiliaprotocol/emilia-protocol.git')).toBe(true);
+    expect(isCanonicalNpmRepositoryUrl('git+https://github.com/emiliaprotocol/emilia-protocol.git')).toBe(true);
+    expect(isCanonicalNpmRepositoryUrl('https://github.com/emiliaprotocol/emilia-protocol')).toBe(false);
+    expect(isCanonicalNpmRepositoryUrl('git+ssh://git@github.com/emiliaprotocol/emilia-protocol.git')).toBe(false);
+    expect(isCanonicalNpmRepositoryUrl('https://github.com/attacker/emilia-protocol.git')).toBe(false);
+  });
+
   it('keeps every governed workflow on the reviewed upstream action revisions', () => {
     const helper = readFileSync('scripts/pin-action-shas.ts', 'utf8');
     for (const [tag, pinned] of Object.entries({

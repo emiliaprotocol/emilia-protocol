@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // Generated from seed-entities.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
-"use strict";
 /**
  * Seed script — register Rex (#1) and Ruby (#2) on the EMILIA Protocol.
  *
