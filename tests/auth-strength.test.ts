@@ -3,7 +3,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AUTH_STRENGTHS, resolveVerifiedAuthStrength } from '../lib/auth-strength.js';
+import {
+  AUTH_STRENGTHS,
+  isVerifiedAuthStrength,
+  resolveVerifiedAuthStrength,
+} from '../lib/auth-strength.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const AUTH_STRENGTH_MIGRATION = path.join(
@@ -17,6 +21,8 @@ describe('verified authentication-strength boundary', () => {
     expect(resolveVerifiedAuthStrength({ auth_strength: 'not-a-strength' })).toBe('password');
     expect(resolveVerifiedAuthStrength({ entity: { auth_strength: 'mfa' } })).toBe('password');
     expect(resolveVerifiedAuthStrength({})).toBe('password');
+    expect(isVerifiedAuthStrength(AUTH_STRENGTHS.PHISHING_RESISTANT_MFA)).toBe(true);
+    expect(isVerifiedAuthStrength('request-asserted-mfa')).toBe(false);
   });
 
   it('records the auth-strength column and constraint in the migration contract', () => {

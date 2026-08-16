@@ -89,6 +89,12 @@ describe('profile hashing', () => {
     const tampered = { ...profileA, requires: [{ evidence: 'nothing' }] };
     expect(verifyProfileHash(tampered)).toBe(false);
   });
+
+  it('fails closed when malformed profile content cannot be canonicalized', () => {
+    const cyclic = { profile_hash: profileA.profile_hash, requires: [] };
+    cyclic.requires.push(cyclic);
+    expect(verifyProfileHash(cyclic)).toBe(false);
+  });
 });
 
 describe('SAME bundle, TWO bars -> different verdicts, different digests', () => {
