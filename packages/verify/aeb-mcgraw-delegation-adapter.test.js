@@ -241,3 +241,14 @@ test('McGraw source and RFC 9964 algorithm locks are explicit', () => {
     assert.equal(MCGRAW_BUDGET_DRAFT_REVISION, 'draft-mcgraw-httpapi-agent-budget-03');
     assert.equal(MCGRAW_BUDGET_COSE_ALGORITHM, -49);
 });
+test('deterministic CBOR map order is RFC 8949 bytewise, not RFC 7049 length-first', () => {
+    // {100: "c", -1: "b"}: RFC 8949 sorts encoded key 0x1864 (100) before 0x20
+    // (-1) bytewise; the retired RFC 7049 length-first order put -1 first.
+    const mixed = encodeDeterministicCbor(new Map([[100, 'c'], [-1, 'b']]));
+    assert.equal(mixed.toString('hex'), 'a218646163206162');
+    // Profile-domain coincidence: for the adapter's actual key domain
+    // (non-negative int labels, short text keys) both orders agree, so the
+    // realignment changes no bytes for well-formed McGraw artifacts.
+    const labels = encodeDeterministicCbor(new Map([[4, 'k'], [1, -49], [3, 'ct']]));
+    assert.equal(labels.toString('hex'), 'a30138300362637404616b');
+});

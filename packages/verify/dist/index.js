@@ -39,10 +39,19 @@ export * from './a2a-evidence-challenge.js';
 export * from './memory-projection.js';
 export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';
+// EP-COSE-ENCODING-v0.1: encoding-equivalence profile — deterministic
+// CBOR/COSE_Sign1 transport envelope for receipts; the CAID join survives
+// re-encoding. Named exports (not export *): the module's RFC 8949 codec
+// must not collide with the McGraw adapter's RFC 7049-ordered codec.
+export { COSE_ENCODING_PROFILE, CBOR_DETERMINISTIC_ORDER, COSE_RECEIPT_CONTENT_TYPE, COSE_ALG_EDDSA, COSE_HEADER_EP_CAID, encodeDeterministicCbor8949, decodeDeterministicCbor8949, receiptToCborBytes, receiptFromCborBytes, receiptActionCaid, buildReceiptCoseSign1, verifyReceiptCoseSign1, } from './receipt-cose-encoding.js';
 export * from './status.js';
 export * from './gate-qualification.js';
 export * from './gate-qualification-promptfoo.js';
 export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_RESULT_VERSION, OUTCOME_OBSERVATION_VERSION, OUTCOME_OBSERVATION_DOMAIN, OUTCOME_BINDING_SET_VERSION, OUTCOME_BINDING_SET_RESULT_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, buildOutcomeObservation, verifyOutcomeAttestation, verifyOutcomeObservation, verifyOutcomeObservationSet, observedEffectsDigest, outcomeBindingResultCore, outcomeBindingResultDigest, outcomeBindingSetResultDigest, trustReceiptDigest, verifyOutcomeBindingResultDigest, } from './outcome-binding.js';
+// EP-SD-v1: selective-disclosure presentation of disclosure-ready receipts
+// (salted path-bound commitments inside the signed body; SD-JWT-style, no new
+// signature scheme; audience/nonce presentation binding).
+export { EP_SD_VERSION, EP_SD_PRESENTATION_VERSION, EP_SD_COMMIT_DOMAIN, EP_SD_BINDING_DOMAIN, EP_SD_COMMIT_MARKER_PREFIX, EP_SD_MIN_SALT_BYTES, NON_REDACTABLE_PATHS, sdCommitmentDigest, sdPresentationBindingDigest, prepareSelectiveDisclosure, createSelectiveDisclosurePresentation, verifySelectiveDisclosurePresentation, } from './receipt-selective-disclosure.js';
 export { ORPRG_JSON_JCS_PROFILE, ORPRG_ACTION_PROFILE, computeOrprgActionDigest, verifyOrprgJsonJcsPermit, verifyOrprgJsonJcsPermitAsync, createOrprgAecVerifier, } from './orprg.js';
 const FATAL_UTF8 = new TextDecoder('utf-8', { fatal: true });
 function decodeBase64url(value) {
@@ -113,6 +122,12 @@ export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestat
 // EP-EVIDENCE-RECORD-v1: long-term, crypto-agile preservation (RFC 4998-style
 // renewal chain) so a receipt's non-repudiation survives algorithm aging.
 export { verifyEvidenceRecord, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
+// EP-SIG-AGILITY-v1: per-artifact signature-algorithm agility (Ed25519 and
+// ML-DSA-65 over the SAME canonical bytes) so evidence outlives algorithms.
+export { SIGNATURE_AGILITY_VERSION, AGILE_SIGNATURE_ALGORITHMS, AGILITY_REASONS, ML_DSA_65_PUBLIC_KEY_BYTES, ML_DSA_65_SECRET_KEY_BYTES, ML_DSA_65_SIGNATURE_BYTES, loadDefaultAgilityMldsaBackend, signAgile, signAgileSet, verifyAgileSignature, verifyAgileSignatureSet } from './pq-signature-agility.js';
+// EP-EVIDENCE-REATTESTATION-v1: RFC 4998-style signature re-anchoring so
+// evidence signed under an aging algorithm is re-committed under a current one.
+export { REATTESTATION_VERSION, createReattestation, verifyReattestationChain } from './evidence-record.js';
 // RFC 6962 §2.1.2 checkpoint consistency over EP-MERKLE-v2 branch hashing.
 // Used by verifyTrustReceipt when the caller pins a prior checkpoint head
 // (opts.priorCheckpoint), and re-exported for log tooling and witnesses.

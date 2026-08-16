@@ -649,3 +649,284 @@ export function verifyFieldOriginEvidence(
     claim_boundary: FIELD_ORIGIN_CLAIM_BOUNDARY,
   });
 }
+
+/*
+ * EP-ORIGIN-LABELS-v1: a closed origin-label vocabulary with explicit
+ * taint-preserving propagation rules, layered on top of (and additive to)
+ * the EP-FIELD-ORIGIN-v0.1 evidence artifact above. Nothing in this block
+ * changes v0.1 behavior; the v0.1 origin classes remain exactly as shipped
+ * and map onto this vocabulary only through the informative
+ * ORIGIN_LABELS_V01_PROFILE_MAP below.
+ *
+ * Propagation rule (normative for this vocabulary):
+ *
+ * 1. Every asserted label MUST be a member of the closed set ORIGIN_LABELS.
+ *    An assertion outside the set is refused unknown_origin_label:<path>.
+ * 2. "derived" MUST carry derived_from naming the base label class of every
+ *    source that contributed to the value. A derived assertion without
+ *    derived_from is refused derivation_unspecified:<path>.
+ * 3. The effective trust floor of a derived value is the LEAST-trusted
+ *    label in its derivation set, under ORIGIN_LABEL_TRUST_ORDER.
+ *    Summarization, reformatting, extraction, or any other transform NEVER
+ *    upgrades a label: a value computed from retrieved-untrusted material
+ *    keeps a retrieved-untrusted floor no matter how many model or human
+ *    steps sit in between.
+ * 4. INDETERMINATE never admits: a malformed assertion set, an internally
+ *    inconsistent assertion set, or an unmet policy floor is a structured
+ *    refusal with a named, path-precise reason, never an allow path and
+ *    never a thrown error from evaluateOriginLabelAssertions.
+ *
+ * Scope limit (keep this verbatim-clear): labels are CLAIMS by the
+ * asserting producer, verified as internally consistent and
+ * policy-satisfying at admission; the boundary does not and cannot verify
+ * the producer told the truth. That accountability belongs to the
+ * producer's signature over the assertion set, not to the label system.
+ * In particular, a producer that lies consistently (asserts user-stated
+ * for a value it retrieved, and never contradicts itself elsewhere in the
+ * same assertion set) is not detectable here; a producer that launders a
+ * value while its own pipeline also asserts the honest label for the same
+ * path, or the same value digest, is refused.
+ */
+
+export const ORIGIN_LABELS_VERSION = 'EP-ORIGIN-LABELS-v1';
+
+export const ORIGIN_LABELS_CLAIM_BOUNDARY =
+  'producer_asserted_origin_labels_checked_for_closed_vocabulary_internal_consistency_and_policy_trust_floor_at_admission_not_source_truth_not_producer_honesty';
+
+/**
+ * Most-trusted first. "derived" carries no rank of its own: its effective
+ * floor is computed from derived_from under rule 3 above.
+ */
+export const ORIGIN_LABEL_TRUST_ORDER = Object.freeze([
+  'operator-config',
+  'user-stated',
+  'counterparty-document',
+  'model-generated',
+  'retrieved-untrusted',
+] as const);
+
+export const ORIGIN_LABELS = Object.freeze([
+  ...ORIGIN_LABEL_TRUST_ORDER,
+  'derived',
+] as const);
+
+export const ORIGIN_LABEL_DEFINITIONS = Object.freeze({
+  'user-stated':
+    'The exact value was entered or spoken for this action by the accountable human principal, over a channel the producer attributes to that principal.',
+  'operator-config':
+    'The exact value was read from configuration pinned by the operating organization before this action was proposed, not from any per-action input.',
+  'counterparty-document':
+    'The exact value was taken from a document or message authored by an identified external counterparty to this transaction, such as an invoice or contract.',
+  'retrieved-untrusted':
+    'The exact value was obtained from content the producer retrieved from a source it neither controls nor treats as an identified counterparty, such as a web page, search result, inbound message body, or output of an uncontrolled tool.',
+  'model-generated':
+    'The exact value was produced by model inference from the model parameters alone; a value produced from any per-action source material is derived, not model-generated.',
+  derived:
+    'The exact value was computed, summarized, extracted, reformatted, or otherwise produced from one or more source values, and the assertion carries derived_from naming the base label class of every contributing source.',
+} as const);
+
+/**
+ * Informative only: how the shipped EP-FIELD-ORIGIN-v0.1 origin classes map
+ * onto this vocabulary when v0.1 is read as one implementation profile of a
+ * generic origin-label input. This map does not change v0.1 verification.
+ * v0.1 "unknown" has no target on purpose: it never admits there either.
+ */
+export const ORIGIN_LABELS_V01_PROFILE_MAP = Object.freeze({
+  operator_pinned: 'operator-config',
+  approver_supplied: 'user-stated',
+  untrusted_bounded: 'retrieved-untrusted',
+  derived_via_versioned_transform: 'derived',
+} as const);
+
+const ORIGIN_LABEL_SET: ReadonlySet<string> = new Set(ORIGIN_LABELS);
+const ORIGIN_LABEL_RANK: ReadonlyMap<string, number> = new Map(
+  ORIGIN_LABEL_TRUST_ORDER.map((label, rank) => [label, rank]),
+);
+const ORIGIN_ASSERTION_KEYS = ['path', 'label', 'derived_from', 'value_digest'] as const;
+const ORIGIN_POLICY_KEYS = ['rules'] as const;
+const ORIGIN_POLICY_RULE_KEYS = ['path', 'minimum_label'] as const;
+const ORIGIN_INPUT_KEYS = ['assertions', 'policy'] as const;
+
+interface NormalizedOriginAssertion {
+  path: string;
+  label: string;
+  derived_from: string[] | null;
+  value_digest: string | null;
+  floor: string;
+}
+
+interface OriginRefusal {
+  admitted: false;
+  reason: string;
+}
+
+/**
+ * Computes the effective trust floor of one label under the taint-preserving
+ * propagation rule. Pure and non-throwing: an invalid combination returns a
+ * null floor with a named reason instead of admitting or crashing.
+ */
+export function originLabelTrustFloor(
+  label: unknown,
+  derivedFrom: unknown = null,
+): { floor: string | null; reason: string | null } {
+  if (typeof label !== 'string' || !ORIGIN_LABEL_SET.has(label)) {
+    return { floor: null, reason: 'unknown_origin_label' };
+  }
+  if (label !== 'derived') {
+    if (derivedFrom !== null) return { floor: null, reason: 'derivation_unexpected' };
+    return { floor: label, reason: null };
+  }
+  if (!Array.isArray(derivedFrom) || derivedFrom.length < 1) {
+    return { floor: null, reason: 'derivation_unspecified' };
+  }
+  if (derivedFrom.length > ORIGIN_LABEL_TRUST_ORDER.length
+      || derivedFrom.some((entry) => typeof entry !== 'string' || !ORIGIN_LABEL_RANK.has(entry))
+      || new Set(derivedFrom).size !== derivedFrom.length) {
+    return { floor: null, reason: 'derivation_source_invalid' };
+  }
+  let worst = 0;
+  for (const entry of derivedFrom) {
+    const rank = ORIGIN_LABEL_RANK.get(entry as string) as number;
+    if (rank > worst) worst = rank;
+  }
+  return { floor: ORIGIN_LABEL_TRUST_ORDER[worst], reason: null };
+}
+
+function originFail(reason: string): OriginRefusal & RiskRecord {
+  return riskFreeze({
+    admitted: false,
+    reason,
+    vocabulary: ORIGIN_LABELS_VERSION,
+    floors: null,
+    claim_boundary: ORIGIN_LABELS_CLAIM_BOUNDARY,
+  });
+}
+
+/**
+ * Evaluates one producer-asserted origin-label assertion set against a
+ * relying-party policy of per-path minimum labels.
+ *
+ * Input (closed): { assertions, policy } where assertions is a bounded array
+ * of closed { path, label, derived_from, value_digest } objects and policy is
+ * a closed { rules } object of { path, minimum_label } entries. value_digest
+ * is null or a sha256 digest of the exact value bytes; supplying digests opts
+ * the producer into cross-path value-consistency checking.
+ *
+ * Fail-closed: every outcome is a frozen structured result; this function
+ * never throws on hostile input, and INDETERMINATE never admits.
+ */
+export function evaluateOriginLabelAssertions(rawInput: unknown): RiskRecord {
+  let input: any;
+  try { input = strictJsonClone(rawInput); } catch {
+    return originFail('origin_assertions_invalid');
+  }
+  if (!riskExact(input, ORIGIN_INPUT_KEYS)) return originFail('origin_assertions_invalid');
+  if (!Array.isArray(input.assertions)
+      || input.assertions.length < 1
+      || input.assertions.length > MAX_FIELDS) {
+    return originFail('origin_assertions_invalid');
+  }
+  if (!riskExact(input.policy, ORIGIN_POLICY_KEYS)
+      || !Array.isArray(input.policy.rules)
+      || input.policy.rules.length > MAX_FIELDS) {
+    return originFail('origin_policy_invalid');
+  }
+
+  const byPath = new Map<string, NormalizedOriginAssertion>();
+  const serializedByPath = new Map<string, string>();
+  for (const entry of input.assertions) {
+    if (!riskExact(entry, ORIGIN_ASSERTION_KEYS) || !validPointer(entry.path)) {
+      return originFail('origin_assertion_invalid');
+    }
+    const path = entry.path;
+    if (typeof entry.label !== 'string' || !ORIGIN_LABEL_SET.has(entry.label)) {
+      return originFail(`unknown_origin_label:${path}`);
+    }
+    if (entry.value_digest !== null
+        && (typeof entry.value_digest !== 'string' || !RISK_DIGEST.test(entry.value_digest))) {
+      return originFail(`origin_value_digest_invalid:${path}`);
+    }
+    const { floor, reason } = originLabelTrustFloor(entry.label, entry.derived_from);
+    if (floor === null) return originFail(`${reason}:${path}`);
+    const normalized: NormalizedOriginAssertion = {
+      path,
+      label: entry.label,
+      derived_from: entry.label === 'derived' ? [...entry.derived_from].sort(byteOrder) : null,
+      value_digest: entry.value_digest,
+      floor,
+    };
+    const serialized = canonicalizeStrictJson({
+      path: normalized.path,
+      label: normalized.label,
+      derived_from: normalized.derived_from,
+      value_digest: normalized.value_digest,
+    });
+    const previous = serializedByPath.get(path);
+    if (previous !== undefined) {
+      return previous === serialized
+        ? originFail(`duplicate_origin_assertion:${path}`)
+        : originFail(`origin_conflict:${path}`);
+    }
+    serializedByPath.set(path, serialized);
+    byPath.set(path, normalized);
+  }
+
+  // Cross-path value consistency: the same exact value bytes asserted under
+  // labels with different effective trust floors is a label upgrade across a
+  // copy. Detection requires byte identity; see the stated residual in
+  // conformance/origin-labels/README.md for renamed or reformatted values.
+  const byDigest = new Map<string, NormalizedOriginAssertion[]>();
+  for (const assertion of [...byPath.values()].sort((a, b) => byteOrder(a.path, b.path))) {
+    if (assertion.value_digest === null) continue;
+    const group = byDigest.get(assertion.value_digest);
+    if (group) group.push(assertion); else byDigest.set(assertion.value_digest, [assertion]);
+  }
+  for (const digest of [...byDigest.keys()].sort(byteOrder)) {
+    const group = byDigest.get(digest) as NormalizedOriginAssertion[];
+    if (group.length < 2) continue;
+    const ranks = group.map((a) => ORIGIN_LABEL_RANK.get(a.floor) as number);
+    if (Math.min(...ranks) !== Math.max(...ranks)) {
+      const upgraded = group.reduce((best, candidate) => (
+        (ORIGIN_LABEL_RANK.get(candidate.floor) as number)
+          < (ORIGIN_LABEL_RANK.get(best.floor) as number)
+          ? candidate : best
+      ));
+      return originFail(`value_origin_conflict:${upgraded.path}`);
+    }
+  }
+
+  const rulePaths = new Set<string>();
+  const rules: Array<{ path: string; minimum_label: string }> = [];
+  for (const rule of input.policy.rules) {
+    if (!riskExact(rule, ORIGIN_POLICY_RULE_KEYS)
+        || !validPointer(rule.path)
+        || typeof rule.minimum_label !== 'string'
+        || !ORIGIN_LABEL_RANK.has(rule.minimum_label)
+        || rulePaths.has(rule.path)) {
+      return originFail('origin_policy_invalid');
+    }
+    rulePaths.add(rule.path);
+    rules.push({ path: rule.path, minimum_label: rule.minimum_label });
+  }
+  for (const rule of rules.sort((a, b) => byteOrder(a.path, b.path))) {
+    const assertion = byPath.get(rule.path);
+    if (!assertion) return originFail(`origin_unasserted:${rule.path}`);
+    const floorRank = ORIGIN_LABEL_RANK.get(assertion.floor) as number;
+    const minimumRank = ORIGIN_LABEL_RANK.get(rule.minimum_label) as number;
+    if (floorRank > minimumRank) {
+      return originFail(`origin_trust_floor_violation:${rule.path}`);
+    }
+  }
+
+  const floors: Record<string, string> = {};
+  for (const path of [...byPath.keys()].sort(byteOrder)) {
+    floors[path] = (byPath.get(path) as NormalizedOriginAssertion).floor;
+  }
+  return riskFreeze({
+    admitted: true,
+    reason: null,
+    vocabulary: ORIGIN_LABELS_VERSION,
+    floors,
+    claim_boundary: ORIGIN_LABELS_CLAIM_BOUNDARY,
+  });
+}

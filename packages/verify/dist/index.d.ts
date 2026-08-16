@@ -37,10 +37,12 @@ export * from './a2a-evidence-challenge.js';
 export * from './memory-projection.js';
 export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';
+export { COSE_ENCODING_PROFILE, CBOR_DETERMINISTIC_ORDER, COSE_RECEIPT_CONTENT_TYPE, COSE_ALG_EDDSA, COSE_HEADER_EP_CAID, encodeDeterministicCbor8949, decodeDeterministicCbor8949, receiptToCborBytes, receiptFromCborBytes, receiptActionCaid, buildReceiptCoseSign1, verifyReceiptCoseSign1, } from './receipt-cose-encoding.js';
 export * from './status.js';
 export * from './gate-qualification.js';
 export * from './gate-qualification-promptfoo.js';
 export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_RESULT_VERSION, OUTCOME_OBSERVATION_VERSION, OUTCOME_OBSERVATION_DOMAIN, OUTCOME_BINDING_SET_VERSION, OUTCOME_BINDING_SET_RESULT_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, buildOutcomeObservation, verifyOutcomeAttestation, verifyOutcomeObservation, verifyOutcomeObservationSet, observedEffectsDigest, outcomeBindingResultCore, outcomeBindingResultDigest, outcomeBindingSetResultDigest, trustReceiptDigest, verifyOutcomeBindingResultDigest, } from './outcome-binding.js';
+export { EP_SD_VERSION, EP_SD_PRESENTATION_VERSION, EP_SD_COMMIT_DOMAIN, EP_SD_BINDING_DOMAIN, EP_SD_COMMIT_MARKER_PREFIX, EP_SD_MIN_SALT_BYTES, NON_REDACTABLE_PATHS, sdCommitmentDigest, sdPresentationBindingDigest, prepareSelectiveDisclosure, createSelectiveDisclosurePresentation, verifySelectiveDisclosurePresentation, } from './receipt-selective-disclosure.js';
 export { ORPRG_JSON_JCS_PROFILE, ORPRG_ACTION_PROFILE, computeOrprgActionDigest, verifyOrprgJsonJcsPermit, verifyOrprgJsonJcsPermitAsync, createOrprgAecVerifier, } from './orprg.js';
 declare const canonicalize: typeof canonicalizeStrictJson;
 /**
@@ -74,6 +76,8 @@ export { verifyRevocation, isRevoked, REVOCATION_VERSION } from './revocation.js
 export { verifyProvenanceOffline, PROVENANCE_VERSION } from './provenance.js';
 export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestation.js';
 export { verifyEvidenceRecord, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
+export { SIGNATURE_AGILITY_VERSION, AGILE_SIGNATURE_ALGORITHMS, AGILITY_REASONS, ML_DSA_65_PUBLIC_KEY_BYTES, ML_DSA_65_SECRET_KEY_BYTES, ML_DSA_65_SIGNATURE_BYTES, loadDefaultAgilityMldsaBackend, signAgile, signAgileSet, verifyAgileSignature, verifyAgileSignatureSet } from './pq-signature-agility.js';
+export { REATTESTATION_VERSION, createReattestation, verifyReattestationChain } from './evidence-record.js';
 export { verifyCheckpointConsistency, CONSISTENCY_ALG } from './consistency.js';
 export { verifyWitnessCosignature, requireWitnessQuorum, witnessSigningDigest, WITNESS_VERSION, WITNESS_DOMAIN_TAG, } from './witness.js';
 export { verifyTimestampProof, TIMESTAMP_PROOF_ALG } from './timestamp-proof.js';

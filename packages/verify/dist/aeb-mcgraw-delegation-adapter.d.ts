@@ -74,6 +74,14 @@ interface TaggedCbor {
     readonly value: unknown;
 }
 export declare function tagDeterministicCbor(tag: number, value: unknown): TaggedCbor;
+/**
+ * Deterministic CBOR encoding per RFC 8949 Section 4.2.1: shortest-form
+ * argument encoding and bytewise-lexicographic map key order on the encoded
+ * key bytes. The decode path round-trip-checks incoming bytes against this
+ * encoder, so the adapter refuses non-deterministic encodings by construction.
+ * For a Result-typed RFC 8949 codec with refusal reasons instead of throws,
+ * see encodeDeterministicCbor8949 in receipt-cose-encoding.ts.
+ */
 export declare function encodeDeterministicCbor(value: unknown): Buffer;
 export declare function createMcGrawBudgetActionDefinition(actionType: string): Obj;
 export declare function createMcGrawBudgetAebAdapter(constructorPins: McGrawBudgetConstructorPins): AebAdapter;
