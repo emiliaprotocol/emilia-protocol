@@ -279,7 +279,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Next.js production build
-        run: npx next build
+        run: npm run build
 
   # ── Job 2c: Security-core type gate (tsc --checkJs, zero errors) ─
   # The security core (packages/verify, lib/handshake, packages/gate) is kept

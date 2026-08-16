@@ -9,7 +9,6 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "baseUrl": ".",
     "paths": {
       "@emilia-protocol/verify/gate-qualification": [
         "../verify/dist/gate-qualification.d.ts"
