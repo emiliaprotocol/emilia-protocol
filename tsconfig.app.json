@@ -12,7 +12,6 @@
     "jsx": "preserve",
     "skipLibCheck": true,
     "noImplicitAny": false,
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"

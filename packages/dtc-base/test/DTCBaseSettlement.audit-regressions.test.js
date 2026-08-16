@@ -1,5 +1,7 @@
-const { expect } = require('chai');
-const { ethers } = require('hardhat');
+import { expect } from 'chai';
+import { network } from 'hardhat';
+
+const { ethers } = await network.create();
 
 describe('DTCBaseSettlement hostile-review regressions', function () {
   it('exposes provider-confirmed invocation, signer quarantine, party recovery, and redirected withdrawal', async function () {

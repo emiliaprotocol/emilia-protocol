@@ -1,4 +1,4 @@
-const { expect } = require('chai');
+import { expect } from 'chai';
 
 describe('receipt-program Base bridge characterization', function () {
   async function api() {

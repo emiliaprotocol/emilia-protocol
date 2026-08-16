@@ -39,6 +39,7 @@
  *                                 implementation-status section
  */
 import { execFileSync } from 'node:child_process';
+import { createPrivateKey, createPublicKey } from 'node:crypto';
 import { writeFileSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,8 +47,13 @@ import { fileURLToPath } from 'node:url';
 import {
   createGate,
   createEg1Harness,
+  executionProgramDigest,
+  FIELD_ORIGIN_CLAIM_BOUNDARY,
+  fieldOriginProfileDigest,
   hashCanonical,
   MemoryConsumptionStore,
+  signBoundedExecutionProgram,
+  signFieldOriginEvidence,
 } from '../../../packages/gate/index.js';
 import { manifestFromPack } from '../../../packages/gate/adapters/_kit.js';
 
@@ -61,6 +67,7 @@ type ExactActionRecord = Readonly<{
   change_ticket: string;
   new_routing_digest: string;
   new_account_digest: string;
+  memo?: string;
 }>;
 
 type EffectResult = {
@@ -106,6 +113,164 @@ const ACTION_PACK = Object.freeze([
 ]);
 const QUORUM = Object.freeze({ threshold: 2 });
 const PROVIDER_DEADLINE_MS = 25;
+const FIELD_ORIGIN_OBSERVED_AT = '2026-08-15T22:30:00.000Z';
+const FIELD_ORIGIN_KEY_ID = 'key:gap6-field-origin-reference';
+const FIELD_ORIGIN_ISSUER_ID = 'rp:gap6-finops';
+const FIELD_ORIGIN_PRIVATE_KEY = createPrivateKey({
+  // Public conformance fixture only. This deterministic seed is not a
+  // deployment credential and the resulting key must never be trusted outside
+  // this profile.
+  key: Buffer.concat([
+    Buffer.from('302e020100300506032b657004220420', 'hex'),
+    Buffer.alloc(32, 0x61),
+  ]),
+  format: 'der',
+  type: 'pkcs8',
+});
+const FIELD_ORIGIN_PUBLIC_KEY = createPublicKey(FIELD_ORIGIN_PRIVATE_KEY)
+  .export({ type: 'spki', format: 'der' }).toString('base64url');
+
+const PINNED_FIELD_TRANSFORM = Object.freeze({
+  transform_id: 'transform:bank-digest-normalization',
+  version: '1.0.0',
+  digest: `sha256:${'4'.repeat(64)}`,
+});
+
+function fieldRule(
+  path: string,
+  role: 'control' | 'bounded_data',
+  required: boolean,
+  allowedOrigins: string[],
+  snapshotPolicy: 'immutable' | 'mutable_snapshot' | 'either',
+  allowedTransformIds: string[] = [],
+) {
+  return {
+    path,
+    role,
+    required,
+    allowed_origins: allowedOrigins,
+    snapshot_policy: snapshotPolicy,
+    max_snapshot_age_sec: snapshotPolicy === 'immutable' ? null : 300,
+    allowed_transform_ids: allowedTransformIds,
+  };
+}
+
+export const FIELD_ORIGIN_PROFILE = Object.freeze({
+  profile_id: 'profile:finops-field-origin:01',
+  relying_party_id: FIELD_ORIGIN_ISSUER_ID,
+  action_type: EXACT_ACTION.action_type,
+  fields: [
+    fieldRule('/action_type', 'control', true, ['operator_pinned'], 'immutable'),
+    fieldRule('/vendor_id', 'control', true, ['operator_pinned', 'approver_supplied'], 'immutable'),
+    fieldRule('/erp', 'control', true, ['operator_pinned'], 'immutable'),
+    fieldRule('/change_ticket', 'control', true, ['operator_pinned', 'approver_supplied'], 'immutable'),
+    fieldRule('/new_routing_digest', 'control', true, ['approver_supplied', 'derived_via_versioned_transform'], 'immutable', [PINNED_FIELD_TRANSFORM.transform_id]),
+    fieldRule('/new_account_digest', 'control', true, ['approver_supplied', 'derived_via_versioned_transform'], 'immutable', [PINNED_FIELD_TRANSFORM.transform_id]),
+    fieldRule('/memo', 'bounded_data', false, ['operator_pinned', 'approver_supplied', 'untrusted_bounded'], 'either'),
+  ],
+  transforms: [PINNED_FIELD_TRANSFORM],
+});
+
+const PROGRAM_KEY_ID = 'key:gap6-customer-program-reference';
+const PROGRAM_AUTHORIZER_ID = 'customer:gap6-design-partner';
+const PROGRAM_PRIVATE_KEY = createPrivateKey({
+  // Public conformance fixture only. Never a deployment credential.
+  key: Buffer.concat([
+    Buffer.from('302e020100300506032b657004220420', 'hex'),
+    Buffer.alloc(32, 0x62),
+  ]),
+  format: 'der',
+  type: 'pkcs8',
+});
+const PROGRAM_PUBLIC_KEY = createPublicKey(PROGRAM_PRIVATE_KEY)
+  .export({ type: 'spki', format: 'der' }).toString('base64url');
+export const FIELD_ORIGIN_EXECUTION_PROGRAM = signBoundedExecutionProgram({
+  program_id: 'program:gap6-finance-field-origin:01',
+  tenant_id: 'tenant:gap6-design-partner',
+  version: 1,
+  subject_id: 'agent:finance-operations:01',
+  audience: 'gate:gap6-finance-operations:01',
+  objective_digest: `sha256:${'1'.repeat(64)}`,
+  authorization_digest: `sha256:${'2'.repeat(64)}`,
+  presentation_digest: `sha256:${'3'.repeat(64)}`,
+  supersedes_program_digest: null,
+  issued_at: '2026-08-15T22:00:00.000Z',
+  valid_from: '2026-08-15T22:10:00.000Z',
+  expires_at: '2026-08-17T22:10:00.000Z',
+  max_total_occurrences: 1,
+  max_concurrent_effects: 1,
+  budgets: [{ budget_id: 'vendor-change-attempts', unit: 'attempt', limit: 1 }],
+  nodes: [{
+    node_id: 'vendor-bank-detail-change',
+    action: {
+      mode: 'profile',
+      profile_id: FIELD_ORIGIN_PROFILE.profile_id,
+      profile_digest: fieldOriginProfileDigest(FIELD_ORIGIN_PROFILE),
+    },
+    trust_program_digest: `sha256:${'4'.repeat(64)}`,
+    depends_on: [],
+    max_occurrences: 1,
+    charges: [{ budget_id: 'vendor-change-attempts', amount: 1 }],
+  }],
+}, {
+  issuer_id: PROGRAM_AUTHORIZER_ID,
+  key_id: PROGRAM_KEY_ID,
+  private_key: PROGRAM_PRIVATE_KEY,
+});
+
+export const FIELD_ORIGIN_EXECUTION_PROGRAM_VERIFICATION = Object.freeze({
+  trusted_keys: {
+    [PROGRAM_KEY_ID]: {
+      issuer_id: PROGRAM_AUTHORIZER_ID,
+      public_key: PROGRAM_PUBLIC_KEY,
+    },
+  },
+  now: FIELD_ORIGIN_OBSERVED_AT,
+  expected_program_id: 'program:gap6-finance-field-origin:01',
+  expected_tenant_id: 'tenant:gap6-design-partner',
+  expected_authorizer_id: PROGRAM_AUTHORIZER_ID,
+  expected_authorization_digest: `sha256:${'2'.repeat(64)}`,
+  expected_audience: 'gate:gap6-finance-operations:01',
+});
+const FIELD_ORIGIN_EXECUTION_PROGRAM_NODE = 'vendor-bank-detail-change';
+
+function immutableSnapshot() {
+  return { kind: 'immutable', observed_at: null, source_version: null };
+}
+
+function fieldAnnotations(
+  action: ExactActionRecord,
+  overrides: Record<string, Record<string, unknown>> = {},
+) {
+  return Object.keys(action).sort().map((key) => ({
+    path: `/${key}`,
+    origin_class: key === 'action_type' || key === 'erp' || key === 'vendor_id'
+      ? 'operator_pinned'
+      : (key === 'memo' ? 'untrusted_bounded' : 'approver_supplied'),
+    snapshot: immutableSnapshot(),
+    transform: null,
+    ...(overrides[`/${key}`] ?? {}),
+  }));
+}
+
+function fieldOriginEvidence(
+  action: ExactActionRecord,
+  overrides: Record<string, Record<string, unknown>> = {},
+  profile: any = FIELD_ORIGIN_PROFILE,
+  evidenceId = 'evidence:gap6-field-origin-reference',
+) {
+  return signFieldOriginEvidence({
+    evidence_id: evidenceId,
+    profile,
+    observed_action: action,
+    observed_at: FIELD_ORIGIN_OBSERVED_AT,
+    annotations: fieldAnnotations(action, overrides),
+  }, {
+    issuer_id: FIELD_ORIGIN_ISSUER_ID,
+    key_id: FIELD_ORIGIN_KEY_ID,
+    private_key: FIELD_ORIGIN_PRIVATE_KEY,
+  });
+}
 
 function claimVerdicts({ approval, admission, execution }) {
   return { approval, admission, execution };
@@ -152,6 +317,28 @@ export async function runProfile() {
     store,
     allowEphemeralStore: true, // reference profile; production requires durable shared state
   });
+  const fieldOriginGate = createGate({
+    manifest: manifestFromPack([...ACTION_PACK]),
+    trustedKeys: [harness.publicKey],
+    approverKeys: harness.approverKeys,
+    rpId: harness.rpId,
+    allowedOrigins: harness.allowedOrigins,
+    quorumPolicy: harness.quorumPolicy,
+    store: new MemoryConsumptionStore(),
+    allowEphemeralStore: true,
+    requiredFieldOriginProfile: FIELD_ORIGIN_PROFILE,
+    fieldOriginTrustedKeys: {
+      [FIELD_ORIGIN_KEY_ID]: {
+        issuer_id: FIELD_ORIGIN_ISSUER_ID,
+        public_key: FIELD_ORIGIN_PUBLIC_KEY,
+      },
+    },
+    fieldOriginExecutionProgram: {
+      artifact: FIELD_ORIGIN_EXECUTION_PROGRAM,
+      verification_options: FIELD_ORIGIN_EXECUTION_PROGRAM_VERIFICATION,
+      node_id: FIELD_ORIGIN_EXECUTION_PROGRAM_NODE,
+    },
+  });
   const actionHash = hashCanonical(EXACT_ACTION);
 
   const executions: any[] = [];
@@ -183,7 +370,32 @@ export async function runProfile() {
     }
   }
 
+  async function admitWithFieldOrigin(
+    receipt,
+    action: ExactActionRecord,
+    evidenceObject,
+    effect: () => Promise<EffectResult> = executor,
+  ) {
+    try {
+      const outcome = await fieldOriginGate.run(
+        {
+          selector: { ...SELECTOR },
+          receipt,
+          observedAction: action,
+          fieldOriginEvidence: evidenceObject,
+        },
+        effect,
+      );
+      return { outcome, terminal: null };
+    } catch (error: any) {
+      return { outcome: null, terminal: error?.emiliaGateOutcome ?? null };
+    }
+  }
+
   const cases: any[] = [];
+  let pilotObservedAction: ExactActionRecord | null = null;
+  let pilotFieldOriginEvidence: any = null;
+  let pilotApprovalReceipt: any = null;
 
   // 1. The through-case: two named humans approve the exact change under a
   //    user-verification-gated ceremony; the gate re-derives the action
@@ -388,6 +600,215 @@ export async function runProfile() {
     });
   }
 
+  // 9. The message that proposed the change is untrusted input. It may fill a
+  //    bounded data field, but it cannot select the effect-relevant payee.
+  {
+    const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
+    const evidenceObject = fieldOriginEvidence(
+      EXACT_ACTION,
+      { '/vendor_id': { origin_class: 'untrusted_bounded' } },
+      FIELD_ORIGIN_PROFILE,
+      'evidence:m01-injected-email-payee',
+    );
+    const before = executions.length;
+    const admitted = await admitWithFieldOrigin(receipt, EXACT_ACTION, evidenceObject);
+    const outcome = requireOutcome(admitted.outcome);
+    const check = outcome.authorization.evidence?.field_origin ?? null;
+    cases.push({
+      id: 'm01-injected-email-payee-change-refused',
+      title: 'An injected email selected the payee; field-origin control refuses before admission',
+      claims: {
+        ...claimVerdicts({
+          approval: { verdict: 'proven' },
+          admission: { verdict: 'refused', ...admissionRecord(outcome.authorization) },
+          execution: { verdict: 'not_entered', effect_ran: executions.length !== before },
+        }),
+        field_origin: { verdict: 'refused', reason: check?.reason ?? null },
+      },
+      boundary_reason: outcome.authorization.reason,
+    });
+  }
+
+  // 10. A webpage is equally untrusted when it tries to select the effect
+  //     target. The refusal names the exact control field.
+  {
+    const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
+    const evidenceObject = fieldOriginEvidence(
+      EXACT_ACTION,
+      { '/erp': { origin_class: 'untrusted_bounded' } },
+      FIELD_ORIGIN_PROFILE,
+      'evidence:m01-webpage-target',
+    );
+    const before = executions.length;
+    const admitted = await admitWithFieldOrigin(receipt, EXACT_ACTION, evidenceObject);
+    const outcome = requireOutcome(admitted.outcome);
+    cases.push({
+      id: 'm01-webpage-target-change-refused',
+      title: 'A webpage selected the ERP target; field-origin control refuses before admission',
+      claims: {
+        ...claimVerdicts({
+          approval: { verdict: 'proven' },
+          admission: { verdict: 'refused', ...admissionRecord(outcome.authorization) },
+          execution: { verdict: 'not_entered', effect_ran: executions.length !== before },
+        }),
+        field_origin: {
+          verdict: 'refused',
+          reason: outcome.authorization.evidence?.field_origin?.reason ?? null,
+        },
+      },
+      boundary_reason: outcome.authorization.reason,
+    });
+  }
+
+  // 11. Derived control data is admissible only through the exact transform
+  //     id, version, and digest pinned by the relying party.
+  {
+    const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
+    const evidenceObject = fieldOriginEvidence(
+      EXACT_ACTION,
+      {
+        '/new_account_digest': {
+          origin_class: 'derived_via_versioned_transform',
+          transform: { ...PINNED_FIELD_TRANSFORM, digest: `sha256:${'9'.repeat(64)}` },
+        },
+      },
+      FIELD_ORIGIN_PROFILE,
+      'evidence:m01-transform-substitution',
+    );
+    const before = executions.length;
+    const admitted = await admitWithFieldOrigin(receipt, EXACT_ACTION, evidenceObject);
+    const outcome = requireOutcome(admitted.outcome);
+    cases.push({
+      id: 'm01-transformed-control-substitution-refused',
+      title: 'A control field came through an unpinned transform; the transform digest mismatch is named',
+      claims: {
+        ...claimVerdicts({
+          approval: { verdict: 'proven' },
+          admission: { verdict: 'refused', ...admissionRecord(outcome.authorization) },
+          execution: { verdict: 'not_entered', effect_ran: executions.length !== before },
+        }),
+        field_origin: {
+          verdict: 'refused',
+          reason: outcome.authorization.evidence?.field_origin?.reason ?? null,
+        },
+      },
+      boundary_reason: outcome.authorization.reason,
+    });
+  }
+
+  // 12. Unknown remains unknown. The issuer cannot omit provenance and have
+  //     the verifier infer a safer class from a valid signature.
+  {
+    const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
+    const evidenceObject = fieldOriginEvidence(
+      EXACT_ACTION,
+      { '/change_ticket': { origin_class: 'unknown' } },
+      FIELD_ORIGIN_PROFILE,
+      'evidence:m01-unknown-origin',
+    );
+    const before = executions.length;
+    const admitted = await admitWithFieldOrigin(receipt, EXACT_ACTION, evidenceObject);
+    const outcome = requireOutcome(admitted.outcome);
+    cases.push({
+      id: 'm01-unknown-origin-refused',
+      title: 'A control field has unknown origin; the gate preserves unknown and refuses',
+      claims: {
+        ...claimVerdicts({
+          approval: { verdict: 'proven' },
+          admission: { verdict: 'refused', ...admissionRecord(outcome.authorization) },
+          execution: { verdict: 'not_entered', effect_ran: executions.length !== before },
+        }),
+        field_origin: {
+          verdict: 'refused',
+          reason: outcome.authorization.evidence?.field_origin?.reason ?? null,
+        },
+      },
+      boundary_reason: outcome.authorization.reason,
+    });
+  }
+
+  // 13. A presenter cannot widen a control field into bounded data. The
+  //     signed artifact's profile digest must equal the relying-party pin.
+  {
+    const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
+    const downgradedProfile = {
+      ...FIELD_ORIGIN_PROFILE,
+      profile_id: 'profile:finops-field-origin:downgraded',
+      fields: FIELD_ORIGIN_PROFILE.fields.map((field) => field.path === '/vendor_id'
+        ? { ...field, role: 'bounded_data', allowed_origins: ['untrusted_bounded'] }
+        : field),
+    };
+    const evidenceObject = fieldOriginEvidence(
+      EXACT_ACTION,
+      { '/vendor_id': { origin_class: 'untrusted_bounded' } },
+      downgradedProfile,
+      'evidence:m01-profile-downgrade',
+    );
+    const before = executions.length;
+    const admitted = await admitWithFieldOrigin(receipt, EXACT_ACTION, evidenceObject);
+    const outcome = requireOutcome(admitted.outcome);
+    cases.push({
+      id: 'm01-profile-downgrade-refused',
+      title: 'The presenter widened a control field into bounded data; the pinned profile digest refuses',
+      claims: {
+        ...claimVerdicts({
+          approval: { verdict: 'proven' },
+          admission: { verdict: 'refused', ...admissionRecord(outcome.authorization) },
+          execution: { verdict: 'not_entered', effect_ran: executions.length !== before },
+        }),
+        field_origin: {
+          verdict: 'refused',
+          reason: outcome.authorization.evidence?.field_origin?.reason ?? null,
+        },
+      },
+      boundary_reason: outcome.authorization.reason,
+    });
+  }
+
+  // 14. Untrusted content is not categorically forbidden. It may fill the
+  //     bounded memo field while every effect-relevant control stays pinned.
+  {
+    const action = {
+      ...EXACT_ACTION,
+      memo: 'Untrusted invoice note, bounded as data',
+    };
+    const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
+    const evidenceObject = fieldOriginEvidence(
+      action,
+      {},
+      FIELD_ORIGIN_PROFILE,
+      'evidence:m01-bounded-memo',
+    );
+    const before = executions.length;
+    const admitted = await admitWithFieldOrigin(receipt, action, evidenceObject);
+    const outcome = requireOutcome(admitted.outcome);
+    pilotObservedAction = action;
+    pilotFieldOriginEvidence = evidenceObject;
+    pilotApprovalReceipt = receipt;
+    cases.push({
+      id: 'm01-bounded-untrusted-memo-admitted',
+      title: 'Untrusted content fills a bounded memo field while control fields remain pinned; the gate admits',
+      claims: {
+        ...claimVerdicts({
+          approval: { verdict: 'proven' },
+          admission: { verdict: 'admitted', ...admissionRecord(outcome.authorization) },
+          execution: {
+            verdict: 'executed',
+            effect_ran: executions.length === before + 1,
+            bound_to_admitted_decision:
+              outcome.execution?.authorizes_decision === outcome.packet?.summary?.decision_hash,
+          },
+        }),
+        field_origin: {
+          verdict: 'verified',
+          reason: null,
+          evidence_digest: outcome.authorization.evidence?.field_origin?.artifact_digest ?? null,
+        },
+      },
+      boundary_reason: null,
+    });
+  }
+
   // The deterministic portion: identical bytes on every conforming run, on
   // any machine. Volatile metadata (timestamps, runner, commit) lives beside
   // it, never inside it.
@@ -397,6 +818,19 @@ export async function runProfile() {
       'draft-chen-oauth-agent-authz-use-cases-02, Section 5, Gap 6 (Execution-Layer Evidence); Use Case 11 execution-evidence requirement',
     claim_model: {
       approval: 'what the named human(s) approved, verified under pinned anchors',
+      field_origin: {
+        statement: 'what a pinned issuer asserted about each exact field origin and mutable-state snapshot at admission',
+        profile_id: FIELD_ORIGIN_PROFILE.profile_id,
+        profile_digest: fieldOriginProfileDigest(FIELD_ORIGIN_PROFILE),
+        claim_boundary: FIELD_ORIGIN_CLAIM_BOUNDARY,
+        execution_program: {
+          program_digest: executionProgramDigest(FIELD_ORIGIN_EXECUTION_PROGRAM),
+          authorizer_id: PROGRAM_AUTHORIZER_ID,
+          authorization_digest: FIELD_ORIGIN_EXECUTION_PROGRAM.authorization_digest,
+          node_id: FIELD_ORIGIN_EXECUTION_PROGRAM_NODE,
+          claim_boundary: FIELD_ORIGIN_EXECUTION_PROGRAM.claim_boundary,
+        },
+      },
       admission: 'whether this boundary admitted that exact action, once',
       execution: 'whether the effect was entered and with what outcome, bound to the admitted decision',
     },
@@ -407,6 +841,9 @@ export async function runProfile() {
       title: c.title,
       boundary_reason: c.boundary_reason,
       approval: { verdict: c.claims.approval.verdict, reason: c.claims.approval.reason ?? null },
+      field_origin: c.claims.field_origin
+        ? { verdict: c.claims.field_origin.verdict, reason: c.claims.field_origin.reason ?? null }
+        : null,
       admission: {
         verdict: c.claims.admission.verdict,
         allow: c.claims.admission.allow ?? null,
@@ -425,6 +862,31 @@ export async function runProfile() {
     results_digest: resultsDigest,
     cases,
     total_executions: executions.length,
+    pilot: {
+      observed_action: pilotObservedAction,
+      field_origin_profile: FIELD_ORIGIN_PROFILE,
+      field_origin_trusted_keys: {
+        [FIELD_ORIGIN_KEY_ID]: {
+          issuer_id: FIELD_ORIGIN_ISSUER_ID,
+          public_key: FIELD_ORIGIN_PUBLIC_KEY,
+        },
+      },
+      field_origin_evidence: pilotFieldOriginEvidence,
+      approval_receipt: pilotApprovalReceipt,
+      receipt_trust_config: {
+        trusted_keys: [harness.publicKey],
+        approver_keys: harness.approverKeys,
+        rp_id: harness.rpId,
+        allowed_origins: harness.allowedOrigins,
+        quorum_policy: harness.quorumPolicy,
+      },
+      manifest: manifestFromPack([...ACTION_PACK]),
+      selector: SELECTOR,
+      execution_program_artifact: FIELD_ORIGIN_EXECUTION_PROGRAM,
+      execution_program_verification: FIELD_ORIGIN_EXECUTION_PROGRAM_VERIFICATION,
+      execution_program_node_id: FIELD_ORIGIN_EXECUTION_PROGRAM_NODE,
+      gate_evidence_log: fieldOriginGate.evidence.all(),
+    },
   };
 }
 
@@ -465,9 +927,10 @@ function printDemo(result) {
     if (c.boundary_reason) console.log(`   boundary refusal names: ${c.boundary_reason}`);
   }
   console.log('-'.repeat(width));
-  console.log(`Executor ran ${result.total_executions} times across all 8 cases`
+  console.log(`Executor ran ${result.total_executions} times across all 14 cases`
     + ' (once for the through-case, once for the entered-then-unresolved case,'
-    + ' once for the artifact later replayed, once for the false-claim setup).');
+    + ' once for the artifact later replayed, once for the false-claim setup,'
+    + ' and once for the bounded-data positive case).');
   console.log(`results_digest: ${result.results_digest}`);
   console.log('One receipt proves approval. Admission and execution are separate claims');
   console.log('with separate evidence, and an unresolved outcome is never a retry.\n');

@@ -48,10 +48,34 @@ describe('Gap 6 execution-evidence composition profile', () => {
         const forged = byId['false-execution-claim-rejected'];
         expect(forged.claims.execution.verdict).toBe('claim_not_credited');
         expect(forged.claims.execution.binding_matches).toBe(false);
-        // The executor ran exactly four times across the whole profile: the
+        // M01: each hostile field-origin case is refused before the executor and
+        // names the exact mechanism. The positive case proves the policy is
+        // discriminating rather than a blanket ban on untrusted bytes.
+        for (const [id, reason] of [
+            ['m01-injected-email-payee-change-refused', 'field_origin_control_untrusted:/vendor_id'],
+            ['m01-webpage-target-change-refused', 'field_origin_control_untrusted:/erp'],
+            ['m01-transformed-control-substitution-refused', 'field_origin_transform_unpinned:/new_account_digest'],
+            ['m01-unknown-origin-refused', 'field_origin_unknown:/change_ticket'],
+            ['m01-profile-downgrade-refused', 'field_origin_profile_mismatch'],
+        ]) {
+            expect(byId[id].claims.field_origin.verdict, id).toBe('refused');
+            expect(byId[id].boundary_reason, id).toBe(reason);
+            expect(byId[id].claims.execution.effect_ran, id).toBe(false);
+        }
+        const boundedMemo = byId['m01-bounded-untrusted-memo-admitted'];
+        expect(boundedMemo.claims.field_origin.verdict).toBe('verified');
+        expect(boundedMemo.claims.admission.verdict).toBe('admitted');
+        expect(boundedMemo.claims.execution.effect_ran).toBe(true);
+        expect(boundedMemo.claims.execution.bound_to_admitted_decision).toBe(true);
+        const m01Allow = result.pilot.gate_evidence_log.find((entry) => entry.allow === true);
+        expect(m01Allow.field_origin_program_binding.node_id).toBe('vendor-bank-detail-change');
+        expect(m01Allow.field_origin_program_binding.profile_digest)
+            .toBe(result.deterministic.claim_model.field_origin.profile_digest);
+        // The executor ran exactly five times across the whole profile: the
         // through-case, the unresolved entry, the pre-replay admission, and the
-        // false-claim setup. Nothing else reached the effect.
-        expect(result.total_executions).toBe(4);
+        // false-claim setup, plus the bounded-data positive case. Nothing else
+        // reached the effect.
+        expect(result.total_executions).toBe(5);
         // Reproduction contract: the deterministic portion hashes to the
         // committed reference digest, on any machine, every run.
         const reference = JSON.parse(readFileSync(resolve(HERE, 'report.reference.json'), 'utf8'));

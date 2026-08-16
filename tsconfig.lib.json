@@ -10,7 +10,6 @@
     "moduleResolution": "bundler",
     "skipLibCheck": true,
     "noImplicitAny": false,
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
