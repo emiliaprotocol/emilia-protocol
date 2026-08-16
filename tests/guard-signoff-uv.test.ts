@@ -127,6 +127,13 @@ describe('deriveSignoffUserVerification', () => {
     const { decision, spki } = build();
     expect(deriveSignoffUserVerification({ decision: { key_class: 'A', context: decision.context } }).reason)
       .toBe('missing_assertion_evidence');
+    expect(deriveSignoffUserVerification({
+      decision: {
+        ...decision,
+        webauthn: { ...decision.webauthn, signature: '' },
+      },
+      approverPublicKeySpki: spki,
+    }).reason).toBe('incomplete_assertion');
     expect(deriveSignoffUserVerification({ decision, approverPublicKeySpki: null, expectedActionHash: ACTION_HASH }).reason)
       .toBe('missing_approver_key');
     expect(spki).toBeTruthy();

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import test from 'node:test';
 
 import {
@@ -59,6 +60,7 @@ const config: OasntAdapterConfig = Object.freeze({
   clock_skew_seconds: 5,
   max_token_lifetime_seconds: 120,
   max_status_age_seconds: 120,
+  required_assurance_level: null,
 });
 
 const trustRoot: OasntTrustRoot = Object.freeze({
@@ -124,7 +126,7 @@ function input(overrides: Partial<Omit<AebAdapterInput, 'profile'>> = {}): Omit<
   };
 }
 
-test('OASNT -01 published canonicalization vectors match byte-for-byte', () => {
+test('OASNT -02 published canonicalization vectors match byte-for-byte (unchanged from -01)', () => {
   assert.equal(
     computeOasntActionDigest(OASNT_ACTION_TYPE, expectedAction.native_action.parameters),
     'YlHp3M4JIWFPPZIVAwAmYOBOMfUyb2bjE6ve3AD2iaQ',
@@ -139,7 +141,7 @@ test('OASNT -01 published canonicalization vectors match byte-for-byte', () => {
   );
 });
 
-test('OASNT -01 published compact token verifies and maps to one EMILIA CAID', () => {
+test('OASNT -02 published compact token (Appendix A.6 V5, no asl) verifies and maps to one EMILIA CAID', () => {
   const adapter = createOasntAebAdapter({ config, trust_roots: [trustRoot] });
   assert.equal(adapter.id, OASNT_AEB_ADAPTER_ID);
   assert.equal(adapter.version, OASNT_AEB_ADAPTER_VERSION);
@@ -195,9 +197,117 @@ test('OASNT constructor pins cannot be replaced by presenter-selected roots', ()
 });
 
 test('OASNT source lock is the current reviewed draft', () => {
-  assert.equal(OASNT_DRAFT_REVISION, 'draft-thallapelly-oasnt-01');
+  assert.equal(OASNT_DRAFT_REVISION, 'draft-thallapelly-oasnt-02');
   assert.equal(
     OASNT_DRAFT_TXT_SHA256,
-    'sha256:7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19',
+    'sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603',
   );
+});
+
+// ---------------------------------------------------------------------------
+// -02 sec 5.4 assurance. Tokens below are minted locally with the draft's
+// published Appendix A.1 key (its private component is published exactly so
+// implementers can reproduce signatures; the draft forbids any other use).
+// ---------------------------------------------------------------------------
+
+const PUBLISHED_PRIVATE_JWK = {
+  kty: 'EC',
+  crv: 'P-256',
+  x: 'P7Vp3OZi4XYii2VHo4T08zkjKrKhCt-gY-oAATkXaao',
+  y: 'QNEaWqPG2EI5-2AdT8oX-S4odj8TH9wj_JW2I2ILBoc',
+  d: 'Y2j9oKoLsw3p24brNicuYCjBxv0LVUWLHSYc9Wzvy5A',
+};
+
+function mintToken(extraClaims: Record<string, unknown>): string {
+  const header = Buffer.from(JSON.stringify({ alg: 'ES256', typ: 'oasnt+jwt' }), 'utf8')
+    .toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    sub: 'agent-1',
+    adg: 'YlHp3M4JIWFPPZIVAwAmYOBOMfUyb2bjE6ve3AD2iaQ',
+    dsp: 'uSEgOG9UC1IWGxzBalJv5cIbfxE8kxmoKF25yrRl1fs',
+    rqf: '1GL7CIg1JkKGaGfHgdF5_93rVx4FqfjoY0lYZ6xbjQ0',
+    int: 'clean',
+    jti: `jti-${JSON.stringify(extraClaims)}`,
+    iat: 1_800_000_000,
+    exp: 1_800_000_060,
+    cnf: { jkt: 'xcDbc2-MsRIENQynAYGtJ0Vc0xPTBdfj_1iAeI9MMFo' },
+    ...extraClaims,
+  }), 'utf8').toString('base64url');
+  const signingInput = `${header}.${payload}`;
+  const key = crypto.createPrivateKey({ key: PUBLISHED_PRIVATE_JWK, format: 'jwk' });
+  const signature = crypto.sign('sha256', Buffer.from(signingInput, 'ascii'), {
+    key,
+    dsaEncoding: 'ieee-p1363',
+  }).toString('base64url');
+  return `${signingInput}.${signature}`;
+}
+
+function withFloor(level: string | null): OasntAdapterConfig {
+  return Object.freeze({ ...config, required_assurance_level: level });
+}
+
+test('asl absent with a pinned floor refuses as an absent assurance statement', () => {
+  const adapter = createOasntAebAdapter({ config: withFloor('platform-key'), trust_roots: [trustRoot] });
+  const native = adapter.verifyNative(input({
+    artifact: mintToken({}),
+    adapter_config: withFloor('platform-key'),
+  }));
+  assert.equal(native.acceptance, 'REJECTED');
+  assert.deepEqual(native.reasons, ['oasnt:assurance_statement_absent']);
+});
+
+test('unrecognized asl decides like absent but reports its own reason (sec 5.4.2)', () => {
+  const adapter = createOasntAebAdapter({ config: withFloor('platform-key'), trust_roots: [trustRoot] });
+  const native = adapter.verifyNative(input({
+    artifact: mintToken({ asl: 'quantum-oracle' }),
+    adapter_config: withFloor('platform-key'),
+  }));
+  assert.equal(native.acceptance, 'REJECTED');
+  assert.deepEqual(native.reasons, ['oasnt:assurance_level_unrecognized']);
+});
+
+test('an over-claim buys nothing: effective level is the enrollment ceiling (sec 5.4.1)', () => {
+  // Token claims attested-display; this root version attests hardware but not
+  // a display path, so the ceiling is platform-key and the effective level is
+  // platform-key. A floor of attested-display refuses...
+  const strict = createOasntAebAdapter({ config: withFloor('attested-display'), trust_roots: [trustRoot] });
+  const refused = strict.verifyNative(input({
+    artifact: mintToken({ asl: 'attested-display' }),
+    adapter_config: withFloor('attested-display'),
+  }));
+  assert.equal(refused.acceptance, 'REJECTED');
+  assert.deepEqual(refused.reasons, ['oasnt:assurance_below_requirement']);
+
+  // ...while a floor of platform-key admits the same token, because the
+  // ceiling genuinely satisfies it (the lesser rule, not outright refusal).
+  const lenient = createOasntAebAdapter({ config: withFloor('platform-key'), trust_roots: [trustRoot] });
+  const admitted = lenient.verifyNative(input({
+    artifact: mintToken({ asl: 'attested-display' }),
+    adapter_config: withFloor('platform-key'),
+  }));
+  assert.equal(admitted.native_verification, 'VERIFIED');
+  assert.equal(admitted.acceptance, 'ACCEPTED');
+});
+
+test('with a null floor no assurance evaluation runs, even for unrecognized asl', () => {
+  const adapter = createOasntAebAdapter({ config, trust_roots: [trustRoot] });
+  const native = adapter.verifyNative(input({ artifact: mintToken({ asl: 'quantum-oracle' }) }));
+  assert.equal(native.native_verification, 'VERIFIED');
+  assert.equal(native.acceptance, 'ACCEPTED');
+});
+
+test('asl that violates registry syntax is a malformed claim set', () => {
+  const adapter = createOasntAebAdapter({ config, trust_roots: [trustRoot] });
+  const native = adapter.verifyNative(input({ artifact: mintToken({ asl: 'Attested-Display' }) }));
+  assert.equal(native.acceptance, 'REJECTED');
+  assert.deepEqual(native.reasons, ['oasnt:claims_invalid']);
+});
+
+test('a v1 config without the assurance key is refused at the constructor pin', () => {
+  const legacy = { ...config } as Record<string, unknown>;
+  delete legacy.required_assurance_level;
+  assert.throws(() => createOasntAebAdapter({
+    config: legacy as unknown as OasntAdapterConfig,
+    trust_roots: [trustRoot],
+  }));
 });

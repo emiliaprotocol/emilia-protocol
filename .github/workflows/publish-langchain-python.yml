@@ -86,7 +86,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
-          go-version: '1.22'
+          go-version: '1.26.6'
 
       - name: Install hash-locked build and verification tooling
         run: python -m pip install --require-hashes -r .github/workflow-requirements/release.txt
@@ -169,9 +169,9 @@ jobs:
         run: |
           VERSION=$(python -c "import tomllib; print(tomllib.load(open('integrations/langchain-emilia/pyproject.toml','rb'))['project']['version'])")
           mkdir -p registry-copy
-          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if python -m pip download --no-deps --only-binary=:all: --dest registry-copy "langchain-emilia==$VERSION" \
-              && python -m pip download --no-deps --no-binary=:all: --no-build-isolation --dest registry-copy "langchain-emilia==$VERSION"; then
+          for attempt in {1..36}; do
+            if python -m pip download --no-cache-dir --no-deps --only-binary=:all: --dest registry-copy "langchain-emilia==$VERSION" \
+              && python -m pip download --no-cache-dir --no-deps --no-binary=:all: --no-build-isolation --dest registry-copy "langchain-emilia==$VERSION"; then
               break
             fi
             sleep 5

@@ -97,6 +97,7 @@ describe('portable Class-A signoff decision evidence', () => {
       (event) => { event.actor_id = 'operator@example.com'; },
       (event) => { event.after_state.approved_action_hash = `sha256:${'f'.repeat(64)}`; },
       (event) => { event.after_state.context_hash = '0'.repeat(64); },
+      (event) => { delete event.after_state.webauthn.signature; },
       (event) => { event.after_state.key_class = 'C'; delete event.after_state.webauthn; },
     ];
 

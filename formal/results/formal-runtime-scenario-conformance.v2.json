@@ -495,11 +495,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "6e43797afe3149b15a9bc142149344ad492e14fd3bcbb44f4af337eff7207a78"
+      "sha256": "816f95e69d00b9f69c6e063e7e303e5ad19ba7103aa55cc5caea5d3b2bde16f5"
     },
     {
       "path": "package.json",
-      "sha256": "0052573d2647023efc966eefcb2eb957c593cc44c686fe28cfdb24c6fd040e8c"
+      "sha256": "7984db384f6a95d30bd6316c0c3d17879c3fa2c617b2b348daefa646807f3802"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -646,6 +646,10 @@
       "sha256": "f20f9e3c6a8c45834a5e10aa0308de91ccb2122125aab4b93f8db4376c8c9c4a"
     },
     {
+      "path": "packages/gate/dist/field-origin-evidence.js",
+      "sha256": "97ca9833cefa6ebbb2e7323e70faec91fa625a71cfe1f6576173695488b50e3f"
+    },
+    {
       "path": "packages/gate/dist/formal-runtime-map.js",
       "sha256": "0eaa10dcf81c1f645c021392f73b587d6b8fbf61d580bc724d2e1d256d1e48c4"
     },
@@ -655,7 +659,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "51bedd9cf2615dd6649d7451f3d933c22ecddaf6d160ca9c1e70421b15eb9a71"
+      "sha256": "06bb54f9be4addf43ee0b0d47cecb48a1f1790f1d67e750a878a1d7f10a8a401"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -847,7 +851,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "d30ca49cf7d78388c7d34b27ce3c41b749e33c9a6e0b2ab57a4b8e421b9d6f46"
+      "sha256": "189c3c4e124a051c481d26bb160245c52fe0b215c7ef742c4ce5d5a2c5bfc82d"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -1027,7 +1031,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-oasnt-adapter.js",
-      "sha256": "3eb8d46896109fcc458b618e69280e71897663ba839bdf825a4b3e3bc15c4a06"
+      "sha256": "6a633cd298096d4ba0b7d7a2d7344616ee7b9cdc6d39ea460c6b9a6bd3370390"
     },
     {
       "path": "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js",

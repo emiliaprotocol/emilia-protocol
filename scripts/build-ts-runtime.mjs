@@ -16,7 +16,7 @@ const builds = [
 
 for (const [entry, rootDir, outDir] of builds) {
   const result = spawnSync(process.execPath, [
-    tsc, entry,
+    tsc, '--ignoreConfig', entry,
     '--target', 'es2022',
     '--module', 'nodenext',
     '--moduleResolution', 'nodenext',

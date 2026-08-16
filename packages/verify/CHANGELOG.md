@@ -5,6 +5,16 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Repinned the OASNT AEB adapter to draft-thallapelly-oasnt-02 (archived text
+  SHA-256 3a134b63…) and implemented the -02 `asl` assurance claim: registry
+  syntax validation, relying-party assurance floor in the pinned config
+  (`required_assurance_level`, explicitly nullable), effective-level
+  derivation as the lesser of the claimed level and the enrollment ceiling,
+  and the absent-versus-unrecognized distinction reported in the refusal
+  reason while deciding identically. Adapter version 2, config version
+  AEB-OASNT-CONFIG-v2. The -02 verifier-side lifetime bound was already
+  enforced as `max_token_lifetime_seconds`.
+
 - Added a shared native-action projection to the experimental CCS adapter so a
   pinned CCS machine-policy result and another native evidence leg can map to
   the same CAID without role substitution. Added a runnable CCS + OASNT AEB

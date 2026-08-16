@@ -2,14 +2,23 @@
 /**
  * Revision-pinned OASNT adapter for AEB-ADAPTER-v1.
  *
- * Source lock: draft-thallapelly-oasnt-01, archived text SHA-256
- * 7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19.
+ * Source lock: draft-thallapelly-oasnt-02, archived text SHA-256
+ * 3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603.
  *
  * OASNT proves a native, single-use human authorization token. This adapter
  * verifies that token under relying-party-pinned enrolled keys, recomputes its
  * action/display/request commitments from the action the Gate is about to
  * execute, and projects that exact action into a pinned EMILIA CAID profile.
  * It never treats the OASNT token as an AEB verdict or a local authorization.
+ *
+ * New at -02 (draft sec 5.4): the OPTIONAL `asl` assurance claim. The
+ * effective level is the LESSER of the claimed level and the ceiling the
+ * enrollment supports (sec 5.4.1); an unrecognized value carries no assurance
+ * statement and must never be inferred or floored (sec 5.4.2); assurance
+ * floors themselves are relying-party policy, so the requirement lives in
+ * this adapter's pinned config, not in the token. The -02 verifier-side
+ * lifetime bound (step 6: refuse exp-iat above a locally configured maximum)
+ * was already enforced here as `max_token_lifetime_seconds`.
  */
 import crypto from 'node:crypto';
 // The governed CAID implementation is JavaScript and has no declaration file.
@@ -17,11 +26,23 @@ import crypto from 'node:crypto';
 import { computeCaid } from '../vendor/caid.mjs';
 import { digestAeb, } from './aeb-adapter-contract.js';
 import { strictJsonGate } from './strict-json.js';
-export const OASNT_DRAFT_REVISION = 'draft-thallapelly-oasnt-01';
-export const OASNT_DRAFT_TXT_SHA256 = 'sha256:7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19';
+export const OASNT_DRAFT_REVISION = 'draft-thallapelly-oasnt-02';
+export const OASNT_DRAFT_TXT_SHA256 = 'sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603';
 export const OASNT_AEB_ADAPTER_ID = 'native:oasnt';
-export const OASNT_AEB_ADAPTER_VERSION = '1';
-export const OASNT_AEB_CONFIG_VERSION = 'AEB-OASNT-CONFIG-v1';
+export const OASNT_AEB_ADAPTER_VERSION = '2';
+export const OASNT_AEB_CONFIG_VERSION = 'AEB-OASNT-CONFIG-v2';
+/**
+ * The "OASNT Assurance Levels" registry, initial contents (draft sec 10.2).
+ * Compared by rank; larger is stronger. Values are case-sensitive and match
+ * [a-z][a-z0-9-]*. An asl value outside this table is syntactically legal but
+ * carries NO assurance statement (sec 5.4.2): never inferred, never floored.
+ */
+export const OASNT_ASSURANCE_LEVELS = Object.freeze({
+    'software': 10,
+    'platform-key': 20,
+    'attested-display': 30,
+});
+const ASL_SYNTAX_RE = /^[a-z][a-z0-9-]*$/;
 export const OASNT_TRUST_ROOT_VERSION = 'AEB-OASNT-ENROLLED-P256-ROOT-v1';
 export const OASNT_CAID_MAPPING_VERSION = 'AEB-OASNT-CAID-MAPPING-v1';
 export const OASNT_CAID_MAPPER_ID = 'mapper:oasnt-exact-action-v1';
@@ -33,6 +54,7 @@ const IDENTIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9_.:@/-]{0,255}$/;
 const CONFIG_KEYS = new Set([
     '@version', 'evidence_role', 'subject', 'action_type', 'require_request_binding',
     'clock_skew_seconds', 'max_token_lifetime_seconds', 'max_status_age_seconds',
+    'required_assurance_level',
 ]);
 const SUBJECT_KEYS = new Set(['id', 'kind', 'native_id']);
 const ROOT_KEYS = new Set([
@@ -44,7 +66,7 @@ const STATUS_KEYS = new Set([
     'checked_at', 'expires_at', 'revocation_checked', 'revoked', 'consumed', 'unavailable',
 ]);
 const TOKEN_HEADER_KEYS = new Set(['alg', 'typ']);
-const TOKEN_CLAIM_KEYS = new Set(['sub', 'adg', 'dsp', 'rqf', 'int', 'jti', 'iat', 'exp', 'cnf']);
+const TOKEN_CLAIM_KEYS = new Set(['sub', 'adg', 'dsp', 'rqf', 'int', 'jti', 'iat', 'exp', 'cnf', 'asl']);
 const CNF_KEYS = new Set(['jkt']);
 const ACTION_KEYS_WITH_REQUEST = new Set(['action_type', 'native_action', 'request']);
 const ACTION_KEYS_NO_REQUEST = new Set(['action_type', 'native_action']);
@@ -160,7 +182,10 @@ function parseConfig(value) {
         || !nonNegativeInteger(value.clock_skew_seconds)
         || !nonNegativeInteger(value.max_token_lifetime_seconds)
         || value.max_token_lifetime_seconds < 1
-        || !nonNegativeInteger(value.max_status_age_seconds))
+        || !nonNegativeInteger(value.max_status_age_seconds)
+        || !(value.required_assurance_level === null
+            || (typeof value.required_assurance_level === 'string'
+                && Object.hasOwn(OASNT_ASSURANCE_LEVELS, value.required_assurance_level))))
         return null;
     return structuredClone(value);
 }
@@ -306,7 +331,7 @@ function parseCompactToken(value) {
     if (!isRecord(header) || !exactKeys(header, TOKEN_HEADER_KEYS)
         || header.alg !== 'ES256' || header.typ !== 'oasnt+jwt'
         || !isRecord(claims)
-        || !exactKeys(claims, TOKEN_CLAIM_KEYS, new Set(['rqf'])))
+        || !exactKeys(claims, TOKEN_CLAIM_KEYS, new Set(['rqf', 'asl'])))
         return null;
     return {
         token: value,
@@ -371,6 +396,8 @@ function verifyNative(input, pins) {
         || !canonicalBase64url(claims.adg, 32)
         || !canonicalBase64url(claims.dsp, 32)
         || (claims.rqf !== undefined && !canonicalBase64url(claims.rqf, 32))
+        || (claims.asl !== undefined
+            && !(typeof claims.asl === 'string' && ASL_SYNTAX_RE.test(claims.asl)))
         || !['clean', 'compromised', 'unknown'].includes(String(claims.int))
         || !nonEmptyString(claims.jti)
         || !Number.isSafeInteger(claims.iat) || !Number.isSafeInteger(claims.exp)
@@ -442,6 +469,39 @@ function verifyNative(input, pins) {
         result.acceptance = 'REJECTED';
         result.reasons = ['oasnt:runtime_integrity_not_clean'];
         return result;
+    }
+    // Assurance (draft sec 5.4). Evaluated only when this relying party pinned
+    // a floor: with no requirement, neither absent nor unrecognized asl is
+    // evaluated (sec 5.4.2). The effective level is the LESSER of the claimed
+    // level and the enrollment ceiling (sec 5.4.1), so an over-claim buys
+    // nothing. This trust-root version records hardware attestation but no
+    // display-path attestation, so its ceiling is at most platform-key and
+    // attested-display can never be effective under it. Absent and unrecognized
+    // asl decide identically (both refuse a floor) and are distinguished only
+    // in the reported reason, exactly as sec 5.4.2 requires. The sec 5.4.1
+    // SHOULD-level over-claim report is carried at the composition layer;
+    // this result's reason vocabulary is decision-bearing only.
+    const required = pins.config.required_assurance_level;
+    if (required !== null) {
+        const requiredRank = OASNT_ASSURANCE_LEVELS[required];
+        const claimed = typeof claims.asl === 'string' ? claims.asl : undefined;
+        if (claimed === undefined) {
+            result.acceptance = 'REJECTED';
+            result.reasons = ['oasnt:assurance_statement_absent'];
+            return result;
+        }
+        if (!Object.hasOwn(OASNT_ASSURANCE_LEVELS, claimed)) {
+            result.acceptance = 'REJECTED';
+            result.reasons = ['oasnt:assurance_level_unrecognized'];
+            return result;
+        }
+        const ceiling = root.enrollment.hardware_attested === true ? 'platform-key' : 'software';
+        const effectiveRank = Math.min(OASNT_ASSURANCE_LEVELS[claimed], OASNT_ASSURANCE_LEVELS[ceiling]);
+        if (effectiveRank < requiredRank) {
+            result.acceptance = 'REJECTED';
+            result.reasons = ['oasnt:assurance_below_requirement'];
+            return result;
+        }
     }
     result.native_verification = 'VERIFIED';
     const status = statusDisposition(input.status, input.now, pins.config.max_status_age_seconds);
