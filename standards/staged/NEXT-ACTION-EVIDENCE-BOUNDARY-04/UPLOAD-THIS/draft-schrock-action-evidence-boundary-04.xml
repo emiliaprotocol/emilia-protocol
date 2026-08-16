@@ -792,7 +792,7 @@
           <front>
             <title>The Canonical Action Identifier (CAID)</title>
             <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
-            <date year="2026" month="July"/>
+            <date year="2026" month="August" day="9"/>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-02"/>
         </reference>
@@ -812,9 +812,9 @@
           <front>
             <title>Authorization Receipts for High-Risk Agent Actions</title>
             <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
-            <date year="2026" month="July"/>
+            <date year="2026" month="August" day="16"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-11"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-12"/>
         </reference>
         <reference anchor="AEG" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
           <front>
