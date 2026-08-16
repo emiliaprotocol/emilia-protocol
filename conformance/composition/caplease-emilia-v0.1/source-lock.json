@@ -1,0 +1,46 @@
+{
+  "@version": "CAPLEASE-EMILIA-SOURCE-LOCK-v0.1",
+  "caplease": {
+    "arxiv_id": "2608.01710",
+    "version": "v1",
+    "submitted_at": "2026-08-03T05:16:02Z",
+    "paper_title": "Beyond Single-Use Tokens: Durable Authorization State for Replay-Resistant LLM Agent Actions",
+    "pdf": {
+      "url": "https://arxiv.org/pdf/2608.01710v1",
+      "sha256": "f3baaaf4711b98a6fb9eff605ac037a7d01c7a827799746981000be4bc802527"
+    },
+    "tex_source": {
+      "url": "https://arxiv.org/src/2608.01710v1",
+      "archive_sha256": "12c4b061e4b44b463f8b9affe125dfd87e7149f4e4072702a9bc315cdcd6f33e",
+      "main_tex_sha256": "4b396e4c53c41fb1317771fbc126087c21ed349c4b669bbf3e570e709d058e04"
+    },
+    "official_repository": null,
+    "artifact_boundary": "The arXiv v1 abstract, HTML, PDF, and TeX source archive identify no official code repository or included supplement. The executable CapLease side of this package is therefore a paper-derived model, not an execution of author-supplied code."
+  },
+  "emilia": {
+    "repository": "https://github.com/emiliaprotocol/emilia-protocol",
+    "base_revision": "bfd130f61a132f29ee6e74dd1dbe63c46a4edacc",
+    "runtime_files": [
+      {
+        "path": "packages/gate/src/capability-receipt.ts",
+        "sha256": "cf4576e6c1178013291bd22e8d54ab34545de8c5760f7ecdfab150893015f7cb"
+      },
+      {
+        "path": "packages/gate/dist/capability-receipt.js",
+        "sha256": "db693d826bf7b0faca9faba0a7c38a4398ef58ca922a607edd812ea224a8abf3"
+      },
+      {
+        "path": "packages/gate/capability-receipt.js",
+        "sha256": "7377e4ab41dd1abe111f1ecf4b5200c9f08be260804aa2c8e14c9ad4dd341982"
+      },
+      {
+        "path": "packages/gate/dist/execution-binding.js",
+        "sha256": "8dca7c6951bf1315d2ec97484c8ef66ea12a851a937920f82560370bb881dbb5"
+      },
+      {
+        "path": "packages/gate/execution-binding.js",
+        "sha256": "c582d5f664fab491dd880bc3b3765cb06d124be3914e4473df79e8d6f40631d4"
+      }
+    ]
+  }
+}

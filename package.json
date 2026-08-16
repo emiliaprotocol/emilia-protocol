@@ -36,6 +36,7 @@
     "conformance:composition:jesske-ai-enablement": "node --test conformance/composition/jesske-ai-enablement-v0.1/run.test.mjs && node conformance/composition/jesske-ai-enablement-v0.1/run.mjs",
     "conformance:composition:ccs-l1-aeb": "node --test conformance/composition/ccs-l1-aeb-v1/run.test.mjs && node conformance/composition/ccs-l1-aeb-v1/run.mjs --check",
     "conformance:composition:noa-policy-replay": "vitest run conformance/composition/noa-policy-replay-v0.1/run.test.mjs && node conformance/composition/noa-policy-replay-v0.1/run.mjs",
+    "conformance:composition:caplease-emilia": "node --test conformance/composition/caplease-emilia-v0.1/run.test.mjs && node conformance/composition/caplease-emilia-v0.1/run.mjs --check",
     "pilot:finance-field-origin": "node conformance/composition/gap6-execution-evidence-v0.1/export-pilot-kit.mjs",
     "verify:finance-field-origin-pilot": "node conformance/composition/gap6-execution-evidence-v0.1/verify-pilot-kit.mjs",
     "test:grpc-guard": "node --test packages/grpc-guard/*.test.mjs",
