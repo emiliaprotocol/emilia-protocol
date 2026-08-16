@@ -4,3 +4,4 @@ coverage/
 coverage.json
 dist/
 node_modules/
+types/

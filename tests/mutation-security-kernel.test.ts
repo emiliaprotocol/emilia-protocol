@@ -9,6 +9,11 @@ import {
 } from '../packages/gate/store.js';
 import { canonicalize, createGate, hashCanonical } from '../packages/gate/index.js';
 import {
+  fieldOriginProfileDigest,
+  signFieldOriginEvidence,
+} from '../packages/gate/field-origin-evidence.js';
+import { signBoundedExecutionProgram } from '../packages/gate/bounded-execution-program.js';
+import {
   __relianceSecurityInternals,
   evaluateReliance,
   RELIANCE_PROFILE_VERSION,
@@ -27,13 +32,13 @@ function token(prefix = 'owner') {
   return () => `${prefix}-${String(++n).padStart(24, '0')}`;
 }
 
-function mintSoftwareReceipt(actionType) {
+function mintSoftwareReceipt(actionType, createdAt = new Date().toISOString()) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const payload = {
     receipt_id: `mutation_${crypto.randomUUID()}`,
     subject: 'agent:mutation-test',
     issuer: 'ep:org:mutation-test',
-    created_at: new Date().toISOString(),
+    created_at: createdAt,
     claim: { action_type: actionType, outcome: 'allow' },
   };
   const value = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
@@ -45,6 +50,131 @@ function mintSoftwareReceipt(actionType) {
       signature: { algorithm: 'Ed25519', value },
     },
   };
+}
+
+const FIELD_ORIGIN_NOW = '2026-08-15T22:30:00.000Z';
+const FIELD_ORIGIN_NOW_MS = Date.parse(FIELD_ORIGIN_NOW);
+const FIELD_ORIGIN_ACTION = {
+  action_type: 'payment.release',
+  vendor_id: 'V-88012',
+  memo: 'Untrusted invoice note, bounded as data',
+};
+const FIELD_ORIGIN_PROFILE = {
+  profile_id: 'profile:mutation-field-origin:01',
+  relying_party_id: 'rp:mutation-field-origin',
+  action_type: FIELD_ORIGIN_ACTION.action_type,
+  fields: [
+    {
+      path: '/action_type',
+      role: 'control',
+      required: true,
+      allowed_origins: ['operator_pinned'],
+      snapshot_policy: 'immutable',
+      max_snapshot_age_sec: null,
+      allowed_transform_ids: [],
+    },
+    {
+      path: '/vendor_id',
+      role: 'control',
+      required: true,
+      allowed_origins: ['operator_pinned', 'approver_supplied'],
+      snapshot_policy: 'immutable',
+      max_snapshot_age_sec: null,
+      allowed_transform_ids: [],
+    },
+    {
+      path: '/memo',
+      role: 'bounded_data',
+      required: false,
+      allowed_origins: ['operator_pinned', 'approver_supplied', 'untrusted_bounded'],
+      snapshot_policy: 'either',
+      max_snapshot_age_sec: 300,
+      allowed_transform_ids: [],
+    },
+  ],
+  transforms: [],
+};
+
+function fieldOriginMutationHarness() {
+  const evidenceKeys = crypto.generateKeyPairSync('ed25519');
+  const evidenceKeyId = 'key:mutation-field-origin';
+  const signer = {
+    issuer_id: FIELD_ORIGIN_PROFILE.relying_party_id,
+    key_id: evidenceKeyId,
+    private_key: evidenceKeys.privateKey,
+  };
+  const trustedKeys = {
+    [evidenceKeyId]: {
+      issuer_id: FIELD_ORIGIN_PROFILE.relying_party_id,
+      public_key: evidenceKeys.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    },
+  };
+  const programKeys = crypto.generateKeyPairSync('ed25519');
+  const programKeyId = 'key:mutation-field-origin-program';
+  const programIssuer = 'customer:mutation-finance';
+  const profileDigest = fieldOriginProfileDigest(FIELD_ORIGIN_PROFILE);
+  const artifact = signBoundedExecutionProgram({
+    program_id: 'program:mutation-field-origin:01',
+    tenant_id: 'tenant:mutation-design-partner',
+    version: 1,
+    subject_id: 'agent:mutation-finance:01',
+    audience: 'gate:mutation-finance:01',
+    objective_digest: `sha256:${'1'.repeat(64)}`,
+    authorization_digest: `sha256:${'2'.repeat(64)}`,
+    presentation_digest: `sha256:${'3'.repeat(64)}`,
+    supersedes_program_digest: null,
+    issued_at: '2026-08-15T22:00:00.000Z',
+    valid_from: '2026-08-15T22:10:00.000Z',
+    expires_at: '2026-08-15T23:30:00.000Z',
+    max_total_occurrences: 1,
+    max_concurrent_effects: 1,
+    budgets: [{ budget_id: 'payment-release-attempts', unit: 'attempt', limit: 1 }],
+    nodes: [{
+      node_id: 'payment-release',
+      action: {
+        mode: 'profile',
+        profile_id: FIELD_ORIGIN_PROFILE.profile_id,
+        profile_digest: profileDigest,
+      },
+      trust_program_digest: `sha256:${'4'.repeat(64)}`,
+      depends_on: [],
+      max_occurrences: 1,
+      charges: [{ budget_id: 'payment-release-attempts', amount: 1 }],
+    }],
+  }, {
+    issuer_id: programIssuer,
+    key_id: programKeyId,
+    private_key: programKeys.privateKey,
+  });
+  const executionProgram = {
+    artifact,
+    verification_options: {
+      trusted_keys: {
+        [programKeyId]: {
+          issuer_id: programIssuer,
+          public_key: programKeys.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+        },
+      },
+      now: FIELD_ORIGIN_NOW,
+      expected_program_id: 'program:mutation-field-origin:01',
+      expected_tenant_id: 'tenant:mutation-design-partner',
+      expected_authorizer_id: programIssuer,
+      expected_authorization_digest: `sha256:${'2'.repeat(64)}`,
+      expected_audience: 'gate:mutation-finance:01',
+    },
+    node_id: 'payment-release',
+  };
+  return { signer, trustedKeys, executionProgram };
+}
+
+function fieldOriginAnnotations(overrides = {}) {
+  return Object.keys(FIELD_ORIGIN_ACTION).sort().map((key) => ({
+    path: `/${key}`,
+    origin_class: key === 'memo' ? 'untrusted_bounded' : 'operator_pinned',
+    snapshot: { kind: 'immutable', observed_at: null, source_version: null },
+    transform: null,
+    ...(overrides[`/${key}`] ?? {}),
+  }));
 }
 
 describe('mutation oracles for the replay kernel', () => {
@@ -480,6 +610,175 @@ describe('mutation oracles for Gate admission inputs', () => {
     expect(result.allow).toBe(false);
     expect(result.reason).toBe('assurance_too_low');
     expect(result.evidence.need_tier).toBe('quorum');
+  });
+
+  it('makes field-origin evidence and its customer-pinned profile part of admission', async () => {
+    const h = fieldOriginMutationHarness();
+    const configuredProfile = structuredClone(FIELD_ORIGIN_PROFILE);
+    const configuredTrustedKeys = structuredClone(h.trustedKeys);
+    const fieldOriginManifest = structuredClone(manifest);
+    fieldOriginManifest.actions[0].risk = 'high';
+    fieldOriginManifest.actions[0].assurance_class = 'software';
+    const receiptKeys = mintSoftwareReceipt(FIELD_ORIGIN_ACTION.action_type, FIELD_ORIGIN_NOW);
+    const gate = createGate({
+      manifest: fieldOriginManifest,
+      trustedKeys: [receiptKeys.publicKey],
+      allowEphemeralStore: true,
+      now: () => FIELD_ORIGIN_NOW_MS,
+      requiredFieldOriginProfile: configuredProfile,
+      fieldOriginTrustedKeys: configuredTrustedKeys,
+      fieldOriginExecutionProgram: h.executionProgram,
+    });
+
+    configuredProfile.fields[1].role = 'bounded_data';
+    configuredProfile.fields[1].allowed_origins = ['untrusted_bounded'];
+    configuredTrustedKeys['key:mutation-field-origin'].issuer_id = 'rp:mutated-after-configuration';
+
+    const check = async (annotations, profile = FIELD_ORIGIN_PROFILE) => {
+      const { publicKey, receipt } = mintSoftwareReceipt(
+        FIELD_ORIGIN_ACTION.action_type,
+        FIELD_ORIGIN_NOW,
+      );
+      const localGate = createGate({
+        manifest: fieldOriginManifest,
+        trustedKeys: [publicKey],
+        allowEphemeralStore: true,
+        now: () => FIELD_ORIGIN_NOW_MS,
+        requiredFieldOriginProfile: FIELD_ORIGIN_PROFILE,
+        fieldOriginTrustedKeys: h.trustedKeys,
+        fieldOriginExecutionProgram: h.executionProgram,
+      });
+      return localGate.check({
+        selector: { protocol: 'mcp', tool: 'release_payment' },
+        receipt,
+        observedAction: FIELD_ORIGIN_ACTION,
+        fieldOriginEvidence: signFieldOriginEvidence({
+          evidence_id: `evidence:mutation:${crypto.randomUUID()}`,
+          profile,
+          observed_action: FIELD_ORIGIN_ACTION,
+          observed_at: FIELD_ORIGIN_NOW,
+          annotations,
+        }, h.signer),
+      });
+    };
+
+    const missing = await gate.check({
+      selector: { protocol: 'mcp', tool: 'release_payment' },
+      receipt: receiptKeys.receipt,
+      observedAction: FIELD_ORIGIN_ACTION,
+    });
+    expect(missing).toMatchObject({
+      allow: false,
+      reason: 'field_origin_evidence_required',
+      evidence: {
+        field_origin: null,
+        field_origin_program_binding: {
+          node_id: 'payment-release',
+          profile_id: FIELD_ORIGIN_PROFILE.profile_id,
+        },
+      },
+    });
+
+    const injected = await check(fieldOriginAnnotations({
+      '/vendor_id': { origin_class: 'untrusted_bounded' },
+    }));
+    expect(injected).toMatchObject({
+      allow: false,
+      reason: 'field_origin_control_untrusted:/vendor_id',
+      evidence: { field_origin: { accepted: false } },
+    });
+
+    const unknown = await check(fieldOriginAnnotations({
+      '/vendor_id': { origin_class: 'unknown' },
+    }));
+    expect(unknown.reason).toBe('field_origin_unknown:/vendor_id');
+
+    const substitutedProfile = {
+      ...FIELD_ORIGIN_PROFILE,
+      profile_id: 'profile:mutation-field-origin:substituted',
+    };
+    const substituted = await check(fieldOriginAnnotations(), substitutedProfile);
+    expect(substituted.reason).toBe('field_origin_profile_mismatch');
+
+    const admitted = await check(fieldOriginAnnotations());
+    expect(admitted).toMatchObject({
+      allow: true,
+      reason: 'allow',
+      evidence: {
+        field_origin: { accepted: true },
+        field_origin_program_binding: {
+          node_id: 'payment-release',
+          profile_id: FIELD_ORIGIN_PROFILE.profile_id,
+        },
+      },
+    });
+  });
+
+  it('refuses incomplete field-origin trust and mismatched customer programs at configuration', () => {
+    const h = fieldOriginMutationHarness();
+    expect(() => createGate({
+      requiredFieldOriginProfile: {} as any,
+      fieldOriginTrustedKeys: h.trustedKeys,
+      allowEphemeralStore: true,
+    })).toThrow(/invalid requiredFieldOriginProfile/);
+    expect(() => createGate({
+      requiredFieldOriginProfile: FIELD_ORIGIN_PROFILE,
+      allowEphemeralStore: true,
+    })).toThrow(/requires pinned fieldOriginTrustedKeys/);
+    for (const fieldOriginTrustedKeys of [null, [], 'key']) {
+      expect(() => createGate({
+        requiredFieldOriginProfile: FIELD_ORIGIN_PROFILE,
+        fieldOriginTrustedKeys: fieldOriginTrustedKeys as any,
+        allowEphemeralStore: true,
+      })).toThrow(/requires pinned fieldOriginTrustedKeys/);
+    }
+    expect(() => createGate({
+      requiredFieldOriginProfile: FIELD_ORIGIN_PROFILE,
+      fieldOriginTrustedKeys: { invalid: {} } as any,
+      allowEphemeralStore: true,
+    })).toThrow(/invalid fieldOriginTrustedKeys/);
+    expect(() => createGate({
+      fieldOriginExecutionProgram: h.executionProgram,
+      allowEphemeralStore: true,
+    })).toThrow(/requires requiredFieldOriginProfile/);
+    for (const fieldOriginExecutionProgram of [[], 'program', {}, { node_id: 1 }, { node_id: '' }]) {
+      expect(() => createGate({
+        requiredFieldOriginProfile: FIELD_ORIGIN_PROFILE,
+        fieldOriginTrustedKeys: h.trustedKeys,
+        fieldOriginExecutionProgram: fieldOriginExecutionProgram as any,
+        allowEphemeralStore: true,
+      })).toThrow(/fieldOriginExecutionProgram is invalid/);
+    }
+    expect(() => createGate({
+      requiredFieldOriginProfile: FIELD_ORIGIN_PROFILE,
+      fieldOriginTrustedKeys: h.trustedKeys,
+      fieldOriginExecutionProgram: {
+        node_id: 'payment-release',
+        artifact: null,
+        verification_options: {},
+      },
+      allowEphemeralStore: true,
+    })).toThrow(/fieldOriginExecutionProgram refused/);
+    expect(() => createGate({
+      requiredFieldOriginProfile: FIELD_ORIGIN_PROFILE,
+      fieldOriginTrustedKeys: h.trustedKeys,
+      fieldOriginExecutionProgram: { ...h.executionProgram, node_id: 'missing-node' },
+      allowEphemeralStore: true,
+    })).toThrow(/does not pin the required field-origin profile/);
+
+    expect(() => createGate({
+      providerEntryGuard: 'not-a-function' as any,
+      allowEphemeralStore: true,
+    })).toThrow(/providerEntryGuard must be a function/);
+    expect(() => createGate({
+      providerEntryGuard: async () => ({ ok: true }),
+      store: {
+        async consume() { return true; },
+        async reserve() { return true; },
+        async commit() { return true; },
+      } as any,
+      allowEphemeralStore: true,
+    })).toThrow(/requires a consumption store with release/);
   });
 });
 

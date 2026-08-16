@@ -340,7 +340,6 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
             npm_config_cache: cache,
             npm_config_prefix: prefix,
             npm_config_userconfig: userConfig,
-            npm_config_tmp: temporary,
             npm_config_ignore_scripts: ignoreScripts ? 'true' : 'false',
             npm_config_audit: 'false',
             npm_config_fund: 'false',
@@ -472,7 +471,7 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
                 env: isolatedEnv(`${label}-build`, false, buildPackageDir),
             });
             if (run.status !== 0) {
-                throw new Error(`package build ${label} failed:\n${run.stderr || run.stdout}`);
+                throw new Error(`package build ${label} failed:\nstdout:\n${run.stdout}\nstderr:\n${run.stderr}`);
             }
             const builtPackageJson = fs.readFileSync(path.join(buildPackageDir, 'package.json'));
             if (!builtPackageJson.equals(packageJsonBytes)) {

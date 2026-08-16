@@ -1,0 +1,318 @@
+{
+  "@profile": "EP-GAP6-EXECUTION-EVIDENCE-PROFILE-v0.1",
+  "reference": "draft-chen-oauth-agent-authz-use-cases-02, Section 5, Gap 6 (Execution-Layer Evidence); Use Case 11 execution-evidence requirement",
+  "claim_model": {
+    "approval": "what the named human(s) approved, verified under pinned anchors",
+    "field_origin": {
+      "statement": "what a pinned issuer asserted about each exact field origin and mutable-state snapshot at admission",
+      "profile_id": "profile:finops-field-origin:01",
+      "profile_digest": "sha256:c683ba70f75965a889bdf6dfd2d4c9fddc567920986961e2f11b81fbb3551763",
+      "claim_boundary": "pinned_issuer_asserted_field_provenance_bound_to_exact_action_at_admission_not_source_truth_not_prompt_injection_detection_not_authorization_not_effect_truth",
+      "execution_program": {
+        "program_digest": "sha256:b9ea8a1dc5c2419606555f3aa261e175785dff6c6db0d4cbf69b66863b71131f",
+        "authorizer_id": "customer:gap6-design-partner",
+        "authorization_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "node_id": "vendor-bank-detail-change",
+        "claim_boundary": "typed_reachability_attempt_budget_and_effect_concurrency_not_intent_safety_effect_truth_or_complete_mediation"
+      }
+    },
+    "admission": "whether this boundary admitted that exact action, once",
+    "execution": "whether the effect was entered and with what outcome, bound to the admitted decision"
+  },
+  "action": {
+    "action_type": "finops.vendor.bank_detail_change",
+    "vendor_id": "V-88012",
+    "erp": "netsuite.prod.example",
+    "change_ticket": "CHG-2026-4471",
+    "new_routing_digest": "sha256:8c1f00a3b7e2d94c5a6b1e0f2d3c4b5a6978e0d1c2b3a4958677e8f9a0b1c2d3",
+    "new_account_digest": "sha256:1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809"
+  },
+  "action_hash": "8d4222413de80d9632dde44e06b822515b7b9e1cb0386108daa5059373b63d16",
+  "cases": [
+    {
+      "id": "through-exact-human-exact-action-once",
+      "title": "Two named approvers, the exact change, one admitted attempt, execution bound to the decision",
+      "boundary_reason": null,
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "field_origin": null,
+      "admission": {
+        "verdict": "admitted",
+        "allow": true,
+        "reason": "allow"
+      },
+      "execution": {
+        "verdict": "executed",
+        "effect_ran": true
+      }
+    },
+    {
+      "id": "missing-human-evidence",
+      "title": "No authorization artifact: approval unprovable, boundary refuses by name",
+      "boundary_reason": "receipt_required",
+      "approval": {
+        "verdict": "indeterminate",
+        "reason": "no_evidence_presented"
+      },
+      "field_origin": null,
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "receipt_required"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "fabricated-approval-refused",
+      "title": "Software asserts a quorum without per-signer evidence; the tier is not credited",
+      "boundary_reason": "assurance_too_low",
+      "approval": {
+        "verdict": "not_credited",
+        "reason": "self_asserted_quorum_without_signer_evidence"
+      },
+      "field_origin": null,
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "assurance_too_low"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "wrong-approver-refused",
+      "title": "Valid-looking artifact from unpinned keys; verification fails under this boundary's anchors",
+      "boundary_reason": "receipt_rejected:untrusted_or_invalid_signature",
+      "approval": {
+        "verdict": "not_credited",
+        "reason": "signature_not_under_pinned_anchors"
+      },
+      "field_origin": null,
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "receipt_rejected:untrusted_or_invalid_signature"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "action-substitution-refused",
+      "title": "The routing digest changed between approval and execution; the exact-action binding refuses",
+      "boundary_reason": "execution_binding_failed",
+      "approval": {
+        "verdict": "proven_for_different_action",
+        "reason": null
+      },
+      "field_origin": null,
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "execution_binding_failed"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "replay-refused",
+      "title": "The consumed authorization cannot drive a second execution",
+      "boundary_reason": "replay_refused",
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "field_origin": null,
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "replay_refused"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "lost-acknowledgement-indeterminate",
+      "title": "Provider goes silent after entry; outcome INDETERMINATE, authority stays spent, blind retry refused",
+      "boundary_reason": "effect_attempted_outcome_unknown",
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "field_origin": null,
+      "admission": {
+        "verdict": "admitted_then_committed",
+        "allow": null,
+        "reason": null
+      },
+      "execution": {
+        "verdict": "indeterminate",
+        "effect_ran": null
+      }
+    },
+    {
+      "id": "false-execution-claim-rejected",
+      "title": "An asserted result without a decision binding is not execution evidence",
+      "boundary_reason": null,
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "field_origin": null,
+      "admission": {
+        "verdict": "admitted",
+        "allow": null,
+        "reason": null
+      },
+      "execution": {
+        "verdict": "claim_not_credited",
+        "effect_ran": null
+      }
+    },
+    {
+      "id": "m01-injected-email-payee-change-refused",
+      "title": "An injected email selected the payee; field-origin control refuses before admission",
+      "boundary_reason": "field_origin_control_untrusted:/vendor_id",
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "field_origin": {
+        "verdict": "refused",
+        "reason": "field_origin_control_untrusted:/vendor_id"
+      },
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "field_origin_control_untrusted:/vendor_id"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "m01-webpage-target-change-refused",
+      "title": "A webpage selected the ERP target; field-origin control refuses before admission",
+      "boundary_reason": "field_origin_control_untrusted:/erp",
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "field_origin": {
+        "verdict": "refused",
+        "reason": "field_origin_control_untrusted:/erp"
+      },
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "field_origin_control_untrusted:/erp"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "m01-transformed-control-substitution-refused",
+      "title": "A control field came through an unpinned transform; the transform digest mismatch is named",
+      "boundary_reason": "field_origin_transform_unpinned:/new_account_digest",
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "field_origin": {
+        "verdict": "refused",
+        "reason": "field_origin_transform_unpinned:/new_account_digest"
+      },
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "field_origin_transform_unpinned:/new_account_digest"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "m01-unknown-origin-refused",
+      "title": "A control field has unknown origin; the gate preserves unknown and refuses",
+      "boundary_reason": "field_origin_unknown:/change_ticket",
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "field_origin": {
+        "verdict": "refused",
+        "reason": "field_origin_unknown:/change_ticket"
+      },
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "field_origin_unknown:/change_ticket"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "m01-profile-downgrade-refused",
+      "title": "The presenter widened a control field into bounded data; the pinned profile digest refuses",
+      "boundary_reason": "field_origin_profile_mismatch",
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "field_origin": {
+        "verdict": "refused",
+        "reason": "field_origin_profile_mismatch"
+      },
+      "admission": {
+        "verdict": "refused",
+        "allow": false,
+        "reason": "field_origin_profile_mismatch"
+      },
+      "execution": {
+        "verdict": "not_entered",
+        "effect_ran": false
+      }
+    },
+    {
+      "id": "m01-bounded-untrusted-memo-admitted",
+      "title": "Untrusted content fills a bounded memo field while control fields remain pinned; the gate admits",
+      "boundary_reason": null,
+      "approval": {
+        "verdict": "proven",
+        "reason": null
+      },
+      "field_origin": {
+        "verdict": "verified",
+        "reason": null
+      },
+      "admission": {
+        "verdict": "admitted",
+        "allow": true,
+        "reason": "allow"
+      },
+      "execution": {
+        "verdict": "executed",
+        "effect_ran": true
+      }
+    }
+  ],
+  "results_digest": "sha256:d79e68656441dcf231a4802c1b5c973fa798ca7d48d7e6acacd2c5683148b239"
+}

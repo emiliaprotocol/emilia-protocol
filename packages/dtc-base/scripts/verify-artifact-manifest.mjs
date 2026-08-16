@@ -11,7 +11,7 @@ const TOP_LEVEL_FILES = [
   '.solhint.json',
   'README.md',
   'SECURITY_REVIEW.md',
-  'hardhat.config.cjs',
+  'hardhat.config.ts',
   'package-lock.json',
   'package.json',
   'tsconfig.json',

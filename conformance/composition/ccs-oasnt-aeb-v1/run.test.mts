@@ -35,10 +35,10 @@ test('AEB-ADAPTER-v1 compatibility lock pins the contract, documentation, and ve
 test('reference run checks native protocols separately from AEB composition', () => {
   const report = referenceReport();
   assert.equal(report.passed, true, JSON.stringify(report, null, 2));
-  assert.equal(report.pins.oasnt_revision, 'draft-thallapelly-oasnt-01');
+  assert.equal(report.pins.oasnt_revision, 'draft-thallapelly-oasnt-02');
   assert.equal(
     report.pins.oasnt_archived_txt_sha256,
-    'sha256:7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19',
+    'sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603',
   );
   assert.equal(report.source_protocol_checks.length >= 5, true);
   assert.equal(report.aeb_composition_checks.length >= 5, true);

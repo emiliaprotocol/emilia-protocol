@@ -7,30 +7,41 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "test": "node --test lib/*.test.mjs",
+    "check:expo-quarantine": "node scripts/check-expo-quarantine.mjs",
     "audit:dependencies": "node ../../scripts/audit-with-exceptions.mjs --prefix . --audit-level=low"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "expo",
+        "expo-asset",
+        "expo-screen-capture"
+      ]
+    }
   },
   "dependencies": {
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",
-    "expo": "~56.0.19",
-    "expo-asset": "~56.0.22",
-    "expo-local-authentication": "~56.0.5",
-    "expo-screen-capture": "~56.0.4",
-    "expo-secure-store": "~56.0.4",
-    "expo-status-bar": "~56.0.4",
+    "expo": "~57.0.11",
+    "expo-asset": "~57.0.9",
+    "expo-local-authentication": "~57.0.2",
+    "expo-screen-capture": "~57.0.1",
+    "expo-secure-store": "~57.0.1",
+    "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
-    "react-native": "0.85.3"
+    "react-native": "0.86.2"
   },
   "overrides": {
     "brace-expansion": "5.0.9",
+    "nanoid": "3.3.18",
     "postcss": "8.5.25",
     "uuid": "11.1.1"
   },
   "devDependencies": {
-    "babel-preset-expo": "~56.0.0",
+    "babel-preset-expo": "~57.0.0",
     "expo-doctor": "1.20.1"
   }
 }

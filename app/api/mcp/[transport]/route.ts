@@ -76,13 +76,11 @@ const handler: McpHandler = createMcpHandler(
   {
     serverInfo: { name: 'emilia-protocol', version: '1.0.0' },
     capabilities: { tools: {} },
-  },
-  {
-    basePath: '/api/mcp', // endpoint: POST /api/mcp/mcp (streamable HTTP)
-    maxDuration: 60,
     verboseLogs: false,
   },
 );
+
+export const maxDuration = 60;
 
 function bodyTooLarge(request: Request): number | boolean {
   const declaredLen = parseInt(request.headers.get('content-length') || '0', 10);

@@ -1,6 +1,8 @@
-const { expect } = require('chai');
-const { ethers } = require('hardhat');
-const { time } = require('@nomicfoundation/hardhat-network-helpers');
+import { expect } from 'chai';
+import { network } from 'hardhat';
+
+const { ethers, networkHelpers } = await network.create();
+const { time } = networkHelpers;
 
 const AUTHORIZATION_TYPES = {
   Authorization: [
@@ -442,7 +444,7 @@ describe('DTCBaseSettlement hostile cases', function () {
   it('enforces a delayed two-step transfer of default administration', async function () {
     expect(await settlement.defaultAdminDelay()).to.equal(172800n);
     await settlement.connect(admin).beginDefaultAdminTransfer(attacker.address);
-    await expect(settlement.connect(attacker).acceptDefaultAdminTransfer()).to.be.reverted;
+    await expect(settlement.connect(attacker).acceptDefaultAdminTransfer()).to.revert(ethers);
     await time.increase(172801);
     await settlement.connect(attacker).acceptDefaultAdminTransfer();
     expect(await settlement.defaultAdmin()).to.equal(attacker.address);

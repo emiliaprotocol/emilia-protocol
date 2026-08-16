@@ -1,6 +1,6 @@
 {
   "name": "ep-qualify",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Thin offline CLI for fail-closed EMILIA Gate Qualification v2 evaluation. Prints QUALIFIED, NOT_QUALIFIED, or INDETERMINATE and exits 0 only for QUALIFIED; it does not authorize, invoke providers, or mutate state.",
   "license": "Apache-2.0",
   "type": "module",
