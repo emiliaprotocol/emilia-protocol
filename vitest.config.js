@@ -117,6 +117,10 @@ export default defineConfig({
       // The CCS 1.1.14 L1/AEB composition suite is likewise a portable
       // node:test program executed by its dedicated conformance command.
       'conformance/composition/ccs-l1-aeb-v1/run.test.mts',
+      // These public composition runners intentionally use node:test so the
+      // external authors can execute them without adopting Vitest.
+      'conformance/composition/jesske-ai-enablement-v0.1/run.test.mjs',
+      'conformance/composition/caplease-emilia-v0.1/run.test.mjs',
       // The public forgery corpus deliberately uses node:test so the pinned
       // bounty command runs without Vitest. CI executes it explicitly below.
       'tests/verifier-forgery/**',

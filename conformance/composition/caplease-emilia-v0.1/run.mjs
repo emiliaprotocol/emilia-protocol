@@ -215,6 +215,9 @@ async function reserveEmilia(fixture, action, operationId, {
     { resolveCaid: materialCaid },
   );
   if (!scope.ok) return scope;
+  if (!('action_fence_digest' in scope) || typeof scope.action_fence_digest !== 'string') {
+    return { ok: false, reason: 'action_fence_digest_missing' };
+  }
   return fixture.store.reserveSpend({
     capabilityId: fixture.capabilityId,
     capabilityFingerprint: fixture.capabilityFingerprint,

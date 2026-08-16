@@ -192,9 +192,14 @@ function makeAdapter() {
         replay_unit: digestAeb({ profile: EVIDENCE_PROFILE, artifact: input.artifact }),
       };
       const parsed = parseEvidence(input.artifact);
-      if (!parsed.ok) {
+      if (!parsed.ok || !parsed.claim || !parsed.header
+          || typeof parsed.signing_input !== 'string'
+          || !Buffer.isBuffer(parsed.signature)) {
         return {
-          ...base, native_verification: 'FAILED', acceptance: 'REJECTED', reasons: [parsed.reason],
+          ...base,
+          native_verification: 'FAILED',
+          acceptance: 'REJECTED',
+          reasons: [parsed.ok ? 'authorization_evidence_shape_invalid' : parsed.reason],
         };
       }
       base.subject = parsed.claim.subject;
@@ -278,7 +283,13 @@ function makeAdapter() {
 }
 
 function registryEntry(id, kind, version, definition) {
-  const entry = { kind, version, status: 'active', definition };
+  const entry = {
+    kind,
+    version,
+    status: /** @type {'active'} */ ('active'),
+    definition,
+    definition_digest: digestAeb(null),
+  };
   entry.definition_digest = registryEntryDigest(id, entry);
   return entry;
 }
@@ -290,6 +301,7 @@ function setup() {
   const adapter = makeAdapter();
   const profile = {
     version: PROFILE_VERSION,
+    profile_digest: digestAeb(null),
     definition: {
       '@version': PROFILE_VERSION,
       source_protocol: CORPUS.source.revision,
@@ -306,8 +318,8 @@ function setup() {
       implementation_digest: digestAeb({ implementation: MAPPER_ID, version: '0.1' }),
     },
     semantic_equivalence: {
-      assertion: 'EQUIVALENT_UNDER_PROFILE',
-      loss_policy: 'NO_MATERIAL_FIELD_LOSS',
+      assertion: /** @type {'EQUIVALENT_UNDER_PROFILE'} */ ('EQUIVALENT_UNDER_PROFILE'),
+      loss_policy: /** @type {'NO_MATERIAL_FIELD_LOSS'} */ ('NO_MATERIAL_FIELD_LOSS'),
       omitted_material_fields: [],
       omitted_nonmaterial_fields: [
         'request_id', 'user_metadata', 'payload', 'authorization_evidence',
@@ -316,9 +328,10 @@ function setup() {
   };
   profile.profile_digest = mappingProfileDigest(PROFILE_ID, profile);
   const registry = {
-    '@version': 'EP-EVIDENCE-REGISTRY-v1',
+    '@version': /** @type {'EP-EVIDENCE-REGISTRY-v1'} */ ('EP-EVIDENCE-REGISTRY-v1'),
     registry_id: 'registry:jesske-ai-enablement-v0.1',
     epoch: 1,
+    registry_digest: digestAeb(null),
     entries: {
       [profile.registry_entry_ref]: registryEntry(
         profile.registry_entry_ref,
@@ -350,6 +363,7 @@ function setup() {
   };
   const adapterPin = {
     version: adapter.version,
+    config_digest: digestAeb(null),
     trust_roots: trustRoots,
     config: adapterConfig,
     max_status_age_sec: 900,
