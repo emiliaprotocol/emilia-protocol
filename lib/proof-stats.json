@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-16T02:14:26.519Z",
+  "generatedAt": "2026-08-16T02:44:08.854Z",
   "tests": {
-    "total": 8892,
-    "files": 539,
+    "total": 8894,
+    "files": 540,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
   "tla": {
@@ -21,7 +21,7 @@
     "coveredModelActions": 28,
     "actionCompleteModels": 1,
     "formalMutationOperators": 51,
-    "evidenceSha256": "20ffb6844adff7f4f45d0687039a2bb42e926bfcf55e42dcebb5b7f1b8b8a370",
+    "evidenceSha256": "362d1605b6d603cb3a3762add09873497d83c6e6edc5561ccf76c4fa6b52e5d2",
     "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
   },
   "formalEvidenceCoverage": {
