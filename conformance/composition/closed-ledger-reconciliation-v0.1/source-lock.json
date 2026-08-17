@@ -1,0 +1,15 @@
+{
+  "@version": "CLOSED-LEDGER-RECONCILIATION-SOURCE-LOCK-v0.1",
+  "ietf_archives": [
+    {
+      "name": "draft-hawkins-scitt-attested-agent-payment-01",
+      "url": "https://www.ietf.org/archive/id/draft-hawkins-scitt-attested-agent-payment-01.txt",
+      "sha256": "9e6deb7c735a5f776809e3e1431c7e67e1ecc664ab2c0a94895d51778f4080a7"
+    }
+  ],
+  "reused_runtime": [
+    "packages/gate/index.js (runCoverageReconciliation, signCoverageSourceInventory, verifyCoverageReconciliationReportBinding, verifyCoverageReconciliationAttestation, hashCanonical, canonicalize) - imported as-is, not forked",
+    "packages/verify/dist/receipt-cose-encoding.js (receiptActionCaid)"
+  ],
+  "note": "The coverage-reconciliation bin names belong to packages/gate and are read from the imported runner at run time; this lock intentionally pins no byte hash of that runner because it is under active revision upstream."
+}
