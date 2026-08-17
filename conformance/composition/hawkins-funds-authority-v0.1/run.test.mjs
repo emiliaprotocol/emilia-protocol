@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import test from 'node:test';
+import { test } from 'vitest';
 
 import {
   EXECUTOR_PINS,
