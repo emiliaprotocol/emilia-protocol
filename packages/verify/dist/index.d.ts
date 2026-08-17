@@ -77,7 +77,7 @@ export { canonicalize };
 export { verifyRevocation, isRevoked, REVOCATION_VERSION } from './revocation.js';
 export { verifyProvenanceOffline, PROVENANCE_VERSION } from './provenance.js';
 export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestation.js';
-export { verifyEvidenceRecord, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
+export { verifyEvidenceRecord, verifyEvidenceRecordAgile, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
 export { SIGNATURE_AGILITY_VERSION, AGILE_SIGNATURE_ALGORITHMS, AGILITY_REASONS, ML_DSA_65_PUBLIC_KEY_BYTES, ML_DSA_65_SECRET_KEY_BYTES, ML_DSA_65_SIGNATURE_BYTES, loadDefaultAgilityMldsaBackend, signAgile, signAgileSet, verifyAgileSignature, verifyAgileSignatureSet } from './pq-signature-agility.js';
 export { REATTESTATION_VERSION, createReattestation, verifyReattestationChain } from './evidence-record.js';
 export { verifyCheckpointConsistency, CONSISTENCY_ALG } from './consistency.js';

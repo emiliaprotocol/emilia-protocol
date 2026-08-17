@@ -43,6 +43,18 @@ function instantMs(s) {
     const t = Date.parse(s);
     return Number.isNaN(t) ? null : t;
 }
+/**
+ * The fixed bytes a TSA signature over this attestation is bound to,
+ * recomputed independently of how the attestation was presented.
+ *
+ * Exported so an algorithm-agile verifier (see evidence-record.ts) checks a
+ * ML-DSA-65 proof over the SAME bytes the Ed25519 path checks, rather than
+ * carrying its own second definition of what a time attestation commits to.
+ * One definition of the signed bytes, one place to change it.
+ */
+export function timeAttestationSignedBytes(att) {
+    return timeSignedPayload(att);
+}
 // The fixed bytes the TSA signature is bound to, recomputed independently.
 function timeSignedPayload(att) {
     return Buffer.from(canonicalize({

@@ -26,6 +26,16 @@ export interface TimeAttestationResult {
     errors: string[];
 }
 /**
+ * The fixed bytes a TSA signature over this attestation is bound to,
+ * recomputed independently of how the attestation was presented.
+ *
+ * Exported so an algorithm-agile verifier (see evidence-record.ts) checks a
+ * ML-DSA-65 proof over the SAME bytes the Ed25519 path checks, rather than
+ * carrying its own second definition of what a time attestation commits to.
+ * One definition of the signed bytes, one place to change it.
+ */
+export declare function timeAttestationSignedBytes(att: TimeAttestation): Buffer;
+/**
  * @param {object} att  the EP-TIME-ATTESTATION-v1 statement.
  * @param {object} [opts]
  * @param {Object<string,{public_key:string}>} [opts.tsaKeys]  pinned TSA keys by ts_authority_id.

@@ -37,6 +37,55 @@ export declare function verifyEvidenceRecord(record: EvidenceRecord | null | und
     protected_since: string | null;
     last_renewed: unknown;
 };
+/** A pinned TSA key for the agile base verifier. */
+export interface AgileTsaPin {
+    /** EP-SIG-AGILITY-v1 algorithm this key belongs to. */
+    alg?: string;
+    /** Ed25519: base64url SPKI DER. ML-DSA-65: 1952 raw bytes or base64url. */
+    public_key?: string | Uint8Array;
+    /** For set-shaped proofs: one pinned key per algorithm in the set. */
+    keys?: Array<{
+        alg: string;
+        public_key: string | Uint8Array;
+        key_id?: string;
+    }>;
+}
+export interface AgileEvidenceRecordOptions extends AgilityOptions {
+    /** Pinned TSA keys by ts_authority_id. v1 `{public_key}` pins still work. */
+    tsaKeys?: Record<string, {
+        public_key?: string;
+    } & AgileTsaPin>;
+    /** The hash of the artifact the relying party HOLDS; binds the record to it. */
+    protectedHash?: string;
+    /**
+     * Set-shaped proofs only: the algorithms the relying party REQUIRES to be
+     * present. Defaults to the FULL EP-SIG-AGILITY-v1 registry (fail-closed).
+     */
+    requiredAlgorithms?: readonly string[];
+}
+/**
+ * Algorithm-agile verification of an EP-EVIDENCE-RECORD-v1 base record.
+ *
+ * Same result shape and same chain checks as verifyEvidenceRecord; the only
+ * difference is which signature algorithms an archive timestamp may carry. v1
+ * Ed25519 records are routed through the unchanged v1 path and get an identical
+ * verdict. FAIL-CLOSED: an unpinned authority, an unknown algorithm, a missing
+ * ML-DSA backend, or a set-shaped proof missing a required leg is a false
+ * verdict with the chain's own error message, never a pass.
+ */
+export declare function verifyEvidenceRecordAgile(record: EvidenceRecord | null | undefined, opts?: AgileEvidenceRecordOptions): Promise<{
+    valid: boolean;
+    checks: Record<string, boolean>;
+    errors: string[];
+    protected_since?: undefined;
+    last_renewed?: undefined;
+} | {
+    valid: boolean;
+    checks: Record<string, boolean>;
+    errors: string[];
+    protected_since: string | null;
+    last_renewed: unknown;
+}>;
 export declare const REATTESTATION_VERSION = "EP-EVIDENCE-REATTESTATION-v1";
 export interface ReattestationSignature {
     alg: string;

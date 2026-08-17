@@ -15,7 +15,7 @@
  * remains the Gate's receipt format unless an operator turns this on. Nothing
  * in this repository ships with hybrid issuance enabled.
  *
- * THE THREE MODES
+ * THE FOUR MODES
  *   disabled  (default) The Gate issues and accepts EP-RECEIPT-v1 only. A
  *             request for a hybrid receipt is REFUSED (hybrid_issuance_disabled)
  *             rather than quietly answered with a classical receipt, and a
@@ -26,12 +26,53 @@
  *   enabled   Hybrid is available per request. A request that asks for it gets
  *             a hybrid receipt; everything else stays EP-RECEIPT-v1. Both
  *             profiles are accepted on the verification side.
+ *   dual      Every issuance mints BOTH artifacts over the same canonical
+ *             payload: an EP-RECEIPT-v1 receipt AND its EP-RECEIPT-HYBRID-v1
+ *             twin. See the DUAL ISSUANCE note below. Acceptance behaves as in
+ *             `enabled`: either profile is checked on its own terms.
  *   required  Every receipt this Gate issues is hybrid, and only hybrid
  *             receipts are accepted. A classical-only request or a classical
  *             receipt presented for acceptance is REFUSED
  *             (hybrid_required). This is the mode with teeth: there is no
  *             configuration in which `required` silently produces or accepts a
  *             single-signature receipt.
+ *
+ * --- DUAL ISSUANCE: THE MIGRATION DEFAULT CANDIDATE -------------------------
+ *
+ * `dual` is the mode this profile puts forward as the compatibility-preserving
+ * default for a migration, and the reasoning is worth stating rather than
+ * implying:
+ *
+ *   - A DEPLOYED v1 VERIFIER KEEPS WORKING. Every action still produces a
+ *     real EP-RECEIPT-v1 receipt with the flat `signature` field v1 verifiers
+ *     already read. Nothing downstream has to move on the Gate's schedule, and
+ *     no relying party is asked to learn a new envelope before it is ready.
+ *   - LONGEVITY EXISTS FOR EVERYTHING. Every action ALSO produces the hybrid
+ *     twin, so the post-quantum evidence for that action exists from the moment
+ *     the action happened. That matters because the alternative -- turn hybrid
+ *     on later -- leaves a permanent window of actions with no PQ leg, and a
+ *     receipt cannot be retroactively given one. Re-attestation
+ *     (EP-EVIDENCE-REATTESTATION-v1) can re-anchor an old receipt's integrity,
+ *     but only while the classical algorithm is still unbroken, and it is
+ *     re-anchored evidence rather than a signature the issuer made at the time.
+ *   - HYBRID-ONLY REMAINS THE STRICT END-STATE. `dual` is a migration posture,
+ *     not a destination: it still emits an artifact an adversary with a
+ *     quantum computer could forge, so a relying party that wants post-quantum
+ *     evidence must not treat the classical twin as interchangeable. `required`
+ *     is where a deployment ends up once its verifiers have moved.
+ *
+ * BOUNDARY, STATED PLAINLY: two receipts over one payload is a compatibility
+ * arrangement, not a security upgrade to the classical artifact. The EP-RECEIPT-v1
+ * twin is exactly as strong as it was alone. What dual mode buys is that the
+ * hybrid twin EXISTS for the same action, so a relying party can choose which
+ * evidence to rely on. It does not make the classical receipt harder to forge,
+ * and a verifier that checks only the classical twin has gained nothing.
+ *
+ * THE TWIN LINK IS CHECKED, NOT ASSERTED. The dual outcome names an
+ * `action_digest`, and this module recomputes that digest from EACH returned
+ * receipt's own `payload` before returning. Two artifacts that do not commit to
+ * identical canonical bytes are a REFUSAL (dual_payload_mismatch), never a pair
+ * labelled as twins on the strength of having been minted in the same call.
  *
  * NO SILENT DOWNGRADE, ANYWHERE. Every path where hybrid could not be produced
  * or could not be checked (missing keys, missing ML-DSA backend, missing
@@ -50,10 +91,20 @@
  *
  * @license Apache-2.0
  */
+import crypto from 'node:crypto';
+import { canonicalizeStrictJson } from './strict-json.js';
 export const HYBRID_RECEIPT_PROFILE_ID = 'EP-RECEIPT-HYBRID-v1';
 export const CLASSICAL_RECEIPT_PROFILE_ID = 'EP-RECEIPT-v1';
+/**
+ * The marker on a dual-issuance OUTCOME. It names the RESULT PAIR returned to
+ * the caller; it is deliberately NOT a third receipt format. Neither artifact
+ * carries this string on the wire: the classical twin stays EP-RECEIPT-v1 and
+ * the hybrid twin stays EP-RECEIPT-HYBRID-v1, so no verifier has to learn a new
+ * envelope in order for a Gate to run in dual mode.
+ */
+export const DUAL_ISSUANCE_RESULT_ID = 'EP-RECEIPT-DUAL-ISSUANCE-v1';
 /** Config values for the `hybrid_issuance` flag, in increasing strictness. */
-export const HYBRID_ISSUANCE_MODES = Object.freeze(['disabled', 'enabled', 'required']);
+export const HYBRID_ISSUANCE_MODES = Object.freeze(['disabled', 'enabled', 'dual', 'required']);
 export const HYBRID_PROFILE_REASONS = Object.freeze({
     HYBRID_ISSUANCE_DISABLED: 'hybrid_issuance_disabled',
     HYBRID_REQUIRED: 'hybrid_required',
@@ -63,6 +114,12 @@ export const HYBRID_PROFILE_REASONS = Object.freeze({
     CLASSICAL_ISSUER_MISSING: 'classical_issuer_missing',
     CLASSICAL_VERIFIER_MISSING: 'classical_verifier_missing',
     UNKNOWN_RECEIPT_PROFILE: 'unknown_receipt_profile',
+    /** dual mode: the caller asked for a single-profile receipt. */
+    DUAL_REQUIRED: 'dual_required',
+    /** dual mode: the classical issuer did not return an EP-RECEIPT-v1 document. */
+    CLASSICAL_RECEIPT_MALFORMED: 'classical_receipt_malformed',
+    /** dual mode: the two artifacts do not commit to identical canonical bytes. */
+    DUAL_PAYLOAD_MISMATCH: 'dual_payload_mismatch',
 });
 // ---------------------------------------------------------------------------
 // Config
@@ -100,7 +157,27 @@ export function resolveHybridReceiptProfile(config) {
         mode,
         issues_hybrid: mode !== 'disabled',
         requires_hybrid: mode === 'required',
+        issues_dual: mode === 'dual',
     });
+}
+// ---------------------------------------------------------------------------
+// The twin link (dual mode)
+// ---------------------------------------------------------------------------
+/**
+ * `sha256:<hex>` over the canonical bytes of a receipt payload. Returns null
+ * when the value is outside the EP canonicalization profile, so the caller
+ * refuses instead of comparing a digest of something it could not canonicalize.
+ */
+function canonicalPayloadDigest(payload) {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload))
+        return null;
+    try {
+        const canonical = canonicalizeStrictJson(payload);
+        return `sha256:${crypto.createHash('sha256').update(Buffer.from(canonical, 'utf8')).digest('hex')}`;
+    }
+    catch {
+        return null;
+    }
 }
 // ---------------------------------------------------------------------------
 // Issuance module resolution (lazy, fail-closed)
@@ -159,13 +236,24 @@ export async function issueUnderHybridProfile(args) {
     if (!profile || profile.profile_id !== HYBRID_RECEIPT_PROFILE_ID) {
         throw new TypeError('issueUnderHybridProfile: profile must come from resolveHybridReceiptProfile()');
     }
-    const refuse = (reason) => ({ ok: false, reason });
+    const refuse = (reason, detail = null) => (detail === null ? { ok: false, reason } : { ok: false, reason, detail });
     // An explicit ask for a classical receipt under `required` is refused, not
     // silently upgraded: the caller learns the deployment's rule instead of
     // receiving a different artifact than the one it asked for. An unspecified
     // request under `required` gets the hybrid receipt the mode demands.
     if (profile.requires_hybrid && requestHybrid === false) {
         return refuse(HYBRID_PROFILE_REASONS.HYBRID_REQUIRED);
+    }
+    // dual mode answers with BOTH artifacts, so it never reads `requestHybrid` as
+    // a choice between them. An explicit single-profile ask is refused with its
+    // own reason rather than answered with a result shape the caller did not ask
+    // for: a call site reading `outcome.receipt` would otherwise read undefined
+    // and see nothing wrong. Reversal path: run `enabled` if a call site needs to
+    // choose per request.
+    if (profile.issues_dual) {
+        if (typeof requestHybrid === 'boolean')
+            return refuse(HYBRID_PROFILE_REASONS.DUAL_REQUIRED);
+        return issueDual(args);
     }
     const wantsHybrid = profile.requires_hybrid || requestHybrid === true;
     if (!wantsHybrid) {
@@ -200,6 +288,76 @@ export async function issueUnderHybridProfile(args) {
     return { ok: true, profile: HYBRID_RECEIPT_PROFILE_ID, receipt };
 }
 /**
+ * dual mode: mint both artifacts over one payload and return them with the
+ * digest that links them.
+ *
+ * ORDER MATTERS, AND IT IS DELIBERATE. The hybrid twin is minted FIRST. It is
+ * the leg that can fail for cryptographic reasons (no ML-DSA backend, no
+ * issuance module, bad key material), while `issueClassical` is a deployment's
+ * real receipt-issuing path and may persist, log, or anchor what it mints.
+ * Minting hybrid first means a dual issuance that cannot be completed refuses
+ * BEFORE the classical side effect happens, so a refused dual issuance does not
+ * leave an orphan classical receipt behind that a relying party could later
+ * mistake for a complete one.
+ *
+ * Every failure is a named refusal. There is no path here that returns one
+ * artifact when two were promised.
+ */
+async function issueDual(args) {
+    const { payload, metadata, hybridKeys, issueClassical, issuance, agilityOptions } = args;
+    const refuse = (reason, detail = null) => (detail === null ? { ok: false, reason } : { ok: false, reason, detail });
+    if (typeof issueClassical !== 'function')
+        return refuse(HYBRID_PROFILE_REASONS.CLASSICAL_ISSUER_MISSING);
+    if (!hybridKeys || typeof hybridKeys !== 'object')
+        return refuse(HYBRID_PROFILE_REASONS.HYBRID_KEYS_MISSING);
+    // The digest of what the caller asked to have signed. Both artifacts are
+    // checked against THIS, never against each other alone: two receipts that
+    // agree with one another but not with the requested payload are still wrong.
+    const expectedDigest = canonicalPayloadDigest(payload);
+    if (expectedDigest === null) {
+        return refuse(HYBRID_PROFILE_REASONS.DUAL_PAYLOAD_MISMATCH, { payload: 'outside the EP canonicalization profile' });
+    }
+    const module = await resolveIssuance(issuance);
+    if (!module)
+        return refuse(HYBRID_PROFILE_REASONS.HYBRID_ISSUANCE_UNAVAILABLE);
+    let hybridReceipt;
+    try {
+        hybridReceipt = await module.createHybridReceipt({
+            payload,
+            keys: hybridKeys,
+            ...(metadata !== undefined ? { metadata } : {}),
+            ...(agilityOptions ?? {}),
+        });
+    }
+    catch (error) {
+        return refuse(HYBRID_PROFILE_REASONS.HYBRID_ISSUANCE_UNAVAILABLE, { error: String(error?.message ?? error) });
+    }
+    const classicalReceipt = await issueClassical({ payload, ...(metadata !== undefined ? { metadata } : {}) });
+    // The twin link, recomputed rather than asserted. A classical issuer that
+    // returns something other than an EP-RECEIPT-v1 document, or either artifact
+    // committing to different canonical bytes, is a refusal.
+    if (!classicalReceipt || typeof classicalReceipt !== 'object' || Array.isArray(classicalReceipt)
+        || classicalReceipt['@version'] !== CLASSICAL_RECEIPT_PROFILE_ID) {
+        return refuse(HYBRID_PROFILE_REASONS.CLASSICAL_RECEIPT_MALFORMED);
+    }
+    const classicalDigest = canonicalPayloadDigest(classicalReceipt.payload);
+    const hybridDigest = canonicalPayloadDigest(hybridReceipt?.payload);
+    if (classicalDigest !== expectedDigest || hybridDigest !== expectedDigest) {
+        return refuse(HYBRID_PROFILE_REASONS.DUAL_PAYLOAD_MISMATCH, {
+            expected: expectedDigest,
+            classical: classicalDigest,
+            hybrid: hybridDigest,
+        });
+    }
+    return {
+        ok: true,
+        profile: DUAL_ISSUANCE_RESULT_ID,
+        classical_receipt: classicalReceipt,
+        hybrid_receipt: hybridReceipt,
+        action_digest: expectedDigest,
+    };
+}
+/**
  * The acceptance-side companion. Routes by the presented `@version`, enforces
  * the deployment's mode, and delegates the cryptography.
  *
@@ -209,6 +367,12 @@ export async function issueUnderHybridProfile(args) {
  *   - `disabled` refuses a hybrid receipt (hybrid_receipt_not_accepted)
  *     instead of handing it to a classical verifier, which would either refuse
  *     on the version anyway or, worse, check one leg of two.
+ *
+ * `dual` accepts on the same terms as `enabled`: each presented artifact is
+ * checked under its own profile, one at a time. Acceptance is deliberately NOT
+ * given a "both twins" mode, because a relying party is handed one artifact and
+ * relies on it; a verdict that quietly depended on the other artifact being
+ * present would be a different claim than the one the caller made.
  */
 export async function acceptUnderHybridProfile(args) {
     const { profile, receipt, hybridKeys, verifyClassical, issuance, agilityOptions } = args;
