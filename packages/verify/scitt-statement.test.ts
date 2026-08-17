@@ -8,9 +8,9 @@
  *
  *   npx tsx --test packages/verify/scitt-statement.test.ts
  *
- * The module under test is imported from `src/` rather than from the package
- * index: EP-SCITT-STATEMENT-v1 is not exported from `src/index.ts` yet (that is
- * a separate integration step), and the suite must not depend on it being.
+ * The module under test is imported from the committed package runtime. This
+ * keeps the generated JavaScript companion executable under plain Node and
+ * verifies the same files consumers load from the package.
  */
 
 import assert from 'node:assert/strict';
@@ -31,14 +31,14 @@ import {
   CWT_CLAIM_ISS,
   CWT_CLAIM_SUB,
   ISS_MAX_LENGTH,
-} from './src/scitt-statement.js';
+} from './dist/scitt-statement.js';
 import {
   COSE_ALG_EDDSA,
   encodeDeterministicCbor8949,
   decodeDeterministicCbor8949,
   receiptActionCaid,
-} from './src/receipt-cose-encoding.js';
-import { canonicalize } from './src/index.js';
+} from './dist/receipt-cose-encoding.js';
+import { canonicalize } from './dist/index.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const UTF8 = new TextEncoder();

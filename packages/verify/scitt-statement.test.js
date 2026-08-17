@@ -10,9 +10,9 @@
  *
  *   npx tsx --test packages/verify/scitt-statement.test.ts
  *
- * The module under test is imported from `src/` rather than from the package
- * index: EP-SCITT-STATEMENT-v1 is not exported from `src/index.ts` yet (that is
- * a separate integration step), and the suite must not depend on it being.
+ * The module under test is imported from the committed package runtime. This
+ * keeps the generated JavaScript companion executable under plain Node and
+ * verifies the same files consumers load from the package.
  */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -20,9 +20,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { buildEpScittSignedStatement, verifyEpScittSignedStatement, describeScittRegistrationRequest, EP_SCITT_STATEMENT_PROFILE, EP_STATEMENT_PAYLOAD_CONTENT_TYPE, SCITT_STATEMENT_MEDIA_TYPE, COSE_HEADER_CWT_CLAIMS, CWT_CLAIM_ISS, CWT_CLAIM_SUB, ISS_MAX_LENGTH, } from './src/scitt-statement.js';
-import { COSE_ALG_EDDSA, encodeDeterministicCbor8949, decodeDeterministicCbor8949, receiptActionCaid, } from './src/receipt-cose-encoding.js';
-import { canonicalize } from './src/index.js';
+import { buildEpScittSignedStatement, verifyEpScittSignedStatement, describeScittRegistrationRequest, EP_SCITT_STATEMENT_PROFILE, EP_STATEMENT_PAYLOAD_CONTENT_TYPE, SCITT_STATEMENT_MEDIA_TYPE, COSE_HEADER_CWT_CLAIMS, CWT_CLAIM_ISS, CWT_CLAIM_SUB, ISS_MAX_LENGTH, } from './dist/scitt-statement.js';
+import { COSE_ALG_EDDSA, encodeDeterministicCbor8949, decodeDeterministicCbor8949, receiptActionCaid, } from './dist/receipt-cose-encoding.js';
+import { canonicalize } from './dist/index.js';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const UTF8 = new TextEncoder();
 const COSE_SIGN1_TAG_BYTE = 0xd2;
