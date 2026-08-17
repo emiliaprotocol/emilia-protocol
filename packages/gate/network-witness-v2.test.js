@@ -15,8 +15,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto, { generateKeyPairSync } from 'node:crypto';
-import { NETWORK_WITNESS_V2_VERSION, NETWORK_WITNESS_V2_DOMAIN, NETWORK_WITNESS_V2_REQUIRED_ALGORITHMS, NETWORK_WITNESS_ACCEPTANCE_V2_VERSION, signNetworkWitnessStatement, verifyNetworkWitnessStatement, signNetworkWitnessStatementV2, verifyNetworkWitnessStatementV2, acceptNetworkWitnessStatementV2, createMemoryWitnessSequenceStore, } from './src/network-witness.js';
-import { canonicalize } from './src/execution-binding.js';
+import { NETWORK_WITNESS_V2_VERSION, NETWORK_WITNESS_V2_DOMAIN, NETWORK_WITNESS_V2_REQUIRED_ALGORITHMS, NETWORK_WITNESS_ACCEPTANCE_V2_VERSION, signNetworkWitnessStatement, verifyNetworkWitnessStatement, signNetworkWitnessStatementV2, verifyNetworkWitnessStatementV2, acceptNetworkWitnessStatementV2, createMemoryWitnessSequenceStore, } from './dist/network-witness.js';
+import { canonicalize } from './dist/execution-binding.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const NOW = Date.parse('2026-07-16T20:00:00.000Z');
 const ACTION = `sha256:${'ab'.repeat(32)}`;
