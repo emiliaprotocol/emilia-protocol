@@ -9,6 +9,11 @@
 import crypto from 'node:crypto';
 import { canonicalize, hashCanonical } from './execution-binding.js';
 import { ACTION_ESCROW_EVIDENCE_STAGES } from './action-escrow-evidence.js';
+import {
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgilityOptions,
+} from '@emilia-protocol/verify/pq-signature-agility';
 
 export const ACTION_ESCROW_STATE_STATEMENT_VERSION = 'EP-ACTION-ESCROW-STATE-STATEMENT-v1';
 export const ACTION_ESCROW_STATE_STATEMENT_DOMAIN = `${ACTION_ESCROW_STATE_STATEMENT_VERSION}\0`;
@@ -489,10 +494,345 @@ export function createActionEscrowStatePackageVerifier({
   };
 }
 
+// ===========================================================================
+// EP-ACTION-ESCROW-STATE-STATEMENT-v2 -- the hybrid (Ed25519 + ML-DSA-65) state
+// statement.
+// ===========================================================================
+/**
+ * REFERENCE-DERIVED HYBRID MIGRATION. This copies, move for move, the reference
+ * hybrid migration documented in docs/protocol/pq-hybrid-program.md, section
+ * "PATTERN: the reference hybrid migration" (EP-REVOCATION-v2 in
+ * packages/verify/src/revocation.ts). The five moves, applied to the escrow
+ * state statement:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. A second signature changes the SHAPE of
+ *    `signature`, a wire-format change, so the artifact takes a new `version`
+ *    marker (EP-ACTION-ESCROW-STATE-STATEMENT-v2). The v1 verifier above is
+ *    untouched and refuses a v2 statement on its `structure` check (the version
+ *    marker) before inspecting any signature, and never throws.
+ * 2. SET SHAPE. `signature` carries `required_algorithms` plus a `signatures`
+ *    array shaped exactly like EP-SIG-AGILITY-v1's AgileSignature
+ *    ({ alg, sig, key_id? }), one entry per algorithm in the registered order.
+ *    Ed25519 keeps its base64url SPKI DER public key; ML-DSA-65 carries raw
+ *    base64url public key bytes.
+ * 3. ANTI-STRIPPING BYTES. The required algorithm SET is committed INSIDE the
+ *    signed bytes (stateV2SigningBytes below). Drop the ML-DSA leg and narrow
+ *    `required_algorithms` and the surviving Ed25519 signature no longer
+ *    verifies, because the bytes changed. This is a byte-level commitment,
+ *    strictly stronger than EP-SIG-AGILITY-v1's relying-party `hybrid_all`
+ *    policy alone. The verifier rebuilds the bytes from the REGISTERED set.
+ * 4. V1 COMPATIBILITY. v1 statements keep verifying through the unchanged
+ *    synchronous verifier; v2 verification is ASYNC (ML-DSA verification is
+ *    async), so it is a SEPARATE entry point, with verifyActionEscrowStateStatementAny()
+ *    routing on the version marker. The v1 verifier is never made async.
+ * 5. NAMED REFUSALS. Every failure sets a named check false and pushes a
+ *    readable reason; nothing throws on caller input. An absent ML-DSA backend
+ *    is 'pq_backend_unavailable' surfaced through the agility result, never a
+ *    skipped check and never a pass on the classical leg.
+ *
+ * HONEST BOUNDARIES carry over from v1: verification authenticates an operator
+ * statement over one snapshot; it does not prove the operator's database was
+ * complete or that a custodian moved money. The ML-DSA backend is
+ * @noble/post-quantum's pure-JS FIPS 204 implementation, not independently
+ * audited and not a FIPS validated module. v2 does NOT retroactively protect
+ * statements already issued under v1.
+ */
+
+export const ACTION_ESCROW_STATE_STATEMENT_V2_VERSION = 'EP-ACTION-ESCROW-STATE-STATEMENT-v2';
+export const ACTION_ESCROW_STATE_STATEMENT_V2_DOMAIN = `${ACTION_ESCROW_STATE_STATEMENT_V2_VERSION}\0`;
+
+/** The registered required algorithm set, in canonical order. */
+export const ACTION_ESCROW_STATE_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+const TOP_V2_KEYS = new Set(['version', 'issuer', 'payload', 'statement_digest', 'signature']);
+const SIGNATURE_V2_KEYS = new Set([
+  'profile', 'required_algorithms', 'public_key', 'key_id',
+  'pq_public_key', 'pq_key_id', 'signatures',
+]);
+
+function stateV2AlgorithmSetRegistered(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === ACTION_ESCROW_STATE_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === ACTION_ESCROW_STATE_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+/**
+ * The bytes BOTH legs sign: the same domain-separated canonical body as v1
+ * (version, issuer, payload) plus the committed `required_algorithms` set,
+ * under the v2 domain tag. Recomputed independently by the verifier from the
+ * PRESENTED fields and the REGISTERED set. See PATTERN move 3.
+ */
+export function stateV2SigningBytes(
+  statement: { version?: unknown; issuer?: unknown; payload?: unknown },
+  requiredAlgorithms: readonly string[] = ACTION_ESCROW_STATE_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!stateV2AlgorithmSetRegistered(requiredAlgorithms)) {
+    throw new TypeError('stateV2SigningBytes: algorithm set is not the registered EP-ACTION-ESCROW-STATE-STATEMENT-v2 set');
+  }
+  const body = boundedCanonicalCopy({
+    version: statement.version,
+    issuer: statement.issuer,
+    payload: statement.payload,
+    required_algorithms: [...requiredAlgorithms],
+  });
+  return Buffer.from(ACTION_ESCROW_STATE_STATEMENT_V2_DOMAIN + canonicalize(body), 'utf8');
+}
+
+/** ML-DSA-65 public-key identifier: the SHA-256 of the raw public key bytes. */
+function stateEscrowPqKeyId(publicKeyRawB64u: unknown): string {
+  try {
+    if (typeof publicKeyRawB64u !== 'string' || publicKeyRawB64u.length === 0) return '';
+    const raw = Buffer.from(publicKeyRawB64u, 'base64url');
+    if (raw.length !== ML_DSA_65_PUBLIC_KEY_BYTES || raw.toString('base64url') !== publicKeyRawB64u) return '';
+    return `ep:escrow-operator-key:ml-dsa-65:sha256:${crypto.createHash('sha256').update(raw).digest('hex')}`;
+  } catch {
+    return '';
+  }
+}
+
+/** Ed25519 curve-pinned public-key identifier: SHA-256 of the SPKI DER. */
+function stateEscrowEdKeyId(publicKeyB64u: unknown): string {
+  try {
+    if (typeof publicKeyB64u !== 'string' || publicKeyB64u.length === 0) return '';
+    const der = Buffer.from(publicKeyB64u, 'base64url');
+    if (der.length === 0 || der.toString('base64url') !== publicKeyB64u) return '';
+    const key = crypto.createPublicKey({ key: der, format: 'der', type: 'spki' });
+    if (key.asymmetricKeyType !== 'ed25519') return '';
+    return `ep:escrow-operator-key:sha256:${crypto.createHash('sha256').update(der).digest('hex')}`;
+  } catch {
+    return '';
+  }
+}
+
+function stateEscrowAgilityPassthrough(opts: any): AgilityOptions {
+  const out: AgilityOptions = {};
+  if (opts?.mldsaBackend !== undefined) out.mldsaBackend = opts.mldsaBackend;
+  if (opts?.mldsaBackendLoader !== undefined) out.mldsaBackendLoader = opts.mldsaBackendLoader;
+  return out;
+}
+
+function refuseV2(reason: string, checks: Record<string, boolean>) {
+  return {
+    valid: false,
+    reason,
+    checks,
+    statement_digest: null,
+    agreement_id: null,
+    binding_digest: null,
+    action_digest: null,
+    profile_digest: null,
+    state: null,
+    revision: null,
+    amendment_digests: [],
+  };
+}
+
+/**
+ * FAIL-CLOSED hybrid verifier for one EP-ACTION-ESCROW-STATE-STATEMENT-v2. Never
+ * throws on caller input; a v2 statement NEVER verifies on one leg alone. See
+ * the PATTERN reference above.
+ */
+export async function verifyActionEscrowStateStatementV2(statement: any, {
+  trustedKeys,
+  stateRecord,
+  expectedAgreementId,
+  expectedBindingDigest,
+  expectedActionDigest,
+  expectedProfileDigest,
+  expectedState,
+  expectedRevision,
+  expectedAmendmentDigests,
+  expectedPreviousStatementDigest,
+  now,
+  mldsaBackend,
+  mldsaBackendLoader,
+}: {
+  trustedKeys?: unknown;
+  stateRecord?: unknown;
+  expectedAgreementId?: string;
+  expectedBindingDigest?: string;
+  expectedActionDigest?: string;
+  expectedProfileDigest?: string;
+  expectedState?: string;
+  expectedRevision?: number;
+  expectedAmendmentDigests?: string[];
+  expectedPreviousStatementDigest?: string | null;
+  now?: Date | number | string;
+  mldsaBackend?: AgilityOptions['mldsaBackend'];
+  mldsaBackendLoader?: AgilityOptions['mldsaBackendLoader'];
+} = {}) {
+  const checks: Record<string, boolean> = {
+    structure: false,
+    payload: false,
+    issuer_pin: false,
+    algorithm_set: false,
+    legs_present: false,
+    signature: false,
+    statement_digest: false,
+    state_record: false,
+    expected_bindings: false,
+    time: false,
+  };
+  try {
+    // 1. Version marker + closed top-level shape. A v1 statement refuses here,
+    //    the mirror image of the v1 verifier refusing a v2 statement.
+    checks.structure = exactKeys(statement, TOP_V2_KEYS)
+      && statement.version === ACTION_ESCROW_STATE_STATEMENT_V2_VERSION
+      && exactKeys(statement.issuer, ISSUER_KEYS)
+      && exactKeys(statement.signature, SIGNATURE_V2_KEYS)
+      && statement.signature.profile === ACTION_ESCROW_STATE_STATEMENT_V2_VERSION;
+    if (!checks.structure) return refuseV2('malformed_state_statement', checks);
+
+    checks.payload = payloadValid(statement.payload);
+    if (!checks.payload) return refuseV2('invalid_state_payload', checks);
+
+    // 2. Operator keys: BOTH halves pinned, and the presented halves must equal
+    //    the pinned ones. Identified-but-not-trusted, per leg.
+    const pin = isRecord(trustedKeys) && Object.hasOwn(trustedKeys as object, statement.issuer.key_id)
+      ? (trustedKeys as any)[statement.issuer.key_id]
+      : null;
+    const presentedEdKey = statement.signature.public_key;
+    const presentedPqKey = statement.signature.pq_public_key;
+    checks.issuer_pin = exactKeys(pin, new Set(['operator_id', 'public_key', 'pq_public_key']))
+      && pin.operator_id === statement.issuer.operator_id
+      && typeof pin.public_key === 'string' && pin.public_key.length > 0
+      && typeof pin.pq_public_key === 'string' && pin.pq_public_key.length > 0
+      && pin.public_key === presentedEdKey
+      && pin.pq_public_key === presentedPqKey;
+    if (!checks.issuer_pin) return refuseV2('operator_key_not_pinned', checks);
+
+    // Key identifiers, curve-pinned: an Ed448 (or any non-Ed25519) SPKI
+    // masquerading as the Ed25519 half fails here as well as in the signature
+    // check, because stateEscrowEdKeyId() derives nothing from a non-Ed25519 SPKI.
+    const derivedEdKeyId = stateEscrowEdKeyId(presentedEdKey);
+    const derivedPqKeyId = stateEscrowPqKeyId(presentedPqKey);
+    if (!derivedEdKeyId || statement.signature.key_id !== derivedEdKeyId
+      || !derivedPqKeyId || statement.signature.pq_key_id !== derivedPqKeyId) {
+      return refuseV2('operator_key_not_pinned', checks);
+    }
+
+    // 3. Committed algorithm set: exact and order-sensitive. A narrowed or
+    //    widened set is refused structurally here and, independently, by the
+    //    signature check, which rebuilds the bytes from the REGISTERED set.
+    checks.algorithm_set = stateV2AlgorithmSetRegistered(statement.signature.required_algorithms);
+    if (!checks.algorithm_set) return refuseV2('state_algorithm_set_invalid', checks);
+
+    // 4. Exactly one signature per required algorithm; no duplicates, no
+    //    unexpected algorithms, no missing (stripped) legs.
+    const signatures = Array.isArray(statement.signature.signatures) ? statement.signature.signatures : null;
+    if (!signatures || signatures.length === 0) return refuseV2('state_signature_legs_missing', checks);
+    const presented = new Set<string>();
+    for (const s of signatures) {
+      if (!isRecord(s) || typeof s.alg !== 'string' || typeof s.sig !== 'string') {
+        return refuseV2('state_signature_leg_malformed', checks);
+      }
+      if (presented.has(s.alg)) return refuseV2('state_signature_leg_duplicate', checks);
+      presented.add(s.alg);
+    }
+    for (const alg of presented) {
+      if (!(ACTION_ESCROW_STATE_V2_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) {
+        return refuseV2('state_signature_leg_unexpected', checks);
+      }
+    }
+    for (const alg of ACTION_ESCROW_STATE_V2_REQUIRED_ALGORITHMS) {
+      if (!presented.has(alg)) return refuseV2('state_signature_leg_stripped', checks);
+    }
+    checks.legs_present = true;
+
+    // 5. Signature set: both legs, over bytes rebuilt from the PRESENTED fields
+    //    and the REGISTERED algorithm set, under the PINNED keys. Policy
+    //    'hybrid_all' with requiredAlgorithms pinned to the full set.
+    const bytes = stateV2SigningBytes(statement, ACTION_ESCROW_STATE_V2_REQUIRED_ALGORITHMS);
+    const verificationKeys = [
+      { alg: 'Ed25519', public_key: pin.public_key, key_id: derivedEdKeyId },
+      { alg: 'ML-DSA-65', public_key: pin.pq_public_key, key_id: derivedPqKeyId },
+    ];
+    let setResult: any = null;
+    try {
+      setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), signatures, verificationKeys, {
+        ...stateEscrowAgilityPassthrough({ mldsaBackend, mldsaBackendLoader }),
+        policy: 'hybrid_all',
+        requiredAlgorithms: [...ACTION_ESCROW_STATE_V2_REQUIRED_ALGORITHMS],
+      });
+    } catch {
+      setResult = null;
+    }
+    checks.signature = setResult?.verified === true;
+    if (!checks.signature) {
+      const reason = String(setResult?.reason ?? 'signature_set_unverified');
+      return refuseV2(`state_signature_invalid (${reason})`, checks);
+    }
+
+    const digest = `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
+    checks.statement_digest = statement.statement_digest === digest;
+    if (!checks.statement_digest) return refuseV2('state_statement_digest_mismatch', checks);
+
+    checks.state_record = canonicalHash(boundedCanonicalCopy(stateRecord))
+      === statement.payload.state_record_digest;
+    if (!checks.state_record) return refuseV2('state_record_digest_mismatch', checks);
+
+    const amendments = expectedAmendmentDigests;
+    checks.expected_bindings = typeof expectedAgreementId === 'string'
+      && statement.payload.agreement_id === expectedAgreementId
+      && statement.payload.binding_digest === expectedBindingDigest
+      && statement.payload.action_digest === expectedActionDigest
+      && statement.payload.profile_digest === expectedProfileDigest
+      && statement.payload.state === expectedState
+      && statement.payload.revision === expectedRevision
+      && Array.isArray(amendments)
+      && statement.payload.amendment_digests.length === amendments.length
+      && statement.payload.amendment_digests.every((entry: string, index: number) => entry === amendments[index])
+      && statement.payload.previous_statement_digest === expectedPreviousStatementDigest;
+    if (!checks.expected_bindings) return refuseV2('state_expected_binding_mismatch', checks);
+
+    const evaluation = now instanceof Date
+      ? now.getTime()
+      : typeof now === 'number' ? now : strictInstant(now);
+    checks.time = Number.isFinite(evaluation)
+      && strictInstant(statement.payload.occurred_at) <= evaluation;
+    if (!checks.time) return refuseV2('state_statement_from_future', checks);
+
+    return {
+      valid: true,
+      reason: 'verified',
+      checks,
+      statement_digest: digest,
+      agreement_id: statement.payload.agreement_id,
+      binding_digest: statement.payload.binding_digest,
+      action_digest: statement.payload.action_digest,
+      profile_digest: statement.payload.profile_digest,
+      state: statement.payload.state,
+      revision: statement.payload.revision,
+      amendment_digests: [...statement.payload.amendment_digests],
+    };
+  } catch {
+    return refuseV2('malformed_state_statement', checks);
+  }
+}
+
+/**
+ * Route a statement of EITHER version to its verifier. v1 statements keep the
+ * exact v1 verdict (synchronous path, wrapped); v2 statements get the hybrid
+ * check. A statement whose `version` is neither refuses through the v1 verifier,
+ * which is the fail-closed answer.
+ */
+export async function verifyActionEscrowStateStatementAny(statement: any, options: any = {}) {
+  if (isRecord(statement) && statement.version === ACTION_ESCROW_STATE_STATEMENT_V2_VERSION) {
+    return verifyActionEscrowStateStatementV2(statement, options);
+  }
+  return verifyActionEscrowStateStatement(statement, options);
+}
+
 export default {
   ACTION_ESCROW_STATE_STATEMENT_VERSION,
   ACTION_ESCROW_STATE_STATEMENT_DOMAIN,
+  ACTION_ESCROW_STATE_STATEMENT_V2_VERSION,
+  ACTION_ESCROW_STATE_STATEMENT_V2_DOMAIN,
+  ACTION_ESCROW_STATE_V2_REQUIRED_ALGORITHMS,
   signActionEscrowStateStatement,
   verifyActionEscrowStateStatement,
+  verifyActionEscrowStateStatementV2,
+  verifyActionEscrowStateStatementAny,
+  stateV2SigningBytes,
   createActionEscrowStatePackageVerifier,
 };

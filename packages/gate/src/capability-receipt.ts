@@ -16,6 +16,7 @@
 
 import {
   createHash,
+  createPrivateKey,
   createPublicKey,
   randomBytes,
   randomUUID,
@@ -25,6 +26,13 @@ import {
   type KeyObject,
 } from 'node:crypto';
 import { canonicalize } from './execution-binding.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgilityOptions,
+  type AgileSigningKey,
+} from '@emilia-protocol/verify/pq-signature-agility';
 
 export const CAPABILITY_RECEIPT_VERSION = 'EP-CAPABILITY-RECEIPT-v1';
 export const CAPABILITY_STATE_VERSION = 'EP-CAPABILITY-STATE-v1';
@@ -3976,8 +3984,327 @@ export async function delegateCapabilityReceipt({
   }
 }
 
+// ===========================================================================
+// EP-CAPABILITY-RECEIPT-v2 -- the hybrid (Ed25519 + ML-DSA-65) capability envelope.
+// ===========================================================================
+/**
+ * REFERENCE-DERIVED HYBRID MIGRATION. Copies, move for move, the reference hybrid
+ * migration in docs/protocol/pq-hybrid-program.md, section "PATTERN: the
+ * reference hybrid migration" (EP-REVOCATION-v2, packages/verify/src/revocation.ts):
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. A second signature changes the SHAPE of
+ *    `capability_signature`, a wire-format change, so the artifact takes a new
+ *    `@version` (EP-CAPABILITY-RECEIPT-v2). verifyCapabilityReceipt (v1) is
+ *    untouched and refuses a v2 envelope on the version marker
+ *    ('malformed_capability_receipt') before inspecting any signature; it never
+ *    throws on caller input.
+ * 2. SET SHAPE. `capability_signature` carries `required_algorithms` plus a
+ *    `signatures` array shaped exactly like EP-SIG-AGILITY-v1's AgileSignature
+ *    ({ alg, sig, key_id? }), one per algorithm in the registered order. Ed25519
+ *    keeps its base64url SPKI DER public key; ML-DSA-65 carries raw base64url
+ *    public key bytes.
+ * 3. ANTI-STRIPPING BYTES. The required algorithm SET is committed INSIDE the
+ *    signed bytes (capabilityV2SignedPayload below), over the SAME canonical
+ *    unsigned body v1 signs plus `required_algorithms`. Drop the ML-DSA leg and
+ *    narrow `required_algorithms` and the surviving Ed25519 signature no longer
+ *    verifies. The verifier rebuilds the bytes from the REGISTERED set.
+ * 4. V1 COMPATIBILITY. v1 envelopes keep verifying through the unchanged
+ *    synchronous verifyCapabilityReceipt; v2 verification is ASYNC (ML-DSA is
+ *    async), so it is a SEPARATE entry point, with verifyCapabilityReceiptAny()
+ *    routing on @version. The v1 verifier is never made async.
+ * 5. NAMED REFUSALS. Every failure returns a named reason; nothing throws on
+ *    caller input. An absent ML-DSA backend is 'capability_pq_backend_unavailable'
+ *    surfaced through the agility result, never a skipped check and never a pass on
+ *    the classical leg.
+ *
+ * HONEST BOUNDARIES carry over from v1: the envelope authenticates issuer-signed
+ * capability metadata; spend state is never trusted from the envelope, and every
+ * spend must still pass through the atomic capability store. The ML-DSA backend is
+ * @noble/post-quantum's pure-JS FIPS 204 implementation, not independently audited
+ * and not a FIPS validated module. v2 does NOT retroactively protect v1 envelopes.
+ */
+
+export const CAPABILITY_RECEIPT_V2_VERSION = 'EP-CAPABILITY-RECEIPT-v2';
+
+/** The registered required algorithm set, in canonical order. */
+export const CAPABILITY_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+const CAPABILITY_SIGNATURE_V2_KEYS = new Set([
+  'profile', 'required_algorithms', 'public_key', 'key_id',
+  'pq_public_key', 'pq_key_id', 'signatures',
+]);
+
+export interface CapabilityV2IssuerPin {
+  /** Ed25519 base64url SPKI DER. */
+  public_key: string;
+  /** ML-DSA-65 base64url raw public key bytes. */
+  pq_public_key: string;
+}
+
+function capabilityV2AlgorithmSetRegistered(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === CAPABILITY_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === CAPABILITY_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+/** ML-DSA-65 public-key identifier: SHA-256 of the raw public key bytes. */
+function capabilityPqKeyId(publicKeyRawB64u: unknown): string {
+  try {
+    if (typeof publicKeyRawB64u !== 'string' || publicKeyRawB64u.length === 0) return '';
+    const raw = Buffer.from(publicKeyRawB64u, 'base64url');
+    if (raw.length !== ML_DSA_65_PUBLIC_KEY_BYTES || raw.toString('base64url') !== publicKeyRawB64u) return '';
+    return `ep:capability-issuer-key:ml-dsa-65:sha256:${sha256Hex(raw)}`;
+  } catch {
+    return '';
+  }
+}
+
+/** Ed25519 curve-pinned public-key identifier: SHA-256 of the SPKI DER. */
+function capabilityEdKeyId(publicKeyB64u: unknown): string {
+  try {
+    if (typeof publicKeyB64u !== 'string' || publicKeyB64u.length === 0) return '';
+    const der = Buffer.from(publicKeyB64u, 'base64url');
+    if (der.length === 0 || der.toString('base64url') !== publicKeyB64u) return '';
+    const key = createPublicKey({ key: der, format: 'der', type: 'spki' });
+    if (key.asymmetricKeyType !== 'ed25519') return '';
+    return `ep:capability-issuer-key:sha256:${sha256Hex(der)}`;
+  } catch {
+    return '';
+  }
+}
+
+function capabilityV2AgilityPassthrough(opts: any): AgilityOptions {
+  const out: AgilityOptions = {};
+  if (opts?.mldsaBackend !== undefined) out.mldsaBackend = opts.mldsaBackend;
+  if (opts?.mldsaBackendLoader !== undefined) out.mldsaBackendLoader = opts.mldsaBackendLoader;
+  return out;
+}
+
+function capabilityUnsignedBodyV2(receipt, capability, requiredAlgorithms: readonly string[]) {
+  return {
+    '@version': CAPABILITY_RECEIPT_V2_VERSION,
+    base_receipt_id: receipt.payload.receipt_id,
+    base_receipt_digest: capabilityBaseReceiptDigest(receipt),
+    capability,
+    required_algorithms: [...requiredAlgorithms],
+  };
+}
+
+/**
+ * The bytes BOTH legs sign: the SAME canonical unsigned body v1 signs, under the
+ * v2 marker, plus the committed `required_algorithms` set. Recomputed
+ * independently by the verifier from the PRESENTED receipt/capability and the
+ * REGISTERED set. See PATTERN move 3.
+ */
+export function capabilityV2SignedPayload(
+  receipt,
+  capability,
+  requiredAlgorithms: readonly string[] = CAPABILITY_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!capabilityV2AlgorithmSetRegistered(requiredAlgorithms)) {
+    throw new TypeError('capabilityV2SignedPayload: algorithm set is not the registered EP-CAPABILITY-RECEIPT-v2 set');
+  }
+  return Buffer.from(canonicalize(capabilityUnsignedBodyV2(receipt, capability, requiredAlgorithms)), 'utf8');
+}
+
+/**
+ * Mint a signed HYBRID capability envelope. Reuses mintCapabilityReceipt for the
+ * entire receipt/capability construction and validation, then re-signs the same
+ * canonical body under both algorithms. For m-of-n > 1 the raw secret is not
+ * returned; distribute the returned shares instead. Issuance throws on invalid
+ * local input; verification below never throws.
+ */
+export async function mintCapabilityReceiptV2(baseReceipt, options: {
+  issuerPrivateKey?: KeyMaterial;
+  pqPublicKey?: string;
+  pqPrivateKey?: string | Uint8Array;
+  budget?: CapabilityBudget;
+  expiry?: string | number;
+  threshold?: { m: number; n: number };
+  revocationMode?: CapabilityRevocationMode;
+  scope?: Record<string, any>;
+  delegationChain?: any[];
+  capabilityId?: string;
+  secret?: Buffer | string;
+} = {}) {
+  const { pqPublicKey, pqPrivateKey, ...v1Options } = options;
+  const issuerPrivateKey = options.issuerPrivateKey;
+  if (!issuerPrivateKey) throw new TypeError('mintCapabilityReceiptV2 requires issuerPrivateKey');
+  if (typeof pqPublicKey !== 'string' || capabilityPqKeyId(pqPublicKey) === '') {
+    throw new TypeError('mintCapabilityReceiptV2 requires a valid ML-DSA-65 pqPublicKey');
+  }
+  if (pqPrivateKey === undefined) throw new TypeError('mintCapabilityReceiptV2 requires pqPrivateKey');
+  const minted = mintCapabilityReceipt(baseReceipt, v1Options);
+  const receipt = minted.capabilityReceipt.receipt;
+  const capability = minted.capabilityReceipt.capability;
+  const edPubB64u = publicKeyB64u(issuerPrivateKey);
+  const edId = capabilityEdKeyId(edPubB64u);
+  const pqId = capabilityPqKeyId(pqPublicKey);
+  if (!edId) throw new TypeError('mintCapabilityReceiptV2 issuerPrivateKey is not Ed25519');
+  const bytes = capabilityV2SignedPayload(receipt, capability, CAPABILITY_V2_REQUIRED_ALGORITHMS);
+  const keys: AgileSigningKey[] = [
+    { alg: 'Ed25519', private_key: createPrivateKeyObject(issuerPrivateKey), key_id: edId },
+    { alg: 'ML-DSA-65', private_key: pqPrivateKey, key_id: pqId },
+  ];
+  const signatures = await signAgileSet(new Uint8Array(bytes), keys);
+  const capabilityReceipt = {
+    '@version': CAPABILITY_RECEIPT_V2_VERSION,
+    receipt,
+    capability,
+    capability_signature: {
+      profile: CAPABILITY_RECEIPT_V2_VERSION,
+      required_algorithms: [...CAPABILITY_V2_REQUIRED_ALGORITHMS],
+      public_key: edPubB64u,
+      key_id: edId,
+      pq_public_key: pqPublicKey,
+      pq_key_id: pqId,
+      signatures,
+    },
+  };
+  return Object.freeze({
+    capabilityReceipt: Object.freeze(capabilityReceipt),
+    secret: minted.secret,
+    shares: minted.shares,
+  });
+}
+
+function createPrivateKeyObject(material: KeyMaterial): KeyObject {
+  if (material && typeof material === 'object' && (material as KeyObject).type === 'private') {
+    return material as KeyObject;
+  }
+  return createPrivateKey(material as Parameters<typeof createPrivateKey>[0]);
+}
+
+function capabilitySignatureV2(capabilityReceipt): any | null {
+  const signature = capabilityReceipt?.capability_signature;
+  if (!isRecord(signature)
+      || Object.keys(signature).length !== CAPABILITY_SIGNATURE_V2_KEYS.size
+      || !Object.keys(signature).every((key) => CAPABILITY_SIGNATURE_V2_KEYS.has(key))
+      || signature.profile !== CAPABILITY_RECEIPT_V2_VERSION
+      || typeof signature.public_key !== 'string'
+      || typeof signature.pq_public_key !== 'string') {
+    return null;
+  }
+  return signature;
+}
+
+/**
+ * FAIL-CLOSED hybrid verifier for one EP-CAPABILITY-RECEIPT-v2 envelope. Never
+ * throws on caller input; a v2 envelope NEVER verifies on one leg alone. Trust
+ * follows the same model as v1: a pinned issuer PAIR is required unless
+ * allowUntrustedIssuer is set, in which case the presented (self-asserted) pair is
+ * used and is explicitly untrusted.
+ */
+export async function verifyCapabilityReceiptV2(capabilityReceipt, {
+  trustedIssuerKeys = [],
+  allowUntrustedIssuer = false,
+  mldsaBackend,
+  mldsaBackendLoader,
+}: {
+  trustedIssuerKeys?: CapabilityV2IssuerPin[];
+  allowUntrustedIssuer?: boolean;
+  mldsaBackend?: AgilityOptions['mldsaBackend'];
+  mldsaBackendLoader?: AgilityOptions['mldsaBackendLoader'];
+} = {}) {
+  try {
+    if (!isRecord(capabilityReceipt) || capabilityReceipt['@version'] !== CAPABILITY_RECEIPT_V2_VERSION) {
+      return { ok: false, reason: 'malformed_capability_receipt' };
+    }
+    const receipt = validateBaseReceipt(capabilityReceipt.receipt);
+    assertCapabilityShape(capabilityReceipt.capability);
+    const signature = capabilitySignatureV2(capabilityReceipt);
+    if (!signature) return { ok: false, reason: 'capability_signature_envelope_invalid' };
+
+    const presentedEdKey = signature.public_key;
+    const presentedPqKey = signature.pq_public_key;
+    const pinnedPair = Array.isArray(trustedIssuerKeys)
+      ? trustedIssuerKeys.some((pin) => isRecord(pin)
+        && pin.public_key === presentedEdKey && pin.pq_public_key === presentedPqKey)
+      : false;
+    const trusted = (Array.isArray(trustedIssuerKeys) && trustedIssuerKeys.length > 0)
+      ? pinnedPair
+      : allowUntrustedIssuer === true;
+    if (!trusted) return { ok: false, reason: 'capability_issuer_not_trusted' };
+
+    const derivedEdKeyId = capabilityEdKeyId(presentedEdKey);
+    const derivedPqKeyId = capabilityPqKeyId(presentedPqKey);
+    if (!derivedEdKeyId || signature.key_id !== derivedEdKeyId
+        || !derivedPqKeyId || signature.pq_key_id !== derivedPqKeyId) {
+      return { ok: false, reason: 'capability_issuer_key_unbound' };
+    }
+
+    if (!capabilityV2AlgorithmSetRegistered(signature.required_algorithms)) {
+      return { ok: false, reason: 'capability_algorithm_set_invalid' };
+    }
+
+    const signatures = Array.isArray(signature.signatures) ? signature.signatures : null;
+    if (!signatures || signatures.length === 0) return { ok: false, reason: 'capability_signature_legs_missing' };
+    const presented = new Set<string>();
+    for (const s of signatures) {
+      if (!isRecord(s) || typeof s.alg !== 'string' || typeof s.sig !== 'string') {
+        return { ok: false, reason: 'capability_signature_leg_malformed' };
+      }
+      if (presented.has(s.alg)) return { ok: false, reason: 'capability_signature_leg_duplicate' };
+      presented.add(s.alg);
+    }
+    for (const alg of presented) {
+      if (!(CAPABILITY_V2_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) {
+        return { ok: false, reason: 'capability_signature_leg_unexpected' };
+      }
+    }
+    for (const alg of CAPABILITY_V2_REQUIRED_ALGORITHMS) {
+      if (!presented.has(alg)) return { ok: false, reason: 'capability_signature_leg_stripped' };
+    }
+
+    const bytes = capabilityV2SignedPayload(receipt, capabilityReceipt.capability, CAPABILITY_V2_REQUIRED_ALGORITHMS);
+    const verificationKeys = [
+      { alg: 'Ed25519', public_key: presentedEdKey, key_id: derivedEdKeyId },
+      { alg: 'ML-DSA-65', public_key: presentedPqKey, key_id: derivedPqKeyId },
+    ];
+    let setResult: any = null;
+    try {
+      setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), signatures, verificationKeys, {
+        ...capabilityV2AgilityPassthrough({ mldsaBackend, mldsaBackendLoader }),
+        policy: 'hybrid_all',
+        requiredAlgorithms: [...CAPABILITY_V2_REQUIRED_ALGORITHMS],
+      });
+    } catch {
+      setResult = null;
+    }
+    if (setResult?.verified !== true) {
+      const reason = String(setResult?.reason ?? 'signature_set_unverified');
+      return { ok: false, reason: `capability_signature_invalid (${reason})` };
+    }
+
+    return {
+      ok: true,
+      receipt,
+      capability: capabilityReceipt.capability,
+      issuer_public_key: presentedEdKey,
+      issuer_pq_public_key: presentedPqKey,
+      issuer_trusted: (Array.isArray(trustedIssuerKeys) && trustedIssuerKeys.length > 0),
+    };
+  } catch (error) {
+    return { ok: false, reason: 'capability_malformed', detail: (error as Error)?.message || 'invalid capability' };
+  }
+}
+
+/**
+ * Route an envelope of EITHER version to its verifier. v1 envelopes keep the exact
+ * v1 verdict; v2 envelopes get the hybrid check. An envelope whose @version is
+ * neither refuses through the v1 verifier, which is fail-closed.
+ */
+export async function verifyCapabilityReceiptAny(capabilityReceipt, options: any = {}) {
+  if (isRecord(capabilityReceipt) && capabilityReceipt['@version'] === CAPABILITY_RECEIPT_V2_VERSION) {
+    return verifyCapabilityReceiptV2(capabilityReceipt, options);
+  }
+  return verifyCapabilityReceipt(capabilityReceipt, options);
+}
+
 export default {
   CAPABILITY_RECEIPT_VERSION,
+  CAPABILITY_RECEIPT_V2_VERSION,
+  CAPABILITY_V2_REQUIRED_ALGORITHMS,
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
