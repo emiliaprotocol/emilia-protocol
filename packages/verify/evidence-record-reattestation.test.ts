@@ -18,10 +18,10 @@ import {
   verifyEvidenceRecord,
   verifyReattestationChain,
   type ReattestationEntry,
-} from './src/evidence-record.js';
-import { canonicalize } from './src/index.js';
-import { TIME_ATTESTATION_VERSION } from './src/time-attestation.js';
-import { AGILITY_REASONS } from './src/pq-signature-agility.js';
+} from './dist/evidence-record.js';
+import { canonicalize } from './dist/index.js';
+import { TIME_ATTESTATION_VERSION } from './dist/time-attestation.js';
+import { AGILITY_REASONS } from './dist/pq-signature-agility.js';
 
 // --- fixtures ---------------------------------------------------------------
 

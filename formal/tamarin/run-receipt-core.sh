@@ -8,6 +8,7 @@ OUT_DIR="${TAMARIN_OUT_DIR:-run-output-receipt}"
 
 VERIFIED_LEMMAS='executable_honest_receipt
 core_authenticity_uv_gated
+acceptance_prefix_integrity_after_later_reveal
 no_replay_across_actions
 injective_acceptance_with_consumption'
 

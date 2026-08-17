@@ -16,8 +16,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AGILE_SIGNATURE_ALGORITHMS, AGILITY_REASONS, ML_DSA_65_SIGNATURE_BYTES, loadDefaultAgilityMldsaBackend, signAgile, signAgileSet, verifyAgileSignature, verifyAgileSignatureSet, } from './src/pq-signature-agility.js';
-import { canonicalize } from './src/index.js';
+import { AGILE_SIGNATURE_ALGORITHMS, AGILITY_REASONS, ML_DSA_65_SIGNATURE_BYTES, loadDefaultAgilityMldsaBackend, signAgile, signAgileSet, verifyAgileSignature, verifyAgileSignatureSet, } from './dist/pq-signature-agility.js';
+import { canonicalize } from './dist/index.js';
 // --- fixtures ---------------------------------------------------------------
 const backend = await loadDefaultAgilityMldsaBackend();
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');

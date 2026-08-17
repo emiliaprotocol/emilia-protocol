@@ -1,12 +1,13 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# AEB-04 staged section: generic field-origin assertion input
+# AEB-05 candidate section: closed origin-label assertions
 
-STATUS: staged, not filed. This is candidate section text for
-`draft-schrock-action-evidence-boundary-04`. It has not been submitted to
-the Datatracker, and nothing here changes the posted -03 text. A published
-individual Internet-Draft is not an RFC, working-group adoption, IETF
-consensus, or IETF endorsement; this file is not even that yet.
+STATUS: candidate text, not filed. AEB-04 was published on 2026-08-16 and
+already defines the generic field-origin assertion input. This file proposes
+additional closed-vocabulary, trust-floor, and laundering semantics for a
+possible `draft-schrock-action-evidence-boundary-05`. No -05 submission has
+been made. A published individual Internet-Draft is not an RFC, working-group
+adoption, IETF consensus, or IETF endorsement; this file is not even that yet.
 
 Working implementation and vectors backing every normative statement below:
 
@@ -17,7 +18,7 @@ Working implementation and vectors backing every normative statement below:
 
 ---
 
-## Proposed section: Field-Origin Assertions as a Native Input
+## Proposed section: Closed Origin-Label Assertions
 
 ### X.1. The input, not a format
 
@@ -126,10 +127,11 @@ specifications.
 
 ---
 
-## Honest boundaries of this staging packet
+## Honest boundaries of this candidate text
 
-- This file is staged prose only. No -04 revision exists on the
-  Datatracker, and no filing decision is made here.
+- This file is candidate prose only. AEB-04 is public; this narrower extension
+  is not part of it. No -05 revision exists on the Datatracker, and no filing
+  decision is made here.
 - The implementation evidence is same-team reference code and vectors in
   this repository, not an independent implementation or reproduction.
 - The laundering vector set demonstrates refusal of the enumerated

@@ -1,10 +1,11 @@
-# STAGED, NOT FILED
+# RECEIPTS-13 CANDIDATE, NOT FILED
 
-Staged Security Considerations text for a future
-`draft-schrock-ep-authorization-receipts-12`. This is working text only: it
+Candidate Security Considerations text for a possible future
+`draft-schrock-ep-authorization-receipts-13`. Revision -12 was published on
+2026-08-16 and does not contain this post-quantum material. This working text
 has not been submitted to the IETF, and nothing here is a working-group
-document, IETF consensus, or IETF endorsement. The published revision is
--11; check the live Datatracker revision before numbering any submission.
+document, IETF consensus, or IETF endorsement. Check the live Datatracker
+revision again before numbering any submission.
 
 Intended placement: a new subsection of Section 13 (Security
 Considerations), following the existing operator-compromise and

@@ -85,10 +85,10 @@ through host-record binding and scoped authority, to relying-party evidence
 satisfaction:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-11`](posted/draft-schrock-ep-authorization-receipts-11.xml)
+   [`draft-schrock-ep-authorization-receipts-12`](posted/draft-schrock-ep-authorization-receipts-12.xml)
    defines one action-bound organizational approval-evidence profile and its
    extension seam. Snapshot SHA-256:
-   `7dc112e2481b03dc4e017216c168e143cb32b878e70265f2a0402e483bea1a45`.
+   `66eaa988d974f8535063b35efadc5140331006679b5946bc372d50a16efef52d`.
 2. **Human Authorization Binding** —
    [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact by value or reference into an
@@ -129,7 +129,7 @@ Separately, the **runtime execution spine** is:
 2. **CAID-02** identifies and matches the exact material action.
 3. **AEC-05** verifies and composes action-matched evidence into a relying-party
    satisfaction result.
-4. **AEB-03** applies the executor-side admission boundary, including authority
+4. **AEB-04** applies the executor-side admission boundary, including authority
    separation and one-time consequence custody.
 
 This spine names the runtime path; it is not the four-document presentation
@@ -137,6 +137,11 @@ surface or a replacement portfolio. AEC appears in both views because evidence
 satisfaction feeds runtime admission, not because the views are equivalent.
 Exact revisions, source paths, Datatracker URLs, and snapshot digests for both
 views are recorded in `STATUS.json`.
+
+The extension-agnostic responsibility, input/output, claim-boundary, external
+dependency, and overlap review for all 20 active `draft-schrock-*` series is in
+[`PORTFOLIO-RESPONSIBILITY-MATRIX.md`](PORTFOLIO-RESPONSIBILITY-MATRIX.md).
+That matrix is the required input to any future consolidation proposal.
 
 ## The matching claim
 
@@ -215,6 +220,14 @@ On **August 10, 2026**, Authorization Receipts-11 was published and verified
 byte-for-byte against the immutable IETF archive. It keeps the closed
 Authorization Bundle transport-neutral, treats native evidence verification as
 role-specific input, and moves OAuth RAR into an optional binding profile.
+
+On **August 16, 2026**, AEB-04 and Authorization Receipts-12 were published and
+verified byte-for-byte against the immutable IETF archive. AEB-04 adds a
+generic, relying-party-pinned field-origin assertion input while keeping the
+same-repository `EP-FIELD-ORIGIN-v0.1` format informative. Receipts-12 adds
+acceptance-prefix integrity under its stated assumptions, states the offline
+anti-backdating limit, and separates historical acceptance from current policy
+and status acceptance.
 
 The published line also retains Authority Introduction-03, Quorum-03, Bounded
 Capability Receipts-02, and the other current individual drafts listed in

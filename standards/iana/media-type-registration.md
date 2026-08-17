@@ -117,7 +117,7 @@ team@emiliaprotocol.ai
 ## 2. application/ep-authorization-receipt+json
 
 **Status: CARRIED BY CURRENT DRAFT.** The active
-`draft-schrock-ep-authorization-receipts-11`, Section 13, requests this media
+`draft-schrock-ep-authorization-receipts-12`, Section 13, requests this media
 type and carries the complete registration template. Process the registration
 with the Standards Track document. The older proposed name
 `application/ep-receipt+json` is not the name selected by -11 and must not be
@@ -137,7 +137,7 @@ filed as an alias.
 encoded as UTF-8 according to RFC 8259.
 
 **Security considerations:** See the Security Considerations section of
-draft-schrock-ep-authorization-receipts-11. Receipt verification requires
+draft-schrock-ep-authorization-receipts-12. Receipt verification requires
 independently selected log, approver, directory, and policy trust inputs. A
 valid receipt is evidence, not current authorization, proof of execution, or
 proof of human comprehension. Implementations must also apply the draft's
@@ -148,7 +148,7 @@ duplicate-member, Unicode-scalar, depth, and number restrictions.
 algorithm are defined by the draft. The shorter identifier `EP-RECEIPT-v1`
 names a different generic envelope and is not an alias.
 
-**Published specification:** draft-schrock-ep-authorization-receipts-11,
+**Published specification:** draft-schrock-ep-authorization-receipts-12,
 "Authorization Receipts for High-Risk Agent Actions" (an active individual
 Internet-Draft, not IETF-adopted or endorsed; intended status Standards Track).
 
@@ -181,7 +181,7 @@ team@emiliaprotocol.ai
 ## 3. application/ep-authorization-bundle+json
 
 **Status: CARRIED BY CURRENT DRAFT.** The active
-`draft-schrock-ep-authorization-receipts-11`, Section 13, requests this media
+`draft-schrock-ep-authorization-receipts-12`, Section 13, requests this media
 type and carries the complete registration template. Process the registration
 with the Standards Track document; do not file a conflicting direct request.
 
@@ -199,7 +199,7 @@ with the Standards Track document; do not file a conflicting direct request.
 encoded as UTF-8 according to RFC 8259.
 
 **Security considerations:** See the Security Considerations and bundle
-verification sections of draft-schrock-ep-authorization-receipts-11. A valid
+verification sections of draft-schrock-ep-authorization-receipts-12. A valid
 bundle is approval evidence, not an authorization grant, reservation,
 consumption record, execution receipt, proof of current external facts, or
 permission to retry an action with an uncertain effect.
@@ -209,7 +209,7 @@ object and verification algorithm are defined by the draft. A consumer must
 independently pin the audience, policy, action mapping, approver directory,
 trust roots, and any required current status sources.
 
-**Published specification:** draft-schrock-ep-authorization-receipts-11,
+**Published specification:** draft-schrock-ep-authorization-receipts-12,
 "Authorization Receipts for High-Risk Agent Actions" (an active individual
 Internet-Draft, not IETF-adopted or endorsed; intended status Standards Track).
 

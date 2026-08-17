@@ -25,8 +25,8 @@ import {
   signAgileSet,
   verifyAgileSignature,
   verifyAgileSignatureSet,
-} from './src/pq-signature-agility.js';
-import { canonicalize } from './src/index.js';
+} from './dist/pq-signature-agility.js';
+import { canonicalize } from './dist/index.js';
 
 // --- fixtures ---------------------------------------------------------------
 

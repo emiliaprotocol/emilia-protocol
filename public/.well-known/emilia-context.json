@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-16T22:26:52.937Z",
+  "evidence_snapshot_at": "2026-08-17T00:17:07.472Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "68cb22cfee3be9fdcefbef550d4762baee2663f50ee4d65fa086265809abe256",
+    "input_digest_sha256": "ab2af076b617a6fbd763636d72c75fae9a312fd0ab6e045eaa2971c3c0c5ab7e",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "128faa089c49b63a28518be11d0a64697047449b24ba304fc0b175f98223e29b",
-        "bytes": 46205
+        "sha256": "69fc561d60ce443274fe6b7d594331369e5599e1f7c0904dde023601828049b6",
+        "bytes": 46311
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "7a193e9ec2c33a230f6b8eb6732d1b4218ca887f8087350aa8b614b15434ed69",
+        "sha256": "a847bcd40e787690ffa3deab7d4e5534a2023d42677166b242d7244656cf31da",
         "bytes": 4298
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "33e2d29afbbfb7bb7c6593f72f79315730f32f22a4d2453a08054b90270861a1",
+        "sha256": "2dd61d0079073445580860c4d01cbcb001de60d8d4b8078f6d5c581585248b18",
         "bytes": 6361
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "7af7a63c05123db0a1a2930c89b340693f8fefd2ea822736b40d7d94c3effa82",
-        "bytes": 42776
+        "sha256": "6842b9068a2c908b7754f44fe193ac5da87970a297f560162eb94ae40955a3f5",
+        "bytes": 44937
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -298,7 +298,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "68d69b968f711d6f9475440f564e6c1b9c654b7b9c451adf315df1b8818af9aa",
+      "manifest_sha256": "c9cc585c150be1a0c65ad9cef51657282018c013db1d93c060ef7957abe2b8d3",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -4511,17 +4511,17 @@
   "standards": [
     {
       "identifier": "draft-schrock-ae-challenge",
-      "revision_at_snapshot": "06",
+      "revision_at_snapshot": "07",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 10; use -06 as the cap-first refusal, no-policy-hint overload, authoritative replay-owner, retry-pacing, and bounded-state baseline while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues",
+      "next_action": "Published August 10; use -07 as the cap-first, owner-serialized refusal baseline with bounded claim and reissue state, no policy hints on capacity refusal, authoritative replay ownership, and retry pacing while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
       "identifier": "draft-schrock-action-evidence-boundary",
-      "revision_at_snapshot": "03",
+      "revision_at_snapshot": "04",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published August 3; use -03 as the current pinned-adapter, authority-separation, current-status, re-derivable-evaluation, and refusal-evidence baseline",
+      "next_action": "Published August 16; use -04 as the current generic field-origin-assertion, pinned-adapter, authority-separation, current-status, re-derivable-evaluation, and refusal-evidence baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4583,9 +4583,9 @@
     },
     {
       "identifier": "draft-schrock-ep-authorization-receipts",
-      "revision_at_snapshot": "11",
+      "revision_at_snapshot": "12",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published August 10; use -11 for the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request",
+      "next_action": "Published August 16; use -12 for acceptance-prefix integrity, the offline anti-backdating limit, historical-versus-current acceptance separation, the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4695,7 +4695,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-08-11",
+    "updated": "2026-08-16",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -4714,10 +4714,10 @@
           "order": 1,
           "label": "Authorization Receipts",
           "draft": "draft-schrock-ep-authorization-receipts",
-          "revision": "11",
-          "source": "standards/posted/draft-schrock-ep-authorization-receipts-11.xml",
+          "revision": "12",
+          "source": "standards/posted/draft-schrock-ep-authorization-receipts-12.xml",
           "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-          "snapshot_sha256": "7dc112e2481b03dc4e017216c168e143cb32b878e70265f2a0402e483bea1a45",
+          "snapshot_sha256": "66eaa988d974f8535063b35efadc5140331006679b5946bc372d50a16efef52d",
           "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
           "boundary": "One approval-evidence profile and extension seam; it does not establish scoped authority or evidence satisfaction by itself."
         },
@@ -4903,7 +4903,7 @@
         },
         {
           "draft": "draft-schrock-action-evidence-boundary-03",
-          "source": "standards/posted/draft-schrock-action-evidence-boundary-03.xml",
+          "source": "standards/archive/draft-schrock-action-evidence-boundary-03.xml",
           "state": "published_ietf_archive_verified_exact_local_match",
           "claim": "Pinned adapter and boundary requirements, authority-separation terms, current status, re-derivable evaluation records, and refusal evidence",
           "implementation": [
@@ -4911,7 +4911,7 @@
             "packages/gate/src/proposal-to-effect.ts",
             "packages/gate/src/aeb-consumption-store.ts"
           ],
-          "limitations": "Reference conformance does not prove complete mediation or independent implementation"
+          "limitations": "Reference conformance does not prove complete mediation or independent implementation; revision -03 was superseded by -04 on August 16"
         },
         {
           "draft": "draft-schrock-model-to-matter-03",
@@ -5279,7 +5279,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 11, the repository tracks 23 active records: 20 draft-schrock series and three coauthored series. Current revisions include CAID -02, Authorization Receipts -11, Bounded Capability Receipts -04, AE Challenge -06, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, and DMSC Agent Gateway Gap Analysis -03. Never call them RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 16, the repository tracks 23 active records: 20 draft-schrock series and three coauthored series. Current repository snapshots include CAID -02, Authorization Receipts -12, AEB -04, Bounded Capability Receipts -04, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, and DMSC Agent Gateway Gap Analysis -03. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",
