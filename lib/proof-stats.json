@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-08-17T17:21:55.555Z",
+  "generatedAt": "2026-08-17T18:00:09.422Z",
   "tests": {
-    "total": 9273,
+    "total": 9282,
     "files": 571,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
