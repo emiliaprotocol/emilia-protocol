@@ -98,18 +98,23 @@ function makeFixture(options = {}) {
     const holder = crypto.generateKeyPairSync('ed25519');
     const attacker = crypto.generateKeyPairSync('ed25519');
     const holderJwk = holder.publicKey.export({ format: 'jwk' });
+    const attackerJwk = attacker.publicKey.export({ format: 'jwk' });
     assert.equal(holderJwk.kty, 'OKP');
     assert.equal(holderJwk.crv, 'Ed25519');
     assert.equal(typeof holderJwk.x, 'string');
+    assert.equal(attackerJwk.kty, 'OKP');
+    assert.equal(attackerJwk.crv, 'Ed25519');
+    assert.equal(typeof attackerJwk.x, 'string');
     const holderKeyId = 'workload-ed25519-2026-07';
     const holderKeyPin = `holder:${holderJwk.x}`;
+    const workloadSubject = options.workloadSubject ?? WORKLOAD_SUBJECT;
     const config = {
         '@version': WIMSE_OAUTH_SPT_AEB_CONFIG_VERSION,
         evidence_role: 'delegated-workload',
         subject: {
             id: 'workload:payment-release-agent',
             kind: 'workload',
-            native_id: WORKLOAD_SUBJECT,
+            native_id: workloadSubject,
         },
         trust_domain: 'payments.example',
         wimse_audience: WIMSE_AUDIENCE,
@@ -117,7 +122,7 @@ function makeFixture(options = {}) {
         oauth_subject: OAUTH_SUBJECT,
         oauth_scope: OAUTH_SCOPE,
         spt_audience: SPT_AUDIENCE,
-        spt_subject: WORKLOAD_SUBJECT,
+        spt_subject: workloadSubject,
         spt_holder_key: holderKeyPin,
         action_type: ACTION_TYPE,
         clock_skew_seconds: 2,
@@ -158,7 +163,7 @@ function makeFixture(options = {}) {
         {
             '@version': WIMSE_OAUTH_SPT_TRUST_ROOT_VERSION,
             use: 'workload-holder',
-            subject: WORKLOAD_SUBJECT,
+            subject: workloadSubject,
             key_id: holderKeyId,
             algorithm: 'EdDSA',
             public_key: spki(holder.publicKey),
@@ -166,7 +171,7 @@ function makeFixture(options = {}) {
     ];
     const witClaims = {
         iss: trustRoots[0].use === 'wit-issuer' ? trustRoots[0].issuer : '',
-        sub: options.witSubject ?? WORKLOAD_SUBJECT,
+        sub: options.witSubject ?? workloadSubject,
         iat: NOW_SECONDS - 30,
         nbf: NOW_SECONDS - 30,
         exp: NOW_SECONDS + 1_800,
@@ -177,7 +182,7 @@ function makeFixture(options = {}) {
                 crv: 'Ed25519',
                 alg: 'EdDSA',
                 kid: holderKeyId,
-                x: holderJwk.x,
+                x: options.witHolder === 'attacker' ? attackerJwk.x : holderJwk.x,
             },
         },
     };
@@ -204,7 +209,7 @@ function makeFixture(options = {}) {
         ...oauthTimes,
         txn: 'txn-payment-release-0001',
         scope: OAUTH_SCOPE,
-        req_wl: WORKLOAD_SUBJECT,
+        req_wl: workloadSubject,
         tctx: transactionContext,
     };
     const txnToken = compactJws({
@@ -223,7 +228,7 @@ function makeFixture(options = {}) {
     };
     const sptClaims = {
         iss: 'https://spt.payments.example',
-        sub: WORKLOAD_SUBJECT,
+        sub: workloadSubject,
         aud: SPT_AUDIENCE,
         iat: NOW_SECONDS - 5,
         nbf: NOW_SECONDS - 5,
@@ -365,6 +370,40 @@ test('real Ed25519 WIT, WPT, OAuth Txn, SPT intent, and HTTP signature map to on
     assert.equal(mapped.caid, independentlyComputed.caid);
     assert.match(mapped.caid ?? '', /^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
 });
+test('the canonical workload-subject profile remains scheme-generic', () => {
+    const fixture = makeFixture({
+        workloadSubject: 'spiffe://payments.example/workloads/release-agent',
+    });
+    const native = verifyFixture(fixture);
+    assert.equal(native.native_verification, 'VERIFIED', native.reasons.join('; '));
+    assert.equal(native.acceptance, 'ACCEPTED', native.reasons.join('; '));
+});
+test('constructor rejects workload subjects with comparison ambiguity', () => {
+    const fixture = makeFixture();
+    const ambiguous = [
+        'WIMSE://payments.example/workloads/release-agent',
+        'wimse://Payments.example/workloads/release-agent',
+        'wimse://payments.example/workloads/%72elease-agent',
+        'wimse://payments.example/workloads/./release-agent',
+        'wimse://payments.example/workloads//release-agent',
+        'wimse://payments.example/workloads/release-agent/',
+        'wimse://payments.example:443/workloads/release-agent',
+        'wimse://payments.example/workloads/release-agent?tenant=other',
+    ];
+    for (const subject of ambiguous) {
+        const config = structuredClone(fixture.config);
+        config.subject.native_id = subject;
+        config.spt_subject = subject;
+        const trustRoots = structuredClone(fixture.trustRoots);
+        const holder = trustRoots.find((root) => root.use === 'workload-holder');
+        assert.ok(holder && holder.use === 'workload-holder');
+        holder.subject = subject;
+        assert.throws(() => createWimseOAuthSptAebAdapter({
+            config,
+            trust_roots: trustRoots,
+        }), /constructor config/);
+    }
+});
 test('SPT is optional, but its intent binding is mandatory whenever the token is present', () => {
     const withoutSpt = makeFixture({ includeSpt: false });
     const native = verifyFixture(withoutSpt);
@@ -399,17 +438,32 @@ test('constructor-pinned audiences, trust domain, and workload subject cannot be
     const wrongWptAudience = makeFixture({ wptAudience: 'https://attacker.example/commit' });
     const wrongOauthAudience = makeFixture({ oauthAudience: 'attacker.example' });
     const wrongSubject = makeFixture({ witSubject: 'wimse://attacker.example/workloads/release-agent' });
+    const wrongScheme = makeFixture({
+        witSubject: 'spiffe://payments.example/workloads/release-agent',
+    });
+    const siblingSubject = makeFixture({
+        witSubject: 'wimse://payments.example/workloads/release-agent-admin',
+    });
     const wrongSignatureAudience = makeFixture({ signatureAudience: 'https://attacker.example/commit' });
     for (const fixture of [
         wrongWptAudience,
         wrongOauthAudience,
         wrongSubject,
+        wrongScheme,
+        siblingSubject,
         wrongSignatureAudience,
     ]) {
         const native = verifyFixture(fixture);
         assert.equal(native.native_verification, 'FAILED');
         assert.equal(native.acceptance, 'REJECTED');
     }
+});
+test('issuer-signed WIT cannot rebind possession to an unpinned holder key', () => {
+    const fixture = makeFixture({ witHolder: 'attacker' });
+    const native = verifyFixture(fixture);
+    assert.equal(native.native_verification, 'FAILED');
+    assert.equal(native.acceptance, 'REJECTED');
+    assert.deepEqual(native.reasons, ['wimse-oauth-spt:wit_confirmation_key_mismatch']);
 });
 test('iat, nbf, exp, and constructor-pinned maximum ages are all enforced', () => {
     const expired = makeFixture({
@@ -512,6 +566,25 @@ test('OAuth txn creates a stable native replay ID across AEB wrappers and is fen
     assert.equal(store.reserve('aeb:operation:first', [first.replay_unit]), true);
     assert.equal(store.reserve('aeb:operation:second', [second.replay_unit]), false);
 });
+test('unavailable or stale lifecycle status cannot authorize identifier reuse', () => {
+    const unavailable = makeFixture();
+    unavailable.input.status = {
+        ...unavailable.input.status,
+        unavailable: true,
+    };
+    const stale = makeFixture();
+    stale.input.status = {
+        ...stale.input.status,
+        checked_at: '2026-07-24T11:56:00Z',
+    };
+    for (const fixture of [unavailable, stale]) {
+        const native = verifyFixture(fixture);
+        assert.equal(native.native_verification, 'VERIFIED', native.reasons.join('; '));
+        assert.equal(native.acceptance, 'INDETERMINATE');
+    }
+    assert.deepEqual(unavailable.adapter.verifyNative(unavailable.input).reasons, ['status_unavailable']);
+    assert.deepEqual(stale.adapter.verifyNative(stale.input).reasons, ['status_too_old']);
+});
 test('identity, possession, OAuth context, and SPT human_anchor cannot substitute a human authorization role', () => {
     const fixture = makeFixture();
     const native = verifyFixture(fixture);
@@ -538,16 +611,21 @@ test('checked-in vector enumerates the positive and required hostile classes', (
     const ids = new Set(vector.vectors.map((entry) => entry.id));
     for (const id of [
         'accept_real_ed25519_native_bundle',
+        'accept_canonical_generic_scheme_subject',
         'reject_malformed_compact_jws',
         'reject_unexpected_algorithm',
         'reject_wrong_constructor_key',
         'reject_wrong_audience',
         'reject_wrong_workload_subject',
+        'reject_noncanonical_workload_subject',
+        'reject_scheme_or_sibling_subject_substitution',
+        'reject_unpinned_confirmation_key',
         'reject_expired_or_stale_token',
         'reject_tth_mismatch',
         'reject_spt_intent_mismatch',
         'indeterminate_missing_exact_action',
         'reject_native_replay_across_aeb_wrappers',
+        'indeterminate_unresolved_identifier_lifecycle',
         'reject_human_role_substitution',
     ]) {
         assert.ok(ids.has(id), `missing vector ${id}`);
