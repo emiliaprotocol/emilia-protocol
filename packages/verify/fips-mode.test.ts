@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Tests for EP-FIPS-MODE-v1 (src/fips-mode.ts).
+ * Tests for EP-FIPS-MODE-v1 through the committed package runtime.
  *
  * Two halves, deliberately separated:
  *
@@ -38,7 +38,7 @@ import {
   checkOperationPolicy,
   type FipsPosture,
   type FipsStatus,
-} from './src/fips-mode.js';
+} from './dist/fips-mode.js';
 
 // ---------------------------------------------------------------------------
 // Synthetic postures (the deterministic half)

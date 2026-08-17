@@ -2,7 +2,7 @@
 // Generated from fips-mode.test.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
 /**
- * Tests for EP-FIPS-MODE-v1 (src/fips-mode.ts).
+ * Tests for EP-FIPS-MODE-v1 through the committed package runtime.
  *
  * Two halves, deliberately separated:
  *
@@ -23,7 +23,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { FIPS_MODE_VERSION, FIPS_POLICY_ALGORITHMS, FIPS_REASONS, readFipsStatus, probeEd25519, probeOpensslOperational, resetFipsProbeCache, getFipsPosture, formatFipsPosture, assertClassicalFips, mldsaPolicy, checkOperationPolicy, } from './src/fips-mode.js';
+import { FIPS_MODE_VERSION, FIPS_POLICY_ALGORITHMS, FIPS_REASONS, readFipsStatus, probeEd25519, probeOpensslOperational, resetFipsProbeCache, getFipsPosture, formatFipsPosture, assertClassicalFips, mldsaPolicy, checkOperationPolicy, } from './dist/fips-mode.js';
 // ---------------------------------------------------------------------------
 // Synthetic postures (the deterministic half)
 // ---------------------------------------------------------------------------
