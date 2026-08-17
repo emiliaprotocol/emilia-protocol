@@ -66,10 +66,15 @@ account numbers enter the evidence only as digests.
 ## Run it
 
 ```bash
+npm ci --ignore-scripts
 node conformance/composition/gap6-execution-evidence-v0.1/run.mjs          # demonstration
 node conformance/composition/gap6-execution-evidence-v0.1/run.mjs --json   # full report
 npm run pilot:finance-field-origin                                      # paid-pilot bundle
 ```
+
+The install step is required in a clean clone because the runner imports the
+repository's pinned workspace dependencies. It does not modify the committed
+reference report or its deterministic results digest.
 
 One execution emits three outputs:
 
