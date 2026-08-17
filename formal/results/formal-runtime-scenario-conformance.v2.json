@@ -1118,6 +1118,10 @@
       "sha256": "0c68f8a5348ac780771ecad8c49c7238b70efb9fbedbf5371b94aa3e49b1fa1b"
     },
     {
+      "path": "packages/verify/dist/fips-mode.js",
+      "sha256": "819d246a784a2f22d501ce9bcb8f7c0050603ffccbc57b05e5d57d711c3ed477"
+    },
+    {
       "path": "packages/verify/dist/gate-qualification-promptfoo.js",
       "sha256": "449bbe42a9bbe8be1ba63ef38b3a81c014ff79cd3796936d0d7cedc81598ac24"
     },
@@ -1131,7 +1135,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "ff9f7dad686d284cc929749a8f74fe3e53c1195e7fd60fb3ab2d500e30d22a61"
+      "sha256": "a3cdf1f10b524d6e640fb04ac259ebf0adc5efd54f1d2dc145d5c7b3c4d45b8e"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1163,7 +1167,7 @@
     },
     {
       "path": "packages/verify/dist/pq-signature-agility.js",
-      "sha256": "07feb72472096301379d9bf629f9f231263aaa57ce58530deca5eea79940dc6a"
+      "sha256": "2e75f50c8cf4ca89b70687a064acba0b6db8512c6791fb53505b5969cb177dcc"
     },
     {
       "path": "packages/verify/dist/provenance.js",
@@ -1175,7 +1179,7 @@
     },
     {
       "path": "packages/verify/dist/receipt-cose-encoding.js",
-      "sha256": "9c402e6a376c950b9a67227f5ebc7becaadb2bb61508b269f9db4cc010d786fa"
+      "sha256": "55b47246cfa18669e4d525747bc2fdd868c28f79d8574ea7fe04e40d93ebead3"
     },
     {
       "path": "packages/verify/dist/receipt-selective-disclosure.js",
@@ -1188,6 +1192,10 @@
     {
       "path": "packages/verify/dist/revocation.js",
       "sha256": "0bcf4c633032a3b015c5e7b4d1eb54c70ff70d4a4c94240e5d6513fbf7c94aa2"
+    },
+    {
+      "path": "packages/verify/dist/scitt-statement.js",
+      "sha256": "a03f27fed4ed42c8957171b465850aed779faed19d7cb364f73dacff4d79d64b"
     },
     {
       "path": "packages/verify/dist/status.js",
@@ -1255,7 +1263,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "87cb1db725fe49b35f8df7c5ca36ffbec545e0d87f37660f66349acde1565921"
+      "sha256": "b32e31e80c6e5f2b379bf57abfb24fcc165efef74ccf03a6cf8de8bbb98b7708"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
