@@ -38,10 +38,12 @@
  *   (`cbor` v10 truncates output on Node 26; `cbor-x` emits non-shortest map
  *   length headers), so the encoder and strict decoder are implemented here
  *   inline, keeping this package zero-dependency. The sibling McGraw adapter's
- *   `encodeDeterministicCbor` sorts map keys length-first (RFC 7049 Section
- *   3.9); the orders coincide for its own small positive integer labels but
- *   diverge in general (e.g. keys -1 and 100), so this module ships its own
- *   RFC 8949 codec under distinct names rather than reusing it.
+ *   `encodeDeterministicCbor` now implements the SAME RFC 8949 Section 4.2.1
+ *   bytewise-encoded-key ordering (it was historically RFC 7049 length-first;
+ *   that divergence lives on only as a regression test in the McGraw suite).
+ *   This module still ships its own codec under distinct names because it is a
+ *   Result-typed API (refusal reasons instead of throws) with its own strict
+ *   decoder, not because the orderings differ.
  *
  * NOTE ON KEY ORDER ACROSS ENCODINGS: JCS sorts object keys by UTF-16 code
  * units; CBOR deterministic order sorts by the bytes of the UTF-8 encoded key.
@@ -140,6 +142,12 @@ export interface VerifyCoseOptions {
     receiptIssuerPublicKeyBase64url: string;
     /** Optional caller-pinned CAID; refuses on mismatch when supplied. */
     expectedCaid?: string;
+    /**
+     * Optional caller-pinned kid. `kid` is ALWAYS required in the envelope; when
+     * this is supplied the envelope's kid must match it byte-for-byte, else the
+     * envelope is refused (`kid_mismatch`).
+     */
+    expectedKid?: string;
 }
 export interface VerifyCoseResult {
     valid: boolean;
@@ -166,6 +174,17 @@ export interface VerifyCoseResult {
  * receipt verifies under its OWN signature and the pinned issuer key; and the
  * CAID in the protected headers recomputes from the carried action object.
  * It does NOT establish acceptance, authorization, execution, or currency.
+ *
+ * PROFILE STRICTNESS (closed profile, RFC 9052). The protected headers MUST be
+ * exactly { alg (1), content type (3), kid (4), ep.caid } and nothing else;
+ * an unknown protected label refuses (`unexpected_protected_header`). `kid` is
+ * REQUIRED (`kid_missing`) and, when the caller pins one, must match byte-for-
+ * byte (`kid_mismatch`). Any `crit` header refuses (`crit_unsupported`, RFC
+ * 9052 Section 5.4: this profile marks no header critical). The unprotected
+ * bucket MUST be empty (`unprotected_headers_present`); RFC 9052 Section 3
+ * warns that labels duplicated across the protected and unprotected buckets are
+ * an error, and the unprotected bucket is unsigned, so this profile authorizes
+ * nothing from it.
  */
 export declare function verifyReceiptCoseSign1(coseBytes: Uint8Array, opts: VerifyCoseOptions): VerifyCoseResult;
 //# sourceMappingURL=receipt-cose-encoding.d.ts.map

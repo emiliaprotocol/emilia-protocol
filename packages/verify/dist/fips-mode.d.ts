@@ -1,0 +1,379 @@
+/**
+ * EP-FIPS-MODE-v1 -- runtime crypto posture reporting and operation policy
+ * for EP deployments that run against a FIPS 140-3 validated OpenSSL provider.
+ *
+ * WHAT THIS EARNS, AND NOTHING MORE. Running this module in a process whose
+ * OpenSSL is operating under a CMVP-validated FIPS provider earns exactly one
+ * sentence:
+ *
+ *     "FIPS-based algorithms, with a validated-provider deployment mode."
+ *
+ * That sentence is the ceiling: EP is not FIPS compliant and not FIPS validated.
+ * No EP package, receipt, or deployment carries a CMVP certificate.
+ * Validation is a property of a CRYPTOGRAPHIC MODULE, awarded to that module by
+ * the NIST/CCCS Cryptographic Module Validation Program (CMVP) against a
+ * specific security policy, on specific platforms, at a specific version. It is
+ * never a property of an application that links the module. EP is an
+ * application. This module exists partly so nobody has to take that on faith:
+ * it REPORTS the posture instead of asserting a status.
+ *
+ * The repository-wide language-governance guard
+ * (scripts/check-language-governance.ts) enforces the same boundary across the
+ * whole repo, refusing the compliant/validated/certified forms of that claim in
+ * public-facing files unless the line negates them.
+ *
+ * WHAT "FIPS MODE ACTIVE" ACTUALLY MEANS. crypto.getFips() === 1 means the
+ * running Node process has asked OpenSSL to operate in FIPS mode. Four things
+ * it does NOT mean:
+ *   1. It does not mean a working FIPS provider is loaded. This was measured,
+ *      not assumed: on Node v26.5.0 with statically linked OpenSSL 3.6.3 and no
+ *      fipsmodule configuration, crypto.setFips(true) SUCCEEDS and getFips()
+ *      returns 1, after which every EVP operation, SHA-256 included, fails with
+ *      ERR_OSSL_EVP_UNSUPPORTED. The flag is set and nothing works. That is why
+ *      this module probes an actual digest and reports `openssl_operational`
+ *      alongside the flag, and why assertClassicalFips() requires both.
+ *   2. It does not mean the provider on this machine is the CMVP-validated
+ *      build. An operator can build a FIPS provider from source; only the exact
+ *      validated binary on a validated platform is inside a certificate.
+ *   3. It does not cover anything implemented in JavaScript. Nothing in a JS
+ *      implementation is inside any validated module boundary, no matter what
+ *      getFips() returns.
+ *   4. It does not make the application compliant with any policy regime. That
+ *      is an assessment about a system, performed by an assessor.
+ *
+ * THE ED25519 TRAP. "The operation succeeded" and "the operation was inside the
+ * validated boundary" are different facts, and for Ed25519 they diverge. EdDSA
+ * is an approved signature algorithm under NIST FIPS 186-5 (effective
+ * 2023-02-03), yet neither of upstream OpenSSL's own certificates lists it as
+ * Approved: CMVP #4282 (FIPS 140-2, OpenSSL 3.0.8/3.0.9) and CMVP #4985 (FIPS
+ * 140-3, OpenSSL 3.1.2) both place Ed25519 and Ed448 in their non-Approved
+ * tables. Meanwhile OpenSSL 3.0.x REGISTERS Ed25519 with property fips=yes, so
+ * a 3.0.x deployment signs Ed25519 happily under an active FIPS mode, outside
+ * the certificate, with no error. (3.1.x through 3.3.x register it fips=no, so
+ * it fails there; 3.4.0 onward register it fips=yes again, and no upstream
+ * certificate covers 3.4 or 3.5 yet.) Because no runtime check can settle
+ * this, boundary membership is an OPERATOR DECLARATION read off the security
+ * policy, and an undeclared boundary refuses. Certificate-by-certificate detail
+ * is in docs/deployment/FIPS-MODE.md.
+ *
+ * THE ML-DSA TRUTH, HARD-CODED. EP's ML-DSA-65 (FIPS 204) backend is
+ * @noble/post-quantum, a pure-JavaScript implementation. It is not a validated
+ * module, it is not inside any CMVP certificate, and it does not become one by
+ * running in a process with FIPS mode active. `mldsa_validated_module` is
+ * therefore the literal `false` in every posture this module can produce; it is
+ * not a probe result and no option changes it. A deployment that wants ML-DSA
+ * operations under a FIPS posture must acknowledge that explicitly by passing
+ * `allow_unvalidated_mldsa: true`. The default is a named REFUSAL.
+ *
+ * WHAT THIS MODULE DOES NOT DO. It DECIDES; it does not wrap signing or
+ * verification. It has no dependency on the agility, hybrid, or issuance
+ * modules and none of them import it. Integrators consult
+ * checkOperationPolicy() at their own call sites (see the one-line adoption
+ * recipe in docs/deployment/FIPS-MODE.md) and refuse on `permitted === false`.
+ *
+ * FAIL-CLOSED, NEVER THROWS. Every exported function returns a named,
+ * structured result. Malformed input, an unknown algorithm, or an
+ * undeterminable FIPS status is a refusal carrying a reason, never an
+ * exception and never a silent pass. An INDETERMINATE posture never authorizes.
+ *
+ * ZERO DEPENDENCIES. node:crypto and process only.
+ *
+ * @license Apache-2.0
+ */
+export declare const FIPS_MODE_VERSION = "EP-FIPS-MODE-v1";
+/**
+ * The closed set of algorithm identifiers this policy module answers for.
+ * Ed25519 and ML-DSA-65 mirror the EP-SIG-AGILITY-v1 registry; ES256 is the
+ * EP-CRYPTO-PROFILE `fips` profile's signing algorithm; SHA-256 is the digest
+ * under every EP canonicalization and Merkle path. An identifier outside this
+ * set is a REFUSAL ('unknown_algorithm'), never a pass-through.
+ */
+export declare const FIPS_POLICY_ALGORITHMS: readonly ["Ed25519", "ES256", "SHA-256", "ML-DSA-65"];
+export type FipsPolicyAlgorithm = (typeof FIPS_POLICY_ALGORITHMS)[number];
+export declare const FIPS_REASONS: Readonly<{
+    /** FIPS mode is verifiably NOT active in this process. */
+    FIPS_MODE_INACTIVE: "fips_mode_inactive";
+    /** This build cannot report a FIPS status at all. Indeterminate, not "off". */
+    FIPS_STATUS_UNAVAILABLE: "fips_status_unavailable";
+    /**
+     * The FIPS flag is set but OpenSSL cannot service a basic approved operation.
+     * The overwhelmingly common cause is --force-fips or setFips(true) on a build
+     * with no fipsmodule.cnf / no FIPS provider available.
+     */
+    OPENSSL_PROVIDER_NOT_OPERATIONAL: "openssl_provider_not_operational";
+    /** FIPS flag is set and the OpenSSL liveness probe was skipped. Indeterminate. */
+    OPENSSL_PROVIDER_UNPROBED: "openssl_provider_unprobed";
+    /** ML-DSA here is pure JavaScript, outside every validated module boundary. */
+    MLDSA_IMPLEMENTATION_UNVALIDATED: "mldsa_implementation_unvalidated";
+    /** FIPS mode is active and the selected provider has no working Ed25519. */
+    ED25519_UNAVAILABLE_IN_PROVIDER: "ed25519_unavailable_in_provider";
+    /** FIPS mode is active and Ed25519 support was never probed. Indeterminate. */
+    ED25519_PROVIDER_SUPPORT_UNKNOWN: "ed25519_provider_support_unknown";
+    /**
+     * Ed25519 works, but the operator declared it OUTSIDE their provider's
+     * validated boundary. This is the OpenSSL 3.0.x trap: the provider signs
+     * happily while CMVP certificate #4282 lists Ed25519 as non-Approved.
+     */
+    ED25519_OUTSIDE_VALIDATED_BOUNDARY: "ed25519_outside_validated_boundary";
+    /**
+     * FIPS mode is active and the operator never declared whether their
+     * certificate covers Ed25519. A runtime probe cannot answer this, so an
+     * undeclared boundary is INDETERMINATE and does not authorize.
+     */
+    ED25519_BOUNDARY_UNDECLARED: "ed25519_boundary_undeclared";
+    /** Algorithm identifier outside the closed registry above. */
+    UNKNOWN_ALGORITHM: "unknown_algorithm";
+    /** The posture argument is not a posture object this module produced. */
+    MALFORMED_POSTURE: "malformed_posture";
+}>;
+/**
+ * 'active'      -- crypto.getFips() reported 1.
+ * 'inactive'    -- crypto.getFips() reported 0 (a real answer, not an absence).
+ * 'unavailable' -- getFips is missing or threw. INDETERMINATE, never "off".
+ */
+export type FipsStatus = 'active' | 'inactive' | 'unavailable';
+/**
+ * Where an implementation sits relative to a validated module boundary.
+ *
+ * 'openssl_provider' does NOT assert the operation is inside a certificate. It
+ * asserts only that the operation is serviced by OpenSSL, so it CAN be inside
+ * one when a validated provider is selected and that provider covers the
+ * algorithm. Which algorithms a given provider version actually covers is
+ * deployment fact, documented per provider version and certificate number in
+ * docs/deployment/FIPS-MODE.md, not something this module can assert.
+ */
+export type ImplementationBoundary = 'openssl_provider' | 'javascript_outside_any_validated_module';
+export interface FipsPosture {
+    version: typeof FIPS_MODE_VERSION;
+    /** See FipsStatus. 'unavailable' is indeterminate and never treated as off. */
+    fips_status: FipsStatus;
+    /** true ONLY for fips_status === 'active'. Never true on 'unavailable'. */
+    fips_mode_active: boolean;
+    /** process.versions.openssl verbatim, or null if absent (e.g. non-Node). */
+    openssl_version: string | null;
+    /** process.versions.node verbatim, or null if absent. */
+    node_version: string | null;
+    /**
+     * Liveness of the OpenSSL path, measured by an actual SHA-256 digest:
+     * true if it worked in THIS process, false if it failed, null if not probed.
+     *
+     * This field is what separates "the FIPS flag is set" from "a FIPS provider
+     * is actually serving operations". It is a LIVENESS probe of the provider
+     * path, NOT a statement of per-algorithm coverage and NOT a validation claim.
+     */
+    openssl_operational: boolean | null;
+    /**
+     * Result of an actual sign-and-verify probe, not a claim: true if Ed25519
+     * worked in THIS process, false if it failed, null if not probed.
+     *
+     * NECESSARY, NOT SUFFICIENT. `true` means the operation SUCCEEDS, never that
+     * it is inside a validated boundary. OpenSSL 3.0.x registers Ed25519 with
+     * property fips=yes, so the probe passes, while CMVP certificate #4282 (which
+     * covers OpenSSL 3.0.8/3.0.9) lists Ed25519 under Non-Approved Algorithms
+     * that "shall not be used when operating in the FIPS Approved mode". Code and
+     * certificate disagree and the certificate governs. Boundary membership is
+     * therefore the separate, operator-declared field below.
+     */
+    ed25519_operational: boolean | null;
+    /**
+     * OPERATOR-DECLARED, never probed and never inferred: does the CMVP
+     * certificate governing this deployment's provider list EdDSA/Ed25519 among
+     * its Approved algorithms? true / false / null when undeclared.
+     *
+     * No runtime check can answer this. It is read off a security policy PDF.
+     * See docs/deployment/FIPS-MODE.md for the per-certificate table.
+     */
+    ed25519_in_validated_boundary: boolean | null;
+    /** Human-readable identification of the ML-DSA implementation in use. */
+    mldsa_backend: string;
+    /**
+     * Hard-coded `false`. @noble/post-quantum is pure JavaScript and is not a
+     * CMVP-validated module. No probe, option, or FIPS mode setting changes this.
+     */
+    mldsa_validated_module: false;
+}
+export interface FipsPostureOptions {
+    /**
+     * Run the runtime probes (OpenSSL liveness and Ed25519). Default true.
+     * Set false for a flag-only read: both *_operational fields are then null,
+     * which under an ACTIVE FIPS mode is INDETERMINATE and therefore a refusal,
+     * not a pass. Probe results are memoized per observed FIPS status, so
+     * consulting the policy per operation does not re-run a key generation.
+     */
+    probe?: boolean;
+    /**
+     * The operator's declaration, from their CMVP certificate, of whether
+     * EdDSA/Ed25519 is an Approved algorithm in the provider this deployment
+     * runs. Omit it and the field stays null (undeclared), which refuses Ed25519
+     * under an active FIPS mode rather than guessing.
+     */
+    ed25519InValidatedBoundary?: boolean;
+}
+export interface FipsAssertResult {
+    ok: boolean;
+    reason: string | null;
+    posture: FipsPosture;
+}
+export interface MldsaPolicyOptions {
+    posture?: FipsPosture;
+    /**
+     * Explicit, named acknowledgment that ML-DSA operations in this deployment
+     * run in a pure-JavaScript implementation that is not a validated module.
+     * Only the literal `true` acknowledges; any other value does not.
+     */
+    allow_unvalidated_mldsa?: boolean;
+}
+export interface MldsaPolicyResult {
+    permitted: boolean;
+    reason: string | null;
+    /** true when the posture is anything other than verifiably-inactive FIPS. */
+    acknowledgment_required: boolean;
+    /** true only when the caller passed the literal true. */
+    acknowledged: boolean;
+    fips_status: FipsStatus;
+    /** Always false. See FipsPosture.mldsa_validated_module. */
+    validated_module: false;
+}
+export interface OperationPolicyResult {
+    alg: string | null;
+    permitted: boolean;
+    reason: string | null;
+    boundary: ImplementationBoundary | null;
+    fips_status: FipsStatus | null;
+    acknowledged: boolean;
+}
+/**
+ * Read the process FIPS status without ever throwing.
+ *
+ * crypto.getFips() is documented to return 1 when FIPS mode is on, but it is
+ * absent on some builds and throws on others (notably builds compiled without
+ * FIPS support, where touching the FIPS surface raises
+ * ERR_CRYPTO_FIPS_UNAVAILABLE). Both of those are 'unavailable': we do not
+ * know, which is not the same as knowing it is off.
+ */
+export declare function readFipsStatus(): FipsStatus;
+/**
+ * Probe whether the OpenSSL path can service a basic approved operation, by
+ * taking an actual SHA-256 digest. Returns false on any failure, never throws.
+ *
+ * MEASURED, NOT ASSUMED: on a Node build with no FIPS provider configured,
+ * crypto.setFips(true) succeeds and getFips() returns 1, yet this probe fails
+ * with ERR_OSSL_EVP_UNSUPPORTED. Reporting the flag without this probe would
+ * describe such a process as "FIPS mode active" when in fact no cryptography
+ * works at all.
+ */
+export declare function probeOpensslOperational(): boolean;
+/**
+ * Probe whether Ed25519 actually works in this process: generate a key pair,
+ * sign a fixed message, verify the signature. Returns false on any failure and
+ * NEVER throws.
+ *
+ * This exists because Ed25519's availability under an active FIPS mode is a
+ * property of the selected OpenSSL FIPS provider version, and a provider that
+ * does not carry Ed25519 makes these calls fail rather than silently producing
+ * a signature from outside the boundary. A runtime probe is the only honest
+ * answer; see docs/deployment/FIPS-MODE.md for which provider versions carry
+ * which algorithms.
+ */
+export declare function probeEd25519(): boolean;
+/** Discard memoized probe results. Exposed for tests and for operators who
+ * reconfigure providers mid-process. Never throws. */
+export declare function resetFipsProbeCache(): void;
+/**
+ * Report the crypto posture of the RUNNING process. Never throws.
+ *
+ * The result is a plain, JSON-serializable object with no timestamps and no
+ * randomness, so it is stable enough to log at startup, attach to an assurance
+ * package, or compare across two machines.
+ */
+export declare function getFipsPosture(options?: FipsPostureOptions): FipsPosture;
+/** One-line, log-friendly rendering of a posture. Never throws. */
+export declare function formatFipsPosture(posture: FipsPosture): string;
+/**
+ * ok:true ONLY when FIPS mode is verifiably active AND OpenSSL-backed
+ * ("classical") operations verifiably work in this process. Both conditions
+ * are required, because the flag alone is not evidence of anything: see the
+ * measured ERR_OSSL_EVP_UNSUPPORTED case in the module header.
+ *
+ * Refusal reasons, all named:
+ *   - 'fips_mode_inactive'              -- getFips() answered 0.
+ *   - 'fips_status_unavailable'         -- no answer obtainable. Indeterminate.
+ *   - 'openssl_provider_not_operational'-- flag set, SHA-256 probe failed.
+ *   - 'openssl_provider_unprobed'       -- flag set, probe skipped. Indeterminate.
+ *   - 'malformed_posture'               -- the supplied posture is not ours.
+ *
+ * ok:true still does not mean the deployment is FIPS 140-3 validated. It means
+ * the process asked OpenSSL for FIPS mode, OpenSSL said yes, and an approved
+ * operation actually completed. Whether the provider binary on this host is the
+ * CMVP-validated one, on a validated platform, at a validated version, is an
+ * operator fact recorded in docs/deployment/FIPS-MODE.md, not something any
+ * amount of runtime probing can establish.
+ */
+export declare function assertClassicalFips(options?: {
+    posture?: FipsPosture;
+}): FipsAssertResult;
+/**
+ * The explicit-flag machinery for ML-DSA.
+ *
+ * The acknowledgment is ARMED whenever FIPS mode is not verifiably inactive,
+ * that is for fips_status 'active' and for 'unavailable'. 'unavailable' arms it
+ * because an indeterminate posture never authorizes: a process that cannot say
+ * whether it is running under a validated provider is not a process that gets
+ * to run unvalidated post-quantum signing by default.
+ *
+ * On a plainly non-FIPS deployment (fips_status 'inactive', which is the normal
+ * case and what EP's own test suite runs under) the acknowledgment is not
+ * required and ML-DSA is permitted, because there is no FIPS posture to
+ * contradict. This is exactly why adopting checkOperationPolicy() at ML-DSA
+ * call sites does not change behavior for existing non-FIPS deployments.
+ *
+ * Only the literal `true` acknowledges. A truthy string, 1, or {} does not.
+ */
+export declare function mldsaPolicy(options?: MldsaPolicyOptions): MldsaPolicyResult;
+/**
+ * Decide whether one cryptographic operation is permitted under the given
+ * posture. This is the function issuance and verification call sites consult;
+ * it never performs, wraps, or intercepts the operation itself.
+ *
+ * Decision table:
+ *
+ *   alg outside the closed registry  -> REFUSE 'unknown_algorithm'
+ *   posture not a posture object     -> REFUSE 'malformed_posture'
+ *
+ *   ML-DSA-65   -> mldsaPolicy(): permitted when FIPS is verifiably inactive,
+ *                  or when allow_unvalidated_mldsa === true. Otherwise REFUSE
+ *                  'mldsa_implementation_unvalidated'.
+ *
+ *   Ed25519,    -> all OpenSSL-backed. When FIPS mode is NOT active they are
+ *   ES256,         permitted and the provider question does not arise. Under an
+ *   SHA-256        ACTIVE FIPS mode, in order:
+ *                    openssl_operational === false -> REFUSE
+ *                      'openssl_provider_not_operational'
+ *                    openssl_operational === null  -> REFUSE
+ *                      'openssl_provider_unprobed'
+ *                  and then, for Ed25519 only, because Ed25519 is neither
+ *                  carried by every OpenSSL FIPS provider version nor Approved
+ *                  in every certificate:
+ *                    ed25519_operational === false -> REFUSE
+ *                      'ed25519_unavailable_in_provider'
+ *                    ed25519_operational === null  -> REFUSE
+ *                      'ed25519_provider_support_unknown'
+ *                    ed25519_in_validated_boundary === false -> REFUSE
+ *                      'ed25519_outside_validated_boundary'
+ *                    ed25519_in_validated_boundary === null  -> REFUSE
+ *                      'ed25519_boundary_undeclared'
+ *                  Unprobed and undeclared are both INDETERMINATE, and
+ *                  indeterminate never authorizes. The last two checks exist
+ *                  because the runtime says yes on OpenSSL 3.0.x while
+ *                  certificate #4282 says Ed25519 is non-Approved.
+ *                  (SHA-256 covers EP canonicalization digests and Merkle
+ *                  hashing, which go through node:crypto createHash and are
+ *                  therefore OpenSSL-backed, not JavaScript.)
+ *
+ * `permitted: true` is a statement about this process's posture, never a
+ * statement that the operation or its output is FIPS 140-3 validated.
+ */
+export declare function checkOperationPolicy(alg: unknown, posture?: FipsPosture, options?: {
+    allow_unvalidated_mldsa?: boolean;
+}): OperationPolicyResult;
+//# sourceMappingURL=fips-mode.d.ts.map

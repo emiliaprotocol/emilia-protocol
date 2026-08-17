@@ -28,6 +28,8 @@
     "src/surface-binding.ts",
     "src/pq-hybrid.ts",
     "src/pq-signature-agility.ts",
+    "src/fips-mode.ts",
+    "src/scitt-statement.ts",
     "src/receipt-cose-encoding.ts",
     "src/receipt-selective-disclosure.ts",
     "src/timestamp-proof.ts",

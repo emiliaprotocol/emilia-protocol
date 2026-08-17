@@ -39,10 +39,12 @@
  *   (`cbor` v10 truncates output on Node 26; `cbor-x` emits non-shortest map
  *   length headers), so the encoder and strict decoder are implemented here
  *   inline, keeping this package zero-dependency. The sibling McGraw adapter's
- *   `encodeDeterministicCbor` sorts map keys length-first (RFC 7049 Section
- *   3.9); the orders coincide for its own small positive integer labels but
- *   diverge in general (e.g. keys -1 and 100), so this module ships its own
- *   RFC 8949 codec under distinct names rather than reusing it.
+ *   `encodeDeterministicCbor` now implements the SAME RFC 8949 Section 4.2.1
+ *   bytewise-encoded-key ordering (it was historically RFC 7049 length-first;
+ *   that divergence lives on only as a regression test in the McGraw suite).
+ *   This module still ships its own codec under distinct names because it is a
+ *   Result-typed API (refusal reasons instead of throws) with its own strict
+ *   decoder, not because the orderings differ.
  *
  * NOTE ON KEY ORDER ACROSS ENCODINGS: JCS sorts object keys by UTF-16 code
  * units; CBOR deterministic order sorts by the bytes of the UTF-8 encoded key.
@@ -64,6 +66,23 @@ export const COSE_RECEIPT_CONTENT_TYPE = 'application/emilia-receipt+json';
 export const COSE_ALG_EDDSA = -8;
 /** Private (non-IANA-registered) protected-header label carrying the CAID. */
 export const COSE_HEADER_EP_CAID = 'ep.caid';
+/** COSE `crit` header label (RFC 9052 Section 3.1 / Section 5.4). */
+const COSE_HEADER_CRIT = 2;
+/** COSE `alg` (1), `crit` (2), `content type` (3), `kid` (4) generic labels. */
+const COSE_HEADER_ALG = 1;
+const COSE_HEADER_CONTENT_TYPE = 3;
+const COSE_HEADER_KID = 4;
+/**
+ * The EXACT protected-header label set this closed profile understands. A
+ * protected header carrying any label outside this set is refused: the profile
+ * defines no extension semantics, so an unknown protected label is not an
+ * optional extra but an unverified instruction. `crit` (2) is handled
+ * separately per RFC 9052 Section 5.4 -- it is not in this set because the
+ * profile understands no critical extensions, so any `crit` present refuses.
+ */
+const COSE_PROFILE_PROTECTED_LABELS = new Set([
+    COSE_HEADER_ALG, COSE_HEADER_CONTENT_TYPE, COSE_HEADER_KID, COSE_HEADER_EP_CAID,
+]);
 const COSE_SIGN1_TAG_BYTE = 0xd2; // tag 18, shortest form
 const MAX_DEPTH = 64;
 const MAX_ITEMS = 1 << 20;
@@ -567,7 +586,12 @@ export function buildReceiptCoseSign1(receipt, opts) {
     }
     const body = encodeDeterministicCbor8949([
         protectedEncoded.value,
-        new Map(), // unprotected headers: empty
+        // Unprotected headers: ALWAYS an empty map in this profile. The verifier
+        // refuses any content here (unprotected_headers_present), so the encoder
+        // must never populate it -- every header this profile defines is protected
+        // (signed). Keeping it empty also forecloses the RFC 9052 Section 3
+        // duplicate-label-across-buckets error class by construction.
+        new Map(),
         payload,
         signature,
     ]);
@@ -593,6 +617,17 @@ export function buildReceiptCoseSign1(receipt, opts) {
  * receipt verifies under its OWN signature and the pinned issuer key; and the
  * CAID in the protected headers recomputes from the carried action object.
  * It does NOT establish acceptance, authorization, execution, or currency.
+ *
+ * PROFILE STRICTNESS (closed profile, RFC 9052). The protected headers MUST be
+ * exactly { alg (1), content type (3), kid (4), ep.caid } and nothing else;
+ * an unknown protected label refuses (`unexpected_protected_header`). `kid` is
+ * REQUIRED (`kid_missing`) and, when the caller pins one, must match byte-for-
+ * byte (`kid_mismatch`). Any `crit` header refuses (`crit_unsupported`, RFC
+ * 9052 Section 5.4: this profile marks no header critical). The unprotected
+ * bucket MUST be empty (`unprotected_headers_present`); RFC 9052 Section 3
+ * warns that labels duplicated across the protected and unprotected buckets are
+ * an error, and the unprotected bucket is unsigned, so this profile authorizes
+ * nothing from it.
  */
 export function verifyReceiptCoseSign1(coseBytes, opts) {
     const checks = {
@@ -620,16 +655,46 @@ export function verifyReceiptCoseSign1(coseBytes, opts) {
         || !(signature instanceof Uint8Array) || !(unprotected instanceof Map)) {
         return fail('cose_structure_invalid');
     }
+    // The unprotected bucket MUST be empty in this profile. RFC 9052 Section 3
+    // warns that a label appearing in BOTH buckets is an error, and the
+    // unprotected bucket is unauthenticated (outside the signature) -- so any
+    // content there is either a conflicting/duplicate label or an unsigned
+    // instruction. Refusing all unprotected content closes the whole class:
+    // an attacker cannot slip a conflicting `alg` past the signed headers, and
+    // there is nothing for a duplicate-across-buckets label to duplicate.
+    if (unprotected.size !== 0)
+        return fail('unprotected_headers_present');
     const headerResult = decodeDeterministicCbor8949(protectedBytes, { textKeysOnly: false });
     if (!headerResult.ok)
         return fail(headerResult.reason);
     if (!(headerResult.value instanceof Map))
         return fail('cose_structure_invalid');
     const headers = headerResult.value;
-    if (headers.get(1) !== COSE_ALG_EDDSA)
+    // `crit` (RFC 9052 Section 5.4): every label listed MUST be present and
+    // understood by this profile. This is a CLOSED profile that marks no header
+    // critical, so any `crit` at all names a label we do not understand.
+    if (headers.has(COSE_HEADER_CRIT))
+        return fail('crit_unsupported');
+    // Exact protected-header set: alg, content type, kid, ep.caid and nothing
+    // else. An unknown protected label is a refusal, not an ignorable extra.
+    for (const label of headers.keys()) {
+        if (!COSE_PROFILE_PROTECTED_LABELS.has(label))
+            return fail('unexpected_protected_header');
+    }
+    if (headers.get(COSE_HEADER_ALG) !== COSE_ALG_EDDSA)
         return fail('unsupported_envelope_alg');
-    if (headers.get(3) !== COSE_RECEIPT_CONTENT_TYPE)
+    if (headers.get(COSE_HEADER_CONTENT_TYPE) !== COSE_RECEIPT_CONTENT_TYPE)
         return fail('content_type_mismatch');
+    // kid is REQUIRED (bstr, label 4). When the caller pins a kid it must match
+    // byte-for-byte.
+    const headerKid = headers.get(COSE_HEADER_KID);
+    if (!(headerKid instanceof Uint8Array) || headerKid.length === 0)
+        return fail('kid_missing');
+    if (typeof opts?.expectedKid === 'string') {
+        const pinned = UTF8.encode(opts.expectedKid);
+        if (compareBytes(headerKid, pinned) !== 0)
+            return fail('kid_mismatch');
+    }
     const headerCaid = headers.get(COSE_HEADER_EP_CAID);
     if (typeof headerCaid !== 'string')
         return fail('caid_missing');

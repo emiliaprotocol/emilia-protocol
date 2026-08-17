@@ -206,6 +206,18 @@
     "./gate-qualification-promptfoo": {
       "types": "./dist/gate-qualification-promptfoo.d.ts",
       "import": "./gate-qualification-promptfoo.js"
+    },
+    "./fips-mode": {
+      "types": "./dist/fips-mode.d.ts",
+      "import": "./fips-mode.js"
+    },
+    "./scitt-statement": {
+      "types": "./dist/scitt-statement.d.ts",
+      "import": "./scitt-statement.js"
+    },
+    "./pq-signature-agility": {
+      "types": "./dist/pq-signature-agility.d.ts",
+      "import": "./pq-signature-agility.js"
     }
   },
   "files": [
@@ -283,7 +295,10 @@
     "cli.js",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "fips-mode.js",
+    "scitt-statement.js",
+    "pq-signature-agility.js"
   ],
   "engines": {
     "node": ">=18.0.0"

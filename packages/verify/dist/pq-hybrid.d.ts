@@ -121,12 +121,31 @@ export declare const HYBRID_SIGNATURE_ALGOS: readonly ["Ed25519", "ML-DSA-65"];
  * label / algo-set / message unambiguous (JSON never contains a raw 0x00).
  */
 export declare const HYBRID_DOMAIN = "emilia-protocol/pq-hybrid/v1";
+/**
+ * Fixed sizes the two legs are pinned to. The classical leg is Ed25519 only
+ * ([RFC8032]): a 64-byte signature under an Ed25519 public key. The PQ leg is
+ * ML-DSA-65 (FIPS 204 parameter set): a 3309-byte signature under a 1952-byte
+ * public key, produced from a 4032-byte secret key. These are not advisory --
+ * they are enforced so a signature made under a DIFFERENT algorithm (e.g. an
+ * Ed448 signature relabeled 'Ed25519' with a matching Ed448 public key) cannot
+ * be smuggled through the classical leg. Without the curve pin AND the length
+ * pin, `crypto.verify(null, ...)` would happily verify the relabeled leg under
+ * the attacker's own curve, and a valid PQ leg would then carry the whole
+ * envelope to verified:true. Both pins are required; neither alone closes it.
+ */
+export declare const ED25519_SIGNATURE_BYTES = 64;
+export declare const ML_DSA_65_SIGNATURE_BYTES = 3309;
+export declare const ML_DSA_65_PUBLIC_KEY_BYTES = 1952;
+export declare const ML_DSA_65_SECRET_KEY_BYTES = 4032;
 declare const REASONS: Readonly<{
     INVALID_INPUT: "invalid_input";
     INVALID_ENVELOPE: "invalid_envelope";
     ALGO_SET_MISMATCH: "algo_set_mismatch";
     MISSING_SIGNATURE: "missing_signature";
     MISSING_KEY: "missing_key";
+    ALGORITHM_KEY_MISMATCH: "algorithm_key_mismatch";
+    SIGNATURE_LENGTH_INVALID: "signature_length_invalid";
+    PUBLIC_KEY_LENGTH_INVALID: "public_key_length_invalid";
     CLASSICAL_INVALID: "classical_signature_invalid";
     PQ_INVALID: "pq_signature_invalid";
     PQ_BACKEND_UNAVAILABLE: "pq_backend_unavailable";

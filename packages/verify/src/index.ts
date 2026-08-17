@@ -59,8 +59,9 @@ export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';
 // EP-COSE-ENCODING-v0.1: encoding-equivalence profile — deterministic
 // CBOR/COSE_Sign1 transport envelope for receipts; the CAID join survives
-// re-encoding. Named exports (not export *): the module's RFC 8949 codec
-// must not collide with the McGraw adapter's RFC 7049-ordered codec.
+// re-encoding. Named exports (not export *) because this module's RFC 8949
+// codec shares helper names with the McGraw adapter's codec (both now RFC 8949
+// Section 4.2.1 bytewise-ordered); the distinct export names avoid a collision.
 export {
   COSE_ENCODING_PROFILE,
   CBOR_DETERMINISTIC_ORDER,
@@ -75,6 +76,14 @@ export {
   buildReceiptCoseSign1,
   verifyReceiptCoseSign1,
 } from './receipt-cose-encoding.js';
+// EP-SCITT-STATEMENT-v1: SCITT Signed Statement profile (RFC 9943 CWT Claims
+// over the COSE transport). VERIFIED is not REGISTERED: no Transparency
+// Service has accepted these statements; registration is a separate gated step.
+export * from './scitt-statement.js';
+// EP-FIPS-MODE-v1: deployment crypto-posture reporting and policy. Enables
+// "FIPS-based algorithms, with a validated-provider deployment mode"; it does
+// not make any deployment FIPS validated.
+export * from './fips-mode.js';
 export * from './status.js';
 export * from './gate-qualification.js';
 export * from './gate-qualification-promptfoo.js';

@@ -38,6 +38,8 @@ export * from './memory-projection.js';
 export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';
 export { COSE_ENCODING_PROFILE, CBOR_DETERMINISTIC_ORDER, COSE_RECEIPT_CONTENT_TYPE, COSE_ALG_EDDSA, COSE_HEADER_EP_CAID, encodeDeterministicCbor8949, decodeDeterministicCbor8949, receiptToCborBytes, receiptFromCborBytes, receiptActionCaid, buildReceiptCoseSign1, verifyReceiptCoseSign1, } from './receipt-cose-encoding.js';
+export * from './scitt-statement.js';
+export * from './fips-mode.js';
 export * from './status.js';
 export * from './gate-qualification.js';
 export * from './gate-qualification-promptfoo.js';
