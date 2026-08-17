@@ -371,6 +371,39 @@ Three same-team reference ports (JS / Python / Go) agree across all 21 suites an
 | Cross-language conformance | 331 vectors · 21 suites: receipts · device signoffs · four-outcome resolution · multi-party quorum · revocation · Outcome Binding (semantic + real-crypto) · Authority Document/Proof issuer join · time-attestation · trust-receipt (x2 profiles) · provenance · evidence-record · canonicalization · boundary · AEC acceptance · currency · initiator-attestation · consumption-proof · witness · timestamp-proof (RFC 3161). JS / Python / Go verifiers agree (`node conformance/run.mjs`). The external Rust baseline remains 164 vectors / 16 suites. See [CONFORMANCE.md](CONFORMANCE.md). |
 | Handshake create p95 | 575ms at 50 VUs — [PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md) |
 
+## Cryptographic longevity (opt-in, with boundaries)
+
+Evidence meant to be verified years later must outlive the algorithms it was
+signed under. EP ships four opt-in capabilities for that, each with an exact
+boundary that is part of the claim:
+
+- **Hybrid signatures (EP-RECEIPT-HYBRID-v1).** Post-quantum receipts,
+  available as an opt-in hybrid profile: Ed25519 and ML-DSA-65 over the same
+  canonical bytes, with the required algorithm set committed into the signed
+  bytes so stripping a leg breaks the surviving signature. Boundary: opt-in,
+  not the default receipt format; v1 verifiers refuse hybrid receipts cleanly
+  rather than accepting one leg. See `conformance/hybrid-receipts/`.
+- **SCITT Signed Statement profile (EP-SCITT-STATEMENT-v1).** A complete
+  RFC 9943 Signed Statement shape for EP receipts, including the CWT Claims
+  protected header. Boundary: no Transparency Service has accepted an
+  EP statement; external registration is a separate, gated step and none has
+  been performed. See [EP-RECEIPT-SCITT-PROFILE.md](docs/EP-RECEIPT-SCITT-PROFILE.md).
+- **Re-attestation (EP-EVIDENCE-REATTESTATION-v1).** Evidence signed under an
+  aging algorithm can be re-anchored under a current one before the old one
+  weakens. Boundary: re-attestation must precede compromise; it cannot repair
+  evidence after the fact.
+- **FIPS deployment mode (EP-FIPS-MODE-v1).** Runs classical operations
+  through an operator-supplied FIPS 140-3 validated provider, with the
+  ML-DSA path gated behind an explicit unvalidated-implementation
+  acknowledgment. Boundary: this earns "FIPS-based algorithms, with a
+  validated-provider deployment mode" and depends on the operator's provider
+  and declared certificate boundary; it is not a blanket compliance claim,
+  and nothing here is FIPS validated. See [FIPS-MODE.md](docs/deployment/FIPS-MODE.md).
+
+The stack-wide hybrid program (every internal signature surface) is mapped in
+[quantum-safe-program.md](docs/protocol/quantum-safe-program.md) and is not
+complete; until it is, no blanket claim about the whole stack is made.
+
 ---
 
 ## Core protocol objects
