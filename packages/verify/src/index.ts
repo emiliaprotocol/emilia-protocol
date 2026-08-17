@@ -215,7 +215,7 @@ export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestat
 
 // EP-EVIDENCE-RECORD-v1: long-term, crypto-agile preservation (RFC 4998-style
 // renewal chain) so a receipt's non-repudiation survives algorithm aging.
-export { verifyEvidenceRecord, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
+export { verifyEvidenceRecord, verifyEvidenceRecordAgile, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
 
 // EP-SIG-AGILITY-v1: per-artifact signature-algorithm agility (Ed25519 and
 // ML-DSA-65 over the SAME canonical bytes) so evidence outlives algorithms.

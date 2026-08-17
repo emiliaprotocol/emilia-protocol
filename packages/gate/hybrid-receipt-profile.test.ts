@@ -18,6 +18,7 @@ import crypto from 'node:crypto';
 
 import {
   CLASSICAL_RECEIPT_PROFILE_ID,
+  DUAL_ISSUANCE_RESULT_ID,
   HYBRID_ISSUANCE_MODES,
   HYBRID_PROFILE_REASONS,
   HYBRID_RECEIPT_PROFILE_ID,
@@ -93,7 +94,17 @@ test('resolveHybridReceiptProfile defaults to disabled and fails closed on garba
   assert.equal(required.mode, 'required');
   assert.equal(required.issues_hybrid, true);
   assert.equal(required.requires_hybrid, true);
-  assert.deepEqual([...HYBRID_ISSUANCE_MODES], ['disabled', 'enabled', 'required']);
+  assert.equal(required.issues_dual, false);
+
+  const dual = resolveHybridReceiptProfile({ hybrid_issuance: 'dual' });
+  assert.equal(dual.mode, 'dual');
+  assert.equal(dual.issues_hybrid, true);
+  assert.equal(dual.issues_dual, true);
+  // dual is a migration posture, not the strict end-state: it still issues and
+  // accepts a classical receipt, so it must NOT report requires_hybrid.
+  assert.equal(dual.requires_hybrid, false);
+
+  assert.deepEqual([...HYBRID_ISSUANCE_MODES], ['disabled', 'enabled', 'dual', 'required']);
 
   // A misconfigured security flag stops the deployment; it is never rounded
   // down to the permissive default.
@@ -273,6 +284,170 @@ test('an unrecognized receipt profile is refused, never guessed at', async () =>
     });
     assert.equal(!outcome.ok && outcome.reason, HYBRID_PROFILE_REASONS.UNKNOWN_RECEIPT_PROFILE);
   }
+});
+
+// --- dual issuance ----------------------------------------------------------
+
+test('dual mints BOTH artifacts over one payload and links them by action_digest', async () => {
+  const profile = resolveHybridReceiptProfile('dual');
+
+  const outcome = await issueUnderHybridProfile({
+    profile,
+    payload: PAYLOAD,
+    hybridKeys: hybridSigningKeys,
+    issueClassical,
+  });
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.ok && (outcome as any).profile, DUAL_ISSUANCE_RESULT_ID);
+
+  const { classical_receipt: classical, hybrid_receipt: hybrid, action_digest: digest } = outcome as any;
+
+  // Each artifact keeps its OWN wire version. Dual issuance does not invent a
+  // third receipt format that some verifier would have to learn.
+  assert.equal(classical['@version'], CLASSICAL_RECEIPT_PROFILE_ID);
+  assert.equal(hybrid['@version'], HYBRID_RECEIPT_PROFILE_ID);
+  assert.deepEqual(hybrid.signatures.map((s: any) => s.alg), ['Ed25519', 'ML-DSA-65']);
+
+  // The twin link: a relying party handed either artifact alone recomputes the
+  // same digest from the payload it is holding.
+  assert.match(digest, /^sha256:[0-9a-f]{64}$/);
+  const recompute = (payload: any) => `sha256:${crypto.createHash('sha256').update(Buffer.from(canonicalize(payload), 'utf8')).digest('hex')}`;
+  assert.equal(recompute(classical.payload), digest);
+  assert.equal(recompute(hybrid.payload), digest);
+
+  // And both verify INDEPENDENTLY, each on its own terms.
+  assert.deepEqual(verifyClassical(classical), { valid: true });
+  const acceptedHybrid = await acceptUnderHybridProfile({
+    profile,
+    receipt: hybrid,
+    hybridKeys: hybridVerificationKeys,
+    verifyClassical,
+  });
+  assert.equal(acceptedHybrid.ok, true);
+  assert.equal(acceptedHybrid.ok && acceptedHybrid.profile, HYBRID_RECEIPT_PROFILE_ID);
+});
+
+test('dual acceptance takes either twin on its own terms', async () => {
+  const profile = resolveHybridReceiptProfile('dual');
+  const outcome: any = await issueUnderHybridProfile({
+    profile, payload: PAYLOAD, hybridKeys: hybridSigningKeys, issueClassical,
+  });
+  assert.ok(outcome.ok);
+
+  const acceptedClassical = await acceptUnderHybridProfile({
+    profile, receipt: outcome.classical_receipt, hybridKeys: hybridVerificationKeys, verifyClassical,
+  });
+  assert.equal(acceptedClassical.ok, true);
+  assert.equal(acceptedClassical.ok && acceptedClassical.profile, CLASSICAL_RECEIPT_PROFILE_ID);
+
+  // A stripped hybrid twin is still refused under dual: compatibility does not
+  // buy a hybrid receipt any leniency.
+  const stripped = JSON.parse(JSON.stringify(outcome.hybrid_receipt));
+  stripped.signatures = stripped.signatures.filter((s: any) => s.alg !== 'ML-DSA-65');
+  const refused = await acceptUnderHybridProfile({
+    profile, receipt: stripped, hybridKeys: hybridVerificationKeys, verifyClassical,
+  });
+  assert.equal(!refused.ok && refused.reason, 'hybrid_leg_missing');
+});
+
+test('dual refuses an explicit single-profile ask rather than answering a shape the caller did not request', async () => {
+  const profile = resolveHybridReceiptProfile('dual');
+  for (const requestHybrid of [true, false]) {
+    const outcome = await issueUnderHybridProfile({
+      profile, payload: PAYLOAD, requestHybrid, hybridKeys: hybridSigningKeys, issueClassical,
+    });
+    assert.equal(!outcome.ok && outcome.reason, HYBRID_PROFILE_REASONS.DUAL_REQUIRED);
+    assert.equal((outcome as any).receipt, undefined);
+    assert.equal((outcome as any).classical_receipt, undefined);
+  }
+});
+
+test('a dual issuance that cannot be completed refuses; it never returns one artifact of two', async () => {
+  const profile = resolveHybridReceiptProfile('dual');
+
+  const noClassical = await issueUnderHybridProfile({ profile, payload: PAYLOAD, hybridKeys: hybridSigningKeys });
+  assert.equal(!noClassical.ok && noClassical.reason, HYBRID_PROFILE_REASONS.CLASSICAL_ISSUER_MISSING);
+
+  const noKeys = await issueUnderHybridProfile({ profile, payload: PAYLOAD, issueClassical });
+  assert.equal(!noKeys.ok && noKeys.reason, HYBRID_PROFILE_REASONS.HYBRID_KEYS_MISSING);
+
+  // The ML-DSA backend is gone. The hybrid twin is minted FIRST precisely so
+  // this refuses before the classical issuer runs and leaves an orphan behind.
+  let classicalCalls = 0;
+  const noBackend = await issueUnderHybridProfile({
+    profile,
+    payload: PAYLOAD,
+    hybridKeys: hybridSigningKeys,
+    agilityOptions: { mldsaBackendLoader: () => null },
+    issueClassical: (args) => { classicalCalls += 1; return issueClassical(args); },
+  });
+  assert.equal(!noBackend.ok && noBackend.reason, HYBRID_PROFILE_REASONS.HYBRID_ISSUANCE_UNAVAILABLE);
+  assert.equal(classicalCalls, 0);
+
+  for (const outcome of [noClassical, noKeys, noBackend]) {
+    assert.equal((outcome as any).classical_receipt, undefined);
+    assert.equal((outcome as any).hybrid_receipt, undefined);
+  }
+});
+
+test('the dual twin link is recomputed, not asserted', async () => {
+  const profile = resolveHybridReceiptProfile('dual');
+
+  // A classical issuer that signs a DIFFERENT payload than the one requested.
+  const driftingIssuer = ({ payload }: { payload: Record<string, any> }) =>
+    issueClassical({ payload: { ...payload, issuer: 'ep:issuer:someone-else' } });
+  const drifted = await issueUnderHybridProfile({
+    profile, payload: PAYLOAD, hybridKeys: hybridSigningKeys, issueClassical: driftingIssuer,
+  });
+  assert.equal(!drifted.ok && drifted.reason, HYBRID_PROFILE_REASONS.DUAL_PAYLOAD_MISMATCH);
+  assert.equal(!drifted.ok && (drifted.detail as any)?.expected !== (drifted.detail as any)?.classical, true);
+
+  // A classical issuer that returns something other than an EP-RECEIPT-v1 doc.
+  const wrongProfile = await issueUnderHybridProfile({
+    profile,
+    payload: PAYLOAD,
+    hybridKeys: hybridSigningKeys,
+    issueClassical: ({ payload }) => ({ '@version': 'EP-RECEIPT-v2', payload }),
+  });
+  assert.equal(!wrongProfile.ok && wrongProfile.reason, HYBRID_PROFILE_REASONS.CLASSICAL_RECEIPT_MALFORMED);
+});
+
+test('adding dual left disabled, enabled and required behaving exactly as before', async () => {
+  // Regression guard for the three original modes, asserted together so a
+  // change to the mode table cannot quietly move one of them.
+  const disabled = resolveHybridReceiptProfile('disabled');
+  const enabled = resolveHybridReceiptProfile('enabled');
+  const required = resolveHybridReceiptProfile('required');
+
+  assert.deepEqual(
+    [disabled, enabled, required].map((p) => [p.issues_hybrid, p.requires_hybrid, p.issues_dual]),
+    [[false, false, false], [true, false, false], [true, true, false]],
+  );
+
+  // disabled: classical only, hybrid request refused.
+  const d1: any = await issueUnderHybridProfile({ profile: disabled, payload: PAYLOAD, issueClassical });
+  assert.equal(d1.profile, CLASSICAL_RECEIPT_PROFILE_ID);
+  assert.ok(d1.receipt);
+  assert.equal(d1.classical_receipt, undefined);
+
+  // enabled: classical unless asked, single receipt either way.
+  const e1: any = await issueUnderHybridProfile({ profile: enabled, payload: PAYLOAD, issueClassical });
+  assert.equal(e1.profile, CLASSICAL_RECEIPT_PROFILE_ID);
+  const e2: any = await issueUnderHybridProfile({
+    profile: enabled, payload: PAYLOAD, requestHybrid: true, hybridKeys: hybridSigningKeys, issueClassical,
+  });
+  assert.equal(e2.profile, HYBRID_RECEIPT_PROFILE_ID);
+  assert.equal(e2.classical_receipt, undefined);
+
+  // required: hybrid by default, explicit classical ask refused.
+  const r1: any = await issueUnderHybridProfile({
+    profile: required, payload: PAYLOAD, hybridKeys: hybridSigningKeys, issueClassical,
+  });
+  assert.equal(r1.profile, HYBRID_RECEIPT_PROFILE_ID);
+  const r2 = await issueUnderHybridProfile({
+    profile: required, payload: PAYLOAD, requestHybrid: false, hybridKeys: hybridSigningKeys, issueClassical,
+  });
+  assert.equal(!r2.ok && r2.reason, HYBRID_PROFILE_REASONS.HYBRID_REQUIRED);
 });
 
 test('the profile object itself is validated at the call site', async () => {

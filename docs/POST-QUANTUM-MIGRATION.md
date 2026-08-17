@@ -163,9 +163,11 @@ Without this checkpoint, the entire v1 historical log loses evidentiary value th
 
 ---
 
-## 9. EP-HYBRID-v1 hybrid envelope (opt-in prototype: `lib/quantum-safe.js`)
+## 9. EP-HYBRID-v1 hybrid envelope (opt-in prototype: `packages/verify/src/pq-hybrid.ts`)
 
-**Scope:** An opt-in, repository-local envelope for long-lived artifacts. It is not wired into default `EP-RECEIPT-v1` issuance, the public `packages/verify` API, transparency-log checkpoints, directory keys, or deployed Gate receipts. The implementation is `signHybrid` / `verifyHybrid` in `lib/quantum-safe.js`.
+**Scope:** An opt-in envelope for long-lived artifacts signed under EP infrastructure keys. It is not wired into default `EP-RECEIPT-v1` issuance, transparency-log checkpoints, directory keys, or deployed Gate receipts. The implementation is `signHybrid` / `verifyHybrid` in `packages/verify/src/pq-hybrid.ts`.
+
+**One implementation, deliberately.** A second near-copy of this envelope lived at `lib/quantum-safe.ts` under its own `EP-HYBRID-SIGNATURE-v1` type tag, reachable only from one test. It was removed in favour of the module named above. The reason is the point of this section rather than housekeeping: the classical-leg curve pin and the exact signature-length pins landed on this module in an adversarial-review pass, and nothing would have carried them to a copy that the review did not know existed. A verification primitive with two implementations has two security postures, and only one of them gets reviewed.
 
 **Honest status.** This section does NOT change EP's security posture today. EP is not post-quantum secure today, and no default receipt is advertised as quantum-safe. The prototype signs a domain-separated transcript with Ed25519 and ML-DSA-65, and verification requires both legs. `@noble/post-quantum` is a pure-JS implementation of FIPS 204 and is not a FIPS-validated module; the prototype is not a FIPS validation or production HSM integration.
 
@@ -173,23 +175,27 @@ Without this checkpoint, the entire v1 historical log loses evidentiary value th
 
 ```
 {
-  "type": "EP-HYBRID-SIGNATURE-v1",
-  "payload_sha256": "<sha256 hex>",
-  "key_ids": { "ed25519": "<id or null>", "ml_dsa65": "<id or null>" },
-  "signatures": { "ed25519": "<base64url>", "ml_dsa65": "<base64url>" }
+  "alg": "EP-HYBRID-v1",
+  "signature_algos": ["Ed25519", "ML-DSA-65"],
+  "sigs": {
+    "Ed25519":   "<base64url>",
+    "ML-DSA-65": "<base64url>"
+  }
 }
 ```
 
-v1 is a fixed two-algorithm hybrid. The verifier requires exactly the envelope members and exactly one signature per leg; extra members refuse. Both the envelope type and key identifiers are committed into the domain-separated signing transcript, while the relying party still supplies the trusted public keys out of band.
+v1 is a fixed two-algorithm hybrid. The verifier requires the presented `signature_algos` to equal the registered set exactly, order included, and requires exactly one signature per committed algorithm; a missing leg refuses, an extra entry refuses. The relying party supplies both trusted public keys out of band.
+
+Both legs are pinned on both axes. The classical key must be Ed25519 by `asymmetricKeyType` and its signature exactly 64 bytes; the ML-DSA-65 public key must be 1952 bytes and its signature 3309 bytes. Neither pin is advisory: `crypto.verify(null, ...)` selects the algorithm from the key object, so without the curve pin an Ed448 signature relabelled `Ed25519` under a matching Ed448 key would verify, and a valid ML-DSA leg beside it would carry the whole envelope. The curve pin and the length pin are each necessary; neither closes it alone.
 
 ### 9.2. Anti-stripping rule (normative)
 
-Every signature in the envelope MUST be computed over a domain-separated signing input that includes the fixed type, algorithm names, key identifiers, and exact payload bytes:
+Every signature in the envelope MUST be computed over a domain-separated signing input that includes the fixed domain label, the algorithm set, and the exact message bytes:
 
 ```
-signing_input = UTF8("EP-HYBRID-SIGNATURE-v1") || 0x00
-             || UTF8(JSON.stringify({ algorithms, key_ids })) || 0x00
-             || payload
+signing_input = UTF8("emilia-protocol/pq-hybrid/v1") || 0x00
+             || UTF8(JSON.stringify(signature_algos)) || 0x00
+             || message
 ```
 
 This is the transcript-commitment rule of section 4.1 applied to the infrastructure-key envelope. Because both legs sign a byte string that commits to `["Ed25519", "ML-DSA-65"]`, an attacker who strips the ML-DSA-65 signature and presents the Ed25519 signature as if a classical-only signature were the whole intent fails twice: the presented algorithm set no longer matches what the verifier requires, and the Ed25519 signature does not verify over the bare message, nor over any signing input that commits to a reduced set. The test suite exercises the stripping path, the algo-set tampering path, and the direct cryptographic commitment (the hybrid Ed25519 signature verifies only over the input committing to the full set).

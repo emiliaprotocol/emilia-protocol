@@ -9,11 +9,14 @@
 import { describe, it, expect } from 'vitest';
 import crypto from 'node:crypto';
 import {
-  verifyEnvelope, migrate, registerProfile, listProfiles, isLosslessMigration,
+  verifyEnvelope, verifyEnvelopeProofs, verifyEnvelopeWithProofs, envelopeProofBytes,
+  PROOF_REASONS, migrate, registerProfile, listProfiles, isLosslessMigration,
   isWellFormedProfileUrn, isVendorProfileUrn, EP_ENVELOPE_VERSION, BUILTIN_PROFILES,
 } from '../lib/envelope/index.js';
 import { buildRevocation } from '../lib/revocation/revocation.js';
 import { buildEyeSet } from '../lib/eye/eye-set.js';
+import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
+import { signAgile, ML_DSA_65_SIGNATURE_BYTES } from '../packages/verify/pq-signature-agility.js';
 
 function ed25519() {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
@@ -89,6 +92,122 @@ describe('EP-ENVELOPE-v1 — PluginCannotWeaken', () => {
     registerProfile('urn:ep:profile:x-test:nonobj', { validateBody: () => undefined });
     const r = verifyEnvelope({ ep: EP_ENVELOPE_VERSION, profile: 'urn:ep:profile:x-test:nonobj', payload: {} });
     expect(r.valid).toBe(false);
+  });
+});
+
+describe('EP-ENVELOPE-v1: ML-DSA-65 envelope-level proofs', () => {
+  registerProfile('urn:ep:profile:x-pq:ok', { validateBody: () => ({ valid: true }) });
+
+  const KID = 'ep:key:envelope-pq#1';
+  const pq = ml_dsa65.keygen(new Uint8Array(32).fill(11));
+  const proofKeys = { [KID]: { alg: 'ML-DSA-65', public_key: pq.publicKey } };
+
+  const base = {
+    ep: EP_ENVELOPE_VERSION,
+    profile: 'urn:ep:profile:x-pq:ok',
+    payload: { action: { type: 'payment.capture.1' }, issued_at: '2026-08-17T00:00:00Z' },
+    binding: { action_hash: `sha256:${'2'.repeat(64)}` },
+  };
+
+  async function signed(env: any = base) {
+    const sig = await signAgile(new Uint8Array(envelopeProofBytes(env)), {
+      alg: 'ML-DSA-65', private_key: pq.secretKey, key_id: KID,
+    });
+    return { ...env, proofs: [{ algorithm: 'ML-DSA-65', kid: KID, signature: sig.sig }] };
+  }
+
+  it('an ML-DSA-65 envelope verifies structurally and cryptographically', async () => {
+    const env = await signed();
+    expect(verifyEnvelope(env).valid).toBe(true);
+    const proofs = await verifyEnvelopeProofs(env, { proofKeys });
+    expect(proofs.valid).toBe(true);
+    expect(proofs.results[0]).toMatchObject({ alg: 'ML-DSA-65', kid: KID, verified: true, reason: null });
+    const both = await verifyEnvelopeWithProofs(env, { proofKeys });
+    expect(both.valid).toBe(true);
+    expect(both.checks.proofs_valid).toBe(true);
+  });
+
+  it('a wrong-length ML-DSA signature refuses with the named reason, before any key is consulted', async () => {
+    const env = await signed();
+    const truncated = {
+      ...env,
+      proofs: [{
+        ...env.proofs[0],
+        signature: Buffer.from(env.proofs[0].signature, 'base64url').subarray(0, ML_DSA_65_SIGNATURE_BYTES - 1).toString('base64url'),
+      }],
+    };
+    // The structural pin fires in the synchronous shared pipeline.
+    const structural = verifyEnvelope(truncated);
+    expect(structural.valid).toBe(false);
+    expect(structural.checks.proof_signature_wellformed).toBe(false);
+    expect(structural.errors.some((e: string) => e.includes(PROOF_REASONS.MALFORMED_SIGNATURE))).toBe(true);
+    // And the agility path names the same reason with NO pinned key supplied,
+    // so the refusal cannot be mistaken for a key problem.
+    const proofs = await verifyEnvelopeProofs(truncated, { proofKeys });
+    expect(proofs.valid).toBe(false);
+    expect(proofs.results[0].reason).toBe(PROOF_REASONS.MALFORMED_SIGNATURE);
+  });
+
+  it('a tampered payload, a wrong key, and an unpinned kid all refuse', async () => {
+    const env = await signed();
+
+    const tampered = { ...env, payload: { ...env.payload, issued_at: '2099-01-01T00:00:00Z' } };
+    expect((await verifyEnvelopeProofs(tampered, { proofKeys })).valid).toBe(false);
+
+    const otherKey = ml_dsa65.keygen(new Uint8Array(32).fill(12));
+    const wrongKey = await verifyEnvelopeProofs(env, { proofKeys: { [KID]: { alg: 'ML-DSA-65', public_key: otherKey.publicKey } } });
+    expect(wrongKey.valid).toBe(false);
+    expect(wrongKey.results[0].reason).toBe('signature_invalid');
+
+    const unpinned = await verifyEnvelopeProofs(env, { proofKeys: {} });
+    expect(unpinned.valid).toBe(false);
+    expect(unpinned.results[0].reason).toBe(PROOF_REASONS.NO_PINNED_KEY);
+  });
+
+  it('refuses rather than skipping the leg when no ML-DSA backend is available', async () => {
+    const env = await signed();
+    const r = await verifyEnvelopeProofs(env, { proofKeys, agility: { mldsaBackendLoader: () => null } });
+    expect(r.valid).toBe(false);
+    expect(r.results[0].reason).toBe('pq_backend_unavailable');
+  });
+
+  it('never reports an algorithm it cannot evaluate as verified', async () => {
+    // ES256 and EdDSA stay structurally allowed for wrapped legacy profiles,
+    // but this verifier does not check them and says so.
+    for (const algorithm of ['ES256', 'EdDSA']) {
+      const env = { ...base, proofs: [{ algorithm, kid: KID, signature: 'AAAA' }] };
+      expect(verifyEnvelope(env).valid).toBe(true); // structurally allow-listed
+      const r = await verifyEnvelopeProofs(env, { proofKeys });
+      expect(r.valid).toBe(false);
+      expect(r.results[0].reason).toBe(PROOF_REASONS.ALG_NOT_VERIFIABLE_HERE);
+    }
+    // An envelope with no proofs cannot answer "do the proofs hold" with yes.
+    const none = await verifyEnvelopeProofs(base, { proofKeys });
+    expect(none.valid).toBe(false);
+    expect(none.reason).toBe('no_proofs');
+  });
+
+  it('a valid proof cannot rescue a structurally invalid envelope', async () => {
+    const bad = await signed({ ...base, profile: 'urn:ep:profile:x-unregistered:nope' });
+    const proofs = await verifyEnvelopeProofs(bad, { proofKeys });
+    expect(proofs.valid).toBe(true); // the signature itself is genuine
+    const both = await verifyEnvelopeWithProofs(bad, { proofKeys });
+    expect(both.valid).toBe(false); // ANDed with the shared pipeline
+  });
+
+  it('the existing algorithm allow-list is unchanged for Ed25519/EdDSA/ES256 and still refuses the rest', () => {
+    for (const algorithm of ['Ed25519', 'EdDSA', 'ES256', 'ML-DSA-65']) {
+      const r = verifyEnvelope({ ...base, proofs: [{ algorithm, signature: 'AAAA' }] });
+      // ML-DSA-65 is length-pinned; the other three keep their prior behavior
+      // of being allow-listed structurally without a signature check here.
+      expect(r.checks.proof_alg_allowed).toBe(true);
+      expect(r.valid).toBe(algorithm !== 'ML-DSA-65');
+    }
+    for (const algorithm of ['none', 'ES384', 'ML-DSA-44', 'HS256']) {
+      const r = verifyEnvelope({ ...base, proofs: [{ algorithm, signature: 'AAAA' }] });
+      expect(r.valid).toBe(false);
+      expect(r.checks.proof_alg_allowed).toBe(false);
+    }
   });
 });
 

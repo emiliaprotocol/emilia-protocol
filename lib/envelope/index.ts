@@ -11,10 +11,15 @@ import './profiles.js';
 
 export {
   EP_ENVELOPE_VERSION,
+  ENVELOPE_PROOF_DOMAIN,
+  PROOF_REASONS,
   registerProfile,
   getProfile,
   listProfiles,
   verifyEnvelope,
+  verifyEnvelopeProofs,
+  verifyEnvelopeWithProofs,
+  envelopeProofBytes,
   migrate,
   isWellFormedProfileUrn,
   isVendorProfileUrn,

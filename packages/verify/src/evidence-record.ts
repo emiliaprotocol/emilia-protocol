@@ -31,10 +31,12 @@
  */
 import crypto from 'node:crypto';
 import { canonicalize } from './index.js';
-import { verifyTimeAttestation, type TimeAttestation } from './time-attestation.js';
+import { verifyTimeAttestation, timeAttestationSignedBytes, type TimeAttestation } from './time-attestation.js';
 import {
+  AGILE_SIGNATURE_ALGORITHMS,
   signAgile,
   verifyAgileSignature,
+  verifyAgileSignatureSet,
   type AgileSigningKey,
   type AgileVerifyResult,
   type AgilityOptions,
@@ -77,6 +79,23 @@ function hashHexWith(alg: string, bytes: Buffer): string {
 export function verifyEvidenceRecord(record: EvidenceRecord | null | undefined, opts: EvidenceRecordOptions = {}) {
   opts = opts && typeof opts === 'object' ? opts : {};
   const tsaKeys = opts.tsaKeys || {};
+  // The v1 signature verdict: Ed25519 under a pinned TSA key, unchanged.
+  return walkEvidenceRecord(record, opts, (ta) => verifyTimeAttestation(ta, { tsaKeys }).valid);
+}
+
+/**
+ * The chain walk shared by the v1 verifier above and the algorithm-agile one
+ * below. Everything except the per-attestation SIGNATURE verdict lives here:
+ * version, protected-hash binding, hash linkage between renewals, and monotonic
+ * time. The signature verdict is injected, so the two entry points can differ
+ * in which algorithms they accept while provably walking the same chain -- the
+ * alternative, a second copy of this loop, is how two verifiers drift apart.
+ */
+function walkEvidenceRecord(
+  record: EvidenceRecord | null | undefined,
+  opts: EvidenceRecordOptions,
+  attestationValid: (ta: TimeAttestation | null | undefined, index: number) => boolean,
+) {
   const checks: Record<string, boolean> = {
     version: false,
     protected_bound: true,      // record.protected_hash == opts.protectedHash (vacuous if not supplied)
@@ -112,8 +131,7 @@ export function verifyEvidenceRecord(record: EvidenceRecord | null | undefined, 
     let firstTime = null;
     for (let i = 0; i < ats.length; i++) {
       const ta = ats[i]?.time_attestation;
-      const r = verifyTimeAttestation(ta, { tsaKeys });
-      if (!r.valid) fail('all_timestamps_valid', `archive timestamp ${i} TSA attestation does not verify`);
+      if (!attestationValid(ta, i)) fail('all_timestamps_valid', `archive timestamp ${i} TSA attestation does not verify`);
 
       const cur = algOf(ta?.hashed);
       if (i === 0) {
@@ -144,6 +162,199 @@ export function verifyEvidenceRecord(record: EvidenceRecord | null | undefined, 
   } catch {
     return { valid: false, checks, errors };
   }
+}
+
+// =============================================================================
+// BASE-RECORD ALGORITHM AGILITY (additive; verifyEvidenceRecord is unchanged)
+// =============================================================================
+//
+// The re-attestation chain further down has been algorithm-agile since it
+// landed. The BASE record was not: its protection is a chain of
+// EP-TIME-ATTESTATION-v1 renewals, and verifyTimeAttestation checks Ed25519 and
+// nothing else. That is the right default for a v1 record and stays the
+// default -- verifyEvidenceRecord above still routes every attestation through
+// it, byte for byte as before.
+//
+// verifyEvidenceRecordAgile is the opt-in sibling for records whose TSA moved.
+// It walks the SAME chain (shared walkEvidenceRecord) and differs in exactly
+// one place: how an attestation's proof is checked.
+//
+//   - A v1-shaped proof (no `algorithm`, or `algorithm: 'Ed25519'`, single
+//     `signature_b64u`) is handed to verifyTimeAttestation unchanged. A record
+//     that verified under verifyEvidenceRecord verifies here identically.
+//   - A proof declaring `algorithm: 'ML-DSA-65'` is checked by
+//     EP-SIG-AGILITY-v1's verifyAgileSignature over the SAME recomputed bytes
+//     (timeAttestationSignedBytes), under the algorithm-tagged pinned key. The
+//     closed registry, the key pin, the exact signature-length pin, and the
+//     "no backend is a refusal" rule all belong to that module; none of them is
+//     reimplemented here.
+//   - A SET-SHAPED proof (`proof.signatures: [...]`) goes to
+//     verifyAgileSignatureSet under policy `hybrid_all`, with
+//     requiredAlgorithms defaulting to the FULL registry. This is the rule
+//     worth naming: a set-shaped proof is NEVER accepted on one leg. Present
+//     two legs and both must verify; present one leg inside a set-shaped proof
+//     and it refuses with `missing_required_algorithm`, not "well, the Ed25519
+//     one was fine". A relying party may narrow requiredAlgorithms
+//     deliberately, and narrowing it is a decision it makes in the open; the
+//     default never narrows itself to whatever happened to be presented.
+//
+// HONEST BOUNDARY, unchanged from the v1 verifier: this proves the artifact was
+// continuously time-anchored by pinned authorities under algorithms the relying
+// party accepts. It does not prove the artifact was correct, and it does not
+// prove any renewal happened before its predecessor algorithm actually broke.
+
+/** A pinned TSA key for the agile base verifier. */
+export interface AgileTsaPin {
+  /** EP-SIG-AGILITY-v1 algorithm this key belongs to. */
+  alg?: string;
+  /** Ed25519: base64url SPKI DER. ML-DSA-65: 1952 raw bytes or base64url. */
+  public_key?: string | Uint8Array;
+  /** For set-shaped proofs: one pinned key per algorithm in the set. */
+  keys?: Array<{ alg: string; public_key: string | Uint8Array; key_id?: string }>;
+}
+
+export interface AgileEvidenceRecordOptions extends AgilityOptions {
+  /** Pinned TSA keys by ts_authority_id. v1 `{public_key}` pins still work. */
+  tsaKeys?: Record<string, { public_key?: string } & AgileTsaPin>;
+  /** The hash of the artifact the relying party HOLDS; binds the record to it. */
+  protectedHash?: string;
+  /**
+   * Set-shaped proofs only: the algorithms the relying party REQUIRES to be
+   * present. Defaults to the FULL EP-SIG-AGILITY-v1 registry (fail-closed).
+   */
+  requiredAlgorithms?: readonly string[];
+}
+
+/**
+ * The pinned key for ONE algorithm on a TSA pin, or null.
+ *
+ * `keys` is checked first because a chain that renews across an algorithm
+ * transition needs BOTH keys pinned for the same authority: the Ed25519 leg
+ * that was signed before the move and the ML-DSA-65 leg signed after it. The
+ * flat `{alg, public_key}` form stays for the single-algorithm case. A pin that
+ * does not name this algorithm is a refusal, never a fallback to whatever key
+ * happens to be on the pin.
+ */
+function pinnedKeyForAlgorithm(pin: AgileTsaPin, alg: string): { public_key: string | Uint8Array } | null {
+  if (Array.isArray(pin.keys)) {
+    const match = pin.keys.find((k) => k && k.alg === alg && k.public_key !== undefined && k.public_key !== null);
+    if (match) return { public_key: match.public_key };
+  }
+  if (pin.alg === alg && pin.public_key !== undefined && pin.public_key !== null) {
+    return { public_key: pin.public_key };
+  }
+  return null;
+}
+
+/** True when a proof needs the agile path rather than the v1 Ed25519 path. */
+function isAgileShapedProof(proof: unknown): boolean {
+  if (!proof || typeof proof !== 'object' || Array.isArray(proof)) return false;
+  const p = proof as Record<string, unknown>;
+  if (Array.isArray(p.signatures)) return true;
+  return typeof p.algorithm === 'string' && p.algorithm !== 'Ed25519';
+}
+
+/**
+ * Verify ONE archive timestamp's proof under the agile rules above.
+ * Never throws; every refusal is a false verdict the chain walk reports.
+ */
+async function agileAttestationValid(
+  att: TimeAttestation | null | undefined,
+  opts: AgileEvidenceRecordOptions,
+): Promise<boolean> {
+  const tsaKeys = opts.tsaKeys || {};
+  if (!att || typeof att !== 'object') return false;
+  const proof = (att.proof || null) as Record<string, any> | null;
+
+  // v1 shape: unchanged path, unchanged verdict.
+  if (!isAgileShapedProof(proof)) {
+    return verifyTimeAttestation(att, { tsaKeys: tsaKeys as Record<string, { public_key: string }> }).valid;
+  }
+
+  // The agile path still requires everything the v1 path requires apart from
+  // the signature itself: the right version, a pinned authority, a parseable
+  // instant. A record that skipped these would be trading one check for another
+  // rather than adding an algorithm.
+  const authorityId = typeof att.ts_authority_id === 'string' ? att.ts_authority_id : '';
+  const pin = tsaKeys[authorityId];
+  if (att['@version'] !== 'EP-TIME-ATTESTATION-v1') return false;
+  if (!pin || typeof pin !== 'object') return false;
+  if (typeof att.time !== 'string' || Number.isNaN(Date.parse(att.time))) return false;
+
+  let messageBytes: Uint8Array;
+  try {
+    messageBytes = new Uint8Array(timeAttestationSignedBytes(att));
+  } catch {
+    return false;
+  }
+
+  // Set-shaped: every required algorithm present, every presented leg valid.
+  if (Array.isArray(proof?.signatures)) {
+    const pinnedKeys = Array.isArray(pin.keys) ? pin.keys : null;
+    if (!pinnedKeys || pinnedKeys.length === 0) return false;
+    const required = Array.isArray(opts.requiredAlgorithms) && opts.requiredAlgorithms.length > 0
+      ? opts.requiredAlgorithms
+      : AGILE_SIGNATURE_ALGORITHMS;
+    const result = await verifyAgileSignatureSet(messageBytes, proof.signatures, pinnedKeys, {
+      ...agilityPassthrough(opts),
+      policy: 'hybrid_all',
+      requiredAlgorithms: [...required],
+    });
+    return result.verified === true;
+  }
+
+  // Single agile signature under one pinned, algorithm-tagged key.
+  if (!proof) return false;
+  const alg = typeof proof.algorithm === 'string' ? proof.algorithm : null;
+  if (alg === null) return false;
+  const pinnedKey = pinnedKeyForAlgorithm(pin, alg);
+  if (pinnedKey === null) return false;
+  // Same discipline as verifyTimeAttestation: a presented key that disagrees
+  // with the pinned one refuses, rather than being quietly ignored.
+  if (proof.public_key !== undefined && proof.public_key !== null && proof.public_key !== pinnedKey.public_key) {
+    return false;
+  }
+  const keyId = typeof proof.ts_key_id === 'string' ? proof.ts_key_id : undefined;
+  const result = await verifyAgileSignature(
+    messageBytes,
+    { alg, sig: proof.signature_b64u ?? proof.sig, key_id: keyId },
+    { alg, public_key: pinnedKey.public_key, key_id: keyId },
+    agilityPassthrough(opts),
+  );
+  return result.verified === true;
+}
+
+function agilityPassthrough(opts: AgilityOptions): AgilityOptions {
+  const out: AgilityOptions = {};
+  if (opts.mldsaBackend !== undefined) out.mldsaBackend = opts.mldsaBackend;
+  if (opts.mldsaBackendLoader !== undefined) out.mldsaBackendLoader = opts.mldsaBackendLoader;
+  if (opts.deterministic !== undefined) out.deterministic = opts.deterministic;
+  return out;
+}
+
+/**
+ * Algorithm-agile verification of an EP-EVIDENCE-RECORD-v1 base record.
+ *
+ * Same result shape and same chain checks as verifyEvidenceRecord; the only
+ * difference is which signature algorithms an archive timestamp may carry. v1
+ * Ed25519 records are routed through the unchanged v1 path and get an identical
+ * verdict. FAIL-CLOSED: an unpinned authority, an unknown algorithm, a missing
+ * ML-DSA backend, or a set-shaped proof missing a required leg is a false
+ * verdict with the chain's own error message, never a pass.
+ */
+export async function verifyEvidenceRecordAgile(
+  record: EvidenceRecord | null | undefined,
+  opts: AgileEvidenceRecordOptions = {},
+) {
+  opts = opts && typeof opts === 'object' ? opts : {};
+  const ats = Array.isArray(record?.archive_timestamps) ? record!.archive_timestamps! : [];
+  // Signature verdicts are computed up front so the shared (synchronous) chain
+  // walk stays one implementation rather than gaining an async twin.
+  const verdicts: boolean[] = [];
+  for (let i = 0; i < ats.length; i++) {
+    verdicts.push(await agileAttestationValid(ats[i]?.time_attestation, opts));
+  }
+  return walkEvidenceRecord(record, opts as EvidenceRecordOptions, (_ta, i) => verdicts[i] === true);
 }
 
 // =============================================================================
