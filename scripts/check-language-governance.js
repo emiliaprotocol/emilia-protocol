@@ -23,6 +23,44 @@ const ROOT = resolve(import.meta.dirname, '..');
  *   exclude  — optional function(line) returning true to allow specific uses
  */
 const RETIRED_PHRASES = [
+    // PQ/COSE claim guardrails (Sol review 2026-08-17). The PQ lane is an
+    // opt-in prototype: closed Ed25519/ML-DSA-65 verification exists, but it
+    // is not the default receipt format, not FIPS validated, not deployed,
+    // and the COSE envelope is a transport, not a SCITT Signed Statement.
+    // Negated uses ("not FIPS validated") are the honest boundary and allowed.
+    {
+        label: 'quantum-safe (implies deployed PQ default)',
+        pattern: /quantum[- ]safe/i,
+        // Allowed: negations and code file paths (lib/quantum-safe.ts legacy module).
+        exclude: (line) => /not quantum[- ]safe/i.test(line) || /quantum-safe\.(js|ts)/.test(line) || /\bno\b[^.]{0,50}quantum[- ]safe/i.test(line),
+    },
+    {
+        label: 'post-quantum receipts (PQ is opt-in prototype, not the receipt format)',
+        pattern: /post-quantum receipts?/i,
+        // Allowed: negations, and the earned qualified sentence naming the opt-in
+        // hybrid profile (EP-RECEIPT-HYBRID-v1) on the same line.
+        exclude: (line) => /not post-quantum/i.test(line) || /opt-in/i.test(line) || /honest sentence/i.test(line),
+    },
+    {
+        label: 'FIPS compliant/validated (nothing is FIPS validated)',
+        pattern: /FIPS[- ](compliant|validated|certified)/i,
+        // Negated honest-boundary forms are canonical and allowed ("not FIPS
+        // validated", "not a FIPS-validated module", "does NOT earn FIPS
+        // compliant"), and QUOTED mentions are allowed (policy text discussing
+        // the banned phrase is a mention, not a claim).
+        exclude: (line) => /\bnot\b[^.]{0,80}FIPS[- ](compliant|validated|certified)/i.test(line)
+            || /["'“]FIPS[- ](compliant|validated|certified)[.,;]?["'”]/.test(line)
+            || /FIPS[- ]validated\s+(cryptographic\s+)?(module|provider)/i.test(line),
+    },
+    {
+        label: 'SCITT integrated/ready (transport envelope only, no Signed Statement profile)',
+        pattern: /SCITT[- ](integrated|ready)|SCITT-envelope-ready/i,
+        exclude: (line) => /not (yet )?SCITT[- ](integrated|ready)/i.test(line),
+    },
+    {
+        label: 'post-quantum COSE (conflates tracks: generic COSE envelope is EdDSA; ML-DSA-65 COSE is the McGraw adapter only)',
+        pattern: /post-quantum cose|quantum[- ]resistant cose/i,
+    },
     {
         label: 'machine counterparties',
         pattern: /machine counterparties/i,
@@ -119,7 +157,7 @@ function walk(dir, results = []) {
 function collectScanTargets() {
     const files = [];
     // Directories to scan recursively
-    const scanDirs = ['docs', 'content', 'app', 'sdks'];
+    const scanDirs = ['docs', 'content', 'app', 'sdks', 'conformance', 'standards/staged', 'packages/verify/src'];
     for (const d of scanDirs) {
         const dir = join(ROOT, d);
         if (existsSync(dir)) {
