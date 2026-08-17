@@ -12,6 +12,7 @@
  * the budget.  The reservation remains blocked until reconciliation.
  */
 import { randomBytes, type KeyObject } from 'node:crypto';
+import { type AgilityOptions } from '@emilia-protocol/verify/pq-signature-agility';
 export declare const CAPABILITY_RECEIPT_VERSION = "EP-CAPABILITY-RECEIPT-v1";
 export declare const CAPABILITY_STATE_VERSION = "EP-CAPABILITY-STATE-v1";
 export declare const CAPABILITY_SHARE_VERSION = "EP-CAPABILITY-SHARE-v1";
@@ -783,8 +784,186 @@ export declare function delegateCapabilityReceipt({ parentCapabilityReceipt, par
     remaining: any;
     reason?: undefined;
 }>;
+/**
+ * REFERENCE-DERIVED HYBRID MIGRATION. Copies, move for move, the reference hybrid
+ * migration in docs/protocol/pq-hybrid-program.md, section "PATTERN: the
+ * reference hybrid migration" (EP-REVOCATION-v2, packages/verify/src/revocation.ts):
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. A second signature changes the SHAPE of
+ *    `capability_signature`, a wire-format change, so the artifact takes a new
+ *    `@version` (EP-CAPABILITY-RECEIPT-v2). verifyCapabilityReceipt (v1) is
+ *    untouched and refuses a v2 envelope on the version marker
+ *    ('malformed_capability_receipt') before inspecting any signature; it never
+ *    throws on caller input.
+ * 2. SET SHAPE. `capability_signature` carries `required_algorithms` plus a
+ *    `signatures` array shaped exactly like EP-SIG-AGILITY-v1's AgileSignature
+ *    ({ alg, sig, key_id? }), one per algorithm in the registered order. Ed25519
+ *    keeps its base64url SPKI DER public key; ML-DSA-65 carries raw base64url
+ *    public key bytes.
+ * 3. ANTI-STRIPPING BYTES. The required algorithm SET is committed INSIDE the
+ *    signed bytes (capabilityV2SignedPayload below), over the SAME canonical
+ *    unsigned body v1 signs plus `required_algorithms`. Drop the ML-DSA leg and
+ *    narrow `required_algorithms` and the surviving Ed25519 signature no longer
+ *    verifies. The verifier rebuilds the bytes from the REGISTERED set.
+ * 4. V1 COMPATIBILITY. v1 envelopes keep verifying through the unchanged
+ *    synchronous verifyCapabilityReceipt; v2 verification is ASYNC (ML-DSA is
+ *    async), so it is a SEPARATE entry point, with verifyCapabilityReceiptAny()
+ *    routing on @version. The v1 verifier is never made async.
+ * 5. NAMED REFUSALS. Every failure returns a named reason; nothing throws on
+ *    caller input. An absent ML-DSA backend is 'capability_pq_backend_unavailable'
+ *    surfaced through the agility result, never a skipped check and never a pass on
+ *    the classical leg.
+ *
+ * HONEST BOUNDARIES carry over from v1: the envelope authenticates issuer-signed
+ * capability metadata; spend state is never trusted from the envelope, and every
+ * spend must still pass through the atomic capability store. The ML-DSA backend is
+ * @noble/post-quantum's pure-JS FIPS 204 implementation, not independently audited
+ * and not a FIPS validated module. v2 does NOT retroactively protect v1 envelopes.
+ */
+export declare const CAPABILITY_RECEIPT_V2_VERSION = "EP-CAPABILITY-RECEIPT-v2";
+/** The registered required algorithm set, in canonical order. */
+export declare const CAPABILITY_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+export interface CapabilityV2IssuerPin {
+    /** Ed25519 base64url SPKI DER. */
+    public_key: string;
+    /** ML-DSA-65 base64url raw public key bytes. */
+    pq_public_key: string;
+}
+/**
+ * The bytes BOTH legs sign: the SAME canonical unsigned body v1 signs, under the
+ * v2 marker, plus the committed `required_algorithms` set. Recomputed
+ * independently by the verifier from the PRESENTED receipt/capability and the
+ * REGISTERED set. See PATTERN move 3.
+ */
+export declare function capabilityV2SignedPayload(receipt: any, capability: any, requiredAlgorithms?: readonly string[]): Buffer;
+/**
+ * Mint a signed HYBRID capability envelope. Reuses mintCapabilityReceipt for the
+ * entire receipt/capability construction and validation, then re-signs the same
+ * canonical body under both algorithms. For m-of-n > 1 the raw secret is not
+ * returned; distribute the returned shares instead. Issuance throws on invalid
+ * local input; verification below never throws.
+ */
+export declare function mintCapabilityReceiptV2(baseReceipt: any, options?: {
+    issuerPrivateKey?: KeyMaterial;
+    pqPublicKey?: string;
+    pqPrivateKey?: string | Uint8Array;
+    budget?: CapabilityBudget;
+    expiry?: string | number;
+    threshold?: {
+        m: number;
+        n: number;
+    };
+    revocationMode?: CapabilityRevocationMode;
+    scope?: Record<string, any>;
+    delegationChain?: any[];
+    capabilityId?: string;
+    secret?: Buffer | string;
+}): Promise<Readonly<{
+    capabilityReceipt: Readonly<{
+        '@version': string;
+        receipt: Record<string, any>;
+        capability: {
+            version: string;
+            id: string;
+            secret_hash: string;
+            budget: {
+                amount: any;
+                currency: string;
+            };
+            consumed: number;
+            threshold: {
+                m: number;
+                n: number;
+            };
+            revocation_mode: "direct" | "cascade";
+            scope: any;
+            delegation_chain: Record<string, any>[];
+            expiry: string;
+        };
+        capability_signature: {
+            profile: string;
+            required_algorithms: ("Ed25519" | "ML-DSA-65")[];
+            public_key: string;
+            key_id: string;
+            pq_public_key: string;
+            pq_key_id: string;
+            signatures: import("@emilia-protocol/verify/pq-signature-agility").AgileSignature[];
+        };
+    }>;
+    secret: Buffer<ArrayBuffer> | null;
+    shares: string[] | null;
+}>>;
+/**
+ * FAIL-CLOSED hybrid verifier for one EP-CAPABILITY-RECEIPT-v2 envelope. Never
+ * throws on caller input; a v2 envelope NEVER verifies on one leg alone. Trust
+ * follows the same model as v1: a pinned issuer PAIR is required unless
+ * allowUntrustedIssuer is set, in which case the presented (self-asserted) pair is
+ * used and is explicitly untrusted.
+ */
+export declare function verifyCapabilityReceiptV2(capabilityReceipt: any, { trustedIssuerKeys, allowUntrustedIssuer, mldsaBackend, mldsaBackendLoader, }?: {
+    trustedIssuerKeys?: CapabilityV2IssuerPin[];
+    allowUntrustedIssuer?: boolean;
+    mldsaBackend?: AgilityOptions['mldsaBackend'];
+    mldsaBackendLoader?: AgilityOptions['mldsaBackendLoader'];
+}): Promise<{
+    ok: boolean;
+    reason: string;
+    receipt?: undefined;
+    capability?: undefined;
+    issuer_public_key?: undefined;
+    issuer_pq_public_key?: undefined;
+    issuer_trusted?: undefined;
+    detail?: undefined;
+} | {
+    ok: boolean;
+    receipt: Record<string, any>;
+    capability: any;
+    issuer_public_key: any;
+    issuer_pq_public_key: any;
+    issuer_trusted: boolean;
+    reason?: undefined;
+    detail?: undefined;
+} | {
+    ok: boolean;
+    reason: string;
+    detail: string;
+    receipt?: undefined;
+    capability?: undefined;
+    issuer_public_key?: undefined;
+    issuer_pq_public_key?: undefined;
+    issuer_trusted?: undefined;
+}>;
+/**
+ * Route an envelope of EITHER version to its verifier. v1 envelopes keep the exact
+ * v1 verdict; v2 envelopes get the hybrid check. An envelope whose @version is
+ * neither refuses through the v1 verifier, which is fail-closed.
+ */
+export declare function verifyCapabilityReceiptAny(capabilityReceipt: any, options?: any): Promise<{
+    ok: boolean;
+    reason: string;
+    receipt?: undefined;
+    capability?: undefined;
+    issuer_public_key?: undefined;
+    detail?: undefined;
+} | {
+    ok: boolean;
+    receipt: Record<string, any>;
+    capability: any;
+    issuer_public_key: any;
+    reason?: undefined;
+    detail?: undefined;
+} | {
+    ok: boolean;
+    reason: string;
+    detail: string;
+    receipt?: undefined;
+    capability?: undefined;
+    issuer_public_key?: undefined;
+}>;
 declare const _default: {
     CAPABILITY_RECEIPT_VERSION: string;
+    CAPABILITY_RECEIPT_V2_VERSION: string;
+    CAPABILITY_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
     CAPABILITY_STATE_VERSION: string;
     CAPABILITY_SHARE_VERSION: string;
     CAPABILITY_SCOPE_PROFILE: string;

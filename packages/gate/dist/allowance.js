@@ -10,8 +10,9 @@
  */
 import { createHash, createPublicKey, randomUUID, } from 'node:crypto';
 import { CAPABILITY_ALLOWANCE_SCOPE_PROFILE, capabilityActionDigest, capabilityBaseReceiptDigest, executeWithCapability, mintCapabilityReceipt, } from './capability-receipt.js';
-import { RISK_DIGEST, riskClone, riskDigest, riskExact, riskFreeze, riskIdentifier, riskInstant, riskRecord, signRiskBody, verifyRiskBody, } from './reliance-risk-crypto.js';
+import { RISK_DIGEST, riskClone, riskDigest, riskExact, riskFreeze, riskIdentifier, riskInstant, riskRecord, signRiskBody, signRiskBodyV2, verifyRiskBody, verifyRiskBodyV2, } from './reliance-risk-crypto.js';
 export const GATE_ALLOWANCE_VERSION = 'EP-GATE-ALLOWANCE-v1';
+export const GATE_ALLOWANCE_V2_VERSION = 'EP-GATE-ALLOWANCE-v2';
 export const GATE_ALLOWANCE_CLAIM_BOUNDARY = 'one_bounded_period_and_typed_connector_not_recurring_schedule_generic_tool_safety_or_complete_mediation';
 const ALLOWANCE_BODY_KEYS = [
     '@version',
@@ -214,6 +215,82 @@ export function allowanceDigest(artifact) {
 /** Verify signature, closed shape, validity, and relying-party context. */
 export function verifyGateAllowance(artifact, { trusted_keys, now = Date.now, expected_allowance_id, expected_tenant_id, expected_subject_id, expected_audience, expected_connector_id, expected_authorizer_id, } = {}) {
     const verified = verifyRiskBody(artifact, GATE_ALLOWANCE_VERSION, trusted_keys);
+    if (!verified.valid || !verified.body) {
+        return {
+            accepted: false,
+            reason: verified.reason === 'issuer_untrusted'
+                ? 'allowance_issuer_untrusted'
+                : 'allowance_signature_invalid',
+        };
+    }
+    const body = verified.body;
+    try {
+        if (!riskExact(body, ALLOWANCE_BODY_KEYS)
+            || body.claim_boundary !== GATE_ALLOWANCE_CLAIM_BOUNDARY) {
+            return { accepted: false, reason: 'allowance_shape_invalid' };
+        }
+        const normalized = normalizeAllowanceInput(Object.fromEntries(ALLOWANCE_INPUT_KEYS.map((key) => [key, body[key]])));
+        const instant = nowMilliseconds(now);
+        if (instant < riskInstant(normalized.valid_from))
+            return { accepted: false, reason: 'allowance_not_yet_valid' };
+        if (instant >= riskInstant(normalized.expires_at))
+            return { accepted: false, reason: 'allowance_expired' };
+        const comparisons = [
+            ['allowance_id', expected_allowance_id, body.allowance_id],
+            ['tenant', expected_tenant_id, body.tenant_id],
+            ['subject', expected_subject_id, body.subject_id],
+            ['audience', expected_audience, body.audience],
+            ['connector', expected_connector_id, body.connector_id],
+            ['authorizer', expected_authorizer_id, body.issuer.id],
+        ];
+        for (const [label, expected, actual] of comparisons) {
+            if (typeof expected !== 'string' || expected.length === 0) {
+                return { accepted: false, reason: `expected_${label}_required` };
+            }
+            if (actual !== expected)
+                return { accepted: false, reason: `${label}_mismatch` };
+        }
+        return {
+            accepted: true,
+            reason: null,
+            allowance: riskFreeze(riskClone(artifact)),
+            allowance_digest: allowanceDigest(artifact),
+            authorization_receipt_digest: body.authorization_receipt_digest,
+        };
+    }
+    catch {
+        return { accepted: false, reason: 'allowance_shape_invalid' };
+    }
+}
+/**
+ * EP-GATE-ALLOWANCE-v2 -- the hybrid (Ed25519 + ML-DSA-65) allowance profile.
+ *
+ * Reference: "PATTERN: the reference hybrid migration" (EP-REVOCATION-v2) in
+ * docs/protocol/pq-hybrid-program.md. This is a VERSION BUMP, not a field bump:
+ * the -v2 marker carries the set-committed hybrid proof through signRiskBodyV2,
+ * while signGateAllowance / verifyGateAllowance above keep the flat single
+ * Ed25519 proof unchanged. A deployed v1 verifier handed a v2 allowance refuses
+ * on its version/envelope check before inspecting any signature.
+ *
+ * Sign a closed Gate allowance with a customer-controlled Ed25519 + ML-DSA-65
+ * key pair. ASYNC because ML-DSA verification/signing is async.
+ */
+export async function signGateAllowanceV2(input, signer, options = {}) {
+    const allowance = normalizeAllowanceInput(input);
+    return signRiskBodyV2(GATE_ALLOWANCE_V2_VERSION, {
+        '@version': GATE_ALLOWANCE_V2_VERSION,
+        ...allowance,
+        claim_boundary: GATE_ALLOWANCE_CLAIM_BOUNDARY,
+    }, signer, options);
+}
+/**
+ * Verify signature set, closed shape, validity window, and relying-party
+ * context for an EP-GATE-ALLOWANCE-v2 artifact. FAIL-CLOSED and never throws on
+ * presenter-controlled input; a v2 allowance NEVER verifies on one leg alone.
+ * See "PATTERN: the reference hybrid migration" in docs/protocol/pq-hybrid-program.md.
+ */
+export async function verifyGateAllowanceV2(artifact, { trusted_keys, now = Date.now, expected_allowance_id, expected_tenant_id, expected_subject_id, expected_audience, expected_connector_id, expected_authorizer_id, options, } = {}) {
+    const verified = await verifyRiskBodyV2(artifact, GATE_ALLOWANCE_V2_VERSION, trusted_keys, options ?? {});
     if (!verified.valid || !verified.body) {
         return {
             accepted: false,
@@ -530,10 +607,13 @@ export async function executeWithGateAllowance({ allowance, capabilityReceipt, s
 }
 export default {
     GATE_ALLOWANCE_VERSION,
+    GATE_ALLOWANCE_V2_VERSION,
     GATE_ALLOWANCE_CLAIM_BOUNDARY,
     allowanceDigest,
     signGateAllowance,
     verifyGateAllowance,
+    signGateAllowanceV2,
+    verifyGateAllowanceV2,
     issueGateAllowance,
     executeWithGateAllowance,
 };

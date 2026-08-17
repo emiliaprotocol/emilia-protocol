@@ -12,9 +12,15 @@
 import crypto from 'node:crypto';
 import { canonicalize } from './execution-binding.js';
 import { strictJsonGate } from './strict-json.js';
+import { signAgileSet, verifyAgileSignatureSet, ML_DSA_65_PUBLIC_KEY_BYTES, } from '@emilia-protocol/verify/pq-signature-agility';
 export const NETWORK_WITNESS_VERSION = 'EP-GATE-NETWORK-WITNESS-v1';
+export const NETWORK_WITNESS_V2_VERSION = 'EP-GATE-NETWORK-WITNESS-v2';
 export const NETWORK_WITNESS_ACCEPTANCE_VERSION = 'EP-GATE-NETWORK-WITNESS-ACCEPTANCE-v1';
+export const NETWORK_WITNESS_ACCEPTANCE_V2_VERSION = 'EP-GATE-NETWORK-WITNESS-ACCEPTANCE-v2';
 export const NETWORK_WITNESS_DOMAIN = `${NETWORK_WITNESS_VERSION}\0`;
+export const NETWORK_WITNESS_V2_DOMAIN = `${NETWORK_WITNESS_V2_VERSION}\0`;
+/** The registered required algorithm set for the hybrid witness, canonical order. */
+export const NETWORK_WITNESS_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
 export const NETWORK_WITNESS_EVENTS = Object.freeze([
     'request_observed',
     'response_observed',
@@ -101,11 +107,11 @@ export function parseNetworkWitnessStatement(raw, { maxBytes = 64 * 1024 } = {})
         return null;
     }
 }
-function validateBody(body) {
+function validateBody(body, expectedVersion = NETWORK_WITNESS_VERSION) {
     if (!exactKeys(body, new Set(['@version', 'witness', 'observation', 'deployment', 'privacy', 'limitations']))) {
         return 'statement_shape_invalid';
     }
-    if (body['@version'] !== NETWORK_WITNESS_VERSION)
+    if (body['@version'] !== expectedVersion)
         return 'version_invalid';
     if (!exactKeys(body.witness, new Set(['id', 'key_id', 'capture_point_id'])))
         return 'witness_shape_invalid';
@@ -363,10 +369,10 @@ export function createMemoryWitnessSequenceStore() {
         snapshot() { return [...streams.entries()].map(([stream_id, value]) => ({ stream_id, ...value })); },
     };
 }
-function acceptanceResult(verified, { accepted, consumed, reason, sequenceStoreDurable, }) {
+function acceptanceResult(verified, { accepted, consumed, reason, sequenceStoreDurable, acceptanceVersion = NETWORK_WITNESS_ACCEPTANCE_VERSION, }) {
     return Object.freeze({
         ...verified,
-        acceptance_version: NETWORK_WITNESS_ACCEPTANCE_VERSION,
+        acceptance_version: acceptanceVersion,
         accepted,
         consumed,
         reason,
@@ -505,15 +511,334 @@ export async function acceptNetworkWitnessStatement(statement, options = {}) {
         });
     }
 }
+function algorithmSetMatchesRegistered(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === NETWORK_WITNESS_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === NETWORK_WITNESS_V2_REQUIRED_ALGORITHMS[i]);
+}
+/**
+ * The bytes BOTH legs sign: the v2 domain tag, the required algorithm SET
+ * (committed inside the bytes for anti-stripping), and the canonical body. The
+ * verifier rebuilds these from the PRESENTED body and the REGISTERED set.
+ */
+function signingBytesV2(body, requiredAlgorithms = NETWORK_WITNESS_V2_REQUIRED_ALGORITHMS) {
+    if (!algorithmSetMatchesRegistered(requiredAlgorithms)) {
+        throw new Error('signingBytesV2: algorithm set is not the registered EP-GATE-NETWORK-WITNESS-v2 set');
+    }
+    return Buffer.from(NETWORK_WITNESS_V2_DOMAIN + canonicalize({ required_algorithms: [...requiredAlgorithms], body }), 'utf8');
+}
+function unsignedV2(statement) {
+    if (!isPlainObject(statement))
+        throw new TypeError('network witness statement must be an object');
+    const { proof: _proof, ...body } = statement;
+    return body;
+}
+export function networkWitnessV2Digest(statement) {
+    return `sha256:${sha256(signingBytesV2(unsignedV2(statement)))}`;
+}
+function witnessAgilityPassthrough(options) {
+    const out = {};
+    if (options.mldsaBackend !== undefined)
+        out.mldsaBackend = options.mldsaBackend;
+    if (options.mldsaBackendLoader !== undefined)
+        out.mldsaBackendLoader = options.mldsaBackendLoader;
+    return out;
+}
+/**
+ * Create a hybrid signed observation. Reference: "PATTERN: the reference hybrid
+ * migration" in docs/protocol/pq-hybrid-program.md. VERSION BUMP, not a field
+ * bump; the required algorithm set is committed into the signed bytes; ASYNC
+ * because ML-DSA signing is async. The public keys are intentionally not
+ * embedded (identified-but-not-trusted; the relying party pins both halves).
+ */
+export async function signNetworkWitnessStatementV2(input, keys, options = {}) {
+    if (!keys || !keys.edPrivateKey)
+        throw new TypeError('edPrivateKey is required');
+    if (keys.pqPrivateKey === undefined || keys.pqPrivateKey === null)
+        throw new TypeError('pqPrivateKey is required');
+    const keyId = input?.key_id ?? keyIdFor(keys.edPrivateKey);
+    const body = {
+        '@version': NETWORK_WITNESS_V2_VERSION,
+        witness: {
+            id: input?.witness_id,
+            key_id: keyId,
+            capture_point_id: input?.capture_point_id,
+        },
+        observation: {
+            sequence: input?.sequence,
+            observed_at: input?.observed_at,
+            event: input?.event,
+            direction: input?.direction,
+            action_digest: input?.action_digest,
+            ...(input?.flow_digest !== undefined ? { flow_digest: input.flow_digest } : {}),
+            ...(input?.byte_count !== undefined ? { byte_count: input.byte_count } : {}),
+        },
+        deployment: {
+            config_digest: input?.config_digest,
+            ...(input?.attestation_ref !== undefined ? { attestation_ref: input.attestation_ref } : {}),
+        },
+        privacy: { payload_captured: false },
+        limitations: [
+            'This artifact proves only that a pinned witness key signed an observation at a named capture point.',
+            'A passive network witness does not authorize, block, execute, or prove the physical outcome of an action.',
+            'Coverage and completeness depend on the relying party pinning the capture topology and expected witness set.',
+            'Rollback detection begins at a relying-party-pinned stream checkpoint; first-seen sequence numbers are not self-authenticating history.',
+        ],
+    };
+    const invalid = validateBody(body, NETWORK_WITNESS_V2_VERSION);
+    if (invalid)
+        throw new TypeError(invalid);
+    const statementDigest = networkWitnessV2Digest(body);
+    const signatures = await signAgileSet(new Uint8Array(signingBytesV2(body)), [
+        { alg: 'Ed25519', private_key: keys.edPrivateKey, key_id: keyId },
+        { alg: 'ML-DSA-65', private_key: keys.pqPrivateKey, key_id: keyId },
+    ], options);
+    const byAlg = new Map(signatures.map((s) => [s.alg, s]));
+    return Object.freeze({
+        ...body,
+        proof: Object.freeze({
+            profile: NETWORK_WITNESS_V2_VERSION,
+            required_algorithms: [...NETWORK_WITNESS_V2_REQUIRED_ALGORITHMS],
+            key_id: keyId,
+            statement_digest: statementDigest,
+            signatures: [byAlg.get('Ed25519'), byAlg.get('ML-DSA-65')],
+        }),
+    });
+}
+/**
+ * Offline hybrid signature and context verification. FAIL-CLOSED: never throws
+ * on a presenter-controlled statement, and a v2 statement NEVER verifies on one
+ * leg alone. Both legs verify over bytes rebuilt from the PRESENTED body and the
+ * REGISTERED algorithm set, under the PINNED Ed25519 + ML-DSA-65 keys. See
+ * "PATTERN: the reference hybrid migration" in docs/protocol/pq-hybrid-program.md.
+ */
+export async function verifyNetworkWitnessStatementV2(statement, options = {}) {
+    const fail = (reason, checks = {}) => ({
+        verified: false,
+        accepted: false,
+        reason,
+        checks: {
+            shape: false,
+            pin: false,
+            algorithm_set: false,
+            legs: false,
+            signature: false,
+            action_binding: false,
+            freshness: false,
+            config_binding: false,
+            ...checks,
+        },
+    });
+    try {
+        if (!isPlainObject(statement)
+            || !exactKeys(statement, new Set(['@version', 'witness', 'observation', 'deployment', 'privacy', 'limitations', 'proof']))) {
+            return fail('statement_shape_invalid');
+        }
+        const body = unsignedV2(statement);
+        const invalid = validateBody(body, NETWORK_WITNESS_V2_VERSION);
+        if (invalid)
+            return fail(invalid);
+        const proof = statement.proof;
+        if (!exactKeys(proof, new Set(['profile', 'required_algorithms', 'key_id', 'statement_digest', 'signatures']))) {
+            return fail('proof_shape_invalid', { shape: true });
+        }
+        if (proof.profile !== NETWORK_WITNESS_V2_VERSION
+            || proof.key_id !== body.witness.key_id
+            || !digest(proof.statement_digest)) {
+            return fail('proof_envelope_invalid', { shape: true });
+        }
+        if (!algorithmSetMatchesRegistered(proof.required_algorithms)) {
+            return fail('algorithm_set_invalid', { shape: true });
+        }
+        if (!Array.isArray(proof.signatures) || proof.signatures.length === 0) {
+            return fail('signature_set_invalid', { shape: true, algorithm_set: true });
+        }
+        const presented = new Set();
+        for (const s of proof.signatures) {
+            if (!isPlainObject(s) || typeof s.alg !== 'string' || typeof s.sig !== 'string'
+                || !Object.keys(s).every((k) => k === 'alg' || k === 'sig' || k === 'key_id')
+                || (Object.hasOwn(s, 'key_id') && typeof s.key_id !== 'string')) {
+                return fail('signature_set_invalid', { shape: true, algorithm_set: true });
+            }
+            if (presented.has(s.alg))
+                return fail('signature_set_invalid', { shape: true, algorithm_set: true });
+            presented.add(s.alg);
+        }
+        for (const alg of presented) {
+            if (!NETWORK_WITNESS_V2_REQUIRED_ALGORITHMS.includes(alg)) {
+                return fail('signature_set_invalid', { shape: true, algorithm_set: true });
+            }
+        }
+        for (const alg of NETWORK_WITNESS_V2_REQUIRED_ALGORITHMS) {
+            if (!presented.has(alg))
+                return fail('signature_set_incomplete', { shape: true, algorithm_set: true });
+        }
+        const pin = findPin(options.pinnedWitnesses, body.witness);
+        if (!pin || !nonEmptyString(pin.public_key, 4096) || !nonEmptyString(pin.pq_public_key, 8192)) {
+            return fail('witness_key_unpinned', { shape: true, algorithm_set: true, legs: true });
+        }
+        if (!Array.isArray(pin.config_digests) || pin.config_digests.length === 0
+            || !pin.config_digests.includes(body.deployment.config_digest)) {
+            return fail('witness_config_unpinned', { shape: true, pin: true, algorithm_set: true, legs: true });
+        }
+        if (options.expectedActionDigest !== undefined
+            && body.observation.action_digest !== options.expectedActionDigest) {
+            return fail('action_digest_mismatch', { shape: true, pin: true, algorithm_set: true, legs: true, config_binding: true });
+        }
+        if (options.expectedEvent !== undefined && body.observation.event !== options.expectedEvent) {
+            return fail('event_mismatch', { shape: true, pin: true, algorithm_set: true, legs: true, config_binding: true });
+        }
+        const now = options.now === undefined ? Date.now() : Number(options.now);
+        const maxAgeSec = options.maxAgeSec === undefined ? 300 : options.maxAgeSec;
+        const maxFutureSkewSec = options.maxFutureSkewSec === undefined ? 30 : options.maxFutureSkewSec;
+        if (!Number.isFinite(now) || !Number.isSafeInteger(maxAgeSec) || maxAgeSec < 0
+            || !Number.isSafeInteger(maxFutureSkewSec) || maxFutureSkewSec < 0) {
+            return fail('verification_profile_invalid', { shape: true, pin: true, algorithm_set: true, legs: true, config_binding: true });
+        }
+        const observedMs = strictInstantMs(body.observation.observed_at);
+        if (observedMs > now + (maxFutureSkewSec * 1000)) {
+            return fail('observation_from_future', { shape: true, pin: true, algorithm_set: true, legs: true, action_binding: true, config_binding: true });
+        }
+        if (now - observedMs > maxAgeSec * 1000) {
+            return fail('observation_stale', { shape: true, pin: true, algorithm_set: true, legs: true, action_binding: true, config_binding: true });
+        }
+        const computedDigest = networkWitnessV2Digest(body);
+        if (computedDigest !== proof.statement_digest) {
+            return fail('statement_digest_mismatch', {
+                shape: true, pin: true, algorithm_set: true, legs: true, action_binding: true, freshness: true, config_binding: true,
+            });
+        }
+        try {
+            const edBytes = decodeBase64Url(pin.public_key, 4096);
+            if (!edBytes)
+                throw new TypeError('invalid base64url key');
+            const edKey = crypto.createPublicKey({ key: edBytes, type: 'spki', format: 'der' });
+            if (edKey.asymmetricKeyType !== 'ed25519')
+                throw new TypeError('witness key must be Ed25519');
+        }
+        catch {
+            return fail('pinned_key_invalid', {
+                shape: true, pin: true, algorithm_set: true, legs: true, action_binding: true, freshness: true, config_binding: true,
+            });
+        }
+        const pqBytes = decodeBase64Url(pin.pq_public_key, ML_DSA_65_PUBLIC_KEY_BYTES);
+        if (!pqBytes || pqBytes.length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+            return fail('pinned_key_invalid', {
+                shape: true, pin: true, algorithm_set: true, legs: true, action_binding: true, freshness: true, config_binding: true,
+            });
+        }
+        let setResult;
+        try {
+            setResult = await verifyAgileSignatureSet(new Uint8Array(signingBytesV2(body)), proof.signatures, [
+                { alg: 'Ed25519', public_key: pin.public_key },
+                { alg: 'ML-DSA-65', public_key: pin.pq_public_key },
+            ], { ...witnessAgilityPassthrough(options), policy: 'hybrid_all', requiredAlgorithms: [...NETWORK_WITNESS_V2_REQUIRED_ALGORITHMS] });
+        }
+        catch {
+            setResult = null;
+        }
+        if (setResult?.verified !== true) {
+            const reason = typeof setResult?.reason === 'string' ? setResult.reason : '';
+            return fail(reason.includes('pq_backend_unavailable') ? 'pq_backend_unavailable' : 'signature_invalid', {
+                shape: true, pin: true, algorithm_set: true, legs: true, action_binding: true, freshness: true, config_binding: true,
+            });
+        }
+        return {
+            verified: true,
+            accepted: true,
+            reason: null,
+            statement_digest: computedDigest,
+            stream_id: `${body.witness.id}\0${body.witness.capture_point_id}`,
+            sequence: body.observation.sequence,
+            action_digest: body.observation.action_digest,
+            event: body.observation.event,
+            observed_at: body.observation.observed_at,
+            witness_id: body.witness.id,
+            capture_point_id: body.witness.capture_point_id,
+            checks: {
+                shape: true,
+                pin: true,
+                algorithm_set: true,
+                legs: true,
+                signature: true,
+                action_binding: true,
+                freshness: true,
+                config_binding: true,
+            },
+            limitation: 'Observation is not authorization, enforcement, execution, or physical truth.',
+        };
+    }
+    catch {
+        return fail('hostile_input_refused');
+    }
+}
+/** Verify and atomically advance a witness stream for a hybrid (v2) statement. */
+export async function acceptNetworkWitnessStatementV2(statement, options = {}) {
+    const verified = await verifyNetworkWitnessStatementV2(statement, options);
+    if (!verified.accepted) {
+        return acceptanceResult(verified, {
+            accepted: false,
+            consumed: false,
+            reason: verified.reason,
+            sequenceStoreDurable: false,
+            acceptanceVersion: NETWORK_WITNESS_ACCEPTANCE_V2_VERSION,
+        });
+    }
+    const store = options.sequenceStore;
+    if (!store || typeof store.advance !== 'function'
+        || (store.durable !== true && options.allowEphemeralStore !== true)) {
+        return acceptanceResult(verified, {
+            accepted: false,
+            consumed: false,
+            reason: 'durable_sequence_store_required',
+            sequenceStoreDurable: false,
+            acceptanceVersion: NETWORK_WITNESS_ACCEPTANCE_V2_VERSION,
+        });
+    }
+    try {
+        const advanced = await store.advance(verified.stream_id, verified.sequence, verified.statement_digest);
+        if (!isPlainObject(advanced) || advanced.accepted !== true || advanced.reason !== null) {
+            return acceptanceResult(verified, {
+                accepted: false,
+                consumed: false,
+                reason: nonEmptyString(advanced?.reason) ? advanced.reason : 'sequence_store_refused',
+                sequenceStoreDurable: store.durable === true,
+                acceptanceVersion: NETWORK_WITNESS_ACCEPTANCE_V2_VERSION,
+            });
+        }
+        return acceptanceResult(verified, {
+            accepted: true,
+            consumed: true,
+            reason: null,
+            sequenceStoreDurable: store.durable === true,
+            acceptanceVersion: NETWORK_WITNESS_ACCEPTANCE_V2_VERSION,
+        });
+    }
+    catch {
+        return acceptanceResult(verified, {
+            accepted: false,
+            consumed: false,
+            reason: 'sequence_store_unavailable',
+            sequenceStoreDurable: store.durable === true,
+            acceptanceVersion: NETWORK_WITNESS_ACCEPTANCE_V2_VERSION,
+        });
+    }
+}
 export default {
     NETWORK_WITNESS_VERSION,
+    NETWORK_WITNESS_V2_VERSION,
     NETWORK_WITNESS_ACCEPTANCE_VERSION,
+    NETWORK_WITNESS_ACCEPTANCE_V2_VERSION,
     NETWORK_WITNESS_EVENTS,
     parseNetworkWitnessStatement,
     networkWitnessDigest,
+    networkWitnessV2Digest,
     signNetworkWitnessStatement,
     verifyNetworkWitnessStatement,
+    signNetworkWitnessStatementV2,
+    verifyNetworkWitnessStatementV2,
     acceptNetworkWitnessStatement,
+    acceptNetworkWitnessStatementV2,
     validateTrustedNetworkWitnessAcceptance,
     createMemoryWitnessSequenceStore,
 };
