@@ -377,8 +377,8 @@ Evidence meant to be verified years later must outlive the algorithms it was
 signed under. EP ships four opt-in capabilities for that, each with an exact
 boundary that is part of the claim:
 
-- **Hybrid signatures (EP-RECEIPT-HYBRID-v1).** Post-quantum receipts,
-  available as an opt-in hybrid profile: Ed25519 and ML-DSA-65 over the same
+- **Hybrid signatures (EP-RECEIPT-HYBRID-v1).** Post-quantum receipts, available as an opt-in
+  hybrid profile: Ed25519 and ML-DSA-65 over the same
   canonical bytes, with the required algorithm set committed into the signed
   bytes so stripping a leg breaks the surviving signature. Boundary: opt-in,
   not the default receipt format; v1 verifiers refuse hybrid receipts cleanly
@@ -401,7 +401,7 @@ boundary that is part of the claim:
   and nothing here is FIPS validated. See [FIPS-MODE.md](docs/deployment/FIPS-MODE.md).
 
 The stack-wide hybrid program (every internal signature surface) is mapped in
-[quantum-safe-program.md](docs/protocol/quantum-safe-program.md) and is not
+[pq-hybrid-program.md](docs/protocol/pq-hybrid-program.md) and is not
 complete; until it is, no blanket claim about the whole stack is made.
 
 ---

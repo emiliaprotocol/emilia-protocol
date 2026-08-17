@@ -60,7 +60,7 @@ const RETIRED_PHRASES: RetiredPhrase[] = [
     // compliant"), and QUOTED mentions are allowed (policy text discussing
     // the banned phrase is a mention, not a claim).
     exclude: (line) =>
-      /\bnot\b[^.]{0,80}FIPS[- ](compliant|validated|certified)/i.test(line)
+      /\b(not|nothing|never|no)\b[^.]{0,80}FIPS[- ](compliant|validated|certified)/i.test(line)
       || /["'“]FIPS[- ](compliant|validated|certified)[.,;]?["'”]/.test(line)
       || /FIPS[- ]validated\s+(cryptographic\s+)?(module|provider)/i.test(line),
   },
