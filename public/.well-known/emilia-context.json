@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-17T17:01:00.638Z",
+  "evidence_snapshot_at": "2026-08-17T20:26:38.485Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "c9e4f074004362db6ca1e3d8a8b103a4e88a29741bae2e0c80f86daff9fb9a8a",
+    "input_digest_sha256": "acc1e39104ddac7d49d65bda233d3e2d5244409fa65c2cbdaddef8e5f045cbe1",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "4e1b6f6e79e3ce9bcda94db380443466bdb019b8046fbfe68159b95d2284906f",
-        "bytes": 46552
+        "sha256": "69fc561d60ce443274fe6b7d594331369e5599e1f7c0904dde023601828049b6",
+        "bytes": 46311
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "a47b5ca69c8894197d0455fc4937e54451e59d4854960b21c286da0b7f20112b",
+        "sha256": "99e20ec0860c0d4ac849f68f6298b84a82aa6989667e3d5110420e843b12df14",
         "bytes": 4298
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "8f958e8516d29790d10dc09fb45c5fd2076aec5202e7bc8f7ec2e5184ca6c8f8",
+        "sha256": "8ee04be5a1144ac95c86c58aeb911b198eb3c806595d84f29b189a562c06fa72",
         "bytes": 6361
       },
       {
@@ -32,12 +32,12 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "b5f321d8003071d8756dd5eb77aaa68ffc62e7aaabeebbac52f6514f0ce2b08b",
+        "sha256": "958064d72d38ee39b68373bd354d24e291d5809b61b59bda804cbe4c0bace725",
         "bytes": 251460
       },
       {
         "path": "security/security-case.json",
-        "sha256": "483a20db9a2cd64b7009ca51b9770bc2fd8a82ab32c8e1befc72a0d93de5c28b",
+        "sha256": "d2c54c257226076a75d0ffb8efa4ad01814f8feb548bb6dfe986f050f89778b5",
         "bytes": 385871
       },
       {
@@ -70,12 +70,12 @@
   },
   "identity": {
     "name": "EMILIA",
-    "category": "authority system for autonomous work",
-    "core_line": "Every consequential agent action enters with authority and exits with a receipt.",
-    "summary": "EMILIA is building the universal authority toll booth for autonomous work. At a configured protected boundary, a human or institution defines a finite operating mandate and agents work unattended inside it. EMILIA Gate is the customer-owned toll booth: it verifies the authority and evidence the owner requires for the exact action, reserves accepted authority before provider entry, admits or refuses the crossing, preserves executed or indeterminate outcomes, refuses blind replay, and returns an action-bound receipt packet. Native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems remain attributable to their issuers. EMILIA Protocol is the open Action Receipt Contract underneath Gate; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier. Universal describes the intended cross-stack contract, not current coverage or operation of a central global network.",
+    "category": "authority control plane for autonomous work",
+    "core_line": "Protocol proves. Gate prevents.",
+    "summary": "EMILIA is the authority control plane for autonomous work. A human or institution defines a finite operating mandate once; agents work unattended inside it; EMILIA Gate enforces each consequential unit of work on protected executor paths. Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems, then enforces them once at the executor. Gate verifies the authority and evidence the owner requires for the exact action, consumes accepted authority before provider entry, preserves executed or indeterminate outcomes, refuses blind replay, and treats any remedy as a new authorized action rather than rewritten history. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.",
     "message_order": [
-      "Lead with every consequential agent action entering with authority and exiting with a receipt.",
-      "Explain EMILIA Gate as the customer-owned authority toll booth at a configured protected boundary.",
+      "Lead with EMILIA as the authority control plane for autonomous work and the finite operating mandate it enforces.",
+      "Explain EMILIA Gate as the executor-side Consequence Firewall that enforces each consequential unit of work on covered paths.",
       "Explain that Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems, then enforces them once at the executor; do not imply that EMILIA originated native authority.",
       "Explain EMILIA Protocol as the open, customer-pinned substrate underneath Gate.",
       "Explain EMILIA Approver only when an exact-action human ceremony is required by the mandate or local policy.",
@@ -87,7 +87,7 @@
       {
         "audience": "buyer or operator",
         "url": "https://www.emiliaprotocol.ai/gate",
-        "purpose": "understand and scope the customer-owned authority toll booth"
+        "purpose": "understand and scope the commercial Consequence Firewall"
       },
       {
         "audience": "developer",
@@ -107,7 +107,7 @@
     ],
     "commercial_product": {
       "name": "EMILIA Gate",
-      "role": "customer-owned authority toll booth enforcing finite operating mandates at the executor or system-of-record boundary",
+      "role": "executor-side enforcement of finite operating mandates at the executor or system-of-record boundary",
       "claim_boundary": "Gate prevents only on action paths under complete mediation. It does not constrain a path that bypasses the deployed enforcement point."
     },
     "authority_control_plane": {
@@ -131,9 +131,9 @@
       "claim_boundary": "EMILIA supports verification and re-performance procedures but is not an auditor, an accredited certification body, a regulator, or an insurer. The EP-CERT-v1 public certification scheme is not operating."
     },
     "market_entry": {
-      "free_wedge": "local Authority Map and one protected privileged tool",
-      "first_paid_wedge": "finance-operations vendor bank-detail changes or payment releases",
-      "paid_wedge_safety_rule": "no accepted exact-action authority and required evidence, no provider entry",
+      "free_wedge": "privileged MCP tool calls",
+      "first_paid_wedge": "payer AI-assisted adverse medical-necessity determinations",
+      "paid_wedge_safety_rule": "no valid licensed-review evidence, no adverse determination",
       "regulatory_boundary": "Regulation may create demand for demonstrable qualified review, but no law is claimed to mandate EMILIA or cryptographic receipts."
     },
     "repository": "https://github.com/emiliaprotocol/emilia-protocol",
@@ -143,7 +143,7 @@
   "canonical_definitions": [
     {
       "term": "EMILIA Gate",
-      "definition": "The customer-owned authority toll booth at the executor or system-of-record boundary. It enforces the finite operating mandate and relying party's evidence and policy requirements for each exact action, reserves accepted authority before provider entry, permits one admitted provider attempt or refuses it, and records admission separately from provider and effect evidence. Protocol proves. Gate prevents."
+      "definition": "The commercial Consequence Firewall at the executor or system-of-record boundary. It enforces the finite operating mandate and relying party's evidence and policy requirements for each exact action, consumes accepted authority once, and records admission separately from provider and effect evidence. Protocol proves. Gate prevents."
     },
     {
       "term": "EMILIA Protocol",
@@ -288,7 +288,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 9273,
+      "total": 9282,
       "files": 571,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -298,7 +298,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "b6948797fd8469312c3d9beabe8a40ced25faf8e02603fcb49e46212247e25ee",
+      "manifest_sha256": "c882e3490e4dc7ca26bb1faa7aef38ccf293b35448deb9c8d4614175fb3955f8",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -330,7 +330,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "63379dac068f871d9ff22b1d920febae0fb8b2bc028aba4213e93f37fefe524b",
+        "evidenceSha256": "2cfca91a37586767225732b78ee7383a464c2814648c2f1630f1fac302463b18",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -400,7 +400,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "37c92ac18cb4d0224ae48c53f8af754d06712ab2856b93bb039820059f1a6362"
+      "evidence_bundle_sha256": "e30c5e65830e0a445b84cf3d56bf2092a7714d8279c8c3e8d29ef804bedc9afb"
     },
     "caid": {
       "core_vectors": 48,

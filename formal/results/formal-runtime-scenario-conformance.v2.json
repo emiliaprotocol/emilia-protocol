@@ -495,11 +495,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "816f95e69d00b9f69c6e063e7e303e5ad19ba7103aa55cc5caea5d3b2bde16f5"
+      "sha256": "02dec237a1335f066f9151ea755ab6202865cc79f7dbddae12cf755364f3c26e"
     },
     {
       "path": "package.json",
-      "sha256": "0e0499831f2bea41f59dc0667a82980e70782657b2d14ed0234b1ffa90e0565f"
+      "sha256": "8bfa1100b821c9cca00a7f06b4b1da30e9a28b8cd9f7de1931ab0dd0ce929cc1"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1171,7 +1171,7 @@
     },
     {
       "path": "packages/verify/dist/pq-signature-agility.js",
-      "sha256": "2e75f50c8cf4ca89b70687a064acba0b6db8512c6791fb53505b5969cb177dcc"
+      "sha256": "50b95d8411b2c2ba1282b4c02a81e80303ebbec43a7204905625f3f0af9ec149"
     },
     {
       "path": "packages/verify/dist/provenance.js",
@@ -1299,7 +1299,7 @@
     },
     {
       "path": "scripts/build-standalone-runtimes.mjs",
-      "sha256": "25089e24b8c9f6f982a026d270576dbb83701513542188e88481af9a74738171"
+      "sha256": "161b81295d0e91507dff6ceeb30cec34838da82d7a7eb6315f1936c447169440"
     },
     {
       "path": "scripts/check-formal-runtime-traces.mjs",

@@ -385,7 +385,9 @@ jobs:
   # consume-once attempts against the REAL capability and consumption stores
   # every push and asserts the safety invariants. A regression fails at a named
   # seed the author can replay locally. The deeper nightly sweep is documented
-  # in fuzz/README.md. No product deps, no network — Node built-ins only.
+  # in fuzz/README.md. The batch itself makes no network calls. The real Gate
+  # runtime now imports the repository-local Verify SDK for algorithm-agile
+  # signatures, so install the locked root graph before executing it.
   fuzz:
     runs-on: ubuntu-latest
     steps:
@@ -393,6 +395,8 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
       - name: Run the bounded fixed-seed fuzz batch (<60s)
         run: node fuzz/ci-batch.mjs
 
@@ -517,17 +521,17 @@ jobs:
         run: npm run conformance:manifest:clean-room
       - name: Attest exact security case on protected-branch runs
         if: github.event_name != 'pull_request'
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: security/security-case.json
       - name: Attest exact conformance manifest on protected-branch runs
         if: github.event_name != 'pull_request'
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: conformance/conformance-manifest.json
       - name: Attest exact frozen clean-room manifest on protected-branch runs
         if: github.event_name != 'pull_request'
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: conformance/clean-room/conformance-manifest.v1.json
       - name: Upload resolved security and conformance cases
@@ -821,6 +825,11 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.26.6'
+      # The JavaScript invariant lane drives the real Gate runtime. Gate uses
+      # the repository-local Verify SDK for algorithm-agile signatures, so the
+      # locked root graph must be present even though the cross-language vector
+      # runners themselves remain offline.
+      - run: npm ci --ignore-scripts
       - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - name: Cross-language conformance (EP-RECEIPT-v1, JS + Python + Go)
         env:
@@ -962,7 +971,7 @@ jobs:
           --emit conformance/conformance-case.json
       - name: Attest aggregate conformance case on protected-branch runs
         if: github.event_name != 'pull_request'
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: conformance/conformance-case.json
       - name: Upload aggregate conformance case

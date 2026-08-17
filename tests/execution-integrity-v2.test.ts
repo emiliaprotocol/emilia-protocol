@@ -21,6 +21,7 @@ import {
   EXECUTION_INTEGRITY_V2_VERSION,
   EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS,
   buildExecutionIntegrityV2,
+  executionV2SignedPayload,
   verifyExecutionIntegrityV2,
 } from '../lib/execution/integrity.js';
 
@@ -269,6 +270,93 @@ describe('EP-EXECUTION-INTEGRITY-v2 hybrid', () => {
     expect(res.valid).toBe(false);
     expect(res.checks.executor_signature_valid).toBe(false);
     expect(res.checks.signature_binds_attestation).toBe(false);
+  });
+
+  // --- defensive edge contracts ---------------------------------------------
+
+  it('missing evidence stays fail-closed unless reversibility is independently asserted', async () => {
+    const absent = await verifyExecutionIntegrityV2(null, RECEIPT, {});
+    expect(absent.valid).toBe(false);
+    expect(absent.checks.attestation_present).toBe(false);
+
+    const explicit = await verifyExecutionIntegrityV2(null, RECEIPT, { reversibilityAsserted: true });
+    expect(explicit.valid).toBe(true);
+
+    const callback = await verifyExecutionIntegrityV2(null, RECEIPT, { reversibilityAsserted: () => true });
+    expect(callback.valid).toBe(true);
+
+    const throwingCallback = await verifyExecutionIntegrityV2(null, RECEIPT, {
+      reversibilityAsserted: () => { throw new Error('independent check unavailable'); },
+    });
+    expect(throwingCallback.valid).toBe(false);
+    expect(throwingCallback.checks.attestation_present).toBe(false);
+  });
+
+  it('refuses a valid attestation when the receipt supplies no approved action hash', async () => {
+    const att = await buildV2();
+    const res = await verifyExecutionIntegrityV2(att, {}, pins(att));
+    expect(res.valid).toBe(false);
+    expect(res.checks.executed_hash_matches_approved).toBe(false);
+  });
+
+  it('refuses missing and malformed hybrid proof structures without throwing', async () => {
+    const missing = clone(await buildV2());
+    delete missing.proof;
+    const missingRes = await verifyExecutionIntegrityV2(missing, RECEIPT, {});
+    expect(missingRes.valid).toBe(false);
+    expect(missingRes.checks.legs_present).toBe(false);
+
+    const malformed = clone(await buildV2());
+    const trusted = pins(malformed);
+    malformed.proof!.signatures = [null] as any;
+    malformed.proof!.public_key = '';
+    malformed.proof!.pq_key_id = 42 as any;
+    const malformedRes = await verifyExecutionIntegrityV2(malformed, RECEIPT, trusted);
+    expect(malformedRes.valid).toBe(false);
+    expect(malformedRes.checks.legs_present).toBe(false);
+    expect(malformedRes.checks.executor_key_pinned).toBe(false);
+  });
+
+  it('refuses an attestation whose signed field set cannot be canonicalized', async () => {
+    const att = clone(await buildV2()) as any;
+    const circular: any = {};
+    circular.self = circular;
+    att.execution_id = circular;
+    const res = await verifyExecutionIntegrityV2(att, RECEIPT, pins(att));
+    expect(res.valid).toBe(false);
+    expect(res.checks.signature_binds_attestation).toBe(false);
+    expect(res.checks.executor_signature_valid).toBe(false);
+  });
+
+  it('issuer helpers reject incomplete keys and unregistered algorithm sets', async () => {
+    await expect(buildExecutionIntegrityV2()).rejects.toThrow(/requires executor/);
+    await expect(buildExecutionIntegrityV2({
+      approvedActionHash: APPROVED_HASH,
+      executedAction: APPROVED_ACTION,
+      executor: {
+        executor_key_id: EXECUTOR_ID,
+        privateKey: ed.privateKey,
+        pqSecretKey: pqSecretB64u,
+        pqPublicKey: '!',
+      },
+    })).rejects.toThrow(/pqPublicKey/);
+    expect(() => executionV2SignedPayload({} as any, ['Ed25519'])).toThrow(/algorithm set/);
+
+    const complete = await buildExecutionIntegrityV2({
+      approvedActionHash: APPROVED_HASH,
+      executedAction: APPROVED_ACTION,
+      executionId: 'execution-42',
+      executedAt: '2026-08-02T20:01:00.000Z',
+      deterministic: true,
+      executor: {
+        executor_key_id: EXECUTOR_ID,
+        privateKey: ed.privateKey,
+        pqSecretKey: pq.secretKey,
+        pqPublicKey: pq.publicKey,
+      },
+    });
+    expect(complete.execution_id).toBe('execution-42');
+    expect(complete.executed_at).toBe('2026-08-02T20:01:00.000Z');
   });
 
   // --- fail-closed backend ----------------------------------------------------

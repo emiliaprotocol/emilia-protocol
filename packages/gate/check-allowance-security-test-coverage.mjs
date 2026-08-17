@@ -64,6 +64,9 @@ async function renderCompanion(sourcePath) {
   const banner = `// Generated from ${basename(sourceName)} by ${generatorName}. Do not edit.\n/* eslint-disable */\n`;
   const spdxLine = '// SPDX-License-Identifier: Apache-2.0\n';
   let outputText = result.outputText;
+  if (sourceName.startsWith('packages/gate/') && /\.test\.m?ts$/.test(sourceName)) {
+    outputText = outputText.replace(/(\bfrom\s+['"])\.\/src\//g, '$1./dist/');
+  }
   let shebangMatch = outputText.match(/^#!.*\n/);
   let afterShebang = shebangMatch ? outputText.slice(shebangMatch[0].length) : outputText;
   if (/Apache-2\.0/.test(source) && !/Apache-2\.0/.test(afterShebang)) {

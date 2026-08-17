@@ -14,10 +14,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto, { generateKeyPairSync, sign } from 'node:crypto';
-import { GATE_ALLOWANCE_VERSION, GATE_ALLOWANCE_V2_VERSION, signGateAllowance, verifyGateAllowance, signGateAllowanceV2, verifyGateAllowanceV2, } from './src/allowance.js';
-import { capabilityBaseReceiptDigest } from './src/capability-receipt.js';
-import { canonicalize } from './src/execution-binding.js';
-import { RISK_HYBRID_PROFILE } from './src/reliance-risk-crypto.js';
+import { GATE_ALLOWANCE_VERSION, GATE_ALLOWANCE_V2_VERSION, signGateAllowance, verifyGateAllowance, signGateAllowanceV2, verifyGateAllowanceV2, } from './dist/allowance.js';
+import { capabilityBaseReceiptDigest } from './dist/capability-receipt.js';
+import { canonicalize } from './dist/execution-binding.js';
+import { RISK_HYBRID_PROFILE } from './dist/reliance-risk-crypto.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const NOW = Date.parse('2026-07-30T18:30:00.000Z');
 const ISSUER = 'customer:acme';
