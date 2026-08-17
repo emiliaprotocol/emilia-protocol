@@ -25,11 +25,11 @@ const PINS = {
     'actions/setup-python@v7': 'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0',
     'actions/upload-artifact@v7': 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1',
     'actions/setup-java@v5': 'actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0',
-    'actions/attest@v4': 'actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d  # v4.2.1',
+    'actions/attest@v4': 'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2',
     // ── CodeQL ───────────────────────────────────────────────────────────────
-    'github/codeql-action/init@v4': 'github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4.37.4',
-    'github/codeql-action/analyze@v4': 'github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4.37.4',
-    'github/codeql-action/autobuild@v4': 'github/codeql-action/autobuild@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4.37.4',
+    'github/codeql-action/init@v4': 'github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',
+    'github/codeql-action/analyze@v4': 'github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',
+    'github/codeql-action/autobuild@v4': 'github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',
     // ── Security / compliance ─────────────────────────────────────────────────
     'gitleaks/gitleaks-action@v2': 'gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7  # v2.3.9',
     'christophebedard/dco-check@v0.4.0': 'christophebedard/dco-check@30353d8deedf393cf55ba33355e71da7fdd095c7  # v0.4.0',

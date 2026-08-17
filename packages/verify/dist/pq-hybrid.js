@@ -60,7 +60,7 @@
  *   vacuous); the classical leg and the algo-set commitment are still
  *   enforced independently, but the caller owns the PQ leg's honesty.
  *
- *   @noble/post-quantum v0.6.1 is a pure-JS implementation of FIPS 204
+ *   @noble/post-quantum v0.7.0 is a pure-JS implementation of FIPS 204
  *   ML-DSA. Per its own README it is self-audited by its authors and has NOT
  *   been independently audited; it is not a FIPS-validated module. This envelope does NOT make EP
  *   post-quantum secure by itself; see docs/POST-QUANTUM-MIGRATION.md for the

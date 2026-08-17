@@ -107,7 +107,7 @@ Security policies live at `https://csrc.nist.gov/CSRC/media/projects/cryptograph
 
 - OpenSSL **3.5.0** implements ML-DSA: `CHANGES.md` records "Add ML-DSA as specified in FIPS 204", and `providers/fips/fipsprov.c` at tag `openssl-3.5.0` registers `PROV_NAMES_ML_DSA_44/65/87` with `FIPS_DEFAULT_PROPERTIES`. VERIFIED.
 - **No OpenSSL-derived module is CMVP-validated for ML-DSA.** A sweep of 31 security policies covering essentially every OpenSSL-derived module on the Active FIPS 140-3 list found zero occurrences of "ML-DSA". VERIFIED (negative claim; scope: the 31 certificates enumerated in the sweep, as of 2026-08-16).
-- **EP does not use OpenSSL for ML-DSA at all.** EP's backend is `@noble/post-quantum` v0.6.1, a pure-JavaScript FIPS 204 implementation loaded by `packages/verify/src/pq-hybrid.ts` and `packages/verify/src/pq-signature-agility.ts`. It is not a validated module, it is inside no certificate, and running it in a FIPS-mode process changes none of that.
+- **EP does not use OpenSSL for ML-DSA at all.** EP's backend is `@noble/post-quantum` v0.7.0, a pure-JavaScript FIPS 204 implementation loaded by `packages/verify/src/pq-hybrid.ts` and `packages/verify/src/pq-signature-agility.ts`. It is not a validated module, it is inside no certificate, and running it in a FIPS-mode process changes none of that.
 
 ## Which EP operations are OpenSSL-backed
 

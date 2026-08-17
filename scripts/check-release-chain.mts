@@ -14,7 +14,7 @@ const CANONICAL_SEMVER: RegExp = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-
 const RELEASE_ACTION_REFS = Object.freeze({
   checkout: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
   setupJava: 'actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961',
-  attest: 'actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d',
+  attest: 'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6',
   pypiPublish: 'pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33',
 });
 

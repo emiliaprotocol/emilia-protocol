@@ -23,13 +23,15 @@ updates:
     commit-message:
       prefix: "ci(deps)"
     groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action/*"
       github-official-actions:
         patterns:
           - "actions/*"
       security-actions:
         patterns:
           - "gitleaks/*"
-          - "github/codeql-action"
           - "christophebedard/*"
 
   # ── npm (root workspace) ────────────────────────────────────────────────────
