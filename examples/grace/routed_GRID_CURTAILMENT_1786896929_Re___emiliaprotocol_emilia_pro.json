@@ -1,0 +1,17 @@
+{
+  "type": "external_email_envelope",
+  "version": "1.0",
+  "project": "GRID_CURTAILMENT",
+  "tlp_classification": "TLP:AMBER",
+  "sender_id": "notifications@github.com",
+  "recipient_id": "jkintzele@jdieselny.com",
+  "received_at": "2026-08-16T12:14:12Z",
+  "ingested_at": 1786896929,
+  "payload": {
+    "message_id": "mail_AQMkADdlY2QwMmU3",
+    "subject": "Re: [emiliaprotocol/emilia-protocol] chore(conformance): refresh Rust cleanroom external verification statement to 21 suites / 331 vectors (PR #595)",
+    "body_preview": "strix-security[bot] left a comment (emiliaprotocol/emilia-protocol#595)\r\n\r\nStrix is installed on this repository, but we couldn't run this PR security review because this workspace's trial has ended. Add a card to resume code reviews here.\r\n\r\nSo far, Stri",
+    "body_content": "<html><head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"></head><body><div style=\"display:flex; flex-wrap:wrap; white-space:pre-wrap; align-items:center\"><img height=\"20\" width=\"20\" src=\"https://avatars.githubusercontent.com/in/2749804?s=20&amp;v=4\" style=\"border-radius:50%; margin-right:4px\"><strong>strix-security[bot]</strong> left a comment <a href=\"https://github.com/emiliaprotocol/emilia-protocol/pull/595#issuecomment-5307377471\">(emiliaprotocol/emilia-protocol#595)</a></div><p dir=\"auto\">Strix is installed on this repository, but we couldn't run this PR security review because this workspace's trial has ended. Add a card to resume code reviews <a href=\"https://app.strix.ai/settings/billing\" rel=\"nofollow\">here</a>.</p><p dir=\"auto\">So far, Strix has reviewed <strong>68</strong> pull requests, surfaced <strong>13</strong> security issues (8 critical/high) and blocked <strong>8</strong> risky merges across this workspace.</p><p style=\"font-size:small; color:#666\">\u2014<br>Reply to this email directly, <a href=\"https://github.com/emiliaprotocol/emilia-protocol/pull/595?email_source=notifications&amp;email_token=CATQCC6A6DIOMVJHVFIURPL5KGQQXA5CNFSNUABFM5UWIORPF5TWS5BNNB2WEL2JONZXKZKDN5WW2ZLOOQXTKMZQG4ZTONZUG4Y2M4TFMFZW63VGMF2XI2DPOKSWK5TFNZ2KYZTPN52GK4S7MNWGSY3L#issuecomment-5307377471\">view it on GitHub</a>, or <a href=\"https://github.com/notifications/unsubscribe-auth/CATQCC37AFW6CEOE3R6MJ7D5KGQQXAVCNFSNUABGKJSXA33TNF2G64TZHMYTCOBQGUYTQNZSGM5US43TOVSTWNJRGY2DCOJVGQYDTILWAI\">unsubscribe</a>.<br>You are receiving this because you authored the thread.<img src=\"https://github.com/notifications/beacon/CATQCC66GH76PUMJRGJD5ZD5KGQQXBFCNFSM6AAAAAC5RUYQQGWGG33NNVSW45C7OR4XAZNMJFZXG5LFINXW23LFNZ2KUY3PNVWWK3TUL5UWJTYAAAAACPCYE472M4TFMFZW63VGMF2XI2DPOI.gif\" height=\"1\" width=\"1\" alt=\"\"><span style=\"color:transparent; font-size:0; display:none; visibility:hidden; overflow:hidden; opacity:0; width:0; height:0; max-width:0; max-height:0\">Message ID: <span>&lt;emiliaprotocol/emilia-protocol/pull/595/c5307377471</span><span>@</span><span>github</span><span>.</span><span>com&gt;</span></span></p></body></html>"
+  },
+  "class_b_guest_transport": true
+}

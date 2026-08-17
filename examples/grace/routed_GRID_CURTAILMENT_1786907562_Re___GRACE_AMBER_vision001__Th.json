@@ -1,0 +1,17 @@
+{
+  "type": "external_email_envelope",
+  "version": "1.0",
+  "project": "GRID_CURTAILMENT",
+  "tlp_classification": "TLP:AMBER",
+  "sender_id": "team@emiliaprotocol.ai",
+  "recipient_id": "jkintzele@jdieselny.com",
+  "received_at": "2026-08-16T19:05:04Z",
+  "ingested_at": 1786907562,
+  "payload": {
+    "message_id": "mail_AAMkADdlY2QwMmU3",
+    "subject": "Re: [GRACE:AMBER:vision001] The A:iB Breakthrough: Giving Engineers Tony Stark's Suit (Lotus Notes x Novell NetWare for 2026)",
+    "body_preview": "J,\r\n\r\nI pulled the live Agent-in-Body repo. The clean integration is real:\r\nA:iB proposes and transports intent; EMILIA stays the independent\r\nadmission boundary.\r\n\r\nTwo public details should change. The demo currently changes the lamp\r\nstate directly aft",
+    "body_content": "J,\r\n\r\nI pulled the live Agent-in-Body repo. The clean integration is real:\r\nA:iB proposes and transports intent; EMILIA stays the independent\r\nadmission boundary.\r\n\r\nTwo public details should change. The demo currently changes the lamp\r\nstate directly after parsing text. It should stop at a proposed action\r\nunless a separate Gate admission is supplied. The GRACE card says\r\n\"verifiable proof-of-curtailment.\" I would use \"evidence-bound\r\ncurtailment admission and reconciliation,\" since neither a command nor\r\na receipt proves the physical effect.\r\n\r\nAlso keep the A:iB persona, mailbox transport signer, and\r\ninstitutionally authorized principal separate. One key should not\r\nsilently become all three.\r\n\r\nThen the story is precise: A:iB proposes the exact action,\r\nemilia-mailbox carries it, EMILIA admits or refuses it, and the\r\nactuator reports executed, refused, or indeterminate.\r\n\r\nYour mailbox boundary already says this well:\r\nhttps://github.com/jdieselny/emilia-mailbox/blob/main/docs/EMILIA_ACCEPTANCE_BOUNDARY.md\r\n\r\nBest,\r\nIman\r\n"
+  },
+  "class_b_guest_transport": true
+}

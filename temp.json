@@ -1,0 +1,380 @@
+{
+  "suite": "EP-CANONICALIZATION-v1",
+  "profile": "Differential canonicalization-malleability vectors over the EP canonicalization profile (RFC 8785 JCS over I-JSON, safe integers only). Each vector carries raw JSON text (canonicalization.input_json). A conformant runner MUST: (1) parse it with the language standard JSON parser, rejecting on error; (2) apply the strict-parse gate at the parse boundary: reject duplicate object member names (compared after escape decoding), reject unpaired UTF-16 surrogate escapes, reject container nesting depth greater than 64 (a suite-pinned bound; native limits differ across languages); (3) require the parsed value to satisfy the EP I-JSON profile predicate (isCanonicalizable: every scalar a string, boolean, null, or integer with magnitude <= 2^53-1); (4) compute the SHA-256 over the UTF-8 bytes of the canonical form and compare it to expected_digest. valid == all four steps pass. The pinned digests enforce byte-exact cross-language agreement: JCS does NOT apply Unicode normalization (NFC and NFD pin DISTINCT digests on purpose), escaped and literal spellings of the same code points pin the SAME digest, member names sort by UTF-16 code units, and integer-valued number tokens (1, 1.0, 1e0, -0) pin one canonical serialization. The strict-parse gate lives in each conformance runner because the verify packages receive already-parsed values; steps 3 and 4 exercise the verify packages themselves.",
+  "vectors_version": "1.0.0",
+  "count": 35,
+  "vectors": [
+    {
+      "id": "accept_nfc_composed",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"note\":\"café\"}",
+        "expected_digest": "a84c174531ab46d58aaeb9c85aed22981d418f25bead412cd282e97f427a0ba1",
+        "note": "NFC \"café\" spelled with precomposed U+00E9; digest pins the composed bytes"
+      }
+    },
+    {
+      "id": "accept_nfd_decomposed",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"note\":\"café\"}",
+        "expected_digest": "a959c3552a14d635acca3d4315e9097d11a2ff9d4ab2185dbfe4e66a90b06ed0",
+        "note": "NFD spelling of the same text (e + combining U+0301); MUST digest differently from NFC"
+      }
+    },
+    {
+      "id": "accept_escape_alias_of_nfc",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"note\":\"caf\\u00e9\"}",
+        "expected_digest": "a84c174531ab46d58aaeb9c85aed22981d418f25bead412cd282e97f427a0ba1",
+        "note": "escaped \\u00e9 decodes to the same code point as literal NFC; MUST digest identically to accept_nfc_composed"
+      }
+    },
+    {
+      "id": "accept_angstrom_sign_not_normalized",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"unit\":\"Å\"}",
+        "expected_digest": "f560f24d1654b3584612956a4d8a4c25961e3305f05ad8a2c6e6a5365b76e416",
+        "note": "U+212B ANGSTROM SIGN is NOT NFC-normalized to U+00C5 by JCS; raw code point pinned"
+      }
+    },
+    {
+      "id": "accept_latin_a_ring_distinct",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"unit\":\"Å\"}",
+        "expected_digest": "08eb5b93c008738e0af881f0227f44b24ddb73bb7c3c12b74a4dcd9e0e8683bb",
+        "note": "U+00C5 LATIN CAPITAL A WITH RING; MUST digest differently from U+212B"
+      }
+    },
+    {
+      "id": "accept_bidi_rlo_override_raw",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"payee\":\"acme‮reversed‬\"}",
+        "expected_digest": "e6438b4f8dc53adfcb492fd6a196c1a17fd25a019b777e76e4ddb35523388d46",
+        "note": "U+202E RIGHT-TO-LEFT OVERRIDE and U+202C inside a string are emitted raw, not escaped or stripped"
+      }
+    },
+    {
+      "id": "accept_control_chars_escaped",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"s\":\"\\u0000\\u0007\\u001f\"}",
+        "expected_digest": "d923ab32e713e672a0eec4249db62facaddb155c1ba7bb215e8a3c36ac451c93",
+        "note": "C0 controls canonicalize to lowercase \\u00xx escapes"
+      }
+    },
+    {
+      "id": "accept_shorthand_escapes",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"s\":\"\\b\\t\\n\\f\\r\"}",
+        "expected_digest": "b087fcbc53f88174f9c3ccf7d6cb1c3906ab32d0198eb62c3e541c4aebdcdad0",
+        "note": "backspace/tab/newline/formfeed/carriage-return canonicalize to the shorthand escapes"
+      }
+    },
+    {
+      "id": "accept_long_escape_alias_of_shorthand",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"s\":\"\\u0008\\u0009\\u000a\\u000c\\u000d\"}",
+        "expected_digest": "b087fcbc53f88174f9c3ccf7d6cb1c3906ab32d0198eb62c3e541c4aebdcdad0",
+        "note": "the same five controls written as \\u00xx decode identically; MUST digest identically to accept_shorthand_escapes"
+      }
+    },
+    {
+      "id": "accept_format_chars_raw",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"s\":\"\\u2028\\u2029\\u007f\\ufeff\\u200b\"}",
+        "expected_digest": "9a9d531e258f511a4c2b113d9da41b2d647b11a7599125ec51cf46026470b0ff",
+        "note": "U+2028/U+2029 (ES line separators), U+007F DEL, U+FEFF, U+200B are all >= U+0020 and emitted raw"
+      }
+    },
+    {
+      "id": "reject_duplicate_key_literal",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"a\":1,\"a\":2}",
+        "note": "same member name twice in one object"
+      }
+    },
+    {
+      "id": "reject_duplicate_key_escape_alias",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"a\":1,\"\\u0061\":2}",
+        "note": "\"\\u0061\" decodes to \"a\": still a duplicate after escape decoding"
+      }
+    },
+    {
+      "id": "reject_duplicate_key_nested",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"outer\":{\"k\":1,\"k\":2}}",
+        "note": "duplicate detection applies at every nesting level"
+      }
+    },
+    {
+      "id": "reject_duplicate_key_non_bmp_alias",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"😀\":1,\"\\ud83d\\ude00\":2}",
+        "note": "literal U+1F600 and its escaped surrogate pair are the same name"
+      }
+    },
+    {
+      "id": "reject_lone_high_surrogate",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"s\":\"\\ud800\"}",
+        "note": "unpaired \\ud800 escape is not valid Unicode"
+      }
+    },
+    {
+      "id": "reject_lone_low_surrogate",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"s\":\"\\udc00\"}",
+        "note": "unpaired \\udc00 escape is not valid Unicode"
+      }
+    },
+    {
+      "id": "reject_reversed_surrogate_pair",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"s\":\"\\udc00\\ud800\"}",
+        "note": "low-then-high escape order does not form a code point"
+      }
+    },
+    {
+      "id": "reject_high_surrogate_then_bmp_escape",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"s\":\"\\ud800\\u0041\"}",
+        "note": "a high surrogate escape must be followed by a low surrogate escape, not \\u0041"
+      }
+    },
+    {
+      "id": "reject_lone_surrogate_in_member_name",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"\\ud800\":1}",
+        "note": "unpaired surrogate in a member name is equally malformed"
+      }
+    },
+    {
+      "id": "accept_non_bmp_escaped_pair",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"s\":\"\\ud83d\\ude00\"}",
+        "expected_digest": "f9949e1006d1ca22bc0b60ea94f09779f11a8f0a29bae250fc7ab313d879f5e7",
+        "note": "escaped surrogate pair \\ud83d\\ude00 decodes to U+1F600 and canonicalizes to the raw 4-byte UTF-8 sequence"
+      }
+    },
+    {
+      "id": "accept_non_bmp_literal_alias",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"s\":\"😀\"}",
+        "expected_digest": "f9949e1006d1ca22bc0b60ea94f09779f11a8f0a29bae250fc7ab313d879f5e7",
+        "note": "literal U+1F600 in the raw text; MUST digest identically to accept_non_bmp_escaped_pair"
+      }
+    },
+    {
+      "id": "accept_astral_key_utf16_sort_order",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"｡\":true,\"😀\":1}",
+        "expected_digest": "bb5ef4528fd81606eabbfe0eb7c25784e924c22a03817fac46366381d32da411",
+        "note": "member sort is by UTF-16 code units: U+1F600 (D83D DE00) sorts BEFORE U+FF61 (FF61); a code-point sort diverges here"
+      }
+    },
+    {
+      "id": "accept_integer_one",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"n\":1}",
+        "expected_digest": "2bfd14f43d17fc7cea24e0917a8879b4b2f880b8baeec1b9d90fbaad655e71bd",
+        "note": "baseline integer token"
+      }
+    },
+    {
+      "id": "accept_number_alias_one_point_zero",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"n\":1.0}",
+        "expected_digest": "2bfd14f43d17fc7cea24e0917a8879b4b2f880b8baeec1b9d90fbaad655e71bd",
+        "note": "token 1.0 is integer-valued; canonicalizes to \"1\"; MUST digest identically to accept_integer_one"
+      }
+    },
+    {
+      "id": "accept_number_alias_exponent",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"n\":1e0}",
+        "expected_digest": "2bfd14f43d17fc7cea24e0917a8879b4b2f880b8baeec1b9d90fbaad655e71bd",
+        "note": "token 1e0 is integer-valued; canonicalizes to \"1\""
+      }
+    },
+    {
+      "id": "accept_negative_zero_integer",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"n\":-0}",
+        "expected_digest": "f3013f933b9fb80ab6d995e7ad9da36f683837ba1d81e950c943d40111eac2f0",
+        "note": "token -0 canonicalizes to \"0\" (ECMAScript JSON.stringify semantics)"
+      }
+    },
+    {
+      "id": "accept_negative_zero_real_alias",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"n\":-0.0}",
+        "expected_digest": "f3013f933b9fb80ab6d995e7ad9da36f683837ba1d81e950c943d40111eac2f0",
+        "note": "token -0.0 also canonicalizes to \"0\"; MUST digest identically to accept_negative_zero_integer"
+      }
+    },
+    {
+      "id": "accept_max_safe_integer",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"n\":9007199254740991}",
+        "expected_digest": "e1da48c6a6089f06ecb4e0a2259e658e3786b2420f52baccdf929ec6460d7b41",
+        "note": "2^53-1, the largest magnitude inside the EP profile"
+      }
+    },
+    {
+      "id": "reject_unsafe_integer_2_53",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"n\":9007199254740992}",
+        "note": "2^53 is outside the safe-integer profile (fail-closed)"
+      }
+    },
+    {
+      "id": "reject_unsafe_large_exponent",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"n\":1e21}",
+        "note": "1e21 is integer-valued but far outside the safe-integer profile"
+      }
+    },
+    {
+      "id": "reject_non_integer_real",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"n\":1.5}",
+        "note": "non-integer reals are outside the EP profile; encode as strings"
+      }
+    },
+    {
+      "id": "accept_key_order_whitespace_alias",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{ \"b\" : 2 ,\n  \"a\" : 1 }",
+        "expected_digest": "43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777",
+        "note": "unsorted members plus interior whitespace; MUST digest identically to the compact sorted twin"
+      }
+    },
+    {
+      "id": "accept_key_order_canonical_twin",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"a\":1,\"b\":2}",
+        "expected_digest": "43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777",
+        "note": "compact sorted form of the same object"
+      }
+    },
+    {
+      "id": "accept_nested_depth_at_limit",
+      "expect": {
+        "valid": true
+      },
+      "canonicalization": {
+        "input_json": "{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":1}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+        "expected_digest": "3d521fae0e2ae82f37583c72212182e80a3feb5140dfa5bb61492804112644a7",
+        "note": "container depth exactly 64 is accepted with a pinned digest"
+      }
+    },
+    {
+      "id": "reject_nested_depth_over_limit",
+      "expect": {
+        "valid": false
+      },
+      "canonicalization": {
+        "input_json": "{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":{\"d\":1}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+        "note": "container depth 65 exceeds the suite-pinned bound of 64"
+      }
+    }
+  ]
+}

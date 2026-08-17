@@ -1,0 +1,17 @@
+{
+  "type": "external_email_envelope",
+  "version": "1.0",
+  "project": "GRID_CURTAILMENT",
+  "tlp_classification": "TLP:AMBER",
+  "sender_id": "team@emiliaprotocol.ai",
+  "recipient_id": "jkintzele@jdieselny.com",
+  "received_at": "2026-08-16T19:16:42Z",
+  "ingested_at": 1786912455,
+  "payload": {
+    "message_id": "mail_AAMkADdlY2QwMmU3",
+    "subject": "Re: DNS + emilia-mailbox = a.i. kill switch",
+    "body_preview": "Bro,\r\n\r\nThis is a really good instinct. DNS gives A:iB a global,\r\nvendor-neutral place to publish and rotate its transport key, and\r\npairing it with the mailbox makes the discovery story much cleaner.\r\n\r\nI would call it a revocation signal rather than an ",
+    "body_content": "Bro,\r\n\r\nThis is a really good instinct. DNS gives A:iB a global,\r\nvendor-neutral place to publish and rotate its transport key, and\r\npairing it with the mailbox makes the discovery story much cleaner.\r\n\r\nI would call it a revocation signal rather than an instant kill\r\nswitch, only because caches can keep an older DNS answer alive for a\r\nwhile. The Gate should require a fresh, authenticated record and fail\r\nclosed if it is stale, missing, conflicting, or unsigned. The DNS key\r\ncan identify the mailbox sender without becoming the authority to\r\noperate a facility.\r\n\r\nThen the flow is clean: DNS discovers the current transport key, the\r\nmailbox carries the signed request, and EMILIA independently decides\r\nwhether the exact action is authorized and admissible.\r\n\r\nI really like where you are taking this. Let\u2019s make rotation, stale\r\ncache, resolver failure, and a valid key with no action authority the\r\nfirst hostile cases.\r\n\r\n\r\nIman\r\n"
+  },
+  "class_b_guest_transport": true
+}

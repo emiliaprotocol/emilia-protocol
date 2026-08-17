@@ -1,0 +1,4 @@
+/target/
+/keys/private-key.pem
+/keys/*.pem
+!/keys/public.key

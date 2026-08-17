@@ -1,0 +1,27 @@
+diff --git a/packages/verify-independent/index.js b/packages/verify-independent/index.js
+index c8d8e35..7af9a3c 100644
+--- a/packages/verify-independent/index.js
++++ b/packages/verify-independent/index.js
+@@ -11,8 +11,0 @@
+-// read suite file
+-const vectorsPath = process.argv[2];
+-if (!vectorsPath) {
+-  console.error("Usage: node run-independent.mjs <path-to-vectors-json>");
+-  process.exit(1);
+-}
+-const { vectors } = JSON.parse(fs.readFileSync(vectorsPath, 'utf8'));
+-
+diff --git a/examples/external-verification/out/verify-and-sign.mjs b/examples/external-verification/out/verify-and-sign.mjs
+index ccf951a..3dfd1a1 100644
+--- a/examples/external-verification/out/verify-and-sign.mjs
++++ b/examples/external-verification/out/verify-and-sign.mjs
+@@ -22,6 +22,6 @@ const signArgs = [
+-  '--verifier-id', 'ext:verifier:cleanroom:independent:v2',
++  '--verifier-id', 'ext:verifier:cleanroom',
+   '--verifier-name', 'Cleanroom-Independent-NodeJS',
+   '--org', 'Cleanroom-Independent',
+   '--implementation', 'NodeJS-Independent-Runner-v2',
+-  '--key', path.join(HERE, 'independent-key-2', 'private-key.pem'),
++  '--key', path.join(HERE, 'private-key.pem'),
+   '--out', OUT_DIR
+ ];

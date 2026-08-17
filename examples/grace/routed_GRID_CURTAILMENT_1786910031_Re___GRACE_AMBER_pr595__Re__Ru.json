@@ -1,0 +1,17 @@
+{
+  "type": "external_email_envelope",
+  "version": "1.0",
+  "project": "GRID_CURTAILMENT",
+  "tlp_classification": "TLP:AMBER",
+  "sender_id": "team@emiliaprotocol.ai",
+  "recipient_id": "jkintzele@jdieselny.com",
+  "received_at": "2026-08-16T15:49:41Z",
+  "ingested_at": 1786910031,
+  "payload": {
+    "message_id": "mail_AAMkADdlY2QwMmU3",
+    "subject": "Re: [GRACE:AMBER:pr595] Re: Rust Verifier Run Complete & Bounded Reconciliation Milestone",
+    "body_preview": "Hi J,\r\n\r\nI reviewed the live PR head, not just the commit in your note. Thanks\r\nfor reopening it with clean jdieselny authorship.\r\n\r\nIt is not ready to merge. At `4a28f7b`, GitHub reports a conflict with\r\ncurrent main. More importantly, the signed stateme",
+    "body_content": "Hi J,\r\n\r\nI reviewed the live PR head, not just the commit in your note. Thanks\r\nfor reopening it with clean jdieselny authorship.\r\n\r\nIt is not ready to merge. At `4a28f7b`, GitHub reports a conflict with\r\ncurrent main. More importantly, the signed statement still says\r\n`result.status: divergent`, with mismatches in 11 of 21 suites, while\r\nthe pin and generated public context say the Rust verifier passed all\r\n331 vectors. That is the same evidence mismatch I flagged yesterday,\r\nso I cannot approve the public 331-vector pass claim.\r\n\r\nThe schema reds are a separate live production-drift blocker involving\r\nthe Works Authority tables and functions. Vercel is blocked on team\r\nauthorization, and Strix did not run because the trial ended. None of\r\nthose changes the signed-result problem.\r\n\r\nThe honest choices remain: bring the verifier to a signed `verified`\r\nresult across the 331 pinned vectors and regenerate the public\r\nsurfaces, or keep this as valuable signed divergence evidence without\r\nreplacing the existing passing pin.\r\n\r\nI also checked the PR scope. The GRACE prototype and mailbox audit\r\nchanges are not in #595, so I am treating them as separate, not\r\nverified by this review.\r\n\r\nBest,\r\nIman\r\n"
+  },
+  "class_b_guest_transport": true
+}

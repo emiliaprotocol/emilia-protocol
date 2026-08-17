@@ -1,0 +1,9 @@
+diff --git a/examples/external-verification/out/verify-and-sign.mjs b/examples/external-verification/out/verify-and-sign.mjs
+--- a/examples/external-verification/out/verify-and-sign.mjs
++++ b/examples/external-verification/out/verify-and-sign.mjs
+@@ -22,1 +22,1 @@
+-  '--verifier-id', 'ext:verifier:cleanroom:independent:v2',
++  '--verifier-id', 'ext:verifier:cleanroom',
+@@ -26,1 +26,1 @@
+-  '--key', path.join(HERE, 'independent-key-2', 'private-key.pem'),
++  '--key', PRIVATE_KEY,

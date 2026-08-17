@@ -1,0 +1,17 @@
+{
+  "type": "external_email_envelope",
+  "version": "1.0",
+  "project": "GRID_CURTAILMENT",
+  "tlp_classification": "TLP:AMBER",
+  "sender_id": "team@emiliaprotocol.ai",
+  "recipient_id": "jkintzele@jdieselny.com",
+  "received_at": "2026-08-16T22:00:14Z",
+  "ingested_at": 1786920623,
+  "payload": {
+    "message_id": "mail_AAMkADdlY2QwMmU3",
+    "subject": "Re: [GRACE:AMBER:ietf_async_domain] Re: draft-feng-session-requirements: The Asynchronous Active Directory Domain Model for IETF",
+    "body_preview": "J,\r\n\r\nI like the asynchronous model, and I agree there is a useful point\r\nhere. Please hold this version, though. I read -00 and the live thread\r\nagain. Section 2 explicitly leaves transport and session-establishment\r\nmechanisms out of scope, so saying th",
+    "body_content": "J,\r\n\r\nI like the asynchronous model, and I agree there is a useful point\r\nhere. Please hold this version, though. I read -00 and the live thread\r\nagain. Section 2 explicitly leaves transport and session-establishment\r\nmechanisms out of scope, so saying the draft forces TCP/TLS,\r\nWebSockets, open listeners, or cloud silos would overstate it. Chong\r\nhas also already accepted our REQ-3 correction and is replacing\r\n\u201cdirect connection\u201d with mechanism-neutral authenticated endpoint\r\nbinding.\r\n\r\nI think the list contribution should be narrower:\r\n\r\n\u201cChong, one portability clarification for REQ-3: a session association\r\nneed not be coextensive with a continuously live transport connection.\r\nNegotiation may be carried synchronously or asynchronously, provided\r\neach message is integrity-protected and bound to both authenticated\r\nendpoint identities, the session, freshness and ordering state, and\r\nthe negotiated capability set. Intermediary storage or delivery does\r\nnot make the intermediary an authority for either endpoint\u2019s\r\ndeclarations or selections.\u201d\r\n\r\nI would leave DNS-AID and emilia-mailbox out for now. The mailbox repo\r\nis still red at d984101, DNSSEC lookup is not implemented, DNSSEC\r\nauthenticates the published record rather than sender authority, and\r\nrevocation remains bounded by TTL and cache state.\r\n\r\nThe asynchronous idea is good. This version will land much better.\r\n\r\n\r\nIman\r\n"
+  },
+  "class_b_guest_transport": true
+}

@@ -1,0 +1,17 @@
+{
+  "type": "external_email_envelope",
+  "version": "1.0",
+  "project": "GRID_CURTAILMENT",
+  "tlp_classification": "TLP:AMBER",
+  "sender_id": "jkintzele@jdieselny.com",
+  "recipient_id": "jkintzele@jdieselny.com",
+  "received_at": "2026-08-16T20:04:35Z",
+  "ingested_at": 1786911457,
+  "payload": {
+    "message_id": "mail_AQMkADdlY2QwMmU3",
+    "subject": "[GRACE:AMBER:ietf_req3] Re: REQ-3 & AgentProto: Aligning DNS-AID + Asynchronous Envelopes with your IETF proposal",
+    "body_preview": "Hi Iman, I saw your recent post on the agent2agent listserv regarding draft-feng-agentproto-session-requirements and your proposed replacement for REQ-3 (Authenticated Endpoint Binding). Spot on\u2014the assumption of a \"direct connection\" topology creates mas",
+    "body_content": "<html><head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"></head><body>Hi Iman, I saw your recent post on the agent2agent listserv regarding draft-feng-agentproto-session-requirements and your proposed replacement for REQ-3 (Authenticated Endpoint Binding). Spot on\u2014the assumption of a &quot;direct connection&quot; topology creates massive channel-security gaps. Timing is uncanny. We were just analyzing how to introduce DNS-AID (DNS-Anchored Identity) and Asynchronous Intent Envelopes to the working group without triggering the usual &quot;cold proposal&quot; pushback. Seeing you actively leading the charge on REQ-3, Option B is obvious: let's align and co-submit this pattern. How DNS-AID + Asynchronous Envelopes Closes the REQ-3 Gap: 1. Eliminating the Direct Connection Assumption (REQ-3): Instead of forcing agents to open fragile, synchronous HTTP/WebSocket sockets, agents exchange signed, asynchronous intent envelopes (emilia-mailbox). Transport is completely decoupled from execution. 2. DNS-Anchored Endpoint Binding (DNS-AID): When an envelope is received, the verifier extracts sender_domain and queries _agent. via DNSSEC to resolve the Ed25519 public key on the fly. 3. Class-A vs. Class-B Admission: - Class-A (DNS Verified): Signature matches published DNSSEC TXT record. - Class-B (Guest Mode): Un-enrolled fallback for read/comment actions, but blocked from physical Gate actuation. 4. Out-of-Band Kill Switch: Updating or revoking the DNS TXT record instantly revokes execution boundaries across all downstream facilities (EMILIA Gate) without touching server infrastructure. Proposed Next Step for the List: We can jump into the active draft-feng-agentproto-session-requirements thread together, supporting your REQ-3 replacement, and offering this DNS-AID + Asynchronous Envelope pattern as the working implementation that solves the channel-security requirement! Let me know if you'd like to review/tweak the reply text before we post to agent2agent@ietf.org. Best, J &amp; Agent Smith </body></html>"
+  },
+  "class_b_guest_transport": true
+}

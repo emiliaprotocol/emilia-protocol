@@ -1,0 +1,17 @@
+{
+  "type": "external_email_envelope",
+  "version": "1.0",
+  "project": "GRID_CURTAILMENT",
+  "tlp_classification": "TLP:AMBER",
+  "sender_id": "jkintzele@jdieselny.com",
+  "recipient_id": "jkintzele@jdieselny.com",
+  "received_at": "2026-08-16T15:06:25Z",
+  "ingested_at": 1786901911,
+  "payload": {
+    "message_id": "mail_AQMkADdlY2QwMmU3",
+    "subject": "[GRACE:AMBER:pr595] Re: Rust Verifier Run Complete & Bounded Reconciliation Milestone",
+    "body_preview": "Hi Iman, Hope you are having a great weekend! Quick updates on our end: 1. Pull Request Submitted: PR #595 is live on emiliaprotocol/emilia-protocol with clean authorship (jdieselny) for the 21-suite / 331-vector Rust verifier statement update. 2. GRACE B",
+    "body_content": "<html><head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"></head><body>Hi Iman, Hope you are having a great weekend! Quick updates on our end: 1. Pull Request Submitted: PR #595 is live on emiliaprotocol/emilia-protocol with clean authorship (jdieselny) for the 21-suite / 331-vector Rust verifier statement update. 2. GRACE Bounded Facility &amp; Lost-Ack Engine: We completed the prototype implementation (examples/grace/grace_bounded_reconciliation.py) covering all 4 targets you laid out: bounded facility command (grid.curtailment.bounded.v1), protected effect boundary (one-time Gate admission), independent attested meter stream, and lost-ack idempotent reconciliation. 3. EMILIA-MAILBOX Unblocked: Updated transport audit rules (verify_truth_root.py) to support Class-B guest transport mode so team members can communicate asynchronously without enrollment deadlocks. 4. Poka-Yoke Email Tagging: Moving forward, our project emails are tagged with [GRACE:AMBER:...] to route directly into our Git-backed intent mailbox. Let us know when you have had a chance to review PR #595! Best, J &amp; Agent Smith </body></html>"
+  },
+  "class_b_guest_transport": true
+}

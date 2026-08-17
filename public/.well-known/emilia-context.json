@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-17T06:57:29.531Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "43fbfb46a24f1fe65bd76a354a4335db1875007afedf1017f36f3ec7bd602299",
+    "input_digest_sha256": "7ac6aacc91a577cd511afbb4c7b861e7049b59bbe92c2daf1bcd4691144185f0",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -27,8 +27,8 @@
       },
       {
         "path": "conformance/external/rust-cleanroom-jdieselny.v1.json",
-        "sha256": "7c59508adfb6f3c4d7ea072ef167d77f751030710fe82725e26523f67e36e7db",
-        "bytes": 2286
+        "sha256": "90fae56273d9035246d37cf862f9ecf99140b135c52775c76646ad3bf02f6431",
+        "bytes": 2224
       },
       {
         "path": "security/claims.v1.json",
@@ -444,19 +444,19 @@
     },
     "source": {
       "repository": "https://github.com/jdieselny/ecr-wg",
-      "commit": "7faba36010e7590727bebbc5b9dcceee60539b9b",
+      "commit": "eddfe0b59065765881c2b4696acf8b92bd6b2c35",
       "tree_path": "rust/ep-cleanroom-verifier",
-      "tree_oid": "0553c5fa0a5c4b566703e0d8ef9864dc33e5176d"
+      "tree_oid": "ed586ce37d877440c593db4c7f50811dbd6d2c90"
     },
     "conformance": {
       "status": "pass",
-      "evaluated_at": "2026-07-11",
-      "suites": 16,
-      "vectors": 164,
-      "vector_bundle_sha256": "b884c727a51da1a7d12e234a119020430526fadd73e0f86eff1ded3e063e72f5",
-      "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
+      "evaluated_at": "2026-08-14",
+      "suites": 21,
+      "vectors": 331,
+      "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e",
+      "manifest_sha256": "84645941daae0d6e28a5bf749d0685b990c7ad97769e1c2736dff705a48ba196",
       "scope": "time_pinned_vector_set",
-      "relation_to_current_bundle": "time_pinned_prior_vector_set",
+      "relation_to_current_bundle": "current_vector_set",
       "current_vectors": 331
     },
     "hostility": {
@@ -473,14 +473,14 @@
       "cases": 359
     },
     "construction_evidence": {
-      "status": "implementation_organization_signed_legacy_statement_for_ancestor",
-      "source_scope": "The signed statement predates the pinned hardening commit and does not attest that commit.",
+      "status": "implementation_organization_signed_statement",
+      "source_scope": "The signed statement attests the current commit.",
       "statement": "examples/external-verification/statements/rust-cleanroom/statement.json",
-      "statement_sha256": "fdf43611dc7b7d41e40ccfd15d6e4d25457578d98be0f0e3a83796fdd3d9638a",
+      "statement_sha256": "b548115d86108e08722084e9daefaeb4462bd37f8b5bec3361a63751f10df6a7",
       "public_key": "examples/external-verification/statements/rust-cleanroom/public.key",
-      "public_key_sha256": "d6d08b75ea6520be91857ccf92440de3ebcddafabaab6e3331e45894d4277cb1",
+      "public_key_sha256": "b97f40bc2b7853df0480ccabc6e6c15ba53aca8ace9273262866910734548943",
       "verifier_id": "ext:verifier:emilia-cleanroom-rust",
-      "key_id": "ep:external-verifier-key:sha256:87c8c5029475f53a",
+      "key_id": "ep:external-verifier-key:sha256:6673b9d68d2cd767",
       "third_party_attestation": false,
       "strict_clean_room_acceptance": false
     }

@@ -1,0 +1,17 @@
+{
+  "type": "external_email_envelope",
+  "version": "1.0",
+  "project": "GRID_CURTAILMENT",
+  "tlp_classification": "TLP:AMBER",
+  "sender_id": "notifications@github.com",
+  "recipient_id": "jkintzele@jdieselny.com",
+  "received_at": "2026-08-16T12:14:20Z",
+  "ingested_at": 1786903201,
+  "payload": {
+    "message_id": "mail_AQMkADdlY2QwMmU3",
+    "subject": "Re: [emiliaprotocol/emilia-protocol] chore(conformance): refresh Rust cleanroom external verification statement to 21 suites / 331 vectors (PR #595)",
+    "body_preview": "vercel[bot] left a comment (emiliaprotocol/emilia-protocol#595)\r\n\r\n@datacomjdk is attempting to deploy a commit to the Future Enterprises Team on Vercel.\r\n\r\nA member of the Team first needs to authorize it.\r\n\r\n\u2014\r\nReply to this email directly, view it on G",
+    "body_content": "<html><head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"></head><body><div style=\"display:flex; flex-wrap:wrap; white-space:pre-wrap; align-items:center\"><img height=\"20\" width=\"20\" src=\"https://avatars.githubusercontent.com/in/8329?s=20&amp;v=4\" style=\"border-radius:50%; margin-right:4px\"><strong>vercel[bot]</strong> left a comment <a href=\"https://github.com/emiliaprotocol/emilia-protocol/pull/595#issuecomment-5307378299\">(emiliaprotocol/emilia-protocol#595)</a></div><p dir=\"auto\"><a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/datacomjdk/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/datacomjdk\">@datacomjdk</a> is attempting to deploy a commit to the <strong>Future Enterprises</strong> Team on <a href=\"https://vercel.com\" rel=\"nofollow\">Vercel</a>.</p><p dir=\"auto\">A member of the Team first needs to <a href=\"https://vercel.com/git/authorize?team=Future%20Enterprises&amp;slug=futureenterprises1&amp;teamId=team_VPGyZGteor849mEpVhkEwRQW&amp;type=github&amp;job=%7B%22headInfo%22%3A%7B%22sha%22%3A%228b8ee5218b22c744abaeac5ff568c9bac9b10789%22%7D%2C%22id%22%3A%22QmS86LEo1Ev1B2dbpJd36oqfVkkG2E6B27GzimwHQeBbNP%22%2C%22org%22%3A%22emiliaprotocol%22%2C%22prId%22%3A595%2C%22repo%22%3A%22emilia-protocol%22%7D\" rel=\"nofollow\">authorize it</a>.</p><p style=\"font-size:small; color:#666\">\u2014<br>Reply to this email directly, <a href=\"https://github.com/emiliaprotocol/emilia-protocol/pull/595?email_source=notifications&amp;email_token=CATQCC2HEPL4ZFF3JJ57KRL5KGQRRA5CNFSNUABFM5UWIORPF5TWS5BNNB2WEL2JONZXKZKDN5WW2ZLOOQXTKMZQG4ZTOOBSHE42M4TFMFZW63VGMF2XI2DPOKSWK5TFNZ2KYZTPN52GK4S7MNWGSY3L#issuecomment-5307378299\">view it on GitHub</a>, or <a href=\"https://github.com/notifications/unsubscribe-auth/CATQCC2B4ZZATNFAZC52URD5KGQRRAVCNFSNUABGKJSXA33TNF2G64TZHMYTCOBQGUYTQNZSGM5US43TOVSTWNJRGY2DCOJVGQYDTILWAI\">unsubscribe</a>.<br>You are receiving this because you authored the thread.<img src=\"https://github.com/notifications/beacon/CATQCC63XLV54E5YWBPGJ735KGQRRBFCNFSM6AAAAAC5RUYQQGWGG33NNVSW45C7OR4XAZNMJFZXG5LFINXW23LFNZ2KUY3PNVWWK3TUL5UWJTYAAAAACPCYFJ52M4TFMFZW63VGMF2XI2DPOI.gif\" height=\"1\" width=\"1\" alt=\"\"><span style=\"color:transparent; font-size:0; display:none; visibility:hidden; overflow:hidden; opacity:0; width:0; height:0; max-width:0; max-height:0\">Message ID: <span>&lt;emiliaprotocol/emilia-protocol/pull/595/c5307378299</span><span>@</span><span>github</span><span>.</span><span>com&gt;</span></span></p></body></html>"
+  },
+  "class_b_guest_transport": true
+}

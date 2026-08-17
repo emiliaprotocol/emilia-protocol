@@ -1,0 +1,29 @@
+{
+  "name": "@emilia-protocol/verify-independent",
+  "version": "0.1.0",
+  "description": "Clean-room, zero-dependency independent implementation of EP conformance vector verification using only native Node.js crypto. Used for producing independent statements.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": ["index.js", "README.md"],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "emilia-protocol",
+    "clean-room",
+    "independent-verifier",
+    "conformance"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/verify-independent"
+  }
+}

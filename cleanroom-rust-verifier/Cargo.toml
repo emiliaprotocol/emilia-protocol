@@ -1,0 +1,17 @@
+[package]
+name = "emilia-rust-verifier"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
+ed25519-dalek = { version = "2", features = ["pkcs8", "pem"] }
+base64 = "0.22"
+hex = "0.4"
+p256 = { version = "0.13", features = ["ecdsa"] }
+spki = "0.7"
+sha3 = "0.10"
+rsa = { version = "0.9", features = ["sha2"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }

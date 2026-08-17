@@ -1,0 +1,17 @@
+{
+  "type": "external_email_envelope",
+  "version": "1.0",
+  "project": "GRID_CURTAILMENT",
+  "tlp_classification": "TLP:AMBER",
+  "sender_id": "jkintzele@jdieselny.com",
+  "recipient_id": "jkintzele@jdieselny.com",
+  "received_at": "2026-08-16T17:29:55Z",
+  "ingested_at": 1786902542,
+  "payload": {
+    "message_id": "mail_AQMkADdlY2QwMmU3",
+    "subject": "[GRACE:AMBER:pr595] PR #595 Updated & Conflict Resolved: Clean Verified State Pushed",
+    "body_preview": "Hi Iman, Thank you for the detailed feedback. I appreciate your thorough review. I have updated PR #595 (https://github.com/emiliaprotocol/emilia-protocol/pull/595) to resolve both issues: 1. Conflict Resolved: Rebased cleanly on current upstream main (de",
+    "body_content": "<html><head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"></head><body>Hi Iman, Thank you for the detailed feedback. I appreciate your thorough review. I have updated PR #595 (https://github.com/emiliaprotocol/emilia-protocol/pull/595) to resolve both issues: 1. Conflict Resolved: Rebased cleanly on current upstream main (dee3b859). 2. Statement &amp; Pin Alignment: Preserved the 100% verified passing statement (status: verified) matching the public surface claims. ode scripts/generate-llm-context.mjs --check passes cleanly (LLM CONTEXT: PASS). 3. Authorship: Confirmed clean jdieselny authorship across the commit chain. PR #595 is now clean, unconflicted, and ready for your final review/merge! Best, J </body></html>"
+  },
+  "class_b_guest_transport": true
+}

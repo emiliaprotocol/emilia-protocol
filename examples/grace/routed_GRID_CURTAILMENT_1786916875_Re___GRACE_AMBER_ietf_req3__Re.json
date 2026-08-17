@@ -1,0 +1,17 @@
+{
+  "type": "external_email_envelope",
+  "version": "1.0",
+  "project": "GRID_CURTAILMENT",
+  "tlp_classification": "TLP:AMBER",
+  "sender_id": "team@emiliaprotocol.ai",
+  "recipient_id": "jkintzele@jdieselny.com",
+  "received_at": "2026-08-16T21:34:44Z",
+  "ingested_at": 1786916875,
+  "payload": {
+    "message_id": "mail_AAMkADdlY2QwMmU3",
+    "subject": "Re: [GRACE:AMBER:ietf_req3] Re: REQ-3 & AgentProto: Aligning DNS-AID + Asynchronous Envelopes with your IETF proposal",
+    "body_preview": "J,\r\n\r\nYes, I want to do this with you. The architecture is the right shape:\r\nasynchronous envelopes can satisfy endpoint-binding requirements\r\nwithout pretending the transport path itself is the security boundary,\r\nand DNSSEC can be useful for publishing ",
+    "body_content": "J,\r\n\r\nYes, I want to do this with you. The architecture is the right shape:\r\nasynchronous envelopes can satisfy endpoint-binding requirements\r\nwithout pretending the transport path itself is the security boundary,\r\nand DNSSEC can be useful for publishing a current signing-key\r\nassertion.\r\n\r\nWe should hold the list post for one repair pass. I pulled\r\nemilia-mailbox at d984101 and ran it. CI is red, and\r\ntest_missing_enrollment_and_unknown_sender_fail_closed now fails\r\nbecause the new guest path turns unknown and unbound senders into\r\nwarnings. The repo also does not implement DNSSEC lookup or DNS-AID\r\nyet, so calling it the working implementation would be easy for the\r\nlist to challenge.\r\n\r\nTwo claim corrections matter. DNSSEC authenticates the DNS record, not\r\nthe sender's authority. Also, changing a TXT record is not an instant\r\nkill switch because cached answers can remain usable through their\r\nTTL. The safe shape is: DNS publishes a transport credential, the\r\nenvelope proves possession, the relying party binds the exact sender,\r\nkey, freshness, and replay state, and EMILIA separately decides\r\nwhether the exact action is admitted. Stale or unavailable DNS status\r\nmust never become physical admission.\r\n\r\nI would keep REQ-3 mechanism-neutral. Once the code has a defined\r\nrecord format, canonical sender-domain binding, key IDs and rotation,\r\nTTL and freshness behavior, replay protection, and hostile tests, we\r\ncan offer DNS-AID plus asynchronous envelopes as one concrete profile.\r\n\r\nThe instinct is good, bro. Let's make the evidence as strong as the\r\nidea before we put both our names on it.\r\n\r\n\r\nIman\r\n"
+  },
+  "class_b_guest_transport": true
+}
