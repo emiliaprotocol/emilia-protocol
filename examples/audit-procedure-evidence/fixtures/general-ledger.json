@@ -1,0 +1,36 @@
+{
+  "document": "client-prepared general-ledger cash extract",
+  "entity": "Meridian Robotics Inc. (fixture entity)",
+  "period_end": "2026-06-30",
+  "accounts": [
+    {
+      "account_id": "OPER-001",
+      "name": "Operating cash - First Meridian Bank x4471",
+      "gl_balance": "1481450.25",
+      "entries": [
+        { "ref": "DIT-0901", "date": "2026-06-30", "description": "Customer deposit recorded 06-30, not yet on statement", "amount": "18400.00", "direction": "debit" },
+        { "ref": "OCK-0142", "date": "2026-06-27", "description": "Check 1142, Vendor Alpha Fabrication", "amount": "22150.50", "direction": "credit" },
+        { "ref": "OCK-0155", "date": "2026-06-29", "description": "Check 1155, Vendor Beta Logistics", "amount": "8300.00", "direction": "credit" },
+        { "ref": "OCK-0161", "date": "2026-06-30", "description": "Check 1161, Vendor Gamma Tooling", "amount": "1200.00", "direction": "credit" }
+      ]
+    },
+    {
+      "account_id": "PAYR-002",
+      "name": "Payroll cash - First Meridian Bank x8802",
+      "gl_balance": "239472.15",
+      "entries": [
+        { "ref": "OCK-2201", "date": "2026-06-30", "description": "Payroll check 2201", "amount": "9850.25", "direction": "credit" },
+        { "ref": "OCK-2202", "date": "2026-06-30", "description": "Payroll check 2202", "amount": "11640.00", "direction": "credit" },
+        { "ref": "DIT-2210", "date": "2026-06-30", "description": "Expense reimbursement deposit recorded 06-30", "amount": "50.00", "direction": "debit" }
+      ]
+    },
+    {
+      "account_id": "RESV-003",
+      "name": "Reserve cash - Coastal Trust Bank x1109",
+      "gl_balance": "525014.30",
+      "entries": [
+        { "ref": "JRN-0912", "date": "2026-06-30", "description": "Manual journal: transfer in from operating, per management", "amount": "25000.00", "direction": "debit" }
+      ]
+    }
+  ]
+}

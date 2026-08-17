@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "note": "Local (private) CAID action-type definitions pinned by this example, using the normative type entry schema from caid/DESIGN.md section 3. These types are NOT registered in caid/registry/action-types.json and carry no trust semantics: a CAID commits an identifier to canonical typed content, nothing more."
+  },
+  "types": [
+    {
+      "action_type": "assurance.cash-tie-out.1",
+      "status": "example-local",
+      "risk_class": "legal-effect",
+      "summary": "One full-population cash tie-out procedure over named general-ledger cash accounts against bank statements at a stated period end.",
+      "required_fields": [
+        { "name": "engagement_id", "type": "string" },
+        { "name": "entity", "type": "string" },
+        { "name": "period_end", "type": "string", "notes": "ISO 8601 date" },
+        { "name": "procedure_id", "type": "string" },
+        { "name": "procedure", "type": "string" },
+        { "name": "accounts", "type": "array" },
+        { "name": "population_digest", "type": "digest", "notes": "sha256:<lowercase hex> over the canonical reconciling-item population the procedure must test in full" }
+      ],
+      "optional_fields": [],
+      "digest_notes": "The population digest pins the exact full population; substituting, dropping, or adding an item changes the CAID.",
+      "references": []
+    },
+    {
+      "action_type": "assurance.exception-disposition.1",
+      "status": "example-local",
+      "risk_class": "legal-effect",
+      "summary": "Human disposition of one named exception raised by one identified procedure execution.",
+      "required_fields": [
+        { "name": "engagement_id", "type": "string" },
+        { "name": "procedure_caid", "type": "string", "notes": "the CAID of the procedure whose exception is being dispositioned; the join field" },
+        { "name": "item_id", "type": "string" },
+        { "name": "finding", "type": "string" },
+        { "name": "disposition", "type": "enum", "values_ref": "inline:exception_noted|exception_resolved_with_new_evidence" },
+        { "name": "follow_up", "type": "string" },
+        { "name": "disposed_at", "type": "timestamp" }
+      ],
+      "optional_fields": [],
+      "digest_notes": "Dispositioning is a distinct consequential action with its own identity; it never rewrites the procedure result it refers to.",
+      "references": []
+    }
+  ]
+}
