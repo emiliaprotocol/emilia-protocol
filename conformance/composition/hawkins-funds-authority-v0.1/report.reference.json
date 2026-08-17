@@ -1,0 +1,131 @@
+{
+  "@version": "HAWKINS-FUNDS-AUTHORITY-REPORT-v0.1",
+  "profile": "EP-HAWKINS-FUNDS-AUTHORITY-PROFILE-v0.1",
+  "reference": "draft-hawkins-scitt-attested-agent-payment-01, Section 4, Check 8 (funds-authority clause); Section 3 (Authorization Scope CDDL)",
+  "pinned_draft": {
+    "name": "draft-hawkins-scitt-attested-agent-payment-01",
+    "url": "https://www.ietf.org/archive/id/draft-hawkins-scitt-attested-agent-payment-01.txt",
+    "sha256": "9e6deb7c735a5f776809e3e1431c7e67e1ecc664ab2c0a94895d51778f4080a7"
+  },
+  "claim_boundary": {
+    "instantiation": "This profile is EMILIA's proposed instantiation of the funds-authority procedure that the pinned draft deliberately leaves rail- or deployment-defined. The draft does not reference EMILIA, and no endorsement or adoption is claimed.",
+    "scope": "Only the funds-authority clause of Check 8 is instantiated. Receipt availability from the Transparency Service, and Checks 1 through 7 and 9, are out of scope for this vector.",
+    "composition": "The Hawkins scope leg and the EMILIA receipt leg stay in their own trust boundaries and join by the scope digest; neither verifier ingests the other's evidence."
+  },
+  "decision_time": "2026-08-16T12:00:00.000Z",
+  "scope_model": {
+    "encoding": "rfc8949-4.2.1-deterministic (packages/verify encodeDeterministicCbor8949)",
+    "apk_thumbprint": "RFC 9679 COSE Key Thumbprint, SHA-256, required-parameter OKP COSE_Key",
+    "scope_a": {
+      "payee": "payee:vendor-acme",
+      "bytes_hex": "a76361706b5820dae26e48b88452673b34a349f4c2e98a698c6c99b046aaa4e1f518cd597a4fc264636f6465a363616c67677368612d3235366664696765737458201345b6ce9884ac5c5ce800b12f2c9f90e8d784b0967939911261954d28ba0ad76861727469666163747663766d2d6c61756e63682d6d6561737572656d656e74657261696c7381747261696c3a666978747572652d746573746e6574666578706972791a6a879500666c696d697473a5657363616c65026677696e646f771a000151806863757272656e637963555344696167677265676174651a001e84806b7065725f7061796d656e741a0007a12066706179656573817170617965653a76656e646f722d61636d65686578656375746f7278236578656375746f723a7261696c2d666978747572653a736574746c656d656e742d3031",
+      "scope_digest": "sha256:5e96e05d79b0bd84636eea9449fb204b72e9269b96ee62152ff14c4ed1d1a801"
+    },
+    "scope_b": {
+      "payee": "payee:vendor-other",
+      "bytes_hex": "a76361706b5820dae26e48b88452673b34a349f4c2e98a698c6c99b046aaa4e1f518cd597a4fc264636f6465a363616c67677368612d3235366664696765737458201345b6ce9884ac5c5ce800b12f2c9f90e8d784b0967939911261954d28ba0ad76861727469666163747663766d2d6c61756e63682d6d6561737572656d656e74657261696c7381747261696c3a666978747572652d746573746e6574666578706972791a6a879500666c696d697473a5657363616c65026677696e646f771a000151806863757272656e637963555344696167677265676174651a001e84806b7065725f7061796d656e741a0007a12066706179656573817270617965653a76656e646f722d6f74686572686578656375746f7278236578656375746f723a7261696c2d666978747572653a736574746c656d656e742d3031",
+      "scope_digest": "sha256:4a002822f88be6a696a741f7544b23956d1e746bc6a70ad28b0cd37fca239d1a"
+    }
+  },
+  "receipt_model": {
+    "version": "EP-RECEIPT-v1",
+    "verifier": "packages/verify verifyReceipt (offline, pinned Ed25519 key per account principal)",
+    "action_type": "payment.scope-issuance.authorize.1",
+    "action_material": [
+      "action_type",
+      "account",
+      "issuer",
+      "scope_digest"
+    ],
+    "caid": "packages/verify receiptActionCaid (jcs-sha256)",
+    "revocation": "packages/verify EP-REVOCATION-v1 isRevoked under pinned revoker keys"
+  },
+  "cases": [
+    {
+      "id": "funds-authority-established",
+      "title": "The principal receipt names this exact scope digest; the funds-authority clause of Check 8 is established",
+      "expected": {
+        "check8_funds_authority": "established",
+        "refusal": null
+      },
+      "outcome": {
+        "check8_funds_authority": "established",
+        "refusal": null,
+        "detail": null
+      },
+      "passed": true
+    },
+    {
+      "id": "different-scope-digest-refused",
+      "title": "A valid receipt for a DIFFERENT scope digest does not carry authority for this scope",
+      "expected": {
+        "check8_funds_authority": "refused",
+        "refusal": "funds_authority_scope_mismatch"
+      },
+      "outcome": {
+        "check8_funds_authority": "refused",
+        "refusal": "funds_authority_scope_mismatch",
+        "detail": "receipt authorizes issuance of a different Authorization Scope (join digest differs)"
+      },
+      "passed": true
+    },
+    {
+      "id": "no-receipt-fails-closed",
+      "title": "No funds-authority receipt available: the check fails closed, never a pass",
+      "expected": {
+        "check8_funds_authority": "refused",
+        "refusal": "funds_authority_unavailable"
+      },
+      "outcome": {
+        "check8_funds_authority": "refused",
+        "refusal": "funds_authority_unavailable",
+        "detail": "no funds-authority receipt presented"
+      },
+      "passed": true
+    },
+    {
+      "id": "expired-receipt-refused",
+      "title": "An expired receipt confers nothing at the executor decision time",
+      "expected": {
+        "check8_funds_authority": "refused",
+        "refusal": "funds_authority_receipt_expired"
+      },
+      "outcome": {
+        "check8_funds_authority": "refused",
+        "refusal": "funds_authority_receipt_expired",
+        "detail": "receipt expiry has passed at the executor decision time"
+      },
+      "passed": true
+    },
+    {
+      "id": "revoked-receipt-refused",
+      "title": "An authentic pinned-revoker EP-REVOCATION-v1 statement revokes the exact receipt",
+      "expected": {
+        "check8_funds_authority": "refused",
+        "refusal": "funds_authority_receipt_revoked"
+      },
+      "outcome": {
+        "check8_funds_authority": "refused",
+        "refusal": "funds_authority_receipt_revoked",
+        "detail": "an authentic pinned-revoker statement revokes this exact receipt"
+      },
+      "passed": true
+    },
+    {
+      "id": "unpinned-signer-refused",
+      "title": "A receipt signed by a key not pinned for the account principal is refused",
+      "expected": {
+        "check8_funds_authority": "refused",
+        "refusal": "funds_authority_signer_not_pinned"
+      },
+      "outcome": {
+        "check8_funds_authority": "refused",
+        "refusal": "funds_authority_signer_not_pinned",
+        "detail": "receipt signature does not verify under the key pinned for the account principal"
+      },
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "report_digest": "sha256:07d59ba700f1566120cbf4f3dda1a1bd0534142d24288a9d8a834ed1519be726"
+}

@@ -20,6 +20,8 @@ interface Finding {
   caid: string;
   action_digest: string;
   classification?: string;
+  classification_rule_id?: string;
+  reclassification_reason?: string;
 }
 
 interface CoverageScenario {
@@ -31,8 +33,9 @@ interface CoverageScenario {
   findings: {
     matched: Array<Finding & { system_record_id: string; receipt_record_id: string }>;
     effect_without_receipt: Finding[];
-    receipt_without_effect: Finding[];
+    receipted_without_observation: Finding[];
     indeterminate: Finding[];
+    system_indeterminate: Finding[];
     excluded: Finding[];
     exception: Finding[];
   };
@@ -48,8 +51,9 @@ interface CoverageScenario {
 const LABELS: Array<[string, string]> = [
   ['matched', 'Matched exact action'],
   ['effect_without_receipt', 'Effect without receipt'],
-  ['receipt_without_effect', 'Receipt without effect'],
+  ['receipted_without_observation', 'Receipted without observation'],
   ['indeterminate', 'Uncertain outcome'],
+  ['system_indeterminate', 'Unresolved classification'],
   ['excluded', 'Declared exclusion'],
   ['exception', 'Source exception'],
 ];

@@ -42,8 +42,14 @@ export function buildCoverageReferenceScenario(nowInput = new Date()) {
   const systemRecords: CoveragePopulationRecord[] = [
     { record_id: 'pas:effect:PA-1001', caid: caid('A'), action_digest: digest('a'), classification: 'effect' },
     { record_id: 'pas:effect:PA-1002', caid: caid('B'), action_digest: digest('b'), classification: 'effect' },
-    { record_id: 'pas:excluded:PA-1003', caid: caid('C'), action_digest: digest('c'), classification: 'excluded' },
-    { record_id: 'pas:exception:PA-1004', caid: caid('D'), action_digest: digest('d'), classification: 'exception' },
+    {
+      record_id: 'pas:excluded:PA-1003', caid: caid('C'), action_digest: digest('c'), classification: 'excluded',
+      classification_rule_id: 'ep:coverage:excluded:out-of-scope-action-class:1',
+    },
+    {
+      record_id: 'pas:exception:PA-1004', caid: caid('D'), action_digest: digest('d'), classification: 'exception',
+      classification_rule_id: 'ep:coverage:exception:declared-emergency-override:1',
+    },
   ];
   const receiptRecords: CoveragePopulationRecord[] = [
     { record_id: 'gate:receipt:PA-1001', caid: caid('A'), action_digest: digest('a'), classification: 'receipt' },

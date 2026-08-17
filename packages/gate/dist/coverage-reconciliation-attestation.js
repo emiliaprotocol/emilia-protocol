@@ -2,12 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Signed period reconciliation of supplied populations; never proof that the supplied population is complete. */
 import { RISK_DIGEST, riskExact, riskIdentifier, riskInstant, signRiskBody, verifyRiskBody, } from './reliance-risk-crypto.js';
-export const COVERAGE_RECONCILIATION_ATTESTATION_VERSION = 'EP-COVERAGE-RECONCILIATION-ATTESTATION-v1';
+export const COVERAGE_RECONCILIATION_ATTESTATION_VERSION = 'EP-COVERAGE-RECONCILIATION-ATTESTATION-v2';
 export const COVERAGE_RECONCILIATION_CLAIM_BOUNDARY = 'signed_reconciliation_of_supplied_populations_not_population_completeness';
 const PROGRAM_KEYS = ['program_id', 'version', 'source_digest', 'program_digest'];
 const PERIOD_KEYS = ['start', 'end'];
 const POPULATION_KEYS = ['inventory_id', 'population_root', 'count'];
-const JOIN_KEYS = ['matched', 'effect_without_receipt', 'receipt_without_effect', 'indeterminate', 'excluded', 'exception'];
+// v2 renames v1's `receipt_without_effect` to `receipted_without_observation`
+// (the join only shows a receipt with no matching record in the supplied
+// source population; it never shows that no effect occurred) and adds the
+// system-side `system_indeterminate` bin for excluded/exception records whose
+// classification_rule_id did not resolve under the pinned mapping profile.
+const JOIN_KEYS = ['matched', 'effect_without_receipt', 'receipted_without_observation', 'indeterminate', 'system_indeterminate', 'excluded', 'exception'];
 const ANCHOR_KEYS = ['method', 'evidence_digest'];
 const BODY_KEYS = ['@version', 'attestation_id', 'relying_party_id', 'program', 'period', 'coverage_report_hash', 'census_digest', 'system_of_record', 'receipt_population', 'joins', 'issued_at', 'expires_at', 'timestamp_anchor', 'claim_boundary'];
 function count(value) { return Number.isSafeInteger(value) && Number(value) >= 0; }
@@ -46,8 +51,11 @@ function validate(value) {
     }
     if (!JOIN_KEYS.every((key) => count(value.joins[key])))
         throw new TypeError('coverage reconciliation counts are invalid');
-    if (value.system_of_record.count !== value.joins.matched + value.joins.effect_without_receipt + value.joins.excluded + value.joins.exception
-        || value.receipt_population.count !== value.joins.matched + value.joins.receipt_without_effect + value.joins.indeterminate) {
+    // Conservation: the bins must sum back to the signed record count on each
+    // side. excluded/exception/system_indeterminate are system-side bins;
+    // indeterminate and receipted_without_observation are receipt-side bins.
+    if (value.system_of_record.count !== value.joins.matched + value.joins.effect_without_receipt + value.joins.excluded + value.joins.exception + value.joins.system_indeterminate
+        || value.receipt_population.count !== value.joins.matched + value.joins.receipted_without_observation + value.joins.indeterminate) {
         throw new TypeError('coverage reconciliation population conservation failed');
     }
     if (value.timestamp_anchor !== null && (!riskExact(value.timestamp_anchor, ANCHOR_KEYS)
