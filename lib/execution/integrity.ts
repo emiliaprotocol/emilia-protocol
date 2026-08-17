@@ -72,6 +72,15 @@ import type { KeyObject } from 'node:crypto';
 // lib/provenance/chain.js and lib/trust-receipt/issuer.js).
 import { canonicalize, actionHash } from '../../packages/issue/index.js';
 import type { ActionObject } from '../../packages/issue/index.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  ML_DSA_65_SECRET_KEY_BYTES,
+  type AgilityOptions,
+  type AgileSignature,
+  type AgileVerificationKey,
+} from '../../packages/verify/pq-signature-agility.js';
 
 export const EXECUTION_INTEGRITY_VERSION = 'EP-EXECUTION-INTEGRITY-v1';
 
@@ -585,11 +594,429 @@ export function verifyExecutionIntegrity(arg1?: any, arg2?: any, arg3?: any): Ex
   return { valid, checks, errors, binding_status: attestation.binding_status ?? null };
 }
 
+// ===========================================================================
+// EP-EXECUTION-INTEGRITY-v2 -- the hybrid (Ed25519 + ML-DSA-65) attestation
+// ===========================================================================
+/**
+ * HYBRID MIGRATION following the reference pattern in
+ * docs/protocol/pq-hybrid-program.md ("PATTERN: the reference hybrid
+ * migration") and packages/verify/src/revocation.ts's EP-REVOCATION-v2. Five
+ * moves, in order: (1) VERSION BUMP, not a field bump — a second signature
+ * changes the SHAPE of the proof, so the attestation takes a new `@version`
+ * (EP-EXECUTION-INTEGRITY-v1 -> -v2); verifyExecutionIntegrity() above is
+ * untouched and refuses a v2 attestation on the version marker;
+ * (2) SET SHAPE — `proof.signatures` is the EP-SIG-AGILITY-v1 AgileSignature
+ * array, one entry per algorithm in the registered order; (3) ANTI-STRIPPING
+ * BYTES — the required algorithm set is inside the signed bytes
+ * (executionV2SignedPayload), rebuilt by the verifier from the REGISTERED set;
+ * (4) V1 COMPATIBILITY — the v1 sync verifier is unchanged; v2 verification is
+ * ASYNC and a SEPARATE entry point; (5) NAMED REFUSALS — every failure names a
+ * check, nothing throws on caller input, and an absent ML-DSA backend is a
+ * refusal, never a pass on the classical leg.
+ *
+ * The drift binding is unchanged: the verifier RE-DERIVES the executed
+ * canonical hash and refuses any attestation whose executed action does not
+ * hash to the approved action_hash. The executor is identified but not trusted;
+ * its Ed25519 and ML-DSA-65 halves are pinned out of band per executor_key_id.
+ *
+ * HONEST RESIDUAL is exactly the v1 residual. The ML-DSA backend is
+ * @noble/post-quantum's pure-JS FIPS 204 implementation, not independently
+ * audited and not a FIPS validated module; v2 does not retroactively protect v1
+ * attestations.
+ */
+
+export const EXECUTION_INTEGRITY_V2_VERSION = 'EP-EXECUTION-INTEGRITY-v2';
+export const EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+const EXECUTOR_PQ_KEY_ID = /^ep:executor-key:ml-dsa-65:sha256:[0-9a-f]{64}$/;
+
+export interface ExecutionIntegrityV2Proof {
+  profile: string;
+  required_algorithms: string[];
+  executor_key_id: string;
+  public_key: string;
+  pq_key_id: string;
+  pq_public_key: string;
+  signatures: AgileSignature[];
+}
+
+export interface ExecutionIntegrityV2Attestation {
+  '@version'?: string;
+  executor_id?: string | null;
+  approved_action_hash?: string;
+  executed_action?: unknown;
+  executed_action_hash?: string;
+  binding_status?: string;
+  irreversible?: boolean;
+  executed_at?: string | null;
+  execution_id?: string;
+  proof?: ExecutionIntegrityV2Proof;
+  scope_note?: string;
+  [key: string]: unknown;
+}
+
+export interface ExecutionIntegrityV2ExecutorKey {
+  executor_key_id: string;
+  /** Ed25519 signing key. */
+  privateKey: KeyObject;
+  /** ML-DSA-65 secret key: 4032 raw bytes, or base64url of them. */
+  pqSecretKey: Uint8Array | string;
+  /** ML-DSA-65 public key: 1952 raw bytes, or base64url of them. */
+  pqPublicKey: Uint8Array | string;
+}
+
+export interface BuildExecutionIntegrityV2Args {
+  approvedActionHash?: string;
+  executedAction?: unknown;
+  executor?: ExecutionIntegrityV2ExecutorKey;
+  executionId?: string;
+  executedAt?: string;
+  deterministic?: boolean;
+}
+
+export interface ExecutionIntegrityV2ExecutorKeyPin { public_key: string; pq_public_key: string; }
+
+export interface ExecutionIntegrityV2Opts extends AgilityOptions {
+  executorKeys?: Record<string, ExecutionIntegrityV2ExecutorKeyPin>;
+  reversibilityAsserted?: boolean | ((attestation: ExecutionIntegrityV2Attestation | null) => boolean);
+}
+
+function executionAlgorithmSetMatches(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+function executionEdSpkiB64u(key: KeyObject): string {
+  return crypto.createPublicKey(key as unknown as crypto.PublicKeyInput)
+    .export({ type: 'spki', format: 'der' }).toString('base64url');
+}
+
+function executorPqKeyIdOf(rawB64u: string): string {
+  return `ep:executor-key:ml-dsa-65:sha256:${crypto
+    .createHash('sha256').update(Buffer.from(rawB64u, 'base64url')).digest('hex')}`;
+}
+
+function executionPqRawB64u(value: Uint8Array | string, expectedLength: number, label: string): string {
+  const bytes = value instanceof Uint8Array
+    ? Buffer.from(value)
+    : (/^[A-Za-z0-9_-]+$/.test(String(value)) ? Buffer.from(String(value), 'base64url') : Buffer.alloc(0));
+  if (bytes.length !== expectedLength) {
+    throw new Error(`buildExecutionIntegrityV2: ${label} must be ${expectedLength} raw bytes (or base64url of them)`);
+  }
+  return bytes.toString('base64url');
+}
+
+/**
+ * The bytes BOTH legs sign — the same fixed field set as v1's
+ * executionSignedPayload, plus the v2 marker and the required algorithm set.
+ * Recomputed by the verifier from the PRESENTED fields and the REGISTERED set.
+ */
+export function executionV2SignedPayload(
+  att: ExecutionIntegrityV2Attestation,
+  requiredAlgorithms: readonly string[] = EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!executionAlgorithmSetMatches(requiredAlgorithms)) {
+    throw new Error('executionV2SignedPayload: algorithm set is not the registered EP-EXECUTION-INTEGRITY-v2 set');
+  }
+  return Buffer.from(canonicalize({
+    '@version': EXECUTION_INTEGRITY_V2_VERSION,
+    approved_action_hash: att.approved_action_hash,
+    binding_status: att.binding_status ?? 'match',
+    executed_action: att.executed_action ?? null,
+    executed_action_hash: att.executed_action_hash,
+    executed_at: att.executed_at ?? null,
+    execution_id: att.execution_id ?? null,
+    executor_id: att.executor_id ?? att.proof?.executor_key_id ?? null,
+    required_algorithms: [...requiredAlgorithms],
+  }), 'utf8');
+}
+
+/**
+ * buildExecutionIntegrityV2 — assemble a hybrid attestation binding the executed
+ * call to the approved action_hash, signed under BOTH registered algorithms.
+ * THROWS on issuer-side misuse or an unavailable ML-DSA backend.
+ */
+export async function buildExecutionIntegrityV2({
+  approvedActionHash,
+  executedAction,
+  executor,
+  executionId,
+  executedAt,
+  deterministic = false,
+}: BuildExecutionIntegrityV2Args = {}): Promise<ExecutionIntegrityV2Attestation> {
+  if (!executor || !executor.executor_key_id || !executor.privateKey || !executor.pqSecretKey || !executor.pqPublicKey) {
+    throw new Error('buildExecutionIntegrityV2 requires executor.{executor_key_id,privateKey,pqSecretKey,pqPublicKey}');
+  }
+  const execHash = executedActionHash(executedAction);
+  const att: ExecutionIntegrityV2Attestation = {
+    '@version': EXECUTION_INTEGRITY_V2_VERSION,
+    executor_id: executor.executor_key_id,
+    approved_action_hash: approvedActionHash,
+    executed_action: executedAction,
+    executed_action_hash: execHash,
+    binding_status: hexOf(execHash) === hexOf(approvedActionHash) ? 'match' : 'drift',
+  };
+  if (executionId) att.execution_id = executionId;
+  if (executedAt) att.executed_at = executedAt;
+
+  const edPublic = executionEdSpkiB64u(executor.privateKey);
+  const pqPublic = executionPqRawB64u(executor.pqPublicKey, ML_DSA_65_PUBLIC_KEY_BYTES, 'executor.pqPublicKey');
+  const pqSecret = executionPqRawB64u(executor.pqSecretKey, ML_DSA_65_SECRET_KEY_BYTES, 'executor.pqSecretKey');
+  const pqKeyId = executorPqKeyIdOf(pqPublic);
+
+  const messageBytes = executionV2SignedPayload(att, EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS);
+  const signatures = await signAgileSet(
+    new Uint8Array(messageBytes),
+    [
+      { alg: 'Ed25519', private_key: executor.privateKey, key_id: executor.executor_key_id },
+      { alg: 'ML-DSA-65', private_key: pqSecret, key_id: pqKeyId },
+    ],
+    deterministic === true ? { deterministic: true } : {},
+  );
+  const byAlg = new Map(signatures.map((s) => [s.alg, s]));
+  const ordered = EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS.map((alg) => {
+    const s = byAlg.get(alg);
+    if (!s) throw new Error(`buildExecutionIntegrityV2: signing produced no ${alg} leg`);
+    return s;
+  });
+
+  att.proof = {
+    profile: EXECUTION_INTEGRITY_V2_VERSION,
+    required_algorithms: [...EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS],
+    executor_key_id: executor.executor_key_id,
+    public_key: edPublic,
+    pq_key_id: pqKeyId,
+    pq_public_key: pqPublic,
+    signatures: ordered,
+  };
+  return att;
+}
+
+/**
+ * verifyExecutionIntegrityV2 — FAIL-CLOSED hybrid drift + attestation check.
+ * Accepts the same two calling conventions as verifyExecutionIntegrity:
+ *   (A) verifyExecutionIntegrityV2(attestation, receipt, opts)
+ *   (B) verifyExecutionIntegrityV2({ approvedActionHash, executedAction,
+ *         attestation, execution }, opts)
+ * Never throws on caller input; a v2 attestation NEVER verifies on one leg alone.
+ */
+export async function verifyExecutionIntegrityV2(arg1?: any, arg2?: any, arg3?: any): Promise<ExecutionIntegrityResult> {
+  const isObjectArg =
+    arg1 && typeof arg1 === 'object' && arg1['@version'] === undefined && (
+      'approvedActionHash' in arg1 || 'executedAction' in arg1 || 'attestation' in arg1 || 'execution' in arg1
+    );
+
+  let attestation: ExecutionIntegrityV2Attestation | null;
+  let receipt: ExecutionIntegrityReceiptRef;
+  let opts: ExecutionIntegrityV2Opts;
+  if (isObjectArg) {
+    const { approvedActionHash, attestation: att } = arg1;
+    attestation = att ?? null;
+    receipt = { action_hash: approvedActionHash };
+    opts = { ...(arg2 || {}) };
+  } else {
+    attestation = arg1 ?? null;
+    receipt = arg2 || {};
+    opts = { ...(arg3 || {}) };
+  }
+
+  const executorKeys = opts.executorKeys || {};
+  let reversibilityAsserted = opts.reversibilityAsserted === true;
+  if (typeof opts.reversibilityAsserted === 'function') {
+    try {
+      reversibilityAsserted = opts.reversibilityAsserted(attestation) === true;
+    } catch {
+      reversibilityAsserted = false;
+    }
+  }
+
+  const checks: Record<string, boolean> = {
+    attestation_present: true,
+    version: true,
+    executed_hash_self_consistent: true,
+    executed_hash_matches_approved: true,
+    algorithm_set: true,
+    legs_present: true,
+    executor_key_pinned: true,
+    executor_signature_valid: true,
+    signature_binds_attestation: true,
+  };
+  const errors: string[] = [];
+  const fail = (key: string, msg: string): void => { checks[key] = false; errors.push(msg); };
+  const result = (bindingStatus: string | null): ExecutionIntegrityResult => ({
+    valid: Object.values(checks).every(Boolean),
+    checks: checks as unknown as ExecutionIntegrityChecks,
+    errors,
+    binding_status: bindingStatus,
+  });
+
+  if (!attestation) {
+    if (!reversibilityAsserted) {
+      fail('attestation_present',
+        'no execution-integrity attestation; reversibility was not independently asserted (fail-closed)');
+      return result(null);
+    }
+    return result(null);
+  }
+
+  if (attestation['@version'] !== EXECUTION_INTEGRITY_V2_VERSION) {
+    fail('version', `unsupported version: ${attestation['@version']}`);
+    return result(attestation.binding_status ?? null);
+  }
+
+  // Executed hash self-consistent (recompute from executed_action).
+  let recomputed: string | null = null;
+  if (attestation.executed_action) {
+    try { recomputed = actionHash(attestation.executed_action as ActionObject); } catch { recomputed = null; }
+    if (recomputed === null) {
+      fail('executed_hash_self_consistent', 'executed_action present but not hashable');
+    } else if (hexOf(recomputed) !== hexOf(attestation.executed_action_hash)) {
+      fail('executed_hash_self_consistent',
+        `executed_action hashes to ${recomputed} but executed_action_hash claims ${attestation.executed_action_hash}`);
+    }
+  }
+
+  // Executed canonical hash == approved action_hash (drift check).
+  const executedHex = hexOf(recomputed ?? attestation.executed_action_hash);
+  const approvedHex = hexOf(receipt?.action_hash);
+  if (!approvedHex) {
+    fail('executed_hash_matches_approved', 'receipt carries no action_hash to bind against');
+  } else if (executedHex !== approvedHex) {
+    fail('executed_hash_matches_approved',
+      `execution drift: executed canonical hash ${executedHex} != approved action_hash ${approvedHex}`);
+  }
+  if (attestation.binding_status === 'drift' || (attestation.binding_status === 'match' && executedHex !== approvedHex)) {
+    fail('executed_hash_matches_approved',
+      `binding_status "${attestation.binding_status}" contradicts the hashes (status is not trusted)`);
+  }
+
+  const proof = attestation.proof;
+  if (!proof || typeof proof !== 'object' || proof.profile !== EXECUTION_INTEGRITY_V2_VERSION
+    || typeof proof.executor_key_id !== 'string') {
+    fail('legs_present', 'proof must use the exact EP-EXECUTION-INTEGRITY-v2 proof schema');
+    return result(attestation.binding_status ?? null);
+  }
+
+  if (!executionAlgorithmSetMatches(proof.required_algorithms)) {
+    fail('algorithm_set',
+      `proof.required_algorithms must be exactly ${JSON.stringify([...EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS])} (set narrowing / widening refused)`);
+  }
+
+  const signatures = Array.isArray(proof.signatures) ? proof.signatures as AgileSignature[] : null;
+  if (!signatures || signatures.length === 0) {
+    fail('legs_present', 'proof.signatures must carry one signature per required algorithm');
+  } else {
+    const presented = new Set<string>();
+    let malformed = false;
+    for (const s of signatures) {
+      if (!s || typeof s !== 'object' || Array.isArray(s) || typeof s.alg !== 'string' || typeof s.sig !== 'string') {
+        fail('legs_present', 'each proof.signatures entry must be { alg, sig, key_id? }');
+        malformed = true;
+        break;
+      }
+      if (presented.has(s.alg)) {
+        fail('legs_present', `duplicate signature for algorithm "${s.alg}"`);
+        malformed = true;
+        break;
+      }
+      presented.add(s.alg);
+    }
+    if (!malformed) {
+      for (const alg of EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS) {
+        if (!presented.has(alg)) fail('legs_present', `missing required ${alg} signature (leg stripped)`);
+      }
+      for (const alg of presented) {
+        if (!(EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) {
+          fail('legs_present', `unexpected algorithm "${alg}" outside the registered set`);
+        }
+      }
+    }
+  }
+
+  // Executor pinned, BOTH halves (identified but not trusted).
+  const pin = executorKeys[proof.executor_key_id];
+  const presentedEd = typeof proof.public_key === 'string' ? proof.public_key : '';
+  const presentedPq = typeof proof.pq_public_key === 'string' ? proof.pq_public_key : '';
+  const derivedPqKeyId = presentedPq
+    && Buffer.from(presentedPq, 'base64url').length === ML_DSA_65_PUBLIC_KEY_BYTES
+    && Buffer.from(presentedPq, 'base64url').toString('base64url') === presentedPq
+    ? executorPqKeyIdOf(presentedPq) : '';
+  if (!pin || !pin.public_key || !pin.pq_public_key) {
+    fail('executor_key_pinned', `no pinned key pair for executor "${proof.executor_key_id}" (identified but not trusted)`);
+  } else {
+    if (pin.public_key !== presentedEd) fail('executor_key_pinned', 'presented Ed25519 executor key != pinned key (key substitution)');
+    if (pin.pq_public_key !== presentedPq) fail('executor_key_pinned', 'presented ML-DSA-65 executor key != pinned key (key substitution)');
+  }
+  if (!derivedPqKeyId || proof.pq_key_id !== derivedPqKeyId
+    || !EXECUTOR_PQ_KEY_ID.test(typeof proof.pq_key_id === 'string' ? proof.pq_key_id : '')) {
+    fail('executor_key_pinned', 'pq_key_id must be the full digest of the presented ML-DSA-65 key');
+  }
+
+  // Signature set: both legs over bytes rebuilt from the presented fields and
+  // the REGISTERED set, under the PINNED keys only.
+  let recomputedBytes: Buffer | null = null;
+  try {
+    recomputedBytes = executionV2SignedPayload(attestation, EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS);
+  } catch {
+    recomputedBytes = null;
+  }
+  if (!recomputedBytes) {
+    fail('signature_binds_attestation', 'attestation fields are not canonicalizable');
+    fail('executor_signature_valid', 'attestation fields are not canonicalizable');
+    return result(attestation.binding_status ?? null);
+  }
+  const verificationKeys: AgileVerificationKey[] = [
+    { alg: 'Ed25519', public_key: pin?.public_key ?? '', key_id: proof.executor_key_id },
+    { alg: 'ML-DSA-65', public_key: pin?.pq_public_key ?? '', key_id: derivedPqKeyId || undefined },
+  ];
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(
+      new Uint8Array(recomputedBytes),
+      signatures ?? [],
+      verificationKeys,
+      {
+        ...executionAgilityPassthrough(opts),
+        policy: 'hybrid_all',
+        requiredAlgorithms: [...EXECUTION_INTEGRITY_V2_REQUIRED_ALGORITHMS],
+      },
+    );
+  } catch {
+    setResult = null;
+  }
+  if (setResult?.verified !== true) {
+    const reason = String(setResult?.reason ?? 'signature_set_unverified');
+    fail('executor_signature_valid',
+      `executor signature set does not verify under the pinned Ed25519 + ML-DSA-65 keys (${reason})`);
+    const failedLeg = Array.isArray(setResult?.results)
+      ? setResult.results.find((r) => r?.verified !== true) ?? null
+      : null;
+    if (failedLeg?.reason === 'signature_invalid') {
+      fail('signature_binds_attestation',
+        'executor signature set does not bind the presented attestation bytes (recomputed payload mismatch)');
+    }
+  }
+
+  return result(attestation.binding_status ?? null);
+}
+
+function executionAgilityPassthrough(opts: ExecutionIntegrityV2Opts): AgilityOptions {
+  const out: AgilityOptions = {};
+  if (opts.mldsaBackend !== undefined) out.mldsaBackend = opts.mldsaBackend;
+  if (opts.mldsaBackendLoader !== undefined) out.mldsaBackendLoader = opts.mldsaBackendLoader;
+  return out;
+}
+
 const executionIntegrity = {
   bindExecution,
   buildExecutionIntegrity,
+  buildExecutionIntegrityV2,
   executedActionHash,
+  executionV2SignedPayload,
   verifyExecutionIntegrity,
+  verifyExecutionIntegrityV2,
   EXECUTION_INTEGRITY_VERSION,
+  EXECUTION_INTEGRITY_V2_VERSION,
 };
 export default executionIntegrity;
