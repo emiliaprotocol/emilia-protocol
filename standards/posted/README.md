@@ -34,8 +34,8 @@ before promotion. TXT and HTML snapshots are conveniences; the archive is
 authoritative for rendered forms.
 
 - `draft-ferro-schrock-memory-projection-record-01`
-- `draft-schrock-ae-challenge-06`
-- `draft-schrock-action-evidence-boundary-03`
+- `draft-schrock-ae-challenge-07`
+- `draft-schrock-action-evidence-boundary-04`
 - `draft-schrock-action-remedy-receipts-00`
 - `draft-schrock-agent-qualification-statements-00`
 - `draft-schrock-canonical-action-identifier-02`
@@ -43,7 +43,7 @@ authoritative for rendered forms.
 - `draft-schrock-ep-architecture-02`
 - `draft-schrock-ep-authority-introduction-03`
 - `draft-schrock-ep-authorization-evidence-chain-05`
-- `draft-schrock-ep-authorization-receipts-11`
+- `draft-schrock-ep-authorization-receipts-12`
 - `draft-schrock-ep-bounded-capability-receipts-04`
 - `draft-schrock-ep-bounded-execution-program-00`
 - `draft-schrock-ep-evidence-record-01`
@@ -59,9 +59,9 @@ authoritative for rendered forms.
 
 For reader navigation, the canonical evidence path is:
 
-1. [Authorization Receipts-11](draft-schrock-ep-authorization-receipts-11.xml)
+1. [Authorization Receipts-12](draft-schrock-ep-authorization-receipts-12.xml)
    defines the action-bound approval-evidence profile. The current posted
-   revision is -11 and the exact posted source matches the Datatracker submission.
+   revision is -12 and the exact posted source matches the Datatracker submission.
 2. [Human Authorization Binding-00](draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact into an adjacent host record.
 3. [Authority Introduction-03](draft-schrock-ep-authority-introduction-03.xml)
@@ -79,7 +79,7 @@ subordinate, or demote any active draft.
 The runtime path is [Architecture-02](draft-schrock-ep-architecture-02.xml) →
 [CAID-02](draft-schrock-canonical-action-identifier-02.xml) →
 [AEC-05](draft-schrock-ep-authorization-evidence-chain-05.xml) →
-[AEB-03](draft-schrock-action-evidence-boundary-03.xml): system boundaries,
+[AEB-04](draft-schrock-action-evidence-boundary-04.xml): system boundaries,
 exact material-action matching, evidence satisfaction, then executor-side
 admission and one-time consequence custody.
 
@@ -129,7 +129,7 @@ immutable IETF archive before promotion into this directory:
 - `draft-schrock-model-to-matter-03`
 
 Their exact submitted bytes remain in `../staged/UPLOAD-THIS/` as publication
-provenance, not as upload candidates. Authorization Receipts-11 is the current
+provenance, not as upload candidates. Authorization Receipts-12 is the current
 posted receipt revision in this inventory.
 
 ## August 6, 2026 maintenance set
@@ -165,15 +165,18 @@ verified byte-for-byte against the immutable IETF archive before promotion
 into this directory:
 
 - `draft-schrock-ep-authorization-receipts-11`
-- `draft-schrock-ae-challenge-06`
+- `draft-schrock-ae-challenge-07`
 
 The retained `../staged/NEXT-AUTHORIZATION-RECEIPTS-11`,
 `../staged/NEXT-AE-CHALLENGE-05`, and `../staged/NEXT-AE-CHALLENGE-06`
 packets preserve the exact submitted XML, review renders, validation records,
-and checksums as publication provenance. The superseded
+and checksums as publication provenance through -06. The -07 current XML, TXT,
+and HTML snapshots were fetched from the immutable IETF archive and verified
+locally. The superseded
 `draft-schrock-ep-authorization-receipts-10`,
 `draft-schrock-ae-challenge-03`, and `draft-schrock-ae-challenge-05`
-snapshots are retained in `../archive/`.
+snapshots, together with `draft-schrock-ae-challenge-06`, are retained in
+`../archive/`.
 
 ## August 11, 2026 maintenance set
 
@@ -184,3 +187,17 @@ render because the archive delivery path injected transient Cloudflare
 markup. The `../staged/NEXT-BOUNDED-CAPABILITY-04` packet preserves the exact
 submitted XML, checksum-pinned review renders, validation record, and
 checksums. Revision -03 is retained in `../archive/`.
+
+## August 16, 2026 maintenance set
+
+The following current XML, TXT, and HTML snapshots were fetched from the
+immutable IETF archive after posting. The XML snapshots were verified
+byte-for-byte against the exact submitted source before promotion:
+
+- `draft-schrock-action-evidence-boundary-04` (submission 167790)
+- `draft-schrock-ep-authorization-receipts-12` (submission 167791)
+
+The retained `../staged/NEXT-ACTION-EVIDENCE-BOUNDARY-04` and
+`../staged/NEXT-AUTHORIZATION-RECEIPTS-12` packets are publication provenance,
+not upload candidates. Revisions AEB-03 and Authorization Receipts-11 are
+retained in `../archive/`.

@@ -222,7 +222,26 @@ lemma core_authenticity_uv_gated:
           & Signed(H, a, p, init, r, n, w, v) @ #k
           & #j < #k & #k < #i)"
 
-/* (c) NO-REPLAY-ACROSS-ACTIONS: there is no trace in which a
+/* (c) ACCEPTANCE-PREFIX INTEGRITY AFTER LATER KEY REVEAL: when a
+ *     relying party accepted before H's key was revealed, that accepted
+ *     context was already backed by H's UV-gated signature before the
+ *     acceptance. A later reveal therefore does not erase the historical
+ *     witness for an acceptance that already occurred. This does NOT let an
+ *     offline verifier distinguish a genuinely pre-reveal receipt from one
+ *     backdated after compromise; that stronger property needs an external
+ *     trusted time or append-only witness, or a forward-secure signature. */
+lemma acceptance_prefix_integrity_after_later_reveal:
+  "All RP H a p init r n w v #i #rev.
+      Accept(RP, H, a, p, init, r, n, w, v) @ #i
+    & not (Ex #pre. RevealLtk(H) @ #pre & #pre < #i)
+    & RevealLtk(H) @ #rev
+    & #i < #rev
+    ==> (Ex #j #k.
+            UV(H, a, p, init, r, n, w, v) @ #j
+          & Signed(H, a, p, init, r, n, w, v) @ #k
+          & #j < #k & #k < #i)"
+
+/* (d) NO-REPLAY-ACROSS-ACTIONS: there is no trace in which a
  *     receipt for action a is accepted while the uncompromised
  *     human never signed the complete accepted context. Since the attacker can
  *     obtain honest signatures over arbitrary OTHER actions
@@ -235,7 +254,7 @@ lemma no_replay_across_actions:
          & not (Ex #r. RevealLtk(H) @ #r & #r < #i)
          & not (Ex #j. Signed(H, a, p, init, r, n, w, v) @ #j & #j < #i))"
 
-/* (d) INJECTIVE ACCEPTANCE with the consumption check: every
+/* (e) INJECTIVE ACCEPTANCE with the consumption check: every
  *     consumption-checked acceptance corresponds to a preceding
  *     honest signature over the complete context, and no second
  *     consumption-checked acceptance of that same context exists
@@ -249,7 +268,7 @@ lemma injective_acceptance_with_consumption:
                    AcceptChecked(RP2, H, a, p, init, r, n, w, v) @ #i2
                  & not (#i2 = #i)))"
 
-/* (e) EXPECTED FALSIFIED, kept deliberately: WITHOUT a consumption
+/* (f) EXPECTED FALSIFIED, kept deliberately: WITHOUT a consumption
  *     check, acceptance is NOT injective. The attacker replays the
  *     same honest receipt and gets it accepted twice. This is the
  *     known same-action replay that the consumption record (G3)

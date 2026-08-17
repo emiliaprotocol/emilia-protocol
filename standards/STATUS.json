@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-08-11",
+  "updated": "2026-08-16",
   "active_datatracker_count": 23,
   "active_schrock_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. Bounded Capability Receipts-04, Authorization Receipts-11, AE-CHALLENGE-06, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. AEB-04, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Retained submission packets in standards/staged are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -33,10 +33,10 @@
         "order": 1,
         "label": "Authorization Receipts",
         "draft": "draft-schrock-ep-authorization-receipts",
-        "revision": "11",
-        "source": "standards/posted/draft-schrock-ep-authorization-receipts-11.xml",
+        "revision": "12",
+        "source": "standards/posted/draft-schrock-ep-authorization-receipts-12.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-        "snapshot_sha256": "7dc112e2481b03dc4e017216c168e143cb32b878e70265f2a0402e483bea1a45",
+        "snapshot_sha256": "66eaa988d974f8535063b35efadc5140331006679b5946bc372d50a16efef52d",
         "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
         "boundary": "One approval-evidence profile and extension seam; it does not establish scoped authority or evidence satisfaction by itself."
       },
@@ -123,10 +123,10 @@
         "order": 4,
         "label": "AEB",
         "draft": "draft-schrock-action-evidence-boundary",
-        "revision": "03",
-        "source": "standards/posted/draft-schrock-action-evidence-boundary-03.xml",
+        "revision": "04",
+        "source": "standards/posted/draft-schrock-action-evidence-boundary-04.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
-        "snapshot_sha256": "56b835e6743983c49f27aef892097e6cc3fbc17f470222b630f64bf34497b91f",
+        "snapshot_sha256": "83f97307a51e7f62200df243f765cb28ee436faae70871df9cb02b15c8d43dd5",
         "runtime_role": "Applies executor-side admission, authority separation, current-status checks, and one-time consequence custody."
       }
     ]
@@ -196,17 +196,17 @@
   "active_datatracker": [
     {
       "draft": "draft-schrock-ae-challenge",
-      "revision": "06",
+      "revision": "07",
       "layer": "execution_lifecycle",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 10; use -06 as the cap-first refusal, no-policy-hint overload, authoritative replay-owner, retry-pacing, and bounded-state baseline while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues"
+      "next_action": "Published August 10; use -07 as the cap-first, owner-serialized refusal baseline with bounded claim and reissue state, no policy hints on capacity refusal, authoritative replay ownership, and retry pacing while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues"
     },
     {
       "draft": "draft-schrock-action-evidence-boundary",
-      "revision": "03",
+      "revision": "04",
       "layer": "execution_lifecycle",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published August 3; use -03 as the current pinned-adapter, authority-separation, current-status, re-derivable-evaluation, and refusal-evidence baseline"
+      "next_action": "Published August 16; use -04 as the current generic field-origin-assertion, pinned-adapter, authority-separation, current-status, re-derivable-evaluation, and refusal-evidence baseline"
     },
     {
       "draft": "draft-schrock-action-remedy-receipts",
@@ -259,10 +259,10 @@
     },
     {
       "draft": "draft-schrock-ep-authorization-receipts",
-      "revision": "11",
+      "revision": "12",
       "layer": "authorization_evidence",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published August 10; use -11 for the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request"
+      "next_action": "Published August 16; use -12 for acceptance-prefix integrity, the offline anti-backdating limit, historical-versus-current acceptance separation, the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request"
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts",
@@ -528,7 +528,7 @@
     },
     {
       "draft": "draft-schrock-action-evidence-boundary-03",
-      "source": "standards/posted/draft-schrock-action-evidence-boundary-03.xml",
+      "source": "standards/archive/draft-schrock-action-evidence-boundary-03.xml",
       "state": "published_ietf_archive_verified_exact_local_match",
       "claim": "Pinned adapter and boundary requirements, authority-separation terms, current status, re-derivable evaluation records, and refusal evidence",
       "implementation": [
@@ -536,7 +536,7 @@
         "packages/gate/src/proposal-to-effect.ts",
         "packages/gate/src/aeb-consumption-store.ts"
       ],
-      "limitations": "Reference conformance does not prove complete mediation or independent implementation"
+      "limitations": "Reference conformance does not prove complete mediation or independent implementation; revision -03 was superseded by -04 on August 16"
     },
     {
       "draft": "draft-schrock-model-to-matter-03",
@@ -649,12 +649,13 @@
   },
   "august_10_2026_maintenance_wave": {
     "filing_date": "2026-08-10",
-    "item_count": 3,
+    "item_count": 4,
     "publication_status": "published_and_ietf_archive_verified_2026_08_10",
     "filing_order": [
       "draft-schrock-ep-authorization-receipts-11",
       "draft-schrock-ae-challenge-05",
-      "draft-schrock-ae-challenge-06"
+      "draft-schrock-ae-challenge-06",
+      "draft-schrock-ae-challenge-07"
     ],
     "verification": "Each listed XML snapshot, and the AE Challenge TXT snapshots, is byte-for-byte identical to its immutable IETF archive artifact.",
     "provenance_packets": [
@@ -665,9 +666,9 @@
     "items": [
       {
         "draft": "draft-schrock-ep-authorization-receipts-11",
-        "source": "standards/posted/draft-schrock-ep-authorization-receipts-11.xml",
+        "source": "standards/archive/draft-schrock-ep-authorization-receipts-11.xml",
         "snapshot_sha256": "7dc112e2481b03dc4e017216c168e143cb32b878e70265f2a0402e483bea1a45",
-        "state": "published_ietf_archive_verified_exact_local_match"
+        "state": "published_ietf_archive_verified_exact_local_match_superseded_by_12"
       },
       {
         "draft": "draft-schrock-ae-challenge-05",
@@ -677,8 +678,14 @@
       },
       {
         "draft": "draft-schrock-ae-challenge-06",
-        "source": "standards/posted/draft-schrock-ae-challenge-06.xml",
+        "source": "standards/archive/draft-schrock-ae-challenge-06.xml",
         "snapshot_sha256": "aa189344c491948a1df2d18d9bff529d696e618ebb2f73ebe607445031744433",
+        "state": "published_ietf_archive_verified_exact_local_match_superseded_by_07"
+      },
+      {
+        "draft": "draft-schrock-ae-challenge-07",
+        "source": "standards/posted/draft-schrock-ae-challenge-07.xml",
+        "snapshot_sha256": "2bfb675ec652487bd90addbb95dda15551e69f4c022fc83a45195fee6d8d8e34",
         "state": "published_ietf_archive_verified_exact_local_match"
       }
     ]
@@ -699,6 +706,36 @@
         "draft": "draft-schrock-ep-bounded-capability-receipts-04",
         "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-04.xml",
         "snapshot_sha256": "c89f36202208ea82b877d7e9f69738b9d1b6bc052d368a6a51cdb60533289fd8",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      }
+    ]
+  },
+  "august_16_2026_maintenance_wave": {
+    "filing_date": "2026-08-16",
+    "item_count": 2,
+    "publication_status": "published_and_ietf_archive_verified_2026_08_16",
+    "filing_order": [
+      "draft-schrock-action-evidence-boundary-04",
+      "draft-schrock-ep-authorization-receipts-12"
+    ],
+    "verification": "Both posted XML snapshots are byte-for-byte identical to their immutable IETF archive artifacts. AEB-04 was posted first with its informative implementation profile and a reference to the simultaneously prepared Receipts-12 revision; both submission-mode idnits checks passed before filing.",
+    "provenance_packets": [
+      "standards/staged/NEXT-ACTION-EVIDENCE-BOUNDARY-04",
+      "standards/staged/NEXT-AUTHORIZATION-RECEIPTS-12"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-action-evidence-boundary-04",
+        "source": "standards/posted/draft-schrock-action-evidence-boundary-04.xml",
+        "snapshot_sha256": "83f97307a51e7f62200df243f765cb28ee436faae70871df9cb02b15c8d43dd5",
+        "datatracker_submission_id": 167790,
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-ep-authorization-receipts-12",
+        "source": "standards/posted/draft-schrock-ep-authorization-receipts-12.xml",
+        "snapshot_sha256": "66eaa988d974f8535063b35efadc5140331006679b5946bc372d50a16efef52d",
+        "datatracker_submission_id": 167791,
         "state": "published_ietf_archive_verified_exact_local_match"
       }
     ]
@@ -735,7 +772,7 @@
   "held": [],
   "consolidation_rules": [
     "The canonical four-document surface is presentation-only; it does not retire, merge, replace, update, obsolete, or subordinate any active draft.",
-    "The Architecture-02, CAID-01, AEC-05, and AEB-03 runtime execution spine is a separate navigation view; it does not replace the canonical PRESENTATION surface or the active profile portfolio.",
+    "The Architecture-02, CAID-02, AEC-05, and AEB-04 runtime execution spine is a separate navigation view; it does not replace the canonical PRESENTATION surface or the active profile portfolio.",
     "Architecture-02 absorbs the retired Agent Trust Stack map.",
     "AEC owns component verification, action binding, and evidence satisfaction; it does not define effect or ceremony records.",
     "Quorum owns ordered multi-handshake and distinct-human policy semantics.",

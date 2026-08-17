@@ -62,8 +62,8 @@ jobs:
       - name: Verify pinned model bytes
         working-directory: formal/tamarin
         run: |
-          echo '8eb1edfc21fe823f2ce01c3f858d07bd576f92faf1b0c06ead2ad0caa3c6ad99  ep_receipt_core.spthy' | sha256sum -c -
-          echo 'd1e46b6ba20f845e93342e1118a1d42f087c174902e1634870adb05159a6b063  run-receipt-core.sh' | sha256sum -c -
+          echo '99777fe702d58a731fcb35f3879459f867c8869e14113c810d3997172e4b2da1  ep_receipt_core.spthy' | sha256sum -c -
+          echo 'b710f30b1ae4e62a2eeef39c00ef9b7322901e43185860c51bd930b2a5c63a26  run-receipt-core.sh' | sha256sum -c -
       - name: Run every receipt-core proof obligation independently
         working-directory: formal/tamarin
         shell: bash

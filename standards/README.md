@@ -46,7 +46,7 @@ remain separate lifecycle transitions.
 The reader-facing canonical surface is:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-11`](posted/draft-schrock-ep-authorization-receipts-11.xml):
+   [`draft-schrock-ep-authorization-receipts-12`](posted/draft-schrock-ep-authorization-receipts-12.xml):
    one action-bound organizational approval-evidence profile.
 2. **Human Authorization Binding** —
    [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml):
@@ -74,7 +74,7 @@ complete active portfolio remains the 23 records in
 and three coauthored records, each with its own scope and revision history.
 
 The separate runtime execution spine is **Architecture-02 -> CAID-02 ->
-AEC-05 -> AEB-03**: architecture and decision boundaries, exact material-action
+AEC-05 -> AEB-04**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
 presentation surface and does not retire, merge, or demote any active profile.
@@ -129,6 +129,17 @@ proof provenance, bounded provider-entry recovery, atomic issuance
 registration, and an operation-bound Ed25519 holder method while retaining
 explicit shared-domain and implementation limits. Its isolated packet remains
 under `staged/NEXT-BOUNDED-CAPABILITY-04` as publication provenance.
+
+## August 16 maintenance revisions
+
+`draft-schrock-action-evidence-boundary-04` and
+`draft-schrock-ep-authorization-receipts-12` were published on August 16,
+2026. Their exact submitted XML was checked byte-for-byte against the immutable
+IETF archive. AEB-04 adds a generic, relying-party-pinned field-origin assertion
+input while keeping `EP-FIELD-ORIGIN-v0.1` informative. Receipts-12 adds the
+acceptance-prefix integrity property, states the offline anti-backdating limit,
+and separates historical acceptance from current policy and status acceptance.
+Their isolated packets remain under `staged/NEXT-*` as publication provenance.
 
 ## New-filing freeze
 

@@ -1,0 +1,1136 @@
+{
+  "_meta": {
+    "id": "EP-SD-v1 selective-disclosure conformance vectors",
+    "version": 1,
+    "generated": "deterministic; regenerate with conformance/selective-disclosure/README.md instructions",
+    "determinism": "All keys and salts derive from fixed seed strings via SHA-256; timestamps are fixed constants; canonicalization is the EP strict JCS profile. Regeneration is byte-identical.",
+    "warning": "The private keys in this file are PUBLIC TEST FIXTURES derived from published seed strings. They are not secrets and must never be used outside conformance testing."
+  },
+  "keys": {
+    "issuer": {
+      "pkcs8_b64u": "MC4CAQAwBQYDK2VwBCIEIIUo0mFFqFkCdMOjvx2KqwH4hN8YiR3w2orbJ79-jT3H",
+      "spki_b64u": "MCowBQYDK2VwAyEARjK4J2LXjmI8yJnDOKRoHw7PV0oGoFPVXJpT6lB184k",
+      "seed_string": "EP-SD-v1 conformance issuer test key (public fixture, not a secret)"
+    },
+    "holder": {
+      "pkcs8_b64u": "MC4CAQAwBQYDK2VwBCIEIM_iG2-LEtMZ1EvoxipMq6N1cUft4c2VV4FkBgwaGf45",
+      "spki_b64u": "MCowBQYDK2VwAyEAgkinLfI90WLl-e-J2fRsFswwI8dLt59fnMOOppqwgnc",
+      "seed_string": "EP-SD-v1 conformance holder test key (public fixture, not a secret)"
+    }
+  },
+  "source_payload": {
+    "receipt_id": "sd-vec-001",
+    "entity_id": "ep_entity_sd_vector",
+    "created_at": "2026-08-16T12:00:00Z",
+    "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+    "evidence_grade": "B",
+    "verification_status": "VERIFIED",
+    "required_approvals": 1,
+    "signoffs": [
+      {
+        "approver_key_id": "approver-1",
+        "key_class": "B",
+        "signed_at": "2026-08-16T11:59:00Z"
+      }
+    ],
+    "action": {
+      "action_type": "payment.transfer.1",
+      "parameters": {
+        "amount": "82000.00",
+        "currency": "USD",
+        "beneficiary_name": "Example Vendor LLC",
+        "beneficiary_account": "ACCT-9921-3341",
+        "memo": "Q3 infrastructure invoice 4471"
+      }
+    }
+  },
+  "disclosable_paths": [
+    "action.parameters.amount",
+    "action.parameters.beneficiary_account",
+    "action.parameters.beneficiary_name",
+    "action.parameters.currency",
+    "action.parameters.memo"
+  ],
+  "salts": {
+    "action.parameters.amount": "c_49WVts3Z-ezpdUsjaYDQ",
+    "action.parameters.beneficiary_account": "x4qg7eoPIw4RETmGIQ-wkg",
+    "action.parameters.beneficiary_name": "Icx2ghlM7O6fkyPBQTDI8g",
+    "action.parameters.currency": "_xXpw8UyX0y0zyVPq5LftQ",
+    "action.parameters.memo": "-Oc_zH0BRNZsNPF1nsvf_w"
+  },
+  "disclosure_ready_receipt": {
+    "@version": "EP-RECEIPT-v1",
+    "payload": {
+      "action": {
+        "action_type": "payment.transfer.1",
+        "parameters": {
+          "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+          "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+          "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+          "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+          "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+        }
+      },
+      "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+      "created_at": "2026-08-16T12:00:00Z",
+      "entity_id": "ep_entity_sd_vector",
+      "evidence_grade": "B",
+      "receipt_id": "sd-vec-001",
+      "required_approvals": 1,
+      "signoffs": [
+        {
+          "approver_key_id": "approver-1",
+          "key_class": "B",
+          "signed_at": "2026-08-16T11:59:00Z"
+        }
+      ],
+      "verification_status": "VERIFIED",
+      "disclosure": {
+        "@version": "EP-SD-v1",
+        "alg": "sha256",
+        "paths": [
+          "action.parameters.amount",
+          "action.parameters.beneficiary_account",
+          "action.parameters.beneficiary_name",
+          "action.parameters.currency",
+          "action.parameters.memo"
+        ]
+      }
+    },
+    "signature": {
+      "algorithm": "Ed25519",
+      "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+    }
+  },
+  "openings": {
+    "action.parameters.amount": {
+      "salt": "c_49WVts3Z-ezpdUsjaYDQ",
+      "value": "82000.00"
+    },
+    "action.parameters.beneficiary_account": {
+      "salt": "x4qg7eoPIw4RETmGIQ-wkg",
+      "value": "ACCT-9921-3341"
+    },
+    "action.parameters.beneficiary_name": {
+      "salt": "Icx2ghlM7O6fkyPBQTDI8g",
+      "value": "Example Vendor LLC"
+    },
+    "action.parameters.currency": {
+      "salt": "_xXpw8UyX0y0zyVPq5LftQ",
+      "value": "USD"
+    },
+    "action.parameters.memo": {
+      "salt": "-Oc_zH0BRNZsNPF1nsvf_w",
+      "value": "Q3 infrastructure invoice 4471"
+    }
+  },
+  "presentations": [
+    {
+      "name": "full-disclosure-with-holder-proof",
+      "expectation": {
+        "audience": "auditor.example",
+        "nonce": "nonce-auditor-0001",
+        "holderPublicKeySpkiB64u": "MCowBQYDK2VwAyEAgkinLfI90WLl-e-J2fRsFswwI8dLt59fnMOOppqwgnc"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [
+          {
+            "path": "action.parameters.amount",
+            "salt": "c_49WVts3Z-ezpdUsjaYDQ",
+            "value": "82000.00"
+          },
+          {
+            "path": "action.parameters.beneficiary_account",
+            "salt": "x4qg7eoPIw4RETmGIQ-wkg",
+            "value": "ACCT-9921-3341"
+          },
+          {
+            "path": "action.parameters.beneficiary_name",
+            "salt": "Icx2ghlM7O6fkyPBQTDI8g",
+            "value": "Example Vendor LLC"
+          },
+          {
+            "path": "action.parameters.currency",
+            "salt": "_xXpw8UyX0y0zyVPq5LftQ",
+            "value": "USD"
+          },
+          {
+            "path": "action.parameters.memo",
+            "salt": "-Oc_zH0BRNZsNPF1nsvf_w",
+            "value": "Q3 infrastructure invoice 4471"
+          }
+        ],
+        "binding": {
+          "audience": "auditor.example",
+          "nonce": "nonce-auditor-0001",
+          "created_at": "2026-08-16T13:00:00Z"
+        },
+        "holder_proof": {
+          "public_key": "MCowBQYDK2VwAyEAgkinLfI90WLl-e-J2fRsFswwI8dLt59fnMOOppqwgnc",
+          "signature": "p3NdWuWQ5ycFcNJYpYOSLwC4_JNwQDJG6WaEmjUY5my40gjdN07__qHpQgAXANzkm2tvyzekxlEH8oE8BR9jBA"
+        }
+      },
+      "binding_digest_hex": "78bb8e9dd03ae6492df10f91a9dc262816eefb81a2557595aa98f8da0b819a89",
+      "expect": {
+        "ok": true,
+        "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+        "undisclosed_paths": []
+      }
+    },
+    {
+      "name": "amount-and-currency-only",
+      "expectation": {
+        "audience": "insurer.example",
+        "nonce": "nonce-insurer-0001"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [
+          {
+            "path": "action.parameters.amount",
+            "salt": "c_49WVts3Z-ezpdUsjaYDQ",
+            "value": "82000.00"
+          },
+          {
+            "path": "action.parameters.currency",
+            "salt": "_xXpw8UyX0y0zyVPq5LftQ",
+            "value": "USD"
+          }
+        ],
+        "binding": {
+          "audience": "insurer.example",
+          "nonce": "nonce-insurer-0001",
+          "created_at": "2026-08-16T13:05:00Z"
+        }
+      },
+      "binding_digest_hex": "7b51888633ce5e3050af30ca99ff471717bb7a8f263b8a70e841c677268582c6",
+      "expect": {
+        "ok": true,
+        "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+        "undisclosed_paths": [
+          "action.parameters.beneficiary_account",
+          "action.parameters.beneficiary_name",
+          "action.parameters.memo"
+        ]
+      }
+    },
+    {
+      "name": "zero-disclosure",
+      "expectation": {
+        "audience": "regulator.example",
+        "nonce": "nonce-regulator-0001"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [],
+        "binding": {
+          "audience": "regulator.example",
+          "nonce": "nonce-regulator-0001",
+          "created_at": "2026-08-16T13:10:00Z"
+        }
+      },
+      "binding_digest_hex": "271aca52aabe9f47d33f347fbac5fd4f95db691b0abf707ef7ed2dfc69146a9e",
+      "expect": {
+        "ok": true,
+        "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+        "undisclosed_paths": [
+          "action.parameters.amount",
+          "action.parameters.beneficiary_account",
+          "action.parameters.beneficiary_name",
+          "action.parameters.currency",
+          "action.parameters.memo"
+        ]
+      }
+    }
+  ],
+  "hostile": [
+    {
+      "name": "forged-opening-wrong-value",
+      "expectation": {
+        "audience": "insurer.example",
+        "nonce": "nonce-insurer-0001"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [
+          {
+            "path": "action.parameters.amount",
+            "salt": "c_49WVts3Z-ezpdUsjaYDQ",
+            "value": "1.00"
+          },
+          {
+            "path": "action.parameters.currency",
+            "salt": "_xXpw8UyX0y0zyVPq5LftQ",
+            "value": "USD"
+          }
+        ],
+        "binding": {
+          "audience": "insurer.example",
+          "nonce": "nonce-insurer-0001",
+          "created_at": "2026-08-16T13:05:00Z"
+        }
+      },
+      "expected_refusals": [
+        "digest_mismatch:action.parameters.amount"
+      ]
+    },
+    {
+      "name": "swapped-opening-across-fields",
+      "expectation": {
+        "audience": "auditor.example",
+        "nonce": "nonce-auditor-0001",
+        "holderPublicKeySpkiB64u": "MCowBQYDK2VwAyEAgkinLfI90WLl-e-J2fRsFswwI8dLt59fnMOOppqwgnc"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [
+          {
+            "path": "action.parameters.memo",
+            "salt": "c_49WVts3Z-ezpdUsjaYDQ",
+            "value": "82000.00"
+          }
+        ],
+        "binding": {
+          "audience": "auditor.example",
+          "nonce": "nonce-auditor-0001",
+          "created_at": "2026-08-16T13:00:00Z"
+        },
+        "holder_proof": {
+          "public_key": "MCowBQYDK2VwAyEAgkinLfI90WLl-e-J2fRsFswwI8dLt59fnMOOppqwgnc",
+          "signature": "p3NdWuWQ5ycFcNJYpYOSLwC4_JNwQDJG6WaEmjUY5my40gjdN07__qHpQgAXANzkm2tvyzekxlEH8oE8BR9jBA"
+        }
+      },
+      "expected_refusals": [
+        "digest_mismatch:action.parameters.memo"
+      ]
+    },
+    {
+      "name": "non-redactable-caid-committed",
+      "expectation": {
+        "audience": "auditor.example",
+        "nonce": "nonce-auditor-0002"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "ep-sd-commit:sha256:542a43e0398a674c5a3acce1654d97674e3572c767e45a4596af62da0e5f628e",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "caid"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "7wrnIPl4b1AqMMZfO8rSuRZXGHvhObR1uA26HqhEVf9oZTjgYw8aIESeE4YzbeQzIkHc5MszCU09sT_ZzeAUDA"
+          }
+        },
+        "disclosed": [],
+        "binding": {
+          "audience": "auditor.example",
+          "nonce": "nonce-auditor-0002",
+          "created_at": "2026-08-16T13:15:00Z"
+        }
+      },
+      "expected_refusals": [
+        "non_redactable_path:caid"
+      ]
+    },
+    {
+      "name": "audience-replay",
+      "expectation": {
+        "audience": "insurer.example",
+        "nonce": "nonce-auditor-0001"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [
+          {
+            "path": "action.parameters.amount",
+            "salt": "c_49WVts3Z-ezpdUsjaYDQ",
+            "value": "82000.00"
+          },
+          {
+            "path": "action.parameters.beneficiary_account",
+            "salt": "x4qg7eoPIw4RETmGIQ-wkg",
+            "value": "ACCT-9921-3341"
+          },
+          {
+            "path": "action.parameters.beneficiary_name",
+            "salt": "Icx2ghlM7O6fkyPBQTDI8g",
+            "value": "Example Vendor LLC"
+          },
+          {
+            "path": "action.parameters.currency",
+            "salt": "_xXpw8UyX0y0zyVPq5LftQ",
+            "value": "USD"
+          },
+          {
+            "path": "action.parameters.memo",
+            "salt": "-Oc_zH0BRNZsNPF1nsvf_w",
+            "value": "Q3 infrastructure invoice 4471"
+          }
+        ],
+        "binding": {
+          "audience": "auditor.example",
+          "nonce": "nonce-auditor-0001",
+          "created_at": "2026-08-16T13:00:00Z"
+        },
+        "holder_proof": {
+          "public_key": "MCowBQYDK2VwAyEAgkinLfI90WLl-e-J2fRsFswwI8dLt59fnMOOppqwgnc",
+          "signature": "p3NdWuWQ5ycFcNJYpYOSLwC4_JNwQDJG6WaEmjUY5my40gjdN07__qHpQgAXANzkm2tvyzekxlEH8oE8BR9jBA"
+        }
+      },
+      "expected_refusals": [
+        "binding_audience_mismatch"
+      ]
+    },
+    {
+      "name": "nonce-replay",
+      "expectation": {
+        "audience": "insurer.example",
+        "nonce": "nonce-insurer-0002"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [
+          {
+            "path": "action.parameters.amount",
+            "salt": "c_49WVts3Z-ezpdUsjaYDQ",
+            "value": "82000.00"
+          },
+          {
+            "path": "action.parameters.currency",
+            "salt": "_xXpw8UyX0y0zyVPq5LftQ",
+            "value": "USD"
+          }
+        ],
+        "binding": {
+          "audience": "insurer.example",
+          "nonce": "nonce-insurer-0001",
+          "created_at": "2026-08-16T13:05:00Z"
+        }
+      },
+      "expected_refusals": [
+        "binding_nonce_mismatch"
+      ]
+    },
+    {
+      "name": "opening-without-salt",
+      "expectation": {
+        "audience": "insurer.example",
+        "nonce": "nonce-insurer-0001"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [
+          {
+            "path": "action.parameters.amount",
+            "value": "82000.00"
+          },
+          {
+            "path": "action.parameters.currency",
+            "salt": "_xXpw8UyX0y0zyVPq5LftQ",
+            "value": "USD"
+          }
+        ],
+        "binding": {
+          "audience": "insurer.example",
+          "nonce": "nonce-insurer-0001",
+          "created_at": "2026-08-16T13:05:00Z"
+        }
+      },
+      "expected_refusals": [
+        "missing_salt:action.parameters.amount"
+      ]
+    },
+    {
+      "name": "salt-below-128-bits",
+      "expectation": {
+        "audience": "insurer.example",
+        "nonce": "nonce-insurer-0001"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [
+          {
+            "path": "action.parameters.amount",
+            "salt": "AAAA",
+            "value": "82000.00"
+          },
+          {
+            "path": "action.parameters.currency",
+            "salt": "_xXpw8UyX0y0zyVPq5LftQ",
+            "value": "USD"
+          }
+        ],
+        "binding": {
+          "audience": "insurer.example",
+          "nonce": "nonce-insurer-0001",
+          "created_at": "2026-08-16T13:05:00Z"
+        }
+      },
+      "expected_refusals": [
+        "salt_too_short:action.parameters.amount"
+      ]
+    },
+    {
+      "name": "salt-reuse-across-fields",
+      "expectation": {
+        "audience": "insurer.example",
+        "nonce": "nonce-insurer-0001"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [
+          {
+            "path": "action.parameters.amount",
+            "salt": "c_49WVts3Z-ezpdUsjaYDQ",
+            "value": "82000.00"
+          },
+          {
+            "path": "action.parameters.currency",
+            "salt": "c_49WVts3Z-ezpdUsjaYDQ",
+            "value": "USD"
+          }
+        ],
+        "binding": {
+          "audience": "insurer.example",
+          "nonce": "nonce-insurer-0001",
+          "created_at": "2026-08-16T13:05:00Z"
+        }
+      },
+      "expected_refusals": [
+        "salt_reuse"
+      ]
+    },
+    {
+      "name": "tampered-signed-payload",
+      "expectation": {
+        "audience": "regulator.example",
+        "nonce": "nonce-regulator-0001"
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [],
+        "binding": {
+          "audience": "regulator.example",
+          "nonce": "nonce-regulator-0001",
+          "created_at": "2026-08-16T13:10:00Z"
+        }
+      },
+      "expected_refusals": [
+        "receipt_signature_invalid"
+      ]
+    },
+    {
+      "name": "required-field-not-disclosed",
+      "expectation": {
+        "audience": "regulator.example",
+        "nonce": "nonce-regulator-0001",
+        "requiredPaths": [
+          "action.parameters.amount"
+        ]
+      },
+      "presentation": {
+        "@version": "EP-SD-PRESENTATION-v1",
+        "receipt": {
+          "@version": "EP-RECEIPT-v1",
+          "payload": {
+            "action": {
+              "action_type": "payment.transfer.1",
+              "parameters": {
+                "amount": "ep-sd-commit:sha256:1defe6e17d0f056bb0ee84d5aaaa512bf798316fc6eb68b4b8a1e0df5b72dc4c",
+                "beneficiary_account": "ep-sd-commit:sha256:ffe75cca3722fdabc2c0eed62fdcecbfdb66d1a3c65b44a31d9cf885dea88f4e",
+                "beneficiary_name": "ep-sd-commit:sha256:4e97d20a96ed8efc16d6a0b8831f2b83564c9095a2ae37db01f5103aa1c58f3b",
+                "currency": "ep-sd-commit:sha256:f59f8965cb3a7a74111dfd637989cdb33b9ad46f0e9552e6c3b86176e099ba3b",
+                "memo": "ep-sd-commit:sha256:857803852a9d8748b7d7d2ef174007ab7f4304ac431f47edd4a3c7f3e69e220e"
+              }
+            },
+            "caid": "caid:1:payment.transfer.1:acme-treasury:b4Pcm8vTK7YGMerz135S45cUhCKFuUi0NbZ4JVOM0IM",
+            "created_at": "2026-08-16T12:00:00Z",
+            "entity_id": "ep_entity_sd_vector",
+            "evidence_grade": "B",
+            "receipt_id": "sd-vec-001",
+            "required_approvals": 1,
+            "signoffs": [
+              {
+                "approver_key_id": "approver-1",
+                "key_class": "B",
+                "signed_at": "2026-08-16T11:59:00Z"
+              }
+            ],
+            "verification_status": "VERIFIED",
+            "disclosure": {
+              "@version": "EP-SD-v1",
+              "alg": "sha256",
+              "paths": [
+                "action.parameters.amount",
+                "action.parameters.beneficiary_account",
+                "action.parameters.beneficiary_name",
+                "action.parameters.currency",
+                "action.parameters.memo"
+              ]
+            }
+          },
+          "signature": {
+            "algorithm": "Ed25519",
+            "value": "MBcFHcU44AMKFvkGHaqjqMBTzIyDsP2w1p7XPrfRvf2idRoq2heEDlJYyvMSWphrDiVP2jjWVxBbz3jLDn_6Dg"
+          }
+        },
+        "disclosed": [],
+        "binding": {
+          "audience": "regulator.example",
+          "nonce": "nonce-regulator-0001",
+          "created_at": "2026-08-16T13:10:00Z"
+        }
+      },
+      "expected_refusals": [
+        "undisclosed_required_field:action.parameters.amount"
+      ]
+    }
+  ],
+  "prepare_refusals": [
+    {
+      "name": "designate-caid",
+      "paths": [
+        "caid"
+      ],
+      "expected_refusals": [
+        "non_redactable_path:caid"
+      ]
+    },
+    {
+      "name": "designate-evidence-grade",
+      "paths": [
+        "evidence_grade",
+        "action.parameters.memo"
+      ],
+      "expected_refusals": [
+        "non_redactable_path:evidence_grade"
+      ]
+    },
+    {
+      "name": "designate-signoffs-subfield",
+      "paths": [
+        "signoffs"
+      ],
+      "expected_refusals": [
+        "non_redactable_path:signoffs"
+      ]
+    }
+  ]
+}

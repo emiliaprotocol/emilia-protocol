@@ -37,6 +37,14 @@ const CLI = join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 const NOW = '2026-07-26T12:00:00Z';
 
+test('published manifest retains the ep-qualify executable', () => {
+  const packagePath = join(dirname(fileURLToPath(import.meta.url)), 'package.json');
+  const manifest = JSON.parse(readFileSync(packagePath, 'utf8'));
+
+  assert.deepEqual(manifest.bin, { 'ep-qualify': 'cli.mjs' });
+  assert.match(readFileSync(CLI, 'utf8'), /^#!\/usr\/bin\/env node\n/);
+});
+
 function digest(label) {
   return `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 }
