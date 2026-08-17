@@ -1107,7 +1107,7 @@
     },
     {
       "path": "packages/verify/dist/evidence-record.js",
-      "sha256": "55eeaf9593ba3847f35aefece6bb94c05bb0a47de22dc6f43dcd7e8539b62398"
+      "sha256": "eb123f4bd0c182cce32520a8c5df833427af95ad9bb563e2b420353cfad644d1"
     },
     {
       "path": "packages/verify/dist/federation.js",
@@ -1135,7 +1135,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "a3cdf1f10b524d6e640fb04ac259ebf0adc5efd54f1d2dc145d5c7b3c4d45b8e"
+      "sha256": "387e368cd7a4f800add2268ddecee2615c6047b875fb02dfa11fc8c9958f801c"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1191,7 +1191,7 @@
     },
     {
       "path": "packages/verify/dist/revocation.js",
-      "sha256": "0bcf4c633032a3b015c5e7b4d1eb54c70ff70d4a4c94240e5d6513fbf7c94aa2"
+      "sha256": "3ee3b71a1240d8513a95e7e1389a0599379e205a7fb9825c427de841fd660afd"
     },
     {
       "path": "packages/verify/dist/scitt-statement.js",
@@ -1211,7 +1211,7 @@
     },
     {
       "path": "packages/verify/dist/time-attestation.js",
-      "sha256": "fc544286ac29617bbea9d51efa8588af0fd2af38f63d407699ed9fdf56ea9385"
+      "sha256": "285176881b49998ed13394fe7b49750fc6957e7a7088403a161fdd6206c66ad7"
     },
     {
       "path": "packages/verify/dist/timestamp-proof.js",
@@ -1263,7 +1263,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "b32e31e80c6e5f2b379bf57abfb24fcc165efef74ccf03a6cf8de8bbb98b7708"
+      "sha256": "9fd631a474487dfef098c99af1a6af84f90e225822302716e0cf51006c7bd704"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
@@ -1275,7 +1275,7 @@
     },
     {
       "path": "packages/verify/src/revocation.ts",
-      "sha256": "19d73d6ae3cbbda6d2f4d4a730afa3a9ccfd76478a931bb273670a4fb82bbbfa"
+      "sha256": "8be0d41e65855c97e3ef260efd7248de3a38d42ee8e0229f0d389935cfdddf1c"
     },
     {
       "path": "packages/verify/status.js",
