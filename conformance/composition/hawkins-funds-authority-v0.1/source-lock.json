@@ -1,0 +1,14 @@
+{
+  "@version": "HAWKINS-FUNDS-AUTHORITY-SOURCE-LOCK-v0.1",
+  "ietf_archives": [
+    {
+      "name": "draft-hawkins-scitt-attested-agent-payment-01",
+      "url": "https://www.ietf.org/archive/id/draft-hawkins-scitt-attested-agent-payment-01.txt",
+      "sha256": "9e6deb7c735a5f776809e3e1431c7e67e1ecc664ab2c0a94895d51778f4080a7"
+    }
+  ],
+  "reused_runtime": [
+    "packages/verify/dist/receipt-cose-encoding.js (encodeDeterministicCbor8949, receiptActionCaid)",
+    "packages/verify/dist/index.js (verifyReceipt, isRevoked, canonicalize)"
+  ]
+}
