@@ -1299,7 +1299,7 @@
     },
     {
       "path": "scripts/build-standalone-runtimes.mjs",
-      "sha256": "25089e24b8c9f6f982a026d270576dbb83701513542188e88481af9a74738171"
+      "sha256": "161b81295d0e91507dff6ceeb30cec34838da82d7a7eb6315f1936c447169440"
     },
     {
       "path": "scripts/check-formal-runtime-traces.mjs",
