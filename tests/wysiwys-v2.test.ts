@@ -21,6 +21,7 @@ import {
   renderAction,
   buildDisplayAttestation,
   buildDisplayAttestationV2,
+  displayAttestationV2SignedPayload,
   verifyDisplayAttestation,
   verifyDisplayAttestationV2,
 } from '../lib/wysiwys/render.js';
@@ -250,6 +251,89 @@ describe('EP-DISPLAY-ATTESTATION-v2 hybrid', () => {
     const res = await verifyDisplayAttestationV2(ACTION, att, pins(att));
     expect(res.valid).toBe(false);
     expect(res.checks.display_hash_match).toBe(false);
+  });
+
+  // --- defensive edge contracts ---------------------------------------------
+
+  it('distinguishes optional, required, unsigned, and signed display evidence', async () => {
+    const optional = await verifyDisplayAttestationV2(ACTION, null, {});
+    expect(optional.valid).toBe(true);
+
+    const required = await verifyDisplayAttestationV2(ACTION, null, { requireDisplayAttestation: true });
+    expect(required.valid).toBe(false);
+    expect(required.errors).toContain('missing_required_attestation');
+
+    const unsigned = clone(await buildV2()) as any;
+    delete unsigned.proof;
+    const optionalUnsigned = await verifyDisplayAttestationV2(ACTION, unsigned, {});
+    expect(optionalUnsigned.valid).toBe(true);
+
+    const requiredUnsigned = await verifyDisplayAttestationV2(ACTION, unsigned, { requireSignedAttestation: true });
+    expect(requiredUnsigned.valid).toBe(false);
+    expect(requiredUnsigned.errors).toContain('missing_required_signature');
+  });
+
+  it('fails closed on a missing or unrenderable canonical action', async () => {
+    const missing = await verifyDisplayAttestationV2(null, null, {});
+    expect(missing.valid).toBe(false);
+    expect(missing.errors).toContain('Missing canonical action');
+
+    const poisoned = new Proxy({ ...ACTION }, {
+      get() { throw new Error('render source unavailable'); },
+    });
+    const unrenderable = await verifyDisplayAttestationV2(poisoned, null, {});
+    expect(unrenderable.valid).toBe(false);
+    expect(unrenderable.errors.some((e) => /render failed/.test(e))).toBe(true);
+  });
+
+  it('refuses malformed proof entries and substituted classical keys', async () => {
+    const malformed = clone(await buildV2()) as any;
+    const trustedMalformed = pins(malformed);
+    malformed.proof.profile = 'wrong-profile';
+    malformed.proof.signer_key_id = 42;
+    malformed.proof.signatures = [null];
+    malformed.proof.pq_key_id = 42;
+    const malformedRes = await verifyDisplayAttestationV2(ACTION, malformed, trustedMalformed);
+    expect(malformedRes.valid).toBe(false);
+    expect(malformedRes.checks.legs_present).toBe(false);
+    expect(malformedRes.checks.proof_signed).toBe(false);
+
+    const substituted = clone(await buildV2());
+    const trustedSubstituted = pins(substituted);
+    substituted.proof.public_key = 'bogus';
+    const substitutedRes = await verifyDisplayAttestationV2(ACTION, substituted, trustedSubstituted);
+    expect(substitutedRes.valid).toBe(false);
+    expect(substitutedRes.checks.signer_key_pinned).toBe(false);
+  });
+
+  it('issuer helpers reject incomplete keys and unregistered algorithm sets', async () => {
+    await expect(buildDisplayAttestationV2({ action: ACTION, signer: {} as any })).rejects.toThrow(/requires signer/);
+    await expect(buildDisplayAttestationV2({
+      action: ACTION,
+      signer: {
+        signer_key_id: SIGNER_KEY_ID,
+        privateKey: ed.privateKey,
+        pqSecretKey: pqSecretB64u,
+        pqPublicKey: '!',
+      },
+    })).rejects.toThrow(/pqPublicKey/);
+    expect(() => displayAttestationV2SignedPayload({
+      render_profile: 'profile',
+      action_hash: 'sha256:a',
+      display_hash: 'sha256:b',
+    }, ['Ed25519'])).toThrow(/algorithm set/);
+
+    const deterministic = await buildDisplayAttestationV2({
+      action: ACTION,
+      deterministic: true,
+      signer: {
+        signer_key_id: SIGNER_KEY_ID,
+        privateKey: ed.privateKey,
+        pqSecretKey: pq.secretKey,
+        pqPublicKey: pq.publicKey,
+      },
+    });
+    expect(deterministic.proof.signatures).toHaveLength(2);
   });
 
   // --- fail-closed backend ----------------------------------------------------
