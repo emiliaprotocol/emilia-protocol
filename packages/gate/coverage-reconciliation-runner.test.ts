@@ -5,6 +5,7 @@ import test from 'node:test';
 import {
   COVERAGE_RECONCILIATION_REPORT_VERSION,
   COVERAGE_SOURCE_INVENTORY_VERSION,
+  assertCoveragePopulationConservation,
   coveragePopulationRoot,
   runCoverageReconciliation,
   signCoverageSourceInventory,
@@ -31,8 +32,14 @@ const PROGRAM = {
 const systemRecords = () => [
   { record_id: 'pas:effect:100', caid: C('A'), action_digest: D('a'), classification: 'effect' },
   { record_id: 'pas:effect:101', caid: C('B'), action_digest: D('b'), classification: 'effect' },
-  { record_id: 'pas:effect:102', caid: C('C'), action_digest: D('c'), classification: 'excluded' },
-  { record_id: 'pas:effect:103', caid: C('D'), action_digest: D('d'), classification: 'exception' },
+  {
+    record_id: 'pas:effect:102', caid: C('C'), action_digest: D('c'), classification: 'excluded',
+    classification_rule_id: 'ep:coverage:excluded:out-of-scope-action-class:1',
+  },
+  {
+    record_id: 'pas:effect:103', caid: C('D'), action_digest: D('d'), classification: 'exception',
+    classification_rule_id: 'ep:coverage:exception:declared-emergency-override:1',
+  },
 ];
 
 const receiptRecords = () => [
@@ -157,14 +164,30 @@ test('reconciles exact CAID/action pairs and signs a report-bound attestation', 
   assert.deepEqual(result.report.joins, {
     matched: 1,
     effect_without_receipt: 1,
-    receipt_without_effect: 1,
+    receipted_without_observation: 1,
     indeterminate: 1,
+    system_indeterminate: 0,
     excluded: 1,
     exception: 1,
   });
+  // Conservation: the emitted bins sum back to both SIGNED record counts, and
+  // the report carries everything a reader needs to re-check the sums.
+  assert.equal(
+    result.report.joins.matched + result.report.joins.effect_without_receipt
+      + result.report.joins.excluded + result.report.joins.exception
+      + result.report.joins.system_indeterminate,
+    result.report.system_of_record.count,
+  );
+  assert.equal(
+    result.report.joins.matched + result.report.joins.receipted_without_observation
+      + result.report.joins.indeterminate,
+    result.report.receipt_population.count,
+  );
   assert.deepEqual(result.report.findings.effect_without_receipt.map((entry: any) => entry.record_id), ['pas:effect:101']);
-  assert.deepEqual(result.report.findings.receipt_without_effect.map((entry: any) => entry.record_id), ['gate:receipt:104']);
+  assert.deepEqual(result.report.findings.receipted_without_observation.map((entry: any) => entry.record_id), ['gate:receipt:104']);
   assert.deepEqual(result.report.findings.indeterminate.map((entry: any) => entry.record_id), ['gate:receipt:105']);
+  assert.deepEqual(result.report.findings.system_indeterminate, []);
+  assert.equal(result.report.findings.excluded[0].classification_rule_id, 'ep:coverage:excluded:out-of-scope-action-class:1');
   assert.equal(result.attestation.coverage_report_hash, result.report_hash);
   assert.equal(result.attestation.system_of_record.population_root, fixture.system.population_root);
   assert.equal(result.attestation.receipt_population.population_root, fixture.receipts.population_root);
@@ -293,6 +316,160 @@ test('refuses ambiguous duplicate joins and CAID-to-digest conflicts', () => {
     key_id: 'key:payer-reconciler',
     private_key: fixture.relyingParty.privateKey,
   }), /CAID.*different action digest/i);
+});
+
+test('refuses with a named per-side reason when bin counts do not conserve', () => {
+  // The runner calls assertCoveragePopulationConservation on every run with
+  // the SIGNED record counts; its verified-input path cannot construct a
+  // violation (verifyCoverageSourceInventory already pins records.length to
+  // the signed record_count), so the violation is injected through the
+  // exported assertion, which is the exact code the runner executes.
+  const conserving = {
+    matched: 1,
+    effect_without_receipt: 1,
+    receipted_without_observation: 1,
+    indeterminate: 1,
+    system_indeterminate: 0,
+    excluded: 1,
+    exception: 1,
+  };
+  assert.doesNotThrow(() => assertCoveragePopulationConservation(conserving, {
+    system_record_count: 4,
+    receipt_record_count: 3,
+  }));
+  assert.throws(() => assertCoveragePopulationConservation(conserving, {
+    system_record_count: 5,
+    receipt_record_count: 3,
+  }), /population_conservation_violation:system/);
+  assert.throws(() => assertCoveragePopulationConservation({ ...conserving, indeterminate: 2 }, {
+    system_record_count: 4,
+    receipt_record_count: 3,
+  }), /population_conservation_violation:receipt/);
+});
+
+test('demotes excluded and exception records with unresolved rule ids to system_indeterminate', () => {
+  const material = keys();
+  const demotedSystemRecords = [
+    { record_id: 'pas:effect:100', caid: C('A'), action_digest: D('a'), classification: 'effect' },
+    // Missing rule id: schema-valid, but the exclusion cannot stand.
+    { record_id: 'pas:effect:102', caid: C('C'), action_digest: D('c'), classification: 'excluded' },
+    // Unknown rule id.
+    {
+      record_id: 'pas:effect:103', caid: C('D'), action_digest: D('d'), classification: 'exception',
+      classification_rule_id: 'ep:coverage:exception:not-in-registry:1',
+    },
+    // Rule id bound to the other classification does not resolve either.
+    {
+      record_id: 'pas:effect:104', caid: C('G'), action_digest: D('1'), classification: 'excluded',
+      classification_rule_id: 'ep:coverage:exception:declared-emergency-override:1',
+    },
+  ];
+  const system = signCoverageSourceInventory({
+    inventory_id: 'pas:sor:demotion',
+    inventory_kind: 'system_of_record',
+    source_system_id: 'pas:synthetic-payer',
+    source_operator_id: 'operator:pas-system-of-record',
+    period: PERIOD,
+    mapping_profile_digest: D('3'),
+    issued_at: '2026-08-01T00:05:00Z',
+    expires_at: '2026-08-08T00:05:00Z',
+  }, demotedSystemRecords, {
+    issuer_id: 'operator:pas-system-of-record',
+    key_id: 'key:pas-source',
+    private_key: material.systemKey.privateKey,
+  });
+  const receipts = signCoverageSourceInventory({
+    inventory_id: 'gate:receipts:demotion',
+    inventory_kind: 'receipt_population',
+    source_system_id: 'emilia-gate:synthetic-payer',
+    source_operator_id: 'operator:emilia-gate',
+    period: PERIOD,
+    mapping_profile_digest: D('4'),
+    issued_at: '2026-08-01T00:05:00Z',
+    expires_at: '2026-08-08T00:05:00Z',
+  }, receiptRecords(), {
+    issuer_id: 'operator:emilia-gate',
+    key_id: 'key:gate-receipts',
+    private_key: material.receiptKey.privateKey,
+  });
+  const result = runCoverageReconciliation({
+    run_id: 'coverage-run:demotion',
+    attestation_id: 'coverage-attestation:demotion',
+    relying_party_id: 'payer:example',
+    program: PROGRAM,
+    period: PERIOD,
+    census_digest: D('5'),
+    system_of_record: { artifact: system, records: demotedSystemRecords },
+    receipt_population: { artifact: receipts, records: receiptRecords() },
+    generated_at: '2026-08-01T01:00:00Z',
+    expires_at: '2026-08-08T01:00:00Z',
+    timestamp_anchor: null,
+  }, {
+    trusted_keys: material.trusted_keys,
+    now: '2026-08-02T00:00:00Z',
+    system_of_record_pin: {
+      source_system_id: 'pas:synthetic-payer',
+      mapping_profile_digest: D('3'),
+    },
+    receipt_population_pin: {
+      source_system_id: 'emilia-gate:synthetic-payer',
+      mapping_profile_digest: D('4'),
+    },
+  }, {
+    issuer_id: 'payer:example',
+    key_id: 'key:payer-reconciler',
+    private_key: material.relyingParty.privateKey,
+  });
+  assert.deepEqual(result.report.joins, {
+    matched: 1,
+    effect_without_receipt: 0,
+    receipted_without_observation: 1,
+    indeterminate: 1,
+    system_indeterminate: 3,
+    excluded: 0,
+    exception: 0,
+  });
+  assert.deepEqual(
+    result.report.findings.system_indeterminate.map((entry: any) => [entry.record_id, entry.reclassification_reason]),
+    [
+      ['pas:effect:102', 'classification_rule_missing'],
+      ['pas:effect:103', 'classification_rule_unresolved'],
+      ['pas:effect:104', 'classification_rule_unresolved'],
+    ],
+  );
+  assert.equal(
+    result.report.joins.matched + result.report.joins.effect_without_receipt
+      + result.report.joins.excluded + result.report.joins.exception
+      + result.report.joins.system_indeterminate,
+    result.report.system_of_record.count,
+  );
+});
+
+test('classification_rule_id is covered by the signed population root and forbidden off rule-bearing records', () => {
+  const fixture = signedInputs();
+  // Tampering only the rule id of a record changes the recomputed root, so
+  // the field is proven to ride inside the signed population root.
+  const tampered = systemRecords();
+  tampered[2] = { ...tampered[2], classification_rule_id: 'ep:coverage:excluded:pre-gate-backfill:1' };
+  assert.equal(verifyCoverageSourceInventory(fixture.system, tampered, {
+    trusted_keys: fixture.trusted_keys,
+    now: '2026-08-02T00:00:00Z',
+    expected_inventory_kind: 'system_of_record',
+    expected_source_system_id: 'pas:synthetic-payer',
+    expected_mapping_profile_digest: D('3'),
+  }).reason, 'population_root_mismatch');
+  assert.notEqual(
+    coveragePopulationRoot('system_of_record', tampered),
+    coveragePopulationRoot('system_of_record', systemRecords()),
+  );
+  assert.throws(() => coveragePopulationRoot('system_of_record', [{
+    record_id: 'pas:effect:100', caid: C('A'), action_digest: D('a'), classification: 'effect',
+    classification_rule_id: 'ep:coverage:excluded:out-of-scope-action-class:1',
+  }] as any), /record is invalid/i);
+  assert.throws(() => coveragePopulationRoot('receipt_population', [{
+    record_id: 'gate:receipt:100', caid: C('A'), action_digest: D('a'), classification: 'receipt',
+    classification_rule_id: 'ep:coverage:excluded:out-of-scope-action-class:1',
+  }] as any), /record is invalid/i);
 });
 
 test('source verification fails closed without verifier-owned context', () => {

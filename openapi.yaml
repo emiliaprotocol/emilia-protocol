@@ -6121,12 +6121,13 @@ paths:
                   summary:
                     type: object
                     additionalProperties: false
-                    required: [matched, effect_without_receipt, receipt_without_effect, indeterminate, excluded, exception]
+                    required: [matched, effect_without_receipt, receipted_without_observation, indeterminate, system_indeterminate, excluded, exception]
                     properties:
                       matched: { type: integer, minimum: 0 }
                       effect_without_receipt: { type: integer, minimum: 0 }
-                      receipt_without_effect: { type: integer, minimum: 0 }
+                      receipted_without_observation: { type: integer, minimum: 0 }
                       indeterminate: { type: integer, minimum: 0 }
+                      system_indeterminate: { type: integer, minimum: 0 }
                       excluded: { type: integer, minimum: 0 }
                       exception: { type: integer, minimum: 0 }
                   bypass: { type: object }

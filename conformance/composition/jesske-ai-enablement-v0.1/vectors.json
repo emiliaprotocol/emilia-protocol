@@ -1,0 +1,227 @@
+{
+  "@version": "JESSKE-AI-ENABLEMENT-AUTHORIZATION-EVIDENCE-v0.1",
+  "source": {
+    "revision": "draft-jesske-ai-enablement-interface-00",
+    "url": "https://www.ietf.org/archive/id/draft-jesske-ai-enablement-interface-00.txt",
+    "published": "2026-06-26",
+    "retrieved": "2026-08-16",
+    "txt_bytes": 18155,
+    "txt_sha256": "30c4d13d1a92a9608eed00bfc7c7cb85331c751f9d6fb92a0f33c28201709447"
+  },
+  "fixtures": {
+    "authorization_private_key_pkcs8_hex": "302e020100300506032b65700422042072d580d459c88c7c06aa35dcb5d01476d783bdd538c0d54362d472015c6203ea",
+    "evaluator_private_key_pkcs8_hex": "302e020100300506032b65700422042075cf6bdb19ba48f4879519a420c03a0f588938f2372b0b0f293257dac71b7952",
+    "authorization_claim": {
+      "@version": "RP-CALL-RECORDING-AUTHORIZATION-v0.1",
+      "evidence_id": "recording-authorization-7",
+      "issuer": "https://authorization.example.net",
+      "audience": "rp:multimedia-ai-gateway",
+      "subject": {
+        "id": "organization:communications-operator",
+        "kind": "organization"
+      },
+      "issued_at": "2026-08-16T17:59:00Z",
+      "valid_from": "2026-08-16T18:00:00Z",
+      "valid_until": "2026-08-16T18:10:00Z",
+      "action": {
+        "action_type": "call.recording.start.1",
+        "call_id": "call:7f3d9a2e",
+        "participants": [
+          "sip:alice@example.net",
+          "sip:bob@example.net"
+        ],
+        "purpose": "quality-assurance",
+        "destination": "recording-store://operator.example/calls/call-7f3d9a2e",
+        "time_window": {
+          "start": "2026-08-16T18:00:00Z",
+          "end": "2026-08-16T18:05:00Z"
+        }
+      }
+    },
+    "request": {
+      "request_id": "request:recording:1",
+      "user_metadata": {
+        "user_id": "subscriber:alice",
+        "session_id": "session:7f3d9a2e",
+        "language": "en",
+        "service_context": "multimedia-call"
+      },
+      "payload": {
+        "kind": "audio-stream-reference",
+        "media_ref": "urn:media:call:7f3d9a2e"
+      },
+      "metadata": {
+        "task_type": "call.recording.start",
+        "call_id": "call:7f3d9a2e",
+        "participants": [
+          "sip:alice@example.net",
+          "sip:bob@example.net"
+        ],
+        "purpose": "quality-assurance",
+        "destination": "recording-store://operator.example/calls/call-7f3d9a2e",
+        "time_window": {
+          "start": "2026-08-16T18:00:00Z",
+          "end": "2026-08-16T18:05:00Z"
+        },
+        "authorization_evidence": "$fixture.authorization_evidence"
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "valid_exact_recording_start",
+      "now": "2026-08-16T18:01:00Z",
+      "mutations": [],
+      "expected": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "admission": "RESERVED",
+        "reason": "reserved_for_execution"
+      }
+    },
+    {
+      "id": "participant_substitution",
+      "now": "2026-08-16T18:01:00Z",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": ["metadata", "participants", 1],
+          "value": "sip:mallory@example.net"
+        }
+      ],
+      "expected": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MISMATCH",
+        "evidence_satisfaction": "UNSATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "reason": "exact_action_mismatch"
+      }
+    },
+    {
+      "id": "purpose_substitution",
+      "now": "2026-08-16T18:01:00Z",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": ["metadata", "purpose"],
+          "value": "model-training"
+        }
+      ],
+      "expected": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MISMATCH",
+        "evidence_satisfaction": "UNSATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "reason": "exact_action_mismatch"
+      }
+    },
+    {
+      "id": "destination_substitution",
+      "now": "2026-08-16T18:01:00Z",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": ["metadata", "destination"],
+          "value": "recording-store://attacker.example/exfiltration"
+        }
+      ],
+      "expected": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MISMATCH",
+        "evidence_satisfaction": "UNSATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "reason": "exact_action_mismatch"
+      }
+    },
+    {
+      "id": "time_window_substitution",
+      "now": "2026-08-16T18:01:00Z",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": ["metadata", "time_window", "end"],
+          "value": "2026-08-16T18:30:00Z"
+        }
+      ],
+      "expected": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MISMATCH",
+        "evidence_satisfaction": "UNSATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "reason": "exact_action_mismatch"
+      }
+    },
+    {
+      "id": "outside_authorized_window",
+      "now": "2026-08-16T18:06:00Z",
+      "mutations": [],
+      "expected": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "UNSATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "reason": "outside_action_window"
+      }
+    },
+    {
+      "id": "missing_authorization_evidence",
+      "now": "2026-08-16T18:01:00Z",
+      "mutations": [
+        {
+          "op": "remove",
+          "path": ["metadata", "authorization_evidence"]
+        }
+      ],
+      "expected": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED",
+        "action_match": "MISMATCH",
+        "evidence_satisfaction": "UNSATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "admission": "REFUSED",
+        "reason": "authorization_evidence_missing"
+      }
+    },
+    {
+      "id": "native_evidence_replay",
+      "now": "2026-08-16T18:02:00Z",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": ["request_id"],
+          "value": "request:recording:2"
+        }
+      ],
+      "expected": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "admission": "REFUSED",
+        "reason": "consumption_conflict"
+      }
+    }
+  ],
+  "scope_limits": [
+    "participant_identity_or_consent",
+    "legal_permission_to_record",
+    "media_capture_or_storage_effect",
+    "destination_control_or_deletion",
+    "global_replay_prevention",
+    "independent_implementation_or_endorsement"
+  ]
+}

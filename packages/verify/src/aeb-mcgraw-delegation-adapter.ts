@@ -177,7 +177,12 @@ function encodeCbor(value: unknown, depth: number): Buffer {
     const entries = [...value.entries()].map(([key, entry]) => ({
       key: encodeCbor(key, depth + 1), value: encodeCbor(entry, depth + 1),
     }));
-    entries.sort((left, right) => left.key.length - right.key.length || Buffer.compare(left.key, right.key));
+    // RFC 8949 Section 4.2.1 deterministic order: bytewise lexicographic on the
+    // encoded key bytes. NOT the retired RFC 7049 length-first order; the two
+    // coincide for this profile's key domain (non-negative integer labels and
+    // text keys shorter than 24 bytes) but diverge once negative integer keys
+    // or long text keys mix in, e.g. {100: "c", -1: "b"}.
+    entries.sort((left, right) => Buffer.compare(left.key, right.key));
     for (let index = 1; index < entries.length; index += 1) {
       if (entries[index - 1].key.equals(entries[index].key)) throw new TypeError('duplicate CBOR map key');
     }
@@ -191,6 +196,14 @@ function encodeCbor(value: unknown, depth: number): Buffer {
   throw new TypeError('value outside deterministic CBOR profile');
 }
 
+/**
+ * Deterministic CBOR encoding per RFC 8949 Section 4.2.1: shortest-form
+ * argument encoding and bytewise-lexicographic map key order on the encoded
+ * key bytes. The decode path round-trip-checks incoming bytes against this
+ * encoder, so the adapter refuses non-deterministic encodings by construction.
+ * For a Result-typed RFC 8949 codec with refusal reasons instead of throws,
+ * see encodeDeterministicCbor8949 in receipt-cose-encoding.ts.
+ */
 export function encodeDeterministicCbor(value: unknown): Buffer {
   return encodeCbor(value, 0);
 }

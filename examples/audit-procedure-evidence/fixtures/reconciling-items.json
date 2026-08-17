@@ -1,0 +1,18 @@
+{
+  "document": "client-prepared bank reconciliation, full population of reconciling items at period end",
+  "period_end": "2026-06-30",
+  "items": [
+    { "id": "DIT-0901", "account_id": "OPER-001", "kind": "deposit_in_transit", "side": "bank", "signed_amount": "18400.00", "description": "Customer deposit recorded 06-30, posted by bank 07-01" },
+    { "id": "OCK-0142", "account_id": "OPER-001", "kind": "outstanding_check", "side": "bank", "signed_amount": "-22150.50", "description": "Check 1142, Vendor Alpha Fabrication" },
+    { "id": "OCK-0155", "account_id": "OPER-001", "kind": "outstanding_check", "side": "bank", "signed_amount": "-8300.00", "description": "Check 1155, Vendor Beta Logistics" },
+    { "id": "OCK-0161", "account_id": "OPER-001", "kind": "outstanding_check", "side": "bank", "signed_amount": "-1200.00", "description": "Check 1161, Vendor Gamma Tooling" },
+    { "id": "FEE-0930", "account_id": "OPER-001", "kind": "bank_charge_not_recorded", "side": "ledger", "signed_amount": "-525.00", "description": "Account analysis service charge on statement, not yet booked" },
+    { "id": "INT-0930", "account_id": "OPER-001", "kind": "interest_not_recorded", "side": "ledger", "signed_amount": "125.00", "description": "Interest earned on statement, not yet booked" },
+    { "id": "OCK-2201", "account_id": "PAYR-002", "kind": "outstanding_check", "side": "bank", "signed_amount": "-9850.25", "description": "Payroll check 2201" },
+    { "id": "OCK-2202", "account_id": "PAYR-002", "kind": "outstanding_check", "side": "bank", "signed_amount": "-11640.00", "description": "Payroll check 2202" },
+    { "id": "DIT-2210", "account_id": "PAYR-002", "kind": "deposit_in_transit", "side": "bank", "signed_amount": "50.00", "description": "Expense reimbursement deposit recorded 06-30, posted 07-02" },
+    { "id": "TRF-0912", "account_id": "RESV-003", "kind": "transfer_in_transit", "side": "bank", "signed_amount": "25000.00", "source_account_id": "OPER-001", "description": "Transfer in from operating account, per management, said to be in transit at period end" },
+    { "id": "FEE-3110", "account_id": "RESV-003", "kind": "bank_charge_not_recorded", "side": "ledger", "signed_amount": "-32.50", "description": "Wire maintenance fee on statement, not yet booked" },
+    { "id": "INT-3111", "account_id": "RESV-003", "kind": "interest_not_recorded", "side": "ledger", "signed_amount": "18.20", "description": "Interest earned on statement, not yet booked" }
+  ]
+}

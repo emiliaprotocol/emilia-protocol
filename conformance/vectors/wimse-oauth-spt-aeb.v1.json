@@ -61,6 +61,12 @@
       "WPT tth to the exact compact OAuth Txn-Token",
       "HTTP Content-Digest to the exact UTF-8 request body",
       "optional SPT spt_intent_digest to the presented JCS intent"
+    ],
+    "workload_subject": [
+      "deployment-selected lowercase URI scheme, including wimse or spiffe",
+      "exact lowercase trust-domain authority",
+      "non-empty ASCII unreserved path segments with no comparison ambiguity",
+      "exact constructor-pinned WIT subject and workload-holder key"
     ]
   },
   "action_projection": {
@@ -125,6 +131,15 @@
       }
     },
     {
+      "id": "accept_canonical_generic_scheme_subject",
+      "class": "positive",
+      "input": "A canonical spiffe-scheme workload subject is used consistently under the exact constructor pins.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
       "id": "reject_malformed_compact_jws",
       "class": "malformed",
       "input": "A required compact value does not contain three canonical base64url JWS segments.",
@@ -164,6 +179,32 @@
       "id": "reject_wrong_workload_subject",
       "class": "subject",
       "input": "The signed WIT subject or its URI authority differs from the pinned workload subject or trust domain.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_noncanonical_workload_subject",
+      "class": "subject",
+      "input": "The constructor workload subject contains case, percent-encoding, dot-segment, empty-segment, trailing-slash, port, query, or other comparison ambiguity.",
+      "expect": {
+        "constructor": "REFUSED"
+      }
+    },
+    {
+      "id": "reject_scheme_or_sibling_subject_substitution",
+      "class": "subject",
+      "input": "An issuer-signed WIT substitutes another scheme at the same authority or a sibling path sharing the pinned prefix.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_unpinned_confirmation_key",
+      "class": "key",
+      "input": "A WIT signed by the pinned issuer embeds a different Ed25519 confirmation key.",
       "expect": {
         "native_verification": "FAILED",
         "acceptance": "REJECTED"
@@ -241,6 +282,16 @@
       "expect": {
         "same_replay_unit": true,
         "second_atomic_reservation": "REFUSED",
+        "invoke_allowed": false
+      }
+    },
+    {
+      "id": "indeterminate_unresolved_identifier_lifecycle",
+      "class": "status",
+      "input": "The cryptographic bundle verifies, but status is unavailable or too old to establish the current identifier assignment.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "INDETERMINATE",
         "invoke_allowed": false
       }
     },

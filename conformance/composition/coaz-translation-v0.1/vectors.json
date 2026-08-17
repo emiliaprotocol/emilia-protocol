@@ -1,0 +1,189 @@
+{
+  "@version": "COAZ-TRANSLATION-CORPUS-v0.1",
+  "note": "Hostile-translation vector for the COAZ/AuthZEN surface. The PDP in every case is the pinned toy PDP in run.mjs: it decides on the tuple it is shown and stands in for any spec-conformant PDP. No real PDP product is exercised or claimed vulnerable.",
+  "fixtures": {
+    "token_claims": {
+      "sub": "alice@example.com",
+      "client_id": "http://agentprovider.com/agent-app-id",
+      "iss": "https://auth.example.com",
+      "aud": "https://mcp.example.com",
+      "exp": 1750000000
+    },
+    "benign_call": {
+      "jsonrpc": "2.0",
+      "id": 11,
+      "method": "tools/call",
+      "params": {
+        "name": "release_payment",
+        "arguments": {
+          "amount": "1250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b",
+          "payment_instruction_id": "pi_9912"
+        }
+      }
+    },
+    "substituted_call": {
+      "jsonrpc": "2.0",
+      "id": 12,
+      "method": "tools/call",
+      "params": {
+        "name": "release_payment",
+        "arguments": {
+          "amount": "1250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "payment_instruction_id": "pi_9912"
+        }
+      }
+    },
+    "reclassified_call": {
+      "jsonrpc": "2.0",
+      "id": 13,
+      "method": "tools/call",
+      "params": {
+        "name": "release_payment",
+        "arguments": {
+          "amount": "1250.00",
+          "currency": "EUR",
+          "payment_instruction_id": "pi_9912",
+          "notes": {
+            "beneficiary_account": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          }
+        }
+      }
+    },
+    "declared_mapping": {
+      "evaluation": {
+        "subject": { "type": "identity", "id": "$token.sub" },
+        "action": {
+          "name": "release_payment",
+          "properties": {
+            "amount": "$params.arguments.amount",
+            "currency": "$params.arguments.currency"
+          }
+        },
+        "resource": { "type": "payment_instruction", "id": "$params.arguments.payment_instruction_id" },
+        "context": { "agent": "$token.?client_id" }
+      }
+    },
+    "expected_caid_benign": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+    "expected_caid_substituted": "caid:1:payment.release.1:jcs-sha256:w452kmOUGRa4dkgc6dHI7T0DDePKizb7gls5Fj3pFLo"
+  },
+  "cases": [
+    {
+      "id": "default-mapping-benign-allowed",
+      "translator": "default",
+      "call": "benign_call",
+      "expect": {
+        "constructed": true,
+        "request": {
+          "subject": { "type": "identity", "id": "alice@example.com" },
+          "context": { "agent": "http://agentprovider.com/agent-app-id" },
+          "action": { "name": "tools/call" },
+          "resource": { "type": "tool", "id": "release_payment" }
+        },
+        "pdp_decision": true
+      }
+    },
+    {
+      "id": "default-mapping-substituted-identical-tuple",
+      "translator": "default",
+      "call": "substituted_call",
+      "expect": {
+        "constructed": true,
+        "tuple_identical_to": "default-mapping-benign-allowed",
+        "source_identical_to_that_case_source": false,
+        "pdp_decision": true
+      }
+    },
+    {
+      "id": "declared-mapping-benign-allowed",
+      "translator": "declared",
+      "call": "benign_call",
+      "expect": {
+        "constructed": true,
+        "request": {
+          "subject": { "type": "identity", "id": "alice@example.com" },
+          "action": {
+            "name": "release_payment",
+            "properties": { "amount": "1250.00", "currency": "EUR" }
+          },
+          "resource": { "type": "payment_instruction", "id": "pi_9912" },
+          "context": { "agent": "http://agentprovider.com/agent-app-id" }
+        },
+        "pdp_decision": true
+      }
+    },
+    {
+      "id": "declared-mapping-semantic-substitution-identical-tuple",
+      "translator": "declared",
+      "call": "substituted_call",
+      "expect": {
+        "constructed": true,
+        "tuple_identical_to": "declared-mapping-benign-allowed",
+        "source_identical_to_that_case_source": false,
+        "pdp_decision": true
+      }
+    },
+    {
+      "id": "declared-mapping-field-reclassification-identical-tuple",
+      "translator": "declared",
+      "call": "reclassified_call",
+      "expect": {
+        "constructed": true,
+        "tuple_identical_to": "declared-mapping-benign-allowed",
+        "source_identical_to_that_case_source": false,
+        "pdp_decision": true
+      }
+    },
+    {
+      "id": "caid-close-benign-admitted",
+      "translator": "declared_caid",
+      "call": "benign_call",
+      "approved_action_from": "benign_call",
+      "expect": {
+        "constructed": true,
+        "context_caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+        "pdp_decision": true,
+        "relying_check": { "allowed": true, "reason": null }
+      }
+    },
+    {
+      "id": "caid-close-semantic-substitution-refused",
+      "translator": "declared_caid",
+      "call": "substituted_call",
+      "approved_action_from": "benign_call",
+      "expect": {
+        "constructed": true,
+        "context_caid": "caid:1:payment.release.1:jcs-sha256:w452kmOUGRa4dkgc6dHI7T0DDePKizb7gls5Fj3pFLo",
+        "caid_differs_from_approved": true,
+        "pdp_decision": true,
+        "relying_check": { "allowed": false, "reason": "caid_mismatch:beneficiary_account" }
+      }
+    },
+    {
+      "id": "caid-close-field-reclassification-refused",
+      "translator": "declared_caid",
+      "call": "reclassified_call",
+      "approved_action_from": "benign_call",
+      "expect": {
+        "constructed": false,
+        "reason": "caid_refused:missing_material_field:beneficiary_account",
+        "pdp_called": false
+      }
+    },
+    {
+      "id": "caid-close-malformed-identifier-refused",
+      "translator": "declared_caid",
+      "call": "benign_call",
+      "approved_action_from": "benign_call",
+      "tamper_presented_caid": "caid:junk",
+      "expect": {
+        "constructed": true,
+        "pdp_decision": true,
+        "relying_check": { "allowed": false, "reason": "caid_invalid:malformed_caid" }
+      }
+    }
+  ]
+}

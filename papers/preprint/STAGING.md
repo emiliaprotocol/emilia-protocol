@@ -1,6 +1,6 @@
 # Preprint staging: Action-Bound Injective Authorization
 
-**Status: IACR submission `xxxx/111011` was rejected on 15 August 2026. A focused revision is built locally and has not been resubmitted.**
+**Status: IACR submission `xxxx/111011` was rejected on 15 August 2026. The focused revision was published as an unrefereed Zenodo preprint on 16 August 2026.**
 
 The editor asked for a paper that is clear, readable, self-contained, somewhat new and interesting, and supported by proofs or convincing arguments. The rejected 27-page package remains preserved under `submissions/xxxx-111011/`. It did not receive a permanent ePrint number.
 
@@ -67,8 +67,9 @@ npm run test:preprint
 
 ## Publication boundary
 
-- The revision is not accepted, posted, submitted, or under review.
-- The author approved a fresh submission on 15 August 2026; upload still requires the exact final PDF and metadata to pass verification.
-- The rejected PDF remains immutable provenance and must not be described as the current revision.
+- Zenodo v3 is public at version DOI `10.5281/zenodo.21968577`; the all-versions concept DOI is `10.5281/zenodo.21520972`.
+- The exact public PDF is `eprint-revision/main.pdf`, 19 pages, SHA-256 `f158dbcd36f8831cc8f39aa7d37cfd505679483b57b29bb33dc676a9af75867e`.
+- Zenodo publication is not refereed acceptance, IACR acceptance, or an IETF status claim.
+- The rejected IACR PDF remains immutable provenance and must not be described as the Zenodo revision.
 - The paper remains single-author: Iman Schrock, EMILIA Protocol, Inc.
 - The revision does not claim exactly-once physical execution.

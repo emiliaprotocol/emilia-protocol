@@ -1,0 +1,42 @@
+{
+  "document": "bank statements at period end plus cutoff-period activity (first five business days after period end)",
+  "period_end": "2026-06-30",
+  "statements": [
+    {
+      "account_id": "OPER-001",
+      "bank": "First Meridian Bank",
+      "closing_balance": "1494300.75",
+      "period_lines": [
+        { "ref": "FEE-0930", "date": "2026-06-30", "description": "Account analysis service charge", "amount": "525.00", "direction": "debit" },
+        { "ref": "INT-0930", "date": "2026-06-30", "description": "Interest earned", "amount": "125.00", "direction": "credit" }
+      ],
+      "subsequent_lines": [
+        { "ref": "DIT-0901", "date": "2026-07-01", "description": "Deposit posted", "amount": "18400.00", "direction": "credit" },
+        { "ref": "OCK-0142", "date": "2026-07-02", "description": "Check 1142 paid", "amount": "22150.50", "direction": "debit" },
+        { "ref": "OCK-0155", "date": "2026-07-03", "description": "Check 1155 paid", "amount": "8300.00", "direction": "debit" },
+        { "ref": "OCK-0161", "date": "2026-07-06", "description": "Check 1161 paid", "amount": "1200.00", "direction": "debit" }
+      ]
+    },
+    {
+      "account_id": "PAYR-002",
+      "bank": "First Meridian Bank",
+      "closing_balance": "260912.40",
+      "period_lines": [],
+      "subsequent_lines": [
+        { "ref": "OCK-2201", "date": "2026-07-01", "description": "Payroll check 2201 paid", "amount": "9850.25", "direction": "debit" },
+        { "ref": "OCK-2202", "date": "2026-07-01", "description": "Payroll check 2202 paid", "amount": "11640.00", "direction": "debit" },
+        { "ref": "DIT-2210", "date": "2026-07-02", "description": "Deposit posted", "amount": "50.00", "direction": "credit" }
+      ]
+    },
+    {
+      "account_id": "RESV-003",
+      "bank": "Coastal Trust Bank",
+      "closing_balance": "500000.00",
+      "period_lines": [
+        { "ref": "FEE-3110", "date": "2026-06-30", "description": "Wire maintenance fee", "amount": "32.50", "direction": "debit" },
+        { "ref": "INT-3111", "date": "2026-06-30", "description": "Interest earned", "amount": "18.20", "direction": "credit" }
+      ],
+      "subsequent_lines": []
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "@version": "COAZ-TRANSLATION-SOURCE-LOCK-v0.1",
+  "fetched": "2026-08-16",
+  "fetch_note": "Raw HTML bytes fetched with curl on the date above and read in full before any claim was written. The former single profile document at authzen-mcp-profile-1_0.html states verbatim: 'This draft has been superseded and is retained only as a pointer to its replacements.' Its content is split into the two drafts pinned first.",
+  "specs": [
+    {
+      "name": "COAZ: A Framework for Mapping Information Models to AuthZEN Authorization Requests - Draft 1 (OpenID AuthZEN WG, published 13 February 2026)",
+      "url": "https://openid.github.io/authzen/authzen-coaz-framework-1_0.html",
+      "sha256": "b963604d1e1b2b4108ff45133b0a32a6acb04b3fd5963705295670ce9716fa93"
+    },
+    {
+      "name": "COAZ-MCP: COAZ Binding for the Model Context Protocol - Draft 1 (OpenID AuthZEN WG, published 13 February 2026)",
+      "url": "https://openid.github.io/authzen/authzen-coaz-mcp-binding-1_0.html",
+      "sha256": "e3c8777ce7c81190df953eab1ea6b7bbe68985e02008144eac311a289d8c2dcb"
+    },
+    {
+      "name": "authzen-mcp-profile-1_0 (superseded pointer document)",
+      "url": "https://openid.github.io/authzen/authzen-mcp-profile-1_0.html",
+      "sha256": "71d9c2fbcc851b66fe4269202f0a91d9c399e8662bd161cdc6cf81202c5edea0"
+    }
+  ],
+  "authzen_base": {
+    "note": "AuthZEN Authorization API 1.0 Final quotes (Sections 5.3, 5.4, 5.5, 6.1) are reused verbatim from the fetch record of caid/bindings/authzen-acta.md, whose sources were read in full on 2026-07-08 and refreshed on 2026-07-14.",
+    "url": "https://openid.net/specs/authorization-api-1_0.html"
+  },
+  "local_files": [
+    {
+      "path": "caid/impl/js/caid.mjs",
+      "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
+    },
+    {
+      "path": "caid/registry/action-types.json",
+      "sha256": "73598966f8b9d85eb072ede0087233e5e322eae3b917773494b635308c737de4"
+    },
+    {
+      "path": "conformance/composition/coaz-translation-v0.1/run.mjs",
+      "sha256": "46ef7675504ea3ce6d84d891026ce5d7bf6a16541678e158618793894cfd36fd"
+    },
+    {
+      "path": "conformance/composition/coaz-translation-v0.1/vectors.json",
+      "sha256": "b079c74190001b9c51a4f1834e18fb756ec71d8612f8bda1d36c817c90696773"
+    }
+  ]
+}
