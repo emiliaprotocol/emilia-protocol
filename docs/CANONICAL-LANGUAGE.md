@@ -4,7 +4,11 @@ This document defines the authoritative vocabulary for EMILIA Protocol across do
 
 ## Canonical company line
 
-> **Protocol proves. Gate prevents.**
+> **Every consequential agent action enters with authority and exits with a receipt.**
+
+The plain-language operating picture is the **authority toll booth for autonomous work**. It is a
+customer-owned Gate at a configured protected boundary, not a claim that EMILIA currently operates
+a global central network or mediates every action.
 
 ## Canonical technical line
 
@@ -16,7 +20,14 @@ This document defines the authoritative vocabulary for EMILIA Protocol across do
 
 ## Canonical investor line
 
-> **EMILIA is the interoperable evidence and durable-consequence layer between machine authorization and irreversible execution. Other authorization systems become verifiable inputs; EMILIA’s value increases as more of them are adopted because Gate joins them to exact-action human authority, one-time enforcement, and outcome evidence at the system that can actually mutate state.**
+> **Humans define authority. Agents exercise it. EMILIA ensures the agent cannot quietly widen it. EMILIA charges where authorized intent becomes consequential action.**
+
+The second sentence names the value location, not a current per-action billing meter. Current offers
+remain protected-workflow pilot, implementation, and annual Gate plus Assurance.
+
+## Canonical protocol and product shorthand
+
+> **Protocol proves. Gate prevents.**
 
 ## Canonical interoperability line
 

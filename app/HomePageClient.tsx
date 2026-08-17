@@ -54,7 +54,7 @@ const PRODUCTS = [
   {
     label: 'Protect',
     title: 'EMILIA Gate',
-    body: 'The commercial consequence firewall. Gate sits on a completely mediated, credential-owning executor path and permits one provider attempt for the authorized action—or refuses.',
+    body: 'The customer-owned authority toll booth. Gate sits on a completely mediated, credential-owning executor path and permits one provider attempt for the authorized action, or refuses.',
     href: '/gate',
     accent: color.gold,
   },
@@ -106,20 +106,20 @@ export default function HomePage(): React.ReactElement {
           <C>
             <motion.div className="ep-home-calm-copy" {...heroIn()}>
               <div className="ep-home-calm-kicker">
-                EMILIA <span>· The authority system for autonomous work</span>
+                EMILIA <span>· The authority toll booth for autonomous work</span>
               </div>
-              <h1 id="home-trust-thesis">AI gave software intelligence. EMILIA puts authority in force.</h1>
+              <h1 id="home-trust-thesis">Every consequential agent action enters with authority and exits with a receipt.</h1>
               <p className="ep-home-calm-lede ep-home-lede-desktop">
-                Models decide what to do. Humans and institutions decide what may be done. EMILIA
-                Gate enforces that separation on covered paths before agent intent changes money,
-                code, permissions, records, or infrastructure.
+                Humans define authority. Agents exercise it. At protected boundaries, EMILIA Gate
+                ensures the agent cannot quietly widen it before intent changes money, code,
+                permissions, records, infrastructure, or machines.
               </p>
               <p className="ep-home-calm-lede ep-home-lede-mobile">
-                Models create intent. On covered paths, EMILIA enforces authority before intent becomes consequence.
+                Humans define authority. Agents exercise it. Gate controls the protected crossing.
               </p>
               <p className="ep-home-calm-detail">
-                Think of it as the authority brain outside the model. It does not decide what is
-                wise. It enforces the mandate and evidence bar the customer defined.
+                EMILIA is building the universal agentic authority toll booth. The contract is
+                cross-stack; each Gate remains customer-owned and local to its configured boundary.
               </p>
               <div className="ep-home-calm-actions">
                 <Link href="/scan" className="ep-home-hero-primary">Run the local Authority Map</Link>
@@ -154,11 +154,11 @@ export default function HomePage(): React.ReactElement {
             <motion.div {...reveal()} style={{ maxWidth: 820 }}>
               <div style={eyebrow}>The precedent</div>
               <h2 style={{ ...styles.h2, maxWidth: 780 }}>
-                Payments separated authorization from movement. Agent actions still do not.
+                Payments made the crossing explicit. Agent actions still collapse it into a tool call.
               </h2>
               <p style={{ ...styles.body, maxWidth: 700, marginTop: 18 }}>
                 A card system does not confuse identity, authorization, movement, settlement, and
-                dispute evidence. Most agent stacks collapse those facts into one tool call and one log.
+                dispute evidence. Most agent stacks still collapse those facts into one tool call and one log.
               </p>
             </motion.div>
             <motion.div className="ep-home-grid-2" {...reveal(0.08)} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 38 }}>
@@ -176,8 +176,8 @@ export default function HomePage(): React.ReactElement {
               </div>
             </motion.div>
             <p style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 16 }}>
-              EMILIA is not a bank, settlement rail, or clearing network. The analogy is the separation
-              between permission, provider entry, and evidence of effect.
+              EMILIA is not a bank, settlement rail, or global clearing network. The toll booth is a
+              product metaphor for customer-owned admission, receipt, and reconciliation at a protected boundary.
             </p>
           </C>
         </section>

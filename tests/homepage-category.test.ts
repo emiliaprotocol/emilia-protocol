@@ -25,18 +25,19 @@ function compact(value) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with the two-system separation, keeps Gate as enforcement, and keeps Authority Map as the free entry point', () => {
+  it('leads with the authority toll booth, keeps Gate customer-owned, and keeps Authority Map as the free entry point', () => {
     const page = read('app/HomePageClient.js');
     const route = read('app/page.js');
     const css = read('app/ep.css');
 
-    expect(route).toContain('Authority System for Autonomous Work | EMILIA');
-    expect(route).toContain('AI gave software intelligence. On covered paths, EMILIA puts customer authority in force');
-    expect(page).toContain('EMILIA <span>· The authority system for autonomous work</span>');
+    expect(route).toContain('Authority Toll Booth for Autonomous Work | EMILIA');
+    expect(route).toContain('every consequential agent action enters with customer authority and exits with an action-bound receipt');
+    expect(page).toContain('EMILIA <span>· The authority toll booth for autonomous work</span>');
+    expect(page).toContain('Every consequential agent action enters with authority and exits with a receipt.');
+    expect(page).toContain('EMILIA is building the universal agentic authority toll booth.');
+    expect(page).toContain('each Gate remains customer-owned and local to its configured boundary.');
     expect(page).toContain('Even if AI writes the binary, it cannot write its own authority.');
     expect(page).toContain('The system may change how it decides. It cannot quietly expand what it is authorized to do.');
-    expect(page).toContain('AI gave software intelligence. EMILIA puts authority in force.');
-    expect(page).toContain('Think of it as the authority brain outside the model.');
     expect(page).toContain('One creates intent. The other enforces authority.');
     expect(page).toContain('Intelligence system');
     expect(page).toContain('Authority system');
@@ -46,7 +47,7 @@ describe('homepage category contract', () => {
     expect(page).toContain('No invented certainty.');
     expect(page).toContain('This is not proof of success.');
     expect(page).toContain('Never retry blindly.');
-    expect(css).toContain('hero-human-machine-shoreline-v1.webp');
+    expect(css).toContain('emilia-authority-tollbooth-v1.png');
     expect(page).toContain('Public evidence');
     expect(page).toContain('unsafe counterexamples');
     expect(page).toContain("href: '/authority-brain'");
@@ -118,8 +119,9 @@ describe('homepage category contract', () => {
     expect(gate).toContain('RECEIPT PROGRAMS');
     expect(gate).toContain('npm run demo:receipt-program');
     expect(gate).toContain('It is not a ZK proof, consensus result, provider attestation');
-    expect(investors).toContain('AI gave software intelligence. EMILIA puts authority in force.');
-    expect(investors).toContain('Autonomous work needs two independent systems.');
+    expect(investors).toContain('Every consequential agent action enters with authority and exits with a receipt.');
+    expect(investors).toContain('EMILIA charges where authorized intent becomes consequential action.');
+    expect(investors).toContain('Gate is the customer-owned authority toll booth.');
     expect(investors).toContain('currently claims no customer traction, recurring revenue, production deployment');
     expect(investors).toContain('certification, RFC status, or standards-body endorsement.');
     expect(productBrief).toContain('No independently administered operator has produced external witness evidence');
