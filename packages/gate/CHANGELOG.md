@@ -44,6 +44,13 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add coverage reconciliation v2 with observation-bounded outcomes:
+  `observed_without_receipt` and `receipted_without_observation`.
+- Require every excluded or exceptional system record to carry a
+  `classification_rule_id` bound into its signed population root.
+- Continue to verify already-issued v1 artifacts for migration while new
+  issuance uses v2; v1 names are never reinterpreted as stronger v2 claims.
+
 - Add the transport- and evidence-format-neutral `./consequence-boundary`
   facade. It re-verifies a signed AEB join for one frozen action, applies local
   policy, atomically fences native replay units, records provider-attempt

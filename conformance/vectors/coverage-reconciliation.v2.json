@@ -1,0 +1,122 @@
+{
+  "@version": "EP-COVERAGE-RECONCILIATION-CONFORMANCE-v2",
+  "description": "Synthetic PHI-free deterministic vector for supplied-population reconciliation and governed-taxonomy census.",
+  "seed_hex": "4343434343434343434343434343434343434343434343434343434343434343",
+  "taxonomy": {
+    "taxonomy_id": "payer:synthetic:receipt-census:v1",
+    "allowed_action_classes": [
+      "health.prior-authorization"
+    ],
+    "allowed_outcomes": [
+      "executed",
+      "refused"
+    ]
+  },
+  "trusted_keys": {
+    "coverage-vector-key-1": {
+      "issuer_id": "payer:synthetic",
+      "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY"
+    }
+  },
+  "verification_time": "2026-07-02T00:00:00Z",
+  "expected_program": {
+    "program_id": "rp.synthetic-payer.pas.1",
+    "version": 1,
+    "source_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "program_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "expected_census_digest": "sha256:f1ee21ccf0eb605af6a1f49ee4994bcb5a7f5886ca1e53f99007fe78145d79fe",
+  "expected_relying_party_id": "payer:synthetic",
+  "census": {
+    "@version": "EP-RECEIPT-CENSUS-v1",
+    "census_id": "census:synthetic:2026-06",
+    "relying_party_id": "payer:synthetic",
+    "period": {
+      "start": "2026-06-01T00:00:00Z",
+      "end": "2026-07-01T00:00:00Z"
+    },
+    "program": {
+      "program_id": "rp.synthetic-payer.pas.1",
+      "version": 1,
+      "source_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "program_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "taxonomy_digest": "sha256:3c29200004c72c7fc73e56ede8609bf2368a27fa13a1808d1663529ec017fefd",
+    "minimum_bucket_count": 5,
+    "buckets": [
+      {
+        "action_class": "health.prior-authorization",
+        "program_version": 1,
+        "outcome": "executed",
+        "count": 95,
+        "open_exposure_amount_minor": "100000",
+        "reported_loss_amount_minor": "12500",
+        "currency": "USD"
+      }
+    ],
+    "suppressed": {
+      "bucket_count": 1,
+      "record_count": 2
+    },
+    "source_inventory_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "generated_at": "2026-07-01T01:00:00Z",
+    "claim_boundary": "aggregate_observation_with_primary_suppression_not_differential_privacy_or_identifier_detection_not_causation_coverage_legal_liability_adjudication_solvency_payment_population_completeness_or_authorization",
+    "census_digest": "sha256:f1ee21ccf0eb605af6a1f49ee4994bcb5a7f5886ca1e53f99007fe78145d79fe"
+  },
+  "artifact": {
+    "@version": "EP-COVERAGE-RECONCILIATION-ATTESTATION-v2",
+    "attestation_id": "coverage:synthetic:2026-06",
+    "census_digest": "sha256:f1ee21ccf0eb605af6a1f49ee4994bcb5a7f5886ca1e53f99007fe78145d79fe",
+    "claim_boundary": "signed_reconciliation_of_supplied_populations_not_population_completeness",
+    "coverage_report_hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "expires_at": "2026-08-01T01:00:00Z",
+    "issued_at": "2026-07-01T01:00:00Z",
+    "issuer": {
+      "id": "payer:synthetic",
+      "key_id": "coverage-vector-key-1"
+    },
+    "joins": {
+      "exception": 0,
+      "excluded": 2,
+      "indeterminate": 2,
+      "matched": 95,
+      "observed_without_receipt": 3,
+      "receipted_without_observation": 1
+    },
+    "period": {
+      "end": "2026-07-01T00:00:00Z",
+      "start": "2026-06-01T00:00:00Z"
+    },
+    "program": {
+      "program_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "program_id": "rp.synthetic-payer.pas.1",
+      "source_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "version": 1
+    },
+    "receipt_population": {
+      "count": 98,
+      "inventory_id": "ep:receipts:synthetic:2026-06",
+      "population_root": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    },
+    "relying_party_id": "payer:synthetic",
+    "system_of_record": {
+      "count": 100,
+      "inventory_id": "pas:sor:synthetic:2026-06",
+      "population_root": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    "timestamp_anchor": null,
+    "proof": {
+      "algorithm": "Ed25519",
+      "key_id": "coverage-vector-key-1",
+      "body_digest": "sha256:2dceb94be32cb0cad3bc33be33658a6f2b9071fb65b65951ad78bfd99826f3f3",
+      "signature_b64u": "OnXIECCWSTNLpsXpqKfzAUkFYBsfu_4rAZTdowrlS8UcYdKl8GYEKR6GM8q1TA4bHKYv19HycwewbGdV-MFZDw"
+    }
+  },
+  "expected": {
+    "accepted": true,
+    "verified": true,
+    "reason": null,
+    "attestation_digest": "sha256:152ebc5e18274a0aeca61ce883d58b3e08c1e7b5eda4271f8c827d95d7b07c3c",
+    "claim_boundary": "signed_reconciliation_of_supplied_populations_not_population_completeness"
+  }
+}

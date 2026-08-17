@@ -1,6 +1,7 @@
 /** Signed period reconciliation of supplied populations; never proof that the supplied population is complete. */
 import { type RiskRecord, type TrustedRiskKeys } from './reliance-risk-crypto.js';
-export declare const COVERAGE_RECONCILIATION_ATTESTATION_VERSION = "EP-COVERAGE-RECONCILIATION-ATTESTATION-v1";
+export declare const COVERAGE_RECONCILIATION_ATTESTATION_VERSION = "EP-COVERAGE-RECONCILIATION-ATTESTATION-v2";
+export declare const COVERAGE_RECONCILIATION_ATTESTATION_V1_VERSION = "EP-COVERAGE-RECONCILIATION-ATTESTATION-v1";
 export declare const COVERAGE_RECONCILIATION_CLAIM_BOUNDARY = "signed_reconciliation_of_supplied_populations_not_population_completeness";
 export declare function signCoverageReconciliationAttestation(input: RiskRecord, signer: {
     issuer_id: string;

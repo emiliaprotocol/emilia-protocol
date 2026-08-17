@@ -1,13 +1,15 @@
 // @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /** Signed period reconciliation of supplied populations; never proof that the supplied population is complete. */
-import { RISK_DIGEST, riskExact, riskIdentifier, riskInstant, signRiskBody, verifyRiskBody, } from './reliance-risk-crypto.js';
-export const COVERAGE_RECONCILIATION_ATTESTATION_VERSION = 'EP-COVERAGE-RECONCILIATION-ATTESTATION-v1';
+import { RISK_DIGEST, riskExact, riskIdentifier, riskInstant, riskRecord, signRiskBody, verifyRiskBody, } from './reliance-risk-crypto.js';
+export const COVERAGE_RECONCILIATION_ATTESTATION_VERSION = 'EP-COVERAGE-RECONCILIATION-ATTESTATION-v2';
+export const COVERAGE_RECONCILIATION_ATTESTATION_V1_VERSION = 'EP-COVERAGE-RECONCILIATION-ATTESTATION-v1';
 export const COVERAGE_RECONCILIATION_CLAIM_BOUNDARY = 'signed_reconciliation_of_supplied_populations_not_population_completeness';
 const PROGRAM_KEYS = ['program_id', 'version', 'source_digest', 'program_digest'];
 const PERIOD_KEYS = ['start', 'end'];
 const POPULATION_KEYS = ['inventory_id', 'population_root', 'count'];
-const JOIN_KEYS = ['matched', 'effect_without_receipt', 'receipt_without_effect', 'indeterminate', 'excluded', 'exception'];
+const JOIN_KEYS = ['matched', 'observed_without_receipt', 'receipted_without_observation', 'indeterminate', 'excluded', 'exception'];
+const V1_JOIN_KEYS = ['matched', 'effect_without_receipt', 'receipt_without_effect', 'indeterminate', 'excluded', 'exception'];
 const ANCHOR_KEYS = ['method', 'evidence_digest'];
 const BODY_KEYS = ['@version', 'attestation_id', 'relying_party_id', 'program', 'period', 'coverage_report_hash', 'census_digest', 'system_of_record', 'receipt_population', 'joins', 'issued_at', 'expires_at', 'timestamp_anchor', 'claim_boundary'];
 function count(value) { return Number.isSafeInteger(value) && Number(value) >= 0; }
@@ -20,8 +22,11 @@ function validExpectedProgram(value) {
         && Number.isSafeInteger(value.version) && value.version >= 1
         && RISK_DIGEST.test(value.source_digest) && RISK_DIGEST.test(value.program_digest);
 }
-function validate(value) {
-    if (!riskExact(value, BODY_KEYS) || value['@version'] !== COVERAGE_RECONCILIATION_ATTESTATION_VERSION
+function validate(value, version) {
+    const joinKeys = version === COVERAGE_RECONCILIATION_ATTESTATION_VERSION
+        ? JOIN_KEYS
+        : V1_JOIN_KEYS;
+    if (!riskExact(value, BODY_KEYS) || value['@version'] !== version
         || !riskIdentifier(value.attestation_id) || !riskIdentifier(value.relying_party_id)
         || !riskExact(value.program, PROGRAM_KEYS) || !riskIdentifier(value.program.program_id)
         || !Number.isSafeInteger(value.program.version) || value.program.version < 1
@@ -29,7 +34,7 @@ function validate(value) {
         || !riskExact(value.period, PERIOD_KEYS) || !RISK_DIGEST.test(value.coverage_report_hash)
         || !RISK_DIGEST.test(value.census_digest)
         || !riskExact(value.system_of_record, POPULATION_KEYS) || !riskExact(value.receipt_population, POPULATION_KEYS)
-        || !riskExact(value.joins, JOIN_KEYS) || value.claim_boundary !== COVERAGE_RECONCILIATION_CLAIM_BOUNDARY) {
+        || !riskExact(value.joins, joinKeys) || value.claim_boundary !== COVERAGE_RECONCILIATION_CLAIM_BOUNDARY) {
         throw new TypeError('coverage reconciliation attestation shape is invalid');
     }
     const start = riskInstant(value.period.start);
@@ -44,10 +49,16 @@ function validate(value) {
             throw new TypeError('coverage reconciliation population is invalid');
         }
     }
-    if (!JOIN_KEYS.every((key) => count(value.joins[key])))
+    if (!joinKeys.every((key) => count(value.joins[key])))
         throw new TypeError('coverage reconciliation counts are invalid');
-    if (value.system_of_record.count !== value.joins.matched + value.joins.effect_without_receipt + value.joins.excluded + value.joins.exception
-        || value.receipt_population.count !== value.joins.matched + value.joins.receipt_without_effect + value.joins.indeterminate) {
+    const systemUnmatched = version === COVERAGE_RECONCILIATION_ATTESTATION_VERSION
+        ? value.joins.observed_without_receipt
+        : value.joins.effect_without_receipt;
+    const receiptUnmatched = version === COVERAGE_RECONCILIATION_ATTESTATION_VERSION
+        ? value.joins.receipted_without_observation
+        : value.joins.receipt_without_effect;
+    if (value.system_of_record.count !== value.joins.matched + systemUnmatched + value.joins.excluded + value.joins.exception
+        || value.receipt_population.count !== value.joins.matched + receiptUnmatched + value.joins.indeterminate) {
         throw new TypeError('coverage reconciliation population conservation failed');
     }
     if (value.timestamp_anchor !== null && (!riskExact(value.timestamp_anchor, ANCHOR_KEYS)
@@ -57,7 +68,7 @@ function validate(value) {
 }
 export function signCoverageReconciliationAttestation(input, signer) {
     const body = { '@version': COVERAGE_RECONCILIATION_ATTESTATION_VERSION, ...input };
-    validate(body);
+    validate(body, COVERAGE_RECONCILIATION_ATTESTATION_VERSION);
     if (signer.issuer_id !== body.relying_party_id)
         throw new TypeError('coverage attestation issuer must be relying party');
     return signRiskBody(COVERAGE_RECONCILIATION_ATTESTATION_VERSION, body, signer);
@@ -70,7 +81,11 @@ export function verifyCoverageReconciliationAttestation(attestation, options = {
         attestation_digest: attestationDigest,
         claim_boundary: COVERAGE_RECONCILIATION_CLAIM_BOUNDARY,
     });
-    const signed = verifyRiskBody(attestation, COVERAGE_RECONCILIATION_ATTESTATION_VERSION, options.trusted_keys);
+    const version = riskRecord(attestation)
+        && attestation['@version'] === COVERAGE_RECONCILIATION_ATTESTATION_V1_VERSION
+        ? COVERAGE_RECONCILIATION_ATTESTATION_V1_VERSION
+        : COVERAGE_RECONCILIATION_ATTESTATION_VERSION;
+    const signed = verifyRiskBody(attestation, version, options.trusted_keys);
     if (!signed.valid || !signed.body)
         return refuse(signed.reason ?? 'attestation_invalid');
     const { issuer, ...payload } = signed.body;
@@ -78,7 +93,7 @@ export function verifyCoverageReconciliationAttestation(attestation, options = {
         return refuse('relying_party_issuer_mismatch', true, signed.artifact_digest);
     }
     try {
-        validate(payload);
+        validate(payload, version);
     }
     catch {
         return refuse('population_conservation_or_schema_invalid', true, signed.artifact_digest);

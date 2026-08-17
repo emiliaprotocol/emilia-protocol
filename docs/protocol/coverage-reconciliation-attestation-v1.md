@@ -1,5 +1,10 @@
 # Coverage Reconciliation Attestation v1
 
+> Historical format. New issuers and verifiers use
+> [Coverage Reconciliation Attestation v2](coverage-reconciliation-attestation-v2.md),
+> which uses observation-bounded outcome names and binds the rule identifier
+> applied to every excluded or exceptional record.
+
 `EP-COVERAGE-RECONCILIATION-ATTESTATION-v1` is a relying-party-signed,
 bounded-period reconciliation of two supplied populations:
 

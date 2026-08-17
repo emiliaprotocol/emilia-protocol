@@ -146,6 +146,26 @@ describe('Da Vinci PAS coverage source connector', () => {
     })).rejects.toThrow(/server-observed PAS record refused/i);
   });
 
+  it('requires and carries a rule identifier for excluded records', async () => {
+    const connector = createDavinciPasCoverageSourceConnector({
+      source_system_id: 'pas:payer-system-of-record',
+      load: async () => serverObservedPas(),
+    });
+    const projected = await connector.project({
+      record_id: 'pas:excluded:medical-pa-response-001',
+      source_record_ref: 'ClaimResponse/medical-pa-response-001',
+      classification: 'excluded',
+      classification_rule_id: 'rule:non-adverse-disposition',
+    });
+    expect(projected.record.classification_rule_id).toBe('rule:non-adverse-disposition');
+
+    await expect(connector.project({
+      record_id: 'pas:excluded:missing-rule',
+      source_record_ref: 'ClaimResponse/medical-pa-response-001',
+      classification: 'excluded',
+    })).rejects.toThrow(/request invalid/i);
+  });
+
   it('rejects unsafe identifiers before calling the source loader', async () => {
     const load = vi.fn(async () => serverObservedPas());
     const connector = createDavinciPasCoverageSourceConnector({

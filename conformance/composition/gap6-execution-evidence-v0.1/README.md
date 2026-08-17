@@ -66,10 +66,15 @@ account numbers enter the evidence only as digests.
 ## Run it
 
 ```bash
+npm ci --ignore-scripts
 node conformance/composition/gap6-execution-evidence-v0.1/run.mjs          # demonstration
 node conformance/composition/gap6-execution-evidence-v0.1/run.mjs --json   # full report
 npm run pilot:finance-field-origin                                      # paid-pilot bundle
 ```
+
+The install step resolves the repository-local packages pinned by the root
+lockfile. `--ignore-scripts` is sufficient for this runner and avoids invoking
+unrelated lifecycle scripts during a clean-clone reproduction.
 
 One execution emits three outputs:
 

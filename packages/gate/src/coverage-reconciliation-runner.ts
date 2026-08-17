@@ -21,17 +21,22 @@ import {
 } from './reliance-risk-crypto.js';
 import {
   COVERAGE_RECONCILIATION_ATTESTATION_VERSION,
+  COVERAGE_RECONCILIATION_ATTESTATION_V1_VERSION,
   signCoverageReconciliationAttestation,
 } from './coverage-reconciliation-attestation.js';
 
-export const COVERAGE_SOURCE_INVENTORY_VERSION = 'EP-COVERAGE-SOURCE-INVENTORY-v1';
-export const COVERAGE_POPULATION_VERSION = 'EP-COVERAGE-POPULATION-v1';
-export const COVERAGE_RECONCILIATION_REPORT_VERSION = 'EP-COVERAGE-RECONCILIATION-REPORT-v1';
+export const COVERAGE_SOURCE_INVENTORY_VERSION = 'EP-COVERAGE-SOURCE-INVENTORY-v2';
+export const COVERAGE_POPULATION_VERSION = 'EP-COVERAGE-POPULATION-v2';
+export const COVERAGE_RECONCILIATION_REPORT_VERSION = 'EP-COVERAGE-RECONCILIATION-REPORT-v2';
+export const COVERAGE_SOURCE_INVENTORY_V1_VERSION = 'EP-COVERAGE-SOURCE-INVENTORY-v1';
+export const COVERAGE_POPULATION_V1_VERSION = 'EP-COVERAGE-POPULATION-v1';
+export const COVERAGE_RECONCILIATION_REPORT_V1_VERSION = 'EP-COVERAGE-RECONCILIATION-REPORT-v1';
 export const COVERAGE_SOURCE_CLAIM_BOUNDARY = 'signed_root_of_supplied_minimized_records_not_source_completeness';
 export const COVERAGE_REPORT_CLAIM_BOUNDARY = 'deterministic_join_of_two_verified_supplied_populations_not_source_completeness';
 
 const MAX_RECORDS = 50_000;
 const RECORD_KEYS = ['record_id', 'caid', 'action_digest', 'classification'] as const;
+const RULED_RECORD_KEYS = [...RECORD_KEYS, 'classification_rule_id'] as const;
 const PERIOD_KEYS = ['start', 'end'] as const;
 const SOURCE_BODY_KEYS = [
   '@version', 'inventory_id', 'inventory_kind', 'source_system_id',
@@ -50,6 +55,7 @@ export interface CoveragePopulationRecord {
   caid: string;
   action_digest: string;
   classification: CoverageRecordClassification;
+  classification_rule_id?: string;
 }
 
 export interface CoverageSourceInventoryInput {
@@ -106,16 +112,22 @@ function joinKey(record: CoveragePopulationRecord): string {
 function normalizeRecords(
   kind: CoverageInventoryKind,
   records: readonly CoveragePopulationRecord[],
+  version: typeof COVERAGE_POPULATION_VERSION | typeof COVERAGE_POPULATION_V1_VERSION
+    = COVERAGE_POPULATION_VERSION,
 ): CoveragePopulationRecord[] {
   if (!Array.isArray(records) || records.length > MAX_RECORDS) {
     throw new TypeError('coverage population exceeds the record limit');
   }
   const normalized = records.map((record) => {
-    if (!riskExact(record, RECORD_KEYS)
+    const requiresRule = version === COVERAGE_POPULATION_VERSION
+      && (record?.classification === 'excluded'
+        || record?.classification === 'exception');
+    if (!riskExact(record, requiresRule ? RULED_RECORD_KEYS : RECORD_KEYS)
         || !riskIdentifier(record.record_id)
         || !RISK_CAID.test(record.caid)
         || !RISK_DIGEST.test(record.action_digest)
-        || !allowedClassification(kind, record.classification)) {
+        || !allowedClassification(kind, record.classification)
+        || (requiresRule && !riskIdentifier(record.classification_rule_id))) {
       throw new TypeError('coverage population record is invalid');
     }
     return riskClone(record) as CoveragePopulationRecord;
@@ -149,11 +161,27 @@ export function coveragePopulationRoot(
   kind: CoverageInventoryKind,
   records: readonly CoveragePopulationRecord[],
 ): string {
+  return coveragePopulationRootForVersion(kind, records, COVERAGE_POPULATION_VERSION);
+}
+
+/** Historical v1 root for migration and verification of already-issued artifacts. */
+export function coveragePopulationRootV1(
+  kind: CoverageInventoryKind,
+  records: readonly CoveragePopulationRecord[],
+): string {
+  return coveragePopulationRootForVersion(kind, records, COVERAGE_POPULATION_V1_VERSION);
+}
+
+function coveragePopulationRootForVersion(
+  kind: CoverageInventoryKind,
+  records: readonly CoveragePopulationRecord[],
+  version: typeof COVERAGE_POPULATION_VERSION | typeof COVERAGE_POPULATION_V1_VERSION,
+): string {
   if (!INVENTORY_KINDS.has(kind)) throw new TypeError('coverage population kind is invalid');
   return riskDigest({
-    '@version': COVERAGE_POPULATION_VERSION,
+    '@version': version,
     inventory_kind: kind,
-    records: normalizeRecords(kind, records),
+    records: normalizeRecords(kind, records, version),
   });
 }
 
@@ -167,11 +195,15 @@ export function verifyCoverageReconciliationReportBinding(
   attestation: unknown,
 ) {
   if (!riskRecord(report)
-      || report['@version'] !== COVERAGE_RECONCILIATION_REPORT_VERSION) {
+      || (report['@version'] !== COVERAGE_RECONCILIATION_REPORT_VERSION
+        && report['@version'] !== COVERAGE_RECONCILIATION_REPORT_V1_VERSION)) {
     return { accepted: false, reason: 'coverage_report_invalid', report_hash: null };
   }
+  const expectedAttestationVersion = report['@version'] === COVERAGE_RECONCILIATION_REPORT_VERSION
+    ? COVERAGE_RECONCILIATION_ATTESTATION_VERSION
+    : COVERAGE_RECONCILIATION_ATTESTATION_V1_VERSION;
   if (!riskRecord(attestation)
-      || attestation['@version'] !== COVERAGE_RECONCILIATION_ATTESTATION_VERSION
+      || attestation['@version'] !== expectedAttestationVersion
       || !RISK_DIGEST.test(attestation.coverage_report_hash)) {
     return { accepted: false, reason: 'coverage_attestation_invalid', report_hash: null };
   }
@@ -187,9 +219,12 @@ export function verifyCoverageReconciliationReportBinding(
   return { accepted: true, reason: null, report_hash: reportHash };
 }
 
-function validateSourceBody(value: unknown): asserts value is RiskRecord {
+function validateSourceBody(
+  value: unknown,
+  version: typeof COVERAGE_SOURCE_INVENTORY_VERSION | typeof COVERAGE_SOURCE_INVENTORY_V1_VERSION,
+): asserts value is RiskRecord {
   if (!riskExact(value, SOURCE_BODY_KEYS)
-      || value['@version'] !== COVERAGE_SOURCE_INVENTORY_VERSION
+      || value['@version'] !== version
       || !riskIdentifier(value.inventory_id)
       || !INVENTORY_KINDS.has(value.inventory_kind)
       || !riskIdentifier(value.source_system_id)
@@ -224,7 +259,7 @@ export function signCoverageSourceInventory(
     population_root: coveragePopulationRoot(input.inventory_kind, normalized),
     claim_boundary: COVERAGE_SOURCE_CLAIM_BOUNDARY,
   };
-  validateSourceBody(body);
+  validateSourceBody(body, COVERAGE_SOURCE_INVENTORY_VERSION);
   if (signer.issuer_id !== body.source_operator_id) {
     throw new TypeError('coverage source inventory issuer must be the source operator');
   }
@@ -250,14 +285,21 @@ export function verifyCoverageSourceInventory(
     inventory_digest: inventoryDigest,
     claim_boundary: COVERAGE_SOURCE_CLAIM_BOUNDARY,
   });
-  const signed = verifyRiskBody(artifact, COVERAGE_SOURCE_INVENTORY_VERSION, options.trusted_keys);
+  const inventoryVersion = riskRecord(artifact)
+    && artifact['@version'] === COVERAGE_SOURCE_INVENTORY_V1_VERSION
+    ? COVERAGE_SOURCE_INVENTORY_V1_VERSION
+    : COVERAGE_SOURCE_INVENTORY_VERSION;
+  const populationVersion = inventoryVersion === COVERAGE_SOURCE_INVENTORY_VERSION
+    ? COVERAGE_POPULATION_VERSION
+    : COVERAGE_POPULATION_V1_VERSION;
+  const signed = verifyRiskBody(artifact, inventoryVersion, options.trusted_keys);
   if (!signed.valid || !signed.body) return refuse(signed.reason ?? 'inventory_invalid');
   const { issuer, ...payload } = signed.body;
   if (issuer.id !== payload.source_operator_id) {
     return refuse('source_operator_issuer_mismatch', true, signed.artifact_digest);
   }
   try {
-    validateSourceBody(payload);
+    validateSourceBody(payload, inventoryVersion);
   } catch {
     return refuse('inventory_schema_invalid', true, signed.artifact_digest);
   }
@@ -287,7 +329,7 @@ export function verifyCoverageSourceInventory(
   if (now >= riskInstant(payload.expires_at)) return refuse('inventory_expired', true, signed.artifact_digest);
   let root: string;
   try {
-    root = coveragePopulationRoot(payload.inventory_kind, records);
+    root = coveragePopulationRootForVersion(payload.inventory_kind, records, populationVersion);
   } catch {
     return refuse('population_invalid', true, signed.artifact_digest);
   }
@@ -416,7 +458,7 @@ export function runCoverageReconciliation(
       .map((record) => [joinKey(record), record]),
   );
   const matched: RiskRecord[] = [];
-  const effectWithoutReceipt: CoveragePopulationRecord[] = [];
+  const observedWithoutReceipt: CoveragePopulationRecord[] = [];
   const excluded: CoveragePopulationRecord[] = [];
   const exception: CoveragePopulationRecord[] = [];
   for (const record of systemRecords) {
@@ -430,7 +472,7 @@ export function runCoverageReconciliation(
     }
     const receipt = availableReceipts.get(joinKey(record));
     if (!receipt) {
-      effectWithoutReceipt.push(record);
+      observedWithoutReceipt.push(record);
       continue;
     }
     availableReceipts.delete(joinKey(record));
@@ -441,14 +483,14 @@ export function runCoverageReconciliation(
       receipt_record_id: receipt.record_id,
     });
   }
-  const receiptWithoutEffect = [...availableReceipts.values()]
+  const receiptedWithoutObservation = [...availableReceipts.values()]
     .sort((left, right) => textOrder(left.record_id, right.record_id));
   const indeterminate = receiptRecords
     .filter((record) => record.classification === 'indeterminate');
   const joins = {
     matched: matched.length,
-    effect_without_receipt: effectWithoutReceipt.length,
-    receipt_without_effect: receiptWithoutEffect.length,
+    observed_without_receipt: observedWithoutReceipt.length,
+    receipted_without_observation: receiptedWithoutObservation.length,
     indeterminate: indeterminate.length,
     excluded: excluded.length,
     exception: exception.length,
@@ -485,8 +527,8 @@ export function runCoverageReconciliation(
     joins,
     findings: {
       matched,
-      effect_without_receipt: effectWithoutReceipt,
-      receipt_without_effect: receiptWithoutEffect,
+      observed_without_receipt: observedWithoutReceipt,
+      receipted_without_observation: receiptedWithoutObservation,
       indeterminate,
       excluded,
       exception,

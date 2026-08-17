@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "8bbbcb4d729f7b186935b651cdc81cff0802cdc8865a30d0de77a0fd1560e56f"
+      "sha256": "0e0499831f2bea41f59dc0667a82980e70782657b2d14ed0234b1ffa90e0565f"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -615,11 +615,11 @@
     },
     {
       "path": "packages/gate/dist/coverage-reconciliation-attestation.js",
-      "sha256": "fa8196c8fc9bb177475111329cad93a71493c7f7e16d71bfdebfbc601b27613d"
+      "sha256": "a656668a8926f90dade8124ced0563487a03623d7513e625b7553fa5d6c030a1"
     },
     {
       "path": "packages/gate/dist/coverage-reconciliation-runner.js",
-      "sha256": "51435377f3b34ebebc66aea4b77cb7f6db0ba4d8ecaa9402e06568b7dff09013"
+      "sha256": "35d299964afdf06f0fb538caa07ab642ad077817a46017909f0828b81d8ae1c3"
     },
     {
       "path": "packages/gate/dist/discovery-permit-resolver.js",

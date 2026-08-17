@@ -194,13 +194,13 @@ const coverageArtifact = signCoverageReconciliationAttestation({
   census_digest: census.census_digest,
   system_of_record: { inventory_id: 'pas:sor:synthetic:2026-06', population_root: D('5'), count: 100 },
   receipt_population: { inventory_id: 'ep:receipts:synthetic:2026-06', population_root: D('6'), count: 98 },
-  joins: { matched: 95, effect_without_receipt: 3, receipt_without_effect: 1, indeterminate: 2, excluded: 2, exception: 0 },
+  joins: { matched: 95, observed_without_receipt: 3, receipted_without_observation: 1, indeterminate: 2, excluded: 2, exception: 0 },
   issued_at: '2026-07-01T01:00:00Z', expires_at: '2026-08-01T01:00:00Z',
   timestamp_anchor: null,
   claim_boundary: COVERAGE_RECONCILIATION_CLAIM_BOUNDARY,
 }, coverageIdentity.signer);
 const coverageVector = {
-  '@version': 'EP-COVERAGE-RECONCILIATION-CONFORMANCE-v1',
+  '@version': 'EP-COVERAGE-RECONCILIATION-CONFORMANCE-v2',
   description: 'Synthetic PHI-free deterministic vector for supplied-population reconciliation and governed-taxonomy census.',
   seed_hex: coverageSeed,
   taxonomy,
@@ -266,6 +266,6 @@ const feedVector = {
 
 await Promise.all([
   writeFile(resolve('conformance/vectors/loss-allocation-schedule.v1.json'), `${JSON.stringify(scheduleVector, null, 2)}\n`),
-  writeFile(resolve('conformance/vectors/coverage-reconciliation.v1.json'), `${JSON.stringify(coverageVector, null, 2)}\n`),
+  writeFile(resolve('conformance/vectors/coverage-reconciliation.v2.json'), `${JSON.stringify(coverageVector, null, 2)}\n`),
   writeFile(resolve('conformance/vectors/loss-experience-feed.v1.json'), `${JSON.stringify(feedVector, null, 2)}\n`),
 ]);

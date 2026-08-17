@@ -4,9 +4,12 @@
  * contain; it never self-proves source-system completeness.
  */
 import { type RiskRecord, type TrustedRiskKeys } from './reliance-risk-crypto.js';
-export declare const COVERAGE_SOURCE_INVENTORY_VERSION = "EP-COVERAGE-SOURCE-INVENTORY-v1";
-export declare const COVERAGE_POPULATION_VERSION = "EP-COVERAGE-POPULATION-v1";
-export declare const COVERAGE_RECONCILIATION_REPORT_VERSION = "EP-COVERAGE-RECONCILIATION-REPORT-v1";
+export declare const COVERAGE_SOURCE_INVENTORY_VERSION = "EP-COVERAGE-SOURCE-INVENTORY-v2";
+export declare const COVERAGE_POPULATION_VERSION = "EP-COVERAGE-POPULATION-v2";
+export declare const COVERAGE_RECONCILIATION_REPORT_VERSION = "EP-COVERAGE-RECONCILIATION-REPORT-v2";
+export declare const COVERAGE_SOURCE_INVENTORY_V1_VERSION = "EP-COVERAGE-SOURCE-INVENTORY-v1";
+export declare const COVERAGE_POPULATION_V1_VERSION = "EP-COVERAGE-POPULATION-v1";
+export declare const COVERAGE_RECONCILIATION_REPORT_V1_VERSION = "EP-COVERAGE-RECONCILIATION-REPORT-v1";
 export declare const COVERAGE_SOURCE_CLAIM_BOUNDARY = "signed_root_of_supplied_minimized_records_not_source_completeness";
 export declare const COVERAGE_REPORT_CLAIM_BOUNDARY = "deterministic_join_of_two_verified_supplied_populations_not_source_completeness";
 export type CoverageInventoryKind = 'system_of_record' | 'receipt_population';
@@ -16,6 +19,7 @@ export interface CoveragePopulationRecord {
     caid: string;
     action_digest: string;
     classification: CoverageRecordClassification;
+    classification_rule_id?: string;
 }
 export interface CoverageSourceInventoryInput {
     inventory_id: string;
@@ -43,6 +47,8 @@ export interface CoverageRunnerOptions {
     require_independent_source_issuers?: boolean;
 }
 export declare function coveragePopulationRoot(kind: CoverageInventoryKind, records: readonly CoveragePopulationRecord[]): string;
+/** Historical v1 root for migration and verification of already-issued artifacts. */
+export declare function coveragePopulationRootV1(kind: CoverageInventoryKind, records: readonly CoveragePopulationRecord[]): string;
 /**
  * Verify only the digest binding between a report and an attestation envelope.
  * Callers MUST separately verify the attestation signature and relying-party
@@ -142,16 +148,16 @@ export declare function runCoverageReconciliation(input: {
         };
         joins: {
             matched: number;
-            effect_without_receipt: number;
-            receipt_without_effect: number;
+            observed_without_receipt: number;
+            receipted_without_observation: number;
             indeterminate: number;
             excluded: number;
             exception: number;
         };
         findings: {
             matched: RiskRecord[];
-            effect_without_receipt: CoveragePopulationRecord[];
-            receipt_without_effect: CoveragePopulationRecord[];
+            observed_without_receipt: CoveragePopulationRecord[];
+            receipted_without_observation: CoveragePopulationRecord[];
             indeterminate: CoveragePopulationRecord[];
             excluded: CoveragePopulationRecord[];
             exception: CoveragePopulationRecord[];

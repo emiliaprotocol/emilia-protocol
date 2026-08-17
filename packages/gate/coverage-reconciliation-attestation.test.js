@@ -39,7 +39,7 @@ test('signs a bounded reconciliation and conserves both supplied populations', (
         coverage_report_hash: D('3'), census_digest: D('7'),
         system_of_record: { inventory_id: 'pas:sor:2026-07', population_root: D('4'), count: 100 },
         receipt_population: { inventory_id: 'ep:receipts:2026-07', population_root: D('5'), count: 98 },
-        joins: { matched: 95, effect_without_receipt: 3, receipt_without_effect: 1, indeterminate: 2, excluded: 2, exception: 0 },
+        joins: { matched: 95, observed_without_receipt: 3, receipted_without_observation: 1, indeterminate: 2, excluded: 2, exception: 0 },
         issued_at: '2026-08-01T01:00:00Z', expires_at: '2026-08-08T01:00:00Z',
         timestamp_anchor: { method: 'rfc3161', evidence_digest: D('6') },
         claim_boundary: 'signed_reconciliation_of_supplied_populations_not_population_completeness',
@@ -57,6 +57,17 @@ test('signs a bounded reconciliation and conserves both supplied populations', (
     assert.throws(() => signCoverageReconciliationAttestation(impossible, {
         issuer_id: 'payer:example', key_id: 'risk-key-1', private_key: pair.privateKey,
     }), /conservation/i);
+});
+test('refuses the v1 effect-claim outcome names under the v2 contract', () => {
+    const { pair } = fixture();
+    const legacyNames = coverageInput();
+    legacyNames.joins.effect_without_receipt = legacyNames.joins.observed_without_receipt;
+    legacyNames.joins.receipt_without_effect = legacyNames.joins.receipted_without_observation;
+    delete legacyNames.joins.observed_without_receipt;
+    delete legacyNames.joins.receipted_without_observation;
+    assert.throws(() => signCoverageReconciliationAttestation(legacyNames, {
+        issuer_id: 'payer:example', key_id: 'risk-key-1', private_key: pair.privateKey,
+    }), /shape is invalid/i);
 });
 function signable(attestation) {
     const { issuer: _issuer, proof: _proof, '@version': _version, ...input } = structuredClone(attestation);
@@ -148,15 +159,25 @@ function coverageInput() {
         coverage_report_hash: D('3'), census_digest: D('7'),
         system_of_record: { inventory_id: 'pas:sor:2026-07', population_root: D('4'), count: 100 },
         receipt_population: { inventory_id: 'ep:receipts:2026-07', population_root: D('5'), count: 98 },
-        joins: { matched: 95, effect_without_receipt: 3, receipt_without_effect: 1, indeterminate: 2, excluded: 2, exception: 0 },
+        joins: { matched: 95, observed_without_receipt: 3, receipted_without_observation: 1, indeterminate: 2, excluded: 2, exception: 0 },
         issued_at: '2026-08-01T01:00:00Z', expires_at: '2026-08-08T01:00:00Z',
         timestamp_anchor: null,
         claim_boundary: 'signed_reconciliation_of_supplied_populations_not_population_completeness',
     };
 }
 test('checked-in coverage and census vector is deterministic and verifies', () => {
-    const vector = JSON.parse(readFileSync(fileURLToPath(new URL('../../conformance/vectors/coverage-reconciliation.v1.json', import.meta.url)), 'utf8'));
+    const vector = JSON.parse(readFileSync(fileURLToPath(new URL('../../conformance/vectors/coverage-reconciliation.v2.json', import.meta.url)), 'utf8'));
     assert.equal(validateReceiptCensus(vector.census, vector.taxonomy).valid, true);
+    assert.deepEqual(verifyCoverageReconciliationAttestation(vector.artifact, {
+        trusted_keys: vector.trusted_keys,
+        now: vector.verification_time,
+        expected_program: vector.expected_program,
+        expected_census_digest: vector.expected_census_digest,
+        expected_relying_party_id: vector.expected_relying_party_id,
+    }), vector.expected);
+});
+test('continues to verify the checked-in v1 coverage attestation', () => {
+    const vector = JSON.parse(readFileSync(fileURLToPath(new URL('../../conformance/vectors/coverage-reconciliation.v1.json', import.meta.url)), 'utf8'));
     assert.deepEqual(verifyCoverageReconciliationAttestation(vector.artifact, {
         trusted_keys: vector.trusted_keys,
         now: vector.verification_time,

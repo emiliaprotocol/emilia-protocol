@@ -23,6 +23,7 @@ export interface DavinciPasCoverageProjectionRequest {
   record_id: string;
   source_record_ref: string;
   classification: 'effect' | 'excluded' | 'exception';
+  classification_rule_id?: string;
 }
 export interface DavinciPasCoverageSourceConnectorOptions {
   source_system_id: string;
@@ -39,10 +40,12 @@ export interface DavinciPasCoverageProjection {
 function validRequest(value: unknown): value is DavinciPasCoverageProjectionRequest {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
   const input = value as Record<string, unknown>;
-  return Reflect.ownKeys(input).length === 3
+  const requiresRule = input.classification === 'excluded' || input.classification === 'exception';
+  return Reflect.ownKeys(input).length === (requiresRule ? 4 : 3)
     && IDENTIFIER.test(String(input.record_id ?? ''))
     && SOURCE_REFERENCE.test(String(input.source_record_ref ?? ''))
-    && CLASSIFICATIONS.has(String(input.classification ?? ''));
+    && CLASSIFICATIONS.has(String(input.classification ?? ''))
+    && (!requiresRule || IDENTIFIER.test(String(input.classification_rule_id ?? '')));
 }
 
 export function createDavinciPasCoverageSourceConnector(
@@ -79,6 +82,9 @@ export function createDavinciPasCoverageSourceConnector(
           caid: built.binding.caid,
           action_digest: built.binding.action_digest,
           classification: request.classification,
+          ...(request.classification_rule_id === undefined
+            ? {}
+            : { classification_rule_id: request.classification_rule_id }),
         }),
         binding: structuredClone(built.binding),
       });

@@ -10,8 +10,8 @@ describe('coverage reconciliation reference scenario', () => {
     expect(scenario.reference_only).toBe(true);
     expect(scenario.summary).toEqual({
       matched: 1,
-      effect_without_receipt: 1,
-      receipt_without_effect: 1,
+      observed_without_receipt: 1,
+      receipted_without_observation: 1,
       indeterminate: 1,
       excluded: 1,
       exception: 1,

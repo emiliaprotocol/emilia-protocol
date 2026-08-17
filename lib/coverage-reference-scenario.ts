@@ -42,8 +42,14 @@ export function buildCoverageReferenceScenario(nowInput = new Date()) {
   const systemRecords: CoveragePopulationRecord[] = [
     { record_id: 'pas:effect:PA-1001', caid: caid('A'), action_digest: digest('a'), classification: 'effect' },
     { record_id: 'pas:effect:PA-1002', caid: caid('B'), action_digest: digest('b'), classification: 'effect' },
-    { record_id: 'pas:excluded:PA-1003', caid: caid('C'), action_digest: digest('c'), classification: 'excluded' },
-    { record_id: 'pas:exception:PA-1004', caid: caid('D'), action_digest: digest('d'), classification: 'exception' },
+    {
+      record_id: 'pas:excluded:PA-1003', caid: caid('C'), action_digest: digest('c'),
+      classification: 'excluded', classification_rule_id: 'rule:non-adverse-disposition',
+    },
+    {
+      record_id: 'pas:exception:PA-1004', caid: caid('D'), action_digest: digest('d'),
+      classification: 'exception', classification_rule_id: 'rule:manual-exception',
+    },
   ];
   const receiptRecords: CoveragePopulationRecord[] = [
     { record_id: 'gate:receipt:PA-1001', caid: caid('A'), action_digest: digest('a'), classification: 'receipt' },
@@ -135,7 +141,7 @@ export function buildCoverageReferenceScenario(nowInput = new Date()) {
     reference_only: true as const,
     period,
     summary: result.report.joins,
-    bypass: result.report.findings.effect_without_receipt[0],
+    bypass: result.report.findings.observed_without_receipt[0],
     findings: result.report.findings,
     sources: {
       system_of_record: {
