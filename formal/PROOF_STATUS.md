@@ -492,7 +492,7 @@ counterexample and `showChain` satisfiable in the 2026-07-18 CI-gated run.
 
 ## Tamarin (symbolic, Dolev-Yao) : `tamarin/ep_receipt_core.spthy`
 
-**Status: repaired symbolic-crypto model, machine-checked 2026-08-09** (tamarin-prover 1.10.0,
+**Status: extended symbolic-crypto model, machine-checked 2026-08-15** (tamarin-prover 1.10.0,
 Maude 3.4, via Docker; full tool output and the re-run one-liner are in `formal/tamarin/README.md`).
 Unlike the TLA+/Alloy models above, this model does NOT treat "signature verifies" as an axiom:
 it runs a Dolev-Yao attacker (full network control, may request the human to sign other actions,
@@ -503,6 +503,7 @@ Verbatim tool summary:
 ```
 executable_honest_receipt (exists-trace): verified (9 steps)
 core_authenticity_uv_gated (all-traces): verified (11 steps)
+acceptance_prefix_integrity_after_later_reveal (all-traces): verified (12 steps)
 no_replay_across_actions (all-traces): verified (11 steps)
 injective_acceptance_with_consumption (all-traces): verified (11 steps)
 unchecked_acceptance_is_injective (all-traces): falsified - found trace (11 steps)
@@ -515,6 +516,11 @@ delivered twice; no forgery, no key reveal). The checked rule consumes a linear
 Injectivity is therefore derived from protocol state rather than imposed by a trace restriction.
 The model demonstrates mechanically that one-time consumption is load-bearing, not
 defense-in-depth.
+
+The new later-reveal lemma proves an acceptance-prefix property: when no reveal
+precedes acceptance and the key is revealed later, the exact accepted context had
+prior UV and signing events. It does not prove offline anti-backdating after key
+compromise; that would require trusted event ordering or forward-secure signing.
 
 **Scoped out (stated in the model header):** the Approver Directory / Merkle log / checkpoints
 (pinning is one out-of-band step), WebAuthn attestation internals (user verification is assumed as

@@ -319,16 +319,16 @@ same pinned image. Exact model and runner hashes are in
 `results/ep_reliance_composed.summary.txt`.
 
 ```
-executable_composed_reliance (exists-trace): verified (19 steps)
-execution_requires_full_composition (all-traces): verified (97 steps)
+executable_composed_reliance (exists-trace): verified (20 steps)
+execution_requires_full_composition (all-traces): verified (101 steps)
 caid_binds_family_and_material (all-traces): verified (2 steps)
 initiator_cannot_self_approve (all-traces): verified (4 steps)
 no_single_signer_fills_quorum (all-traces): verified (2 steps)
-no_issuer_laundering (all-traces): verified (781 steps)
+no_issuer_laundering (all-traces): verified (785 steps)
 strict_registry_view_is_exact (all-traces): verified (25 steps)
-no_cross_action_profile_or_audience_replay (all-traces): verified (37 steps)
-execution_has_honest_approvals_or_prior_compromise (all-traces): verified (170 steps)
-injective_execution_with_consumption (all-traces): verified (2 steps)
+no_cross_action_profile_or_audience_replay (all-traces): verified (41 steps)
+execution_has_honest_approvals_or_prior_compromise (all-traces): verified (178 steps)
+injective_execution_with_consumption (all-traces): verified (250 steps)
 unchecked_composition_is_injective (all-traces): falsified - found trace (31 steps)
 unchecked_registry_view_is_current (all-traces): falsified - found trace (20 steps)
 ```
