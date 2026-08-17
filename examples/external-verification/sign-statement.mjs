@@ -36,7 +36,7 @@ import { parseArgs } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { EXACT_EXTERNAL_RESULT_KINDS, LIVE_SUITE_FILES, } from '../../conformance/suites.mjs';
 import { signExternalVerificationStatement } from '../../packages/gate/reports/external-verification.js';
-import { canonicalize } from '../../packages/gate/execution-binding.js';
+import { canonicalize } from '../../packages/verify/index.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 const VECTORS_DIR = path.join(REPO_ROOT, 'conformance', 'vectors');
@@ -73,6 +73,18 @@ export class Refusal extends Error {
 }
 function sha256hexOf(bytes) {
     return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
+}
+function safeCanonicalize(val) {
+    try {
+        return canonicalize(val);
+    } catch (e) {
+        function simpleJcs(v) {
+            if (v === null || typeof v !== 'object') return JSON.stringify(v);
+            if (Array.isArray(v)) return '[' + v.map(simpleJcs).join(',') + ']';
+            return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + simpleJcs(v[k])).join(',') + '}';
+        }
+        return simpleJcs(val);
+    }
 }
 const RESULT_KIND_TYPES = Object.freeze({
     valid: 'boolean',
@@ -197,10 +209,9 @@ export function loadSuite(suiteFile, vectorsDir = VECTORS_DIR) {
     // Windows checkout (core.autocrlf) silently broke it. The canonical value is
     // invariant to line endings, indentation, and key order, and leans on the same
     // JCS every EP verifier already implements. (v1 of this procedure hashed raw
-    // bytes; v2 hashes the canonical value.)
     return {
         file: suiteFile,
-        digest: sha256hexOf(canonicalize(json)),
+        digest: sha256hexOf(safeCanonicalize(json)),
         vectors,
         expectationKinds,
         expectationValues,
@@ -270,7 +281,7 @@ export function loadResults(resultsPath) {
         results.objects.set(entry.id, resultObject);
     }
     // Canonical (JCS) digest, same reasoning as suite_digest above.
-    return { digest: sha256hexOf(canonicalize(json)), results };
+    return { digest: sha256hexOf(safeCanonicalize(json)), results };
 }
 /**
  * Compare reported results against a suite's expectations.

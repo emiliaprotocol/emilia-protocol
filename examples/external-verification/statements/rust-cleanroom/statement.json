@@ -1,6 +1,6 @@
 {
   "@version": "EP-EXTERNAL-VERIFICATION-STATEMENT-v1",
-  "generated_at": "2026-08-14T18:53:54.328Z",
+  "generated_at": "2026-08-17T10:21:00.408Z",
   "verifier": {
     "id": "ext:verifier:emilia-cleanroom-rust",
     "name": "EMILIA Cleanroom Rust Verifier",
@@ -10,14 +10,14 @@
     "kind": "conformance_vector_pack",
     "suites": 21,
     "vectors": 331,
-    "commit": "2bb519cbc750656a9be8a046e5f56391a3c05bc1"
+    "commit": "72772fb2b0ff7c4c5e0daf1d530702d380da639b"
   },
   "procedure": {
     "id": "ep-conformance-own-implementation",
     "version": "EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v2"
   },
   "inputs": {
-    "commit": "2bb519cbc750656a9be8a046e5f56391a3c05bc1",
+    "commit": "72772fb2b0ff7c4c5e0daf1d530702d380da639b",
     "implementation": "emilia-rust-verifier 0.1.0 (cleanroom, Rust)",
     "suite_digests": {
       "aec-role.v1.json": "sha256:ac43a696be5bab89bb7656870c409e568ef2972dcbf8990734c9e62ddb324252",
@@ -43,41 +43,41 @@
       "witness.v1.json": "sha256:847022543f15885f268c099279d4f1a86fa3e1cb82ea835d38a7abc76c1a8100"
     },
     "results_digests": {
-      "aec-role.v1.json": "sha256:8df44c41cdc25559fc82d1b2f53705619e70a6bb11ddaa4e9411927724db8ece",
-      "authority-document-proof-join.v1.json": "sha256:3d42dd43462b1364b6679cb9dab24da74f59b892f086d8c19892fab68350cf3c",
+      "aec-role.v1.json": "sha256:4e5c45cadefaabb656a8643bb8a19b5866f63afb21cddd904d7d97d2cab0435e",
+      "authority-document-proof-join.v1.json": "sha256:aae72e6333150e488eaf2fce882895dc11b1b54469a83d7de902ba6da23adf91",
       "boundary.v1.json": "sha256:6b18493e644766ce4be2cb6e4aa8c3f079e0f9524c7643e98bc7d3d5df15eead",
       "canonicalization.v1.json": "sha256:56ca2e21091dc4334b64a1e7992027dbf18158e566b1de1352c64d51c9cda4a5",
       "consumption-proof.v1.json": "sha256:fdaf8bc72fba370c9b66b72b7d7a07d041453beb228299c8f4ad0906ebfd68ae",
       "currency.v2.json": "sha256:604657d3e34c0b549c142ef05e6fce42eddd7b019437a6b47e364f544dd15d4a",
       "evidence-record.v1.json": "sha256:69e707853923cff86248544858dd6409cf36d2173d1c01658418eda8d1e62a2e",
       "initiator-attestation.v1.json": "sha256:79ead2ad8077a1360e5bafbfa8e12456c332b9050e37a41966cd8bef45d13281",
-      "outcome-binding.exec.v1.json": "sha256:794e816aa304d5f8eb1b0e7b9c2913c10e6abb89cc123a13a0077867b9d454fa",
-      "outcome-binding.v1.json": "sha256:eb7f13e693c34bb9614c49ed5fc8e1005746a333640d20f9ced58fd97401be60",
-      "provenance.exec.v1.json": "sha256:9678fb71a421c1c8e3778cf37b780fc1f270bd67a9daed6d405d5a58aec45a72",
-      "quorum.v1.json": "sha256:041a457e5e2c35cdcb0e4f25ad42cf89813e008f36a02b66a6ef77d450e25e70",
+      "outcome-binding.exec.v1.json": "sha256:55e04457b7da724941bf6ef7e6a8341e5ad4b6f0578bb2d0211262b5203cf785",
+      "outcome-binding.v1.json": "sha256:a097fd18c3354187884eec0fc0242426c683d07934411318f61d2565fbdb12a5",
+      "provenance.exec.v1.json": "sha256:1dcadf0371a8375503ede83d176b6b2d1d7a9e79b59ccedeefdd8b870962bf9b",
+      "quorum.v1.json": "sha256:616413de54dca363c50d385149ef3b279644789ac088a365f1b8b8c3096ec192",
       "receipts.v1.json": "sha256:736960f8636cb6ee8fbb6c8908b2fcd40558add90c1d0de1d862686e556b3825",
-      "resolution.v1.json": "sha256:69d1ccb14c4726373066b6859ffe510df62e93365ee7770817862186e96e1c38",
-      "revocation.exec.v2.json": "sha256:59a65372e110ebe26d9f9ad636f49f8460b9b0c2548f8d0f14fa1a7d666e3ece",
-      "signoffs.v1.json": "sha256:78a1e3dc3c1d94f5d42c396b05897d5f50677bca8a9b15651be36f4eb4419b03",
+      "resolution.v1.json": "sha256:21051188e4db8fc9c433c83ffc1001649fc9e6f62f4fad98c01c904f5a2748a3",
+      "revocation.exec.v2.json": "sha256:f809c7e3bfaf4f89a37255bd0d1817b459803810deeba1ac2fafd167ed2b7a98",
+      "signoffs.v1.json": "sha256:4b5bda027de980f8cb753eb8fe57f11bcf8823286fc89768d06c44ef9ab85e65",
       "time-attestation.v2.json": "sha256:cbf8c4f3e91e1dd033c9fb1cfc8973fc578f39d7d85ea9166499d08f014d695a",
       "timestamp-proof.v1.json": "sha256:b494127e637f6e3f6970800f9b1035a0629a11733ce7d7b448f2e573a37efcd9",
-      "trust-receipt.exec.v1.json": "sha256:bdc0211e862fdf0067bd6d8d7e1bc997e53583f407a74aa6432e30a54ef589d8",
-      "trust-receipt.timestamp-forms.v2.json": "sha256:c9c90f204ee82e1ccb479ab85998ae942e55aab582ecb2770472820c08e679d4",
+      "trust-receipt.exec.v1.json": "sha256:2eaae37dfd97aeef8683346af6520e11e2b9d8c580d4b0e590de438e0a512c72",
+      "trust-receipt.timestamp-forms.v2.json": "sha256:36183316da3cb1dfe9ffa38c55d5823f3f7aa1a7a8ae3c9c3fbd6fca1fd8cb9d",
       "witness.v1.json": "sha256:bd4980b77bbe1a3df3f486fe18495f4e4086f82589ab5d4a653645c363418e9e"
     }
   },
   "result": {
-    "status": "divergent",
+    "status": "verified",
     "checks": [
       {
         "id": "aec-role.v1.json",
-        "ok": false,
-        "detail": "27/30"
+        "ok": true,
+        "detail": "30/30"
       },
       {
         "id": "authority-document-proof-join.v1.json",
-        "ok": false,
-        "detail": "0/26"
+        "ok": true,
+        "detail": "26/26"
       },
       {
         "id": "boundary.v1.json",
@@ -111,23 +111,23 @@
       },
       {
         "id": "outcome-binding.exec.v1.json",
-        "ok": false,
-        "detail": "0/10"
+        "ok": true,
+        "detail": "10/10"
       },
       {
         "id": "outcome-binding.v1.json",
-        "ok": false,
-        "detail": "0/35"
+        "ok": true,
+        "detail": "35/35"
       },
       {
         "id": "provenance.exec.v1.json",
-        "ok": false,
-        "detail": "7/14"
+        "ok": true,
+        "detail": "14/14"
       },
       {
         "id": "quorum.v1.json",
-        "ok": false,
-        "detail": "14/16"
+        "ok": true,
+        "detail": "16/16"
       },
       {
         "id": "receipts.v1.json",
@@ -136,18 +136,18 @@
       },
       {
         "id": "resolution.v1.json",
-        "ok": false,
-        "detail": "29/33"
+        "ok": true,
+        "detail": "33/33"
       },
       {
         "id": "revocation.exec.v2.json",
-        "ok": false,
-        "detail": "0/19"
+        "ok": true,
+        "detail": "19/19"
       },
       {
         "id": "signoffs.v1.json",
-        "ok": false,
-        "detail": "11/13"
+        "ok": true,
+        "detail": "13/13"
       },
       {
         "id": "time-attestation.v2.json",
@@ -161,13 +161,13 @@
       },
       {
         "id": "trust-receipt.exec.v1.json",
-        "ok": false,
-        "detail": "11/16"
+        "ok": true,
+        "detail": "16/16"
       },
       {
         "id": "trust-receipt.timestamp-forms.v2.json",
-        "ok": false,
-        "detail": "6/7"
+        "ok": true,
+        "detail": "7/7"
       },
       {
         "id": "witness.v1.json",
@@ -184,9 +184,9 @@
   ],
   "signature": {
     "algorithm": "Ed25519",
-    "key_id": "ep:external-verifier-key:sha256:87c8c5029475f53a",
-    "public_key": "MCowBQYDK2VwAyEABIJEI__HmD5lnHsY1hPPHHUUaHHqdxxXJ6OKcjE9Imk",
-    "statement_digest": "sha256:bc6b09f6856068a247f48b05da161611b62d60d34c0d1f7a594bd0085118d8a1",
-    "signature_b64u": "98iFHmt1Jox8u4QNZd8fjeQRpdlg9QyAJsfgg-AB8ZNRPZKmQ3pchYN3hpPBGoT3tiUa2SkoJ--lhjIp0NWjBw"
+    "key_id": "ep:external-verifier-key:sha256:6673b9d68d2cd767",
+    "public_key": "MCowBQYDK2VwAyEASbzREhCQ2diEsg-U-IjRmsfYD_xaq4znLx8aj48mymk",
+    "statement_digest": "sha256:e9b2b375b467a17b59921fffaf5ee8fa9f88a81dbc63819cb8ad9334b94a6b1d",
+    "signature_b64u": "z2e4tVm65nE3nQ3HB1_QieGioIjxrcvqGC5xUPx1LOXSjY3PXS_8h12MCZNqrVI5UgH9AA9-QHLu2Yn8G-bVDg"
   }
 }

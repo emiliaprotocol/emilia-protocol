@@ -9,9 +9,9 @@
   },
   "source": {
     "repository": "https://github.com/jdieselny/ecr-wg",
-    "commit": "7faba36010e7590727bebbc5b9dcceee60539b9b",
+    "commit": "eddfe0b59065765881c2b4696acf8b92bd6b2c35",
     "tree_path": "rust/ep-cleanroom-verifier",
-    "tree_oid": "0553c5fa0a5c4b566703e0d8ef9864dc33e5176d"
+    "tree_oid": "ed586ce37d877440c593db4c7f50811dbd6d2c90"
   },
   "build": {
     "rustc": "1.94.1",
@@ -31,11 +31,11 @@
     "status": "implementation_organization_signed_statement",
     "source_scope": "The signed statement attests the current commit.",
     "statement": "examples/external-verification/statements/rust-cleanroom/statement.json",
-    "statement_sha256": "8a3d773f3c41830f53c470742caebb398e30b88acaa0e2843e8c81edbf49f9ca",
+    "statement_sha256": "b548115d86108e08722084e9daefaeb4462bd37f8b5bec3361a63751f10df6a7",
     "public_key": "examples/external-verification/statements/rust-cleanroom/public.key",
-    "public_key_sha256": "d6d08b75ea6520be91857ccf92440de3ebcddafabaab6e3331e45894d4277cb1",
+    "public_key_sha256": "b97f40bc2b7853df0480ccabc6e6c15ba53aca8ace9273262866910734548943",
     "verifier_id": "ext:verifier:emilia-cleanroom-rust",
-    "key_id": "ep:external-verifier-key:sha256:87c8c5029475f53a",
+    "key_id": "ep:external-verifier-key:sha256:6673b9d68d2cd767",
     "third_party_attestation": false,
     "strict_clean_room_acceptance": false
   },
