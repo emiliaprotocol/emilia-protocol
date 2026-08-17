@@ -39,10 +39,10 @@ Never use these keys or seeds for anything real.
   is likewise fixed by seed + payload.
 - The checked-in vectors were generated with `@noble/post-quantum` 0.6.1.
   The current 0.7.0 verifier accepts the same bytes. Both are pure-JS FIPS 204
-  implementations from the same project. Per its own README the project is not
-  independently audited or FIPS-validated; these vectors demonstrate
-  format-level algorithm agility and cross-version verification, not a
-  certification claim.
+  implementations from the same project. Per its own README the project has
+  not completed an independent audit and is not FIPS validated; these vectors
+  demonstrate format-level algorithm agility and cross-version verification,
+  not a certification claim.
 
 ## Vector semantics
 
