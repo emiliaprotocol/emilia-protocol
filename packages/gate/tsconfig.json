@@ -130,6 +130,7 @@
     "src/loss-experience-feed.ts",
     "src/cross-rail-authority.ts",
     "src/trusted-context.ts",
-    "src/apertomemory-context.ts"
+    "src/apertomemory-context.ts",
+    "src/hybrid-receipt-profile.ts"
   ]
 }
