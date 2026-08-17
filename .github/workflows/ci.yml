@@ -385,7 +385,9 @@ jobs:
   # consume-once attempts against the REAL capability and consumption stores
   # every push and asserts the safety invariants. A regression fails at a named
   # seed the author can replay locally. The deeper nightly sweep is documented
-  # in fuzz/README.md. No product deps, no network — Node built-ins only.
+  # in fuzz/README.md. The gate runtime now imports the repository-local
+  # zero-dependency verifier package, so CI wires that one local package name
+  # without contacting a registry.
   fuzz:
     runs-on: ubuntu-latest
     steps:
@@ -393,6 +395,10 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20
+      - name: Wire the repository-local verifier package
+        run: |
+          mkdir -p node_modules/@emilia-protocol
+          ln -s ../../packages/verify node_modules/@emilia-protocol/verify
       - name: Run the bounded fixed-seed fuzz batch (<60s)
         run: node fuzz/ci-batch.mjs
 
