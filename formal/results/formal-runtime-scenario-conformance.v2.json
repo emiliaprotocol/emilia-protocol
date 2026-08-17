@@ -1171,7 +1171,7 @@
     },
     {
       "path": "packages/verify/dist/pq-signature-agility.js",
-      "sha256": "2e75f50c8cf4ca89b70687a064acba0b6db8512c6791fb53505b5969cb177dcc"
+      "sha256": "50b95d8411b2c2ba1282b4c02a81e80303ebbec43a7204905625f3f0af9ec149"
     },
     {
       "path": "packages/verify/dist/provenance.js",
