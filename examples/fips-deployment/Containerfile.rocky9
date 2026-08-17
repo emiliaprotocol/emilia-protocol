@@ -1,0 +1,163 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# EP FIPS posture reference image -- Rocky Linux 9.
+#
+# STATUS: REVIEWED REFERENCE MATERIAL, NOT A BUILT ARTIFACT.
+# This file has never been built or run by the session that wrote it. No image
+# was produced, no layer was pulled, no command below was executed anywhere.
+# Every package name, file path, and module stream named here was read out of
+# the Rocky Linux 9 repository metadata and the vendors' primary documentation
+# (see README.md for the URL behind each one), which is a different and weaker
+# thing than a green build. Treat it as a starting point to review, not as a
+# recipe known to work.
+#
+# WHAT A SUCCESSFUL RUN OF THIS IMAGE WOULD EARN. One sentence:
+#   "FIPS-based algorithms, with a validated-provider deployment mode."
+# EP is not FIPS compliant and not FIPS validated. No EP package, receipt, or
+# deployment carries a CMVP certificate. Nothing in this file changes that, and
+# an image that builds cleanly is not evidence of any compliance position.
+#
+# ---------------------------------------------------------------------------
+# THE HOST KERNEL QUESTION, ANSWERED HONESTLY UP FRONT
+# ---------------------------------------------------------------------------
+# A container alone cannot fully enable FIPS mode. Red Hat states it directly
+# for RHEL 9, which Rocky Linux 9 rebuilds:
+#
+#   "To enable the full set of cryptographic module self-checks mandated by the
+#    Federal Information Processing Standard Publication 140 (FIPS mode), the
+#    host system kernel must be running in FIPS mode. The podman utility
+#    automatically enables FIPS mode on supported containers."
+#
+#   "The fips-mode-setup command does not work correctly in containers, and it
+#    cannot be used to enable or check FIPS mode in this scenario."
+#
+#   Prerequisites: "The host system must be in FIPS mode."
+#
+#   -- Red Hat Enterprise Linux 9, Security hardening, section 3.4,
+#      "Enabling FIPS mode in a container". Retrieved 2026-08-17.
+#
+# So: this image does NOT run fips-mode-setup, because that command does not
+# work here. It installs the provider and wires the paths, and the FIPS state
+# it ends up in is inherited from the host. On a host that is not in FIPS mode,
+# this image runs and reports INACTIVE, which is an honest report and not a
+# failure. Putting FIPS-related packages in an image proves nothing on its own.
+#
+# The host side is done once, on the host, and needs a reboot:
+#   # fips-mode-setup --enable
+#   # reboot
+#   # fips-mode-setup --check      -> "FIPS mode is enabled."
+# fips-mode-setup does what "update-crypto-policies --set FIPS" does and, on
+# top of that, installs the FIPS dracut module through fips-finish-install,
+# adds the fips=1 boot option to the kernel command line, and regenerates the
+# initial RAM disk. That kernel-side work is the part a container cannot do for
+# itself. (RHEL 9 Security hardening, sections 3.3 and 3.4.)
+#
+# ---------------------------------------------------------------------------
+
+FROM docker.io/rockylinux/rockylinux:9
+
+# ---------------------------------------------------------------------------
+# 1. The validated-provider side: OpenSSL and its FIPS provider
+# ---------------------------------------------------------------------------
+# openssl-fips-provider ships exactly one shared object,
+# /usr/lib64/ossl-modules/fips.so, and its package description is "the fips.so
+# provider, a cryptography provider that follows FIPS requirements and provides
+# FIPS approved algorithms". openssl-libs owns /etc/pki/tls/openssl.cnf and
+# /etc/pki/tls/fips_local.cnf. crypto-policies-scripts owns
+# /usr/bin/fips-mode-setup and /usr/bin/fips-finish-install. All four facts
+# were read from the Rocky 9 BaseOS repository metadata, not assumed.
+#
+# DO NOT build the provider from source here, and do not update crypto
+# libraries by any route other than the package manager. A certificate attaches
+# to a specific build of a specific module on a specific platform; a locally
+# compiled provider is outside it by construction.
+RUN dnf -y install \
+        openssl \
+        openssl-libs \
+        openssl-fips-provider \
+        crypto-policies-scripts \
+    && dnf clean all
+
+# ---------------------------------------------------------------------------
+# 2. Node: it must be the DISTRO build, linked against the system OpenSSL
+# ---------------------------------------------------------------------------
+# This is the step that decides whether the posture check can ever go active.
+#
+# Rocky 9 AppStream carries the nodejs module with streams 18, 20, 22, and 24.
+# Its nodejs-libs package (which carries libnode.so, where the crypto lives for
+# Node 22 and 24) declares ELF dependencies on libcrypto.so.3 and libssl.so.3.
+# That is a dynamic link against the system OpenSSL, so the fips.so installed
+# above is the provider this Node actually loads. Verified from the Rocky 9
+# AppStream repository metadata. The Red Hat source spec for the same package
+# configures the build with --shared-openssl, which is the upstream flag that
+# produces that linkage.
+#
+# A Node from a nodejs.org tarball is the wrong choice here: those builds carry
+# their own statically linked OpenSSL and no FIPS provider module, so the
+# process has no validated provider to load no matter how the host is
+# configured. Measured on this repository's development host (Node v26.5.0,
+# statically linked OpenSSL 3.6.3): "node --force-fips" exits 1 before running
+# any script, printing "OpenSSL error when trying to enable FIPS".
+RUN dnf -y module enable nodejs:22 \
+    && dnf -y install nodejs \
+    && dnf clean all
+
+# ---------------------------------------------------------------------------
+# 3. OpenSSL configuration paths, baked in rather than left to the orchestrator
+# ---------------------------------------------------------------------------
+# Both paths are Rocky 9 package-owned locations, not the generic ones in
+# docs/deployment/FIPS-MODE.md. A missing environment variable must not be able
+# to drop a deployment quietly out of FIPS mode, so these live in the image.
+ENV OPENSSL_CONF=/etc/pki/tls/openssl.cnf \
+    OPENSSL_MODULES=/usr/lib64/ossl-modules
+
+# Note on fipsmodule.cnf. No Rocky 9 package ships one; it is generated, either
+# by fips-finish-install on the host (which fips-mode-setup calls) or by hand:
+#
+#   openssl fipsinstall -out /etc/pki/tls/fipsmodule.cnf \
+#     -module /usr/lib64/ossl-modules/fips.so
+#
+# That is deliberately NOT run here, for one reason that is solid and one that
+# is not yet checked. Solid: fipsinstall runs the module self-tests and writes
+# an integrity MAC on the machine that runs it, so baking it into an image
+# records the BUILD machine's result rather than the runtime host's. Unchecked:
+# exactly what podman puts in place when it "automatically enables FIPS mode on
+# supported containers" was not traced to podman's source or documentation by
+# the session that wrote this, so whether a container on a FIPS host needs a
+# fipsmodule.cnf of its own is an open question to settle on your platform.
+
+# ---------------------------------------------------------------------------
+# 4. The EP verify package and the posture check
+# ---------------------------------------------------------------------------
+# The repository layout is preserved and node_modules/@emilia-protocol/verify
+# is linked, so the container exercises the real package subpath export
+# ("@emilia-protocol/verify/fips-mode") rather than a relative path that only
+# works inside a checkout. Build the package before building this image:
+#   npm run build -w packages/verify
+# Build context is the repository root:
+#   podman build -f examples/fips-deployment/Containerfile.rocky9 -t ep-fips .
+WORKDIR /opt/emilia
+COPY packages/verify /opt/emilia/packages/verify
+COPY examples/fips-deployment /opt/emilia/examples/fips-deployment
+RUN mkdir -p /opt/emilia/node_modules/@emilia-protocol \
+    && ln -s /opt/emilia/packages/verify /opt/emilia/node_modules/@emilia-protocol/verify
+
+# ---------------------------------------------------------------------------
+# 5. Entrypoint
+# ---------------------------------------------------------------------------
+# Default: report the posture. Exits 0 for PASS and for INACTIVE, 1 when the
+# posture is self-contradictory (FIPS flag set, OpenSSL cannot digest) or
+# indeterminate (the build cannot report a FIPS status at all).
+#
+# For production, add --force-fips so that a process which cannot load a FIPS
+# provider refuses to start at all instead of running unnoticed outside one:
+#
+#   podman run --rm -e NODE_OPTIONS=--force-fips ep-fips
+#
+# --force-fips is accepted in NODE_OPTIONS (Node registers both FIPS flags with
+# kAllowedInEnvvar), and on OpenSSL 3 it loads the provider named "fips" and
+# fails process startup when that load returns null. Both facts were read from
+# the Node v22 sources and the second was reproduced locally. --force-fips also
+# removes crypto.setFips(false) as an in-process downgrade path, which
+# --enable-fips does not.
+ENTRYPOINT ["node", "/opt/emilia/examples/fips-deployment/posture-check.mjs"]

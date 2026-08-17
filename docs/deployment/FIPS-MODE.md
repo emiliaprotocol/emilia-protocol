@@ -191,13 +191,11 @@ node -e 'import("@emilia-protocol/verify/fips-mode").then(m =>
 
 ### Integration status
 
-The module and its tests are in the tree and green (`npx tsx --test packages/verify/fips-mode.test.ts`). Three wiring steps are **not yet done**, so the `@emilia-protocol/verify/fips-mode` specifier used in the snippets below does not resolve yet:
+The module and its tests are in the tree and green (`npx tsx --test packages/verify/fips-mode.test.ts`), and the package wiring is complete: `@emilia-protocol/verify/fips-mode` resolves (tsconfig include, `exports` entry, `files` entry, and the root shim all present; verified by import from `examples/fips-deployment/posture-check.mjs`).
 
-1. `packages/verify/tsconfig.json` needs `"src/fips-mode.ts"` in its `include` array, so `dist/fips-mode.js` is emitted.
-2. `packages/verify/package.json` needs a `./fips-mode` entry in `exports` and `"fips-mode.js"` in `files`, plus the one-line root shim `packages/verify/fips-mode.js` containing `export * from './dist/fips-mode.js';`, matching the pattern every sibling module uses.
-3. No call site consults `checkOperationPolicy()` yet. Adoption is opt-in and additive; it changes nothing for a deployment whose `fips_status` is `inactive`.
+One adoption step remains open: no production call site consults `checkOperationPolicy()` yet. Adoption is opt-in and additive; it changes nothing for a deployment whose `fips_status` is `inactive`, and it is queued with the stack-wide hybrid battalion so signing call sites gain the consult alongside their hybrid modes.
 
-Until then, import it inside the repo as `packages/verify/src/fips-mode.ts`.
+A runnable posture reporter and a Rocky Linux 9 reference container live in `examples/fips-deployment/`.
 
 ### Report the posture at startup
 
