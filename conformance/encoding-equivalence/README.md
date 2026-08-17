@@ -32,8 +32,14 @@ One EP receipt (`EP-RECEIPT-v1`), fixed test keys, byte-exact artifacts in
    tampered payload under intact headers is refused
    (`envelope_signature_invalid`) before the receipt is ever read.
 
-This makes EP evidence SCITT-envelope-ready (SCITT registers COSE-signed
-statements) without changing any trust semantics.
+This produces a valid deterministic COSE_Sign1 transport envelope for EP
+evidence, without changing any trust semantics. It is NOT a complete SCITT
+Signed Statement per RFC 9943: that requires additional protected-header
+semantics, including CWT Claims, which this transport envelope does not carry.
+That profile exists separately as EP-SCITT-STATEMENT-v1
+(packages/verify/src/scitt-statement.ts, vectors and RFC requirement table in
+conformance/scitt-statement/). No Transparency Service has accepted an
+EP-SCITT-STATEMENT-v1 statement; registration remains a separate, gated step.
 
 ## Field-mapping choice: text keys
 
@@ -67,6 +73,20 @@ a first-class receipt encoding, would mint a second first-class attestation
 whose signer and trust root need their own pinning story. It is deliberately
 not implemented here and is recorded as future work.
 
+## Two crypto tracks, kept separate
+
+Do not conflate the two COSE signature tracks in this repository:
+
+- This generic receipt COSE envelope signs with **EdDSA (Ed25519)** only
+  (protected header `alg` = -8). It is a transport/registration envelope over
+  the receipt's canonical JSON bytes.
+- **ML-DSA-65 COSE** (the post-quantum, FIPS 204 signature) lives ONLY in the
+  McGraw delegation adapter (`packages/verify/src/aeb-mcgraw-delegation-adapter.ts`).
+  It is not part of this profile.
+
+The only thing the two share is the deterministic CBOR encoding rule (RFC 8949
+Section 4.2.1). They do not share signature algorithms, keys, or trust roots.
+
 ## The deterministic ordering shipped (verified by experiment)
 
 Map keys are sorted in the **bytewise lexicographic order of the
@@ -84,17 +104,24 @@ v26.5.0 against the repository's installed libraries before shipping:
   (`19000a` decodes to 10), so it cannot serve as the strict gate.
 - The in-repo McGraw adapter codec
   (`packages/verify/src/aeb-mcgraw-delegation-adapter.ts`,
-  `encodeDeterministicCbor`) sorts map keys length-first (RFC 7049). The two
-  orders coincide for its own small positive integer COSE labels but diverge
-  in general. Executed example, the map `{100: "c", -1: "b"}`: the McGraw
-  codec emits `a220616218646163` (key `-1`, encoded `0x20`, first because it
-  is shorter), while RFC 8949 requires `a218646163206162` (key `100`, encoded
-  `0x1864`, first because `0x18 < 0x20` bytewise).
+  `encodeDeterministicCbor`) now implements the SAME RFC 8949 Section 4.2.1
+  bytewise-encoded-key ordering as this profile. It was historically RFC 7049
+  Section 3.9 length-first; the two orders coincide for its own small positive
+  integer COSE labels but diverge in general, and that historical divergence is
+  preserved as a regression test in the McGraw suite
+  (`packages/verify/aeb-mcgraw-delegation-adapter.test.ts`, "deterministic CBOR
+  map order is RFC 8949 bytewise, not RFC 7049 length-first"). Worked example,
+  the map `{100: "c", -1: "b"}`: RFC 8949 requires `a218646163206162` (key
+  `100`, encoded `0x1864`, first because `0x18 < 0x20` bytewise), whereas the
+  retired RFC 7049 length-first order put key `-1` (encoded `0x20`, shorter)
+  first (`a220616218646163`).
 
 So this profile ships its own encoder and strict decoder
 (`encodeDeterministicCbor8949` / `decodeDeterministicCbor8949`), inline and
-dependency-free. The test suite uses `cbor-x` only as an independent decoder
-cross-check that the deterministic bytes carry the intended values.
+dependency-free. It stays separate from the McGraw codec not because the
+orderings differ (they no longer do) but because it is a Result-typed API with
+its own strict decoder. The test suite uses `cbor-x` only as an independent
+decoder cross-check that the deterministic bytes carry the intended values.
 
 A concrete divergence the vectors pin: JCS orders object members by UTF-16
 code units, so the canonical JSON of the test receipt starts with

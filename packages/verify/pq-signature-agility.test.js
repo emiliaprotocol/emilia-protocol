@@ -230,3 +230,48 @@ test('conformance/pq-agility/vectors.json verifies exactly as recorded', async (
 test('registry is closed: exactly Ed25519 and ML-DSA-65', () => {
     assert.deepEqual([...AGILE_SIGNATURE_ALGORITHMS], ['Ed25519', 'ML-DSA-65']);
 });
+// --- FINDING 1: classical leg pinned to Ed25519 on BOTH paths ----------------
+test('Ed448 masquerade: full 114-byte Ed448 sig labeled Ed25519 refuses (length pin)', async () => {
+    const ed448 = crypto.generateKeyPairSync('ed448');
+    const ed448Sig = crypto.sign(null, MESSAGE, ed448.privateKey);
+    const ed448PubB64u = ed448.publicKey.export({ format: 'der', type: 'spki' }).toString('base64url');
+    const r = await verifyAgileSignature(MESSAGE, { alg: 'Ed25519', sig: Buffer.from(ed448Sig).toString('base64url') }, { alg: 'Ed25519', public_key: ed448PubB64u });
+    assert.equal(r.verified, false);
+    assert.equal(r.reason, AGILITY_REASONS.MALFORMED_SIGNATURE); // 114 != 64
+});
+test('Ed448 masquerade: Ed448 sig truncated to 64 bytes under an Ed448 key refuses (curve pin)', async () => {
+    const ed448 = crypto.generateKeyPairSync('ed448');
+    const ed448Sig = crypto.sign(null, MESSAGE, ed448.privateKey);
+    const ed448PubB64u = ed448.publicKey.export({ format: 'der', type: 'spki' }).toString('base64url');
+    const r = await verifyAgileSignature(MESSAGE, { alg: 'Ed25519', sig: Buffer.from(ed448Sig.subarray(0, 64)).toString('base64url') }, { alg: 'Ed25519', public_key: ed448PubB64u });
+    assert.equal(r.verified, false);
+    assert.equal(r.reason, AGILITY_REASONS.MALFORMED_KEY); // Ed448 key rejected by the curve pin
+});
+test('an RSA public key pinned for Ed25519 refuses: malformed_key', async () => {
+    const rsa = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const rsaPubB64u = rsa.publicKey.export({ format: 'der', type: 'spki' }).toString('base64url');
+    const r = await verifyAgileSignature(MESSAGE, await edSig(), { alg: 'Ed25519', public_key: rsaPubB64u });
+    assert.equal(r.verified, false);
+    assert.equal(r.reason, AGILITY_REASONS.MALFORMED_KEY);
+});
+test('padded (65-byte) and truncated (63-byte) Ed25519 signatures refuse: malformed_signature', async () => {
+    const good = Buffer.from((await edSig()).sig, 'base64url');
+    for (const bad of [good.subarray(0, 63), Buffer.concat([good, Buffer.from([0x00])])]) {
+        const r = await verifyAgileSignature(MESSAGE, { alg: 'Ed25519', sig: bad.toString('base64url') }, ED_KEY);
+        assert.equal(r.verified, false);
+        assert.equal(r.reason, AGILITY_REASONS.MALFORMED_SIGNATURE);
+    }
+});
+test('padded and truncated ML-DSA-65 signatures refuse: malformed_signature', async () => {
+    const good = Buffer.from((await pqSig()).sig, 'base64url');
+    assert.equal(good.length, ML_DSA_65_SIGNATURE_BYTES);
+    for (const bad of [good.subarray(0, ML_DSA_65_SIGNATURE_BYTES - 1), Buffer.concat([good, Buffer.from([0x00])])]) {
+        const r = await verifyAgileSignature(MESSAGE, { alg: 'ML-DSA-65', sig: bad.toString('base64url') }, PQ_KEY);
+        assert.equal(r.verified, false);
+        assert.equal(r.reason, AGILITY_REASONS.MALFORMED_SIGNATURE);
+    }
+});
+test('signAgile refuses an Ed448 private key labeled Ed25519 (never mints a mislabeled artifact)', async () => {
+    const ed448 = crypto.generateKeyPairSync('ed448');
+    await assert.rejects(() => signAgile(MESSAGE, { alg: 'Ed25519', private_key: ed448.privateKey }), /algorithm_key_mismatch/);
+});

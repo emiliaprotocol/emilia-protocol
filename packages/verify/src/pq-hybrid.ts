@@ -135,12 +135,32 @@ export const HYBRID_SIGNATURE_ALGOS = Object.freeze(['Ed25519', 'ML-DSA-65'] as 
  */
 export const HYBRID_DOMAIN = 'emilia-protocol/pq-hybrid/v1';
 
+/**
+ * Fixed sizes the two legs are pinned to. The classical leg is Ed25519 only
+ * ([RFC8032]): a 64-byte signature under an Ed25519 public key. The PQ leg is
+ * ML-DSA-65 (FIPS 204 parameter set): a 3309-byte signature under a 1952-byte
+ * public key, produced from a 4032-byte secret key. These are not advisory --
+ * they are enforced so a signature made under a DIFFERENT algorithm (e.g. an
+ * Ed448 signature relabeled 'Ed25519' with a matching Ed448 public key) cannot
+ * be smuggled through the classical leg. Without the curve pin AND the length
+ * pin, `crypto.verify(null, ...)` would happily verify the relabeled leg under
+ * the attacker's own curve, and a valid PQ leg would then carry the whole
+ * envelope to verified:true. Both pins are required; neither alone closes it.
+ */
+export const ED25519_SIGNATURE_BYTES = 64;
+export const ML_DSA_65_SIGNATURE_BYTES = 3309;
+export const ML_DSA_65_PUBLIC_KEY_BYTES = 1952;
+export const ML_DSA_65_SECRET_KEY_BYTES = 4032;
+
 const REASONS = Object.freeze({
   INVALID_INPUT: 'invalid_input',
   INVALID_ENVELOPE: 'invalid_envelope',
   ALGO_SET_MISMATCH: 'algo_set_mismatch',
   MISSING_SIGNATURE: 'missing_signature',
   MISSING_KEY: 'missing_key',
+  ALGORITHM_KEY_MISMATCH: 'algorithm_key_mismatch',
+  SIGNATURE_LENGTH_INVALID: 'signature_length_invalid',
+  PUBLIC_KEY_LENGTH_INVALID: 'public_key_length_invalid',
   CLASSICAL_INVALID: 'classical_signature_invalid',
   PQ_INVALID: 'pq_signature_invalid',
   PQ_BACKEND_UNAVAILABLE: 'pq_backend_unavailable',
@@ -235,12 +255,27 @@ function toMessageBytes(message: unknown): Uint8Array | null {
   return null;
 }
 
-function toEd25519PublicKeyObject(key: unknown): KeyObject | null {
+/**
+ * Resolve an Ed25519 public key, CURVE-PINNED. Returns:
+ *   - a KeyObject when the input is a well-formed Ed25519 public key,
+ *   - the string 'algorithm_mismatch' when the input is a well-formed public
+ *     key of a DIFFERENT curve/type (e.g. Ed448, P-256, RSA): the caller must
+ *     refuse this specifically, never verify under the wrong algorithm,
+ *   - null when the input is missing or not a parseable public key at all.
+ * The curve pin is the anti-masquerade control: crypto.verify(null, ...) picks
+ * the algorithm from the key object, so an Ed448 key relabeled 'Ed25519' would
+ * otherwise verify an Ed448 signature. See ED25519_SIGNATURE_BYTES doc.
+ */
+function toEd25519PublicKeyObject(key: unknown): KeyObject | 'algorithm_mismatch' | null {
   try {
-    if (key && typeof key === 'object' && (key as KeyObject).type === 'public') return key as KeyObject; // KeyObject
+    if (key && typeof key === 'object' && (key as KeyObject).type === 'public') {
+      const k = key as KeyObject;
+      return k.asymmetricKeyType === 'ed25519' ? k : 'algorithm_mismatch';
+    }
     if (typeof key === 'string' && key.length > 0) {
       const der = Buffer.from(key, 'base64url');
-      return crypto.createPublicKey({ key: der, format: 'der', type: 'spki' });
+      const k = crypto.createPublicKey({ key: der, format: 'der', type: 'spki' });
+      return k.asymmetricKeyType === 'ed25519' ? k : 'algorithm_mismatch';
     }
   } catch {
     return null;
@@ -289,8 +324,18 @@ export async function signHybrid(
   const messageBytes = toMessageBytes(message);
   if (!messageBytes) throw new TypeError('signHybrid: message must be a Uint8Array or string');
   if (!keys || !keys.ed25519PrivateKey) throw new TypeError('signHybrid: keys.ed25519PrivateKey is required');
+  // Curve-pin the classical signing key: refuse to mint a leg labeled 'Ed25519'
+  // from a non-Ed25519 private key (e.g. Ed448). Issuer-side misuse throws.
+  const edPriv = keys.ed25519PrivateKey;
+  if (!(edPriv instanceof crypto.KeyObject) || edPriv.type !== 'private'
+      || edPriv.asymmetricKeyType !== 'ed25519') {
+    throw new Error(`signHybrid: refusing to sign: ${REASONS.ALGORITHM_KEY_MISMATCH} (classical key is not Ed25519)`);
+  }
   const mldsaSecretKey = toRawBytes(keys.mldsaSecretKey);
   if (!mldsaSecretKey) throw new TypeError('signHybrid: keys.mldsaSecretKey is required');
+  if (mldsaSecretKey.length !== ML_DSA_65_SECRET_KEY_BYTES) {
+    throw new Error(`signHybrid: refusing to sign: ${REASONS.PUBLIC_KEY_LENGTH_INVALID} (ML-DSA-65 secret key must be ${ML_DSA_65_SECRET_KEY_BYTES} bytes)`);
+  }
 
   const backend = await resolveBackend(options.mldsaBackend, options.mldsaBackendLoader);
   if (!backend || typeof backend.sign !== 'function') {
@@ -382,19 +427,33 @@ export async function verifyHybrid(
     }
   }
 
-  // 4. Key material (fail closed on missing/invalid input)
+  // 4. Key material (fail closed on missing/invalid input). The classical key
+  //    is CURVE-PINNED to Ed25519 and the PQ key LENGTH-PINNED to the FIPS 204
+  //    parameter set, so neither leg can be verified under a substituted
+  //    algorithm.
   if (!keys || !keys.ed25519PublicKey || !keys.mldsaPublicKey) return refuse(REASONS.MISSING_KEY);
   const edKey = toEd25519PublicKeyObject(keys.ed25519PublicKey);
+  if (edKey === 'algorithm_mismatch') return refuse(REASONS.ALGORITHM_KEY_MISMATCH);
   if (!edKey) return refuse(REASONS.MISSING_KEY);
   const pqKey = toRawBytes(keys.mldsaPublicKey);
   if (!pqKey || pqKey.length === 0) return refuse(REASONS.MISSING_KEY);
+  if (pqKey.length !== ML_DSA_65_PUBLIC_KEY_BYTES) return refuse(REASONS.PUBLIC_KEY_LENGTH_INVALID);
+
+  // Decode both signatures and pin their lengths to the declared algorithms
+  // BEFORE any verify call. A relabeled Ed448 signature is 114 bytes, not 64;
+  // pinning the length is the second half of the anti-masquerade control
+  // (the curve pin above is the first).
+  const edSigBytes = new Uint8Array(Buffer.from(sigs['Ed25519'] as string, 'base64url'));
+  if (edSigBytes.length !== ED25519_SIGNATURE_BYTES) return refuse(REASONS.SIGNATURE_LENGTH_INVALID);
+  const pqSigBytes = new Uint8Array(Buffer.from(sigs['ML-DSA-65'] as string, 'base64url'));
+  if (pqSigBytes.length !== ML_DSA_65_SIGNATURE_BYTES) return refuse(REASONS.SIGNATURE_LENGTH_INVALID);
 
   const signingInput = hybridSigningInput(messageBytes, e.signature_algos);
 
   // 5. Classical leg (Ed25519) over the committed signing input
   let edOk = false;
   try {
-    edOk = crypto.verify(null, signingInput, edKey, Buffer.from(sigs['Ed25519'] as string, 'base64url'));
+    edOk = crypto.verify(null, signingInput, edKey, Buffer.from(edSigBytes));
   } catch {
     edOk = false;
   }
@@ -407,7 +466,7 @@ export async function verifyHybrid(
   let pqOk = false;
   try {
     pqOk = backend.verify(
-      new Uint8Array(Buffer.from(sigs['ML-DSA-65'] as string, 'base64url')),
+      pqSigBytes,
       new Uint8Array(signingInput),
       new Uint8Array(pqKey),
     ) === true;

@@ -400,3 +400,104 @@ describe('fail-closed edges beyond the recorded vectors', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// FINDING 2: closed-profile header strictness (Sol's three exploits).
+//
+// Each builds a CORRECTLY SIGNED COSE_Sign1 (so verification proceeds past the
+// envelope signature) with a profile-violating header shape, and asserts the
+// named refusal. Pre-fix, exploits (a) no kid, (b) unknown crit, and (c) a
+// conflicting alg in the unprotected bucket all returned valid:true.
+// ---------------------------------------------------------------------------
+describe('profile strictness refusals (Finding 2)', () => {
+  const UTF8 = new TextEncoder();
+  const goodProtectedMap = (): Map<unknown, unknown> => {
+    const decoded = decodeDeterministicCbor8949(
+      new Uint8Array(Buffer.from(expected.cose_protected_header_hex, 'hex')),
+      { textKeysOnly: false },
+    );
+    if (!decoded.ok) throw new Error('protected header decode failed');
+    return new Map(decoded.value as Map<unknown, unknown>);
+  };
+  const goodPayload = (): Uint8Array => UTF8.encode(expected.receipt_canonical_json);
+
+  // Build a structurally valid, correctly SIGNED COSE_Sign1 from arbitrary
+  // protected/unprotected header maps. Sig_structure covers protected+payload
+  // only (RFC 9052 Section 4.4), so the unprotected bucket is UNSIGNED -- which
+  // is exactly why the profile forbids content there.
+  function buildSigned(protectedMap: Map<unknown, unknown>, unprotectedMap: Map<unknown, unknown>): Uint8Array {
+    const prot = encodeDeterministicCbor8949(protectedMap);
+    if (!prot.ok) throw new Error('protected encode failed');
+    const payload = goodPayload();
+    const sigStruct = encodeDeterministicCbor8949(['Signature1', prot.value, new Uint8Array(0), payload]);
+    if (!sigStruct.ok) throw new Error('sig structure encode failed');
+    const signature = new Uint8Array(crypto.sign(null, sigStruct.value, envelopeKey));
+    const body = encodeDeterministicCbor8949([prot.value, unprotectedMap, payload, signature]);
+    if (!body.ok) throw new Error('body encode failed');
+    return new Uint8Array(Buffer.concat([Buffer.from([0xd2]), Buffer.from(body.value)]));
+  }
+  const pins = {
+    envelopePublicKeyBase64url: envelopePub,
+    receiptIssuerPublicKeyBase64url: issuerPub,
+  };
+
+  it('(a) no kid in the protected headers refuses: kid_missing', () => {
+    const prot = goodProtectedMap();
+    prot.delete(4);
+    const result = verifyReceiptCoseSign1(buildSigned(prot, new Map()), pins);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('kid_missing');
+    // Header strictness is enforced before the signature is checked, so the
+    // structural refusal fires first (fail fast), even on a correctly signed
+    // envelope.
+    expect(result.checks.cose_structure).toBe(false);
+  });
+
+  it('(b) an unknown critical protected header refuses: crit_unsupported', () => {
+    const prot = goodProtectedMap();
+    // crit (label 2) naming a label this closed profile does not understand.
+    prot.set(2, ['ep.caid']);
+    const result = verifyReceiptCoseSign1(buildSigned(prot, new Map()), pins);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('crit_unsupported');
+  });
+
+  it('(c) a conflicting alg label in the unprotected bucket refuses: unprotected_headers_present', () => {
+    // Protected alg is EdDSA (-8); the attacker adds a conflicting alg (ES256,
+    // -7) in the UNSIGNED unprotected bucket. The empty-bucket rule refuses it.
+    const result = verifyReceiptCoseSign1(buildSigned(goodProtectedMap(), new Map<unknown, unknown>([[1, -7]])), pins);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('unprotected_headers_present');
+  });
+
+  it('duplicate-label: alg in BOTH buckets with the SAME value still refuses: unprotected_headers_present', () => {
+    // Same value, no conflict -- but the profile forbids ANY unprotected
+    // content, closing the duplicate-across-buckets class (RFC 9052 Section 3).
+    const result = verifyReceiptCoseSign1(buildSigned(goodProtectedMap(), new Map<unknown, unknown>([[1, -8]])), pins);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('unprotected_headers_present');
+  });
+
+  it('an unknown protected label (outside the closed set) refuses: unexpected_protected_header', () => {
+    const prot = goodProtectedMap();
+    prot.set(9, 'surprise');
+    const result = verifyReceiptCoseSign1(buildSigned(prot, new Map()), pins);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('unexpected_protected_header');
+  });
+
+  it('a pinned kid that differs refuses: kid_mismatch', () => {
+    const result = verifyReceiptCoseSign1(new Uint8Array(Buffer.from(expected.cose_sign1_hex, 'hex')), {
+      ...pins, expectedKid: 'some-other-kid',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('kid_mismatch');
+  });
+
+  it('a pinned kid that matches byte-for-byte still verifies', () => {
+    const result = verifyReceiptCoseSign1(new Uint8Array(Buffer.from(expected.cose_sign1_hex, 'hex')), {
+      ...pins, expectedKid: expected.cose_kid,
+    });
+    expect(result.valid).toBe(true);
+  });
+});

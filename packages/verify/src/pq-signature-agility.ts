@@ -294,6 +294,13 @@ export async function signAgile(
     if (!priv || typeof priv !== 'object' || (priv as KeyObject).type !== 'private') {
       throw new TypeError('signAgile: Ed25519 private_key must be a node crypto private KeyObject');
     }
+    // Curve-pin the signing key: a non-Ed25519 private key (e.g. Ed448) would
+    // otherwise mint a 114-byte signature LABELED 'Ed25519', which the verify
+    // path then refuses (malformed_signature / malformed_key) -- but the honest
+    // fix is to refuse at issuance so a mislabeled artifact is never produced.
+    if ((priv as KeyObject).asymmetricKeyType !== 'ed25519') {
+      throw new Error(`signAgile: refusing to sign: ${AGILITY_REASONS.ALGORITHM_KEY_MISMATCH} (private_key is not Ed25519)`);
+    }
     const sig = crypto.sign(null, Buffer.from(messageBytes), priv as KeyObject);
     const out: AgileSignature = { alg: 'Ed25519', sig: Buffer.from(sig).toString('base64url') };
     if (typeof key.key_id === 'string') out.key_id = key.key_id;

@@ -108,3 +108,20 @@ The reference implementation's ML-DSA-65 backend is a pure-JavaScript
 FIPS 204 implementation that is not an independently audited or
 FIPS-validated module. Support for the `ML-DSA-65` registry value is a
 format and verification-behavior claim, not a certification claim.
+
+---
+
+## FILING GATE (not I-D body text)
+
+This is a pre-filing checklist item, NOT prose for the Internet-Draft.
+
+NIST posted a July 2026 planning note for pending FIPS 204 errata. Before
+filing this car:
+
+* Pin and review the exact FIPS 204 publication plus errata snapshot in force
+  at filing time (record the publication date and errata revision).
+* Re-verify the ctx-string statement and every parameter-set claim in this
+  document (ML-DSA-65 signature length 3309 bytes, public key 1952 bytes,
+  secret key 4032 bytes) against that pinned snapshot, since an errata could
+  restate or correct any of them.
+* Do not file until the pinned snapshot and this document agree.
