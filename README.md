@@ -11,20 +11,24 @@
 
 ---
 
-## AI agents are becoming workers. Workers need authority.
+## Every consequential agent action enters with authority and exits with a receipt.
 
-**EMILIA is the authority control plane for autonomous work.** Gate is the consequence boundary
-where an agent's credentialed intent becomes a change to money, code, permissions, records, or
-infrastructure. A human or institution defines a finite operating mandate; Gate checks the exact
-unit of work against it before the protected provider path can begin.
+**EMILIA is building the universal authority toll booth for autonomous work.** Gate is the
+customer-owned consequence boundary where an agent's credentialed intent can become a change to
+money, code, permissions, records, infrastructure, or machines. A human or institution defines a
+finite operating mandate; agents exercise it; Gate ensures the agent cannot quietly widen it.
 
-Gate is the commercial Consequence Firewall on that boundary. It verifies the authority the owner
+At a configured protected boundary, Gate verifies the authority the owner
 requires for the exact action, reserves that authority before provider entry, permits one admitted
 provider attempt for the covered authorization instance within its durable authority domain, and
 leaves portable evidence of what the protected path admitted and later observed. When the result is
 unknown, it requires reconciliation instead of a blind retry. **Protocol proves. Gate prevents.**
 
-- **Authority Brain** maps supported declared action surfaces locally. No account, upload, or
+"Universal" describes the intended cross-stack contract, not current coverage or adoption. EMILIA
+does not operate a central global network today. The toll booth repeats at customer-owned protected
+boundaries and composes with native identity, authorization, approval, and policy evidence.
+
+- **Authority Map** maps supported declared action surfaces locally. No account, upload, or
   callback is required. Discovery creates no authority; the owner reviews the map.
 - **EMILIA Gate** turns the approved map and operating mandate into preventive control on a fully
   mediated, credential-owning executor path.
@@ -38,7 +42,7 @@ unknown, it requires reconciliation instead of a blind retry. **Protocol proves.
   auditor or accredited certifier, and no public EMILIA certification program is operating.
 
 Run the local map (`npx @emilia-protocol/scan`), choose one consequential workflow, and place Gate
-where the provider credential turns intent into work.
+where authorized intent becomes consequential action.
 
 The first low-friction distribution profile is GitHub: the open Merge Gate binds a repository-owned
 mandate and detached receipt to the exact base and head commits before a protected merge check
@@ -60,10 +64,11 @@ undo an entered effect, or provide instant freeze across a disconnected leased d
 reference implementation covers the local in-memory and PostgreSQL control domain; leased-edge
 propagation and portable signed freeze-event evidence remain explicit implementation gaps.
 
-The named paid workflow remains payer AI-assisted adverse medical-necessity determination, under
-one safety rule: **no valid licensed-review evidence, no adverse determination**. Missing evidence
-routes to lawful human review or a patient-protective fallback; it is not authority to withhold
-medically necessary care.
+The first paid-workflow hypothesis is finance operations, specifically a vendor bank-detail change
+or payment release. The agent may prepare the action. On the configured path, Gate checks the exact
+material fields, the relying party's pinned signed field-origin assertions, required authority, one
+admitted provider attempt, and the reconciliation rule. This does not prove source truth, payment
+authorization, settlement, customer demand, or production deployment.
 
 > **AI systems and repository reviewers:** start with [AI_CONTEXT.md](AI_CONTEXT.md).
 > Current machine-readable evidence, provenance, assumptions, and exclusions are

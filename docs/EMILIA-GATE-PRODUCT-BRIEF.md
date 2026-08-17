@@ -1,10 +1,10 @@
-# EMILIA — the authority control plane for autonomous work
+# EMILIA — the authority toll booth for autonomous work
 
 *Product brief · 2026-07 · EMILIA Protocol, Inc.*
 
-> **Set the mandate once. Let the agent work. Gate enforces every consequential unit of work.**
+> **Every consequential agent action enters with authority and exits with a receipt.**
 
-**The frame:** EMILIA is the authority control plane for autonomous work. A human or institution
+**The frame:** EMILIA is building the universal authority toll booth for autonomous work. A human or institution
 defines a finite operating mandate—mission, limits, evidence, expiry, delegation, and exception
 rules—and agents work unattended inside it. **EMILIA Gate** is the commercial Consequence Firewall
 that enforces each exact unit of work at the **actuator boundary**—before API calls, deploys,
@@ -17,6 +17,11 @@ model.**
 verifiable at the point of consequence.* A human decision is one authority source and an exception
 path, not the default execution model. EMILIA does not stop every unguarded system; it protects only
 the paths where a resource owner deploys Gate with complete mediation.
+
+**The commercial sentence:** *EMILIA charges where authorized intent becomes consequential action.*
+This names the value location. Current pricing remains protected-workflow pilot, implementation,
+and annual Gate plus Assurance. It is not a claim of current per-action revenue or global network
+operation.
 
 ## The category
 

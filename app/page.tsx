@@ -2,25 +2,24 @@ import type { Metadata } from 'next';
 import HomePageClient from './HomePageClient';
 
 export const metadata: Metadata = {
-  title: { absolute: 'Authority System for Autonomous Work | EMILIA' },
+  title: { absolute: 'Authority Toll Booth for Autonomous Work | EMILIA' },
   description:
-    'AI gave software intelligence. On covered paths, EMILIA puts customer authority in force before '
-    + 'autonomous intent changes money, code, permissions, records, or infrastructure.',
+    'At protected boundaries, every consequential agent action enters with customer authority and exits with an action-bound receipt.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Authority System for Autonomous Work | EMILIA',
+    title: 'Authority Toll Booth for Autonomous Work | EMILIA',
     description:
-      'Models decide what to do. Humans and institutions decide what may be done. EMILIA Gate enforces the separation.',
+      'Humans define authority. Agents exercise it. EMILIA ensures the agent cannot quietly widen it.',
     url: 'https://www.emiliaprotocol.ai/',
     type: 'website',
-    images: ['/og-sequence.jpg'],
+    images: ['/emilia-authority-tollbooth-v1.png'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Authority System for Autonomous Work | EMILIA',
+    title: 'Authority Toll Booth for Autonomous Work | EMILIA',
     description:
-      'AI gave software intelligence. EMILIA puts authority in force.',
-    images: ['/og-sequence.jpg'],
+      'Every consequential agent action enters with authority and exits with a receipt.',
+    images: ['/emilia-authority-tollbooth-v1.png'],
   },
 };
 

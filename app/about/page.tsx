@@ -26,14 +26,14 @@ export default function AboutPage() {
         <div className="ep-tag ep-hero-badge">About</div>
         <h1 className="ep-hero-text" style={styles.h1}>The team behind EMILIA Protocol</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          EMILIA is the authority control plane for autonomous work. EMILIA Protocol is an open protocol for verifiable pre-action authorization, published as active individual IETF Internet-Drafts. The protocol is formally analyzed — 26 TLA+ invariants checked by TLC and 35 Alloy facts run in CI on every change — and the reference runtime is Apache 2.0. Below: the people responsible for it, the advisors guiding it, and the entity behind it.
+          EMILIA is building the universal authority toll booth for autonomous work. At configured protected boundaries, every consequential agent action enters with authority and exits with a receipt. EMILIA Protocol is the open Action Receipt Contract underneath Gate, published as active individual IETF Internet-Drafts. The protocol is formally analyzed: 26 TLA+ invariants are checked by TLC and 35 Alloy facts run in CI on every change. The reference runtime is Apache 2.0. Below are the people responsible for it, the advisors guiding it, and the entity behind it.
         </p>
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 72 }}>
         <h2 className="ep-reveal" style={styles.h2}>Mission</h2>
         <p className="ep-reveal" style={styles.body}>
-          For consequential, irreversible actions — wire transfers, benefit redirects, infrastructure changes, AI-agent-issued operations — session-level and scope-level authorization stop short of what the action itself needs. We build the layer that binds authorization to the exact action and to a named human, so the system refuses to execute anything that isn't both authorized and accountable.
+          For consequential actions such as wire transfers, benefit redirects, infrastructure changes, and agent-issued operations, session-level and scope-level authorization stop short of what the action itself needs. We build the layer that binds the exact action to the customer's current mandate and required native evidence, so a configured protected path refuses work that cannot establish authority. A named human decision is one possible authority source, not a requirement on every action.
         </p>
         <p className="ep-reveal" style={styles.body}>
           We treat this as standards work, not platform work. The protocol is open. The reference implementation is open. The conformance suite is open. The trust layer for AI-era infrastructure has to be inspectable, or it isn't trust.
