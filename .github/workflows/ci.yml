@@ -828,6 +828,10 @@ jobs:
         with:
           go-version: '1.26.6'
       - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
+      - name: Wire the repository-local verifier package
+        run: |
+          mkdir -p node_modules/@emilia-protocol
+          ln -s ../../packages/verify node_modules/@emilia-protocol/verify
       - name: Cross-language conformance (EP-RECEIPT-v1, JS + Python + Go)
         env:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
