@@ -41,7 +41,7 @@
  *     single-algorithm artifact; that requires re-attestation while the old
  *     algorithm is still unbroken (see evidence-record.ts,
  *     EP-EVIDENCE-REATTESTATION-v1).
- *   - The default ML-DSA backend (@noble/post-quantum 0.6.1) is a pure-JS
+ *   - The default ML-DSA backend (@noble/post-quantum 0.7.0) is a pure-JS
  *     FIPS 204 implementation that is not a FIPS-validated module. No
  *     backend present means REFUSAL ('pq_backend_unavailable'), never a
  *     skipped check.
