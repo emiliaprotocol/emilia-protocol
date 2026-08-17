@@ -347,11 +347,11 @@
     },
     {
       "path": "lib/authority/proof.js",
-      "sha256": "9ba5f736611ede506904654240b678a682a7c514bf9c721e2f40a271ad450387"
+      "sha256": "69d2a9a04767f793dbc693159c40a74053e2ef6dfe97758dfd01b1ba17a4b67b"
     },
     {
       "path": "lib/authority/proof.ts",
-      "sha256": "f9bffa126b7a3c04a36028ac5d34bb7a3c507bdf784fcccf532608a739176c3e"
+      "sha256": "348a884314e7784b9eec72234d3fef0f201e5d8cabd0392543c6490d14efbee0"
     },
     {
       "path": "lib/authority/resolver.js",
@@ -531,7 +531,7 @@
     },
     {
       "path": "packages/gate/dist/action-escrow-state.js",
-      "sha256": "50df9104d78ad20768df6ab00d194ccae4b7030ca4121f776c3aca50085a8463"
+      "sha256": "8ea8de0b5e8aad214c30955d22a0efab2473e255b90d52423cd0f19f9adc4b3f"
     },
     {
       "path": "packages/gate/dist/action-escrow-verifiers.js",
@@ -551,7 +551,7 @@
     },
     {
       "path": "packages/gate/dist/action-refusal-statement.js",
-      "sha256": "746e4add31a91761d94e79210936fb60dd37256771935b59032b897360863f95"
+      "sha256": "694ca5aa76029afcacf6509890d482e852fb7de7e81c18404e5dfc3a85104d8f"
     },
     {
       "path": "packages/gate/dist/admission-store-postgres.js",
@@ -571,7 +571,7 @@
     },
     {
       "path": "packages/gate/dist/allowance.js",
-      "sha256": "e4ffdad1972c254744ce3489ab9a6719ca861d85a14ca18b2f26f9c2d9369c40"
+      "sha256": "3fb990656562c605e2acdf6b328b2d201509c5176a36d794d0887e4a23684114"
     },
     {
       "path": "packages/gate/dist/authority-allocation.js",
@@ -591,7 +591,7 @@
     },
     {
       "path": "packages/gate/dist/bounded-execution-report.js",
-      "sha256": "ae2a25608f1e9c0f99c1c218c96d1134b056deb0abe0fae3727f029ce2184982"
+      "sha256": "650eaa8e42e4299b2333f55df62b444473e68cdd38f048859290617bf4e50864"
     },
     {
       "path": "packages/gate/dist/breakglass.js",
@@ -599,7 +599,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "db693d826bf7b0faca9faba0a7c38a4398ef58ca922a607edd812ea224a8abf3"
+      "sha256": "a0d0ded274778b7d11c31bced9583a587d96efe94ebdca3d24bfe40caf8ff8d5"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -647,7 +647,7 @@
     },
     {
       "path": "packages/gate/dist/field-origin-evidence.js",
-      "sha256": "8539f28cc8d498a3a6e76d34f979a5fa72b8cbd70f153adb9e985fd41628a6c2"
+      "sha256": "1b8825fc9df62e6ce61275376276859ce5d6176086d41f91b8c093d5860df7cf"
     },
     {
       "path": "packages/gate/dist/formal-runtime-map.js",
@@ -675,7 +675,7 @@
     },
     {
       "path": "packages/gate/dist/network-witness.js",
-      "sha256": "674e5abb5bcc37ee93564459768ea8a627a17b8193b9704a78583b1129655fb3"
+      "sha256": "81aab901360225f6e52e683b191df31fd8d886a2eee373fd71f62b9a6fa12831"
     },
     {
       "path": "packages/gate/dist/open-exposure-ledger-postgres.js",
@@ -743,7 +743,7 @@
     },
     {
       "path": "packages/gate/dist/reliance-risk-crypto.js",
-      "sha256": "14f1875a66ecdce1dede610fc57176b91cc861cbf848c585444dea9fecc9696c"
+      "sha256": "457bfd072ce428111f27984d1cb6c58f055503ac9519d153f3426193a2356e92"
     },
     {
       "path": "packages/gate/dist/remedy-case-set-postgres.js",
@@ -831,7 +831,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "cf4576e6c1178013291bd22e8d54ab34545de8c5760f7ecdfab150893015f7cb"
+      "sha256": "9085451ce4b48f89d29926230950b28152242e9610287c0a8e861ddc2972cbd1"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -855,7 +855,7 @@
     },
     {
       "path": "packages/gate/src/network-witness.ts",
-      "sha256": "2c92412c9bbb26fafb8e246fb4965c7590135e5b25dfe5a037b4526baf9360bf"
+      "sha256": "97713067888f451c15e440e950fe0063d937498346a701d05691a1786a9d42c8"
     },
     {
       "path": "packages/gate/src/proposal-to-effect.ts",
@@ -986,6 +986,10 @@
       "sha256": "7dd2dd1edaf38d9c6d35f1695c0f0ae88e5ef7dfdb6aade59ae2a05ce552366d"
     },
     {
+      "path": "packages/verify/authority-proof.js",
+      "sha256": "99662d5c4ff7ac9ae9dcd3871d572e543e911d838d046286603b0411dfdcdb05"
+    },
+    {
       "path": "packages/verify/discovery-permit-contract.js",
       "sha256": "e84080622e0d2c61d48ed78547262b3733d422b7c4dccfa08a1c927e2277faa2"
     },
@@ -1067,7 +1071,7 @@
     },
     {
       "path": "packages/verify/dist/authority-proof.js",
-      "sha256": "78a6a3400c01ecb6c330215a2159050002dccbc81d68021fcaf5936f0913ef83"
+      "sha256": "269ae9e222abb1d42cb204be2c289e89de4e258ba17030cc95083d0b53a407df"
     },
     {
       "path": "packages/verify/dist/authorization-bundle.js",
@@ -1240,6 +1244,10 @@
     {
       "path": "packages/verify/index.js",
       "sha256": "f386e365a9998f08ea4947ffd415ca353c0a82766677a8e0cf3117909cccee24"
+    },
+    {
+      "path": "packages/verify/pq-signature-agility.js",
+      "sha256": "0c07afccc1afb28064158ae2ca8a4fc0ae6205808fa4b11052fdfb81a86698b8"
     },
     {
       "path": "packages/verify/quorum.js",
