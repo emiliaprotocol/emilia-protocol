@@ -33,8 +33,11 @@
  * signer_key_unpinned (lib/wysiwys/render.js).
  *
  * FROZEN CORE (PIP-001). This file does NOT modify the EP-RECEIPT-v1 wire
- * format, canonicalization, or signature, and it does NOT touch packages/verify
- * or packages/issue, nor the existing server-state revocation. It imports the
+ * format, canonicalization, or signature, and it does not modify
+ * packages/verify or packages/issue, nor the existing server-state revocation.
+ * It COMPOSES both (canonicalize() from packages/issue, and the EP-REVOCATION-v2
+ * verifier from packages/verify; see the v2 section at the bottom of this file
+ * for why the hybrid verifier is composed rather than duplicated). It imports the
  * frozen canonicalize() as the single canonicalization source of truth (same
  * relative-import convention as lib/provenance/chain.js, lib/execution/integrity.js,
  * and lib/wysiwys/render.js) and re-implements nothing of Core's receipt path.
@@ -553,10 +556,190 @@ export function isRevoked(
   return statements.some((s) => verifyRevocation(target, s, opts).valid);
 }
 
+// ===========================================================================
+// EP-REVOCATION-v2 -- hybrid (Ed25519 + ML-DSA-65) revocation statement
+// ===========================================================================
+/**
+ * The v2 VERIFIER is not re-implemented here. This file and
+ * packages/verify/src/revocation.ts are twins that must stay in lockstep, and
+ * for v1 that lockstep is maintained by review of two parallel bodies. For v2
+ * it is maintained BY CONSTRUCTION: the reference verifier lives in the
+ * published offline package (a revocation statement is a portable artifact, so
+ * the published verifier is the one that has to be right), and this module
+ * composes it, the same way it already composes the frozen canonicalize() from
+ * @emilia-protocol/issue rather than re-deriving canonical bytes. There is
+ * exactly one v2 verification body in the repository and both entry points run
+ * it, so the two cannot drift.
+ *
+ * What DOES live here is the issuer half: buildRevocationV2(), the v2 sibling
+ * of buildRevocation() above, including the same fail-closed honesty gate.
+ *
+ * Read packages/verify/src/revocation.ts for the full pattern write-up (version
+ * bump, set shape, anti-stripping bytes, v1 compatibility, named refusals);
+ * docs/protocol/pq-hybrid-program.md carries the short form for the surfaces
+ * still to be migrated.
+ */
+
+export {
+  REVOCATION_V2_VERSION,
+  REVOCATION_V2_REQUIRED_ALGORITHMS,
+  revocationV2SignedPayload,
+  verifyRevocationV2,
+  verifyRevocationStatement,
+  isRevokedAny,
+} from '../../packages/verify/revocation.js';
+
+export type {
+  RevocationV2Statement,
+  RevocationV2Proof,
+  RevocationV2Signature,
+  RevocationV2Options,
+  RevokerV2KeyPin,
+  RevocationVerifyResult,
+} from '../../packages/verify/revocation.js';
+
+import {
+  REVOCATION_V2_VERSION as V2_VERSION,
+  REVOCATION_V2_REQUIRED_ALGORITHMS as V2_ALGORITHMS,
+  revocationV2SignedPayload as v2SignedPayload,
+  verifyRevocationV2 as verifyV2,
+  verifyRevocationStatement as verifyStatement,
+  isRevokedAny as isRevokedAnyStatement,
+  type RevocationV2Statement as V2Statement,
+} from '../../packages/verify/revocation.js';
+import { signAgileSet, ML_DSA_65_PUBLIC_KEY_BYTES, ML_DSA_65_SECRET_KEY_BYTES } from '../../packages/verify/pq-signature-agility.js';
+
+export interface RevocationV2Signer {
+  /** Ed25519 private key. */
+  privateKey: import('crypto').KeyObject;
+  /** Ed25519 public key, base64url SPKI DER. */
+  publicKeyB64u: string;
+  /** ML-DSA-65 secret key: 4032 raw bytes, or base64url of them. */
+  pqSecretKey: Uint8Array | string;
+  /** ML-DSA-65 public key: 1952 raw bytes, or base64url of them. */
+  pqPublicKeyB64u: Uint8Array | string;
+}
+
+export interface BuildRevocationV2Args {
+  target?: { target_type?: unknown; target_id?: unknown; action_hash?: unknown } | null;
+  revoker_id?: unknown;
+  revoked_at?: unknown;
+  reason?: unknown;
+  signer?: RevocationV2Signer | null;
+  /** ML-DSA-65 FIPS 204 deterministic variant; conformance vectors only. */
+  deterministic?: boolean;
+}
+
+function pqKeyIdOf(rawB64u: string): string {
+  return `ep:revoker-key:ml-dsa-65:sha256:${crypto
+    .createHash('sha256').update(Buffer.from(rawB64u, 'base64url')).digest('hex')}`;
+}
+
+function toRawB64u(value: Uint8Array | string, expectedLength: number, label: string): string {
+  const bytes = value instanceof Uint8Array
+    ? Buffer.from(value)
+    : (/^[A-Za-z0-9_-]+$/.test(String(value)) ? Buffer.from(String(value), 'base64url') : Buffer.alloc(0));
+  if (bytes.length !== expectedLength) {
+    throw new Error(`buildRevocationV2: ${label} must be ${expectedLength} raw bytes (or base64url of them)`);
+  }
+  return bytes.toString('base64url');
+}
+
+/**
+ * buildRevocationV2 -- produce an EP-REVOCATION-v2 statement binding the exact
+ * target, signed under BOTH registered algorithms over one set of bytes that
+ * COMMIT to the required algorithm set (see revocationV2SignedPayload).
+ *
+ * THROWS rather than emit a half-hybrid statement: issuer-side misuse is a
+ * programming error, and an unavailable ML-DSA backend makes signAgileSet
+ * throw, so a statement missing the PQ leg is never produced. The same
+ * fail-closed honesty gate as buildRevocation() applies: no complete target,
+ * no statement.
+ */
+export async function buildRevocationV2({
+  target,
+  revoker_id: revokerId,
+  revoked_at: revokedAt = new Date().toISOString(),
+  reason,
+  signer,
+  deterministic = false,
+}: BuildRevocationV2Args = {}): Promise<V2Statement> {
+  if (!target || typeof target !== 'object') {
+    throw new Error('buildRevocationV2 requires target {target_type,target_id,action_hash}');
+  }
+  if (!TARGET_TYPES.includes(target.target_type as string)
+    || typeof target.target_id !== 'string' || target.target_id.length === 0
+    || !hexOf(target.action_hash)) {
+    throw new Error('buildRevocationV2: target must bind target_type, target_id, and action_hash (fail-closed honesty gate)');
+  }
+  if (typeof revokerId !== 'string' || revokerId.length === 0) throw new Error('buildRevocationV2 requires revoker_id');
+  if (!Number.isFinite(instantMs(revokedAt))) throw new Error('buildRevocationV2 requires a strict RFC 3339 revoked_at anchor');
+  if (reason !== undefined && reason !== null && typeof reason !== 'string') {
+    throw new Error('buildRevocationV2 reason must be a string or null');
+  }
+  if (!signer || !signer.privateKey || !signer.publicKeyB64u || !signer.pqSecretKey || !signer.pqPublicKeyB64u) {
+    throw new Error('buildRevocationV2 requires signer.{privateKey,publicKeyB64u,pqSecretKey,pqPublicKeyB64u}');
+  }
+
+  const derivedKeyId = revokerKeyId(signer.publicKeyB64u);
+  if (!derivedKeyId) throw new Error('buildRevocationV2 requires a valid base64url Ed25519 SPKI public key');
+  const pqPublicB64u = toRawB64u(signer.pqPublicKeyB64u, ML_DSA_65_PUBLIC_KEY_BYTES, 'signer.pqPublicKeyB64u');
+  const pqSecret = toRawB64u(signer.pqSecretKey, ML_DSA_65_SECRET_KEY_BYTES, 'signer.pqSecretKey');
+  const pqKeyId = pqKeyIdOf(pqPublicB64u);
+
+  const stmt = {
+    '@version': V2_VERSION,
+    target_type: target.target_type as string,
+    target_id: target.target_id as string,
+    action_hash: target.action_hash as string,
+    revoker_id: revokerId,
+    revoked_at: revokedAt as string,
+    reason: (reason as string | null | undefined) ?? null,
+  };
+
+  // ONE set of bytes; both legs sign exactly these, and the required algorithm
+  // set is inside them.
+  const messageBytes = v2SignedPayload(stmt, V2_ALGORITHMS);
+  const signatures = await signAgileSet(
+    new Uint8Array(messageBytes),
+    [
+      { alg: 'Ed25519', private_key: signer.privateKey, key_id: derivedKeyId },
+      { alg: 'ML-DSA-65', private_key: pqSecret, key_id: pqKeyId },
+    ],
+    deterministic === true ? { deterministic: true } : {},
+  );
+
+  // Emit in the registered order, so the document reads the way the bytes commit.
+  const byAlg = new Map(signatures.map((s) => [s.alg, s]));
+  const ordered = V2_ALGORITHMS.map((alg) => {
+    const s = byAlg.get(alg);
+    if (!s) throw new Error(`buildRevocationV2: signing produced no ${alg} leg`);
+    return s;
+  });
+
+  return {
+    ...stmt,
+    proof: {
+      profile: V2_VERSION,
+      required_algorithms: [...V2_ALGORITHMS],
+      revoker_key_id: derivedKeyId,
+      public_key: signer.publicKeyB64u,
+      pq_key_id: pqKeyId,
+      pq_public_key: pqPublicB64u,
+      signatures: ordered,
+    },
+  } as V2Statement;
+}
+
 const revocation = {
   buildRevocation,
   verifyRevocation,
   isRevoked,
   REVOCATION_VERSION,
+  buildRevocationV2,
+  verifyRevocationV2: verifyV2,
+  verifyRevocationStatement: verifyStatement,
+  isRevokedAny: isRevokedAnyStatement,
+  REVOCATION_V2_VERSION: V2_VERSION,
 };
 export default revocation;

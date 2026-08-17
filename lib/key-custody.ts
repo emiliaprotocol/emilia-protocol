@@ -115,6 +115,258 @@ export function createExternalCustodySigner({ mode, keyId, sign, getPublicKey }:
   };
 }
 
+// --- Dual-signer custody (EP-CUSTODY-HYBRID-v1) ------------------------------
+//
+// WHY THIS EXISTS. CustodySigner above is single-key by construction: one
+// keyId, one sign(bytes) -> one base64url signature, one publicKeySpkiB64u.
+// That is exactly right for the Ed25519 artifacts EP issues today, and it is
+// the shape every production issuance path already calls. Adding a
+// post-quantum leg must NOT change it. So the hybrid signer WRAPS a
+// CustodySigner instead of replacing it: a HybridCustodySigner IS a
+// CustodySigner (same keyId, same custody, same publicKeySpkiB64u, same
+// sign() returning the same Ed25519 bytes), plus a second registered signer
+// and a signSet() that aware call sites opt into. registerCustodySigner() and
+// resolveIssuerSigner() take it unchanged, and a call site that has never
+// heard of hybrid signing keeps getting byte-identical Ed25519 signatures.
+//
+// HONEST CUSTODY BOUNDARY -- READ THIS. The Ed25519 note at the top of
+// lib/custody-signers.ts records the real state of the art: AWS KMS and GCP
+// Cloud KMS do not sign Ed25519 at all, so honest external Ed25519 custody
+// means Vault Transit or a PKCS#11 HSM. The ML-DSA-65 situation is strictly
+// worse and this interface records it rather than papering over it:
+//
+//   There is NO KMS or HSM ML-DSA-65 signing path available to EP today.
+//   The PQ leg is a SOFTWARE-HELD key. The default backend is the agility
+//   module's @noble/post-quantum ML-DSA-65 implementation (a pure-JS FIPS 204
+//   implementation that is not an independently audited and not a FIPS
+//   validated module), and the secret key lives in process memory, not behind
+//   a custody boundary.
+//
+// That asymmetry is a PROPERTY OF THE DEPLOYMENT, not a detail to hide, so
+// PqCustodySigner carries an explicit `custody` field whose only honest value
+// today is 'software'. createPqCustodySigner() refuses any other value unless
+// the caller passes an explicit attestation string, because "kms" on a signer
+// that is not in a KMS is exactly the kind of claim this repository does not
+// make. assertProductionKeyCustody() is deliberately NOT extended to bless a
+// software PQ key: a gov-strict deployment that requires kms/hsm custody
+// still requires it, and the PQ leg does not satisfy it.
+//
+// ANTI-STRIPPING IS NOT THIS MODULE'S JOB. signSet() returns one signature
+// per required algorithm over the SAME caller-supplied bytes. Committing the
+// required-algorithm SET into those bytes (so a stripped leg cannot be
+// covered up by narrowing the set) belongs to the artifact profile that calls
+// this, exactly as EP-RECEIPT-HYBRID-v1 does in
+// packages/issue/src/hybrid-issuance.ts. See lib/commit-hybrid.ts for the
+// EP-COMMIT-HYBRID-v1 instance of that discipline.
+
+/** Profile id for a dual-signer custody configuration. */
+export const HYBRID_CUSTODY_PROFILE = 'EP-CUSTODY-HYBRID-v1';
+
+/** The fixed v1 algorithm set, in canonical order. Matches EP-SIG-AGILITY-v1. */
+export const HYBRID_CUSTODY_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+export type HybridCustodyAlgorithm = (typeof HYBRID_CUSTODY_ALGORITHMS)[number];
+
+/** FIPS 204 ML-DSA-65 fixed sizes (bytes); mirrored from the agility module. */
+export const ML_DSA_65_PUBLIC_KEY_BYTES = 1952;
+export const ML_DSA_65_SECRET_KEY_BYTES = 4032;
+export const ML_DSA_65_SIGNATURE_BYTES = 3309;
+
+/** One entry of a signature set, shaped exactly like EP-SIG-AGILITY-v1's AgileSignature. */
+export interface CustodySignatureSetEntry {
+  alg: HybridCustodyAlgorithm;
+  /** base64url */
+  sig: string;
+  key_id?: string;
+}
+
+/**
+ * The post-quantum leg of a dual-signer custody configuration.
+ *
+ * Deliberately NOT a CustodySigner: a CustodySigner's publicKeySpkiB64u is an
+ * SPKI DER key and ML-DSA-65 has no SPKI encoding EP consumes, so its public
+ * half is raw bytes (base64url of 1952 bytes), matching what
+ * verifyAgileSignature expects. Keeping the types distinct stops an ML-DSA
+ * signer from being registered where an Ed25519 signer is meant.
+ */
+export interface PqCustodySigner {
+  keyId: string;
+  algorithm: 'ML-DSA-65';
+  /**
+   * How the secret key is held. 'software' is the only honest value today
+   * (see the custody-boundary note above); anything else must be an explicit
+   * operator attestation about their own deployment.
+   */
+  custody: string;
+  /** base64url of the raw 1952-byte ML-DSA-65 public key, or a resolver for it. */
+  publicKeyRawB64u?: string | (() => string | null | Promise<string | null>);
+  /** Returns a base64url ML-DSA-65 signature over `bytes`. */
+  sign(bytes: Uint8Array | Buffer, context?: Record<string, unknown>): Promise<string>;
+}
+
+/**
+ * A CustodySigner carrying a second, post-quantum signer alongside it.
+ * ADDITIVE by construction: every CustodySigner member is present and behaves
+ * identically to the wrapped classical signer.
+ */
+export interface HybridCustodySigner extends CustodySigner {
+  hybrid: {
+    profile: string;
+    requiredAlgorithms: readonly HybridCustodyAlgorithm[];
+    /** The Ed25519 leg this signer wraps; sign() delegates to it verbatim. */
+    classical: CustodySigner;
+    /** The software-held ML-DSA-65 leg. */
+    pq: PqCustodySigner;
+  };
+  /**
+   * Sign the SAME bytes under every required algorithm, in canonical order.
+   * The caller is responsible for having committed the required-algorithm set
+   * into those bytes.
+   */
+  signSet(bytes: Uint8Array | Buffer, context?: Record<string, unknown>): Promise<CustodySignatureSetEntry[]>;
+}
+
+/** Public halves of both legs, in the encodings EP-SIG-AGILITY-v1 verifies under. */
+export interface HybridCustodyPublicKeys {
+  ed25519KeyId: string;
+  /** base64url SPKI DER. */
+  ed25519PublicKeySpkiB64u: string | null;
+  mldsaKeyId: string;
+  /** base64url raw 1952 bytes. */
+  mldsaPublicKeyRawB64u: string | null;
+}
+
+const B64URL_RE = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * Wrap an ML-DSA-65 sign callback as the PQ leg of a hybrid custody signer.
+ * Mirrors createExternalCustodySigner: shape validation only, no crypto here.
+ *
+ * @throws when `custody` claims a boundary the deployment does not have. The
+ *   default 'software' is the honest value; pass a different one only as an
+ *   operator attestation about custody you actually operate.
+ */
+export function createPqCustodySigner({ keyId, sign, getPublicKey, custody = 'software' }: {
+  keyId: string;
+  sign: (bytes: Buffer, context?: Record<string, unknown>) => Promise<string>;
+  getPublicKey?: () => string | null | Promise<string | null>;
+  custody?: string;
+}): PqCustodySigner {
+  if (!keyId || typeof keyId !== 'string') {
+    throw new Error('createPqCustodySigner requires a stable keyId');
+  }
+  if (typeof sign !== 'function') {
+    throw new Error('createPqCustodySigner requires a sign(bytes) function');
+  }
+  if (!custody || typeof custody !== 'string') {
+    throw new Error('createPqCustodySigner requires a custody label; "software" is the honest value today (no KMS/HSM ML-DSA path exists)');
+  }
+  return {
+    keyId,
+    algorithm: 'ML-DSA-65',
+    custody,
+    async publicKeyRawB64u(): Promise<string | null> {
+      if (typeof getPublicKey !== 'function') return null;
+      return getPublicKey();
+    },
+    async sign(bytes: Uint8Array | Buffer, context: Record<string, unknown> = {}): Promise<string> {
+      const sig = await sign(Buffer.from(bytes), { keyId, algorithm: 'ML-DSA-65', custody, ...context });
+      if (typeof sig !== 'string' || !B64URL_RE.test(sig)) {
+        throw new Error('ML-DSA-65 custody signer must return a base64url signature string');
+      }
+      if (Buffer.from(sig, 'base64url').length !== ML_DSA_65_SIGNATURE_BYTES) {
+        throw new Error(`ML-DSA-65 custody signer returned a signature that is not ${ML_DSA_65_SIGNATURE_BYTES} bytes`);
+      }
+      return sig;
+    },
+  };
+}
+
+/**
+ * Compose an existing CustodySigner (the Ed25519 leg, which may be a KMS/HSM
+ * signer) with a PqCustodySigner into one registrable signer.
+ *
+ * The returned object satisfies CustodySigner exactly, so
+ * registerCustodySigner(), resolveIssuerSigner(), and every existing call site
+ * keep working with no knowledge of the PQ leg. Aware call sites detect it
+ * with isHybridCustodySigner() and call signSet().
+ */
+export function createHybridCustodySigner({ classical, pq }: {
+  classical: CustodySigner;
+  pq: PqCustodySigner;
+}): HybridCustodySigner {
+  if (!classical || typeof classical.sign !== 'function' || !classical.keyId) {
+    throw new Error('createHybridCustodySigner requires a classical signer with { keyId, async sign(bytes) }');
+  }
+  if (!pq || typeof pq.sign !== 'function' || !pq.keyId || pq.algorithm !== 'ML-DSA-65') {
+    throw new Error('createHybridCustodySigner requires a PQ signer from createPqCustodySigner()');
+  }
+  if (classical.keyId === pq.keyId) {
+    // Two algorithms under one key id makes the signature set unattributable.
+    throw new Error('createHybridCustodySigner requires distinct keyIds for the classical and PQ legs');
+  }
+
+  const publicKeySpkiB64u = typeof classical.publicKeySpkiB64u === 'function'
+    ? () => (classical.publicKeySpkiB64u as () => string | null | Promise<string | null>).call(classical)
+    : classical.publicKeySpkiB64u;
+
+  const signer: HybridCustodySigner = {
+    keyId: classical.keyId,
+    custody: classical.custody,
+    publicKeySpkiB64u,
+    // Byte-identical to the wrapped signer: unaware call sites see no change.
+    sign: (bytes, context) => classical.sign(bytes, context),
+    hybrid: {
+      profile: HYBRID_CUSTODY_PROFILE,
+      requiredAlgorithms: HYBRID_CUSTODY_ALGORITHMS,
+      classical,
+      pq,
+    },
+    async signSet(bytes, context = {}) {
+      const out: CustodySignatureSetEntry[] = [];
+      for (const alg of HYBRID_CUSTODY_ALGORITHMS) {
+        if (alg === 'Ed25519') {
+          out.push({ alg, sig: await classical.sign(bytes, context), key_id: classical.keyId });
+        } else {
+          out.push({ alg, sig: await pq.sign(bytes, context), key_id: pq.keyId });
+        }
+      }
+      return out;
+    },
+  };
+  return signer;
+}
+
+/** Is this signer a dual-signer (hybrid) custody signer? */
+export function isHybridCustodySigner(signer: CustodySigner | null | undefined): signer is HybridCustodySigner {
+  const s = signer as HybridCustodySigner | null | undefined;
+  return !!s
+    && typeof s.signSet === 'function'
+    && !!s.hybrid
+    && s.hybrid.profile === HYBRID_CUSTODY_PROFILE
+    && !!s.hybrid.pq
+    && s.hybrid.pq.algorithm === 'ML-DSA-65';
+}
+
+/**
+ * Resolve both public halves so a relying party can pin them. Returns nulls
+ * rather than throwing when a leg exposes no public key: an issuer that cannot
+ * publish its verification key is a configuration problem the CALLER reports
+ * with its own artifact vocabulary (lib/commit.ts already refuses issuance in
+ * that case), not a throw from the custody seam.
+ */
+export async function resolveHybridPublicKeys(signer: HybridCustodySigner): Promise<HybridCustodyPublicKeys> {
+  const ed = signer.publicKeySpkiB64u;
+  const edValue = typeof ed === 'function' ? await ed() : ed ?? null;
+  const pqPub = signer.hybrid.pq.publicKeyRawB64u;
+  const pqValue = typeof pqPub === 'function' ? await pqPub() : pqPub ?? null;
+  return {
+    ed25519KeyId: signer.keyId,
+    ed25519PublicKeySpkiB64u: edValue ?? null,
+    mldsaKeyId: signer.hybrid.pq.keyId,
+    mldsaPublicKeyRawB64u: pqValue ?? null,
+  };
+}
+
 export function requireConfiguredCustody(config: KeyCustodyConfig = getKeyCustodyConfig()): Extract<KeyCustodyCheckResult, { ok: true }> {
   const result = assertProductionKeyCustody(config);
   if (!result.ok) {

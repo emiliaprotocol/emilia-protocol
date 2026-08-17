@@ -22,7 +22,15 @@
 //   import { vaultTransitSigner } from './custody-signers.js';
 //   registerCustodySigner(vaultTransitSigner({ vault, keyName, publicKeySpkiB64u }));
 
-import { createExternalCustodySigner } from './key-custody.js';
+// POST-QUANTUM LEG (see softwareMldsaSigner below). There is NO KMS or HSM
+// ML-DSA-65 signing path for EP today: no mainstream cloud KMS and no HSM in
+// this repository's supported set signs ML-DSA-65, and neither Vault Transit
+// nor PKCS#11 exposes it. So the honest PQ factory below is SOFTWARE custody,
+// stated as such in its `custody` field, and it is the only PQ factory here.
+// If your HSM gains ML-DSA-65, wrap it with createPqCustodySigner() directly
+// and label its custody accordingly.
+
+import { createPqCustodySigner, createExternalCustodySigner, createHybridCustodySigner, ML_DSA_65_SECRET_KEY_BYTES, ML_DSA_65_PUBLIC_KEY_BYTES } from './key-custody.js';
 
 /**
  * Generic external signer — wrap any async Ed25519 sign callback.
@@ -87,6 +95,97 @@ export function hsmEd25519Signer({ hsm, keyLabel, publicKeySpkiB64u }) {
   });
 }
 
+/**
+ * SOFTWARE-held ML-DSA-65 signer: the post-quantum leg of a dual-signer
+ * custody configuration. The secret key lives in process memory, NOT behind a
+ * custody boundary, and the default backend is @noble/post-quantum's pure-JS
+ * FIPS 204 implementation, which is not independently audited and is not a
+ * FIPS validated module. That is the whole honest story; `custody` is
+ * 'software' and this factory has no mode that says otherwise.
+ *
+ * The backend is resolved lazily (dynamic import) so this module stays free of
+ * a static @noble/post-quantum dependency, exactly as
+ * packages/verify/src/pq-signature-agility.ts does. An absent backend is a
+ * THROW at signing time, never a silently skipped PQ leg.
+ *
+ * @param {object} o
+ * @param {string} o.keyId stable, auditable key identifier for the PQ leg
+ * @param {Uint8Array|string} o.secretKey 4032 raw bytes, or base64url of them
+ * @param {Uint8Array|string} [o.publicKeyRawB64u] 1952 raw bytes, or base64url of them
+ * @param {{sign?:(msg:Uint8Array, sk:Uint8Array, opts?:object)=>Uint8Array}} [o.mldsaBackend]
+ *   inject a backend instead of loading @noble/post-quantum
+ * @param {boolean} [o.deterministic] FIPS 204 deterministic variant (conformance vectors only)
+ */
+export function softwareMldsaSigner({ keyId, secretKey, publicKeyRawB64u, mldsaBackend, deterministic = false }) {
+  const sk = toRawBytes(secretKey);
+  if (!sk || sk.length !== ML_DSA_65_SECRET_KEY_BYTES) {
+    throw new Error(`softwareMldsaSigner requires a ${ML_DSA_65_SECRET_KEY_BYTES}-byte ML-DSA-65 secret key (raw bytes or base64url)`);
+  }
+  const pk = publicKeyRawB64u === undefined ? null : toRawBytes(publicKeyRawB64u);
+  if (publicKeyRawB64u !== undefined && (!pk || pk.length !== ML_DSA_65_PUBLIC_KEY_BYTES)) {
+    throw new Error(`softwareMldsaSigner public key must be ${ML_DSA_65_PUBLIC_KEY_BYTES} raw bytes (or base64url of them)`);
+  }
+  const publicB64u = pk ? Buffer.from(pk).toString('base64url') : null;
+
+  return createPqCustodySigner({
+    keyId,
+    custody: 'software',
+    getPublicKey: () => publicB64u,
+    sign: async (bytes) => {
+      const backend = mldsaBackend ?? await loadDefaultMldsaBackend();
+      if (!backend || typeof backend.sign !== 'function') {
+        throw new Error('softwareMldsaSigner: refusing to sign: pq_backend_unavailable (@noble/post-quantum ml_dsa65 not resolvable)');
+      }
+      const opts = deterministic === true ? { extraEntropy: false } : undefined;
+      const sig = backend.sign(new Uint8Array(bytes), new Uint8Array(sk), opts);
+      if (!(sig instanceof Uint8Array) || sig.length === 0) {
+        throw new Error('softwareMldsaSigner: ML-DSA backend returned an invalid signature');
+      }
+      return Buffer.from(sig).toString('base64url');
+    },
+  });
+}
+
+/**
+ * Convenience: compose an Ed25519 CustodySigner (from any factory above) with
+ * a software ML-DSA-65 leg into one registrable dual-signer.
+ *
+ *   registerCustodySigner(hybridSigner({
+ *     classical: vaultTransitSigner({ vault, keyName, publicKeySpkiB64u }),
+ *     pq: softwareMldsaSigner({ keyId: 'ep:key:pq#1', secretKey, publicKeyRawB64u }),
+ *   }));
+ *
+ * The classical leg keeps whatever custody it actually has (kms/hsm); the PQ
+ * leg is software. The pair is NOT a uniform custody claim and this repository
+ * does not make one.
+ */
+export function hybridSigner({ classical, pq }) {
+  return createHybridCustodySigner({ classical, pq });
+}
+
+const MLDSA_PACKAGE_SPECIFIER = '@noble/post-quantum/ml-dsa.js';
+
+/** Load ml_dsa65; returns null (never throws) so callers refuse with a reason. */
+async function loadDefaultMldsaBackend() {
+  try {
+    const mod = await import(MLDSA_PACKAGE_SPECIFIER);
+    const impl = mod?.ml_dsa65;
+    if (!impl || typeof impl.sign !== 'function') return null;
+    return { sign: (msg, sk, opts) => impl.sign(msg, sk, opts) };
+  } catch {
+    return null;
+  }
+}
+
+function toRawBytes(value) {
+  if (value instanceof Uint8Array) return value;
+  if (typeof value === 'string' && value.length > 0) {
+    if (!/^[A-Za-z0-9_-]+$/.test(value)) return null;
+    try { return new Uint8Array(Buffer.from(value, 'base64url')); } catch { return null; }
+  }
+  return null;
+}
+
 function toB64u(sig) {
   if (Buffer.isBuffer(sig)) return sig.toString('base64url');
   const s = String(sig);
@@ -95,5 +194,5 @@ function toB64u(sig) {
   return Buffer.from(s, 'base64').toString('base64url');
 }
 
-const custodySigners = { externalSigner, vaultTransitSigner, hsmEd25519Signer };
+const custodySigners = { externalSigner, vaultTransitSigner, hsmEd25519Signer, softwareMldsaSigner, hybridSigner };
 export default custodySigners;

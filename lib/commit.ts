@@ -29,7 +29,14 @@ import { getServiceClient } from '@/lib/supabase';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { verifyDelegation } from '@/lib/delegation';
 import { getCommitSigningConfig, getKeyCustodyConfig } from '@/lib/env';
-import { resolveIssuerSigner } from '@/lib/key-custody';
+import { resolveIssuerSigner, isHybridCustodySigner } from '@/lib/key-custody';
+import type { CustodySigner as KeyCustodySigner, HybridCustodySigner } from '@/lib/key-custody';
+import { createCommitHybridProof, verifyCommitHybridProof } from '@/lib/commit-hybrid';
+import type {
+  CommitHybridProof,
+  CommitHybridVerificationKeys,
+  CommitHybridVerifyResult,
+} from '@/lib/commit-hybrid';
 import { ProtocolWriteError } from '@/lib/errors';
 import { logger } from './logger.js';
 import { deepSortKeys } from './handshake/binding.js';
@@ -541,6 +548,32 @@ export async function issueCommit({
     ({ signature, publicKeyBase64 } = signPayload(canonicalPayload));
   }
 
+  // --- OPT-IN hybrid proof (EP-COMMIT-HYBRID-v1) ---------------------------
+  // Runs ONLY when the resolved custody signer is a dual-signer (see
+  // createHybridCustodySigner in lib/key-custody.js). With no hybrid signer
+  // configured this block does not execute at all, the stored record below is
+  // byte-identical to the v1 path, and the flat `signature` above is the same
+  // Ed25519 signature over the same canonical payload it has always been.
+  //
+  // The proof is DETACHED: it is returned to the issuer as `hybrid_proof` and
+  // is deliberately NOT part of the row written to `commits`, so this profile
+  // needs no column, no migration, and no change to the DB contract.
+  let hybridProof: CommitHybridProof | null = null;
+  if (custodySigner && isHybridCustodySigner(custodySigner as unknown as KeyCustodySigner)) {
+    try {
+      hybridProof = await createCommitHybridProof({
+        commit_id,
+        payload: canonicalFields,
+        signer: custodySigner as unknown as HybridCustodySigner,
+      });
+    } catch (e: any) {
+      // A configured hybrid signer that cannot produce its PQ leg must fail
+      // closed. Emitting a commit labelled hybrid while carrying one leg is
+      // precisely the downgrade this profile exists to prevent.
+      throw new ProtocolWriteError(`commit hybrid signing failed: ${e.message}`, 500 as any);
+    }
+  }
+
   const commitRecord = {
     commit_id,
     entity_id,
@@ -586,7 +619,40 @@ export async function issueCommit({
   // DB UNIQUE constraint is the primary replay protection).
   _trackNonce(nonce);
 
-  return commitRecord;
+  // Default path returns the SAME object that was stored, unchanged. Only a
+  // hybrid deployment sees the additional detached proof.
+  return hybridProof ? { ...commitRecord, hybrid_proof: hybridProof } : commitRecord;
+}
+
+/**
+ * A relying party's OPT-IN pin on the hybrid (EP-COMMIT-HYBRID-v1) leg.
+ *
+ * Requiring the post-quantum leg is a relying-party decision, the same shape
+ * as pinning a revoker key in the revocation profile: the commit ROW stays a
+ * valid v1 artifact, so a verifier that never asks for the proof gets a v1
+ * verdict. This is the pin that asks.
+ */
+export interface VerifyCommitHybridPin {
+  /** Refuse the commit outright when no hybrid proof is presented. */
+  required?: boolean;
+  /** The presented EP-COMMIT-HYBRID-v1 proof, as returned by issueCommit. */
+  proof?: unknown;
+  /** Both public halves, pinned out of band. */
+  keys?: CommitHybridVerificationKeys | null;
+}
+
+export interface VerifyCommitOptions {
+  hybrid?: VerifyCommitHybridPin;
+}
+
+export interface VerifyCommitResult {
+  valid: boolean;
+  status: string;
+  decision?: string;
+  expires_at?: string;
+  reasons: string[];
+  /** Present only when a hybrid pin was supplied. */
+  hybrid?: CommitHybridVerifyResult | null;
 }
 
 /**
@@ -598,15 +664,20 @@ export async function issueCommit({
  * with a commit and pairs it with their own key+signature, verification will
  * fail because their public key won't match any kid in the trusted registry.
  *
+ * BOTH FORMS ARE ACCEPTED. With no `opts.hybrid`, this is byte-for-byte the v1
+ * verifier it has always been: same checks, same result object, no additional
+ * fields. With `opts.hybrid`, the presented EP-COMMIT-HYBRID-v1 proof must ALSO
+ * verify under both algorithms over the verifier's own recomputed canonical
+ * fields, and `required: true` refuses a commit that arrives without one.
+ * Inside a hybrid proof, one leg alone never verifies (see lib/commit-hybrid.js).
+ *
  * @param commit_id_or_token - Commit ID to verify
+ * @param opts - optional relying-party pins; omitted means v1 behaviour exactly
  */
-export async function verifyCommit(commit_id_or_token: string): Promise<{
-  valid: boolean;
-  status: string;
-  decision?: string;
-  expires_at?: string;
-  reasons: string[];
-}> {
+export async function verifyCommit(
+  commit_id_or_token: string,
+  opts: VerifyCommitOptions = {},
+): Promise<VerifyCommitResult> {
   const reasons: string[] = [];
 
   // ── Fetch commit from DB — trust-bearing, MUST fail closed ──
@@ -760,6 +831,54 @@ export async function verifyCommit(commit_id_or_token: string): Promise<{
       expires_at: commit.expires_at,
       reasons,
     };
+  }
+
+  // --- OPT-IN hybrid pin (EP-COMMIT-HYBRID-v1) -----------------------------
+  // Skipped entirely when the caller supplied no pin, so the default result
+  // object below is exactly the one v1 callers have always received.
+  const hybridPin = opts && typeof opts === 'object' ? opts.hybrid : undefined;
+  if (hybridPin) {
+    const hasProof = hybridPin.proof !== undefined && hybridPin.proof !== null;
+    if (!hasProof) {
+      if (hybridPin.required) {
+        reasons.push('hybrid_proof_missing');
+        return {
+          valid: false,
+          status: commit.status,
+          decision: commit.decision,
+          expires_at: commit.expires_at,
+          reasons,
+          hybrid: null,
+        };
+      }
+    } else {
+      // Bytes are rebuilt from the fields the verifier recomputed above, never
+      // from anything the proof carries.
+      const hybridResult = await verifyCommitHybridProof(
+        canonicalFields as Record<string, unknown>,
+        hybridPin.proof,
+        hybridPin.keys ?? null,
+      );
+      if (!hybridResult.verified) {
+        reasons.push(`hybrid_proof_invalid:${hybridResult.reason}`);
+        return {
+          valid: false,
+          status: commit.status,
+          decision: commit.decision,
+          expires_at: commit.expires_at,
+          reasons,
+          hybrid: hybridResult,
+        };
+      }
+      return {
+        valid: true,
+        status: 'active',
+        decision: commit.decision,
+        expires_at: commit.expires_at,
+        reasons: [],
+        hybrid: hybridResult,
+      };
+    }
   }
 
   return {
