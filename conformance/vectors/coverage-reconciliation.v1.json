@@ -64,7 +64,7 @@
     "census_digest": "sha256:f1ee21ccf0eb605af6a1f49ee4994bcb5a7f5886ca1e53f99007fe78145d79fe"
   },
   "artifact": {
-    "@version": "EP-COVERAGE-RECONCILIATION-ATTESTATION-v1",
+    "@version": "EP-COVERAGE-RECONCILIATION-ATTESTATION-v2",
     "attestation_id": "coverage:synthetic:2026-06",
     "census_digest": "sha256:f1ee21ccf0eb605af6a1f49ee4994bcb5a7f5886ca1e53f99007fe78145d79fe",
     "claim_boundary": "signed_reconciliation_of_supplied_populations_not_population_completeness",
@@ -81,7 +81,8 @@
       "excluded": 2,
       "indeterminate": 2,
       "matched": 95,
-      "receipt_without_effect": 1
+      "receipted_without_observation": 1,
+      "system_indeterminate": 0
     },
     "period": {
       "end": "2026-07-01T00:00:00Z",
@@ -108,15 +109,15 @@
     "proof": {
       "algorithm": "Ed25519",
       "key_id": "coverage-vector-key-1",
-      "body_digest": "sha256:93c225b09542d1c967c4dd863f0ffbc392f27f49e19c75b7e726d8703dfccb07",
-      "signature_b64u": "2VHhDsRKYlDKAuPr9seuIwwk-8mBlnpXvfmR0ele5wsX7joRqqvG4gwif4Hqa1EP1XMYQsQw6ohMFOqnXgOAAg"
+      "body_digest": "sha256:5d2a340245d45bcb7db61b72984ebc24636063e173cae161268c61c68489eb5c",
+      "signature_b64u": "-8uo2ZnJ24B_hKVp6rnNzREd5RX3-acA-utesKWsGvblBP1n9Qc0REUOkELvOvaHvotjqL-L6e-lbWFOWwzQCQ"
     }
   },
   "expected": {
     "accepted": true,
     "verified": true,
     "reason": null,
-    "attestation_digest": "sha256:8e68dc61b6167a02ea090267cd5fb2de591e125b929d49a8f840ced3970ab535",
+    "attestation_digest": "sha256:29cd040266101d4dec3e6cd674c2fac534dc2882e1e70b54e91fc8f05e837792",
     "claim_boundary": "signed_reconciliation_of_supplied_populations_not_population_completeness"
   }
 }

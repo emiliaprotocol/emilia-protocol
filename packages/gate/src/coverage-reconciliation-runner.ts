@@ -3,6 +3,26 @@
  * Derive and reconcile two independently signed, privacy-minimized action
  * populations. The runner proves only what the supplied signed populations
  * contain; it never self-proves source-system completeness.
+ *
+ * Schema family v2 (EP-COVERAGE-SOURCE-INVENTORY-v2, EP-COVERAGE-POPULATION-v2,
+ * EP-COVERAGE-RECONCILIATION-REPORT-v2) changes, relative to v1:
+ *
+ * 1. The bin previously named `receipt_without_effect` is now
+ *    `receipted_without_observation`. The runner only establishes that a
+ *    receipt has no matching record in the supplied source population; it
+ *    does not establish that no effect occurred. The old name claimed more
+ *    than the code proves.
+ * 2. Every `excluded` and `exception` record carries a
+ *    `classification_rule_id` naming the rule, under the pinned mapping
+ *    profile, that produced the classification. The field rides inside the
+ *    record and is therefore covered by the signed population root. A record
+ *    whose rule id is missing, unknown, or bound to a different
+ *    classification is reclassified to the system-side indeterminate bin
+ *    (`system_indeterminate`); an unresolvable rule never widens an
+ *    exclusion.
+ * 3. Emitted bin counts are asserted to sum back to the signed record counts
+ *    of BOTH populations before any report is emitted (see
+ *    `assertCoveragePopulationConservation`).
  */
 import {
   RISK_CAID,
@@ -24,14 +44,61 @@ import {
   signCoverageReconciliationAttestation,
 } from './coverage-reconciliation-attestation.js';
 
-export const COVERAGE_SOURCE_INVENTORY_VERSION = 'EP-COVERAGE-SOURCE-INVENTORY-v1';
-export const COVERAGE_POPULATION_VERSION = 'EP-COVERAGE-POPULATION-v1';
-export const COVERAGE_RECONCILIATION_REPORT_VERSION = 'EP-COVERAGE-RECONCILIATION-REPORT-v1';
+export const COVERAGE_SOURCE_INVENTORY_VERSION = 'EP-COVERAGE-SOURCE-INVENTORY-v2';
+export const COVERAGE_POPULATION_VERSION = 'EP-COVERAGE-POPULATION-v2';
+export const COVERAGE_RECONCILIATION_REPORT_VERSION = 'EP-COVERAGE-RECONCILIATION-REPORT-v2';
 export const COVERAGE_SOURCE_CLAIM_BOUNDARY = 'signed_root_of_supplied_minimized_records_not_source_completeness';
 export const COVERAGE_REPORT_CLAIM_BOUNDARY = 'deterministic_join_of_two_verified_supplied_populations_not_source_completeness';
 
+/**
+ * Compiled-in classification-rule registry, version 1.
+ *
+ * Each `excluded` or `exception` record names the rule that produced its
+ * classification via `classification_rule_id`. Ids are stable and versioned;
+ * a semantic change to a rule requires a new id, never a redefinition. When
+ * declared mapping-profile documents ship, the rules a pinned mapping profile
+ * declares replace this compiled-in registry for populations under that
+ * profile; until then the pinned `mapping_profile_digest` pins the source
+ * mapping and this registry is the resolution set for rule ids.
+ */
+export const COVERAGE_CLASSIFICATION_RULE_REGISTRY_VERSION = 'EP-COVERAGE-CLASSIFICATION-RULES-v1';
+export const COVERAGE_CLASSIFICATION_RULES: Readonly<Record<string, { classification: 'excluded' | 'exception'; summary: string }>> = riskFreeze({
+  'ep:coverage:excluded:out-of-scope-action-class:1': {
+    classification: 'excluded',
+    summary: 'Action class is outside the receipt-required scope declared by the pinned mapping profile.',
+  },
+  'ep:coverage:excluded:pre-gate-backfill:1': {
+    classification: 'excluded',
+    summary: 'Record predates the first Gate enforcement date declared by the pinned mapping profile.',
+  },
+  'ep:coverage:exception:declared-emergency-override:1': {
+    classification: 'exception',
+    summary: 'Source-declared emergency override executed outside the Gate under a documented procedure.',
+  },
+  'ep:coverage:exception:source-migration-window:1': {
+    classification: 'exception',
+    summary: 'Source-declared migration or cutover window during which Gate mediation was suspended.',
+  },
+});
+
+/**
+ * A rule id resolves when it names a registry rule bound to the exact
+ * classification the record carries. Anything else (missing id, unknown id,
+ * or an id bound to the other classification) does not resolve, and the
+ * record is reclassified to `system_indeterminate` by the runner.
+ */
+export function resolveCoverageClassificationRule(
+  classification: 'excluded' | 'exception',
+  ruleId: unknown,
+): boolean {
+  return typeof ruleId === 'string'
+    && Object.hasOwn(COVERAGE_CLASSIFICATION_RULES, ruleId)
+    && COVERAGE_CLASSIFICATION_RULES[ruleId].classification === classification;
+}
+
 const MAX_RECORDS = 50_000;
 const RECORD_KEYS = ['record_id', 'caid', 'action_digest', 'classification'] as const;
+const RECORD_KEYS_WITH_RULE = [...RECORD_KEYS, 'classification_rule_id'] as const;
 const PERIOD_KEYS = ['start', 'end'] as const;
 const SOURCE_BODY_KEYS = [
   '@version', 'inventory_id', 'inventory_kind', 'source_system_id',
@@ -40,6 +107,7 @@ const SOURCE_BODY_KEYS = [
 ] as const;
 const SYSTEM_CLASSIFICATIONS = new Set(['effect', 'excluded', 'exception']);
 const RECEIPT_CLASSIFICATIONS = new Set(['receipt', 'indeterminate']);
+const RULE_BEARING_CLASSIFICATIONS = new Set(['excluded', 'exception']);
 const INVENTORY_KINDS = new Set(['system_of_record', 'receipt_population']);
 
 export type CoverageInventoryKind = 'system_of_record' | 'receipt_population';
@@ -50,6 +118,14 @@ export interface CoveragePopulationRecord {
   caid: string;
   action_digest: string;
   classification: CoverageRecordClassification;
+  /**
+   * Required to sustain an `excluded` or `exception` classification and
+   * forbidden on every other classification. It is part of the record, so it
+   * is covered by the signed population root. A missing or unresolvable rule
+   * id demotes the record to `system_indeterminate`; it never refuses the
+   * population and never widens an exclusion.
+   */
+  classification_rule_id?: string;
 }
 
 export interface CoverageSourceInventoryInput {
@@ -77,6 +153,16 @@ export interface CoverageRunnerOptions {
   require_independent_source_issuers?: boolean;
 }
 
+export interface CoverageReconciliationJoins {
+  matched: number;
+  effect_without_receipt: number;
+  receipted_without_observation: number;
+  indeterminate: number;
+  system_indeterminate: number;
+  excluded: number;
+  exception: number;
+}
+
 function textOrder(left: string, right: string): number {
   return Buffer.compare(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8'));
 }
@@ -99,6 +185,16 @@ function allowedClassification(kind: CoverageInventoryKind, classification: unkn
       : RECEIPT_CLASSIFICATIONS.has(classification));
 }
 
+function recordShapeValid(record: unknown): record is RiskRecord {
+  if (riskExact(record, RECORD_KEYS)) return true;
+  // `classification_rule_id` is only a lawful key on the rule-bearing
+  // system-side classifications; every other record is exactly the base shape.
+  return riskExact(record, RECORD_KEYS_WITH_RULE)
+    && typeof record.classification === 'string'
+    && RULE_BEARING_CLASSIFICATIONS.has(record.classification)
+    && riskIdentifier(record.classification_rule_id);
+}
+
 function joinKey(record: CoveragePopulationRecord): string {
   return `${record.caid}\0${record.action_digest}`;
 }
@@ -111,7 +207,7 @@ function normalizeRecords(
     throw new TypeError('coverage population exceeds the record limit');
   }
   const normalized = records.map((record) => {
-    if (!riskExact(record, RECORD_KEYS)
+    if (!recordShapeValid(record)
         || !riskIdentifier(record.record_id)
         || !RISK_CAID.test(record.caid)
         || !RISK_DIGEST.test(record.action_digest)
@@ -155,6 +251,41 @@ export function coveragePopulationRoot(
     inventory_kind: kind,
     records: normalizeRecords(kind, records),
   });
+}
+
+/**
+ * Population conservation: every supplied record must land in exactly one
+ * emitted bin, and the emitted bin counts must sum back to the SIGNED record
+ * counts of both populations.
+ *
+ *   system_of_record.record_count ==
+ *     matched + effect_without_receipt + excluded + exception
+ *     + system_indeterminate
+ *
+ *   receipt_population.record_count ==
+ *     matched + receipted_without_observation + indeterminate
+ *
+ * `excluded`, `exception`, and `system_indeterminate` are system-side-only
+ * bins; `indeterminate` (source-declared) and `receipted_without_observation`
+ * are receipt-side-only bins; `matched` consumes one record from each side.
+ * On violation this refuses with `population_conservation_violation:<side>`
+ * instead of emitting a report. The runner calls this on every run; it is
+ * exported so the refusal path stays directly testable, since the runner's
+ * own verified-input path only reaches it with conserving sums.
+ */
+export function assertCoveragePopulationConservation(
+  joins: CoverageReconciliationJoins,
+  counts: { system_record_count: number; receipt_record_count: number },
+): void {
+  const systemSum = joins.matched + joins.effect_without_receipt
+    + joins.excluded + joins.exception + joins.system_indeterminate;
+  if (systemSum !== counts.system_record_count) {
+    throw new TypeError('population_conservation_violation:system');
+  }
+  const receiptSum = joins.matched + joins.receipted_without_observation + joins.indeterminate;
+  if (receiptSum !== counts.receipt_record_count) {
+    throw new TypeError('population_conservation_violation:receipt');
+  }
 }
 
 /**
@@ -419,13 +550,24 @@ export function runCoverageReconciliation(
   const effectWithoutReceipt: CoveragePopulationRecord[] = [];
   const excluded: CoveragePopulationRecord[] = [];
   const exception: CoveragePopulationRecord[] = [];
+  const systemIndeterminate: RiskRecord[] = [];
   for (const record of systemRecords) {
-    if (record.classification === 'excluded') {
-      excluded.push(record);
-      continue;
-    }
-    if (record.classification === 'exception') {
-      exception.push(record);
+    if (record.classification === 'excluded' || record.classification === 'exception') {
+      // The classification stands only when its rule id resolves under the
+      // compiled-in registry (see COVERAGE_CLASSIFICATION_RULES). Otherwise
+      // the record is demoted to system_indeterminate: the runner refuses to
+      // treat an unattributed exclusion as an exclusion, and no join is
+      // attempted because the record's receipt-requirement status is unknown.
+      if (resolveCoverageClassificationRule(record.classification, record.classification_rule_id)) {
+        (record.classification === 'excluded' ? excluded : exception).push(record);
+      } else {
+        systemIndeterminate.push({
+          ...record,
+          reclassification_reason: record.classification_rule_id === undefined
+            ? 'classification_rule_missing'
+            : 'classification_rule_unresolved',
+        });
+      }
       continue;
     }
     const receipt = availableReceipts.get(joinKey(record));
@@ -441,18 +583,27 @@ export function runCoverageReconciliation(
       receipt_record_id: receipt.record_id,
     });
   }
-  const receiptWithoutEffect = [...availableReceipts.values()]
+  const receiptedWithoutObservation = [...availableReceipts.values()]
     .sort((left, right) => textOrder(left.record_id, right.record_id));
   const indeterminate = receiptRecords
     .filter((record) => record.classification === 'indeterminate');
-  const joins = {
+  const joins: CoverageReconciliationJoins = {
     matched: matched.length,
     effect_without_receipt: effectWithoutReceipt.length,
-    receipt_without_effect: receiptWithoutEffect.length,
+    receipted_without_observation: receiptedWithoutObservation.length,
     indeterminate: indeterminate.length,
+    system_indeterminate: systemIndeterminate.length,
     excluded: excluded.length,
     exception: exception.length,
   };
+  // Refuse, with a named reason, before emitting anything if the bins do not
+  // sum back to the SIGNED record counts of both populations. The report
+  // carries both signed counts and every bin count so a reader can re-check
+  // the sums independently.
+  assertCoveragePopulationConservation(joins, {
+    system_record_count: systemBody.record_count as number,
+    receipt_record_count: receiptBody.record_count as number,
+  });
 
   const generated = riskInstant(input.generated_at);
   const expires = riskInstant(input.expires_at);
@@ -486,8 +637,9 @@ export function runCoverageReconciliation(
     findings: {
       matched,
       effect_without_receipt: effectWithoutReceipt,
-      receipt_without_effect: receiptWithoutEffect,
+      receipted_without_observation: receiptedWithoutObservation,
       indeterminate,
+      system_indeterminate: systemIndeterminate,
       excluded,
       exception,
     },
@@ -512,7 +664,7 @@ export function runCoverageReconciliation(
       population_root: receiptBody.population_root,
       count: receiptBody.record_count,
     },
-    joins,
+    joins: riskClone(joins),
     issued_at: input.generated_at,
     expires_at: input.expires_at,
     timestamp_anchor: riskClone(input.timestamp_anchor),

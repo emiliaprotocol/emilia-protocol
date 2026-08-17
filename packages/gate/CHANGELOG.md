@@ -1,6 +1,27 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## Unreleased
+
+- Coverage reconciliation schema family v2 (`EP-COVERAGE-SOURCE-INVENTORY-v2`,
+  `EP-COVERAGE-POPULATION-v2`, `EP-COVERAGE-RECONCILIATION-REPORT-v2`,
+  `EP-COVERAGE-RECONCILIATION-ATTESTATION-v2`); v1 artifacts fail closed under
+  v2 verifiers and there is no compatibility alias.
+  - Rename the `receipt_without_effect` bin to `receipted_without_observation`:
+    the join only shows a receipt with no matching record in the supplied
+    source population, never that no effect occurred.
+  - Require a `classification_rule_id` on every `excluded` and `exception`
+    record, resolved against the compiled-in versioned registry
+    `EP-COVERAGE-CLASSIFICATION-RULES-v1`; the field rides inside the record
+    and is covered by the signed population root. A missing or unresolvable
+    rule id demotes the record to the new system-side `system_indeterminate`
+    bin instead of widening an exclusion.
+  - Assert, in the runner before any report is emitted, that bin counts sum
+    back to the signed record counts of both populations
+    (`assertCoveragePopulationConservation`), refusing with
+    `population_conservation_violation:system` or
+    `population_conservation_violation:receipt` on violation.
+
 ## 0.23.14 (2026-08-05)
 
 - Carry `@emilia-protocol/require-receipt` 0.8.0 so Gate integrations can use

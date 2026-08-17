@@ -61,7 +61,7 @@
 .resultsHeading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 17px; border-bottom: 1px solid var(--line); }
 .resultsHeading h2 { margin: 7px 0 0; font-size: 28px; letter-spacing: -.03em; }
 .resultsHeading p { margin: 0; color: var(--muted); font-family: var(--font-mono, monospace); font-size: 10px; }
-.countGrid { display: grid; grid-template-columns: repeat(6, 1fr); border: 1px solid var(--line); border-top: 0; background: var(--white); }
+.countGrid { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid var(--line); border-top: 0; background: var(--white); }
 .countGrid > div { min-height: 132px; padding: 22px 18px; border-right: 1px solid var(--line); }
 .countGrid > div:last-child { border-right: 0; }
 .countGrid strong { display: block; font-size: 46px; font-weight: 500; line-height: 1; }
@@ -88,7 +88,7 @@
   .verdict { grid-template-columns: 1fr 1.5fr; }
   .verdict dl { grid-column: 1 / -1; }
   .countGrid { grid-template-columns: repeat(3, 1fr); }
-  .countGrid > div:nth-child(3) { border-right: 0; }
+  .countGrid > div:nth-child(3n) { border-right: 0; }
   .countGrid > div:nth-child(n + 4) { border-top: 1px solid var(--line); }
 }
 

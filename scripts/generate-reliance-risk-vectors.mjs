@@ -194,7 +194,7 @@ const coverageArtifact = signCoverageReconciliationAttestation({
   census_digest: census.census_digest,
   system_of_record: { inventory_id: 'pas:sor:synthetic:2026-06', population_root: D('5'), count: 100 },
   receipt_population: { inventory_id: 'ep:receipts:synthetic:2026-06', population_root: D('6'), count: 98 },
-  joins: { matched: 95, effect_without_receipt: 3, receipt_without_effect: 1, indeterminate: 2, excluded: 2, exception: 0 },
+  joins: { matched: 95, effect_without_receipt: 3, receipted_without_observation: 1, indeterminate: 2, system_indeterminate: 0, excluded: 2, exception: 0 },
   issued_at: '2026-07-01T01:00:00Z', expires_at: '2026-08-01T01:00:00Z',
   timestamp_anchor: null,
   claim_boundary: COVERAGE_RECONCILIATION_CLAIM_BOUNDARY,
