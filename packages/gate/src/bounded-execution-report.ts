@@ -28,12 +28,17 @@ import {
   riskIdentifier,
   riskRecord,
   signRiskBody,
+  signRiskBodyV2,
   verifyRiskBody,
+  verifyRiskBodyV2,
   type RiskRecord,
+  type RiskV2Options,
   type TrustedRiskKeys,
+  type TrustedRiskKeysV2,
 } from './reliance-risk-crypto.js';
 
 export const BOUNDED_EXECUTION_REPORT_VERSION = 'EP-BOUNDED-EXECUTION-REPORT-v1';
+export const BOUNDED_EXECUTION_REPORT_V2_VERSION = 'EP-BOUNDED-EXECUTION-REPORT-v2';
 export const BOUNDED_EXECUTION_REPORT_CLAIM_BOUNDARY =
   'gate_recorded_program_occurrences_only_not_external_effect_truth_not_program_safety_not_complete_mediation_not_absence_of_outside_gate_actions';
 export const BOUNDED_EXECUTION_REPORT_OUTSIDE_PLAN_CLAIM =
@@ -101,6 +106,7 @@ const CONTEXT_KEYS = [
   'now', 'max_report_age_ms',
 ] as const;
 const TRUSTED_KEY_KEYS = ['issuer_id', 'public_key'] as const;
+const TRUSTED_KEY_KEYS_V2 = ['issuer_id', 'public_key', 'pq_public_key'] as const;
 
 const OCCURRENCE_STATES = new Set([
   'RESERVED', 'RELEASED', 'INVOKING', 'INDETERMINATE',
@@ -680,9 +686,12 @@ function deriveBudgetUsage(model: ReturnType<typeof programModel>, runtime: Risk
     });
 }
 
-function validateReportBody(value: unknown): asserts value is RiskRecord {
+function validateReportBody(
+  value: unknown,
+  expectedVersion: string = BOUNDED_EXECUTION_REPORT_VERSION,
+): asserts value is RiskRecord {
   if (!riskExact(value, BODY_KEYS)
-      || value['@version'] !== BOUNDED_EXECUTION_REPORT_VERSION
+      || value['@version'] !== expectedVersion
       || !riskIdentifier(value.report_id)
       || !riskIdentifier(value.relying_party_id)
       || !riskIdentifier(value.tenant_id)
@@ -807,16 +816,20 @@ function validateReportBody(value: unknown): asserts value is RiskRecord {
   }
 }
 
-function normalizeContext(value: unknown): BoundedExecutionReportVerificationContext | null {
+function normalizeContext(
+  value: unknown,
+  expectPq = false,
+): BoundedExecutionReportVerificationContext | null {
   try {
     const context = strictJsonClone(value);
     if (!riskExact(context, CONTEXT_KEYS)
         || !riskRecord(context.trusted_keys)
         || Object.keys(context.trusted_keys).length < 1
         || !Object.values(context.trusted_keys).every((entry) => (
-          riskExact(entry, TRUSTED_KEY_KEYS)
+          riskExact(entry, expectPq ? TRUSTED_KEY_KEYS_V2 : TRUSTED_KEY_KEYS)
           && riskIdentifier(entry.issuer_id)
           && typeof entry.public_key === 'string' && entry.public_key.length > 0
+          && (!expectPq || (typeof entry.pq_public_key === 'string' && entry.pq_public_key.length > 0))
         ))
         || !riskIdentifier(context.expected_report_id)
         || !riskIdentifier(context.expected_relying_party_id)
@@ -865,22 +878,31 @@ export function boundedExecutionReportDigest(artifact: unknown): string {
   return riskDigest(snapshot);
 }
 
-/** Build and sign one closed report from an accepted program verification result. */
-export function signBoundedExecutionReport(
-  rawInput: BoundedExecutionReportInput | RiskRecord,
-  rawSigner: BoundedExecutionReportSigner,
-): RiskRecord {
-  if (!riskExact(rawInput, INPUT_KEYS)) {
-    refuse('report_input_invalid', 'report input must be a closed object');
-  }
-  if (!riskExact(rawSigner, SIGNER_KEYS)
-      || !riskIdentifier(rawSigner.relying_party_id)
-      || !riskIdentifier(rawSigner.key_id)) {
-    refuse('report_signer_invalid', 'report signer must be a closed relying-party signer');
-  }
+const HYBRID_SIGNER_KEYS = ['relying_party_id', 'key_id', 'private_key', 'pq_private_key'] as const;
+
+export interface BoundedExecutionReportHybridSigner {
+  relying_party_id: string;
+  key_id: string;
+  private_key: any;
+  pq_private_key: Uint8Array | string;
+}
+
+/**
+ * Shared body assembly for the v1 and v2 report signers. The caller has already
+ * validated `rawInput`'s and the signer's closed shape; this reproduces the
+ * exact v1 derivation and validation, parameterized only by the artifact
+ * `version`, so the v1 and v2 bodies cannot drift on schema, derivation, or the
+ * claim boundary.
+ */
+function assembleReportBody(
+  rawInput: RiskRecord,
+  signerRelyingPartyId: string,
+  signerKeyId: string,
+  version: string,
+): { body: RiskRecord; relyingPartyId: string } {
   const reportId = identifier(rawInput.report_id, 'report_id');
   const relyingPartyId = identifier(rawInput.relying_party_id, 'relying_party_id');
-  if (relyingPartyId !== rawSigner.relying_party_id) {
+  if (relyingPartyId !== signerRelyingPartyId) {
     refuse('report_signer_invalid', 'report signer must be the named relying party');
   }
   const interval = normalizeInterval(rawInput.report_interval, 'report_interval');
@@ -894,7 +916,7 @@ export function signBoundedExecutionReport(
   );
   const { model } = validateDerivation(verified, runtime, occurrences, interval);
   const body = {
-    '@version': BOUNDED_EXECUTION_REPORT_VERSION,
+    '@version': version,
     report_id: reportId,
     relying_party_id: relyingPartyId,
     tenant_id: runtime.tenant_id,
@@ -923,8 +945,30 @@ export function signBoundedExecutionReport(
   };
   validateReportBody({
     ...body,
-    issuer: { id: relyingPartyId, key_id: rawSigner.key_id },
-  });
+    issuer: { id: relyingPartyId, key_id: signerKeyId },
+  }, version);
+  return { body, relyingPartyId };
+}
+
+/** Build and sign one closed report from an accepted program verification result. */
+export function signBoundedExecutionReport(
+  rawInput: BoundedExecutionReportInput | RiskRecord,
+  rawSigner: BoundedExecutionReportSigner,
+): RiskRecord {
+  if (!riskExact(rawInput, INPUT_KEYS)) {
+    refuse('report_input_invalid', 'report input must be a closed object');
+  }
+  if (!riskExact(rawSigner, SIGNER_KEYS)
+      || !riskIdentifier(rawSigner.relying_party_id)
+      || !riskIdentifier(rawSigner.key_id)) {
+    refuse('report_signer_invalid', 'report signer must be a closed relying-party signer');
+  }
+  const { body, relyingPartyId } = assembleReportBody(
+    rawInput,
+    rawSigner.relying_party_id,
+    rawSigner.key_id,
+    BOUNDED_EXECUTION_REPORT_VERSION,
+  );
   try {
     return signRiskBody(BOUNDED_EXECUTION_REPORT_VERSION, body, {
       issuer_id: relyingPartyId,
@@ -933,6 +977,47 @@ export function signBoundedExecutionReport(
     });
   } catch {
     refuse('report_signer_invalid', 'report signing key must be Ed25519');
+  }
+}
+
+/**
+ * EP-BOUNDED-EXECUTION-REPORT-v2 -- the hybrid (Ed25519 + ML-DSA-65) report.
+ *
+ * Reference: "PATTERN: the reference hybrid migration" (EP-REVOCATION-v2) in
+ * docs/protocol/pq-hybrid-program.md. VERSION BUMP, not a field bump: the -v2
+ * marker carries the set-committed hybrid proof through signRiskBodyV2, while
+ * signBoundedExecutionReport keeps its flat single-Ed25519 proof unchanged. A
+ * deployed v1 verifier handed a v2 report refuses on its version/envelope check
+ * before inspecting any signature. ASYNC because ML-DSA signing is async.
+ */
+export async function signBoundedExecutionReportV2(
+  rawInput: BoundedExecutionReportInput | RiskRecord,
+  rawSigner: BoundedExecutionReportHybridSigner,
+  options: RiskV2Options = {},
+): Promise<RiskRecord> {
+  if (!riskExact(rawInput, INPUT_KEYS)) {
+    refuse('report_input_invalid', 'report input must be a closed object');
+  }
+  if (!riskExact(rawSigner, HYBRID_SIGNER_KEYS)
+      || !riskIdentifier(rawSigner.relying_party_id)
+      || !riskIdentifier(rawSigner.key_id)) {
+    refuse('report_signer_invalid', 'report signer must be a closed relying-party hybrid signer');
+  }
+  const { body, relyingPartyId } = assembleReportBody(
+    rawInput,
+    rawSigner.relying_party_id,
+    rawSigner.key_id,
+    BOUNDED_EXECUTION_REPORT_V2_VERSION,
+  );
+  try {
+    return await signRiskBodyV2(BOUNDED_EXECUTION_REPORT_V2_VERSION, body, {
+      issuer_id: relyingPartyId,
+      key_id: rawSigner.key_id,
+      private_key: rawSigner.private_key,
+      pq_private_key: rawSigner.pq_private_key,
+    }, options);
+  } catch {
+    refuse('report_signer_invalid', 'report signing keys must be Ed25519 + ML-DSA-65');
   }
 }
 
@@ -972,6 +1057,124 @@ export function verifyBoundedExecutionReport(
   }
   try {
     validateReportBody(signed.body);
+  } catch (error) {
+    return fail(
+      error instanceof BoundedExecutionReportValidationError
+        ? error.code : 'report_schema_invalid',
+      true,
+      signed.artifact_digest,
+    );
+  }
+  const body = signed.body;
+  const mismatch = (condition: boolean, reason: string): RiskRecord | null => (
+    condition ? fail(reason, true, signed.artifact_digest) : null
+  );
+  const checks: Array<[boolean, string]> = [
+    [body.report_id !== context.expected_report_id, 'report_id_mismatch'],
+    [body.relying_party_id !== context.expected_relying_party_id, 'relying_party_mismatch'],
+    [body.tenant_id !== context.expected_tenant_id, 'tenant_mismatch'],
+    [body.program_id !== context.expected_program_id, 'program_id_mismatch'],
+    [body.program_version !== context.expected_program_version, 'program_version_mismatch'],
+    [body.program_digest !== context.expected_program_digest, 'program_digest_mismatch'],
+    [body.subject_id !== context.expected_subject_id, 'subject_mismatch'],
+    [body.audience !== context.expected_audience, 'audience_mismatch'],
+    [body.report_interval.start !== context.expected_report_interval.start
+      || body.report_interval.end !== context.expected_report_interval.end,
+    'report_interval_mismatch'],
+    [body.runtime_state_digest !== context.expected_runtime_state_digest,
+      'runtime_state_digest_mismatch'],
+    [body.occurrence_inventory_digest !== context.expected_occurrence_inventory_digest,
+      'occurrence_inventory_digest_mismatch'],
+    [body.report_snapshot_marker !== context.expected_report_snapshot_marker,
+      'report_snapshot_marker_mismatch'],
+  ];
+  for (const [condition, reason] of checks) {
+    const result = mismatch(condition, reason);
+    if (result) return result;
+  }
+  const now = Date.parse(context.now);
+  const generatedAt = Date.parse(body.generated_at);
+  if (generatedAt > now) return fail('report_generated_in_future', true, signed.artifact_digest);
+  if (now - generatedAt > context.max_report_age_ms) {
+    return fail('report_stale', true, signed.artifact_digest);
+  }
+  return riskFreeze({
+    accepted: true,
+    verified: true,
+    reason: null,
+    report_digest: signed.artifact_digest,
+    report_id: body.report_id,
+    relying_party_id: body.relying_party_id,
+    tenant_id: body.tenant_id,
+    program_id: body.program_id,
+    program_version: body.program_version,
+    program_digest: body.program_digest,
+    subject_id: body.subject_id,
+    audience: body.audience,
+    report_interval: body.report_interval,
+    generated_at: body.generated_at,
+    runtime_state_digest: body.runtime_state_digest,
+    occurrence_inventory_digest: body.occurrence_inventory_digest,
+    report_snapshot_marker: body.report_snapshot_marker,
+    status: body.status,
+    supersession: body.supersession,
+    issuer_id: body.issuer.id,
+    key_id: body.issuer.key_id,
+    claim_boundary: BOUNDED_EXECUTION_REPORT_CLAIM_BOUNDARY,
+    outside_plan_claim: BOUNDED_EXECUTION_REPORT_OUTSIDE_PLAN_CLAIM,
+  });
+}
+
+export interface BoundedExecutionReportV2VerificationContext
+  extends Omit<BoundedExecutionReportVerificationContext, 'trusted_keys'> {
+  trusted_keys: TrustedRiskKeysV2;
+}
+
+/**
+ * EP-BOUNDED-EXECUTION-REPORT-v2 verifier. FAIL-CLOSED hybrid twin of
+ * verifyBoundedExecutionReport: verifies the Ed25519 + ML-DSA-65 signature set,
+ * then applies the identical closed schema, RP pin, expected-tuple, and
+ * freshness checks. A v2 report NEVER verifies on one leg alone. ASYNC because
+ * ML-DSA verification is async. See "PATTERN: the reference hybrid migration"
+ * in docs/protocol/pq-hybrid-program.md.
+ */
+export async function verifyBoundedExecutionReportV2(
+  artifact: unknown,
+  rawContext?: BoundedExecutionReportV2VerificationContext,
+  options: RiskV2Options = {},
+): Promise<RiskRecord> {
+  const fail = (
+    reason: string,
+    verified = false,
+    reportDigest: string | null = null,
+  ) => riskFreeze({
+    accepted: false,
+    verified,
+    reason,
+    report_digest: reportDigest,
+    claim_boundary: BOUNDED_EXECUTION_REPORT_CLAIM_BOUNDARY,
+    outside_plan_claim: BOUNDED_EXECUTION_REPORT_OUTSIDE_PLAN_CLAIM,
+  });
+  const context = normalizeContext(rawContext, true);
+  if (!context) return fail('verification_context_required');
+
+  let snapshot: unknown;
+  try {
+    snapshot = strictJsonClone(artifact);
+  } catch {
+    return fail('report_artifact_invalid');
+  }
+  const signed = await verifyRiskBodyV2(
+    snapshot,
+    BOUNDED_EXECUTION_REPORT_V2_VERSION,
+    context.trusted_keys as unknown as TrustedRiskKeysV2,
+    options,
+  );
+  if (!signed.valid || !signed.body || !signed.artifact_digest) {
+    return fail(signed.reason ?? 'report_signature_invalid');
+  }
+  try {
+    validateReportBody(signed.body, BOUNDED_EXECUTION_REPORT_V2_VERSION);
   } catch (error) {
     return fail(
       error instanceof BoundedExecutionReportValidationError
