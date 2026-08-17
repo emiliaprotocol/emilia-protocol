@@ -32,15 +32,15 @@ const PINS: { [key: string]: string } = {
   'actions/setup-java@v5':
     'actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0',
   'actions/attest@v4':
-    'actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d  # v4.2.1',
+    'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2',
 
   // ── CodeQL ───────────────────────────────────────────────────────────────
   'github/codeql-action/init@v4':
-    'github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4.37.4',
+    'github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',
   'github/codeql-action/analyze@v4':
-    'github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4.37.4',
+    'github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',
   'github/codeql-action/autobuild@v4':
-    'github/codeql-action/autobuild@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4.37.4',
+    'github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',
 
   // ── Security / compliance ─────────────────────────────────────────────────
   'gitleaks/gitleaks-action@v2':

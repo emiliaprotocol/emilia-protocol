@@ -113,8 +113,10 @@ Never use these keys or seeds for anything real.
   expanded by ML-DSA.KeyGen (FIPS 204). Signing uses the FIPS 204 deterministic
   variant (`extraEntropy = false`), so the 3309-byte signature is fixed by seed
   plus message.
-- Implementation used to generate and check: `@noble/post-quantum` 0.6.1, a
-  pure-JS FIPS 204 implementation.
+- The checked-in vectors were originally generated with
+  `@noble/post-quantum` 0.6.1. The current 0.7.0 implementation reproduces
+  them byte for byte and verifies them. Both are pure-JS FIPS 204
+  implementations from the same project.
 
 ## Claim boundary
 

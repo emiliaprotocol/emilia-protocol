@@ -1856,7 +1856,7 @@
         { "file": "tests/release-reproducibility.test.ts", "title": "rejects a one-byte registry artifact substitution", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d", "npm publish \"./${TESTED_TARBALL#./}\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6", "npm publish \"./${TESTED_TARBALL#./}\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
         { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/verify'"] }
       ],
       "formal": [
@@ -1895,7 +1895,7 @@
         { "file": "tests/release-reproducibility.test.ts", "title": "PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d", "subject-path: ${{ steps.build.outputs.wheel }}", "subject-path: ${{ steps.build.outputs.sdist }}", "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33", "packages-dir: release-artifacts/python-verify/", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] }
+        { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6", "subject-path: ${{ steps.build.outputs.wheel }}", "subject-path: ${{ steps.build.outputs.sdist }}", "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33", "packages-dir: release-artifacts/python-verify/", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "Hosted CI identity, PyPI storage, and trusted-publisher configuration are operational trust assumptions rather than protocol-state properties." }
@@ -1942,8 +1942,8 @@
         { "file": "tests/release-approval.test.ts", "title": "binds the checked-out commit to a tag contained in main", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run check:security-case", "npm run conformance:manifest:check", "verify-reproducible-package.mjs", "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961", "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d", "npm publish \"./${TESTED_TARBALL#./}\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
-        { "file": ".github/workflows/_publish-pypi-package.yml", "contains": ["verify-reproducible-wheel.mjs", "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961", "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d", "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run check:security-case", "npm run conformance:manifest:check", "verify-reproducible-package.mjs", "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961", "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6", "npm publish \"./${TESTED_TARBALL#./}\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/_publish-pypi-package.yml", "contains": ["verify-reproducible-wheel.mjs", "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961", "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6", "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
         { "file": ".github/workflows/publish-gate.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/gate'"] },
         { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/verify'"] },
         { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
@@ -1992,7 +1992,7 @@
         { "file": "tests/release-approval.test.ts", "title": "permits tag creation only from the exact clean main commit with no existing tag", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/publish-go-verify.yml", "contains": ["actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961", "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d", "ref: ${{ github.sha }}", "persist-credentials: false", "--expected-commit \"$GITHUB_SHA\"", "go-version-file: packages/go-verify/go.mod", "refs/tags/packages/go-verify/v*", "rules.has('deletion') && rules.has('update')", "github.rest.git.createRef", "p.Origin?.[key]", "p.GoModSum", "diff -ru packages/go-verify \"$PROXY_DIR\"", "release-artifacts/go-verify-proxy.zip"] },
+        { "file": ".github/workflows/publish-go-verify.yml", "contains": ["actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961", "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6", "ref: ${{ github.sha }}", "persist-credentials: false", "--expected-commit \"$GITHUB_SHA\"", "go-version-file: packages/go-verify/go.mod", "refs/tags/packages/go-verify/v*", "rules.has('deletion') && rules.has('update')", "github.rest.git.createRef", "p.Origin?.[key]", "p.GoModSum", "diff -ru packages/go-verify \"$PROXY_DIR\"", "release-artifacts/go-verify-proxy.zip"] },
         { "file": "packages/go-verify/go-release.json", "contains": ["EP-GO-MODULE-RELEASE-v1", "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "packages/go-verify/v2.4.3"] },
         { "file": "release/release-packages.v1.json", "contains": ["github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "publish-go-verify.yml", "go_tag"] },
         { "file": "packages/go-verify/signoff_compatibility_test.go", "contains": ["func(map[string]any, string, string) SignoffResult", "func(map[string]any, string) QuorumResult"] }

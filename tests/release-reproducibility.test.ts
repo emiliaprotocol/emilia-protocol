@@ -478,7 +478,7 @@ describe('release byte reproducibility', () => {
       'npm publish "./${TESTED_TARBALL#./}" --access public --provenance --ignore-scripts',
     );
     expect(workflow).toContain('cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"');
-    expect(workflow).toContain('actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d');
+    expect(workflow).toContain('actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6');
   });
 
   it('PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist', () => {
@@ -487,7 +487,7 @@ describe('release byte reproducibility', () => {
     expect(workflow).toContain('subject-path: ${{ steps.build.outputs.wheel }}');
     expect(workflow).toContain('subject-path: ${{ steps.build.outputs.sdist }}');
     expect(workflow).toContain('packages-dir: release-artifacts/python-verify/');
-    expect(workflow).toContain('actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d');
+    expect(workflow).toContain('actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6');
     expect(workflow).toContain(
       'pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33',
     );
