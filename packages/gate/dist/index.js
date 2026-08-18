@@ -44,10 +44,12 @@ import { evaluateProviderEntryGuard, providerEntryContext, } from './provider-en
 import { fieldOriginProfileDigest, pinFieldOriginProfile, pinFieldOriginTrustedKeys, verifyFieldOriginEvidence, } from './field-origin-evidence.js';
 import { verifyBoundedExecutionProgram, } from './bounded-execution-program.js';
 import { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
+import { prepareProtectedActionInvocation, snapshotProtectedActionValue, } from './protected-action-registry.js';
 import { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, CAPABILITY_REVOCATION_MODES, CAPABILITY_ALLOWANCE_STATUS_TABLE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, } from './capability-receipt.js';
 import { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';
 import { mintBreakGlassAuthorization, verifyBreakGlass, consumeBreakGlass, buildBreakGlassEvidence, runBreakGlass, BREAKGLASS_VERSION, BREAKGLASS_EVIDENCE_KIND, } from './breakglass.js';
 export { MemoryConsumptionStore, canonicalEvidenceJson, createEvidenceLog, createAtomicEvidenceLog, createMemoryAtomicEvidenceBackend, };
+export { createProtectedActionRegistry, PROTECTED_ACTION_REGISTRY_VERSION, } from './protected-action-registry.js';
 export { createDurableConsumptionStore, createMemoryBackend, isSecureConsumptionStore, DURABLE_CONSUMPTION_VERSION, } from './store.js';
 export { createDurableChallengeStore, challengeStorageKey, challengeBodyDigest, DURABLE_CHALLENGE_STORE_VERSION } from './challenge-store.js';
 export { createKeyRegistry, asKeyRegistry } from './key-registry.js';
@@ -1755,6 +1757,50 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         }
     }
     /**
+     * Execute only a handler installed in a sealed trusted-startup registry.
+     * The pinned Gate manifest selects the action and therefore the handler;
+     * agent-carried action names cannot redirect execution. Parameter validation
+     * finishes before any authority is reserved. The existing run() path remains
+     * the sole reserve/provider-entry/commit state machine.
+     */
+    async function runRegistered({ selector = {}, receipt = null, observedAction = null, fieldOriginEvidence = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}, protectedRegistry, opts = {}) {
+        let frozenSelector;
+        try {
+            frozenSelector = snapshotProtectedActionValue(selector);
+        }
+        catch {
+            return {
+                ok: false,
+                status: 409,
+                reason: 'protected_action_selector_invalid',
+                body: { rejected: { type: 'protected_action_registry', reason: 'protected_action_selector_invalid' } },
+                authorization: null,
+            };
+        }
+        const requirement = resolveRequirement(frozenSelector);
+        const action = requirement?.action_type ?? null;
+        const prepared = prepareProtectedActionInvocation(protectedRegistry, action, observedAction);
+        if (!prepared.ok) {
+            return {
+                ok: false,
+                status: 409,
+                reason: prepared.reason,
+                body: { rejected: { type: 'protected_action_registry', reason: prepared.reason } },
+                authorization: null,
+            };
+        }
+        return run({
+            selector: frozenSelector,
+            receipt,
+            observedAction: prepared.parameters,
+            fieldOriginEvidence,
+            admissibilityProfile,
+            reliancePacket: presentedPacket,
+            admissibility,
+            capability,
+        }, (authorization) => prepared.handler(prepared.parameters, authorization), opts);
+    }
+    /**
      * Wrap any function so it runs only behind a passing gate check, and (unless
      * disabled) emits an execution receipt after it runs — the full firewall loop:
      * request -> check -> execute -> execution receipt. Framework-agnostic.
@@ -1824,7 +1870,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         return buildRetentionExport(evidence.all(), opts);
     }
     return {
-        check, run, recordExecution, route, wrapRoute: route, middleware, guard, reliancePacket, evidence,
+        check, run, runRegistered, recordExecution, route, wrapRoute: route, middleware, guard, reliancePacket, evidence,
         store: consumption, capabilityStore, keyRegistry: registry, retention, retentionExport,
     };
 }

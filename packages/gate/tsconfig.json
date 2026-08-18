@@ -131,6 +131,7 @@
     "src/cross-rail-authority.ts",
     "src/trusted-context.ts",
     "src/apertomemory-context.ts",
-    "src/hybrid-receipt-profile.ts"
+    "src/hybrid-receipt-profile.ts",
+    "src/protected-action-registry.ts"
   ]
 }

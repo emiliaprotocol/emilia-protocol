@@ -31,6 +31,7 @@ interface GateCallOpts {
     recordExecution?: boolean;
 }
 export { MemoryConsumptionStore, canonicalEvidenceJson, createEvidenceLog, createAtomicEvidenceLog, createMemoryAtomicEvidenceBackend, };
+export { createProtectedActionRegistry, PROTECTED_ACTION_REGISTRY_VERSION, type ProtectedActionRegistry, } from './protected-action-registry.js';
 export { createDurableConsumptionStore, createMemoryBackend, isSecureConsumptionStore, DURABLE_CONSUMPTION_VERSION, } from './store.js';
 export { createDurableChallengeStore, challengeStorageKey, challengeBodyDigest, DURABLE_CHALLENGE_STORE_VERSION } from './challenge-store.js';
 export { createKeyRegistry, asKeyRegistry } from './key-registry.js';
@@ -444,6 +445,45 @@ export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, lo
         status?: undefined;
         body?: undefined;
     }>;
+    runRegistered: ({ selector, receipt, observedAction, fieldOriginEvidence, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }: {
+        selector?: any;
+        receipt?: any;
+        observedAction?: any;
+        fieldOriginEvidence?: any;
+        admissibilityProfile?: any;
+        reliancePacket?: any;
+        admissibility?: any;
+        capability?: any;
+    } | undefined, protectedRegistry: unknown, opts?: {
+        recordExecution?: boolean;
+    }) => Promise<{
+        ok: false;
+        status: any;
+        body: any;
+        authorization: any;
+        result?: undefined;
+        execution?: undefined;
+        packet?: undefined;
+    } | {
+        ok: true;
+        result: any;
+        authorization: any;
+        execution: any;
+        packet: any;
+        status?: undefined;
+        body?: undefined;
+    } | {
+        ok: boolean;
+        status: number;
+        reason: string;
+        body: {
+            rejected: {
+                type: string;
+                reason: string;
+            };
+        };
+        authorization: null;
+    }>;
     recordExecution: ({ authorization, outcome, detail, observedAction, executionBinding }?: {
         authorization?: any;
         outcome?: string;
@@ -665,6 +705,45 @@ export declare function createTrustedActionFirewall(opts?: CreateGateOptions): {
         packet: any;
         status?: undefined;
         body?: undefined;
+    }>;
+    runRegistered: ({ selector, receipt, observedAction, fieldOriginEvidence, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }: {
+        selector?: any;
+        receipt?: any;
+        observedAction?: any;
+        fieldOriginEvidence?: any;
+        admissibilityProfile?: any;
+        reliancePacket?: any;
+        admissibility?: any;
+        capability?: any;
+    } | undefined, protectedRegistry: unknown, opts?: {
+        recordExecution?: boolean;
+    }) => Promise<{
+        ok: false;
+        status: any;
+        body: any;
+        authorization: any;
+        result?: undefined;
+        execution?: undefined;
+        packet?: undefined;
+    } | {
+        ok: true;
+        result: any;
+        authorization: any;
+        execution: any;
+        packet: any;
+        status?: undefined;
+        body?: undefined;
+    } | {
+        ok: boolean;
+        status: number;
+        reason: string;
+        body: {
+            rejected: {
+                type: string;
+                reason: string;
+            };
+        };
+        authorization: null;
     }>;
     recordExecution: ({ authorization, outcome, detail, observedAction, executionBinding }?: {
         authorization?: any;
