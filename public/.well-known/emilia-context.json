@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-18T19:36:57.532Z",
+  "evidence_snapshot_at": "2026-08-18T23:35:13.102Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "e92768e8faaaafaff108b5fdb17a1776f6617f585675af7d9ff80c43b315a83e",
+    "input_digest_sha256": "1e28f646a627088da207b586ddc59d3b4f6162393bcc3476a0cf19a7f75c2852",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "28f3967c18d3e5b7319465e354b8e0571e7678e094a6da4a4ab84033e148a8b0",
+        "sha256": "f15d41ce6e02dbbc43a19e284424b2ad877430c98d4ba77e7e06c16852f846d8",
         "bytes": 4298
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "6236f9834de5043c2ad56df7d65294481fd11d4922a0134f4c6eaff2ec101238",
+        "sha256": "e04768d354d9126cad56e50586b8acdc2c7c49327880ccca40959825f7cb9434",
         "bytes": 385871
       },
       {
@@ -288,8 +288,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 9789,
-      "files": 604,
+      "total": 9925,
+      "files": 606,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -330,7 +330,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "211f21b46ecf8bab4b079a9daf84d1125069d3372fc03b9f6d940d38d8e18b4e",
+        "evidenceSha256": "0692763422b23c1531c314d635fc109d0adfa043128654ef72ddb7820d720e23",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -400,7 +400,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "cd87d20d70add4d4a3aac1bcc88c18547223da073d91c62f2db47df2a208dd28"
+      "evidence_bundle_sha256": "974ead56703ad13c645527de91fe1d16c314639ff549dfb0953922d7031946cb"
     },
     "caid": {
       "core_vectors": 48,
