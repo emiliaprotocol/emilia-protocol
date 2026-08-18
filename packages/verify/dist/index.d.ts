@@ -80,6 +80,7 @@ export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestat
 export { verifyEvidenceRecord, verifyEvidenceRecordAgile, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
 export { SIGNATURE_AGILITY_VERSION, AGILE_SIGNATURE_ALGORITHMS, AGILITY_REASONS, ML_DSA_65_PUBLIC_KEY_BYTES, ML_DSA_65_SECRET_KEY_BYTES, ML_DSA_65_SIGNATURE_BYTES, loadDefaultAgilityMldsaBackend, signAgile, signAgileSet, verifyAgileSignature, verifyAgileSignatureSet } from './pq-signature-agility.js';
 export { REATTESTATION_VERSION, createReattestation, verifyReattestationChain } from './evidence-record.js';
+export { HYBRID_RECEIPT_PROFILE, HYBRID_RECEIPT_REQUIRED_ALGORITHMS, HYBRID_RECEIPT_REASONS, hybridReceiptSignedMaterial, hybridReceiptSignedBytes, verifyHybridReceipt, verifyReceiptOfAnyProfile, LOG_CHECKPOINT_HYBRID_PROFILE, LOG_CHECKPOINT_HYBRID_REQUIRED_ALGORITHMS, LOG_CHECKPOINT_HYBRID_REASONS, LOG_CHECKPOINT_HYBRID_MERKLE_ALG, logCheckpointSignedFields, logCheckpointHybridSignedMaterial, logCheckpointHybridSignedBytes, verifyLogCheckpointHybridProof, } from './receipt-hybrid.js';
 export { verifyCheckpointConsistency, CONSISTENCY_ALG } from './consistency.js';
 export { verifyWitnessCosignature, requireWitnessQuorum, witnessSigningDigest, WITNESS_VERSION, WITNESS_DOMAIN_TAG, } from './witness.js';
 export { verifyTimestampProof, TIMESTAMP_PROOF_ALG } from './timestamp-proof.js';

@@ -302,5 +302,90 @@ export declare function issueFromKeyBundle({ keys, action, policy, policyHash: e
 export declare function verificationMaterialFromKeyBundle(keys: AnyRecord): AnyRecord;
 export declare const assembleTrustReceipt: typeof assembleAuthorizationReceipt;
 export declare const issueTrustReceipt: typeof issueAuthorizationReceipt;
+/** The profile id, used as both `@version` and `profile.id`. */
+export declare const LOG_CHECKPOINT_HYBRID_PROFILE = "EP-LOG-CHECKPOINT-HYBRID-v1";
+/**
+ * The registered required algorithm set, in canonical order. This exact array
+ * goes INTO the signed material, so its contents and order are part of what
+ * every leg commits to.
+ */
+export declare const LOG_CHECKPOINT_HYBRID_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+/** The only Merkle algorithm this profile accepts. Legacy v1 logs are excluded. */
+export declare const LOG_CHECKPOINT_HYBRID_MERKLE_ALG = "EP-MERKLE-v2";
+/** One signature-set entry, shaped exactly like EP-SIG-AGILITY-v1's AgileSignature. */
+export interface LogCheckpointHybridSignature {
+    alg: string;
+    /** base64url */
+    sig: string;
+    key_id?: string;
+}
+export interface LogCheckpointHybridProof {
+    '@version': string;
+    profile: {
+        id: string;
+        required_algorithms: string[];
+    };
+    checkpoint: AnyRecord;
+    signatures: LogCheckpointHybridSignature[];
+}
+/**
+ * The dual-signer surface this module consumes. Structurally identical to
+ * HybridCustodySigner.signSet in lib/key-custody.ts, declared locally so the
+ * zero-dependency package does not import the app tier.
+ */
+export type HybridSignSet = (bytes: Uint8Array | Buffer, context?: Record<string, unknown>) => Promise<LogCheckpointHybridSignature[]>;
+/**
+ * Reduce a checkpoint to exactly the members this profile signs, dropping
+ * `log_signature` so a caller can pass `receipt.log_proof.checkpoint` verbatim.
+ * The member set is CLOSED: an unrecognized member is a refusal, not something
+ * quietly dropped, because a dropped member is an unsigned member a producer
+ * could smuggle.
+ *
+ * @throws on any checkpoint outside the profile. Issuer-side misuse is a
+ *   programming error; the VERIFIER's twin of this function returns null and
+ *   refuses by name instead, because it handles attacker input.
+ */
+export declare function logCheckpointSignedFields(checkpoint: AnyRecord): AnyRecord;
+/**
+ * Build the exact object both legs sign. The required algorithm set and the
+ * profile id are INSIDE it: that is the anti-stripping commitment. Exported so
+ * a verifier, a conformance vector, or an independent implementation can
+ * rebuild the bytes without reading this module's internals.
+ */
+export declare function logCheckpointHybridSignedMaterial(checkpoint: AnyRecord, requiredAlgorithms?: readonly string[]): AnyRecord;
+/** UTF-8 canonical bytes of logCheckpointHybridSignedMaterial(). */
+export declare function logCheckpointHybridSignedBytes(checkpoint: AnyRecord, requiredAlgorithms?: readonly string[]): Buffer;
+/**
+ * Mint an EP-LOG-CHECKPOINT-HYBRID-v1 proof for one checkpoint.
+ *
+ * Issuer-side misuse is a programming error, so this THROWS rather than emit a
+ * proof missing a leg — matching signAgile, createHybridReceipt, and
+ * createCommitHybridProof. In particular the PQ signer itself throws when no
+ * ML-DSA backend is available, so a half-hybrid proof is never produced.
+ */
+export declare function createLogCheckpointHybridProof({ checkpoint, signSet }: {
+    checkpoint: AnyRecord;
+    signSet: HybridSignSet;
+}): Promise<LogCheckpointHybridProof>;
+/**
+ * assembleAuthorizationReceipt() plus a detached EP-LOG-CHECKPOINT-HYBRID-v1
+ * proof over the checkpoint it produced.
+ *
+ * The receipt is produced by calling assembleAuthorizationReceipt() VERBATIM,
+ * not by a parallel assembly path, so byte identity with the v1 issuance is a
+ * property of the code rather than a promise. The proof is derived AFTERWARDS
+ * from the receipt's own checkpoint.
+ *
+ * @returns `{ receipt, hybrid_proof }` — `receipt` is an ordinary
+ *   EP-AUTHORIZATION-RECEIPT-v1 that verifies under the unchanged
+ *   verifyTrustReceipt(); `hybrid_proof` is the detached, opt-in post-quantum
+ *   leg a relying party may additionally pin.
+ */
+export declare function assembleAuthorizationReceiptHybrid({ hybridSignSet, ...args }: AnyRecord & {
+    hybridSignSet: HybridSignSet;
+}): Promise<{
+    receipt: AnyRecord;
+    hybrid_proof: LogCheckpointHybridProof;
+}>;
 export {};
 //# sourceMappingURL=index.d.ts.map

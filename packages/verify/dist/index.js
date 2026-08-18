@@ -137,6 +137,12 @@ export { SIGNATURE_AGILITY_VERSION, AGILE_SIGNATURE_ALGORITHMS, AGILITY_REASONS,
 // EP-EVIDENCE-REATTESTATION-v1: RFC 4998-style signature re-anchoring so
 // evidence signed under an aging algorithm is re-committed under a current one.
 export { REATTESTATION_VERSION, createReattestation, verifyReattestationChain } from './evidence-record.js';
+// EP-RECEIPT-HYBRID-v1 / EP-LOG-CHECKPOINT-HYBRID-v1: the relying-party half of
+// the hybrid receipt spine. Both are OPT-IN profiles requiring BOTH an Ed25519
+// and an ML-DSA-65 signature over bytes that commit to the algorithm set, so a
+// stripped leg cannot be covered up by narrowing the set. verifyReceipt() above
+// is untouched and still refuses either profile on the version marker.
+export { HYBRID_RECEIPT_PROFILE, HYBRID_RECEIPT_REQUIRED_ALGORITHMS, HYBRID_RECEIPT_REASONS, hybridReceiptSignedMaterial, hybridReceiptSignedBytes, verifyHybridReceipt, verifyReceiptOfAnyProfile, LOG_CHECKPOINT_HYBRID_PROFILE, LOG_CHECKPOINT_HYBRID_REQUIRED_ALGORITHMS, LOG_CHECKPOINT_HYBRID_REASONS, LOG_CHECKPOINT_HYBRID_MERKLE_ALG, logCheckpointSignedFields, logCheckpointHybridSignedMaterial, logCheckpointHybridSignedBytes, verifyLogCheckpointHybridProof, } from './receipt-hybrid.js';
 // RFC 6962 §2.1.2 checkpoint consistency over EP-MERKLE-v2 branch hashing.
 // Used by verifyTrustReceipt when the caller pins a prior checkpoint head
 // (opts.priorCheckpoint), and re-exported for log tooling and witnesses.

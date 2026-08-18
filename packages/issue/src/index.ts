@@ -814,3 +814,233 @@ export function verificationMaterialFromKeyBundle(keys: AnyRecord): AnyRecord {
 // §6.2 document a "Trust Receipt"; keep those wire/internal identifiers stable.
 export const assembleTrustReceipt = assembleAuthorizationReceipt;
 export const issueTrustReceipt = issueAuthorizationReceipt;
+
+// ── EP-LOG-CHECKPOINT-HYBRID-v1 (OPT-IN post-quantum leg) ────────────────────
+//
+// WHAT THIS ADDS, AND WHAT IT DELIBERATELY DOES NOT TOUCH.
+// assembleAuthorizationReceipt() above is unchanged, still synchronous, and
+// still emits a byte-identical EP-AUTHORIZATION-RECEIPT-v1 with its flat
+// Ed25519 `log_proof.checkpoint.log_signature`. Every downstream consumer
+// (packages/verify, packages/attest, packages/require-receipt, the guards, the
+// adapters, lib/commit.ts) reads that shape and none of them has to move. With
+// no hybrid signer configured, none of the code below runs at all, and the
+// receipt this module emits is byte-for-byte the receipt it emitted before this
+// section existed. That is pinned by a regression test that independently
+// recomputes the canonical bytes rather than trusting this comment.
+//
+// WHEN a deployment supplies a dual-signer, assembleAuthorizationReceiptHybrid()
+// additionally returns a DETACHED EP-LOG-CHECKPOINT-HYBRID-v1 proof over the
+// same checkpoint, carrying one signature per required algorithm. Detached, so
+// there is no wire-format change and nothing to migrate; the same arrangement
+// EP-COMMIT-HYBRID-v1 uses for the commit row (lib/commit-hybrid.ts).
+//
+// WHY THE CHECKPOINT. Of the signatures in an authorization receipt, the log
+// checkpoint is the one EP's own operator makes. Class A signoffs are WebAuthn
+// assertions from FIDO2 authenticators and Class B/C signoffs are made with the
+// APPROVER's key; EP controls neither, so neither is hybridizable by an EP code
+// change. A verified hybrid checkpoint proof therefore says the pinned log
+// operator committed to this root under BOTH algorithms. It says nothing about
+// the approver signoffs, and it does not by itself establish inclusion — the
+// inclusion path is still checked against root_hash by verifyTrustReceipt.
+//
+// ANTI-STRIPPING. The required algorithm SET is inside the signed bytes. Drop
+// the ML-DSA leg and narrow the set and the surviving Ed25519 signature no
+// longer verifies, because the bytes changed; leave the set intact and the
+// missing leg is a structural refusal. The verifier
+// (packages/verify/src/receipt-hybrid.ts, verifyLogCheckpointHybridProof)
+// rebuilds these bytes from the checkpoint IT holds and from the REGISTERED
+// set, never from anything the proof presents.
+//
+// NO NEW DEPENDENCY. @emilia-protocol/issue stays zero-dependency: this code
+// imports nothing beyond node:crypto and ../strict-json.js. The signature set
+// arrives from a caller-supplied `signSet(bytes)`, which is exactly the
+// signature of HybridCustodySigner.signSet in lib/key-custody.ts — so a
+// deployment passes its registered custody signer straight through and no key
+// handling, curve pin, or ML-DSA backend is reimplemented here.
+
+/** The profile id, used as both `@version` and `profile.id`. */
+export const LOG_CHECKPOINT_HYBRID_PROFILE = 'EP-LOG-CHECKPOINT-HYBRID-v1';
+
+/**
+ * The registered required algorithm set, in canonical order. This exact array
+ * goes INTO the signed material, so its contents and order are part of what
+ * every leg commits to.
+ */
+export const LOG_CHECKPOINT_HYBRID_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+/** The only Merkle algorithm this profile accepts. Legacy v1 logs are excluded. */
+export const LOG_CHECKPOINT_HYBRID_MERKLE_ALG = MERKLE_V2_ALG;
+
+/** The exact checkpoint members the hybrid proof signs (never `log_signature`). */
+const CHECKPOINT_SIGNED_KEYS = Object.freeze(['tree_size', 'root_hash', 'log_key_id', 'merkle_alg']);
+
+/** One signature-set entry, shaped exactly like EP-SIG-AGILITY-v1's AgileSignature. */
+export interface LogCheckpointHybridSignature {
+  alg: string;
+  /** base64url */
+  sig: string;
+  key_id?: string;
+}
+
+export interface LogCheckpointHybridProof {
+  '@version': string;
+  profile: { id: string; required_algorithms: string[] };
+  checkpoint: AnyRecord;
+  signatures: LogCheckpointHybridSignature[];
+}
+
+/**
+ * The dual-signer surface this module consumes. Structurally identical to
+ * HybridCustodySigner.signSet in lib/key-custody.ts, declared locally so the
+ * zero-dependency package does not import the app tier.
+ */
+export type HybridSignSet = (
+  bytes: Uint8Array | Buffer,
+  context?: Record<string, unknown>,
+) => Promise<LogCheckpointHybridSignature[]>;
+
+function checkpointSetMatchesRegistered(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === LOG_CHECKPOINT_HYBRID_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === LOG_CHECKPOINT_HYBRID_REQUIRED_ALGORITHMS[i]);
+}
+
+/**
+ * Reduce a checkpoint to exactly the members this profile signs, dropping
+ * `log_signature` so a caller can pass `receipt.log_proof.checkpoint` verbatim.
+ * The member set is CLOSED: an unrecognized member is a refusal, not something
+ * quietly dropped, because a dropped member is an unsigned member a producer
+ * could smuggle.
+ *
+ * @throws on any checkpoint outside the profile. Issuer-side misuse is a
+ *   programming error; the VERIFIER's twin of this function returns null and
+ *   refuses by name instead, because it handles attacker input.
+ */
+export function logCheckpointSignedFields(checkpoint: AnyRecord): AnyRecord {
+  if (!checkpoint || typeof checkpoint !== 'object' || Array.isArray(checkpoint)) {
+    throw new TypeError('logCheckpointSignedFields: checkpoint must be a plain object');
+  }
+  const fields: AnyRecord = {};
+  for (const key of Object.keys(checkpoint)) {
+    if (key === 'log_signature') continue;
+    if (!CHECKPOINT_SIGNED_KEYS.includes(key)) {
+      throw new Error(`logCheckpointSignedFields: unexpected checkpoint member "${key}"`);
+    }
+    fields[key] = checkpoint[key];
+  }
+  for (const key of CHECKPOINT_SIGNED_KEYS) {
+    if (!(key in fields)) throw new Error(`logCheckpointSignedFields: checkpoint is missing "${key}"`);
+  }
+  if (fields.merkle_alg !== LOG_CHECKPOINT_HYBRID_MERKLE_ALG) {
+    throw new Error(`logCheckpointSignedFields: EP-LOG-CHECKPOINT-HYBRID-v1 requires merkle_alg "${LOG_CHECKPOINT_HYBRID_MERKLE_ALG}"`);
+  }
+  assertCanonicalizable(fields, 'checkpoint');
+  return fields;
+}
+
+/**
+ * Build the exact object both legs sign. The required algorithm set and the
+ * profile id are INSIDE it: that is the anti-stripping commitment. Exported so
+ * a verifier, a conformance vector, or an independent implementation can
+ * rebuild the bytes without reading this module's internals.
+ */
+export function logCheckpointHybridSignedMaterial(
+  checkpoint: AnyRecord,
+  requiredAlgorithms: readonly string[] = LOG_CHECKPOINT_HYBRID_REQUIRED_ALGORITHMS,
+): AnyRecord {
+  if (!checkpointSetMatchesRegistered(requiredAlgorithms)) {
+    throw new Error('logCheckpointHybridSignedMaterial: algorithm set is not the registered EP-LOG-CHECKPOINT-HYBRID-v1 set');
+  }
+  return {
+    '@version': LOG_CHECKPOINT_HYBRID_PROFILE,
+    checkpoint: logCheckpointSignedFields(checkpoint),
+    required_algorithms: [...requiredAlgorithms],
+  };
+}
+
+/** UTF-8 canonical bytes of logCheckpointHybridSignedMaterial(). */
+export function logCheckpointHybridSignedBytes(
+  checkpoint: AnyRecord,
+  requiredAlgorithms: readonly string[] = LOG_CHECKPOINT_HYBRID_REQUIRED_ALGORITHMS,
+): Buffer {
+  return Buffer.from(
+    canonicalize(logCheckpointHybridSignedMaterial(checkpoint, requiredAlgorithms)),
+    'utf8',
+  );
+}
+
+/**
+ * Mint an EP-LOG-CHECKPOINT-HYBRID-v1 proof for one checkpoint.
+ *
+ * Issuer-side misuse is a programming error, so this THROWS rather than emit a
+ * proof missing a leg — matching signAgile, createHybridReceipt, and
+ * createCommitHybridProof. In particular the PQ signer itself throws when no
+ * ML-DSA backend is available, so a half-hybrid proof is never produced.
+ */
+export async function createLogCheckpointHybridProof({ checkpoint, signSet }: {
+  checkpoint: AnyRecord;
+  signSet: HybridSignSet;
+}): Promise<LogCheckpointHybridProof> {
+  if (typeof signSet !== 'function') {
+    throw new TypeError('createLogCheckpointHybridProof: signSet must be a dual-signer signSet(bytes) (see createHybridCustodySigner)');
+  }
+  const requiredAlgorithms = [...LOG_CHECKPOINT_HYBRID_REQUIRED_ALGORITHMS];
+  const fields = logCheckpointSignedFields(checkpoint);
+  // ONE set of bytes; every leg signs exactly these.
+  const messageBytes = logCheckpointHybridSignedBytes(fields, requiredAlgorithms);
+  const signatures = await signSet(messageBytes, {
+    profile: LOG_CHECKPOINT_HYBRID_PROFILE,
+    log_key_id: fields.log_key_id,
+    root_hash: fields.root_hash,
+  });
+  if (!Array.isArray(signatures)) {
+    throw new Error('createLogCheckpointHybridProof: signSet must return one signature per required algorithm');
+  }
+
+  // Order the emitted signatures to match the committed set, so the document
+  // reads the same way the bytes commit.
+  const byAlg = new Map(signatures.map((s) => [s?.alg, s]));
+  const ordered: LogCheckpointHybridSignature[] = [];
+  for (const alg of requiredAlgorithms) {
+    const s = byAlg.get(alg);
+    if (!s || typeof s.sig !== 'string') {
+      throw new Error(`createLogCheckpointHybridProof: signing produced no ${alg} leg`);
+    }
+    ordered.push(s.key_id === undefined ? { alg, sig: s.sig } : { alg, sig: s.sig, key_id: s.key_id });
+  }
+
+  return {
+    '@version': LOG_CHECKPOINT_HYBRID_PROFILE,
+    profile: { id: LOG_CHECKPOINT_HYBRID_PROFILE, required_algorithms: requiredAlgorithms },
+    checkpoint: fields,
+    signatures: ordered,
+  };
+}
+
+/**
+ * assembleAuthorizationReceipt() plus a detached EP-LOG-CHECKPOINT-HYBRID-v1
+ * proof over the checkpoint it produced.
+ *
+ * The receipt is produced by calling assembleAuthorizationReceipt() VERBATIM,
+ * not by a parallel assembly path, so byte identity with the v1 issuance is a
+ * property of the code rather than a promise. The proof is derived AFTERWARDS
+ * from the receipt's own checkpoint.
+ *
+ * @returns `{ receipt, hybrid_proof }` — `receipt` is an ordinary
+ *   EP-AUTHORIZATION-RECEIPT-v1 that verifies under the unchanged
+ *   verifyTrustReceipt(); `hybrid_proof` is the detached, opt-in post-quantum
+ *   leg a relying party may additionally pin.
+ */
+export async function assembleAuthorizationReceiptHybrid({ hybridSignSet, ...args }: AnyRecord & {
+  hybridSignSet: HybridSignSet;
+}): Promise<{ receipt: AnyRecord; hybrid_proof: LogCheckpointHybridProof }> {
+  if (typeof hybridSignSet !== 'function') {
+    throw new TypeError('assembleAuthorizationReceiptHybrid: hybridSignSet is required; use assembleAuthorizationReceipt for classical-only issuance');
+  }
+  const receipt = assembleAuthorizationReceipt(args);
+  const hybrid_proof = await createLogCheckpointHybridProof({
+    checkpoint: receipt.log_proof.checkpoint,
+    signSet: hybridSignSet,
+  });
+  return { receipt, hybrid_proof };
+}

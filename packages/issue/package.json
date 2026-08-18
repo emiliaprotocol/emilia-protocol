@@ -67,6 +67,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "pretest": "npm run build",
-    "test": "node --test test.js"
+    "test": "node --test test.js log-checkpoint-hybrid.test.mjs"
   }
 }

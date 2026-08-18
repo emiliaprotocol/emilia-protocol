@@ -82,4 +82,42 @@ export declare function verifyIdentity({ identity, knownGoodHash }?: {
  * @returns {{ document: object, public_key: string }}   EP-RECEIPT-v1 + the signer SPKI (b64u)
  */
 export declare function signWorkReceipt({ identity, knownGoodHash, knownGoodSubject, work, signerPrivateKey, subject, issuedAt, workName, receiptId, anchor, priorLeaves, }?: SignWorkReceiptArgs): SignWorkReceiptResult;
+import { type HybridReceiptDocument, type HybridVerificationKeys, type HybridOptions } from '../../issue/dist/hybrid-issuance.js';
+/** The attestation profile marker carried INSIDE a hybrid attestation payload. */
+export declare const ATTEST_HYBRID_VERSION = "EP-ATTEST-HYBRID-v1";
+/** The envelope profile a hybrid attestation is wrapped in. Re-exported so a
+ *  relying party can pin the marker without depending on @emilia-protocol/issue. */
+export declare const ATTEST_HYBRID_ENVELOPE = "EP-RECEIPT-HYBRID-v1";
+export interface SignWorkReceiptHybridArgs extends Omit<SignWorkReceiptArgs, 'signerPrivateKey' | 'anchor' | 'priorLeaves'> {
+    /**
+     * An EP-HYBRID-ISSUER-KEYS-v1 bundle (generateHybridIssuerKeyBundle in
+     * @emilia-protocol/issue), carrying BOTH private halves and BOTH public
+     * halves.
+     *
+     * A bundle rather than loose keys, for one substantive reason: the ML-DSA-65
+     * PUBLIC key is not derivable from its secret key (FIPS 204's secret key
+     * carries rho, K, tr, s1, s2, t0 — not t1), so a hybrid issuer that holds
+     * only secret keys cannot tell a relying party what to pin. The bundle is
+     * where both halves already live together.
+     */
+    keyBundle?: Record<string, any>;
+}
+export interface SignWorkReceiptHybridResult {
+    document: HybridReceiptDocument;
+    /** The public halves a relying party pins to verify the document. */
+    verification_keys: HybridVerificationKeys;
+}
+/**
+ * Sign a work product as an EP-RECEIPT-HYBRID-v1 (Ed25519 AND ML-DSA-65), bound
+ * to a verified identity. Fail-closed in both directions: it refuses to sign
+ * when the identity does not match the pin, and it refuses to sign when no
+ * ML-DSA backend is available rather than emit a receipt missing the PQ leg.
+ *
+ * Verify the result with verifyHybridReceipt() from @emilia-protocol/verify
+ * (packages/verify/src/receipt-hybrid.ts), passing `verification_keys`.
+ *
+ * @throws on any pin mismatch, malformed key material, or unavailable ML-DSA
+ *   backend. Issuer-side misuse is a programming error, not attacker input.
+ */
+export declare function signWorkReceiptHybrid({ identity, knownGoodHash, knownGoodSubject, work, keyBundle, subject, issuedAt, workName, receiptId, ...options }?: SignWorkReceiptHybridArgs & HybridOptions): Promise<SignWorkReceiptHybridResult>;
 //# sourceMappingURL=index.d.ts.map
