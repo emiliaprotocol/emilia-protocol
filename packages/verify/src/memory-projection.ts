@@ -14,6 +14,13 @@
  */
 import crypto from 'node:crypto';
 
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgilityOptions,
+} from './pq-signature-agility.js';
+
 type Obj = Record<string, any>;
 
 export const MEMORY_PROJECTION_RECORD_VERSION = 'MEMORY-PROJECTION-RECORD-v1';
@@ -779,3 +786,367 @@ export default Object.freeze({
   verifyMemoryProjectionRecordV1,
   memoryProjectionRecordDigest,
 });
+
+// ===========================================================================
+// EP-MEMORY-PROJECTION-PQ-COSIGNATURE-v1 -- an EP-side, DETACHED hybrid
+// co-signature over an UNCHANGED MEMORY-PROJECTION-RECORD-v1
+// ===========================================================================
+/**
+ * THE WIRE ABOVE IS NOT EP'S TO BUMP, AND IS NOT BUMPED HERE.
+ *
+ * MEMORY-PROJECTION-RECORD-v1 is the wire format of
+ * draft-ferro-schrock-memory-projection-record-00, co-authored with Andrea
+ * Ferro. Everything above this line is byte-for-byte unchanged: the closed
+ * record shape, the `proof: { alg, key_id, signature_b64u }` object, the
+ * `alg: 'Ed25519'` pin, `MEMORY_PROJECTION_RECORD_DOMAIN`, the producer, and
+ * both verifiers. No `@version` was bumped and no member was added, because a
+ * unilateral change to a co-authored wire is not a migration, it is a fork.
+ *
+ * WHAT A -01 OF THE JOINT DRAFT WOULD NEED, precisely, for a real in-record
+ * hybrid migration (this is the ask to take to the co-author, not something
+ * this file can decide):
+ *
+ *   a. `proof` becomes SET-SHAPED: `{ required_algorithms: [...],
+ *      signatures: [{ alg, sig, key_id }] }`. That changes the closed proof
+ *      key set, so it is a wire-format change.
+ *   b. The draft needs a REGISTERED value for the post-quantum `proof.alg`.
+ *      The draft today admits only `Ed25519`. This repository can trace exactly
+ *      one ML-DSA-65 algorithm identifier, and it is the COSE one (-49, RFC
+ *      9964, see packages/verify/src/aeb-mcgraw-delegation-adapter.ts); there
+ *      is no JSON/JOSE-side identifier here to reuse, so the draft must name
+ *      its own or normatively reference one.
+ *   c. `required_algorithms` must be a SIGNED top-level record member (inside
+ *      the JCS boundary that `signingBytes` covers), not a member of `proof`,
+ *      or the set is not committed and leg-stripping is only detected by
+ *      relying-party policy.
+ *   d. `@version` becomes `MEMORY-PROJECTION-RECORD-v2`, because (a) and (c)
+ *      change the shape, and the v1 verifier must refuse a v2 record on the
+ *      version marker.
+ *   e. `apertomemory-context.ts` moves in lockstep: it re-checks
+ *      `record.proof.alg !== 'Ed25519'` and the 64-byte signature length
+ *      independently of this module.
+ *
+ * WHAT THIS SECTION IS INSTEAD. A purely ADDITIVE, EP-owned, DETACHED
+ * co-signature. It travels beside a v1 record, never inside it. A producer that
+ * emits one is still emitting an ordinary v1 record that every existing
+ * ApertoMemory and EP verifier accepts unchanged; a verifier that ignores it
+ * loses nothing it had.
+ *
+ * THE HONEST LIMIT, stated before the API rather than after it. The v1 record's
+ * own signed bytes do not commit to any algorithm set, and this co-signature
+ * cannot retroactively make them. So:
+ *   - A relying party that requires the co-signature gets a real hybrid
+ *     guarantee over the exact record bytes, because both legs sign a
+ *     commitment to those bytes AND to the required set.
+ *   - A relying party that does NOT ask for it sees a valid v1 record and has
+ *     gained nothing. Requiring the PQ leg here is a PIN, not a property of the
+ *     artifact. This profile makes the pin available; it cannot make a verifier
+ *     that never asks for it.
+ *   - This is the same shape and the same limit as EP-COMMIT-HYBRID-v1
+ *     (lib/commit-hybrid.ts), and it is stated the same way on purpose.
+ *
+ * Opt-in. Not deployed, default, or certified anywhere.
+ */
+
+export const MEMORY_PROJECTION_PQ_COSIGNATURE_VERSION = 'EP-MEMORY-PROJECTION-PQ-COSIGNATURE-v1';
+export const MEMORY_PROJECTION_PQ_COSIGNATURE_DOMAIN = `${MEMORY_PROJECTION_PQ_COSIGNATURE_VERSION}\0`;
+
+/** The registered required algorithm set, in canonical order. */
+export const MEMORY_PROJECTION_PQ_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+const COSIGNATURE_KEYS = new Set([
+  '@version', 'record_version', 'projection_id', 'record_signing_bytes_sha256',
+  'record_proof_signature_b64u', 'proof',
+]);
+const COSIGNATURE_PROOF_KEYS = new Set([
+  'profile', 'required_algorithms', 'key_id', 'public_key', 'pq_key_id', 'pq_public_key', 'signatures',
+]);
+
+export interface MemoryProjectionPqCosignatureBody {
+  '@version': typeof MEMORY_PROJECTION_PQ_COSIGNATURE_VERSION;
+  record_version: typeof MEMORY_PROJECTION_RECORD_VERSION;
+  projection_id: string;
+  /** sha256 over the EXACT bytes the v1 record's own Ed25519 proof covers. */
+  record_signing_bytes_sha256: string;
+  /** The exact v1 `proof.signature_b64u` this co-signature is bound to. */
+  record_proof_signature_b64u: string;
+}
+
+export interface MemoryProjectionPqCosignature extends MemoryProjectionPqCosignatureBody {
+  proof: {
+    profile: string;
+    required_algorithms: string[];
+    key_id: string;
+    /** Ed25519 base64url SPKI DER. */
+    public_key: string;
+    pq_key_id: string;
+    /** ML-DSA-65 base64url raw 1952-byte public key. */
+    pq_public_key: string;
+    signatures: Array<{ alg: string; sig: string; key_id?: string }>;
+  };
+}
+
+export interface MemoryProjectionPqCosignaturePin {
+  key_id: string;
+  public_key: string;
+  pq_key_id: string;
+  pq_public_key: string;
+}
+
+export interface MemoryProjectionPqCosignatureSigner {
+  key_id: string;
+  private_key: crypto.KeyObject;
+  public_key: string;
+  pq_key_id: string;
+  pq_secret_key: Uint8Array | string;
+  pq_public_key: string;
+}
+
+export interface MemoryProjectionPqCosignatureResult {
+  valid: boolean;
+  checks: Record<string, boolean>;
+  errors: string[];
+}
+
+function pqCosignatureSetMatchesRegistered(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === MEMORY_PROJECTION_PQ_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === MEMORY_PROJECTION_PQ_REQUIRED_ALGORITHMS[i]);
+}
+
+/**
+ * The bytes BOTH legs sign: the domain tag, the co-signature body, and the
+ * REGISTERED algorithm set. The verifier rebuilds these from the body it
+ * re-derived and the REGISTERED set, never from what the co-signature claims.
+ */
+export function memoryProjectionPqCosignatureSigningBytes(
+  body: MemoryProjectionPqCosignatureBody,
+  requiredAlgorithms: readonly string[] = MEMORY_PROJECTION_PQ_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!pqCosignatureSetMatchesRegistered(requiredAlgorithms)) {
+    throw new Error('memoryProjectionPqCosignatureSigningBytes: algorithm set is not the registered EP-MEMORY-PROJECTION-PQ-COSIGNATURE-v1 set');
+  }
+  return Buffer.concat([
+    Buffer.from(MEMORY_PROJECTION_PQ_COSIGNATURE_DOMAIN, 'utf8'),
+    Buffer.from(canonicalize({ ...body, required_algorithms: [...requiredAlgorithms] }), 'utf8'),
+  ]);
+}
+
+/**
+ * Derive the co-signature body from an UNCHANGED v1 record. Throws a
+ * MemoryProjectionVerificationError if the record is not a valid v1 record --
+ * a co-signature is never minted over something that is not one.
+ */
+export function memoryProjectionPqCosignatureBody(record: unknown): MemoryProjectionPqCosignatureBody {
+  validateRecordShape(record);
+  const value = record as Obj;
+  return {
+    '@version': MEMORY_PROJECTION_PQ_COSIGNATURE_VERSION,
+    record_version: MEMORY_PROJECTION_RECORD_VERSION,
+    projection_id: String(value.projection_id),
+    record_signing_bytes_sha256: digestBytes(signingBytes(value)),
+    record_proof_signature_b64u: String((value.proof as Obj).signature_b64u),
+  };
+}
+
+/**
+ * Sign a detached hybrid co-signature over an unchanged v1 record. Issuer-side
+ * misuse throws; an unavailable ML-DSA backend throws rather than emitting a
+ * one-legged co-signature.
+ */
+export async function signMemoryProjectionPqCosignature(
+  record: unknown,
+  signer: MemoryProjectionPqCosignatureSigner,
+  options: AgilityOptions = {},
+): Promise<MemoryProjectionPqCosignature> {
+  if (!signer || typeof signer !== 'object'
+      || typeof signer.key_id !== 'string' || signer.key_id.length === 0
+      || typeof signer.pq_key_id !== 'string' || signer.pq_key_id.length === 0
+      || !(signer.private_key instanceof crypto.KeyObject)
+      || signer.private_key.type !== 'private'
+      || signer.private_key.asymmetricKeyType !== 'ed25519') {
+    throw new TypeError('Ed25519 + ML-DSA-65 memory-projection co-signer required');
+  }
+  const body = memoryProjectionPqCosignatureBody(record);
+  const signatures = await signAgileSet(
+    new Uint8Array(memoryProjectionPqCosignatureSigningBytes(body)),
+    [
+      { alg: 'Ed25519', private_key: signer.private_key, key_id: signer.key_id },
+      { alg: 'ML-DSA-65', private_key: signer.pq_secret_key, key_id: signer.pq_key_id },
+    ],
+    options,
+  );
+  return {
+    ...body,
+    proof: {
+      profile: MEMORY_PROJECTION_PQ_COSIGNATURE_VERSION,
+      required_algorithms: [...MEMORY_PROJECTION_PQ_REQUIRED_ALGORITHMS],
+      key_id: signer.key_id,
+      public_key: String(signer.public_key),
+      pq_key_id: signer.pq_key_id,
+      pq_public_key: String(signer.pq_public_key),
+      signatures: signatures.map((s) => ({ alg: s.alg, sig: s.sig, key_id: s.key_id })),
+    },
+  };
+}
+
+/**
+ * verifyMemoryProjectionPqCosignature -- FAIL-CLOSED. Never throws on caller
+ * input. The co-signature is checked AGAINST the record the relying party
+ * holds: the body is re-derived from that record, so a co-signature minted over
+ * a different record cannot be presented for this one.
+ *
+ * This does NOT verify the v1 record itself. Run
+ * verifyMemoryProjectionRecordV1Envelope (or the full verifier) for that; this
+ * is strictly the additional post-quantum leg.
+ */
+export async function verifyMemoryProjectionPqCosignature(
+  record: unknown,
+  cosignature: unknown,
+  pin: MemoryProjectionPqCosignaturePin | null | undefined,
+  options: AgilityOptions = {},
+): Promise<MemoryProjectionPqCosignatureResult> {
+  const checks: Record<string, boolean> = {
+    structure: true,
+    version: true,
+    algorithm_set: true,
+    legs_present: true,
+    cosigner_key_pinned: true,
+    bound_to_record: true,
+    signature_valid: true,
+  };
+  const errors: string[] = [];
+  const fail_ = (key: string, msg: string) => { checks[key] = false; errors.push(msg); };
+  const done = (): MemoryProjectionPqCosignatureResult =>
+    ({ valid: Object.values(checks).every(Boolean), checks, errors });
+
+  if (!isDataObject(cosignature)) {
+    fail_('structure', 'no co-signature presented (fail-closed)');
+    fail_('signature_valid', 'no co-signature presented (fail-closed)');
+    return done();
+  }
+  if (cosignature['@version'] !== MEMORY_PROJECTION_PQ_COSIGNATURE_VERSION) {
+    fail_('version', `unsupported version: ${String(cosignature['@version'])}`);
+  }
+  const keys = Object.keys(cosignature);
+  if (keys.length !== COSIGNATURE_KEYS.size || keys.some((k) => !COSIGNATURE_KEYS.has(k))
+      || !isDataObject(cosignature.proof)) {
+    fail_('structure', `co-signature must use the exact closed ${MEMORY_PROJECTION_PQ_COSIGNATURE_VERSION} schema`);
+    fail_('signature_valid', 'co-signature shape refused before any signature was inspected');
+    return done();
+  }
+  const proof = cosignature.proof as Obj;
+  const proofKeys = Object.keys(proof);
+  if (proofKeys.length !== COSIGNATURE_PROOF_KEYS.size
+      || proofKeys.some((k) => !COSIGNATURE_PROOF_KEYS.has(k))
+      || proof.profile !== MEMORY_PROJECTION_PQ_COSIGNATURE_VERSION) {
+    fail_('structure', 'co-signature proof must use the exact closed schema and profile marker');
+  }
+  if (!pqCosignatureSetMatchesRegistered(proof.required_algorithms)) {
+    fail_('algorithm_set',
+      `proof.required_algorithms must be exactly ${JSON.stringify([...MEMORY_PROJECTION_PQ_REQUIRED_ALGORITHMS])} (set narrowing / widening refused)`);
+  }
+
+  const signatures = Array.isArray(proof.signatures) ? proof.signatures as Obj[] : null;
+  if (!signatures || signatures.length === 0) {
+    fail_('legs_present', 'proof.signatures must carry one signature per required algorithm');
+  } else {
+    const presented = new Set<string>();
+    let malformed = false;
+    for (const s of signatures) {
+      if (!isDataObject(s) || typeof s.alg !== 'string' || typeof s.sig !== 'string') {
+        fail_('legs_present', 'each proof.signatures entry must be { alg, sig, key_id? }');
+        malformed = true;
+        break;
+      }
+      if (presented.has(s.alg)) {
+        fail_('legs_present', `duplicate signature for algorithm "${s.alg}"`);
+        malformed = true;
+        break;
+      }
+      presented.add(s.alg);
+    }
+    if (!malformed) {
+      for (const alg of MEMORY_PROJECTION_PQ_REQUIRED_ALGORITHMS) {
+        if (!presented.has(alg)) fail_('legs_present', `missing required ${alg} signature (leg stripped)`);
+      }
+      for (const alg of presented) {
+        if (!(MEMORY_PROJECTION_PQ_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) {
+          fail_('legs_present', `unexpected algorithm "${alg}" outside the registered set`);
+        }
+      }
+    }
+  }
+
+  const pinnedEd = pin && typeof pin.public_key === 'string' ? pin.public_key : '';
+  const pinnedPq = pin && typeof pin.pq_public_key === 'string' ? pin.pq_public_key : '';
+  if (!pinnedEd || !pinnedPq || typeof pin?.key_id !== 'string' || typeof pin?.pq_key_id !== 'string') {
+    fail_('cosigner_key_pinned',
+      'a pinned Ed25519 + ML-DSA-65 co-signer key pair is required (identified but not trusted)');
+  } else {
+    let edOk = false;
+    try {
+      const k = crypto.createPublicKey({
+        key: Buffer.from(pinnedEd, 'base64url'), format: 'der', type: 'spki',
+      });
+      edOk = k.asymmetricKeyType === 'ed25519';
+    } catch { edOk = false; }
+    if (!edOk) fail_('cosigner_key_pinned', 'pinned Ed25519 co-signer key is not a canonical Ed25519 SPKI');
+    if (Buffer.from(pinnedPq, 'base64url').length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+      fail_('cosigner_key_pinned', `pinned ML-DSA-65 key must be ${ML_DSA_65_PUBLIC_KEY_BYTES} raw bytes, base64url`);
+    }
+    if (proof.public_key !== pinnedEd || proof.pq_public_key !== pinnedPq
+        || proof.key_id !== pin.key_id || proof.pq_key_id !== pin.pq_key_id) {
+      fail_('cosigner_key_pinned', 'presented co-signer key material != pinned key material (key substitution)');
+    }
+  }
+
+  // Re-derive the body from the record the RELYING PARTY holds. A co-signature
+  // minted over a different record cannot be replayed onto this one, and the
+  // exact v1 proof signature is part of the binding, so a re-signed record with
+  // identical body bytes is still a different artifact.
+  let expectedBody: MemoryProjectionPqCosignatureBody | null = null;
+  try {
+    expectedBody = memoryProjectionPqCosignatureBody(record);
+  } catch {
+    expectedBody = null;
+  }
+  if (!expectedBody) {
+    fail_('bound_to_record', 'the presented record is not a valid MEMORY-PROJECTION-RECORD-v1');
+    fail_('signature_valid', 'no valid record to bind the co-signature to');
+    return done();
+  }
+  if (cosignature.record_version !== expectedBody.record_version
+      || cosignature.projection_id !== expectedBody.projection_id
+      || cosignature.record_signing_bytes_sha256 !== expectedBody.record_signing_bytes_sha256
+      || cosignature.record_proof_signature_b64u !== expectedBody.record_proof_signature_b64u) {
+    fail_('bound_to_record', 'co-signature does not bind the presented record');
+  }
+
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(
+      new Uint8Array(memoryProjectionPqCosignatureSigningBytes(
+        expectedBody, MEMORY_PROJECTION_PQ_REQUIRED_ALGORITHMS,
+      )),
+      signatures ?? [],
+      [
+        { alg: 'Ed25519', public_key: pinnedEd, key_id: pin?.key_id },
+        { alg: 'ML-DSA-65', public_key: pinnedPq, key_id: pin?.pq_key_id },
+      ],
+      {
+        ...options,
+        policy: 'hybrid_all',
+        requiredAlgorithms: [...MEMORY_PROJECTION_PQ_REQUIRED_ALGORITHMS],
+      },
+    );
+  } catch {
+    setResult = null;
+  }
+  if (setResult?.verified !== true) {
+    fail_('signature_valid',
+      `co-signature set does not verify under the pinned Ed25519 + ML-DSA-65 keys (${String(setResult?.reason ?? 'signature_set_unverified')})`);
+  }
+
+  return done();
+}
