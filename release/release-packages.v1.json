@@ -42,6 +42,7 @@
     },
     { "package": "@emilia-protocol/issue", "ecosystem": "npm", "path": "packages/issue", "workflow": "publish-issue.yml", "tag_prefix": "issue-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/langchain", "ecosystem": "npm", "path": "packages/langchain", "workflow": "publish-langchain.yml", "tag_prefix": "langchain-v", "mode": "npm_reusable" },
+    { "package": "@emilia-protocol/langgraph", "ecosystem": "npm", "path": "packages/langgraph", "workflow": "publish-langgraph.yml", "tag_prefix": "langgraph-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/mcp-guard", "ecosystem": "npm", "path": "packages/mcp-guard", "workflow": "publish-mcp-guard.yml", "tag_prefix": "mcp-guard-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/mobile", "ecosystem": "npm", "path": "packages/mobile", "workflow": "publish-mobile.yml", "tag_prefix": "mobile-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/openai-agents", "ecosystem": "npm", "path": "packages/openai-agents", "workflow": "publish-openai-agents.yml", "tag_prefix": "openai-agents-v", "mode": "npm_reusable" },

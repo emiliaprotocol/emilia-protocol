@@ -1,0 +1,34 @@
+name: Publish LangGraph Adapter
+
+# npm trusted publisher: @emilia-protocol/langgraph -> this workflow filename.
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact tag, for example langgraph-v0.1.0
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH @emilia-protocol/langgraph@<version>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  publish:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/_publish-npm-package.yml
+    with:
+      package_dir: packages/langgraph
+      package_name: '@emilia-protocol/langgraph'
+      artifact_id: langgraph
+      release_tag: ${{ inputs.release_tag }}
+      confirmation: ${{ inputs.confirmation }}
+      tag_prefix: langgraph-v
