@@ -10,6 +10,8 @@ npx @emilia-protocol/scan brain ./tools.json       # local, interactive Authorit
 npx @emilia-protocol/scan brain --sample           # generate the built-in demonstration
 
 npx @emilia-protocol/scan authority               # local config-derived authority inventory
+npx @emilia-protocol/scan source ./src             # passive source registration discovery
+npx @emilia-protocol/scan diff --baseline reviewed-source.json ./src
 npx @emilia-protocol/scan --sample                 # classify the built-in surface
 npx @emilia-protocol/scan ./tools.json             # classify your MCP tool list
 npx @emilia-protocol/scan ./openapi.json           # classify your HTTP API surface
@@ -22,6 +24,34 @@ node emilia/verify-setup.mjs --emit-handoff \
   --reviewed-manifest-digest 'sha256:<reviewed-digest>' \
   --action '<reviewed-tool-name>'                  # replace placeholders after review
 ```
+
+## Source discovery and reviewed diffs
+
+`scan source` walks a bounded non-symlink directory tree and recognizes literal
+tool registrations for MCP, LangChain, the Vercel AI SDK, Genkit, Python tool
+decorators, and Java tool annotations. Each observed registration carries its
+relative path, line, framework, parser version, confidence, exact file digest,
+and registration-line digest. Dynamic names remain explicit unresolved entries.
+
+```bash
+npx @emilia-protocol/scan source ./src --json --out source-review.json
+npx @emilia-protocol/scan diff --baseline source-review.json ./src --json
+```
+
+The source report contains a non-authorizing
+`EP-SOURCE-DISCOVERY-BASELINE-v1` proposal. After an owner reviews those exact
+bytes, `scan diff` identifies new, removed, moved, or source-changed actions,
+dynamic registrations, duplicate names, and dangerous capability composition.
+It exits `1` when review is required, so CI can block a newly observed surface.
+
+Composition findings cover untrusted input plus money movement, mutable
+destination data plus money movement, untrusted readers plus shell execution,
+and credential access plus external transmission. They may only tighten a
+classification. Static co-presence does not prove data flow, exploitability,
+runtime reachability, or complete mediation.
+
+Neither command has a `--fix` mode. They do not edit source, install a handler,
+produce a reviewed action-control manifest, or create or consume authority.
 
 ## Local Authority Map
 
