@@ -13,6 +13,11 @@ import { logger } from '@/lib/logger.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { APPROVER_ID_PATTERN } from '@/lib/webauthn';
 import { loadTenantApprovalQueue } from '@/lib/cloud/approval-queue.js';
+import {
+  authorityInboxMetrics,
+  buildAuthorityNotification,
+  projectAuthorityInboxEntry,
+} from '@/lib/cloud/authority-inbox.js';
 import { POST as createTrustReceipt } from '../../v1/trust-receipts/route.js';
 import { POST as requestSignoff } from '../../v1/signoffs/request/route.js';
 import { approvalActionHash } from '@emilia-protocol/require-receipt';
@@ -169,10 +174,21 @@ export async function GET(request: NextRequest) {
       return epProblem(503, 'approval_queue_unavailable', result.error);
     }
     const approvals = result.approvals || [];
+    const authorityInbox = approvals.map((approval) => projectAuthorityInboxEntry(approval));
+    const authorityNotifications = authorityInbox
+      .filter((entry) => entry.state === 'WAITING_FOR_APPROVER' || entry.state === 'INDETERMINATE')
+      .map((entry) => buildAuthorityNotification(
+        entry,
+        entry.state === 'INDETERMINATE' ? 'reconciliation_required' : 'state_changed',
+      ));
     return NextResponse.json({
       tenant_id: auth.tenantId,
       approvals,
       summary: summarize(approvals),
+      authority_inbox: authorityInbox,
+      authority_metrics: authorityInboxMetrics(authorityInbox),
+      authority_notifications: authorityNotifications,
+      authority_inbox_profile: 'EP-AUTHORITY-INBOX-v1',
       implementation_status: 'prototype',
     }, {
       headers: { 'cache-control': 'no-store, private' },

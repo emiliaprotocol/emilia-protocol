@@ -1,0 +1,40 @@
+.wrapper {
+  min-width: 0;
+}
+
+.main {
+  min-width: 0;
+}
+
+@media (max-width: 820px) {
+  .wrapper {
+    display: block !important;
+  }
+
+  .sidebar {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .sidebar nav {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 10px 12px !important;
+  }
+
+  .main {
+    margin-left: 0 !important;
+  }
+
+  .topBar {
+    padding: 0 16px !important;
+  }
+
+  .content {
+    padding: 20px 16px !important;
+  }
+}

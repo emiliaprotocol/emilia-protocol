@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import shellStyles from './cloud-shell.module.css';
 
 const SIDEBAR_LINKS = [
   { href: '/cloud', label: 'Dashboard', icon: '\u25A3' },
   { href: '/cloud/policies', label: 'Policies', icon: '\u25C7' },
   { href: '/cloud/signoffs', label: 'Signoffs', icon: '\u2713' },
+  { href: '/cloud/authority-inbox', label: 'Authority Inbox', icon: '\u25EB' },
   { href: '/cloud/events', label: 'Events', icon: '\u25CE' },
   { href: '/cloud/audit', label: 'Audit', icon: '\u25A1' },
   { href: '/cloud/tenants', label: 'Tenants', icon: '\u25CB' },
@@ -162,7 +164,8 @@ const s = {
 
 export default function CloudLayout({ children }: { children: React.ReactNode }): React.ReactElement {
   const pathname = usePathname();
-  const isConnectedApprovalPrototype = pathname.startsWith('/cloud/signoffs');
+  const isConnectedApprovalPrototype = pathname.startsWith('/cloud/signoffs')
+    || pathname.startsWith('/cloud/authority-inbox');
 
   const isActive = (href) => {
     if (href === '/cloud') return pathname === '/cloud';
@@ -170,9 +173,9 @@ export default function CloudLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div style={s.wrapper}>
+    <div className={shellStyles.wrapper} style={s.wrapper}>
       {/* Sidebar */}
-      <aside style={s.sidebar}>
+      <aside className={shellStyles.sidebar} style={s.sidebar}>
         <div style={s.logoArea}>
           <svg width="26" height="26" viewBox="0 0 34 34" fill="none">
             <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#clg)"/>
@@ -207,14 +210,14 @@ export default function CloudLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main area */}
-      <div style={s.main}>
-        <header style={s.topBar}>
+      <div className={shellStyles.main} style={s.main}>
+        <header className={shellStyles.topBar} style={s.topBar}>
           <span style={s.breadcrumb}>
             EMILIA Gate Cloud {pathname !== '/cloud' ? ` / ${pathname.replace('/cloud/', '').split('/')[0]}` : ''}
           </span>
           <span style={s.envBadge}>{isConnectedApprovalPrototype ? 'prototype' : 'demo data'}</span>
         </header>
-        <div style={s.content}>
+        <div className={shellStyles.content} style={s.content}>
           <div style={s.demoBanner}>
             {isConnectedApprovalPrototype
               ? 'Connected implementation prototype. Tenant data loads only after an in-memory Cloud key is authenticated; this is not a production-service claim.'

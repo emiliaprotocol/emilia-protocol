@@ -128,6 +128,14 @@ describe('Cloud approval endpoint', () => {
     expect(await response.json()).toMatchObject({
       tenant_id: TENANT_ID,
       summary: { pending: 1, approved: 0, rejected: 0, expired: 0, consumed: 0 },
+      authority_inbox: [{ receipt_id: RECEIPT_ID, state: 'WAITING_FOR_APPROVER' }],
+      authority_metrics: { total: 1, indeterminate_count: 0 },
+      authority_notifications: [{
+        receipt_id: RECEIPT_ID,
+        state: 'WAITING_FOR_APPROVER',
+        delivery_state: 'NOT_ATTEMPTED',
+        authorizes: false,
+      }],
     });
   });
 
