@@ -290,6 +290,8 @@ This consult enforces the OPERATOR'S DECLARED FIPS posture (`EP_FIPS_REQUIRED=tr
 
 The software ML-DSA-65 leg still does not satisfy `kms`/`hsm` custody requirements. `assertProductionKeyCustody()` (`lib/key-custody.ts`) only ever recognizes `EP_KEY_CUSTODY_MODE=kms` or `hsm` as satisfying government/production custody, and it evaluates the classical signer's mode only -- there is no ML-DSA custody mode for it to bless, because EP's ML-DSA-65 backend is software-held (`@noble/post-quantum`, pure JavaScript) at every custody mode, including `kms` and `hsm`. A hybrid proof passing the FIPS operation-policy consult is a statement about the declared posture permitting the operation to proceed; it is never a statement that the PQ leg's key custody meets the classical leg's KMS/HSM bar. Those are two different boundaries and this consult only speaks to the first.
 
+Neither of those two boundaries closes by writing more code. What it would actually take to close them -- the deployment prerequisites for running the post-quantum leg at all, and what CMVP validation of EP's cryptographic boundary would require, cost, and take -- is scoped in [`pq-deployment-and-validation-path.md`](./pq-deployment-and-validation-path.md). Read it before quoting a timeline or a price to anyone.
+
 ### Same pattern, other program partitions (not wired here)
 
 The following call sites are queued to gain the identical opt-in consult, same config surface, same before-the-signing-effect placement, same no-posture-no-change regression discipline. They are listed here as a map of the intended rollout, not implemented in this document's change:
