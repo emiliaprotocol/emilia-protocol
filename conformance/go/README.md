@@ -56,7 +56,10 @@ Read this before describing any of it outside the repository.
 - This module is not registered in `conformance/suites.mjs` and does not change
   the published suite or vector totals, exactly as `conformance/pq-agility` and
   `conformance/hybrid-receipts` do not.
-- Not wired into CI. `.github/workflows/go-verify.yml` runs `go test ./...`
-  inside `packages/go-verify`, which does not cross a module boundary, so the
-  backend-absent half runs in CI today and this live-backend half is run
-  locally.
+- Both halves run in CI. `.github/workflows/go-verify.yml` runs
+  `go test ./...` inside `packages/go-verify` (the backend-absent half); it
+  does not cross a module boundary, so this module is run separately by the
+  `conformance` job in `.github/workflows/ci.yml`, step "PQ conformance (Go
+  lane, live ML-DSA-65 backend via CIRCL)", on every push and pull request to
+  `main`. The publish path is unaffected: `publish-go-verify.yml` diffs
+  `packages/go-verify` against the module proxy and never sees this tree.

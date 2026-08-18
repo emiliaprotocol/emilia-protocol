@@ -847,6 +847,42 @@ jobs:
         run: python3 conformance/runners/run_invariants.py
       - name: TLA+-invariant conformance (Go lane — faithful state-machine port)
         run: go run conformance/runners/run_invariants.go
+      # Hybrid post-quantum ports: EP-SIG-AGILITY-v1, EP-HYBRID-v1,
+      # EP-RECEIPT-HYBRID-v1.
+      # Both suites were committed and green locally while running in NO
+      # runner. That is the exact failure mode scripts/run-package-suites.mjs
+      # exists to prevent, so they are wired here, in the job that runs
+      # unconditionally on every push and pull request to main, rather than in
+      # go-verify.yml (path-filtered to packages/go-verify/**, so a change to a
+      # vector or to the port itself would not have triggered it).
+      #
+      # conformance/go is its OWN Go module (go.mod + go.sum, backend
+      # github.com/cloudflare/circl). `go test ./...` inside packages/go-verify
+      # does not cross a module boundary, which is why this code was never
+      # reached. The publish path is deliberately untouched:
+      # publish-go-verify.yml diffs packages/go-verify against the bytes the Go
+      # module proxy serves, and conformance/go is outside that tree.
+      - name: PQ conformance (Go lane, live ML-DSA-65 backend via CIRCL)
+        working-directory: conformance/go
+        run: |
+          go vet ./...
+          go test -count=1 ./...
+      # dilithium-py is a pure-Python FIPS 204 ML-DSA implementation with no
+      # transitive dependencies, hash-pinned exactly like every other Python
+      # entry here (uv pip compile --generate-hashes from the .in file). It
+      # makes the ML-DSA-65 leg CRYPTOGRAPHICALLY LIVE in this job. Without it
+      # the suite still passes fail-closed, with every post-quantum leg
+      # refusing pq_backend_unavailable and every structural control still
+      # enforced; the runner prints the mode it ran in, so a green log cannot
+      # be mistaken for one that exercised the lattice. cryptography's own
+      # ML-DSA needs an OpenSSL 3.5+ build that the pinned 46.0.6 wheel does
+      # not expose, so it is not relied on here.
+      - name: Install the hash-pinned ML-DSA backend and test runner
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/pq-conformance.txt
+      - name: PQ conformance (Python lane, pytest port)
+        run: python3 -m pytest conformance/py/test_ep_pq_verify.py
+      - name: PQ conformance (Python lane, vector runner)
+        run: python3 conformance/py/run_pq.py
 
   # ── Job 11c: Pinned external Rust implementation evidence ────────
   # Rebuilds an externally authored verifier from an immutable source tree and
