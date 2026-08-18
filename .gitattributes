@@ -554,6 +554,7 @@ packages/gate/proposal-to-effect-postgres.test.js linguist-generated=true
 packages/gate/proposal-to-effect-status-head-store.test.js linguist-generated=true
 packages/gate/proposal-to-effect-status.test.js linguist-generated=true
 packages/gate/proposal-to-effect.test.js linguist-generated=true
+packages/gate/protected-action-registry.test.js linguist-generated=true
 packages/gate/provider-entry.test.js linguist-generated=true
 packages/gate/receipt-program-fips.test.js linguist-generated=true
 packages/gate/receipt-program-v2.test.js linguist-generated=true
