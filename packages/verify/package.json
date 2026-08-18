@@ -23,6 +23,10 @@
       "import": "./federation.js",
       "types": "./dist/federation.d.ts"
     },
+    "./revocation": {
+      "types": "./dist/revocation.d.ts",
+      "import": "./revocation.js"
+    },
     "./pq-hybrid": {
       "types": "./dist/pq-hybrid.d.ts",
       "import": "./pq-hybrid.js"
