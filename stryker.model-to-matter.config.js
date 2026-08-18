@@ -27,6 +27,8 @@ export default {
     'tests/model-to-matter.test.{js,ts}',
     'tests/model-to-matter-security-branches.test.{js,ts}',
     'tests/model-to-matter-mutation-oracles.test.{js,ts}',
+    'tests/model-to-matter-hybrid.test.{js,ts}',
+    'tests/model-to-matter-physical-state.test.{js,ts}',
   ],
   thresholds: {
     // See the status file for the score produced by the current source and
