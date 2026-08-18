@@ -148,6 +148,22 @@ acknowledgment through the call site.
 | Ed25519 (classical) | AWS KMS and GCP Cloud KMS do not sign Ed25519 at all (`lib/custody-signers.ts:11-16`). The real options are HashiCorp Vault Transit or a PKCS#11 HSM (`lib/custody-signers.ts:6-9`). | Adapters exist (`vaultTransitSigner`, `hsmEd25519Signer`, `externalSigner`); no EP deployment uses one. |
 | ML-DSA-65 (post-quantum) | There is no KMS or HSM ML-DSA-65 signing path available to EP (`lib/key-custody.ts:138-143`, `lib/custody-signers.ts:25-31`). `createPqCustodySigner()` defaults `custody` to the literal `'software'` and treats any other value as an operator attestation (`lib/key-custody.ts:248,260-262`). The secret key lives in process memory. | Software only. |
 
+**The off-process seam now exists, and it is not the same thing as a provider.**
+`lib/pq-custody-external.ts` (`EP-PQ-CUSTODY-EXTERNAL-v1`, landed 2026-08-18)
+is the provider-agnostic contract and conformance harness for an ML-DSA-65 leg
+signed outside the process. It deliberately names no vendor, because the
+question of which KMS or HSM can sign ML-DSA-65 is open and the module says so
+(`lib/pq-custody-external.ts:15-21`). What it changes is the size of the future
+job: wiring a named backend becomes supplying one `sign` callback that passes
+`runExternalPqCustodyConformance()`, rather than a redesign. What it does not
+change is the honest boundary. The `custody` label is the operator's
+declaration, `verified_by_code` is always false, and a remote endpoint over HTTP
+is indistinguishable from a hardware-backed one at that boundary
+(`lib/pq-custody-external.ts:23-31`). Verify-on-sign proves the remote returned
+a signature that verifies under the pinned public key; it does not prove the key
+was generated in or confined to the declared boundary
+(`lib/pq-custody-external.ts:63-67`).
+
 Two further facts that are easy to miss:
 
 - `assertProductionKeyCustody()` was **deliberately not extended** to bless the
@@ -275,7 +291,8 @@ entire argument for `dual` sooner rather than `required` later.
 | DB storage able to hold a 4412-character signature | DONE, and verified against live prod (1.5) |
 | Detached commit proof needing no migration | DONE (`lib/commit-hybrid.ts:23-26`) |
 | Boot registration of a hybrid custody signer in EP's own application | **NOT DONE.** No non-test caller of `registerCustodySigner` exists. |
-| ML-DSA-65 secret-key provisioning, rotation, and public-key publication | **NOT DONE.** No env surface, no adapter, no ceremony. |
+| Off-process ML-DSA-65 signing contract and conformance harness | DONE (`lib/pq-custody-external.ts`, `EP-PQ-CUSTODY-EXTERNAL-v1`). No vendor adapter exists yet, by design. |
+| ML-DSA-65 key provisioning, rotation, and public-key publication | **NOT DONE.** For the software path there is no env surface and no ceremony. For the external path the contract exists but no backend is wired to it. |
 | Ed25519 custody actually behind Vault Transit or a PKCS#11 HSM | **NOT DONE.** Adapters exist; `EP_KEY_CUSTODY_MODE` ships as `local-dev`. |
 | An acknowledgment surface letting `EP_FIPS_REQUIRED=true` coexist with the PQ leg | **NOT DONE** (`docs/deployment/FIPS-MODE.md:283`). |
 | Browser/edge verification of the PQ leg | **NOT POSSIBLE TODAY.** Web Crypto has no ML-DSA-65. |
@@ -548,7 +565,7 @@ Two of them are ours. Four are not.
 | **Off by default.** Every hybrid profile is opt-in. | EP code, then EP operations | A boot path that calls `registerCustodySigner(hybridSigner({...}))`. The default then resolves itself: `resolveHybridIssuancePosture()` returns `dual` once a dual signer is registered and custody permits its PQ leg. Both sit on top of unfinished key provisioning (1.4). | Off everywhere. With no signer registered the custody-resolved default is `disabled` with reason `hybrid_signer_absent`, and no non-test caller of `registerCustodySigner` exists in the tree. |
 | **Not deployed.** None is a deployment default. | EP operations, then a vendor | Everything in the NOT DONE half of 1.8. For a non-gov-strict environment no external dependency blocks it. For EP's own production, hardware ML-DSA custody does block it (1.2), so this clause and the custody clause below close together, not separately. | Not deployed anywhere, including EP's own reference deployment. `EP_KEY_CUSTODY_MODE` ships as `local-dev` (`.env.example:70`). |
 | **Not FIPS validated.** | A NVLAP-accredited lab and the CMVP, or the vendor of an underlying validated module | See section 3. Either an upstream provider vendor lands ML-DSA inside a validated module boundary EP can call, or EP buys its own validation. | No EP package, receipt, or deployment carries a CMVP certificate (`packages/verify/src/fips-mode.ts:12-13`). A sweep of 31 security policies covering essentially every OpenSSL-derived module on the Active FIPS 140-3 list found zero occurrences of ML-DSA (`docs/deployment/FIPS-MODE.md:109`, negative claim, scope stated, as of 2026-08-16). |
-| **ML-DSA signer software-held.** Does not satisfy kms/hsm custody. | A vendor (cloud KMS or HSM), then EP code | A KMS or HSM that actually signs ML-DSA-65, wrapped with `createPqCustodySigner()` and labelled with its real custody value instead of `'software'` (`lib/key-custody.ts:248`). The seam is already shaped to take it; `lib/custody-signers.ts:30-31` says so explicitly. | **PENDING SWEEP.** A dedicated sweep of KMS and HSM ML-DSA availability is in flight; this cell is not to be filled from memory. The repository's own recorded position as of this writing is that no such path exists for EP (`lib/key-custody.ts:138-143`). |
+| **ML-DSA signer software-held.** Does not satisfy kms/hsm custody. | A vendor (cloud KMS or HSM), then a thin EP adapter | A backend that actually signs ML-DSA-65. EP's side is now mostly pre-built: `EP-PQ-CUSTODY-EXTERNAL-v1` (`lib/pq-custody-external.ts`) is the provider-agnostic contract plus a conformance harness an adapter must pass, and `createPqCustodySigner()` already takes a non-`'software'` custody label as an operator attestation (`lib/key-custody.ts:248`). Note the residual limit: the custody label is declared, never verified by code (`lib/pq-custody-external.ts:23-31`). | **PENDING SWEEP.** A dedicated sweep of KMS and HSM ML-DSA availability is in flight; this cell is not to be filled from memory. The repository's own recorded position as of this writing is that no such path exists for EP (`lib/key-custody.ts:138-143`). |
 | **WebAuthn outside.** Quorum signoffs, Class A approver signatures, agent adoption, release locks. | A standards body (FIDO Alliance / W3C), then browser and authenticator vendors | PQC support landing in the WebAuthn/FIDO2 stack and shipping in real authenticators. EP does not choose what a hardware authenticator signs, so there is no EP code change that closes this (`docs/protocol/pq-hybrid-program.md:277`; the underlying ES256/P-256 surfaces are catalogued at `docs/protocol/pq-hybrid-program.md:24-25`). | **PENDING SWEEP.** A dedicated sweep of WebAuthn PQC status is in flight; this cell is not to be filled from memory. |
 | **External / vendor signatures outside.** | The foreign signer, per ecosystem | The counterparty adopting a post-quantum algorithm on their side. EP's job is then to verify it, not to add a leg. Precedent exists: `aeb-mcgraw-delegation-adapter.ts` already verifies a foreign COSE_Sign1 signature under `cose-ml-dsa` for draft-mcgraw-httpapi-agent-budget-03 (`packages/verify/src/aeb-mcgraw-delegation-adapter.ts:3,30,36`), so one external ecosystem has already moved and EP's adapter already speaks it. | Mixed and permanently partial. RFC 3161 TSA tokens (RSA/ECDSA per CMS), RFC 9711 EAT platform attestation, Apple App Attest and Google Play Integrity, GitHub App RS256 JWTs, Procore's evidence format, and IdP-negotiated JWT sessions are all outside EP's control by construction (`docs/protocol/pq-hybrid-program.md:163-170`). |
 
