@@ -239,6 +239,44 @@ describe('Release Lock service public contract', () => {
     }));
   });
 
+  it('fails closed when RP policy is absent or an enrolled credential belongs elsewhere', async () => {
+    const registration = service({
+      rpc: vi.fn(async () => ({
+        data: { session_expires_at: '2030-01-01T01:00:00.000Z' },
+        error: null,
+      })),
+      rpConfigProvider: () => ({}),
+    });
+    await expect(registration.beginRegistration({
+      rawSessionToken: SESSION,
+      lockId: LOCK_ID,
+    })).rejects.toMatchObject({
+      status: 503,
+      code: 'webauthn_policy_unconfigured',
+    });
+
+    const actionCheck = service({
+      rpc: vi.fn(async () => ({
+        data: {
+          credential: {
+            credential_id: 'credential_123456',
+            rp_id: 'other.example',
+            origin: 'https://other.example',
+          },
+        },
+        error: null,
+      })),
+    });
+    await expect(actionCheck.actionCheckOptions({
+      rawSessionToken: SESSION,
+      lockId: LOCK_ID,
+      round: 'CO_ACCEPTED',
+    })).rejects.toMatchObject({
+      status: 409,
+      code: 'webauthn_policy_mismatch',
+    });
+  });
+
   it('refuses an effect request attached to the non-effect approval round', async () => {
     const rpc = vi.fn(async (name) => {
       if (name === 'release_lock_load_action_challenge') {
