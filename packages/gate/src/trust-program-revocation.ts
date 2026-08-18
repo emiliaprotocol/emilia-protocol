@@ -1,11 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Public experimental Trust Program profile for EP-REVOCATION-v1.
+ * Public experimental Trust Program profile for EP-REVOCATION-v1 (and,
+ * additively, EP-REVOCATION-v2).
  *
  * The portable statement is untrusted input. The relying party derives the
  * complete commit target from its own exact execution authorization binding,
  * pinned receipt context, and pinned program version before invoking the
  * published @emilia-protocol/verify verifier.
+ *
+ * EP-REVOCATION-v2 ADOPTION. packages/verify/src/revocation.ts already ships
+ * a hybrid (Ed25519 + ML-DSA-65) v2 statement and a version router
+ * (verifyRevocationStatement) that accepts either version and gives v1
+ * statements the identical v1 verdict. This module ADOPTS that router through
+ * a SEPARATE async entry point -- verifyTrustProgramRevocationStatement /
+ * applyTrustProgramRevocationStatement -- so a relying party that pins BOTH
+ * halves for a revoker (public_key AND pq_public_key) accepts a hybrid
+ * statement from that revoker. The existing verifyTrustProgramRevocation /
+ * applyTrustProgramRevocation stay v1-only and byte-identical: no signature of
+ * an existing sync function changes, per EP-REVOCATION-v2's own migration
+ * template ("V1 COMPATIBILITY", packages/verify/src/revocation.ts).
  */
 import { verifyRevocation as verifyPortableRevocation } from '@emilia-protocol/verify';
 
@@ -54,6 +67,19 @@ const PROOF_KEYS = new Set([
 ]);
 const PIN_KEYS = new Set(['public_key', 'key_id']);
 const PIN_KEYS_WITHOUT_ID = new Set(['public_key']);
+
+// EP-REVOCATION-v2 proof shape, mirrored verbatim from
+// packages/verify/src/revocation.ts's PROOF_V2_KEYS (never redefined there,
+// only referenced here for a defensive structural pre-check; the router does
+// the authoritative version-specific validation).
+const PROOF_V2_KEYS = new Set([
+  'profile', 'required_algorithms', 'revoker_key_id', 'public_key',
+  'pq_key_id', 'pq_public_key', 'signatures',
+]);
+// A revoker pin usable by the any-version statement path: public_key is
+// always required (v1 and v2 both need it); pq_public_key/pq_key_id are
+// present only for a revoker the relying party has ALSO pinned for v2.
+const REVOKER_PIN_KEYS_ANY_VERSION = new Set(['public_key', 'key_id', 'pq_public_key', 'pq_key_id']);
 
 type DataRecord = Record<string, any>;
 
@@ -112,6 +138,27 @@ export interface TrustProgramRevocationVerificationInput
   now: number | string | Date;
 }
 
+/**
+ * A revoker pin usable by the any-version (v1-or-v2) statement path.
+ * public_key is the Ed25519 half, required for both statement versions.
+ * pq_public_key (ML-DSA-65, raw bytes, base64url) is required ONLY to accept
+ * an EP-REVOCATION-v2 statement from this revoker; a pin that omits it still
+ * verifies a v1 statement from the same revoker_id exactly as before.
+ */
+export interface TrustProgramRevokerKeyPin {
+  public_key: string;
+  key_id?: string;
+  pq_public_key?: string;
+  pq_key_id?: string;
+}
+
+export interface TrustProgramRevocationStatementVerificationInput
+  extends TrustProgramRevocationDerivationInput {
+  statement: unknown;
+  revokerKeys: Record<string, TrustProgramRevokerKeyPin>;
+  now: number | string | Date;
+}
+
 export interface TrustProgramRevocationKernel {
   status(instanceId: string): Promise<unknown>;
   invalidate(input: {
@@ -123,6 +170,12 @@ export interface TrustProgramRevocationKernel {
 
 export interface TrustProgramRevocationApplyInput
   extends TrustProgramRevocationVerificationInput {
+  expectedRevision: number;
+  kernel: TrustProgramRevocationKernel;
+}
+
+export interface TrustProgramRevocationApplyStatementInput
+  extends TrustProgramRevocationStatementVerificationInput {
   expectedRevision: number;
   kernel: TrustProgramRevocationKernel;
 }
@@ -376,6 +429,119 @@ function snapshotDecisionTime(value: unknown): number | string {
   throw new TypeError('pinned verifier decision time required');
 }
 
+/**
+ * Structural pre-check for the any-version (v1-or-v2) statement path. Accepts
+ * EITHER the v1 proof shape (PROOF_KEYS) or the v2 proof shape (PROOF_V2_KEYS)
+ * -- never a partial match of either -- so a statement that is not cleanly one
+ * shape or the other refuses here, before the router is even consulted. The
+ * v1-only validStatementStructure() above is UNTOUCHED and keeps accepting
+ * exactly what it accepted before; this is a separate function so the
+ * unchanged sync path can never regress by sharing logic with the new one.
+ */
+function validRevocationStatementStructureAnyVersion(statement: unknown): boolean {
+  try {
+    if (!exactKeys(statement, STATEMENT_KEYS)) return false;
+    assertNoPrototypeNamedFields(statement);
+    const proof = dataValue(statement, 'proof');
+    return exactKeys(proof, PROOF_KEYS) || exactKeys(proof, PROOF_V2_KEYS);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pinned revoker registry for the any-version path. Each entry ALWAYS carries
+ * public_key (the Ed25519 half); pq_public_key/pq_key_id are present only when
+ * the relying party has additionally pinned that revoker for EP-REVOCATION-v2.
+ * A v2 statement from a revoker pinned WITHOUT pq_public_key refuses in the
+ * router itself (missing pin for that leg) -- this snapshot never manufactures
+ * a PQ pin the caller did not supply.
+ */
+function snapshotRevokerKeysAnyVersion(value: unknown): Record<string, TrustProgramRevokerKeyPin> {
+  if (!isDataRecord(value)) throw new TypeError('pinned revoker key registry required');
+  const names = Reflect.ownKeys(value);
+  if (names.length === 0 || names.length > 1024) {
+    throw new TypeError('pinned revoker key registry required');
+  }
+  const snapshot: Record<string, TrustProgramRevokerKeyPin> = Object.create(null);
+  for (const name of names) {
+    if (typeof name !== 'string' || !validContextString(name)) {
+      throw new TypeError('pinned revoker identifier is malformed');
+    }
+    const pin = dataValue(value, name);
+    if (!isDataRecord(pin) || Reflect.ownKeys(pin).length === 0
+        || !Reflect.ownKeys(pin).every((key) => typeof key === 'string' && REVOKER_PIN_KEYS_ANY_VERSION.has(key))) {
+      throw new TypeError('pinned revoker key entry is malformed');
+    }
+    const publicKey = Object.hasOwn(pin, 'public_key') ? dataValue(pin, 'public_key') : undefined;
+    const keyId = Object.hasOwn(pin, 'key_id') ? dataValue(pin, 'key_id') : undefined;
+    const pqPublicKey = Object.hasOwn(pin, 'pq_public_key') ? dataValue(pin, 'pq_public_key') : undefined;
+    const pqKeyId = Object.hasOwn(pin, 'pq_key_id') ? dataValue(pin, 'pq_key_id') : undefined;
+    if (typeof publicKey !== 'string' || publicKey.length === 0
+        || (keyId !== undefined && (typeof keyId !== 'string' || keyId.length === 0))
+        || (pqPublicKey !== undefined && (typeof pqPublicKey !== 'string' || pqPublicKey.length === 0))
+        || (pqKeyId !== undefined && (typeof pqKeyId !== 'string' || pqKeyId.length === 0))) {
+      throw new TypeError('pinned revoker key entry is malformed');
+    }
+    const entry: TrustProgramRevokerKeyPin = { public_key: publicKey };
+    if (keyId !== undefined) entry.key_id = keyId;
+    if (pqPublicKey !== undefined) entry.pq_public_key = pqPublicKey;
+    if (pqKeyId !== undefined) entry.pq_key_id = pqKeyId;
+    snapshot[name] = entry;
+  }
+  return deepFreeze(snapshot) as Record<string, TrustProgramRevokerKeyPin>;
+}
+
+// ---------------------------------------------------------------------------
+// EP-REVOCATION-v2 router resolution. Not re-exported from the
+// @emilia-protocol/verify package root today (only v1's
+// verifyRevocation/isRevoked/REVOCATION_VERSION are, and there is no
+// "./revocation" subpath in the package's exports map), so this mirrors the
+// dynamic-import-with-workspace-fallback idiom this same package already uses
+// for the identical reason (trust-program-adapters.ts's
+// verifyQuorumDefault/verifyAuthorizationChainDefault): try the package
+// subpath first (picks up a future exports-map addition with no code change
+// here), fall back to the workspace-relative built file, which is exactly how
+// lib/revocation/revocation.ts composes the same router today. Resolution
+// failure is a THROW, never a silent fallback to the v1-only verifier -- the
+// caller turns it into a named fail-closed refusal.
+// ---------------------------------------------------------------------------
+const REVOCATION_ROUTER_PACKAGE = '@emilia-protocol/verify/revocation.js';
+const LOCAL_REVOCATION_ROUTER_PACKAGE = '../../verify/revocation.js';
+
+type RevocationStatementVerdict = { valid: boolean; checks: Record<string, boolean>; errors: string[] };
+type RevocationStatementVerifier = (
+  target: unknown, statement: unknown, opts: unknown,
+) => Promise<RevocationStatementVerdict>;
+
+let _revocationStatementVerifier: RevocationStatementVerifier | null = null;
+
+async function resolveRevocationStatementVerifier(): Promise<RevocationStatementVerifier> {
+  if (_revocationStatementVerifier) return _revocationStatementVerifier;
+  let mod: any;
+  try {
+    mod = await import(REVOCATION_ROUTER_PACKAGE);
+  } catch {
+    // Resolution-failure shape for an unlisted package subpath is NOT uniform
+    // across runtimes: plain Node throws ERR_PACKAGE_PATH_NOT_EXPORTED, but a
+    // bundler-backed loader (as used by this repo's own test runner) can throw
+    // a plain Error with no .code at all. Rather than pattern-match brittle
+    // error shapes, ANY primary-resolution failure falls back to the
+    // workspace-relative path; only a failure of THAT is surfaced.
+    mod = await import(LOCAL_REVOCATION_ROUTER_PACKAGE);
+  }
+  if (typeof mod?.verifyRevocationStatement !== 'function') {
+    throw new Error('EP-REVOCATION-v2 router (verifyRevocationStatement) unavailable');
+  }
+  _revocationStatementVerifier = mod.verifyRevocationStatement as RevocationStatementVerifier;
+  return _revocationStatementVerifier;
+}
+
+/** Test-only hook: force re-resolution (e.g. after swapping module mocks). */
+export function _resetRevocationStatementVerifierCacheForTests(): void {
+  _revocationStatementVerifier = null;
+}
+
 function verificationRefusal(
   check: 'target_derived' | 'statement_structure' | 'pinned_verifier_inputs'
     | 'portable_verifier_completed',
@@ -499,7 +665,137 @@ export function verifyTrustProgramRevocation(input: TrustProgramRevocationVerifi
   }
 }
 
-function applyRefusal(reason: string, verification?: ReturnType<typeof verifyTrustProgramRevocation>) {
+/**
+ * Verify a presented statement of EITHER EP-REVOCATION-v1 or -v2 against a
+ * target independently derived from relying-party state, via the published
+ * v2 router. Identical target derivation and input handling to
+ * verifyTrustProgramRevocation above; only the statement verifier differs.
+ */
+async function verifyTrustProgramRevocationStatementInternal(
+  input: TrustProgramRevocationStatementVerificationInput,
+) {
+  if (!exactKeys(input, VERIFICATION_INPUT_KEYS)) {
+    return verificationRefusal('target_derived', 'closed Trust Program revocation verification input required');
+  }
+
+  const derivationInput = {
+    authorizationBinding: dataValue(input, 'authorizationBinding'),
+    programVersion: dataValue(input, 'programVersion'),
+    receiptContext: dataValue(input, 'receiptContext'),
+  } as TrustProgramRevocationDerivationInput;
+  let targetObject: Readonly<TrustProgramRevocationTargetObject>;
+  let target: Readonly<TrustProgramRevocationTarget>;
+  try {
+    targetObject = deriveTrustProgramRevocationTargetObject(derivationInput);
+    target = deriveTrustProgramRevocationTarget(derivationInput);
+  } catch (error) {
+    return verificationRefusal(
+      'target_derived',
+      error instanceof Error ? error.message : 'Trust Program revocation target derivation failed',
+    );
+  }
+
+  const statement = dataValue(input, 'statement');
+  if (!validRevocationStatementStructureAnyVersion(statement)) {
+    return verificationRefusal(
+      'statement_structure',
+      'revocation statement and proof must be a closed plain-data EP-REVOCATION-v1 or -v2 object',
+      target,
+      targetObject,
+    );
+  }
+
+  let revokerKeys: Record<string, TrustProgramRevokerKeyPin>;
+  let now: number | string;
+  try {
+    revokerKeys = snapshotRevokerKeysAnyVersion(dataValue(input, 'revokerKeys'));
+    now = snapshotDecisionTime(dataValue(input, 'now'));
+  } catch (error) {
+    return verificationRefusal(
+      'pinned_verifier_inputs',
+      error instanceof Error ? error.message : 'pinned verifier inputs are malformed',
+      target,
+      targetObject,
+    );
+  }
+
+  let verifyStatement: RevocationStatementVerifier;
+  try {
+    verifyStatement = await resolveRevocationStatementVerifier();
+  } catch {
+    return verificationRefusal(
+      'portable_verifier_completed',
+      'EP-REVOCATION-v2 router unavailable; refused fail-closed',
+      target,
+      targetObject,
+    );
+  }
+
+  try {
+    const result = await verifyStatement(target, statement, { revokerKeys, now });
+    if (!isDataRecord(result) || typeof result.valid !== 'boolean'
+        || !isDataRecord(result.checks) || !Array.isArray(result.errors)
+        || result.errors.some((entry: unknown) => typeof entry !== 'string')) {
+      return verificationRefusal(
+        'portable_verifier_completed',
+        'portable revocation verifier returned a malformed result',
+        target,
+        targetObject,
+      );
+    }
+    return {
+      valid: result.valid === true,
+      checks: {
+        target_derived: true,
+        statement_structure: true,
+        pinned_verifier_inputs: true,
+        portable_verifier_completed: true,
+        ...result.checks,
+      },
+      errors: [...result.errors],
+      target,
+      target_object: targetObject,
+    };
+  } catch {
+    return verificationRefusal(
+      'portable_verifier_completed',
+      'portable revocation verifier threw; refused fail-closed',
+      target,
+      targetObject,
+    );
+  }
+}
+
+/**
+ * EP-REVOCATION-v1-or-v2 verification. ADOPTS the published EP-REVOCATION-v2
+ * router (verifyRevocationStatement) so a relying party that has pinned BOTH
+ * halves for a revoker (public_key AND pq_public_key) accepts a hybrid
+ * statement from that revoker, while a revoker pinned with only public_key
+ * still verifies a v1 statement from the same revoker_id exactly as
+ * verifyTrustProgramRevocation does.
+ *
+ * SEPARATE ASYNC ENTRY POINT, not a signature change to the sync
+ * verifyTrustProgramRevocation above: that function keeps composing the
+ * v1-only synchronous verifier, byte-for-byte unchanged, per EP-REVOCATION-v2's
+ * own migration template ("V1 COMPATIBILITY",
+ * packages/verify/src/revocation.ts) -- ML-DSA verification is inherently
+ * async, so v2 acceptance is additive, never a change to an existing sync
+ * caller's contract.
+ */
+export async function verifyTrustProgramRevocationStatement(
+  input: TrustProgramRevocationStatementVerificationInput,
+) {
+  try {
+    return await verifyTrustProgramRevocationStatementInternal(input);
+  } catch {
+    return verificationRefusal(
+      'target_derived',
+      'malformed Trust Program revocation verification input; refused fail-closed',
+    );
+  }
+}
+
+function applyRefusal(reason: string, verification?: TrustProgramRevocationVerificationResult) {
   return {
     verified: verification?.valid === true,
     applied: false,
@@ -521,7 +817,7 @@ function applyRefusal(reason: string, verification?: ReturnType<typeof verifyTru
 
 function lateDisposition(
   reason: string,
-  verification: ReturnType<typeof verifyTrustProgramRevocation>,
+  verification: TrustProgramRevocationVerificationResult,
   state: unknown,
   applied = false,
 ) {
@@ -542,7 +838,7 @@ function lateDisposition(
 
 function indeterminateDisposition(
   reason: string,
-  verification: ReturnType<typeof verifyTrustProgramRevocation>,
+  verification: TrustProgramRevocationVerificationResult,
   state: unknown,
 ) {
   return {
@@ -560,6 +856,10 @@ function indeterminateDisposition(
   };
 }
 
+type TrustProgramRevocationVerificationResult =
+  ReturnType<typeof verifyTrustProgramRevocation>
+  | Awaited<ReturnType<typeof verifyTrustProgramRevocationStatement>>;
+
 /**
  * Apply a verified revocation through bounded compare-and-swap attempts. A
  * stale but still-unclaimed instance is retried at its current revision so it
@@ -567,28 +867,18 @@ function indeterminateDisposition(
  * revision. A claim that already linearized is never relabeled or undone. If
  * repeated conflicts prevent either conclusion, callers MUST fail closed and
  * retry from a fresh authoritative snapshot.
+ *
+ * SHARED between the v1-only and the v1-or-v2 apply paths, which differ ONLY
+ * in how `verification` was obtained (verifyTrustProgramRevocation vs
+ * verifyTrustProgramRevocationStatement) -- factored out so neither apply path
+ * can drift from the other's linearization semantics.
  */
-async function applyTrustProgramRevocationInternal(input: TrustProgramRevocationApplyInput) {
-  if (!exactKeys(input, APPLY_INPUT_KEYS)) return applyRefusal('closed_apply_input_required');
+async function performTrustProgramRevocationApply(
+  input: TrustProgramRevocationApplyInput | TrustProgramRevocationApplyStatementInput,
+  verification: TrustProgramRevocationVerificationResult,
+) {
   const expectedRevision = dataValue(input, 'expectedRevision');
   const kernel = dataValue(input, 'kernel');
-  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
-    return applyRefusal('expected_revision_invalid');
-  }
-  if (!isDataRecord(kernel) || typeof kernel.status !== 'function'
-      || typeof kernel.invalidate !== 'function') {
-    return applyRefusal('trust_program_kernel_invalid');
-  }
-
-  const verification = verifyTrustProgramRevocation({
-    authorizationBinding: dataValue(input, 'authorizationBinding'),
-    programVersion: dataValue(input, 'programVersion'),
-    receiptContext: dataValue(input, 'receiptContext'),
-    statement: dataValue(input, 'statement'),
-    revokerKeys: dataValue(input, 'revokerKeys'),
-    now: dataValue(input, 'now'),
-  });
-  if (!verification.valid) return applyRefusal('revocation_verification_failed', verification);
 
   const binding = snapshotAuthorizationBinding(dataValue(input, 'authorizationBinding'));
   const statement = dataValue(input, 'statement') as DataRecord;
@@ -734,9 +1024,78 @@ async function applyTrustProgramRevocationInternal(input: TrustProgramRevocation
   );
 }
 
+async function applyTrustProgramRevocationInternal(input: TrustProgramRevocationApplyInput) {
+  if (!exactKeys(input, APPLY_INPUT_KEYS)) return applyRefusal('closed_apply_input_required');
+  const expectedRevision = dataValue(input, 'expectedRevision');
+  const kernel = dataValue(input, 'kernel');
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
+    return applyRefusal('expected_revision_invalid');
+  }
+  if (!isDataRecord(kernel) || typeof kernel.status !== 'function'
+      || typeof kernel.invalidate !== 'function') {
+    return applyRefusal('trust_program_kernel_invalid');
+  }
+
+  const verification = verifyTrustProgramRevocation({
+    authorizationBinding: dataValue(input, 'authorizationBinding'),
+    programVersion: dataValue(input, 'programVersion'),
+    receiptContext: dataValue(input, 'receiptContext'),
+    statement: dataValue(input, 'statement'),
+    revokerKeys: dataValue(input, 'revokerKeys'),
+    now: dataValue(input, 'now'),
+  });
+  if (!verification.valid) return applyRefusal('revocation_verification_failed', verification);
+
+  return performTrustProgramRevocationApply(input, verification);
+}
+
 export async function applyTrustProgramRevocation(input: TrustProgramRevocationApplyInput) {
   try {
     return await applyTrustProgramRevocationInternal(input);
+  } catch {
+    return applyRefusal('malformed_apply_input_refused_fail_closed');
+  }
+}
+
+/**
+ * EP-REVOCATION-v1-or-v2 apply. Identical CAS/invalidation semantics to
+ * applyTrustProgramRevocation; the only difference is verifying the presented
+ * statement through verifyTrustProgramRevocationStatement (the v2 router)
+ * instead of the v1-only verifyTrustProgramRevocation, so a relying party that
+ * has pinned a revoker's ML-DSA-65 half can invalidate on a hybrid statement.
+ */
+async function applyTrustProgramRevocationStatementInternal(
+  input: TrustProgramRevocationApplyStatementInput,
+) {
+  if (!exactKeys(input, APPLY_INPUT_KEYS)) return applyRefusal('closed_apply_input_required');
+  const expectedRevision = dataValue(input, 'expectedRevision');
+  const kernel = dataValue(input, 'kernel');
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
+    return applyRefusal('expected_revision_invalid');
+  }
+  if (!isDataRecord(kernel) || typeof kernel.status !== 'function'
+      || typeof kernel.invalidate !== 'function') {
+    return applyRefusal('trust_program_kernel_invalid');
+  }
+
+  const verification = await verifyTrustProgramRevocationStatement({
+    authorizationBinding: dataValue(input, 'authorizationBinding'),
+    programVersion: dataValue(input, 'programVersion'),
+    receiptContext: dataValue(input, 'receiptContext'),
+    statement: dataValue(input, 'statement'),
+    revokerKeys: dataValue(input, 'revokerKeys'),
+    now: dataValue(input, 'now'),
+  });
+  if (!verification.valid) return applyRefusal('revocation_verification_failed', verification);
+
+  return performTrustProgramRevocationApply(input, verification);
+}
+
+export async function applyTrustProgramRevocationStatement(
+  input: TrustProgramRevocationApplyStatementInput,
+) {
+  try {
+    return await applyTrustProgramRevocationStatementInternal(input);
   } catch {
     return applyRefusal('malformed_apply_input_refused_fail_closed');
   }
@@ -747,5 +1106,7 @@ export default {
   deriveTrustProgramRevocationTargetObject,
   deriveTrustProgramRevocationTarget,
   verifyTrustProgramRevocation,
+  verifyTrustProgramRevocationStatement,
   applyTrustProgramRevocation,
+  applyTrustProgramRevocationStatement,
 };

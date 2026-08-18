@@ -22,6 +22,12 @@
  */
 import crypto from 'node:crypto';
 import { canonicalizeFiniteJson, strictJsonGate } from './strict-json.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  type AgileSigningKey,
+  type AgileSignature,
+} from '@emilia-protocol/verify/pq-signature-agility';
 
 export const ENTITLEMENT_VERSION = 'EP-GATE-ENTITLEMENT-v1';
 export const ENTITLEMENT_TIERS = ['community', 'team', 'business', 'enterprise', 'regulated'];
@@ -51,9 +57,7 @@ function community(reason, extra = {}) {
  * @param {object} fields { org, tier, features?, limits?, not_before, expires_at, kid }
  * @returns {{ '@version': string, payload: object, signature: { algorithm: 'Ed25519', value: string } }}
  */
-export function mintEntitlement(privateKey, {
-  org, tier, features = [], limits = {}, not_before, expires_at, kid,
-}: {
+type EntitlementFields = {
   org: string;
   tier: string;
   features?: string[];
@@ -61,7 +65,18 @@ export function mintEntitlement(privateKey, {
   not_before: string | number;
   expires_at: string | number;
   kid: string;
-}) {
+};
+
+/**
+ * Shared field validation + payload snapshot for BOTH mintEntitlement (v1) and
+ * mintEntitlementV2. Throws on invalid fields -- a malformed entitlement must
+ * never be issued, only refused -- and returns the canonical payload object
+ * both mint paths sign, so v1 and v2 can never disagree on what a "valid"
+ * entitlement payload looks like.
+ */
+function validateAndSnapshotEntitlementFields({
+  org, tier, features = [], limits = {}, not_before, expires_at, kid,
+}: EntitlementFields): Record<string, any> {
   if (!org || typeof org !== 'string') throw new Error('entitlement: org is required');
   if (!ENTITLEMENT_TIERS.includes(tier)) {
     throw new Error(`entitlement: unknown tier "${tier}" (expected one of ${ENTITLEMENT_TIERS.join('|')})`);
@@ -78,7 +93,11 @@ export function mintEntitlement(privateKey, {
   // Snapshot features/limits into the signed payload: embedding the caller's live
   // array/object would let a licensing service mutate them after minting and
   // diverge the entitlement from its signature.
-  const payload = JSON.parse(canonical({ org, tier, features, limits, not_before, expires_at, kid }));
+  return JSON.parse(canonical({ org, tier, features, limits, not_before, expires_at, kid }));
+}
+
+export function mintEntitlement(privateKey, fields: EntitlementFields) {
+  const payload = validateAndSnapshotEntitlementFields(fields);
   const value = crypto.sign(null, Buffer.from(canonical(payload), 'utf8'), privateKey).toString('base64url');
   return { '@version': ENTITLEMENT_VERSION, payload, signature: { algorithm: 'Ed25519', value } };
 }
@@ -191,4 +210,242 @@ export function requireFeature(verified, feature) {
   return Array.isArray(verified.features) && verified.features.includes(feature);
 }
 
-export default { mintEntitlement, verifyEntitlement, requireFeature, ENTITLEMENT_VERSION, ENTITLEMENT_TIERS };
+// ===========================================================================
+// EP-GATE-ENTITLEMENT-v2 -- the hybrid (Ed25519 + ML-DSA-65) entitlement
+// ===========================================================================
+/**
+ * Copies the five-move EP-REVOCATION-v2 template
+ * (packages/verify/src/revocation.ts) onto the entitlement artifact.
+ *
+ * 1. VERSION BUMP. `signature: {algorithm,value}` becomes `proof:
+ *    {required_algorithms, signatures}`, a shape change, so this is a new
+ *    `@version` (-v1 -> -v2), never an optional field on v1. verifyEntitlement
+ *    above is UNCHANGED and still refuses a v2 document at
+ *    `unsupported_version` (checked before it ever inspects `signature`,
+ *    which a v2 document does not even carry) -- it never crashes on one.
+ * 2. SET SHAPE. `proof.signatures` is an EP-SIG-AGILITY-v1 AgileSignature
+ *    array, one entry per required algorithm, reused verbatim.
+ * 3. ANTI-STRIPPING. `required_algorithms` is INSIDE the signed bytes
+ *    (entitlementV2SignedBytes below), alongside the payload. Dropping the
+ *    ML-DSA leg and narrowing `required_algorithms` to `["Ed25519"]` changes
+ *    the signed bytes, so the surviving Ed25519 signature no longer verifies.
+ * 4. V1 COMPATIBILITY. verifyEntitlement stays synchronous and untouched.
+ *    verifyEntitlementV2 is a SEPARATE async entry point (ML-DSA verification
+ *    is inherently async); verifyEntitlementStatement routes on `@version`.
+ * 5. NAMED REFUSALS, COMMUNITY FALLBACK PRESERVED. verifyEntitlementV2 keeps
+ *    the open-core contract exactly: it NEVER throws, and every failure --
+ *    tampered, expired, unknown kid, missing PQ backend, one leg alone --
+ *    resolves to `{valid:false, tier:'community', reason}`. An absent ML-DSA
+ *    backend surfaces as `pq_backend_unavailable`, never a silent pass on the
+ *    Ed25519 leg alone (that would be exactly the downgrade a hybrid pin
+ *    exists to prevent).
+ *
+ * HONEST BOUNDARY. Same as every other hybrid profile in this repository:
+ * the ML-DSA-65 backend is @noble/post-quantum's pure-JS FIPS 204
+ * implementation, not independently audited and not a FIPS validated module.
+ * Issuing or verifying under this profile is not a certification claim, and
+ * this profile is opt-in -- nothing here is on by default.
+ */
+export const ENTITLEMENT_V2_VERSION = 'EP-GATE-ENTITLEMENT-v2';
+export const ENTITLEMENT_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+/** A v2 issuer pin: BOTH public halves, pinned out of band by kid. */
+export interface EntitlementV2IssuerKeyPin {
+  /** Ed25519 base64url SPKI DER. */
+  public_key: string;
+  /** ML-DSA-65 base64url raw public key bytes. */
+  pq_public_key: string;
+}
+
+function algorithmSetMatchesRegistered(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === ENTITLEMENT_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === ENTITLEMENT_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+/**
+ * The bytes BOTH legs sign: the entitlement payload plus the registered
+ * algorithm set and the v2 version marker, so the algorithm set is
+ * cryptographically committed alongside the payload it protects. Recomputed
+ * independently by the verifier from the payload it holds and the REGISTERED
+ * set -- never from anything the presented document could narrow.
+ */
+export function entitlementV2SignedBytes(
+  payload: Record<string, unknown>,
+  requiredAlgorithms: readonly string[] = ENTITLEMENT_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!algorithmSetMatchesRegistered(requiredAlgorithms)) {
+    throw new Error('entitlementV2SignedBytes: algorithm set is not the registered EP-GATE-ENTITLEMENT-v2 set');
+  }
+  return Buffer.from(canonical({
+    '@version': ENTITLEMENT_V2_VERSION,
+    payload,
+    required_algorithms: [...requiredAlgorithms],
+  }), 'utf8');
+}
+
+/**
+ * Mint a hybrid entitlement. Throws on invalid fields or an unavailable PQ
+ * backend -- issuer-side misuse is a programming error, and a proof missing
+ * the ML-DSA leg must never be emitted.
+ */
+export async function mintEntitlementV2(
+  keys: { ed: { privateKey: crypto.KeyObject }; pq: { secretKey: Uint8Array | string } },
+  fields: EntitlementFields,
+) {
+  if (!keys?.ed?.privateKey || !keys?.pq?.secretKey) {
+    throw new Error('entitlement v2: keys.ed.privateKey and keys.pq.secretKey are both required');
+  }
+  const payload = validateAndSnapshotEntitlementFields(fields);
+  const requiredAlgorithms = [...ENTITLEMENT_V2_REQUIRED_ALGORITHMS];
+  const bytes = new Uint8Array(entitlementV2SignedBytes(payload, requiredAlgorithms));
+  const signingKeys: AgileSigningKey[] = [
+    { alg: 'Ed25519', private_key: keys.ed.privateKey },
+    { alg: 'ML-DSA-65', private_key: keys.pq.secretKey },
+  ];
+  const signatures = await signAgileSet(bytes, signingKeys);
+  return {
+    '@version': ENTITLEMENT_V2_VERSION,
+    payload,
+    proof: { required_algorithms: requiredAlgorithms, signatures },
+  };
+}
+
+/** Resolve a v2 issuer key pin for `kid` from a map or an entry list. */
+function issuerKeyForV2(
+  issuerKeys: Record<string, EntitlementV2IssuerKeyPin> | Array<{ kid: string } & EntitlementV2IssuerKeyPin> | undefined,
+  kid: unknown,
+): EntitlementV2IssuerKeyPin | null {
+  if (!issuerKeys || typeof kid !== 'string' || kid.length === 0) return null;
+  if (Array.isArray(issuerKeys)) {
+    const e = issuerKeys.find((x) => x && x.kid === kid
+      && typeof x.public_key === 'string' && typeof x.pq_public_key === 'string');
+    return e ? { public_key: e.public_key, pq_public_key: e.pq_public_key } : null;
+  }
+  const pin = issuerKeys[kid];
+  return pin && typeof pin.public_key === 'string' && typeof pin.pq_public_key === 'string' ? pin : null;
+}
+
+/**
+ * Verify a hybrid entitlement. NEVER throws -- preserves the exact open-core
+ * community-fallback contract of verifyEntitlement: absence, tampering,
+ * expiry, an unknown/classical-only-pinned kid, a stripped or narrowed leg,
+ * and an unavailable ML-DSA backend all resolve to
+ * `{valid:false, tier:'community', reason}`. requireFeature() above already
+ * fails closed on any non-valid result, so no separate v2 gate is needed.
+ */
+export async function verifyEntitlementV2(entitlementJson, {
+  issuerKeys,
+  now = Date.now,
+}: {
+  issuerKeys?: Record<string, EntitlementV2IssuerKeyPin> | Array<{ kid: string } & EntitlementV2IssuerKeyPin>;
+  now?: number | string | (() => number);
+} = {}) {
+  if (entitlementJson == null || entitlementJson === '') return community('no_entitlement');
+
+  let doc = entitlementJson;
+  if (typeof doc === 'string') {
+    try {
+      if (Buffer.byteLength(doc, 'utf8') > 1024 * 1024 || !strictJsonGate(doc).ok) return community('entitlement_unparseable');
+      doc = JSON.parse(doc);
+    } catch { return community('entitlement_unparseable'); }
+  }
+  try {
+    doc = JSON.parse(canonical(doc));
+  } catch { return community('entitlement_malformed'); }
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return community('entitlement_malformed');
+  if (doc['@version'] !== ENTITLEMENT_V2_VERSION) return community('unsupported_version');
+
+  const p = doc.payload;
+  const proof = doc.proof;
+  if (!p || typeof p !== 'object' || !proof || typeof proof !== 'object') return community('entitlement_malformed');
+  if (!algorithmSetMatchesRegistered(proof.required_algorithms)) {
+    return community('unsupported_algorithm_set');
+  }
+  if (!ENTITLEMENT_TIERS.includes(p.tier)) return community('unknown_tier');
+  if (!Array.isArray(p.features) || p.features.some((f) => typeof f !== 'string')) return community('entitlement_malformed');
+
+  // Issuer pinning: kid must resolve to a PINNED pair (BOTH halves). An
+  // entitlement can never nominate its own key, and a kid pinned for v1 only
+  // (classical public_key with no pq_public_key) does not satisfy a v2 pin --
+  // identified but not trusted for the leg that was never pinned.
+  const pin = issuerKeyForV2(issuerKeys, p.kid);
+  if (!pin) return community('unknown_kid', { kid: p.kid ?? null });
+
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(entitlementV2SignedBytes(p, ENTITLEMENT_V2_REQUIRED_ALGORITHMS));
+  } catch { return community('entitlement_malformed'); }
+
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(
+      bytes,
+      Array.isArray(proof.signatures) ? proof.signatures as AgileSignature[] : [],
+      [
+        { alg: 'Ed25519', public_key: pin.public_key },
+        { alg: 'ML-DSA-65', public_key: pin.pq_public_key },
+      ],
+      { policy: 'hybrid_all', requiredAlgorithms: [...ENTITLEMENT_V2_REQUIRED_ALGORITHMS] },
+    );
+  } catch { setResult = null; } // verifyAgileSignatureSet never throws; a thrown backend is still a refusal.
+  if (setResult?.verified !== true) {
+    const reason = String(setResult?.reason ?? 'signature_set_unverified');
+    return community('bad_signature', { kid: p.kid, hybrid_reason: reason });
+  }
+
+  const nowMs = typeof now === 'function' ? now() : toMs(now);
+  const nbf = toMs(p.not_before);
+  const exp = toMs(p.expires_at);
+  if (nbf == null || exp == null || nowMs == null) return community('invalid_validity_window', { kid: p.kid });
+  if (nowMs < nbf) return community('not_yet_valid', { kid: p.kid, not_before: p.not_before });
+  if (nowMs > exp) return community('expired', { kid: p.kid, expires_at: p.expires_at });
+
+  return {
+    valid: true,
+    tier: p.tier,
+    features: p.features.slice(),
+    limits: (p.limits && typeof p.limits === 'object') ? { ...p.limits } : {},
+    reason: 'entitlement_verified',
+    org: p.org,
+    kid: p.kid,
+    not_before: p.not_before,
+    expires_at: p.expires_at,
+  };
+}
+
+/**
+ * Route an entitlement document of EITHER version to its verifier. A v1
+ * document keeps the exact synchronous v1 verdict (wrapped in a resolved
+ * Promise so callers holding a mixed bag get one uniform async surface); a
+ * v2 document gets the hybrid check.
+ */
+export async function verifyEntitlementStatement(entitlementJson, opts: {
+  issuerKeys?: Record<string, string> | Array<{ kid: string; key: string }>
+    | Record<string, EntitlementV2IssuerKeyPin> | Array<{ kid: string } & EntitlementV2IssuerKeyPin>;
+  now?: number | string | (() => number);
+} = {}) {
+  let doc = entitlementJson;
+  if (typeof doc === 'string') {
+    try {
+      if (Buffer.byteLength(doc, 'utf8') <= 1024 * 1024 && strictJsonGate(doc).ok) doc = JSON.parse(doc);
+    } catch { /* fall through; the version-specific verifier will refuse it */ }
+  }
+  if (doc && typeof doc === 'object' && !Array.isArray(doc) && doc['@version'] === ENTITLEMENT_V2_VERSION) {
+    return verifyEntitlementV2(entitlementJson, opts as any);
+  }
+  return verifyEntitlement(entitlementJson, opts as any);
+}
+
+export default {
+  mintEntitlement,
+  verifyEntitlement,
+  requireFeature,
+  ENTITLEMENT_VERSION,
+  ENTITLEMENT_TIERS,
+  mintEntitlementV2,
+  verifyEntitlementV2,
+  verifyEntitlementStatement,
+  ENTITLEMENT_V2_VERSION,
+  ENTITLEMENT_V2_REQUIRED_ALGORITHMS,
+};

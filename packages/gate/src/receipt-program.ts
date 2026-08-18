@@ -21,6 +21,11 @@ import {
 
 import { canonicalize } from './execution-binding.js';
 import { canonicalEvidenceJson, verifyEvidenceRecord } from './evidence.js';
+// Opt-in FIPS operation-policy consult at the certificate signer call site
+// (see issueCertificate below). A genuine declared dependency of
+// @emilia-protocol/gate, same as @emilia-protocol/verify/pq-signature-agility
+// elsewhere in this package.
+import { checkOperationPolicy, type FipsPosture } from '@emilia-protocol/verify/fips-mode';
 
 export const RECEIPT_PROGRAM_VERSION = 'EP-RECEIPT-PROGRAM-v1';
 export const RECEIPT_PROGRAM_CERTIFICATE_VERSION = 'EP-RECEIPT-PROGRAM-CERTIFICATE-v1';
@@ -38,6 +43,7 @@ const FORBIDDEN_RUNTIME_TRUST_FIELDS = new Set([
   'certificatePrivateKey',
   'certificateSigner',
   'effectTimeoutMs',
+  'fipsPosture',
   'gate',
   'now',
   'operationIdField',
@@ -344,6 +350,16 @@ export function createReceiptProgramKernel({
   effectTimeoutMs = 30_000,
   allowEphemeralState = false,
   now = Date.now,
+  // OPT-IN. When configured, every issuance consults checkOperationPolicy()
+  // (packages/verify/src/fips-mode.ts) for the certificate's signature
+  // algorithm (RECEIPT_PROGRAM_SIGNATURE_ALGORITHM = 'Ed25519') before
+  // signing. A denied policy refuses issuance with a named
+  // fips_policy_denied:<reason> -- it never signs anyway and never throws.
+  // Left undefined (the default), issuance is BYTE-IDENTICAL to before this
+  // option existed: the consult does not run, matching every other FIPS-mode
+  // adoption in this repo (fips-mode.ts is consulted at call sites; nothing
+  // is on by default).
+  fipsPosture,
 }: any = {}) {
   if (!gate || typeof gate.run !== 'function' || !gate.evidence) {
     throw new TypeError('createReceiptProgramKernel requires a configured Gate with an evidence log');
@@ -384,6 +400,23 @@ export function createReceiptProgramKernel({
 
   async function issueCertificate(input: any): Promise<any> {
     const core = certificateCore({ ...input, context });
+    // OPT-IN FIPS consult, only when a posture was configured at construction.
+    // checkOperationPolicy never throws; a denied policy refuses issuance
+    // BEFORE the signer is ever called, never a skipped check and never a
+    // silent sign-anyway. With fipsPosture undefined this block does not run.
+    if (fipsPosture !== undefined) {
+      const policy = checkOperationPolicy(RECEIPT_PROGRAM_SIGNATURE_ALGORITHM, fipsPosture as FipsPosture);
+      if (policy.permitted !== true) {
+        return Object.freeze({
+          ok: false,
+          outcome: input.outcome,
+          reason: `fips_policy_denied:${policy.reason}`,
+          result: input.result,
+          certificate: null,
+          certificate_evidence: null,
+        });
+      }
+    }
     let certificate;
     try {
       certificate = await signCertificate(core, signer);

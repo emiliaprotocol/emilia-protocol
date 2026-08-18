@@ -10,6 +10,11 @@
 import crypto from 'node:crypto';
 
 import { canonicalize } from '../execution-binding.js';
+// Opt-in FIPS operation-policy consult at the receipt signer call site (see
+// issueRemedyProgramReceipt below). A genuine declared dependency of
+// @emilia-protocol/gate, same as @emilia-protocol/verify/pq-signature-agility
+// elsewhere in this package.
+import { checkOperationPolicy, type FipsPosture } from '@emilia-protocol/verify/fips-mode';
 
 export const ACTION_REMEDY_RECEIPT_VERSION = 'EP-ACTION-REMEDY-RECEIPT-v1';
 export const REMEDY_PROGRAM_RECEIPT_VERSION = ACTION_REMEDY_RECEIPT_VERSION;
@@ -697,6 +702,13 @@ export async function issueRemedyProgramReceipt(
     privateKey?: unknown;
     signer?: unknown;
     allowEphemeralState?: boolean;
+    // OPT-IN. When provided, issuance consults checkOperationPolicy()
+    // (packages/verify/src/fips-mode.ts) for the receipt signature algorithm
+    // ('Ed25519') before the signer is called. A denied policy THROWS --
+    // matching this function's existing throw-on-misuse contract -- and the
+    // signer is never invoked. Left undefined (the default), issuance is
+    // BYTE-IDENTICAL to before this option existed: the consult does not run.
+    fipsPosture?: FipsPosture;
   } = {},
 ) {
   if (!exactKeys(input, new Set(['state', 'remedyOperationId']))) {
@@ -727,6 +739,12 @@ export async function issueRemedyProgramReceipt(
     content_digest: canonicalDigest(unsigned),
   };
   const signingBytes = remedyProgramReceiptSigningBytes(signedBody);
+  if (options.fipsPosture !== undefined) {
+    const policy = checkOperationPolicy('Ed25519', options.fipsPosture);
+    if (policy.permitted !== true) {
+      throw new Error(`remedy receipt issuance refused: fips_policy_denied:${policy.reason}`);
+    }
+  }
   const signature = canonicalSignature(await signer.sign(Buffer.from(signingBytes)));
   const verificationKey = publicKey(signer.publicKey)!;
   if (!crypto.verify(null, signingBytes, verificationKey, signature.bytes)) {
