@@ -10,9 +10,20 @@
 import crypto from 'node:crypto';
 
 import { verifyRevocation } from '@emilia-protocol/verify';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgileSigningKey,
+  type AgileSignature,
+  type AgilityOptions,
+} from '@emilia-protocol/verify/pq-signature-agility';
 
 import { canonicalize } from '../execution-binding.js';
-import { verifyActionEscrowStateStatement } from './action-escrow-state.js';
+import {
+  verifyActionEscrowStateStatement,
+  verifyActionEscrowStateStatementAny,
+} from './action-escrow-state.js';
 
 export const REMEDY_PROGRAM_EVIDENCE_VERSION = 'EP-GATE-REMEDY-EVIDENCE-v1';
 export const REMEDY_PROGRAM_EVIDENCE_DOMAIN = `${REMEDY_PROGRAM_EVIDENCE_VERSION}\0`;
@@ -275,11 +286,53 @@ function verifiedSignedEvidence(
 }
 
 /**
+ * The seam that lets ONE adapter body serve both evidence profiles. Every
+ * member is a pinned repository verifier; there are still no caller-supplied
+ * verifier override hooks. See createRemedyProgramAdaptersV2 for the v2 seam
+ * and for why the Action Escrow leg is a ROUTER rather than a v2-only verifier.
+ */
+interface RemedyAdapterProfile {
+  validAuthority(value: unknown): boolean;
+  validEscrowKeyPin(pin: unknown): boolean;
+  verifySignedEvidence(
+    value: unknown,
+    kind: string,
+    authority: Readonly<RemedyProgramPinnedAuthority>,
+  ): Promise<DataRecord | null>;
+  verifyRevocationEvidence(target: unknown, statement: unknown, opts: unknown): Promise<{ valid?: unknown }>;
+  verifyEscrowStatement(statement: unknown, opts: unknown): Promise<{
+    valid?: unknown; statement_digest?: unknown;
+  }>;
+}
+
+const REMEDY_ADAPTER_PROFILE_V1: RemedyAdapterProfile = Object.freeze({
+  validAuthority,
+  validEscrowKeyPin: (pin: unknown) => exactKeys(pin, new Set(['operator_id', 'public_key']))
+    && validContext(pin.operator_id) && ed25519PublicKey(pin.public_key) !== null,
+  async verifySignedEvidence(value, kind, authority) {
+    return verifiedSignedEvidence(value, kind, authority);
+  },
+  async verifyRevocationEvidence(target, statement, opts) {
+    return verifyRevocation(target as any, statement as any, opts as any);
+  },
+  async verifyEscrowStatement(statement, opts) {
+    return verifyActionEscrowStateStatement(statement as any, opts as any);
+  },
+});
+
+/**
  * Build all required Remedy Program callbacks using only pinned configuration
  * and concrete repository verifiers. There are intentionally no verifier
  * override hooks.
  */
 export function createRemedyProgramAdapters(options: RemedyProgramAdapterOptions) {
+  return buildRemedyProgramAdapters(options, REMEDY_ADAPTER_PROFILE_V1);
+}
+
+function buildRemedyProgramAdapters(
+  options: RemedyProgramAdapterOptions,
+  profile: RemedyAdapterProfile,
+) {
   if (!isDataRecord(options)
       || !validContext(options.tenantId)
       || !validContext(options.environment)
@@ -292,15 +345,14 @@ export function createRemedyProgramAdapters(options: RemedyProgramAdapterOptions
       || !isDataRecord(options.actionEscrow.originalEffects)
       || Object.keys(options.actionEscrow.originalEffects).length === 0
       || !isDataRecord(options.revokerKeys)
-      || !validAuthority(options.disputeAuthority)
-      || !validAuthority(options.remedyAuthority)
-      || !validAuthority(options.providerAuthority)
+      || !profile.validAuthority(options.disputeAuthority)
+      || !profile.validAuthority(options.remedyAuthority)
+      || !profile.validAuthority(options.providerAuthority)
       || (options.now !== undefined && typeof options.now !== 'function')) {
     throw new TypeError('remedy program adapter configuration invalid');
   }
   for (const [keyId, pin] of Object.entries(options.actionEscrow.trustedKeys)) {
-    if (!validId(keyId) || !exactKeys(pin, new Set(['operator_id', 'public_key']))
-        || !validContext(pin.operator_id) || ed25519PublicKey(pin.public_key) === null) {
+    if (!validId(keyId) || !profile.validEscrowKeyPin(pin)) {
       throw new TypeError('Action Escrow state key configuration invalid');
     }
   }
@@ -365,7 +417,7 @@ export function createRemedyProgramAdapters(options: RemedyProgramAdapterOptions
     authority: Readonly<RemedyProgramPinnedAuthority>,
   ): Promise<DataRecord | null> => {
     const value = await resolveEvidence(evidenceId, evidenceDigest);
-    return verifiedSignedEvidence(value, kind, authority);
+    return profile.verifySignedEvidence(value, kind, authority);
   };
 
   async function verifyOriginalEffect(input: Readonly<DataRecord>) {
@@ -395,7 +447,7 @@ export function createRemedyProgramAdapters(options: RemedyProgramAdapterOptions
           || statement.payload?.occurred_at !== original.occurred_at) return failure();
       const evaluation = resolvedNow();
       if (evaluation === null) return failure();
-      const verified = verifyActionEscrowStateStatement(statement, {
+      const verified = await profile.verifyEscrowStatement(statement, {
         trustedKeys: pinned.actionEscrow.trustedKeys,
         stateRecord: snapshot,
         expectedAgreementId: binding.agreementId,
@@ -439,7 +491,7 @@ export function createRemedyProgramAdapters(options: RemedyProgramAdapterOptions
         target_id: input.expected.original.operation_id,
         action_hash: input.expected.original.action_digest,
       };
-      const verified = verifyRevocation(target, statement, {
+      const verified = await profile.verifyRevocationEvidence(target, statement, {
         revokerKeys: pinned.revokerKeys,
         now: evaluation,
       });
@@ -648,10 +700,423 @@ export function createRemedyProgramAdapters(options: RemedyProgramAdapterOptions
   });
 }
 
+// ===========================================================================
+// EP-GATE-REMEDY-EVIDENCE-v2 -- the hybrid (Ed25519 + ML-DSA-65) signed
+// evidence envelope the Remedy Program adapters consume
+// ===========================================================================
+/**
+ * Copies the five-move EP-REVOCATION-v2 template
+ * (packages/verify/src/revocation.ts) onto the pinned-authority evidence
+ * envelope these adapters resolve for every post-create transition.
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. `signature: {algorithm, value}` becomes
+ *    `signature: {profile, required_algorithms, public_key, key_id,
+ *    pq_public_key, pq_key_id, signatures}`, a wire-format change, so the
+ *    envelope takes a new `version` (-v1 -> -v2). verifiedSignedEvidence (the
+ *    v1 path) is UNCHANGED and refuses a v2 envelope on the version marker
+ *    (`evidence.version !== REMEDY_PROGRAM_EVIDENCE_VERSION`) before it
+ *    inspects any signature, returning null rather than throwing.
+ * 2. SET SHAPE. `signature.signatures` is an EP-SIG-AGILITY-v1 AgileSignature
+ *    array ({ alg, sig, key_id? }), one entry per registered algorithm, in the
+ *    registered order, reused verbatim.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is INSIDE the signed bytes
+ *    (remedyProgramEvidenceV2SigningBytes). Drop the ML-DSA leg and narrow the
+ *    set and the surviving Ed25519 signature no longer verifies; leave the set
+ *    intact and the missing leg is a structural refusal. The verifier rebuilds
+ *    the bytes from the REGISTERED set and the body it recomputed itself.
+ * 4. V1 COMPATIBILITY. createRemedyProgramAdapters is UNCHANGED in behavior:
+ *    it is now one call into a shared body with the v1 seam injected, and the
+ *    v1 seam is the same verifiedSignedEvidence / verifyRevocation /
+ *    verifyActionEscrowStateStatement calls it always made.
+ *    createRemedyProgramAdaptersV2 injects the hybrid seam instead.
+ * 5. NAMED REFUSALS. Every verification path returns null / `{ok:false}`;
+ *    nothing throws on presented evidence. An absent ML-DSA backend surfaces
+ *    as a refusal through the agility result, never a skipped check and never
+ *    a pass on the classical leg.
+ *
+ * THE TWO CONSUMED ARTIFACTS, STATED PRECISELY.
+ *   - EP-ACTION-ESCROW-STATE-STATEMENT: the v2 adapters call the ALREADY
+ *     SHIPPED router (verifyActionEscrowStateStatementAny), not a v2-only
+ *     verifier, so a v1 escrow statement keeps verifying exactly as it does
+ *     today and a v2 one is additionally accepted. The escrow STATE RECORD's
+ *     own marker is still EP-ACTION-ESCROW-STATE-v1 in this repository, and
+ *     the snapshot pin here is unchanged for that reason.
+ *   - EP-REVOCATION: the v2 adapters call the EP-REVOCATION-v2 router
+ *     (verifyRevocationStatement), which gives a v1 statement the exact v1
+ *     verdict and a v2 statement the hybrid check.
+ *
+ * HONEST BOUNDARY. The ML-DSA-65 backend is @noble/post-quantum's pure-JS FIPS
+ * 204 implementation, not independently audited and not a FIPS validated
+ * module. This profile is opt-in and is not on in any deployment.
+ */
+
+export const REMEDY_PROGRAM_EVIDENCE_V2_VERSION = 'EP-GATE-REMEDY-EVIDENCE-v2';
+export const REMEDY_PROGRAM_EVIDENCE_V2_DOMAIN = `${REMEDY_PROGRAM_EVIDENCE_V2_VERSION}\0`;
+
+/** The registered required algorithm set, in canonical order. */
+export const REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+const SIGNATURE_V2_KEYS = new Set([
+  'profile', 'required_algorithms', 'public_key', 'key_id',
+  'pq_public_key', 'pq_key_id', 'signatures',
+]);
+
+/** A v2 authority pin: BOTH public halves per key id, pinned out of band. */
+export interface RemedyProgramEvidenceV2KeyPin {
+  /** Ed25519 base64url SPKI DER. */
+  public_key: string;
+  /** ML-DSA-65 base64url raw public key bytes. */
+  pq_public_key: string;
+}
+
+export interface RemedyProgramPinnedAuthorityV2 {
+  authorityId: string;
+  trustedKeys: Record<string, RemedyProgramEvidenceV2KeyPin>;
+}
+
+function evidenceV2AlgorithmSetRegistered(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+/** ML-DSA-65 public-key identifier: the SHA-256 of the raw public key bytes. */
+function evidencePqKeyId(publicKeyRawB64u: unknown): string {
+  try {
+    if (typeof publicKeyRawB64u !== 'string' || publicKeyRawB64u.length === 0) return '';
+    const raw = Buffer.from(publicKeyRawB64u, 'base64url');
+    if (raw.length !== ML_DSA_65_PUBLIC_KEY_BYTES || raw.toString('base64url') !== publicKeyRawB64u) return '';
+    return `ep:remedy-evidence-key:ml-dsa-65:sha256:${crypto.createHash('sha256').update(raw).digest('hex')}`;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Domain-separated canonical bytes for the closed hybrid evidence envelope:
+ * the same signing body as v1 under the v2 domain tag, plus the committed
+ * `required_algorithms` set. See move 3 above.
+ */
+export function remedyProgramEvidenceV2SigningBytes(
+  value: unknown,
+  requiredAlgorithms: readonly string[] = REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!isDataRecord(value)) throw new TypeError('remedy evidence v2 signing body invalid');
+  if (!evidenceV2AlgorithmSetRegistered(requiredAlgorithms)) {
+    throw new TypeError('remedyProgramEvidenceV2SigningBytes: algorithm set is not the registered EP-GATE-REMEDY-EVIDENCE-v2 set');
+  }
+  const body = signingBody(value);
+  if (!exactKeys(body, SIGNING_BODY_KEYS)) {
+    throw new TypeError('remedy evidence v2 signing body invalid');
+  }
+  return Buffer.from(
+    REMEDY_PROGRAM_EVIDENCE_V2_DOMAIN
+    + canonicalize({ ...body, required_algorithms: [...requiredAlgorithms] }),
+    'utf8',
+  );
+}
+
+/**
+ * Issuer-side helper: mint one hybrid evidence envelope. Throws on invalid
+ * input or an unavailable ML-DSA backend -- an envelope missing the ML-DSA leg
+ * must never be emitted, only refused.
+ */
+export async function signRemedyProgramEvidenceV2(
+  { kind, issuer, payload }: { kind: string; issuer: { authority_id: string; key_id: string }; payload: unknown },
+  keys: {
+    ed: { privateKey: crypto.KeyObject; publicKey?: string };
+    pq: { secretKey: Uint8Array | string; publicKey: string };
+  },
+): Promise<DataRecord> {
+  if (typeof kind !== 'string' || kind.length === 0
+      || !isDataRecord(issuer) || !validContext(issuer.authority_id) || !validId(issuer.key_id)
+      || !isDataRecord(payload)) {
+    throw new TypeError('remedy evidence v2 requires kind, issuer { authority_id, key_id }, and a payload record');
+  }
+  if (!keys?.ed?.privateKey || !keys?.pq?.secretKey || typeof keys?.pq?.publicKey !== 'string') {
+    throw new TypeError('remedy evidence v2 keys require ed.privateKey, pq.secretKey, and pq.publicKey');
+  }
+  const pqKeyId = evidencePqKeyId(keys.pq.publicKey);
+  if (!pqKeyId) throw new TypeError('remedy evidence v2 ML-DSA-65 public key must be raw base64url bytes');
+  const edPublicKey = keys.ed.publicKey ?? crypto.createPublicKey(keys.ed.privateKey)
+    .export({ type: 'spki', format: 'der' }).toString('base64url');
+  if (ed25519PublicKey(edPublicKey) === null) {
+    throw new TypeError('remedy evidence v2 Ed25519 public key must be base64url SPKI DER');
+  }
+  const unsigned = {
+    version: REMEDY_PROGRAM_EVIDENCE_V2_VERSION,
+    kind,
+    issuer: { authority_id: issuer.authority_id, key_id: issuer.key_id },
+    payload: canonicalCopy(payload),
+  };
+  const requiredAlgorithms = [...REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS];
+  const signedBody = { ...unsigned, content_digest: canonicalDigest(unsigned) };
+  const bytes = remedyProgramEvidenceV2SigningBytes(signedBody, requiredAlgorithms);
+  const signingKeys: AgileSigningKey[] = [
+    { alg: 'Ed25519', private_key: keys.ed.privateKey },
+    { alg: 'ML-DSA-65', private_key: keys.pq.secretKey },
+  ];
+  const signatures = await signAgileSet(new Uint8Array(bytes), signingKeys);
+  return deepFreeze(canonicalCopy({
+    ...signedBody,
+    signature: {
+      profile: REMEDY_PROGRAM_EVIDENCE_V2_VERSION,
+      required_algorithms: requiredAlgorithms,
+      public_key: edPublicKey,
+      key_id: issuer.key_id,
+      pq_public_key: keys.pq.publicKey,
+      pq_key_id: pqKeyId,
+      signatures,
+    },
+  })) as DataRecord;
+}
+
+function validTrustedKeysV2(value: unknown): value is Record<string, RemedyProgramEvidenceV2KeyPin> {
+  return isDataRecord(value) && Object.keys(value).length > 0
+    && Object.entries(value).every(([keyId, pin]) => validId(keyId)
+      && exactKeys(pin, new Set(['public_key', 'pq_public_key']))
+      && ed25519PublicKey(pin.public_key) !== null
+      && evidencePqKeyId(pin.pq_public_key) !== '');
+}
+
+function validAuthorityV2(value: unknown): value is RemedyProgramPinnedAuthorityV2 {
+  return exactKeys(value, AUTHORITY_KEYS)
+    && validContext(value.authorityId)
+    && validTrustedKeysV2(value.trustedKeys);
+}
+
+/**
+ * FAIL-CLOSED hybrid evidence check. Returns the verified envelope or null;
+ * never throws on presented evidence, and never verifies on one leg alone.
+ */
+async function verifiedSignedEvidenceV2(
+  value: unknown,
+  kind: string,
+  authority: Readonly<RemedyProgramPinnedAuthorityV2>,
+  agility: AgilityOptions = {},
+): Promise<DataRecord | null> {
+  try {
+    const evidence = canonicalCopy(value) as unknown;
+    // 1. Version marker + closed shape. A v1 envelope refuses here, the mirror
+    //    image of the v1 path refusing a v2 envelope.
+    if (!exactKeys(evidence, SIGNED_EVIDENCE_KEYS)
+        || evidence.version !== REMEDY_PROGRAM_EVIDENCE_V2_VERSION
+        || evidence.kind !== kind
+        || !exactKeys(evidence.issuer, ISSUER_KEYS)
+        || evidence.issuer.authority_id !== authority.authorityId
+        || !validId(evidence.issuer.key_id)
+        || !isDataRecord(evidence.payload)
+        || typeof evidence.content_digest !== 'string'
+        || !DIGEST.test(evidence.content_digest)
+        || !exactKeys(evidence.signature, SIGNATURE_V2_KEYS)
+        || evidence.signature.profile !== REMEDY_PROGRAM_EVIDENCE_V2_VERSION) return null;
+
+    // 2. Content digest, recomputed. The envelope does not get to assert it.
+    const unsigned = {
+      version: evidence.version,
+      kind: evidence.kind,
+      issuer: evidence.issuer,
+      payload: evidence.payload,
+    };
+    if (canonicalDigest(unsigned) !== evidence.content_digest) return null;
+
+    // 3. Committed algorithm set: exact and order-sensitive.
+    if (!evidenceV2AlgorithmSetRegistered(evidence.signature.required_algorithms)) return null;
+
+    // 4. Exactly one signature per required algorithm.
+    const signatures = Array.isArray(evidence.signature.signatures)
+      ? evidence.signature.signatures as AgileSignature[] : null;
+    if (!signatures) return null;
+    const presented = new Set<string>();
+    for (const entry of signatures) {
+      if (!isDataRecord(entry) || typeof entry.alg !== 'string' || typeof entry.sig !== 'string') return null;
+      if (presented.has(entry.alg)) return null;
+      presented.add(entry.alg);
+    }
+    for (const alg of REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS) {
+      if (!presented.has(alg)) return null;
+    }
+    for (const alg of presented) {
+      if (!(REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) return null;
+    }
+
+    // 5. Authority keys: BOTH halves pinned, and the presented halves must
+    //    equal the pinned ones. Identified-but-not-trusted, per leg.
+    const pin = authority.trustedKeys[evidence.issuer.key_id];
+    if (!isDataRecord(pin)
+        || pin.public_key !== evidence.signature.public_key
+        || pin.pq_public_key !== evidence.signature.pq_public_key
+        || evidence.signature.key_id !== evidence.issuer.key_id
+        // Curve-pinned: a non-Ed25519 SPKI presented as the classical half
+        // fails here as well as in the signature check.
+        || ed25519PublicKey(pin.public_key) === null
+        || evidencePqKeyId(pin.pq_public_key) === ''
+        || evidence.signature.pq_key_id !== evidencePqKeyId(pin.pq_public_key)) return null;
+
+    // 6. Signature set over bytes rebuilt from the PRESENTED body and the
+    //    REGISTERED algorithm set, under the PINNED keys.
+    let setResult;
+    try {
+      setResult = await verifyAgileSignatureSet(
+        new Uint8Array(remedyProgramEvidenceV2SigningBytes(
+          evidence, REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS,
+        )),
+        signatures,
+        [
+          { alg: 'Ed25519', public_key: pin.public_key },
+          { alg: 'ML-DSA-65', public_key: pin.pq_public_key },
+        ],
+        {
+          ...agility,
+          policy: 'hybrid_all',
+          requiredAlgorithms: [...REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS],
+        },
+      );
+    } catch {
+      setResult = null;
+    }
+    if (setResult?.verified !== true) return null;
+    return evidence;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// EP-REVOCATION-v2 router resolution, and the boundary it currently has.
+//
+// The v2 router is NOT reachable by a static import from this package: the
+// @emilia-protocol/verify package root re-exports only v1's
+// verifyRevocation/isRevoked/REVOCATION_VERSION, and its exports map has no
+// "./revocation" subpath. So this mirrors the dynamic-import-with-fallback
+// idiom trust-program-revocation.ts uses for the identical reason: try the
+// package subpath first (which picks up a future exports-map addition with no
+// code change here), then the workspace-relative built file.
+//
+// MEASURED, NOT ASSUMED: under this repository's Vite-backed test runner
+// BOTH candidates fail to resolve today, because module resolution happens in
+// the bundler's graph rather than at Node runtime and the exports map refuses
+// the subpath. That is why the v2 adapter seam routes on the statement's own
+// version marker BELOW rather than sending everything through this resolver:
+// a v1 revocation statement goes to the package-root verifier, which is
+// exported and always resolvable, so the additive v1 consumption keeps working
+// exactly as it does under the v1 adapters. Only a v2-MARKED statement needs
+// this resolver, and while it is unavailable that statement is a fail-closed
+// REFUSAL -- never a silent fallback to the v1-only verifier, and never a pass.
+// Adding "./revocation" to the verify package's exports map is what lights the
+// v2 leg up; nothing in this file changes when it does.
+// ---------------------------------------------------------------------------
+const REVOCATION_V2_VERSION = 'EP-REVOCATION-v2';
+const REVOCATION_ROUTER_PACKAGE = '@emilia-protocol/verify/revocation.js';
+const LOCAL_REVOCATION_ROUTER_PACKAGE = '../../verify/revocation.js';
+
+type RevocationStatementVerifier = (
+  target: unknown, statement: unknown, opts: unknown,
+) => Promise<{ valid: boolean; checks: Record<string, boolean>; errors: string[] }>;
+
+let _remedyRevocationStatementVerifier: RevocationStatementVerifier | null = null;
+
+async function resolveRevocationStatementVerifier(): Promise<RevocationStatementVerifier> {
+  if (_remedyRevocationStatementVerifier) return _remedyRevocationStatementVerifier;
+  let mod: any;
+  try {
+    mod = await import(REVOCATION_ROUTER_PACKAGE);
+  } catch {
+    // Resolution-failure shape for an unlisted package subpath is not uniform
+    // across runtimes, so ANY primary-resolution failure falls back to the
+    // workspace-relative path; only a failure of THAT is surfaced.
+    mod = await import(LOCAL_REVOCATION_ROUTER_PACKAGE);
+  }
+  if (typeof mod?.verifyRevocationStatement !== 'function') {
+    throw new Error('EP-REVOCATION-v2 router (verifyRevocationStatement) unavailable');
+  }
+  _remedyRevocationStatementVerifier = mod.verifyRevocationStatement as RevocationStatementVerifier;
+  return _remedyRevocationStatementVerifier;
+}
+
+/** Test-only hook: force re-resolution (e.g. after swapping module mocks). */
+export function _resetRemedyRevocationRouterCacheForTests(): void {
+  _remedyRevocationStatementVerifier = null;
+}
+
+/**
+ * Build the Remedy Program callbacks against the HYBRID evidence profile.
+ * Identical adapter body to createRemedyProgramAdapters (see
+ * buildRemedyProgramAdapters); only the pinned verifier seam differs, so the
+ * transition rules, tenant/context pins, and binding checks cannot drift
+ * between the two profiles.
+ *
+ * `disputeAuthority`, `remedyAuthority`, and `providerAuthority` take
+ * RemedyProgramPinnedAuthorityV2 pins (both public halves per key id).
+ * `actionEscrow.trustedKeys` accepts EITHER the v1 pin
+ * ({operator_id, public_key}) or the v2 pin
+ * ({operator_id, public_key, pq_public_key}), because the escrow leg is a
+ * ROUTER: a relying party mid-migration holds a mixed bag of escrow
+ * statements and must be able to pin for both.
+ */
+export function createRemedyProgramAdaptersV2(options: Omit<
+  RemedyProgramAdapterOptions,
+  'disputeAuthority' | 'remedyAuthority' | 'providerAuthority'
+> & {
+  disputeAuthority: RemedyProgramPinnedAuthorityV2;
+  remedyAuthority: RemedyProgramPinnedAuthorityV2;
+  providerAuthority: RemedyProgramPinnedAuthorityV2;
+  mldsaBackend?: AgilityOptions['mldsaBackend'];
+  mldsaBackendLoader?: AgilityOptions['mldsaBackendLoader'];
+}) {
+  const agility: AgilityOptions = {};
+  if (options?.mldsaBackend !== undefined) agility.mldsaBackend = options.mldsaBackend;
+  if (options?.mldsaBackendLoader !== undefined) agility.mldsaBackendLoader = options.mldsaBackendLoader;
+  const profile: RemedyAdapterProfile = {
+    validAuthority: validAuthorityV2,
+    validEscrowKeyPin: (pin: unknown) => (
+      (exactKeys(pin, new Set(['operator_id', 'public_key']))
+        || (exactKeys(pin, new Set(['operator_id', 'public_key', 'pq_public_key']))
+          && evidencePqKeyId(pin.pq_public_key) !== ''))
+      && validContext((pin as DataRecord).operator_id)
+      && ed25519PublicKey((pin as DataRecord).public_key) !== null
+    ),
+    verifySignedEvidence: (value, kind, authority) => verifiedSignedEvidenceV2(
+      value, kind, authority as unknown as RemedyProgramPinnedAuthorityV2, agility,
+    ),
+    async verifyRevocationEvidence(target, statement, opts) {
+      // Route on the statement's own version marker, exactly as the published
+      // verifyRevocationStatement router does. A v1 statement goes to the
+      // package-root verifier (exported, always resolvable), so the v1
+      // consumption stays additive and unchanged. Only a v2-marked statement
+      // needs the dynamically resolved router; see the note above for why, and
+      // for why its unavailability is a refusal rather than a downgrade.
+      if (!isDataRecord(statement)
+          || (statement as DataRecord)['@version'] !== REVOCATION_V2_VERSION) {
+        return verifyRevocation(target as any, statement as any, opts as any);
+      }
+      try {
+        const route = await resolveRevocationStatementVerifier();
+        return await route(target, statement, { ...(opts as object), ...agility });
+      } catch {
+        return { valid: false };
+      }
+    },
+    verifyEscrowStatement: (statement, opts) => verifyActionEscrowStateStatementAny(
+      statement as any, { ...(opts as object), ...agility } as any,
+    ),
+  };
+  return buildRemedyProgramAdapters(
+    options as unknown as RemedyProgramAdapterOptions,
+    Object.freeze(profile),
+  );
+}
+
 export default Object.freeze({
   REMEDY_PROGRAM_EVIDENCE_VERSION,
   REMEDY_PROGRAM_EVIDENCE_DOMAIN,
+  REMEDY_PROGRAM_EVIDENCE_V2_VERSION,
+  REMEDY_PROGRAM_EVIDENCE_V2_DOMAIN,
+  REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS,
   remedyProgramEvidenceDigest,
   remedyProgramEvidenceSigningBytes,
+  remedyProgramEvidenceV2SigningBytes,
+  signRemedyProgramEvidenceV2,
   createRemedyProgramAdapters,
+  createRemedyProgramAdaptersV2,
 });

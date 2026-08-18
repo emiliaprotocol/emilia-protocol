@@ -15,12 +15,26 @@ import { canonicalize } from '../execution-binding.js';
 // @emilia-protocol/gate, same as @emilia-protocol/verify/pq-signature-agility
 // elsewhere in this package.
 import { checkOperationPolicy, type FipsPosture } from '@emilia-protocol/verify/fips-mode';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgileSigningKey,
+  type AgileSignature,
+  type AgilityOptions,
+} from '@emilia-protocol/verify/pq-signature-agility';
 
 export const ACTION_REMEDY_RECEIPT_VERSION = 'EP-ACTION-REMEDY-RECEIPT-v1';
 export const REMEDY_PROGRAM_RECEIPT_VERSION = ACTION_REMEDY_RECEIPT_VERSION;
 export const ACTION_REMEDY_RECEIPT_DOMAIN = `${ACTION_REMEDY_RECEIPT_VERSION}\0`;
 
 const REMEDY_PROGRAM_VERSION = 'EP-GATE-REMEDY-PROGRAM-PROFILE-v1';
+/** See the EP-ACTION-REMEDY-RECEIPT-v2 header for why v2 accepts both. */
+export const REMEDY_PROGRAM_PROFILE_V2_VERSION = 'EP-GATE-REMEDY-PROGRAM-PROFILE-v2';
+const REMEDY_PROGRAM_PROFILE_V1_ONLY: ReadonlySet<string> = new Set([REMEDY_PROGRAM_VERSION]);
+const REMEDY_PROGRAM_PROFILE_V1_OR_V2: ReadonlySet<string> = new Set([
+  REMEDY_PROGRAM_VERSION, REMEDY_PROGRAM_PROFILE_V2_VERSION,
+]);
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const CAID = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:/#@+-]{0,255}$/;
@@ -386,8 +400,19 @@ function validOriginalReconciliation(value: unknown): boolean {
 }
 
 function validState(state: unknown): state is DataRecord {
+  return validStateUnder(state, REMEDY_PROGRAM_PROFILE_V1_ONLY);
+}
+
+/**
+ * ONE state-snapshot validation body for both receipt versions. The v1 and v2
+ * receipts differ ONLY in which Remedy Program profile markers they will
+ * describe, so every structural, arithmetic, and cross-field rule about a
+ * remedy case cannot drift between them.
+ */
+function validStateUnder(state: unknown, allowedProfileVersions: ReadonlySet<string>): state is DataRecord {
   if (!exactKeys(state, STATE_KEYS)
-      || state.version !== REMEDY_PROGRAM_VERSION
+      || typeof state.version !== 'string'
+      || !allowedProfileVersions.has(state.version)
       || !validId(state.instance_id)
       || !validContext(state.tenant_id)
       || !validContext(state.environment)
@@ -482,9 +507,10 @@ function expectedBindings(state: DataRecord, attempt: DataRecord): RemedyReceipt
 function snapshotAndAttempt(
   value: unknown,
   remedyOperationId: unknown,
+  allowedProfileVersions: ReadonlySet<string> = REMEDY_PROGRAM_PROFILE_V1_ONLY,
 ): { state: DataRecord; attempt: DataRecord } {
   const state = canonicalCopy(value, 'remedy state snapshot') as unknown;
-  if (!validState(state)) throw new TypeError('remedy state snapshot is invalid');
+  if (!validStateUnder(state, allowedProfileVersions)) throw new TypeError('remedy state snapshot is invalid');
   if (!validId(remedyOperationId)) throw new TypeError('remedyOperationId is invalid');
   return { state, attempt: selectAttempt(state, remedyOperationId) };
 }
@@ -896,14 +922,581 @@ export function verifyRemedyProgramReceipt(receipt: unknown, {
   }
 }
 
+// ===========================================================================
+// EP-ACTION-REMEDY-RECEIPT-v2 -- the hybrid (Ed25519 + ML-DSA-65) remedy
+// receipt, and EP-GATE-REMEDY-PROGRAM-PROFILE-v2 as a describable state
+// ===========================================================================
+/**
+ * Copies the five-move EP-REVOCATION-v2 template
+ * (packages/verify/src/revocation.ts) onto the operator remedy receipt.
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. `signature: {algorithm, value}` becomes
+ *    `signature: {profile, required_algorithms, public_key, key_id,
+ *    pq_public_key, pq_key_id, signatures}`, a wire-format change, so the
+ *    receipt takes a new `version` (-v1 -> -v2). verifyRemedyProgramReceipt
+ *    above is UNCHANGED and refuses a v2 receipt at
+ *    `receipt_structure_invalid` -- its exact-key check on the closed
+ *    `{algorithm, value}` signature object fails before any signature is
+ *    inspected, and it does not crash.
+ * 2. SET SHAPE. `signature.signatures` is an EP-SIG-AGILITY-v1 AgileSignature
+ *    array ({ alg, sig, key_id? }), one entry per registered algorithm, in the
+ *    registered order, reused verbatim. Ed25519 keeps its base64url SPKI DER
+ *    public key; ML-DSA-65 carries raw base64url public key bytes.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is INSIDE the signed bytes
+ *    (remedyProgramReceiptV2SigningBytes). Drop the ML-DSA leg and narrow the
+ *    set to ["Ed25519"] and the surviving Ed25519 signature no longer
+ *    verifies. Leave the set intact and the missing leg is a structural
+ *    refusal. The verifier rebuilds the bytes from the REGISTERED set and from
+ *    the body it independently recomputed.
+ * 4. V1 COMPATIBILITY. verifyRemedyProgramReceipt stays SYNCHRONOUS and
+ *    untouched. verifyRemedyProgramReceiptV2 is a SEPARATE async entry point
+ *    (ML-DSA verification is inherently async); verifyRemedyProgramReceiptStatement
+ *    routes on the version marker for callers holding a mixed bag.
+ * 5. NAMED REFUSALS. Verification never throws on caller input; every failure
+ *    returns `{valid:false, reason}` with the same reason vocabulary as v1 plus
+ *    the hybrid-specific ones. An absent ML-DSA backend surfaces as
+ *    `pq_backend_unavailable`, never a skipped check and never a pass on the
+ *    classical leg. Issuance keeps v1's throw-on-misuse contract.
+ *
+ * THE PROFILE MARKER, STATED PRECISELY. A v2 receipt may describe a case whose
+ * state snapshot carries EITHER EP-GATE-REMEDY-PROGRAM-PROFILE-v1 or -v2. That
+ * is not a loose pin: the state snapshot's own `version` string is inside
+ * `canonicalDigest(state)`, which is `payload.case.state_snapshot_digest`,
+ * which is inside `content_digest`, which is inside the signed bytes. Swapping
+ * the profile marker on a presented state therefore breaks BOTH the recomputed
+ * state-snapshot digest and both signature legs. Accepting both is what keeps
+ * the v2 receipt issuable over the Remedy Program kernel as it ships today,
+ * without weakening what the signature commits to. The v1 receipt is
+ * unchanged and still describes v1-profile states ONLY.
+ *
+ * THE FIPS CONSULT. The `fipsPosture` opt-in that v1 issuance already carries
+ * is threaded through the v2 path and consults checkOperationPolicy() for BOTH
+ * registered algorithms before the signer is called. Under a posture that is
+ * not verifiably FIPS-inactive, ML-DSA-65's policy is a REFUSAL unless the
+ * deployment explicitly acknowledges the unvalidated implementation
+ * (`allowUnvalidatedMldsa: true`), because EP's ML-DSA backend is pure
+ * JavaScript and inside no validated module boundary. Under a plainly
+ * non-FIPS posture (`fips_status: 'inactive'`, the normal case) no
+ * acknowledgment is required and the consult changes nothing. Left undefined
+ * (the default), the consult does not run at all, exactly as in v1.
+ *
+ * HONEST BOUNDARY, UNCHANGED FROM V1: the receipt preserves the original
+ * effect as an immutable fact and describes a later remedy only as a
+ * compensating action. It never claims the original effect was rolled back or
+ * erased. The ML-DSA-65 backend is @noble/post-quantum's pure-JS FIPS 204
+ * implementation, not independently audited and not a FIPS validated module,
+ * and its secret key is software-held: this profile does NOT satisfy a
+ * kms/hsm-only custody requirement, and issuing under it is not a
+ * certification claim.
+ */
+
+export const ACTION_REMEDY_RECEIPT_V2_VERSION = 'EP-ACTION-REMEDY-RECEIPT-v2';
+export const REMEDY_PROGRAM_RECEIPT_V2_VERSION = ACTION_REMEDY_RECEIPT_V2_VERSION;
+export const ACTION_REMEDY_RECEIPT_V2_DOMAIN = `${ACTION_REMEDY_RECEIPT_V2_VERSION}\0`;
+
+/** The registered required algorithm set, in canonical order. */
+export const ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+const SIGNATURE_V2_KEYS = new Set([
+  'profile', 'required_algorithms', 'public_key', 'key_id',
+  'pq_public_key', 'pq_key_id', 'signatures',
+]);
+
+/** A v2 issuer pin: BOTH public halves, pinned out of band by key id. */
+export interface RemedyReceiptV2KeyPin {
+  /** Ed25519 base64url SPKI DER. */
+  public_key: string;
+  /** ML-DSA-65 base64url raw public key bytes. */
+  pq_public_key: string;
+}
+
+/**
+ * An injected hybrid signer. Structurally the `signSet()` contract of
+ * lib/key-custody.ts's HybridCustodySigner: sign the SAME bytes under every
+ * required algorithm, in canonical order. Accepted structurally rather than
+ * imported because @emilia-protocol/gate does not depend on the app-tier lib/
+ * tree; a HybridCustodySigner satisfies this shape as-is.
+ */
+export interface RemedyReceiptV2SignSetSigner {
+  keyId: string;
+  custody?: string;
+  publicKeys: RemedyReceiptV2KeyPin;
+  signSet(bytes: Uint8Array | Buffer, context?: Record<string, unknown>): Promise<
+    Array<{ alg: string; sig: string; key_id?: string }>
+  >;
+}
+
+export interface RemedyReceiptV2SigningKeys {
+  ed: { privateKey: unknown; publicKey?: string };
+  pq: { secretKey: Uint8Array | string; publicKey: string };
+}
+
+/**
+ * Derive every relying-party binding for a v2 receipt. Identical to
+ * expectedRemedyProgramReceiptBindings except that it accepts a state snapshot
+ * under EITHER Remedy Program profile marker, which is exactly the set a v2
+ * receipt may describe.
+ */
+export function expectedRemedyProgramReceiptV2Bindings(
+  state: unknown,
+  remedyOperationId: string,
+): Readonly<RemedyReceiptExpectedBindings> {
+  const selected = snapshotAndAttempt(state, remedyOperationId, REMEDY_PROGRAM_PROFILE_V1_OR_V2);
+  return deepFreeze(expectedBindings(selected.state, selected.attempt));
+}
+
+function remedyV2AlgorithmSetRegistered(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+/** ML-DSA-65 public-key identifier: the SHA-256 of the raw public key bytes. */
+function remedyPqKeyId(publicKeyRawB64u: unknown): string {
+  try {
+    if (typeof publicKeyRawB64u !== 'string' || publicKeyRawB64u.length === 0) return '';
+    const raw = Buffer.from(publicKeyRawB64u, 'base64url');
+    if (raw.length !== ML_DSA_65_PUBLIC_KEY_BYTES || raw.toString('base64url') !== publicKeyRawB64u) return '';
+    return `ep:remedy-receipt-key:ml-dsa-65:sha256:${crypto.createHash('sha256').update(raw).digest('hex')}`;
+  } catch {
+    return '';
+  }
+}
+
+function remedyAgilityPassthrough(opts: AgilityOptions | undefined): AgilityOptions {
+  const out: AgilityOptions = {};
+  if (opts?.mldsaBackend !== undefined) out.mldsaBackend = opts.mldsaBackend;
+  if (opts?.mldsaBackendLoader !== undefined) out.mldsaBackendLoader = opts.mldsaBackendLoader;
+  return out;
+}
+
+/**
+ * The bytes BOTH legs sign: the same body v1 signs (version, issuer, payload,
+ * content_digest) under the v2 domain tag, plus the committed
+ * `required_algorithms` set. Recomputed independently by the verifier from the
+ * PRESENTED body and the REGISTERED set. See move 3 above.
+ */
+export function remedyProgramReceiptV2SigningBytes(
+  receipt: unknown,
+  requiredAlgorithms: readonly string[] = ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!isDataRecord(receipt)) throw new TypeError('remedy receipt v2 signing body is invalid');
+  if (!remedyV2AlgorithmSetRegistered(requiredAlgorithms)) {
+    throw new TypeError('remedyProgramReceiptV2SigningBytes: algorithm set is not the registered EP-ACTION-REMEDY-RECEIPT-v2 set');
+  }
+  return Buffer.from(
+    ACTION_REMEDY_RECEIPT_V2_DOMAIN + canonicalize({
+      ...signingBody(receipt),
+      required_algorithms: [...requiredAlgorithms],
+    }),
+    'utf8',
+  );
+}
+
+function configureHybridSigner(options: DataRecord, context: DataRecord): {
+  keyId: string;
+  publicKeys: RemedyReceiptV2KeyPin;
+  signSet: (bytes: Buffer) => Promise<Array<{ alg: string; sig: string }>>;
+} {
+  const hasKeys = options.keys !== undefined;
+  const hasSigner = options.signer !== undefined;
+  if (hasKeys === hasSigner) throw new TypeError('configure exactly one remedy receipt v2 signer');
+  const allowEphemeralState = options.allowEphemeralState === true;
+
+  if (hasKeys) {
+    if (!allowEphemeralState) {
+      throw new TypeError('production remedy receipt v2 issuance requires an external signSet signer');
+    }
+    const keys = options.keys as RemedyReceiptV2SigningKeys;
+    if (!keys?.ed?.privateKey || !keys?.pq?.secretKey || typeof keys?.pq?.publicKey !== 'string') {
+      throw new TypeError('remedy receipt v2 keys require ed.privateKey, pq.secretKey, and pq.publicKey');
+    }
+    const edKey = privateKey(keys.ed.privateKey);
+    if (!remedyPqKeyId(keys.pq.publicKey)) {
+      throw new TypeError('remedy receipt v2 ML-DSA-65 public key must be raw base64url bytes');
+    }
+    const signingKeys: AgileSigningKey[] = [
+      { alg: 'Ed25519', private_key: edKey },
+      { alg: 'ML-DSA-65', private_key: keys.pq.secretKey },
+    ];
+    return {
+      keyId: context.key_id,
+      publicKeys: {
+        public_key: keys.ed.publicKey ?? publicKeyB64u(edKey),
+        pq_public_key: keys.pq.publicKey,
+      },
+      signSet: async (bytes: Buffer) => signAgileSet(new Uint8Array(bytes), signingKeys),
+    };
+  }
+
+  const signer = options.signer as RemedyReceiptV2SignSetSigner;
+  if (!isDataRecord(signer)) throw new TypeError('remedy receipt v2 signer must be a data object');
+  if (!validContext(signer.keyId) || typeof signer.signSet !== 'function'
+      || !isDataRecord(signer.publicKeys)
+      || typeof signer.publicKeys.public_key !== 'string'
+      || typeof signer.publicKeys.pq_public_key !== 'string') {
+    throw new TypeError('remedy receipt v2 signer requires keyId, publicKeys { public_key, pq_public_key }, and signSet(bytes)');
+  }
+  // The classical leg's custody gate is unchanged from v1. The ML-DSA leg is
+  // software-held either way (there is no KMS/HSM ML-DSA path today), which is
+  // why this profile does not satisfy a kms/hsm-only custody requirement.
+  if (!allowEphemeralState && !['kms', 'hsm'].includes(signer.custody as string)) {
+    throw new TypeError('production remedy receipt v2 classical signer custody must be kms or hsm');
+  }
+  if (!publicKey(signer.publicKeys.public_key)) {
+    throw new TypeError('remedy receipt v2 signer Ed25519 public key must be Ed25519 SPKI base64url');
+  }
+  if (!remedyPqKeyId(signer.publicKeys.pq_public_key)) {
+    throw new TypeError('remedy receipt v2 signer ML-DSA-65 public key must be raw base64url bytes');
+  }
+  const publicKeys: RemedyReceiptV2KeyPin = {
+    public_key: signer.publicKeys.public_key,
+    pq_public_key: signer.publicKeys.pq_public_key,
+  };
+  return {
+    keyId: signer.keyId,
+    publicKeys,
+    signSet: async (bytes: Buffer) => {
+      const set = await signer.signSet(bytes, { profile: ACTION_REMEDY_RECEIPT_V2_VERSION });
+      if (!Array.isArray(set)
+          || !ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS.every((alg, index) => (
+            set[index]?.alg === alg && typeof set[index]?.sig === 'string'))) {
+        throw new TypeError('remedy receipt v2 signer returned a malformed signature set');
+      }
+      return set.map((entry) => ({ alg: entry.alg, sig: entry.sig }));
+    },
+  };
+}
+
+/**
+ * Issue one hybrid receipt. Local private keys require an explicit
+ * ephemeral/test opt-in; production issuance requires an external signSet
+ * signer. Every returned signature set is verified against the configured
+ * public halves before the receipt leaves this function.
+ */
+export async function issueRemedyProgramReceiptV2(
+  input: {
+    state?: unknown;
+    remedyOperationId?: string;
+  } = {},
+  options: {
+    context?: unknown;
+    keys?: RemedyReceiptV2SigningKeys;
+    signer?: RemedyReceiptV2SignSetSigner;
+    allowEphemeralState?: boolean;
+    fipsPosture?: FipsPosture;
+    /**
+     * ML-DSA-65 is implemented in JavaScript and is inside no validated
+     * module. Under a configured `fipsPosture` its policy is a REFUSAL unless
+     * the deployment acknowledges that explicitly here. The default is the
+     * named refusal, never a silent pass.
+     */
+    allowUnvalidatedMldsa?: boolean;
+  } = {},
+) {
+  if (!exactKeys(input, new Set(['state', 'remedyOperationId']))) {
+    throw new TypeError('remedy receipt input must contain exactly state and remedyOperationId');
+  }
+  const selected = snapshotAndAttempt(
+    input.state, input.remedyOperationId, REMEDY_PROGRAM_PROFILE_V1_OR_V2,
+  );
+  const context = canonicalCopy(options.context, 'remedy receipt context') as unknown;
+  if (!validIssuer(context)) {
+    throw new TypeError('remedy receipt context must contain exact pinned issuer fields');
+  }
+  if (context.tenant !== selected.state.tenant_id
+      || context.environment !== selected.state.environment
+      || context.audience !== selected.state.audience) {
+    throw new TypeError('remedy receipt context does not match state tenant/environment/audience');
+  }
+  const signer = configureHybridSigner(options as DataRecord, context);
+  if (signer.keyId !== context.key_id) {
+    throw new TypeError('remedy receipt context key_id does not match signer keyId');
+  }
+
+  const requiredAlgorithms = [...ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS];
+  const unsigned = {
+    version: ACTION_REMEDY_RECEIPT_V2_VERSION,
+    issuer: context,
+    payload: payloadFor(selected.state, selected.attempt),
+  };
+  const signedBody = {
+    ...unsigned,
+    content_digest: canonicalDigest(unsigned),
+  };
+  const signingBytes = remedyProgramReceiptV2SigningBytes(signedBody, requiredAlgorithms);
+  // OPT-IN FIPS consult, BOTH algorithms, BEFORE the signer is called.
+  if (options.fipsPosture !== undefined) {
+    for (const alg of requiredAlgorithms) {
+      const policy = checkOperationPolicy(alg, options.fipsPosture, {
+        allow_unvalidated_mldsa: options.allowUnvalidatedMldsa === true,
+      });
+      if (policy.permitted !== true) {
+        throw new Error(`remedy receipt v2 issuance refused: fips_policy_denied:${alg}:${policy.reason}`);
+      }
+    }
+  }
+  const signatures = await signer.signSet(Buffer.from(signingBytes));
+  const receipt = canonicalCopy({
+    ...signedBody,
+    signature: {
+      profile: ACTION_REMEDY_RECEIPT_V2_VERSION,
+      required_algorithms: requiredAlgorithms,
+      public_key: signer.publicKeys.public_key,
+      key_id: context.key_id,
+      pq_public_key: signer.publicKeys.pq_public_key,
+      pq_key_id: remedyPqKeyId(signer.publicKeys.pq_public_key),
+      signatures,
+    },
+  }, 'remedy receipt');
+  const expected = expectedBindings(selected.state, selected.attempt);
+  const selfCheck = await verifyRemedyProgramReceiptV2(receipt, {
+    trustedKeys: { [context.key_id]: signer.publicKeys },
+    expectedIssuer: context,
+    state: selected.state,
+    expected,
+  });
+  if (!selfCheck.valid) {
+    throw new TypeError(`remedy receipt v2 self-verification failed: ${selfCheck.reason}`);
+  }
+  return deepFreeze(receipt);
+}
+
+export const signRemedyProgramReceiptV2 = issueRemedyProgramReceiptV2;
+
+/**
+ * FAIL-CLOSED hybrid remedy-receipt verifier. Never throws on caller input; a
+ * v2 receipt NEVER verifies on one leg alone. Trust keys, all issuer fields,
+ * the exact current state snapshot, and every material original/remedy binding
+ * are relying-party inputs; none is accepted from the receipt itself.
+ */
+export async function verifyRemedyProgramReceiptV2(receipt: unknown, {
+  trustedKeys,
+  expectedIssuer,
+  state,
+  expected,
+  mldsaBackend,
+  mldsaBackendLoader,
+}: {
+  trustedKeys?: unknown;
+  expectedIssuer?: unknown;
+  state?: unknown;
+  expected?: unknown;
+  mldsaBackend?: AgilityOptions['mldsaBackend'];
+  mldsaBackendLoader?: AgilityOptions['mldsaBackendLoader'];
+} = {}) {
+  const checks = {
+    structure: false,
+    payload: false,
+    content_digest: false,
+    issuer_pin: false,
+    algorithm_set: false,
+    legs_present: false,
+    key: false,
+    signature: false,
+    state_snapshot: false,
+    expected_bindings: false,
+  };
+  try {
+    const snapshot = canonicalCopy(receipt, 'remedy receipt') as unknown;
+    // 1. Version marker + closed shape. A v1 receipt refuses here, the mirror
+    //    image of the v1 verifier refusing a v2 receipt.
+    if (!exactKeys(snapshot, TOP_KEYS)
+        || snapshot.version !== ACTION_REMEDY_RECEIPT_V2_VERSION
+        || !validIssuer(snapshot.issuer)
+        || !exactKeys(snapshot.signature, SIGNATURE_V2_KEYS)
+        || snapshot.signature.profile !== ACTION_REMEDY_RECEIPT_V2_VERSION) {
+      return refusal('receipt_structure_invalid', checks);
+    }
+    checks.structure = true;
+    if (!validPayload(snapshot.payload)) return refusal('receipt_structure_invalid', checks);
+    checks.payload = true;
+    if (typeof snapshot.content_digest !== 'string'
+        || !DIGEST.test(snapshot.content_digest)
+        || canonicalDigest(contentBody(snapshot)) !== snapshot.content_digest) {
+      return refusal('receipt_content_digest_mismatch', checks);
+    }
+    checks.content_digest = true;
+
+    let issuerPin: unknown;
+    try {
+      issuerPin = canonicalCopy(expectedIssuer, 'expected remedy receipt issuer');
+    } catch {
+      return refusal('receipt_expected_issuer_mismatch', checks);
+    }
+    checks.issuer_pin = validIssuer(issuerPin) && sameCanonical(snapshot.issuer, issuerPin);
+    if (!checks.issuer_pin) return refusal('receipt_expected_issuer_mismatch', checks);
+
+    // 2. Committed algorithm set: exact and order-sensitive. A narrowed set is
+    //    the stripping attack's cover story, refused structurally here and
+    //    (independently) by the signature check, which rebuilds the bytes from
+    //    the REGISTERED set regardless of what the receipt claims.
+    checks.algorithm_set = remedyV2AlgorithmSetRegistered(snapshot.signature.required_algorithms);
+    if (!checks.algorithm_set) return refusal('receipt_algorithm_set_unsupported', checks);
+
+    // 3. Exactly one signature per required algorithm.
+    const signatures = Array.isArray(snapshot.signature.signatures)
+      ? snapshot.signature.signatures as AgileSignature[] : null;
+    if (!signatures) return refusal('receipt_signature_set_invalid', checks);
+    const presented = new Set<string>();
+    for (const entry of signatures) {
+      if (!isDataRecord(entry) || typeof entry.alg !== 'string' || typeof entry.sig !== 'string') {
+        return refusal('receipt_signature_set_invalid', checks);
+      }
+      if (presented.has(entry.alg)) return refusal('receipt_signature_set_invalid', checks);
+      presented.add(entry.alg);
+    }
+    for (const alg of ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS) {
+      if (!presented.has(alg)) return refusal('receipt_signature_leg_missing', checks);
+    }
+    for (const alg of presented) {
+      if (!(ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) {
+        return refusal('receipt_signature_set_invalid', checks);
+      }
+    }
+    checks.legs_present = true;
+
+    // 4. Issuer keys: BOTH halves pinned, and the presented halves must equal
+    //    the pinned ones. Identified-but-not-trusted, per leg: a key id pinned
+    //    for v1 only (Ed25519 half alone) does NOT satisfy a v2 pin.
+    const pin = isDataRecord(trustedKeys) && Object.hasOwn(trustedKeys, snapshot.issuer.key_id)
+      ? trustedKeys[snapshot.issuer.key_id] : null;
+    checks.key = isDataRecord(pin)
+      && typeof pin.public_key === 'string' && pin.public_key.length > 0
+      && typeof pin.pq_public_key === 'string' && pin.pq_public_key.length > 0
+      && pin.public_key === snapshot.signature.public_key
+      && pin.pq_public_key === snapshot.signature.pq_public_key
+      && snapshot.signature.key_id === snapshot.issuer.key_id
+      // Curve-pinned: a non-Ed25519 SPKI presented as the classical half fails
+      // here as well as in the signature check.
+      && publicKey(pin.public_key) !== null
+      && remedyPqKeyId(pin.pq_public_key) !== ''
+      && snapshot.signature.pq_key_id === remedyPqKeyId(pin.pq_public_key);
+    if (!checks.key) return refusal('receipt_key_untrusted', checks);
+
+    // 5. Signature set over bytes rebuilt from the PRESENTED body and the
+    //    REGISTERED algorithm set, under the PINNED keys. Never fall back to
+    //    the receipt's own self-asserted key material.
+    let setResult;
+    try {
+      setResult = await verifyAgileSignatureSet(
+        new Uint8Array(remedyProgramReceiptV2SigningBytes(
+          snapshot, ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS,
+        )),
+        signatures,
+        [
+          { alg: 'Ed25519', public_key: (pin as DataRecord).public_key },
+          { alg: 'ML-DSA-65', public_key: (pin as DataRecord).pq_public_key },
+        ],
+        {
+          ...remedyAgilityPassthrough({ mldsaBackend, mldsaBackendLoader }),
+          policy: 'hybrid_all',
+          requiredAlgorithms: [...ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS],
+        },
+      );
+    } catch {
+      // verifyAgileSignatureSet documents that it never throws; an injected
+      // backend that does is still a refusal here, never a pass.
+      setResult = null;
+    }
+    checks.signature = setResult?.verified === true;
+    if (!checks.signature) {
+      return refusal(
+        `receipt_signature_invalid:${String(setResult?.reason ?? 'signature_set_unverified')}`,
+        checks,
+      );
+    }
+
+    // 6. State snapshot and expected bindings: identical to v1, except that a
+    //    v2 receipt may describe either Remedy Program profile marker (see the
+    //    header: the marker is still fully committed through
+    //    state_snapshot_digest -> content_digest -> signed bytes).
+    let stateCopy: unknown;
+    try {
+      stateCopy = canonicalCopy(state, 'expected remedy state snapshot');
+    } catch {
+      return refusal('receipt_state_snapshot_mismatch', checks);
+    }
+    checks.state_snapshot = validStateUnder(stateCopy, REMEDY_PROGRAM_PROFILE_V1_OR_V2)
+      && canonicalDigest(stateCopy) === snapshot.payload.case.state_snapshot_digest
+      && stateCopy.instance_id === snapshot.payload.case.instance_id
+      && stateCopy.revision === snapshot.payload.case.revision
+      && stateCopy.status === snapshot.payload.case.status
+      && stateCopy.updated_at === snapshot.payload.case.updated_at;
+    if (!checks.state_snapshot) return refusal('receipt_state_snapshot_mismatch', checks);
+
+    let expectedCopy: unknown;
+    try {
+      expectedCopy = canonicalCopy(expected, 'expected remedy bindings');
+    } catch {
+      return refusal('receipt_expected_binding_mismatch', checks);
+    }
+    let derivedAttempt: DataRecord;
+    try {
+      if (!validExpected(expectedCopy)) {
+        return refusal('receipt_expected_binding_mismatch', checks);
+      }
+      derivedAttempt = selectAttempt(stateCopy as DataRecord, expectedCopy.remedy_operation_id);
+    } catch {
+      return refusal('receipt_expected_binding_mismatch', checks);
+    }
+    checks.expected_bindings = sameCanonical(receiptExpected(snapshot), expectedCopy)
+      && sameCanonical(expectedBindings(stateCopy as DataRecord, derivedAttempt), expectedCopy)
+      && sameCanonical(payloadFor(stateCopy as DataRecord, derivedAttempt), snapshot.payload);
+    if (!checks.expected_bindings) {
+      return refusal('receipt_expected_binding_mismatch', checks);
+    }
+
+    return deepFreeze({
+      valid: true,
+      reason: 'verified',
+      checks,
+      content_digest: snapshot.content_digest,
+      payload: canonicalCopy(snapshot.payload, 'verified remedy receipt payload'),
+    });
+  } catch {
+    return refusal('receipt_structure_invalid', checks);
+  }
+}
+
+/**
+ * Route a receipt of EITHER version to its verifier. v1 receipts keep the exact
+ * v1 verdict; v2 receipts get the hybrid check. A receipt whose `version` is
+ * neither refuses through the v1 verifier, which is the fail-closed answer.
+ */
+export async function verifyRemedyProgramReceiptStatement(receipt: unknown, options: {
+  trustedKeys?: unknown;
+  expectedIssuer?: unknown;
+  state?: unknown;
+  expected?: unknown;
+  mldsaBackend?: AgilityOptions['mldsaBackend'];
+  mldsaBackendLoader?: AgilityOptions['mldsaBackendLoader'];
+} = {}) {
+  if (isRecord(receipt) && receipt.version === ACTION_REMEDY_RECEIPT_V2_VERSION) {
+    return verifyRemedyProgramReceiptV2(receipt, options);
+  }
+  return verifyRemedyProgramReceipt(receipt, options);
+}
+
 export default {
   ACTION_REMEDY_RECEIPT_VERSION,
   REMEDY_PROGRAM_RECEIPT_VERSION,
   ACTION_REMEDY_RECEIPT_DOMAIN,
+  ACTION_REMEDY_RECEIPT_V2_VERSION,
+  REMEDY_PROGRAM_RECEIPT_V2_VERSION,
+  ACTION_REMEDY_RECEIPT_V2_DOMAIN,
+  ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS,
+  REMEDY_PROGRAM_PROFILE_V2_VERSION,
   expectedRemedyProgramReceiptBindings,
+  expectedRemedyProgramReceiptV2Bindings,
   remedyProgramReceiptSigningBytes,
+  remedyProgramReceiptV2SigningBytes,
   issueRemedyProgramReceipt,
+  issueRemedyProgramReceiptV2,
   signRemedyProgramReceipt,
+  signRemedyProgramReceiptV2,
   createRemedyProgramReceipt,
   verifyRemedyProgramReceipt,
+  verifyRemedyProgramReceiptV2,
+  verifyRemedyProgramReceiptStatement,
 };
