@@ -21,6 +21,10 @@
     "./authority": {
       "import": "./dist/authority/index.js",
       "types": "./dist/authority/index.d.ts"
+    },
+    "./source": {
+      "import": "./dist/source/index.js",
+      "types": "./dist/source/index.d.ts"
     }
   },
   "bin": {
@@ -45,7 +49,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "pretest": "npm run build",
-    "test": "node --test test.js authority.test.mjs classification.test.mjs brain.test.mjs packed-consumer.test.mjs"
+    "test": "node --test test.js authority.test.mjs classification.test.mjs brain.test.mjs source.test.mjs packed-consumer.test.mjs"
   },
   "dependencies": {
     "@emilia-protocol/verify": "^3.10.0"

@@ -86,6 +86,9 @@ const args = process.argv.slice(2);
 if (args[0] === 'authority') {
   const { authorityMain } = await import('./dist/authority/cli.js');
   process.exitCode = authorityMain(args.slice(1));
+} else if (args[0] === 'source' || args[0] === 'diff') {
+  const { sourceMain } = await import('./dist/source/cli.js');
+  process.exitCode = sourceMain(args);
 } else if (args[0] === 'protect') {
   // Reuse the hardener in-process. This launches no configured server and makes
   // no network request; it only reads the supplied declaration and, with
@@ -203,7 +206,7 @@ if (args[0] === 'authority') {
     input = { actions: SAMPLE, source: 'mcp', blindSpots: ['This is the built-in sample. Real scans see only statically-listed tools; runtime-registered tools and value-dependent risk are invisible.'] };
   } else {
     const file = positionals[0];
-    if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample | brain <input|--sample> | protect <input> [--apply]'); process.exit(2); }
+    if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample | source <directory> | diff --baseline <file> <directory> | brain <input|--sample> | protect <input> [--apply]'); process.exit(2); }
     const raw = readBoundedRegularFile(file, MAX_INPUT_BYTES);
     input = ingest(raw.toString('utf8'));
   }

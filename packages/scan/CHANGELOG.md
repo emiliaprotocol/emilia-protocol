@@ -1,6 +1,14 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## Unreleased
+
+- Add bounded `scan source` discovery for MCP, LangChain, Vercel AI SDK,
+  Genkit, Python, and Java registrations with per-registration source evidence.
+- Add tightening-only composition findings and `scan diff` against a reviewed,
+  non-authorizing source baseline. Dynamic and duplicate registrations remain
+  explicit review gaps; no command silently edits code or creates authority.
+
 All notable changes to `@emilia-protocol/scan` are documented here.
 
 ## 0.4.0 (2026-08-17)
