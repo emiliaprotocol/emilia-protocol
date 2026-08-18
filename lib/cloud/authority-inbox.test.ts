@@ -169,6 +169,43 @@ describe('policy simulation and notifications', () => {
     expect(result.receipt_id).toBeNull();
   });
 
+  it('refuses malformed values and can preview an unguarded classification', () => {
+    const refused = simulateAuthorityPolicy({
+      action_type: 'read_inventory',
+      amount: -1,
+      policy: { protected_action_types: [] },
+    });
+    expect(refused.verdict).toBe('WOULD_REFUSE');
+    expect(refused.reason).toBe('amount_invalid');
+
+    const unguarded = simulateAuthorityPolicy({
+      action_type: 'read_inventory',
+      amount: 5,
+      policy: {
+        protected_action_types: ['large_payment_release'],
+        approval_threshold: 100_000,
+      },
+    });
+    expect(unguarded.verdict).toBe('WOULD_ALLOW_UNGUARDED');
+    expect(unguarded.reason).toBe('no_simulated_authority_requirement');
+    expect(unguarded.authorizes).toBe(false);
+
+    const invalid = simulateAuthorityPolicy({
+      action_type: '',
+      policy: { protected_action_types: [] },
+    });
+    expect(invalid.verdict).toBe('INDETERMINATE');
+    expect(invalid.reason).toBe('simulation_input_invalid');
+
+    const threshold = simulateAuthorityPolicy({
+      action_type: 'inventory_export',
+      amount: 100_000,
+      policy: { protected_action_types: [], approval_threshold: 100_000 },
+    });
+    expect(threshold.verdict).toBe('WOULD_REQUIRE_AUTHORITY');
+    expect(threshold.reason).toBe('approval_threshold_met');
+  });
+
   it('builds a delivery-neutral notification that cannot authorize', () => {
     const item = projectAuthorityInboxEntry(base);
     const notification = buildAuthorityNotification(item, 'state_changed');
