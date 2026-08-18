@@ -268,6 +268,47 @@ export declare function createHybridReceipt({ payload, keys, metadata, ...option
     metadata?: AnyRecord;
 } & HybridOptions): Promise<HybridReceiptDocument>;
 /**
+ * A dual-signer's signSet(bytes) surface, structurally typed. Matches
+ * HybridCustodySigner#signSet in lib/key-custody.ts and HybridSignSet in
+ * ./index.ts; this module never imports either, so an issuer can hand it any
+ * signer with that shape.
+ */
+export type HybridReceiptSignSet = (bytes: Uint8Array | Buffer, context?: Record<string, unknown>) => Promise<HybridReceiptSignature[]>;
+/**
+ * Mint an EP-RECEIPT-HYBRID-v1 receipt from a CUSTODY SIGNER rather than from
+ * raw private key material.
+ *
+ * WHY BOTH ENTRY POINTS EXIST. createHybridReceipt() takes the secret bytes
+ * and drives EP-SIG-AGILITY-v1 itself, which is right for an issuer that holds
+ * its own keys. A deployment whose classical leg is behind a KMS/HSM boundary
+ * has no secret bytes to hand over: it has a registered dual signer that will
+ * sign(bytes) on request. Without this entry point such a deployment could not
+ * mint a hybrid receipt at all, so a custody-resolved default would resolve to
+ * a posture it could not execute.
+ *
+ * WHAT IS IDENTICAL, AND WHY THAT MATTERS. The bytes are built HERE by
+ * hybridSignedBytes() from the REGISTERED algorithm set, exactly as
+ * createHybridReceipt() builds them, so the anti-stripping commitment (profile
+ * id + required-algorithm set inside the signed bytes) is a property of this
+ * module and not of the signer. The signer chooses nothing about what it is
+ * signing, and the emitted document is the same shape verifyHybridReceipt()
+ * already checks. The set is never narrowed to what a signer returned: a signer
+ * that answers with anything other than one signature per REGISTERED algorithm
+ * is a THROW, never a receipt with a missing leg.
+ *
+ * Issuer-side misuse is a programming error, so this THROWS, matching
+ * createHybridReceipt() and createLogCheckpointHybridProof(). A PQ signer with
+ * no ML-DSA backend throws `pq_backend_unavailable` from its own sign(); that
+ * propagates as a refusal to issue, never as a classical-only receipt.
+ */
+export declare function createHybridReceiptFromSignSet({ payload, signSet, metadata, context, }: {
+    payload: AnyRecord;
+    signSet: HybridReceiptSignSet;
+    metadata?: AnyRecord;
+    /** Passed to the signer as signing context (audit/keying hints only). */
+    context?: Record<string, unknown>;
+}): Promise<HybridReceiptDocument>;
+/**
  * Verify an EP-RECEIPT-HYBRID-v1 receipt. FAIL-CLOSED: every malformed,
  * unknown, or stripped input returns a named refusal; nothing throws on caller
  * input.

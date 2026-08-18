@@ -374,6 +374,80 @@ export async function createHybridReceipt({ payload, keys, metadata, ...options 
         doc.metadata = metadata;
     return doc;
 }
+/**
+ * Mint an EP-RECEIPT-HYBRID-v1 receipt from a CUSTODY SIGNER rather than from
+ * raw private key material.
+ *
+ * WHY BOTH ENTRY POINTS EXIST. createHybridReceipt() takes the secret bytes
+ * and drives EP-SIG-AGILITY-v1 itself, which is right for an issuer that holds
+ * its own keys. A deployment whose classical leg is behind a KMS/HSM boundary
+ * has no secret bytes to hand over: it has a registered dual signer that will
+ * sign(bytes) on request. Without this entry point such a deployment could not
+ * mint a hybrid receipt at all, so a custody-resolved default would resolve to
+ * a posture it could not execute.
+ *
+ * WHAT IS IDENTICAL, AND WHY THAT MATTERS. The bytes are built HERE by
+ * hybridSignedBytes() from the REGISTERED algorithm set, exactly as
+ * createHybridReceipt() builds them, so the anti-stripping commitment (profile
+ * id + required-algorithm set inside the signed bytes) is a property of this
+ * module and not of the signer. The signer chooses nothing about what it is
+ * signing, and the emitted document is the same shape verifyHybridReceipt()
+ * already checks. The set is never narrowed to what a signer returned: a signer
+ * that answers with anything other than one signature per REGISTERED algorithm
+ * is a THROW, never a receipt with a missing leg.
+ *
+ * Issuer-side misuse is a programming error, so this THROWS, matching
+ * createHybridReceipt() and createLogCheckpointHybridProof(). A PQ signer with
+ * no ML-DSA backend throws `pq_backend_unavailable` from its own sign(); that
+ * propagates as a refusal to issue, never as a classical-only receipt.
+ */
+export async function createHybridReceiptFromSignSet({ payload, signSet, metadata, context, }) {
+    if (typeof signSet !== 'function') {
+        throw new TypeError('createHybridReceiptFromSignSet: signSet must be a dual-signer signSet(bytes) (see createHybridCustodySigner)');
+    }
+    if (metadata !== undefined && !isCanonicalizable(metadata)) {
+        throw new Error('createHybridReceiptFromSignSet: metadata is outside the EP canonicalization profile');
+    }
+    const requiredAlgorithms = [...HYBRID_RECEIPT_REQUIRED_ALGORITHMS];
+    // ONE set of canonical bytes, built from the REGISTERED set; every leg signs
+    // exactly these. Throws on a payload outside the canonicalization profile.
+    const messageBytes = hybridSignedBytes(payload, requiredAlgorithms);
+    const signatures = await signSet(messageBytes, {
+        profile: HYBRID_RECEIPT_PROFILE,
+        required_algorithms: requiredAlgorithms,
+        ...(context ?? {}),
+    });
+    if (!Array.isArray(signatures)) {
+        throw new Error('createHybridReceiptFromSignSet: signSet must return one signature per required algorithm');
+    }
+    // Order the emitted signatures to match the committed set, so the document
+    // reads the same way the bytes commit. A missing or malformed leg is a throw.
+    const byAlg = new Map(signatures.map((s) => [s?.alg, s]));
+    const ordered = [];
+    for (const alg of requiredAlgorithms) {
+        const s = byAlg.get(alg);
+        if (!s || typeof s.sig !== 'string' || s.sig.length === 0) {
+            throw new Error(`createHybridReceiptFromSignSet: signing produced no ${alg} leg`);
+        }
+        ordered.push(s.key_id === undefined ? { alg, sig: s.sig } : { alg, sig: s.sig, key_id: s.key_id });
+    }
+    // An extra leg means the signer signed under an algorithm this profile does
+    // not commit to; the document must not carry it.
+    for (const s of signatures) {
+        if (!requiredAlgorithms.includes(s?.alg)) {
+            throw new Error(`createHybridReceiptFromSignSet: signSet returned an unexpected algorithm: ${String(s?.alg)}`);
+        }
+    }
+    const doc = {
+        '@version': HYBRID_RECEIPT_PROFILE,
+        profile: { id: HYBRID_RECEIPT_PROFILE, required_algorithms: requiredAlgorithms },
+        payload,
+        signatures: ordered,
+    };
+    if (metadata !== undefined)
+        doc.metadata = metadata;
+    return doc;
+}
 function toRawBytes(value) {
     if (value instanceof Uint8Array)
         return value;

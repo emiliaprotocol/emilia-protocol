@@ -29,6 +29,14 @@
 // stated as such in its `custody` field, and it is the only PQ factory here.
 // If your HSM gains ML-DSA-65, wrap it with createPqCustodySigner() directly
 // and label its custody accordingly.
+//
+// THAT LABEL IS LOAD-BEARING, NOT DECORATION. describeHybridCustodyPosture()
+// in lib/key-custody.js reads it to resolve a deployment's DEFAULT issuance
+// posture, and a gov-strict (or production) deployment refuses a PQ leg whose
+// custody is not kms/hsm with the named reason `pq_custody_not_permitted`.
+// A signer built here therefore does NOT hand a kms/hsm-requiring deployment a
+// software-held PQ key by default; that deployment gets classical-only issuance
+// and a reason it can read, until an operator sets the mode explicitly.
 
 import { createPqCustodySigner, createExternalCustodySigner, createHybridCustodySigner, ML_DSA_65_SECRET_KEY_BYTES, ML_DSA_65_PUBLIC_KEY_BYTES } from './key-custody.js';
 
@@ -157,7 +165,8 @@ export function softwareMldsaSigner({ keyId, secretKey, publicKeyRawB64u, mldsaB
  *
  * The classical leg keeps whatever custody it actually has (kms/hsm); the PQ
  * leg is software. The pair is NOT a uniform custody claim and this repository
- * does not make one.
+ * does not make one, and describeHybridCustodyPosture() reports the two labels
+ * separately for exactly that reason.
  */
 export function hybridSigner({ classical, pq }) {
   return createHybridCustodySigner({ classical, pq });

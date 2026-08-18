@@ -11,12 +11,35 @@
  * accepts. It is deliberately a thin, fail-closed policy layer: it makes no
  * cryptographic decisions of its own and never reimplements a check.
  *
- * OPT-IN, AND OFF BY DEFAULT. `disabled` is the default mode. EP-RECEIPT-v1
- * remains the Gate's receipt format unless an operator turns this on. Nothing
- * in this repository ships with hybrid issuance enabled.
+ * THE DEFAULT IS RESOLVED FROM CUSTODY, NOT HARDCODED OFF. An operator setting
+ * always decides the mode when there is one. When there is not,
+ * resolveHybridIssuancePosture() reads the deployment's custody posture (see
+ * describeHybridCustodyPosture() in lib/key-custody.ts) and resolves:
+ *
+ *   - a dual-signer custody signer is registered AND custody permits the
+ *     post-quantum leg  ->  `dual`
+ *   - no dual-signer custody signer                            ->  `disabled`
+ *                                                                  (hybrid_signer_absent)
+ *   - a dual signer, but custody REFUSES the software PQ leg   ->  `disabled`
+ *                                                                  (pq_custody_not_permitted)
+ *
+ * The refusal is the half worth stating loudly. There is no KMS or HSM
+ * ML-DSA-65 signing path available to EP today, so the PQ leg is software-held
+ * and assertProductionKeyCustody() does not bless it. A gov-strict deployment
+ * that requires kms/hsm custody is therefore NOT quietly handed a software PQ
+ * key because a default changed: it stays classical-only and the resolved
+ * posture carries the named reason for it. There is no silent downgrade here
+ * and no silent upgrade either.
+ *
+ * WHAT THIS REPOSITORY STILL DOES NOT DO. No code here registers a custody
+ * signer at boot, hybrid or otherwise, and no Gate call site in this repository
+ * issues receipts through issueUnderHybridProfile() yet. So nothing shipped
+ * from this repository mints a hybrid receipt on its own; the default resolves
+ * to `dual` only for a deployment that registered a dual signer whose custody
+ * its own policy accepts. That is a changed default, not a deployed one.
  *
  * THE FOUR MODES
- *   disabled  (default) The Gate issues and accepts EP-RECEIPT-v1 only. A
+ *   disabled  The Gate issues and accepts EP-RECEIPT-v1 only. A
  *             request for a hybrid receipt is REFUSED (hybrid_issuance_disabled)
  *             rather than quietly answered with a classical receipt, and a
  *             hybrid receipt presented for acceptance is REFUSED
@@ -80,8 +103,9 @@
  * in this file that turns a hybrid intent into a classical artifact.
  *
  * HONEST BOUNDARIES
- *   - This is an opt-in profile, not the default receipt format, and it is not
- *     enabled in any deployment shipped from this repository.
+ *   - EP-RECEIPT-v1 is still the Gate's receipt format; `dual` adds a twin
+ *     alongside it, and no deployment shipped from this repository issues
+ *     either through this module yet.
  *   - The ML-DSA implementation reached through EP-SIG-AGILITY-v1 is
  *     @noble/post-quantum, a pure-JS FIPS 204 implementation that is not a
  *     FIPS-validated module. Turning this profile on is not a certification.
@@ -120,38 +144,23 @@ export const HYBRID_PROFILE_REASONS = Object.freeze({
     CLASSICAL_RECEIPT_MALFORMED: 'classical_receipt_malformed',
     /** dual mode: the two artifacts do not commit to identical canonical bytes. */
     DUAL_PAYLOAD_MISMATCH: 'dual_payload_mismatch',
+    /** default resolution: no dual-signer custody signer is registered. */
+    HYBRID_SIGNER_ABSENT: 'hybrid_signer_absent',
+    /** default resolution: custody refuses the software-held ML-DSA-65 leg. */
+    PQ_CUSTODY_NOT_PERMITTED: 'pq_custody_not_permitted',
+    /** default resolution: the deployment's own custody policy is not satisfied. */
+    CUSTODY_POLICY_NOT_SATISFIED: 'custody_policy_not_satisfied',
+    /** default resolution: an explicit operator setting pinned classical-only. */
+    OPERATOR_PINNED_CLASSICAL: 'operator_pinned_classical',
+    /** the issuance module does not expose the custody-signer issuance entry point. */
+    HYBRID_SIGNER_ISSUANCE_UNSUPPORTED: 'hybrid_signer_issuance_unsupported',
 });
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-/**
- * Normalize a Gate deployment's `hybrid_issuance` setting into a frozen
- * profile. An unrecognized value THROWS: a misconfigured security flag must
- * stop a deployment, not be rounded down to the permissive default.
- *
- * Accepts either the flag itself or a config object carrying it:
- *   resolveHybridReceiptProfile('required')
- *   resolveHybridReceiptProfile({ hybrid_issuance: 'required' })
- *   resolveHybridReceiptProfile(undefined)            -> disabled
- */
-export function resolveHybridReceiptProfile(config) {
-    let value = config;
-    if (config && typeof config === 'object' && !Array.isArray(config)) {
-        value = config.hybrid_issuance;
-    }
-    if (value === undefined || value === null)
-        value = 'disabled';
-    // `true`/`false` are accepted because operators reach for booleans on a flag
-    // named like this one; they map onto the two unambiguous modes, never onto
-    // `required` (which nobody would spell as `true`).
-    if (value === true)
-        value = 'enabled';
-    if (value === false)
-        value = 'disabled';
-    if (typeof value !== 'string' || !HYBRID_ISSUANCE_MODES.includes(value)) {
-        throw new Error(`hybrid_issuance must be one of ${HYBRID_ISSUANCE_MODES.join(', ')}; got ${JSON.stringify(value)}`);
-    }
-    const mode = value;
+const CUSTODY_REASONS = Object.freeze({
+    hybrid_signer_absent: HYBRID_PROFILE_REASONS.HYBRID_SIGNER_ABSENT,
+    pq_custody_not_permitted: HYBRID_PROFILE_REASONS.PQ_CUSTODY_NOT_PERMITTED,
+    custody_policy_not_satisfied: HYBRID_PROFILE_REASONS.CUSTODY_POLICY_NOT_SATISFIED,
+});
+function freezeProfile(mode) {
     return Object.freeze({
         profile_id: HYBRID_RECEIPT_PROFILE_ID,
         mode,
@@ -159,6 +168,109 @@ export function resolveHybridReceiptProfile(config) {
         requires_hybrid: mode === 'required',
         issues_dual: mode === 'dual',
     });
+}
+/**
+ * Normalize an explicit `hybrid_issuance` setting, or return undefined when the
+ * operator set none. An unrecognized value THROWS: a misconfigured security
+ * flag must stop a deployment, not be rounded down to a permissive default.
+ */
+function normalizeOperatorMode(config) {
+    let value = config;
+    if (config && typeof config === 'object' && !Array.isArray(config)) {
+        value = config.hybrid_issuance;
+    }
+    if (value === undefined || value === null)
+        return undefined;
+    // `true`/`false` are accepted because operators reach for booleans on a flag
+    // named like this one; they map onto the two unambiguous modes, never onto
+    // `required` (which nobody would spell as `true`). `false` is a real
+    // operator decision to stay classical-only, and it wins over any default.
+    if (value === true)
+        value = 'enabled';
+    if (value === false)
+        value = 'disabled';
+    if (typeof value !== 'string' || !HYBRID_ISSUANCE_MODES.includes(value)) {
+        throw new Error(`hybrid_issuance must be one of ${HYBRID_ISSUANCE_MODES.join(', ')}; got ${JSON.stringify(value)}`);
+    }
+    return value;
+}
+/**
+ * Resolve the deployment's posture from its operator setting and its custody.
+ *
+ * THE RULE, IN ONE PLACE:
+ *   1. An explicit `hybrid_issuance` setting WINS, in both directions. It can
+ *      turn hybrid on where custody would have refused (an operator attestation
+ *      about custody they operate), and it can pin classical-only where the
+ *      default would have resolved `dual`.
+ *   2. With no explicit setting, the default is `dual` when a dual-signer
+ *      custody signer is registered AND custody permits the post-quantum leg.
+ *   3. Otherwise the default is `disabled`, carrying the custody layer's named
+ *      reason. Refusal is never rounded up to permission: an unrecognized or
+ *      missing custody verdict resolves classical-only, not dual.
+ *
+ * `required` semantics are untouched by any of this: it is only ever reached
+ * through an explicit setting, and it still refuses every classical-only path.
+ */
+export function resolveHybridIssuancePosture({ config, custody } = {}) {
+    const signerPresent = custody?.hybrid_signer_present === true;
+    const rawReason = typeof custody?.reason === 'string' && custody.reason.length > 0 ? custody.reason : null;
+    // Fail closed on a contradictory verdict: permission requires BOTH the
+    // affirmative flag and no stated refusal, so a posture that says "permitted"
+    // while naming a reason is treated as the refusal it names.
+    const pqPermitted = custody?.pq_leg_permitted === true && signerPresent && rawReason === null;
+    const custodyReason = pqPermitted
+        ? null
+        : rawReason === null
+            ? (signerPresent
+                ? HYBRID_PROFILE_REASONS.CUSTODY_POLICY_NOT_SATISFIED
+                : HYBRID_PROFILE_REASONS.HYBRID_SIGNER_ABSENT)
+            : CUSTODY_REASONS[rawReason] ?? rawReason;
+    const custodyRecord = Object.freeze({
+        hybrid_signer_present: signerPresent,
+        pq_leg_permitted: pqPermitted,
+        pq_custody: custody?.pq_custody ?? null,
+        reason: custodyReason,
+    });
+    const operatorMode = normalizeOperatorMode(config);
+    if (operatorMode !== undefined) {
+        return Object.freeze({
+            profile: freezeProfile(operatorMode),
+            source: 'operator',
+            reason: operatorMode === 'disabled' ? HYBRID_PROFILE_REASONS.OPERATOR_PINNED_CLASSICAL : null,
+            custody: custodyRecord,
+        });
+    }
+    if (pqPermitted) {
+        return Object.freeze({
+            profile: freezeProfile('dual'),
+            source: 'custody_default',
+            reason: null,
+            custody: custodyRecord,
+        });
+    }
+    return Object.freeze({
+        profile: freezeProfile('disabled'),
+        source: 'custody_default',
+        reason: custodyRecord.reason,
+        custody: custodyRecord,
+    });
+}
+/**
+ * Normalize a Gate deployment's `hybrid_issuance` setting into a frozen
+ * profile, resolving the DEFAULT from custody when the operator set none.
+ * An unrecognized value THROWS.
+ *
+ *   resolveHybridReceiptProfile('required')                     -> required
+ *   resolveHybridReceiptProfile({ hybrid_issuance: 'required' }) -> required
+ *   resolveHybridReceiptProfile(undefined)                       -> disabled
+ *   resolveHybridReceiptProfile(undefined, custodyPosture)       -> dual, when
+ *     a dual signer is registered and custody permits its PQ leg
+ *
+ * Call resolveHybridIssuancePosture() instead when the deployment needs the
+ * named reason for a classical-only default rather than just the profile.
+ */
+export function resolveHybridReceiptProfile(config, custody) {
+    return resolveHybridIssuancePosture({ config, custody }).profile;
 }
 // ---------------------------------------------------------------------------
 // The twin link (dual mode)
@@ -222,8 +334,9 @@ async function resolveIssuance(injected) {
  * site replaces a direct call to the classical issuer:
  *
  *   const outcome = await issueUnderHybridProfile({
- *     profile: resolveHybridReceiptProfile(config),
- *     payload, metadata, hybridKeys, requestHybrid,
+ *     profile: resolveHybridReceiptProfile(config, custodyPosture),
+ *     payload, metadata, requestHybrid,
+ *     hybridSigner,   // or hybridKeys, for an issuer holding its own key bytes
  *     issueClassical: ({ payload, metadata }) => existingIssueReceipt(payload, metadata),
  *   });
  *   if (!outcome.ok) return refuse(outcome.reason);
@@ -232,7 +345,7 @@ async function resolveIssuance(injected) {
  * substitutes a classical receipt for a hybrid one that could not be minted.
  */
 export async function issueUnderHybridProfile(args) {
-    const { profile, payload, metadata, hybridKeys, requestHybrid, issueClassical, issuance, agilityOptions } = args;
+    const { profile, payload, metadata, requestHybrid, issueClassical, issuance } = args;
     if (!profile || profile.profile_id !== HYBRID_RECEIPT_PROFILE_ID) {
         throw new TypeError('issueUnderHybridProfile: profile must come from resolveHybridReceiptProfile()');
     }
@@ -266,26 +379,58 @@ export async function issueUnderHybridProfile(args) {
     // receipt. Anything that stops us producing one is a refusal.
     if (!profile.issues_hybrid)
         return refuse(HYBRID_PROFILE_REASONS.HYBRID_ISSUANCE_DISABLED);
-    if (!hybridKeys || typeof hybridKeys !== 'object')
+    if (!hasSigningMaterial(args))
         return refuse(HYBRID_PROFILE_REASONS.HYBRID_KEYS_MISSING);
     const module = await resolveIssuance(issuance);
     if (!module)
         return refuse(HYBRID_PROFILE_REASONS.HYBRID_ISSUANCE_UNAVAILABLE);
-    let receipt;
+    const minted = await mintHybrid(module, args);
+    if (!minted.ok)
+        return minted;
+    return { ok: true, profile: HYBRID_RECEIPT_PROFILE_ID, receipt: minted.receipt };
+}
+/**
+ * Mint the EP-RECEIPT-HYBRID-v1 twin, from a custody signer when one is given
+ * and from raw key material otherwise. One function so the single-artifact and
+ * dual paths cannot drift on which signing surface they use or on how they
+ * refuse.
+ *
+ * Every failure is a named refusal. The underlying issuance THROWS on
+ * issuer-side misuse and on an unavailable ML-DSA backend (`pq_backend_unavailable`
+ * reaches us in the error text); either way the Gate refuses and never falls
+ * back to a classical artifact.
+ */
+async function mintHybrid(module, args) {
+    const { payload, metadata, hybridKeys, hybridSigner, agilityOptions } = args;
+    const useSigner = !!hybridSigner && typeof hybridSigner.signSet === 'function';
+    if (!useSigner && (!hybridKeys || typeof hybridKeys !== 'object')) {
+        return { ok: false, reason: HYBRID_PROFILE_REASONS.HYBRID_KEYS_MISSING };
+    }
+    if (useSigner && typeof module.createHybridReceiptFromSignSet !== 'function') {
+        return { ok: false, reason: HYBRID_PROFILE_REASONS.HYBRID_SIGNER_ISSUANCE_UNSUPPORTED };
+    }
     try {
-        receipt = await module.createHybridReceipt({
-            payload,
-            keys: hybridKeys,
-            ...(metadata !== undefined ? { metadata } : {}),
-            ...(agilityOptions ?? {}),
-        });
+        const receipt = useSigner
+            ? await module.createHybridReceiptFromSignSet({
+                payload,
+                signSet: (bytes, context) => hybridSigner.signSet(bytes, context),
+                ...(metadata !== undefined ? { metadata } : {}),
+            })
+            : await module.createHybridReceipt({
+                payload,
+                keys: hybridKeys,
+                ...(metadata !== undefined ? { metadata } : {}),
+                ...(agilityOptions ?? {}),
+            });
+        return { ok: true, receipt };
     }
     catch (error) {
-        // createHybridReceipt throws on issuer-side misuse and on an unavailable
-        // ML-DSA backend. Either way the Gate refuses; it does not fall back.
-        return { ok: false, reason: HYBRID_PROFILE_REASONS.HYBRID_ISSUANCE_UNAVAILABLE, detail: { error: String(error?.message ?? error) } };
+        return {
+            ok: false,
+            reason: HYBRID_PROFILE_REASONS.HYBRID_ISSUANCE_UNAVAILABLE,
+            detail: { error: String(error?.message ?? error) },
+        };
     }
-    return { ok: true, profile: HYBRID_RECEIPT_PROFILE_ID, receipt };
 }
 /**
  * dual mode: mint both artifacts over one payload and return them with the
@@ -304,11 +449,11 @@ export async function issueUnderHybridProfile(args) {
  * artifact when two were promised.
  */
 async function issueDual(args) {
-    const { payload, metadata, hybridKeys, issueClassical, issuance, agilityOptions } = args;
+    const { payload, metadata, issueClassical, issuance } = args;
     const refuse = (reason, detail = null) => (detail === null ? { ok: false, reason } : { ok: false, reason, detail });
     if (typeof issueClassical !== 'function')
         return refuse(HYBRID_PROFILE_REASONS.CLASSICAL_ISSUER_MISSING);
-    if (!hybridKeys || typeof hybridKeys !== 'object')
+    if (!hasSigningMaterial(args))
         return refuse(HYBRID_PROFILE_REASONS.HYBRID_KEYS_MISSING);
     // The digest of what the caller asked to have signed. Both artifacts are
     // checked against THIS, never against each other alone: two receipts that
@@ -320,18 +465,10 @@ async function issueDual(args) {
     const module = await resolveIssuance(issuance);
     if (!module)
         return refuse(HYBRID_PROFILE_REASONS.HYBRID_ISSUANCE_UNAVAILABLE);
-    let hybridReceipt;
-    try {
-        hybridReceipt = await module.createHybridReceipt({
-            payload,
-            keys: hybridKeys,
-            ...(metadata !== undefined ? { metadata } : {}),
-            ...(agilityOptions ?? {}),
-        });
-    }
-    catch (error) {
-        return refuse(HYBRID_PROFILE_REASONS.HYBRID_ISSUANCE_UNAVAILABLE, { error: String(error?.message ?? error) });
-    }
+    const minted = await mintHybrid(module, args);
+    if (!minted.ok)
+        return minted;
+    const hybridReceipt = minted.receipt;
     const classicalReceipt = await issueClassical({ payload, ...(metadata !== undefined ? { metadata } : {}) });
     // The twin link, recomputed rather than asserted. A classical issuer that
     // returns something other than an EP-RECEIPT-v1 document, or either artifact
@@ -356,6 +493,12 @@ async function issueDual(args) {
         hybrid_receipt: hybridReceipt,
         action_digest: expectedDigest,
     };
+}
+/** Does this call carry something that can sign the PQ leg? */
+function hasSigningMaterial(args) {
+    if (args.hybridSigner && typeof args.hybridSigner.signSet === 'function')
+        return true;
+    return !!args.hybridKeys && typeof args.hybridKeys === 'object';
 }
 /**
  * The acceptance-side companion. Routes by the presented `@version`, enforces

@@ -9,12 +9,35 @@
  * accepts. It is deliberately a thin, fail-closed policy layer: it makes no
  * cryptographic decisions of its own and never reimplements a check.
  *
- * OPT-IN, AND OFF BY DEFAULT. `disabled` is the default mode. EP-RECEIPT-v1
- * remains the Gate's receipt format unless an operator turns this on. Nothing
- * in this repository ships with hybrid issuance enabled.
+ * THE DEFAULT IS RESOLVED FROM CUSTODY, NOT HARDCODED OFF. An operator setting
+ * always decides the mode when there is one. When there is not,
+ * resolveHybridIssuancePosture() reads the deployment's custody posture (see
+ * describeHybridCustodyPosture() in lib/key-custody.ts) and resolves:
+ *
+ *   - a dual-signer custody signer is registered AND custody permits the
+ *     post-quantum leg  ->  `dual`
+ *   - no dual-signer custody signer                            ->  `disabled`
+ *                                                                  (hybrid_signer_absent)
+ *   - a dual signer, but custody REFUSES the software PQ leg   ->  `disabled`
+ *                                                                  (pq_custody_not_permitted)
+ *
+ * The refusal is the half worth stating loudly. There is no KMS or HSM
+ * ML-DSA-65 signing path available to EP today, so the PQ leg is software-held
+ * and assertProductionKeyCustody() does not bless it. A gov-strict deployment
+ * that requires kms/hsm custody is therefore NOT quietly handed a software PQ
+ * key because a default changed: it stays classical-only and the resolved
+ * posture carries the named reason for it. There is no silent downgrade here
+ * and no silent upgrade either.
+ *
+ * WHAT THIS REPOSITORY STILL DOES NOT DO. No code here registers a custody
+ * signer at boot, hybrid or otherwise, and no Gate call site in this repository
+ * issues receipts through issueUnderHybridProfile() yet. So nothing shipped
+ * from this repository mints a hybrid receipt on its own; the default resolves
+ * to `dual` only for a deployment that registered a dual signer whose custody
+ * its own policy accepts. That is a changed default, not a deployed one.
  *
  * THE FOUR MODES
- *   disabled  (default) The Gate issues and accepts EP-RECEIPT-v1 only. A
+ *   disabled  The Gate issues and accepts EP-RECEIPT-v1 only. A
  *             request for a hybrid receipt is REFUSED (hybrid_issuance_disabled)
  *             rather than quietly answered with a classical receipt, and a
  *             hybrid receipt presented for acceptance is REFUSED
@@ -78,8 +101,9 @@
  * in this file that turns a hybrid intent into a classical artifact.
  *
  * HONEST BOUNDARIES
- *   - This is an opt-in profile, not the default receipt format, and it is not
- *     enabled in any deployment shipped from this repository.
+ *   - EP-RECEIPT-v1 is still the Gate's receipt format; `dual` adds a twin
+ *     alongside it, and no deployment shipped from this repository issues
+ *     either through this module yet.
  *   - The ML-DSA implementation reached through EP-SIG-AGILITY-v1 is
  *     @noble/post-quantum, a pure-JS FIPS 204 implementation that is not a
  *     FIPS-validated module. Turning this profile on is not a certification.
@@ -118,6 +142,16 @@ export declare const HYBRID_PROFILE_REASONS: Readonly<{
     CLASSICAL_RECEIPT_MALFORMED: "classical_receipt_malformed";
     /** dual mode: the two artifacts do not commit to identical canonical bytes. */
     DUAL_PAYLOAD_MISMATCH: "dual_payload_mismatch";
+    /** default resolution: no dual-signer custody signer is registered. */
+    HYBRID_SIGNER_ABSENT: "hybrid_signer_absent";
+    /** default resolution: custody refuses the software-held ML-DSA-65 leg. */
+    PQ_CUSTODY_NOT_PERMITTED: "pq_custody_not_permitted";
+    /** default resolution: the deployment's own custody policy is not satisfied. */
+    CUSTODY_POLICY_NOT_SATISFIED: "custody_policy_not_satisfied";
+    /** default resolution: an explicit operator setting pinned classical-only. */
+    OPERATOR_PINNED_CLASSICAL: "operator_pinned_classical";
+    /** the issuance module does not expose the custody-signer issuance entry point. */
+    HYBRID_SIGNER_ISSUANCE_UNSUPPORTED: "hybrid_signer_issuance_unsupported";
 }>;
 /**
  * The issuance/verification surface this module drives, structurally typed so
@@ -125,6 +159,12 @@ export declare const HYBRID_PROFILE_REASONS: Readonly<{
  */
 export interface HybridIssuanceModule {
     createHybridReceipt: (args: AnyRecord) => Promise<AnyRecord>;
+    /**
+     * Mint from a dual-signer's signSet(bytes) instead of raw key material.
+     * OPTIONAL so an older @emilia-protocol/issue is a named refusal
+     * (hybrid_signer_issuance_unsupported) rather than a crash.
+     */
+    createHybridReceiptFromSignSet?: (args: AnyRecord) => Promise<AnyRecord>;
     verifyHybridReceipt: (doc: unknown, keys: unknown, options?: AnyRecord) => Promise<{
         verified: boolean;
         reason: string | null;
@@ -184,16 +224,87 @@ export type HybridAcceptOutcome = {
     detail?: AnyRecord | null;
 } | HybridProfileRefusal;
 /**
- * Normalize a Gate deployment's `hybrid_issuance` setting into a frozen
- * profile. An unrecognized value THROWS: a misconfigured security flag must
- * stop a deployment, not be rounded down to the permissive default.
- *
- * Accepts either the flag itself or a config object carrying it:
- *   resolveHybridReceiptProfile('required')
- *   resolveHybridReceiptProfile({ hybrid_issuance: 'required' })
- *   resolveHybridReceiptProfile(undefined)            -> disabled
+ * The custody posture this module resolves a DEFAULT from, structurally typed
+ * so packages/gate gains no dependency on lib/. Produce it with
+ * describeHybridCustodyPosture() in lib/key-custody.ts, or hand-build the two
+ * fields that matter for a Gate that manages its own signers.
  */
-export declare function resolveHybridReceiptProfile(config?: unknown): HybridReceiptProfile;
+export interface HybridCustodyPostureInput {
+    /** Is a dual-signer (hybrid) custody signer registered? */
+    hybrid_signer_present?: boolean;
+    /** May this deployment mint the ML-DSA-65 leg under its own custody policy? */
+    pq_leg_permitted?: boolean;
+    /** The PQ leg's custody label ('software' is the only honest value today). */
+    pq_custody?: string | null;
+    /** The custody layer's named refusal, when it refused. */
+    reason?: string | null;
+    detail?: string | null;
+}
+/** Where a resolved mode came from. */
+export type HybridPostureSource = 'operator' | 'custody_default';
+/**
+ * A resolved posture: the profile plus WHY it is that profile.
+ *
+ * `reason` is non-null exactly when this posture mints no post-quantum leg, and
+ * it is always one of HYBRID_PROFILE_REASONS. That is the observability
+ * requirement: a deployment that ends up classical-only can read the named
+ * cause (`pq_custody_not_permitted`, `hybrid_signer_absent`,
+ * `custody_policy_not_satisfied`, `operator_pinned_classical`) instead of
+ * discovering a silent downgrade later.
+ *
+ * `custody` is recorded even when an operator setting won, so a deployment that
+ * explicitly turned hybrid on over a refusing custody policy can still see that
+ * its PQ leg is software-held. An explicit setting is an operator attestation
+ * about their own deployment; this module records it rather than second-guesses
+ * it, and it never lets a DEFAULT make that attestation on their behalf.
+ */
+export interface ResolvedHybridPosture {
+    profile: HybridReceiptProfile;
+    source: HybridPostureSource;
+    reason: string | null;
+    custody: {
+        hybrid_signer_present: boolean;
+        pq_leg_permitted: boolean;
+        pq_custody: string | null;
+        reason: string | null;
+    };
+}
+/**
+ * Resolve the deployment's posture from its operator setting and its custody.
+ *
+ * THE RULE, IN ONE PLACE:
+ *   1. An explicit `hybrid_issuance` setting WINS, in both directions. It can
+ *      turn hybrid on where custody would have refused (an operator attestation
+ *      about custody they operate), and it can pin classical-only where the
+ *      default would have resolved `dual`.
+ *   2. With no explicit setting, the default is `dual` when a dual-signer
+ *      custody signer is registered AND custody permits the post-quantum leg.
+ *   3. Otherwise the default is `disabled`, carrying the custody layer's named
+ *      reason. Refusal is never rounded up to permission: an unrecognized or
+ *      missing custody verdict resolves classical-only, not dual.
+ *
+ * `required` semantics are untouched by any of this: it is only ever reached
+ * through an explicit setting, and it still refuses every classical-only path.
+ */
+export declare function resolveHybridIssuancePosture({ config, custody }?: {
+    config?: unknown;
+    custody?: HybridCustodyPostureInput | null;
+}): ResolvedHybridPosture;
+/**
+ * Normalize a Gate deployment's `hybrid_issuance` setting into a frozen
+ * profile, resolving the DEFAULT from custody when the operator set none.
+ * An unrecognized value THROWS.
+ *
+ *   resolveHybridReceiptProfile('required')                     -> required
+ *   resolveHybridReceiptProfile({ hybrid_issuance: 'required' }) -> required
+ *   resolveHybridReceiptProfile(undefined)                       -> disabled
+ *   resolveHybridReceiptProfile(undefined, custodyPosture)       -> dual, when
+ *     a dual signer is registered and custody permits its PQ leg
+ *
+ * Call resolveHybridIssuancePosture() instead when the deployment needs the
+ * named reason for a classical-only default rather than just the profile.
+ */
+export declare function resolveHybridReceiptProfile(config?: unknown, custody?: HybridCustodyPostureInput | null): HybridReceiptProfile;
 /** Resolve the hybrid issuance module. Returns null rather than throwing. */
 export declare function loadHybridIssuanceModule(): Promise<HybridIssuanceModule | null>;
 export interface HybridIssueArgs {
@@ -202,6 +313,17 @@ export interface HybridIssueArgs {
     metadata?: AnyRecord;
     /** Hybrid signing keys (see signingKeysFromHybridBundle in @emilia-protocol/issue). */
     hybridKeys?: AnyRecord | null;
+    /**
+     * A registered dual-signer instead of raw key material: anything with a
+     * signSet(bytes, context) returning one signature per required algorithm
+     * (HybridCustodySigner from lib/key-custody.ts is exactly this shape). This
+     * is the path a deployment whose classical leg is behind a KMS/HSM boundary
+     * must use, because it has no secret bytes to hand over. Preferred over
+     * `hybridKeys` when both are supplied.
+     */
+    hybridSigner?: {
+        signSet: (bytes: Uint8Array | Buffer, context?: AnyRecord) => Promise<any>;
+    } | null;
     /**
      * Did this request ask for a hybrid receipt? Ignored in `required` mode, and
      * refused in `dual` mode (which always answers with both artifacts).
@@ -222,8 +344,9 @@ export interface HybridIssueArgs {
  * site replaces a direct call to the classical issuer:
  *
  *   const outcome = await issueUnderHybridProfile({
- *     profile: resolveHybridReceiptProfile(config),
- *     payload, metadata, hybridKeys, requestHybrid,
+ *     profile: resolveHybridReceiptProfile(config, custodyPosture),
+ *     payload, metadata, requestHybrid,
+ *     hybridSigner,   // or hybridKeys, for an issuer holding its own key bytes
  *     issueClassical: ({ payload, metadata }) => existingIssueReceipt(payload, metadata),
  *   });
  *   if (!outcome.ok) return refuse(outcome.reason);
