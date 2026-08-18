@@ -1,0 +1,55 @@
+{
+  "@version": "EP-EXTERNAL-VERIFICATION-STATEMENT-v1",
+  "generated_at": "2026-08-18T10:46:34.592Z",
+  "verifier": {
+    "id": "ext:verifier:emilia-cleanroom-rust",
+    "name": "EMILIA Cleanroom Rust Verifier",
+    "organization": "J Diesel NY"
+  },
+  "subject": {
+    "kind": "conformance_vector_pack",
+    "target_file": "conformance/scitt-statement/vectors.json",
+    "suites": 1,
+    "vectors": 5,
+    "commit": "51c2b65d8dd9e9bb1a1cf6473e04746ec1f79fbb"
+  },
+  "procedure": {
+    "id": "ep-conformance-own-implementation",
+    "version": "EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v1"
+  },
+  "inputs": {
+    "commit": "51c2b65d8dd9e9bb1a1cf6473e04746ec1f79fbb",
+    "implementation": "emilia-rust-verifier 0.1.0 (cleanroom, Rust)",
+    "source_repository": "https://github.com/jdieselny/ecr-wg",
+    "source_commit": "5528222b07e53f064f7b6058e578c772be4c5e31",
+    "suite_digests": {
+      "scitt-statement.v1.json": "sha256:40a1ddd13c4ff702261cca8c1cb48da4cd555febc4f3ab2d022f66c1881804e6"
+    },
+    "results_digests": {
+      "scitt-statement.v1.json": "sha256:f12e488cb6e22ccc3d25c7f0d8da17bdbafa9453456966c55c2be63405e2169b"
+    }
+  },
+  "result": {
+    "status": "verified",
+    "checks": [
+      {
+        "id": "scitt-statement.v1.json",
+        "ok": true,
+        "detail": "5/5"
+      }
+    ]
+  },
+  "limitations": [
+    "Per-vector results were produced by the named implementation outside this harness and are self-reported; this harness only compared them against each suite vector's published expectation.",
+    "This statement records the external verifier procedure and result; it does not authorize the action.",
+    "It does not certify business correctness, legal compliance, or human wisdom.",
+    "Acceptance depends on the relying party pinning the verifier key out of band."
+  ],
+  "signature": {
+    "algorithm": "Ed25519",
+    "key_id": "ep:external-verifier-key:sha256:87c8c5029475f53a",
+    "public_key": "MCowBQYDK2VwAyEABIJEI__HmD5lnHsY1hPPHHUUaHHqdxxXJ6OKcjE9Imk",
+    "statement_digest": "sha256:1a7ccdf20973d9c5052467efa8a20ab6ce35697100bfda80fde3e6b95d7deed6",
+    "signature_b64u": "3FdkGQoGMq21NZuDSbissyTXkhq2ejUxjxgtZ_tJAl_iCR_1VGdU1tLGPucZ70PcJI8wuaOHWBPuoOr5zCYbCQ"
+  }
+}
