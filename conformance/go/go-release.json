@@ -1,0 +1,6 @@
+{
+  "@version": "EP-GO-MODULE-RELEASE-v1",
+  "module": "github.com/emiliaprotocol/emilia-protocol/conformance/go",
+  "private": true,
+  "reason": "Repository-local Go conformance harness for hybrid post-quantum verification vectors; supplies the ML-DSA backend to the published go-verify interface and is not a public Go import path."
+}
