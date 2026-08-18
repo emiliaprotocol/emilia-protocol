@@ -19,6 +19,11 @@
  */
 import crypto, { type KeyObject } from 'node:crypto';
 import { AEC_VERSION, actionDigest as aecActionDigest, verifyAuthorizationChain } from './evidence-chain.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  type AgilityOptions,
+} from './pq-signature-agility.js';
 import { canonicalizeStrictJson } from './strict-json.js';
 import type { AebExecutionConditionsResult } from './aeb-execution-conditions.js';
 
@@ -1880,3 +1885,361 @@ export async function reconcileAebExecutionDurable(
 }
 
 export { canonicalize as canonicalizeAeb, digest as digestAeb, typedDigest as digestAebTyped };
+
+// ===========================================================================
+// EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v2 -- the hybrid (Ed25519 + ML-DSA-65)
+// native verification attestation. NATIVE HALF ONLY.
+// ===========================================================================
+/**
+ * SCOPE. This migrates the ONE signature surface in this module that EP owns
+ * and mints: the native verification attestation a pinned native verifier or
+ * protocol gateway signs. The AEB ADAPTER halves (aeb-aps, aeb-ccs, aeb-chap,
+ * aeb-mcgraw, aeb-oasnt, aeb-oauth-transaction-challenge, aeb-psea, aeb-wag,
+ * aeb-wimse-oauth, ap2-native, fido-ap2-bridge) verify artifacts minted by
+ * FOREIGN signers under foreign wire formats and are deliberately excluded:
+ * the foreign signer chooses the algorithm, so there is no EP leg to add.
+ *
+ * The five moves from EP-REVOCATION-v2 (docs/protocol/pq-hybrid-program.md),
+ * applied here:
+ *
+ * 1. VERSION BUMP. A second signature changes the SHAPE of `signature`, so the
+ *    attestation takes a new `@version`. `nativeAttestationShape()` above is
+ *    untouched and pins `@version` to the v1 marker, so the SYNCHRONOUS v1
+ *    adapter (createAebNativeVerificationAttestationAdapter) refuses a v2
+ *    attestation with `native_attestation_malformed` BEFORE it inspects any
+ *    signature, and it does not throw. That refusal is asserted by test.
+ *
+ * 2. SET SHAPE. `proof` carries `required_algorithms` plus a `signatures`
+ *    array shaped exactly like EP-SIG-AGILITY-v1's AgileSignature
+ *    ({ alg, sig, key_id? }), one entry per registered algorithm. Ed25519
+ *    keeps its base64url SPKI DER public key; ML-DSA-65 carries raw base64url
+ *    public key bytes.
+ *
+ * 3. ANTI-STRIPPING BYTES. The required algorithm SET is inside the signed
+ *    bytes. The verifier rebuilds those bytes from the REGISTERED set and from
+ *    the body it re-derived itself, so a narrowed `required_algorithms` both
+ *    fails structurally AND breaks the surviving classical signature.
+ *
+ * 4. V1 COMPATIBILITY. The v1 signer/verifier and the v1 AebAdapter are
+ *    unchanged and stay SYNCHRONOUS. ML-DSA verification is asynchronous, and
+ *    the AebAdapter contract's verifyNative() is synchronous by definition, so
+ *    v2 is a SEPARATE async entry point rather than a new adapter. There is no
+ *    hybrid AebAdapter in this release, and that is a contract limit, not an
+ *    oversight.
+ *
+ * 5. NAMED REFUSALS. Every failure names a check and pushes an error; nothing
+ *    throws on caller input. An absent ML-DSA backend surfaces as
+ *    `pq_backend_unavailable` through the agility result and is never a pass
+ *    on the classical leg.
+ *
+ * HONEST BOUNDARY. A verified v2 attestation proves a pinned verifier signed
+ * exactly this native result under BOTH algorithms. It does not make the
+ * FOREIGN artifact the verifier examined post-quantum secure: that artifact's
+ * own signature is whatever its issuer used. This profile is opt-in and is not
+ * deployed, default, or certified anywhere.
+ */
+
+export const AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION = 'EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v2';
+export const AEB_NATIVE_VERIFICATION_ATTESTATION_V2_DOMAIN = `${AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION}\0`;
+
+/** The registered required algorithm set, in canonical order. */
+export const AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+export interface AebNativeVerificationAttestationV2Body
+  extends Omit<AebNativeVerificationAttestationBody, '@version'> {
+  '@version': typeof AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION;
+}
+
+export interface AebNativeAttestationV2Signature { alg?: unknown; sig?: unknown; key_id?: unknown }
+
+export interface AebNativeAttestationV2Proof {
+  profile?: unknown;
+  required_algorithms?: unknown;
+  /** Ed25519: base64url SPKI DER. */
+  public_key?: unknown;
+  /** ML-DSA-65: base64url of the raw 1952-byte public key. */
+  pq_public_key?: unknown;
+  signatures?: unknown;
+  [key: string]: unknown;
+}
+
+export interface AebNativeVerificationAttestationV2
+  extends AebNativeVerificationAttestationV2Body {
+  proof: AebNativeAttestationV2Proof;
+}
+
+/** A v2 verifier pin: BOTH public halves, pinned out of band by the relying party. */
+export interface AebNativeAttestationV2KeyPin {
+  key_id: string;
+  /** Ed25519 base64url SPKI DER. */
+  public_key: string;
+  pq_key_id: string;
+  /** ML-DSA-65 base64url raw public key bytes. */
+  pq_public_key: string;
+}
+
+export interface AebNativeAttestationV2Signer {
+  key_id: string;
+  private_key: KeyObject;
+  pq_key_id: string;
+  /** ML-DSA-65 raw 4032-byte secret key (Uint8Array or base64url). */
+  pq_secret_key: Uint8Array | string;
+  /** ML-DSA-65 raw 1952-byte public key, base64url. Placed in the proof. */
+  pq_public_key: string;
+}
+
+export interface AebNativeAttestationV2Result {
+  valid: boolean;
+  checks: Record<string, boolean>;
+  errors: string[];
+}
+
+const NATIVE_ATTESTATION_V2_KEYS = new Set([
+  '@version', 'protocol_id', 'audience', 'native_artifact_ref', 'native_artifact_digest',
+  'evidence_role', 'subject', 'verified_at', 'expires_at', 'mapping', 'proof',
+]);
+const NATIVE_ATTESTATION_V2_PROOF_KEYS = new Set([
+  'profile', 'required_algorithms', 'public_key', 'pq_public_key', 'signatures',
+]);
+
+function aebV2SetMatchesRegistered(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+function aebNativeAttestationV2Body(
+  attestation: AebNativeVerificationAttestationV2,
+): AebNativeVerificationAttestationV2Body {
+  const { proof: _proof, ...body } = attestation;
+  return body as AebNativeVerificationAttestationV2Body;
+}
+
+/**
+ * The bytes BOTH legs sign: the domain tag, the attestation body, and the
+ * REGISTERED algorithm set. Recomputed independently by the verifier; the
+ * presented attestation never chooses what it is checked against.
+ */
+export function aebNativeAttestationV2SigningBytes(
+  body: AebNativeVerificationAttestationV2Body,
+  requiredAlgorithms: readonly string[] = AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!aebV2SetMatchesRegistered(requiredAlgorithms)) {
+    throw new Error('aebNativeAttestationV2SigningBytes: algorithm set is not the registered EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v2 set');
+  }
+  return Buffer.from(
+    `${AEB_NATIVE_VERIFICATION_ATTESTATION_V2_DOMAIN}${canonicalize({
+      ...body,
+      required_algorithms: [...requiredAlgorithms],
+    })}`,
+    'utf8',
+  );
+}
+
+/**
+ * Sign a v2 native verification attestation under BOTH registered algorithms.
+ * Issuer-side misuse throws (a programming error, not attacker input); an
+ * unavailable ML-DSA backend throws rather than silently minting a v2
+ * attestation with one leg.
+ */
+export async function signAebNativeVerificationAttestationV2(
+  body: AebNativeVerificationAttestationV2Body,
+  signer: AebNativeAttestationV2Signer,
+  options: AgilityOptions = {},
+): Promise<AebNativeVerificationAttestationV2> {
+  if (!exactString(signer?.key_id) || !isEd25519PrivateKey(signer?.private_key)
+      || !exactString(signer?.pq_key_id)) {
+    throw new TypeError('Ed25519 + ML-DSA-65 native attestation signer required');
+  }
+  if (body?.['@version'] !== AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION) {
+    throw new TypeError(`native attestation body @version must be ${AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION}`);
+  }
+  const detached = safeClone(body);
+  const bytes = aebNativeAttestationV2SigningBytes(detached);
+  const signatures = await signAgileSet(
+    new Uint8Array(bytes),
+    [
+      { alg: 'Ed25519', private_key: signer.private_key, key_id: signer.key_id },
+      { alg: 'ML-DSA-65', private_key: signer.pq_secret_key, key_id: signer.pq_key_id },
+    ],
+    options,
+  );
+  const publicKey = crypto.createPublicKey(signer.private_key)
+    .export({ type: 'spki', format: 'der' }).toString('base64url');
+  return {
+    ...detached,
+    proof: {
+      profile: AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION,
+      required_algorithms: [...AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS],
+      public_key: publicKey,
+      pq_public_key: String(signer.pq_public_key ?? ''),
+      signatures,
+    },
+  };
+}
+
+function aebNativeAttestationV2Shape(value: unknown): value is AebNativeVerificationAttestationV2 {
+  if (!isObject(value) || !exactKeys(value, NATIVE_ATTESTATION_V2_KEYS)
+      || value['@version'] !== AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION
+      || !exactString(value.protocol_id) || !exactString(value.audience)
+      || !exactString(value.native_artifact_ref) || !validDigest(value.native_artifact_digest)
+      || !validRole(value.evidence_role) || !isObject(value.subject)
+      || !exactKeys(value.subject, NATIVE_SUBJECT_KEYS) || !exactString(value.subject.id)
+      || !['human', 'workload', 'organization', 'system'].includes(String(value.subject.kind))
+      || !Number.isFinite(parseInstant(value.verified_at)) || !Number.isFinite(parseInstant(value.expires_at))
+      || parseInstant(value.verified_at) >= parseInstant(value.expires_at)
+      || !isObject(value.mapping) || !exactKeys(value.mapping, NATIVE_MAPPING_KEYS)
+      || !validDigest(value.mapping.profile_digest) || !exactString(value.mapping.mapper_id)
+      || !validDigest(value.mapping.resolver_digest) || typeof value.mapping.caid !== 'string'
+      || !CAID_RE.test(value.mapping.caid) || !validDigest(value.mapping.normalized_action_digest)
+      || !isObject(value.proof) || !exactKeys(value.proof, NATIVE_ATTESTATION_V2_PROOF_KEYS)) return false;
+  return true;
+}
+
+/**
+ * verifyAebNativeVerificationAttestationV2 -- FAIL-CLOSED hybrid check.
+ * Never throws on caller input. A v2 attestation NEVER verifies on one leg.
+ */
+export async function verifyAebNativeVerificationAttestationV2(
+  attestation: unknown,
+  pin: AebNativeAttestationV2KeyPin | null | undefined,
+  options: AgilityOptions = {},
+): Promise<AebNativeAttestationV2Result> {
+  const checks: Record<string, boolean> = {
+    version: true,
+    structure: true,
+    algorithm_set: true,
+    legs_present: true,
+    verifier_key_pinned: true,
+    signature_valid: true,
+    signature_binds_attestation: true,
+  };
+  const errors: string[] = [];
+  const fail = (key: string, msg: string) => { checks[key] = false; errors.push(msg); };
+  const done = (): AebNativeAttestationV2Result =>
+    ({ valid: Object.values(checks).every(Boolean), checks, errors });
+
+  if (!isObject(attestation)) {
+    fail('structure', 'no native verification attestation presented (fail-closed)');
+    fail('signature_valid', 'no native verification attestation presented (fail-closed)');
+    return done();
+  }
+  if (attestation['@version'] !== AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION) {
+    fail('version', `unsupported version: ${String(attestation['@version'])}`);
+  }
+  if (!aebNativeAttestationV2Shape(attestation)) {
+    fail('structure', `native verification attestation must use the exact closed ${AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION} schema`);
+    fail('signature_valid', 'attestation shape refused before any signature was inspected');
+    return done();
+  }
+  const proof = attestation.proof;
+  if (proof.profile !== AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION) {
+    fail('structure', `proof.profile must be ${AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION}`);
+  }
+  if (!aebV2SetMatchesRegistered(proof.required_algorithms)) {
+    fail('algorithm_set',
+      `proof.required_algorithms must be exactly ${JSON.stringify([...AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS])} (set narrowing / widening refused)`);
+  }
+
+  const signatures = Array.isArray(proof.signatures)
+    ? proof.signatures as AebNativeAttestationV2Signature[]
+    : null;
+  if (!signatures || signatures.length === 0) {
+    fail('legs_present', 'proof.signatures must carry one signature per required algorithm');
+  } else {
+    const presented = new Set<string>();
+    let malformed = false;
+    for (const s of signatures) {
+      if (!isObject(s) || typeof s.alg !== 'string' || typeof s.sig !== 'string') {
+        fail('legs_present', 'each proof.signatures entry must be { alg, sig, key_id? }');
+        malformed = true;
+        break;
+      }
+      if (presented.has(s.alg)) {
+        fail('legs_present', `duplicate signature for algorithm "${s.alg}"`);
+        malformed = true;
+        break;
+      }
+      presented.add(s.alg);
+    }
+    if (!malformed) {
+      for (const alg of AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS) {
+        if (!presented.has(alg)) fail('legs_present', `missing required ${alg} signature (leg stripped)`);
+      }
+      for (const alg of presented) {
+        if (!(AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) {
+          fail('legs_present', `unexpected algorithm "${alg}" outside the registered set`);
+        }
+      }
+    }
+  }
+
+  // Verify under the PINNED halves only. The proof's own key material is never
+  // a fallback: identified-but-not-trusted, per leg. ed25519PublicKey() curve-
+  // pins the classical half, so an Ed448 SPKI presented as the Ed25519 key is
+  // refused here as well as inside the agility module.
+  const pinnedEd = isObject(pin) && typeof pin.public_key === 'string' ? pin.public_key : '';
+  const pinnedPq = isObject(pin) && typeof pin.pq_public_key === 'string' ? pin.pq_public_key : '';
+  if (!pinnedEd || !pinnedPq || !exactString((pin as AebNativeAttestationV2KeyPin)?.key_id)
+      || !exactString((pin as AebNativeAttestationV2KeyPin)?.pq_key_id)) {
+    fail('verifier_key_pinned',
+      'a pinned Ed25519 + ML-DSA-65 verifier key pair is required (identified but not trusted)');
+  } else if (ed25519PublicKey(pinnedEd) === null) {
+    fail('verifier_key_pinned', 'pinned Ed25519 verifier key is not a canonical Ed25519 SPKI');
+  } else {
+    if (proof.public_key !== pinnedEd) {
+      fail('verifier_key_pinned', 'presented Ed25519 verifier key != pinned key (key substitution)');
+    }
+    if (proof.pq_public_key !== pinnedPq) {
+      fail('verifier_key_pinned', 'presented ML-DSA-65 verifier key != pinned key (key substitution)');
+    }
+  }
+
+  let recomputed: Buffer | null = null;
+  try {
+    recomputed = aebNativeAttestationV2SigningBytes(
+      aebNativeAttestationV2Body(attestation),
+      AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS,
+    );
+  } catch {
+    recomputed = null;
+  }
+  if (!recomputed) {
+    fail('signature_binds_attestation', 'attestation body is not canonicalizable');
+    fail('signature_valid', 'attestation body is not canonicalizable');
+    return done();
+  }
+
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(
+      new Uint8Array(recomputed),
+      signatures ?? [],
+      [
+        { alg: 'Ed25519', public_key: pinnedEd, key_id: (pin as AebNativeAttestationV2KeyPin)?.key_id },
+        { alg: 'ML-DSA-65', public_key: pinnedPq, key_id: (pin as AebNativeAttestationV2KeyPin)?.pq_key_id },
+      ],
+      {
+        ...options,
+        policy: 'hybrid_all',
+        requiredAlgorithms: [...AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS],
+      },
+    );
+  } catch {
+    setResult = null;
+  }
+  if (setResult?.verified !== true) {
+    const reason = String(setResult?.reason ?? 'signature_set_unverified');
+    const failedLeg = Array.isArray(setResult?.results)
+      ? setResult.results.find((r) => r?.verified !== true) ?? null
+      : null;
+    fail('signature_valid',
+      `native attestation signature set does not verify under the pinned Ed25519 + ML-DSA-65 keys (${reason})`);
+    if (failedLeg?.reason === 'signature_invalid') {
+      fail('signature_binds_attestation',
+        'signature set does not bind the presented attestation bytes (recomputed body mismatch)');
+    }
+  }
+
+  return done();
+}

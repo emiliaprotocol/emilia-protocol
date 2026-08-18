@@ -32,6 +32,12 @@ import {
   type AebPinnedProfile,
   type AebStatusInput,
 } from './aeb-adapter-contract.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgilityOptions,
+} from './pq-signature-agility.js';
 import { strictJsonGate } from './strict-json.js';
 
 type Obj = Record<string, unknown>;
@@ -658,4 +664,368 @@ export function createAuthorizationServerConfirmationAdapter(
       }
     },
   });
+}
+
+// ===========================================================================
+// EP-AUTHORIZATION-SERVER-CONFIRMATION-v2 -- the hybrid (Ed25519 + ML-DSA-65)
+// confirmation grant.
+// ===========================================================================
+/**
+ * WHY THE JOSE `alg` HEADER IS GONE IN v2, STATED PLAINLY.
+ *
+ * v1's grant is a compact JWS whose protected header carries `alg: "EdDSA"`, a
+ * value from the IANA JOSE Algorithms registry. There is no JOSE `alg` value
+ * for ML-DSA-65 that this repository can trace to a source: the only ML-DSA
+ * algorithm identifier carried anywhere in this tree is the COSE one (see
+ * packages/verify/src/aeb-mcgraw-delegation-adapter.ts, RFC 9964), and
+ * docs/protocol/pq-hybrid-program.md records that the JOSE registration is
+ * still draft work. Putting an invented value in the JOSE `alg` slot would be
+ * squatting on a foreign registry, so v2 does not do it.
+ *
+ * Instead the v2 protected header carries NO `alg` at all. Each signature
+ * carries its own algorithm label from EP's OWN closed registry
+ * (EP-SIG-AGILITY-v1: exactly { Ed25519, ML-DSA-65 }) in the AgileSignature
+ * shape, and the header commits to the required SET. The envelope is therefore
+ * EP-owned end to end and makes no claim on JOSE. It is deliberately NOT a
+ * compact JWS and deliberately NOT presented as one: `typ` changes too.
+ *
+ * The five moves from EP-REVOCATION-v2, applied here:
+ *
+ * 1. VERSION BUMP. The artifact takes ARTIFACT-v2 and the claims take
+ *    ep_version v2. The v1 parser (parseArtifact) pins `@version` to the v1
+ *    marker with an exact closed key set, so it refuses a v2 artifact on the
+ *    version marker before any signature work and does not throw. Asserted by
+ *    test.
+ * 2. SET SHAPE. `signatures` is an array of { alg, sig, key_id }, one entry per
+ *    registered algorithm, verified through verifyAgileSignatureSet.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` lives INSIDE the protected
+ *    header, and the protected header is inside the ASCII signing input
+ *    (`<protected>.<payload>`), exactly the v1 convention. Narrow the set and
+ *    the classical signature no longer verifies, because the signing input
+ *    changed. The verifier additionally rebuilds the expected header from the
+ *    REGISTERED set and refuses a mismatch structurally.
+ * 4. V1 COMPATIBILITY. signAuthorizationServerConfirmation() and the whole
+ *    synchronous AebAdapter path are UNCHANGED. ML-DSA verification is async
+ *    and AebAdapter.verifyNative() is synchronous by contract, so v2 is a
+ *    separate async entry point and there is no hybrid adapter in this release.
+ * 5. NAMED REFUSALS. Nothing throws on caller input; an absent ML-DSA backend
+ *    surfaces as `pq_backend_unavailable` and never passes on the classical leg.
+ *
+ * COORDINATION BOUNDARY, kept. The signer here is logically a third-party
+ * Authorization Server that vendored this helper. Shipping the v2 verifier does
+ * not make any AS emit v2 grants: every AS integration must deploy a second
+ * (ML-DSA-65) key and the v2 signer before a relying party can REQUIRE both
+ * legs. This profile is opt-in and is not deployed, default, or certified.
+ */
+
+export const AUTHORIZATION_SERVER_CONFIRMATION_V2_TOKEN_VERSION = 'EP-AUTHORIZATION-SERVER-CONFIRMATION-v2';
+export const AUTHORIZATION_SERVER_CONFIRMATION_V2_ARTIFACT_VERSION = 'EP-AUTHORIZATION-SERVER-CONFIRMATION-ARTIFACT-v2';
+export const AUTHORIZATION_SERVER_CONFIRMATION_V2_TYP = 'ep-as-confirmation+hybrid';
+
+/** The registered required algorithm set, in canonical order. */
+export const AUTHORIZATION_SERVER_CONFIRMATION_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+const V2_HEADER_KEYS = new Set(['ep_version', 'typ', 'kid', 'pq_kid', 'required_algorithms']);
+const V2_SIGNATURE_KEYS = new Set(['alg', 'sig', 'key_id']);
+const V2_GRANT_KEYS = new Set(['protected', 'payload', 'signatures']);
+
+export interface AuthorizationServerConfirmationV2Claims
+  extends Omit<AuthorizationServerConfirmationClaims, 'ep_version'> {
+  ep_version: typeof AUTHORIZATION_SERVER_CONFIRMATION_V2_TOKEN_VERSION;
+}
+
+export interface AuthorizationServerConfirmationHybridGrant {
+  /** base64url of the canonical-JSON protected header. */
+  protected: string;
+  /** base64url of the canonical-JSON claims. */
+  payload: string;
+  /** EP-SIG-AGILITY-v1 AgileSignature entries, one per registered algorithm. */
+  signatures: Array<{ alg: string; sig: string; key_id: string }>;
+}
+
+/** A v2 AS pin: BOTH public halves, pinned out of band by the relying party. */
+export interface AuthorizationServerConfirmationV2KeyPin {
+  key_id: string;
+  /** Ed25519 base64url SPKI DER. */
+  public_key: string;
+  pq_key_id: string;
+  /** ML-DSA-65 base64url raw 1952-byte public key. */
+  pq_public_key: string;
+}
+
+export interface AuthorizationServerConfirmationV2Signer {
+  key_id: string;
+  private_key: KeyObject;
+  pq_key_id: string;
+  /** ML-DSA-65 raw 4032-byte secret key (Uint8Array or base64url). */
+  pq_secret_key: Uint8Array | string;
+}
+
+export interface AuthorizationServerConfirmationV2Result {
+  valid: boolean;
+  checks: Record<string, boolean>;
+  errors: string[];
+  claims?: AuthorizationServerConfirmationV2Claims;
+}
+
+function asConfirmationV2SetMatchesRegistered(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === AUTHORIZATION_SERVER_CONFIRMATION_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === AUTHORIZATION_SERVER_CONFIRMATION_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+/**
+ * The v2 protected header. `required_algorithms` is a MEMBER of it, so it is
+ * inside the signing input both legs cover. Rebuilt by the verifier from the
+ * REGISTERED set; the presented grant never chooses what it is checked against.
+ */
+export function authorizationServerConfirmationV2ProtectedHeader(
+  keyId: string,
+  pqKeyId: string,
+  requiredAlgorithms: readonly string[] = AUTHORIZATION_SERVER_CONFIRMATION_V2_REQUIRED_ALGORITHMS,
+): Obj {
+  if (!asConfirmationV2SetMatchesRegistered(requiredAlgorithms)) {
+    throw new Error('authorizationServerConfirmationV2ProtectedHeader: algorithm set is not the registered EP-AUTHORIZATION-SERVER-CONFIRMATION-v2 set');
+  }
+  return {
+    ep_version: AUTHORIZATION_SERVER_CONFIRMATION_V2_TOKEN_VERSION,
+    typ: AUTHORIZATION_SERVER_CONFIRMATION_V2_TYP,
+    kid: keyId,
+    pq_kid: pqKeyId,
+    required_algorithms: [...requiredAlgorithms],
+  };
+}
+
+/** ASCII `<protected>.<payload>`: the exact v1 signing-input convention. */
+export function authorizationServerConfirmationV2SigningInput(
+  protectedB64u: string,
+  payloadB64u: string,
+): Buffer {
+  return Buffer.from(`${protectedB64u}.${payloadB64u}`, 'ascii');
+}
+
+function v2SignableClaims(value: unknown): value is AuthorizationServerConfirmationV2Claims {
+  if (!isRecord(value) || value.ep_version !== AUTHORIZATION_SERVER_CONFIRMATION_V2_TOKEN_VERSION) return false;
+  // Reuse the v1 claim validator verbatim by swapping only the version marker,
+  // so the two versions cannot drift on claim semantics.
+  return signableClaims({ ...value, ep_version: AUTHORIZATION_SERVER_CONFIRMATION_TOKEN_VERSION });
+}
+
+/**
+ * Sign a v2 confirmation grant under BOTH registered algorithms. Issuer-side
+ * misuse throws; an unavailable ML-DSA backend throws rather than minting a
+ * one-legged v2 grant.
+ */
+export async function signAuthorizationServerConfirmationV2(
+  claims: AuthorizationServerConfirmationV2Claims,
+  signer: AuthorizationServerConfirmationV2Signer,
+  options: AgilityOptions = {},
+): Promise<AuthorizationServerConfirmationHybridGrant> {
+  if (!v2SignableClaims(claims)
+      || !nonEmptyIdentifier(signer?.key_id) || !nonEmptyIdentifier(signer?.pq_key_id)
+      || !(signer?.private_key instanceof crypto.KeyObject)
+      || signer.private_key.type !== 'private'
+      || signer.private_key.asymmetricKeyType !== 'ed25519') {
+    throw new TypeError('valid closed v2 confirmation claims and Ed25519 + ML-DSA-65 signer required');
+  }
+  const header = canonicalizeAeb(
+    authorizationServerConfirmationV2ProtectedHeader(signer.key_id, signer.pq_key_id),
+  );
+  const payload = canonicalizeAeb(claims);
+  const protectedB64u = Buffer.from(header, 'utf8').toString('base64url');
+  const payloadB64u = Buffer.from(payload, 'utf8').toString('base64url');
+  const signingInput = authorizationServerConfirmationV2SigningInput(protectedB64u, payloadB64u);
+  const signatures = await signAgileSet(
+    new Uint8Array(signingInput),
+    [
+      { alg: 'Ed25519', private_key: signer.private_key, key_id: signer.key_id },
+      { alg: 'ML-DSA-65', private_key: signer.pq_secret_key, key_id: signer.pq_key_id },
+    ],
+    options,
+  );
+  return {
+    protected: protectedB64u,
+    payload: payloadB64u,
+    signatures: signatures.map((s) => ({ alg: s.alg, sig: s.sig, key_id: String(s.key_id ?? '') })),
+  };
+}
+
+/**
+ * verifyAuthorizationServerConfirmationV2 -- FAIL-CLOSED hybrid check of a v2
+ * grant against a pinned AS key pair and a pinned adapter config. Never throws
+ * on caller input; a v2 grant NEVER verifies on one leg alone.
+ *
+ * SCOPE. This checks the GRANT: header shape, committed algorithm set, both
+ * signature legs under pinned keys, and closed claim validity against the
+ * config's issuer/audience/action_type. It does not evaluate status, freshness
+ * windows, directory-snapshot age, or AEB acceptance; those stay with the
+ * synchronous v1 adapter, which is unchanged.
+ */
+export async function verifyAuthorizationServerConfirmationV2(
+  grant: unknown,
+  pin: AuthorizationServerConfirmationV2KeyPin | null | undefined,
+  config: AuthorizationServerConfirmationAdapterConfig | null | undefined,
+  options: AgilityOptions = {},
+): Promise<AuthorizationServerConfirmationV2Result> {
+  const checks: Record<string, boolean> = {
+    structure: true,
+    version: true,
+    algorithm_set: true,
+    legs_present: true,
+    as_key_pinned: true,
+    claims_valid: true,
+    signature_valid: true,
+    signature_binds_grant: true,
+  };
+  const errors: string[] = [];
+  const fail = (key: string, msg: string) => { checks[key] = false; errors.push(msg); };
+  const done = (claims?: AuthorizationServerConfirmationV2Claims): AuthorizationServerConfirmationV2Result =>
+    ({ valid: Object.values(checks).every(Boolean), checks, errors, ...(claims ? { claims } : {}) });
+
+  if (!isRecord(grant) || !exactKeys(grant, V2_GRANT_KEYS)
+      || typeof grant.protected !== 'string' || typeof grant.payload !== 'string') {
+    fail('structure', 'grant must be the exact closed { protected, payload, signatures } shape');
+    fail('signature_valid', 'grant shape refused before any signature was inspected');
+    return done();
+  }
+
+  const header = parseJsonSegment(grant.protected);
+  const rawClaims = parseJsonSegment(grant.payload);
+  if (!header || !rawClaims) {
+    fail('structure', 'protected header and payload must be strict-JSON base64url segments');
+    fail('signature_valid', 'grant segments refused before any signature was inspected');
+    return done();
+  }
+  if (!exactKeys(header, V2_HEADER_KEYS)) {
+    fail('structure', 'protected header must use the exact closed v2 key set');
+  }
+  if (header.ep_version !== AUTHORIZATION_SERVER_CONFIRMATION_V2_TOKEN_VERSION) {
+    fail('version', `unsupported version: ${String(header.ep_version)}`);
+  }
+  if (header.typ !== AUTHORIZATION_SERVER_CONFIRMATION_V2_TYP) {
+    fail('structure', `protected header typ must be ${AUTHORIZATION_SERVER_CONFIRMATION_V2_TYP}`);
+  }
+  if (!asConfirmationV2SetMatchesRegistered(header.required_algorithms)) {
+    fail('algorithm_set',
+      `protected header required_algorithms must be exactly ${JSON.stringify([...AUTHORIZATION_SERVER_CONFIRMATION_V2_REQUIRED_ALGORITHMS])} (set narrowing / widening refused)`);
+  }
+
+  const signatures = Array.isArray(grant.signatures) ? grant.signatures : null;
+  if (!signatures || signatures.length === 0) {
+    fail('legs_present', 'signatures must carry one entry per required algorithm');
+  } else {
+    const presented = new Set<string>();
+    let malformed = false;
+    for (const s of signatures) {
+      if (!isRecord(s) || !exactKeys(s, V2_SIGNATURE_KEYS)
+          || typeof s.alg !== 'string' || typeof s.sig !== 'string' || typeof s.key_id !== 'string') {
+        fail('legs_present', 'each signatures entry must be { alg, sig, key_id }');
+        malformed = true;
+        break;
+      }
+      if (presented.has(s.alg)) {
+        fail('legs_present', `duplicate signature for algorithm "${s.alg}"`);
+        malformed = true;
+        break;
+      }
+      presented.add(s.alg);
+    }
+    if (!malformed) {
+      for (const alg of AUTHORIZATION_SERVER_CONFIRMATION_V2_REQUIRED_ALGORITHMS) {
+        if (!presented.has(alg)) fail('legs_present', `missing required ${alg} signature (leg stripped)`);
+      }
+      for (const alg of presented) {
+        if (!(AUTHORIZATION_SERVER_CONFIRMATION_V2_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) {
+          fail('legs_present', `unexpected algorithm "${alg}" outside the registered set`);
+        }
+      }
+    }
+  }
+
+  // Pinned halves only; the grant's own key identifiers are matched against the
+  // pin, never used as a fallback source of key material.
+  const pinnedEd = isRecord(pin) && typeof pin.public_key === 'string' ? pin.public_key : '';
+  const pinnedPq = isRecord(pin) && typeof pin.pq_public_key === 'string' ? pin.pq_public_key : '';
+  if (!pinnedEd || !pinnedPq
+      || !nonEmptyIdentifier((pin as AuthorizationServerConfirmationV2KeyPin)?.key_id)
+      || !nonEmptyIdentifier((pin as AuthorizationServerConfirmationV2KeyPin)?.pq_key_id)) {
+    fail('as_key_pinned',
+      'a pinned Ed25519 + ML-DSA-65 Authorization Server key pair is required (identified but not trusted)');
+  } else {
+    if (canonicalPublicKey(pinnedEd) === null) {
+      fail('as_key_pinned', 'pinned Ed25519 AS key is not a canonical Ed25519 SPKI');
+    }
+    const pqBytes = decodeB64url(pinnedPq, ML_DSA_65_PUBLIC_KEY_BYTES);
+    if (!pqBytes || pqBytes.length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+      fail('as_key_pinned', `pinned ML-DSA-65 AS key must be ${ML_DSA_65_PUBLIC_KEY_BYTES} raw bytes, base64url`);
+    }
+    if (header.kid !== (pin as AuthorizationServerConfirmationV2KeyPin).key_id) {
+      fail('as_key_pinned', 'protected header kid != pinned Ed25519 key_id');
+    }
+    if (header.pq_kid !== (pin as AuthorizationServerConfirmationV2KeyPin).pq_key_id) {
+      fail('as_key_pinned', 'protected header pq_kid != pinned ML-DSA-65 key_id');
+    }
+  }
+
+  // The header the verifier EXPECTS, rebuilt from the pin and the REGISTERED
+  // set, must be byte-identical to the presented one. This is what makes the
+  // committed set non-negotiable rather than merely declared.
+  if (checks.as_key_pinned) {
+    let expected: string | null = null;
+    try {
+      expected = Buffer.from(canonicalizeAeb(authorizationServerConfirmationV2ProtectedHeader(
+        (pin as AuthorizationServerConfirmationV2KeyPin).key_id,
+        (pin as AuthorizationServerConfirmationV2KeyPin).pq_key_id,
+      )), 'utf8').toString('base64url');
+    } catch {
+      expected = null;
+    }
+    if (expected === null || expected !== grant.protected) {
+      fail('structure', 'protected header does not equal the header rebuilt from the pin and the registered algorithm set');
+    }
+  }
+
+  const parsedConfig = parseConfig(config);
+  if (!parsedConfig) {
+    fail('claims_valid', 'a valid pinned adapter configuration is required');
+  } else if (!v2SignableClaims(rawClaims)
+      || rawClaims.iss !== parsedConfig.issuer || rawClaims.aud !== parsedConfig.audience
+      || parseAction(rawClaims.action, parsedConfig.action_type) === null
+      || rawClaims.resource_server_key_id !== parsedConfig.resource_server_key_id
+      || rawClaims.resource_server_key_digest !== parsedConfig.resource_server_key_digest) {
+    fail('claims_valid', 'claims are not the exact closed v2 claim set for this pinned configuration');
+  }
+
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(
+      new Uint8Array(authorizationServerConfirmationV2SigningInput(grant.protected, grant.payload)),
+      signatures ?? [],
+      [
+        { alg: 'Ed25519', public_key: pinnedEd, key_id: (pin as AuthorizationServerConfirmationV2KeyPin)?.key_id },
+        { alg: 'ML-DSA-65', public_key: pinnedPq, key_id: (pin as AuthorizationServerConfirmationV2KeyPin)?.pq_key_id },
+      ],
+      {
+        ...options,
+        policy: 'hybrid_all',
+        requiredAlgorithms: [...AUTHORIZATION_SERVER_CONFIRMATION_V2_REQUIRED_ALGORITHMS],
+      },
+    );
+  } catch {
+    setResult = null;
+  }
+  if (setResult?.verified !== true) {
+    const reason = String(setResult?.reason ?? 'signature_set_unverified');
+    const failedLeg = Array.isArray(setResult?.results)
+      ? setResult.results.find((r) => r?.verified !== true) ?? null
+      : null;
+    fail('signature_valid',
+      `AS confirmation signature set does not verify under the pinned Ed25519 + ML-DSA-65 keys (${reason})`);
+    if (failedLeg?.reason === 'signature_invalid') {
+      fail('signature_binds_grant',
+        'signature set does not bind the presented protected header and payload bytes');
+    }
+  }
+
+  return done(checks.claims_valid ? (rawClaims as unknown as AuthorizationServerConfirmationV2Claims) : undefined);
 }
