@@ -59,7 +59,7 @@ Every row below was read from the primary source named in it. Rows are labelled 
 - #4282's security policy states the non-Approved entries "shall not be used when operating in the FIPS Approved mode of operation", and its revision history records "Updated to move EdDSA to the non-Approved mode - 26 January 2023". VERIFIED (`140sp4282.pdf`).
 - #4985's Table 6 (Approved Algorithms, CAVP cert A3548) does not contain EdDSA; Ed25519 and Ed448 appear under "Non-Approved, Not Allowed Algorithms" alongside X25519, X448, and Triple-DES. VERIFIED (`140sp4985.pdf`).
 - A CMVP search restricted to `ModuleName=OpenSSL, Standard=140-3, Status=Active` returned 55 certificates, of which **#4985 is the only one whose vendor is The OpenSSL Project**. VERIFIED.
-- A newer upstream submission ("The OpenSSL Corporation - OpenSSL FIPS Provider - FIPS 140-3", Comment Resolution) appears on the Modules In Process list; no version number is stated on the row. REPORTED.
+- A newer upstream submission ("The OpenSSL Corporation - OpenSSL FIPS Provider - FIPS 140-3") appears on the Modules In Process list. As of 2026-08-18 the row names version **3.5.4** at stage "Comment Resolution - Lab". VERIFIED (MIP list retrieved 2026-08-18; the list showed 187 displayed / 13 not displayed / 200 total). Re-check before quoting: MIP rows move.
 - HP #5475 and Splunk #5444 are rebrands of the 3.1.2 module with identical policy text, so they carry the same Ed25519 placement. VERIFIED.
 
 ### Approved in both upstream certificates
@@ -107,6 +107,7 @@ Security policies live at `https://csrc.nist.gov/CSRC/media/projects/cryptograph
 
 - OpenSSL **3.5.0** implements ML-DSA: `CHANGES.md` records "Add ML-DSA as specified in FIPS 204", and `providers/fips/fipsprov.c` at tag `openssl-3.5.0` registers `PROV_NAMES_ML_DSA_44/65/87` with `FIPS_DEFAULT_PROPERTIES`. VERIFIED.
 - **No OpenSSL-derived module is CMVP-validated for ML-DSA.** A sweep of 31 security policies covering essentially every OpenSSL-derived module on the Active FIPS 140-3 list found zero occurrences of "ML-DSA". VERIFIED (negative claim; scope: the 31 certificates enumerated in the sweep, as of 2026-08-16).
+- **Read the line above as scoped to OpenSSL, because it is.** It is not a claim that no module anywhere carries ML-DSA, and stating it that broadly outward would be wrong. As of 2026-08-18 three modules list ML-DSA KeyGen/SigGen/SigVer in their **Approved** tables: #5282 (Kryptus ASI-HSM AHX5, hardware), #5361 (Dell BSAFE Crypto Module for Java, **software**), and #5450 (Thales Luna T7, hardware). VERIFIED by reading each security policy. Two look-alikes must never be cited as hits: #5313 (Microsoft SymCrypt) lists ML-DSA only under non-approved security functions, and #5220 (JISA LS2 HSM) says "ML-DSA (non-compliant)". Scoping and cost consequences are in [`pq-deployment-and-validation-path.md`](./pq-deployment-and-validation-path.md).
 - **EP does not use OpenSSL for ML-DSA at all.** EP's backend is `@noble/post-quantum` v0.7.0, a pure-JavaScript FIPS 204 implementation loaded by `packages/verify/src/pq-hybrid.ts` and `packages/verify/src/pq-signature-agility.ts`. It is not a validated module, it is inside no certificate, and running it in a FIPS-mode process changes none of that.
 
 ## Which EP operations are OpenSSL-backed

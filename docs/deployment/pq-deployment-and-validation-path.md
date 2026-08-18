@@ -123,7 +123,7 @@ not to make.
 
 `consultFipsIssuancePolicy` checks `ML-DSA-65` at the hybrid call site **without
 passing an acknowledgment**, because no config surface for that acknowledgment
-exists (`docs/deployment/FIPS-MODE.md:283`). `mldsaPolicy()` arms the
+exists (`docs/deployment/FIPS-MODE.md:284`). `mldsaPolicy()` arms the
 acknowledgment requirement whenever `fips_status !== 'inactive'`
 (`packages/verify/src/fips-mode.ts:529`), and that includes the
 `'unavailable'` case, deliberately: an indeterminate posture never authorizes
@@ -294,7 +294,7 @@ entire argument for `dual` sooner rather than `required` later.
 | Off-process ML-DSA-65 signing contract and conformance harness | DONE (`lib/pq-custody-external.ts`, `EP-PQ-CUSTODY-EXTERNAL-v1`). No vendor adapter exists yet, by design. |
 | ML-DSA-65 key provisioning, rotation, and public-key publication | **NOT DONE.** For the software path there is no env surface and no ceremony. For the external path the contract exists but no backend is wired to it. |
 | Ed25519 custody actually behind Vault Transit or a PKCS#11 HSM | **NOT DONE.** Adapters exist; `EP_KEY_CUSTODY_MODE` ships as `local-dev`. |
-| An acknowledgment surface letting `EP_FIPS_REQUIRED=true` coexist with the PQ leg | **NOT DONE** (`docs/deployment/FIPS-MODE.md:283`). |
+| An acknowledgment surface letting `EP_FIPS_REQUIRED=true` coexist with the PQ leg | **NOT DONE** (`docs/deployment/FIPS-MODE.md:284`). |
 | Browser/edge verification of the PQ leg | **NOT POSSIBLE TODAY.** Web Crypto has no ML-DSA-65. |
 | Hardware custody for the ML-DSA-65 key | **NOT AVAILABLE TODAY.** See the boundary table in section 4. |
 
@@ -373,8 +373,8 @@ EP is an application, and it reaches two entirely different implementations:
 
 | Leg | Implementation | Boundary posture |
 |---|---|---|
-| SHA-256, Ed25519, ES256 | `node:crypto`, therefore OpenSSL (`docs/deployment/FIPS-MODE.md:116-118`) | Can be inside a validated provider's boundary, provider and certificate dependent. This is the inheritance path, and it is already documented per certificate. |
-| ML-DSA-65 | `@noble/post-quantum`, pure JavaScript (`docs/deployment/FIPS-MODE.md:110,120`) | Inside no boundary, and `mldsa_validated_module` is the hard-coded literal `false` (`packages/verify/src/fips-mode.ts:398-400`). |
+| SHA-256, Ed25519, ES256 | `node:crypto`, therefore OpenSSL (`docs/deployment/FIPS-MODE.md:117-119`) | Can be inside a validated provider's boundary, provider and certificate dependent. This is the inheritance path, and it is already documented per certificate. |
+| ML-DSA-65 | `@noble/post-quantum`, pure JavaScript (`docs/deployment/FIPS-MODE.md:111,121`) | Inside no boundary, and `mldsa_validated_module` is the hard-coded literal `false` (`packages/verify/src/fips-mode.ts:398-400`). |
 
 So the honest answer to "would EP validate a module?" is: **for the classical
 leg, no, and it should not want to, because the module it depends on is somebody
@@ -403,8 +403,34 @@ tempted.
 | Relationship | A **prerequisite input** to a module validation, not a substitute for it. Certificates carry an algorithm cert number that the module's security policy references (EP's own tables already show this pattern: certificate #5116 references CAVP A6328, `docs/deployment/FIPS-MODE.md:95`). | The thing a procurement document means when it says "FIPS 140-3 validated." |
 | Obtainable independently | Yes. | Yes, but it is the expensive one. |
 
+NIST says this itself, and it is the sentence to quote at anyone who offers an
+algorithm certificate as a substitute. From the CAVP program page (retrieved
+2026-08-18, page updated 2026-08-12), testing is "entirely black-box", and a
+product "does not meet the FIPS 140 module validation requirements by simply
+implementing an Approved security function and acquiring validations for each of
+the implemented algorithms." VERIFIED.
+
 There is also **ESV** (Entropy Source Validation), a separate certificate for a
-module's entropy source. It is relevant to (C) and not to (A) or (B).
+module's entropy source against SP 800-90B. Two details matter if (C) is ever
+considered: per the CMVP Management Manual, entropy validation is no longer
+accepted inline in a module submission, so the module must cite an existing ESV
+certificate; and ESV certificates do not expire. VERIFIED. A CMVP module
+certificate, by contrast, is valid for five years.
+
+**Can EP get a CAVP certificate on its own?** Yes, and it carries no CMVP cost
+recovery fee, because it is issued inside the ACVP test system with no CMVP
+report review and no module queue. The catch is access: ACVTS Production is
+restricted to accredited laboratories, so EP would still pay a lab, and no lab
+publishes ACVP-only pricing (the CMVP FAQ directs enquirers to contact labs
+directly). VERIFIED. This is the cheap, fast, honest artifact for a defensible
+algorithm-level claim. It is still not module validation and must never be
+described as one.
+
+One trap worth naming because it looks like a cheap path and is not: the $2,500
+"ALG" line on the CMVP fee schedule is **not** a standalone algorithm-certificate
+fee. Per the Management Manual it is a revalidation scenario for an
+already-validated module, covering algorithms whose CAVP testing was unavailable
+at original submission. VERIFIED.
 
 **The claim discipline that follows.** A CAVP certificate would entitle EP to
 say, precisely, that its ML-DSA-65 implementation holds a CAVP algorithm
@@ -422,10 +448,49 @@ sentence is:
 > FIPS-based algorithms, with a validated-provider deployment mode.
 
 (`docs/deployment/FIPS-MODE.md:10`.) The permitted claims are enumerated at
-`docs/deployment/FIPS-MODE.md:306-310` and the forbidden ones at `:312-317`. The
-general shape: an application may say it **runs on** or **uses** a FIPS 140-3
-validated cryptographic module, naming the certificate. It may never say it **is**
-validated.
+`docs/deployment/FIPS-MODE.md:307-311` and the forbidden ones at `:313-318`.
+
+NIST states the rule directly, and this is the citation to keep. CMVP FAQ P-17
+(retrieved 2026-08-18, page updated 2026-08-17): a product using an embedded
+validated cryptographic module "cannot claim itself to be validated; only that it
+utilizes an embedded validated cryptographic module." The same answer adds that
+there is no assurance a product uses the embedded module correctly, and that this
+is outside the scope of the validation. VERIFIED.
+
+The CMVP logo-and-phrases page gives the only two sanctioned forms, and **the
+certificate number is mandatory in both**: "FIPS 140-3 validated, Certificate #X"
+when the module is the product, and "FIPS 140-3 Inside [cert #]" when the product
+merely contains one. VERIFIED. EP is the second case, never the first. So this is
+defensible:
+
+> uses the OpenSSL FIPS Provider, a FIPS 140-3 validated cryptographic module,
+> CMVP Certificate #4985
+
+and the bare assertion that EP is validated or certified is not, which is exactly
+what `scripts/check-language-governance.ts` already refuses.
+
+Two related NIST positions worth recording, neither of which relaxes anything
+here. First, CMVP FAQ P-18 does permit a vendor to describe a product as
+compliant, meaning the vendor believes it meets the requirements without having
+been through validation. **EP's own policy is deliberately stricter and stays
+stricter**: this repository refuses that word about itself and states plainly
+that EP is not FIPS compliant (`docs/deployment/FIPS-MODE.md:17,315`). Nothing in
+NIST's vocabulary is a reason to loosen EP's. Second, FAQ P-20 records that
+loading non-validated applications into a validated module invalidates the
+validation, which is one more reason EP's posture is to call a module, never to
+become one.
+
+**The operational-environment trap, which is the part most people get wrong.**
+The successor guidance to the old IG G.5 lives in CMVP Management Manual section
+7.9 (v2.7, dated 2026-04-09). At Security Level 1, a validated software module
+may be ported to an untested but compatible operating environment, but only by
+recompilation with no source changes; the security policy must carry a no-claim
+statement, and a vendor-affirmed operational environment has to be filed under
+its own scenario. CMVP makes no statement as to correct operation when so
+ported. VERIFIED. **Tested operational environment and vendor-affirmed
+operational environment are two different things and must stay separate in any
+claim EP makes**, which is structurally the same discipline as VERIFIED versus
+ACCEPTED.
 
 For the classical leg this path is complete and costs nothing but operations:
 pick a distribution whose provider certificate covers the algorithms in use. EP's
@@ -433,17 +498,57 @@ own tables already name which ones cover Ed25519 (Rocky Linux 9 #5116,
 Chainguard #5132, TuxCare #5373) and which do not (RHEL 9, Ubuntu 22.04/24.04,
 Amazon Linux 2023) at `docs/deployment/FIPS-MODE.md:88-98,102`.
 
-For ML-DSA the path is blocked on the outside world, not on EP:
+For ML-DSA the path is blocked on the outside world, not on EP. But it is less
+blocked than this repository's existing wording will lead a reader to assume, and
+the distinction is worth getting exactly right.
+
+Via OpenSSL, nothing is available yet:
 
 - OpenSSL 3.5.0 implements ML-DSA and registers `PROV_NAMES_ML_DSA_44/65/87`
   with `FIPS_DEFAULT_PROPERTIES` (`docs/deployment/FIPS-MODE.md:108`, VERIFIED
   there).
 - No certificate covers OpenSSL 3.4 or 3.5 (`docs/deployment/FIPS-MODE.md:57`,
-  VERIFIED there).
+  VERIFIED there). The OpenSSL 3.5.4 submission is on the Modules In Process
+  list at stage "Comment Resolution - Lab" as of 2026-08-18. VERIFIED.
 - A sweep of 31 security policies covering essentially every OpenSSL-derived
   module on the Active FIPS 140-3 list found zero occurrences of ML-DSA
   (`docs/deployment/FIPS-MODE.md:109`, a negative claim with its scope and date
   stated, as of 2026-08-16).
+
+**Read that last bullet as scoped, because it is.** It is a true statement about
+OpenSSL-derived modules and it is not a statement about the CMVP list as a whole.
+As of 2026-08-18 there are **three validated modules carrying ML-DSA KeyGen,
+SigGen, and SigVer in their Approved Algorithms tables**, each confirmed by
+reading the security policy rather than the certificate HTML page:
+
+| Certificate | Module | Type | Validated | CAVP |
+|---|---|---|---|---|
+| #5282 | Kryptus ASI-HSM AHX5 | Hardware | 2026-05-20 | A6066 |
+| #5361 | Dell BSAFE Crypto Module for Java | **Software** | 2026-06-30 | A6943 |
+| #5450 | Thales Luna T7 | Hardware | 2026-07-29 | A7879/A7880 |
+
+VERIFIED. All three cite FIPS 204 with parameter sets ML-DSA-44/65/87. ML-DSA is
+also long since in ACVP scope: ACVTS Production enabled ML-DSA on 2024-08-13, the
+day FIPS 204 published, and 202 CAVP ML-DSA SigGen certificates across 85 vendors
+exist as of 2026-08-18. VERIFIED.
+
+**Two false positives that a text search produces and that must never be cited:**
+Microsoft SymCrypt (#5313) lists ML-DSA only under non-approved security
+functions, and JISA LS2 HSM (#5220) states "ML-DSA (non-compliant)". Neither is a
+validated ML-DSA implementation. VERIFIED.
+
+For completeness on the providers EP might plausibly sit on: AWS-LC (#5298,
+#5314) carries ML-KEM approved but no ML-DSA; wolfCrypt (#5041, #4718) contains
+no post-quantum algorithms at all, and a February 2026 wolfSSL blog headline
+notwithstanding, its own body says the CMVP submission is in process and its MIP
+row reads "Pending Resubmission". Do not cite wolfSSL as evidence of
+post-quantum algorithms in a validated boundary. VERIFIED.
+
+The practical consequence for EP: path (A) is closer than "wait for OpenSSL"
+suggests. A validated **software** module with approved ML-DSA already exists
+(Dell BSAFE, in Java), which means the inheritance path is a real engineering
+option today for anyone willing to bind to a native or managed validated module,
+not only a bet on a future OpenSSL certificate.
 
 The engineering cost of taking path (A) when a provider does arrive is bounded,
 because the backend is already injectable rather than hard-wired: the agility
@@ -453,41 +558,125 @@ provider-backed implementation is a backend change, not a protocol change.
 
 ### 3.4 Cost and elapsed time
 
-**Evidence status, stated first so nobody quotes this section as priced.** The
-cost structure below is the set of line items each path actually incurs, which is
-what the recommendation in 3.5 turns on. **The dollar amounts and queue durations
-were not sourced to primary documents in the session that wrote this document.**
-They are therefore not stated here. Before any of this is used to justify or
-refuse a spend, someone must retrieve and cite: the current CMVP cost recovery
-fee schedule and its effective date from NIST CSRC, a real quote from an
-NVLAP-accredited laboratory for a software module of this shape, and the current
-Modules In Process queue depth from the CMVP MIP list. An order-of-magnitude
-number carried in from memory is exactly the kind of claim this repository does
-not make, and a wrong one here would move a real budget.
+**Evidence status, stated first.** Exactly one number in this whole program is
+officially published: the NIST cost recovery fee. Everything else, including the
+entire laboratory bill, is either an interested party's estimate or unpublished
+by design. Treat the split below as load-bearing.
 
-What each path costs, structurally:
+#### The published number
+
+NIST CMVP cost recovery fees, schedule effective **2026-01-01**, retrieved
+2026-08-18. VERIFIED, fetched from NIST CSRC directly.
+
+| Scenario | Cost recovery | Extended CR |
+|---|---|---|
+| Full submission, Security Level 1 | **$16,000** | $3,000 |
+| Full submission, Level 2 | $17,000 | $4,000 |
+| Full submission, Level 3 | $17,500 | $4,000 |
+| Full submission, Level 4 | $19,000 | $4,000 |
+| UPDT (update to a validated module) | $5,500 | $1,500 |
+| ALG, OEUP, CVE, PTSC, TRNS, PHYS, NSRL, RBND | $2,500 | $1,000 |
+| VUP, VAOE (vendor-affirmed operational environment) | $0 | $1,000 |
+| Entropy (ESV) full submission | $5,500 | $1,500 |
+
+Level 1 is EP's hypothetical case. Note the trend, because it prices the option
+of waiting: the Level 1 full-submission fee was $8,000 in 2021 and $14,000 in
+2024, so it has roughly doubled in five years. VERIFIED.
+
+#### The unpublished number
+
+**No accredited laboratory publishes testing fees, at any level, and this is by
+design rather than a gap in searching.** NIST's own CST lab page says lab fees
+are available from each accredited laboratory. None of atsec, DEKRA, Leidos,
+Acumen, or Intertek publishes a price, and Corsec's own write-up on the cost of
+validation contains no dollar figures. VERIFIED (negative claim; scope: the NIST
+CST lab page plus the five laboratories and one consultancy named here).
+
+**ESTIMATE, and from an interested source:** SafeLogic states "well over $50,000
+per module configuration". SafeLogic sells a product whose value proposition is
+not doing your own validation, so that number is directionally useful and
+motivationally suspect. It is the only figure found. **Any all-in total anyone
+writes for EP is an estimate until a laboratory quotes it.**
+
+#### Elapsed time
+
+**The queue, VERIFIED, retrieved 2026-08-18.** The CMVP Modules In Process list
+shows 187 displayed, 13 not displayed, **200 total**. The Implementation Under
+Test list holds 240. **NIST publishes no average wait time anywhere**, so any
+duration figure must be attributed to a laboratory rather than to NIST.
+
+**ESTIMATE**, from Lightship Security (an accredited laboratory), presented at
+the OpenSSL Conference 2025-10-05: a Level 1 validation takes roughly a year, of
+which only two to four months is actual testing, with time in queue around
+thirteen to fifteen months. Those two numbers do not reconcile cleanly, which is
+itself informative about the variance.
+
+Direction of travel, offered as inference rather than a measured series because
+the three data points use different counting bases: over 300 awaiting approval in
+June 2024, 236 on the MIP list in October 2025, 200 today. The queue appears to
+be shrinking, but volume has moved upstream into laboratory testing, since IUT
+at 240 now exceeds MIP at 200.
+
+**Two escape hatches that do not work.** First, the **Interim Validation Process
+is closed**: laboratories had to notify CMVP of intent before 2024-10-01, and it
+only ever covered modules submitted before 2024-01-01. VERIFIED. It cannot help a
+submission made now. Second, **automation has not been shown to reduce the
+queue**. NIST CSWP 37B and the NCCoE automated-CMVP draft are explicitly
+qualitative and contain no baseline or target numbers, and what ACVTS and ESV
+automate is algorithm and entropy testing, which was never the module-review
+bottleneck. CMVP internal targets circulated by a laboratory are targets, not
+outcomes. VERIFIED.
+
+#### What each path costs, structurally
 
 | Path | Cost line items | Elapsed-time drivers |
 |---|---|---|
 | **(A) Inherit from a validated provider** | Engineering only: swap the ML-DSA backend behind the existing injectable interface, and run on a distribution whose provider certificate covers the algorithms. No lab, no fee, no security policy to author. | Bounded by somebody else's calendar: when a distribution provider carries ML-DSA into a validated boundary. EP controls none of it and pays for none of it. |
-| **(B) CAVP algorithm certificate for EP's ML-DSA** | Lab engagement to run the ACVP test vectors against EP's implementation and submit. Substantially cheaper than (C), because there is no security policy, no operational-environment matrix, and no module-level testing. | Short relative to (C). Driven by lab scheduling rather than by the CMVP queue. |
-| **(C) EP's own CMVP module certificate** | Lab testing fees; the NIST CMVP cost recovery fee; authoring a security policy; documentation and consulting; an operational-environment matrix (each named platform is scope); and a recurring revalidation obligation every time the module changes. | The CMVP Modules In Process queue, which is the dominant term and is measured in quarters rather than weeks. The module version is frozen while it waits. |
+| **(B) CAVP algorithm certificate for EP's ML-DSA** | Laboratory engagement only, to run the ACVP vectors and submit. **No CMVP cost recovery fee applies.** No security policy, no operational-environment matrix, no module-level testing. Unpriceable here because no laboratory publishes ACVP-only rates. | Short. Driven by laboratory scheduling, not by the CMVP queue at all. |
+| **(C) EP's own CMVP module certificate** | Laboratory testing (unpublished, ESTIMATE well over $50,000); NIST cost recovery **$16,000** at Level 1 plus $3,000 extended; authoring a security policy; documentation and consulting; an operational-environment matrix, since each named platform is scope; an ESV certificate to cite; and a recurring revalidation obligation, at $5,500 per update, every time the module changes. | Roughly a year at Level 1 (ESTIMATE, one laboratory), dominated by queue rather than testing. The module version is frozen while it waits. Certificate life is five years. |
 
-Two structural facts about (C) matter more than any price, and both are
-independent of the numbers:
+#### Three structural facts about (C) that outrank any price
 
+- **A pure-JavaScript module is not realistically validatable as written, and
+  there is a precedent that settles it.** CMVP certificate **#4440**, Virtru
+  Corporation, "VirtruCrypto - FIPS JavaScript Module", FIPS 140-2 Level 1,
+  validated 2023-02-21, sunsets 2026-09-21, tested under Node 12.x. Reading its
+  security policy, the cryptographic boundary is **a WebAssembly binary** made of
+  a C wrapper, BoringSSL, and an initialization function that HMAC-SHA-256
+  verifies the WASM binary for integrity. The JavaScript engine and the operating
+  system are outside the boundary. VERIFIED. That mechanism is the whole trick:
+  a pre-operational integrity test needs a fixed byte image to HMAC, which a WASM
+  binary provides and loose interpreted source does not. Tellingly, Virtru's
+  current module (#5460, 2026-08-05) is Go, not JavaScript. Across the 1,175
+  modules on the active validated list, exactly one has "JavaScript" in its name.
+  **So `@noble/post-quantum` cannot be validated as it stands.** The two viable
+  shapes are binding to a validated native module through N-API, or compiling to
+  WASM with an integrity HMAC over the binary as Virtru did. Both are (A) or a
+  variant of it, not (C).
 - **The operational environment is part of the boundary.** A software module is
-  validated on named platforms. EP does not control where its code runs, and a
-  pure-JavaScript implementation loaded from npm into an arbitrary Node process
-  is an awkward fit for a boundary that must have a defined perimeter, a load-time
-  integrity check, and self-tests. Whether a pure-JavaScript cryptographic module
-  has ever been validated, and under what operational-environment constraints, is
-  an open question this document does not answer and should not guess at. It is
-  the first thing to establish if (C) is ever seriously considered.
+  validated on named platforms, and EP does not control where its code runs. See
+  the Management Manual 7.9 porting rules in 3.3: recompile only, no source
+  changes, a no-claim statement in the security policy, and a separately filed
+  vendor-affirmed environment.
 - **Validation freezes the thing validated.** A certificate attaches to a
-  specific version. EP's post-quantum surfaces are still moving, as the parallel
-  work landing alongside this document shows. Validating a moving module means
-  revalidating, repeatedly.
+  specific version, and EP's post-quantum surfaces are still moving, as the work
+  landing in parallel with this document shows. Validating a moving module means
+  paying the $5,500 update fee and re-entering a queue, repeatedly.
+
+#### A note on FIPS 204 itself, because a repo precondition depends on it
+
+`docs/protocol/pq-hybrid-program.md:286` lists "FIPS 204 errata settled
+(external)" as a precondition for flipping the dual-issuance default. As of
+2026-08-18 **there is no issued FIPS 204 errata or revision.** What exists is a
+"potential updates" spreadsheet attached to the final publication, last updated
+2026-07-31, holding 11 entries, and it states on its face that these are not
+official changes. VERIFIED. The two consequential entries: Appendix A's
+Montgomery reduction is to be rewritten, and the 2026-07-31 entry corrects Table
+1 repetition counts and sets the minimum internal signing loop iteration limit to
+821. **The precondition as worded may therefore never resolve**, because there is
+no errata process running that could settle, only a list of candidate updates. If
+that precondition is meant to gate a real decision, it should be rewritten to name
+the specific spreadsheet entries EP cares about.
 
 ### 3.5 Recommendation, and the trigger that should start the spend
 
@@ -499,23 +688,30 @@ relevance argument does not change when a lab quotes a lower price.
 
 1. **The module EP would want validated is not EP's code.** For the classical
    leg the right module already exists and is already validated, by OpenSSL
-   distributors, on a revalidation cycle EP does not pay for. For ML-DSA the same
-   thing will happen: OpenSSL 3.5.0 already implements it
-   (`docs/deployment/FIPS-MODE.md:108`), and the distribution providers who
-   revalidate on a cycle are the ones who will carry it into a boundary. EP's
-   correct position is to be ready to call it.
-2. **Validating an EP-defined module would not answer the buyer's question.**
+   distributors, on a revalidation cycle EP does not pay for. For ML-DSA it is no
+   longer even hypothetical: three modules already carry approved ML-DSA,
+   including a software one, and the OpenSSL 3.5.4 submission is in the queue
+   (3.3). EP's correct position is to be ready to call whichever one its buyer
+   already runs.
+2. **EP's implementation is not validatable in its current form anyway.** A pure
+   JavaScript library cannot be a validated module; the one JavaScript precedent
+   validated a WebAssembly binary with BoringSSL inside it and put the JavaScript
+   engine outside the boundary (3.4). So (C) is not "expensive", it is
+   "unavailable without first rewriting the implementation into something that is
+   no longer EP's own JavaScript." At which point the sensible thing to bind to is
+   somebody else's already-validated module, which is (A).
+3. **Validating an EP-defined module would not answer the buyer's question.**
    The question behind a FIPS requirement is "is the cryptography under my
    authorization evidence inside a validated boundary." Inheritance answers that,
    and answers it for whichever provider the buyer already runs. A certificate on
    a boundary EP invented around a JavaScript library EP did not write answers a
    question nobody asked, and it still would not make the product validated:
    applications do not get certificates (`packages/verify/src/fips-mode.ts:14-19`).
-3. **The dependency is already isolated, so waiting is cheap.** The backend is
+4. **The dependency is already isolated, so waiting is cheap.** The backend is
    injectable (`lib/commit-hybrid.ts:161-165`). Path (A) is a swap when the time
    comes, not a rewrite, and every month of waiting costs EP nothing while the
    providers do the work.
-4. **A CAVP certificate bought on spec would be a claim asset with no buyer.**
+5. **A CAVP certificate bought on spec would be a claim asset with no buyer.**
    It would entitle EP to one narrow sentence about algorithm correctness against
    test vectors. No procurement document asks for that sentence.
 
@@ -530,7 +726,7 @@ relevance argument does not change when a lab quotes a lower price.
    that kills most of these, and it must be run before the other two. Most FIPS
    requirements are satisfied by running on a validated cryptographic module, and
    EP already has the configuration and the honest sentence for that
-   (`docs/deployment/FIPS-MODE.md:10,306-310`). Ask, in writing, whether "runs on
+   (`docs/deployment/FIPS-MODE.md:10,307-311`). Ask, in writing, whether "runs on
    a FIPS 140-3 validated cryptographic module, certificate #NNNN" closes the
    requirement. Usually it does.
 3. **Contract value clears the fully loaded cost with margin for the elapsed
@@ -564,7 +760,7 @@ Two of them are ours. Four are not.
 |---|---|---|---|
 | **Off by default.** Every hybrid profile is opt-in. | EP code, then EP operations | A boot path that calls `registerCustodySigner(hybridSigner({...}))`. The default then resolves itself: `resolveHybridIssuancePosture()` returns `dual` once a dual signer is registered and custody permits its PQ leg. Both sit on top of unfinished key provisioning (1.4). | Off everywhere. With no signer registered the custody-resolved default is `disabled` with reason `hybrid_signer_absent`, and no non-test caller of `registerCustodySigner` exists in the tree. |
 | **Not deployed.** None is a deployment default. | EP operations, then a vendor | Everything in the NOT DONE half of 1.8. For a non-gov-strict environment no external dependency blocks it. For EP's own production, hardware ML-DSA custody does block it (1.2), so this clause and the custody clause below close together, not separately. | Not deployed anywhere, including EP's own reference deployment. `EP_KEY_CUSTODY_MODE` ships as `local-dev` (`.env.example:70`). |
-| **Not FIPS validated.** | A NVLAP-accredited lab and the CMVP, or the vendor of an underlying validated module | See section 3. Either an upstream provider vendor lands ML-DSA inside a validated module boundary EP can call, or EP buys its own validation. | No EP package, receipt, or deployment carries a CMVP certificate (`packages/verify/src/fips-mode.ts:12-13`). A sweep of 31 security policies covering essentially every OpenSSL-derived module on the Active FIPS 140-3 list found zero occurrences of ML-DSA (`docs/deployment/FIPS-MODE.md:109`, negative claim, scope stated, as of 2026-08-16). |
+| **Not FIPS validated.** | The vendor of an underlying validated module, not EP | See section 3. The recommended path is inheritance, and EP's own code is not validatable as written in any case (3.4). What unblocks the classical leg is already available; what unblocks ML-DSA is a validated module EP can call from Node. | No EP package, receipt, or deployment carries a CMVP certificate (`packages/verify/src/fips-mode.ts:12-13`), and that is the intended end state, not a gap. On the outside: no OpenSSL-derived module carries ML-DSA (`docs/deployment/FIPS-MODE.md:109`, scope stated, 2026-08-16), and the OpenSSL 3.5.4 submission is at "Comment Resolution - Lab". But three non-OpenSSL modules already carry approved ML-DSA, one of them software (3.3). VERIFIED 2026-08-18. |
 | **ML-DSA signer software-held.** Does not satisfy kms/hsm custody. | A vendor (cloud KMS or HSM), then a thin EP adapter | A backend that actually signs ML-DSA-65. EP's side is now mostly pre-built: `EP-PQ-CUSTODY-EXTERNAL-v1` (`lib/pq-custody-external.ts`) is the provider-agnostic contract plus a conformance harness an adapter must pass, and `createPqCustodySigner()` already takes a non-`'software'` custody label as an operator attestation (`lib/key-custody.ts:248`). Note the residual limit: the custody label is declared, never verified by code (`lib/pq-custody-external.ts:23-31`). | **PENDING SWEEP.** A dedicated sweep of KMS and HSM ML-DSA availability is in flight; this cell is not to be filled from memory. The repository's own recorded position as of this writing is that no such path exists for EP (`lib/key-custody.ts:138-143`). |
 | **WebAuthn outside.** Quorum signoffs, Class A approver signatures, agent adoption, release locks. | A standards body (FIDO Alliance / W3C), then browser and authenticator vendors | PQC support landing in the WebAuthn/FIDO2 stack and shipping in real authenticators. EP does not choose what a hardware authenticator signs, so there is no EP code change that closes this (`docs/protocol/pq-hybrid-program.md:277`; the underlying ES256/P-256 surfaces are catalogued at `docs/protocol/pq-hybrid-program.md:24-25`). | **PENDING SWEEP.** A dedicated sweep of WebAuthn PQC status is in flight; this cell is not to be filled from memory. |
 | **External / vendor signatures outside.** | The foreign signer, per ecosystem | The counterparty adopting a post-quantum algorithm on their side. EP's job is then to verify it, not to add a leg. Precedent exists: `aeb-mcgraw-delegation-adapter.ts` already verifies a foreign COSE_Sign1 signature under `cose-ml-dsa` for draft-mcgraw-httpapi-agent-budget-03 (`packages/verify/src/aeb-mcgraw-delegation-adapter.ts:3,30,36`), so one external ecosystem has already moved and EP's adapter already speaks it. | Mixed and permanently partial. RFC 3161 TSA tokens (RSA/ECDSA per CMS), RFC 9711 EAT platform attestation, Apple App Attest and Google Play Integrity, GitHub App RS256 JWTs, Procore's evidence format, and IdP-negotiated JWT sessions are all outside EP's control by construction (`docs/protocol/pq-hybrid-program.md:163-170`). |
