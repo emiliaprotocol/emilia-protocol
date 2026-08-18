@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { essayMdToHtml } from '../lib/essays.js';
+import {
+  ESSAYS,
+  essayMdToHtml,
+  getEssay,
+  loadEssayBody,
+} from '../lib/essays.js';
 
 describe('essay markdown security boundary', () => {
   it('escapes raw HTML instead of executing committed prose as markup', () => {
@@ -22,5 +27,45 @@ describe('essay markdown security boundary', () => {
 
     expect(html).toContain('class="lang-text"');
     expect(html).not.toContain('onmouseover');
+  });
+
+  it('loads only registered essay sources and strips their structured header', () => {
+    for (const entry of ESSAYS) {
+      expect(getEssay(entry.slug)).toBe(entry);
+      const loaded = loadEssayBody(entry.slug);
+      expect(loaded.body.length).toBeGreaterThan(100);
+      expect(loaded.body).not.toMatch(/^# /);
+      expect(loaded.body).not.toMatch(/^\*\*(Date|Author):\*\*/m);
+    }
+
+    expect(getEssay('not-registered')).toBeNull();
+    expect(() => loadEssayBody('../../etc/passwd')).toThrow(
+      'Unknown essay slug: ../../etc/passwd',
+    );
+  });
+
+  it('renders the complete supported prose grammar without admitting raw markup', () => {
+    const html = essayMdToHtml([
+      '# Heading one',
+      '## Heading two',
+      '### Heading three',
+      '',
+      'A **strong**, *emphasized*, and `coded` [safe link](https://example.com).',
+      '---',
+      '```typescript',
+      'const comparison = a < b && c > d;',
+      '```',
+    ].join('\n'));
+
+    expect(html).toContain('<h2>Heading one</h2>');
+    expect(html).toContain('<h2>Heading two</h2>');
+    expect(html).toContain('<h3>Heading three</h3>');
+    expect(html).toContain('<strong>strong</strong>');
+    expect(html).toContain('<em>emphasized</em>');
+    expect(html).toContain('<code>coded</code>');
+    expect(html).toContain('<a href="https://example.com">safe link</a>');
+    expect(html).toContain('<hr/>');
+    expect(html).toContain('class="lang-typescript"');
+    expect(html).toContain('a &lt; b &amp;&amp; c &gt; d');
   });
 });
