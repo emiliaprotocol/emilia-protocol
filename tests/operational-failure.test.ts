@@ -50,6 +50,13 @@ vi.mock('../lib/delegation.js', () => ({
 
 vi.mock('../lib/env.js', () => ({
   getCommitSigningConfig: () => ({ signingKey: null, isProduction: false, trustedKeys: null }),
+  getKeyCustodyConfig: () => ({
+    mode: 'local-dev',
+    keyId: null,
+    fipsRequired: false,
+    govStrict: false,
+    isProduction: false,
+  }),
 }));
 
 // ============================================================================
