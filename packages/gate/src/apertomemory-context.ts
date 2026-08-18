@@ -9,6 +9,25 @@
  * objects and does not claim independent conformance with ApertoMemory's raw
  * CBOR/COSE format. Native object verification remains the ApertoMemory
  * consumer's responsibility.
+ *
+ * POST-QUANTUM STATUS: COORDINATION-GATED, DELIBERATELY UNCHANGED.
+ *
+ * This provider re-checks `record.proof.alg !== 'Ed25519'` and the 64-byte
+ * signature length independently of the published verifier, over
+ * MEMORY-PROJECTION-RECORD-v1 -- the wire format of the co-authored
+ * draft-ferro-schrock-memory-projection-record-00. No hybrid leg is added here
+ * and no version is bumped, because a unilateral change to a co-authored wire
+ * is a fork, not a migration. The exact constraint and the precise list of what
+ * a -01 of the joint draft would need is recorded once, in the
+ * EP-MEMORY-PROJECTION-PQ-COSIGNATURE-v1 section of
+ * packages/verify/src/memory-projection.ts; this file moves in lockstep with
+ * that draft revision and not before it.
+ *
+ * A relying party that wants a post-quantum leg TODAY uses the additive,
+ * detached EP-MEMORY-PROJECTION-PQ-COSIGNATURE-v1 alongside the record. That
+ * co-signature is deliberately not consumed here: this provider verifies the
+ * joint-wire record and only the joint-wire record, so its verdict stays
+ * exactly what the draft says it is.
  */
 import crypto from 'node:crypto';
 import {
