@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // EP-GATE-TRUST-PROGRAM-PROFILE-v2 / EP-GATE-TRUST-STAGE-RECEIPT-v2 --
-// hostile matrix for the hybrid trust-program surfaces. New file, co-located
-// under src/ so vitest exercises this package's TS source directly (no build
-// step needed); the dist-backed node --test suites keep covering v1 and are
-// untouched.
-import { describe, it, expect } from 'vitest';
+// hostile matrix for the hybrid trust-program surfaces. Package-root node:test
+// file importing the compatibility shim './trust-program.js' (which re-exports
+// ./dist/trust-program.js), matching this package's convention; the v1 suites
+// are untouched.
+import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { describe, it } from 'node:test';
 
 import { canonicalize, hashCanonical } from './execution-binding.js';
 import {
@@ -126,28 +127,27 @@ function mintV1Receipt(privateKey: crypto.KeyObject) {
 describe('EP-GATE-TRUST-PROGRAM-PROFILE-v2 program profile', () => {
   it('validates a v2 program under the same DAG body as v1', () => {
     const result = validateTrustProgramV2(program());
-    expect(result.valid).toBe(true);
-    expect(result.digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    assert.equal(result.valid, true);
+    assert.match(result.digest, /^sha256:[0-9a-f]{64}$/);
   });
 
   it('v1-refuses-v2: the untouched v1 validator refuses on the version marker, never a crash', () => {
     const result = validateTrustProgram(program());
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('program_version_unsupported');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'program_version_unsupported');
   });
 
   it('v2-refuses-v1 symmetrically, and the router accepts both', () => {
-    expect(validateTrustProgramV2(program(TRUST_PROGRAM_VERSION)).reason).toBe('program_version_unsupported');
-    expect(validateTrustProgramStatement(program()).valid).toBe(true);
-    expect(validateTrustProgramStatement(program(TRUST_PROGRAM_VERSION)).valid).toBe(true);
-    expect(trustProgramDigest(program(TRUST_PROGRAM_VERSION)))
-      .not.toBe(trustProgramV2Digest(program()));
+    assert.equal(validateTrustProgramV2(program(TRUST_PROGRAM_VERSION)).reason, 'program_version_unsupported');
+    assert.equal(validateTrustProgramStatement(program()).valid, true);
+    assert.equal(validateTrustProgramStatement(program(TRUST_PROGRAM_VERSION)).valid, true);
+    assert.notEqual(trustProgramDigest(program(TRUST_PROGRAM_VERSION)), trustProgramV2Digest(program()));
   });
 
   it('a structurally broken v2 program refuses by the shared rules, not by the marker', () => {
     const broken = program() as Record<string, any>;
     broken.stages[0].depends_on = ['licensed-review'];
-    expect(validateTrustProgramV2(broken).reason).toBe('stage_dependency_invalid');
+    assert.equal(validateTrustProgramV2(broken).reason, 'stage_dependency_invalid');
   });
 });
 
@@ -155,18 +155,18 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
   it('valid v2 roundtrip: both legs verify under the pinned key pair', async () => {
     const issuer = issuerFixture();
     const receipt = await signTrustStageReceiptV2({ payload: payload(), context: CONTEXT, keys: issuer.keys });
-    expect(receipt.version).toBe(TRUST_STAGE_RECEIPT_V2_VERSION);
-    expect(receipt.signature.required_algorithms).toEqual([...TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS]);
-    expect(receipt.signature.signatures.map((s) => s.alg)).toEqual([...TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS]);
+    assert.equal(receipt.version, TRUST_STAGE_RECEIPT_V2_VERSION);
+    assert.deepEqual(receipt.signature.required_algorithms, [...TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS]);
+    assert.deepEqual(receipt.signature.signatures.map((s) => s.alg), [...TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS]);
 
     const verified = await verifyTrustStageReceiptV2(receipt, {
       trustedKeys: issuer.hybridPin,
       expectedIssuer: CONTEXT,
       expected: { stage_id: 'licensed-review', action_digest: D('1') },
     });
-    expect(verified.valid).toBe(true);
-    expect(verified.reason).toBeNull();
-    expect(verified.receipt_digest).toBe(receipt.receipt_digest);
+    assert.equal(verified.valid, true);
+    assert.equal(verified.reason, null);
+    assert.equal(verified.receipt_digest, receipt.receipt_digest);
   });
 
   it('v1-refuses-v2: the SYNC v1 verifier refuses a v2 receipt on the version marker, never a crash', async () => {
@@ -174,28 +174,28 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
     const receipt = await signTrustStageReceiptV2({ payload: payload(), context: CONTEXT, keys: issuer.keys });
     // No await: verifyTrustStageReceipt remains synchronous and untouched.
     const result = verifyTrustStageReceipt(receipt as unknown, { trustedKeys: issuer.classicalPin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_structure_invalid');
-    expect(result.checks.structure).toBe(false);
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_structure_invalid');
+    assert.equal(result.checks.structure, false);
   });
 
   it('the router keeps the exact v1 verdict for a v1 receipt and hybrid-checks a v2 one', async () => {
     const issuer = issuerFixture();
     const v1 = mintV1Receipt(issuer.ed.privateKey);
     const routedV1 = await verifyTrustStageReceiptStatement(v1, { trustedKeys: issuer.classicalPin });
-    expect(routedV1.valid).toBe(true);
+    assert.equal(routedV1.valid, true);
 
     const v2 = await signTrustStageReceiptV2({ payload: payload(), context: CONTEXT, keys: issuer.keys });
     const routedV2 = await verifyTrustStageReceiptStatement(v2, { trustedKeys: issuer.hybridPin });
-    expect(routedV2.valid).toBe(true);
+    assert.equal(routedV2.valid, true);
   });
 
   it('a key id pinned WITHOUT the ML-DSA half never satisfies a v2 pin', async () => {
     const issuer = issuerFixture();
     const receipt = await signTrustStageReceiptV2({ payload: payload(), context: CONTEXT, keys: issuer.keys });
     const result = await verifyTrustStageReceiptV2(receipt, { trustedKeys: issuer.classicalPin as any });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_key_untrusted');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_key_untrusted');
   });
 
   it('stripped leg: dropping the ML-DSA signature refuses, never a classical-only pass', async () => {
@@ -209,8 +209,8 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
       },
     };
     const result = await verifyTrustStageReceiptV2(stripped, { trustedKeys: issuer.hybridPin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_signature_leg_missing');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_signature_leg_missing');
   });
 
   it('narrowed set: claiming required_algorithms=["Ed25519"] is refused structurally AND cryptographically', async () => {
@@ -225,14 +225,14 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
       },
     };
     const result = await verifyTrustStageReceiptV2(narrowed, { trustedKeys: issuer.hybridPin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_algorithm_set_unsupported');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_algorithm_set_unsupported');
 
     // Independently: the surviving Ed25519 signature does not verify over the
     // bytes rebuilt from the REGISTERED set, because the set is inside them.
     const setIntact = { ...narrowed, signature: { ...narrowed.signature, required_algorithms: [...TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS] } };
     const second = await verifyTrustStageReceiptV2(setIntact, { trustedKeys: issuer.hybridPin });
-    expect(second.valid).toBe(false);
+    assert.equal(second.valid, false);
   });
 
   it('wrong-length signature on the ML-DSA leg refuses, never crashes', async () => {
@@ -248,8 +248,8 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
       },
     };
     const result = await verifyTrustStageReceiptV2(tampered, { trustedKeys: issuer.hybridPin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toContain('receipt_signature_invalid');
+    assert.equal(result.valid, false);
+    assert.ok(String(result.reason).includes('receipt_signature_invalid'));
   });
 
   it('Ed448-masquerade: a non-Ed25519 SPKI pinned as the classical half is refused, never verified', async () => {
@@ -263,8 +263,8 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
     };
     const pin = { [KEY_ID]: { public_key: ed448PubB64u, pq_public_key: issuer.hybridPin[KEY_ID].pq_public_key } };
     const result = await verifyTrustStageReceiptV2(masqueraded, { trustedKeys: pin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_key_untrusted');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_key_untrusted');
   });
 
   it('an absent ML-DSA backend is pq_backend_unavailable, never a pass on the Ed25519 leg', async () => {
@@ -274,8 +274,8 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
       trustedKeys: issuer.hybridPin,
       mldsaBackend: {},
     });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toContain('pq_backend_unavailable');
+    assert.equal(result.valid, false);
+    assert.ok(String(result.reason).includes('pq_backend_unavailable'));
   });
 
   it('a tampered payload breaks the recomputed digest before any signature is checked', async () => {
@@ -283,8 +283,8 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
     const receipt = await signTrustStageReceiptV2({ payload: payload(), context: CONTEXT, keys: issuer.keys });
     const tampered = { ...receipt, payload: { ...receipt.payload, stage_id: 'other-stage' } };
     const result = await verifyTrustStageReceiptV2(tampered, { trustedKeys: issuer.hybridPin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_digest_mismatch');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_digest_mismatch');
   });
 
   it('expected-binding and expected-issuer pins still gate a cryptographically valid receipt', async () => {
@@ -294,18 +294,17 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
       trustedKeys: issuer.hybridPin,
       expected: { stage_id: 'some-other-stage' },
     });
-    expect(wrongBinding.reason).toBe('receipt_expected_binding_mismatch');
+    assert.equal(wrongBinding.reason, 'receipt_expected_binding_mismatch');
     const wrongIssuer = await verifyTrustStageReceiptV2(receipt, {
       trustedKeys: issuer.hybridPin,
       expectedIssuer: { ...CONTEXT, tenant: 'someone-else' },
     });
-    expect(wrongIssuer.reason).toBe('receipt_expected_issuer_mismatch');
+    assert.equal(wrongIssuer.reason, 'receipt_expected_issuer_mismatch');
   });
 
   it('never throws on hostile input', async () => {
     for (const bad of [null, undefined, '', 42, [], { version: TRUST_STAGE_RECEIPT_V2_VERSION }]) {
-      await expect(verifyTrustStageReceiptV2(bad as unknown, { trustedKeys: {} }))
-        .resolves.toMatchObject({ valid: false });
+      assert.equal((await verifyTrustStageReceiptV2(bad as unknown, { trustedKeys: {} })).valid, false);
     }
   });
 
@@ -317,8 +316,10 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
         return [{ alg: 'Ed25519', sig: crypto.sign(null, Buffer.from(bytes), issuer.ed.privateKey).toString('base64url') }];
       },
     };
-    await expect(signTrustStageReceiptV2({ payload: payload(), context: CONTEXT, signer }))
-      .rejects.toThrow(/malformed signature set/);
+    await assert.rejects(
+      signTrustStageReceiptV2({ payload: payload(), context: CONTEXT, signer }),
+      /malformed signature set/,
+    );
   });
 
   it('accepts an injected signSet signer that supplies both legs', async () => {
@@ -336,6 +337,6 @@ describe('EP-GATE-TRUST-STAGE-RECEIPT-v2 hybrid stage receipt', () => {
     };
     const receipt = await signTrustStageReceiptV2({ payload: payload(), context: CONTEXT, signer });
     const verified = await verifyTrustStageReceiptV2(receipt, { trustedKeys: issuer.hybridPin });
-    expect(verified.valid).toBe(true);
+    assert.equal(verified.valid, true);
   });
 });

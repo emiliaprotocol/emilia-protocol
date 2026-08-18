@@ -7,6 +7,7 @@
  * credentials are deliberately absent from every public type in this module.
  */
 import { type KeyObject } from 'node:crypto';
+import { type AgileSignature, type AgilityOptions } from '@emilia-protocol/verify/pq-signature-agility';
 export declare const CONSEQUENCE_ACTUATOR_ENVELOPE_VERSION = "EP-CONSEQUENCE-ACTUATOR-ENVELOPE-v1";
 export declare const CONSEQUENCE_ACTUATOR_SIGNATURE_ALGORITHM = "Ed25519";
 export declare const CONSEQUENCE_ACTUATOR_SIGNATURE_DOMAIN = "EP-CONSEQUENCE-ACTUATOR-ENVELOPE-v1";
@@ -171,6 +172,75 @@ export interface MemoryConsequenceActuatorSnapshot extends ConsequenceActuatorRe
 export declare function signConsequenceExecutionEnvelope(payload: ConsequenceExecutionEnvelopePayload, options: SignEnvelopeOptions): SignedConsequenceExecutionEnvelope;
 /** Verify an envelope without invoking a provider or mutating replay state. */
 export declare function verifyConsequenceExecutionEnvelope(envelope: unknown, options: VerifyOptions): ConsequenceEnvelopeVerification;
+export declare const CONSEQUENCE_ACTUATOR_ENVELOPE_V2_VERSION = "EP-CONSEQUENCE-ACTUATOR-ENVELOPE-v2";
+export declare const CONSEQUENCE_ACTUATOR_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+export interface ConsequenceExecutionEnvelopePayloadV2 {
+    '@version': typeof CONSEQUENCE_ACTUATOR_ENVELOPE_V2_VERSION;
+    issuer_id: string;
+    tenant_id: string;
+    attempt_id: string;
+    action_digest: string;
+    caid: string;
+    provider_account_id: string;
+    target_digest: string;
+    operation: string;
+    idempotency_key: string;
+    nonce: string;
+    issued_at: string;
+    expires_at: string;
+}
+export interface ConsequenceExecutionEnvelopeProofV2 {
+    required_algorithms: readonly string[];
+    key_id: string;
+    pq_key_id: string;
+    signatures: AgileSignature[];
+}
+export interface SignedConsequenceExecutionEnvelopeV2 {
+    payload: ConsequenceExecutionEnvelopePayloadV2;
+    proof: ConsequenceExecutionEnvelopeProofV2;
+}
+export interface ConsequenceActuatorPinsV2 {
+    tenantId: string;
+    caid: string;
+    providerAccountId: string;
+    targetDigest: string;
+    operation: string;
+    envelopeIssuerId: string;
+    envelopeKeyId: string;
+    envelopePublicKey: KeyMaterial;
+    envelopePqKeyId: string;
+    /** ML-DSA-65 raw public key (1952 bytes), Uint8Array or base64url. */
+    envelopePqPublicKey: Uint8Array | string;
+    maxEnvelopeTtlMs?: number;
+    clockSkewMs?: number;
+}
+export type ConsequenceEnvelopeVerificationV2 = {
+    readonly ok: true;
+    readonly payload: Readonly<ConsequenceExecutionEnvelopePayloadV2>;
+    readonly envelopeDigest: string;
+} | {
+    readonly ok: false;
+    readonly reason: string;
+};
+/** Create a closed hybrid (Ed25519 + ML-DSA-65) execution envelope for an already-authorized effect. */
+export declare function signConsequenceExecutionEnvelopeV2(payload: ConsequenceExecutionEnvelopePayloadV2, options: {
+    privateKey: KeyMaterial;
+    keyId: string;
+    /** ML-DSA-65 raw secret key (4032 bytes), Uint8Array or base64url. */
+    pqPrivateKey: Uint8Array | string;
+    pqKeyId: string;
+} & AgilityOptions): Promise<SignedConsequenceExecutionEnvelopeV2>;
+/**
+ * FAIL-CLOSED hybrid verify of one envelope, without invoking a provider or
+ * mutating replay state. A v2 envelope NEVER verifies on one leg alone; an
+ * absent ML-DSA backend is a refusal, never a skipped check and never a pass
+ * on the surviving classical leg.
+ */
+export declare function verifyConsequenceExecutionEnvelopeV2(envelope: unknown, options: {
+    pins: ConsequenceActuatorPinsV2;
+    expected: VerifyExpectedBinding;
+    now?: number | (() => number);
+} & AgilityOptions): Promise<ConsequenceEnvelopeVerificationV2>;
 /**
  * Credential-owning actuator. `perform` captures the provider credential in
  * the actuator process; callers cannot submit or replace that credential.

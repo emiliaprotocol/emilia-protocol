@@ -17,7 +17,7 @@ import {
   signLossExperienceFeedV2,
   verifyLossExperienceFeed,
   verifyLossExperienceFeedV2,
-} from './src/loss-experience-feed.ts';
+} from './loss-experience-feed.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

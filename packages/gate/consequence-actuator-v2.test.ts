@@ -15,7 +15,7 @@ import {
   signConsequenceExecutionEnvelopeV2,
   verifyConsequenceExecutionEnvelope,
   verifyConsequenceExecutionEnvelopeV2,
-} from './src/consequence-actuator.ts';
+} from './consequence-actuator.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

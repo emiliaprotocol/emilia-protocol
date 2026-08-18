@@ -18,7 +18,7 @@ import {
   signBoundedExecutionProgramV2,
   verifyBoundedExecutionProgram,
   verifyBoundedExecutionProgramV2,
-} from './src/bounded-execution-program.ts';
+} from './bounded-execution-program.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

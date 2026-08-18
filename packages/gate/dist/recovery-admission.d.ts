@@ -7,7 +7,7 @@
  * before admission and treats every unavailable or malformed answer as a
  * refusal.
  */
-import { type RiskRecord, type TrustedRiskKeys } from './reliance-risk-crypto.js';
+import { type RiskHybridSigner, type RiskRecord, type RiskV2Options, type TrustedRiskKeys, type TrustedRiskKeysV2 } from './reliance-risk-crypto.js';
 import type { AdmissionSnapshotBody } from './admission-store.js';
 export declare const RECOVERY_CAPABILITY_VERSION = "EP-RECOVERY-CAPABILITY-v1";
 export declare const RECOVERY_CAPABILITY_STATUS_VERSION = "EP-RECOVERY-CAPABILITY-STATUS-v1";
@@ -180,6 +180,32 @@ export declare function verifyRecoveryCapability(artifact: unknown, rawContext?:
  * routes. Presenter-supplied mutable state is outside this API by design.
  */
 export declare function evaluateRecoveryAdmission(artifact: unknown, rawContext: RecoveryCapabilityVerificationContext, dependencies: RecoveryAdmissionDependencies): Promise<RecoveryAdmissionDecision>;
+export declare const RECOVERY_CAPABILITY_V2_VERSION = "EP-RECOVERY-CAPABILITY-v2";
+export interface RecoveryCapabilitySignerV2 extends RiskHybridSigner {
+}
+export interface RecoveryCapabilityVerificationContextV2 extends RiskV2Options {
+    trusted_keys: TrustedRiskKeysV2;
+    expected_policy: RecoveryExpectedPolicySnapshot;
+    now: string;
+}
+export interface RecoveryCapabilityVerificationV2 {
+    accepted: boolean;
+    verified: boolean;
+    reason: string | null;
+    capability_digest: string | null;
+    capability: VerifiedRecoveryCapability | null;
+    issuer_id: string | null;
+    claim_boundary: typeof RECOVERY_CAPABILITY_CLAIM_BOUNDARY;
+}
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of signRecoveryCapability. */
+export declare function signRecoveryCapabilityV2(rawInput: RecoveryCapabilityInput | RiskRecord, rawSigner: RecoveryCapabilitySignerV2, options?: RiskV2Options): Promise<RiskRecord>;
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of verifyRecoveryCapability.
+ * A v2 capability NEVER verifies on one leg alone; an absent ML-DSA backend is
+ * a refusal, never a skipped check and never a pass on the surviving
+ * classical leg.
+ */
+export declare function verifyRecoveryCapabilityV2(artifact: unknown, rawContext?: RecoveryCapabilityVerificationContextV2): Promise<RecoveryCapabilityVerificationV2>;
 declare const _default: {
     RECOVERY_CAPABILITY_VERSION: string;
     RECOVERY_CAPABILITY_STATUS_VERSION: string;
@@ -189,6 +215,9 @@ declare const _default: {
     recoveryCapabilityDigest: typeof recoveryCapabilityDigest;
     verifyRecoveryCapability: typeof verifyRecoveryCapability;
     evaluateRecoveryAdmission: typeof evaluateRecoveryAdmission;
+    RECOVERY_CAPABILITY_V2_VERSION: string;
+    signRecoveryCapabilityV2: typeof signRecoveryCapabilityV2;
+    verifyRecoveryCapabilityV2: typeof verifyRecoveryCapabilityV2;
 };
 export default _default;
 //# sourceMappingURL=recovery-admission.d.ts.map

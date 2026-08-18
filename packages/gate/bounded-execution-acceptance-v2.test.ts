@@ -18,7 +18,7 @@ import {
   signBoundedExecutionAcceptanceProfileV2,
   verifyBoundedExecutionAcceptanceProfile,
   verifyBoundedExecutionAcceptanceProfileV2,
-} from './src/bounded-execution-acceptance.ts';
+} from './bounded-execution-acceptance.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

@@ -46,6 +46,7 @@ import { strictJsonGate } from './strict-json.js';
 import { canonicalize as canonical } from './execution-binding.js';
 import { verifyEvidenceRecord } from './evidence.js';
 import { isSecureConsumptionStore } from './store.js';
+import { signAgileSet, verifyAgileSignatureSet, } from '@emilia-protocol/verify/pq-signature-agility';
 export const BREAKGLASS_VERSION = 'EP-GATE-BREAKGLASS-v1';
 export const BREAKGLASS_EVIDENCE_KIND = 'breakglass';
 function sha256hex(s) {
@@ -615,13 +616,417 @@ export async function runBreakGlass({ grant, policy, issuerKeys, actionType, sto
         evidence: evidenceRecord,
     };
 }
+// ===========================================================================
+// EP-GATE-BREAKGLASS-v2 -- hybrid (Ed25519 + ML-DSA-65) M-of-N roster
+// ===========================================================================
+/**
+ * Copies the five-move EP-REVOCATION-v2 template
+ * (packages/verify/src/revocation.ts) onto the break-glass roster, with one
+ * roster-specific twist noted in the P6 brief: the roster is ALREADY
+ * set-shaped (`signatures: [{kid, algorithm, value}]`, one entry per
+ * signer), so v2 does not add a second top-level array -- it makes EACH
+ * signer's entry itself a small agile signature SET
+ * (`{kid, signatures: [{alg, sig, key_id?}]}`, one leg per required
+ * algorithm), with the SAME anti-stripping discipline per signer. M-of-N
+ * THRESHOLD SEMANTICS ARE UNCHANGED: same distinct-kid / distinct-principal /
+ * distinct-key checks, same "every listed signer must verify or the whole
+ * grant refuses" discipline -- only what "verify" means for one signer grows
+ * from one Ed25519 check to a hybrid signature-set check.
+ *
+ * 1. VERSION BUMP. `payload.threshold` etc. are unchanged, but
+ *    `payload.required_algorithms` is a NEW field (see move 3) and every
+ *    `signatures[]` entry's shape changes from `{kid, algorithm, value}` to
+ *    `{kid, signatures: [...]}`, so this is a new `@version`
+ *    (-v1 -> -v2). verifyBreakGlass above is UNCHANGED and refuses a v2 grant
+ *    at `unsupported_version` before it inspects a single signature.
+ * 2. SET SHAPE. Each signer's `signatures` sub-array is an EP-SIG-AGILITY-v1
+ *    AgileSignature array, reused verbatim.
+ * 3. ANTI-STRIPPING. `required_algorithms` is INSIDE `payload`, so it is part
+ *    of the SAME bytes every signer already signs (`canonical(payload)`,
+ *    unchanged from v1). Dropping a signer's ML-DSA leg while narrowing
+ *    `payload.required_algorithms` to `["Ed25519"]` changes the signed bytes
+ *    for EVERY signer at once, so every surviving Ed25519 signature stops
+ *    verifying -- narrowing cannot be done selectively per signer.
+ * 4. V1 COMPATIBILITY. verifyBreakGlass stays synchronous and untouched.
+ *    verifyBreakGlassV2 is a SEPARATE async entry point (ML-DSA verification
+ *    is inherently async); verifyBreakGlassStatement routes on `@version`.
+ *    runBreakGlassStatement is the v2-aware twin of runBreakGlass, sharing
+ *    consumeBreakGlass/buildBreakGlassEvidence unchanged (both already read
+ *    only kid/grant_id/decision fields present under either version).
+ * 5. NAMED REFUSALS. Every failure path returns `{valid:false, reason}`;
+ *    nothing throws. A signer whose set is missing its ML-DSA leg is
+ *    `signer_leg_missing`, never counted as a valid Ed25519-only signer.
+ *
+ * HONEST BOUNDARY, UNCHANGED FROM V1: this profile is evidence of an
+ * emergency override, never a bypass -- runBreakGlassStatement enforces the
+ * exact same pinned-policy verification, permanent consumption, and strict
+ * evidence order as v1. The ML-DSA-65 backend remains @noble/post-quantum's
+ * pure-JS FIPS 204 implementation, not independently audited and not a FIPS
+ * validated module; verifying under this profile is not a certification
+ * claim.
+ */
+export const BREAKGLASS_V2_VERSION = 'EP-GATE-BREAKGLASS-v2';
+export const BREAKGLASS_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+function algorithmSetMatchesRegisteredV2(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === BREAKGLASS_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === BREAKGLASS_V2_REQUIRED_ALGORITHMS[i]);
+}
+/**
+ * Mint a hybrid break-glass authorization: every signer signs the SAME
+ * canonical payload bytes (now carrying `required_algorithms`) under BOTH
+ * registered algorithms. Throws on invalid fields or an unavailable ML-DSA
+ * backend -- a malformed or partially-signed grant must never be issued.
+ */
+export async function mintBreakGlassAuthorizationV2(signers, { scope, window: win, reason, incident_ref, threshold, } = {}) {
+    if (!Array.isArray(signers) || signers.length === 0) {
+        throw new Error('breakglass v2: signers must be a non-empty array of { kid, ed:{privateKey}, pq:{secretKey} }');
+    }
+    for (const s of signers) {
+        if (!s || !isNonEmptyString(s.kid) || !s.ed?.privateKey || !s.pq?.secretKey) {
+            throw new Error('breakglass v2: each signer needs a kid, ed.privateKey, and pq.secretKey');
+        }
+    }
+    const kids = signers.map((s) => s.kid);
+    if (new Set(kids).size !== kids.length) {
+        throw new Error('breakglass v2: signer kids must be distinct — one principal cannot fill two threshold slots');
+    }
+    if (!scope || !isActionTypeList(scope.action_types)) {
+        throw new Error('breakglass v2: scope.action_types must be a non-empty array of action-type strings');
+    }
+    if (typeof threshold !== 'number' || !Number.isInteger(threshold) || threshold < 2) {
+        throw new Error('breakglass v2: threshold must be an integer >= 2');
+    }
+    if (threshold > signers.length) {
+        throw new Error(`breakglass v2: threshold ${threshold} exceeds signer count ${signers.length} — the grant could never verify`);
+    }
+    const nbf = toMs(win?.not_before);
+    const exp = toMs(win?.expires_at);
+    if (nbf == null || exp == null) {
+        throw new Error('breakglass v2: window.not_before and window.expires_at are required (ISO or ms)');
+    }
+    if (exp <= nbf)
+        throw new Error('breakglass v2: window.expires_at must be after window.not_before');
+    if (!isNonEmptyString(reason))
+        throw new Error('breakglass v2: reason is required');
+    if (!isNonEmptyString(incident_ref))
+        throw new Error('breakglass v2: incident_ref is required');
+    const requiredAlgorithms = [...BREAKGLASS_V2_REQUIRED_ALGORITHMS];
+    const core = {
+        scope: { action_types: scope.action_types.slice() },
+        window: { not_before: win.not_before, expires_at: win.expires_at },
+        reason,
+        incident_ref,
+        threshold,
+        required_algorithms: requiredAlgorithms,
+    };
+    const grant_id = `bg2_${sha256hex(canonical(core))}`;
+    const payload = { grant_id, ...core };
+    const msg = new Uint8Array(Buffer.from(canonical(payload), 'utf8'));
+    const signatures = [];
+    for (const s of signers) {
+        const signingKeys = [
+            { alg: 'Ed25519', private_key: s.ed.privateKey },
+            { alg: 'ML-DSA-65', private_key: s.pq.secretKey },
+        ];
+        signatures.push({ kid: s.kid, signatures: await signAgileSet(msg, signingKeys) });
+    }
+    return { '@version': BREAKGLASS_V2_VERSION, payload, signatures };
+}
+/** Resolve a v2 issuer key pair for `kid` from a map or an entry list. */
+function issuerKeyPairForV2(issuerKeys, kid) {
+    if (!issuerKeys)
+        return null;
+    if (Array.isArray(issuerKeys)) {
+        const e = issuerKeys.find((x) => x && x.kid === kid && typeof x.key === 'string' && typeof x.pq_key === 'string');
+        return e ? { key: e.key, pq_key: e.pq_key } : null;
+    }
+    const pair = issuerKeys[kid];
+    return pair && typeof pair.key === 'string' && typeof pair.pq_key === 'string' ? pair : null;
+}
+function normalizePinnedPolicyV2(policy, issuerKeys) {
+    if (!isPlainObject(policy))
+        return { ok: false, reason: 'missing_policy' };
+    const p = policy;
+    if (!Number.isSafeInteger(p.minimum_threshold) || p.minimum_threshold < 2 || !Array.isArray(p.roster)) {
+        return { ok: false, reason: 'invalid_policy' };
+    }
+    try {
+        const roster = new Map();
+        for (const entry of p.roster) {
+            if (!isPlainObject(entry) || !isNonEmptyString(entry.kid)
+                || !isNonEmptyString(entry.principal_id) || roster.has(entry.kid)) {
+                return { ok: false, reason: 'invalid_policy' };
+            }
+            const entryKey = entry.key;
+            const entryPqKey = entry.pq_key;
+            const pair = (typeof entryKey === 'string' && entryKey.length > 0
+                && typeof entryPqKey === 'string' && entryPqKey.length > 0)
+                ? { key: entryKey, pq_key: entryPqKey }
+                : issuerKeyPairForV2(issuerKeys, entry.kid);
+            if (!pair)
+                return { ok: false, reason: 'invalid_policy' };
+            const keyInfo = pinnedKey(pair.key);
+            const pqBytes = Buffer.from(pair.pq_key, 'base64url');
+            if (pqBytes.length === 0 || pqBytes.toString('base64url') !== pair.pq_key) {
+                return { ok: false, reason: 'invalid_policy' };
+            }
+            roster.set(entry.kid, {
+                kid: entry.kid,
+                principal_id: entry.principal_id,
+                publicKey: keyInfo.publicKey,
+                pqPublicKeyB64u: pair.pq_key,
+                // Combined fingerprint: two signers reusing the SAME (ed, pq) key
+                // pair under different kids is the same duplicate-key hazard v1
+                // guards against for the classical key alone.
+                fingerprint: `sha256:${sha256hex(`${keyInfo.fingerprint}|ml-dsa-65:${sha256hex(pqBytes)}`)}`,
+            });
+        }
+        const members = [...roster.values()];
+        if (new Set(members.map((entry) => entry.principal_id)).size < p.minimum_threshold
+            || new Set(members.map((entry) => entry.fingerprint)).size < p.minimum_threshold) {
+            return { ok: false, reason: 'invalid_policy' };
+        }
+        return { ok: true, minimum_threshold: p.minimum_threshold, roster };
+    }
+    catch {
+        return { ok: false, reason: 'invalid_policy' };
+    }
+}
+async function verifyBreakGlassV2Internal(grantJson, { policy, issuerKeys, now = Date.now, actionType, } = {}) {
+    if (grantJson == null || grantJson === '')
+        return refuse('no_grant');
+    let doc = grantJson;
+    if (typeof doc === 'string') {
+        try {
+            if (Buffer.byteLength(doc, 'utf8') > 1024 * 1024 || !strictJsonGate(doc).ok)
+                return refuse('grant_unparseable');
+            doc = JSON.parse(doc);
+        }
+        catch {
+            return refuse('grant_unparseable');
+        }
+    }
+    if (!doc || typeof doc !== 'object' || Array.isArray(doc))
+        return refuse('grant_malformed');
+    if (doc['@version'] !== BREAKGLASS_V2_VERSION)
+        return refuse('unsupported_version');
+    const p = doc.payload;
+    const sigs = doc.signatures;
+    if (!p || typeof p !== 'object' || !Array.isArray(sigs) || sigs.length === 0) {
+        return refuse('grant_malformed');
+    }
+    if (!isNonEmptyString(p.grant_id))
+        return refuse('grant_malformed');
+    if (!Number.isInteger(p.threshold) || p.threshold < 1)
+        return refuse('invalid_threshold');
+    if (!p.scope || !isActionTypeList(p.scope.action_types))
+        return refuse('invalid_scope');
+    if (!isNonEmptyString(p.reason))
+        return refuse('missing_reason');
+    if (!isNonEmptyString(p.incident_ref))
+        return refuse('missing_incident_ref');
+    if (!algorithmSetMatchesRegisteredV2(p.required_algorithms))
+        return refuse('unsupported_algorithm_set');
+    const pinned = normalizePinnedPolicyV2(policy, issuerKeys);
+    if (!pinned.ok)
+        return refuse(pinned.reason);
+    for (const s of sigs) {
+        if (!s || typeof s !== 'object' || !isNonEmptyString(s.kid) || !Array.isArray(s.signatures) || s.signatures.length === 0) {
+            return refuse('grant_malformed');
+        }
+    }
+    const kids = sigs.map((s) => s.kid);
+    if (new Set(kids).size !== kids.length) {
+        const dup = kids.find((k, i) => kids.indexOf(k) !== i);
+        return refuse('duplicate_signer', { kid: dup });
+    }
+    const signerEntries = [];
+    for (const kid of kids) {
+        const entry = pinned.roster.get(kid);
+        if (!entry)
+            return refuse('signer_not_in_roster', { kid });
+        signerEntries.push(entry);
+    }
+    const principalIds = signerEntries.map((entry) => entry.principal_id);
+    if (new Set(principalIds).size !== principalIds.length) {
+        const principalId = principalIds.find((id, i) => principalIds.indexOf(id) !== i);
+        return refuse('duplicate_signer_principal', { principal_id: principalId });
+    }
+    const fingerprints = signerEntries.map((entry) => entry.fingerprint);
+    if (new Set(fingerprints).size !== fingerprints.length) {
+        const fingerprint = fingerprints.find((value, i) => fingerprints.indexOf(value) !== i);
+        return refuse('duplicate_signer_key', { spki_fingerprint: fingerprint });
+    }
+    if (sigs.length < p.threshold) {
+        return refuse('threshold_unmet', { threshold: p.threshold, signatures: sigs.length });
+    }
+    if (sigs.length < pinned.minimum_threshold) {
+        return refuse('policy_threshold_unmet', {
+            required_threshold: pinned.minimum_threshold,
+            presented_threshold: p.threshold,
+            signatures: sigs.length,
+        });
+    }
+    // Every listed signer's SET must verify against its pinned Ed25519 + ML-DSA-65
+    // pair, over the SAME bytes (canonical(payload), including
+    // required_algorithms). Never count past one failed set.
+    let msg;
+    try {
+        msg = Buffer.from(canonical(p), 'utf8');
+    }
+    catch {
+        return refuse('grant_malformed');
+    }
+    for (let i = 0; i < sigs.length; i++) {
+        const s = sigs[i];
+        const entry = signerEntries[i];
+        let setResult;
+        try {
+            setResult = await verifyAgileSignatureSet(new Uint8Array(msg), s.signatures, [
+                { alg: 'Ed25519', public_key: entry.publicKey },
+                { alg: 'ML-DSA-65', public_key: entry.pqPublicKeyB64u },
+            ], { policy: 'hybrid_all', requiredAlgorithms: [...BREAKGLASS_V2_REQUIRED_ALGORITHMS] });
+        }
+        catch {
+            setResult = null;
+        }
+        if (setResult?.verified !== true) {
+            const reason = String(setResult?.reason ?? 'signature_set_unverified');
+            if (reason === 'missing_required_algorithm')
+                return refuse('signer_leg_missing', { kid: s.kid });
+            return refuse('bad_signature', { kid: s.kid, hybrid_reason: reason });
+        }
+    }
+    let nowMs;
+    try {
+        nowMs = typeof now === 'function' ? toMs(now()) : toMs(now);
+    }
+    catch {
+        nowMs = null;
+    }
+    const nbf = toMs(p.window?.not_before);
+    const exp = toMs(p.window?.expires_at);
+    if (nbf == null || exp == null || nowMs == null)
+        return refuse('invalid_validity_window');
+    if (nowMs < nbf)
+        return refuse('not_yet_valid', { not_before: p.window.not_before });
+    if (nowMs > exp)
+        return refuse('expired', { expires_at: p.window.expires_at });
+    if (!isNonEmptyString(actionType))
+        return refuse('action_type_required');
+    if (!p.scope.action_types.includes(actionType)) {
+        return refuse('out_of_scope', { action_type: actionType, scope: p.scope.action_types.slice() });
+    }
+    return {
+        valid: true,
+        reason: 'breakglass_verified',
+        grant_id: p.grant_id,
+        incident_ref: p.incident_ref,
+        scope: { action_types: p.scope.action_types.slice() },
+        window: { not_before: p.window.not_before, expires_at: p.window.expires_at },
+        threshold: p.threshold,
+        required_threshold: Math.max(p.threshold, pinned.minimum_threshold),
+        policy_minimum_threshold: pinned.minimum_threshold,
+        signer_kids: kids.slice(),
+        signer_principal_ids: principalIds.slice(),
+        signer_spki_fingerprints: fingerprints.slice(),
+    };
+}
+/**
+ * Verify a hybrid break-glass grant. NEVER throws -- every failure resolves
+ * to `{valid:false, reason}`. Same fail-closed discipline as verifyBreakGlass:
+ * one bad or leg-incomplete signer set refuses the WHOLE grant.
+ */
+export async function verifyBreakGlassV2(grantJson, options = {}) {
+    try {
+        return await verifyBreakGlassV2Internal(grantJson, options);
+    }
+    catch {
+        return refuse('grant_malformed');
+    }
+}
+/**
+ * Route a grant of EITHER version to its verifier. A v1 grant keeps the
+ * exact synchronous v1 verdict (wrapped in a resolved Promise); a v2 grant
+ * gets the hybrid per-signer check.
+ */
+export async function verifyBreakGlassStatement(grantJson, options = {}) {
+    const doc = typeof grantJson === 'string' ? (() => { try {
+        return JSON.parse(grantJson);
+    }
+    catch {
+        return null;
+    } })() : grantJson;
+    if (doc && typeof doc === 'object' && !Array.isArray(doc) && doc['@version'] === BREAKGLASS_V2_VERSION) {
+        return verifyBreakGlassV2(grantJson, options);
+    }
+    return verifyBreakGlass(grantJson, options);
+}
+/**
+ * The v2-aware twin of runBreakGlass: identical orchestration (verify, then
+ * atomically consume, then require strict evidence acknowledgement, then and
+ * only then invoke `effect`), routed through verifyBreakGlassStatement so a
+ * relying party accepts either a classical or a hybrid grant. Shares
+ * consumeBreakGlass/buildBreakGlassEvidence unchanged: both already read only
+ * `grant_id`/`kid`/decision fields present under either version.
+ */
+export async function runBreakGlassStatement({ grant, policy, issuerKeys, actionType, store, evidence, now = Date.now, } = {}, effect) {
+    if (typeof effect !== 'function')
+        throw new Error('runBreakGlassStatement: effect function is required');
+    let snapshot;
+    try {
+        const parsed = typeof grant === 'string' ? JSON.parse(grant) : grant;
+        snapshot = JSON.parse(canonical(parsed));
+    }
+    catch {
+        const verification = await verifyBreakGlassStatement(grant, { policy, issuerKeys, actionType, now });
+        return { ok: false, reason: verification.reason, verification, consumption: null, evidence: null };
+    }
+    const verification = await verifyBreakGlassStatement(snapshot, { policy, issuerKeys, actionType, now });
+    if (!verification.valid) {
+        return { ok: false, reason: verification.reason, verification, consumption: null, evidence: null };
+    }
+    if (!isSecureConsumptionStore(store)) {
+        return { ok: false, reason: 'secure_consumption_store_required', verification, consumption: null, evidence: null };
+    }
+    if (!evidence || evidence.strict !== true || typeof evidence.record !== 'function') {
+        return { ok: false, reason: 'strict_evidence_required', verification, consumption: null, evidence: null };
+    }
+    const consume = store.consume.bind(store);
+    const record = evidence.record.bind(evidence);
+    const consumption = await consumeBreakGlass(verification, { consume });
+    if (!consumption.consumed) {
+        return { ok: false, reason: consumption.reason, verification, consumption, evidence: null };
+    }
+    const entry = buildBreakGlassEvidence(snapshot, { ...verification, allow: true, action_type: actionType }, { now });
+    let evidenceRecord;
+    try {
+        evidenceRecord = await record(entry);
+        if (!verifyEvidenceRecord(evidenceRecord, ({
+            atomicRequired: evidence.atomicAppend === true,
+            expectedEntry: entry,
+        })))
+            throw new Error('malformed evidence acknowledgement');
+    }
+    catch {
+        return { ok: false, reason: 'evidence_record_failed', verification, consumption, evidence: null };
+    }
+    const result = await effect({ verification, consumption, evidence: evidenceRecord });
+    return { ok: true, reason: 'breakglass_executed', result, verification, consumption, evidence: evidenceRecord };
+}
 export default {
     mintBreakGlassAuthorization,
     verifyBreakGlass,
     consumeBreakGlass,
     buildBreakGlassEvidence,
     runBreakGlass,
+    mintBreakGlassAuthorizationV2,
+    verifyBreakGlassV2,
+    verifyBreakGlassStatement,
+    runBreakGlassStatement,
     BREAKGLASS_VERSION,
     BREAKGLASS_EVIDENCE_KIND,
+    BREAKGLASS_V2_VERSION,
 };
 //# sourceMappingURL=breakglass.js.map

@@ -1,3 +1,4 @@
+import { type AgilityOptions } from '@emilia-protocol/verify/pq-signature-agility';
 export declare const COVERAGE_INVENTORY_VERSION = "EP-GATE-COVERAGE-INVENTORY-v1";
 export declare const COVERAGE_REPORT_VERSION = "EP-GATE-COVERAGE-REPORT-v1";
 export declare const ENFORCEMENT_PROBE_VERSION = "EP-GATE-ENFORCEMENT-PROBE-v1";
@@ -72,6 +73,91 @@ export declare function verifyEnforcementProbe(statement: any, options?: {
     maxAgeSec?: number;
     maxFutureSkewSec?: number;
 }): ProbeVerificationResult;
+/**
+ * REFERENCE-DERIVED HYBRID MIGRATION. Copies, move for move, the reference
+ * hybrid migration documented in docs/protocol/pq-hybrid-program.md, section
+ * "PATTERN: the reference hybrid migration" (EP-REVOCATION-v2 in
+ * packages/verify/src/revocation.ts). The five moves, applied to the probe:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. A second signature changes the SHAPE of
+ *    the proof, a wire-format change, so the probe takes a new `@version`
+ *    (EP-GATE-ENFORCEMENT-PROBE-v1 -> -v2). verifyEnforcementProbe() above is
+ *    untouched: validateProbeBody(body) still defaults to the v1 version, so
+ *    it refuses a v2 body's `@version` with `probe_version_invalid` before any
+ *    signature inspection, and never throws.
+ * 2. SET SHAPE. `signature` is replaced by `proof`, carrying
+ *    `required_algorithms` plus a `signatures` array shaped exactly like
+ *    EP-SIG-AGILITY-v1's AgileSignature ({ alg, sig, key_id? }).
+ * 3. ANTI-STRIPPING BYTES. The required algorithm SET is committed INSIDE the
+ *    signed bytes (probeV2Bytes below). Drop the ML-DSA leg and narrow
+ *    `required_algorithms` and the surviving Ed25519 signature no longer
+ *    verifies, because the bytes changed.
+ * 4. V1 COMPATIBILITY. v1 probes keep verifying, unchanged, through
+ *    verifyEnforcementProbe. v2 verification is ASYNC (ML-DSA verification is
+ *    async), so it is a SEPARATE entry point; verifyEnforcementProbeAny()
+ *    routes on `@version`. The v1 verifier is never made async.
+ * 5. NAMED REFUSALS. Every failure path returns a named reason; nothing
+ *    throws on caller input. An absent ML-DSA backend is
+ *    'pq_backend_unavailable', never a skipped check and never a pass on the
+ *    classical leg alone.
+ *
+ * The pinned-probe catalog entry (found via probe_id + key_id, exactly as v1)
+ * carries BOTH `public_key` and `pq_public_key` for a v2 probe; a pin missing
+ * either half confers nothing. Coverage evaluation (evaluateGateCoverage)
+ * remains v1-only here; a v2 probe must be verified through
+ * verifyEnforcementProbeV2 (or the Any router) before its acceptance result is
+ * folded into a coverage report by the caller.
+ */
+export declare const ENFORCEMENT_PROBE_V2_VERSION = "EP-GATE-ENFORCEMENT-PROBE-v2";
+/** The registered required algorithm set, in canonical order. */
+export declare const ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS: readonly string[];
+/**
+ * The bytes BOTH legs sign: the same body v1 signs (`@version`, `probe`,
+ * `test`) plus the committed `required_algorithms` set, under the v2 domain
+ * tag. Recomputed independently by the verifier from the PRESENTED body and
+ * the REGISTERED set.
+ */
+export declare function probeV2Bytes(body: any, requiredAlgorithms?: readonly string[]): Buffer<ArrayBuffer>;
+/** Mint a real hybrid probe statement. Throws on issuer misuse (never on caller input; there is none). */
+export declare function signEnforcementProbeV2(input: any, signers: any, options?: AgilityOptions): Promise<Readonly<{
+    proof: Readonly<{
+        profile: "EP-GATE-ENFORCEMENT-PROBE-v2";
+        required_algorithms: string[];
+        key_id: any;
+        signatures: import("@emilia-protocol/verify/pq-signature-agility").AgileSignature[];
+    }>;
+    '@version': string;
+    probe: {
+        id: any;
+        key_id: any;
+    };
+    test: {
+        surface_id: any;
+        gate_id: any;
+        environment_id: any;
+        action_family: any;
+        action_digest: any;
+        tested_at: any;
+        nonce: any;
+        result: any;
+        response_status: any;
+    };
+}>>;
+/**
+ * FAIL-CLOSED hybrid verifier for one EP-GATE-ENFORCEMENT-PROBE-v2. Never
+ * throws on caller input; a v2 probe NEVER verifies on one leg alone.
+ */
+export declare function verifyEnforcementProbeV2(statement: any, options?: {
+    pinnedProbes?: any;
+    expectedSurface?: any;
+    now?: number;
+    maxAgeSec?: number;
+    maxFutureSkewSec?: number;
+    mldsaBackend?: AgilityOptions['mldsaBackend'];
+    mldsaBackendLoader?: AgilityOptions['mldsaBackendLoader'];
+}): Promise<ProbeVerificationResult>;
+/** Route a probe statement of EITHER version to its own verifier. */
+export declare function verifyEnforcementProbeAny(statement: any, options?: any): Promise<ProbeVerificationResult>;
 type CoverageSurfaceRow = {
     surface_id: any;
     action_family: any;

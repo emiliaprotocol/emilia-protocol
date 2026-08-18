@@ -18,8 +18,8 @@ import {
   signLossAllocationScheduleV2,
   verifyLossAllocationSchedule,
   verifyLossAllocationScheduleV2,
-} from './src/loss-allocation-schedule.ts';
-import { riskDigest } from './src/reliance-risk-crypto.ts';
+} from './loss-allocation-schedule.js';
+import { riskDigest } from './reliance-risk-crypto.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // EP-GATE-REMEDY-EVIDENCE-v2 -- hostile matrix for the hybrid Remedy Program
-// evidence envelope and the v2 adapter factory. New file, co-located under
-// src/ so vitest exercises this package's TS source directly (no build step
-// needed); the dist-backed v1 adapter suites are untouched.
-import { describe, it, expect } from 'vitest';
+// evidence envelope and the v2 adapter factory. Package-root node:test file
+// importing the compatibility shim './remedy-program-adapters.js' (which
+// re-exports ./dist/remedy-program-adapters.js), matching this package's
+// convention; the v1 adapter suites are untouched.
+import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { describe, it } from 'node:test';
 
 import {
   REMEDY_PROGRAM_EVIDENCE_VERSION,
@@ -17,7 +19,7 @@ import {
   remedyProgramEvidenceSigningBytes,
   signRemedyProgramEvidenceV2,
 } from './remedy-program-adapters.js';
-import { canonicalize } from '../execution-binding.js';
+import { canonicalize } from './execution-binding.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
@@ -170,15 +172,19 @@ async function verifyDisputeWith(evidence: unknown, authority: any, over: Record
 describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
   it('valid v2 roundtrip: the hybrid adapters accept a correctly signed dispute', async () => {
     const { evidence, authority } = await hybridFixture();
-    expect(evidence.version).toBe(REMEDY_PROGRAM_EVIDENCE_V2_VERSION);
-    expect(evidence.signature.required_algorithms)
-      .toEqual([...REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS]);
-    expect(evidence.signature.signatures.map((s: any) => s.alg))
-      .toEqual([...REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS]);
+    assert.equal(evidence.version, REMEDY_PROGRAM_EVIDENCE_V2_VERSION);
+    assert.deepEqual(
+      evidence.signature.required_algorithms,
+      [...REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS],
+    );
+    assert.deepEqual(
+      evidence.signature.signatures.map((s: any) => s.alg),
+      [...REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS],
+    );
 
     const result = await verifyDisputeWith(evidence, authority);
-    expect(result.ok).toBe(true);
-    expect((result as any).dispute_id).toBe('dispute-1');
+    assert.equal(result.ok, true);
+    assert.equal((result as any).dispute_id, 'dispute-1');
   });
 
   it('v1-refuses-v2 and v2-refuses-v1: neither factory accepts the other profile', async () => {
@@ -190,17 +196,22 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
         originalEffects: adapterOptions(v1Authority, evidence).actionEscrow.originalEffects,
       },
     }) as any);
-    expect((await v1Adapters.verifyDispute(disputeInput(remedyProgramEvidenceDigest(evidence)))).ok).toBe(false);
+    assert.equal(
+      (await v1Adapters.verifyDispute(disputeInput(remedyProgramEvidenceDigest(evidence)))).ok,
+      false,
+    );
 
     const v1Evidence = mintV1Evidence(issuer.ed.privateKey);
-    expect((await verifyDisputeWith(v1Evidence, authority)).ok).toBe(false);
+    assert.equal((await verifyDisputeWith(v1Evidence, authority)).ok, false);
   });
 
   it('an authority pinned WITHOUT the ML-DSA half is rejected at construction, never partial credit', async () => {
     const { evidence, issuer } = await hybridFixture();
     const classicalOnly = { authorityId: AUTHORITY_ID, trustedKeys: { [KEY_ID]: issuer.edPubB64u } };
-    expect(() => createRemedyProgramAdaptersV2(adapterOptions(classicalOnly, evidence) as any))
-      .toThrow(/configuration invalid/);
+    assert.throws(
+      () => createRemedyProgramAdaptersV2(adapterOptions(classicalOnly, evidence) as any),
+      /configuration invalid/,
+    );
   });
 
   it('stripped leg: dropping the ML-DSA signature refuses, never a classical-only pass', async () => {
@@ -212,7 +223,7 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
         signatures: evidence.signature.signatures.filter((s: any) => s.alg !== 'ML-DSA-65'),
       },
     };
-    expect((await verifyDisputeWith(stripped, authority)).ok).toBe(false);
+    assert.equal((await verifyDisputeWith(stripped, authority)).ok, false);
   });
 
   it('narrowed set: claiming required_algorithms=["Ed25519"] refuses structurally AND cryptographically', async () => {
@@ -225,7 +236,7 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
         signatures: evidence.signature.signatures.filter((s: any) => s.alg === 'Ed25519'),
       },
     };
-    expect((await verifyDisputeWith(narrowed, authority)).ok).toBe(false);
+    assert.equal((await verifyDisputeWith(narrowed, authority)).ok, false);
     const setIntact = {
       ...narrowed,
       signature: {
@@ -233,7 +244,7 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
         required_algorithms: [...REMEDY_PROGRAM_EVIDENCE_V2_REQUIRED_ALGORITHMS],
       },
     };
-    expect((await verifyDisputeWith(setIntact, authority)).ok).toBe(false);
+    assert.equal((await verifyDisputeWith(setIntact, authority)).ok, false);
   });
 
   it('wrong-length signature on the ML-DSA leg refuses, never crashes', async () => {
@@ -247,7 +258,7 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
         )),
       },
     };
-    expect((await verifyDisputeWith(tampered, authority)).ok).toBe(false);
+    assert.equal((await verifyDisputeWith(tampered, authority)).ok, false);
   });
 
   it('Ed448-masquerade: a non-Ed25519 SPKI as the classical half is rejected at construction', async () => {
@@ -258,14 +269,16 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
       authorityId: AUTHORITY_ID,
       trustedKeys: { [KEY_ID]: { public_key: ed448PubB64u, pq_public_key: issuer.pqPubB64u } },
     };
-    expect(() => createRemedyProgramAdaptersV2(adapterOptions(masqueradedAuthority, evidence) as any))
-      .toThrow(/configuration invalid/);
+    assert.throws(
+      () => createRemedyProgramAdaptersV2(adapterOptions(masqueradedAuthority, evidence) as any),
+      /configuration invalid/,
+    );
   });
 
   it('an absent ML-DSA backend refuses, never a pass on the Ed25519 leg', async () => {
     const { evidence, authority } = await hybridFixture();
     const result = await verifyDisputeWith(evidence, authority, { mldsaBackend: {} });
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
   });
 
   it('a tampered payload breaks the recomputed content digest', async () => {
@@ -274,24 +287,26 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
       ...evidence,
       payload: { ...evidence.payload, requested_units: 1 },
     };
-    expect((await verifyDisputeWith(tampered, authority)).ok).toBe(false);
+    assert.equal((await verifyDisputeWith(tampered, authority)).ok, false);
   });
 
   it('never throws on hostile evidence', async () => {
     const { authority } = await hybridFixture();
     for (const bad of [null, 42, [], { version: REMEDY_PROGRAM_EVIDENCE_V2_VERSION }]) {
       const adapters = createRemedyProgramAdaptersV2(adapterOptions(authority, bad) as any);
-      await expect(adapters.verifyDispute(disputeInput(HASH('9'))))
-        .resolves.toMatchObject({ ok: false });
+      assert.equal((await adapters.verifyDispute(disputeInput(HASH('9')))).ok, false);
     }
   });
 
   it('refuses to issue an envelope without both halves of the key material', async () => {
     const issuer = keyFixture();
-    await expect(signRemedyProgramEvidenceV2(
-      { kind: 'dispute', issuer: { authority_id: AUTHORITY_ID, key_id: KEY_ID }, payload: disputePayload() },
-      { ed: issuer.keys.ed, pq: { secretKey: issuer.keys.pq.secretKey, publicKey: 'not-a-key' } } as any,
-    )).rejects.toThrow(/ML-DSA-65 public key/);
+    await assert.rejects(
+      signRemedyProgramEvidenceV2(
+        { kind: 'dispute', issuer: { authority_id: AUTHORITY_ID, key_id: KEY_ID }, payload: disputePayload() },
+        { ed: issuer.keys.ed, pq: { secretKey: issuer.keys.pq.secretKey, publicKey: 'not-a-key' } } as any,
+      ),
+      /ML-DSA-65 public key/,
+    );
   });
 
   it('the revocation seam is a ROUTER: a v1 revocation statement still verifies under the v2 adapters', async () => {
@@ -338,14 +353,14 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
         original: storedOriginal(),
       },
     });
-    expect(result.ok).toBe(true);
-    expect((result as any).authority_id).toBe('revoker:compliance');
+    assert.equal(result.ok, true);
+    assert.equal((result as any).authority_id, 'revoker:compliance');
     // Unrelated evidence still refuses through the same seam.
     const wrong = createRemedyProgramAdaptersV2(adapterOptions(authority, evidence, {
       revokerKeys: { 'revoker:compliance': { public_key: publicKeyB64u } },
       now: () => Date.parse('2026-07-23T00:00:00Z'),
     }) as any);
-    expect((await wrong.verifyRevocation({
+    assert.equal((await wrong.verifyRevocation({
       evidence: { id: 'revocation-evidence-1', digest: remedyProgramEvidenceDigest(evidence) },
       expected: {
         tenant_id: TENANT,
@@ -354,15 +369,18 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
         instance_id: INSTANCE,
         original: storedOriginal(),
       },
-    })).ok).toBe(false);
+    })).ok, false);
   });
 
-  it('a v2-marked revocation statement is fail-closed while the EP-REVOCATION-v2 router is unresolvable', async () => {
+  it('a v2-marked revocation statement with an empty proof is fail-closed even though the EP-REVOCATION-v2 router now resolves', async () => {
     const { authority } = await hybridFixture();
-    // The @emilia-protocol/verify exports map has no "./revocation" subpath, so
-    // the v2 router cannot be resolved from this package under the repository's
-    // bundler-backed runner. The seam must REFUSE, never downgrade to the
-    // v1-only verifier and never pass.
+    // @emilia-protocol/verify now exports the "./revocation" subpath, so the v2
+    // router IS resolvable from this package: assert that first, so the refusal
+    // below cannot be silently attributed to an unresolvable router. The seam
+    // must then REFUSE this malformed v2 statement on its own merits, never
+    // downgrade to the v1-only verifier and never pass.
+    const router = await import('@emilia-protocol/verify/revocation');
+    assert.equal(typeof (router as any).verifyRevocationStatement, 'function');
     const statement = {
       '@version': 'EP-REVOCATION-v2',
       target_type: 'commit',
@@ -387,7 +405,7 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
         original: storedOriginal(),
       },
     });
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
   });
 
   it('the v1 factory still accepts the v1 pin shape and a v1 envelope, unchanged', async () => {
@@ -402,6 +420,6 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
       },
     } as any);
     const result = await adapters.verifyDispute(disputeInput(remedyProgramEvidenceDigest(v1Evidence)));
-    expect(result.ok).toBe(true);
+    assert.equal(result.ok, true);
   });
 });

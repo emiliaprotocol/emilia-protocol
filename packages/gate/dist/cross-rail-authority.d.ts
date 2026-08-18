@@ -7,7 +7,7 @@
  * inside that connector.
  */
 import crypto from 'node:crypto';
-import { type RiskRecord, type TrustedRiskKeys } from './reliance-risk-crypto.js';
+import { type RiskHybridSigner, type RiskRecord, type RiskV2Options, type TrustedRiskKeys, type TrustedRiskKeysV2 } from './reliance-risk-crypto.js';
 export declare const HUMAN_INTERRUPTION_DECISION_VERSION = "EP-HUMAN-INTERRUPTION-DECISION-v1";
 export declare const RAIL_ENTRY_PERMIT_VERSION = "EP-RAIL-ENTRY-PERMIT-v1";
 export declare const CROSS_RAIL_OBSERVATION_VERSION = "EP-CROSS-RAIL-OBSERVATION-v1";
@@ -41,6 +41,39 @@ export declare function verifyHumanInterruptionDecision(artifact: unknown, { tru
     now?: number | (() => number);
     expected?: Partial<DecisionExpected>;
 }): RiskRecord;
+export declare const HUMAN_INTERRUPTION_DECISION_V2_VERSION = "EP-HUMAN-INTERRUPTION-DECISION-v2";
+export interface HumanInterruptionDecisionSignerV2 extends RiskHybridSigner {
+}
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of signHumanInterruptionDecision. */
+export declare function signHumanInterruptionDecisionV2(input: unknown, signer: HumanInterruptionDecisionSignerV2, options?: RiskV2Options): Promise<RiskRecord>;
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of
+ * verifyHumanInterruptionDecision. A v2 decision NEVER verifies on one leg
+ * alone; an absent ML-DSA backend is a refusal, never a skipped check and
+ * never a pass on the surviving classical leg.
+ */
+export declare function verifyHumanInterruptionDecisionV2(artifact: unknown, { trusted_keys, now, expected, ...pqOptions }?: {
+    trusted_keys?: TrustedRiskKeysV2;
+    now?: number | (() => number);
+    expected?: Partial<DecisionExpected>;
+} & RiskV2Options): Promise<RiskRecord>;
+export declare const RAIL_ENTRY_PERMIT_V2_VERSION = "EP-RAIL-ENTRY-PERMIT-v2";
+export interface RailEntryPermitSignerV2 extends RiskHybridSigner {
+}
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of a v1 rail-entry permit body. */
+export declare function signRailEntryPermitV2(input: RiskRecord, signer: RailEntryPermitSignerV2, options?: RiskV2Options): Promise<RiskRecord>;
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of the v1 consumePermit
+ * signature/shape check. A v2 permit NEVER verifies on one leg alone; an
+ * absent ML-DSA backend is a refusal, never a skipped check and never a pass
+ * on the surviving classical leg.
+ */
+export declare function verifyRailEntryPermitV2(artifact: unknown, trustedKeys: TrustedRiskKeysV2 | undefined, options?: RiskV2Options): Promise<{
+    valid: boolean;
+    reason: string | null;
+    body: RiskRecord | null;
+    artifact_digest: string | null;
+}>;
 export declare function createRailEntryPermitBroker({ signer, now, max_ttl_ms, max_active_permits, }?: {
     signer?: Signer;
     now?: number | (() => number);
@@ -77,6 +110,12 @@ declare const _default: {
     createRailEntryPermitBroker: typeof createRailEntryPermitBroker;
     createCrossRailConnector: typeof createCrossRailConnector;
     executeCrossRailAllowance: typeof executeCrossRailAllowance;
+    HUMAN_INTERRUPTION_DECISION_V2_VERSION: string;
+    signHumanInterruptionDecisionV2: typeof signHumanInterruptionDecisionV2;
+    verifyHumanInterruptionDecisionV2: typeof verifyHumanInterruptionDecisionV2;
+    RAIL_ENTRY_PERMIT_V2_VERSION: string;
+    signRailEntryPermitV2: typeof signRailEntryPermitV2;
+    verifyRailEntryPermitV2: typeof verifyRailEntryPermitV2;
 };
 export default _default;
 //# sourceMappingURL=cross-rail-authority.d.ts.map

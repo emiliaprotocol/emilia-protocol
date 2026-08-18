@@ -1,7 +1,7 @@
 // @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /** Signed period reconciliation of supplied populations; never proof that the supplied population is complete. */
-import { RISK_DIGEST, riskExact, riskIdentifier, riskInstant, signRiskBody, verifyRiskBody, } from './reliance-risk-crypto.js';
+import { RISK_DIGEST, riskExact, riskIdentifier, riskInstant, signRiskBody, verifyRiskBody, signRiskBodyV2, verifyRiskBodyV2, } from './reliance-risk-crypto.js';
 export const COVERAGE_RECONCILIATION_ATTESTATION_VERSION = 'EP-COVERAGE-RECONCILIATION-ATTESTATION-v2';
 export const COVERAGE_RECONCILIATION_CLAIM_BOUNDARY = 'signed_reconciliation_of_supplied_populations_not_population_completeness';
 const PROGRAM_KEYS = ['program_id', 'version', 'source_digest', 'program_digest'];
@@ -25,8 +25,8 @@ function validExpectedProgram(value) {
         && Number.isSafeInteger(value.version) && value.version >= 1
         && RISK_DIGEST.test(value.source_digest) && RISK_DIGEST.test(value.program_digest);
 }
-function validate(value) {
-    if (!riskExact(value, BODY_KEYS) || value['@version'] !== COVERAGE_RECONCILIATION_ATTESTATION_VERSION
+function validate(value, expectedVersion = COVERAGE_RECONCILIATION_ATTESTATION_VERSION) {
+    if (!riskExact(value, BODY_KEYS) || value['@version'] !== expectedVersion
         || !riskIdentifier(value.attestation_id) || !riskIdentifier(value.relying_party_id)
         || !riskExact(value.program, PROGRAM_KEYS) || !riskIdentifier(value.program.program_id)
         || !Number.isSafeInteger(value.program.version) || value.program.version < 1
@@ -119,5 +119,112 @@ export function verifyCoverageReconciliationAttestation(attestation, options = {
         return refuse('coverage_report_hash_mismatch', true, signed.artifact_digest);
     }
     return { accepted: true, verified: true, reason: null, attestation_digest: signed.artifact_digest, claim_boundary: COVERAGE_RECONCILIATION_CLAIM_BOUNDARY };
+}
+// ===========================================================================
+// EP-COVERAGE-RECONCILIATION-ATTESTATION-v3 -- hybrid (Ed25519 + ML-DSA-65)
+// ===========================================================================
+/**
+ * REFERENCE-DERIVED HYBRID MIGRATION, applied through the SHARED EP-RISK-HYBRID-v2
+ * helper (reliance-risk-crypto.ts: signRiskBodyV2 / verifyRiskBodyV2), which is
+ * itself the shared-helper application of the reference migration documented
+ * under "PATTERN: the reference hybrid migration" in
+ * docs/protocol/pq-hybrid-program.md (EP-REVOCATION-v2 is the template). Five
+ * moves, applied here:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. This artifact was already at -v2 for an
+ *    unrelated reason (the join-bin rename documented in the module header),
+ *    so the hybrid marker is a fresh -v3, never a reused -v2. The v2 verifier
+ *    above (verifyCoverageReconciliationAttestation) is untouched: it calls
+ *    verifyRiskBody(artifact, COVERAGE_RECONCILIATION_ATTESTATION_VERSION, ...),
+ *    which refuses a -v3 artifact on `artifact['@version'] !== version`
+ *    BEFORE inspecting any signature, and the -v3 hybrid proof shape (set of
+ *    signatures) would fail the v2 flat-proof shape check even if the version
+ *    string coincided. Never a leg pass, never a crash.
+ * 2. SET SHAPE. The hybrid proof is exactly EP-RISK-HYBRID-v2's shape
+ *    (profile, required_algorithms, key_id, body_digest, signatures[]), reused
+ *    verbatim from the shared helper -- not reimplemented here.
+ * 3. ANTI-STRIPPING BYTES. riskV2SigningBytes (inside reliance-risk-crypto.ts)
+ *    commits the REGISTERED required_algorithms set and the EP-RISK-HYBRID-v2
+ *    profile marker inside the signed bytes, rebuilt by the verifier from the
+ *    PRESENTED body, never from anything the artifact chooses.
+ * 4. V1/V2 COMPATIBILITY. The existing sync verify path stays synchronous and
+ *    unchanged; -v3 verification is a SEPARATE async entry point (ML-DSA
+ *    verification is async).
+ * 5. NAMED REFUSALS. verifyCoverageReconciliationAttestationV3 never throws on
+ *    caller input; an absent ML-DSA backend surfaces as 'pq_backend_unavailable',
+ *    never a skipped check and never a pass on the classical leg alone.
+ *
+ * HONEST BOUNDARY: everything the v2 header says still holds (signed
+ * reconciliation of SUPPLIED populations, never proof the supplied population
+ * is complete). The ML-DSA backend is @noble/post-quantum's pure-JS FIPS 204
+ * implementation, not independently audited and not a FIPS validated module.
+ * -v3 does NOT retroactively protect attestations already issued under -v1/-v2.
+ */
+export const COVERAGE_RECONCILIATION_ATTESTATION_V3_VERSION = 'EP-COVERAGE-RECONCILIATION-ATTESTATION-v3';
+export function signCoverageReconciliationAttestationV3(input, signer, options = {}) {
+    const body = { '@version': COVERAGE_RECONCILIATION_ATTESTATION_V3_VERSION, ...input };
+    validate(body, COVERAGE_RECONCILIATION_ATTESTATION_V3_VERSION);
+    if (signer.issuer_id !== body.relying_party_id)
+        throw new TypeError('coverage attestation issuer must be relying party');
+    return signRiskBodyV2(COVERAGE_RECONCILIATION_ATTESTATION_V3_VERSION, body, signer, options);
+}
+/** FAIL-CLOSED hybrid verify; a -v3 attestation NEVER verifies on one leg alone. */
+export async function verifyCoverageReconciliationAttestationV3(attestation, options = {}) {
+    const refuse = (reason, verified = false, attestationDigest = null) => ({
+        accepted: false,
+        verified,
+        reason,
+        attestation_digest: attestationDigest,
+        claim_boundary: COVERAGE_RECONCILIATION_CLAIM_BOUNDARY,
+    });
+    const signed = await verifyRiskBodyV2(attestation, COVERAGE_RECONCILIATION_ATTESTATION_V3_VERSION, options.trusted_keys, options);
+    if (!signed.valid || !signed.body)
+        return refuse(signed.reason ?? 'attestation_invalid');
+    const { issuer, ...payload } = signed.body;
+    if (issuer.id !== payload.relying_party_id) {
+        return refuse('relying_party_issuer_mismatch', true, signed.artifact_digest);
+    }
+    try {
+        validate(payload, COVERAGE_RECONCILIATION_ATTESTATION_V3_VERSION);
+    }
+    catch {
+        return refuse('population_conservation_or_schema_invalid', true, signed.artifact_digest);
+    }
+    const now = options.now === undefined ? Date.now() : (typeof options.now === 'string' ? Date.parse(options.now) : Number(options.now));
+    if (!Number.isFinite(now))
+        return refuse('verification_time_invalid', true, signed.artifact_digest);
+    if (now < riskInstant(payload.issued_at))
+        return refuse('attestation_not_yet_issued', true, signed.artifact_digest);
+    if (now >= riskInstant(payload.expires_at))
+        return refuse('attestation_expired', true, signed.artifact_digest);
+    if (options.expected_program === undefined || options.expected_census_digest === undefined
+        || options.expected_relying_party_id === undefined) {
+        return refuse('context_binding_required', true, signed.artifact_digest);
+    }
+    if (!validExpectedProgram(options.expected_program)) {
+        return refuse('expected_program_invalid', true, signed.artifact_digest);
+    }
+    if (!sameProgram(payload.program, options.expected_program)) {
+        return refuse('program_binding_mismatch', true, signed.artifact_digest);
+    }
+    if (options.expected_census_digest !== payload.census_digest) {
+        return refuse('census_digest_mismatch', true, signed.artifact_digest);
+    }
+    if (options.expected_relying_party_id !== payload.relying_party_id) {
+        return refuse('relying_party_mismatch', true, signed.artifact_digest);
+    }
+    if (options.expected_coverage_report_hash !== undefined
+        && options.expected_coverage_report_hash !== payload.coverage_report_hash) {
+        return refuse('coverage_report_hash_mismatch', true, signed.artifact_digest);
+    }
+    return { accepted: true, verified: true, reason: null, attestation_digest: signed.artifact_digest, claim_boundary: COVERAGE_RECONCILIATION_CLAIM_BOUNDARY };
+}
+/** Route a statement of either -v2 (classical) or -v3 (hybrid) to its own verifier. */
+export async function verifyCoverageReconciliationAttestationAny(attestation, options = {}) {
+    if (attestation !== null && typeof attestation === 'object'
+        && attestation['@version'] === COVERAGE_RECONCILIATION_ATTESTATION_V3_VERSION) {
+        return verifyCoverageReconciliationAttestationV3(attestation, options);
+    }
+    return verifyCoverageReconciliationAttestation(attestation, options);
 }
 //# sourceMappingURL=coverage-reconciliation-attestation.js.map

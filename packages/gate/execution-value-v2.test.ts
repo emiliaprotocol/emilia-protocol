@@ -14,8 +14,8 @@ import {
   signExecutionValueAttestationV2,
   verifyExecutionValueAttestation,
   verifyExecutionValueAttestationV2,
-} from './src/execution-value.ts';
-import { hashCanonical } from './src/execution-binding.ts';
+} from './execution-value.js';
+import { hashCanonical } from './execution-binding.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

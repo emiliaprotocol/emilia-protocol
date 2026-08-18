@@ -14,7 +14,7 @@ import {
   signTrustedContextBindingV2,
   trustedContextActionSubjectDigest,
   verifyTrustedContextBindingV2,
-} from './src/trusted-context.ts';
+} from './trusted-context.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

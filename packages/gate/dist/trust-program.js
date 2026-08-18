@@ -9,6 +9,7 @@
  */
 import crypto from 'node:crypto';
 import { canonicalize, hashCanonical } from './execution-binding.js';
+import { signAgileSet, verifyAgileSignatureSet, ML_DSA_65_PUBLIC_KEY_BYTES, } from '@emilia-protocol/verify/pq-signature-agility';
 export const TRUST_PROGRAM_VERSION = 'EP-GATE-TRUST-PROGRAM-PROFILE-v1';
 export const TRUST_STAGE_RECEIPT_VERSION = 'EP-GATE-TRUST-STAGE-RECEIPT-v1';
 const STAGE_RECEIPT_DOMAIN = `${TRUST_STAGE_RECEIPT_VERSION}\0`;
@@ -136,13 +137,22 @@ function validationFailure(reason) {
 }
 /** Validate the closed, bounded DAG before any state is created. */
 export function validateTrustProgram(program) {
+    return validateTrustProgramUnder(program, TRUST_PROGRAM_VERSION);
+}
+/**
+ * ONE validation body for both profile versions. validateTrustProgram (v1) and
+ * validateTrustProgramV2 differ ONLY in the `@version` marker they accept, so
+ * the DAG rules, bounds, cycle check, and execution-relevance check cannot
+ * drift between them.
+ */
+function validateTrustProgramUnder(program, expectedVersion) {
     try {
         canonicalize(program);
     }
     catch {
         return validationFailure('program_not_canonical');
     }
-    if (!exactKeys(program, PROGRAM_KEYS) || program['@version'] !== TRUST_PROGRAM_VERSION) {
+    if (!exactKeys(program, PROGRAM_KEYS) || program['@version'] !== expectedVersion) {
         return validationFailure('program_version_unsupported');
     }
     if (typeof program.program_id !== 'string' || !ID.test(program.program_id)
@@ -286,27 +296,35 @@ function publicKey(value) {
 function stageReceiptBody(receipt) {
     return { version: receipt.version, issuer: receipt.issuer, payload: receipt.payload };
 }
+/**
+ * The stage-receipt PAYLOAD shape, shared verbatim by the v1 and v2 receipt
+ * verifiers so the two cannot drift on what a stage receipt is allowed to say.
+ * Only the envelope (version marker and signature shape) differs between them.
+ */
+function validStageReceiptPayloadShape(payload) {
+    return exactKeys(payload, STAGE_RECEIPT_PAYLOAD_KEYS)
+        && typeof payload.instance_id === 'string' && ID.test(payload.instance_id)
+        && typeof payload.program_id === 'string' && ID.test(payload.program_id)
+        && Number.isSafeInteger(payload.program_version) && payload.program_version >= 1
+        && typeof payload.program_digest === 'string' && DIGEST.test(payload.program_digest)
+        && typeof payload.root_caid === 'string' && CAID.test(payload.root_caid)
+        && typeof payload.action_digest === 'string' && DIGEST.test(payload.action_digest)
+        && typeof payload.stage_id === 'string' && ID.test(payload.stage_id)
+        && typeof payload.stage_policy_digest === 'string' && DIGEST.test(payload.stage_policy_digest)
+        && sortedUniqueDigests(payload.predecessor_receipt_digests, MAX_STAGES)
+        && sortedUniqueDigests(payload.evidence_digests, MAX_REQUIREMENTS_PER_STAGE)
+        && boundedProjection(payload.subjects, false)
+        && boundedProjection(payload.key_fingerprints, false)
+        && payload.subjects.every((entry, index) => index === 0 || payload.subjects[index - 1] < entry)
+        && payload.key_fingerprints.every((entry, index) => index === 0 || payload.key_fingerprints[index - 1] < entry)
+        && Number.isFinite(strictInstant(payload.satisfied_at));
+}
 function validStageReceiptShape(receipt) {
     if (!exactKeys(receipt, STAGE_RECEIPT_KEYS)
         || receipt.version !== TRUST_STAGE_RECEIPT_VERSION
         || !exactKeys(receipt.issuer, STAGE_RECEIPT_ISSUER_KEYS)
         || !Object.values(receipt.issuer).every(boundedContextString)
-        || !exactKeys(receipt.payload, STAGE_RECEIPT_PAYLOAD_KEYS)
-        || typeof receipt.payload.instance_id !== 'string' || !ID.test(receipt.payload.instance_id)
-        || typeof receipt.payload.program_id !== 'string' || !ID.test(receipt.payload.program_id)
-        || !Number.isSafeInteger(receipt.payload.program_version) || receipt.payload.program_version < 1
-        || typeof receipt.payload.program_digest !== 'string' || !DIGEST.test(receipt.payload.program_digest)
-        || typeof receipt.payload.root_caid !== 'string' || !CAID.test(receipt.payload.root_caid)
-        || typeof receipt.payload.action_digest !== 'string' || !DIGEST.test(receipt.payload.action_digest)
-        || typeof receipt.payload.stage_id !== 'string' || !ID.test(receipt.payload.stage_id)
-        || typeof receipt.payload.stage_policy_digest !== 'string' || !DIGEST.test(receipt.payload.stage_policy_digest)
-        || !sortedUniqueDigests(receipt.payload.predecessor_receipt_digests, MAX_STAGES)
-        || !sortedUniqueDigests(receipt.payload.evidence_digests, MAX_REQUIREMENTS_PER_STAGE)
-        || !boundedProjection(receipt.payload.subjects, false)
-        || !boundedProjection(receipt.payload.key_fingerprints, false)
-        || !receipt.payload.subjects.every((entry, index) => index === 0 || receipt.payload.subjects[index - 1] < entry)
-        || !receipt.payload.key_fingerprints.every((entry, index) => index === 0 || receipt.payload.key_fingerprints[index - 1] < entry)
-        || !Number.isFinite(strictInstant(receipt.payload.satisfied_at))
+        || !validStageReceiptPayloadShape(receipt.payload)
         || typeof receipt.receipt_digest !== 'string' || !DIGEST.test(receipt.receipt_digest)
         || !exactKeys(receipt.signature, STAGE_RECEIPT_SIGNATURE_KEYS)
         || receipt.signature.algorithm !== 'Ed25519'
@@ -1339,12 +1357,400 @@ export function createTrustProgramKernel(options) {
         invalidate,
     });
 }
+// ===========================================================================
+// EP-GATE-TRUST-PROGRAM-PROFILE-v2 / EP-GATE-TRUST-STAGE-RECEIPT-v2
+// hybrid (Ed25519 + ML-DSA-65) trust-program profile and stage receipt
+// ===========================================================================
+/**
+ * Copies the five-move EP-REVOCATION-v2 template
+ * (packages/verify/src/revocation.ts) onto the two Trust Program artifacts.
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. The stage receipt's
+ *    `signature: {algorithm, value}` becomes
+ *    `signature: {profile, required_algorithms, public_key, key_id,
+ *    pq_public_key, pq_key_id, signatures}`, which is a wire-format change, so
+ *    the receipt takes a new `version` (-v1 -> -v2). The PROGRAM PROFILE moves
+ *    with it: a v2 stage receipt is a receipt over a v2 program, and the
+ *    program's `@version` is inside `program_digest`, which is inside the
+ *    signed payload. verifyTrustStageReceipt and validateTrustProgram above
+ *    are UNCHANGED and both refuse their v2 counterpart on the version marker
+ *    (`receipt_structure_invalid` / `program_version_unsupported`) BEFORE any
+ *    signature is inspected, and neither crashes on one.
+ * 2. SET SHAPE. `signature.signatures` is an EP-SIG-AGILITY-v1 AgileSignature
+ *    array ({ alg, sig, key_id? }), one entry per registered algorithm, reused
+ *    verbatim. Ed25519 keeps its base64url SPKI DER public key; ML-DSA-65
+ *    carries raw base64url public key bytes.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is INSIDE the signed bytes
+ *    (trustStageReceiptV2SigningBytes). Drop the ML-DSA leg and narrow the set
+ *    to ["Ed25519"] and the surviving Ed25519 signature no longer verifies,
+ *    because the bytes changed. Leave the set intact and the missing leg is a
+ *    structural refusal. The verifier rebuilds the bytes from the REGISTERED
+ *    set and from the body it recomputed itself; the presented receipt never
+ *    chooses what it is checked against.
+ * 4. V1 COMPATIBILITY. verifyTrustStageReceipt stays SYNCHRONOUS and untouched.
+ *    verifyTrustStageReceiptV2 is a SEPARATE async entry point (ML-DSA
+ *    verification is inherently async); verifyTrustStageReceiptStatement routes
+ *    on the version marker for callers holding a mixed bag. The v1 kernel
+ *    (createTrustProgramKernel) is untouched and still mints v1 receipts.
+ * 5. NAMED REFUSALS. Every failure sets a named check false and returns a
+ *    readable reason; nothing throws on caller input. An absent ML-DSA backend
+ *    surfaces as `pq_backend_unavailable` through the agility result, never a
+ *    skipped check and never a pass on the classical leg alone.
+ *
+ * HONEST BOUNDARY. The ML-DSA-65 backend is @noble/post-quantum's pure-JS FIPS
+ * 204 implementation, which is not independently audited and is not a FIPS
+ * validated module; issuing or verifying under this profile is not a
+ * certification claim. This profile is opt-in and is not on in any deployment.
+ * v2 does NOT retroactively protect receipts already issued under v1.
+ */
+export const TRUST_PROGRAM_V2_VERSION = 'EP-GATE-TRUST-PROGRAM-PROFILE-v2';
+export const TRUST_STAGE_RECEIPT_V2_VERSION = 'EP-GATE-TRUST-STAGE-RECEIPT-v2';
+const STAGE_RECEIPT_V2_DOMAIN = `${TRUST_STAGE_RECEIPT_V2_VERSION}\0`;
+/** The registered required algorithm set, in canonical order. */
+export const TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+const STAGE_RECEIPT_V2_SIGNATURE_KEYS = new Set([
+    'profile', 'required_algorithms', 'public_key', 'key_id',
+    'pq_public_key', 'pq_key_id', 'signatures',
+]);
+function trustV2AlgorithmSetRegistered(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS[i]);
+}
+/** Validate a v2 Trust Program profile. Same DAG body as v1, v2 marker only. */
+export function validateTrustProgramV2(program) {
+    return validateTrustProgramUnder(program, TRUST_PROGRAM_V2_VERSION);
+}
+/** Digest a v2 Trust Program profile. Throws on an invalid program, like v1. */
+export function trustProgramV2Digest(program) {
+    const result = validateTrustProgramV2(program);
+    if (!result.valid)
+        throw new TypeError(`invalid trust program: ${result.reason}`);
+    return result.digest;
+}
+/**
+ * Route a program of EITHER profile version to its validator. A program whose
+ * `@version` is neither refuses through the v1 validator, which is the
+ * fail-closed answer. Synchronous: program validation has no signature.
+ */
+export function validateTrustProgramStatement(program) {
+    if (isRecord(program) && program['@version'] === TRUST_PROGRAM_V2_VERSION) {
+        return validateTrustProgramV2(program);
+    }
+    return validateTrustProgram(program);
+}
+/** ML-DSA-65 public-key identifier: the SHA-256 of the raw public key bytes. */
+function trustPqKeyId(publicKeyRawB64u) {
+    try {
+        if (typeof publicKeyRawB64u !== 'string' || publicKeyRawB64u.length === 0)
+            return '';
+        const raw = Buffer.from(publicKeyRawB64u, 'base64url');
+        if (raw.length !== ML_DSA_65_PUBLIC_KEY_BYTES || raw.toString('base64url') !== publicKeyRawB64u)
+            return '';
+        return `ep:trust-stage-key:ml-dsa-65:sha256:${crypto.createHash('sha256').update(raw).digest('hex')}`;
+    }
+    catch {
+        return '';
+    }
+}
+function trustAgilityPassthrough(opts) {
+    const out = {};
+    if (opts?.mldsaBackend !== undefined)
+        out.mldsaBackend = opts.mldsaBackend;
+    if (opts?.mldsaBackendLoader !== undefined)
+        out.mldsaBackendLoader = opts.mldsaBackendLoader;
+    return out;
+}
+/**
+ * The bytes BOTH legs sign: the same body v1 signs (version, issuer, payload)
+ * under the v2 domain tag, plus the committed `required_algorithms` set.
+ * Recomputed independently by the verifier from the PRESENTED body and the
+ * REGISTERED set. See move 3 above.
+ */
+export function trustStageReceiptV2SigningBytes(body, requiredAlgorithms = TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS) {
+    if (!trustV2AlgorithmSetRegistered(requiredAlgorithms)) {
+        throw new TypeError('trustStageReceiptV2SigningBytes: algorithm set is not the registered EP-GATE-TRUST-STAGE-RECEIPT-v2 set');
+    }
+    return Buffer.from(STAGE_RECEIPT_V2_DOMAIN + canonicalize({
+        version: body.version,
+        issuer: body.issuer,
+        payload: body.payload,
+        required_algorithms: [...requiredAlgorithms],
+    }), 'utf8');
+}
+/**
+ * Mint a hybrid stage receipt. Throws on invalid input, a signer that returns
+ * a malformed set, or an unavailable ML-DSA backend: a receipt missing the
+ * ML-DSA leg must never be emitted, only refused.
+ */
+export async function signTrustStageReceiptV2({ payload, context, keys, signer, }) {
+    if (!exactKeys(context, STAGE_RECEIPT_ISSUER_KEYS)
+        || !Object.values(context).every(boundedContextString)) {
+        throw new TypeError('stage receipt v2 context must contain exact pinned issuer fields');
+    }
+    const hasKeys = keys !== undefined;
+    const hasSigner = signer !== undefined;
+    if (hasKeys === hasSigner) {
+        throw new TypeError('configure exactly one stage receipt v2 signer (keys or signSet signer)');
+    }
+    if (hasKeys && (!keys.ed?.privateKey || !keys.pq?.secretKey || typeof keys.pq?.publicKey !== 'string')) {
+        throw new TypeError('stage receipt v2 keys require ed.privateKey, pq.secretKey, and pq.publicKey');
+    }
+    const requiredAlgorithms = [...TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS];
+    const body = {
+        version: TRUST_STAGE_RECEIPT_V2_VERSION,
+        issuer: {
+            issuer: context.issuer,
+            tenant: context.tenant,
+            environment: context.environment,
+            audience: context.audience,
+            key_id: context.key_id,
+        },
+        payload,
+    };
+    const receiptDigest = digest(body);
+    const bytes = trustStageReceiptV2SigningBytes(body, requiredAlgorithms);
+    let signatures;
+    let edPublicKey;
+    let pqPublicKey;
+    if (hasKeys) {
+        const signingKeys = [
+            { alg: 'Ed25519', private_key: keys.ed.privateKey },
+            { alg: 'ML-DSA-65', private_key: keys.pq.secretKey },
+        ];
+        signatures = await signAgileSet(new Uint8Array(bytes), signingKeys);
+        edPublicKey = keys.ed.publicKey ?? crypto.createPublicKey(keys.ed.privateKey)
+            .export({ type: 'spki', format: 'der' }).toString('base64url');
+        pqPublicKey = keys.pq.publicKey;
+    }
+    else {
+        if (typeof signer.signSet !== 'function') {
+            throw new TypeError('stage receipt v2 signer must expose signSet(bytes)');
+        }
+        const set = await signer.signSet(bytes, { profile: TRUST_STAGE_RECEIPT_V2_VERSION });
+        if (!Array.isArray(set)
+            || !requiredAlgorithms.every((alg, index) => set[index]?.alg === alg
+                && typeof set[index]?.sig === 'string')) {
+            throw new TypeError('stage receipt v2 signer returned a malformed signature set');
+        }
+        signatures = set.map((entry) => ({ alg: entry.alg, sig: entry.sig }));
+        const pins = signer.publicKeys;
+        if (!pins || typeof pins.public_key !== 'string' || typeof pins.pq_public_key !== 'string') {
+            throw new TypeError('stage receipt v2 signSet signer must expose publicKeys { public_key, pq_public_key }');
+        }
+        edPublicKey = pins.public_key;
+        pqPublicKey = pins.pq_public_key;
+    }
+    const pqKeyId = trustPqKeyId(pqPublicKey);
+    if (!pqKeyId)
+        throw new TypeError('stage receipt v2 ML-DSA-65 public key is malformed');
+    if (publicKey(edPublicKey) === null) {
+        throw new TypeError('stage receipt v2 Ed25519 public key must be base64url SPKI DER');
+    }
+    return {
+        ...body,
+        receipt_digest: receiptDigest,
+        signature: {
+            profile: TRUST_STAGE_RECEIPT_V2_VERSION,
+            required_algorithms: requiredAlgorithms,
+            public_key: edPublicKey,
+            key_id: context.key_id,
+            pq_public_key: pqPublicKey,
+            pq_key_id: pqKeyId,
+            signatures,
+        },
+    };
+}
+/**
+ * FAIL-CLOSED hybrid stage-receipt verifier. Never throws on caller input; a
+ * v2 receipt NEVER verifies on one leg alone. Trust keys, the expected issuer,
+ * and every expected payload binding are relying-party inputs; none is
+ * accepted from the receipt itself.
+ */
+export async function verifyTrustStageReceiptV2(receipt, options = {}) {
+    const checks = {
+        structure: false,
+        digest: false,
+        algorithm_set: false,
+        legs_present: false,
+        key: false,
+        signature: false,
+        issuer: false,
+        expected: false,
+    };
+    const refuse = (reason) => ({ valid: false, reason, checks });
+    try {
+        // 1. Version marker + closed shape. A v1 receipt refuses here, the mirror
+        //    image of the v1 verifier refusing a v2 receipt.
+        if (!exactKeys(receipt, STAGE_RECEIPT_KEYS)
+            || receipt.version !== TRUST_STAGE_RECEIPT_V2_VERSION
+            || !exactKeys(receipt.signature, STAGE_RECEIPT_V2_SIGNATURE_KEYS)
+            || receipt.signature.profile !== TRUST_STAGE_RECEIPT_V2_VERSION) {
+            return refuse('receipt_structure_invalid');
+        }
+        const snapshot = receipt;
+        if (!exactKeys(snapshot.issuer, STAGE_RECEIPT_ISSUER_KEYS)
+            || !Object.values(snapshot.issuer).every(boundedContextString)
+            || !validStageReceiptPayloadShape(snapshot.payload)
+            || typeof snapshot.receipt_digest !== 'string' || !DIGEST.test(snapshot.receipt_digest)) {
+            return refuse('receipt_structure_invalid');
+        }
+        checks.structure = true;
+        // 2. Body digest, recomputed. The receipt does not get to assert it.
+        let bodyDigest;
+        try {
+            bodyDigest = digest(stageReceiptBody(snapshot));
+        }
+        catch {
+            return refuse('receipt_not_canonical');
+        }
+        checks.digest = bodyDigest === snapshot.receipt_digest;
+        if (!checks.digest)
+            return refuse('receipt_digest_mismatch');
+        // 3. Committed algorithm set: exact and order-sensitive. A narrowed set is
+        //    the stripping attack's cover story, refused structurally here and
+        //    (independently) by the signature check, which rebuilds the bytes from
+        //    the REGISTERED set regardless of what the receipt claims.
+        checks.algorithm_set = trustV2AlgorithmSetRegistered(snapshot.signature.required_algorithms);
+        if (!checks.algorithm_set)
+            return refuse('receipt_algorithm_set_unsupported');
+        // 4. Exactly one signature per required algorithm.
+        const signatures = Array.isArray(snapshot.signature.signatures)
+            ? snapshot.signature.signatures : null;
+        if (!signatures)
+            return refuse('receipt_signature_set_invalid');
+        const presented = new Set();
+        for (const entry of signatures) {
+            if (!isRecord(entry) || typeof entry.alg !== 'string' || typeof entry.sig !== 'string') {
+                return refuse('receipt_signature_set_invalid');
+            }
+            if (presented.has(entry.alg))
+                return refuse('receipt_signature_set_duplicate');
+            presented.add(entry.alg);
+        }
+        for (const alg of TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS) {
+            if (!presented.has(alg))
+                return refuse('receipt_signature_leg_missing');
+        }
+        for (const alg of presented) {
+            if (!TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS.includes(alg)) {
+                return refuse('receipt_signature_set_invalid');
+            }
+        }
+        checks.legs_present = true;
+        // 5. Issuer keys: BOTH halves pinned, and the presented halves must equal
+        //    the pinned ones. Identified-but-not-trusted, per leg: a key id pinned
+        //    for v1 only (Ed25519 half alone) does NOT satisfy a v2 pin.
+        const pin = isRecord(options.trustedKeys)
+            && Object.hasOwn(options.trustedKeys, snapshot.issuer.key_id)
+            ? options.trustedKeys[snapshot.issuer.key_id]
+            : null;
+        const presentedEdKey = snapshot.signature.public_key;
+        const presentedPqKey = snapshot.signature.pq_public_key;
+        checks.key = isRecord(pin)
+            && typeof pin.public_key === 'string' && pin.public_key.length > 0
+            && typeof pin.pq_public_key === 'string' && pin.pq_public_key.length > 0
+            && pin.public_key === presentedEdKey
+            && pin.pq_public_key === presentedPqKey
+            && snapshot.signature.key_id === snapshot.issuer.key_id
+            // Curve-pinned: an Ed448 (or any non-Ed25519) SPKI presented as the
+            // classical half fails here as well as in the signature check.
+            && publicKey(presentedEdKey) !== null
+            && trustPqKeyId(presentedPqKey) !== ''
+            && snapshot.signature.pq_key_id === trustPqKeyId(presentedPqKey);
+        if (!checks.key)
+            return refuse('receipt_key_untrusted');
+        // 6. Signature set over bytes rebuilt from the PRESENTED body and the
+        //    REGISTERED algorithm set, under the PINNED keys. Never fall back to
+        //    the receipt's own self-asserted key material.
+        let bytes;
+        try {
+            bytes = trustStageReceiptV2SigningBytes(snapshot, TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS);
+        }
+        catch {
+            return refuse('receipt_not_canonical');
+        }
+        let setResult;
+        try {
+            setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), signatures, [
+                { alg: 'Ed25519', public_key: pin.public_key },
+                { alg: 'ML-DSA-65', public_key: pin.pq_public_key },
+            ], {
+                ...trustAgilityPassthrough(options),
+                policy: 'hybrid_all',
+                requiredAlgorithms: [...TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS],
+            });
+        }
+        catch {
+            // verifyAgileSignatureSet documents that it never throws; an injected
+            // backend that does is still a refusal here, never a pass.
+            setResult = null;
+        }
+        checks.signature = setResult?.verified === true;
+        if (!checks.signature) {
+            return refuse(`receipt_signature_invalid:${String(setResult?.reason ?? 'signature_set_unverified')}`);
+        }
+        // 7. Relying-party bindings: identical to v1.
+        try {
+            checks.issuer = options.expectedIssuer === undefined
+                || canonicalize(snapshot.issuer) === canonicalize(options.expectedIssuer);
+        }
+        catch {
+            checks.issuer = false;
+        }
+        if (!checks.issuer)
+            return refuse('receipt_expected_issuer_mismatch');
+        const expected = options.expected ?? {};
+        checks.expected = Object.entries(expected).every(([field, value]) => {
+            try {
+                return canonicalize(snapshot.payload[field]) === canonicalize(value);
+            }
+            catch {
+                return false;
+            }
+        });
+        if (!checks.expected)
+            return refuse('receipt_expected_binding_mismatch');
+        return {
+            valid: true,
+            reason: null,
+            checks,
+            receipt_digest: snapshot.receipt_digest,
+            payload: clone(snapshot.payload),
+        };
+    }
+    catch {
+        return refuse('receipt_structure_invalid');
+    }
+}
+/**
+ * Route a stage receipt of EITHER version to its verifier. v1 receipts keep
+ * the exact v1 verdict; v2 receipts get the hybrid check. A receipt whose
+ * `version` is neither refuses through the v1 verifier, which is the
+ * fail-closed answer.
+ */
+export async function verifyTrustStageReceiptStatement(receipt, options = {}) {
+    if (isRecord(receipt) && receipt.version === TRUST_STAGE_RECEIPT_V2_VERSION) {
+        return verifyTrustStageReceiptV2(receipt, options);
+    }
+    return verifyTrustStageReceipt(receipt, options);
+}
 export default {
     TRUST_PROGRAM_VERSION,
     TRUST_STAGE_RECEIPT_VERSION,
+    TRUST_PROGRAM_V2_VERSION,
+    TRUST_STAGE_RECEIPT_V2_VERSION,
+    TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS,
     validateTrustProgram,
+    validateTrustProgramV2,
+    validateTrustProgramStatement,
     trustProgramDigest,
+    trustProgramV2Digest,
     verifyTrustStageReceipt,
+    trustStageReceiptV2SigningBytes,
+    signTrustStageReceiptV2,
+    verifyTrustStageReceiptV2,
+    verifyTrustStageReceiptStatement,
     createMemoryTrustProgramStore,
     createTrustProgramKernel,
 };

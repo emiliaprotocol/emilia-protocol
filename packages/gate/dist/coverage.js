@@ -13,6 +13,7 @@ import { canonicalize, hashCanonical } from './execution-binding.js';
 import { verifyDeploymentAttestation, deploymentProfileDigest } from './deployment-attestation.js';
 import { NETWORK_WITNESS_EVENTS, acceptNetworkWitnessStatement, networkWitnessDigest, validateTrustedNetworkWitnessAcceptance, } from './network-witness.js';
 import { strictJsonGate } from './strict-json.js';
+import { signAgileSet, verifyAgileSignatureSet, } from '@emilia-protocol/verify/pq-signature-agility';
 export const COVERAGE_INVENTORY_VERSION = 'EP-GATE-COVERAGE-INVENTORY-v1';
 export const COVERAGE_REPORT_VERSION = 'EP-GATE-COVERAGE-REPORT-v1';
 export const ENFORCEMENT_PROBE_VERSION = 'EP-GATE-ENFORCEMENT-PROBE-v1';
@@ -137,10 +138,10 @@ export function coverageInventoryDigest(inventory) {
         throw new TypeError(invalid);
     return `sha256:${hashCanonical(inventory)}`;
 }
-function validateProbeBody(body) {
+function validateProbeBody(body, expectedVersion = ENFORCEMENT_PROBE_VERSION) {
     if (!exactKeys(body, new Set(['@version', 'probe', 'test'])))
         return 'probe_shape_invalid';
-    if (body['@version'] !== ENFORCEMENT_PROBE_VERSION)
+    if (body['@version'] !== expectedVersion)
         return 'probe_version_invalid';
     if (!exactKeys(body.probe, new Set(['id', 'key_id'])))
         return 'probe_identity_shape_invalid';
@@ -306,6 +307,212 @@ export function verifyEnforcementProbe(statement, options = {}) {
     catch {
         return refuse('hostile_probe_refused');
     }
+}
+// ===========================================================================
+// EP-GATE-ENFORCEMENT-PROBE-v2 -- hybrid (Ed25519 + ML-DSA-65) probe statement
+// ===========================================================================
+/**
+ * REFERENCE-DERIVED HYBRID MIGRATION. Copies, move for move, the reference
+ * hybrid migration documented in docs/protocol/pq-hybrid-program.md, section
+ * "PATTERN: the reference hybrid migration" (EP-REVOCATION-v2 in
+ * packages/verify/src/revocation.ts). The five moves, applied to the probe:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. A second signature changes the SHAPE of
+ *    the proof, a wire-format change, so the probe takes a new `@version`
+ *    (EP-GATE-ENFORCEMENT-PROBE-v1 -> -v2). verifyEnforcementProbe() above is
+ *    untouched: validateProbeBody(body) still defaults to the v1 version, so
+ *    it refuses a v2 body's `@version` with `probe_version_invalid` before any
+ *    signature inspection, and never throws.
+ * 2. SET SHAPE. `signature` is replaced by `proof`, carrying
+ *    `required_algorithms` plus a `signatures` array shaped exactly like
+ *    EP-SIG-AGILITY-v1's AgileSignature ({ alg, sig, key_id? }).
+ * 3. ANTI-STRIPPING BYTES. The required algorithm SET is committed INSIDE the
+ *    signed bytes (probeV2Bytes below). Drop the ML-DSA leg and narrow
+ *    `required_algorithms` and the surviving Ed25519 signature no longer
+ *    verifies, because the bytes changed.
+ * 4. V1 COMPATIBILITY. v1 probes keep verifying, unchanged, through
+ *    verifyEnforcementProbe. v2 verification is ASYNC (ML-DSA verification is
+ *    async), so it is a SEPARATE entry point; verifyEnforcementProbeAny()
+ *    routes on `@version`. The v1 verifier is never made async.
+ * 5. NAMED REFUSALS. Every failure path returns a named reason; nothing
+ *    throws on caller input. An absent ML-DSA backend is
+ *    'pq_backend_unavailable', never a skipped check and never a pass on the
+ *    classical leg alone.
+ *
+ * The pinned-probe catalog entry (found via probe_id + key_id, exactly as v1)
+ * carries BOTH `public_key` and `pq_public_key` for a v2 probe; a pin missing
+ * either half confers nothing. Coverage evaluation (evaluateGateCoverage)
+ * remains v1-only here; a v2 probe must be verified through
+ * verifyEnforcementProbeV2 (or the Any router) before its acceptance result is
+ * folded into a coverage report by the caller.
+ */
+export const ENFORCEMENT_PROBE_V2_VERSION = 'EP-GATE-ENFORCEMENT-PROBE-v2';
+const PROBE_V2_DOMAIN = `${ENFORCEMENT_PROBE_V2_VERSION}\0`;
+/** The registered required algorithm set, in canonical order. */
+export const ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+function probeV2AlgorithmSetRegistered(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS[i]);
+}
+/**
+ * The bytes BOTH legs sign: the same body v1 signs (`@version`, `probe`,
+ * `test`) plus the committed `required_algorithms` set, under the v2 domain
+ * tag. Recomputed independently by the verifier from the PRESENTED body and
+ * the REGISTERED set.
+ */
+export function probeV2Bytes(body, requiredAlgorithms = ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS) {
+    if (!probeV2AlgorithmSetRegistered(requiredAlgorithms)) {
+        throw new TypeError('probeV2Bytes: algorithm set is not the registered EP-GATE-ENFORCEMENT-PROBE-v2 set');
+    }
+    return Buffer.from(`${PROBE_V2_DOMAIN}${canonicalize({ ...body, required_algorithms: [...requiredAlgorithms] })}`, 'utf8');
+}
+/** Mint a real hybrid probe statement. Throws on issuer misuse (never on caller input; there is none). */
+export async function signEnforcementProbeV2(input, signers, options = {}) {
+    const keyId = input?.key_id;
+    if (!string(keyId))
+        throw new TypeError('signEnforcementProbeV2: key_id is required');
+    const body = {
+        '@version': ENFORCEMENT_PROBE_V2_VERSION,
+        probe: { id: input?.probe_id, key_id: keyId },
+        test: {
+            surface_id: input?.surface_id,
+            gate_id: input?.gate_id,
+            environment_id: input?.environment_id,
+            action_family: input?.action_family,
+            action_digest: input?.action_digest,
+            tested_at: input?.tested_at,
+            nonce: input?.nonce,
+            result: input?.result,
+            response_status: input?.response_status,
+        },
+    };
+    const invalid = validateProbeBody(body, ENFORCEMENT_PROBE_V2_VERSION);
+    if (invalid)
+        throw new TypeError(invalid);
+    const bytes = probeV2Bytes(body, ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS);
+    const signatures = await signAgileSet(new Uint8Array(bytes), signers, options);
+    return Object.freeze({
+        ...body,
+        proof: Object.freeze({
+            profile: ENFORCEMENT_PROBE_V2_VERSION,
+            required_algorithms: [...ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS],
+            key_id: keyId,
+            signatures,
+        }),
+    });
+}
+/**
+ * FAIL-CLOSED hybrid verifier for one EP-GATE-ENFORCEMENT-PROBE-v2. Never
+ * throws on caller input; a v2 probe NEVER verifies on one leg alone.
+ */
+export async function verifyEnforcementProbeV2(statement, options = {}) {
+    const refuse = (reason) => ({ accepted: false, verified: false, reason });
+    try {
+        if (!exactKeys(statement, new Set(['@version', 'probe', 'test', 'proof'])))
+            return refuse('probe_shape_invalid');
+        const { proof, ...body } = statement;
+        const invalid = validateProbeBody(body, ENFORCEMENT_PROBE_V2_VERSION);
+        if (invalid)
+            return refuse(invalid);
+        if (!exactKeys(proof, new Set(['profile', 'required_algorithms', 'key_id', 'signatures']))
+            || proof.profile !== ENFORCEMENT_PROBE_V2_VERSION || proof.key_id !== body.probe.key_id) {
+            return refuse('probe_signature_envelope_invalid');
+        }
+        if (!probeV2AlgorithmSetRegistered(proof.required_algorithms))
+            return refuse('probe_algorithm_set_invalid');
+        const signatures = Array.isArray(proof.signatures) ? proof.signatures : null;
+        if (!signatures || signatures.length === 0)
+            return refuse('probe_signature_legs_missing');
+        const presented = new Set();
+        for (const s of signatures) {
+            if (!isPlainObject(s) || typeof s.alg !== 'string' || typeof s.sig !== 'string')
+                return refuse('probe_signature_leg_malformed');
+            if (presented.has(s.alg))
+                return refuse('probe_signature_leg_duplicate');
+            presented.add(s.alg);
+        }
+        for (const alg of presented) {
+            if (!ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS.includes(alg))
+                return refuse('probe_signature_leg_unexpected');
+        }
+        for (const alg of ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS) {
+            if (!presented.has(alg))
+                return refuse('probe_signature_leg_stripped');
+        }
+        const pin = findProbePin(options.pinnedProbes, body.probe.id, body.probe.key_id);
+        if (!pin || !string(pin.public_key, 4096) || !string(pin.pq_public_key, 8192))
+            return refuse('probe_key_unpinned');
+        if (!Array.isArray(pin.surface_ids) || !pin.surface_ids.includes(body.test.surface_id)) {
+            return refuse('probe_surface_unpinned');
+        }
+        const expected = options.expectedSurface;
+        if (isPlainObject(expected)) {
+            if (body.test.surface_id !== expected.surface_id || body.test.gate_id !== expected.gate_id
+                || body.test.environment_id !== expected.environment_id
+                || body.test.action_family !== expected.action_family
+                || body.test.action_digest !== expected.probe_action_digest)
+                return refuse('probe_context_mismatch');
+        }
+        const now = options.now === undefined ? Date.now() : Number(options.now);
+        const maxAgeSec = options.maxAgeSec === undefined ? 300 : options.maxAgeSec;
+        const maxFutureSkewSec = options.maxFutureSkewSec === undefined ? 30 : options.maxFutureSkewSec;
+        if (!Number.isFinite(now) || !Number.isSafeInteger(maxAgeSec) || maxAgeSec < 0
+            || !Number.isSafeInteger(maxFutureSkewSec) || maxFutureSkewSec < 0)
+            return refuse('probe_profile_invalid');
+        const testedAt = strictInstantMs(body.test.tested_at);
+        if (testedAt > now + maxFutureSkewSec * 1000)
+            return refuse('probe_from_future');
+        if (now - testedAt > maxAgeSec * 1000)
+            return refuse('probe_stale');
+        const bytes = probeV2Bytes(body, ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS);
+        const verificationKeys = [
+            { alg: 'Ed25519', public_key: pin.public_key },
+            { alg: 'ML-DSA-65', public_key: pin.pq_public_key },
+        ];
+        let setResult = null;
+        try {
+            setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), signatures, verificationKeys, {
+                mldsaBackend: options.mldsaBackend,
+                mldsaBackendLoader: options.mldsaBackendLoader,
+                policy: 'hybrid_all',
+                requiredAlgorithms: [...ENFORCEMENT_PROBE_V2_REQUIRED_ALGORITHMS],
+            });
+        }
+        catch {
+            setResult = null;
+        }
+        if (setResult?.verified !== true) {
+            const reason = String(setResult?.reason ?? 'signature_set_unverified');
+            return refuse(`probe_signature_invalid (${reason})`);
+        }
+        return {
+            accepted: true,
+            verified: true,
+            reason: null,
+            statement_digest: `sha256:${sha256(bytes)}`,
+            tested_at: body.test.tested_at,
+            result: body.test.result,
+            response_status: body.test.response_status,
+            nonce: body.test.nonce,
+            surface_id: body.test.surface_id,
+            action_digest: body.test.action_digest,
+            gate_id: body.test.gate_id,
+            environment_id: body.test.environment_id,
+            action_family: body.test.action_family,
+            probe_id: body.probe.id,
+        };
+    }
+    catch {
+        return refuse('hostile_probe_refused');
+    }
+}
+/** Route a probe statement of EITHER version to its own verifier. */
+export async function verifyEnforcementProbeAny(statement, options = {}) {
+    if (isPlainObject(statement) && statement['@version'] === ENFORCEMENT_PROBE_V2_VERSION) {
+        return verifyEnforcementProbeV2(statement, options);
+    }
+    return Promise.resolve(verifyEnforcementProbe(statement, options));
 }
 function deploymentKey(gateId, environmentId, profileHash) {
     return `${gateId}\0${environmentId}\0${profileHash}`;

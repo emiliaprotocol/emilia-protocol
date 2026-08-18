@@ -1,4 +1,4 @@
-import { type RiskRecord, type TrustedRiskKeys } from './reliance-risk-crypto.js';
+import { type RiskHybridSigner, type RiskRecord, type RiskV2Options, type TrustedRiskKeys, type TrustedRiskKeysV2 } from './reliance-risk-crypto.js';
 export declare const LOSS_ALLOCATION_SCHEDULE_VERSION = "EP-LOSS-ALLOCATION-SCHEDULE-v1";
 export declare const LOSS_ALLOCATION_SCHEDULE_CLAIM_BOUNDARY = "signed_terms_not_legal_liability_adjudication_enforceability_insurance_coverage_solvency_authorization_or_payment";
 export interface LossAllocationProgramBinding {
@@ -50,4 +50,22 @@ export declare function createLossAllocationAdmissibilityProfilePin(artifact: un
     profileId: string;
     evaluationMaxAgeSec: number;
 }, verification: VerifyLossAllocationScheduleOptions): RiskRecord;
+export declare const LOSS_ALLOCATION_SCHEDULE_V2_VERSION = "EP-LOSS-ALLOCATION-SCHEDULE-v2";
+export interface LossAllocationSignerV2 extends RiskHybridSigner {
+}
+export interface VerifyLossAllocationScheduleOptionsV2 extends RiskV2Options {
+    trusted_keys?: TrustedRiskKeysV2;
+    expected_relying_party_id?: string;
+    expected_program?: LossAllocationProgramBinding;
+    status?: LossAllocationStatusResult;
+    now?: string | number | Date;
+}
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of signLossAllocationSchedule. */
+export declare function signLossAllocationScheduleV2(input: unknown, signer: LossAllocationSignerV2, options?: RiskV2Options): Promise<RiskRecord>;
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of verifyLossAllocationSchedule.
+ * A v2 schedule NEVER verifies on one leg alone; an absent ML-DSA backend is a
+ * refusal, never a skipped check and never a pass on the surviving classical leg.
+ */
+export declare function verifyLossAllocationScheduleV2(artifact: unknown, options?: VerifyLossAllocationScheduleOptionsV2): Promise<RiskRecord>;
 //# sourceMappingURL=loss-allocation-schedule.d.ts.map

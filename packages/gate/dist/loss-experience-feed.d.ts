@@ -5,7 +5,7 @@
  * causation, insurance coverage, legal liability, adjudicated loss, solvency,
  * payment, or authorization.
  */
-import { type RiskRecord, type TrustedRiskKeys } from './reliance-risk-crypto.js';
+import { type RiskHybridSigner, type RiskRecord, type RiskV2Options, type TrustedRiskKeys, type TrustedRiskKeysV2 } from './reliance-risk-crypto.js';
 export declare const LOSS_EXPERIENCE_FEED_VERSION = "EP-LOSS-EXPERIENCE-FEED-v1";
 export declare const LOSS_EXPERIENCE_FEED_CLAIM_BOUNDARY = "externally_reported_observation_not_verified_causation_not_insurance_coverage_not_legal_liability_not_adjudicated_loss_not_solvency_not_payment_not_authorization";
 export interface VerifyLossExperienceFeedOptions {
@@ -79,4 +79,37 @@ export declare function verifyLossExperienceFeed(feed: unknown, options?: Verify
     feed_digest: string;
     claim_boundary: string;
 };
+export declare const LOSS_EXPERIENCE_FEED_V2_VERSION = "EP-LOSS-EXPERIENCE-FEED-v2";
+export interface LossExperienceFeedSignerV2 extends RiskHybridSigner {
+}
+export interface VerifyLossExperienceFeedOptionsV2 extends RiskV2Options {
+    trusted_keys?: TrustedRiskKeysV2;
+    now?: string | number;
+    expected_program?: RiskRecord;
+    expected_census_digest?: string;
+    expected_taxonomy_digest?: string;
+    expected_relying_party_id?: string;
+    expected_action_classes?: readonly string[];
+    commit_lineage_batch?: (request: Readonly<LossExperienceLineageCommitRequest>) => LossExperienceLineageCommitResult;
+}
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of signLossExperienceFeed. */
+export declare function signLossExperienceFeedV2(input: RiskRecord, signer: LossExperienceFeedSignerV2, options?: RiskV2Options): Promise<RiskRecord>;
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of verifyLossExperienceFeed.
+ * A v2 feed NEVER verifies on one leg alone; an absent ML-DSA backend is a
+ * refusal, never a skipped check and never a pass on the surviving classical leg.
+ */
+export declare function verifyLossExperienceFeedV2(feed: unknown, options?: VerifyLossExperienceFeedOptionsV2): Promise<{
+    accepted: boolean;
+    verified: boolean;
+    reason: string;
+    feed_digest: string | null;
+    claim_boundary: string;
+} | {
+    accepted: boolean;
+    verified: boolean;
+    reason: null;
+    feed_digest: string;
+    claim_boundary: string;
+}>;
 //# sourceMappingURL=loss-experience-feed.d.ts.map

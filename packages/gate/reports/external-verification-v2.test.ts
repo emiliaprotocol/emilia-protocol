@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // EP-EXTERNAL-VERIFICATION-STATEMENT-v2 -- hostile matrix for the hybrid
-// external-verifier statement. New file under src/reports/ so vitest
-// exercises this package's TS source directly; the dist-backed
-// packages/gate/reports/external-verification.test.js keeps covering v1.
-import { describe, it, expect } from 'vitest';
+// external-verifier statement. node:test file co-located with the package's
+// other reports tests, importing the compatibility shim
+// './external-verification.js' (which re-exports
+// ../dist/reports/external-verification.js); the v1 coverage in
+// packages/gate/reports/external-verification.test.js is untouched.
+import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { describe, it } from 'node:test';
 
 import {
   EXTERNAL_VERIFICATION_STATEMENT_V2_VERSION,
@@ -51,17 +54,17 @@ describe('EP-EXTERNAL-VERIFICATION-STATEMENT-v2 hybrid statement', () => {
   it('valid v2 roundtrip: verifies under a pin carrying both halves', async () => {
     const verifier = verifierFixture();
     const stmt = await signExternalVerificationStatementV2(args(), verifier.keys);
-    expect(stmt['@version']).toBe(EXTERNAL_VERIFICATION_STATEMENT_V2_VERSION);
-    expect(stmt.signature.required_algorithms).toEqual([...EXTERNAL_VERIFICATION_V2_REQUIRED_ALGORITHMS]);
-    expect(stmt.signature.signatures.map((s) => s.alg)).toEqual([...EXTERNAL_VERIFICATION_V2_REQUIRED_ALGORITHMS]);
+    assert.equal(stmt['@version'], EXTERNAL_VERIFICATION_STATEMENT_V2_VERSION);
+    assert.deepEqual(stmt.signature.required_algorithms, [...EXTERNAL_VERIFICATION_V2_REQUIRED_ALGORITHMS]);
+    assert.deepEqual(stmt.signature.signatures.map((s) => s.alg), [...EXTERNAL_VERIFICATION_V2_REQUIRED_ALGORITHMS]);
 
     const result = await verifyExternalVerificationStatementV2(stmt, {
       pinnedVerifierKeys: [{
         verifier_id: 'ext:auditor:hybrid-alpha', public_key: verifier.edPubB64u, pq_public_key: verifier.pqPubB64u,
       }],
     });
-    expect(result.verified).toBe(true);
-    expect(result.accepted).toBe(true);
+    assert.equal(result.verified, true);
+    assert.equal(result.accepted, true);
   });
 
   it('the router accepts a v1 statement unchanged, and a v2 one via the hybrid path', async () => {
@@ -71,7 +74,7 @@ describe('EP-EXTERNAL-VERIFICATION-STATEMENT-v2 hybrid statement', () => {
     const v1Result = await verifyExternalVerificationStatementAnyVersion(v1, {
       pinnedVerifierKeys: [{ verifier_id: 'ext:auditor:v1', public_key: classicalPub }],
     });
-    expect(v1Result.verified).toBe(true);
+    assert.equal(v1Result.verified, true);
 
     const verifier = verifierFixture();
     const v2 = await signExternalVerificationStatementV2(args(), verifier.keys);
@@ -80,7 +83,7 @@ describe('EP-EXTERNAL-VERIFICATION-STATEMENT-v2 hybrid statement', () => {
         verifier_id: 'ext:auditor:hybrid-alpha', public_key: verifier.edPubB64u, pq_public_key: verifier.pqPubB64u,
       }],
     });
-    expect(v2Result.verified).toBe(true);
+    assert.equal(v2Result.verified, true);
   });
 
   it('v1-refuses-v2: the existing SYNC verifier refuses a v2 statement cleanly on the version marker', async () => {
@@ -88,8 +91,8 @@ describe('EP-EXTERNAL-VERIFICATION-STATEMENT-v2 hybrid statement', () => {
     const stmt = await signExternalVerificationStatementV2(args(), verifier.keys);
     // No await: verifyExternalVerificationStatement remains synchronous.
     const result = verifyExternalVerificationStatement(stmt as any, { pinnedVerifierKeys: [] });
-    expect(result.verified).toBe(false);
-    expect(result.reason).toBe('unsupported_version');
+    assert.equal(result.verified, false);
+    assert.equal(result.reason, 'unsupported_version');
   });
 
   it('a v2 statement from a verifier pinned WITHOUT the ML-DSA half refuses (never partial credit)', async () => {
@@ -98,8 +101,8 @@ describe('EP-EXTERNAL-VERIFICATION-STATEMENT-v2 hybrid statement', () => {
     const result = await verifyExternalVerificationStatementV2(stmt, {
       pinnedVerifierKeys: [{ verifier_id: 'ext:auditor:hybrid-alpha', public_key: verifier.edPubB64u } as any],
     });
-    expect(result.verified).toBe(false);
-    expect(result.reason).toBe('verifier_key_not_pinned');
+    assert.equal(result.verified, false);
+    assert.equal(result.reason, 'verifier_key_not_pinned');
   });
 
   it('stripped leg: dropping the ML-DSA signature refuses, never a classical-only pass', async () => {
@@ -114,7 +117,7 @@ describe('EP-EXTERNAL-VERIFICATION-STATEMENT-v2 hybrid statement', () => {
         verifier_id: 'ext:auditor:hybrid-alpha', public_key: verifier.edPubB64u, pq_public_key: verifier.pqPubB64u,
       }],
     });
-    expect(result.verified).toBe(false);
+    assert.equal(result.verified, false);
   });
 
   it('narrowed set: claiming required_algorithms=["Ed25519"] only is refused structurally', async () => {
@@ -134,8 +137,8 @@ describe('EP-EXTERNAL-VERIFICATION-STATEMENT-v2 hybrid statement', () => {
         verifier_id: 'ext:auditor:hybrid-alpha', public_key: verifier.edPubB64u, pq_public_key: verifier.pqPubB64u,
       }],
     });
-    expect(result.verified).toBe(false);
-    expect(result.reason).toBe('unsupported_algorithm_set');
+    assert.equal(result.verified, false);
+    assert.equal(result.reason, 'unsupported_algorithm_set');
   });
 
   it('wrong-length signature on the ML-DSA leg refuses, never crashes', async () => {
@@ -150,11 +153,12 @@ describe('EP-EXTERNAL-VERIFICATION-STATEMENT-v2 hybrid statement', () => {
         )),
       },
     };
-    await expect(verifyExternalVerificationStatementV2(tampered, {
+    const tamperedResult = await verifyExternalVerificationStatementV2(tampered, {
       pinnedVerifierKeys: [{
         verifier_id: 'ext:auditor:hybrid-alpha', public_key: verifier.edPubB64u, pq_public_key: verifier.pqPubB64u,
       }],
-    })).resolves.toMatchObject({ verified: false });
+    });
+    assert.equal(tamperedResult.verified, false);
   });
 
   it('Ed448-masquerade: a non-Ed25519 SPKI presented as the classical half refuses, never verified under the wrong curve', async () => {
@@ -168,21 +172,23 @@ describe('EP-EXTERNAL-VERIFICATION-STATEMENT-v2 hybrid statement', () => {
         verifier_id: 'ext:auditor:hybrid-alpha', public_key: ed448PubB64u, pq_public_key: verifier.pqPubB64u,
       }],
     });
-    expect(result.verified).toBe(false);
+    assert.equal(result.verified, false);
   });
 
   it('never throws on hostile input (absent statement, tampered digest, prototype-bearing document)', async () => {
     for (const bad of [null, undefined, {}, { '@version': EXTERNAL_VERIFICATION_STATEMENT_V2_VERSION }]) {
-      await expect(verifyExternalVerificationStatementV2(bad as any, { pinnedVerifierKeys: [] }))
-        .resolves.toMatchObject({ verified: false });
+      const badResult = await verifyExternalVerificationStatementV2(bad as any, { pinnedVerifierKeys: [] });
+      assert.equal(badResult.verified, false);
     }
     const verifier = verifierFixture();
     const stmt = await signExternalVerificationStatementV2(args(), verifier.keys);
     const tamperedDigest = { ...stmt, signature: { ...stmt.signature, statement_digest: `sha256:${'0'.repeat(64)}` } };
-    await expect(verifyExternalVerificationStatementV2(tamperedDigest, {
+    const tamperedDigestResult = await verifyExternalVerificationStatementV2(tamperedDigest, {
       pinnedVerifierKeys: [{
         verifier_id: 'ext:auditor:hybrid-alpha', public_key: verifier.edPubB64u, pq_public_key: verifier.pqPubB64u,
       }],
-    })).resolves.toMatchObject({ verified: false, reason: 'statement_digest_mismatch' });
+    });
+    assert.equal(tamperedDigestResult.verified, false);
+    assert.equal(tamperedDigestResult.reason, 'statement_digest_mismatch');
   });
 });

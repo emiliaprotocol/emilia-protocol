@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // EP-GATE-ENTITLEMENT-v2 -- hostile matrix for the hybrid entitlement.
-// New file, co-located under src/ so vitest exercises this package's TS
-// source directly (no build step needed); packages/gate/enterprise.test.js
-// (dist-backed, node --test) keeps covering v1 and is untouched.
-import { describe, it, expect } from 'vitest';
+// Package-root node:test file importing the compatibility shim
+// './enterprise.js' (which re-exports ./dist/enterprise.js), matching this
+// package's convention; packages/gate/enterprise.test.js keeps covering v1 and
+// is untouched.
+import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { describe, it } from 'node:test';
 
 import {
   ENTITLEMENT_VERSION,
@@ -52,15 +54,15 @@ describe('EP-GATE-ENTITLEMENT-v2 hybrid entitlement', () => {
   it('valid v2 roundtrip: verifies and yields the tier/features/limits', async () => {
     const issuer = issuerFixture();
     const ent = await mintEntitlementV2(issuer.keys, fields());
-    expect(ent['@version']).toBe(ENTITLEMENT_V2_VERSION);
-    expect(ent.proof.required_algorithms).toEqual([...ENTITLEMENT_V2_REQUIRED_ALGORITHMS]);
-    expect(ent.proof.signatures.map((s) => s.alg)).toEqual([...ENTITLEMENT_V2_REQUIRED_ALGORITHMS]);
+    assert.equal(ent['@version'], ENTITLEMENT_V2_VERSION);
+    assert.deepEqual(ent.proof.required_algorithms, [...ENTITLEMENT_V2_REQUIRED_ALGORITHMS]);
+    assert.deepEqual(ent.proof.signatures.map((s) => s.alg), [...ENTITLEMENT_V2_REQUIRED_ALGORITHMS]);
 
     const v = await verifyEntitlementV2(ent, { issuerKeys: issuer.hybridPin, now: NOW });
-    expect(v.valid).toBe(true);
-    expect(v.tier).toBe('enterprise');
-    expect(v.features).toEqual(['sso', 'managed_control_plane', 'byoc']);
-    expect(v.reason).toBe('entitlement_verified');
+    assert.equal(v.valid, true);
+    assert.equal(v.tier, 'enterprise');
+    assert.deepEqual(v.features, ['sso', 'managed_control_plane', 'byoc']);
+    assert.equal(v.reason, 'entitlement_verified');
   });
 
   it('the router accepts a v1 entitlement unchanged, and a v2 one via the hybrid path', async () => {
@@ -69,11 +71,11 @@ describe('EP-GATE-ENTITLEMENT-v2 hybrid entitlement', () => {
     const v1 = mintEntitlement(ed.privateKey, fields({ kid: 'lic-v1' }));
     const v1Pub = ed.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
     const v1Result = await verifyEntitlementStatement(v1, { issuerKeys: { 'lic-v1': v1Pub }, now: NOW });
-    expect(v1Result.valid).toBe(true);
+    assert.equal(v1Result.valid, true);
 
     const v2 = await mintEntitlementV2(issuer.keys, fields());
     const v2Result = await verifyEntitlementStatement(v2, { issuerKeys: issuer.hybridPin, now: NOW });
-    expect(v2Result.valid).toBe(true);
+    assert.equal(v2Result.valid, true);
   });
 
   it('v1-refuses-v2: the existing SYNC verifier refuses a v2 document cleanly, community fallback, never a crash', async () => {
@@ -81,18 +83,18 @@ describe('EP-GATE-ENTITLEMENT-v2 hybrid entitlement', () => {
     const ent = await mintEntitlementV2(issuer.keys, fields());
     // No await: verifyEntitlement remains synchronous and untouched.
     const result = verifyEntitlement(ent, { issuerKeys: { [KID]: 'unused' }, now: NOW });
-    expect(result.valid).toBe(false);
-    expect(result.tier).toBe('community');
-    expect(result.reason).toBe('unsupported_version');
+    assert.equal(result.valid, false);
+    assert.equal(result.tier, 'community');
+    assert.equal(result.reason, 'unsupported_version');
   });
 
   it('a v2 document from a kid pinned WITHOUT the ML-DSA half refuses to community (never partial credit)', async () => {
     const issuer = issuerFixture();
     const ent = await mintEntitlementV2(issuer.keys, fields());
     const result = await verifyEntitlementV2(ent, { issuerKeys: issuer.classicalOnlyPin as any, now: NOW });
-    expect(result.valid).toBe(false);
-    expect(result.tier).toBe('community');
-    expect(result.reason).toBe('unknown_kid');
+    assert.equal(result.valid, false);
+    assert.equal(result.tier, 'community');
+    assert.equal(result.reason, 'unknown_kid');
   });
 
   it('stripped leg: dropping the ML-DSA signature refuses, never a classical-only pass', async () => {
@@ -103,8 +105,8 @@ describe('EP-GATE-ENTITLEMENT-v2 hybrid entitlement', () => {
       proof: { ...ent.proof, signatures: ent.proof.signatures.filter((s) => s.alg !== 'ML-DSA-65') },
     };
     const result = await verifyEntitlementV2(stripped, { issuerKeys: issuer.hybridPin, now: NOW });
-    expect(result.valid).toBe(false);
-    expect(result.tier).toBe('community');
+    assert.equal(result.valid, false);
+    assert.equal(result.tier, 'community');
   });
 
   it('narrowed set: claiming required_algorithms=["Ed25519"] only is refused structurally', async () => {
@@ -118,9 +120,9 @@ describe('EP-GATE-ENTITLEMENT-v2 hybrid entitlement', () => {
       },
     };
     const result = await verifyEntitlementV2(narrowed, { issuerKeys: issuer.hybridPin, now: NOW });
-    expect(result.valid).toBe(false);
-    expect(result.tier).toBe('community');
-    expect(result.reason).toBe('unsupported_algorithm_set');
+    assert.equal(result.valid, false);
+    assert.equal(result.tier, 'community');
+    assert.equal(result.reason, 'unsupported_algorithm_set');
   });
 
   it('wrong-length signature on the ML-DSA leg refuses, never crashes', async () => {
@@ -135,8 +137,9 @@ describe('EP-GATE-ENTITLEMENT-v2 hybrid entitlement', () => {
         )),
       },
     };
-    await expect(verifyEntitlementV2(tampered, { issuerKeys: issuer.hybridPin, now: NOW }))
-      .resolves.toMatchObject({ valid: false, tier: 'community' });
+    const tamperedResult = await verifyEntitlementV2(tampered, { issuerKeys: issuer.hybridPin, now: NOW });
+    assert.equal(tamperedResult.valid, false);
+    assert.equal(tamperedResult.tier, 'community');
   });
 
   it('Ed448-masquerade: a non-Ed25519 SPKI presented as the classical half refuses, never verified under the wrong curve', async () => {
@@ -146,8 +149,8 @@ describe('EP-GATE-ENTITLEMENT-v2 hybrid entitlement', () => {
     const ed448PubB64u = ed448.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
     const pin = { [KID]: { ...issuer.hybridPin[KID], public_key: ed448PubB64u } };
     const result = await verifyEntitlementV2(ent, { issuerKeys: pin as any, now: NOW });
-    expect(result.valid).toBe(false);
-    expect(result.tier).toBe('community');
+    assert.equal(result.valid, false);
+    assert.equal(result.tier, 'community');
   });
 
   it('an expired v2 entitlement still refuses AFTER the hybrid signature check passes', async () => {
@@ -156,15 +159,16 @@ describe('EP-GATE-ENTITLEMENT-v2 hybrid entitlement', () => {
       not_before: '2020-01-01T00:00:00Z', expires_at: '2020-06-01T00:00:00Z',
     }));
     const result = await verifyEntitlementV2(ent, { issuerKeys: issuer.hybridPin, now: NOW });
-    expect(result.valid).toBe(false);
-    expect(result.tier).toBe('community');
-    expect(result.reason).toBe('expired');
+    assert.equal(result.valid, false);
+    assert.equal(result.tier, 'community');
+    assert.equal(result.reason, 'expired');
   });
 
   it('never throws on hostile input (absent, malformed JSON, prototype-bearing document)', async () => {
     for (const bad of [null, undefined, '', '{not json', 42, []]) {
-      await expect(verifyEntitlementV2(bad as any, { issuerKeys: {}, now: NOW }))
-        .resolves.toMatchObject({ valid: false, tier: 'community' });
+      const result = await verifyEntitlementV2(bad as any, { issuerKeys: {}, now: NOW });
+      assert.equal(result.valid, false);
+      assert.equal(result.tier, 'community');
     }
     const issuer = issuerFixture();
     const ent = await mintEntitlementV2(issuer.keys, fields());
@@ -172,7 +176,7 @@ describe('EP-GATE-ENTITLEMENT-v2 hybrid entitlement', () => {
     // Never throws; the canonicalize() round-trip drops non-own-enumerable
     // inherited fields before any check runs, so this is not a bypass either
     // way -- the point of this assertion is only that it resolves cleanly.
-    await expect(verifyEntitlementV2(inherited, { issuerKeys: issuer.hybridPin, now: NOW }))
-      .resolves.toHaveProperty('valid');
+    const inheritedResult = await verifyEntitlementV2(inherited, { issuerKeys: issuer.hybridPin, now: NOW });
+    assert.ok('valid' in (inheritedResult as object));
   });
 });

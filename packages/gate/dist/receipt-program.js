@@ -13,6 +13,12 @@
 import { createHash, createPrivateKey, createPublicKey, sign, verify, } from 'node:crypto';
 import { canonicalize } from './execution-binding.js';
 import { canonicalEvidenceJson, verifyEvidenceRecord } from './evidence.js';
+// Opt-in FIPS operation-policy consult at the certificate signer call site
+// (see issueCertificate below). A genuine declared dependency of
+// @emilia-protocol/gate, same as @emilia-protocol/verify/pq-signature-agility
+// elsewhere in this package.
+import { checkOperationPolicy } from '@emilia-protocol/verify/fips-mode';
+import { signAgileSet, verifyAgileSignatureSet, ML_DSA_65_PUBLIC_KEY_BYTES, } from '@emilia-protocol/verify/pq-signature-agility';
 export const RECEIPT_PROGRAM_VERSION = 'EP-RECEIPT-PROGRAM-v1';
 export const RECEIPT_PROGRAM_CERTIFICATE_VERSION = 'EP-RECEIPT-PROGRAM-CERTIFICATE-v1';
 export const RECEIPT_PROGRAM_SIGNATURE_ALGORITHM = 'Ed25519';
@@ -28,6 +34,7 @@ const FORBIDDEN_RUNTIME_TRUST_FIELDS = new Set([
     'certificatePrivateKey',
     'certificateSigner',
     'effectTimeoutMs',
+    'fipsPosture',
     'gate',
     'now',
     'operationIdField',
@@ -234,9 +241,11 @@ function evidenceReference(record) {
         operation_id: operationFromExecution(record),
     });
 }
-function certificateCore({ context, program, programDigest, outcome, reason, result, authorizationRef, executionRef, steps, startedAt, completedAt, }) {
+function certificateCore({ context, program, programDigest, outcome, reason, result, authorizationRef, executionRef, steps, startedAt, completedAt, 
+// ONE core builder for both certificate versions; only the marker differs.
+certificateVersion = RECEIPT_PROGRAM_CERTIFICATE_VERSION, }) {
     return {
-        '@version': RECEIPT_PROGRAM_CERTIFICATE_VERSION,
+        '@version': certificateVersion,
         context,
         program,
         program_digest: programDigest,
@@ -300,7 +309,17 @@ function failReason(error, fallback) {
  * options.allowEphemeralState: explicit test/demo opt-in (default false)
  * options.now: number|(() => number), default Date.now
  */
-export function createReceiptProgramKernel({ gate, resolveCaid, operationIdField, certificatePrivateKey, certificateSigner, certificateContext, projectResult = null, effectTimeoutMs = 30_000, allowEphemeralState = false, now = Date.now, } = {}) {
+export function createReceiptProgramKernel({ gate, resolveCaid, operationIdField, certificatePrivateKey, certificateSigner, certificateContext, projectResult = null, effectTimeoutMs = 30_000, allowEphemeralState = false, now = Date.now, 
+// OPT-IN. When configured, every issuance consults checkOperationPolicy()
+// (packages/verify/src/fips-mode.ts) for the certificate's signature
+// algorithm (RECEIPT_PROGRAM_SIGNATURE_ALGORITHM = 'Ed25519') before
+// signing. A denied policy refuses issuance with a named
+// fips_policy_denied:<reason> -- it never signs anyway and never throws.
+// Left undefined (the default), issuance is BYTE-IDENTICAL to before this
+// option existed: the consult does not run, matching every other FIPS-mode
+// adoption in this repo (fips-mode.ts is consulted at call sites; nothing
+// is on by default).
+fipsPosture, } = {}) {
     if (!gate || typeof gate.run !== 'function' || !gate.evidence) {
         throw new TypeError('createReceiptProgramKernel requires a configured Gate with an evidence log');
     }
@@ -339,6 +358,23 @@ export function createReceiptProgramKernel({ gate, resolveCaid, operationIdField
     }
     async function issueCertificate(input) {
         const core = certificateCore({ ...input, context });
+        // OPT-IN FIPS consult, only when a posture was configured at construction.
+        // checkOperationPolicy never throws; a denied policy refuses issuance
+        // BEFORE the signer is ever called, never a skipped check and never a
+        // silent sign-anyway. With fipsPosture undefined this block does not run.
+        if (fipsPosture !== undefined) {
+            const policy = checkOperationPolicy(RECEIPT_PROGRAM_SIGNATURE_ALGORITHM, fipsPosture);
+            if (policy.permitted !== true) {
+                return Object.freeze({
+                    ok: false,
+                    outcome: input.outcome,
+                    reason: `fips_policy_denied:${policy.reason}`,
+                    result: input.result,
+                    certificate: null,
+                    certificate_evidence: null,
+                });
+            }
+        }
         let certificate;
         try {
             certificate = await signCertificate(core, signer);
@@ -792,6 +828,30 @@ export function verifyReceiptProgramCertificate(certificate, { trustedCertificat
         if (signatureBytes.length !== 64 || signatureBytes.toString('base64url') !== signature.value
             || !verify(null, Buffer.from(canonicalize(snapshot), 'utf8'), publicKeyObject(signature.public_key), signatureBytes))
             return verificationFailure('certificate_signature_invalid');
+        return verifyCertificateBodyAfterSignature(snapshot, completeCertificate, signature.public_key, RECEIPT_PROGRAM_VERSION, {
+            resolveCaid,
+            expectedContext,
+            certificateEvidence,
+            verifyCertificateInclusion,
+            requireAtomicCertificateEvidence,
+        });
+    }
+    catch {
+        return verificationFailure('certificate_malformed');
+    }
+}
+/**
+ * ONE post-signature verification body for both certificate versions. The v1
+ * and v2 verifiers differ only in the envelope they authenticate (flat
+ * Ed25519 `signature` vs the hybrid signature SET) and in which receipt-program
+ * profile marker the embedded program must carry. Everything after the
+ * signature -- state root, context pin, time window, program binding, CAID
+ * reperformance, opcode trace, result digest, evidence-reference linkage, and
+ * the certificate-evidence inclusion check -- is this one body, so the two
+ * cannot drift.
+ */
+function verifyCertificateBodyAfterSignature(snapshot, completeCertificate, signerPublicKey, programVersion, { resolveCaid = null, expectedContext = null, certificateEvidence = null, verifyCertificateInclusion = null, requireAtomicCertificateEvidence = false, } = {}) {
+    try {
         const stateRoot = snapshot.state_root;
         delete snapshot.state_root;
         if (!SHA256_RE.test(stateRoot) || canonicalDigest(snapshot) !== stateRoot) {
@@ -827,7 +887,7 @@ export function verifyReceiptProgramCertificate(certificate, { trustedCertificat
             return verificationFailure('certificate_time_invalid');
         }
         const program = signed.program;
-        if (!isRecord(program) || program['@version'] !== RECEIPT_PROGRAM_VERSION) {
+        if (!isRecord(program) || program['@version'] !== programVersion) {
             return verificationFailure('certificate_program_invalid');
         }
         if (Buffer.byteLength(canonicalize(program), 'utf8') > MAX_PROGRAM_BYTES) {
@@ -1033,7 +1093,7 @@ export function verifyReceiptProgramCertificate(certificate, { trustedCertificat
             outcome: signed.outcome,
             program_digest: signed.program_digest,
             state_root: stateRoot,
-            signer: signature.public_key,
+            signer: signerPublicKey,
             evidence_complete: Boolean(authorization && (signed.outcome === 'refused' || execution)),
             certificate_persisted: certificatePersisted,
             caid_reperformed: executableProgram,
@@ -1043,11 +1103,375 @@ export function verifyReceiptProgramCertificate(certificate, { trustedCertificat
         return verificationFailure('certificate_malformed');
     }
 }
+// ===========================================================================
+// EP-RECEIPT-PROGRAM-v2 / EP-RECEIPT-PROGRAM-CERTIFICATE-v2
+// the hybrid (Ed25519 + ML-DSA-65) execution certificate
+// ===========================================================================
+/**
+ * Copies the five-move EP-REVOCATION-v2 template
+ * (packages/verify/src/revocation.ts) onto the receipt-program execution
+ * certificate, and moves the PROGRAM marker with the certificate: an
+ * EP-RECEIPT-PROGRAM-CERTIFICATE-v2 certificate freezes an
+ * EP-RECEIPT-PROGRAM-v2 program.
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. `signature: {algorithm, public_key,
+ *    value}` becomes `signature: {profile, required_algorithms, public_key,
+ *    key_id, pq_public_key, pq_key_id, signatures}`, a wire-format change, so
+ *    the certificate takes a new `@version` (-v1 -> -v2) and the program it
+ *    embeds takes one too, because the program's own `@version` is inside the
+ *    signed core. verifyReceiptProgramCertificate above is UNCHANGED and
+ *    refuses a v2 certificate at `certificate_version_invalid`, on the version
+ *    marker, as its FIRST check -- before it reads the signature at all, and
+ *    without crashing.
+ * 2. SET SHAPE. `signature.signatures` is an EP-SIG-AGILITY-v1 AgileSignature
+ *    array ({ alg, sig, key_id? }), one entry per registered algorithm, in the
+ *    registered order, reused verbatim. Ed25519 keeps its base64url SPKI DER
+ *    public key; ML-DSA-65 carries raw base64url public key bytes.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is INSIDE the signed bytes
+ *    (receiptProgramCertificateV2SigningBytes), alongside the core and its
+ *    state root. Drop the ML-DSA leg and narrow the set to ["Ed25519"] and the
+ *    surviving Ed25519 signature no longer verifies. Leave the set intact and
+ *    the missing leg is a structural refusal. The verifier rebuilds the bytes
+ *    from the REGISTERED set and from the core it independently recomputed.
+ * 4. V1 COMPATIBILITY. verifyReceiptProgramCertificate stays SYNCHRONOUS and
+ *    untouched, and createReceiptProgramKernel still mints v1 certificates
+ *    with byte-identical behavior. verifyReceiptProgramCertificateV2 is a
+ *    SEPARATE async entry point (ML-DSA verification is inherently async);
+ *    verifyReceiptProgramCertificateStatement routes on `@version`. Everything
+ *    after the signature check is ONE shared body
+ *    (verifyCertificateBodyAfterSignature), so the two versions cannot drift
+ *    on state root, context, program binding, CAID reperformance, opcode
+ *    trace, evidence linkage, or inclusion.
+ * 5. NAMED REFUSALS. Verification never throws on caller input; every failure
+ *    is `{ok:false, reason}`. An absent ML-DSA backend surfaces as
+ *    `pq_backend_unavailable`, never a skipped check and never a pass on the
+ *    classical leg.
+ *
+ * THE FIPS CONSULT, PRESERVED AND EXTENDED. The kernel's opt-in `fipsPosture`
+ * consult (issueCertificate, above) is unchanged. The v2 issuer consults
+ * checkOperationPolicy() for BOTH registered algorithms before the signer is
+ * called. Under a posture that is not verifiably FIPS-inactive, ML-DSA-65's
+ * policy is a REFUSAL unless the deployment explicitly acknowledges the
+ * unvalidated implementation (`allowUnvalidatedMldsa: true`). Under a plainly
+ * non-FIPS posture no acknowledgment is required. Left undefined, the consult
+ * does not run.
+ *
+ * HONEST BOUNDARY, UNCHANGED FROM V1: a verified certificate proves exact
+ * certificate integrity under pinned operator keys. It does not prove an
+ * external provider told the truth, and it does not replace verification of
+ * the referenced receipt/capability artifacts. The ML-DSA-65 backend is
+ * @noble/post-quantum's pure-JS FIPS 204 implementation, not independently
+ * audited and not a FIPS validated module, and its secret key is
+ * software-held: this profile does NOT satisfy a kms/hsm-only custody
+ * requirement, and issuing under it is not a certification claim.
+ */
+export const RECEIPT_PROGRAM_V2_VERSION = 'EP-RECEIPT-PROGRAM-v2';
+export const RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION = 'EP-RECEIPT-PROGRAM-CERTIFICATE-v2';
+const RECEIPT_PROGRAM_CERTIFICATE_V2_DOMAIN = `${RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION}\0`;
+/** The registered required algorithm set, in canonical order. */
+export const RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+const CERTIFICATE_V2_SIGNATURE_KEYS = [
+    'profile', 'required_algorithms', 'public_key', 'key_id',
+    'pq_public_key', 'pq_key_id', 'signatures',
+];
+function receiptV2AlgorithmSetRegistered(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS[i]);
+}
+/** ML-DSA-65 public-key identifier: the SHA-256 of the raw public key bytes. */
+function receiptPqKeyId(publicKeyRawB64u) {
+    try {
+        if (typeof publicKeyRawB64u !== 'string' || publicKeyRawB64u.length === 0)
+            return '';
+        const raw = Buffer.from(publicKeyRawB64u, 'base64url');
+        if (raw.length !== ML_DSA_65_PUBLIC_KEY_BYTES || raw.toString('base64url') !== publicKeyRawB64u)
+            return '';
+        return `ep:receipt-program-key:ml-dsa-65:sha256:${sha256(raw)}`;
+    }
+    catch {
+        return '';
+    }
+}
+/**
+ * The bytes BOTH legs sign: the certificate core plus its recomputed
+ * state_root, under the v2 domain tag, plus the committed
+ * `required_algorithms` set. Recomputed independently by the verifier from the
+ * PRESENTED core and the REGISTERED set. See move 3 above.
+ */
+export function receiptProgramCertificateV2SigningBytes(signedCore, requiredAlgorithms = RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS) {
+    if (!isRecord(signedCore))
+        throw new TypeError('receipt program certificate v2 signing body is invalid');
+    if (!receiptV2AlgorithmSetRegistered(requiredAlgorithms)) {
+        throw new TypeError('receiptProgramCertificateV2SigningBytes: algorithm set is not the registered EP-RECEIPT-PROGRAM-CERTIFICATE-v2 set');
+    }
+    return Buffer.from(RECEIPT_PROGRAM_CERTIFICATE_V2_DOMAIN
+        + canonicalize({ ...signedCore, required_algorithms: [...requiredAlgorithms] }), 'utf8');
+}
+/**
+ * Issue one hybrid execution certificate over an already assembled core. The
+ * signer is either a local key pair (test/demo) or an injected signSet signer;
+ * every returned signature set is verified against the configured public
+ * halves before the certificate leaves this function.
+ */
+export async function issueReceiptProgramCertificateV2(input, { keys, signer, fipsPosture, allowUnvalidatedMldsa = false, } = {}) {
+    const hasKeys = keys !== undefined;
+    const hasSigner = signer !== undefined;
+    if (hasKeys === hasSigner) {
+        throw new TypeError('configure exactly one receipt program certificate v2 signer');
+    }
+    const core = certificateCore({
+        ...input,
+        certificateVersion: RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION,
+    });
+    if (Buffer.byteLength(canonicalize(core), 'utf8') > MAX_CERTIFICATE_CORE_BYTES) {
+        throw new Error('receipt program certificate exceeds byte limit');
+    }
+    const requiredAlgorithms = [...RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS];
+    const signed = { ...core, state_root: canonicalDigest(core) };
+    const signedBytes = receiptProgramCertificateV2SigningBytes(signed, requiredAlgorithms);
+    // OPT-IN FIPS consult, BOTH algorithms, BEFORE the signer is called.
+    if (fipsPosture !== undefined) {
+        for (const alg of requiredAlgorithms) {
+            const policy = checkOperationPolicy(alg, fipsPosture, {
+                allow_unvalidated_mldsa: allowUnvalidatedMldsa === true,
+            });
+            if (policy.permitted !== true) {
+                throw new Error(`receipt program certificate v2 issuance refused: fips_policy_denied:${alg}:${policy.reason}`);
+            }
+        }
+    }
+    let signatures;
+    let publicKeys;
+    let keyId;
+    if (hasKeys) {
+        if (!keys.ed?.privateKey || !keys.pq?.secretKey || typeof keys.pq?.publicKey !== 'string') {
+            throw new TypeError('receipt program certificate v2 keys require ed.privateKey, pq.secretKey, and pq.publicKey');
+        }
+        const edKey = keyObject(keys.ed.privateKey, 'keys.ed.privateKey');
+        const signingKeys = [
+            { alg: 'Ed25519', private_key: edKey },
+            { alg: 'ML-DSA-65', private_key: keys.pq.secretKey },
+        ];
+        signatures = await signAgileSet(new Uint8Array(signedBytes), signingKeys);
+        publicKeys = {
+            public_key: keys.ed.publicKey ?? publicKeyB64u(edKey),
+            pq_public_key: keys.pq.publicKey,
+        };
+        keyId = core.context?.key_id;
+    }
+    else {
+        if (!isDataRecord(signer) || typeof signer.signSet !== 'function'
+            || !isRecord(signer.publicKeys)
+            || typeof signer.publicKeys.public_key !== 'string'
+            || typeof signer.publicKeys.pq_public_key !== 'string'
+            || typeof signer.keyId !== 'string') {
+            throw new TypeError('receipt program certificate v2 signer requires keyId, publicKeys { public_key, pq_public_key }, and signSet(bytes)');
+        }
+        const set = await signer.signSet(signedBytes, { profile: RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION });
+        if (!Array.isArray(set)
+            || !requiredAlgorithms.every((alg, index) => set[index]?.alg === alg
+                && typeof set[index]?.sig === 'string')) {
+            throw new Error('receipt program certificate v2 signer returned a malformed signature set');
+        }
+        signatures = set.map((entry) => ({ alg: entry.alg, sig: entry.sig }));
+        publicKeys = {
+            public_key: signer.publicKeys.public_key,
+            pq_public_key: signer.publicKeys.pq_public_key,
+        };
+        keyId = signer.keyId;
+    }
+    publicKeyObject(publicKeys.public_key);
+    const pqKeyId = receiptPqKeyId(publicKeys.pq_public_key);
+    if (!pqKeyId)
+        throw new TypeError('receipt program certificate v2 ML-DSA-65 public key must be raw base64url bytes');
+    if (keyId !== core.context?.key_id) {
+        throw new Error('receipt program certificate v2 context.key_id must equal the configured signer keyId');
+    }
+    const certificate = deepFreeze({
+        ...signed,
+        signature: {
+            profile: RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION,
+            required_algorithms: requiredAlgorithms,
+            public_key: publicKeys.public_key,
+            key_id: keyId,
+            pq_public_key: publicKeys.pq_public_key,
+            pq_key_id: pqKeyId,
+            signatures,
+        },
+    });
+    const selfCheck = await verifyReceiptProgramCertificateV2(certificate, {
+        trustedCertificateKeys: { [keyId]: publicKeys },
+        expectedContext: core.context,
+        resolveCaid: input?.resolveCaid ?? null,
+    });
+    // The self-check re-runs the full verifier over the bytes just produced. The
+    // one reason it may legitimately report is certificate_caid_resolver_required:
+    // CAID reperformance is a RELYING-PARTY input (an issuer re-resolving its own
+    // CAID would prove nothing), so an issuer that did not hand one in gets the
+    // structural checks only. Every other refusal is an issuance failure.
+    if (selfCheck.ok !== true && selfCheck.reason !== 'certificate_caid_resolver_required') {
+        throw new Error(`receipt program certificate v2 self-verification failed: ${selfCheck.reason}`);
+    }
+    return certificate;
+}
+/**
+ * FAIL-CLOSED hybrid certificate verifier. Never throws on caller input; a v2
+ * certificate NEVER verifies on one leg alone. Everything after the signature
+ * is the same body the v1 verifier runs.
+ */
+export async function verifyReceiptProgramCertificateV2(certificate, { trustedCertificateKeys = {}, resolveCaid = null, expectedContext = null, certificateEvidence = null, verifyCertificateInclusion = null, requireAtomicCertificateEvidence = false, mldsaBackend, mldsaBackendLoader, } = {}) {
+    try {
+        // 1. Version marker FIRST, exactly as v1 does. A v1 certificate refuses
+        //    here, the mirror image of the v1 verifier refusing a v2 certificate.
+        const versionDescriptor = isDataRecord(certificate)
+            ? Object.getOwnPropertyDescriptor(certificate, '@version') : null;
+        if (versionDescriptor?.value !== RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION) {
+            return verificationFailure('certificate_version_invalid');
+        }
+        const snapshot = cloneCanonical(certificate, 'certificate', false);
+        const completeCertificate = structuredClone(snapshot);
+        if (!hasExactKeys(snapshot, [
+            '@version',
+            'context',
+            'program',
+            'program_digest',
+            'outcome',
+            'reason',
+            'result',
+            'result_digest',
+            'authorization_ref',
+            'execution_ref',
+            'steps',
+            'started_at',
+            'completed_at',
+            'state_root',
+            'signature',
+        ]))
+            return verificationFailure('certificate_schema_invalid');
+        const signature = snapshot.signature;
+        if (!hasExactKeys(signature, CERTIFICATE_V2_SIGNATURE_KEYS)
+            || signature.profile !== RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION
+            || typeof signature.public_key !== 'string'
+            || typeof signature.pq_public_key !== 'string'
+            || typeof signature.key_id !== 'string'
+            || typeof signature.pq_key_id !== 'string') {
+            return verificationFailure('certificate_signature_invalid');
+        }
+        // 2. Committed algorithm set: exact and order-sensitive. A narrowed set is
+        //    the stripping attack's cover story, refused structurally here and
+        //    (independently) by the signature check, which rebuilds the bytes from
+        //    the REGISTERED set regardless of what the certificate claims.
+        if (!receiptV2AlgorithmSetRegistered(signature.required_algorithms)) {
+            return verificationFailure('certificate_algorithm_set_unsupported');
+        }
+        // 3. Exactly one signature per required algorithm.
+        const signatures = Array.isArray(signature.signatures) ? signature.signatures : null;
+        if (!signatures)
+            return verificationFailure('certificate_signature_set_invalid');
+        const presented = new Set();
+        for (const entry of signatures) {
+            if (!isRecord(entry) || typeof entry.alg !== 'string' || typeof entry.sig !== 'string') {
+                return verificationFailure('certificate_signature_set_invalid');
+            }
+            if (presented.has(entry.alg))
+                return verificationFailure('certificate_signature_set_invalid');
+            presented.add(entry.alg);
+        }
+        for (const alg of RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS) {
+            if (!presented.has(alg))
+                return verificationFailure('certificate_signature_leg_missing');
+        }
+        for (const alg of presented) {
+            if (!RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS.includes(alg)) {
+                return verificationFailure('certificate_signature_set_invalid');
+            }
+        }
+        // 4. Signer keys: BOTH halves pinned, and the presented halves must equal
+        //    the pinned ones. Identified-but-not-trusted, per leg: a key id pinned
+        //    for v1 only (a bare Ed25519 SPKI string) does NOT satisfy a v2 pin.
+        const claimedKeyId = snapshot.context?.key_id;
+        const pin = isDataRecord(trustedCertificateKeys) && typeof claimedKeyId === 'string'
+            ? trustedCertificateKeys[claimedKeyId] : null;
+        if (!isRecord(pin)
+            || typeof pin.public_key !== 'string' || typeof pin.pq_public_key !== 'string'
+            || pin.public_key !== signature.public_key
+            || pin.pq_public_key !== signature.pq_public_key
+            || signature.key_id !== claimedKeyId
+            || receiptPqKeyId(pin.pq_public_key) === ''
+            || signature.pq_key_id !== receiptPqKeyId(pin.pq_public_key)) {
+            return verificationFailure('certificate_signer_not_trusted');
+        }
+        // Curve-pinned: a non-Ed25519 SPKI presented as the classical half fails
+        // here as well as in the signature check.
+        try {
+            publicKeyObject(pin.public_key);
+        }
+        catch {
+            return verificationFailure('certificate_signer_not_trusted');
+        }
+        // 5. Signature set over bytes rebuilt from the PRESENTED core and the
+        //    REGISTERED algorithm set, under the PINNED keys. Never fall back to
+        //    the certificate's own self-asserted key material.
+        delete snapshot.signature;
+        let setResult;
+        try {
+            setResult = await verifyAgileSignatureSet(new Uint8Array(receiptProgramCertificateV2SigningBytes(snapshot, RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS)), signatures, [
+                { alg: 'Ed25519', public_key: pin.public_key },
+                { alg: 'ML-DSA-65', public_key: pin.pq_public_key },
+            ], {
+                ...(mldsaBackend === undefined ? {} : { mldsaBackend }),
+                ...(mldsaBackendLoader === undefined ? {} : { mldsaBackendLoader }),
+                policy: 'hybrid_all',
+                requiredAlgorithms: [...RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS],
+            });
+        }
+        catch {
+            // verifyAgileSignatureSet documents that it never throws; an injected
+            // backend that does is still a refusal here, never a pass.
+            setResult = null;
+        }
+        if (setResult?.verified !== true) {
+            return verificationFailure(`certificate_signature_invalid:${String(setResult?.reason ?? 'signature_set_unverified')}`);
+        }
+        return verifyCertificateBodyAfterSignature(snapshot, completeCertificate, signature.public_key, RECEIPT_PROGRAM_V2_VERSION, {
+            resolveCaid,
+            expectedContext,
+            certificateEvidence,
+            verifyCertificateInclusion,
+            requireAtomicCertificateEvidence,
+        });
+    }
+    catch {
+        return verificationFailure('certificate_malformed');
+    }
+}
+/**
+ * Route a certificate of EITHER version to its verifier. v1 certificates keep
+ * the exact v1 verdict; v2 certificates get the hybrid check. A certificate
+ * whose `@version` is neither refuses through the v1 verifier, which is the
+ * fail-closed answer.
+ */
+export async function verifyReceiptProgramCertificateStatement(certificate, options = {}) {
+    if (isDataRecord(certificate)
+        && Object.getOwnPropertyDescriptor(certificate, '@version')?.value
+            === RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION) {
+        return verifyReceiptProgramCertificateV2(certificate, options);
+    }
+    return verifyReceiptProgramCertificate(certificate, options);
+}
 export default {
     RECEIPT_PROGRAM_VERSION,
     RECEIPT_PROGRAM_CERTIFICATE_VERSION,
     RECEIPT_PROGRAM_SIGNATURE_ALGORITHM,
+    RECEIPT_PROGRAM_V2_VERSION,
+    RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION,
+    RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS,
     createReceiptProgramKernel,
     verifyReceiptProgramCertificate,
+    receiptProgramCertificateV2SigningBytes,
+    issueReceiptProgramCertificateV2,
+    verifyReceiptProgramCertificateV2,
+    verifyReceiptProgramCertificateStatement,
 };
 //# sourceMappingURL=receipt-program.js.map

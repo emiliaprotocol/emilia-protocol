@@ -2,14 +2,16 @@
 //
 // EP-RECEIPT-PROGRAM-CERTIFICATE-v1 -- opt-in FIPS operation-policy consult
 // at the certificate signer call site (createReceiptProgramKernel's
-// issueCertificate, receipt-program.ts ~:400). New file under src/ so vitest
-// exercises this package's TS source directly; the dist-backed
-// packages/gate/receipt-program.test.js keeps covering the certificate
-// artifact itself and is untouched.
-import { describe, it, expect } from 'vitest';
+// issueCertificate, src/receipt-program.ts ~:400). Package-root node:test file
+// importing the compatibility shims './index.js' and './receipt-program.js'
+// (which re-export the compiled ./dist/ modules), matching this package's
+// convention; the dist-backed packages/gate/receipt-program.test.js keeps
+// covering the certificate artifact itself and is untouched.
+import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
+import { describe, it } from 'node:test';
 
-import { computeCaid } from '../../../caid/impl/js/caid.mjs';
+import { computeCaid } from '../../caid/impl/js/caid.mjs';
 import {
   createEg1Harness,
   createGate,
@@ -167,9 +169,9 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v1 opt-in FIPS consult', () => {
         status: 'settled',
       };
     });
-    expect(out.ok).toBe(true);
-    expect(effects).toBe(1);
-    expect(out.certificate.signature.algorithm).toBe('Ed25519');
+    assert.equal(out.ok, true);
+    assert.equal(effects, 1);
+    assert.equal(out.certificate.signature.algorithm, 'Ed25519');
   });
 
   it('a denied FIPS policy refuses issuance BEFORE the signer runs, named reason, never a silent sign', async () => {
@@ -183,13 +185,13 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v1 opt-in FIPS consult', () => {
         status: 'settled',
       };
     });
-    expect(out.ok).toBe(false);
-    expect(out.reason).toBe('fips_policy_denied:ed25519_boundary_undeclared');
-    expect(out.certificate).toBeNull();
+    assert.equal(out.ok, false);
+    assert.equal(out.reason, 'fips_policy_denied:ed25519_boundary_undeclared');
+    assert.equal(out.certificate, null);
     // The provider effect itself may or may not have run depending on Gate's
     // own ordering, but no certificate was ever produced under the denied
     // posture -- that is the property this test protects.
-    expect(out.certificate).toBe(null);
+    assert.equal(out.certificate, null);
   });
 
   it('passing fipsPosture as a per-request field is refused as a runtime trust-field override attempt', async () => {
@@ -197,6 +199,6 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v1 opt-in FIPS consult', () => {
     const out = await f.kernel.run(request(f, { fipsPosture: DENYING_POSTURE } as any), async () => ({
       provider: 'simulated-custodian', status: 'settled',
     }));
-    expect(out.ok).toBe(false);
+    assert.equal(out.ok, false);
   });
 });

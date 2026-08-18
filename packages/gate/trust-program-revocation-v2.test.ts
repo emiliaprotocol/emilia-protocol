@@ -2,14 +2,18 @@
 //
 // EP-GATE-TRUST-PROGRAM-REVOCATION-TARGET-v1 -- hostile matrix for the
 // EP-REVOCATION-v2 router adoption (verifyTrustProgramRevocationStatement /
-// applyTrustProgramRevocationStatement). Runs directly against src/ (vitest
-// resolves the sibling './trust-program-revocation.js' specifier to this
-// package's src/trust-program-revocation.ts, no build step required), unlike
-// the package-root trust-program-revocation.test.ts, which exercises the
-// compiled dist/ shim and is left untouched: the v1-only sync surface it
-// covers did not change a byte.
-import { describe, it, expect } from 'vitest';
+// applyTrustProgramRevocationStatement). Package-root node:test file importing
+// the compatibility shim './trust-program-revocation.js' (which re-exports
+// ./dist/trust-program-revocation.js), matching this package's convention; the
+// package-root trust-program-revocation.test.js, which covers the v1-only sync
+// surface, is left untouched: that surface did not change a byte.
+//
+// The router itself is reached through the PUBLISHED package subpath
+// '@emilia-protocol/verify/revocation', not a workspace-relative path, so this
+// file fails to even load if that exports-map entry regresses.
+import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { describe, it } from 'node:test';
 
 import {
   deriveTrustProgramRevocationTarget,
@@ -17,9 +21,9 @@ import {
   verifyTrustProgramRevocationStatement,
   applyTrustProgramRevocationStatement,
 } from './trust-program-revocation.js';
-import { canonicalize } from '../../verify/index.js';
-import { REVOCATION_V2_VERSION, revocationV2SignedPayload } from '../../verify/revocation.js';
-import { signAgileSet } from '../../verify/pq-signature-agility.js';
+import { canonicalize } from '@emilia-protocol/verify';
+import { REVOCATION_V2_VERSION, revocationV2SignedPayload } from '@emilia-protocol/verify/revocation';
+import { signAgileSet } from '@emilia-protocol/verify/pq-signature-agility';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
@@ -141,6 +145,17 @@ function revokerFixture() {
 }
 
 describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation target', () => {
+  it('the published ./revocation subpath resolves and exposes the v2 router', async () => {
+    // trust-program-revocation.ts resolves the router by dynamic import of
+    // '@emilia-protocol/verify/revocation.js' with a workspace-relative
+    // fallback, and turns a resolution failure into a fail-closed refusal.
+    // Pin the PACKAGE path itself so a refusal below can never be silently
+    // caused by an unresolvable router.
+    const router = await import('@emilia-protocol/verify/revocation.js');
+    assert.equal(typeof router.verifyRevocationStatement, 'function');
+    assert.equal(REVOCATION_V2_VERSION, 'EP-REVOCATION-v2');
+  });
+
   it('valid v2 roundtrip: verifies under a pin carrying both halves', async () => {
     const revoker = revokerFixture();
     const target = deriveTrustProgramRevocationTarget(derivationInput());
@@ -148,8 +163,11 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
     const result = await verifyTrustProgramRevocationStatement({
       ...derivationInput(), statement: stmt, revokerKeys: revoker.hybridPins, now: NOW,
     });
-    expect(result.valid).toBe(true);
-    expect(result.errors).toEqual([]);
+    assert.equal(result.valid, true);
+    assert.deepEqual(result.errors, []);
+    // The v2 leg really ran: the router reports the hybrid checks as passed,
+    // never a v1-only verdict smuggled through the any-version entry point.
+    assert.equal(result.checks.portable_verifier_completed, true);
   });
 
   it('the router also accepts a v1 statement unchanged (either version, per relying-party pin)', async () => {
@@ -159,7 +177,7 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
     const result = await verifyTrustProgramRevocationStatement({
       ...derivationInput(), statement: stmt, revokerKeys: revoker.classicalOnlyPins, now: NOW,
     });
-    expect(result.valid).toBe(true);
+    assert.equal(result.valid, true);
   });
 
   it('v1-refuses-v2: the existing SYNC verifier is untouched and refuses a v2 statement on the version marker', async () => {
@@ -171,10 +189,10 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
     const result = verifyTrustProgramRevocation({
       ...derivationInput(), statement: stmt as any, revokerKeys: revoker.classicalOnlyPins, now: NOW,
     });
-    expect(result.valid).toBe(false);
+    assert.equal(result.valid, false);
     // Refused at statement_structure (v1's PROOF_KEYS do not match v2's
     // proof shape) -- never mistaken for a signature or binding failure.
-    expect(result.checks.statement_structure).toBe(false);
+    assert.equal(result.checks.statement_structure, false);
   });
 
   it('a v2 statement from a revoker pinned WITHOUT the ML-DSA half refuses (never partial credit for one leg)', async () => {
@@ -184,7 +202,7 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
     const result = await verifyTrustProgramRevocationStatement({
       ...derivationInput(), statement: stmt, revokerKeys: revoker.classicalOnlyPins, now: NOW,
     });
-    expect(result.valid).toBe(false);
+    assert.equal(result.valid, false);
   });
 
   it('stripped leg: dropping the ML-DSA signature while keeping required_algorithms full is refused, never a classical-only pass', async () => {
@@ -198,7 +216,7 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
     const result = await verifyTrustProgramRevocationStatement({
       ...derivationInput(), statement: stripped, revokerKeys: revoker.hybridPins, now: NOW,
     });
-    expect(result.valid).toBe(false);
+    assert.equal(result.valid, false);
   });
 
   it('narrowed set: claiming required_algorithms=["Ed25519"] only is refused structurally, not silently accepted', async () => {
@@ -222,7 +240,7 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
     const result = await verifyTrustProgramRevocationStatement({
       ...derivationInput(), statement: narrowed, revokerKeys: revoker.hybridPins, now: NOW,
     });
-    expect(result.valid).toBe(false);
+    assert.equal(result.valid, false);
   });
 
   it('wrong-length signature on the ML-DSA leg refuses, never crashes', async () => {
@@ -238,9 +256,10 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
         )),
       },
     };
-    await expect(verifyTrustProgramRevocationStatement({
+    const result = await verifyTrustProgramRevocationStatement({
       ...derivationInput(), statement: tampered, revokerKeys: revoker.hybridPins, now: NOW,
-    })).resolves.toMatchObject({ valid: false });
+    });
+    assert.equal(result.valid, false);
   });
 
   it('Ed448-masquerade: a non-Ed25519 SPKI presented as the classical half refuses, never verified under the wrong curve', async () => {
@@ -253,7 +272,7 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
     const result = await verifyTrustProgramRevocationStatement({
       ...derivationInput(), statement: masqueraded, revokerKeys: revoker.hybridPins, now: NOW,
     });
-    expect(result.valid).toBe(false);
+    assert.equal(result.valid, false);
   });
 
   it('hostile input (prototype-bearing statement, throwing proxy) never throws and always refuses', async () => {
@@ -261,14 +280,16 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
     const target = deriveTrustProgramRevocationTarget(derivationInput());
     const stmt = await revoker.v2Statement(target);
     const inherited = Object.assign(Object.create({ target_id: 'inherited' }), stmt);
-    await expect(verifyTrustProgramRevocationStatement({
+    const inheritedResult = await verifyTrustProgramRevocationStatement({
       ...derivationInput(), statement: inherited, revokerKeys: revoker.hybridPins, now: NOW,
-    })).resolves.toMatchObject({ valid: false });
+    });
+    assert.equal(inheritedResult.valid, false);
 
     const throwing = new Proxy(stmt, { get() { throw new Error('hostile'); } });
-    await expect(verifyTrustProgramRevocationStatement({
+    const throwingResult = await verifyTrustProgramRevocationStatement({
       ...derivationInput(), statement: throwing, revokerKeys: revoker.hybridPins, now: NOW,
-    })).resolves.toMatchObject({ valid: false });
+    });
+    assert.equal(throwingResult.valid, false);
   });
 
   it('applyTrustProgramRevocationStatement invalidates an unclaimed instance on a valid hybrid statement', async () => {
@@ -289,10 +310,10 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
       ...derivationInput(), statement: stmt, revokerKeys: revoker.hybridPins, now: NOW,
       expectedRevision: 3, kernel,
     });
-    expect(result.verified).toBe(true);
-    expect(result.applied).toBe(true);
-    expect(result.disposition).toBe('invalidated_before_claim');
-    expect(invalidateCalls).toBe(1);
+    assert.equal(result.verified, true);
+    assert.equal(result.applied, true);
+    assert.equal(result.disposition, 'invalidated_before_claim');
+    assert.equal(invalidateCalls, 1);
   });
 
   it('applyTrustProgramRevocationStatement never invalidates on a refused (unpinned PQ leg) statement', async () => {
@@ -313,9 +334,9 @@ describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation targe
       ...derivationInput(), statement: stmt, revokerKeys: revoker.classicalOnlyPins, now: NOW,
       expectedRevision: 3, kernel,
     });
-    expect(result.verified).toBe(false);
-    expect(result.applied).toBe(false);
-    expect(result.disposition).toBe('refused');
-    expect(invalidateCalls).toBe(0);
+    assert.equal(result.verified, false);
+    assert.equal(result.applied, false);
+    assert.equal(result.disposition, 'refused');
+    assert.equal(invalidateCalls, 0);
   });
 });

@@ -14,6 +14,7 @@ import crypto from 'node:crypto';
 // tests and compiled package consumers.
 // @ts-ignore declarations live behind the compatibility entry point.
 import { canonicalize } from '../execution-binding.js';
+import { signAgileSet, verifyAgileSignatureSet, } from '@emilia-protocol/verify/pq-signature-agility';
 export const CONTEXT_PROJECTION_COMPONENT = 'ep-memory-projection';
 export const TRUSTED_CONTEXT_BINDING_VERSION = 'EP-TRUSTED-CONTEXT-BINDING-v1';
 const BINDING_DOMAIN = Buffer.from('EP-TRUSTED-CONTEXT-BINDING-v1\0', 'utf8');
@@ -555,6 +556,204 @@ export function verifyTrustedContextContinuity({ verifiedContext, execution, out
         outcome_digest: outcome.outcome_digest,
     });
 }
+// ===========================================================================
+// EP-TRUSTED-CONTEXT-BINDING-v2 -- the hybrid (Ed25519 + ML-DSA-65) binding
+// ===========================================================================
+// REFERENCE-PATTERN MIGRATION, following the five moves in "PATTERN: the
+// reference hybrid migration" (EP-REVOCATION-v2 is the template) in
+// docs/protocol/pq-hybrid-program.md:
+//   1. VERSION BUMP, NOT A FIELD BUMP. signTrustedContextBinding above (and
+//      the v1 signature check inside createTrustedContextEvaluator) are
+//      UNCHANGED. v2 takes a new `@version` marker; verifyTrustedContextBindingV2
+//      below refuses a v1 binding on that marker before inspecting any
+//      signature, and nothing in the v1 evaluator path accepts a v2 binding
+//      (its exact-keys check on `proof` rejects the set-shaped v2 proof).
+//   2. SET SHAPE. `proof.signatures` is an EP-SIG-AGILITY-v1 AgileSignature
+//      array ({ alg, sig, key_id? }), reused verbatim from
+//      packages/verify/src/pq-signature-agility.ts.
+//   3. ANTI-STRIPPING BYTES. `required_algorithms` is INSIDE the signed
+//      bytes (trustedContextBindingV2SigningInput); the verifier rebuilds
+//      them from the REGISTERED set and the binding's own PRESENTED fields,
+//      never from what the proof claims.
+//   4. V1 COMPATIBILITY. The v1 binding signature check stays synchronous
+//      and untouched (inside createTrustedContextEvaluator); v2 verification
+//      is a SEPARATE async entry point (ML-DSA verification is async).
+//   5. NAMED REFUSALS. Nothing throws on caller input; an absent ML-DSA
+//      backend is a refusal, never a skipped check and never a pass on the
+//      surviving classical leg.
+//
+// SCOPE: this is the binding artifact's signature verification, mirroring
+// what verifyContextBinding checks about the binding itself (schema, digest
+// bindings to the caller-supplied projection/action/policy/nonce, validity
+// window, and the signature). It intentionally does NOT reach into the
+// binder-key DIRECTORY abstraction createTrustedContextEvaluator owns
+// (status/revocation/valid_from/valid_to lookups by key id): a v2 caller
+// pins BOTH key halves directly, the same discipline EP-REVOCATION-v2 uses,
+// and is responsible for having already excluded a revoked or inactive key
+// from that pin before calling this verifier.
+export const TRUSTED_CONTEXT_BINDING_V2_VERSION = 'EP-TRUSTED-CONTEXT-BINDING-v2';
+export const TRUSTED_CONTEXT_BINDING_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+const BINDING_V2_KEYS = new Set([
+    '@version', 'provider_id', 'provider_profile', 'projection_record_digest',
+    'projection_digest', 'action_subject_digest', 'policy_digest', 'nonce',
+    'issued_at', 'expires_at', 'binder', 'proof',
+]);
+const BINDER_V2_KEYS = new Set(['id', 'key_id', 'pq_key_id']);
+const PROOF_V2_KEYS = new Set(['required_algorithms', 'signatures']);
+function algorithmSetMatchesTrustedContextV2(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === TRUSTED_CONTEXT_BINDING_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === TRUSTED_CONTEXT_BINDING_V2_REQUIRED_ALGORITHMS[i]);
+}
+/**
+ * Bytes BOTH legs sign: the domain tag, the unsigned binding fields, and the
+ * committed required-algorithm set. Recomputed independently by the verifier
+ * from the PRESENTED unsigned fields and the REGISTERED set.
+ */
+function trustedContextBindingV2SigningInput(binding, requiredAlgorithms = TRUSTED_CONTEXT_BINDING_V2_REQUIRED_ALGORITHMS) {
+    if (!algorithmSetMatchesTrustedContextV2(requiredAlgorithms)) {
+        throw new Error('trustedContextBindingV2SigningInput: algorithm set is not the registered EP-TRUSTED-CONTEXT-BINDING-v2 set');
+    }
+    const { proof: _proof, ...unsigned } = binding;
+    return Buffer.concat([
+        Buffer.from('EP-TRUSTED-CONTEXT-BINDING-v2\0', 'utf8'),
+        Buffer.from(canonicalize({ ...unsigned, required_algorithms: [...requiredAlgorithms] }), 'utf8'),
+    ]);
+}
+/** Mint a hybrid (Ed25519 + ML-DSA-65) context-to-action binding. */
+export async function signTrustedContextBindingV2(input, options = {}) {
+    const subjectDigest = trustedContextActionSubjectDigest(input.action);
+    if (!subjectDigest || !DIGEST.test(input.policyDigest)
+        || !boundedString(input.providerId, 128)
+        || !boundedString(input.providerProfile, 256)
+        || !boundedString(input.nonce, 256)
+        || !boundedString(input.binderId, 256)
+        || !boundedString(input.keyId, 256)
+        || !boundedString(input.pqKeyId, 256)
+        || !canonicalInstant(input.issuedAt)
+        || !canonicalInstant(input.expiresAt)
+        || Date.parse(input.expiresAt) <= Date.parse(input.issuedAt)
+        || !isDataRecord(input.projectionRecord)
+        || !isDataRecord(input.projectionRecord.projection)
+        || !DIGEST.test(input.projectionRecord.projection.digest)) {
+        throw new TypeError('trusted context hybrid binding input invalid');
+    }
+    const unsigned = {
+        '@version': TRUSTED_CONTEXT_BINDING_V2_VERSION,
+        provider_id: input.providerId,
+        provider_profile: input.providerProfile,
+        projection_record_digest: canonicalContextRecordDigest(input.projectionRecord),
+        projection_digest: input.projectionRecord.projection.digest,
+        action_subject_digest: subjectDigest,
+        policy_digest: input.policyDigest,
+        nonce: input.nonce,
+        issued_at: canonicalInstant(input.issuedAt),
+        expires_at: canonicalInstant(input.expiresAt),
+        binder: { id: input.binderId, key_id: input.keyId, pq_key_id: input.pqKeyId },
+    };
+    const bytes = trustedContextBindingV2SigningInput(unsigned);
+    const signatures = await signAgileSet(new Uint8Array(bytes), [
+        { alg: 'Ed25519', private_key: input.privateKey instanceof crypto.KeyObject ? input.privateKey : crypto.createPrivateKey(input.privateKey), key_id: input.keyId },
+        { alg: 'ML-DSA-65', private_key: input.pqPrivateKey, key_id: input.pqKeyId },
+    ], options);
+    return Object.freeze({
+        ...unsigned,
+        proof: Object.freeze({
+            required_algorithms: [...TRUSTED_CONTEXT_BINDING_V2_REQUIRED_ALGORITHMS],
+            signatures,
+        }),
+    });
+}
+/**
+ * FAIL-CLOSED hybrid verify of one EP-TRUSTED-CONTEXT-BINDING-v2 artifact. A
+ * v2 binding NEVER verifies on one leg alone; an absent ML-DSA backend is a
+ * refusal, never a skipped check and never a pass on the surviving classical
+ * leg. See the SCOPE note above the version constant for what this does not
+ * check (binder-key directory status/revocation).
+ */
+export async function verifyTrustedContextBindingV2(binding, options) {
+    const refuse = (reason) => Object.freeze({ state: 'NOT_VERIFIED', reason, authorizes: false });
+    if (!isDataRecord(binding) || !exactKeys(binding, BINDING_V2_KEYS))
+        return refuse('context_binding_invalid');
+    if (binding['@version'] !== TRUSTED_CONTEXT_BINDING_V2_VERSION) {
+        return refuse(`unsupported_version: ${binding['@version']}`);
+    }
+    if (!boundedString(binding.provider_id, 128)
+        || !boundedString(binding.provider_profile, 256)
+        || !DIGEST.test(binding.projection_record_digest)
+        || !DIGEST.test(binding.projection_digest)
+        || !DIGEST.test(binding.action_subject_digest)
+        || !DIGEST.test(binding.policy_digest)
+        || !boundedString(binding.nonce, 256)
+        || !canonicalInstant(binding.issued_at)
+        || !canonicalInstant(binding.expires_at)
+        || !exactKeys(binding.binder, BINDER_V2_KEYS)
+        || !boundedString(binding.binder.id, 256)
+        || !boundedString(binding.binder.key_id, 256)
+        || !boundedString(binding.binder.pq_key_id, 256)
+        || !exactKeys(binding.proof, PROOF_V2_KEYS)
+        || !algorithmSetMatchesTrustedContextV2(binding.proof.required_algorithms)
+        || !Array.isArray(binding.proof.signatures)) {
+        return refuse('context_binding_invalid');
+    }
+    if (binding.projection_record_digest !== options.projectionRecordDigest
+        || binding.projection_digest !== options.projectionDigest
+        || binding.policy_digest !== options.policyDigest) {
+        return refuse('context_binding_mismatch');
+    }
+    if (binding.nonce !== options.expectedNonce)
+        return refuse('context_binding_nonce_mismatch');
+    const subjectDigest = trustedContextActionSubjectDigest(options.action);
+    if (!subjectDigest || binding.action_subject_digest !== subjectDigest) {
+        return refuse('action_context_binding_mismatch');
+    }
+    const issued = Date.parse(binding.issued_at);
+    const expires = Date.parse(binding.expires_at);
+    const now = Date.parse(options.verificationTime);
+    if (!Number.isFinite(now) || issued > now || now > expires)
+        return refuse('context_binding_expired');
+    const presented = new Set();
+    for (const s of binding.proof.signatures) {
+        if (!s || typeof s !== 'object' || typeof s.alg !== 'string')
+            return refuse('context_binding_invalid');
+        if (presented.has(s.alg))
+            return refuse('context_binding_duplicate_algorithm');
+        presented.add(s.alg);
+    }
+    for (const alg of TRUSTED_CONTEXT_BINDING_V2_REQUIRED_ALGORITHMS) {
+        if (!presented.has(alg))
+            return refuse(`context_binding_missing_${alg}_signature`);
+    }
+    for (const alg of presented) {
+        if (!TRUSTED_CONTEXT_BINDING_V2_REQUIRED_ALGORITHMS.includes(alg)) {
+            return refuse('context_binding_unexpected_algorithm');
+        }
+    }
+    let bytes;
+    try {
+        bytes = trustedContextBindingV2SigningInput(binding);
+    }
+    catch {
+        return refuse('context_binding_invalid');
+    }
+    let setResult;
+    try {
+        setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), binding.proof.signatures, [
+            { alg: 'Ed25519', public_key: options.pin.public_key },
+            { alg: 'ML-DSA-65', public_key: options.pin.pq_public_key },
+        ], { ...options, policy: 'hybrid_all', requiredAlgorithms: [...TRUSTED_CONTEXT_BINDING_V2_REQUIRED_ALGORITHMS] });
+    }
+    catch {
+        setResult = null;
+    }
+    if (setResult?.verified !== true) {
+        const reason = String(setResult?.reason ?? 'signature_set_unverified');
+        return refuse(reason.includes('pq_backend_unavailable')
+            ? 'context_binding_pq_backend_unavailable'
+            : 'context_binding_signature_invalid');
+    }
+    return Object.freeze({ state: 'VERIFIED', reason: null, authorizes: false });
+}
 export default Object.freeze({
     CONTEXT_PROJECTION_COMPONENT,
     TRUSTED_CONTEXT_BINDING_VERSION,
@@ -566,5 +765,8 @@ export default Object.freeze({
     createTrustedContextEvaluator,
     createTrustedContextAecVerifier,
     verifyTrustedContextContinuity,
+    TRUSTED_CONTEXT_BINDING_V2_VERSION,
+    signTrustedContextBindingV2,
+    verifyTrustedContextBindingV2,
 });
 //# sourceMappingURL=trusted-context.js.map

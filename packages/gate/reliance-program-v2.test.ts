@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // EP-RELIANCE-PROGRAM-v2 / EP-RELIANCE-PROGRAM-SOURCE-v2 -- hostile matrix for
-// the hybrid relying-party program source. New file, co-located under src/ so
-// vitest exercises this package's TS source directly (no build step needed);
-// packages/gate/reliance-program.test.js (dist-backed, node --test) keeps
-// covering v1 and is untouched.
-import { describe, it, expect } from 'vitest';
+// the hybrid relying-party program source. Package-root node:test file
+// importing the compatibility shim './reliance-program.js' (which re-exports
+// ./dist/reliance-program.js), matching this package's convention;
+// packages/gate/reliance-program.test.js keeps covering v1 and is untouched.
+import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { describe, it } from 'node:test';
 
 import { hashCanonical } from './execution-binding.js';
 import { TRUST_PROGRAM_V2_VERSION } from './trust-program.js';
@@ -106,15 +107,17 @@ async function signed() {
 describe('EP-RELIANCE-PROGRAM-v2 hybrid relying-party source', () => {
   it('valid v2 roundtrip: signs, verifies, and compiles to a v2 Trust Program', async () => {
     const { issuer, envelope } = await signed();
-    expect(envelope['@version']).toBe(RELIANCE_PROGRAM_V2_VERSION);
-    expect(envelope.source['@version']).toBe(RELIANCE_PROGRAM_SOURCE_V2_VERSION);
-    expect(envelope.proof.required_algorithms).toEqual([...RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS]);
-    expect(envelope.proof.signatures.map((s: any) => s.alg))
-      .toEqual([...RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS]);
-    expect(envelope.source_digest).toBe(relianceProgramSourceV2Digest(envelope.source));
+    assert.equal(envelope['@version'], RELIANCE_PROGRAM_V2_VERSION);
+    assert.equal(envelope.source['@version'], RELIANCE_PROGRAM_SOURCE_V2_VERSION);
+    assert.deepEqual(envelope.proof.required_algorithms, [...RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS]);
+    assert.deepEqual(
+      envelope.proof.signatures.map((s: any) => s.alg),
+      [...RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS],
+    );
+    assert.equal(envelope.source_digest, relianceProgramSourceV2Digest(envelope.source));
 
     const verified = await verifyRelianceProgramV2(envelope, { trustedKeys: issuer.hybridPin });
-    expect(verified).toEqual({
+    assert.deepEqual(verified, {
       valid: true,
       reason: null,
       source_digest: envelope.source_digest,
@@ -126,9 +129,9 @@ describe('EP-RELIANCE-PROGRAM-v2 hybrid relying-party source', () => {
       trustedKeys: issuer.hybridPin,
       profiles: [profile()],
     });
-    expect(compiled.version).toBe(RELIANCE_PROGRAM_V2_VERSION);
-    expect(compiled.program['@version']).toBe(TRUST_PROGRAM_V2_VERSION);
-    expect(compiled.trace).toEqual([{
+    assert.equal(compiled.version, RELIANCE_PROGRAM_V2_VERSION);
+    assert.equal(compiled.program['@version'], TRUST_PROGRAM_V2_VERSION);
+    assert.deepEqual(compiled.trace, [{
       stage_id: 'licensed-review',
       requirement_id: 'admissibility-01',
       profile_id: 'rp:admissibility:human-review:v1',
@@ -141,33 +144,35 @@ describe('EP-RELIANCE-PROGRAM-v2 hybrid relying-party source', () => {
     // No await: verifyRelianceProgram remains synchronous and untouched. A v2
     // envelope carries no `signature` member for it to inspect at all.
     const result = verifyRelianceProgram(envelope, { trustedKeys: issuer.classicalPin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('envelope_schema_invalid');
-    expect(() => compileRelianceProgram(envelope, { trustedKeys: issuer.classicalPin, profiles: [profile()] }))
-      .toThrow(RelianceProgramValidationError);
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'envelope_schema_invalid');
+    assert.throws(
+      () => compileRelianceProgram(envelope, { trustedKeys: issuer.classicalPin, profiles: [profile()] }),
+      RelianceProgramValidationError,
+    );
   });
 
   it('the router keeps the exact v1 verdict for a v1 envelope and hybrid-checks a v2 one', async () => {
     const issuer = issuerFixture();
     const v1 = signRelianceProgram(source(RELIANCE_PROGRAM_SOURCE_VERSION), issuer.ed.privateKey);
-    expect(v1['@version']).toBe(RELIANCE_PROGRAM_VERSION);
+    assert.equal(v1['@version'], RELIANCE_PROGRAM_VERSION);
     const routedV1 = await verifyRelianceProgramEnvelope(v1, {
       trustedKeys: {
         [KEY_ID]: { relying_party_id: RP_ID, public_key: issuer.keys.ed.publicKey },
       },
     });
-    expect(routedV1.valid).toBe(true);
+    assert.equal(routedV1.valid, true);
 
     const v2 = await signRelianceProgramV2(source(), issuer.keys);
     const routedV2 = await verifyRelianceProgramEnvelope(v2, { trustedKeys: issuer.hybridPin });
-    expect(routedV2.valid).toBe(true);
+    assert.equal(routedV2.valid, true);
   });
 
   it('a key_id pinned WITHOUT the ML-DSA half never satisfies a v2 pin', async () => {
     const { issuer, envelope } = await signed();
     const result = await verifyRelianceProgramV2(envelope, { trustedKeys: issuer.classicalPin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('relying_party_identity_mismatch');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'relying_party_identity_mismatch');
   });
 
   it('stripped leg: dropping the ML-DSA signature refuses, never a classical-only pass', async () => {
@@ -180,8 +185,8 @@ describe('EP-RELIANCE-PROGRAM-v2 hybrid relying-party source', () => {
       },
     };
     const result = await verifyRelianceProgramV2(stripped, { trustedKeys: issuer.hybridPin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('signature_leg_missing');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'signature_leg_missing');
   });
 
   it('narrowed set: claiming required_algorithms=["Ed25519"] is refused structurally AND cryptographically', async () => {
@@ -194,8 +199,10 @@ describe('EP-RELIANCE-PROGRAM-v2 hybrid relying-party source', () => {
         signatures: envelope.proof.signatures.filter((s: any) => s.alg === 'Ed25519'),
       },
     };
-    expect((await verifyRelianceProgramV2(narrowed, { trustedKeys: issuer.hybridPin })).reason)
-      .toBe('algorithm_set_unsupported');
+    assert.equal(
+      (await verifyRelianceProgramV2(narrowed, { trustedKeys: issuer.hybridPin })).reason,
+      'algorithm_set_unsupported',
+    );
 
     // Independently: the surviving Ed25519 signature does not verify over the
     // bytes rebuilt from the REGISTERED set, because the set is inside them.
@@ -203,8 +210,10 @@ describe('EP-RELIANCE-PROGRAM-v2 hybrid relying-party source', () => {
       ...narrowed,
       proof: { ...narrowed.proof, required_algorithms: [...RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS] },
     };
-    expect((await verifyRelianceProgramV2(setIntact, { trustedKeys: issuer.hybridPin })).reason)
-      .toBe('signature_leg_missing');
+    assert.equal(
+      (await verifyRelianceProgramV2(setIntact, { trustedKeys: issuer.hybridPin })).reason,
+      'signature_leg_missing',
+    );
   });
 
   it('wrong-length signature on the ML-DSA leg refuses, never crashes', async () => {
@@ -219,8 +228,8 @@ describe('EP-RELIANCE-PROGRAM-v2 hybrid relying-party source', () => {
       },
     };
     const result = await verifyRelianceProgramV2(tampered, { trustedKeys: issuer.hybridPin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toContain('signature_invalid');
+    assert.equal(result.valid, false);
+    assert.ok(String(result.reason).includes('signature_invalid'));
   });
 
   it('Ed448-masquerade: a non-Ed25519 SPKI pinned as the classical half is refused, never verified', async () => {
@@ -236,8 +245,8 @@ describe('EP-RELIANCE-PROGRAM-v2 hybrid relying-party source', () => {
       },
     };
     const result = await verifyRelianceProgramV2(masqueraded, { trustedKeys: pin });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('relying_party_key_untrusted');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'relying_party_key_untrusted');
   });
 
   it('an absent ML-DSA backend is pq_backend_unavailable, never a pass on the Ed25519 leg', async () => {
@@ -246,8 +255,8 @@ describe('EP-RELIANCE-PROGRAM-v2 hybrid relying-party source', () => {
       trustedKeys: issuer.hybridPin,
       mldsaBackend: {},
     });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toContain('pq_backend_unavailable');
+    assert.equal(result.valid, false);
+    assert.ok(String(result.reason).includes('pq_backend_unavailable'));
   });
 
   it('a tampered source is caught by the independently recomputed digest', async () => {
@@ -255,26 +264,28 @@ describe('EP-RELIANCE-PROGRAM-v2 hybrid relying-party source', () => {
     const tampered = structuredClone(envelope);
     tampered.source.action_digest = D('9');
     const result = await verifyRelianceProgramV2(tampered, { trustedKeys: issuer.hybridPin });
-    expect(result.reason).toBe('source_digest_mismatch');
+    assert.equal(result.reason, 'source_digest_mismatch');
   });
 
   it('a v1-marked source cannot be signed or verified under the v2 profile', async () => {
     const issuer = issuerFixture();
-    await expect(signRelianceProgramV2(source(RELIANCE_PROGRAM_SOURCE_VERSION), issuer.keys))
-      .rejects.toThrow(RelianceProgramValidationError);
+    await assert.rejects(
+      signRelianceProgramV2(source(RELIANCE_PROGRAM_SOURCE_VERSION), issuer.keys),
+      RelianceProgramValidationError,
+    );
     const envelope = await signRelianceProgramV2(source(), issuer.keys) as any;
     const downgraded = structuredClone(envelope);
     downgraded.source['@version'] = RELIANCE_PROGRAM_SOURCE_VERSION;
-    expect((await verifyRelianceProgramV2(downgraded, { trustedKeys: issuer.hybridPin })).reason)
-      .toBe('source_schema_invalid');
+    assert.equal(
+      (await verifyRelianceProgramV2(downgraded, { trustedKeys: issuer.hybridPin })).reason,
+      'source_schema_invalid',
+    );
   });
 
   it('never throws on hostile input', async () => {
     for (const bad of [null, undefined, '', 42, [], { '@version': RELIANCE_PROGRAM_V2_VERSION }]) {
-      await expect(verifyRelianceProgramV2(bad, { trustedKeys: {} }))
-        .resolves.toMatchObject({ valid: false });
-      await expect(verifyRelianceProgramEnvelope(bad, { trustedKeys: {} }))
-        .resolves.toMatchObject({ valid: false });
+      assert.equal((await verifyRelianceProgramV2(bad, { trustedKeys: {} })).valid, false);
+      assert.equal((await verifyRelianceProgramEnvelope(bad, { trustedKeys: {} })).valid, false);
     }
   });
 });

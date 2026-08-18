@@ -9,8 +9,9 @@
  */
 import crypto from 'node:crypto';
 import { canonicalize, hashCanonical } from './execution-binding.js';
-import { TRUST_PROGRAM_VERSION, trustProgramDigest, validateTrustProgram, } from './trust-program.js';
+import { TRUST_PROGRAM_VERSION, TRUST_PROGRAM_V2_VERSION, trustProgramDigest, trustProgramV2Digest, validateTrustProgram, validateTrustProgramV2, } from './trust-program.js';
 import { createPinnedEvidenceAdapter } from './trust-program-adapters.js';
+import { signAgileSet, verifyAgileSignatureSet, ML_DSA_65_PUBLIC_KEY_BYTES, } from '@emilia-protocol/verify/pq-signature-agility';
 export const RELIANCE_PROGRAM_SOURCE_VERSION = 'EP-RELIANCE-PROGRAM-SOURCE-v1';
 export const RELIANCE_PROGRAM_VERSION = 'EP-RELIANCE-PROGRAM-v1';
 export const RELIANCE_PROGRAM_SIGNATURE_ALGORITHM = 'Ed25519';
@@ -111,13 +112,21 @@ function validateRule(rule, profileCount) {
     return Number.isSafeInteger(rule.required) && rule.required >= 1 && rule.required <= profileCount;
 }
 function validateSource(value) {
+    validateSourceUnder(value, RELIANCE_PROGRAM_SOURCE_VERSION);
+}
+/**
+ * ONE source-validation body for both versions. validateSource (v1) and the v2
+ * path differ ONLY in the `@version` marker they accept, so the closed schema,
+ * bindings, time window, stage rules, and consequence-owner rules cannot drift.
+ */
+function validateSourceUnder(value, expectedVersion) {
     try {
         canonicalize(value);
     }
     catch {
         refuse('source_not_canonical', 'reliance program source is not canonicalizable JSON');
     }
-    if (!exact(value, SOURCE_KEYS) || value['@version'] !== RELIANCE_PROGRAM_SOURCE_VERSION
+    if (!exact(value, SOURCE_KEYS) || value['@version'] !== expectedVersion
         || !exact(value.relying_party, RELYING_PARTY_KEYS)) {
         refuse('source_schema_invalid', 'reliance program source is not a closed v1 object');
     }
@@ -379,7 +388,17 @@ export function compileRelianceProgram(envelope, { trustedKeys = {}, profiles = 
     if (verified.valid !== true) {
         refuse(verified.reason ?? 'source_unverified', 'reliance program source did not verify');
     }
-    const signed = envelope;
+    return compileVerifiedSource(envelope, verified, profiles, RELIANCE_PROGRAM_VERSION);
+}
+/**
+ * ONE compilation body for both versions. The v1 and v2 compilers differ ONLY
+ * in which Trust Program profile marker they emit and which validator checks
+ * the result, so the stage/requirement mapping, the profile pin check, and the
+ * trace cannot drift between them.
+ */
+function compileVerifiedSource(signed, verified, profiles, resultVersion) {
+    const hybrid = resultVersion === RELIANCE_PROGRAM_V2_VERSION;
+    const programVersion = hybrid ? TRUST_PROGRAM_V2_VERSION : TRUST_PROGRAM_VERSION;
     const source = canonicalCopy(signed.source);
     const catalog = profileMap(profiles);
     const trace = [];
@@ -410,7 +429,7 @@ export function compileRelianceProgram(envelope, { trustedKeys = {}, profiles = 
         }),
     }));
     const program = {
-        '@version': TRUST_PROGRAM_VERSION,
+        '@version': programVersion,
         program_id: source.program_id,
         version: source.version,
         root_caid: source.root_caid,
@@ -420,18 +439,330 @@ export function compileRelianceProgram(envelope, { trustedKeys = {}, profiles = 
         stages,
         execution: canonicalCopy(source.execution),
     };
-    const checked = validateTrustProgram(program);
+    const checked = hybrid ? validateTrustProgramV2(program) : validateTrustProgram(program);
     if (!checked.valid) {
         refuse('compiled_program_invalid', `compiled Trust Program is invalid: ${checked.reason}`);
     }
     return deepFreeze({
-        version: RELIANCE_PROGRAM_VERSION,
+        version: resultVersion,
         source_digest: verified.source_digest,
         relying_party_id: verified.relying_party_id,
         program,
-        program_digest: trustProgramDigest(program),
+        program_digest: hybrid ? trustProgramV2Digest(program) : trustProgramDigest(program),
         trace,
         claim_boundary: 'Compilation proves a pinned RP program maps to the existing Trust Program; it does not prove evidence sufficiency, authorization, or execution.',
     });
+}
+// ===========================================================================
+// EP-RELIANCE-PROGRAM-SOURCE-v2 / EP-RELIANCE-PROGRAM-v2
+// the hybrid (Ed25519 + ML-DSA-65) relying-party program source
+// ===========================================================================
+/**
+ * Copies the five-move EP-REVOCATION-v2 template
+ * (packages/verify/src/revocation.ts) onto the customer-owned Reliance Program
+ * source, and moves the SOURCE marker with the envelope: an
+ * EP-RELIANCE-PROGRAM-v2 envelope carries an EP-RELIANCE-PROGRAM-SOURCE-v2
+ * source, and compiles to an EP-GATE-TRUST-PROGRAM-PROFILE-v2 program.
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. `signature: {algorithm, key_id, value}`
+ *    becomes `proof: {profile, required_algorithms, key_id, public_key,
+ *    pq_key_id, pq_public_key, signatures}` -- a wire-format change, so the
+ *    envelope takes a new `@version` (-v1 -> -v2), and the source it wraps
+ *    takes one too, because the source's own `@version` is inside the signed
+ *    bytes. verifyRelianceProgram above is UNCHANGED: handed a v2 envelope it
+ *    refuses at `envelope_schema_invalid`, structurally, because a v2 envelope
+ *    carries no `signature` member for it to inspect at all. It does not
+ *    crash, and it never accepts a hybrid envelope on the strength of the one
+ *    leg it understands.
+ * 2. SET SHAPE. `proof.signatures` is an EP-SIG-AGILITY-v1 AgileSignature
+ *    array ({ alg, sig, key_id? }), one entry per registered algorithm, in the
+ *    registered order, reused verbatim. Ed25519 keeps its base64url SPKI DER
+ *    public key; ML-DSA-65 carries raw base64url public key bytes.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is INSIDE the signed bytes
+ *    (relianceProgramV2SigningBytes). Drop the ML-DSA leg and narrow the set
+ *    to ["Ed25519"] and the surviving Ed25519 signature no longer verifies.
+ *    Leave the set intact and the missing leg is a structural refusal. The
+ *    verifier rebuilds the bytes from the REGISTERED set and the source it
+ *    independently re-validated and re-digested.
+ * 4. V1 COMPATIBILITY. verifyRelianceProgram and compileRelianceProgram stay
+ *    SYNCHRONOUS and untouched. verifyRelianceProgramV2 /
+ *    compileRelianceProgramV2 are SEPARATE async entry points (ML-DSA
+ *    verification is inherently async); verifyRelianceProgramEnvelope routes
+ *    on `@version` for callers holding a mixed bag.
+ * 5. NAMED REFUSALS. Verification never throws on caller input; every failure
+ *    is `{valid:false, reason}` with the same reason vocabulary as v1 plus the
+ *    hybrid-specific ones. An absent ML-DSA backend surfaces as
+ *    `pq_backend_unavailable`, never a skipped check and never a pass on the
+ *    classical leg. Compilation keeps v1's throw-on-refusal contract, because
+ *    a compiler is issuer-side.
+ *
+ * HONEST BOUNDARY, UNCHANGED FROM V1: compilation proves a pinned RP program
+ * maps to the existing Trust Program. It does not prove evidence sufficiency,
+ * authorization, or execution. The ML-DSA-65 backend is @noble/post-quantum's
+ * pure-JS FIPS 204 implementation, not independently audited and not a FIPS
+ * validated module; signing or verifying under this profile is not a
+ * certification claim, and this profile is opt-in.
+ */
+export const RELIANCE_PROGRAM_SOURCE_V2_VERSION = 'EP-RELIANCE-PROGRAM-SOURCE-v2';
+export const RELIANCE_PROGRAM_V2_VERSION = 'EP-RELIANCE-PROGRAM-v2';
+/** The registered required algorithm set, in canonical order. */
+export const RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+const DOMAIN_V2 = `${RELIANCE_PROGRAM_V2_VERSION}\0`;
+const ENVELOPE_V2_KEYS = new Set(['@version', 'source', 'source_digest', 'proof']);
+const PROOF_V2_KEYS = new Set([
+    'profile', 'required_algorithms', 'key_id', 'public_key',
+    'pq_key_id', 'pq_public_key', 'signatures',
+]);
+const TRUSTED_SIGNER_V2_KEYS = new Set(['relying_party_id', 'public_key', 'pq_public_key']);
+function relianceV2AlgorithmSetRegistered(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS[i]);
+}
+/** ML-DSA-65 public-key identifier: the SHA-256 of the raw public key bytes. */
+function reliancePqKeyId(publicKeyRawB64u) {
+    try {
+        if (typeof publicKeyRawB64u !== 'string' || publicKeyRawB64u.length === 0)
+            return '';
+        const raw = Buffer.from(publicKeyRawB64u, 'base64url');
+        if (raw.length !== ML_DSA_65_PUBLIC_KEY_BYTES || raw.toString('base64url') !== publicKeyRawB64u)
+            return '';
+        return `ep:reliance-program-key:ml-dsa-65:sha256:${crypto.createHash('sha256').update(raw).digest('hex')}`;
+    }
+    catch {
+        return '';
+    }
+}
+function relianceAgilityPassthrough(opts) {
+    const out = {};
+    if (opts?.mldsaBackend !== undefined)
+        out.mldsaBackend = opts.mldsaBackend;
+    if (opts?.mldsaBackendLoader !== undefined)
+        out.mldsaBackendLoader = opts.mldsaBackendLoader;
+    return out;
+}
+/**
+ * The bytes BOTH legs sign: the same domain-separated canonical source as v1
+ * under the v2 domain tag, plus the committed `required_algorithms` set.
+ * Recomputed independently by the verifier from the PRESENTED source and the
+ * REGISTERED set. See move 3 above.
+ */
+export function relianceProgramV2SigningBytes(source, requiredAlgorithms = RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS) {
+    if (!relianceV2AlgorithmSetRegistered(requiredAlgorithms)) {
+        throw new TypeError('relianceProgramV2SigningBytes: algorithm set is not the registered EP-RELIANCE-PROGRAM-v2 set');
+    }
+    return Buffer.concat([
+        Buffer.from(DOMAIN_V2, 'utf8'),
+        Buffer.from(canonicalize({ source, required_algorithms: [...requiredAlgorithms] }), 'utf8'),
+    ]);
+}
+/** Digest a v2 relying-party source. Refuses an invalid or v1-marked source. */
+export function relianceProgramSourceV2Digest(source) {
+    validateSourceUnder(source, RELIANCE_PROGRAM_SOURCE_V2_VERSION);
+    return digest(source);
+}
+/**
+ * Sign a v2 source under BOTH registered algorithms. Throws on an invalid
+ * source, malformed keys, or an unavailable ML-DSA backend: an envelope
+ * missing the ML-DSA leg must never be emitted, only refused.
+ */
+export async function signRelianceProgramV2(source, keys) {
+    validateSourceUnder(source, RELIANCE_PROGRAM_SOURCE_V2_VERSION);
+    if (!keys?.ed?.privateKey || !keys?.pq?.secretKey || typeof keys?.pq?.publicKey !== 'string') {
+        refuse('signing_key_invalid', 'reliance program v2 requires ed.privateKey, pq.secretKey, and pq.publicKey');
+    }
+    const edKey = keys.ed.privateKey instanceof crypto.KeyObject
+        ? keys.ed.privateKey : crypto.createPrivateKey(keys.ed.privateKey);
+    if (edKey.asymmetricKeyType !== 'ed25519') {
+        refuse('signing_key_invalid', 'reliance program classical signing key must be Ed25519');
+    }
+    const pqKeyId = reliancePqKeyId(keys.pq.publicKey);
+    if (!pqKeyId) {
+        refuse('signing_key_invalid', 'reliance program ML-DSA-65 public key must be raw base64url bytes');
+    }
+    const frozenSource = canonicalCopy(source);
+    const requiredAlgorithms = [...RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS];
+    const bytes = relianceProgramV2SigningBytes(frozenSource, requiredAlgorithms);
+    const signingKeys = [
+        { alg: 'Ed25519', private_key: edKey },
+        { alg: 'ML-DSA-65', private_key: keys.pq.secretKey },
+    ];
+    const signatures = await signAgileSet(new Uint8Array(bytes), signingKeys);
+    const edPublicKey = keys.ed.publicKey ?? crypto.createPublicKey(edKey)
+        .export({ type: 'spki', format: 'der' }).toString('base64url');
+    return deepFreeze({
+        '@version': RELIANCE_PROGRAM_V2_VERSION,
+        source: frozenSource,
+        source_digest: digest(frozenSource),
+        proof: {
+            profile: RELIANCE_PROGRAM_V2_VERSION,
+            required_algorithms: requiredAlgorithms,
+            key_id: frozenSource.relying_party.key_id,
+            public_key: edPublicKey,
+            pq_key_id: pqKeyId,
+            pq_public_key: keys.pq.publicKey,
+            signatures,
+        },
+    });
+}
+/**
+ * FAIL-CLOSED hybrid verifier for one EP-RELIANCE-PROGRAM-v2 envelope. Never
+ * throws on caller input; an envelope NEVER verifies on one leg alone. The
+ * result shape matches verifyRelianceProgram exactly so callers can route.
+ */
+export async function verifyRelianceProgramV2(envelope, { trustedKeys = {}, mldsaBackend, mldsaBackendLoader } = {}) {
+    try {
+        // 1. Version marker + closed shape.
+        if (!exact(envelope, ENVELOPE_V2_KEYS) || envelope['@version'] !== RELIANCE_PROGRAM_V2_VERSION
+            || !exact(envelope.proof, PROOF_V2_KEYS)
+            || envelope.proof.profile !== RELIANCE_PROGRAM_V2_VERSION
+            || typeof envelope.source_digest !== 'string' || !DIGEST.test(envelope.source_digest)
+            || typeof envelope.proof.key_id !== 'string'
+            || typeof envelope.proof.public_key !== 'string'
+            || typeof envelope.proof.pq_public_key !== 'string'
+            || typeof envelope.proof.pq_key_id !== 'string') {
+            return { valid: false, reason: 'envelope_schema_invalid', source_digest: null };
+        }
+        const proof = envelope.proof;
+        // 2. Committed algorithm set: exact and order-sensitive. A narrowed set is
+        //    the stripping attack's cover story, refused structurally here and
+        //    (independently) by the signature check, which rebuilds the bytes from
+        //    the REGISTERED set regardless of what the envelope claims.
+        if (!relianceV2AlgorithmSetRegistered(proof.required_algorithms)) {
+            return { valid: false, reason: 'algorithm_set_unsupported', source_digest: null };
+        }
+        // 3. Exactly one signature per required algorithm.
+        const signatures = Array.isArray(proof.signatures) ? proof.signatures : null;
+        if (!signatures)
+            return { valid: false, reason: 'signature_set_invalid', source_digest: null };
+        const presented = new Set();
+        for (const entry of signatures) {
+            if (!isRecord(entry) || typeof entry.alg !== 'string' || typeof entry.sig !== 'string') {
+                return { valid: false, reason: 'signature_set_invalid', source_digest: null };
+            }
+            if (presented.has(entry.alg)) {
+                return { valid: false, reason: 'signature_set_invalid', source_digest: null };
+            }
+            presented.add(entry.alg);
+        }
+        for (const alg of RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS) {
+            if (!presented.has(alg)) {
+                return { valid: false, reason: 'signature_leg_missing', source_digest: null };
+            }
+        }
+        for (const alg of presented) {
+            if (!RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS.includes(alg)) {
+                return { valid: false, reason: 'signature_set_invalid', source_digest: null };
+            }
+        }
+        // 4. Source: independently re-validated and re-digested, same as v1.
+        try {
+            validateSourceUnder(envelope.source, RELIANCE_PROGRAM_SOURCE_V2_VERSION);
+        }
+        catch (error) {
+            return {
+                valid: false,
+                reason: error instanceof RelianceProgramValidationError ? error.code : 'source_schema_invalid',
+                source_digest: null,
+            };
+        }
+        if (proof.key_id !== envelope.source.relying_party.key_id) {
+            return { valid: false, reason: 'signature_key_mismatch', source_digest: envelope.source_digest };
+        }
+        const computed = digest(envelope.source);
+        if (computed !== envelope.source_digest) {
+            return { valid: false, reason: 'source_digest_mismatch', source_digest: computed };
+        }
+        // 5. Relying-party keys: BOTH halves pinned, and the presented halves must
+        //    equal the pinned ones. Identified-but-not-trusted, per leg: a key_id
+        //    pinned for v1 only (Ed25519 half alone) does NOT satisfy a v2 pin.
+        if (!isRecord(trustedKeys) || !Object.hasOwn(trustedKeys, proof.key_id)) {
+            return { valid: false, reason: 'relying_party_key_untrusted', source_digest: computed };
+        }
+        const signer = trustedKeys[proof.key_id];
+        if (!exact(signer, TRUSTED_SIGNER_V2_KEYS)
+            || signer.relying_party_id !== envelope.source.relying_party.id) {
+            return { valid: false, reason: 'relying_party_identity_mismatch', source_digest: computed };
+        }
+        if (typeof signer.public_key !== 'string' || signer.public_key !== proof.public_key
+            || typeof signer.pq_public_key !== 'string' || signer.pq_public_key !== proof.pq_public_key
+            // Curve-pinned: an Ed448 (or any non-Ed25519) SPKI presented as the
+            // classical half fails here as well as in the signature check.
+            || publicKey(signer.public_key) === null
+            || reliancePqKeyId(signer.pq_public_key) === ''
+            || proof.pq_key_id !== reliancePqKeyId(signer.pq_public_key)) {
+            return { valid: false, reason: 'relying_party_key_untrusted', source_digest: computed };
+        }
+        // 6. Signature set over bytes rebuilt from the RE-VALIDATED source and the
+        //    REGISTERED algorithm set, under the PINNED keys. Never fall back to
+        //    the envelope's own self-asserted key material.
+        let bytes;
+        try {
+            bytes = relianceProgramV2SigningBytes(envelope.source, RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS);
+        }
+        catch {
+            return { valid: false, reason: 'source_not_canonical', source_digest: computed };
+        }
+        let setResult;
+        try {
+            setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), signatures, [
+                { alg: 'Ed25519', public_key: signer.public_key },
+                { alg: 'ML-DSA-65', public_key: signer.pq_public_key },
+            ], {
+                ...relianceAgilityPassthrough({ mldsaBackend, mldsaBackendLoader }),
+                policy: 'hybrid_all',
+                requiredAlgorithms: [...RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS],
+            });
+        }
+        catch {
+            // verifyAgileSignatureSet documents that it never throws; an injected
+            // backend that does is still a refusal here, never a pass.
+            setResult = null;
+        }
+        if (setResult?.verified !== true) {
+            return {
+                valid: false,
+                reason: `signature_invalid:${String(setResult?.reason ?? 'signature_set_unverified')}`,
+                source_digest: computed,
+            };
+        }
+        return {
+            valid: true,
+            reason: null,
+            source_digest: computed,
+            relying_party_id: envelope.source.relying_party.id,
+            key_id: proof.key_id,
+        };
+    }
+    catch {
+        return { valid: false, reason: 'envelope_schema_invalid', source_digest: null };
+    }
+}
+/**
+ * Route an envelope of EITHER version to its verifier. v1 envelopes keep the
+ * exact v1 verdict; v2 envelopes get the hybrid check. An envelope whose
+ * `@version` is neither refuses through the v1 verifier, which is the
+ * fail-closed answer.
+ */
+export async function verifyRelianceProgramEnvelope(envelope, options = {}) {
+    if (isRecord(envelope) && envelope['@version'] === RELIANCE_PROGRAM_V2_VERSION) {
+        return verifyRelianceProgramV2(envelope, options);
+    }
+    return verifyRelianceProgram(envelope, { trustedKeys: options.trustedKeys });
+}
+/**
+ * Compile a verified v2 envelope into an EP-GATE-TRUST-PROGRAM-PROFILE-v2
+ * program. Same compilation body as v1 (compileVerifiedSource); only the
+ * emitted profile marker and its validator differ. Refuses by throwing, like
+ * v1: a compiler is issuer-side, not attacker-facing.
+ */
+export async function compileRelianceProgramV2(envelope, { trustedKeys = {}, profiles = [], mldsaBackend, mldsaBackendLoader } = {}) {
+    const verified = await verifyRelianceProgramV2(envelope, {
+        trustedKeys, mldsaBackend, mldsaBackendLoader,
+    });
+    if (verified.valid !== true) {
+        refuse(verified.reason ?? 'source_unverified', 'reliance program source did not verify');
+    }
+    return compileVerifiedSource(envelope, verified, profiles, RELIANCE_PROGRAM_V2_VERSION);
 }
 //# sourceMappingURL=reliance-program.js.map

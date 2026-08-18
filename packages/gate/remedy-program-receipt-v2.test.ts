@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // EP-ACTION-REMEDY-RECEIPT-v2 -- hostile matrix for the hybrid remedy receipt,
-// plus the EP-GATE-REMEDY-PROGRAM-PROFILE-v2 state marker it can describe. New
-// file, co-located under src/ so vitest exercises this package's TS source
-// directly (no build step needed); the dist-backed
+// plus the EP-GATE-REMEDY-PROGRAM-PROFILE-v2 state marker it can describe.
+// Package-root node:test file importing the compatibility shim
+// './remedy-program-receipt.js' (which re-exports
+// ./dist/remedy-program-receipt.js), matching this package's convention;
 // packages/gate/remedy-program-receipt.test.js keeps covering v1 and is
 // untouched.
-import { describe, it, expect } from 'vitest';
+import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { describe, it } from 'node:test';
 
 import {
   ACTION_REMEDY_RECEIPT_VERSION,
@@ -185,16 +187,20 @@ const DENYING_POSTURE: FipsPosture = {
 describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
   it('valid v2 roundtrip: both legs verify under the pinned key pair', async () => {
     const fixture = await issued();
-    expect(fixture.receipt.version).toBe(ACTION_REMEDY_RECEIPT_V2_VERSION);
-    expect(fixture.receipt.signature.required_algorithms)
-      .toEqual([...ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS]);
-    expect(fixture.receipt.signature.signatures.map((s: any) => s.alg))
-      .toEqual([...ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS]);
+    assert.equal(fixture.receipt.version, ACTION_REMEDY_RECEIPT_V2_VERSION);
+    assert.deepEqual(
+      fixture.receipt.signature.required_algorithms,
+      [...ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS],
+    );
+    assert.deepEqual(
+      fixture.receipt.signature.signatures.map((s: any) => s.alg),
+      [...ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS],
+    );
 
     const verified = await verifyRemedyProgramReceiptV2(fixture.receipt, verifyOptions(fixture));
-    expect(verified.valid).toBe(true);
-    expect(verified.reason).toBe('verified');
-    expect(verified.payload!.semantics).toEqual({
+    assert.equal(verified.valid, true);
+    assert.equal(verified.reason, 'verified');
+    assert.deepEqual(verified.payload!.semantics, {
       original_effect: 'immutable_fact',
       remedy_effect: 'compensating_action',
       rollback: false,
@@ -204,21 +210,24 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
   it('a v2 receipt over an EP-GATE-REMEDY-PROGRAM-PROFILE-v2 state verifies, and the marker is committed', async () => {
     const state = remedyState({ version: REMEDY_PROGRAM_PROFILE_V2_VERSION });
     const fixture = await issued(state);
-    expect((await verifyRemedyProgramReceiptV2(fixture.receipt, verifyOptions(fixture))).valid).toBe(true);
+    assert.equal((await verifyRemedyProgramReceiptV2(fixture.receipt, verifyOptions(fixture))).valid, true);
     // Swapping the marker on the presented state breaks the recomputed
     // state-snapshot digest, which is inside content_digest and the signature.
     const swapped = { ...state, version: 'EP-GATE-REMEDY-PROGRAM-PROFILE-v1' };
     const result = await verifyRemedyProgramReceiptV2(fixture.receipt, verifyOptions(fixture, { state: swapped }));
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_state_snapshot_mismatch');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_state_snapshot_mismatch');
   });
 
   it('the v1 receipt still refuses a v2-profile state snapshot', async () => {
     const keys = crypto.generateKeyPairSync('ed25519');
-    await expect(issueRemedyProgramReceipt(
-      { state: remedyState({ version: REMEDY_PROGRAM_PROFILE_V2_VERSION }), remedyOperationId: 'refund-op-1' },
-      { context: CONTEXT, privateKey: keys.privateKey, allowEphemeralState: true },
-    )).rejects.toThrow(/state snapshot is invalid/);
+    await assert.rejects(
+      issueRemedyProgramReceipt(
+        { state: remedyState({ version: REMEDY_PROGRAM_PROFILE_V2_VERSION }), remedyOperationId: 'refund-op-1' },
+        { context: CONTEXT, privateKey: keys.privateKey, allowEphemeralState: true },
+      ),
+      /state snapshot is invalid/,
+    );
   });
 
   it('v1-refuses-v2: the SYNC v1 verifier refuses a v2 receipt structurally, never a crash', async () => {
@@ -230,8 +239,8 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
       state: fixture.state,
       expected: fixture.expected,
     });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_structure_invalid');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_structure_invalid');
   });
 
   it('the router keeps the exact v1 verdict for a v1 receipt and hybrid-checks a v2 one', async () => {
@@ -241,17 +250,20 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
       { state, remedyOperationId: 'refund-op-1' },
       { context: CONTEXT, privateKey: keys.privateKey, allowEphemeralState: true },
     );
-    expect(v1.version).toBe(ACTION_REMEDY_RECEIPT_VERSION);
+    assert.equal(v1.version, ACTION_REMEDY_RECEIPT_VERSION);
     const routedV1 = await verifyRemedyProgramReceiptStatement(v1, {
       trustedKeys: { [CONTEXT.key_id]: keys.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') },
       expectedIssuer: CONTEXT,
       state,
       expected: expectedRemedyProgramReceiptBindings(state, 'refund-op-1'),
     });
-    expect(routedV1.valid).toBe(true);
+    assert.equal(routedV1.valid, true);
 
     const fixture = await issued();
-    expect((await verifyRemedyProgramReceiptStatement(fixture.receipt, verifyOptions(fixture))).valid).toBe(true);
+    assert.equal(
+      (await verifyRemedyProgramReceiptStatement(fixture.receipt, verifyOptions(fixture))).valid,
+      true,
+    );
   });
 
   it('a key id pinned WITHOUT the ML-DSA half never satisfies a v2 pin', async () => {
@@ -259,8 +271,8 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
     const result = await verifyRemedyProgramReceiptV2(
       fixture.receipt, verifyOptions(fixture, { trustedKeys: fixture.issuer.classicalPin }),
     );
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_key_untrusted');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_key_untrusted');
   });
 
   it('stripped leg: dropping the ML-DSA signature refuses, never a classical-only pass', async () => {
@@ -273,8 +285,8 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
       },
     };
     const result = await verifyRemedyProgramReceiptV2(stripped, verifyOptions(fixture));
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_signature_leg_missing');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_signature_leg_missing');
   });
 
   it('narrowed set: claiming required_algorithms=["Ed25519"] is refused structurally AND cryptographically', async () => {
@@ -287,8 +299,10 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
         signatures: fixture.receipt.signature.signatures.filter((s: any) => s.alg === 'Ed25519'),
       },
     };
-    expect((await verifyRemedyProgramReceiptV2(narrowed, verifyOptions(fixture))).reason)
-      .toBe('receipt_algorithm_set_unsupported');
+    assert.equal(
+      (await verifyRemedyProgramReceiptV2(narrowed, verifyOptions(fixture))).reason,
+      'receipt_algorithm_set_unsupported',
+    );
     const setIntact = {
       ...narrowed,
       signature: {
@@ -296,8 +310,10 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
         required_algorithms: [...ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS],
       },
     };
-    expect((await verifyRemedyProgramReceiptV2(setIntact, verifyOptions(fixture))).reason)
-      .toBe('receipt_signature_leg_missing');
+    assert.equal(
+      (await verifyRemedyProgramReceiptV2(setIntact, verifyOptions(fixture))).reason,
+      'receipt_signature_leg_missing',
+    );
   });
 
   it('wrong-length signature on the ML-DSA leg refuses, never crashes', async () => {
@@ -312,8 +328,8 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
       },
     };
     const result = await verifyRemedyProgramReceiptV2(tampered, verifyOptions(fixture));
-    expect(result.valid).toBe(false);
-    expect(result.reason).toContain('receipt_signature_invalid');
+    assert.equal(result.valid, false);
+    assert.ok(String(result.reason).includes('receipt_signature_invalid'));
   });
 
   it('Ed448-masquerade: a non-Ed25519 SPKI pinned as the classical half is refused, never verified', async () => {
@@ -331,8 +347,8 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
       },
     };
     const result = await verifyRemedyProgramReceiptV2(masqueraded, verifyOptions(fixture, { trustedKeys: pin }));
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_key_untrusted');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_key_untrusted');
   });
 
   it('an absent ML-DSA backend is pq_backend_unavailable, never a pass on the Ed25519 leg', async () => {
@@ -340,8 +356,8 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
     const result = await verifyRemedyProgramReceiptV2(
       fixture.receipt, verifyOptions(fixture, { mldsaBackend: {} }),
     );
-    expect(result.valid).toBe(false);
-    expect(result.reason).toContain('pq_backend_unavailable');
+    assert.equal(result.valid, false);
+    assert.ok(String(result.reason).includes('pq_backend_unavailable'));
   });
 
   it('a tampered payload breaks the recomputed content digest before any signature is checked', async () => {
@@ -354,16 +370,14 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
       },
     };
     const result = await verifyRemedyProgramReceiptV2(tampered, verifyOptions(fixture));
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('receipt_content_digest_mismatch');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'receipt_content_digest_mismatch');
   });
 
   it('never throws on hostile input', async () => {
     for (const bad of [null, undefined, '', 42, [], { version: ACTION_REMEDY_RECEIPT_V2_VERSION }]) {
-      await expect(verifyRemedyProgramReceiptV2(bad, { trustedKeys: {} }))
-        .resolves.toMatchObject({ valid: false });
-      await expect(verifyRemedyProgramReceiptStatement(bad, { trustedKeys: {} }))
-        .resolves.toMatchObject({ valid: false });
+      assert.equal((await verifyRemedyProgramReceiptV2(bad, { trustedKeys: {} })).valid, false);
+      assert.equal((await verifyRemedyProgramReceiptStatement(bad, { trustedKeys: {} })).valid, false);
     }
   });
 });
@@ -371,7 +385,7 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 hybrid remedy receipt', () => {
 describe('EP-ACTION-REMEDY-RECEIPT-v2 FIPS consult and custody gates', () => {
   it('with no fipsPosture configured, issuance runs exactly as before the option existed', async () => {
     const fixture = await issued();
-    expect(fixture.receipt.signature.profile).toBe(ACTION_REMEDY_RECEIPT_V2_VERSION);
+    assert.equal(fixture.receipt.signature.profile, ACTION_REMEDY_RECEIPT_V2_VERSION);
   });
 
   it('a denied FIPS policy refuses issuance BEFORE the signer runs, named reason, never a silent sign', async () => {
@@ -386,11 +400,14 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 FIPS consult and custody gates', () => {
         return [];
       },
     };
-    await expect(issueRemedyProgramReceiptV2(
-      { state: remedyState(), remedyOperationId: 'refund-op-1' },
-      { context: CONTEXT, signer, allowEphemeralState: true, fipsPosture: DENYING_POSTURE },
-    )).rejects.toThrow(/fips_policy_denied:Ed25519:ed25519_boundary_undeclared/);
-    expect(signCalls).toBe(0);
+    await assert.rejects(
+      issueRemedyProgramReceiptV2(
+        { state: remedyState(), remedyOperationId: 'refund-op-1' },
+        { context: CONTEXT, signer, allowEphemeralState: true, fipsPosture: DENYING_POSTURE },
+      ),
+      /fips_policy_denied:Ed25519:ed25519_boundary_undeclared/,
+    );
+    assert.equal(signCalls, 0);
   });
 
   it('an inactive posture (the normal case) permits BOTH legs with no acknowledgment required', async () => {
@@ -400,16 +417,19 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 FIPS consult and custody gates', () => {
       { state: remedyState(), remedyOperationId: 'refund-op-1' },
       { context: CONTEXT, keys: issuer.keys, allowEphemeralState: true, fipsPosture: inactive },
     );
-    expect(receipt.version).toBe(ACTION_REMEDY_RECEIPT_V2_VERSION);
+    assert.equal(receipt.version, ACTION_REMEDY_RECEIPT_V2_VERSION);
   });
 
   it('an ACTIVE posture refuses the ML-DSA leg until the unvalidated implementation is acknowledged', async () => {
     const issuer = issuerFixture();
     const active: FipsPosture = { ...DENYING_POSTURE, ed25519_in_validated_boundary: true };
-    await expect(issueRemedyProgramReceiptV2(
-      { state: remedyState(), remedyOperationId: 'refund-op-1' },
-      { context: CONTEXT, keys: issuer.keys, allowEphemeralState: true, fipsPosture: active },
-    )).rejects.toThrow(/fips_policy_denied:ML-DSA-65:mldsa_implementation_unvalidated/);
+    await assert.rejects(
+      issueRemedyProgramReceiptV2(
+        { state: remedyState(), remedyOperationId: 'refund-op-1' },
+        { context: CONTEXT, keys: issuer.keys, allowEphemeralState: true, fipsPosture: active },
+      ),
+      /fips_policy_denied:ML-DSA-65:mldsa_implementation_unvalidated/,
+    );
 
     const receipt = await issueRemedyProgramReceiptV2(
       { state: remedyState(), remedyOperationId: 'refund-op-1' },
@@ -421,15 +441,18 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 FIPS consult and custody gates', () => {
         allowUnvalidatedMldsa: true,
       },
     );
-    expect(receipt.version).toBe(ACTION_REMEDY_RECEIPT_V2_VERSION);
+    assert.equal(receipt.version, ACTION_REMEDY_RECEIPT_V2_VERSION);
   });
 
   it('local keys without the ephemeral opt-in are refused, and a software signSet signer is refused in production mode', async () => {
     const issuer = issuerFixture();
-    await expect(issueRemedyProgramReceiptV2(
-      { state: remedyState(), remedyOperationId: 'refund-op-1' },
-      { context: CONTEXT, keys: issuer.keys },
-    )).rejects.toThrow(/requires an external signSet signer/);
+    await assert.rejects(
+      issueRemedyProgramReceiptV2(
+        { state: remedyState(), remedyOperationId: 'refund-op-1' },
+        { context: CONTEXT, keys: issuer.keys },
+      ),
+      /requires an external signSet signer/,
+    );
 
     const signer = {
       keyId: CONTEXT.key_id,
@@ -437,10 +460,13 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 FIPS consult and custody gates', () => {
       publicKeys: issuer.hybridPin[CONTEXT.key_id],
       async signSet() { return []; },
     };
-    await expect(issueRemedyProgramReceiptV2(
-      { state: remedyState(), remedyOperationId: 'refund-op-1' },
-      { context: CONTEXT, signer },
-    )).rejects.toThrow(/custody must be kms or hsm/);
+    await assert.rejects(
+      issueRemedyProgramReceiptV2(
+        { state: remedyState(), remedyOperationId: 'refund-op-1' },
+        { context: CONTEXT, signer },
+      ),
+      /custody must be kms or hsm/,
+    );
   });
 
   it('an injected signSet signer that supplies both legs issues a verifiable receipt', async () => {
@@ -469,7 +495,7 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 FIPS consult and custody gates', () => {
       state,
       expected: expectedRemedyProgramReceiptBindings(state, 'refund-op-1'),
     });
-    expect(verified.valid).toBe(true);
+    assert.equal(verified.valid, true);
   });
 
   it('an injected signer returning an incomplete set refuses issuance, never emits a one-leg receipt', async () => {
@@ -485,9 +511,12 @@ describe('EP-ACTION-REMEDY-RECEIPT-v2 FIPS consult and custody gates', () => {
         }];
       },
     };
-    await expect(issueRemedyProgramReceiptV2(
-      { state: remedyState(), remedyOperationId: 'refund-op-1' },
-      { context: CONTEXT, signer },
-    )).rejects.toThrow(/malformed signature set/);
+    await assert.rejects(
+      issueRemedyProgramReceiptV2(
+        { state: remedyState(), remedyOperationId: 'refund-op-1' },
+        { context: CONTEXT, signer },
+      ),
+      /malformed signature set/,
+    );
   });
 });

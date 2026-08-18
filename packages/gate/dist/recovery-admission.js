@@ -9,7 +9,7 @@
  * before admission and treats every unavailable or malformed answer as a
  * refusal.
  */
-import { RISK_CAID, RISK_DIGEST, riskClone, riskDigest, riskExact, riskFreeze, riskIdentifier, riskRecord, signRiskBody, verifyRiskBody, } from './reliance-risk-crypto.js';
+import { RISK_CAID, RISK_DIGEST, riskClone, riskDigest, riskExact, riskFreeze, riskIdentifier, riskRecord, signRiskBody, signRiskBodyV2, verifyRiskBody, verifyRiskBodyV2, } from './reliance-risk-crypto.js';
 export const RECOVERY_CAPABILITY_VERSION = 'EP-RECOVERY-CAPABILITY-v1';
 export const RECOVERY_CAPABILITY_STATUS_VERSION = 'EP-RECOVERY-CAPABILITY-STATUS-v1';
 export const RECOVERY_RESERVATION_STATUS_VERSION = 'EP-RECOVERY-RESERVATION-STATUS-v1';
@@ -292,9 +292,9 @@ function normalizeInput(rawInput) {
     }
     return { ...common, mode: 'IRREVERSIBLE', recovery: null };
 }
-function validateBody(value) {
+function validateBody(value, version = RECOVERY_CAPABILITY_VERSION) {
     if (!riskExact(value, BODY_KEYS)
-        || value['@version'] !== RECOVERY_CAPABILITY_VERSION
+        || value['@version'] !== version
         || value.retry_permitted !== false
         || value.claim_boundary !== RECOVERY_CAPABILITY_CLAIM_BOUNDARY
         || !riskExact(value.issuer, ISSUER_KEYS)) {
@@ -306,7 +306,7 @@ function validateBody(value) {
     };
     const input = normalizeInput(Object.fromEntries(INPUT_KEYS.map((key) => [key, value[key]])));
     const expected = {
-        '@version': RECOVERY_CAPABILITY_VERSION,
+        '@version': version,
         ...input,
         retry_permitted: false,
         claim_boundary: RECOVERY_CAPABILITY_CLAIM_BOUNDARY,
@@ -316,7 +316,7 @@ function validateBody(value) {
         invalid('capability_schema_invalid', 'capability body is invalid');
     }
     const capability = riskFreeze(riskClone({
-        '@version': RECOVERY_CAPABILITY_VERSION,
+        '@version': version,
         ...input,
         retry_permitted: false,
         claim_boundary: RECOVERY_CAPABILITY_CLAIM_BOUNDARY,
@@ -770,6 +770,171 @@ export async function evaluateRecoveryAdmission(artifact, rawContext, dependenci
     }
     return decision('RESERVED_COMPENSATION', null, verification, status, reservation);
 }
+// ===========================================================================
+// EP-RECOVERY-CAPABILITY-v2 -- opt-in hybrid adoption of EP-RISK-HYBRID-v2
+// ===========================================================================
+// ADDITIVE: signRecoveryCapability / verifyRecoveryCapability above are
+// UNCHANGED. This is the ADOPTION application of "PATTERN: the reference
+// hybrid migration" (EP-REVOCATION-v2 is the template) in
+// docs/protocol/pq-hybrid-program.md: this module already delegates signing
+// to reliance-risk-crypto.js's shared signRiskBody/verifyRiskBody, so it
+// adopts signRiskBodyV2/verifyRiskBodyV2 (EP-RISK-HYBRID-v2) rather than
+// reimplementing the set-shaped proof, the anti-stripping bytes, or the pin
+// discipline here. RECOVERY_CAPABILITY_STATUS and RECOVERY_RESERVATION_STATUS
+// are relying-party-injected callback answers, not presenter-signed
+// artifacts, so they carry no signature to migrate. A deployed v1 verifier
+// handed a v2 capability refuses on its version/schema check BEFORE
+// inspecting any signature; v2 verification is a SEPARATE async entry point.
+export const RECOVERY_CAPABILITY_V2_VERSION = 'EP-RECOVERY-CAPABILITY-v2';
+const TRUSTED_KEY_KEYS_V2 = ['issuer_id', 'public_key', 'pq_public_key'];
+/** v2 twin of normalizeContext: trusted_keys entries pin BOTH key halves. */
+function normalizeContextV2(rawContext) {
+    let context;
+    try {
+        context = riskClone(rawContext);
+    }
+    catch {
+        return null;
+    }
+    if (!riskExact(context, CONTEXT_KEYS)
+        || !riskRecord(context.trusted_keys)
+        || Object.keys(context.trusted_keys).length < 1
+        || !Object.entries(context.trusted_keys).every(([keyId, pin]) => (riskIdentifier(keyId)
+            && riskExact(pin, TRUSTED_KEY_KEYS_V2)
+            && riskIdentifier(pin.issuer_id)
+            && typeof pin.public_key === 'string'
+            && /^[A-Za-z0-9_-]+$/.test(pin.public_key)
+            && typeof pin.pq_public_key === 'string'
+            && /^[A-Za-z0-9_-]+$/.test(pin.pq_public_key))))
+        return null;
+    const expectedPolicy = normalizeExpectedPolicy(context.expected_policy);
+    if (!expectedPolicy)
+        return null;
+    try {
+        canonicalInstant(context.now, 'verification now');
+    }
+    catch {
+        return null;
+    }
+    return riskFreeze({
+        trusted_keys: context.trusted_keys,
+        expected_policy: expectedPolicy,
+        now: context.now,
+    });
+}
+function verificationRefusalV2(reason, verified = false, capabilityDigest = null) {
+    return riskFreeze({
+        accepted: false,
+        verified,
+        reason,
+        capability_digest: capabilityDigest,
+        capability: null,
+        issuer_id: null,
+        claim_boundary: RECOVERY_CAPABILITY_CLAIM_BOUNDARY,
+    });
+}
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of signRecoveryCapability. */
+export async function signRecoveryCapabilityV2(rawInput, rawSigner, options = {}) {
+    if (!riskIdentifier(rawSigner?.issuer_id) || !riskIdentifier(rawSigner?.key_id)) {
+        invalid('signer_invalid', 'recovery capability hybrid signer is invalid');
+    }
+    const input = normalizeInput(rawInput);
+    const body = {
+        '@version': RECOVERY_CAPABILITY_V2_VERSION,
+        ...input,
+        retry_permitted: false,
+        claim_boundary: RECOVERY_CAPABILITY_CLAIM_BOUNDARY,
+    };
+    validateBody({
+        ...body,
+        issuer: { id: rawSigner.issuer_id, key_id: rawSigner.key_id },
+    }, RECOVERY_CAPABILITY_V2_VERSION);
+    try {
+        return await signRiskBodyV2(RECOVERY_CAPABILITY_V2_VERSION, body, rawSigner, options);
+    }
+    catch {
+        invalid('signer_invalid', 'recovery capability hybrid signing keys must be Ed25519 + ML-DSA-65');
+    }
+}
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of verifyRecoveryCapability.
+ * A v2 capability NEVER verifies on one leg alone; an absent ML-DSA backend is
+ * a refusal, never a skipped check and never a pass on the surviving
+ * classical leg.
+ */
+export async function verifyRecoveryCapabilityV2(artifact, rawContext) {
+    const context = normalizeContextV2(rawContext);
+    if (!context)
+        return verificationRefusalV2('verification_context_required');
+    let snapshot;
+    try {
+        snapshot = riskClone(artifact);
+    }
+    catch {
+        return verificationRefusalV2('artifact_invalid');
+    }
+    const signed = await verifyRiskBodyV2(snapshot, RECOVERY_CAPABILITY_V2_VERSION, context.trusted_keys, context);
+    if (!signed.valid || !signed.body || !signed.artifact_digest) {
+        return verificationRefusalV2(signed.reason === 'issuer_untrusted' ? 'issuer_untrusted' : 'signature_invalid');
+    }
+    let body;
+    try {
+        body = validateBody(signed.body, RECOVERY_CAPABILITY_V2_VERSION);
+    }
+    catch {
+        return verificationRefusalV2('capability_schema_invalid', true, signed.artifact_digest);
+    }
+    const capability = body.capability;
+    const policy = context.expected_policy;
+    const checks = [
+        [capability.capability_id !== policy.capability_id, 'capability_id_mismatch'],
+        [capability.admission_id !== policy.admission_id, 'admission_id_mismatch'],
+        [capability.admission_snapshot_digest !== policy.admission_snapshot_digest,
+            'admission_snapshot_digest_mismatch'],
+        [capability.mode !== policy.mode, 'mode_mismatch'],
+        [capability.tenant_id !== policy.tenant_id, 'tenant_mismatch'],
+        [capability.audience !== policy.audience, 'audience_mismatch'],
+        [capability.action_caid !== policy.action_caid, 'action_caid_mismatch'],
+        [capability.action_digest !== policy.action_digest, 'action_digest_mismatch'],
+        [capability.action_capability_expires_at !== policy.action_capability_expires_at,
+            'action_capability_expiry_mismatch'],
+        [capability.provider_id !== policy.provider_id, 'provider_mismatch'],
+        [capability.account_digest !== policy.account_digest, 'account_mismatch'],
+        [capability.environment_digest !== policy.environment_digest, 'environment_mismatch'],
+        [capability.operation_id !== policy.operation_id, 'operation_mismatch'],
+        [body.issuer.id !== policy.issuer_id, 'issuer_mismatch'],
+        [capability.issuer_digest !== policy.issuer_digest, 'issuer_digest_mismatch'],
+        [capability.trust_epoch_digest !== policy.trust_epoch_digest, 'trust_epoch_mismatch'],
+        [capability.config_epoch_digest !== policy.config_epoch_digest, 'config_epoch_mismatch'],
+        [capability.adapter_id !== policy.adapter_id, 'adapter_mismatch'],
+        [capability.adapter_digest !== policy.adapter_digest, 'adapter_digest_mismatch'],
+        [capability.resource_set_digest !== policy.resource_set_digest, 'resource_set_mismatch'],
+        [riskDigest(capability.recovery) !== riskDigest(policy.recovery), 'recovery_mismatch'],
+    ];
+    for (const [mismatched, reason] of checks) {
+        if (mismatched)
+            return verificationRefusalV2(reason, true, signed.artifact_digest);
+    }
+    const now = Date.parse(context.now);
+    if (now < Date.parse(capability.valid_from)) {
+        return verificationRefusalV2('capability_not_yet_valid', true, signed.artifact_digest);
+    }
+    if (now >= Date.parse(capability.expires_at)) {
+        return verificationRefusalV2('capability_expired', true, signed.artifact_digest);
+    }
+    if (now >= Date.parse(capability.action_capability_expires_at)) {
+        return verificationRefusalV2('action_capability_expired', true, signed.artifact_digest);
+    }
+    return riskFreeze({
+        accepted: true,
+        verified: true,
+        reason: null,
+        capability_digest: signed.artifact_digest,
+        capability,
+        issuer_id: body.issuer.id,
+        claim_boundary: RECOVERY_CAPABILITY_CLAIM_BOUNDARY,
+    });
+}
 export default {
     RECOVERY_CAPABILITY_VERSION,
     RECOVERY_CAPABILITY_STATUS_VERSION,
@@ -779,5 +944,8 @@ export default {
     recoveryCapabilityDigest,
     verifyRecoveryCapability,
     evaluateRecoveryAdmission,
+    RECOVERY_CAPABILITY_V2_VERSION,
+    signRecoveryCapabilityV2,
+    verifyRecoveryCapabilityV2,
 };
 //# sourceMappingURL=recovery-admission.js.map

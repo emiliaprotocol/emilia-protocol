@@ -2,12 +2,14 @@
 //
 // EP-ACTION-REMEDY-RECEIPT-v1 -- opt-in FIPS operation-policy consult at the
 // receipt signer call site (issueRemedyProgramReceipt,
-// remedy-program-receipt.ts ~:735). New file under src/ so vitest exercises
-// this package's TS source directly; the dist-backed
-// packages/gate/remedy-program-receipt.test.js keeps covering the receipt
-// artifact itself and is untouched.
-import { describe, it, expect } from 'vitest';
+// src/remedy-program-receipt.ts ~:735). Package-root node:test file importing
+// the compatibility shim './remedy-program-receipt.js' (which re-exports
+// ./dist/remedy-program-receipt.js), matching this package's convention; the
+// dist-backed packages/gate/remedy-program-receipt.test.js keeps covering the
+// receipt artifact itself and is untouched.
+import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
+import { describe, it } from 'node:test';
 
 import { issueRemedyProgramReceipt } from './remedy-program-receipt.js';
 import type { FipsPosture } from '@emilia-protocol/verify/fips-mode';
@@ -138,8 +140,8 @@ describe('EP-ACTION-REMEDY-RECEIPT-v1 opt-in FIPS consult', () => {
       { state: remedyState(), remedyOperationId: 'refund-op-1' },
       { context: CONTEXT, privateKey: keys.privateKey, allowEphemeralState: true },
     );
-    expect(receipt.version).toBe('EP-ACTION-REMEDY-RECEIPT-v1');
-    expect(receipt.signature.algorithm).toBe('Ed25519');
+    assert.equal(receipt.version, 'EP-ACTION-REMEDY-RECEIPT-v1');
+    assert.equal(receipt.signature.algorithm, 'Ed25519');
   });
 
   it('a denied FIPS policy refuses issuance BEFORE the signer runs, named reason, never a silent sign', async () => {
@@ -155,11 +157,14 @@ describe('EP-ACTION-REMEDY-RECEIPT-v1 opt-in FIPS consult', () => {
         return crypto.sign(null, bytes, keys.privateKey);
       },
     };
-    await expect(issueRemedyProgramReceipt(
-      { state: remedyState(), remedyOperationId: 'refund-op-1' },
-      { context: CONTEXT, signer, allowEphemeralState: true, fipsPosture: DENYING_POSTURE },
-    )).rejects.toThrow(/fips_policy_denied:ed25519_boundary_undeclared/);
-    expect(signCalls).toBe(0);
+    await assert.rejects(
+      issueRemedyProgramReceipt(
+        { state: remedyState(), remedyOperationId: 'refund-op-1' },
+        { context: CONTEXT, signer, allowEphemeralState: true, fipsPosture: DENYING_POSTURE },
+      ),
+      /fips_policy_denied:ed25519_boundary_undeclared/,
+    );
+    assert.equal(signCalls, 0);
   });
 
   it('an inactive FIPS posture (the normal case) permits issuance even when fipsPosture is supplied', async () => {
@@ -169,6 +174,6 @@ describe('EP-ACTION-REMEDY-RECEIPT-v1 opt-in FIPS consult', () => {
       { state: remedyState(), remedyOperationId: 'refund-op-1' },
       { context: CONTEXT, privateKey: keys.privateKey, allowEphemeralState: true, fipsPosture: inactive },
     );
-    expect(receipt.signature.algorithm).toBe('Ed25519');
+    assert.equal(receipt.signature.algorithm, 'Ed25519');
   });
 });

@@ -11,7 +11,7 @@
 import crypto from 'node:crypto';
 import { allowanceDigest, executeWithGateAllowance } from './allowance.js';
 import { capabilityActionDigest, capabilityBaseReceiptDigest } from './capability-receipt.js';
-import { RISK_CAID, RISK_DIGEST, riskClone, riskDigest, riskExact, riskFreeze, riskIdentifier, riskInstant, riskRecord, signRiskBody, verifyRiskBody, } from './reliance-risk-crypto.js';
+import { RISK_CAID, RISK_DIGEST, riskClone, riskDigest, riskExact, riskFreeze, riskIdentifier, riskInstant, riskRecord, signRiskBody, signRiskBodyV2, verifyRiskBody, verifyRiskBodyV2, } from './reliance-risk-crypto.js';
 export const HUMAN_INTERRUPTION_DECISION_VERSION = 'EP-HUMAN-INTERRUPTION-DECISION-v1';
 export const RAIL_ENTRY_PERMIT_VERSION = 'EP-RAIL-ENTRY-PERMIT-v1';
 export const CROSS_RAIL_OBSERVATION_VERSION = 'EP-CROSS-RAIL-OBSERVATION-v1';
@@ -130,6 +130,122 @@ export function verifyHumanInterruptionDecision(artifact, { trusted_keys, now = 
     catch {
         return { accepted: false, reason: 'interruption_shape_invalid' };
     }
+}
+// ===========================================================================
+// EP-HUMAN-INTERRUPTION-DECISION-v2 -- opt-in hybrid adoption of EP-RISK-HYBRID-v2
+// ===========================================================================
+// ADDITIVE: signHumanInterruptionDecision / verifyHumanInterruptionDecision
+// above are UNCHANGED. This is the ADOPTION application of "PATTERN: the
+// reference hybrid migration" (EP-REVOCATION-v2 is the template) in
+// docs/protocol/pq-hybrid-program.md: this artifact already delegates
+// signing to reliance-risk-crypto.js's shared signRiskBody/verifyRiskBody,
+// so it adopts signRiskBodyV2/verifyRiskBodyV2 (EP-RISK-HYBRID-v2) rather
+// than reimplementing the set-shaped proof, the anti-stripping bytes, or the
+// pin discipline here. A deployed v1 verifier handed a v2 decision refuses
+// on its version/schema check BEFORE inspecting any signature; v2
+// verification is a SEPARATE async entry point.
+export const HUMAN_INTERRUPTION_DECISION_V2_VERSION = 'EP-HUMAN-INTERRUPTION-DECISION-v2';
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of signHumanInterruptionDecision. */
+export async function signHumanInterruptionDecisionV2(input, signer, options = {}) {
+    const normalized = normalizeDecisionInput(input);
+    return signRiskBodyV2(HUMAN_INTERRUPTION_DECISION_V2_VERSION, {
+        '@version': HUMAN_INTERRUPTION_DECISION_V2_VERSION,
+        ...normalized,
+        claim_boundary: CROSS_RAIL_AUTHORITY_CLAIM_BOUNDARY.interruption_decision,
+    }, signer, options);
+}
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of
+ * verifyHumanInterruptionDecision. A v2 decision NEVER verifies on one leg
+ * alone; an absent ML-DSA backend is a refusal, never a skipped check and
+ * never a pass on the surviving classical leg.
+ */
+export async function verifyHumanInterruptionDecisionV2(artifact, { trusted_keys, now = Date.now, expected, ...pqOptions } = {}) {
+    const signed = await verifyRiskBodyV2(artifact, HUMAN_INTERRUPTION_DECISION_V2_VERSION, trusted_keys, pqOptions);
+    if (!signed.valid || !signed.body)
+        return { accepted: false, reason: signed.reason === 'issuer_untrusted' ? 'interruption_issuer_untrusted' : 'interruption_signature_invalid' };
+    try {
+        const body = signed.body;
+        if (!riskExact(body, DECISION_BODY_KEYS)
+            || body.claim_boundary !== CROSS_RAIL_AUTHORITY_CLAIM_BOUNDARY.interruption_decision) {
+            return { accepted: false, reason: 'interruption_shape_invalid' };
+        }
+        const normalized = normalizeDecisionInput(Object.fromEntries(DECISION_INPUT_KEYS.map((key) => [key, body[key]])));
+        const instant = milliseconds(now);
+        if (instant < riskInstant(normalized.issued_at))
+            return { accepted: false, reason: 'interruption_not_yet_valid' };
+        if (instant >= riskInstant(normalized.expires_at))
+            return { accepted: false, reason: 'interruption_expired' };
+        if (!expected)
+            return { accepted: false, reason: 'interruption_expected_context_required' };
+        const comparisons = [
+            ['decision_id', 'decision'], ['tenant_id', 'tenant'], ['subject_id', 'subject'],
+            ['connector_id', 'connector'], ['caid', 'caid'], ['action_digest', 'action'],
+            ['provider_request_digest', 'provider_request'], ['policy_digest', 'policy'],
+            ['configuration_digest', 'configuration'], ['mode', 'mode'],
+            ['issued_at', 'issued_at'], ['expires_at', 'expires_at'],
+        ];
+        for (const [field, reason] of comparisons) {
+            if (typeof expected[field] === 'string' && expected[field] !== normalized[field]) {
+                return { accepted: false, reason: `interruption_${reason}_mismatch` };
+            }
+        }
+        const mandatory = [
+            'tenant_id', 'subject_id', 'connector_id', 'caid', 'action_digest', 'provider_request_digest',
+        ];
+        if (mandatory.some((field) => typeof expected[field] !== 'string' || expected[field].length === 0)) {
+            return { accepted: false, reason: 'interruption_expected_context_incomplete' };
+        }
+        return {
+            accepted: true,
+            reason: null,
+            decision: riskFreeze(riskClone(artifact)),
+            decision_digest: signed.artifact_digest,
+            mode: normalized.mode,
+            expires_at: normalized.expires_at,
+        };
+    }
+    catch {
+        return { accepted: false, reason: 'interruption_shape_invalid' };
+    }
+}
+// ===========================================================================
+// EP-RAIL-ENTRY-PERMIT-v2 -- opt-in hybrid adoption of EP-RISK-HYBRID-v2
+// ===========================================================================
+// ADDITIVE: createRailEntryPermitBroker's v1 mint/consume flow below is
+// UNCHANGED. This is the artifact-level ADOPTION of "PATTERN: the reference
+// hybrid migration" (EP-REVOCATION-v2 is the template): the permit BODY (the
+// signed artifact) migrates to signRiskBodyV2/verifyRiskBodyV2
+// (EP-RISK-HYBRID-v2), exactly mirroring the shape mintPermit/consumePermit
+// build and check below, one version bump ahead. The stateful single-use
+// broker (WeakMap-scoped replay prevention, TTL pruning, capacity bounds) is
+// an operational concern independent of the signature algorithm and is left
+// on the v1 path; a caller wiring the hybrid permit into that broker signs
+// with signRailEntryPermitV2 and verifies with verifyRailEntryPermitV2 using
+// the same field discipline the broker already enforces around it.
+export const RAIL_ENTRY_PERMIT_V2_VERSION = 'EP-RAIL-ENTRY-PERMIT-v2';
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of a v1 rail-entry permit body. */
+export async function signRailEntryPermitV2(input, signer, options = {}) {
+    const body = {
+        ...input,
+        '@version': RAIL_ENTRY_PERMIT_V2_VERSION,
+    };
+    return signRiskBodyV2(RAIL_ENTRY_PERMIT_V2_VERSION, body, signer, options);
+}
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of the v1 consumePermit
+ * signature/shape check. A v2 permit NEVER verifies on one leg alone; an
+ * absent ML-DSA backend is a refusal, never a skipped check and never a pass
+ * on the surviving classical leg.
+ */
+export async function verifyRailEntryPermitV2(artifact, trustedKeys, options = {}) {
+    const signed = await verifyRiskBodyV2(artifact, RAIL_ENTRY_PERMIT_V2_VERSION, trustedKeys, options);
+    if (!signed.valid || !signed.body)
+        return signed;
+    if (!riskExact(signed.body, PERMIT_BODY_KEYS)) {
+        return { valid: false, reason: 'rail_entry_permit_shape_invalid', body: null, artifact_digest: null };
+    }
+    return signed;
 }
 const permitBrokers = new WeakMap();
 function pruneExpired(state, instant) {
@@ -453,5 +569,11 @@ export default {
     createRailEntryPermitBroker,
     createCrossRailConnector,
     executeCrossRailAllowance,
+    HUMAN_INTERRUPTION_DECISION_V2_VERSION,
+    signHumanInterruptionDecisionV2,
+    verifyHumanInterruptionDecisionV2,
+    RAIL_ENTRY_PERMIT_V2_VERSION,
+    signRailEntryPermitV2,
+    verifyRailEntryPermitV2,
 };
 //# sourceMappingURL=cross-rail-authority.js.map

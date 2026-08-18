@@ -19,7 +19,7 @@ import {
   verifyHumanInterruptionDecision,
   verifyHumanInterruptionDecisionV2,
   verifyRailEntryPermitV2,
-} from './src/cross-rail-authority.ts';
+} from './cross-rail-authority.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

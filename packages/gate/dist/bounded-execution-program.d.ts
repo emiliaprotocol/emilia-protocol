@@ -5,7 +5,7 @@
  * reachability and attempt-budget transitions are enforced by a program-aware
  * AdmissionStore in the same linearizable execution-right domain.
  */
-import { type RiskRecord, type TrustedRiskKeys } from './reliance-risk-crypto.js';
+import { type RiskHybridSigner, type RiskRecord, type RiskV2Options, type TrustedRiskKeys, type TrustedRiskKeysV2 } from './reliance-risk-crypto.js';
 export declare const BOUNDED_EXECUTION_PROGRAM_VERSION = "EP-BOUNDED-EXECUTION-PROGRAM-v1";
 export declare const EXECUTION_PROGRAM_CLAIM_BOUNDARY = "typed_reachability_attempt_budget_and_effect_concurrency_not_intent_safety_effect_truth_or_complete_mediation";
 export declare const EXECUTION_PROGRAM_LIMITS: Readonly<{
@@ -102,4 +102,39 @@ export declare function verifyBoundedExecutionProgram(artifact: unknown, options
     authorizer_id: any;
     claim_boundary: string;
 };
+export declare const BOUNDED_EXECUTION_PROGRAM_V2_VERSION = "EP-BOUNDED-EXECUTION-PROGRAM-v2";
+export interface BoundedExecutionProgramSignerV2 extends RiskHybridSigner {
+}
+export interface ExecutionProgramVerificationOptionsV2 extends RiskV2Options {
+    trusted_keys?: TrustedRiskKeysV2;
+    now?: string | number;
+    expected_program_id?: string;
+    expected_tenant_id?: string;
+    expected_authorizer_id?: string;
+    expected_authorization_digest?: string;
+    expected_audience?: string;
+}
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of signBoundedExecutionProgram. */
+export declare function signBoundedExecutionProgramV2(input: BoundedExecutionProgramInput | RiskRecord, signer: BoundedExecutionProgramSignerV2, options?: RiskV2Options): Promise<RiskRecord>;
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of verifyBoundedExecutionProgram.
+ * A v2 program NEVER verifies on one leg alone; an absent ML-DSA backend is a
+ * refusal, never a skipped check and never a pass on the surviving classical leg.
+ */
+export declare function verifyBoundedExecutionProgramV2(artifact: unknown, options?: ExecutionProgramVerificationOptionsV2): Promise<{
+    accepted: boolean;
+    verified: boolean;
+    reason: string;
+    program_digest: string | null;
+    program: null;
+    claim_boundary: string;
+} | {
+    accepted: boolean;
+    verified: boolean;
+    reason: null;
+    program_digest: string;
+    program: Readonly<VerifiedBoundedExecutionProgram>;
+    authorizer_id: any;
+    claim_boundary: string;
+}>;
 //# sourceMappingURL=bounded-execution-program.d.ts.map

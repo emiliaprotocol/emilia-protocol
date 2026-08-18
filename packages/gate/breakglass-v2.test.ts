@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // EP-GATE-BREAKGLASS-v2 -- hostile matrix for the hybrid M-of-N roster.
-// New file under src/ so vitest exercises this package's TS source directly;
-// the dist-backed packages/gate/breakglass.test.js keeps covering v1.
-import { describe, it, expect } from 'vitest';
+// Package-root node:test file importing the compatibility shim
+// './breakglass.js' (which re-exports ./dist/breakglass.js), matching this
+// package's convention; the dist-backed packages/gate/breakglass.test.js keeps
+// covering v1.
+import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { describe, it } from 'node:test';
 
 import {
   BREAKGLASS_V2_VERSION,
@@ -58,15 +61,15 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
     const alice = makeHybridSigner('kid-alice');
     const bob = makeHybridSigner('kid-bob');
     const grant = await mintBreakGlassAuthorizationV2([alice, bob], FIELDS);
-    expect(grant['@version']).toBe(BREAKGLASS_V2_VERSION);
-    expect(grant.payload.required_algorithms).toEqual([...BREAKGLASS_V2_REQUIRED_ALGORITHMS]);
-    expect(grant.signatures.every((s) => s.signatures.map((x) => x.alg).join(',') === 'Ed25519,ML-DSA-65')).toBe(true);
+    assert.equal(grant['@version'], BREAKGLASS_V2_VERSION);
+    assert.deepEqual(grant.payload.required_algorithms, [...BREAKGLASS_V2_REQUIRED_ALGORITHMS]);
+    assert.equal(grant.signatures.every((s) => s.signatures.map((x) => x.alg).join(',') === 'Ed25519,ML-DSA-65'), true);
 
     const result = await verifyBreakGlassV2(grant, {
       policy: v2Policy([alice, bob]), now: IN_WINDOW, actionType: 'db.restore',
     });
-    expect(result.valid).toBe(true);
-    expect(result.signer_kids).toEqual(['kid-alice', 'kid-bob']);
+    assert.equal(result.valid, true);
+    assert.deepEqual(result.signer_kids, ['kid-alice', 'kid-bob']);
   });
 
   it('the router accepts a v1 grant unchanged, and a v2 one via the hybrid path', async () => {
@@ -87,7 +90,7 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
     const v1Result = await verifyBreakGlassStatement(v1Grant, {
       policy: v1Policy, now: IN_WINDOW, actionType: 'db.restore',
     });
-    expect(v1Result.valid).toBe(true);
+    assert.equal(v1Result.valid, true);
 
     const alice = makeHybridSigner('kid-alice');
     const bob = makeHybridSigner('kid-bob');
@@ -95,7 +98,7 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
     const v2Result = await verifyBreakGlassStatement(v2Grant, {
       policy: v2Policy([alice, bob]), now: IN_WINDOW, actionType: 'db.restore',
     });
-    expect(v2Result.valid).toBe(true);
+    assert.equal(v2Result.valid, true);
   });
 
   it('v1-refuses-v2: the existing SYNC verifier refuses a v2 grant cleanly on the version marker', async () => {
@@ -107,8 +110,8 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
     const result = verifyBreakGlass(grant, {
       policy: { minimum_threshold: 2, roster: [] }, now: IN_WINDOW, actionType: 'db.restore',
     });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('unsupported_version');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'unsupported_version');
   });
 
   it('M-of-N with one hybrid signer missing a leg refuses the whole grant, never a classical-only pass for that signer', async () => {
@@ -124,8 +127,8 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
     const result = await verifyBreakGlassV2(strippedBob, {
       policy: v2Policy([alice, bob]), now: IN_WINDOW, actionType: 'db.restore',
     });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('signer_leg_missing');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'signer_leg_missing');
   });
 
   it('narrowed set: claiming payload.required_algorithms=["Ed25519"] refuses every signer at once (bytes changed for all)', async () => {
@@ -140,8 +143,8 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
     const result = await verifyBreakGlassV2(narrowed, {
       policy: v2Policy([alice, bob]), now: IN_WINDOW, actionType: 'db.restore',
     });
-    expect(result.valid).toBe(false);
-    expect(result.reason).toBe('unsupported_algorithm_set');
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'unsupported_algorithm_set');
   });
 
   it('wrong-length signature on a signer\'s ML-DSA leg refuses, never crashes', async () => {
@@ -161,9 +164,10 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
           : s
       )),
     };
-    await expect(verifyBreakGlassV2(tampered, {
+    const tamperedResult = await verifyBreakGlassV2(tampered, {
       policy: v2Policy([alice, bob]), now: IN_WINDOW, actionType: 'db.restore',
-    })).resolves.toMatchObject({ valid: false });
+    });
+    assert.equal(tamperedResult.valid, false);
   });
 
   it('Ed448-masquerade: a non-Ed25519 SPKI pinned for a signer refuses, never verified under the wrong curve', async () => {
@@ -175,13 +179,13 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
     const policy = v2Policy([alice, bob]);
     policy.roster[0].key = ed448PubB64u; // swap alice's pinned classical key for an Ed448 one
     const result = await verifyBreakGlassV2(grant, { policy, now: IN_WINDOW, actionType: 'db.restore' });
-    expect(result.valid).toBe(false);
+    assert.equal(result.valid, false);
   });
 
   it('never throws on hostile input (absent, malformed JSON, threshold-1 grant)', async () => {
     for (const bad of [null, undefined, '', '{not json']) {
-      await expect(verifyBreakGlassV2(bad as any, { policy: { minimum_threshold: 2, roster: [] } }))
-        .resolves.toMatchObject({ valid: false });
+      const result = await verifyBreakGlassV2(bad as any, { policy: { minimum_threshold: 2, roster: [] } });
+      assert.equal(result.valid, false);
     }
   });
 
@@ -202,8 +206,8 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
       store,
       evidence: log,
     }, async () => { effectCalls += 1; return { restored: true }; });
-    expect(outcome.ok).toBe(true);
-    expect(effectCalls).toBe(1);
+    assert.equal(outcome.ok, true);
+    assert.equal(effectCalls, 1);
 
     // Single-use: replaying the SAME grant never runs the effect twice.
     const replay = await runBreakGlassStatement({
@@ -214,9 +218,9 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
       store,
       evidence: log,
     }, async () => { effectCalls += 1; return { restored: true }; });
-    expect(replay.ok).toBe(false);
-    expect(replay.reason).toBe('already_consumed');
-    expect(effectCalls).toBe(1);
+    assert.equal(replay.ok, false);
+    assert.equal(replay.reason, 'already_consumed');
+    assert.equal(effectCalls, 1);
   });
 
   it('runBreakGlassStatement never runs the effect on a leg-stripped grant', async () => {
@@ -242,8 +246,8 @@ describe('EP-GATE-BREAKGLASS-v2 hybrid M-of-N roster', () => {
       store,
       evidence: log,
     }, async () => { effectCalls += 1; return { restored: true }; });
-    expect(outcome.ok).toBe(false);
-    expect(outcome.reason).toBe('signer_leg_missing');
-    expect(effectCalls).toBe(0);
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.reason, 'signer_leg_missing');
+    assert.equal(effectCalls, 0);
   });
 });

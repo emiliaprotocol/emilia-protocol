@@ -8,6 +8,7 @@
  * action by itself.
  */
 import crypto from 'node:crypto';
+import { type AgileSignature, type AgilityOptions } from '@emilia-protocol/verify/pq-signature-agility';
 type RecordLike = Record<string, any>;
 export declare const CONTEXT_PROJECTION_COMPONENT = "ep-memory-projection";
 export declare const TRUSTED_CONTEXT_BINDING_VERSION = "EP-TRUSTED-CONTEXT-BINDING-v1";
@@ -176,6 +177,78 @@ export declare function verifyTrustedContextContinuity({ verifiedContext, execut
     execution_digest: any;
     outcome_digest: any;
 }>;
+export declare const TRUSTED_CONTEXT_BINDING_V2_VERSION = "EP-TRUSTED-CONTEXT-BINDING-v2";
+export declare const TRUSTED_CONTEXT_BINDING_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+export interface SignTrustedContextBindingV2Input {
+    providerId: string;
+    providerProfile: string;
+    projectionRecord: RecordLike;
+    action: RecordLike;
+    policyDigest: string;
+    nonce: string;
+    issuedAt: string;
+    expiresAt: string;
+    binderId: string;
+    keyId: string;
+    privateKey: crypto.KeyLike;
+    pqKeyId: string;
+    /** ML-DSA-65 raw secret key (4032 bytes), Uint8Array or base64url. */
+    pqPrivateKey: Uint8Array | string;
+}
+/** Mint a hybrid (Ed25519 + ML-DSA-65) context-to-action binding. */
+export declare function signTrustedContextBindingV2(input: SignTrustedContextBindingV2Input, options?: AgilityOptions): Promise<Readonly<{
+    proof: Readonly<{
+        required_algorithms: ("Ed25519" | "ML-DSA-65")[];
+        signatures: AgileSignature[];
+    }>;
+    '@version': string;
+    provider_id: string;
+    provider_profile: string;
+    projection_record_digest: string;
+    projection_digest: any;
+    action_subject_digest: string;
+    policy_digest: string;
+    nonce: string;
+    issued_at: string | null;
+    expires_at: string | null;
+    binder: {
+        id: string;
+        key_id: string;
+        pq_key_id: string;
+    };
+}>>;
+export interface TrustedContextBindingV2Pin {
+    /** Ed25519 base64url SPKI DER, or a node crypto public KeyObject. */
+    public_key: string | crypto.KeyObject;
+    /** ML-DSA-65 raw public key (1952 bytes), Uint8Array or base64url. */
+    pq_public_key: string | Uint8Array;
+}
+export interface VerifyTrustedContextBindingV2Options extends AgilityOptions {
+    action: RecordLike;
+    projectionRecordDigest: string;
+    projectionDigest: string;
+    policyDigest: string;
+    expectedNonce: string;
+    verificationTime: string;
+    /** BOTH key halves for the exact binder key id the binding presents. */
+    pin: TrustedContextBindingV2Pin;
+}
+/**
+ * FAIL-CLOSED hybrid verify of one EP-TRUSTED-CONTEXT-BINDING-v2 artifact. A
+ * v2 binding NEVER verifies on one leg alone; an absent ML-DSA backend is a
+ * refusal, never a skipped check and never a pass on the surviving classical
+ * leg. See the SCOPE note above the version constant for what this does not
+ * check (binder-key directory status/revocation).
+ */
+export declare function verifyTrustedContextBindingV2(binding: unknown, options: VerifyTrustedContextBindingV2Options): Promise<Readonly<{
+    state: "NOT_VERIFIED";
+    reason: string;
+    authorizes: false;
+}> | Readonly<{
+    state: "VERIFIED";
+    reason: null;
+    authorizes: false;
+}>>;
 declare const _default: Readonly<{
     CONTEXT_PROJECTION_COMPONENT: "ep-memory-projection";
     TRUSTED_CONTEXT_BINDING_VERSION: "EP-TRUSTED-CONTEXT-BINDING-v1";
@@ -187,6 +260,9 @@ declare const _default: Readonly<{
     createTrustedContextEvaluator: typeof createTrustedContextEvaluator;
     createTrustedContextAecVerifier: typeof createTrustedContextAecVerifier;
     verifyTrustedContextContinuity: typeof verifyTrustedContextContinuity;
+    TRUSTED_CONTEXT_BINDING_V2_VERSION: "EP-TRUSTED-CONTEXT-BINDING-v2";
+    signTrustedContextBindingV2: typeof signTrustedContextBindingV2;
+    verifyTrustedContextBindingV2: typeof verifyTrustedContextBindingV2;
 }>;
 export default _default;
 //# sourceMappingURL=trusted-context.d.ts.map

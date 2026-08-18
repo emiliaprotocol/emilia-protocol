@@ -9,7 +9,7 @@
  * external effect truth, process safety, or complete mediation.
  */
 import { BOUNDED_EXECUTION_REPORT_VERSION, verifyBoundedExecutionReport, } from './bounded-execution-report.js';
-import { RISK_DIGEST, riskClone, riskDigest, riskExact, riskFreeze, riskIdentifier, riskRecord, signRiskBody, verifyRiskBody, } from './reliance-risk-crypto.js';
+import { RISK_DIGEST, riskClone, riskDigest, riskExact, riskFreeze, riskIdentifier, riskRecord, signRiskBody, signRiskBodyV2, verifyRiskBody, verifyRiskBodyV2, } from './reliance-risk-crypto.js';
 import { canonicalizeStrictJson } from './strict-json.js';
 export const BOUNDED_EXECUTION_ACCEPTANCE_PROFILE_VERSION = 'EP-BOUNDED-EXECUTION-ACCEPTANCE-PROFILE-v1';
 export const BOUNDED_EXECUTION_EVIDENCE_PACK_VERSION = 'EP-BOUNDED-EXECUTION-EVIDENCE-PACK-v1';
@@ -137,9 +137,9 @@ function normalizeProfileInput(value) {
         required_nodes: normalizeRequiredNodes(value.required_nodes),
     };
 }
-function normalizeProfileBody(value) {
+function normalizeProfileBody(value, version = BOUNDED_EXECUTION_ACCEPTANCE_PROFILE_VERSION) {
     if (!riskExact(value, PROFILE_BODY_KEYS)
-        || value['@version'] !== BOUNDED_EXECUTION_ACCEPTANCE_PROFILE_VERSION
+        || value['@version'] !== version
         || value.claim_boundary !== BOUNDED_EXECUTION_ACCEPTANCE_CLAIM_BOUNDARY
         || !riskExact(value.issuer, ISSUER_KEYS)
         || !riskIdentifier(value.issuer.id)
@@ -154,7 +154,7 @@ function normalizeProfileBody(value) {
         refuse('profile_issuer_mismatch', 'profile issuer must be the relying party');
     }
     return {
-        '@version': BOUNDED_EXECUTION_ACCEPTANCE_PROFILE_VERSION,
+        '@version': version,
         ...normalized,
         claim_boundary: BOUNDED_EXECUTION_ACCEPTANCE_CLAIM_BOUNDARY,
         issuer: riskClone(value.issuer),
@@ -176,6 +176,41 @@ function normalizeProfileContext(value) {
             && riskIdentifier(pin.issuer_id)
             && typeof pin.public_key === 'string'
             && /^[A-Za-z0-9_-]+$/.test(pin.public_key)))
+        || !riskIdentifier(context.expected_profile_id)
+        || !riskIdentifier(context.expected_relying_party_id)
+        || !riskIdentifier(context.expected_program_id)
+        || !safeInteger(context.expected_program_version, 1, Number.MAX_SAFE_INTEGER)
+        || typeof context.expected_program_digest !== 'string'
+        || !RISK_DIGEST.test(context.expected_program_digest))
+        return null;
+    try {
+        canonicalInstant(context.now, 'now');
+    }
+    catch {
+        return null;
+    }
+    return context;
+}
+const TRUSTED_KEY_KEYS_V2 = ['issuer_id', 'public_key', 'pq_public_key'];
+/** v2 twin of normalizeProfileContext: trusted_keys entries pin BOTH key halves. */
+function normalizeProfileContextV2(value) {
+    let context;
+    try {
+        context = strictJsonClone(value);
+    }
+    catch {
+        return null;
+    }
+    if (!riskExact(context, PROFILE_CONTEXT_KEYS)
+        || !riskRecord(context.trusted_keys)
+        || Object.keys(context.trusted_keys).length < 1
+        || !Object.entries(context.trusted_keys).every(([keyId, pin]) => (riskIdentifier(keyId)
+            && riskExact(pin, TRUSTED_KEY_KEYS_V2)
+            && riskIdentifier(pin.issuer_id)
+            && typeof pin.public_key === 'string'
+            && /^[A-Za-z0-9_-]+$/.test(pin.public_key)
+            && typeof pin.pq_public_key === 'string'
+            && /^[A-Za-z0-9_-]+$/.test(pin.pq_public_key)))
         || !riskIdentifier(context.expected_profile_id)
         || !riskIdentifier(context.expected_relying_party_id)
         || !riskIdentifier(context.expected_program_id)
@@ -239,6 +274,107 @@ export function verifyBoundedExecutionAcceptanceProfile(artifact, rawContext) {
     let profile;
     try {
         profile = normalizeProfileBody(signed.body);
+    }
+    catch (error) {
+        return fail(error instanceof BoundedExecutionAcceptanceValidationError
+            ? error.code : 'profile_schema_invalid', true, signed.artifact_digest);
+    }
+    const checks = [
+        [profile.profile_id !== context.expected_profile_id, 'profile_id_mismatch'],
+        [profile.relying_party_id !== context.expected_relying_party_id, 'relying_party_mismatch'],
+        [profile.program_id !== context.expected_program_id, 'program_id_mismatch'],
+        [profile.program_version !== context.expected_program_version, 'program_version_mismatch'],
+        [profile.program_digest !== context.expected_program_digest, 'program_digest_mismatch'],
+    ];
+    for (const [condition, reason] of checks) {
+        if (condition)
+            return fail(reason, true, signed.artifact_digest);
+    }
+    const now = Date.parse(context.now);
+    if (now < Date.parse(profile.valid_from))
+        return fail('profile_not_active', true, signed.artifact_digest);
+    if (now >= Date.parse(profile.expires_at))
+        return fail('profile_expired', true, signed.artifact_digest);
+    return riskFreeze({
+        accepted: true,
+        verified: true,
+        reason: null,
+        profile_digest: signed.artifact_digest,
+        profile,
+        claim_boundary: BOUNDED_EXECUTION_ACCEPTANCE_CLAIM_BOUNDARY,
+    });
+}
+// ===========================================================================
+// EP-BOUNDED-EXECUTION-ACCEPTANCE-PROFILE-v2 -- opt-in hybrid adoption of EP-RISK-HYBRID-v2
+// ===========================================================================
+// ADDITIVE: signBoundedExecutionAcceptanceProfile /
+// verifyBoundedExecutionAcceptanceProfile above are UNCHANGED. This is the
+// ADOPTION application of "PATTERN: the reference hybrid migration"
+// (EP-REVOCATION-v2 is the template) in docs/protocol/pq-hybrid-program.md:
+// this module already delegates signing to reliance-risk-crypto.js's shared
+// signRiskBody/verifyRiskBody, so it adopts signRiskBodyV2/verifyRiskBodyV2
+// (EP-RISK-HYBRID-v2) rather than reimplementing the set-shaped proof, the
+// anti-stripping bytes, or the pin discipline here. The bounded-execution
+// EVIDENCE PACK stays out of scope: it carries only a digest binding its
+// artifacts together, never its own signature, so there is nothing to
+// hybridize there -- it inherits the hybrid status of whichever profile
+// artifact it wraps. A deployed v1 verifier handed a v2 profile refuses on
+// its version/schema check BEFORE inspecting any signature; v2 verification
+// is a SEPARATE async entry point.
+export const BOUNDED_EXECUTION_ACCEPTANCE_PROFILE_V2_VERSION = 'EP-BOUNDED-EXECUTION-ACCEPTANCE-PROFILE-v2';
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of signBoundedExecutionAcceptanceProfile. */
+export async function signBoundedExecutionAcceptanceProfileV2(input, signer, options = {}) {
+    let snapshot;
+    try {
+        snapshot = strictJsonClone(input);
+    }
+    catch {
+        refuse('profile_non_json', 'acceptance profile must be strict canonical JSON data');
+    }
+    const normalized = normalizeProfileInput(snapshot);
+    if (!riskIdentifier(signer?.issuer_id) || !riskIdentifier(signer?.key_id)) {
+        refuse('profile_signer_invalid', 'hybrid profile signer must carry issuer_id and key_id');
+    }
+    if (signer.issuer_id !== normalized.relying_party_id) {
+        refuse('profile_issuer_mismatch', 'profile signer must be the relying party');
+    }
+    return signRiskBodyV2(BOUNDED_EXECUTION_ACCEPTANCE_PROFILE_V2_VERSION, {
+        '@version': BOUNDED_EXECUTION_ACCEPTANCE_PROFILE_V2_VERSION,
+        ...normalized,
+        claim_boundary: BOUNDED_EXECUTION_ACCEPTANCE_CLAIM_BOUNDARY,
+    }, signer, options);
+}
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of
+ * verifyBoundedExecutionAcceptanceProfile. A v2 profile NEVER verifies on one
+ * leg alone; an absent ML-DSA backend is a refusal, never a skipped check and
+ * never a pass on the surviving classical leg.
+ */
+export async function verifyBoundedExecutionAcceptanceProfileV2(artifact, rawContext) {
+    const fail = (reason, verified = false, profileDigest = null) => riskFreeze({
+        accepted: false,
+        verified,
+        reason,
+        profile_digest: profileDigest,
+        claim_boundary: BOUNDED_EXECUTION_ACCEPTANCE_CLAIM_BOUNDARY,
+    });
+    const context = normalizeProfileContextV2(rawContext);
+    if (!context)
+        return fail('verification_context_required');
+    let snapshot;
+    try {
+        snapshot = strictJsonClone(artifact);
+    }
+    catch {
+        return fail('profile_artifact_invalid');
+    }
+    const signed = await verifyRiskBodyV2(snapshot, BOUNDED_EXECUTION_ACCEPTANCE_PROFILE_V2_VERSION, context.trusted_keys, context);
+    if (!signed.valid || !signed.body || !signed.artifact_digest) {
+        return fail(signed.reason ?? 'profile_signature_invalid');
+    }
+    let profile;
+    try {
+        profile = normalizeProfileBody(signed.body, BOUNDED_EXECUTION_ACCEPTANCE_PROFILE_V2_VERSION);
     }
     catch (error) {
         return fail(error instanceof BoundedExecutionAcceptanceValidationError

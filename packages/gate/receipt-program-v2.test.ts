@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // EP-RECEIPT-PROGRAM-CERTIFICATE-v2 / EP-RECEIPT-PROGRAM-v2 -- hostile matrix
-// for the hybrid execution certificate. New file, co-located under src/ so
-// vitest exercises this package's TS source directly (no build step needed);
-// packages/gate/receipt-program.test.js (dist-backed) keeps covering v1 and is
-// untouched.
-import { describe, it, expect } from 'vitest';
+// for the hybrid execution certificate. Package-root node:test file importing
+// the compatibility shim './receipt-program.js' (which re-exports
+// ./dist/receipt-program.js), matching this package's convention;
+// packages/gate/receipt-program.test.js keeps covering v1 and is untouched.
+import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { describe, it } from 'node:test';
 
 import { canonicalize } from './execution-binding.js';
 import {
@@ -125,21 +126,25 @@ const DENYING_POSTURE: FipsPosture = {
 describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () => {
   it('valid v2 roundtrip: both legs verify under the pinned key pair', async () => {
     const { issuer, certificate } = await issued();
-    expect(certificate['@version']).toBe(RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION);
-    expect(certificate.program['@version']).toBe(RECEIPT_PROGRAM_V2_VERSION);
-    expect(certificate.signature.required_algorithms)
-      .toEqual([...RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS]);
-    expect(certificate.signature.signatures.map((s: any) => s.alg))
-      .toEqual([...RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS]);
+    assert.equal(certificate['@version'], RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION);
+    assert.equal(certificate.program['@version'], RECEIPT_PROGRAM_V2_VERSION);
+    assert.deepEqual(
+      certificate.signature.required_algorithms,
+      [...RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS],
+    );
+    assert.deepEqual(
+      certificate.signature.signatures.map((s: any) => s.alg),
+      [...RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS],
+    );
 
     const verified = await verifyReceiptProgramCertificateV2(certificate, {
       trustedCertificateKeys: issuer.hybridPin,
       expectedContext: CONTEXT,
     });
-    expect(verified.ok).toBe(true);
-    expect(verified.certificate_valid).toBe(true);
-    expect(verified.execution_succeeded).toBe(false);
-    expect(verified.state_root).toBe(certificate.state_root);
+    assert.equal(verified.ok, true);
+    assert.equal(verified.certificate_valid, true);
+    assert.equal(verified.execution_succeeded, false);
+    assert.equal(verified.state_root, certificate.state_root);
   });
 
   it('v1-refuses-v2: the SYNC v1 verifier refuses on the version marker as its FIRST check', async () => {
@@ -149,8 +154,8 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
       trustedCertificateKeys: issuer.classicalPin,
       expectedContext: CONTEXT,
     });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBe('certificate_version_invalid');
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'certificate_version_invalid');
   });
 
   it('the router keeps the exact v1 verdict for a v1 certificate and hybrid-checks a v2 one', async () => {
@@ -160,14 +165,14 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
       trustedCertificateKeys: issuer.classicalPin,
       expectedContext: CONTEXT,
     });
-    expect(routedV1.ok).toBe(true);
+    assert.equal(routedV1.ok, true);
 
     const v2 = await issueReceiptProgramCertificateV2(coreInput(), { keys: issuer.keys });
     const routedV2 = await verifyReceiptProgramCertificateStatement(v2, {
       trustedCertificateKeys: issuer.hybridPin,
       expectedContext: CONTEXT,
     });
-    expect(routedV2.ok).toBe(true);
+    assert.equal(routedV2.ok, true);
   });
 
   it('a key id pinned WITHOUT the ML-DSA half never satisfies a v2 pin', async () => {
@@ -176,8 +181,8 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
       trustedCertificateKeys: issuer.classicalPin,
       expectedContext: CONTEXT,
     });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBe('certificate_signer_not_trusted');
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'certificate_signer_not_trusted');
   });
 
   it('stripped leg: dropping the ML-DSA signature refuses, never a classical-only pass', async () => {
@@ -193,8 +198,8 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
       trustedCertificateKeys: issuer.hybridPin,
       expectedContext: CONTEXT,
     });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBe('certificate_signature_leg_missing');
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'certificate_signature_leg_missing');
   });
 
   it('narrowed set: claiming required_algorithms=["Ed25519"] is refused structurally AND cryptographically', async () => {
@@ -208,8 +213,10 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
         signatures: certificate.signature.signatures.filter((s: any) => s.alg === 'Ed25519'),
       },
     };
-    expect((await verifyReceiptProgramCertificateV2(narrowed, options)).reason)
-      .toBe('certificate_algorithm_set_unsupported');
+    assert.equal(
+      (await verifyReceiptProgramCertificateV2(narrowed, options)).reason,
+      'certificate_algorithm_set_unsupported',
+    );
     const setIntact = {
       ...narrowed,
       signature: {
@@ -217,8 +224,10 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
         required_algorithms: [...RECEIPT_PROGRAM_V2_REQUIRED_ALGORITHMS],
       },
     };
-    expect((await verifyReceiptProgramCertificateV2(setIntact, options)).reason)
-      .toBe('certificate_signature_leg_missing');
+    assert.equal(
+      (await verifyReceiptProgramCertificateV2(setIntact, options)).reason,
+      'certificate_signature_leg_missing',
+    );
   });
 
   it('wrong-length signature on the ML-DSA leg refuses, never crashes', async () => {
@@ -236,8 +245,8 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
       trustedCertificateKeys: issuer.hybridPin,
       expectedContext: CONTEXT,
     });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toContain('certificate_signature_invalid');
+    assert.equal(result.ok, false);
+    assert.ok(String(result.reason).includes('certificate_signature_invalid'));
   });
 
   it('Ed448-masquerade: a non-Ed25519 SPKI pinned as the classical half is refused, never verified', async () => {
@@ -258,8 +267,8 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
       trustedCertificateKeys: pin,
       expectedContext: CONTEXT,
     });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBe('certificate_signer_not_trusted');
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'certificate_signer_not_trusted');
   });
 
   it('an absent ML-DSA backend is pq_backend_unavailable, never a pass on the Ed25519 leg', async () => {
@@ -269,8 +278,8 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
       expectedContext: CONTEXT,
       mldsaBackend: {},
     });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toContain('pq_backend_unavailable');
+    assert.equal(result.ok, false);
+    assert.ok(String(result.reason).includes('pq_backend_unavailable'));
   });
 
   it('a tampered core breaks the signature over the rebuilt bytes', async () => {
@@ -280,17 +289,18 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
       trustedCertificateKeys: issuer.hybridPin,
       expectedContext: CONTEXT,
     });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toContain('certificate_signature_invalid');
+    assert.equal(result.ok, false);
+    assert.ok(String(result.reason).includes('certificate_signature_invalid'));
   });
 
   it('a v1-marked program inside a v2 certificate is refused by the shared body, at issuance', async () => {
     const issuer = issuerFixture();
     // The issuer's own self-check runs the full v2 verifier, so a certificate
     // pairing the v2 envelope with a v1 program marker is never emitted.
-    await expect(issueReceiptProgramCertificateV2(
-      coreInput(RECEIPT_PROGRAM_VERSION), { keys: issuer.keys },
-    )).rejects.toThrow(/self-verification failed: certificate_program_invalid/);
+    await assert.rejects(
+      issueReceiptProgramCertificateV2(coreInput(RECEIPT_PROGRAM_VERSION), { keys: issuer.keys }),
+      /self-verification failed: certificate_program_invalid/,
+    );
   });
 
   it('the shared post-signature body still enforces the context pin on a cryptographically valid certificate', async () => {
@@ -299,16 +309,14 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 hybrid execution certificate', () =>
       trustedCertificateKeys: issuer.hybridPin,
       expectedContext: { ...CONTEXT, tenant: 'someone-else' },
     });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBe('certificate_context_mismatch');
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'certificate_context_mismatch');
   });
 
   it('never throws on hostile input', async () => {
     for (const bad of [null, undefined, '', 42, [], { '@version': RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION }]) {
-      await expect(verifyReceiptProgramCertificateV2(bad, { trustedCertificateKeys: {} }))
-        .resolves.toMatchObject({ ok: false });
-      await expect(verifyReceiptProgramCertificateStatement(bad, { trustedCertificateKeys: {} }))
-        .resolves.toMatchObject({ ok: false });
+      assert.equal((await verifyReceiptProgramCertificateV2(bad, { trustedCertificateKeys: {} })).ok, false);
+      assert.equal((await verifyReceiptProgramCertificateStatement(bad, { trustedCertificateKeys: {} })).ok, false);
     }
   });
 });
@@ -326,23 +334,25 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 FIPS consult and signer configuratio
         return [];
       },
     };
-    await expect(issueReceiptProgramCertificateV2(coreInput(), {
-      signer, fipsPosture: DENYING_POSTURE,
-    })).rejects.toThrow(/fips_policy_denied:Ed25519:ed25519_boundary_undeclared/);
-    expect(signCalls).toBe(0);
+    await assert.rejects(
+      issueReceiptProgramCertificateV2(coreInput(), { signer, fipsPosture: DENYING_POSTURE }),
+      /fips_policy_denied:Ed25519:ed25519_boundary_undeclared/,
+    );
+    assert.equal(signCalls, 0);
   });
 
   it('an ACTIVE posture refuses the ML-DSA leg until the unvalidated implementation is acknowledged', async () => {
     const issuer = issuerFixture();
     const active: FipsPosture = { ...DENYING_POSTURE, ed25519_in_validated_boundary: true };
-    await expect(issueReceiptProgramCertificateV2(coreInput(), {
-      keys: issuer.keys, fipsPosture: active,
-    })).rejects.toThrow(/fips_policy_denied:ML-DSA-65:mldsa_implementation_unvalidated/);
+    await assert.rejects(
+      issueReceiptProgramCertificateV2(coreInput(), { keys: issuer.keys, fipsPosture: active }),
+      /fips_policy_denied:ML-DSA-65:mldsa_implementation_unvalidated/,
+    );
 
     const certificate = await issueReceiptProgramCertificateV2(coreInput(), {
       keys: issuer.keys, fipsPosture: active, allowUnvalidatedMldsa: true,
     }) as any;
-    expect(certificate['@version']).toBe(RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION);
+    assert.equal(certificate['@version'], RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION);
   });
 
   it('an inactive posture (the normal case) permits both legs with no acknowledgment required', async () => {
@@ -351,13 +361,15 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 FIPS consult and signer configuratio
     const certificate = await issueReceiptProgramCertificateV2(coreInput(), {
       keys: issuer.keys, fipsPosture: inactive,
     }) as any;
-    expect(certificate.signature.profile).toBe(RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION);
+    assert.equal(certificate.signature.profile, RECEIPT_PROGRAM_CERTIFICATE_V2_VERSION);
   });
 
   it('exactly one signer must be configured, and an incomplete set refuses issuance', async () => {
     const issuer = issuerFixture();
-    await expect(issueReceiptProgramCertificateV2(coreInput(), {}))
-      .rejects.toThrow(/exactly one receipt program certificate v2 signer/);
+    await assert.rejects(
+      issueReceiptProgramCertificateV2(coreInput(), {}),
+      /exactly one receipt program certificate v2 signer/,
+    );
     const signer = {
       keyId: KEY_ID,
       custody: 'hsm',
@@ -369,8 +381,10 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 FIPS consult and signer configuratio
         }];
       },
     };
-    await expect(issueReceiptProgramCertificateV2(coreInput(), { signer }))
-      .rejects.toThrow(/malformed signature set/);
+    await assert.rejects(
+      issueReceiptProgramCertificateV2(coreInput(), { signer }),
+      /malformed signature set/,
+    );
   });
 
   it('an injected signSet signer that supplies both legs issues a verifiable certificate', async () => {
@@ -393,6 +407,6 @@ describe('EP-RECEIPT-PROGRAM-CERTIFICATE-v2 FIPS consult and signer configuratio
       trustedCertificateKeys: issuer.hybridPin,
       expectedContext: CONTEXT,
     });
-    expect(verified.ok).toBe(true);
+    assert.equal(verified.ok, true);
   });
 });

@@ -23,7 +23,7 @@
  *    of BOTH populations before any report is emitted (see
  *    `assertCoveragePopulationConservation`).
  */
-import { type RiskRecord, type TrustedRiskKeys } from './reliance-risk-crypto.js';
+import { type RiskRecord, type TrustedRiskKeys, type TrustedRiskKeysV2, type RiskHybridSigner, type RiskV2Options } from './reliance-risk-crypto.js';
 export declare const COVERAGE_SOURCE_INVENTORY_VERSION = "EP-COVERAGE-SOURCE-INVENTORY-v2";
 export declare const COVERAGE_POPULATION_VERSION = "EP-COVERAGE-POPULATION-v2";
 export declare const COVERAGE_RECONCILIATION_REPORT_VERSION = "EP-COVERAGE-RECONCILIATION-REPORT-v2";
@@ -240,4 +240,162 @@ export declare function runCoverageReconciliation(input: {
     report_hash: string;
     attestation: RiskRecord;
 };
+/**
+ * REFERENCE-DERIVED HYBRID MIGRATION, applied through the SHARED EP-RISK-HYBRID-v2
+ * helper (reliance-risk-crypto.ts). Same five moves as the -v3 attestation twin
+ * in coverage-reconciliation-attestation.ts:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. This family was already at -v2 for the
+ *    unrelated join-bin-rename reason documented at the top of this file, so
+ *    the hybrid marker is a fresh -v3. The existing verifyCoverageSourceInventory
+ *    (above) is untouched and refuses a -v3 inventory on
+ *    `artifact['@version'] !== COVERAGE_SOURCE_INVENTORY_VERSION` inside
+ *    verifyRiskBody, BEFORE any signature inspection, and never crashes.
+ * 2. SET SHAPE reused verbatim from EP-RISK-HYBRID-v2 (profile,
+ *    required_algorithms, key_id, body_digest, signatures[]).
+ * 3. ANTI-STRIPPING BYTES committed by riskV2SigningBytes inside
+ *    reliance-risk-crypto.ts, rebuilt by the verifier from the PRESENTED body,
+ *    never from anything the artifact chooses.
+ * 4. V1/V2 COMPATIBILITY: the existing sync verify path is unchanged; -v3
+ *    verification is a SEPARATE async entry point.
+ * 5. NAMED REFUSALS: never throws on caller input; an absent ML-DSA backend is
+ *    'pq_backend_unavailable', never a skipped check.
+ *
+ * `EP-COVERAGE-POPULATION-v2` (the record-set digest embedded inside the
+ * SIGNED `population_root` field) and `EP-COVERAGE-RECONCILIATION-REPORT-v2`
+ * (the unsigned join output, integrity-bound to the attestation only via
+ * `coverage_report_hash`) are UNCHANGED: neither carries its own signature, so
+ * neither has a stripping surface a second algorithm would close. Population
+ * records travel inside the hybrid-signed source-inventory body; the report is
+ * bound to a -v3 attestation by `verifyCoverageReconciliationReportBindingV3`
+ * below, which checks the -v3 attestation marker in place of the -v2 one.
+ */
+export declare const COVERAGE_SOURCE_INVENTORY_V3_VERSION = "EP-COVERAGE-SOURCE-INVENTORY-v3";
+export declare function signCoverageSourceInventoryV3(input: CoverageSourceInventoryInput, records: readonly CoveragePopulationRecord[], signer: RiskHybridSigner, options?: RiskV2Options): Promise<RiskRecord>;
+/** FAIL-CLOSED hybrid verify; a -v3 inventory NEVER verifies on one leg alone. */
+export declare function verifyCoverageSourceInventoryV3(artifact: unknown, records: readonly CoveragePopulationRecord[], options?: {
+    trusted_keys?: TrustedRiskKeysV2;
+    now?: string | number;
+    expected_inventory_kind?: CoverageInventoryKind;
+    expected_source_system_id?: string;
+    expected_mapping_profile_digest?: string;
+    expected_source_operator_id?: string;
+} & RiskV2Options): Promise<{
+    accepted: boolean;
+    verified: boolean;
+    reason: string;
+    inventory_digest: string | null;
+    claim_boundary: string;
+} | {
+    accepted: boolean;
+    verified: boolean;
+    reason: null;
+    inventory_digest: string | null;
+    body: {
+        [x: string]: any;
+    };
+    claim_boundary: string;
+}>;
+/**
+ * Verify only the digest binding between a report and a -v3 hybrid attestation
+ * envelope. The mirror of verifyCoverageReconciliationReportBinding for a -v3
+ * attestation: the report schema itself (EP-COVERAGE-RECONCILIATION-REPORT-v2)
+ * is unchanged, since it carries no signature of its own to strip a leg from.
+ * Callers MUST separately verify the attestation signature and relying-party
+ * context with verifyCoverageReconciliationAttestationV3.
+ */
+export declare function verifyCoverageReconciliationReportBindingV3(report: unknown, attestation: unknown): {
+    accepted: boolean;
+    reason: string;
+    report_hash: null;
+} | {
+    accepted: boolean;
+    reason: string;
+    report_hash: string;
+} | {
+    accepted: boolean;
+    reason: null;
+    report_hash: string;
+};
+export interface CoverageRunnerV3Options {
+    trusted_keys: TrustedRiskKeysV2;
+    now: string | number;
+    system_of_record_pin: CoverageSourcePin;
+    receipt_population_pin: CoverageSourcePin;
+    require_independent_source_issuers?: boolean;
+    mldsaBackend?: RiskV2Options['mldsaBackend'];
+    mldsaBackendLoader?: RiskV2Options['mldsaBackendLoader'];
+}
+/**
+ * Hybrid twin of runCoverageReconciliation: both supplied source inventories
+ * must be EP-COVERAGE-SOURCE-INVENTORY-v3 hybrid artifacts, and the emitted
+ * attestation is signed as EP-COVERAGE-RECONCILIATION-ATTESTATION-v3. The join
+ * and conservation logic is identical pure structural code shared with the v1
+ * runner above (normalizeRecords, assertCrossPopulationIdentity,
+ * assertCoveragePopulationConservation); only the source-inventory and
+ * attestation SIGNATURE verification/issuance are hybrid.
+ */
+export declare function runCoverageReconciliationV3(input: {
+    run_id: string;
+    attestation_id: string;
+    relying_party_id: string;
+    program: RiskRecord;
+    period: {
+        start: string;
+        end: string;
+    };
+    census_digest: string;
+    system_of_record: {
+        artifact: unknown;
+        records: CoveragePopulationRecord[];
+    };
+    receipt_population: {
+        artifact: unknown;
+        records: CoveragePopulationRecord[];
+    };
+    generated_at: string;
+    expires_at: string;
+    timestamp_anchor: RiskRecord | null;
+}, options: CoverageRunnerV3Options, signer: RiskHybridSigner): Promise<{
+    report: {
+        '@version': string;
+        run_id: string;
+        relying_party_id: string;
+        program: RiskRecord;
+        period: {
+            start: string;
+            end: string;
+        };
+        system_of_record: {
+            inventory_id: any;
+            source_system_id: any;
+            source_operator_id: any;
+            inventory_digest: string | null;
+            population_root: any;
+            count: any;
+        };
+        receipt_population: {
+            inventory_id: any;
+            source_system_id: any;
+            source_operator_id: any;
+            inventory_digest: string | null;
+            population_root: any;
+            count: any;
+        };
+        joins: CoverageReconciliationJoins;
+        findings: {
+            matched: RiskRecord[];
+            effect_without_receipt: CoveragePopulationRecord[];
+            receipted_without_observation: CoveragePopulationRecord[];
+            indeterminate: CoveragePopulationRecord[];
+            system_indeterminate: RiskRecord[];
+            excluded: CoveragePopulationRecord[];
+            exception: CoveragePopulationRecord[];
+        };
+        generated_at: string;
+        claim_boundary: string;
+    };
+    report_hash: string;
+    attestation: RiskRecord;
+}>;
 //# sourceMappingURL=coverage-reconciliation-runner.d.ts.map

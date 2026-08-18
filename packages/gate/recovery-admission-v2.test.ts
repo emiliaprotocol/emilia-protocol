@@ -16,7 +16,7 @@ import {
   signRecoveryCapabilityV2,
   verifyRecoveryCapability,
   verifyRecoveryCapabilityV2,
-} from './src/recovery-admission.ts';
+} from './recovery-admission.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
