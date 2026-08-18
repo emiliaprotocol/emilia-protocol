@@ -36,12 +36,19 @@ import {
   riskRecord,
   signRiskBody,
   verifyRiskBody,
+  signRiskBodyV2,
+  verifyRiskBodyV2,
   type RiskRecord,
   type TrustedRiskKeys,
+  type TrustedRiskKeysV2,
+  type RiskHybridSigner,
+  type RiskV2Options,
 } from './reliance-risk-crypto.js';
 import {
   COVERAGE_RECONCILIATION_ATTESTATION_VERSION,
+  COVERAGE_RECONCILIATION_ATTESTATION_V3_VERSION,
   signCoverageReconciliationAttestation,
+  signCoverageReconciliationAttestationV3,
 } from './coverage-reconciliation-attestation.js';
 
 export const COVERAGE_SOURCE_INVENTORY_VERSION = 'EP-COVERAGE-SOURCE-INVENTORY-v2';
@@ -318,9 +325,12 @@ export function verifyCoverageReconciliationReportBinding(
   return { accepted: true, reason: null, report_hash: reportHash };
 }
 
-function validateSourceBody(value: unknown): asserts value is RiskRecord {
+function validateSourceBody(
+  value: unknown,
+  expectedVersion: string = COVERAGE_SOURCE_INVENTORY_VERSION,
+): asserts value is RiskRecord {
   if (!riskExact(value, SOURCE_BODY_KEYS)
-      || value['@version'] !== COVERAGE_SOURCE_INVENTORY_VERSION
+      || value['@version'] !== expectedVersion
       || !riskIdentifier(value.inventory_id)
       || !INVENTORY_KINDS.has(value.inventory_kind)
       || !riskIdentifier(value.source_system_id)
@@ -670,5 +680,393 @@ export function runCoverageReconciliation(
     timestamp_anchor: riskClone(input.timestamp_anchor),
     claim_boundary: 'signed_reconciliation_of_supplied_populations_not_population_completeness',
   }, signer);
+  return riskFreeze({ report, report_hash: reportHash, attestation });
+}
+
+// ===========================================================================
+// EP-COVERAGE-SOURCE-INVENTORY-v3 -- hybrid (Ed25519 + ML-DSA-65) source inventory
+// ===========================================================================
+/**
+ * REFERENCE-DERIVED HYBRID MIGRATION, applied through the SHARED EP-RISK-HYBRID-v2
+ * helper (reliance-risk-crypto.ts). Same five moves as the -v3 attestation twin
+ * in coverage-reconciliation-attestation.ts:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. This family was already at -v2 for the
+ *    unrelated join-bin-rename reason documented at the top of this file, so
+ *    the hybrid marker is a fresh -v3. The existing verifyCoverageSourceInventory
+ *    (above) is untouched and refuses a -v3 inventory on
+ *    `artifact['@version'] !== COVERAGE_SOURCE_INVENTORY_VERSION` inside
+ *    verifyRiskBody, BEFORE any signature inspection, and never crashes.
+ * 2. SET SHAPE reused verbatim from EP-RISK-HYBRID-v2 (profile,
+ *    required_algorithms, key_id, body_digest, signatures[]).
+ * 3. ANTI-STRIPPING BYTES committed by riskV2SigningBytes inside
+ *    reliance-risk-crypto.ts, rebuilt by the verifier from the PRESENTED body,
+ *    never from anything the artifact chooses.
+ * 4. V1/V2 COMPATIBILITY: the existing sync verify path is unchanged; -v3
+ *    verification is a SEPARATE async entry point.
+ * 5. NAMED REFUSALS: never throws on caller input; an absent ML-DSA backend is
+ *    'pq_backend_unavailable', never a skipped check.
+ *
+ * `EP-COVERAGE-POPULATION-v2` (the record-set digest embedded inside the
+ * SIGNED `population_root` field) and `EP-COVERAGE-RECONCILIATION-REPORT-v2`
+ * (the unsigned join output, integrity-bound to the attestation only via
+ * `coverage_report_hash`) are UNCHANGED: neither carries its own signature, so
+ * neither has a stripping surface a second algorithm would close. Population
+ * records travel inside the hybrid-signed source-inventory body; the report is
+ * bound to a -v3 attestation by `verifyCoverageReconciliationReportBindingV3`
+ * below, which checks the -v3 attestation marker in place of the -v2 one.
+ */
+export const COVERAGE_SOURCE_INVENTORY_V3_VERSION = 'EP-COVERAGE-SOURCE-INVENTORY-v3';
+
+export async function signCoverageSourceInventoryV3(
+  input: CoverageSourceInventoryInput,
+  records: readonly CoveragePopulationRecord[],
+  signer: RiskHybridSigner,
+  options: RiskV2Options = {},
+): Promise<RiskRecord> {
+  const normalized = normalizeRecords(input.inventory_kind, records);
+  const body: RiskRecord = {
+    '@version': COVERAGE_SOURCE_INVENTORY_V3_VERSION,
+    ...riskClone(input),
+    record_count: normalized.length,
+    population_root: coveragePopulationRoot(input.inventory_kind, normalized),
+    claim_boundary: COVERAGE_SOURCE_CLAIM_BOUNDARY,
+  };
+  validateSourceBody(body, COVERAGE_SOURCE_INVENTORY_V3_VERSION);
+  if (signer.issuer_id !== body.source_operator_id) {
+    throw new TypeError('coverage source inventory issuer must be the source operator');
+  }
+  return signRiskBodyV2(COVERAGE_SOURCE_INVENTORY_V3_VERSION, body, signer, options);
+}
+
+/** FAIL-CLOSED hybrid verify; a -v3 inventory NEVER verifies on one leg alone. */
+export async function verifyCoverageSourceInventoryV3(
+  artifact: unknown,
+  records: readonly CoveragePopulationRecord[],
+  options: {
+    trusted_keys?: TrustedRiskKeysV2;
+    now?: string | number;
+    expected_inventory_kind?: CoverageInventoryKind;
+    expected_source_system_id?: string;
+    expected_mapping_profile_digest?: string;
+    expected_source_operator_id?: string;
+  } & RiskV2Options = {},
+) {
+  const refuse = (reason: string, verified = false, inventoryDigest: string | null = null) => ({
+    accepted: false,
+    verified,
+    reason,
+    inventory_digest: inventoryDigest,
+    claim_boundary: COVERAGE_SOURCE_CLAIM_BOUNDARY,
+  });
+  const signed = await verifyRiskBodyV2(artifact, COVERAGE_SOURCE_INVENTORY_V3_VERSION, options.trusted_keys, options);
+  if (!signed.valid || !signed.body) return refuse(signed.reason ?? 'inventory_invalid');
+  const { issuer, ...payload } = signed.body;
+  if (issuer.id !== payload.source_operator_id) {
+    return refuse('source_operator_issuer_mismatch', true, signed.artifact_digest);
+  }
+  try {
+    validateSourceBody(payload, COVERAGE_SOURCE_INVENTORY_V3_VERSION);
+  } catch {
+    return refuse('inventory_schema_invalid', true, signed.artifact_digest);
+  }
+  if (options.expected_inventory_kind === undefined
+      || options.expected_source_system_id === undefined
+      || options.expected_mapping_profile_digest === undefined) {
+    return refuse('context_binding_required', true, signed.artifact_digest);
+  }
+  if (payload.inventory_kind !== options.expected_inventory_kind) {
+    return refuse('inventory_kind_mismatch', true, signed.artifact_digest);
+  }
+  if (payload.source_system_id !== options.expected_source_system_id) {
+    return refuse('source_system_mismatch', true, signed.artifact_digest);
+  }
+  if (payload.mapping_profile_digest !== options.expected_mapping_profile_digest) {
+    return refuse('mapping_profile_mismatch', true, signed.artifact_digest);
+  }
+  if (options.expected_source_operator_id !== undefined
+      && payload.source_operator_id !== options.expected_source_operator_id) {
+    return refuse('source_operator_mismatch', true, signed.artifact_digest);
+  }
+  const now = options.now === undefined
+    ? Date.now()
+    : (typeof options.now === 'string' ? Date.parse(options.now) : Number(options.now));
+  if (!Number.isFinite(now)) return refuse('verification_time_invalid', true, signed.artifact_digest);
+  if (now < riskInstant(payload.issued_at)) return refuse('inventory_not_yet_issued', true, signed.artifact_digest);
+  if (now >= riskInstant(payload.expires_at)) return refuse('inventory_expired', true, signed.artifact_digest);
+  let root: string;
+  try {
+    root = coveragePopulationRoot(payload.inventory_kind, records);
+  } catch {
+    return refuse('population_invalid', true, signed.artifact_digest);
+  }
+  if (records.length !== payload.record_count) {
+    return refuse('population_count_mismatch', true, signed.artifact_digest);
+  }
+  if (root !== payload.population_root) {
+    return refuse('population_root_mismatch', true, signed.artifact_digest);
+  }
+  return {
+    accepted: true,
+    verified: true,
+    reason: null,
+    inventory_digest: signed.artifact_digest,
+    body: riskFreeze(riskClone(payload)),
+    claim_boundary: COVERAGE_SOURCE_CLAIM_BOUNDARY,
+  };
+}
+
+/**
+ * Verify only the digest binding between a report and a -v3 hybrid attestation
+ * envelope. The mirror of verifyCoverageReconciliationReportBinding for a -v3
+ * attestation: the report schema itself (EP-COVERAGE-RECONCILIATION-REPORT-v2)
+ * is unchanged, since it carries no signature of its own to strip a leg from.
+ * Callers MUST separately verify the attestation signature and relying-party
+ * context with verifyCoverageReconciliationAttestationV3.
+ */
+export function verifyCoverageReconciliationReportBindingV3(
+  report: unknown,
+  attestation: unknown,
+) {
+  if (!riskRecord(report)
+      || report['@version'] !== COVERAGE_RECONCILIATION_REPORT_VERSION) {
+    return { accepted: false, reason: 'coverage_report_invalid', report_hash: null };
+  }
+  if (!riskRecord(attestation)
+      || attestation['@version'] !== COVERAGE_RECONCILIATION_ATTESTATION_V3_VERSION
+      || !RISK_DIGEST.test(attestation.coverage_report_hash)) {
+    return { accepted: false, reason: 'coverage_attestation_invalid', report_hash: null };
+  }
+  let reportHash: string;
+  try {
+    reportHash = riskDigest(report);
+  } catch {
+    return { accepted: false, reason: 'coverage_report_invalid', report_hash: null };
+  }
+  if (reportHash !== attestation.coverage_report_hash) {
+    return { accepted: false, reason: 'coverage_report_hash_mismatch', report_hash: reportHash };
+  }
+  return { accepted: true, reason: null, report_hash: reportHash };
+}
+
+export interface CoverageRunnerV3Options {
+  trusted_keys: TrustedRiskKeysV2;
+  now: string | number;
+  system_of_record_pin: CoverageSourcePin;
+  receipt_population_pin: CoverageSourcePin;
+  require_independent_source_issuers?: boolean;
+  mldsaBackend?: RiskV2Options['mldsaBackend'];
+  mldsaBackendLoader?: RiskV2Options['mldsaBackendLoader'];
+}
+
+/**
+ * Hybrid twin of runCoverageReconciliation: both supplied source inventories
+ * must be EP-COVERAGE-SOURCE-INVENTORY-v3 hybrid artifacts, and the emitted
+ * attestation is signed as EP-COVERAGE-RECONCILIATION-ATTESTATION-v3. The join
+ * and conservation logic is identical pure structural code shared with the v1
+ * runner above (normalizeRecords, assertCrossPopulationIdentity,
+ * assertCoveragePopulationConservation); only the source-inventory and
+ * attestation SIGNATURE verification/issuance are hybrid.
+ */
+export async function runCoverageReconciliationV3(
+  input: {
+    run_id: string;
+    attestation_id: string;
+    relying_party_id: string;
+    program: RiskRecord;
+    period: { start: string; end: string };
+    census_digest: string;
+    system_of_record: { artifact: unknown; records: CoveragePopulationRecord[] };
+    receipt_population: { artifact: unknown; records: CoveragePopulationRecord[] };
+    generated_at: string;
+    expires_at: string;
+    timestamp_anchor: RiskRecord | null;
+  },
+  options: CoverageRunnerV3Options,
+  signer: RiskHybridSigner,
+) {
+  if (!riskRecord(input)
+      || !riskIdentifier(input.run_id)
+      || !riskIdentifier(input.attestation_id)
+      || !riskIdentifier(input.relying_party_id)
+      || !period(input.period)
+      || !RISK_DIGEST.test(input.census_digest)
+      || !riskRecord(input.system_of_record)
+      || !riskRecord(input.receipt_population)) {
+    throw new TypeError('coverage reconciliation input is invalid');
+  }
+  requiredPin(options.system_of_record_pin);
+  requiredPin(options.receipt_population_pin);
+  const agility: RiskV2Options = {};
+  if (options.mldsaBackend !== undefined) agility.mldsaBackend = options.mldsaBackend;
+  if (options.mldsaBackendLoader !== undefined) agility.mldsaBackendLoader = options.mldsaBackendLoader;
+
+  const systemVerification = await verifyCoverageSourceInventoryV3(
+    input.system_of_record.artifact,
+    input.system_of_record.records,
+    {
+      trusted_keys: options.trusted_keys,
+      now: options.now,
+      expected_inventory_kind: 'system_of_record',
+      expected_source_system_id: options.system_of_record_pin.source_system_id,
+      expected_mapping_profile_digest: options.system_of_record_pin.mapping_profile_digest,
+      expected_source_operator_id: options.system_of_record_pin.source_operator_id,
+      ...agility,
+    },
+  );
+  if (!systemVerification.accepted || !('body' in systemVerification)) {
+    throw new TypeError(`system-of-record inventory refused: ${systemVerification.reason}`);
+  }
+  const receiptVerification = await verifyCoverageSourceInventoryV3(
+    input.receipt_population.artifact,
+    input.receipt_population.records,
+    {
+      trusted_keys: options.trusted_keys,
+      now: options.now,
+      expected_inventory_kind: 'receipt_population',
+      expected_source_system_id: options.receipt_population_pin.source_system_id,
+      expected_mapping_profile_digest: options.receipt_population_pin.mapping_profile_digest,
+      expected_source_operator_id: options.receipt_population_pin.source_operator_id,
+      ...agility,
+    },
+  );
+  if (!receiptVerification.accepted || !('body' in receiptVerification)) {
+    throw new TypeError(`receipt inventory refused: ${receiptVerification.reason}`);
+  }
+  const systemBody = systemVerification.body as RiskRecord;
+  const receiptBody = receiptVerification.body as RiskRecord;
+  if (!samePeriod(systemBody.period, input.period)
+      || !samePeriod(receiptBody.period, input.period)) {
+    throw new TypeError('coverage source inventory period mismatch');
+  }
+  if (options.require_independent_source_issuers !== false
+      && systemBody.source_operator_id === receiptBody.source_operator_id) {
+    throw new TypeError('coverage reconciliation requires independent source issuers');
+  }
+
+  const systemRecords = normalizeRecords('system_of_record', input.system_of_record.records);
+  const receiptRecords = normalizeRecords('receipt_population', input.receipt_population.records);
+  assertCrossPopulationIdentity(systemRecords, receiptRecords);
+
+  const availableReceipts = new Map(
+    receiptRecords
+      .filter((record) => record.classification === 'receipt')
+      .map((record) => [joinKey(record), record]),
+  );
+  const matched: RiskRecord[] = [];
+  const effectWithoutReceipt: CoveragePopulationRecord[] = [];
+  const excluded: CoveragePopulationRecord[] = [];
+  const exception: CoveragePopulationRecord[] = [];
+  const systemIndeterminate: RiskRecord[] = [];
+  for (const record of systemRecords) {
+    if (record.classification === 'excluded' || record.classification === 'exception') {
+      if (resolveCoverageClassificationRule(record.classification, record.classification_rule_id)) {
+        (record.classification === 'excluded' ? excluded : exception).push(record);
+      } else {
+        systemIndeterminate.push({
+          ...record,
+          reclassification_reason: record.classification_rule_id === undefined
+            ? 'classification_rule_missing'
+            : 'classification_rule_unresolved',
+        });
+      }
+      continue;
+    }
+    const receipt = availableReceipts.get(joinKey(record));
+    if (!receipt) {
+      effectWithoutReceipt.push(record);
+      continue;
+    }
+    availableReceipts.delete(joinKey(record));
+    matched.push({
+      caid: record.caid,
+      action_digest: record.action_digest,
+      system_record_id: record.record_id,
+      receipt_record_id: receipt.record_id,
+    });
+  }
+  const receiptedWithoutObservation = [...availableReceipts.values()]
+    .sort((left, right) => textOrder(left.record_id, right.record_id));
+  const indeterminate = receiptRecords
+    .filter((record) => record.classification === 'indeterminate');
+  const joins: CoverageReconciliationJoins = {
+    matched: matched.length,
+    effect_without_receipt: effectWithoutReceipt.length,
+    receipted_without_observation: receiptedWithoutObservation.length,
+    indeterminate: indeterminate.length,
+    system_indeterminate: systemIndeterminate.length,
+    excluded: excluded.length,
+    exception: exception.length,
+  };
+  assertCoveragePopulationConservation(joins, {
+    system_record_count: systemBody.record_count as number,
+    receipt_record_count: receiptBody.record_count as number,
+  });
+
+  const generated = riskInstant(input.generated_at);
+  const expires = riskInstant(input.expires_at);
+  if (!Number.isFinite(generated) || !Number.isFinite(expires)
+      || generated < riskInstant(input.period.end) || expires <= generated) {
+    throw new TypeError('coverage reconciliation report validity window is invalid');
+  }
+  const report = riskFreeze({
+    '@version': COVERAGE_RECONCILIATION_REPORT_VERSION,
+    run_id: input.run_id,
+    relying_party_id: input.relying_party_id,
+    program: riskClone(input.program),
+    period: riskClone(input.period),
+    system_of_record: {
+      inventory_id: systemBody.inventory_id,
+      source_system_id: systemBody.source_system_id,
+      source_operator_id: systemBody.source_operator_id,
+      inventory_digest: systemVerification.inventory_digest,
+      population_root: systemBody.population_root,
+      count: systemBody.record_count,
+    },
+    receipt_population: {
+      inventory_id: receiptBody.inventory_id,
+      source_system_id: receiptBody.source_system_id,
+      source_operator_id: receiptBody.source_operator_id,
+      inventory_digest: receiptVerification.inventory_digest,
+      population_root: receiptBody.population_root,
+      count: receiptBody.record_count,
+    },
+    joins,
+    findings: {
+      matched,
+      effect_without_receipt: effectWithoutReceipt,
+      receipted_without_observation: receiptedWithoutObservation,
+      indeterminate,
+      system_indeterminate: systemIndeterminate,
+      excluded,
+      exception,
+    },
+    generated_at: input.generated_at,
+    claim_boundary: COVERAGE_REPORT_CLAIM_BOUNDARY,
+  });
+  const reportHash = riskDigest(report);
+  const attestation = await signCoverageReconciliationAttestationV3({
+    attestation_id: input.attestation_id,
+    relying_party_id: input.relying_party_id,
+    program: riskClone(input.program),
+    period: riskClone(input.period),
+    coverage_report_hash: reportHash,
+    census_digest: input.census_digest,
+    system_of_record: {
+      inventory_id: systemBody.inventory_id,
+      population_root: systemBody.population_root,
+      count: systemBody.record_count,
+    },
+    receipt_population: {
+      inventory_id: receiptBody.inventory_id,
+      population_root: receiptBody.population_root,
+      count: receiptBody.record_count,
+    },
+    joins: riskClone(joins),
+    issued_at: input.generated_at,
+    expires_at: input.expires_at,
+    timestamp_anchor: riskClone(input.timestamp_anchor),
+    claim_boundary: 'signed_reconciliation_of_supplied_populations_not_population_completeness',
+  }, signer, agility);
   return riskFreeze({ report, report_hash: reportHash, attestation });
 }

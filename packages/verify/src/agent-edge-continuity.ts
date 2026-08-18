@@ -19,6 +19,13 @@ import {
   type AebEvaluationVerification,
   type AebExecutionDecision,
 } from './aeb-adapter-contract.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  type AgileSignature,
+  type AgileSigningKey,
+  type AgilityOptions,
+} from './pq-signature-agility.js';
 
 export const AGENT_CONTINUITY_VERSION = 'EP-AGENT-EDGE-CONTINUITY-v1';
 export const AGENT_CONTINUITY_DOMAIN = `${AGENT_CONTINUITY_VERSION}\0`;
@@ -992,4 +999,348 @@ export async function authorizeAgentContinuityExecutionDurable(
     }),
     continuity,
   };
+}
+
+// ===========================================================================
+// EP-AGENT-EDGE-CONTINUITY-v2 -- hybrid (Ed25519 + ML-DSA-65) envelope signature
+// ===========================================================================
+/**
+ * REFERENCE-DERIVED HYBRID MIGRATION. Copies, move for move, the reference
+ * hybrid migration documented in docs/protocol/pq-hybrid-program.md, section
+ * "PATTERN: the reference hybrid migration" (EP-REVOCATION-v2 in
+ * packages/verify/src/revocation.ts). The five moves, applied to the
+ * continuity envelope:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. A second signature changes the SHAPE of
+ *    the proof, a wire-format change, so the envelope takes a new `@type`
+ *    (EP-AGENT-EDGE-CONTINUITY-v1 -> -v2) rather than growing an optional
+ *    field. verifyAgentContinuityEnvelope() above is untouched and refuses a
+ *    v2 envelope on `shapeReasons()`'s `@type` check (`invalid_type`) before
+ *    it inspects any signature, and it never throws.
+ * 2. SET SHAPE. The single `signature` object is replaced by `proof`, carrying
+ *    `required_algorithms` plus a `signatures` array shaped exactly like
+ *    EP-SIG-AGILITY-v1's AgileSignature ({ alg, sig, key_id? }), one entry per
+ *    algorithm in the registered order.
+ * 3. ANTI-STRIPPING BYTES. The required algorithm SET is committed INSIDE the
+ *    signed bytes (continuityV2SigningBytes below). Drop the ML-DSA leg and
+ *    narrow `required_algorithms` and the surviving Ed25519 signature no
+ *    longer verifies, because the bytes changed.
+ * 4. V1 COMPATIBILITY. v1 envelopes keep verifying, unchanged, through
+ *    verifyAgentContinuityEnvelope. v2 verification is ASYNC (ML-DSA
+ *    verification is async), so it is a SEPARATE entry point;
+ *    verifyAgentContinuityEnvelopeAny() routes on `@type` for callers holding
+ *    a mixed bag. The v1 verifier is never made async.
+ * 5. NAMED REFUSALS. Every failure path pushes a readable reason string;
+ *    nothing throws on caller input. An absent ML-DSA backend is a refusal
+ *    surfaced through the agility result, never a skipped check and never a
+ *    pass on the classical leg alone.
+ *
+ * SCOPE BOUNDARY (honest, not a hedge): this migration covers the single
+ * envelope signature only (verifyAgentContinuityEnvelopeV2), the cryptographic
+ * surface a PQ adversary can attack. verifyAgentContinuityGraph/
+ * authorizeAgentContinuityExecution and their durable twin remain v1-only
+ * here; a graph made of v2 envelopes still needs its per-envelope signature
+ * checked through verifyAgentContinuityEnvelopeV2 (or the Any router) by the
+ * caller before folding the result into a v1-shaped graph/execution decision.
+ * Unlike v1, signer_pins carries BOTH key halves per signer; a pin providing
+ * only one half fails verification, never a silent single-leg pass.
+ *
+ * HONEST BOUNDARIES carry over from v1: continuity contributes evidence, never
+ * authority. The ML-DSA backend is @noble/post-quantum's pure-JS FIPS 204
+ * implementation, not independently audited and not a FIPS validated module.
+ * v2 does NOT retroactively protect envelopes already issued under v1.
+ */
+
+export const AGENT_CONTINUITY_V2_VERSION = 'EP-AGENT-EDGE-CONTINUITY-v2';
+export const AGENT_CONTINUITY_V2_DOMAIN = `${AGENT_CONTINUITY_V2_VERSION}\0`;
+
+/** The registered required algorithm set, in canonical order. */
+export const AGENT_CONTINUITY_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+export interface AgentContinuityV2Proof {
+  profile: typeof AGENT_CONTINUITY_V2_VERSION;
+  required_algorithms: readonly string[];
+  key_id: string;
+  signatures: AgileSignature[];
+}
+
+export interface AgentContinuityEnvelopeV2 extends Omit<AgentContinuityEnvelope, '@type' | 'signature'> {
+  '@type': typeof AGENT_CONTINUITY_V2_VERSION;
+  proof: AgentContinuityV2Proof;
+}
+
+export interface ContinuityBuildOptionsV2 extends Omit<ContinuityBuildOptions, 'signer'> {
+  /** BOTH legs sign the same bytes; duplicate algorithms are refused by signAgileSet. */
+  signers: AgileSigningKey[];
+  proof_key_id: string;
+}
+
+/** v2 signer pin: BOTH public halves, keyed by the opaque `proof.key_id`. */
+export interface ContinuitySignerPinV2 {
+  public_key: string | KeyObject;
+  pq_public_key: string | Uint8Array;
+  status: 'active' | 'revoked';
+  valid_from: string;
+  valid_until: string;
+  allowed_sources: readonly string[];
+  allowed_edges: readonly AgentEdge[];
+}
+
+export interface ContinuityVerifyOptionsV2 extends Omit<ContinuityVerifyOptions, 'signer_pins'> {
+  signer_pins: Record<string, ContinuitySignerPinV2>;
+  mldsaBackend?: AgilityOptions['mldsaBackend'];
+  mldsaBackendLoader?: AgilityOptions['mldsaBackendLoader'];
+}
+
+function algorithmSetMatchesRegisteredV2(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === AGENT_CONTINUITY_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === AGENT_CONTINUITY_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+function unsignedForSignatureV2(envelope: AgentContinuityEnvelopeV2): unknown {
+  const { proof: _proof, ...unsigned } = envelope;
+  return unsigned;
+}
+
+/**
+ * The bytes BOTH legs sign: the same body v1 signs (everything but the
+ * proof/signature field) plus the committed `required_algorithms` set, under
+ * the v2 domain tag. Recomputed independently by the verifier from the
+ * PRESENTED fields and the REGISTERED set.
+ */
+export function continuityV2SigningBytes(
+  unsignedEnvelope: unknown,
+  requiredAlgorithms: readonly string[] = AGENT_CONTINUITY_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!algorithmSetMatchesRegisteredV2(requiredAlgorithms)) {
+    throw new Error('continuityV2SigningBytes: algorithm set is not the registered EP-AGENT-EDGE-CONTINUITY-v2 set');
+  }
+  const body = isObject(unsignedEnvelope) ? unsignedEnvelope : {};
+  return Buffer.from(
+    `${AGENT_CONTINUITY_V2_DOMAIN}${canonicalizeAeb({ ...body, required_algorithms: [...requiredAlgorithms] })}`,
+    'utf8',
+  );
+}
+
+/** Build and sign an immutable hybrid continuity envelope. Throws on issuer misuse. */
+export async function createAgentContinuityEnvelopeV2(
+  options: ContinuityBuildOptionsV2,
+): Promise<AgentContinuityEnvelopeV2> {
+  const body: Omit<AgentContinuityEnvelopeV2, 'continuity_id' | 'proof'> = {
+    '@type': AGENT_CONTINUITY_V2_VERSION,
+    parent_continuity_id: options.parent_continuity_id,
+    edge: options.edge,
+    source: options.source,
+    destination: options.destination,
+    relying_party_id: options.relying_party_id,
+    pinned_config_digest: options.pinned_config_digest,
+    initiator_id: options.initiator_id,
+    executor_id: options.executor_id,
+    caid: options.caid,
+    action_digest: options.action_digest,
+    proposal_digest: options.proposal_digest,
+    operation_id: options.operation_id,
+    evidence_refs: sortedUnique(options.evidence_refs ?? []) as AebDigest[],
+    claims: options.claims,
+    sequence: options.sequence,
+    issued_at: options.issued_at,
+    expires_at: options.expires_at,
+    handoff_nonce: options.handoff_nonce,
+  };
+  const withId = { ...body, continuity_id: continuityId(body as unknown as Omit<AgentContinuityEnvelope, 'continuity_id' | 'signature'>) };
+  const bytes = continuityV2SigningBytes(withId, AGENT_CONTINUITY_V2_REQUIRED_ALGORITHMS);
+  const signatures = await signAgileSet(new Uint8Array(bytes), options.signers);
+  const candidate = {
+    ...withId,
+    proof: {
+      profile: AGENT_CONTINUITY_V2_VERSION,
+      required_algorithms: [...AGENT_CONTINUITY_V2_REQUIRED_ALGORITHMS],
+      key_id: options.proof_key_id,
+      signatures,
+    },
+  } as AgentContinuityEnvelopeV2;
+  const reasons = shapeReasonsV2(candidate);
+  if (reasons.length > 0) throw new Error(`invalid v2 continuity envelope: ${reasons.join(',')}`);
+  return candidate;
+}
+
+function shapeReasonsV2(value: unknown): string[] {
+  const reasons: string[] = [];
+  if (!isObject(value) || value['@type'] !== AGENT_CONTINUITY_V2_VERSION) return ['invalid_type'];
+  if (!validId(value.continuity_id)) reasons.push('invalid_continuity_id');
+  if (value.parent_continuity_id !== null && !validId(value.parent_continuity_id)) reasons.push('invalid_parent_continuity_id');
+  if (!EDGES.has(value.edge as AgentEdge)) reasons.push('invalid_edge');
+  for (const key of [
+    'source', 'destination', 'relying_party_id', 'initiator_id', 'executor_id',
+    'operation_id', 'handoff_nonce',
+  ]) if (!validId(value[key])) reasons.push(`invalid_${key}`);
+  if (typeof value.caid !== 'string' || !CAID_RE.test(value.caid)) reasons.push('invalid_caid');
+  for (const key of ['pinned_config_digest', 'action_digest', 'proposal_digest']) {
+    if (!validDigest(value[key])) reasons.push(`invalid_${key}`);
+  }
+  if (!Array.isArray(value.evidence_refs) || !value.evidence_refs.every(validDigest)
+      || JSON.stringify(value.evidence_refs) !== JSON.stringify(sortedUnique(value.evidence_refs as string[]))) {
+    reasons.push('invalid_evidence_refs');
+  }
+  if (!validClaims(value.claims)) reasons.push('invalid_claims');
+  if (!Number.isInteger(value.sequence) || (value.sequence as number) < 0) reasons.push('invalid_sequence');
+  if (!Number.isFinite(instant(value.issued_at))) reasons.push('invalid_issued_at');
+  if (!Number.isFinite(instant(value.expires_at))) reasons.push('invalid_expires_at');
+  if (instant(value.issued_at) >= instant(value.expires_at)) reasons.push('invalid_time_range');
+  if (typeof value.handoff_nonce !== 'string' || !NONCE_RE.test(value.handoff_nonce)) reasons.push('invalid_handoff_nonce');
+  const proof = value.proof;
+  if (!isObject(proof) || proof.profile !== AGENT_CONTINUITY_V2_VERSION
+      || !algorithmSetMatchesRegisteredV2(proof.required_algorithms)
+      || !validId(proof.key_id)
+      || !Array.isArray(proof.signatures)) {
+    reasons.push('invalid_proof');
+  } else {
+    const presented = new Set<string>();
+    let malformed = false;
+    for (const s of proof.signatures) {
+      if (!isObject(s) || typeof s.alg !== 'string' || typeof s.sig !== 'string') { malformed = true; break; }
+      if (presented.has(s.alg)) { malformed = true; break; }
+      presented.add(s.alg);
+    }
+    if (malformed) {
+      reasons.push('invalid_proof');
+    } else {
+      for (const alg of AGENT_CONTINUITY_V2_REQUIRED_ALGORITHMS) {
+        if (!presented.has(alg)) reasons.push('invalid_proof');
+      }
+      for (const alg of presented) {
+        if (!(AGENT_CONTINUITY_V2_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) reasons.push('invalid_proof');
+      }
+    }
+  }
+  if (reasons.length === 0) {
+    reasons.push(...edgeClaimReasons(value as unknown as AgentContinuityEnvelope));
+  }
+  return sortedUnique(reasons);
+}
+
+/** Offline deterministic hybrid verification. Never throws on caller input. */
+export async function verifyAgentContinuityEnvelopeV2(
+  value: unknown,
+  options: ContinuityVerifyOptionsV2,
+): Promise<ContinuityVerification> {
+  try {
+    const checks = {
+      schema: false,
+      identity: false,
+      signature: false,
+      signer_authority: false,
+      time: false,
+      expected_action: false,
+      expected_operation: false,
+      expected_context: false,
+    };
+    const reasons = shapeReasonsV2(value);
+    if (reasons.length > 0 || !isObject(value)) return { valid: false, checks, reasons };
+    const envelope = value as unknown as AgentContinuityEnvelopeV2;
+    checks.schema = validTopology(options.topology);
+    if (!checks.schema) reasons.push('invalid_relying_party_topology');
+
+    const { continuity_id: _continuityId, proof: _proof, ...idBody } = envelope;
+    const expectedId = continuityId(idBody as unknown as Omit<AgentContinuityEnvelope, 'continuity_id' | 'signature'>);
+    checks.identity = expectedId === envelope.continuity_id
+      && options.topology.accepted_edges.includes(envelope.edge)
+      && edgeClaimReasons(envelope as unknown as AgentContinuityEnvelope).length === 0
+      && endpointPinReasons(envelope as unknown as AgentContinuityEnvelope, options.endpoint_pins).length === 0;
+    if (!checks.identity) reasons.push('continuity_identity_or_edge_claim_invalid');
+
+    // Both key halves must be pinned under the presented (opaque) key_id.
+    // Identified-but-not-trusted: an unpinned or half-pinned key_id confers
+    // NOTHING, and the v2 pin type has no optional pq_public_key to omit.
+    const pin = options.signer_pins?.[envelope.proof.key_id];
+    if (pin && typeof pin.public_key !== 'undefined' && typeof pin.pq_public_key !== 'undefined') {
+      const bytes = continuityV2SigningBytes(unsignedForSignatureV2(envelope), AGENT_CONTINUITY_V2_REQUIRED_ALGORITHMS);
+      const verificationKeys = [
+        { alg: 'Ed25519', public_key: pin.public_key },
+        { alg: 'ML-DSA-65', public_key: pin.pq_public_key },
+      ];
+      let setResult: Awaited<ReturnType<typeof verifyAgileSignatureSet>> | null = null;
+      try {
+        setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), envelope.proof.signatures, verificationKeys, {
+          mldsaBackend: options.mldsaBackend,
+          mldsaBackendLoader: options.mldsaBackendLoader,
+          policy: 'hybrid_all',
+          requiredAlgorithms: [...AGENT_CONTINUITY_V2_REQUIRED_ALGORITHMS],
+        });
+      } catch {
+        setResult = null;
+      }
+      checks.signature = setResult?.verified === true;
+    }
+    if (!checks.signature) reasons.push('signature_not_pinned_or_invalid');
+
+    const now = options.now ?? new Date().toISOString().replace('.000Z', 'Z');
+    const nowMs = instant(now);
+    const issuedMs = instant(envelope.issued_at);
+    const expiresMs = instant(envelope.expires_at);
+    const pinStarts = instant(pin?.valid_from);
+    const pinEnds = instant(pin?.valid_until);
+    checks.signer_authority = pin !== undefined
+      && pin.status === 'active'
+      && pin.allowed_sources.includes(envelope.source)
+      && pin.allowed_edges.includes(envelope.edge)
+      && Number.isFinite(nowMs)
+      && issuedMs >= pinStarts && issuedMs < pinEnds
+      && nowMs >= pinStarts && nowMs < pinEnds;
+    if (!checks.signer_authority) reasons.push('signer_not_authorized_for_source_or_edge');
+
+    const lifetime = expiresMs - issuedMs;
+    const age = nowMs - issuedMs;
+    checks.time = Number.isFinite(nowMs)
+      && nowMs >= issuedMs && nowMs < expiresMs
+      && lifetime <= options.topology.max_validity_seconds * 1000
+      && (options.topology.max_age_seconds === undefined
+        || (age >= 0 && age <= options.topology.max_age_seconds * 1000));
+    if (!checks.time) reasons.push('continuity_expired_stale_or_not_yet_valid');
+
+    checks.expected_action = (options.expected_caid === undefined || options.expected_caid === envelope.caid)
+      && (options.expected_action_digest === undefined || options.expected_action_digest === envelope.action_digest);
+    if (!checks.expected_action) reasons.push('expected_action_mismatch');
+
+    checks.expected_operation = options.expected_operation_id === undefined
+      || options.expected_operation_id === envelope.operation_id;
+    if (!checks.expected_operation) reasons.push('expected_operation_mismatch');
+
+    checks.expected_context = (options.expected_proposal_digest === undefined
+        || options.expected_proposal_digest === envelope.proposal_digest)
+      && (options.expected_relying_party_id === undefined
+        || options.expected_relying_party_id === envelope.relying_party_id)
+      && (options.expected_pinned_config_digest === undefined
+        || options.expected_pinned_config_digest === envelope.pinned_config_digest)
+      && (options.expected_initiator_id === undefined
+        || options.expected_initiator_id === envelope.initiator_id)
+      && (options.expected_executor_id === undefined
+        || options.expected_executor_id === envelope.executor_id);
+    if (!checks.expected_context) reasons.push('expected_execution_context_mismatch');
+
+    return {
+      valid: Object.values(checks).every(Boolean) && reasons.length === 0,
+      checks,
+      reasons: sortedUnique(reasons),
+    };
+  } catch {
+    return blankVerification('continuity_verification_error');
+  }
+}
+
+/**
+ * Route an envelope of EITHER version to its own verifier. v1 envelopes keep
+ * the exact v1 verdict (synchronous, wrapped in a resolved promise); v2
+ * envelopes get the hybrid check. An envelope whose `@type` is neither
+ * refuses through the v1 verifier's `invalid_type` reason.
+ */
+export async function verifyAgentContinuityEnvelopeAny(
+  value: unknown,
+  options: ContinuityVerifyOptions | ContinuityVerifyOptionsV2,
+): Promise<ContinuityVerification> {
+  if (isObject(value) && value['@type'] === AGENT_CONTINUITY_V2_VERSION) {
+    return verifyAgentContinuityEnvelopeV2(value, options as ContinuityVerifyOptionsV2);
+  }
+  return verifyAgentContinuityEnvelope(value, options as ContinuityVerifyOptions);
 }
