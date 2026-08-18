@@ -135,12 +135,20 @@ export function createExternalCustodySigner({ mode, keyId, sign, getPublicKey }:
 // means Vault Transit or a PKCS#11 HSM. The ML-DSA-65 situation is strictly
 // worse and this interface records it rather than papering over it:
 //
-//   There is NO KMS or HSM ML-DSA-65 signing path available to EP today.
-//   The PQ leg is a SOFTWARE-HELD key. The default backend is the agility
-//   module's @noble/post-quantum ML-DSA-65 implementation (a pure-JS FIPS 204
-//   implementation that is not an independently audited and not a FIPS
-//   validated module), and the secret key lives in process memory, not behind
-//   a custody boundary.
+//   EP HAS NOT ADOPTED a KMS or HSM ML-DSA-65 signing path. The PQ leg here
+//   is a SOFTWARE-HELD key: the default backend is the agility module's
+//   @noble/post-quantum ML-DSA-65 implementation (pure JS, not independently
+//   audited, not a FIPS validated module), and the secret key lives in
+//   process memory, not behind a custody boundary.
+//
+//   The reason is adoption, not availability. Corrected 2026-08-18: AWS KMS
+//   has offered generally available ML-DSA-65 signing since 2025-06-13
+//   (KeySpec ML_DSA_65, SigningAlgorithm ML_DSA_SHAKE_256), verified from AWS
+//   primary documentation. Use lib/pq-custody-external.ts to attach such a
+//   signer; it refuses fail-closed rather than falling back to this software
+//   backend. Note that doing so improves CUSTODY ONLY: CMVP certificate 4884
+//   (AWS KMS HSM, FIPS 140-3 Level 3, validated 2024-11-18) does not list
+//   ML-DSA among its approved algorithms, so no FIPS claim improves.
 //
 // That asymmetry is a PROPERTY OF THE DEPLOYMENT, not a detail to hide, so
 // PqCustodySigner carries an explicit `custody` field whose only honest value
