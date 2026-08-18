@@ -14,8 +14,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 
-const MCP_GUARD_VERSION = '0.4.5';
-const REGISTRY_CUTOFF = '2026-08-04T23:59:59.000Z';
+const MCP_GUARD_VERSION = '0.5.0';
+const REGISTRY_CUTOFF = '2026-08-16T23:59:59.000Z';
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -119,7 +119,7 @@ test('packed scan installs the audited guard and refuses hostile generated actio
     '--action',
     'archiveCustomer',
   ], { cwd: consumer });
-  assert.match(verifyOutput, /EMILIA PROTECT CHECK: PASS — underlying handler was not called/);
+  assert.match(verifyOutput, /EMILIA RR-1 CHECK: PASS — 8\/8 cases matched the protected-action contract/);
 
   const handoff = JSON.parse(readFileSync(join(consumer, 'emilia', 'scan-adoption-handoff.json'), 'utf8'));
   assert.deepEqual(
@@ -127,4 +127,26 @@ test('packed scan installs the audited guard and refuses hostile generated actio
     ['rotateApiKey', 'archiveCustomer'],
   );
   assert.equal(handoff.local_refusal.handler_called, false);
+  assert.equal(handoff.local_rr1.status, 'passed');
+  assert.equal(handoff.local_rr1.profile, 'EP-RR-1-LOCAL-v1');
+  assert.equal(handoff.local_rr1.manifest_sha256, manifestDigest);
+  assert.deepEqual(
+    handoff.local_rr1.tested_actions.map((action) => action.selector.tool),
+    ['rotateApiKey', 'archiveCustomer'],
+  );
+  assert.deepEqual(
+    handoff.local_rr1.cases.map(({ case_id, observed }) => ({ case_id, observed })),
+    [
+      { case_id: 'RR1-01-missing-receipt:rotateApiKey', observed: 'emilia_receipt_required' },
+      { case_id: 'RR1-02-valid-receipt:rotateApiKey', observed: 'admitted' },
+      { case_id: 'RR1-03-action-substitution:rotateApiKey', observed: 'action_mismatch' },
+      { case_id: 'RR1-04-replay:rotateApiKey', observed: 'replay_refused' },
+      { case_id: 'RR1-01-missing-receipt:archiveCustomer', observed: 'emilia_receipt_required' },
+      { case_id: 'RR1-02-valid-receipt:archiveCustomer', observed: 'admitted' },
+      { case_id: 'RR1-03-action-substitution:archiveCustomer', observed: 'action_mismatch' },
+      { case_id: 'RR1-04-replay:archiveCustomer', observed: 'replay_refused' },
+    ],
+  );
+  assert.match(handoff.local_rr1.results_digest, /^sha256:[0-9a-f]{64}$/);
+  assert.equal(handoff.local_rr1.synthetic_handler_calls, 2);
 });

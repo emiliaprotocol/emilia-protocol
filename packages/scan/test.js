@@ -534,8 +534,14 @@ test('generated MCP protection separates durable production state from the expli
 
   const check = spawnSync(process.execPath, [checkPath], { cwd: dir, encoding: 'utf8' });
   assert.equal(check.status, 0, `${check.stdout}\n${check.stderr}`);
-  assert.match(check.stdout, /EMILIA PROTECT CHECK: PASS/);
-  assert.match(check.stdout, /underlying handler was not called/);
+  assert.match(check.stdout, /EMILIA RR-1 CHECK: PASS/);
+  assert.match(check.stdout, /synthetic local handler ran exactly once/);
+  const repeatedCheck = spawnSync(process.execPath, [checkPath], { cwd: dir, encoding: 'utf8' });
+  assert.equal(repeatedCheck.status, 0, `${repeatedCheck.stdout}\n${repeatedCheck.stderr}`);
+  const firstDigest = check.stdout.match(/RR-1 results digest: (sha256:[0-9a-f]{64})/)?.[1];
+  const repeatedDigest = repeatedCheck.stdout.match(/RR-1 results digest: (sha256:[0-9a-f]{64})/)?.[1];
+  assert.ok(firstDigest, 'first RR-1 run did not print a results digest');
+  assert.equal(repeatedDigest, firstDigest, 'RR-1 report digest changed across equivalent independent runs');
 
   const productionDemo = spawnSync(process.execPath, [checkPath], {
     cwd: dir,
@@ -612,8 +618,9 @@ test('scan-to-adoption handoff binds reviewed bytes and explicit consequential a
     'generated_scaffold',
     'selected_actions',
     'local_refusal',
+    'local_rr1',
   ]);
-  assert.equal(handoff['@version'], 'EP-SCAN-ADOPTION-HANDOFF-v1');
+  assert.equal(handoff['@version'], 'EP-SCAN-ADOPTION-HANDOFF-v2');
   assert.deepEqual(handoff.reviewed_manifest, {
     file: 'action-control.manifest.json',
     sha256: manifestDigest,
@@ -656,6 +663,38 @@ test('scan-to-adoption handoff binds reviewed bytes and explicit consequential a
       ],
     },
   });
+  assert.equal(handoff.local_rr1.status, 'passed');
+  assert.equal(handoff.local_rr1.profile, 'EP-RR-1-LOCAL-v1');
+  assert.equal(handoff.local_rr1.manifest_sha256, manifestDigest);
+  assert.deepEqual(
+    handoff.local_rr1.tested_actions,
+    handoff.selected_actions.map(({ selector, action_type, assurance_class, receipt_required }) => ({
+      selector,
+      action_type,
+      assurance_class,
+      receipt_required,
+    })),
+  );
+  assert.equal(handoff.local_rr1.synthetic_handler_calls, 2);
+  assert.deepEqual(
+    handoff.local_rr1.cases.map(({ case_id, observed, handler_calls_after }) => ({
+      case_id,
+      observed,
+      handler_calls_after,
+    })),
+    [
+      { case_id: 'RR1-01-missing-receipt:deleteCustomer', observed: 'emilia_receipt_required', handler_calls_after: 0 },
+      { case_id: 'RR1-02-valid-receipt:deleteCustomer', observed: 'admitted', handler_calls_after: 1 },
+      { case_id: 'RR1-03-action-substitution:deleteCustomer', observed: 'action_mismatch', handler_calls_after: 1 },
+      { case_id: 'RR1-04-replay:deleteCustomer', observed: 'replay_refused', handler_calls_after: 1 },
+      { case_id: 'RR1-01-missing-receipt:deployToProduction', observed: 'emilia_receipt_required', handler_calls_after: 1 },
+      { case_id: 'RR1-02-valid-receipt:deployToProduction', observed: 'admitted', handler_calls_after: 2 },
+      { case_id: 'RR1-03-action-substitution:deployToProduction', observed: 'action_mismatch', handler_calls_after: 2 },
+      { case_id: 'RR1-04-replay:deployToProduction', observed: 'replay_refused', handler_calls_after: 2 },
+    ],
+  );
+  assert.match(handoff.local_rr1.results_digest, /^sha256:[0-9a-f]{64}$/);
+  assert.equal(handoff.local_rr1.claim_boundary.not_asserted.includes('named_human_approval'), true);
   assert.equal(statSync(handoffPath).mode & 0o777, 0o600, 'handoff must be owner-only');
 
   for (const forbidden of [...Object.values(sensitive), dir, 'customer_id', 'synthetic-customer-001']) {

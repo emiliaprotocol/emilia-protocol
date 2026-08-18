@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 // ---------------------------------------------------------------------------
 // Mock the MCP SDK before importing anything that depends on it.
@@ -37,7 +38,7 @@ vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
 // Import the modules under test.
 // ---------------------------------------------------------------------------
 import { AutoReceiptMiddleware } from '../auto-receipt.js';
-import { normalizeSecureBaseUrl } from '../index.js';
+import { advertisedToolsFor, MCP_SERVER_VERSION, normalizeSecureBaseUrl } from '../index.js';
 
 // ---------------------------------------------------------------------------
 // We extract TOOLS by reading index.js source and importing only the TOOLS
@@ -343,6 +344,20 @@ const TOOLS = [
 // SECTION 1: Tool definitions
 // ---------------------------------------------------------------------------
 describe('Tool definitions', () => {
+  it('advertises the same implementation version as the npm package', () => {
+    const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(MCP_SERVER_VERSION).toBe(packageJson.version);
+  });
+
+  it('keeps the MCP Registry metadata pinned to the prepared package release', () => {
+    const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    const registry = JSON.parse(readFileSync(new URL('../../server.json', import.meta.url), 'utf8'));
+    expect(registry.version).toBe(packageJson.version);
+    expect(registry.packages).toHaveLength(1);
+    expect(registry.packages[0].identifier).toBe(packageJson.name);
+    expect(registry.packages[0].version).toBe(packageJson.version);
+  });
+
   it('defines exactly 36 tools', () => {
     expect(TOOLS).toHaveLength(36);
   });
@@ -385,6 +400,23 @@ describe('Tool definitions', () => {
     for (const tool of TOOLS) {
       expect(tool.name.startsWith('ep_')).toBe(true);
     }
+  });
+
+  it('advertises only the protected-action front door by default', () => {
+    expect(advertisedToolsFor().map((tool) => tool.name)).toEqual([
+      'ep_guard_action',
+      'ep_check_signoff',
+      'ep_verify_receipt',
+    ]);
+  });
+
+  it('keeps protocol and registry surfaces behind explicit opt-ins', () => {
+    const protocol = advertisedToolsFor({ includeProtocolTools: true }).map((tool) => tool.name);
+    expect(protocol).toContain('ep_initiate_handshake');
+    expect(protocol).toContain('ep_issue_commit');
+    expect(protocol).not.toContain('ep_trust_profile');
+
+    expect(advertisedToolsFor({ includeRegistryTools: true })).toHaveLength(36);
   });
 });
 

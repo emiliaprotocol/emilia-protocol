@@ -3,6 +3,25 @@
 
 All notable changes to `@emilia-protocol/scan` are documented here.
 
+## 0.4.0 (2026-08-17)
+
+### Added
+
+- Replace the refusal-only setup check with the deterministic four-case
+  `EP-RR-1-LOCAL-v1` reproduction: missing receipt refusal, exact-action
+  admission, action-substitution refusal, and one-use replay refusal.
+- Emit the bounded RR-1 result and digest in
+  `EP-SCAN-ADOPTION-HANDOFF-v2`, with synthetic-assurance and ephemeral-state
+  limits stated in the artifact itself.
+
+### Fixed
+
+- Generate exact installs for the current audited
+  `@emilia-protocol/mcp-guard@0.5.0` release.
+- Bind every generated wrapper to the reviewed manifest's `action_type`,
+  including unclassified mutators defaulted fail-closed, so an acquired receipt
+  and the runtime guard cannot silently disagree about action identity.
+
 ## 0.3.9 (2026-08-05)
 
 ### Fixed

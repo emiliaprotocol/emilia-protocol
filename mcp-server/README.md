@@ -4,37 +4,42 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![MCP](https://img.shields.io/badge/protocol-MCP-5a5aff)](https://modelcontextprotocol.io)
 
-**Stop your AI agent before it does something irreversible.** A named human approves the exact action — a payment, a deletion, an account change — and you get a cryptographic receipt anyone can verify offline. The seatbelt for agent tool calls, over MCP.
+**A valid agent with a valid token can still take the wrong consequential action.** This MCP server gives agents one focused front door for requesting approval of the exact action, checking the signoff, and verifying the resulting receipt.
 
 ---
 
 ## What This Is
 
-Your agent can call powerful tools. This server makes sure it can't take an irreversible action without a named human's signed approval — and leaves proof.
+Identity gets an agent to a tool. It does not establish that the exact payment, deletion, account change, or production action was authorized.
 
-The hero tool is **`ep_guard_action`**: call it before any irreversible action and EMILIA holds execution until a named human signs off, then returns a verifiable receipt (poll **`ep_check_signoff`** until approved). That's the whole loop — gate the action, get the receipt.
+The default server advertises only three tools:
 
-The receipt is **offline-verifiable**: anyone can check it with open-source code, no backend, no vendor trust. Tamper with it and verification fails by construction.
+- **`ep_guard_action`** requests policy evaluation and, when required, named-human signoff for the exact action.
+- **`ep_check_signoff`** reports whether that authorization is pending, denied, approved but unspent, or consumed.
+- **`ep_verify_receipt`** verifies the stored receipt and anchor through the configured EMILIA service.
 
-36 tools in all; by default the server advertises a **focused 17** — the trust gate plus the pre-action protocol (handshake + commit binding, signoff orchestration, policy evaluation, offline receipt verification, delegation). Set `EP_INCLUDE_REGISTRY_TOOLS=true` to also expose the registry and reputation tools.
+This server orchestrates approval. It does **not** own the executor's credentials or consume the receipt at the effect boundary. The executor must still match the approved action and atomically consume the receipt before effect. Use `@emilia-protocol/scan` and `@emilia-protocol/mcp-guard` for that local dispatch wrapper.
+
+The package still contains the broader protocol and legacy registry catalog. Set `EP_INCLUDE_PROTOCOL_TOOLS=true` for handshake, commit, and delegation tools. Set `EP_INCLUDE_REGISTRY_TOOLS=true` for all 36 tools, including reputation and dispute surfaces.
 
 ---
 
-## Try it in 60 seconds (no key, no backend)
+## Prove the receipt-required loop locally
 
-The server runs with **no API key** — the verification and read tools (verify a receipt, verify a proof, look up a trust profile, register an entity) work out of the box, no signup, nothing self-hosted:
+The complete local four-case check is provided by Scan. It makes no network request and uses only a synthetic receipt and ephemeral state:
 
 ```bash
-npx -y @emilia-protocol/mcp-server
+npx -y @emilia-protocol/scan protect --sample --apply
+node emilia/verify-setup.mjs
 ```
 
-Add an `EP_API_KEY` only when you want the authenticated path — issuing live signoffs and writing receipts.
+It checks: missing receipt refuses, the exact action admits, changed arguments refuse, and replay refuses. This is a local reproduction, not a production or human-approval claim.
 
 ---
 
 ## Installation
 
-Add the following to your MCP client config. No local install required — `npx` handles it. The `env` block is **optional** — omit it for the keyless read/verify tools; add `EP_API_KEY` to unlock guarded signoffs and writes.
+Add the following to your MCP client config. No local install is required. `EP_API_KEY` is required for live guard and signoff operations; public receipt lookup may be available without it.
 
 ### Claude Desktop
 
@@ -57,11 +62,15 @@ Config file: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ### Cursor
 
-Config file: `.cursor/mcp.json` — same block as above; drop the `env` entirely to run keyless.
-
-Use EP Commit when a relying system wants proof that a high-stakes action was evaluated before it proceeded.
+Config file: `.cursor/mcp.json` — use the same block as above.
 
 ---
+
+## Legacy catalog examples (explicit opt-in)
+
+The following examples use tools hidden from the default surface. Set
+`EP_INCLUDE_REGISTRY_TOOLS=true` only when you deliberately need the broader
+registry, reputation, software, or dispute catalog.
 
 ## Quick Start
 
@@ -249,6 +258,10 @@ The submitter has 7 days to respond. Trust is suspended pending resolution.
 ## Tool Reference
 
 ### Summary
+
+The first three tools are advertised by default. Handshake, commit, and
+delegation tools require `EP_INCLUDE_PROTOCOL_TOOLS=true`. All other tools
+require `EP_INCLUDE_REGISTRY_TOOLS=true`.
 
 | Tool | Description | Auth Required |
 |------|-------------|:---:|
@@ -575,6 +588,8 @@ ep_leaderboard(entity_type="mcp_server", limit=5)
 ### ep_verify_receipt
 
 Verify a receipt's integrity against its Merkle proof. Use when you need cryptographic assurance that a receipt has not been tampered with after submission.
+This MCP tool calls the configured EMILIA service by receipt id; it is not the
+standalone offline verifier.
 
 **Parameters:**
 
@@ -957,10 +972,12 @@ Use `ep_list_policies` to see the full set of currently available policies.
 
 | Variable | Description | Required |
 |----------|-------------|:--------:|
-| `EP_API_KEY` | Your API key (`ep_live_...`). Required for write operations: submitting receipts, filing disputes, creating delegations, filing appeals. | For writes |
+| `EP_API_KEY` | Your API key (`ep_live_...`). Required for live guard/signoff and write operations. | For guard and writes |
 | `EP_BASE_URL` | API endpoint. Defaults to `https://emiliaprotocol.ai` | No |
+| `EP_INCLUDE_PROTOCOL_TOOLS` | Advertise handshake, commit, and delegation tools in addition to the three-tool action front door. | No |
+| `EP_INCLUDE_REGISTRY_TOOLS` | Advertise the complete 36-tool legacy catalog. | No |
 
-Read-only operations — trust profiles, policy evaluation, trust gates, pre-action enforcement, search, leaderboard, dispute status, lineage — work without an API key.
+Some public read operations work without an API key, but they still call the configured EMILIA service.
 
 ---
 

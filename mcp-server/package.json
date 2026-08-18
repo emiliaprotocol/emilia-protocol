@@ -1,8 +1,8 @@
 {
   "name": "@emilia-protocol/mcp-server",
   "mcpName": "io.github.emiliaprotocol/mcp-server",
-  "version": "2.0.1",
-  "description": "Stop your AI agent before it does something irreversible. ep_guard_action holds a payment, deletion, or account change until a named human signs off — and returns a receipt anyone can verify offline. The seatbelt for agent tool calls, over MCP.",
+  "version": "2.1.0",
+  "description": "A focused MCP front door for consequential agent actions: request exact-action approval, poll signoff, and verify the resulting receipt.",
   "main": "bundle.js",
   "type": "module",
   "bin": {
