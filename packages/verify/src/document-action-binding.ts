@@ -15,6 +15,12 @@
 
 import crypto from 'node:crypto';
 import { canonicalize } from './index.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  type AgileSignature,
+  type AgilityOptions,
+} from './pq-signature-agility.js';
 
 type Obj = Record<string, any>;
 
@@ -810,15 +816,411 @@ export function verifyDocumentActionBinding(binding: unknown, opts: DABOptions =
   }
 }
 
+// ===========================================================================
+// EP-DOCUMENT-ACTION-BINDING-v2 -- the hybrid (Ed25519 + ML-DSA-65) mapping
+// ===========================================================================
+/**
+ * Reference hybrid migration for this surface, copying the five moves from
+ * EP-REVOCATION-v2 (packages/verify/src/revocation.ts) verbatim:
+ *
+ * 1. VERSION BUMP. `profile` (this artifact's `@version` field) moves from
+ *    -v1 to -v2; verifyDocumentActionBinding above is UNCHANGED and refuses a
+ *    v2 mapping cleanly on the profile marker before inspecting any signature
+ *    (validateCore rejects `unsupported_profile` first).
+ * 2. SET SHAPE. `issuer_signatures` carries exactly the two AgileSignature
+ *    entries ({alg, sig, key_id?}) for Ed25519 and ML-DSA-65, in that order,
+ *    reusing EP-SIG-AGILITY-v1's shape verbatim.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is a CORE field (inside the
+ *    signed bytes), independently recomputed by the verifier from the
+ *    registered set, never read off the presented mapping.
+ * 4. V1 COMPATIBILITY. v1 mappings keep verifying through the unchanged sync
+ *    verifyDocumentActionBinding. v2 verification is a separate ASYNC entry
+ *    point (ML-DSA verification is async); verifyDocumentActionBindingStatement
+ *    routes on `profile` for callers holding a mixed bag.
+ * 5. NAMED REFUSALS. Every failure returns a `reason` string; nothing throws
+ *    on caller input. An absent ML-DSA backend refuses via the agility
+ *    module's own `pq_backend_unavailable`, never a pass on the Ed25519 leg
+ *    alone.
+ */
+
+export const DOCUMENT_ACTION_BINDING_V2_VERSION = 'EP-DOCUMENT-ACTION-BINDING-v2';
+export const DOCUMENT_ACTION_BINDING_V2_DOMAIN = `${DOCUMENT_ACTION_BINDING_V2_VERSION}\0`;
+/** The registered required algorithm set, in canonical order. */
+export const DOCUMENT_ACTION_BINDING_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+const CORE_KEYS_V2 = new Set([...CORE_KEYS, 'required_algorithms']);
+const CORE_REQUIRED_V2 = new Set([...CORE_REQUIRED, 'required_algorithms']);
+const MAPPING_ISSUER_V2_KEYS = new Set(['issuer_id', 'key_id', 'pq_key_id']);
+// v2's core (and therefore its top-level envelope) carries one additional
+// field, required_algorithms, versus v1's TOP_LEVEL_KEYS/TOP_LEVEL_REQUIRED.
+const TOP_LEVEL_KEYS_V2 = new Set([...TOP_LEVEL_KEYS, 'required_algorithms']);
+const TOP_LEVEL_REQUIRED_V2 = new Set([...TOP_LEVEL_REQUIRED, 'required_algorithms']);
+
+export interface DABv2Signer {
+  issuer_id: string;
+  key_id: string;
+  privateKey: crypto.KeyObject | string | Buffer;
+  pq_key_id: string;
+  /** ML-DSA-65 secret key: raw bytes or base64url, 4032 bytes. */
+  pqPrivateKey: Uint8Array | string;
+}
+
+export interface DABv2IssuerPin {
+  issuer_id: string;
+  /** Ed25519: base64url SPKI DER. */
+  public_key: string;
+  /** ML-DSA-65: base64url of the raw 1952-byte public key. */
+  pq_public_key: string;
+}
+
+interface DABv2Options extends AgilityOptions {
+  now?: number | string | Date;
+  allowedMediaTypes?: string[];
+  allowedPartyRoles?: string[];
+  allowedActionTypes?: string[];
+  requiredMaterialTermIds?: string[];
+  issuerKeys?: Record<string, DABv2IssuerPin>;
+  expectedBindingId?: string;
+  expectedAgreementId?: string;
+  documentBytes?: Uint8Array | ArrayBuffer;
+  documentMediaType?: string;
+  releaseActionTemplate?: Obj;
+  expectedRequiredParties?: Obj[];
+  expectedSupersedesDigest?: string | null;
+}
+
+function algorithmSetMatchesRegisteredDAB(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === DOCUMENT_ACTION_BINDING_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === DOCUMENT_ACTION_BINDING_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+function signingBytesV2(core: Obj): Buffer {
+  return Buffer.from(DOCUMENT_ACTION_BINDING_V2_DOMAIN + canonicalize(core), 'utf8');
+}
+
+function bindingCoreV2(binding: unknown): Obj | null {
+  if (!isRecord(binding)) return null;
+  const core: Obj = {};
+  for (const key of CORE_KEYS_V2) {
+    if (Object.hasOwn(binding, key)) core[key] = binding[key];
+  }
+  return core;
+}
+
+function validateCoreV2(core: Obj, now: number): { ok: true } | { ok: false; reason: string } {
+  if (!exactKeys(core, CORE_KEYS_V2, CORE_REQUIRED_V2)) return { ok: false, reason: 'malformed_binding' };
+  if (core.profile !== DOCUMENT_ACTION_BINDING_V2_VERSION) {
+    return { ok: false, reason: 'unsupported_profile' };
+  }
+  if (typeof core.binding_id !== 'string' || !IDENTIFIER.test(core.binding_id)) {
+    return { ok: false, reason: 'invalid_binding_id' };
+  }
+  if (typeof core.agreement_id !== 'string' || !IDENTIFIER.test(core.agreement_id)) {
+    return { ok: false, reason: 'invalid_agreement_id' };
+  }
+  if (!exactKeys(core.mapping_issuer, MAPPING_ISSUER_V2_KEYS)
+    || typeof core.mapping_issuer.issuer_id !== 'string'
+    || !IDENTIFIER.test(core.mapping_issuer.issuer_id)
+    || typeof core.mapping_issuer.key_id !== 'string'
+    || !IDENTIFIER.test(core.mapping_issuer.key_id)
+    || typeof core.mapping_issuer.pq_key_id !== 'string'
+    || !IDENTIFIER.test(core.mapping_issuer.pq_key_id)) {
+    return { ok: false, reason: 'invalid_mapping_issuer' };
+  }
+  if (!exactKeys(core.document, new Set(['digest', 'media_type', 'byte_length']))
+    || typeof core.document.digest !== 'string' || !SHA256.test(core.document.digest)
+    || typeof core.document.media_type !== 'string' || !MEDIA_TYPE.test(core.document.media_type)
+    || !Number.isSafeInteger(core.document.byte_length) || core.document.byte_length < 0) {
+    return { ok: false, reason: 'invalid_document' };
+  }
+  const terms = validateMaterialTerms(core.material_terms);
+  if (!terms.ok) return terms;
+  const action = validateReleaseAction(core.release_action);
+  if (!action.ok) return action;
+  const parties = validatePartyArray(core.parties, 'parties');
+  if (!parties.ok) return parties;
+  const required = validatePartyArray(core.required_parties, 'required_parties');
+  if (!required.ok) return required;
+  const declared = new Set(core.parties.map((party: any) => `${party.party_id}\0${party.role}`));
+  if (!core.required_parties.every((party: any) => declared.has(`${party.party_id}\0${party.role}`))) {
+    return { ok: false, reason: 'required_party_not_declared' };
+  }
+  const validity = validateValidity(core.validity, now);
+  if (!validity.ok) return validity;
+  if (Object.hasOwn(core, 'supersedes_digest')
+    && (typeof core.supersedes_digest !== 'string' || !SHA256.test(core.supersedes_digest))) {
+    return { ok: false, reason: 'invalid_supersedes_digest' };
+  }
+  // Anti-stripping: the required algorithm set is inside the signed bytes,
+  // independently recomputed here from the registered set, order-sensitive.
+  if (!algorithmSetMatchesRegisteredDAB(core.required_algorithms)) {
+    return { ok: false, reason: 'invalid_required_algorithms' };
+  }
+  return { ok: true };
+}
+
+/**
+ * Sign a DAB mapping under EP-DOCUMENT-ACTION-BINDING-v2 (hybrid). Throws on
+ * issuer-side misuse; never silently downgrades to a single algorithm.
+ */
+export async function signDocumentActionBindingV2(spec: Obj, signer: DABv2Signer): Promise<Obj> {
+  if (!isRecord(spec) || !isRecord(signer)) throw new TypeError('DAB spec and signer are required');
+  const documentBytes = asBytes(spec.document?.bytes);
+  if (documentBytes === null) throw new TypeError('spec.document.bytes must be a Uint8Array or ArrayBuffer');
+
+  const materialTerms = sortedBy(canonicalCopy(spec.material_terms) as any[], (term) => term.term_id);
+  const parties = sortedBy(canonicalCopy(spec.parties) as any[], partySortKey);
+  const requiredParties = sortedBy(canonicalCopy(spec.required_parties) as any[], partySortKey);
+  const actionTemplate = canonicalCopy(spec.release_action_template);
+  const core: Obj = {
+    profile: DOCUMENT_ACTION_BINDING_V2_VERSION,
+    binding_id: spec.binding_id,
+    agreement_id: spec.agreement_id,
+    mapping_issuer: {
+      issuer_id: signer.issuer_id,
+      key_id: signer.key_id,
+      pq_key_id: signer.pq_key_id,
+    },
+    document: {
+      digest: digestBytes(documentBytes),
+      media_type: spec.document.media_type,
+      byte_length: documentBytes.byteLength,
+    },
+    material_terms: materialTerms,
+    release_action: {
+      digest: computeReleaseActionDigest(actionTemplate),
+      template: actionTemplate,
+    },
+    parties,
+    required_parties: requiredParties,
+    validity: canonicalCopy(spec.validity),
+    required_algorithms: [...DOCUMENT_ACTION_BINDING_V2_REQUIRED_ALGORITHMS],
+  };
+  if (spec.supersedes_digest !== undefined) core.supersedes_digest = spec.supersedes_digest;
+
+  const issue = canonicalJsonIssue(core);
+  if (issue) throw new TypeError(`DAB is outside the canonical JSON profile: ${issue}`);
+  const validated = validateCoreV2(core, strictInstant(core.validity.not_before));
+  if (!validated.ok) throw new TypeError(`invalid DAB spec: ${validated.reason}`);
+
+  const privateKey = signer.privateKey instanceof crypto.KeyObject
+    ? signer.privateKey
+    : crypto.createPrivateKey(signer.privateKey);
+  if (privateKey.asymmetricKeyType !== 'ed25519') {
+    throw new TypeError('DAB issuer Ed25519 key must be Ed25519');
+  }
+  const bytes = signingBytesV2(core);
+  const bindingDigest = digestBytes(bytes);
+  const signatures = await signAgileSet(new Uint8Array(bytes), [
+    { alg: 'Ed25519', private_key: privateKey, key_id: signer.key_id },
+    { alg: 'ML-DSA-65', private_key: signer.pqPrivateKey, key_id: signer.pq_key_id },
+  ]);
+  return {
+    ...core,
+    binding_digest: bindingDigest,
+    issuer_signatures: signatures,
+  };
+}
+
+/**
+ * Verify a hybrid DAB mapping. Async because ML-DSA-65 verification is
+ * async; a v2 mapping never verifies on one leg alone (FAIL-CLOSED).
+ */
+export async function verifyDocumentActionBindingV2(binding: unknown, opts: DABv2Options = {}) {
+  const result = baseResult();
+  try {
+    if (!isRecord(binding) || !exactKeys(binding, TOP_LEVEL_KEYS_V2, TOP_LEVEL_REQUIRED_V2)) {
+      return { ...result, reason: 'malformed_binding' };
+    }
+    const issue = canonicalJsonIssue(binding);
+    if (issue) return { ...result, reason: 'noncanonical_binding' };
+
+    const now = normalizeNow(isRecord(opts) ? opts.now : undefined);
+    const rawCore = bindingCoreV2(binding);
+    if (rawCore === null) return { ...result, reason: 'malformed_binding' };
+    const coreCheck = validateCoreV2(rawCore, now);
+    if (!coreCheck.ok) return { ...result, reason: coreCheck.reason };
+    const core = rawCore;
+
+    const mediaTypes = normalizedStringSet(opts.allowedMediaTypes);
+    const partyRoles = normalizedStringSet(opts.allowedPartyRoles);
+    const actionTypes = normalizedStringSet(opts.allowedActionTypes);
+    if (mediaTypes === null || partyRoles === null || actionTypes === null) {
+      return { ...result, reason: 'vocabulary_not_pinned' };
+    }
+    if (!mediaTypes.has(core.document.media_type)) {
+      return { ...result, reason: 'media_type_not_allowed' };
+    }
+    if (!core.parties.every((party: any) => partyRoles.has(party.role))) {
+      return { ...result, reason: 'unknown_party_role' };
+    }
+    if (!actionTypes.has(core.release_action.template.action_type)) {
+      return { ...result, reason: 'unknown_action_type' };
+    }
+
+    if (opts.requiredMaterialTermIds !== undefined) {
+      const requiredTermIds = normalizedStringSet(opts.requiredMaterialTermIds);
+      if (requiredTermIds === null) return { ...result, reason: 'invalid_required_material_terms' };
+      const present = new Set(core.material_terms.map((term: any) => term.term_id));
+      if ([...requiredTermIds].some((termId) => !present.has(termId))) {
+        return { ...result, reason: 'required_material_term_missing' };
+      }
+    }
+
+    const bytes = signingBytesV2(core);
+    const computedBindingDigest = digestBytes(bytes);
+    if (binding.binding_digest !== computedBindingDigest) {
+      return { ...result, reason: 'binding_digest_mismatch' };
+    }
+
+    const signatures = (binding as Obj).issuer_signatures;
+    if (!Array.isArray(signatures) || signatures.length !== 2) {
+      return { ...result, reason: 'issuer_signature_missing' };
+    }
+    const presentedAlgs = new Set<string>();
+    for (const s of signatures as Partial<AgileSignature>[]) {
+      if (!s || typeof s !== 'object' || Array.isArray(s) || typeof s.alg !== 'string' || typeof s.sig !== 'string') {
+        return { ...result, reason: 'malformed_issuer_signature' };
+      }
+      if (presentedAlgs.has(s.alg)) return { ...result, reason: 'duplicate_issuer_signature_algorithm' };
+      presentedAlgs.add(s.alg);
+    }
+    for (const alg of DOCUMENT_ACTION_BINDING_V2_REQUIRED_ALGORITHMS) {
+      if (!presentedAlgs.has(alg)) return { ...result, reason: `missing_required_${alg}_signature` };
+    }
+
+    const issuerKeys = isRecord(opts.issuerKeys) ? opts.issuerKeys : null;
+    const keyId = core.mapping_issuer.key_id;
+    const pin = issuerKeys && Object.hasOwn(issuerKeys, keyId) ? issuerKeys[keyId] : null;
+    if (!isRecord(pin)
+      || pin.issuer_id !== core.mapping_issuer.issuer_id
+      || typeof pin.public_key !== 'string'
+      || typeof pin.pq_public_key !== 'string') {
+      return { ...result, reason: 'issuer_key_not_pinned' };
+    }
+
+    let setResult;
+    try {
+      setResult = await verifyAgileSignatureSet(
+        new Uint8Array(bytes),
+        signatures,
+        [
+          { alg: 'Ed25519', public_key: pin.public_key, key_id: core.mapping_issuer.key_id },
+          { alg: 'ML-DSA-65', public_key: pin.pq_public_key, key_id: core.mapping_issuer.pq_key_id },
+        ],
+        {
+          mldsaBackend: opts.mldsaBackend,
+          mldsaBackendLoader: opts.mldsaBackendLoader,
+          policy: 'hybrid_all',
+          requiredAlgorithms: [...DOCUMENT_ACTION_BINDING_V2_REQUIRED_ALGORITHMS],
+        },
+      );
+    } catch {
+      setResult = null;
+    }
+    if (setResult?.verified !== true) {
+      return { ...result, reason: `issuer_signature_invalid:${setResult?.reason ?? 'signature_set_unverified'}` };
+    }
+
+    Object.assign(result, {
+      binding_id: core.binding_id,
+      agreement_id: core.agreement_id,
+      supersedes_digest: Object.hasOwn(core, 'supersedes_digest')
+        ? core.supersedes_digest
+        : null,
+      binding_digest: computedBindingDigest,
+      document_digest: core.document.digest,
+      action_digest: core.release_action.digest,
+    });
+
+    if (opts.expectedBindingId !== undefined && opts.expectedBindingId !== core.binding_id) {
+      return { ...result, reason: 'binding_id_mismatch' };
+    }
+    if (opts.expectedAgreementId !== undefined && opts.expectedAgreementId !== core.agreement_id) {
+      return { ...result, reason: 'agreement_id_mismatch' };
+    }
+    if (opts.documentBytes !== undefined) {
+      const expectedBytes = asBytes(opts.documentBytes);
+      if (expectedBytes === null) return { ...result, reason: 'invalid_expected_document' };
+      const expectedDigest = digestBytes(expectedBytes);
+      if (expectedDigest !== core.document.digest) {
+        return { ...result, reason: 'document_digest_mismatch' };
+      }
+      if (expectedBytes.byteLength !== core.document.byte_length) {
+        return { ...result, reason: 'document_byte_length_mismatch' };
+      }
+    }
+    if (opts.documentMediaType !== undefined
+      && opts.documentMediaType !== core.document.media_type) {
+      return { ...result, reason: 'document_media_type_mismatch' };
+    }
+    if (opts.releaseActionTemplate !== undefined) {
+      const expectedActionDigest = computeReleaseActionDigest(opts.releaseActionTemplate);
+      if (expectedActionDigest === null) return { ...result, reason: 'invalid_expected_action' };
+      if (expectedActionDigest !== core.release_action.digest) {
+        return { ...result, reason: 'action_digest_mismatch' };
+      }
+    }
+    if (opts.expectedRequiredParties !== undefined) {
+      const expected = canonicalCopy(opts.expectedRequiredParties) as any[];
+      const expectedCheck = validatePartyArray(expected, 'required_parties');
+      if (!expectedCheck.ok) return { ...result, reason: 'invalid_expected_required_parties' };
+      if (canonicalize(expected) !== canonicalize(core.required_parties)) {
+        return { ...result, reason: 'required_party_roster_mismatch' };
+      }
+    }
+    if (Object.hasOwn(opts, 'expectedSupersedesDigest')) {
+      const expected = opts.expectedSupersedesDigest;
+      const actual = Object.hasOwn(core, 'supersedes_digest') ? core.supersedes_digest : null;
+      if (expected !== actual) return { ...result, reason: 'supersedes_digest_mismatch' };
+    }
+
+    return {
+      valid: true,
+      reason: 'valid',
+      binding_id: core.binding_id,
+      agreement_id: core.agreement_id,
+      supersedes_digest: Object.hasOwn(core, 'supersedes_digest')
+        ? core.supersedes_digest
+        : null,
+      binding_digest: computedBindingDigest,
+      document_digest: core.document.digest,
+      action_digest: core.release_action.digest,
+      required_parties: canonicalCopy(core.required_parties),
+    };
+  } catch {
+    return result;
+  }
+}
+
+/**
+ * Route a mapping of EITHER version to its verifier. A `profile` naming
+ * neither version refuses through the v1 (sync) verifier's `malformed_binding`
+ * / `unsupported_profile` path, which is the fail-closed answer.
+ */
+export async function verifyDocumentActionBindingStatement(binding: unknown, opts: DABv2Options = {}) {
+  if (isRecord(binding) && binding.profile === DOCUMENT_ACTION_BINDING_V2_VERSION) {
+    return verifyDocumentActionBindingV2(binding, opts);
+  }
+  return verifyDocumentActionBinding(binding, opts);
+}
+
 const documentActionBinding = {
   DOCUMENT_ACTION_BINDING_VERSION,
   DOCUMENT_ACTION_BINDING_DOMAIN,
   DOCUMENT_ACTION_MATERIAL_TERM_TYPES,
+  DOCUMENT_ACTION_BINDING_V2_VERSION,
+  DOCUMENT_ACTION_BINDING_V2_DOMAIN,
+  DOCUMENT_ACTION_BINDING_V2_REQUIRED_ALGORITHMS,
   computeDocumentSha256,
   computeReleaseActionDigest,
   computeDocumentActionBindingDigest,
   signDocumentActionBinding,
   verifyDocumentActionBinding,
+  signDocumentActionBindingV2,
+  verifyDocumentActionBindingV2,
+  verifyDocumentActionBindingStatement,
 };
 
 export default documentActionBinding;

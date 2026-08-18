@@ -16,6 +16,12 @@ import {
   type AebDigest,
   type AebJson,
 } from './aeb-adapter-contract.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  type AgileSignature,
+  type AgilityOptions,
+} from './pq-signature-agility.js';
 
 export const DISCOVERY_PERMIT_DISCOVERY_VERSION = 'EP-DISCOVERY-PERMIT-DISCOVERY-v1';
 export const DISCOVERY_PERMIT_BINDING_VERSION = 'EP-DISCOVERY-PERMIT-BINDING-v1';
@@ -834,4 +840,244 @@ export function verifyDiscoveryPermitResolverAttestationSignature(
   } catch {
     return false;
   }
+}
+
+// ===========================================================================
+// EP-DISCOVERY-PERMIT-RESOLVER-ATTESTATION-v2 -- hybrid (Ed25519 + ML-DSA-65)
+// ===========================================================================
+/**
+ * Reference hybrid migration for this surface. Copies the five moves from
+ * EP-REVOCATION-v2 (packages/verify/src/revocation.ts):
+ *
+ * 1. VERSION BUMP. `@type` moves EP-DISCOVERY-PERMIT-RESOLVER-ATTESTATION-v1
+ *    -> -v2. isDiscoveryPermitResolverAttestation / verify...Signature above
+ *    are UNCHANGED; a v2 attestation fails the v1 shape check on `@type`
+ *    before any signature is inspected.
+ * 2. SET SHAPE. The single `signature` field is replaced by `signatures`, an
+ *    array of exactly the two AgileSignature entries ({alg, sig, key_id}) for
+ *    Ed25519 and ML-DSA-65, reusing EP-SIG-AGILITY-v1's shape verbatim.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is a BODY field (inside the
+ *    signed bytes), independently recomputed by the verifier from the
+ *    registered set.
+ * 4. V1 COMPATIBILITY. v1 attestations keep verifying, unchanged, through the
+ *    sync functions above. v2 verification is a separate ASYNC entry point;
+ *    verifyDiscoveryPermitResolverAttestationStatement routes on `@type`.
+ * 5. NAMED REFUSALS. Nothing throws on caller input; a missing ML-DSA backend
+ *    is 'pq_backend_unavailable' from the agility module, never a pass on the
+ *    Ed25519 leg alone.
+ */
+
+export const DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_VERSION =
+  'EP-DISCOVERY-PERMIT-RESOLVER-ATTESTATION-v2';
+export const DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_DOMAIN =
+  `${DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_VERSION}\0`;
+/** The registered required algorithm set, in canonical order. */
+export const DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_REQUIRED_ALGORITHMS =
+  Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+const RESOLVER_ATTESTATION_V2_BODY_KEYS = new Set([
+  '@type', 'resolver_id', 'evaluated_at', 'expires_at', 'configuration_digest',
+  'caid', 'action_digest', 'source_digest', 'provenance_digest',
+  'resolution_digest', 'resolution', 'required_algorithms',
+]);
+const RESOLVER_ATTESTATION_V2_KEYS = new Set([...RESOLVER_ATTESTATION_V2_BODY_KEYS, 'signatures']);
+
+export interface DiscoveryPermitResolverAttestationV2Body
+  extends Omit<DiscoveryPermitResolverAttestationBody, '@type'> {
+  '@type': typeof DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_VERSION;
+  required_algorithms: readonly string[];
+}
+
+export interface DiscoveryPermitResolverAttestationV2
+  extends Omit<DiscoveryPermitResolverAttestationV2Body, '@type'> {
+  '@type': typeof DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_VERSION;
+  signatures: readonly AgileSignature[];
+}
+
+export interface DiscoveryPermitResolverAttestationV2Signer {
+  key_id: string;
+  private_key: KeyObject;
+  pq_key_id: string;
+  /** ML-DSA-65 secret key: raw bytes or base64url, 4032 bytes. */
+  pq_private_key: Uint8Array | string;
+}
+
+export interface DiscoveryPermitResolverV2Pin {
+  resolver_id: string;
+  key_id: string;
+  public_key: string;
+  pq_key_id: string;
+  /** ML-DSA-65: base64url of the raw 1952-byte public key. */
+  pq_public_key: string;
+}
+
+function algorithmSetMatchesRegisteredDPR(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+function resolverAttestationV2SigningBytes(body: DiscoveryPermitResolverAttestationV2Body): Buffer {
+  return Buffer.from(
+    `${DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_DOMAIN}${canonicalizeDiscoveryPermit(body)}`,
+    'utf8',
+  );
+}
+
+export function isDiscoveryPermitResolverAttestationV2(
+  value: unknown,
+): value is DiscoveryPermitResolverAttestationV2 {
+  if (!hasExactKeys(value, RESOLVER_ATTESTATION_V2_KEYS)
+    || value['@type'] !== DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_VERSION
+    || typeof value.resolver_id !== 'string'
+    || value.resolver_id.length === 0
+    || !Number.isFinite(parseInstant(value.evaluated_at))
+    || !Number.isFinite(parseInstant(value.expires_at))
+    || parseInstant(value.expires_at) <= parseInstant(value.evaluated_at)
+    || !isDigest(value.configuration_digest)
+    || typeof value.caid !== 'string'
+    || !CAID_RE.test(value.caid)
+    || !isDigest(value.action_digest)
+    || !isDigest(value.source_digest)
+    || !isDigest(value.provenance_digest)
+    || !isDigest(value.resolution_digest)
+    || !isDiscoveryPermitResolution(value.resolution)
+    || !algorithmSetMatchesRegisteredDPR(value.required_algorithms)
+    || !Array.isArray(value.signatures)
+    || value.signatures.length !== 2) {
+    return false;
+  }
+  const seen = new Set<string>();
+  for (const sig of value.signatures) {
+    if (!isObject(sig) || typeof sig.alg !== 'string' || typeof sig.sig !== 'string'
+      || typeof sig.key_id !== 'string' || sig.key_id.length === 0
+      || seen.has(sig.alg)) return false;
+    seen.add(sig.alg);
+  }
+  return DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_REQUIRED_ALGORITHMS.every((alg) => seen.has(alg));
+}
+
+/**
+ * Produce a domain-separated hybrid resolver statement (Ed25519 + ML-DSA-65)
+ * over the exact resolution body and every relying-party-relevant join digest.
+ */
+export async function signDiscoveryPermitResolverAttestationV2(
+  options: SignDiscoveryPermitResolverAttestationOptions,
+  signer: DiscoveryPermitResolverAttestationV2Signer,
+): Promise<DiscoveryPermitResolverAttestationV2> {
+  if (typeof options?.resolver_id !== 'string' || options.resolver_id.length === 0) {
+    fail('resolver_id_invalid');
+  }
+  if (!isDigest(options.configuration_digest)) fail('configuration_digest_invalid');
+  if (!isDiscoveryPermitResolution(options.resolution)) fail('resolution_shape_invalid');
+  if (typeof signer?.key_id !== 'string'
+    || signer.key_id.length === 0
+    || !(signer.private_key instanceof crypto.KeyObject)
+    || signer.private_key.type !== 'private'
+    || signer.private_key.asymmetricKeyType !== 'ed25519'
+    || typeof signer.pq_key_id !== 'string'
+    || signer.pq_key_id.length === 0) {
+    fail('resolver_signer_invalid');
+  }
+
+  const evaluatedAt = parseInstant(options.evaluated_at);
+  const expiresAt = parseInstant(options.expires_at);
+  const issuedAt = parseInstant(options.resolution.discovery.issued_at);
+  if (!Number.isFinite(evaluatedAt)
+    || !Number.isFinite(expiresAt)
+    || expiresAt <= evaluatedAt
+    || issuedAt > evaluatedAt
+    || Math.floor((evaluatedAt - issuedAt) / 1000) !== options.resolution.age_seconds) {
+    fail('resolver_attestation_evaluation_mismatch');
+  }
+
+  const resolution = clone(options.resolution);
+  const body: DiscoveryPermitResolverAttestationV2Body = {
+    '@type': DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_VERSION,
+    resolver_id: options.resolver_id,
+    evaluated_at: options.evaluated_at,
+    expires_at: options.expires_at,
+    configuration_digest: options.configuration_digest,
+    caid: resolution.binding.caid,
+    action_digest: resolution.binding.action_digest,
+    source_digest: digestDiscoveryPermit(resolution.source),
+    provenance_digest: digestDiscoveryPermit(resolution.provenance),
+    resolution_digest: digestDiscoveryPermit(resolution),
+    resolution,
+    required_algorithms: [...DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_REQUIRED_ALGORITHMS],
+  };
+  const bytes = resolverAttestationV2SigningBytes(body);
+  const signatures = await signAgileSet(new Uint8Array(bytes), [
+    { alg: 'Ed25519', private_key: signer.private_key, key_id: signer.key_id },
+    { alg: 'ML-DSA-65', private_key: signer.pq_private_key, key_id: signer.pq_key_id },
+  ]);
+  return deepFreeze({
+    ...body,
+    signatures,
+  });
+}
+
+/**
+ * Verify a hybrid resolver attestation. Async because ML-DSA-65 verification
+ * is async; a v2 attestation never verifies on one leg alone (FAIL-CLOSED).
+ */
+export async function verifyDiscoveryPermitResolverAttestationSignatureV2(
+  attestation: unknown,
+  pin: DiscoveryPermitResolverV2Pin,
+  options: AgilityOptions = {},
+): Promise<boolean> {
+  if (!isDiscoveryPermitResolverAttestationV2(attestation)
+    || typeof pin?.resolver_id !== 'string'
+    || pin.resolver_id !== attestation.resolver_id
+    || typeof pin.key_id !== 'string'
+    || typeof pin.pq_key_id !== 'string'
+    || typeof pin.public_key !== 'string' || pin.public_key.length === 0
+    || typeof pin.pq_public_key !== 'string' || pin.pq_public_key.length === 0) {
+    return false;
+  }
+  const { signatures: _signatures, ...body } = attestation as DiscoveryPermitResolverAttestationV2;
+  const bytes = resolverAttestationV2SigningBytes(body as DiscoveryPermitResolverAttestationV2Body);
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(
+      new Uint8Array(bytes),
+      attestation.signatures,
+      [
+        { alg: 'Ed25519', public_key: pin.public_key, key_id: pin.key_id },
+        { alg: 'ML-DSA-65', public_key: pin.pq_public_key, key_id: pin.pq_key_id },
+      ],
+      {
+        ...options,
+        policy: 'hybrid_all',
+        requiredAlgorithms: [...DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_REQUIRED_ALGORITHMS],
+      },
+    );
+  } catch {
+    return false;
+  }
+  if (setResult.verified !== true) return false;
+  // key_id binding: each leg's presented key_id must match the pin exactly,
+  // the same discipline verifyAgileSignatureSet leaves to the caller.
+  const byAlg = new Map(attestation.signatures.map((s) => [s.alg, s]));
+  return byAlg.get('Ed25519')?.key_id === pin.key_id
+    && byAlg.get('ML-DSA-65')?.key_id === pin.pq_key_id;
+}
+
+/**
+ * Route an attestation of EITHER version to its verifier. An `@type` naming
+ * neither version refuses through the v1 shape check, which is fail-closed.
+ */
+export async function verifyDiscoveryPermitResolverAttestationStatement(
+  attestation: unknown,
+  pin: DiscoveryPermitResolverPin | DiscoveryPermitResolverV2Pin,
+  options: AgilityOptions = {},
+): Promise<boolean> {
+  if (isObject(attestation) && attestation['@type'] === DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_VERSION) {
+    return verifyDiscoveryPermitResolverAttestationSignatureV2(
+      attestation,
+      pin as DiscoveryPermitResolverV2Pin,
+      options,
+    );
+  }
+  return verifyDiscoveryPermitResolverAttestationSignature(attestation, pin as DiscoveryPermitResolverPin);
 }
