@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/emiliaprotocol-emilia-protocol-badge.png)](https://mseep.ai/app/emiliaprotocol-emilia-protocol)
+
 # EMILIA Protocol
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
