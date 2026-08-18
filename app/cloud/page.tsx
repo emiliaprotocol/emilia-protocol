@@ -48,6 +48,11 @@ export default function CloudPage(): React.ReactElement {
             <div style={s.cardBody}>Challenge routing, notification delivery, approval queues, manual escalation, and webhook delivery with retry for accountable signoff workflows.</div>
           </div>
           <div style={s.card}>
+            <div style={s.label}>Authority Inbox</div>
+            <div style={s.cardTitle}>Evidence-derived action operations</div>
+            <div style={s.cardBody}>Track exact actions from receipt request through human decision, one-time use, provider entry, outcome, and reconciliation without inferring states the evidence does not establish.</div>
+          </div>
+          <div style={s.card}>
             <div style={s.label}>Events</div>
             <div style={s.cardTitle}>Event explorer</div>
             <div style={s.cardBody}>Search, filter, and timeline every protocol event. Full-text search across handshakes, signoffs, and decisions .</div>

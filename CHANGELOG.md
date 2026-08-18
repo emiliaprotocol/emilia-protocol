@@ -6,6 +6,20 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 
 ## [Unreleased] — main as of 2026-06-11
 
+### Authority operations
+
+- **Evidence-derived Authority Inbox** — the connected Cloud prototype now
+  projects human decision, one-time authority, provider entry, execution, and
+  reconciliation as separate states. Receipt consumption without independently
+  authenticated consequence evidence is displayed as `INDETERMINATE`, never as
+  admission or execution.
+- **Non-authorizing policy preview** — operators can preview whether the pinned
+  example policy would require authority without minting a receipt, reserving or
+  consuming authority, admitting an effect, or contacting a provider.
+- **Delivery-neutral notifications** — lifecycle notification objects are
+  generated with `delivery_state=NOT_ATTEMPTED` and `authorizes=false`; message
+  transport is deliberately outside the prototype.
+
 ### Authority evidence resolution boundary
 
 - **No synthetic revocation freshness** — authority-proof issuance no longer

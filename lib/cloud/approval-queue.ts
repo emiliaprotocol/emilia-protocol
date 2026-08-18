@@ -12,7 +12,7 @@ interface ApprovalQueueLogger {
 }
 
 /** Console-safe projection of a single fixed high-risk payment approval. */
-interface ApprovalQueueEntry {
+export interface ApprovalQueueEntry {
   receipt_id: string;
   action_hash: string | null;
   action_caid: string | null;
@@ -27,8 +27,12 @@ interface ApprovalQueueEntry {
   status: 'pending' | 'consumed' | 'rejected' | 'approved' | 'expired';
   signoff_id: string | null;
   approver_id: string | null;
+  approver_role: string | null;
+  required_assurance: string | null;
+  profile_digest: string | null;
   review_path: string | null;
   consumed_at: string | null;
+  decision_at: string | null;
 }
 
 export const APPROVAL_EVENT_LIMIT = 500;
@@ -192,10 +196,17 @@ export function replayApprovalQueue(
       approver_id: intendedApprover(requestState)
         || safeString(decisionEvent?.after_state?.approver_id)
         || safeString(decisionEvent?.actor_id),
+      approver_role: safeString(requestState.quorum?.role)
+        || safeString(decisionEvent?.after_state?.approver_role),
+      required_assurance: safeString(requestState.required_assurance)
+        || safeString(base.required_assurance),
+      profile_digest: safeString(base.profile_digest)
+        || safeString(base.mapping_profile_digest),
       review_path: signoffId ? `/signoff/${encodeURIComponent(signoffId)}` : null,
       consumed_at: consumed
         ? safeString(consumed.after_state?.consumed_at) || safeString(consumed.created_at)
         : null,
+      decision_at: decisionEvent ? safeString(decisionEvent.created_at) : null,
     });
   }
 

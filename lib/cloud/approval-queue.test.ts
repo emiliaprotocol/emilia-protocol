@@ -354,8 +354,12 @@ describe('tenant-scoped large-payment approval queue', () => {
       status: 'pending',
       signoff_id: `sig_${receiptId}`,
       approver_id: 'ep:approver:cfo',
+      approver_role: null,
+      required_assurance: null,
+      profile_digest: null,
       review_path: `/signoff/sig_${receiptId}`,
       consumed_at: null,
+      decision_at: null,
     });
     expect(request).not.toHaveProperty('canonical_action');
     expect(request).not.toHaveProperty('nonce');
