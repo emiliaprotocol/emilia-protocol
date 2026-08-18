@@ -267,3 +267,20 @@ The agile path differs in exactly one place. A v1-shaped proof takes the unchang
 **Never one leg of a set.** A SET-SHAPED proof (`proof.signatures: [...]`) goes to `verifyAgileSignatureSet` under policy `hybrid_all` with `requiredAlgorithms` defaulting to the FULL registry. One valid Ed25519 leg inside a set-shaped proof is a refusal (`missing_required_algorithm`), not a pass. A relying party may narrow the required set, and narrowing is then a decision written at its call site; the default never narrows itself to whatever happened to be presented.
 
 The v1 boundary is unchanged and still applies: a verified chain proves the artifact was continuously time-anchored by pinned authorities under algorithms the relying party accepts. It does not prove the artifact was correct, and it cannot prove a renewal happened before its predecessor algorithm actually broke.
+
+---
+
+## MIGRATION STATUS (2026-08-17, battalion waves complete)
+
+Every internally signed EP artifact surface in `packages/verify`, `packages/gate`, `packages/issue`, `packages/attest`, and `lib/` now carries a hybrid Ed25519 + ML-DSA-65 profile on the EP-REVOCATION-v2 pattern (version bump, AgileSignature set shape, anti-stripping byte commitment, separate async entry point, named refusals), with these named exceptions, each a boundary rather than a backlog item:
+
+- **WebAuthn/FIDO surfaces** (quorum signoffs, Class A approver signatures, agent adoption, release locks): the signer is a hardware authenticator or platform passkey EP does not control. Gated on FIDO Alliance / W3C PQC support, tracked as a dependency watch.
+- **Browser verifier twins** (`packages/verify/src/web.ts`, `lib/verify-web.js`): Web Crypto has no ML-DSA-65. The twins refuse hybrid artifacts by version marker (pinned by test in both copies) rather than shipping a verifier that could only pass on the classical leg.
+- **DSSE / in-toto (gate qualification)**: DSSE signatures carry no algorithm identifier and the PAE leaves no signed location for a required-algorithm set. Registration-gated; refuses `alg_registration_pending`.
+- **MEMORY-PROJECTION-RECORD-v1**: joint I-D wire (draft-ferro-schrock) is byte-for-byte unchanged; a detached EP-side co-signature (`EP-MEMORY-PROJECTION-PQ-COSIGNATURE-v1`) exists, and the -01 requirements for a native set-shaped proof are recorded in the module header. Coordination-gated.
+- **`lib/approval-acquisition/evidence.ts`, `lib/demo-receipt.ts`, fixture generators** (eg1, grace reference scenarios): mint or consume the frozen v1 core or demo fixtures only; adoption sites for the core hybrid issuance entry points, not independent signing surfaces.
+- **Symmetric/HMAC and ZK modules**: different primitive families, out of scope as before.
+
+Verification parity exists in three languages: the JS verifiers, a Python port (`conformance/py`, refusal strings byte-identical, 26 of 27 reachable), and a Go port (`packages/go-verify` structural + `conformance/go` live backend via CIRCL). Cross-implementation ML-DSA-65 agreement: OpenSSL (via `cryptography`), `dilithium-py`, and CIRCL all verify the `@noble/post-quantum` vectors. This is cross-implementation agreement on signature verification, not an independent implementation of EP.
+
+The posture words are unchanged by completion: every hybrid profile is OPT-IN, none is a deployment default, the software ML-DSA leg does not satisfy kms/hsm custody, and nothing here is FIPS validated. The earned sentence is "hybrid post-quantum signatures available across every internally signed EP evidence surface, verified in JS, Python, and Go, with the named boundaries above." Dual-issuance default flip preconditions: dual-signer custody (done), multi-language verification (done, this wave), FIPS 204 errata settled (external), relying parties on record (open).
