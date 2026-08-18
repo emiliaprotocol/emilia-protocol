@@ -17,9 +17,14 @@ import {
   riskInstant,
   riskRecord,
   signRiskBody,
+  signRiskBodyV2,
   verifyRiskBody,
+  verifyRiskBodyV2,
+  type RiskHybridSigner,
   type RiskRecord,
+  type RiskV2Options,
   type TrustedRiskKeys,
+  type TrustedRiskKeysV2,
 } from './reliance-risk-crypto.js';
 
 export const BOUNDED_EXECUTION_PROGRAM_VERSION = 'EP-BOUNDED-EXECUTION-PROGRAM-v1';
@@ -334,9 +339,12 @@ function normalizeProgram(input: unknown): RiskRecord {
   };
 }
 
-function validatePayload(value: unknown): asserts value is RiskRecord {
+function validatePayload(
+  value: unknown,
+  version: string = BOUNDED_EXECUTION_PROGRAM_VERSION,
+): asserts value is RiskRecord {
   if (!riskExact(value, PROGRAM_KEYS)
-      || value['@version'] !== BOUNDED_EXECUTION_PROGRAM_VERSION
+      || value['@version'] !== version
       || value.claim_boundary !== EXECUTION_PROGRAM_CLAIM_BOUNDARY) {
     throw new TypeError('program payload is invalid');
   }
@@ -395,6 +403,127 @@ export function verifyBoundedExecutionProgram(
     validatePayload(payload);
   } catch {
     return refuse('program_schema_invalid', true, signed.body.proof?.body_digest ?? riskDigest(signed.body));
+  }
+  const programDigest = executionProgramDigest(artifact);
+  if (options.expected_program_id === undefined
+      || options.expected_tenant_id === undefined
+      || options.expected_authorizer_id === undefined
+      || options.expected_authorization_digest === undefined
+      || options.expected_audience === undefined) {
+    return refuse('context_binding_required', true, programDigest);
+  }
+  if (issuer.id !== options.expected_authorizer_id) {
+    return refuse('authorizer_mismatch', true, programDigest);
+  }
+  if (payload.program_id !== options.expected_program_id) {
+    return refuse('program_id_mismatch', true, programDigest);
+  }
+  if (payload.tenant_id !== options.expected_tenant_id) {
+    return refuse('tenant_mismatch', true, programDigest);
+  }
+  if (payload.authorization_digest !== options.expected_authorization_digest) {
+    return refuse('authorization_mismatch', true, programDigest);
+  }
+  if (payload.audience !== options.expected_audience) {
+    return refuse('audience_mismatch', true, programDigest);
+  }
+  const now = options.now === undefined
+    ? Date.now()
+    : (typeof options.now === 'string' ? Date.parse(options.now) : Number(options.now));
+  if (!Number.isFinite(now)) return refuse('verification_time_invalid', true, programDigest);
+  if (now < riskInstant(payload.valid_from)) return refuse('program_not_active', true, programDigest);
+  if (now >= riskInstant(payload.expires_at)) return refuse('program_expired', true, programDigest);
+  return {
+    accepted: true,
+    verified: true,
+    reason: null,
+    program_digest: programDigest,
+    program: riskFreeze(riskClone(payload)) as Readonly<VerifiedBoundedExecutionProgram>,
+    authorizer_id: issuer.id,
+    claim_boundary: EXECUTION_PROGRAM_CLAIM_BOUNDARY,
+  };
+}
+
+// ===========================================================================
+// EP-BOUNDED-EXECUTION-PROGRAM-v2 -- opt-in hybrid adoption of EP-RISK-HYBRID-v2
+// ===========================================================================
+// ADDITIVE: signBoundedExecutionProgram / verifyBoundedExecutionProgram above
+// are UNCHANGED; a caller opts into the hybrid twin only by calling the V2
+// pair below with a distinct -v2 marker. This is the ADOPTION application of
+// the reference hybrid migration documented under "PATTERN: the reference
+// hybrid migration" in docs/protocol/pq-hybrid-program.md (EP-REVOCATION-v2
+// is the template): this module already delegates signing to
+// reliance-risk-crypto.js's shared signRiskBody/verifyRiskBody, so it adopts
+// that module's signRiskBodyV2/verifyRiskBodyV2 (EP-RISK-HYBRID-v2) rather
+// than reimplementing the set-shaped proof, the anti-stripping bytes, or the
+// pin discipline here. A deployed v1 verifier handed a v2 program refuses on
+// its version/schema check BEFORE inspecting any signature (never a leg
+// pass, never a crash); v2 verification is async and lives at a SEPARATE
+// entry point, exactly as EP-REVOCATION-v2 requires.
+
+export const BOUNDED_EXECUTION_PROGRAM_V2_VERSION = 'EP-BOUNDED-EXECUTION-PROGRAM-v2';
+
+export interface BoundedExecutionProgramSignerV2 extends RiskHybridSigner {}
+
+export interface ExecutionProgramVerificationOptionsV2 extends RiskV2Options {
+  trusted_keys?: TrustedRiskKeysV2;
+  now?: string | number;
+  expected_program_id?: string;
+  expected_tenant_id?: string;
+  expected_authorizer_id?: string;
+  expected_authorization_digest?: string;
+  expected_audience?: string;
+}
+
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of signBoundedExecutionProgram. */
+export async function signBoundedExecutionProgramV2(
+  input: BoundedExecutionProgramInput | RiskRecord,
+  signer: BoundedExecutionProgramSignerV2,
+  options: RiskV2Options = {},
+): Promise<RiskRecord> {
+  const normalized = normalizeProgram(input);
+  const body = {
+    '@version': BOUNDED_EXECUTION_PROGRAM_V2_VERSION,
+    ...normalized,
+    claim_boundary: EXECUTION_PROGRAM_CLAIM_BOUNDARY,
+  };
+  validatePayload(body, BOUNDED_EXECUTION_PROGRAM_V2_VERSION);
+  return signRiskBodyV2(BOUNDED_EXECUTION_PROGRAM_V2_VERSION, body, signer, options);
+}
+
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of verifyBoundedExecutionProgram.
+ * A v2 program NEVER verifies on one leg alone; an absent ML-DSA backend is a
+ * refusal, never a skipped check and never a pass on the surviving classical leg.
+ */
+export async function verifyBoundedExecutionProgramV2(
+  artifact: unknown,
+  options: ExecutionProgramVerificationOptionsV2 = {},
+) {
+  const refuse = (reason: string, verified = false, programDigest: string | null = null) => ({
+    accepted: false,
+    verified,
+    reason,
+    program_digest: programDigest,
+    program: null,
+    claim_boundary: EXECUTION_PROGRAM_CLAIM_BOUNDARY,
+  });
+  const signed = await verifyRiskBodyV2(
+    artifact,
+    BOUNDED_EXECUTION_PROGRAM_V2_VERSION,
+    options.trusted_keys,
+    options,
+  );
+  if (!signed.valid || !signed.body) {
+    return refuse(
+      signed.reason === 'issuer_untrusted' ? 'program_issuer_untrusted' : 'program_signature_invalid',
+    );
+  }
+  const { issuer, ...payload } = signed.body;
+  try {
+    validatePayload(payload, BOUNDED_EXECUTION_PROGRAM_V2_VERSION);
+  } catch {
+    return refuse('program_schema_invalid', true, riskDigest(signed.body));
   }
   const programDigest = executionProgramDigest(artifact);
   if (options.expected_program_id === undefined

@@ -3,6 +3,12 @@
 import crypto from 'node:crypto';
 import { canonicalize, hashCanonical } from './execution-binding.js';
 import type { ProviderEntryContext, ProviderEntryGuard } from './provider-entry.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  type AgileSignature,
+  type AgilityOptions,
+} from '@emilia-protocol/verify/pq-signature-agility';
 
 export const EXECUTION_VALUE_ATTESTATION_VERSION = 'EP-EXECUTION-VALUE-ATTESTATION-v1';
 
@@ -63,13 +69,16 @@ export function signExecutionValueAttestation(
   });
 }
 
-function validatePayload(payload: any): { ok: true } | { ok: false; reason: string } {
+function validatePayload(
+  payload: any,
+  version: string = EXECUTION_VALUE_ATTESTATION_VERSION,
+): { ok: true } | { ok: false; reason: string } {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)
       || !exactKeys(payload, [
         'version', 'action_digest', 'asset_currency', 'quote_currency',
         'value_minor', 'source', 'key_id', 'observed_at', 'expires_at',
       ])) return { ok: false, reason: 'execution_value_payload_malformed' };
-  if (payload.version !== EXECUTION_VALUE_ATTESTATION_VERSION) return { ok: false, reason: 'execution_value_version_unsupported' };
+  if (payload.version !== version) return { ok: false, reason: 'execution_value_version_unsupported' };
   if (!DIGEST.test(payload.action_digest)) return { ok: false, reason: 'execution_value_action_digest_invalid' };
   if (!CURRENCY.test(payload.asset_currency) || payload.quote_currency !== 'USD') return { ok: false, reason: 'execution_value_currency_invalid' };
   if (!Number.isSafeInteger(payload.value_minor) || payload.value_minor < 0) return { ok: false, reason: 'execution_value_amount_invalid' };
@@ -134,6 +143,224 @@ export function verifyExecutionValueAttestation(
     );
   } catch { signatureOk = false; }
   if (!signatureOk) return { ok: false, reason: 'execution_value_signature_invalid' };
+  if (payload.action_digest !== actionDigest(action)) return { ok: false, reason: 'execution_value_action_mismatch' };
+  if (typeof action.currency === 'string' && payload.asset_currency !== action.currency.toUpperCase()) {
+    return { ok: false, reason: 'execution_value_asset_mismatch' };
+  }
+  const at = typeof now === 'function' ? now() : now;
+  const observed = Date.parse(payload.observed_at);
+  const expires = Date.parse(payload.expires_at);
+  if (!Number.isFinite(at) || Number(at) < observed - 1_000 || Number(at) > expires
+      || Number(at) - observed > maxAgeMs) return { ok: false, reason: 'execution_value_stale' };
+  if (!Number.isSafeInteger(maxValueMinor) || maxValueMinor < 0) return { ok: false, reason: 'execution_value_policy_invalid' };
+  if (payload.value_minor > maxValueMinor) return { ok: false, reason: 'execution_value_limit_exceeded' };
+  return { ok: true, reason: 'execution_value_verified', payload: Object.freeze(payload) };
+}
+
+// ===========================================================================
+// EP-EXECUTION-VALUE-ATTESTATION-v2 -- the hybrid (Ed25519 + ML-DSA-65) value attestation
+// ===========================================================================
+// REFERENCE-PATTERN MIGRATION, following the five moves in "PATTERN: the
+// reference hybrid migration" (EP-REVOCATION-v2 is the template) in
+// docs/protocol/pq-hybrid-program.md:
+//   1. VERSION BUMP, NOT A FIELD BUMP. signExecutionValueAttestation /
+//      verifyExecutionValueAttestation above are UNCHANGED; v2 is a new
+//      `version` marker, never an optional second signature bolted onto v1.
+//   2. SET SHAPE. `proof.signatures` is an EP-SIG-AGILITY-v1 AgileSignature
+//      array ({ alg, sig, key_id? }), reused verbatim from
+//      packages/verify/src/pq-signature-agility.ts.
+//   3. ANTI-STRIPPING BYTES. `required_algorithms` and the v2 version marker
+//      are INSIDE the signed bytes (executionValueV2SigningBytes); the
+//      verifier rebuilds them from the REGISTERED set and the PRESENTED
+//      payload, never from what the proof claims.
+//   4. V1 COMPATIBILITY. v1 stays synchronous and untouched; v2 is a
+//      SEPARATE async entry point (ML-DSA verification is async).
+//   5. NAMED REFUSALS. Nothing throws on caller input; an absent ML-DSA
+//      backend is a refusal, never a skipped check and never a pass on the
+//      surviving classical leg.
+
+export const EXECUTION_VALUE_ATTESTATION_V2_VERSION = 'EP-EXECUTION-VALUE-ATTESTATION-v2';
+export const EXECUTION_VALUE_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+type ExecutionValuePayloadV2 = Readonly<{
+  version: typeof EXECUTION_VALUE_ATTESTATION_V2_VERSION;
+  action_digest: string;
+  asset_currency: string;
+  quote_currency: 'USD';
+  value_minor: number;
+  source: string;
+  key_id: string;
+  observed_at: string;
+  expires_at: string;
+}>;
+
+export interface ExecutionValueAttestationV2Proof {
+  required_algorithms: readonly string[];
+  signatures: AgileSignature[];
+}
+
+export interface ExecutionValueAttestationV2 {
+  payload: ExecutionValuePayloadV2;
+  proof: ExecutionValueAttestationV2Proof;
+}
+
+/** Ed25519 SPKI DER + ML-DSA-65 raw public key, both base64url, pinned per key_id. */
+export interface ExecutionValueTrustedKeyV2 {
+  public_key: string;
+  pq_public_key: string;
+}
+
+function algorithmSetMatchesRegisteredV2(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === EXECUTION_VALUE_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === EXECUTION_VALUE_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+/**
+ * Bytes BOTH legs sign: the v2 payload plus the committed required-algorithm
+ * set. canonicalize() sorts keys, so field order is irrelevant. The verifier
+ * rebuilds this from the PRESENTED payload and the REGISTERED set; the
+ * presented proof never gets to choose what it is checked against.
+ */
+function executionValueV2SigningBytes(
+  payload: ExecutionValuePayloadV2,
+  requiredAlgorithms: readonly string[] = EXECUTION_VALUE_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!algorithmSetMatchesRegisteredV2(requiredAlgorithms)) {
+    throw new Error('executionValueV2SigningBytes: algorithm set is not the registered EP-EXECUTION-VALUE-ATTESTATION-v2 set');
+  }
+  return Buffer.from(canonicalize({
+    required_algorithms: [...requiredAlgorithms],
+    payload,
+  }), 'utf8');
+}
+
+/** Mint a hybrid (Ed25519 + ML-DSA-65) role-specific value observation. */
+export async function signExecutionValueAttestationV2(
+  input: Omit<ExecutionValuePayloadV2, 'version'>,
+  keys: {
+    privateKey: crypto.KeyLike;
+    /** ML-DSA-65 raw secret key (4032 bytes), Uint8Array or base64url. */
+    pqPrivateKey: Uint8Array | string;
+  },
+  options: AgilityOptions = {},
+): Promise<ExecutionValueAttestationV2> {
+  const payload = {
+    version: EXECUTION_VALUE_ATTESTATION_V2_VERSION,
+    ...input,
+  } as ExecutionValuePayloadV2;
+  const preflight = validatePayload(payload, EXECUTION_VALUE_ATTESTATION_V2_VERSION);
+  if (!preflight.ok) throw new TypeError(preflight.reason);
+  const privateKeyObject = keys.privateKey instanceof crypto.KeyObject
+    ? keys.privateKey : crypto.createPrivateKey(keys.privateKey);
+  const bytes = executionValueV2SigningBytes(payload);
+  const signatures = await signAgileSet(new Uint8Array(bytes), [
+    { alg: 'Ed25519', private_key: privateKeyObject, key_id: payload.key_id },
+    { alg: 'ML-DSA-65', private_key: keys.pqPrivateKey, key_id: payload.key_id },
+  ], options);
+  return Object.freeze({
+    payload: Object.freeze(structuredClone(payload)),
+    proof: Object.freeze({
+      required_algorithms: [...EXECUTION_VALUE_V2_REQUIRED_ALGORITHMS],
+      signatures,
+    }),
+  });
+}
+
+/**
+ * FAIL-CLOSED hybrid verify. A v2 attestation NEVER verifies on one leg
+ * alone; an absent ML-DSA backend is a refusal, never a skipped check and
+ * never a pass on the surviving classical leg.
+ */
+export async function verifyExecutionValueAttestationV2(
+  attestation: unknown,
+  {
+    action,
+    trustedKeys,
+    allowedSources,
+    maxValueMinor,
+    maxAgeMs = 15_000,
+    now = Date.now,
+    ...agilityOptions
+  }: {
+    action: Record<string, any>;
+    trustedKeys: Record<string, ExecutionValueTrustedKeyV2>;
+    allowedSources: readonly string[];
+    maxValueMinor: number;
+    maxAgeMs?: number;
+    now?: number | (() => number);
+  } & AgilityOptions,
+): Promise<{ ok: boolean; reason: string; payload?: ExecutionValuePayloadV2 }> {
+  if (!attestation || typeof attestation !== 'object' || Array.isArray(attestation)) {
+    return { ok: false, reason: 'execution_value_attestation_required' };
+  }
+  let normalized: any;
+  try { normalized = JSON.parse(canonicalize(attestation)); } catch { return { ok: false, reason: 'execution_value_attestation_malformed' }; }
+  if (!exactKeys(normalized, ['payload', 'proof'])) return { ok: false, reason: 'execution_value_attestation_malformed' };
+  const payload = normalized.payload;
+  const payloadCheck = validatePayload(payload, EXECUTION_VALUE_ATTESTATION_V2_VERSION);
+  if (!payloadCheck.ok) return payloadCheck;
+  const proof = normalized.proof;
+  if (!proof || typeof proof !== 'object' || Array.isArray(proof)
+      || !exactKeys(proof, ['required_algorithms', 'signatures'])
+      || !algorithmSetMatchesRegisteredV2(proof.required_algorithms)
+      || !Array.isArray(proof.signatures)) {
+    return { ok: false, reason: 'execution_value_proof_malformed' };
+  }
+  const presented = new Set<string>();
+  for (const sig of proof.signatures) {
+    if (!sig || typeof sig !== 'object' || typeof sig.alg !== 'string') {
+      return { ok: false, reason: 'execution_value_proof_malformed' };
+    }
+    if (presented.has(sig.alg)) return { ok: false, reason: 'execution_value_proof_duplicate_algorithm' };
+    presented.add(sig.alg);
+  }
+  for (const alg of EXECUTION_VALUE_V2_REQUIRED_ALGORITHMS) {
+    if (!presented.has(alg)) return { ok: false, reason: `execution_value_proof_missing_${alg}` };
+  }
+  for (const alg of presented) {
+    if (!(EXECUTION_VALUE_V2_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) {
+      return { ok: false, reason: 'execution_value_proof_unexpected_algorithm' };
+    }
+  }
+  if (!trustedKeys || typeof trustedKeys !== 'object') return { ok: false, reason: 'execution_value_key_unpinned' };
+  const pin = trustedKeys[payload.key_id];
+  if (!pin || typeof pin.public_key !== 'string' || pin.public_key.length === 0
+      || typeof pin.pq_public_key !== 'string' || pin.pq_public_key.length === 0) {
+    return { ok: false, reason: 'execution_value_key_unpinned' };
+  }
+  if (!Array.isArray(allowedSources) || !allowedSources.includes(payload.source)) {
+    return { ok: false, reason: 'execution_value_source_untrusted' };
+  }
+  let bytes: Buffer;
+  try {
+    bytes = executionValueV2SigningBytes(payload);
+  } catch {
+    return { ok: false, reason: 'execution_value_payload_not_canonical' };
+  }
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(
+      new Uint8Array(bytes),
+      proof.signatures,
+      [
+        { alg: 'Ed25519', public_key: pin.public_key },
+        { alg: 'ML-DSA-65', public_key: pin.pq_public_key },
+      ],
+      { ...agilityOptions, policy: 'hybrid_all', requiredAlgorithms: [...EXECUTION_VALUE_V2_REQUIRED_ALGORITHMS] },
+    );
+  } catch {
+    setResult = null;
+  }
+  if (setResult?.verified !== true) {
+    const reason = String(setResult?.reason ?? 'signature_set_unverified');
+    return {
+      ok: false,
+      reason: reason.includes('pq_backend_unavailable')
+        ? 'execution_value_pq_backend_unavailable'
+        : 'execution_value_signature_invalid',
+    };
+  }
   if (payload.action_digest !== actionDigest(action)) return { ok: false, reason: 'execution_value_action_mismatch' };
   if (typeof action.currency === 'string' && payload.asset_currency !== action.currency.toUpperCase()) {
     return { ok: false, reason: 'execution_value_asset_mismatch' };
@@ -215,4 +442,7 @@ export default {
   signExecutionValueAttestation,
   verifyExecutionValueAttestation,
   createExecutionValueProviderEntryGuard,
+  EXECUTION_VALUE_ATTESTATION_V2_VERSION,
+  signExecutionValueAttestationV2,
+  verifyExecutionValueAttestationV2,
 };

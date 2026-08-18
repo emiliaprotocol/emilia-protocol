@@ -16,9 +16,14 @@ import {
   riskInstant,
   riskRecord,
   signRiskBody,
+  signRiskBodyV2,
   verifyRiskBody,
+  verifyRiskBodyV2,
+  type RiskHybridSigner,
   type RiskRecord,
+  type RiskV2Options,
   type TrustedRiskKeys,
+  type TrustedRiskKeysV2,
 } from './reliance-risk-crypto.js';
 
 export const LOSS_ALLOCATION_SCHEDULE_VERSION = 'EP-LOSS-ALLOCATION-SCHEDULE-v1';
@@ -170,14 +175,17 @@ function validateSource(value: unknown): asserts value is RiskRecord {
   }
 }
 
-function validateBody(value: unknown): asserts value is RiskRecord {
+function validateBody(
+  value: unknown,
+  version: string = LOSS_ALLOCATION_SCHEDULE_VERSION,
+): asserts value is RiskRecord {
   try {
     canonicalize(value);
   } catch {
     refuse('schedule_not_canonical', 'signed loss-allocation body is not canonicalizable JSON');
   }
   if (!riskExact(value, BODY_KEYS)
-      || value['@version'] !== LOSS_ALLOCATION_SCHEDULE_VERSION
+      || value['@version'] !== version
       || !riskExact(value.issuer, ISSUER_KEYS)
       || !riskIdentifier(value.issuer.id)
       || !riskIdentifier(value.issuer.key_id)) {
@@ -423,5 +431,164 @@ export function createLossAllocationAdmissibilityProfilePin(
       evaluation_max_age_sec: evaluationMaxAgeSec,
       revocation_required: true,
     },
+  });
+}
+
+// ===========================================================================
+// EP-LOSS-ALLOCATION-SCHEDULE-v2 -- opt-in hybrid adoption of EP-RISK-HYBRID-v2
+// ===========================================================================
+// ADDITIVE: signLossAllocationSchedule / verifyLossAllocationSchedule above are
+// UNCHANGED. This is the ADOPTION application of "PATTERN: the reference
+// hybrid migration" (EP-REVOCATION-v2 is the template) in
+// docs/protocol/pq-hybrid-program.md: this module already delegates signing to
+// reliance-risk-crypto.js's shared signRiskBody/verifyRiskBody, so it adopts
+// signRiskBodyV2/verifyRiskBodyV2 (EP-RISK-HYBRID-v2) rather than
+// reimplementing the set-shaped proof, the anti-stripping bytes, or the pin
+// discipline here. A deployed v1 verifier handed a v2 schedule refuses on its
+// version/schema check BEFORE inspecting any signature; v2 verification is a
+// SEPARATE async entry point.
+
+export const LOSS_ALLOCATION_SCHEDULE_V2_VERSION = 'EP-LOSS-ALLOCATION-SCHEDULE-v2';
+
+export interface LossAllocationSignerV2 extends RiskHybridSigner {}
+
+export interface VerifyLossAllocationScheduleOptionsV2 extends RiskV2Options {
+  trusted_keys?: TrustedRiskKeysV2;
+  expected_relying_party_id?: string;
+  expected_program?: LossAllocationProgramBinding;
+  status?: LossAllocationStatusResult;
+  now?: string | number | Date;
+}
+
+/** Mint the hybrid (Ed25519 + ML-DSA-65), set-committed twin of signLossAllocationSchedule. */
+export async function signLossAllocationScheduleV2(
+  input: unknown,
+  signer: LossAllocationSignerV2,
+  options: RiskV2Options = {},
+): Promise<RiskRecord> {
+  validateSource(input);
+  if (!riskRecord(signer)
+      || !riskIdentifier(signer.issuer_id)
+      || !riskIdentifier(signer.key_id)
+      || !Object.hasOwn(signer, 'private_key')
+      || !Object.hasOwn(signer, 'pq_private_key')) {
+    refuse('signing_key_invalid', 'loss-allocation hybrid signer is invalid');
+  }
+  const body = {
+    '@version': LOSS_ALLOCATION_SCHEDULE_V2_VERSION,
+    ...(input as RiskRecord),
+    issuer: { id: signer.issuer_id, key_id: signer.key_id },
+  };
+  validateBody(body, LOSS_ALLOCATION_SCHEDULE_V2_VERSION);
+  try {
+    return await signRiskBodyV2(LOSS_ALLOCATION_SCHEDULE_V2_VERSION, body, signer, options);
+  } catch {
+    refuse('signing_key_invalid', 'loss-allocation hybrid signing keys must be Ed25519 + ML-DSA-65');
+  }
+}
+
+/**
+ * FAIL-CLOSED hybrid verify, the set-committed twin of verifyLossAllocationSchedule.
+ * A v2 schedule NEVER verifies on one leg alone; an absent ML-DSA backend is a
+ * refusal, never a skipped check and never a pass on the surviving classical leg.
+ */
+export async function verifyLossAllocationScheduleV2(
+  artifact: unknown,
+  options: VerifyLossAllocationScheduleOptionsV2 = {},
+): Promise<RiskRecord> {
+  const fail = (
+    reason: string,
+    verified = false,
+    scheduleDigest: string | null = null,
+  ) => ({
+    accepted: false,
+    verified,
+    reason,
+    schedule_digest: scheduleDigest,
+    rules_digest: null,
+    claim_boundary: LOSS_ALLOCATION_SCHEDULE_CLAIM_BOUNDARY,
+  });
+
+  const signed = await verifyRiskBodyV2(
+    artifact,
+    LOSS_ALLOCATION_SCHEDULE_V2_VERSION,
+    options.trusted_keys,
+    options,
+  );
+  if (!signed.valid || !signed.body || !signed.artifact_digest) {
+    return fail(signed.reason ?? 'schedule_invalid');
+  }
+  try {
+    validateBody(signed.body, LOSS_ALLOCATION_SCHEDULE_V2_VERSION);
+  } catch (error) {
+    return fail(error instanceof LossAllocationScheduleValidationError
+      ? error.code : 'schedule_schema_invalid');
+  }
+  const body = signed.body;
+  const artifactDigest = signed.artifact_digest;
+
+  if (!riskExact(options.status, STATUS_KEYS)
+      || typeof options.status.target_digest !== 'string'
+      || !RISK_DIGEST.test(options.status.target_digest)) {
+    return fail('schedule_status_required', true, artifactDigest);
+  }
+  if (options.status.target_digest !== artifactDigest) {
+    return fail('status_target_mismatch', true, artifactDigest);
+  }
+  if (options.status.outcome === 'revoked') {
+    return fail('schedule_revoked', true, artifactDigest);
+  }
+  if (options.status.outcome !== 'current_not_revoked') {
+    return fail('schedule_status_not_current', true, artifactDigest);
+  }
+
+  const now = verificationTime(options.now);
+  if (!Number.isFinite(now)) return fail('verification_time_invalid', true, artifactDigest);
+  if (now < riskInstant(body.issued_at)) {
+    return fail('schedule_not_yet_issued', true, artifactDigest);
+  }
+  if (now < riskInstant(body.valid_from)) {
+    return fail('schedule_not_yet_valid', true, artifactDigest);
+  }
+  if (now >= riskInstant(body.expires_at)) {
+    return fail('schedule_stale', true, artifactDigest);
+  }
+
+  if (options.expected_relying_party_id === undefined) {
+    return fail('relying_party_binding_required', true, artifactDigest);
+  }
+  if (!riskIdentifier(options.expected_relying_party_id)
+      || options.expected_relying_party_id !== body.relying_party_id) {
+    return fail('relying_party_binding_mismatch', true, artifactDigest);
+  }
+  if (options.expected_program === undefined) {
+    return fail('program_binding_required', true, artifactDigest);
+  }
+  if (!validateProgram(options.expected_program)) {
+    return fail('expected_program_invalid', true, artifactDigest);
+  }
+  if (!sameProgram(body.program, options.expected_program)) {
+    return fail('reliance_program_binding_mismatch', true, artifactDigest);
+  }
+
+  return riskFreeze({
+    accepted: true,
+    verified: true,
+    reason: null,
+    schedule_digest: artifactDigest,
+    rules_digest: riskDigest({
+      '@version': LOSS_ALLOCATION_SCHEDULE_V2_VERSION,
+      rules: body.rules,
+    }),
+    schedule_id: body.schedule_id,
+    relying_party_id: body.relying_party_id,
+    program_id: body.program.program_id,
+    program_version: body.program.version,
+    source_digest: body.program.source_digest,
+    program_digest: body.program.program_digest,
+    issuer_id: body.issuer.id,
+    key_id: body.issuer.key_id,
+    status: 'current_not_revoked',
+    claim_boundary: LOSS_ALLOCATION_SCHEDULE_CLAIM_BOUNDARY,
   });
 }

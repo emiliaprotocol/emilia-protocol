@@ -18,6 +18,12 @@ import {
   type KeyObject,
 } from 'node:crypto';
 import { canonicalize } from './execution-binding.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  type AgileSignature,
+  type AgilityOptions,
+} from '@emilia-protocol/verify/pq-signature-agility';
 
 export const CONSEQUENCE_ACTUATOR_ENVELOPE_VERSION =
   'EP-CONSEQUENCE-ACTUATOR-ENVELOPE-v1';
@@ -688,6 +694,320 @@ export function verifyConsequenceExecutionEnvelope(
       options.expected,
       options.now,
     );
+  } catch {
+    return { ok: false, reason: 'malformed_envelope' };
+  }
+}
+
+// ===========================================================================
+// EP-CONSEQUENCE-ACTUATOR-ENVELOPE-v2 -- the hybrid (Ed25519 + ML-DSA-65) envelope
+// ===========================================================================
+// REFERENCE-PATTERN MIGRATION, following the five moves in "PATTERN: the
+// reference hybrid migration" (EP-REVOCATION-v2 is the template) in
+// docs/protocol/pq-hybrid-program.md:
+//   1. VERSION BUMP, NOT A FIELD BUMP. signConsequenceExecutionEnvelope /
+//      verifyConsequenceExecutionEnvelope above, and the ConsequenceActuator
+//      class's synchronous execute() path, are UNCHANGED. v2 is a distinct
+//      `@version` marker and a distinct `proof` shape (`{ required_algorithms,
+//      signatures }` instead of the flat `{ algorithm, key_id, value }`), so
+//      a v1 actuator refuses a v2 envelope on shape/version BEFORE
+//      inspecting any signature.
+//   2. SET SHAPE. `proof.signatures` is an EP-SIG-AGILITY-v1 AgileSignature
+//      array ({ alg, sig, key_id? }), reused verbatim from
+//      packages/verify/src/pq-signature-agility.ts.
+//   3. ANTI-STRIPPING BYTES. `required_algorithms` is INSIDE the signed
+//      bytes (consequenceEnvelopeV2SigningInput); the verifier rebuilds them
+//      from the REGISTERED set and the PRESENTED payload, never from what
+//      the proof claims.
+//   4. V1 COMPATIBILITY. The v1 signing/verification stays synchronous and
+//      untouched; v2 is a SEPARATE async entry point (ML-DSA verification is
+//      async). This v2 pair verifies the ENVELOPE only -- it deliberately
+//      does not extend the stateful ConsequenceActuator/store reserve-consume
+//      machinery, which is an operational concern independent of signature
+//      algorithm; a caller wiring a v2 envelope into that machinery verifies
+//      it first with verifyConsequenceExecutionEnvelopeV2 and then reserves
+//      under the SAME atomic-store discipline the v1 path already enforces.
+//   5. NAMED REFUSALS. Nothing throws on caller input; an absent ML-DSA
+//      backend is a refusal, never a skipped check and never a pass on the
+//      surviving classical leg.
+
+export const CONSEQUENCE_ACTUATOR_ENVELOPE_V2_VERSION =
+  'EP-CONSEQUENCE-ACTUATOR-ENVELOPE-v2';
+export const CONSEQUENCE_ACTUATOR_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+const PROOF_V2_KEYS = ['required_algorithms', 'key_id', 'pq_key_id', 'signatures'] as const;
+
+export interface ConsequenceExecutionEnvelopePayloadV2 {
+  '@version': typeof CONSEQUENCE_ACTUATOR_ENVELOPE_V2_VERSION;
+  issuer_id: string;
+  tenant_id: string;
+  attempt_id: string;
+  action_digest: string;
+  caid: string;
+  provider_account_id: string;
+  target_digest: string;
+  operation: string;
+  idempotency_key: string;
+  nonce: string;
+  issued_at: string;
+  expires_at: string;
+}
+
+export interface ConsequenceExecutionEnvelopeProofV2 {
+  required_algorithms: readonly string[];
+  key_id: string;
+  pq_key_id: string;
+  signatures: AgileSignature[];
+}
+
+export interface SignedConsequenceExecutionEnvelopeV2 {
+  payload: ConsequenceExecutionEnvelopePayloadV2;
+  proof: ConsequenceExecutionEnvelopeProofV2;
+}
+
+export interface ConsequenceActuatorPinsV2 {
+  tenantId: string;
+  caid: string;
+  providerAccountId: string;
+  targetDigest: string;
+  operation: string;
+  envelopeIssuerId: string;
+  envelopeKeyId: string;
+  envelopePublicKey: KeyMaterial;
+  envelopePqKeyId: string;
+  /** ML-DSA-65 raw public key (1952 bytes), Uint8Array or base64url. */
+  envelopePqPublicKey: Uint8Array | string;
+  maxEnvelopeTtlMs?: number;
+  clockSkewMs?: number;
+}
+
+export type ConsequenceEnvelopeVerificationV2 =
+  | {
+      readonly ok: true;
+      readonly payload: Readonly<ConsequenceExecutionEnvelopePayloadV2>;
+      readonly envelopeDigest: string;
+    }
+  | {
+      readonly ok: false;
+      readonly reason: string;
+    };
+
+function algorithmSetMatchesConsequenceV2(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === CONSEQUENCE_ACTUATOR_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === CONSEQUENCE_ACTUATOR_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+function validatePayloadShapeV2(
+  value: unknown,
+): value is ConsequenceExecutionEnvelopePayloadV2 {
+  if (!isRecord(value) || !exactKeys(value, PAYLOAD_KEYS)) return false;
+  const issuedAt = canonicalInstant(value.issued_at);
+  const expiresAt = canonicalInstant(value.expires_at);
+  return value['@version'] === CONSEQUENCE_ACTUATOR_ENVELOPE_V2_VERSION
+    && validIdentifier(value.issuer_id)
+    && validIdentifier(value.tenant_id)
+    && validIdentifier(value.attempt_id)
+    && validDigest(value.action_digest)
+    && typeof value.caid === 'string'
+    && CAID_PATTERN.test(value.caid)
+    && validIdentifier(value.provider_account_id)
+    && validDigest(value.target_digest)
+    && validIdentifier(value.operation)
+    && validIdentifier(value.idempotency_key)
+    && decodeCanonicalBase64Url(value.nonce, 16, 64) !== null
+    && issuedAt !== null
+    && expiresAt !== null
+    && expiresAt > issuedAt;
+}
+
+/**
+ * Bytes BOTH legs sign: the domain tag, the canonical payload, and the
+ * committed required-algorithm set. Recomputed independently by the verifier
+ * from the PRESENTED payload and the REGISTERED set.
+ */
+function consequenceEnvelopeV2SigningInput(
+  canonicalPayload: string,
+  requiredAlgorithms: readonly string[] = CONSEQUENCE_ACTUATOR_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!algorithmSetMatchesConsequenceV2(requiredAlgorithms)) {
+    throw new Error('consequenceEnvelopeV2SigningInput: algorithm set is not the registered EP-CONSEQUENCE-ACTUATOR-ENVELOPE-v2 set');
+  }
+  return Buffer.concat([
+    Buffer.from(CONSEQUENCE_ACTUATOR_ENVELOPE_V2_VERSION, 'utf8'),
+    Buffer.from([0]),
+    Buffer.from(canonicalize({ required_algorithms: [...requiredAlgorithms] }), 'utf8'),
+    Buffer.from([0]),
+    Buffer.from(canonicalPayload, 'utf8'),
+  ]);
+}
+
+/** Create a closed hybrid (Ed25519 + ML-DSA-65) execution envelope for an already-authorized effect. */
+export async function signConsequenceExecutionEnvelopeV2(
+  payload: ConsequenceExecutionEnvelopePayloadV2,
+  options: {
+    privateKey: KeyMaterial;
+    keyId: string;
+    /** ML-DSA-65 raw secret key (4032 bytes), Uint8Array or base64url. */
+    pqPrivateKey: Uint8Array | string;
+    pqKeyId: string;
+  } & AgilityOptions,
+): Promise<SignedConsequenceExecutionEnvelopeV2> {
+  const cloned = canonicalClone(payload);
+  if (!validatePayloadShapeV2(cloned.value)) {
+    throw new TypeError('hybrid execution envelope payload is malformed');
+  }
+  if (!validIdentifier(options?.keyId) || !validIdentifier(options?.pqKeyId)) {
+    throw new TypeError('hybrid execution envelope keyId/pqKeyId is malformed');
+  }
+  const bytes = consequenceEnvelopeV2SigningInput(cloned.canonical);
+  const signatures = await signAgileSet(new Uint8Array(bytes), [
+    { alg: 'Ed25519', private_key: normalizePrivateKey(options.privateKey), key_id: options.keyId },
+    { alg: 'ML-DSA-65', private_key: options.pqPrivateKey, key_id: options.pqKeyId },
+  ], options);
+  return deepFreeze({
+    payload: cloned.value,
+    proof: {
+      required_algorithms: [...CONSEQUENCE_ACTUATOR_V2_REQUIRED_ALGORITHMS],
+      key_id: options.keyId,
+      pq_key_id: options.pqKeyId,
+      signatures,
+    },
+  });
+}
+
+/**
+ * FAIL-CLOSED hybrid verify of one envelope, without invoking a provider or
+ * mutating replay state. A v2 envelope NEVER verifies on one leg alone; an
+ * absent ML-DSA backend is a refusal, never a skipped check and never a pass
+ * on the surviving classical leg.
+ */
+export async function verifyConsequenceExecutionEnvelopeV2(
+  envelope: unknown,
+  options: {
+    pins: ConsequenceActuatorPinsV2;
+    expected: VerifyExpectedBinding;
+    now?: number | (() => number);
+  } & AgilityOptions,
+): Promise<ConsequenceEnvelopeVerificationV2> {
+  try {
+    const pins = options.pins;
+    if (!isRecord(pins)) throw new TypeError('consequence actuator pins are required');
+    if (!validIdentifier(pins.tenantId)
+        || typeof pins.caid !== 'string' || !CAID_PATTERN.test(pins.caid)
+        || !validIdentifier(pins.providerAccountId)
+        || !validDigest(pins.targetDigest)
+        || !validIdentifier(pins.operation)
+        || !validIdentifier(pins.envelopeIssuerId)
+        || !validIdentifier(pins.envelopeKeyId)
+        || !validIdentifier(pins.envelopePqKeyId)) {
+      return { ok: false, reason: 'malformed_envelope' };
+    }
+    const maxEnvelopeTtlMs = pins.maxEnvelopeTtlMs ?? DEFAULT_CONSEQUENCE_ACTUATOR_MAX_TTL_MS;
+    const clockSkewMs = pins.clockSkewMs ?? DEFAULT_CONSEQUENCE_ACTUATOR_CLOCK_SKEW_MS;
+    if (!Number.isSafeInteger(maxEnvelopeTtlMs) || maxEnvelopeTtlMs < 1 || maxEnvelopeTtlMs > MAX_CONFIGURED_TTL_MS
+        || !Number.isSafeInteger(clockSkewMs) || clockSkewMs < 0 || clockSkewMs > MAX_CLOCK_SKEW_MS) {
+      return { ok: false, reason: 'malformed_envelope' };
+    }
+    const verificationKey = normalizePublicKey(pins.envelopePublicKey);
+
+    let cloned: unknown;
+    let canonicalEnvelope: string;
+    try {
+      const result = canonicalClone(envelope);
+      cloned = result.value;
+      canonicalEnvelope = result.canonical;
+    } catch {
+      return { ok: false, reason: 'malformed_envelope' };
+    }
+    if (!isRecord(cloned) || !exactKeys(cloned, ['payload', 'proof'])) {
+      return { ok: false, reason: 'malformed_envelope' };
+    }
+    if (!isRecord(cloned.payload) || cloned.payload['@version'] !== CONSEQUENCE_ACTUATOR_ENVELOPE_V2_VERSION) {
+      return { ok: false, reason: 'unsupported_version' };
+    }
+    if (!validatePayloadShapeV2(cloned.payload)) {
+      return { ok: false, reason: 'malformed_envelope' };
+    }
+    const proof = cloned.proof;
+    if (!isRecord(proof) || !exactKeys(proof, PROOF_V2_KEYS)
+        || !algorithmSetMatchesConsequenceV2(proof.required_algorithms)
+        || !Array.isArray(proof.signatures)
+        || proof.key_id !== pins.envelopeKeyId
+        || proof.pq_key_id !== pins.envelopePqKeyId) {
+      return { ok: false, reason: 'malformed_envelope' };
+    }
+    const presented = new Set<string>();
+    for (const s of proof.signatures as AgileSignature[]) {
+      if (!s || typeof s !== 'object' || typeof s.alg !== 'string') return { ok: false, reason: 'malformed_envelope' };
+      if (presented.has(s.alg)) return { ok: false, reason: 'malformed_envelope' };
+      presented.add(s.alg);
+    }
+    for (const alg of CONSEQUENCE_ACTUATOR_V2_REQUIRED_ALGORITHMS) {
+      if (!presented.has(alg)) return { ok: false, reason: 'signature_invalid' };
+    }
+    for (const alg of presented) {
+      if (!(CONSEQUENCE_ACTUATOR_V2_REQUIRED_ALGORITHMS as readonly string[]).includes(alg)) {
+        return { ok: false, reason: 'malformed_envelope' };
+      }
+    }
+
+    const payload = cloned.payload;
+    const canonicalPayload = canonicalize(payload);
+    let bytes: Buffer;
+    try {
+      bytes = consequenceEnvelopeV2SigningInput(canonicalPayload);
+    } catch {
+      return { ok: false, reason: 'malformed_envelope' };
+    }
+    let setResult;
+    try {
+      setResult = await verifyAgileSignatureSet(
+        new Uint8Array(bytes),
+        proof.signatures,
+        [
+          { alg: 'Ed25519', public_key: verificationKey },
+          { alg: 'ML-DSA-65', public_key: pins.envelopePqPublicKey },
+        ],
+        { ...options, policy: 'hybrid_all', requiredAlgorithms: [...CONSEQUENCE_ACTUATOR_V2_REQUIRED_ALGORITHMS] },
+      );
+    } catch {
+      setResult = null;
+    }
+    if (setResult?.verified !== true) {
+      const reason = String(setResult?.reason ?? 'signature_set_unverified');
+      return {
+        ok: false,
+        reason: reason.includes('pq_backend_unavailable') ? 'pq_backend_unavailable' : 'signature_invalid',
+      };
+    }
+
+    if (payload.issuer_id !== pins.envelopeIssuerId) return { ok: false, reason: 'issuer_mismatch' };
+    if (payload.tenant_id !== pins.tenantId) return { ok: false, reason: 'tenant_mismatch' };
+    if (payload.caid !== pins.caid) return { ok: false, reason: 'caid_mismatch' };
+    if (payload.provider_account_id !== pins.providerAccountId) return { ok: false, reason: 'provider_account_mismatch' };
+    if (payload.target_digest !== pins.targetDigest) return { ok: false, reason: 'target_mismatch' };
+    if (payload.operation !== pins.operation) return { ok: false, reason: 'operation_mismatch' };
+    if (payload.attempt_id !== options.expected.attemptId) return { ok: false, reason: 'attempt_mismatch' };
+    if (payload.action_digest !== options.expected.actionDigest) return { ok: false, reason: 'action_digest_mismatch' };
+    if (payload.idempotency_key !== options.expected.idempotencyKey) return { ok: false, reason: 'idempotency_key_mismatch' };
+
+    let currentTime: number;
+    try {
+      currentTime = nowMilliseconds(options.now);
+    } catch {
+      return { ok: false, reason: 'malformed_envelope' };
+    }
+    const issuedAt = Date.parse(payload.issued_at);
+    const expiresAt = Date.parse(payload.expires_at);
+    if (issuedAt > currentTime + clockSkewMs) return { ok: false, reason: 'envelope_not_yet_valid' };
+    if (expiresAt <= currentTime) return { ok: false, reason: 'envelope_expired' };
+    if (expiresAt - issuedAt > maxEnvelopeTtlMs) return { ok: false, reason: 'envelope_ttl_exceeded' };
+
+    return {
+      ok: true,
+      payload,
+      envelopeDigest: `sha256:${createHash('sha256').update(canonicalEnvelope).digest('hex')}`,
+    };
   } catch {
     return { ok: false, reason: 'malformed_envelope' };
   }
