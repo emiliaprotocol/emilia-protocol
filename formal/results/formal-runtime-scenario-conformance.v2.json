@@ -1079,7 +1079,7 @@
     },
     {
       "path": "packages/verify/dist/authorization-bundle.js",
-      "sha256": "39fb3c99650224f05a4e85206a2fd750e1d0aad788bdcf74ef3e2789706e863d"
+      "sha256": "8852309e550af45bb38dbb908470cab3faada8bd2bf4b4f66a8a1fcb71787d1e"
     },
     {
       "path": "packages/verify/dist/authorization-server-confirmation.js",
@@ -1143,7 +1143,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "4ad8259498e8b65f5d8942851aab4e35c40c28d285e5b44a8f8c3930a1248d8d"
+      "sha256": "309b4f8e24f7f68ad42c4a2b82c8d538ea1306f4f52b099163d327afcd76b086"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1175,7 +1175,7 @@
     },
     {
       "path": "packages/verify/dist/pq-signature-agility.js",
-      "sha256": "50b95d8411b2c2ba1282b4c02a81e80303ebbec43a7204905625f3f0af9ec149"
+      "sha256": "5cfdfb256e5682ee20b3f6a9f1d52c616dcc6f2f4bd4b11696d31032cae04018"
     },
     {
       "path": "packages/verify/dist/provenance.js",
@@ -1183,7 +1183,7 @@
     },
     {
       "path": "packages/verify/dist/quorum.js",
-      "sha256": "1f15f192fc53c6c36739d8fa872e374bbf81e024304b9ec9b395641661e3d936"
+      "sha256": "2b2d180d69190dc1794bfa73c0c8f7e47c0d4a8cccdda2bdc8a1a40de78cee01"
     },
     {
       "path": "packages/verify/dist/receipt-cose-encoding.js",
@@ -1191,7 +1191,7 @@
     },
     {
       "path": "packages/verify/dist/receipt-hybrid.js",
-      "sha256": "be62c2170ca2d740f55616bbf0ecb3c3d658592ed79401e9667a11b50835e8a4"
+      "sha256": "13cd5f834f51b66abfae44b56301d9b2142d6efc6f3ad8d1d335b345239c173d"
     },
     {
       "path": "packages/verify/dist/receipt-selective-disclosure.js",
@@ -1283,7 +1283,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "11f9d2cac4c673bc39fc18da7fffd1f8ac61c6f90d37569b6b41b821f4251cd4"
+      "sha256": "2acd0e353ec481eead0c35379374893b32df586a376c88a7d6d683e922521cf5"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
