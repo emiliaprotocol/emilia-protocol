@@ -81,6 +81,9 @@ import {
   type AgileSignature,
   type AgileVerificationKey,
 } from '../../packages/verify/pq-signature-agility.js';
+import { getFipsPosture, checkOperationPolicy } from '../../packages/verify/fips-mode.js';
+import type { FipsPosture } from '../../packages/verify/fips-mode.js';
+import { getKeyCustodyConfig } from '../env.js';
 
 export const EXECUTION_INTEGRITY_VERSION = 'EP-EXECUTION-INTEGRITY-v1';
 
@@ -134,6 +137,8 @@ export interface BindExecutionArgs {
   executionId?: string;
   /** RFC 3339 (defaults to now). */
   executedAt?: string;
+  /** Test-only posture injection for the FIPS consult below. Production callers omit it. */
+  fipsPosture?: FipsPosture;
 }
 
 /** Raw KeyObject signer material for the detached `proof` block shape (buildExecutionIntegrity). */
@@ -200,6 +205,36 @@ export interface ExecutionIntegrityReceiptRef {
 
 /** Normalize a "sha256:<hex>" or bare-hex hash to lowercase bare hex. */
 const hexOf = (h: unknown): string => String(h || '').replace(/^sha256:/, '').toLowerCase();
+
+/**
+ * OPT-IN FIPS operation-policy consult (EP-FIPS-MODE-v1,
+ * packages/verify/src/fips-mode.ts), run before bindExecution()'s
+ * signer.sign() commits the executor's attestation signature.
+ *
+ * CONFIG SURFACE: the existing EP_FIPS_REQUIRED flag (getKeyCustodyConfig().
+ * fipsRequired) -- the same flag lib/commit.ts and lib/commit-hybrid.ts
+ * consult. With EP_FIPS_REQUIRED unset or false this function is a no-op: it
+ * never calls getFipsPosture() or checkOperationPolicy(), so an
+ * unconfigured deployment's execution-integrity attestation is
+ * byte-identical to the one this consult did not exist to change.
+ *
+ * With EP_FIPS_REQUIRED=true, the algorithm is checked against the live (or
+ * injected, for tests) posture and a denial throws BEFORE signer.sign() runs,
+ * naming both the general refusal (`fips_policy_denied`) and the fips-mode
+ * module's own reason.
+ *
+ * `permitted:true` is a statement about this process's posture, never a
+ * FIPS validation or compliance claim. See docs/deployment/FIPS-MODE.md.
+ */
+export function consultFipsIssuancePolicy(alg: string, posture?: FipsPosture): void {
+  const custodyConfig = getKeyCustodyConfig();
+  if (!custodyConfig || !custodyConfig.fipsRequired) return;
+  const resolvedPosture = posture ?? getFipsPosture();
+  const policy = checkOperationPolicy(alg, resolvedPosture);
+  if (!policy.permitted) {
+    throw new Error(`bindExecution: refusing: fips_policy_denied (${alg}: ${policy.reason})`);
+  }
+}
 
 /**
  * Frozen canonical hash of the action that ran. Uses the SAME actionHash() the
@@ -324,6 +359,7 @@ export function bindExecution({
   signer,
   executionId,
   executedAt = new Date().toISOString(),
+  fipsPosture,
 }: BindExecutionArgs = {}): ExecutionIntegrityAttestation | Promise<ExecutionIntegrityAttestation> {
   if (!approvedActionHash) throw new Error('bindExecution requires approvedActionHash');
   if (!executedAction || typeof executedAction !== 'object') {
@@ -365,6 +401,11 @@ export function bindExecution({
   };
 
   const payload = executionSignedPayload(unsigned);
+
+  // OPT-IN FIPS operation-policy consult, BEFORE any provider-side signing
+  // effect. No-op unless EP_FIPS_REQUIRED=true; see consultFipsIssuancePolicy.
+  consultFipsIssuancePolicy('Ed25519', fipsPosture);
+
   const finish = (sigB64u: string): ExecutionIntegrityAttestation => ({ ...unsigned, signature_b64u: sigB64u });
   const signed = signer.sign(payload);
   // signer.sign() may return the signature synchronously or as a Promise —
@@ -1016,6 +1057,7 @@ const executionIntegrity = {
   executionV2SignedPayload,
   verifyExecutionIntegrity,
   verifyExecutionIntegrityV2,
+  consultFipsIssuancePolicy,
   EXECUTION_INTEGRITY_VERSION,
   EXECUTION_INTEGRITY_V2_VERSION,
 };

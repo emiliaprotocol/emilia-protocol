@@ -193,7 +193,7 @@ node -e 'import("@emilia-protocol/verify/fips-mode").then(m =>
 
 The module and its tests are in the tree and green (`npx tsx --test packages/verify/fips-mode.test.ts`), and the package wiring is complete: `@emilia-protocol/verify/fips-mode` resolves (tsconfig include, `exports` entry, `files` entry, and the root shim all present; verified by import from `examples/fips-deployment/posture-check.mjs`).
 
-One adoption step remains open: no production call site consults `checkOperationPolicy()` yet. Adoption is opt-in and additive; it changes nothing for a deployment whose `fips_status` is `inactive`, and it is queued with the stack-wide hybrid battalion so signing call sites gain the consult alongside their hybrid modes.
+The custody signing path consults `checkOperationPolicy()` at issuance. See "Consult points in the custody signing path" below for the exact call sites, what a denial looks like, and the boundary this does and does not establish.
 
 A runnable posture reporter and a Rocky Linux 9 reference container live in `examples/fips-deployment/`.
 
@@ -257,6 +257,47 @@ On an ordinary non-FIPS deployment (`fips_status: 'inactive'`, which is what EP'
 | outside the registry | any | - | - | - | - | `unknown_algorithm` |
 
 Every cell is exercised by `packages/verify/fips-mode.test.ts` against injected posture objects, so the matrix is deterministic on FIPS and non-FIPS hosts alike.
+
+## Consult points in the custody signing path
+
+`checkOperationPolicy()` is consulted at three issuance-time call sites, all gated on the same existing config surface: `EP_FIPS_REQUIRED=true`, read through `getKeyCustodyConfig().fipsRequired` (`lib/env.ts`). This is the deployment's declaration that it runs under a FIPS posture; it is a different flag from `EP_KEY_CUSTODY_MODE` (which selects local-dev/env/kms/hsm custody) and from `EP_GOV_STRICT`, and all three compose independently.
+
+**With `EP_FIPS_REQUIRED` unset or `false`, the consult does not run at all** -- `getFipsPosture()` and `checkOperationPolicy()` are never called, so an unconfigured deployment's signing path is byte-identical to the one that existed before this consult was wired in. This is pinned by a regression test at each call site (see below), not just asserted in this doc.
+
+**With `EP_FIPS_REQUIRED=true`**, each call site reads the live process posture (`getFipsPosture()`, no options -- see "Report the posture at startup" above for declaring `ed25519InValidatedBoundary` at process startup if your deployment needs Ed25519 inside an active FIPS mode) and consults `checkOperationPolicy()` for the algorithm about to sign, BEFORE the provider-side signing call. A denial throws a named error identifying both the general refusal and the fips-mode module's own reason, of the form:
+
+```
+fips_policy_denied (Ed25519: ed25519_boundary_undeclared)
+```
+
+Nothing throws on malformed caller input at these sites -- the honesty/validation gates already in place (drift detection, required-argument checks) are unchanged; this consult adds exactly one more named, fail-closed refusal ahead of the signing effect, driven entirely by the deployment's own declared posture, never by data an untrusted caller supplied.
+
+### The three call sites
+
+| Call site | File | Algorithm(s) checked | Runs before |
+|---|---|---|---|
+| Commit issuance, classical leg | `lib/commit.ts`, `issueCommit()` (via `consultFipsIssuancePolicy`, resolved before the `custodySigner` / env-key signing branch) | `Ed25519` | `custodySigner.sign()` or the built-in `signPayload()` fallback |
+| Commit issuance, hybrid proof | `lib/commit-hybrid.ts`, `createCommitHybridProof()` (exported `consultFipsIssuancePolicy`, checked per required algorithm) | `Ed25519`, `ML-DSA-65` | `signer.signSet()` |
+| Execution-integrity attestation | `lib/execution/integrity.ts`, `bindExecution()` (via `consultFipsIssuancePolicy`) | `Ed25519` | the executor's `signer.sign()` |
+
+`ML-DSA-65` is checked without an `allow_unvalidated_mldsa` acknowledgment at these sites: no config surface for that acknowledgment exists yet, so under `EP_FIPS_REQUIRED=true` with a genuinely active FIPS posture, the hybrid leg refuses by default with `mldsa_implementation_unvalidated` -- the fail-closed default the module itself documents, not a gap in the wiring. A deployment that wants ML-DSA-65 permitted under an active FIPS posture needs a call-site change to thread that acknowledgment through, which this consult deliberately does not add on its own.
+
+Each call site accepts a test-only `fipsPosture` (or, in `lib/commit.ts`'s internal helper, `posture`) parameter so its regression and denial paths can be exercised with an injected posture object against the REAL `checkOperationPolicy()`, without needing a genuinely FIPS-active Node process. Production callers never pass it; the live process posture is read automatically.
+
+### The honest boundary
+
+This consult enforces the OPERATOR'S DECLARED FIPS posture (`EP_FIPS_REQUIRED=true` plus, where relevant, the operator's own `ed25519InValidatedBoundary` declaration read off their CMVP certificate). It is not FIPS validation and it does not make EP FIPS compliant -- see "What this earns" and "What to say, and what not to say" above; nothing about wiring `checkOperationPolicy()` into more call sites changes that ceiling.
+
+The software ML-DSA-65 leg still does not satisfy `kms`/`hsm` custody requirements. `assertProductionKeyCustody()` (`lib/key-custody.ts`) only ever recognizes `EP_KEY_CUSTODY_MODE=kms` or `hsm` as satisfying government/production custody, and it evaluates the classical signer's mode only -- there is no ML-DSA custody mode for it to bless, because EP's ML-DSA-65 backend is software-held (`@noble/post-quantum`, pure JavaScript) at every custody mode, including `kms` and `hsm`. A hybrid proof passing the FIPS operation-policy consult is a statement about the declared posture permitting the operation to proceed; it is never a statement that the PQ leg's key custody meets the classical leg's KMS/HSM bar. Those are two different boundaries and this consult only speaks to the first.
+
+### Same pattern, other program partitions (not wired here)
+
+The following call sites are queued to gain the identical opt-in consult, same config surface, same before-the-signing-effect placement, same no-posture-no-change regression discipline. They are listed here as a map of the intended rollout, not implemented in this document's change:
+
+- Status issuance (`packages/verify/src/revocation.ts` / `lib/revocation/*` signing paths)
+- Receipt-program issuance (`packages/issue/src/hybrid-issuance.ts` and the trust-receipt issuer)
+- Remedy-program signing sites
+- Health-program signing sites (`lib/health-program-integrity` family)
 
 ## What to say, and what not to say
 

@@ -8,6 +8,11 @@ ones it refuses, by what name.
 
 - `posture-check.mjs` - the reporter. Runs anywhere Node runs. Exits 0 on an
   ordinary non-FIPS machine.
+- `signing-consult-demo.mts` - the signing demonstration. Drives the actual
+  custody signing path (`bindExecution()` in `lib/execution/integrity.ts`)
+  under a configured FIPS posture, once PERMITTED and once REFUSED, and proves
+  the refusal happens before the executor's signing callback ever runs. Run
+  with `npx tsx examples/fips-deployment/signing-consult-demo.mts`.
 - `Containerfile.rocky9` - a reference container. **Reviewed reference material,
   never built.** See [what was and was not verified](#what-was-verified-and-what-was-not).
 
@@ -162,6 +167,38 @@ its Approved algorithms. Per the deployment document's tables, Rocky Linux 9
 (#5116), Chainguard (#5132), and TuxCare (#5373) do; upstream OpenSSL (#4282,
 #4985), RHEL 9 (#4857), Ubuntu (#4794, #5115), and Amazon Linux 2023 (#5021,
 #5438) do not.
+
+## Signing demonstration: one allowed, one refused
+
+`posture-check.mjs` evaluates the policy; it never signs anything. `signing-consult-demo.mts` drives the real custody signing path -- `bindExecution()` in `lib/execution/integrity.ts`, one of the three call sites in "Consult points in the custody signing path" (`docs/deployment/FIPS-MODE.md`) -- under a configured posture (`EP_FIPS_REQUIRED=true`), twice: once where the boundary is declared inside the certificate (PERMITTED) and once where it is declared outside (REFUSED). Run it with:
+
+```bash
+npx tsx examples/fips-deployment/signing-consult-demo.mts
+```
+
+Captured on this repository's development host on 2026-08-17, exit code 0:
+
+```
+EP FIPS operation-policy consult -- signing demonstration
+------------------------------------------------------------------------------
+RUN 1: EP_FIPS_REQUIRED=true, Ed25519 declared INSIDE the validated boundary
+  -> expect the consult to PERMIT and the signature to be produced.
+
+  signer.sign() call count during this run: 1 (expected 1)
+  binding_status: match
+  attestation independently verifies: true
+------------------------------------------------------------------------------
+RUN 2: EP_FIPS_REQUIRED=true, Ed25519 declared OUTSIDE the validated boundary
+  -> expect the consult to REFUSE BEFORE any signing call.
+
+  refused: true
+  reason:  bindExecution: refusing: fips_policy_denied (Ed25519: ed25519_outside_validated_boundary)
+  signer.sign() call count during this run: 0 (expected 0 -- refused BEFORE the provider-side effect)
+```
+
+The two runs use the same live, working provider and the same declared `EP_FIPS_REQUIRED=true` posture; only the operator's `ed25519_in_validated_boundary` declaration differs. That is deliberate: it isolates the consult's decision from the underlying crypto, which succeeds either way if attempted (the OpenSSL 3.0.x trap the deployment document's "Trap 2" describes). The sign-call counter is the load-bearing assertion in run 2 -- it proves the refusal happened before the executor's signing callback ran, not after a signature was produced and then discarded.
+
+Both runs are PERMITTED/REFUSED verdicts about the DECLARED posture, never a FIPS validation or compliance claim -- the same ceiling as everything else in this directory.
 
 ## The container
 

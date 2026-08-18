@@ -32,6 +32,8 @@ import { getCommitSigningConfig, getKeyCustodyConfig } from '@/lib/env';
 import { resolveIssuerSigner, isHybridCustodySigner } from '@/lib/key-custody';
 import type { CustodySigner as KeyCustodySigner, HybridCustodySigner } from '@/lib/key-custody';
 import { createCommitHybridProof, verifyCommitHybridProof } from '@/lib/commit-hybrid';
+import { getFipsPosture, checkOperationPolicy } from '@emilia-protocol/verify/fips-mode';
+import type { FipsPosture } from '@emilia-protocol/verify/fips-mode';
 import type {
   CommitHybridProof,
   CommitHybridVerificationKeys,
@@ -309,6 +311,48 @@ function verifySignature(payload: string, signatureBase64: string, publicKeyBase
 }
 
 /**
+ * OPT-IN FIPS operation-policy consult (EP-FIPS-MODE-v1,
+ * packages/verify/src/fips-mode.ts), run before a signing effect commits.
+ *
+ * CONFIG SURFACE: the existing EP_FIPS_REQUIRED flag (getKeyCustodyConfig().
+ * fipsRequired). With EP_FIPS_REQUIRED unset or false this function is a
+ * no-op: it does not call getFipsPosture() or checkOperationPolicy() at
+ * all, so an unconfigured deployment's signing path is byte-identical to
+ * the one that existed before this consult was wired in.
+ *
+ * With EP_FIPS_REQUIRED=true, it reads the process's live FIPS posture and
+ * consults checkOperationPolicy() for the algorithm about to sign. A denial
+ * refuses BEFORE the provider-side signing call, never after: this function
+ * is always called ahead of the signer.sign()/signSet() it is guarding.
+ *
+ * `permitted:true` here is a statement about this process's declared and
+ * probed posture, never a FIPS validation or compliance claim; see
+ * docs/deployment/FIPS-MODE.md.
+ *
+ * `posture` is an injection point for tests; production callers omit it and
+ * get the live process posture.
+ */
+function consultFipsIssuancePolicy(
+  alg: string,
+  custodyConfig: { fipsRequired: boolean } | null | undefined,
+  posture?: FipsPosture,
+): void {
+  if (!custodyConfig || !custodyConfig.fipsRequired) return;
+  const resolvedPosture = posture ?? getFipsPosture();
+  const policy = checkOperationPolicy(alg, resolvedPosture);
+  if (!policy.permitted) {
+    throw new ProtocolWriteError(
+      `commit signing refused: fips_policy_denied (${alg}: ${policy.reason})`,
+      {
+        status: 403,
+        code: 'fips_policy_denied',
+        cause: { alg, reason: policy.reason, fips_status: policy.fips_status },
+      },
+    );
+  }
+}
+
+/**
  * Get a Supabase service client, failing closed if unavailable.
  *
  * Trust-bearing: commits are signed pre-action authorizations. Issuing,
@@ -527,6 +571,11 @@ export async function issueCommit({
   };
 
   const canonicalPayload = buildCanonicalPayload(canonicalFields);
+
+  // OPT-IN FIPS operation-policy consult, BEFORE any provider-side signing
+  // effect. No-op unless EP_FIPS_REQUIRED=true; see consultFipsIssuancePolicy.
+  consultFipsIssuancePolicy('Ed25519', getKeyCustodyConfig());
+
   let signature: string;
   let publicKeyBase64: string;
   if (custodySigner) {
@@ -1171,6 +1220,7 @@ export const _internals = {
   normalizeInstant,
   signPayload,
   verifySignature,
+  consultFipsIssuancePolicy,
   newCommitId,
   newNonce,
   getPublicKeyBase64: () => ensureKeypair().publicKeyBase64,

@@ -74,8 +74,11 @@
  */
 
 import { verifyAgileSignatureSet } from '@emilia-protocol/verify/pq-signature-agility';
+import { getFipsPosture, checkOperationPolicy } from '@emilia-protocol/verify/fips-mode';
+import type { FipsPosture } from '@emilia-protocol/verify/fips-mode';
 
 import { deepSortKeys } from './handshake/binding.js';
+import { getKeyCustodyConfig } from './env.js';
 import {
   HYBRID_CUSTODY_ALGORITHMS,
   type CustodySignatureSetEntry,
@@ -105,6 +108,13 @@ export const COMMIT_HYBRID_REASONS = Object.freeze({
   MISSING_KEY: 'missing_key',
   SIGNATURE_INVALID: 'signature_invalid',
   PQ_BACKEND_UNAVAILABLE: 'pq_backend_unavailable',
+  /**
+   * Issuance-time only (never returned by verifyCommitHybridProof): the
+   * OPT-IN FIPS operation-policy consult (EP-FIPS-MODE-v1) refused one of the
+   * required legs before signSet() ran. See consultFipsIssuancePolicy below
+   * and docs/deployment/FIPS-MODE.md.
+   */
+  FIPS_POLICY_DENIED: 'fips_policy_denied',
 });
 
 export interface CommitHybridProof {
@@ -203,6 +213,46 @@ function algorithmSetMatchesRegistered(algorithms: unknown): algorithms is strin
     && algorithms.every((a, i) => a === COMMIT_HYBRID_REQUIRED_ALGORITHMS[i]);
 }
 
+/**
+ * OPT-IN FIPS operation-policy consult (EP-FIPS-MODE-v1,
+ * packages/verify/src/fips-mode.ts), run once per required algorithm BEFORE
+ * signer.signSet() commits either leg.
+ *
+ * CONFIG SURFACE: the existing EP_FIPS_REQUIRED flag (getKeyCustodyConfig().
+ * fipsRequired) -- the same flag lib/commit.ts consults for the classical
+ * leg. With EP_FIPS_REQUIRED unset or false this function is a no-op: it
+ * never calls getFipsPosture() or checkOperationPolicy(), so an
+ * unconfigured deployment's hybrid proof is byte-identical to the one this
+ * consult did not exist to change.
+ *
+ * With EP_FIPS_REQUIRED=true, each algorithm in `requiredAlgorithms` is
+ * checked against the live (or injected, for tests) posture. The FIRST
+ * denial throws, naming BOTH the general refusal (`fips_policy_denied`) and
+ * the fips-mode module's own reason (e.g. `mldsa_implementation_unvalidated`
+ * or `ed25519_boundary_undeclared`) -- matching the fail-closed pattern this
+ * module already uses for a PQ backend that cannot sign.
+ *
+ * `permitted:true` is a statement about this process's posture, never a
+ * FIPS validation or compliance claim. See docs/deployment/FIPS-MODE.md.
+ */
+export function consultFipsIssuancePolicy(
+  requiredAlgorithms: readonly string[],
+  posture?: FipsPosture,
+): void {
+  const custodyConfig = getKeyCustodyConfig();
+  if (!custodyConfig || !custodyConfig.fipsRequired) return;
+  const resolvedPosture = posture ?? getFipsPosture();
+  for (const alg of requiredAlgorithms) {
+    const policy = checkOperationPolicy(alg, resolvedPosture);
+    if (!policy.permitted) {
+      throw new Error(
+        `createCommitHybridProof: refusing: ${COMMIT_HYBRID_REASONS.FIPS_POLICY_DENIED} `
+        + `(${alg}: ${policy.reason})`,
+      );
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Issuance (throws on misuse; never downgrades)
 // ---------------------------------------------------------------------------
@@ -216,10 +266,12 @@ function algorithmSetMatchesRegistered(algorithms: unknown): algorithms is strin
  * throws when no ML-DSA backend is available, so a proof missing the PQ leg is
  * never emitted.
  */
-export async function createCommitHybridProof({ commit_id: commitId, payload, signer }: {
+export async function createCommitHybridProof({ commit_id: commitId, payload, signer, fipsPosture }: {
   commit_id: string;
   payload: Record<string, unknown>;
   signer: HybridCustodySigner;
+  /** Test-only posture injection for the FIPS consult below. Production callers omit it. */
+  fipsPosture?: FipsPosture;
 }): Promise<CommitHybridProof> {
   if (!commitId || typeof commitId !== 'string') {
     throw new TypeError('createCommitHybridProof: commit_id is required');
@@ -229,6 +281,11 @@ export async function createCommitHybridProof({ commit_id: commitId, payload, si
   }
 
   const requiredAlgorithms = [...COMMIT_HYBRID_REQUIRED_ALGORITHMS];
+
+  // OPT-IN FIPS operation-policy consult, BEFORE any provider-side signing
+  // effect. No-op unless EP_FIPS_REQUIRED=true; see consultFipsIssuancePolicy.
+  consultFipsIssuancePolicy(requiredAlgorithms, fipsPosture);
+
   // ONE set of bytes; both legs sign exactly these.
   const messageBytes = commitHybridSignedBytes(payload, requiredAlgorithms);
   const signatures = await signer.signSet(messageBytes, { profile: COMMIT_HYBRID_PROFILE, commit_id: commitId });
@@ -442,5 +499,6 @@ const commitHybrid = {
   commitHybridSignedBytes,
   createCommitHybridProof,
   verifyCommitHybridProof,
+  consultFipsIssuancePolicy,
 };
 export default commitHybrid;
