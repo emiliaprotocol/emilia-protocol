@@ -20,10 +20,10 @@ import {
   verifyGateAllowance,
   signGateAllowanceV2,
   verifyGateAllowanceV2,
-} from './src/allowance.js';
-import { capabilityBaseReceiptDigest } from './src/capability-receipt.js';
-import { canonicalize } from './src/execution-binding.js';
-import { RISK_HYBRID_PROFILE } from './src/reliance-risk-crypto.js';
+} from './allowance.js';
+import { capabilityBaseReceiptDigest } from './capability-receipt.js';
+import { canonicalize } from './execution-binding.js';
+import { RISK_HYBRID_PROFILE } from './reliance-risk-crypto.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

@@ -18,10 +18,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto, { generateKeyPairSync, sign } from 'node:crypto';
-import { RISK_HYBRID_PROFILE, RISK_HYBRID_REQUIRED_ALGORITHMS, signRiskBody, verifyRiskBody, signRiskBodyV2, verifyRiskBodyV2, } from './dist/reliance-risk-crypto.js';
-import { canonicalize } from './dist/execution-binding.js';
-import { GATE_ALLOWANCE_VERSION, signGateAllowance, verifyGateAllowance, } from './dist/allowance.js';
-import { capabilityBaseReceiptDigest } from './dist/capability-receipt.js';
+import { RISK_HYBRID_PROFILE, RISK_HYBRID_REQUIRED_ALGORITHMS, signRiskBody, verifyRiskBody, signRiskBodyV2, verifyRiskBodyV2, } from './reliance-risk-crypto.js';
+import { canonicalize } from './execution-binding.js';
+import { GATE_ALLOWANCE_VERSION, signGateAllowance, verifyGateAllowance, } from './allowance.js';
+import { capabilityBaseReceiptDigest } from './capability-receipt.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const V2 = 'EP-RISK-TEST-v2';
 const V1 = 'EP-RISK-TEST-v1';

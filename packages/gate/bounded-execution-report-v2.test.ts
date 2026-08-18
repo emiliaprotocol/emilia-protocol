@@ -21,12 +21,12 @@ import {
   type ExecutionProgramOccurrence,
   type ExecutionProgramReportSnapshot,
   type ExecutionProgramRuntimeState,
-} from './src/admission-store.js';
+} from './admission-store.js';
 import {
   executionProgramDigest,
   signBoundedExecutionProgram,
   verifyBoundedExecutionProgram,
-} from './src/bounded-execution-program.js';
+} from './bounded-execution-program.js';
 import {
   BOUNDED_EXECUTION_REPORT_V2_VERSION,
   boundedExecutionOccurrenceInventoryDigest,
@@ -35,9 +35,9 @@ import {
   signBoundedExecutionReportV2,
   verifyBoundedExecutionReport,
   verifyBoundedExecutionReportV2,
-} from './src/bounded-execution-report.js';
-import { canonicalize } from './src/execution-binding.js';
-import { RISK_HYBRID_PROFILE } from './src/reliance-risk-crypto.js';
+} from './bounded-execution-report.js';
+import { canonicalize } from './execution-binding.js';
+import { RISK_HYBRID_PROFILE } from './reliance-risk-crypto.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

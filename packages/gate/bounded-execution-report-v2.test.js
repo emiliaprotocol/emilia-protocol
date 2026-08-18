@@ -15,11 +15,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto, { generateKeyPairSync } from 'node:crypto';
-import { EXECUTION_PROGRAM_REPORT_SNAPSHOT_VERSION, EXECUTION_PROGRAM_RUNTIME_VERSION, executionProgramReportSnapshotMarker, } from './dist/admission-store.js';
-import { executionProgramDigest, signBoundedExecutionProgram, verifyBoundedExecutionProgram, } from './dist/bounded-execution-program.js';
-import { BOUNDED_EXECUTION_REPORT_V2_VERSION, boundedExecutionOccurrenceInventoryDigest, boundedExecutionRuntimeStateDigest, signBoundedExecutionReport, signBoundedExecutionReportV2, verifyBoundedExecutionReport, verifyBoundedExecutionReportV2, } from './dist/bounded-execution-report.js';
-import { canonicalize } from './dist/execution-binding.js';
-import { RISK_HYBRID_PROFILE } from './dist/reliance-risk-crypto.js';
+import { EXECUTION_PROGRAM_REPORT_SNAPSHOT_VERSION, EXECUTION_PROGRAM_RUNTIME_VERSION, executionProgramReportSnapshotMarker, } from './admission-store.js';
+import { executionProgramDigest, signBoundedExecutionProgram, verifyBoundedExecutionProgram, } from './bounded-execution-program.js';
+import { BOUNDED_EXECUTION_REPORT_V2_VERSION, boundedExecutionOccurrenceInventoryDigest, boundedExecutionRuntimeStateDigest, signBoundedExecutionReport, signBoundedExecutionReportV2, verifyBoundedExecutionReport, verifyBoundedExecutionReportV2, } from './bounded-execution-report.js';
+import { canonicalize } from './execution-binding.js';
+import { RISK_HYBRID_PROFILE } from './reliance-risk-crypto.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const D = (character) => `sha256:${character.repeat(64)}`;
 const C = (character) => `caid:1:devops.infrastructure-change.1:jcs-sha256:${character.repeat(43)}`;

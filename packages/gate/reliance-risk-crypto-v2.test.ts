@@ -24,14 +24,14 @@ import {
   verifyRiskBody,
   signRiskBodyV2,
   verifyRiskBodyV2,
-} from './src/reliance-risk-crypto.js';
-import { canonicalize } from './src/execution-binding.js';
+} from './reliance-risk-crypto.js';
+import { canonicalize } from './execution-binding.js';
 import {
   GATE_ALLOWANCE_VERSION,
   signGateAllowance,
   verifyGateAllowance,
-} from './src/allowance.js';
-import { capabilityBaseReceiptDigest } from './src/capability-receipt.js';
+} from './allowance.js';
+import { capabilityBaseReceiptDigest } from './capability-receipt.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 

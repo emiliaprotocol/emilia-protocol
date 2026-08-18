@@ -25,8 +25,8 @@ import {
   verifyNetworkWitnessStatementV2,
   acceptNetworkWitnessStatementV2,
   createMemoryWitnessSequenceStore,
-} from './src/network-witness.js';
-import { canonicalize } from './src/execution-binding.js';
+} from './network-witness.js';
+import { canonicalize } from './execution-binding.js';
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
