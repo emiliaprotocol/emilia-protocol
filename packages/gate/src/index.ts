@@ -89,6 +89,7 @@ import {
   FORMAL_RUNTIME_CONFIG,
   FORMAL_RUNTIME_INVARIANT_MAP,
 } from './formal-runtime-map.js';
+import { prepareProtectedActionInvocation } from './protected-action-registry.js';
 import {
   CAPABILITY_RECEIPT_VERSION,
   CAPABILITY_STATE_VERSION,
@@ -175,6 +176,11 @@ export {
   createAtomicEvidenceLog,
   createMemoryAtomicEvidenceBackend,
 };
+export {
+  createProtectedActionRegistry,
+  PROTECTED_ACTION_REGISTRY_VERSION,
+  type ProtectedActionRegistry,
+} from './protected-action-registry.js';
 export {
   createDurableConsumptionStore,
   createMemoryBackend,
@@ -2230,6 +2236,41 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   }
 
   /**
+   * Execute only a handler installed in a sealed trusted-startup registry.
+   * The pinned Gate manifest selects the action and therefore the handler;
+   * agent-carried action names cannot redirect execution. Parameter validation
+   * finishes before any authority is reserved. The existing run() path remains
+   * the sole reserve/provider-entry/commit state machine.
+   */
+  async function runRegistered({ selector = {}, receipt = null, observedAction = null, fieldOriginEvidence = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null }: {
+    selector?: any; receipt?: any; observedAction?: any; fieldOriginEvidence?: any;
+    admissibilityProfile?: any; reliancePacket?: any; admissibility?: any; capability?: any;
+  } = {}, protectedRegistry: unknown, opts: { recordExecution?: boolean } = {}) {
+    const requirement = resolveRequirement(selector);
+    const action = requirement?.action_type ?? null;
+    const prepared = prepareProtectedActionInvocation(protectedRegistry, action, observedAction);
+    if (!prepared.ok) {
+      return {
+        ok: false,
+        status: 409,
+        reason: prepared.reason,
+        body: { rejected: { type: 'protected_action_registry', reason: prepared.reason } },
+        authorization: null,
+      };
+    }
+    return run({
+      selector,
+      receipt,
+      observedAction: prepared.parameters,
+      fieldOriginEvidence,
+      admissibilityProfile,
+      reliancePacket: presentedPacket,
+      admissibility,
+      capability,
+    }, (authorization) => prepared.handler(prepared.parameters, authorization), opts);
+  }
+
+  /**
    * Wrap any function so it runs only behind a passing gate check, and (unless
    * disabled) emits an execution receipt after it runs — the full firewall loop:
    * request -> check -> execute -> execution receipt. Framework-agnostic.
@@ -2304,7 +2345,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   }
 
   return {
-    check, run, recordExecution, route, wrapRoute: route, middleware, guard, reliancePacket, evidence,
+    check, run, runRegistered, recordExecution, route, wrapRoute: route, middleware, guard, reliancePacket, evidence,
     store: consumption, capabilityStore, keyRegistry: registry, retention, retentionExport,
   };
 }

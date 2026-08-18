@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- Add a sealed protected-action registry and `gate.runRegistered()`. Reviewed
+  handlers are installed only during trusted startup, the pinned manifest
+  selects the handler, and frozen validated parameters enter the existing
+  reserve/provider-entry/commit path. The existing `run(fn)` API is unchanged.
 - Coverage reconciliation schema family v2 (`EP-COVERAGE-SOURCE-INVENTORY-v2`,
   `EP-COVERAGE-POPULATION-v2`, `EP-COVERAGE-RECONCILIATION-REPORT-v2`,
   `EP-COVERAGE-RECONCILIATION-ATTESTATION-v2`); v1 artifacts fail closed under

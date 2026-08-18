@@ -59,6 +59,41 @@ if (!out.ok) throw out.body; // 428 Receipt Required
 console.log(out.packet.verdict); // "rely"
 ```
 
+### Seal reviewed handlers at trusted startup
+
+`runRegistered()` removes the caller-supplied callback from the execution
+request. The application registers reviewed handlers during trusted startup,
+seals the registry, and Gate resolves the handler from its pinned manifest.
+The selector must come from the local adapter or route, not from agent content.
+
+```js
+import {
+  createGate,
+  createProtectedActionRegistry,
+} from '@emilia-protocol/gate';
+
+const actions = createProtectedActionRegistry();
+actions.register(
+  'payment.release',
+  (parameters) => typeof parameters?.payment_instruction_id === 'string',
+  (parameters) => paymentProvider.release(parameters),
+);
+actions.seal();
+
+const out = await gate.runRegistered({
+  selector: { protocol: 'mcp', tool: 'release_payment' },
+  receipt,
+  observedAction,
+}, actions);
+```
+
+The registry is not a second policy engine. It does not select actions from
+agent-provided names, transform parameters, or consume authority itself.
+Validation and an immutable parameter snapshot occur before reservation. The
+existing Gate path then reserves authority before provider entry, commits it
+after a returned effect, and records an attempted-but-unknown effect as
+`INDETERMINATE`. `run(fn)` remains available for existing integrations.
+
 ## Customer-owned Reliance Programs
 
 `@emilia-protocol/gate/reliance-program` turns a relying party's signed policy
