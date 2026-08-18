@@ -18,6 +18,7 @@ import {
 } from '../packages/gate/proposal-to-effect.js';
 import {
   HEALTHCARE_ASSURANCE_LIMITATIONS,
+  HEALTHCARE_ASSURANCE_PACKET_V2_VERSION,
   HEALTHCARE_ASSURANCE_TRUST_BUNDLE_VERSION,
   HOSPICE_CAID_DEFINITION,
   HOSPICE_AEB_REQUIREMENT_REF,
@@ -28,6 +29,7 @@ import {
   createHospiceProposalToEffectProfile,
   createMemoryHealthcareControlStores,
   verifyHealthcareAssurancePacketOffline,
+  verifyHealthcareAssurancePacketOfflineV2,
 } from '../lib/health/proposal-to-effect-profile.js';
 import { createHospiceClaimExecuteHandler } from '../app/api/v1/adapters/health/hospice-claim/execute/route.js';
 import { createHospiceClaimExportHandler } from '../app/api/v1/adapters/health/hospice-claim/export/route.js';
@@ -51,6 +53,7 @@ const VECTOR_SUITE = JSON.parse(fs.readFileSync(
   'utf8',
 ));
 const RELYING_PARTY_ID = 'rp:healthcare-synthetic-pilot';
+const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
 function assuranceKey(role: 'evaluator' | 'receipt' | 'aeb' | 'provider') {
   const keyPair = crypto.generateKeyPairSync('ed25519');
@@ -72,6 +75,25 @@ function assuranceKey(role: 'evaluator' | 'receipt' | 'aeb' | 'provider') {
       },
     },
     pin: { key_id, public_key_spki_b64u },
+  };
+}
+
+function hybridAssuranceKey(
+  role: 'evaluator' | 'receipt' | 'aeb' | 'provider',
+  classical: ReturnType<typeof assuranceKey>,
+) {
+  const pq = ml_dsa65.keygen(crypto.randomBytes(32));
+  const pqKeyId = `health:${role}:test:pq`;
+  return {
+    signer: {
+      ed25519: classical.signer,
+      mldsa65: { key_id: pqKeyId, private_key: pq.secretKey },
+    },
+    pin: {
+      ...classical.pin,
+      pq_key_id: pqKeyId,
+      pq_public_key_b64u: Buffer.from(pq.publicKey).toString('base64url'),
+    },
   };
 }
 
@@ -442,7 +464,7 @@ function providerEvidence(proposal: any, attempt: any, overrides: any = {}) {
   };
 }
 
-async function fixture() {
+async function fixture(fixtureOptions: { hybrid?: boolean } = {}) {
   const controlPackage = scannerPackage();
   const action = controlPackage.action;
   const aeb = aebContext(action, controlPackage.caid);
@@ -540,6 +562,20 @@ async function fixture() {
     aeb: assuranceKeys.aeb.pin,
     provider: assuranceKeys.provider.pin,
   };
+  const hybridAssuranceKeys = fixtureOptions.hybrid ? {
+    evaluator: hybridAssuranceKey('evaluator', assuranceKeys.evaluator),
+    receipt: hybridAssuranceKey('receipt', assuranceKeys.receipt),
+    aeb: hybridAssuranceKey('aeb', assuranceKeys.aeb),
+    provider: hybridAssuranceKey('provider', assuranceKeys.provider),
+  } : null;
+  const assuranceTrustV2 = hybridAssuranceKeys ? {
+    '@version': HEALTHCARE_ASSURANCE_PACKET_V2_VERSION,
+    relying_party_id: RELYING_PARTY_ID,
+    evaluator: hybridAssuranceKeys.evaluator.pin,
+    receipt: hybridAssuranceKeys.receipt.pin,
+    aeb: hybridAssuranceKeys.aeb.pin,
+    provider: hybridAssuranceKeys.provider.pin,
+  } : null;
   let mutation = async () => ({ sandbox_reference: 'sandbox:mutation:health-001' });
   let mutationCount = 0;
   const controlOptions = {
@@ -553,6 +589,14 @@ async function fixture() {
         aeb: assuranceKeys.aeb.signer,
         provider: assuranceKeys.provider.signer,
       },
+      ...(hybridAssuranceKeys ? {
+        hybrid: {
+          evaluator: hybridAssuranceKeys.evaluator.signer,
+          receipt: hybridAssuranceKeys.receipt.signer,
+          aeb: hybridAssuranceKeys.aeb.signer,
+          provider: hybridAssuranceKeys.provider.signer,
+        },
+      } : {}),
     },
     allow_ephemeral_stores_for_tests: true,
     now: () => Date.parse(NOW),
@@ -577,6 +621,7 @@ async function fixture() {
     controlPackage,
     assuranceKeys,
     assuranceTrust,
+    assuranceTrustV2,
     controller,
     controlOptions,
     stores,
@@ -734,6 +779,41 @@ describe('healthcare Proposal-to-Effect consequence control', () => {
     expect(packet.protocol_evidence).not.toHaveProperty('proposal');
     expect(packet.protocol_evidence).not.toHaveProperty('approval_evidence');
     expect(packet.protocol_evidence).not.toHaveProperty('aeb_evaluation');
+  });
+
+  it('exports and independently verifies the opt-in hybrid assurance packet without weakening v1', async () => {
+    const f = await fixture({ hybrid: true });
+    await f.control.execute(executeInput(f));
+
+    const packet = await f.control.exportAssurancePacketV2({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    });
+    expect(packet['@version']).toBe(HEALTHCARE_ASSURANCE_PACKET_V2_VERSION);
+    expect(f.assuranceTrustV2).not.toBeNull();
+    await expect(verifyHealthcareAssurancePacketOfflineV2(
+      packet,
+      f.assuranceTrustV2,
+    )).resolves.toEqual({ valid: true, reasons: [] });
+
+    const v1 = await f.control.exportAssurancePacket({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    });
+    expect(verifyHealthcareAssurancePacketOffline(v1, f.assuranceTrust))
+      .toEqual({ valid: true, reasons: [] });
+  });
+
+  it('refuses hybrid export when no hybrid signer is configured', async () => {
+    const f = await fixture();
+    await f.control.execute(executeInput(f));
+    await expect(f.control.exportAssurancePacketV2({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    })).resolves.toMatchObject({
+      ok: false,
+      reason: 'healthcare_assurance_hybrid_signer_not_configured',
+    });
   });
 
   it('freezes timeout-after-side-effect as INDETERMINATE and never blindly replays', async () => {

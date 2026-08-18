@@ -361,6 +361,108 @@ describe('EP-STATUS-v2 status head', () => {
 });
 
 describe('lib/revocation/status.ts issuer-side FIPS consult (opt-in, lib/revocation/status.ts:signatureFrom)', () => {
+  it('refuses malformed PQ keys, authority pins, signer shapes, and certificate windows before issuance', async () => {
+    expect(() => deriveRevokerPqKeyId('not-a-key')).toThrow(/ML-DSA-65 public key/);
+
+    const invalidPins = [
+      { ...authorityPinV2, authority_domain: 'bad domain' },
+      { ...authorityPinV2, public_key: 'not-an-ed25519-key' },
+      { ...authorityPinV2, pq_public_key: 'not-an-mldsa-key' },
+    ];
+    for (const authorityPin of invalidPins) {
+      await expect(buildRevokerAuthorityCertificateV2(certificateInputV2({ authorityPin }) as any))
+        .rejects.toThrow(/authorityPin/);
+    }
+
+    await expect(buildRevokerAuthorityCertificateV2(certificateInputV2({
+      expiresAt: '2026-06-01T00:00:00Z',
+    }) as any)).rejects.toThrow(/expiresAt must be later/);
+
+    const baseSigner = authoritySignerV2();
+    const signerCases = [
+      null,
+      { ...baseSigner, mldsa: null },
+      { ...baseSigner, mldsa: { ...baseSigner.mldsa, private_key: 'secret' } },
+      { ...baseSigner, mldsa: { ...baseSigner.mldsa, algorithm: 'Ed25519' } },
+      { ...baseSigner, mldsa: { ...baseSigner.mldsa, keyId: 'key:wrong' } },
+      { ...baseSigner, mldsa: { ...baseSigner.mldsa, sign: null } },
+    ];
+    for (const signer of signerCases) {
+      await expect(buildRevokerAuthorityCertificateV2(certificateInputV2({ signer }) as any))
+        .rejects.toThrow();
+    }
+  });
+
+  it('refuses every malformed external hybrid signature output without emitting an artifact', async () => {
+    const base = authoritySignerV2();
+    const signerCases: ExternalHybridSigner[] = [
+      {
+        ...base,
+        ed25519: { ...base.ed25519, async sign() { throw new Error('ed signer offline'); } },
+      },
+      {
+        ...base,
+        ed25519: { ...base.ed25519, async sign() { return 'not-canonical'; } },
+      },
+      {
+        ...base,
+        ed25519: { ...base.ed25519, async sign() { return new Uint8Array(3); } },
+      },
+      {
+        ...base,
+        mldsa: { ...base.mldsa, async sign() { throw new Error('pq signer offline'); } },
+      },
+      {
+        ...base,
+        mldsa: { ...base.mldsa, async sign() { return 'not-canonical'; } },
+      },
+      {
+        ...base,
+        mldsa: { ...base.mldsa, async sign() { return new Uint8Array(3); } },
+      },
+    ];
+    for (const signer of signerCases) {
+      await expect(buildRevokerAuthorityCertificateV2(certificateInputV2({ signer }) as any))
+        .rejects.toThrow(/signer|signature/);
+    }
+  });
+
+  it('refuses malformed v2 predecessor state before extending the status chain', async () => {
+    const cert = await certificateV2();
+    const head = await buildStatusArtifactV2(statusInputV2(cert) as any);
+    const cases: Array<[string, (candidate: any) => void]> = [
+      ['version', (candidate) => { candidate['@version'] = STATUS_VERSION; }],
+      ['target', (candidate) => { candidate.target.id = 'receipt:other'; }],
+      ['status', (candidate) => { candidate.status = 'unknown'; }],
+      ['sequence', (candidate) => { candidate.sequence = -1; }],
+      ['previous-digest', (candidate) => { candidate.previous_status_digest = 'bad'; }],
+      ['non-monotonic', (candidate) => { candidate.issued_at = '2026-07-23T12:10:00Z'; }],
+      ['window', (candidate) => { candidate.next_update = candidate.issued_at; }],
+      ['algorithm-set', (candidate) => { candidate.required_algorithms = ['Ed25519']; }],
+      ['proof-key', (candidate) => { candidate.proof.key_id = 'key:wrong'; }],
+      ['signature', (candidate) => { candidate.proof.signatures[0].sig = 'broken'; }],
+    ];
+    for (const [name, mutate] of cases) {
+      const previousStatus = structuredClone(head);
+      mutate(previousStatus);
+      await expect(buildStatusArtifactV2(statusInputV2(cert, {
+        issuedAt: '2026-07-23T12:00:00Z',
+        nextUpdate: '2026-07-23T12:05:00Z',
+        previousStatus,
+      }) as any), name).rejects.toThrow();
+    }
+
+    const revoked = await buildStatusArtifactV2(statusInputV2(cert, {
+      status: 'revoked',
+      nextUpdate: null,
+    }) as any);
+    await expect(buildStatusArtifactV2(statusInputV2(cert, {
+      issuedAt: '2026-07-23T12:00:00Z',
+      nextUpdate: '2026-07-23T12:05:00Z',
+      previousStatus: revoked,
+    }) as any)).rejects.toThrow(/terminal revocation/);
+  });
+
   it('with no fipsPosture supplied, issuance is byte-identical to before the consult existed', async () => {
     const cert = await certificateV2();
     // Byte-identical claim, pinned: re-derive bytes/verification independently

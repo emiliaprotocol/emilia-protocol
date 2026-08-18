@@ -24,10 +24,12 @@ import {
 import {
   DAVINCI_PAS_AEB_REQUIREMENT_REF,
   DAVINCI_PAS_CONSEQUENCE_PACKET_VERSION,
+  DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION,
   DAVINCI_PAS_CONSEQUENCE_PROFILE_ID,
   createDavinciPasConsequenceControl,
   createDavinciPasProposalToEffectProfile,
   verifyDavinciPasConsequencePacket,
+  verifyDavinciPasConsequencePacketV2,
 } from '../lib/health/davinci-pas-consequence-control.js';
 import { createMemoryHealthcareControlStores } from '../lib/health/proposal-to-effect-profile.js';
 import { createDavinciPasReviewHandler } from '../app/api/v1/adapters/health/davinci-pas/review/route.js';
@@ -51,6 +53,7 @@ const VECTOR_SUITE = JSON.parse(fs.readFileSync(
   new URL('../conformance/vectors/davinci-pas-consequence-control.v1.json', import.meta.url),
   'utf8',
 ));
+const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
 const CLAIM_PROFILE =
   'http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim|2.2.1';
@@ -444,7 +447,7 @@ function providerEvidence(proposal: any, attempt: any, overrides: any = {}) {
   };
 }
 
-async function fixture() {
+async function fixture(fixtureOptions: { hybrid?: boolean } = {}) {
   const context = pasContext();
   const built = buildDavinciPasReviewBinding(context);
   if (!built.ok) throw new Error(built.reasons.join(','));
@@ -497,6 +500,16 @@ async function fixture() {
   });
   const stores = createMemoryHealthcareControlStores();
   const packetKey = crypto.generateKeyPairSync('ed25519');
+  const packetSigner = {
+    algorithm: 'Ed25519' as const,
+    key_id: 'pas:packet:test',
+    sign(bytes: Uint8Array) {
+      return crypto.sign(null, Buffer.from(bytes), packetKey.privateKey).toString('base64url');
+    },
+  };
+  const packetPqKey = fixtureOptions.hybrid
+    ? ml_dsa65.keygen(crypto.randomBytes(32))
+    : null;
   let mutationCount = 0;
   let mutation = async () => ({ system_of_record_reference: 'pas-sandbox:decision:001' });
   const control = createDavinciPasConsequenceControl({
@@ -504,13 +517,16 @@ async function fixture() {
     ...stores,
     assurance: {
       relying_party_id: 'rp:pas-synthetic-reference',
-      signer: {
-        algorithm: 'Ed25519',
-        key_id: 'pas:packet:test',
-        sign(bytes: Uint8Array) {
-          return crypto.sign(null, Buffer.from(bytes), packetKey.privateKey).toString('base64url');
+      signer: packetSigner,
+      ...(packetPqKey ? {
+        hybrid: {
+          ed25519: packetSigner,
+          mldsa65: {
+            key_id: 'pas:packet:test:pq',
+            private_key: packetPqKey.secretKey,
+          },
         },
-      },
+      } : {}),
     },
     allow_ephemeral_stores_for_tests: true,
     now: () => Date.parse(NOW),
@@ -536,6 +552,9 @@ async function fixture() {
     prepared,
     evaluation: aeb.evaluate(),
     publicKey: packetKey.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    pqPublicKey: packetPqKey
+      ? Buffer.from(packetPqKey.publicKey).toString('base64url')
+      : null,
     get mutationCount() { return mutationCount; },
     setMutation(next: typeof mutation) { mutation = next; },
   };
@@ -595,6 +614,38 @@ describe('Da Vinci PAS consequence control', () => {
       public_key_spki_b64u: f.publicKey,
     })).toEqual({ valid: true, reasons: [] });
     expect(JSON.stringify(packet)).not.toContain('Patient/direct-member-123');
+  });
+
+  it('exports and verifies the opt-in hybrid packet over the same protected PAS action', async () => {
+    const f = await fixture({ hybrid: true });
+    await f.control.execute(executeInput(f));
+    const packet = await f.control.exportReliancePacketV2({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    });
+    expect(packet['@version']).toBe(DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION);
+    expect(f.pqPublicKey).not.toBeNull();
+    await expect(verifyDavinciPasConsequencePacketV2(packet, {
+      relying_party_id: 'rp:pas-synthetic-reference',
+      key_id: 'pas:packet:test',
+      public_key_spki_b64u: f.publicKey,
+      pq_key_id: 'pas:packet:test:pq',
+      pq_public_key_b64u: f.pqPublicKey!,
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    })).resolves.toEqual({ valid: true, reasons: [] });
+  });
+
+  it('refuses hybrid export when no hybrid signer is configured', async () => {
+    const f = await fixture();
+    await f.control.execute(executeInput(f));
+    await expect(f.control.exportReliancePacketV2({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    })).resolves.toMatchObject({
+      ok: false,
+      reason: 'pas_hybrid_signer_not_configured',
+    });
   });
 
   it('refuses source drift before the provider callback', async () => {

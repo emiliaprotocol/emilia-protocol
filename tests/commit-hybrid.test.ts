@@ -68,6 +68,9 @@ import {
   COMMIT_HYBRID_REQUIRED_ALGORITHMS,
   COMMIT_HYBRID_REASONS,
   commitHybridSignedBytes,
+  commitHybridSignedMaterial,
+  createCommitHybridProof,
+  verifyCommitHybridProof,
 } from '../lib/commit-hybrid.js';
 import { deepSortKeys } from '../lib/handshake/binding.js';
 import {
@@ -430,5 +433,60 @@ describe('hybrid proof, hostile cases', () => {
     for (const junk of ['x', 42, [], {}, { '@version': COMMIT_HYBRID_PROFILE }]) {
       expect((await verifyWith(junk)).valid).toBe(false);
     }
+  });
+
+  it('refuses issuer misuse before any partial hybrid proof can be emitted', async () => {
+    expect(() => commitHybridSignedMaterial(null as any)).toThrow(/plain object/);
+    expect(() => commitHybridSignedMaterial({}, ['Ed25519'])).toThrow(/algorithm_set_mismatch/);
+    await expect(createCommitHybridProof({
+      commit_id: '',
+      payload: {},
+      signer: fixture.signer,
+    })).rejects.toThrow(/commit_id is required/);
+    await expect(createCommitHybridProof({
+      commit_id: 'commit:bad-signer',
+      payload: {},
+      signer: {} as any,
+    })).rejects.toThrow(/HybridCustodySigner/);
+    await expect(createCommitHybridProof({
+      commit_id: 'commit:missing-leg',
+      payload: {},
+      signer: {
+        async signSet() {
+          return [{ alg: 'Ed25519', sig: 'x', key_id: 'key:only-classical' }];
+        },
+      } as any,
+    })).rejects.toThrow(/produced no ML-DSA-65 leg/);
+  });
+
+  it('classifies malformed payload, leg, algorithm, and key presentations without throwing', async () => {
+    const payload = commit.hybrid_proof.payload;
+    const proof = commit.hybrid_proof;
+    const cases: Array<[unknown, unknown, unknown, string]> = [
+      [[], proof, fixture.keys, COMMIT_HYBRID_REASONS.PAYLOAD_MISMATCH],
+      [payload, { ...proof, payload: [] }, fixture.keys, COMMIT_HYBRID_REASONS.PAYLOAD_MISMATCH],
+      [payload, { ...proof, signatures: [{ alg: 'Ed25519' }] }, fixture.keys, COMMIT_HYBRID_REASONS.MALFORMED_PROOF],
+      [payload, {
+        ...proof,
+        signatures: [...proof.signatures, { alg: 'RSA', sig: 'not-used' }],
+      }, fixture.keys, COMMIT_HYBRID_REASONS.UNEXPECTED_ALGORITHM],
+      [payload, proof, null, COMMIT_HYBRID_REASONS.MISSING_KEY],
+      [payload, proof, { ...fixture.keys, mldsaPublicKey: null }, COMMIT_HYBRID_REASONS.MISSING_KEY],
+    ];
+    for (const [held, presented, keys, reason] of cases) {
+      await expect(verifyCommitHybridProof(
+        held as any,
+        presented,
+        keys as any,
+      )).resolves.toMatchObject({ verified: false, reason });
+    }
+
+    await expect(verifyCommitHybridProof(payload, proof, fixture.keys, {
+      mldsaBackend: {},
+      mldsaBackendLoader: async () => null,
+    })).resolves.toMatchObject({
+      verified: false,
+      reason: COMMIT_HYBRID_REASONS.PQ_BACKEND_UNAVAILABLE,
+    });
   });
 });

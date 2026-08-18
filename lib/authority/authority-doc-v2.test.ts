@@ -136,6 +136,33 @@ describe('EP-AUTHORITY-DOC-v2 hostile matrix', () => {
     }
   });
 
+  it('refuses malformed authority metadata before trusting a valid-looking signature set', async () => {
+    const base: any = await buildRootDoc();
+    const cases: Array<[string, (doc: any) => void, RegExp]> = [
+      ['organization', (doc) => { doc.org.domain = 'not a stable domain'; }, /organization identifier/],
+      ['issued-at', (doc) => { doc.issued_at = 'not-an-instant'; }, /issued_at/],
+      ['issuer-array', (doc) => { doc.issuer_keys = null; }, /issuer_keys is not an array/],
+      ['duplicate-kid', (doc) => { doc.issuer_keys.push(structuredClone(doc.issuer_keys[0])); }, /non-empty and unique/],
+      ['window', (doc) => { doc.issuer_keys[0].valid_to = '2025-01-01T00:00:00.000Z'; }, /invalid time window/],
+      ['key-id', (doc) => { doc.issuer_keys[0].kid = 'ep:authority-issuer-key:v2:sha256:' + '0'.repeat(64); }, /full hybrid public-key digest/],
+      ['registry-id', (doc) => { doc.issuer_keys[0].registry_issuer_id = 'not stable'; }, /unstable registry issuer/],
+      ['usages', (doc) => { doc.issuer_keys[0].usages = ['receipt_signing', 'receipt_signing']; }, /invalid usages/],
+    ];
+    for (const [name, mutate, reason] of cases) {
+      const doc = structuredClone(base);
+      mutate(doc);
+      const result = await verifyAuthorityChainV2([doc]);
+      expect(result.verified, name).toBe(false);
+      expect(result.reasons.join(' '), name).toMatch(reason);
+    }
+
+    await expect(verifyAuthorityChainV2([{ impossible: 1n }] as any))
+      .resolves.toMatchObject({
+        verified: false,
+        reasons: ['authority chain contains non-canonical JSON state'],
+      });
+  });
+
   describe('rotation continuity', () => {
     it('a properly-continued rotation verifies with no breaks', async () => {
       const docA = await buildRootDoc();
