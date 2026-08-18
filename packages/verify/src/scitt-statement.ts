@@ -65,7 +65,14 @@ import crypto from 'node:crypto';
 
 import { canonicalize, verifyReceipt } from './index.js';
 import {
+  signAgile,
+  verifyAgileSignature,
+  type AgilityOptions,
+} from './pq-signature-agility.js';
+import {
   COSE_ALG_EDDSA,
+  COSE_ALG_ML_DSA_65,
+  COSE_HEADER_EP_REQUIRED_ALGS,
   COSE_RECEIPT_CONTENT_TYPE,
   decodeDeterministicCbor8949,
   encodeDeterministicCbor8949,
@@ -643,5 +650,446 @@ export function describeScittRegistrationRequest(
       bodySha256: crypto.createHash('sha256').update(statement).digest('hex'),
       bodyBytes: statement.length,
     },
+  };
+}
+
+// ===========================================================================
+// EP-SCITT-STATEMENT-v2 -- the hybrid (EdDSA + ML-DSA-65) Signed Statement pair
+// ===========================================================================
+/**
+ * ALGORITHM IDENTIFIER PROVENANCE. `COSE_ALG_ML_DSA_65` is imported from
+ * `receipt-cose-encoding.ts`, which traces it to
+ * `packages/verify/src/aeb-mcgraw-delegation-adapter.ts`
+ * (`MCGRAW_BUDGET_COSE_ALGORITHM = -49`, "RFC 9964 COSE Algorithms registry
+ * value for ML-DSA-65") -- a value this repository already verifies foreign
+ * COSE_Sign1 objects under. Nothing here is recalled from memory or invented.
+ *
+ * WHY A PAIR. RFC 9943 Section 6 defines a Signed Statement as a COSE_Sign1,
+ * which carries exactly one signature. The multi-signer COSE container
+ * (COSE_Sign) has no definition anywhere in this repository, so it is not
+ * hand-rolled here. v2 is therefore an EP-DEFINED PAIRING of two individually
+ * conforming Signed Statements over the SAME payload, one per registered
+ * algorithm, each carrying the required set in a PROTECTED header. RFC 9943
+ * Section 6.1 Figure 3 permits additional protected labels (`* label => any`),
+ * so each half remains a conforming Signed Statement in its own right.
+ *
+ * THE COORDINATION BOUNDARY, STATED PLAINLY AND NOT SMOOTHED OVER. A
+ * Transparency Service registers ONE Signed Statement. Register one half of a
+ * v2 pair and the resulting Receipt covers that half only; there is no
+ * transparency mechanism here that carries the pairing. The hybrid property is
+ * a RELYING-PARTY pin evaluated by verifyEpScittSignedStatementHybrid over both
+ * halves, and it does not survive a round trip through a Transparency Service.
+ * Making it survive requires a SCITT-side profile that this repository cannot
+ * define unilaterally.
+ *
+ * The five moves are identical to EP-COSE-ENCODING-v0.2:
+ *   1. VERSION BUMP. New profile marker; `verifyEpScittSignedStatement` is
+ *      UNTOUCHED and refuses either half with `unexpected_protected_header`
+ *      (its closed label set has no `ep.required_algs`) before any signature
+ *      work. Asserted by test.
+ *   2. SET SHAPE. COSE algorithm VALUES [-8, -49] in registered order.
+ *   3. ANTI-STRIPPING BYTES. The set is a protected header in BOTH halves, so
+ *      it is inside each Sig_structure; the verifier rebuilds both expected
+ *      protected headers from the REGISTERED set, the pinned kid, the pinned
+ *      iss, and the `sub` it recomputed from the payload, and requires byte
+ *      equality.
+ *   4. V1 COMPATIBILITY. The v1 builder and verifier stay synchronous and
+ *      unchanged; v2 is a separate async entry point.
+ *   5. NAMED REFUSALS. Every path returns a named reason; nothing throws on
+ *      untrusted input; a missing ML-DSA backend refuses.
+ *
+ * WHAT IT IS STILL NOT. `valid: true` means VERIFIED, never REGISTERED. Both
+ * statement signatures are transport/registration attestations. The EP
+ * receipt's own approval signature inside the payload is Ed25519 only, so a v2
+ * pair does not make the carried receipt post-quantum protected. Opt-in; not
+ * deployed, default, or certified.
+ */
+
+export const EP_SCITT_STATEMENT_HYBRID_PROFILE = 'EP-SCITT-STATEMENT-v2';
+
+/** The registered required COSE algorithm set, in canonical order. */
+export const EP_SCITT_STATEMENT_V2_REQUIRED_ALGORITHMS = Object.freeze([
+  COSE_ALG_EDDSA, COSE_ALG_ML_DSA_65,
+] as const);
+
+const V2_PROFILE_PROTECTED_LABELS: ReadonlySet<unknown> = new Set<unknown>([
+  COSE_HEADER_ALG,
+  COSE_HEADER_CONTENT_TYPE,
+  COSE_HEADER_KID,
+  COSE_HEADER_CWT_CLAIMS,
+  COSE_HEADER_EP_REQUIRED_ALGS,
+]);
+
+/** Every refusal reason the v2 entry points add on top of EP_SCITT_REFUSALS. */
+export const EP_SCITT_V2_REFUSALS = [
+  'hybrid_pair_incomplete',
+  'hybrid_payload_mismatch',
+  'algorithm_set_mismatch',
+  'protected_header_mismatch',
+  'pq_backend_unavailable',
+  'invalid_pq_signing_key',
+  'invalid_pq_public_key',
+] as const;
+
+function scittV2SetMatchesRegistered(algorithms: unknown): algorithms is number[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === EP_SCITT_STATEMENT_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === EP_SCITT_STATEMENT_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+/** The protected header of one half of a v2 pair; the set is a signed member. */
+export function epScittV2ProtectedHeader(
+  alg: number,
+  kid: string,
+  iss: string,
+  sub: string,
+  requiredAlgorithms: readonly number[] = EP_SCITT_STATEMENT_V2_REQUIRED_ALGORITHMS,
+): Map<unknown, unknown> {
+  if (!scittV2SetMatchesRegistered(requiredAlgorithms)) {
+    throw new Error('epScittV2ProtectedHeader: algorithm set is not the registered EP-SCITT-STATEMENT-v2 set');
+  }
+  return new Map<unknown, unknown>([
+    [COSE_HEADER_ALG, alg],
+    [COSE_HEADER_CONTENT_TYPE, EP_STATEMENT_PAYLOAD_CONTENT_TYPE],
+    [COSE_HEADER_KID, UTF8.encode(kid)],
+    [COSE_HEADER_CWT_CLAIMS, new Map<unknown, unknown>([
+      [CWT_CLAIM_ISS, iss],
+      [CWT_CLAIM_SUB, sub],
+    ])],
+    [COSE_HEADER_EP_REQUIRED_ALGS, [...requiredAlgorithms]],
+  ]);
+}
+
+export interface BuildScittHybridOptions extends BuildScittStatementOptions {
+  /** ML-DSA-65 raw 4032-byte secret key of the SCITT Issuer, or base64url. */
+  statementPqSecretKey: Uint8Array | string;
+}
+
+export interface BuiltScittHybridPair {
+  /** Tagged COSE_Sign1 Signed Statement, alg -8 (EdDSA). */
+  classical: Uint8Array;
+  /** Tagged COSE_Sign1 Signed Statement, alg -49 (ML-DSA-65). */
+  pq: Uint8Array;
+  payload: Uint8Array;
+  iss: string;
+  sub: string;
+  caid: string;
+  payloadSha256: string;
+}
+
+/** Build an EP-SCITT-STATEMENT-v2 hybrid Signed Statement pair. */
+export async function buildEpScittHybridSignedStatement(
+  receipt: unknown,
+  opts: BuildScittHybridOptions,
+  agility: AgilityOptions = {},
+): Promise<CborResult<BuiltScittHybridPair>> {
+  if (!isPlainObject(receipt) || !isPlainObject(receipt.payload)) {
+    return refuse('invalid_receipt_document');
+  }
+  if (typeof opts?.kid !== 'string' || opts.kid.length === 0 || opts.kid.length > 1024) {
+    return refuse('invalid_kid');
+  }
+  if (!isAcceptableIss(opts?.iss)) return refuse('invalid_iss');
+  const key = opts?.statementPrivateKey;
+  if (!(key instanceof crypto.KeyObject) || key.asymmetricKeyType !== 'ed25519') {
+    return refuse('invalid_signing_key');
+  }
+
+  let canonical: string;
+  try {
+    canonical = canonicalize(receipt);
+  } catch {
+    return refuse('outside_canonical_profile');
+  }
+  const caidResult = receiptActionCaid(receipt.payload.action);
+  if (!caidResult.ok) return caidResult;
+  const sub = caidResult.value.caid;
+  const payload = UTF8.encode(canonical);
+
+  const halves: Uint8Array[] = [];
+  for (const alg of EP_SCITT_STATEMENT_V2_REQUIRED_ALGORITHMS) {
+    const protectedEncoded = encodeDeterministicCbor8949(
+      epScittV2ProtectedHeader(alg, opts.kid, opts.iss, sub),
+    );
+    if (!protectedEncoded.ok) return protectedEncoded;
+    const sigStruct = sigStructureBytes(protectedEncoded.value, payload);
+    if (!sigStruct.ok) return sigStruct;
+    let signature: Uint8Array;
+    try {
+      const agile = await signAgile(
+        new Uint8Array(sigStruct.value),
+        alg === COSE_ALG_EDDSA
+          ? { alg: 'Ed25519', private_key: key }
+          : { alg: 'ML-DSA-65', private_key: opts.statementPqSecretKey },
+        agility,
+      );
+      signature = new Uint8Array(Buffer.from(agile.sig, 'base64url'));
+    } catch {
+      return { ok: false, reason: alg === COSE_ALG_EDDSA ? 'invalid_signing_key' : 'pq_backend_unavailable' };
+    }
+    const body = encodeDeterministicCbor8949([
+      protectedEncoded.value, new Map(), payload, signature,
+    ]);
+    if (!body.ok) return body;
+    halves.push(concatBytes([Uint8Array.of(COSE_SIGN1_TAG_BYTE), body.value]));
+  }
+
+  return {
+    ok: true,
+    value: {
+      classical: halves[0],
+      pq: halves[1],
+      payload,
+      iss: opts.iss,
+      sub,
+      caid: sub,
+      payloadSha256: crypto.createHash('sha256').update(payload).digest('hex'),
+    },
+  };
+}
+
+export interface VerifyScittHybridOptions {
+  /** SPKI-DER base64url Ed25519 public key pinned for the SCITT Issuer. */
+  statementPublicKeyBase64url: string;
+  /** base64url raw 1952-byte ML-DSA-65 public key pinned for the SCITT Issuer. */
+  statementPqPublicKeyBase64url: string;
+  /** SPKI-DER base64url Ed25519 public key pinned for the RECEIPT issuer. */
+  receiptIssuerPublicKeyBase64url: string;
+  /** REQUIRED in v2: both halves must carry exactly this iss. */
+  expectedIss: string;
+  /** REQUIRED in v2: both halves must carry exactly this kid. */
+  expectedKid: string;
+  expectedSub?: string;
+  receiptVerifier?: (receipt: unknown, publicKeyBase64url: string) => { valid?: unknown };
+  agility?: AgilityOptions;
+}
+
+export interface VerifyScittHybridResult {
+  valid: boolean;
+  checks: {
+    pair_present: boolean;
+    deterministic_encoding: boolean;
+    cose_structure: boolean;
+    algorithm_set: boolean;
+    payload_identical: boolean;
+    cwt_claims: boolean;
+    statement_signatures: boolean;
+    payload_canonical: boolean;
+    receipt_signature: boolean;
+    sub_binding: boolean;
+  };
+  reason?: string;
+  /** Always false. This module never registers anything. */
+  registered: false;
+  receipt?: unknown;
+  iss?: string;
+  sub?: string;
+  payloadSha256?: string;
+}
+
+interface ParsedScittHybridHalf {
+  protectedBytes: Uint8Array;
+  payload: Uint8Array;
+  signature: Uint8Array;
+  iss: string;
+  sub: string;
+}
+
+function parseScittHybridHalf(
+  statementBytes: unknown,
+  expectedAlg: number,
+  expectedKid: string,
+): CborResult<ParsedScittHybridHalf> {
+  if (!(statementBytes instanceof Uint8Array) || statementBytes.length < 2) {
+    return refuse('malformed_cbor');
+  }
+  if (statementBytes[0] !== COSE_SIGN1_TAG_BYTE) return refuse('cose_structure_invalid');
+  const decoded = decodeDeterministicCbor8949(statementBytes.subarray(1), { textKeysOnly: false });
+  if (!decoded.ok) return { ok: false, reason: decoded.reason };
+  const arr = decoded.value;
+  if (!Array.isArray(arr) || arr.length !== 4) return refuse('cose_structure_invalid');
+  const [protectedBytes, unprotected, payload, signature] = arr as unknown[];
+  if (!(protectedBytes instanceof Uint8Array) || !(payload instanceof Uint8Array)
+      || !(signature instanceof Uint8Array) || !(unprotected instanceof Map)) {
+    return refuse('cose_structure_invalid');
+  }
+  if (unprotected.size !== 0) return refuse('unprotected_headers_present');
+
+  const headerResult = decodeDeterministicCbor8949(protectedBytes, { textKeysOnly: false });
+  if (!headerResult.ok) return { ok: false, reason: headerResult.reason };
+  if (!(headerResult.value instanceof Map)) return refuse('cose_structure_invalid');
+  const headers = headerResult.value;
+  if (headers.has(COSE_HEADER_CRIT)) return refuse('crit_unsupported');
+  for (const label of headers.keys()) {
+    if (!V2_PROFILE_PROTECTED_LABELS.has(label)) return refuse('unexpected_protected_header');
+  }
+  if (headers.get(COSE_HEADER_ALG) !== expectedAlg) return refuse('unsupported_statement_alg');
+  if (headers.get(COSE_HEADER_CONTENT_TYPE) !== EP_STATEMENT_PAYLOAD_CONTENT_TYPE) {
+    return refuse('content_type_mismatch');
+  }
+  const headerKid = headers.get(COSE_HEADER_KID);
+  if (!(headerKid instanceof Uint8Array) || headerKid.length === 0) return refuse('kid_missing');
+  if (compareBytes(headerKid, UTF8.encode(expectedKid)) !== 0) return refuse('kid_mismatch');
+  if (!scittV2SetMatchesRegistered(headers.get(COSE_HEADER_EP_REQUIRED_ALGS))) {
+    return { ok: false, reason: 'algorithm_set_mismatch' };
+  }
+
+  if (!headers.has(COSE_HEADER_CWT_CLAIMS)) return refuse('cwt_claims_missing');
+  const cwt = headers.get(COSE_HEADER_CWT_CLAIMS);
+  if (!(cwt instanceof Map)) return refuse('cwt_claims_malformed');
+  for (const label of cwt.keys()) {
+    if (!PROFILE_CWT_CLAIM_LABELS.has(label)) return refuse('unexpected_cwt_claim');
+  }
+  if (!cwt.has(CWT_CLAIM_ISS)) return refuse('iss_missing');
+  if (!cwt.has(CWT_CLAIM_SUB)) return refuse('sub_missing');
+  const iss = cwt.get(CWT_CLAIM_ISS);
+  const sub = cwt.get(CWT_CLAIM_SUB);
+  if (!isAcceptableIss(iss)) return refuse('iss_malformed');
+  if (!isCaidString(sub)) return refuse('sub_malformed');
+
+  return { ok: true, value: { protectedBytes, payload, signature, iss, sub } };
+}
+
+/**
+ * Verify an EP-SCITT-STATEMENT-v2 hybrid Signed Statement pair, fail-closed.
+ * `valid: true` still means VERIFIED, never REGISTERED, and the pairing is a
+ * relying-party pin that no Transparency Service conveys.
+ */
+export async function verifyEpScittSignedStatementHybrid(
+  pair: { classical?: unknown; pq?: unknown } | null | undefined,
+  opts: VerifyScittHybridOptions,
+): Promise<VerifyScittHybridResult> {
+  const checks: VerifyScittHybridResult['checks'] = {
+    pair_present: false,
+    deterministic_encoding: false,
+    cose_structure: false,
+    algorithm_set: false,
+    payload_identical: false,
+    cwt_claims: false,
+    statement_signatures: false,
+    payload_canonical: false,
+    receipt_signature: false,
+    sub_binding: false,
+  };
+  const fail = (reason: string): VerifyScittHybridResult =>
+    ({ valid: false, checks, reason, registered: false });
+
+  if (!pair || typeof pair !== 'object'
+      || !(pair.classical instanceof Uint8Array) || !(pair.pq instanceof Uint8Array)) {
+    return fail('hybrid_pair_incomplete');
+  }
+  if (typeof opts?.expectedKid !== 'string' || opts.expectedKid.length === 0) return fail('invalid_kid');
+  if (!isAcceptableIss(opts?.expectedIss)) return fail('invalid_iss');
+  checks.pair_present = true;
+
+  const classical = parseScittHybridHalf(pair.classical, COSE_ALG_EDDSA, opts.expectedKid);
+  if (!classical.ok) return fail(classical.reason);
+  const pq = parseScittHybridHalf(pair.pq, COSE_ALG_ML_DSA_65, opts.expectedKid);
+  if (!pq.ok) return fail(pq.reason);
+  checks.deterministic_encoding = true;
+  checks.cose_structure = true;
+  checks.algorithm_set = true;
+
+  if (compareBytes(classical.value.payload, pq.value.payload) !== 0) {
+    return fail('hybrid_payload_mismatch');
+  }
+  if (classical.value.iss !== pq.value.iss || classical.value.sub !== pq.value.sub) {
+    return fail('hybrid_payload_mismatch');
+  }
+  checks.payload_identical = true;
+
+  if (classical.value.iss !== opts.expectedIss) return fail('iss_mismatch');
+  if (typeof opts.expectedSub === 'string' && opts.expectedSub !== classical.value.sub) {
+    return fail('sub_mismatch');
+  }
+  checks.cwt_claims = true;
+
+  const payload = classical.value.payload;
+  let payloadText: string;
+  try {
+    payloadText = FATAL_UTF8.decode(payload);
+  } catch {
+    return fail('payload_not_canonical_json');
+  }
+  let receipt: unknown;
+  try {
+    receipt = JSON.parse(payloadText);
+  } catch {
+    return fail('payload_not_canonical_json');
+  }
+  let recanonical: string;
+  try {
+    recanonical = canonicalize(receipt);
+  } catch {
+    return fail('payload_not_canonical_json');
+  }
+  if (recanonical !== payloadText) return fail('payload_not_canonical_json');
+  checks.payload_canonical = true;
+
+  // `sub` is bound to the payload by recomputation, then BOTH protected headers
+  // are rebuilt from the REGISTERED set, the pinned kid/iss, and that recomputed
+  // sub. A presented header never chooses what it is checked against.
+  const recomputed = receiptActionCaid((receipt as Record<string, any>)?.payload?.action);
+  if (!recomputed.ok) return fail('sub_not_bound_to_payload');
+  if (recomputed.value.caid !== classical.value.sub) return fail('sub_not_bound_to_payload');
+  for (const [half, alg] of [
+    [classical.value, COSE_ALG_EDDSA] as const,
+    [pq.value, COSE_ALG_ML_DSA_65] as const,
+  ]) {
+    let expected;
+    try {
+      expected = encodeDeterministicCbor8949(
+        epScittV2ProtectedHeader(alg, opts.expectedKid, opts.expectedIss, recomputed.value.caid),
+      );
+    } catch {
+      return fail('algorithm_set_mismatch');
+    }
+    if (!expected.ok) return fail(expected.reason);
+    if (compareBytes(expected.value, half.protectedBytes) !== 0) {
+      return fail('protected_header_mismatch');
+    }
+  }
+  checks.sub_binding = true;
+
+  const classicalSig = sigStructureBytes(classical.value.protectedBytes, payload);
+  if (!classicalSig.ok) return fail(classicalSig.reason);
+  const pqSig = sigStructureBytes(pq.value.protectedBytes, payload);
+  if (!pqSig.ok) return fail(pqSig.reason);
+  const legs = [
+    await verifyAgileSignature(
+      classicalSig.value,
+      { alg: 'Ed25519', sig: Buffer.from(classical.value.signature).toString('base64url') },
+      { alg: 'Ed25519', public_key: opts.statementPublicKeyBase64url },
+      opts.agility ?? {},
+    ),
+    await verifyAgileSignature(
+      pqSig.value,
+      { alg: 'ML-DSA-65', sig: Buffer.from(pq.value.signature).toString('base64url') },
+      { alg: 'ML-DSA-65', public_key: opts.statementPqPublicKeyBase64url },
+      opts.agility ?? {},
+    ),
+  ];
+  const failedLeg = legs.find((leg) => leg.verified !== true);
+  if (failedLeg) return fail(`statement_signature_invalid:${failedLeg.alg}:${failedLeg.reason}`);
+  checks.statement_signatures = true;
+
+  const verifier = typeof opts?.receiptVerifier === 'function' ? opts.receiptVerifier : verifyReceipt;
+  let receiptResult: { valid?: unknown };
+  try {
+    receiptResult = verifier(receipt, opts.receiptIssuerPublicKeyBase64url);
+  } catch {
+    return fail('receipt_invalid');
+  }
+  if (receiptResult?.valid !== true) return fail('receipt_invalid');
+  checks.receipt_signature = true;
+
+  return {
+    valid: true,
+    checks,
+    registered: false,
+    receipt,
+    iss: classical.value.iss,
+    sub: classical.value.sub,
+    payloadSha256: crypto.createHash('sha256').update(payload).digest('hex'),
   };
 }
