@@ -133,12 +133,25 @@ export declare function bindAuthorizationBundleToGrant(current: AuthorizationBun
  *
  * SCOPE BOUNDARY (honest, not a hedge): Class A signoffs are UNCHANGED in v2.
  * verifyClassASignoff remains the sole authority for a Class A signoff exactly
- * as in v1 -- Class A is a hardware-authenticator (WebAuthn/passkey) ceremony,
- * and a PQ upgrade there is gated on FIDO Alliance / W3C WebAuthn PQC
- * extensions landing in browsers and authenticators, not on EP code (see
- * docs/protocol/pq-hybrid-program.md, priority item 2). Only Class B/C
- * signoffs -- EP-issued Ed25519 keys this module verifies directly -- gain the
- * ML-DSA-65 leg. A v2 bundle's Class B/C approver key entries carry BOTH
+ * as in v1 -- Class A is a hardware-authenticator (WebAuthn/passkey) ceremony.
+ * What that boundary rests on, stated precisely, because these are two
+ * different gates held by two different parties:
+ *   - A POST-QUANTUM Class A signoff is gated on the ecosystem, on three
+ *     dated, checkable components: the FIDO Registry of Predefined Values v2.3
+ *     defines no ALG_SIGN constant for ML-DSA (so a certified authenticator
+ *     cannot declare the capability), CTAP 2.3 carries no PQC text, and W3C
+ *     WebAuthn PR 2437 is open and unmerged. It is NOT gated on EP's verifier:
+ *     verifyWebAuthnSignoff already dispatches on the enrolled key's algorithm
+ *     and verifies ML-DSA-65 via EP-SIG-AGILITY-v1.
+ *   - A HYBRID Class A signoff is an EP DESIGN DECISION, not a FIDO
+ *     dependency. Both live W3C proposals deliver SINGLE-algorithm PQ
+ *     credentials and explicitly leave hybrid to the relying party, so hybrid
+ *     at this layer is two enrolled credentials per approver plus a policy
+ *     requiring a signoff from each (EP-QUORUM-v1 policy.required_algorithms,
+ *     default off).
+ * Only Class B/C signoffs -- EP-issued Ed25519 keys this module verifies
+ * directly -- gain the ML-DSA-65 leg here. A v2 bundle's Class B/C approver
+ * key entries carry BOTH
  * `public_key` and `pq_public_key`; a key entry missing the PQ half fails the
  * affected signoff, never a silent single-leg pass.
  *

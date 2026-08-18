@@ -16,6 +16,11 @@ import {
   isStrictCanonicalJson,
   strictJsonGate,
 } from './strict-json.js';
+import {
+  verifyAgileSignatureSync,
+  mldsaRawPublicKeyFromSpki,
+  type AgilityOptions,
+} from './pq-signature-agility.js';
 import { verifyRevocation as verifyRevocationStatement } from './revocation.js';
 import { verifyOutcomeBindingCore, verifyOutcomeBindingSetCore } from './outcome-binding.js';
 
@@ -547,6 +552,53 @@ function webauthnCounterPolicyError(metadata: Obj, opts: any): string | null {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Class A signature-algorithm dispatch
+//
+// EP DOES NOT SUPPORT POST-QUANTUM WEBAUTHN TODAY, and cannot: no browser,
+// no platform passkey provider, and no certified authenticator produces an
+// ML-DSA WebAuthn assertion, and the FIDO Registry (v2.3, the current
+// published revision) carries no ALG_SIGN constant for ML-DSA, so a certified
+// authenticator cannot even declare the capability. What follows is the
+// RELYING-PARTY half, which was never FIDO-gated: it is EP's own verification
+// code, and it is ready so that the day a real PQ assertion exists EP verifies
+// it instead of shipping a change under time pressure. Until then every
+// ML-DSA path here refuses by name.
+//
+// The IANA COSE registry already assigns ML-DSA-65 = -49 (RFC 9964) and
+// WebAuthn L3 section 5.8.5 says algorithm identifiers SHOULD come from that
+// registry, so -49 is a legal `pubKeyCredParams` entry today -- legal to ask
+// for is not the same as available to receive.
+// ---------------------------------------------------------------------------
+
+/** The Class A signature algorithms this verifier can dispatch on. */
+export const WEBAUTHN_SIGNATURE_ALGORITHMS = Object.freeze(['ES256', 'ML-DSA-65'] as const);
+export type WebAuthnSignatureAlgorithm = (typeof WEBAUTHN_SIGNATURE_ALGORITHMS)[number];
+
+/**
+ * Name the signature algorithm an enrolled Class A credential is for, read
+ * from the KEY itself (SPKI DER, base64url) rather than from any caller- or
+ * document-supplied label. Returns null for anything outside the closed set,
+ * which every caller must treat as a refusal.
+ */
+export function webauthnSignatureAlgorithm(
+  approverPublicKeySpkiB64u: unknown,
+): WebAuthnSignatureAlgorithm | null {
+  try {
+    if (typeof approverPublicKeySpkiB64u !== 'string' || approverPublicKeySpkiB64u.length === 0) return null;
+    const der = decodeBase64url(approverPublicKeySpkiB64u);
+    const keyObject = crypto.createPublicKey({ key: der, format: 'der', type: 'spki' });
+    if (keyObject.asymmetricKeyType === 'ml-dsa-65') return 'ML-DSA-65';
+    // Every EC key stays on the byte-identical legacy path. Class A enrollment
+    // has always pinned EC2/ES256/P-256 (lib/webauthn.ts), so this is the same
+    // key population the digest-hardcoded verifier handled before dispatch.
+    if (keyObject.asymmetricKeyType === 'ec') return 'ES256';
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Verify a Class A (approver-held key) signoff fully offline.
  *
@@ -554,7 +606,9 @@ function webauthnCounterPolicyError(metadata: Obj, opts: any): string | null {
  *   - the WebAuthn challenge the device signed equals
  *     SHA-256(JCS(context)) for the EXACT context in the signoff — which
  *     binds the action hash, decision, nonce, approver, and validity window;
- *   - the signature verifies against the approver's enrolled P-256 key;
+ *   - the signature verifies against the approver's enrolled key, under the
+ *     algorithm that key is for (ES256 today; ML-DSA-65 is implemented and
+ *     refuses cleanly until an authenticator that can produce one exists);
  *   - the authenticator asserted user presence AND user verification
  *     (a human with the biometric/PIN was there);
  *   - (if rpId supplied) the assertion was scoped to the expected relying
@@ -582,8 +636,17 @@ function webauthnCounterPolicyError(metadata: Obj, opts: any): string | null {
  *     device signature are verified; origin is asserted only when the caller
  *     supplies pins, and `checks.rp_id_hash` stays null when unpinned.
  *
- * @param {string} approverPublicKeySpkiB64u - enrolled P-256 key, SPKI DER b64u
- * @param {{ rpId?: string, allowedOrigins?: string[], mode?: 'relying-party'|'offline-integrity' }} [opts]
+ * `opts.alg` optionally PINS the expected signature algorithm ('ES256' or
+ * 'ML-DSA-65'). Omitted, the algorithm is read from the enrolled key. Supplied
+ * and contradicted by the key, the verdict is a named refusal
+ * ('signature_algorithm_mismatch') -- the pin is never narrowed to whatever
+ * was presented.
+ *
+ * `opts.agility` is passed through to EP-SIG-AGILITY-v1 for the ML-DSA-65
+ * path only (e.g. an injected `mldsaBackend`). It has no effect on ES256.
+ *
+ * @param {string} approverPublicKeySpkiB64u - enrolled key, SPKI DER b64u
+ * @param {{ rpId?: string, allowedOrigins?: string[], mode?: 'relying-party'|'offline-integrity', alg?: 'ES256'|'ML-DSA-65', agility?: object }} [opts]
  * @returns {{ valid: boolean, checks: object, error?: string }}
  */
 export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: string, opts: any = {}): Obj {
@@ -671,7 +734,9 @@ export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: s
       checks.rp_id_hash = expectedRpIdHash.equals(authData.subarray(0, 32));
     }
 
-    // 5. Signature: ECDSA P-256/SHA-256 over authData || SHA-256(clientDataJSON).
+    // 5. Signature over authData || SHA-256(clientDataJSON), dispatched on the
+    //    algorithm of the ENROLLED KEY. The signed bytes are identical for
+    //    every algorithm; only the verification primitive differs.
     const signedData = Buffer.concat([
       authData,
       crypto.createHash('sha256').update(clientDataBytes).digest(),
@@ -681,12 +746,64 @@ export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: s
       format: 'der',
       type: 'spki',
     });
-    checks.signature = crypto.verify(
-      'sha256',
-      signedData,
-      keyObject,
-      decodeBase64url(signature),
-    );
+    const alg = webauthnSignatureAlgorithm(approverPublicKeySpkiB64u);
+
+    // An `alg` pin is relying-party policy. A pin outside the closed set, or a
+    // pin the enrolled key contradicts, is a NAMED refusal -- never a throw,
+    // never a silent fall-through to whatever the key happens to be.
+    if (opts.alg !== undefined) {
+      if (!(WEBAUTHN_SIGNATURE_ALGORITHMS as readonly string[]).includes(opts.alg)) {
+        return { valid: false, checks, authenticator, error: `unsupported_signature_algorithm: ${String(opts.alg)}` };
+      }
+      if (opts.alg !== alg) {
+        return {
+          valid: false,
+          checks,
+          authenticator,
+          error: `signature_algorithm_mismatch: pinned ${String(opts.alg)}, enrolled key is ${alg ?? 'unsupported'}`,
+        };
+      }
+    }
+
+    if (alg === 'ES256') {
+      // Unchanged from the pre-dispatch verifier, byte for byte: ECDSA over
+      // SHA-256. crypto.verify('sha256', ...) is correct for ES256 and ONLY
+      // for ES256; on an ML-DSA key it throws ERR_OSSL_INVALID_DIGEST, which
+      // is exactly why this branch is now guarded instead of unconditional.
+      checks.signature = crypto.verify(
+        'sha256',
+        signedData,
+        keyObject,
+        decodeBase64url(signature),
+      );
+    } else if (alg === 'ML-DSA-65') {
+      // Verified through EP-SIG-AGILITY-v1, not a second implementation: the
+      // same closed registry, the same length pinning, the same fail-closed
+      // reasons the receipt path already uses. FIPS 204 pure ML-DSA takes no
+      // pre-hash, so the agility module's node-native backend calls
+      // crypto.verify(null, ...).
+      const rawPublicKey = mldsaRawPublicKeyFromSpki(decodeBase64url(approverPublicKeySpkiB64u));
+      if (!rawPublicKey) {
+        return { valid: false, checks, authenticator, error: 'malformed_ml_dsa_65_public_key' };
+      }
+      const agile = verifyAgileSignatureSync(
+        new Uint8Array(signedData),
+        { alg: 'ML-DSA-65', sig: Buffer.from(decodeBase64url(signature)).toString('base64url') },
+        { alg: 'ML-DSA-65', public_key: rawPublicKey },
+        (opts.agility ?? {}) as AgilityOptions,
+      );
+      if (agile.verified !== true) {
+        // Named refusal, carried through verbatim (malformed_signature,
+        // pq_backend_unavailable, signature_invalid, ...). Never a throw.
+        return { valid: false, checks, authenticator, error: `ml_dsa_65_${agile.reason ?? 'refused'}` };
+      }
+      checks.signature = true;
+    } else {
+      // Unknown or unsupported algorithm: refuse by name. INDETERMINATE never
+      // authorizes, and it must never reach a digest-hardcoded verify() that
+      // would throw a raw OpenSSL error instead of returning a verdict.
+      return { valid: false, checks, authenticator, error: 'unsupported_signature_algorithm' };
+    }
   } catch (e) {
     return { valid: false, checks, authenticator, error: `WebAuthn verification failed: ${e instanceof Error ? e.message : String(e)}` };
   }

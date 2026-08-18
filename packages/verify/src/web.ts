@@ -311,6 +311,26 @@ function counterPolicyError(metadata: ReturnType<typeof authenticatorMetadata>, 
 }
 
 /**
+ * SPKI DER header for an ML-DSA-65 public key: SEQUENCE { SEQUENCE { OID
+ * 2.16.840.1.101.3.4.3.18 (id-ml-dsa-65) }, BIT STRING(1953, 0 unused) }.
+ * Fixed, because the FIPS 204 ML-DSA-65 public key is a fixed 1952 bytes.
+ */
+const ML_DSA_65_SPKI_PREFIX = Uint8Array.from([
+  0x30, 0x82, 0x07, 0xb2, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
+  0x65, 0x03, 0x04, 0x03, 0x12, 0x03, 0x82, 0x07, 0xa1, 0x00,
+]);
+const ML_DSA_65_SPKI_BYTES = ML_DSA_65_SPKI_PREFIX.length + 1952;
+
+/** Recognize an ML-DSA-65 SPKI so it earns a named refusal, not an opaque throw. */
+function isMlDsa65Spki(spki: Uint8Array): boolean {
+  if (spki.length !== ML_DSA_65_SPKI_BYTES) return false;
+  for (let i = 0; i < ML_DSA_65_SPKI_PREFIX.length; i++) {
+    if (spki[i] !== ML_DSA_65_SPKI_PREFIX[i]) return false;
+  }
+  return true;
+}
+
+/**
  * Verify a Class A (approver-held key) signoff fully offline, in the browser.
  * Mirrors index.js verifyWebAuthnSignoff.
  *
@@ -415,13 +435,40 @@ export async function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicK
     }
 
     // 5. Signature: ECDSA P-256/SHA-256 over authData ‖ SHA-256(clientDataJSON).
+    //
+    // THE BROWSER TWIN IS ES256-ONLY, ON A CLOCK OF ITS OWN. The Node verifier
+    // (index.ts) dispatches on the enrolled key's algorithm and verifies an
+    // ML-DSA-65 Class A signoff through EP-SIG-AGILITY-v1. This twin refuses
+    // one, by name, on EVERY runtime: deliberately, not by omission.
+    //
+    // Precisely why, separating what is checkable from what is not: this file
+    // is the PORTABLE verifier, and its contract is that a receipt gets the
+    // same verdict in any browser, edge runtime, or Deno. No shipping browser
+    // exposes a WebCrypto ML-DSA algorithm, so a PQ verdict cannot be portable
+    // yet. Some hosts already do carry it. Node 26 accepts
+    // subtle.importKey(..., { name: 'ML-DSA-65' }) and warns that the API is
+    // EXPERIMENTAL and may change at any time, and verifying only there would
+    // make the verdict depend on where the code happened to run, which is the
+    // one thing this twin exists to prevent. A uniform named refusal is the
+    // honest behavior until WebCrypto ML-DSA is stable and in browsers; that is
+    // a separate gate from the authenticator, CTAP, and FIDO Registry gates
+    // that block a PQ assertion from existing in the first place.
+    const spkiBytes = b64uToBytes(approverPublicKeySpkiB64u);
+    if (isMlDsa65Spki(spkiBytes)) {
+      return {
+        valid: false,
+        checks,
+        authenticator,
+        error: 'unsupported_signature_algorithm: ML-DSA-65 (no WebCrypto ML-DSA in browsers)',
+      };
+    }
     const signedData = concatBytes(authData, await sha256Bytes(clientDataBytes));
     const rawSig = derEcdsaToRawP256(b64uToBytes(signature));
     if (!rawSig) {
       return { valid: false, checks, authenticator, error: 'Malformed ECDSA signature' };
     }
     const key = await subtle.importKey(
-      'spki', bufferSource(b64uToBytes(approverPublicKeySpkiB64u)),
+      'spki', bufferSource(spkiBytes),
       { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'],
     );
     checks.signature = await subtle.verify(

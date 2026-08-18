@@ -23,6 +23,14 @@
  * structured refusal naming the reason. Signing functions throw (issuer-side
  * misuse is a programming error, not attacker input).
  *
+ * SYNCHRONOUS TWIN. verifyAgileSignatureSync applies the SAME rules with no
+ * await, so EP's frozen synchronous Class A verifier (verifyWebAuthnSignoff)
+ * can be algorithm-agile without a second copy of these checks living next to
+ * it. The shared preflight and per-algorithm crypto steps are literally the
+ * same functions; only ML-DSA backend acquisition differs, and the sync path
+ * takes an injected backend or the node:crypto-native FIPS 204 provider, never
+ * an async loader. A runtime with neither refuses ('pq_backend_unavailable').
+ *
  * HYBRID MODE. verifyAgileSignatureSet checks several signatures over the
  * SAME message bytes. Policy 'hybrid_all' requires every required algorithm
  * to be present and every presented signature to verify. Policy
@@ -158,6 +166,28 @@ export interface AgileSetResult {
  */
 export declare function loadDefaultAgilityMldsaBackend(): Promise<AgilityMldsaBackend | null>;
 /**
+ * DER SPKI header for an ML-DSA-65 public key: SEQUENCE(1970) {
+ *   SEQUENCE(11) { OID 2.16.840.1.101.3.4.3.18 (id-ml-dsa-65) },
+ *   BIT STRING(1953, 0 unused) }. Fixed by construction because the key body
+ * is a fixed 1952 bytes, so prefix || raw is the whole SPKI encoding.
+ */
+export declare const ML_DSA_65_SPKI_PREFIX: Uint8Array;
+/** raw ML-DSA-65 public key bytes -> SPKI DER. Returns null on a wrong length. */
+export declare function mldsaSpkiFromRawPublicKey(raw: unknown): Uint8Array | null;
+/**
+ * SPKI DER -> raw ML-DSA-65 public key bytes. Returns null unless the input is
+ * exactly the ML-DSA-65 SPKI encoding: a different algorithm OID, a different
+ * length, or a truncated key is a null, never a best-effort slice.
+ */
+export declare function mldsaRawPublicKeyFromSpki(spki: unknown): Uint8Array | null;
+/**
+ * The node:crypto-native ML-DSA-65 backend, or null when this runtime has no
+ * ML-DSA provider. Synchronous by construction (no dynamic import), which is
+ * what lets a synchronous verifier -- verifyWebAuthnSignoff -- reach the same
+ * verification code path as the async one.
+ */
+export declare function nodeNativeMldsaBackend(): AgilityMldsaBackend | null;
+/**
  * Sign canonical artifact bytes under one registered algorithm.
  * The caller supplies the SAME canonical bytes the existing EP receipt path
  * signs: Buffer.from(canonicalize(payload), 'utf8').
@@ -177,6 +207,21 @@ export declare function signAgileSet(messageBytes: Uint8Array, keys: AgileSignin
  * an unknown algorithm NEVER verifies (INDETERMINATE never authorizes).
  */
 export declare function verifyAgileSignature(messageBytes: Uint8Array, signature: unknown, key: unknown, options?: AgilityOptions): Promise<AgileVerifyResult>;
+/**
+ * The SYNCHRONOUS twin of verifyAgileSignature: identical rules, identical
+ * refusal reasons, no await. It exists because EP's frozen Class A verifier
+ * (verifyWebAuthnSignoff) is synchronous and every one of its dozens of call
+ * sites is synchronous; making that verifier algorithm-agile must not mean
+ * reimplementing these checks a second time next door.
+ *
+ * The ONE difference from the async entry point, stated plainly: ML-DSA
+ * backend resolution is synchronous, so an injected `mldsaBackendLoader` is
+ * not consulted and the pure-JS @noble default is not dynamically imported.
+ * The backend is an injected `mldsaBackend`, or the node:crypto-native FIPS
+ * 204 provider when this runtime has one, or nothing -- and nothing is
+ * 'pq_backend_unavailable', a refusal.
+ */
+export declare function verifyAgileSignatureSync(messageBytes: Uint8Array, signature: unknown, key: unknown, options?: AgilityOptions): AgileVerifyResult;
 /**
  * Verify a SET of agile signatures over the same message bytes.
  *

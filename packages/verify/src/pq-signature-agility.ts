@@ -24,6 +24,14 @@
  * structured refusal naming the reason. Signing functions throw (issuer-side
  * misuse is a programming error, not attacker input).
  *
+ * SYNCHRONOUS TWIN. verifyAgileSignatureSync applies the SAME rules with no
+ * await, so EP's frozen synchronous Class A verifier (verifyWebAuthnSignoff)
+ * can be algorithm-agile without a second copy of these checks living next to
+ * it. The shared preflight and per-algorithm crypto steps are literally the
+ * same functions; only ML-DSA backend acquisition differs, and the sync path
+ * takes an injected backend or the node:crypto-native FIPS 204 provider, never
+ * an async loader. A runtime with neither refuses ('pq_backend_unavailable').
+ *
  * HYBRID MODE. verifyAgileSignatureSet checks several signatures over the
  * SAME message bytes. Policy 'hybrid_all' requires every required algorithm
  * to be present and every presented signature to verify. Policy
@@ -201,6 +209,103 @@ export async function loadDefaultAgilityMldsaBackend(): Promise<AgilityMldsaBack
   }
 }
 
+/**
+ * DER SPKI header for an ML-DSA-65 public key: SEQUENCE(1970) {
+ *   SEQUENCE(11) { OID 2.16.840.1.101.3.4.3.18 (id-ml-dsa-65) },
+ *   BIT STRING(1953, 0 unused) }. Fixed by construction because the key body
+ * is a fixed 1952 bytes, so prefix || raw is the whole SPKI encoding.
+ */
+export const ML_DSA_65_SPKI_PREFIX: Uint8Array = Uint8Array.from(
+  Buffer.from('308207b2300b0609608648016503040312038207a100', 'hex'),
+);
+
+/** raw ML-DSA-65 public key bytes -> SPKI DER. Returns null on a wrong length. */
+export function mldsaSpkiFromRawPublicKey(raw: unknown): Uint8Array | null {
+  const bytes = toRawKeyBytes(raw);
+  if (!bytes || bytes.length !== ML_DSA_65_PUBLIC_KEY_BYTES) return null;
+  const out = new Uint8Array(ML_DSA_65_SPKI_PREFIX.length + bytes.length);
+  out.set(ML_DSA_65_SPKI_PREFIX, 0);
+  out.set(bytes, ML_DSA_65_SPKI_PREFIX.length);
+  return out;
+}
+
+/**
+ * SPKI DER -> raw ML-DSA-65 public key bytes. Returns null unless the input is
+ * exactly the ML-DSA-65 SPKI encoding: a different algorithm OID, a different
+ * length, or a truncated key is a null, never a best-effort slice.
+ */
+export function mldsaRawPublicKeyFromSpki(spki: unknown): Uint8Array | null {
+  const bytes = toRawKeyBytes(spki);
+  if (!bytes || bytes.length !== ML_DSA_65_SPKI_PREFIX.length + ML_DSA_65_PUBLIC_KEY_BYTES) return null;
+  for (let i = 0; i < ML_DSA_65_SPKI_PREFIX.length; i++) {
+    if (bytes[i] !== ML_DSA_65_SPKI_PREFIX[i]) return null;
+  }
+  return bytes.subarray(ML_DSA_65_SPKI_PREFIX.length);
+}
+
+// A runtime with native FIPS 204 support in node:crypto (Node 24+ builds
+// against an OpenSSL that carries ML-DSA) can verify ML-DSA-65 synchronously.
+// Older runtimes have no such provider, so the probe caches null and every
+// caller refuses with 'pq_backend_unavailable' rather than skipping a check.
+let nativeMldsaProbe: AgilityMldsaBackend | null | undefined;
+
+/**
+ * The node:crypto-native ML-DSA-65 backend, or null when this runtime has no
+ * ML-DSA provider. Synchronous by construction (no dynamic import), which is
+ * what lets a synchronous verifier -- verifyWebAuthnSignoff -- reach the same
+ * verification code path as the async one.
+ */
+export function nodeNativeMldsaBackend(): AgilityMldsaBackend | null {
+  if (nativeMldsaProbe !== undefined) return nativeMldsaProbe;
+  try {
+    // Feature probe: can this runtime parse an ML-DSA-65 SPKI at all?
+    const probeSpki = mldsaSpkiFromRawPublicKey(new Uint8Array(ML_DSA_65_PUBLIC_KEY_BYTES));
+    if (!probeSpki) {
+      nativeMldsaProbe = null;
+      return null;
+    }
+    const probeKey = crypto.createPublicKey({ key: Buffer.from(probeSpki), format: 'der', type: 'spki' });
+    if (probeKey.asymmetricKeyType !== 'ml-dsa-65') {
+      nativeMldsaProbe = null;
+      return null;
+    }
+  } catch {
+    nativeMldsaProbe = null;
+    return null;
+  }
+  nativeMldsaProbe = {
+    verify: (signatureBytes, messageBytes, publicKeyBytes) => {
+      try {
+        const spki = mldsaSpkiFromRawPublicKey(publicKeyBytes);
+        if (!spki) return false;
+        const keyObject = crypto.createPublicKey({ key: Buffer.from(spki), format: 'der', type: 'spki' });
+        if (keyObject.asymmetricKeyType !== 'ml-dsa-65') return false;
+        // FIPS 204 pure ML-DSA: no pre-hash, so the digest argument is null.
+        // Passing a digest name here is what throws ERR_OSSL_INVALID_DIGEST.
+        return crypto.verify(null, Buffer.from(messageBytes), keyObject, Buffer.from(signatureBytes)) === true;
+      } catch {
+        return false; // malformed sig/key refuses, never throws upward
+      }
+    },
+  };
+  return nativeMldsaProbe;
+}
+
+/**
+ * Backend resolution for the SYNCHRONOUS path. An injected `mldsaBackend` wins
+ * (tests and hosts that carry their own FIPS 204 provider); otherwise the
+ * node-native backend; otherwise null, which every caller turns into
+ * 'pq_backend_unavailable'. `mldsaBackendLoader` is deliberately NOT consulted:
+ * it is async and a synchronous verifier cannot await it, so silently ignoring
+ * an injected loader would be worse than refusing.
+ */
+function resolveSyncAgilityBackend(options: AgilityOptions): AgilityMldsaBackend | null {
+  if (options.mldsaBackend !== undefined && options.mldsaBackend !== null) {
+    return typeof options.mldsaBackend.verify === 'function' ? options.mldsaBackend : null;
+  }
+  return nodeNativeMldsaBackend();
+}
+
 async function resolveAgilityBackend(options: AgilityOptions): Promise<AgilityMldsaBackend | null> {
   if (options.mldsaBackend !== undefined && options.mldsaBackend !== null) {
     if (typeof options.mldsaBackend.verify !== 'function') return null;
@@ -356,16 +461,23 @@ export async function signAgileSet(
 // ---------------------------------------------------------------------------
 
 /**
- * Verify one agile signature over canonical artifact bytes. FAIL-CLOSED:
- * every malformed or unknown input is a structured refusal with a reason;
- * an unknown algorithm NEVER verifies (INDETERMINATE never authorizes).
+ * Everything in a verification that does not need the ML-DSA backend: input
+ * shape, closed-registry algorithm check, algorithm/key tagging, signature
+ * length. Shared verbatim by the async and the synchronous entry points so
+ * there is exactly ONE implementation of these rules, never two that drift.
  */
-export async function verifyAgileSignature(
-  messageBytes: Uint8Array,
-  signature: unknown,
-  key: unknown,
-  options: AgilityOptions = {},
-): Promise<AgileVerifyResult> {
+type AgilePreflight =
+  | { ok: false; result: AgileVerifyResult }
+  | {
+    ok: true;
+    alg: AgileAlgorithm;
+    sigBytes: Uint8Array;
+    publicKey: unknown;
+    checks: AgileVerifyChecks;
+    base: { alg: string | null; key_id: string | null };
+  };
+
+function agileVerifyPreflight(messageBytes: Uint8Array, signature: unknown, key: unknown): AgilePreflight {
   const checks: AgileVerifyChecks = {
     algorithm_known: false,
     key_wellformed: null,
@@ -373,7 +485,9 @@ export async function verifyAgileSignature(
     signature_valid: null,
   };
   const base = { alg: null as string | null, key_id: null as string | null };
-  const refuse = (reason: string): AgileVerifyResult => ({ verified: false, reason, ...base, checks });
+  const refuse = (reason: string): AgilePreflight => (
+    { ok: false, result: { verified: false, reason, ...base, checks } }
+  );
 
   if (!(messageBytes instanceof Uint8Array)) return refuse(AGILITY_REASONS.MALFORMED_INPUT);
   if (!signature || typeof signature !== 'object' || Array.isArray(signature)) {
@@ -404,37 +518,62 @@ export async function verifyAgileSignature(
   }
   checks.signature_wellformed = true;
 
-  const publicKey = (key as AgileVerificationKey).public_key;
+  return {
+    ok: true,
+    alg: sig.alg,
+    sigBytes,
+    publicKey: (key as AgileVerificationKey).public_key,
+    checks,
+    base,
+  };
+}
 
-  if (sig.alg === 'Ed25519') {
-    const keyObject = toEd25519PublicKeyObject(publicKey);
-    if (!keyObject) {
-      checks.key_wellformed = false;
-      return refuse(AGILITY_REASONS.MALFORMED_KEY);
-    }
-    checks.key_wellformed = true;
-    let ok = false;
-    try {
-      ok = crypto.verify(null, Buffer.from(messageBytes), keyObject, Buffer.from(sigBytes));
-    } catch {
-      ok = false;
-    }
-    checks.signature_valid = ok === true;
-    if (!checks.signature_valid) return refuse(AGILITY_REASONS.SIGNATURE_INVALID);
-    return { verified: true, reason: null, ...base, checks };
-  }
-
-  // ML-DSA-65
-  const pk = toRawKeyBytes(publicKey);
-  if (!pk || pk.length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+/** The Ed25519 crypto step (synchronous in both entry points). */
+function finishEd25519(messageBytes: Uint8Array, pre: Extract<AgilePreflight, { ok: true }>): AgileVerifyResult {
+  const { checks, base, sigBytes } = pre;
+  const keyObject = toEd25519PublicKeyObject(pre.publicKey);
+  if (!keyObject) {
     checks.key_wellformed = false;
-    return refuse(AGILITY_REASONS.MALFORMED_KEY);
+    return { verified: false, reason: AGILITY_REASONS.MALFORMED_KEY, ...base, checks };
   }
   checks.key_wellformed = true;
-  const backend = await resolveAgilityBackend(options);
+  let ok = false;
+  try {
+    ok = crypto.verify(null, Buffer.from(messageBytes), keyObject, Buffer.from(sigBytes));
+  } catch {
+    ok = false;
+  }
+  checks.signature_valid = ok === true;
+  if (!checks.signature_valid) {
+    return { verified: false, reason: AGILITY_REASONS.SIGNATURE_INVALID, ...base, checks };
+  }
+  return { verified: true, reason: null, ...base, checks };
+}
+
+/** ML-DSA-65 key normalization, shared by both entry points. */
+function mldsaPublicKeyOrRefuse(
+  pre: Extract<AgilePreflight, { ok: true }>,
+): { ok: true; pk: Uint8Array } | { ok: false; result: AgileVerifyResult } {
+  const pk = toRawKeyBytes(pre.publicKey);
+  if (!pk || pk.length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+    pre.checks.key_wellformed = false;
+    return { ok: false, result: { verified: false, reason: AGILITY_REASONS.MALFORMED_KEY, ...pre.base, checks: pre.checks } };
+  }
+  pre.checks.key_wellformed = true;
+  return { ok: true, pk };
+}
+
+/** The ML-DSA-65 crypto step, given an already-resolved backend (or null). */
+function finishMldsa(
+  messageBytes: Uint8Array,
+  pre: Extract<AgilePreflight, { ok: true }>,
+  pk: Uint8Array,
+  backend: AgilityMldsaBackend | null,
+): AgileVerifyResult {
+  const { checks, base, sigBytes } = pre;
   if (!backend || typeof backend.verify !== 'function') {
     // No backend is a REFUSAL, never a skipped check and never a pass.
-    return refuse(AGILITY_REASONS.PQ_BACKEND_UNAVAILABLE);
+    return { verified: false, reason: AGILITY_REASONS.PQ_BACKEND_UNAVAILABLE, ...base, checks };
   }
   let ok = false;
   try {
@@ -443,8 +582,57 @@ export async function verifyAgileSignature(
     ok = false;
   }
   checks.signature_valid = ok;
-  if (!ok) return refuse(AGILITY_REASONS.SIGNATURE_INVALID);
+  if (!ok) return { verified: false, reason: AGILITY_REASONS.SIGNATURE_INVALID, ...base, checks };
   return { verified: true, reason: null, ...base, checks };
+}
+
+/**
+ * Verify one agile signature over canonical artifact bytes. FAIL-CLOSED:
+ * every malformed or unknown input is a structured refusal with a reason;
+ * an unknown algorithm NEVER verifies (INDETERMINATE never authorizes).
+ */
+export async function verifyAgileSignature(
+  messageBytes: Uint8Array,
+  signature: unknown,
+  key: unknown,
+  options: AgilityOptions = {},
+): Promise<AgileVerifyResult> {
+  const pre = agileVerifyPreflight(messageBytes, signature, key);
+  if (!pre.ok) return pre.result;
+  if (pre.alg === 'Ed25519') return finishEd25519(messageBytes, pre);
+  const pk = mldsaPublicKeyOrRefuse(pre);
+  if (!pk.ok) return pk.result;
+  // Backend resolution stays LATE and lazy: an Ed25519-only verification never
+  // pays for the ML-DSA dynamic import.
+  return finishMldsa(messageBytes, pre, pk.pk, await resolveAgilityBackend(options));
+}
+
+/**
+ * The SYNCHRONOUS twin of verifyAgileSignature: identical rules, identical
+ * refusal reasons, no await. It exists because EP's frozen Class A verifier
+ * (verifyWebAuthnSignoff) is synchronous and every one of its dozens of call
+ * sites is synchronous; making that verifier algorithm-agile must not mean
+ * reimplementing these checks a second time next door.
+ *
+ * The ONE difference from the async entry point, stated plainly: ML-DSA
+ * backend resolution is synchronous, so an injected `mldsaBackendLoader` is
+ * not consulted and the pure-JS @noble default is not dynamically imported.
+ * The backend is an injected `mldsaBackend`, or the node:crypto-native FIPS
+ * 204 provider when this runtime has one, or nothing -- and nothing is
+ * 'pq_backend_unavailable', a refusal.
+ */
+export function verifyAgileSignatureSync(
+  messageBytes: Uint8Array,
+  signature: unknown,
+  key: unknown,
+  options: AgilityOptions = {},
+): AgileVerifyResult {
+  const pre = agileVerifyPreflight(messageBytes, signature, key);
+  if (!pre.ok) return pre.result;
+  if (pre.alg === 'Ed25519') return finishEd25519(messageBytes, pre);
+  const pk = mldsaPublicKeyOrRefuse(pre);
+  if (!pk.ok) return pk.result;
+  return finishMldsa(messageBytes, pre, pk.pk, resolveSyncAgilityBackend(options));
 }
 
 // ---------------------------------------------------------------------------

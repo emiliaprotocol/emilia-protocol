@@ -66,6 +66,21 @@ export async function verifyQuorum(quorum, opts = {}) {
     if (mode !== 'ordered' && mode !== 'threshold') {
       return { valid: false, checks, members: memberResults };
     }
+
+    // Hybrid human authorization (policy.required_algorithms) is implemented in
+    // packages/verify/quorum.js, which can dispatch to an ML-DSA-65 verifier.
+    // This browser twin cannot: no browser ships a WebCrypto ML-DSA, so there
+    // is no importKey algorithm to reach it with. Silently IGNORING a stricter
+    // pin would be a downgrade, so the twin refuses by name and the caller
+    // falls back to the Node verifier.
+    if (policy.required_algorithms !== undefined && policy.required_algorithms !== null) {
+      return {
+        valid: false,
+        checks,
+        members: memberResults,
+        reason: 'required_algorithms_unsupported_in_browser',
+      };
+    }
     const distinctHumans = policy.distinct_humans !== false;
     const windowSec = Number.isFinite(policy.window_sec) ? policy.window_sec : 900;
     const eligible = Array.isArray(policy.approvers) ? policy.approvers : [];

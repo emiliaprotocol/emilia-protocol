@@ -25,6 +25,12 @@ interface QuorumPolicy {
     distinct_humans?: unknown;
     window_sec?: unknown;
     ordered_chain?: unknown;
+    /**
+     * HYBRID HUMAN AUTHORIZATION (opt-in, absent = OFF). See the module header.
+     * Each counted approver must produce a valid signoff under EVERY algorithm
+     * named here, from a separately enrolled credential.
+     */
+    required_algorithms?: unknown;
     [key: string]: unknown;
 }
 interface QuorumDocument {
@@ -59,6 +65,12 @@ export declare function verifyQuorum(quorum: QuorumDocument | null | undefined, 
     valid: boolean;
     checks: Record<string, boolean>;
     members: MemberResult[];
+    reason?: undefined;
+} | {
+    valid: boolean;
+    checks: Record<string, boolean>;
+    members: MemberResult[];
+    reason: string;
 };
 export {};
 //# sourceMappingURL=quorum.d.ts.map

@@ -32,11 +32,62 @@
  *     (approver_credentials), never from the receipt/quorum document.
  * Verifying a creator-declared policy against creator-declared keys proves only
  * internal consistency — it is not authorization.
+ *
+ * HYBRID HUMAN AUTHORIZATION (policy.required_algorithms, opt-in, absent = OFF)
+ * -----------------------------------------------------------------------------
+ * WHY IT LOOKS LIKE THIS. A hybrid WebAuthn assertion, one ceremony carrying
+ * both a classical and a post-quantum signature, is not something EP can wait
+ * for, because nobody is building it. Both live W3C proposals (Microsoft PR
+ * 2437, open; the Google explainer merged via PR 2449) specify SINGLE-algorithm
+ * PQ credentials and explicitly leave hybrid to the relying party. So hybrid at
+ * THIS layer is EP's own design decision, and the only honest construction is
+ * the one below: TWO enrolled credentials per approver, one per algorithm, and
+ * a quorum policy that requires a signoff from each.
+ *
+ * WHAT IT MEANS. With `required_algorithms: ['ES256', 'ML-DSA-65']`, every
+ * counted approver must appear once per algorithm, each member's signature
+ * verified against a key that IS that algorithm. Two mechanically independent
+ * signatures over the same action, so a break of either algorithm alone does
+ * not forge the approval.
+ *
+ * FAIL-CLOSED, AND NEVER NARROWED. The required set comes from the policy, not
+ * from what the document happened to present: an approver with no enrolled
+ * ML-DSA-65 credential does not shrink the requirement to ES256, it fails the
+ * quorum with `required_algorithms_satisfied: false` and a named `reason`.
+ * Unknown algorithm names, duplicates, and the ordered/ordered_chain modes
+ * (whose one-member-per-roster-slot indexing a per-algorithm duplicate would
+ * break) all refuse by name rather than verify something weaker.
+ *
+ * IT IS NOT USABLE IN PRODUCTION TODAY, and says so: no authenticator emits an
+ * ML-DSA WebAuthn assertion, so no approver can hold the PQ half yet. The
+ * predicate is here, tested against synthetic credentials, so the policy is a
+ * configuration change on the day the ecosystem ships rather than a redesign.
  */
 import crypto from 'node:crypto';
-import { verifyWebAuthnSignoff, contextChainHash } from './index.js';
+import { verifyWebAuthnSignoff, contextChainHash, webauthnSignatureAlgorithm, WEBAUTHN_SIGNATURE_ALGORITHMS, } from './index.js';
 function rosterSlotKey(role, approver) {
     return JSON.stringify([role, approver]);
+}
+/**
+ * Parse policy.required_algorithms. Returns the pinned set, `null` when the
+ * policy does not engage hybrid at all, or a named refusal reason.
+ */
+function parseRequiredAlgorithms(value) {
+    if (value === undefined || value === null)
+        return { ok: true, required: null };
+    if (!Array.isArray(value) || value.length === 0) {
+        return { ok: false, reason: 'required_algorithms_malformed' };
+    }
+    const seen = new Set();
+    for (const alg of value) {
+        if (typeof alg !== 'string' || !WEBAUTHN_SIGNATURE_ALGORITHMS.includes(alg)) {
+            return { ok: false, reason: `required_algorithms_unknown:${String(alg)}` };
+        }
+        if (seen.has(alg))
+            return { ok: false, reason: `required_algorithms_duplicate:${alg}` };
+        seen.add(alg);
+    }
+    return { ok: true, required: [...seen] };
 }
 function spkiFingerprint(value) {
     try {
@@ -81,8 +132,10 @@ export function verifyQuorum(quorum, opts = {}) {
         order_satisfied: false, // ordered mode: signed in policy sequence, increasing time
         chain_linked: false, // ordered mode: each signoff cryptographically chains to its predecessor
         within_window: false, // all signatures within window_sec
+        required_algorithms_satisfied: false, // hybrid: every counted approver signed under every required algorithm
     };
     const memberResults = [];
+    let reason = null;
     try {
         const policy = quorum?.policy;
         const members = Array.isArray(quorum?.members) ? quorum.members : null;
@@ -93,6 +146,21 @@ export function verifyQuorum(quorum, opts = {}) {
         const mode = policy.mode;
         if (mode !== 'ordered' && mode !== 'threshold') {
             return { valid: false, checks, members: memberResults };
+        }
+        // Hybrid policy, parsed BEFORE anything is verified so a malformed or
+        // unknown algorithm pin can never be silently dropped into an ordinary
+        // single-algorithm quorum.
+        const requiredAlgorithmsParse = parseRequiredAlgorithms(policy.required_algorithms);
+        if (!requiredAlgorithmsParse.ok) {
+            return { valid: false, checks, members: memberResults, reason: requiredAlgorithmsParse.reason };
+        }
+        const requiredAlgorithms = requiredAlgorithmsParse.required;
+        if (requiredAlgorithms && mode === 'ordered') {
+            // Ordered mode pairs members to roster slots by index, and hybrid puts
+            // one member per (approver, algorithm). Refuse the combination by name
+            // rather than verify an ordering predicate that does not mean what it
+            // says under a per-algorithm duplicate.
+            return { valid: false, checks, members: memberResults, reason: 'required_algorithms_ordered_unsupported' };
         }
         const distinctHumans = policy.distinct_humans !== false; // default true
         const windowSec = typeof policy.window_sec === 'number' && Number.isFinite(policy.window_sec) ? policy.window_sec : 900;
@@ -130,10 +198,19 @@ export function verifyQuorum(quorum, opts = {}) {
         const counted = members
             .map((m, i) => ({ m, i, ok: memberResults[i].valid && m?.signoff?.context?.action_hash === actionHash }))
             .filter((x) => x.ok);
+        // The signature algorithm of each counted member, read from the ENROLLED
+        // KEY itself, never from a label anywhere in the quorum document.
+        const countedAlgorithms = counted.map((x) => webauthnSignatureAlgorithm(x.m?.approver_public_key));
         // 3. Distinct humans (separation of duties).
         const countedApprovers = counted.map((x) => x.m?.signoff?.context?.approver);
+        // Under a hybrid policy one approver legitimately fills one seat per
+        // required algorithm, so distinctness is over (approver, algorithm). With
+        // the policy off this is exactly the previous predicate.
+        const distinctnessKeys = requiredAlgorithms
+            ? counted.map((_, i) => JSON.stringify([countedApprovers[i] ?? null, countedAlgorithms[i]]))
+            : countedApprovers;
         checks.distinct_humans = distinctHumans
-            ? new Set(countedApprovers).size === countedApprovers.length
+            ? new Set(distinctnessKeys).size === distinctnessKeys.length
             : true;
         // 3b. Distinct device keys: no single public key may fill two counted slots.
         //     Defends against one device key enrolled under two approver identities
@@ -164,6 +241,44 @@ export function verifyQuorum(quorum, opts = {}) {
             .filter((x) => eligibleSet.has(rosterSlotKey(x.m?.role, x.m?.signoff?.context?.approver)))
             .map((x) => x.m?.signoff?.context?.approver));
         checks.threshold_met = distinctEligible.size >= required;
+        // 5b. Hybrid coverage: every counted approver signed under EVERY algorithm
+        //     the POLICY requires. The required set is never narrowed to what was
+        //     presented: an approver with no enrolled credential for a required
+        //     algorithm fails the quorum with a named reason.
+        if (!requiredAlgorithms) {
+            checks.required_algorithms_satisfied = true; // policy absent: not applicable
+        }
+        else {
+            const algorithmsByApprover = new Map();
+            counted.forEach((_, i) => {
+                const alg = countedAlgorithms[i];
+                if (alg === null)
+                    return; // a credential of no recognized algorithm covers nothing
+                const approverKey = JSON.stringify(countedApprovers[i] ?? null);
+                const set = algorithmsByApprover.get(approverKey) ?? new Set();
+                set.add(alg);
+                algorithmsByApprover.set(approverKey, set);
+            });
+            const missing = [];
+            for (const [approverKey, algs] of algorithmsByApprover) {
+                for (const alg of requiredAlgorithms) {
+                    if (!algs.has(alg))
+                        missing.push(`${approverKey}:${alg}`);
+                }
+            }
+            const unrecognized = countedAlgorithms.some((alg) => alg === null);
+            checks.required_algorithms_satisfied = counted.length > 0
+                && algorithmsByApprover.size > 0
+                && missing.length === 0
+                && !unrecognized;
+            if (!checks.required_algorithms_satisfied) {
+                reason = unrecognized
+                    ? 'required_algorithms_unrecognized_credential'
+                    : missing.length > 0
+                        ? `required_algorithms_missing:${missing.join(',')}`
+                        : 'required_algorithms_no_counted_members';
+            }
+        }
         // 6. Order (ordered mode): member roles, in delivery order, match the policy
         //    sequence for every admitted member (at least the first `required`
         //    slots), and signature times strictly increase.
@@ -225,7 +340,12 @@ export function verifyQuorum(quorum, opts = {}) {
         && checks.threshold_met
         && checks.order_satisfied
         && checks.chain_linked
-        && checks.within_window;
-    return { valid, checks, members: memberResults };
+        && checks.within_window
+        && checks.required_algorithms_satisfied;
+    // `reason` is present only when a hybrid predicate named the failure, so the
+    // single-algorithm result shape is unchanged for every existing caller.
+    return reason === null
+        ? { valid, checks, members: memberResults }
+        : { valid, checks, members: memberResults, reason };
 }
 //# sourceMappingURL=quorum.js.map

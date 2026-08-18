@@ -226,10 +226,28 @@ export declare function verifyReceiptOfAnyProfile(doc: unknown, keys: Partial<Hy
  *
  *   - Approver signoffs. Class A is a WebAuthn assertion from a FIDO2
  *     authenticator or platform passkey (ES256, P-256). EP does not decide what
- *     that device signs or with which algorithm, so a post-quantum leg there is
- *     gated on FIDO Alliance and W3C WebAuthn PQC support landing in hardware
- *     and browsers, not on EP code. Class B/C signoffs are made with the
- *     APPROVER's own key, whose custody EP likewise does not hold.
+ *     that device signs or with which algorithm. Two DIFFERENT things are
+ *     gated here, and they are not gated on the same parties:
+ *       * A POST-QUANTUM Class A signoff is gated on the ecosystem, on three
+ *         dated, checkable components: the FIDO Registry of Predefined Values
+ *         v2.3 defines no ALG_SIGN constant for ML-DSA, so a certified
+ *         authenticator cannot declare the capability; CTAP 2.3 carries no PQC
+ *         text; and W3C WebAuthn PR 2437 (single-algorithm ML-DSA credentials)
+ *         is open and unmerged. Until those move, no device emits a PQ
+ *         assertion for EP to verify. Note what is NOT on that list: the
+ *         relying-party VERIFICATION half is EP's own code, and it is done:
+ *         verifyWebAuthnSignoff dispatches on the enrolled key's algorithm and
+ *         verifies ML-DSA-65 through EP-SIG-AGILITY-v1 today.
+ *       * A HYBRID Class A signoff is an EP DESIGN DECISION, not a FIDO
+ *         dependency. Neither live W3C proposal specifies a hybrid assertion;
+ *         both deliver single-algorithm PQ credentials and leave hybrid to the
+ *         relying party. So hybrid at this layer means two enrolled
+ *         credentials per approver and a policy requiring a signoff from each
+ *         implemented as EP-QUORUM-v1 policy.required_algorithms, default
+ *         off. Waiting for FIDO to hand EP a hybrid assertion would be waiting
+ *         for something nobody is building.
+ *     Class B/C signoffs are made with the APPROVER's own key, whose custody
+ *     EP likewise does not hold.
  *   - The log checkpoint signature. This one IS EP's: the log operator signs
  *     `{tree_size, root_hash, log_key_id, merkle_alg}` with a key it holds, and
  *     it is the commitment that makes the receipt's inclusion checkable at all.

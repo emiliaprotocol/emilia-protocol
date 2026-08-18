@@ -7,6 +7,15 @@
 // challenge is action-bound and single-use by construction: a replayed
 // assertion fails at the WebAuthn layer (wrong challenge) and at the
 // consumption layer (spent nonce).
+//
+// EP DOES NOT SUPPORT POST-QUANTUM WEBAUTHN TODAY. No browser, platform
+// passkey provider, or certified authenticator produces an ML-DSA WebAuthn
+// credential or assertion, and the FIDO Registry v2.3 carries no ALG_SIGN
+// constant for ML-DSA, so certified hardware cannot even declare it. What this
+// module carries is the RELYING-PARTY half -- EP's own code, never FIDO-gated
+// -- built and tested against synthetic keys so EP can verify a PQ credential
+// the day one exists. Until then every ML-DSA path refuses by name, and the
+// default for every existing call site is ES256 only.
 
 import crypto from 'node:crypto';
 import { Decoder } from 'cbor-x';
@@ -139,32 +148,137 @@ const P256_SPKI_PREFIX = Buffer.from(
   'hex',
 );
 
+// SPKI header for an ML-DSA-65 public key: SEQUENCE { SEQUENCE { OID
+// 2.16.840.1.101.3.4.3.18 (id-ml-dsa-65) }, BIT STRING(1953, 0 unused) }.
+// Constant by construction because the FIPS 204 ML-DSA-65 public key is a
+// fixed 1952 bytes, so prefix || raw IS the whole encoding. Cross-checked
+// against node's own SPKI export in tests/webauthn-lib.test.ts so it cannot
+// silently drift.
+const ML_DSA_65_SPKI_PREFIX = Buffer.from(
+  '308207b2300b0609608648016503040312038207a100',
+  'hex',
+);
+const ML_DSA_65_PUBLIC_KEY_BYTES = 1952;
+
+/** COSE key types used by Class A credentials: EC2 (RFC 9052), AKP (RFC 9964). */
+const COSE_KTY_EC2 = 2;
+const COSE_KTY_AKP = 7;
+/** IANA COSE algorithm identifiers. ML-DSA-65 = -49 is assigned by RFC 9964. */
+const COSE_ALG_ES256 = -7;
+const COSE_ALG_ML_DSA_65 = -49;
+
+/** The Class A credential algorithms this module can convert. */
+export const WEBAUTHN_COSE_ALGORITHMS = Object.freeze(['ES256', 'ML-DSA-65'] as const);
+export type WebAuthnCoseAlgorithm = (typeof WEBAUTHN_COSE_ALGORITHMS)[number];
+
 /**
- * Convert a registered COSE EC2/P-256 public key (what WebAuthn hands back —
- * registration is restricted to ES256 via supportedAlgorithmIDs: [-7]) into
- * SPKI DER, the form the zero-dependency offline verifier consumes with
- * nothing but node:crypto. Throws on anything that isn't EC2/ES256/P-256.
+ * PER-ALGORITHM input caps, applied BEFORE the CBOR decoder ever sees the
+ * bytes, so a hostile oversized or deeply-nested key cannot exhaust memory or
+ * the stack (DoS via WebAuthn registration, NASTY-4). This is deliberately NOT
+ * one global cap raised to fit the largest algorithm: an ES256 credential is
+ * still held to the same 1 KiB it always was, and only a caller that has opted
+ * into ML-DSA-65 gets the larger bound.
+ *
+ *   ES256      real COSE key ~77 bytes   -> 1024 (~13x, unchanged)
+ *   ML-DSA-65  real COSE key ~1962 bytes -> 2048 (just above the real size)
  */
-export function coseToSpkiP256(coseKeyBytes: Uint8Array | Buffer | null | undefined): Buffer {
+export const COSE_KEY_MAX_BYTES: Readonly<Record<WebAuthnCoseAlgorithm, number>> = Object.freeze({
+  ES256: 1024,
+  'ML-DSA-65': 2048,
+});
+
+export interface CoseToSpkiOptions {
+  /**
+   * The algorithms this conversion will accept. Defaults to ES256 ONLY --
+   * fail-closed: a caller that has not thought about ML-DSA-65 does not
+   * silently start accepting it.
+   */
+  allowedAlgorithms?: readonly WebAuthnCoseAlgorithm[];
+}
+
+function normalizeAllowed(allowed: readonly WebAuthnCoseAlgorithm[] | undefined): WebAuthnCoseAlgorithm[] {
+  const list = allowed === undefined ? (['ES256'] as const) : allowed;
+  if (!Array.isArray(list) || list.length === 0) {
+    throw new TypeError('allowedAlgorithms must be a non-empty array');
+  }
+  for (const alg of list) {
+    if (!(WEBAUTHN_COSE_ALGORITHMS as readonly string[]).includes(alg)) {
+      throw new Error(`Unsupported COSE algorithm "${String(alg)}"`);
+    }
+  }
+  return [...new Set(list)];
+}
+
+/**
+ * Convert a registered COSE public key (what WebAuthn hands back) into SPKI
+ * DER, the form the zero-dependency offline verifier consumes with nothing but
+ * node:crypto. Throws on anything outside `allowedAlgorithms`.
+ *
+ * ML-DSA-65 IS NOT PRODUCED BY ANY AUTHENTICATOR TODAY. No browser, platform
+ * passkey provider, or certified authenticator emits an ML-DSA WebAuthn
+ * credential, and the FIDO Registry v2.3 has no ALG_SIGN constant for ML-DSA,
+ * so certified hardware cannot declare it. This branch exists so the relying-
+ * party half -- which was never FIDO-gated, because it is EP's own code -- is
+ * ready and provably correct against synthetic keys before the ecosystem
+ * arrives. Enabling it does not make a PQ credential appear.
+ */
+export function coseToSpki(
+  coseKeyBytes: Uint8Array | Buffer | null | undefined,
+  options: CoseToSpkiOptions = {},
+): Buffer {
+  const allowed = normalizeAllowed(options.allowedAlgorithms);
   const bytes = coseKeyBytes instanceof Uint8Array ? coseKeyBytes : new Uint8Array(coseKeyBytes || []);
-  // A COSE EC2/P-256 key is ~77 bytes. Hard-cap the input BEFORE handing it to
-  // the CBOR decoder so a hostile oversized / deeply-nested key can't exhaust
-  // memory or the stack (DoS via WebAuthn registration). 1 KiB is ~13x the real
-  // size — generous but bounded, and far too small to nest a stack-overflowing
-  // depth bomb. (NASTY-4)
   if (bytes.length === 0) throw new Error('COSE key is empty');
-  if (bytes.length > 1024) throw new Error(`COSE key too large (${bytes.length} bytes, max 1024)`);
+  // Pre-decode cap: the largest bound among the ALLOWED algorithms. The tight
+  // per-algorithm bound is re-applied below once the key names its algorithm.
+  const preDecodeCap = Math.max(...allowed.map((alg) => COSE_KEY_MAX_BYTES[alg]));
+  if (bytes.length > preDecodeCap) {
+    throw new Error(`COSE key too large (${bytes.length} bytes, max ${preDecodeCap})`);
+  }
   const decoded = new Decoder({ mapsAsObjects: false }).decode(bytes);
   if (!(decoded instanceof Map)) throw new Error('COSE key is not a CBOR map');
 
   const kty = decoded.get(1);
   const alg = decoded.get(3);
+
+  const enforceTightBound = (name: WebAuthnCoseAlgorithm): void => {
+    const cap = COSE_KEY_MAX_BYTES[name];
+    if (bytes.length > cap) {
+      throw new Error(`COSE key too large for ${name} (${bytes.length} bytes, max ${cap})`);
+    }
+  };
+
+  if (kty === COSE_KTY_AKP && allowed.includes('ML-DSA-65')) {
+    if (alg !== COSE_ALG_ML_DSA_65) throw new Error(`Unsupported COSE alg ${alg} (want ML-DSA-65)`);
+    enforceTightBound('ML-DSA-65');
+    // RFC 9964 AKP key: the public key lives at label -1 ("pub").
+    const pub = decoded.get(-1);
+    if (!(pub instanceof Uint8Array) || pub.length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+      throw new Error('Bad COSE ML-DSA-65 public key');
+    }
+    const spki = Buffer.concat([ML_DSA_65_SPKI_PREFIX, Buffer.from(pub)]);
+    // Round-trip through node:crypto exactly as the P-256 path does. On a
+    // runtime with no ML-DSA provider this throws, which is the honest
+    // outcome: EP refuses to store a credential it could not verify.
+    const keyObject = crypto.createPublicKey({ key: spki, format: 'der', type: 'spki' });
+    if (keyObject.asymmetricKeyType !== 'ml-dsa-65') {
+      throw new Error('Bad COSE ML-DSA-65 public key');
+    }
+    return spki;
+  }
+
+  const wantKty = allowed.includes('ML-DSA-65')
+    ? allowed.includes('ES256') ? 'EC2 or AKP' : 'AKP'
+    : 'EC2';
+  if (kty !== COSE_KTY_EC2) throw new Error(`Unsupported COSE kty ${kty} (want ${wantKty})`);
+  if (!allowed.includes('ES256')) throw new Error(`Unsupported COSE kty ${kty} (want ${wantKty})`);
+
   const crv = decoded.get(-1);
   const x = decoded.get(-2);
   const y = decoded.get(-3);
 
-  if (kty !== 2) throw new Error(`Unsupported COSE kty ${kty} (want EC2)`);
-  if (alg !== -7) throw new Error(`Unsupported COSE alg ${alg} (want ES256)`);
+  if (alg !== COSE_ALG_ES256) throw new Error(`Unsupported COSE alg ${alg} (want ES256)`);
+  enforceTightBound('ES256');
   if (crv !== 1) throw new Error(`Unsupported COSE crv ${crv} (want P-256)`);
   if (!(x instanceof Uint8Array) || x.length !== 32) throw new Error('Bad COSE x coordinate');
   if (!(y instanceof Uint8Array) || y.length !== 32) throw new Error('Bad COSE y coordinate');
@@ -174,6 +288,16 @@ export function coseToSpkiP256(coseKeyBytes: Uint8Array | Buffer | null | undefi
   // enrollment, not discovered at verification time.
   crypto.createPublicKey({ key: spki, format: 'der', type: 'spki' });
   return spki;
+}
+
+/**
+ * ES256-PINNED conversion. This is the frozen contract every existing Class A
+ * enrollment call site uses: same accepted keys, same 1 KiB cap, same error
+ * strings as before algorithm dispatch existed. A caller that wants ML-DSA-65
+ * must ask for it explicitly through coseToSpki().
+ */
+export function coseToSpkiP256(coseKeyBytes: Uint8Array | Buffer | null | undefined): Buffer {
+  return coseToSpki(coseKeyBytes, { allowedAlgorithms: ['ES256'] });
 }
 
 export const APPROVER_ID_PATTERN = /^[A-Za-z0-9:_.@-]{3,128}$/;

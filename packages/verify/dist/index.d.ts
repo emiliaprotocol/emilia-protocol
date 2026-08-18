@@ -112,6 +112,16 @@ export declare function verifyReceipt(doc: any, publicKeyBase64url: string, opts
  * @returns {boolean}
  */
 export declare function verifyMerkleAnchor(leafHash: string, proof: any[], expectedRoot: string, opts?: any): boolean;
+/** The Class A signature algorithms this verifier can dispatch on. */
+export declare const WEBAUTHN_SIGNATURE_ALGORITHMS: readonly ["ES256", "ML-DSA-65"];
+export type WebAuthnSignatureAlgorithm = (typeof WEBAUTHN_SIGNATURE_ALGORITHMS)[number];
+/**
+ * Name the signature algorithm an enrolled Class A credential is for, read
+ * from the KEY itself (SPKI DER, base64url) rather than from any caller- or
+ * document-supplied label. Returns null for anything outside the closed set,
+ * which every caller must treat as a refusal.
+ */
+export declare function webauthnSignatureAlgorithm(approverPublicKeySpkiB64u: unknown): WebAuthnSignatureAlgorithm | null;
 /**
  * Verify a Class A (approver-held key) signoff fully offline.
  *
@@ -119,7 +129,9 @@ export declare function verifyMerkleAnchor(leafHash: string, proof: any[], expec
  *   - the WebAuthn challenge the device signed equals
  *     SHA-256(JCS(context)) for the EXACT context in the signoff — which
  *     binds the action hash, decision, nonce, approver, and validity window;
- *   - the signature verifies against the approver's enrolled P-256 key;
+ *   - the signature verifies against the approver's enrolled key, under the
+ *     algorithm that key is for (ES256 today; ML-DSA-65 is implemented and
+ *     refuses cleanly until an authenticator that can produce one exists);
  *   - the authenticator asserted user presence AND user verification
  *     (a human with the biometric/PIN was there);
  *   - (if rpId supplied) the assertion was scoped to the expected relying
@@ -147,8 +159,17 @@ export declare function verifyMerkleAnchor(leafHash: string, proof: any[], expec
  *     device signature are verified; origin is asserted only when the caller
  *     supplies pins, and `checks.rp_id_hash` stays null when unpinned.
  *
- * @param {string} approverPublicKeySpkiB64u - enrolled P-256 key, SPKI DER b64u
- * @param {{ rpId?: string, allowedOrigins?: string[], mode?: 'relying-party'|'offline-integrity' }} [opts]
+ * `opts.alg` optionally PINS the expected signature algorithm ('ES256' or
+ * 'ML-DSA-65'). Omitted, the algorithm is read from the enrolled key. Supplied
+ * and contradicted by the key, the verdict is a named refusal
+ * ('signature_algorithm_mismatch') -- the pin is never narrowed to whatever
+ * was presented.
+ *
+ * `opts.agility` is passed through to EP-SIG-AGILITY-v1 for the ML-DSA-65
+ * path only (e.g. an injected `mldsaBackend`). It has no effect on ES256.
+ *
+ * @param {string} approverPublicKeySpkiB64u - enrolled key, SPKI DER b64u
+ * @param {{ rpId?: string, allowedOrigins?: string[], mode?: 'relying-party'|'offline-integrity', alg?: 'ES256'|'ML-DSA-65', agility?: object }} [opts]
  * @returns {{ valid: boolean, checks: object, error?: string }}
  */
 export declare function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: string, opts?: any): Obj;
