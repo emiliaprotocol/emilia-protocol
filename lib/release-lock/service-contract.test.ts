@@ -364,4 +364,31 @@ describe('Release Lock service public contract', () => {
       p_retryable: false,
     }));
   });
+
+  it('rejects an invalid clock and an unsupported provider outcome', async () => {
+    await expect(service({ now: () => Number.NaN }).createPairing({
+      rawSessionToken: SESSION,
+      lockId: LOCK_ID,
+      round: 'CO_ACCEPTED',
+    })).rejects.toThrow('Release Lock clock is invalid');
+
+    const effect = { effect_reference: 'effect-unsupported' };
+    const target = service({
+      rpc: vi.fn(async (name) => {
+        if (name === 'release_lock_recover_effect') {
+          return { data: { mode: 'reconcile', effect }, error: null };
+        }
+        throw new Error(`unexpected RPC ${name}`);
+      }),
+      adapters: {
+        reconcileEffect: vi.fn(async () => ({
+          status: 'applied',
+          retryable: true,
+          result: {},
+        })),
+      },
+    });
+    await expect(target.reconcile({ effectReference: effect.effect_reference }))
+      .rejects.toThrow('unsupported effect outcome');
+  });
 });
