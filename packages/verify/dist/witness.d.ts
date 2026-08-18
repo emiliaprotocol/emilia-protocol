@@ -56,6 +56,7 @@
  *
  * @license Apache-2.0
  */
+import { type AgilityOptions } from './pq-signature-agility.js';
 export declare const WITNESS_VERSION = "EP-WITNESS-v1";
 /**
  * Domain-separation tag prepended to the SHA-256 pre-image a witness signs.
@@ -142,4 +143,168 @@ export declare function requireWitnessQuorum(checkpoint: WitnessCheckpoint | nul
     witness_ids: string[];
     reasons: string[];
 };
+/**
+ * Applies the EP-REVOCATION-v2 template (packages/verify/src/revocation.ts)
+ * to the witness cosignature. Five moving parts, in order:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. A second signature changes the SHAPE of
+ *    the cosignature (`signature` string -> `signatures` array), which is a
+ *    wire-format change, so it takes a new `alg` marker (EP-WITNESS-v1 ->
+ *    EP-WITNESS-v2) rather than an optional field grown on v1. The v1
+ *    verifier, verifyWitnessCosignature() above, is untouched and refuses a
+ *    v2 cosignature TWO independent ways before any crypto runs: its own
+ *    `cosignature.alg !== undefined && cosignature.alg !== WITNESS_VERSION`
+ *    check refuses on the alg marker, and its
+ *    `typeof cosignature.signature !== 'string'` check refuses on shape,
+ *    because a v2 cosignature carries `signatures` (plural) and has no
+ *    top-level `signature` string at all. A deployed v1 verifier must never
+ *    accept a hybrid cosignature on the strength of the one leg it happens to
+ *    understand, and it must not crash; both guards above are what make that
+ *    true, independently of each other.
+ *
+ * 2. SET SHAPE. The v2 cosignature is `{witness_id, alg: WITNESS_V2_VERSION,
+ *    required_algorithms: [...], signatures: [{alg,sig,key_id?}, ...],
+ *    tree_size?, root_hash?, log_key_id?}` -- `signatures` mirrors
+ *    EP-SIG-AGILITY-v1's AgileSignature shape verbatim, one entry per
+ *    algorithm, in the registered order. Unlike EP-REVOCATION-v2, the v2
+ *    cosignature carries NO per-leg key material of its own: exactly like
+ *    v1, a witness's keys (both the Ed25519 half and, now, the ML-DSA-65
+ *    half) are pinned entirely out of band via pinnedWitnessKeyV2, never
+ *    self-asserted in the cosignature.
+ *
+ * 3. ANTI-STRIPPING BYTES. witnessSigningDigestV2() is the sibling of
+ *    witnessSigningDigest() above: it hashes a NEW, distinct domain tag
+ *    (WITNESS_DOMAIN_TAG_V2) prepended to canonicalize(committed checkpoint +
+ *    required_algorithms), so a v1 digest and a v2 digest can never collide
+ *    even for byte-identical checkpoints, and the required algorithm SET is
+ *    baked into what both legs sign. Narrow the set or strip a leg after
+ *    signing and the surviving signature no longer verifies, because the
+ *    bytes changed. The verifier always recomputes this digest from the
+ *    REGISTERED set (WITNESS_V2_REQUIRED_ALGORITHMS) and the checkpoint it
+ *    holds -- never from cosignature.required_algorithms, which is checked
+ *    structurally but never trusted for what bytes to verify against.
+ *
+ * 4. V1 COMPATIBILITY. v1 stays synchronous and completely unmodified.
+ *    verifyWitnessCosignatureV2() is a separate, ASYNC entry point (ML-DSA
+ *    verification is async), and verifyWitnessCosignatureStatement() routes a
+ *    cosignature of either version to its own verifier by inspecting `alg`,
+ *    mirroring verifyRevocationStatement().
+ *
+ * 5. NAMED REFUSALS. verifyWitnessCosignatureV2() returns
+ *    {verified, witness_id, reason?} like v1, extended with a
+ *    `checks: Record<string,boolean>` object covering the independent gates
+ *    (version, algorithm_set, legs_present, key_material,
+ *    echoed_head_consistent, signature_set_valid). Nothing throws on
+ *    cosignature/checkpoint/key content; crypto calls are wrapped in
+ *    try/catch. A missing or unavailable ML-DSA backend surfaces through
+ *    verifyAgileSignatureSet's 'pq_backend_unavailable' reason as a named
+ *    refusal on signature_set_valid, never a silent pass on the classical leg
+ *    alone.
+ *
+ * HONEST BOUNDARIES. Everything the v1 header says still holds: a v2
+ * cosignature proves the witness observed exactly these committed bytes; it
+ * does not vouch for the log's honesty, does not establish current validity,
+ * and a single witness (of either version) detects no equivocation --
+ * requireWitnessQuorum() is deliberately left v1-only and out of scope here
+ * (multiple DISTINCT witnesses, not multiple algorithms from one witness).
+ */
+export declare const WITNESS_V2_VERSION = "EP-WITNESS-v2";
+/** The registered required algorithm set, in canonical order. */
+export declare const WITNESS_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+/**
+ * Domain-separation tag for EP-WITNESS-v2, distinct from WITNESS_DOMAIN_TAG
+ * (v1) so a v1 and v2 digest over the same checkpoint can never collide, even
+ * by misconfiguration. Same trailing-0x00 convention as v1: canonical JSON
+ * always begins with '{' (0x7b), never 0x00, so the tag can never be a prefix
+ * of the JSON that follows.
+ */
+export declare const WITNESS_DOMAIN_TAG_V2 = "EP-WITNESS-COSIGN-v2\0";
+export interface WitnessV2Signature {
+    alg?: unknown;
+    sig?: unknown;
+    key_id?: unknown;
+}
+export interface WitnessCosignatureV2 {
+    witness_id?: unknown;
+    alg?: unknown;
+    required_algorithms?: unknown;
+    signatures?: unknown;
+    tree_size?: unknown;
+    root_hash?: unknown;
+    log_key_id?: unknown;
+    [key: string]: unknown;
+}
+/** A v2 witness pin: BOTH public halves, pinned out of band. */
+export interface PinnedWitnessKeyV2 {
+    witness_id?: unknown;
+    /** Ed25519 base64url SPKI DER. */
+    public_key?: unknown;
+    /** ML-DSA-65 base64url of the raw 1952-byte public key. */
+    pq_public_key?: unknown;
+    [key: string]: unknown;
+}
+export interface WitnessVerifyV2Result {
+    verified: boolean;
+    witness_id: string | null;
+    reason?: string;
+    checks: Record<string, boolean>;
+}
+/**
+ * The digest BOTH legs sign for EP-WITNESS-v2: SHA-256 of the v2 domain tag
+ * followed by canonicalize(committed checkpoint + required_algorithms), so
+ * the algorithm set is cryptographically committed alongside the checkpoint
+ * bytes. Recomputed independently by the verifier from the checkpoint it
+ * holds and the REGISTERED set -- never from a presented one. Throws if
+ * `requiredAlgorithms` is not exactly the registered EP-WITNESS-v2 set
+ * (mirrors revocationV2SignedPayload's guard); pass the registered constant
+ * itself when reconstructing bytes for comparison against a narrowed claim.
+ */
+export declare function witnessSigningDigestV2(checkpoint: unknown, requiredAlgorithms?: readonly string[]): Buffer | null;
+/**
+ * verifyWitnessCosignatureV2 -- FAIL-CLOSED hybrid witness check. Never
+ * throws on caller input. Every gating check must be true; any one false
+ * yields verified:false, and a v2 cosignature NEVER verifies on one leg
+ * alone.
+ */
+export declare function verifyWitnessCosignatureV2(checkpoint: WitnessCheckpoint | null | undefined, cosignature: WitnessCosignatureV2 | null | undefined, pinnedWitnessKeyV2: PinnedWitnessKeyV2 | null | undefined, options?: AgilityOptions): Promise<WitnessVerifyV2Result>;
+/**
+ * Route a cosignature of EITHER version to its own verifier. v1 cosignatures
+ * get the exact v1 verdict (sync, called through this async wrapper); v2
+ * cosignatures get the hybrid check. `pinnedWitnessKeyV2` carries both halves
+ * ({witness_id, public_key, pq_public_key}); its {witness_id, public_key}
+ * shape is exactly what the v1 verifier expects, so it is reused as-is for
+ * the v1 path without a second pin object.
+ */
+export declare function verifyWitnessCosignatureStatement(checkpoint: WitnessCheckpoint | null | undefined, cosignature: WitnessCosignature | WitnessCosignatureV2 | null | undefined, pinnedWitnessKeyV2: PinnedWitnessKeyV2 | null | undefined, options?: AgilityOptions): Promise<WitnessVerifyV2Result | {
+    verified: boolean;
+    witness_id: string | null;
+    reason?: string;
+}>;
+export interface WitnessV2Signer {
+    /** Ed25519 private key. */
+    privateKey: import('crypto').KeyObject;
+    /** Ed25519 public key, base64url SPKI DER. */
+    publicKeyB64u: string;
+    /** ML-DSA-65 secret key: 4032 raw bytes, or base64url of them. */
+    pqSecretKey: Uint8Array | string;
+    /** ML-DSA-65 public key: 1952 raw bytes, or base64url of them. */
+    pqPublicKeyB64u: Uint8Array | string;
+}
+export interface BuildWitnessCosignatureV2Args {
+    checkpoint: WitnessCheckpoint;
+    witness_id: string;
+    signer: WitnessV2Signer;
+    /** ML-DSA-65 FIPS 204 deterministic variant; conformance vectors only. */
+    deterministic?: boolean;
+}
+/**
+ * buildWitnessCosignatureV2 -- produce an EP-WITNESS-v2 cosignature over
+ * `checkpoint`, signed under BOTH registered algorithms over the ONE digest
+ * that COMMITS to the required algorithm set (witnessSigningDigestV2).
+ *
+ * THROWS rather than emit a half-hybrid cosignature: issuer-side misuse is a
+ * programming error, and an unavailable ML-DSA backend makes signAgileSet
+ * throw, so a cosignature missing the PQ leg is never produced.
+ */
+export declare function buildWitnessCosignatureV2({ checkpoint, witness_id: witnessId, signer, deterministic, }: BuildWitnessCosignatureV2Args): Promise<WitnessCosignatureV2>;
 //# sourceMappingURL=witness.d.ts.map

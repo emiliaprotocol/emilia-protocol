@@ -58,6 +58,7 @@
  */
 import crypto from 'crypto';
 import { canonicalize } from './index.js';
+import { verifyAgileSignatureSet, signAgileSet, ML_DSA_65_PUBLIC_KEY_BYTES, ML_DSA_65_SECRET_KEY_BYTES, } from './pq-signature-agility.js';
 export const WITNESS_VERSION = 'EP-WITNESS-v1';
 /**
  * Domain-separation tag prepended to the SHA-256 pre-image a witness signs.
@@ -290,5 +291,355 @@ export function requireWitnessQuorum(checkpoint, cosignatures, pinnedWitnessKeys
         witness_ids,
         reasons,
     };
+}
+// ===========================================================================
+// EP-WITNESS-v2 -- the hybrid (Ed25519 + ML-DSA-65) witness cosignature
+// ===========================================================================
+/**
+ * Applies the EP-REVOCATION-v2 template (packages/verify/src/revocation.ts)
+ * to the witness cosignature. Five moving parts, in order:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. A second signature changes the SHAPE of
+ *    the cosignature (`signature` string -> `signatures` array), which is a
+ *    wire-format change, so it takes a new `alg` marker (EP-WITNESS-v1 ->
+ *    EP-WITNESS-v2) rather than an optional field grown on v1. The v1
+ *    verifier, verifyWitnessCosignature() above, is untouched and refuses a
+ *    v2 cosignature TWO independent ways before any crypto runs: its own
+ *    `cosignature.alg !== undefined && cosignature.alg !== WITNESS_VERSION`
+ *    check refuses on the alg marker, and its
+ *    `typeof cosignature.signature !== 'string'` check refuses on shape,
+ *    because a v2 cosignature carries `signatures` (plural) and has no
+ *    top-level `signature` string at all. A deployed v1 verifier must never
+ *    accept a hybrid cosignature on the strength of the one leg it happens to
+ *    understand, and it must not crash; both guards above are what make that
+ *    true, independently of each other.
+ *
+ * 2. SET SHAPE. The v2 cosignature is `{witness_id, alg: WITNESS_V2_VERSION,
+ *    required_algorithms: [...], signatures: [{alg,sig,key_id?}, ...],
+ *    tree_size?, root_hash?, log_key_id?}` -- `signatures` mirrors
+ *    EP-SIG-AGILITY-v1's AgileSignature shape verbatim, one entry per
+ *    algorithm, in the registered order. Unlike EP-REVOCATION-v2, the v2
+ *    cosignature carries NO per-leg key material of its own: exactly like
+ *    v1, a witness's keys (both the Ed25519 half and, now, the ML-DSA-65
+ *    half) are pinned entirely out of band via pinnedWitnessKeyV2, never
+ *    self-asserted in the cosignature.
+ *
+ * 3. ANTI-STRIPPING BYTES. witnessSigningDigestV2() is the sibling of
+ *    witnessSigningDigest() above: it hashes a NEW, distinct domain tag
+ *    (WITNESS_DOMAIN_TAG_V2) prepended to canonicalize(committed checkpoint +
+ *    required_algorithms), so a v1 digest and a v2 digest can never collide
+ *    even for byte-identical checkpoints, and the required algorithm SET is
+ *    baked into what both legs sign. Narrow the set or strip a leg after
+ *    signing and the surviving signature no longer verifies, because the
+ *    bytes changed. The verifier always recomputes this digest from the
+ *    REGISTERED set (WITNESS_V2_REQUIRED_ALGORITHMS) and the checkpoint it
+ *    holds -- never from cosignature.required_algorithms, which is checked
+ *    structurally but never trusted for what bytes to verify against.
+ *
+ * 4. V1 COMPATIBILITY. v1 stays synchronous and completely unmodified.
+ *    verifyWitnessCosignatureV2() is a separate, ASYNC entry point (ML-DSA
+ *    verification is async), and verifyWitnessCosignatureStatement() routes a
+ *    cosignature of either version to its own verifier by inspecting `alg`,
+ *    mirroring verifyRevocationStatement().
+ *
+ * 5. NAMED REFUSALS. verifyWitnessCosignatureV2() returns
+ *    {verified, witness_id, reason?} like v1, extended with a
+ *    `checks: Record<string,boolean>` object covering the independent gates
+ *    (version, algorithm_set, legs_present, key_material,
+ *    echoed_head_consistent, signature_set_valid). Nothing throws on
+ *    cosignature/checkpoint/key content; crypto calls are wrapped in
+ *    try/catch. A missing or unavailable ML-DSA backend surfaces through
+ *    verifyAgileSignatureSet's 'pq_backend_unavailable' reason as a named
+ *    refusal on signature_set_valid, never a silent pass on the classical leg
+ *    alone.
+ *
+ * HONEST BOUNDARIES. Everything the v1 header says still holds: a v2
+ * cosignature proves the witness observed exactly these committed bytes; it
+ * does not vouch for the log's honesty, does not establish current validity,
+ * and a single witness (of either version) detects no equivocation --
+ * requireWitnessQuorum() is deliberately left v1-only and out of scope here
+ * (multiple DISTINCT witnesses, not multiple algorithms from one witness).
+ */
+export const WITNESS_V2_VERSION = 'EP-WITNESS-v2';
+/** The registered required algorithm set, in canonical order. */
+export const WITNESS_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+/**
+ * Domain-separation tag for EP-WITNESS-v2, distinct from WITNESS_DOMAIN_TAG
+ * (v1) so a v1 and v2 digest over the same checkpoint can never collide, even
+ * by misconfiguration. Same trailing-0x00 convention as v1: canonical JSON
+ * always begins with '{' (0x7b), never 0x00, so the tag can never be a prefix
+ * of the JSON that follows.
+ */
+export const WITNESS_DOMAIN_TAG_V2 = 'EP-WITNESS-COSIGN-v2\0';
+function witnessAlgorithmSetMatchesRegistered(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === WITNESS_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === WITNESS_V2_REQUIRED_ALGORITHMS[i]);
+}
+/**
+ * The digest BOTH legs sign for EP-WITNESS-v2: SHA-256 of the v2 domain tag
+ * followed by canonicalize(committed checkpoint + required_algorithms), so
+ * the algorithm set is cryptographically committed alongside the checkpoint
+ * bytes. Recomputed independently by the verifier from the checkpoint it
+ * holds and the REGISTERED set -- never from a presented one. Throws if
+ * `requiredAlgorithms` is not exactly the registered EP-WITNESS-v2 set
+ * (mirrors revocationV2SignedPayload's guard); pass the registered constant
+ * itself when reconstructing bytes for comparison against a narrowed claim.
+ */
+export function witnessSigningDigestV2(checkpoint, requiredAlgorithms = WITNESS_V2_REQUIRED_ALGORITHMS) {
+    if (!witnessAlgorithmSetMatchesRegistered(requiredAlgorithms)) {
+        throw new Error('witnessSigningDigestV2: algorithm set is not the registered EP-WITNESS-v2 set');
+    }
+    const signed = committedCheckpoint(checkpoint);
+    if (signed === null)
+        return null;
+    const preimage = Buffer.concat([
+        Buffer.from(WITNESS_DOMAIN_TAG_V2, 'utf8'),
+        Buffer.from(canonicalize({ ...signed, required_algorithms: [...requiredAlgorithms] }), 'utf8'),
+    ]);
+    return crypto.createHash('sha256').update(preimage).digest();
+}
+/**
+ * verifyWitnessCosignatureV2 -- FAIL-CLOSED hybrid witness check. Never
+ * throws on caller input. Every gating check must be true; any one false
+ * yields verified:false, and a v2 cosignature NEVER verifies on one leg
+ * alone.
+ */
+export async function verifyWitnessCosignatureV2(checkpoint, cosignature, pinnedWitnessKeyV2, options = {}) {
+    const checks = {
+        version: true,
+        algorithm_set: true,
+        legs_present: true,
+        key_material: true,
+        echoed_head_consistent: true,
+        signature_set_valid: true,
+    };
+    const errors = [];
+    const fail = (key, msg) => { checks[key] = false; errors.push(msg); };
+    const done = (witnessId) => {
+        const verified = Object.values(checks).every(Boolean);
+        const result = { verified, witness_id: verified ? witnessId : null, checks };
+        if (errors.length > 0)
+            result.reason = errors.join(' | ');
+        return result;
+    };
+    if (!checkpoint || typeof checkpoint !== 'object' || Array.isArray(checkpoint)) {
+        fail('echoed_head_consistent', 'checkpoint is missing or not an object');
+        fail('signature_set_valid', 'checkpoint is missing or not an object');
+        return done(null);
+    }
+    if (!cosignature || typeof cosignature !== 'object' || Array.isArray(cosignature)) {
+        fail('legs_present', 'cosignature is missing or not an object');
+        fail('signature_set_valid', 'cosignature is missing or not an object');
+        return done(null);
+    }
+    if (!pinnedWitnessKeyV2 || typeof pinnedWitnessKeyV2 !== 'object') {
+        fail('key_material', 'pinnedWitnessKeyV2 is missing');
+        fail('signature_set_valid', 'pinnedWitnessKeyV2 is missing');
+        return done(null);
+    }
+    // 1. Version marker. A v1 cosignature handed to the v2 verifier refuses
+    //    here, the mirror image of v1 refusing a v2 cosignature.
+    if (cosignature.alg !== WITNESS_V2_VERSION) {
+        fail('version', `unsupported version: ${String(cosignature.alg)} (expected ${WITNESS_V2_VERSION})`);
+    }
+    // 2. Witness pin: identified-but-not-trusted. BOTH halves must be pinned
+    //    out of band, and the cosignature must name the pinned witness_id. The
+    //    cosignature carries no key material of its own to substitute.
+    const pinnedId = pinnedWitnessKeyV2.witness_id;
+    const pinnedEdPub = pinnedWitnessKeyV2.public_key;
+    const pinnedPqPub = pinnedWitnessKeyV2.pq_public_key;
+    const coId = cosignature.witness_id;
+    if (typeof pinnedId !== 'string' || !pinnedId
+        || typeof pinnedEdPub !== 'string' || !pinnedEdPub
+        || typeof pinnedPqPub !== 'string' || !pinnedPqPub) {
+        fail('key_material', 'pinnedWitnessKeyV2 requires witness_id, public_key (Ed25519), and pq_public_key (ML-DSA-65)');
+    }
+    else if (typeof coId !== 'string' || !coId) {
+        fail('key_material', 'cosignature.witness_id is missing');
+    }
+    else if (coId !== pinnedId) {
+        fail('key_material', 'cosignature witness_id is not the pinned witness (unpinned witness refused)');
+    }
+    const edKeyMaterial = typeof pinnedEdPub === 'string' ? pinnedEdPub : '';
+    const pqKeyMaterial = typeof pinnedPqPub === 'string' ? pinnedPqPub : '';
+    const witnessId = typeof coId === 'string' && coId ? coId : null;
+    // 3. Committed algorithm set: exact and order-sensitive. A narrowed set is
+    //    the stripping attack's cover story, refused structurally here and
+    //    (independently) by the signature check, which rebuilds the digest
+    //    from the REGISTERED set regardless of what the cosignature claims.
+    if (!witnessAlgorithmSetMatchesRegistered(cosignature.required_algorithms)) {
+        fail('algorithm_set', `required_algorithms must be exactly ${JSON.stringify([...WITNESS_V2_REQUIRED_ALGORITHMS])} (set narrowing / widening refused)`);
+    }
+    // 4. Exactly one signature per required algorithm.
+    const signatures = Array.isArray(cosignature.signatures) ? cosignature.signatures : null;
+    if (!signatures || signatures.length === 0) {
+        fail('legs_present', 'cosignature.signatures must carry one signature per required algorithm');
+    }
+    else {
+        const presented = new Set();
+        let malformed = false;
+        for (const s of signatures) {
+            if (!s || typeof s !== 'object' || Array.isArray(s) || typeof s.alg !== 'string' || typeof s.sig !== 'string') {
+                fail('legs_present', 'each cosignature.signatures entry must be { alg, sig, key_id? }');
+                malformed = true;
+                break;
+            }
+            if (presented.has(s.alg)) {
+                fail('legs_present', `duplicate signature for algorithm "${s.alg}"`);
+                malformed = true;
+                break;
+            }
+            presented.add(s.alg);
+        }
+        if (!malformed) {
+            for (const alg of WITNESS_V2_REQUIRED_ALGORITHMS) {
+                if (!presented.has(alg))
+                    fail('legs_present', `missing required ${alg} signature (leg stripped)`);
+            }
+            for (const alg of presented) {
+                if (!WITNESS_V2_REQUIRED_ALGORITHMS.includes(alg)) {
+                    fail('legs_present', `unexpected algorithm "${alg}" outside the registered set`);
+                }
+            }
+        }
+    }
+    // 5. Echoed-head consistency: identical to v1's guard, so a cosignature
+    //    lifted for a DIFFERENT checkpoint refuses before the crypto runs. Each
+    //    echoed field is fail-closed: present-and-wrong refuses; absent is
+    //    allowed since the signed digest already binds all bytes.
+    if (cosignature.tree_size !== undefined && cosignature.tree_size !== checkpoint.tree_size) {
+        fail('echoed_head_consistent', 'cosignature tree_size does not match the checkpoint (cosignature for a different head)');
+    }
+    if (cosignature.root_hash !== undefined && hexOf(cosignature.root_hash) !== hexOf(checkpoint.root_hash)) {
+        fail('echoed_head_consistent', 'cosignature root_hash does not match the checkpoint (cosignature for a different head)');
+    }
+    if (cosignature.log_key_id !== undefined && cosignature.log_key_id !== checkpoint.log_key_id) {
+        fail('echoed_head_consistent', 'cosignature log_key_id does not match the checkpoint (cosignature for a different log)');
+    }
+    // 6. Signature set: both legs, over the digest rebuilt from the checkpoint
+    //    the verifier holds and the REGISTERED algorithm set, under the PINNED
+    //    keys only -- never a cosignature-supplied key (there is none) and
+    //    never the cosignature's own required_algorithms.
+    let digest = null;
+    try {
+        digest = witnessSigningDigestV2(checkpoint, WITNESS_V2_REQUIRED_ALGORITHMS);
+    }
+    catch {
+        digest = null;
+    }
+    if (!digest) {
+        fail('signature_set_valid', 'checkpoint could not be canonicalized');
+        return done(witnessId);
+    }
+    const verificationKeys = [
+        { alg: 'Ed25519', public_key: edKeyMaterial },
+        { alg: 'ML-DSA-65', public_key: pqKeyMaterial },
+    ];
+    let setResult;
+    try {
+        setResult = await verifyAgileSignatureSet(new Uint8Array(digest), signatures ?? [], verificationKeys, { ...options, policy: 'hybrid_all', requiredAlgorithms: [...WITNESS_V2_REQUIRED_ALGORITHMS] });
+    }
+    catch {
+        // verifyAgileSignatureSet documents that it never throws; an injected
+        // backend that does is still a refusal here, never a pass.
+        setResult = null;
+    }
+    if (setResult?.verified !== true) {
+        const reason = String(setResult?.reason ?? 'signature_set_unverified');
+        fail('signature_set_valid', `witness signature set does not verify under the pinned Ed25519 + ML-DSA-65 keys (${reason})`);
+    }
+    return done(witnessId);
+}
+/**
+ * Route a cosignature of EITHER version to its own verifier. v1 cosignatures
+ * get the exact v1 verdict (sync, called through this async wrapper); v2
+ * cosignatures get the hybrid check. `pinnedWitnessKeyV2` carries both halves
+ * ({witness_id, public_key, pq_public_key}); its {witness_id, public_key}
+ * shape is exactly what the v1 verifier expects, so it is reused as-is for
+ * the v1 path without a second pin object.
+ */
+export async function verifyWitnessCosignatureStatement(checkpoint, cosignature, pinnedWitnessKeyV2, options = {}) {
+    if (cosignature && typeof cosignature === 'object' && !Array.isArray(cosignature)
+        && cosignature.alg === WITNESS_V2_VERSION) {
+        return verifyWitnessCosignatureV2(checkpoint, cosignature, pinnedWitnessKeyV2, options);
+    }
+    return verifyWitnessCosignature(checkpoint, cosignature, pinnedWitnessKeyV2);
+}
+function toRawB64u(value, expectedLength, label) {
+    const bytes = value instanceof Uint8Array
+        ? Buffer.from(value)
+        : (/^[A-Za-z0-9_-]+$/.test(String(value)) ? Buffer.from(String(value), 'base64url') : Buffer.alloc(0));
+    if (bytes.length !== expectedLength) {
+        throw new Error(`buildWitnessCosignatureV2: ${label} must be ${expectedLength} raw bytes (or base64url of them)`);
+    }
+    return bytes.toString('base64url');
+}
+/**
+ * buildWitnessCosignatureV2 -- produce an EP-WITNESS-v2 cosignature over
+ * `checkpoint`, signed under BOTH registered algorithms over the ONE digest
+ * that COMMITS to the required algorithm set (witnessSigningDigestV2).
+ *
+ * THROWS rather than emit a half-hybrid cosignature: issuer-side misuse is a
+ * programming error, and an unavailable ML-DSA backend makes signAgileSet
+ * throw, so a cosignature missing the PQ leg is never produced.
+ */
+export async function buildWitnessCosignatureV2({ checkpoint, witness_id: witnessId, signer, deterministic = false, }) {
+    if (!checkpoint || typeof checkpoint !== 'object' || Array.isArray(checkpoint)) {
+        throw new Error('buildWitnessCosignatureV2 requires a checkpoint object');
+    }
+    if (typeof witnessId !== 'string' || witnessId.length === 0) {
+        throw new Error('buildWitnessCosignatureV2 requires witness_id');
+    }
+    if (!signer || !signer.privateKey || !signer.publicKeyB64u || !signer.pqSecretKey || !signer.pqPublicKeyB64u) {
+        throw new Error('buildWitnessCosignatureV2 requires signer.{privateKey,publicKeyB64u,pqSecretKey,pqPublicKeyB64u}');
+    }
+    if (signer.privateKey.type !== 'private' || signer.privateKey.asymmetricKeyType !== 'ed25519') {
+        throw new Error('buildWitnessCosignatureV2 requires signer.privateKey to be an Ed25519 private KeyObject');
+    }
+    try {
+        const edPub = crypto.createPublicKey({
+            key: Buffer.from(String(signer.publicKeyB64u), 'base64url'),
+            format: 'der',
+            type: 'spki',
+        });
+        if (edPub.asymmetricKeyType !== 'ed25519')
+            throw new Error('not ed25519');
+    }
+    catch {
+        throw new Error('buildWitnessCosignatureV2 requires signer.publicKeyB64u to be a valid base64url Ed25519 SPKI public key');
+    }
+    // Validates length (and base64url shape); the value itself is not carried
+    // in the wire cosignature -- witness keys are pinned out of band.
+    toRawB64u(signer.pqPublicKeyB64u, ML_DSA_65_PUBLIC_KEY_BYTES, 'signer.pqPublicKeyB64u');
+    const pqSecretB64u = toRawB64u(signer.pqSecretKey, ML_DSA_65_SECRET_KEY_BYTES, 'signer.pqSecretKey');
+    const digest = witnessSigningDigestV2(checkpoint, WITNESS_V2_REQUIRED_ALGORITHMS);
+    if (digest === null)
+        throw new Error('buildWitnessCosignatureV2: checkpoint could not be canonicalized');
+    const signatures = await signAgileSet(new Uint8Array(digest), [
+        { alg: 'Ed25519', private_key: signer.privateKey },
+        { alg: 'ML-DSA-65', private_key: pqSecretB64u },
+    ], deterministic === true ? { deterministic: true } : {});
+    // Emit in the registered order, so the document reads the way the digest commits.
+    const byAlg = new Map(signatures.map((s) => [s.alg, s]));
+    const ordered = WITNESS_V2_REQUIRED_ALGORITHMS.map((alg) => {
+        const s = byAlg.get(alg);
+        if (!s)
+            throw new Error(`buildWitnessCosignatureV2: signing produced no ${alg} leg`);
+        return s;
+    });
+    const out = {
+        witness_id: witnessId,
+        alg: WITNESS_V2_VERSION,
+        required_algorithms: [...WITNESS_V2_REQUIRED_ALGORITHMS],
+        signatures: ordered,
+    };
+    if (checkpoint.tree_size !== undefined)
+        out.tree_size = checkpoint.tree_size;
+    if (checkpoint.root_hash !== undefined)
+        out.root_hash = checkpoint.root_hash;
+    if (checkpoint.log_key_id !== undefined)
+        out.log_key_id = checkpoint.log_key_id;
+    return out;
 }
 //# sourceMappingURL=witness.js.map

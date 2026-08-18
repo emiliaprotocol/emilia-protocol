@@ -11,6 +11,11 @@
  * Verification is pure, offline, fail-closed, and uses only node:crypto.
  */
 import crypto from 'node:crypto';
+import {
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgilityOptions,
+} from './pq-signature-agility.js';
 
 type Obj = Record<string, any>;
 
@@ -769,4 +774,690 @@ export function verifyStatusArtifact(
     addReason(result.reasons, 'invalid_status_input');
     return result;
   }
+}
+
+// ===========================================================================
+// EP-REVOKER-AUTHORITY-v2 / EP-STATUS-v2 -- the hybrid (Ed25519 + ML-DSA-65)
+// revoker authority certificate and status artifact
+// ===========================================================================
+/**
+ * REFERENCE HYBRID MIGRATION for this file, following the exact template set
+ * by packages/verify/src/revocation.ts's EP-REVOCATION-v2 section (read that
+ * comment block first). Five moving parts, applied to TWO artifacts here
+ * because status.ts issues a certificate (root-signed) and status heads
+ * (delegate-signed):
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. `@version` moves from EP-REVOKER-
+ *    AUTHORITY-v1 to EP-REVOKER-AUTHORITY-v2, and from EP-STATUS-v1 to
+ *    EP-STATUS-v2. The v1 verifiers above (verifyRevokerAuthorityCertificate,
+ *    verifyStatusArtifact) are untouched: each one's structural check is
+ *    `value['@version'] !== EP-*-v1`, and certificateStructure()/
+ *    statusStructure() are exact-key-set checks, so a v2 object (different
+ *    key set, different '@version') fails structure immediately and every
+ *    later line in the v1 function reads through options/pins that a v2
+ *    caller never populated -- it cannot crash, only refuse.
+ *
+ * 2. SET SHAPE. `revoker_key` (the certificate's delegated status-signing
+ *    key) and the certificate's own root `proof` both carry BOTH halves:
+ *    an Ed25519 SPKI-DER key/key_id (unchanged encoding) plus an ML-DSA-65
+ *    raw-bytes key/key_id (`pq_public_key`/`pq_key_id`). `proof.signatures`
+ *    (both the certificate's root proof and each status head's delegate
+ *    proof) is the closed EP-SIG-AGILITY-v1 AgileSignature array shape
+ *    (`{alg, sig, key_id?}`), reused verbatim from pq-signature-agility.ts.
+ *
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is a top-level field on
+ *    BOTH the certificate and every status head, INSIDE `unsigned(value)`
+ *    (i.e. not under `proof`), so it is part of what every signature in the
+ *    set covers. The verifier never trusts the presented required_algorithms
+ *    for what to check the signatures against -- it always requires the
+ *    presented array to literally equal the registered constant, and always
+ *    passes the REGISTERED constant as `requiredAlgorithms` to
+ *    verifyAgileSignatureSet. Narrowing the field (to make a stripped leg
+ *    self-consistent) fails structurally AND breaks the surviving
+ *    signature, because the signed bytes (signingBytes(unsigned(value),
+ *    domain) -- the same generic helper the v1 artifacts already use) changed.
+ *
+ * 4. V1 COMPATIBILITY. Both v1 functions stay synchronous and unchanged.
+ *    verifyRevokerAuthorityCertificateV2 / verifyStatusArtifactV2 are NEW,
+ *    separate, ASYNC entry points (ML-DSA-65 verification is async), and
+ *    verifyRevokerAuthorityCertificateStatement / verifyStatusArtifactStatement
+ *    route on '@version' for callers holding a mixed bag, exactly mirroring
+ *    verifyRevocationStatement.
+ *
+ * 5. NAMED REFUSALS. Every failure sets a named check to false and pushes a
+ *    reason string; nothing throws on caller input (both entry points keep
+ *    the v1 discipline of a *Core function wrapped in try/catch that returns
+ *    an indeterminate result on any exception). An unavailable ML-DSA backend
+ *    surfaces through verifyAgileSignatureSet as a refusal
+ *    ('pq_backend_unavailable' folded into the reason string), never a
+ *    skipped check and never a pass on the Ed25519 leg alone.
+ *
+ * CHAIN BOUNDARY (new, specific to this file): a v2 status head's
+ * previousStatus must ALSO be EP-STATUS-v2-shaped. This module does not
+ * accept a v1 predecessor for a v2 successor (or vice versa) -- the
+ * sequence/predecessor-digest chain stays within one profile. A deployment
+ * transitioning from v1 to v2 issues its first v2 head at sequence 0 (no
+ * previousStatus), the same way genesis works today; it does not attempt to
+ * splice a hybrid head onto a classical chain.
+ *
+ * HONEST BOUNDARIES -- everything the v1 header says still holds. Verifying a
+ * v2 certificate/status additionally proves both algorithms committed to the
+ * exact same content; it does not certify the ML-DSA-65 implementation (see
+ * fips-mode.ts and pq-signature-agility.ts's own honesty notes) and does not
+ * make either artifact "deployed" or "default" anywhere in this repository.
+ */
+
+export const REVOCER_AUTHORITY_V2_VERSION = 'EP-REVOKER-AUTHORITY-v2';
+export const REVOCER_AUTHORITY_V2_DOMAIN = `${REVOCER_AUTHORITY_V2_VERSION}\0`;
+export const STATUS_V2_VERSION = 'EP-STATUS-v2';
+export const STATUS_V2_DOMAIN = `${STATUS_V2_VERSION}\0`;
+
+/** The registered required algorithm set, in canonical order. Shared by both
+ * v2 artifacts in this file -- there is exactly one hybrid profile here. */
+export const REVOCER_AUTHORITY_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+export const STATUS_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+const PQ_REVOKER_KEY_ID = /^ep:revoker-key:ml-dsa-65:sha256:[0-9a-f]{64}$/;
+
+const CERTIFICATE_KEYS_V2 = [
+  '@version',
+  'certificate_id',
+  'authority_domain',
+  'authority_id',
+  'revoker_id',
+  'revoker_key',
+  'scope',
+  'issued_at',
+  'expires_at',
+  'required_algorithms',
+  'proof',
+] as const;
+const REVOKER_KEY_KEYS_V2 = ['key_id', 'public_key', 'pq_key_id', 'pq_public_key'] as const;
+const CERTIFICATE_PROOF_KEYS_V2 = ['key_id', 'pq_key_id', 'signatures'] as const;
+const STATUS_KEYS_V2 = [
+  '@version',
+  'authority_domain',
+  'revoker_authority_digest',
+  'target',
+  'status',
+  'sequence',
+  'previous_status_digest',
+  'issued_at',
+  'next_update',
+  'required_algorithms',
+  'proof',
+] as const;
+const STATUS_PROOF_KEYS_V2 = ['key_id', 'pq_key_id', 'signatures'] as const;
+
+export interface RevokerAuthorityPinV2 {
+  authority_domain: string;
+  authority_id: string;
+  key_id: string;
+  public_key: string;
+  pq_key_id: string;
+  pq_public_key: string;
+}
+
+export interface RevokerAuthorityOptionsV2 extends AgilityOptions {
+  authorityPin?: RevokerAuthorityPinV2;
+  now?: number | string | Date;
+  targetRegistry?: StatusTargetRegistry;
+}
+
+export interface StatusVerificationOptionsV2 extends RevokerAuthorityOptionsV2 {
+  certificate?: unknown;
+  previousStatus?: unknown;
+}
+
+export interface RevokerAuthorityVerificationV2 {
+  valid: boolean;
+  checks: {
+    structure: boolean;
+    algorithm_set: boolean;
+    authority: boolean;
+    scope: boolean;
+    validity: boolean;
+    signature: boolean;
+  };
+  reasons: string[];
+  certificate_digest: string | null;
+}
+
+export interface StatusVerificationV2 {
+  outcome: StatusOutcome;
+  valid: boolean;
+  checks: {
+    structure: boolean;
+    algorithm_set: boolean;
+    certificate: boolean;
+    authority: boolean;
+    target: boolean;
+    scope: boolean;
+    signature: boolean;
+    freshness: boolean;
+    sequence: boolean;
+    terminal: boolean;
+  };
+  reasons: string[];
+  status_digest: string | null;
+  sequence: number | null;
+  next_update: string | null;
+}
+
+function algorithmSetMatchesRegistered(
+  algorithms: unknown,
+  registered: readonly string[],
+): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === registered.length
+    && algorithms.every((a, i) => a === registered[i]);
+}
+
+/** ML-DSA-65 revoker-key identifier: SHA-256 of the raw public key bytes. */
+function pqRevokerKeyId(publicKey: unknown): string | null {
+  const raw = canonicalBase64url(publicKey, ML_DSA_65_PUBLIC_KEY_BYTES);
+  if (!raw) return null;
+  return `ep:revoker-key:ml-dsa-65:sha256:${crypto.createHash('sha256').update(raw).digest('hex')}`;
+}
+
+function agilityPassthrough(options: AgilityOptions): AgilityOptions {
+  const out: AgilityOptions = {};
+  if (options.mldsaBackend !== undefined) out.mldsaBackend = options.mldsaBackend;
+  if (options.mldsaBackendLoader !== undefined) out.mldsaBackendLoader = options.mldsaBackendLoader;
+  return out;
+}
+
+function validAuthorityPinV2(value: unknown): value is RevokerAuthorityPinV2 {
+  return record(value)
+    && authorityDomain(value.authority_domain)
+    && identifier(value.authority_id)
+    && identifier(value.key_id)
+    && typeof value.public_key === 'string'
+    && loadEd25519Key(value.public_key) !== null
+    && identifier(value.pq_key_id)
+    && typeof value.pq_public_key === 'string'
+    && pqRevokerKeyId(value.pq_public_key) !== null;
+}
+
+function validCertificateProofV2(value: unknown): value is Obj {
+  return exactObject(value, CERTIFICATE_PROOF_KEYS_V2)
+    && identifier(value.key_id)
+    && identifier(value.pq_key_id)
+    && densePlainArray(value.signatures);
+}
+
+function certificateStructureV2(value: unknown): value is Obj {
+  if (!exactObject(value, CERTIFICATE_KEYS_V2)
+      || value['@version'] !== REVOCER_AUTHORITY_V2_VERSION
+      || !identifier(value.certificate_id)
+      || !authorityDomain(value.authority_domain)
+      || !identifier(value.authority_id)
+      || !identifier(value.revoker_id)
+      || !exactObject(value.revoker_key, REVOKER_KEY_KEYS_V2)
+      || typeof value.revoker_key.key_id !== 'string'
+      || !REVOKER_KEY_ID.test(value.revoker_key.key_id)
+      || typeof value.revoker_key.public_key !== 'string'
+      || !loadEd25519Key(value.revoker_key.public_key)
+      || revokerKeyId(value.revoker_key.public_key) !== value.revoker_key.key_id
+      || typeof value.revoker_key.pq_key_id !== 'string'
+      || !PQ_REVOKER_KEY_ID.test(value.revoker_key.pq_key_id)
+      || typeof value.revoker_key.pq_public_key !== 'string'
+      || pqRevokerKeyId(value.revoker_key.pq_public_key) !== value.revoker_key.pq_key_id
+      || !exactObject(value.scope, SCOPE_KEYS)
+      || !densePlainArray(value.scope.allowed_target_types)
+      || !densePlainArray(value.scope.allowed_usages)
+      || typeof value.issued_at !== 'string'
+      || typeof value.expires_at !== 'string'
+      || !algorithmSetMatchesRegistered(value.required_algorithms, REVOCER_AUTHORITY_V2_REQUIRED_ALGORITHMS)
+      || !validCertificateProofV2(value.proof)) return false;
+  return true;
+}
+
+function validStatusProofV2(value: unknown): value is Obj {
+  return exactObject(value, STATUS_PROOF_KEYS_V2)
+    && identifier(value.key_id)
+    && identifier(value.pq_key_id)
+    && densePlainArray(value.signatures);
+}
+
+function statusStructureV2(
+  value: unknown,
+  registry?: StatusTargetRegistry,
+): value is Obj {
+  return exactObject(value, STATUS_KEYS_V2)
+    && value['@version'] === STATUS_V2_VERSION
+    && authorityDomain(value.authority_domain)
+    && typeof value.revoker_authority_digest === 'string'
+    && DIGEST.test(value.revoker_authority_digest)
+    && validTarget(value.target, registry)
+    && (value.status === 'not_revoked' || value.status === 'revoked')
+    && Number.isSafeInteger(value.sequence)
+    && value.sequence >= 0
+    && (value.previous_status_digest === null
+      || (typeof value.previous_status_digest === 'string'
+        && DIGEST.test(value.previous_status_digest)))
+    && typeof value.issued_at === 'string'
+    && (value.next_update === null || typeof value.next_update === 'string')
+    && algorithmSetMatchesRegistered(value.required_algorithms, STATUS_V2_REQUIRED_ALGORITHMS)
+    && validStatusProofV2(value.proof);
+}
+
+function indeterminateStatusV2(): StatusVerificationV2 {
+  return {
+    outcome: 'indeterminate',
+    valid: false,
+    checks: {
+      structure: false,
+      algorithm_set: false,
+      certificate: false,
+      authority: false,
+      target: false,
+      scope: false,
+      signature: false,
+      freshness: false,
+      sequence: false,
+      terminal: false,
+    },
+    reasons: [],
+    status_digest: null,
+    sequence: null,
+    next_update: null,
+  };
+}
+
+async function verifyRevokerAuthorityCertificateV2Core(
+  certificate: unknown,
+  options: RevokerAuthorityOptionsV2 = {},
+): Promise<RevokerAuthorityVerificationV2> {
+  const checks = {
+    structure: false,
+    algorithm_set: false,
+    authority: false,
+    scope: false,
+    validity: false,
+    signature: false,
+  };
+  const reasons: string[] = [];
+  const certificateDigest = safeDigest(certificate);
+
+  if (!certificateStructureV2(certificate)) {
+    addReason(reasons, 'invalid_revoker_authority_structure');
+    return { valid: false, checks, reasons, certificate_digest: certificateDigest };
+  }
+  checks.structure = true;
+  // certificateStructureV2 already pinned required_algorithms to the exact
+  // registered set as part of structural validity; restate it as its own
+  // named check so a caller can see WHICH gate failed, mirroring how
+  // revocation.ts separates 'structure' from 'algorithm_set'.
+  checks.algorithm_set = algorithmSetMatchesRegistered(
+    certificate.required_algorithms,
+    REVOCER_AUTHORITY_V2_REQUIRED_ALGORITHMS,
+  );
+  if (!checks.algorithm_set) addReason(reasons, 'invalid_revoker_authority_algorithm_set');
+
+  if (!certificateScope(certificate, options.targetRegistry)) {
+    addReason(reasons, 'invalid_revoker_authority_scope');
+  } else {
+    checks.scope = true;
+  }
+
+  const pin = options.authorityPin;
+  if (!validAuthorityPinV2(pin)
+      || certificate.authority_domain !== pin.authority_domain
+      || certificate.authority_id !== pin.authority_id
+      || certificate.proof.key_id !== pin.key_id
+      || certificate.proof.pq_key_id !== pin.pq_key_id) {
+    addReason(reasons, 'revoker_authority_pin_mismatch');
+  } else {
+    checks.authority = true;
+  }
+
+  const at = decisionTimeMs(options.now);
+  if (!certificateValidity(certificate, at)) {
+    addReason(reasons, 'revoker_authority_not_valid_at_time');
+  } else {
+    checks.validity = true;
+  }
+
+  if (!validAuthorityPinV2(pin)) {
+    addReason(reasons, 'invalid_revoker_authority_signature');
+  } else {
+    let bytes: Buffer | null = null;
+    try { bytes = signingBytes(unsigned(certificate), REVOCER_AUTHORITY_V2_DOMAIN); } catch { bytes = null; }
+    let setResult: Awaited<ReturnType<typeof verifyAgileSignatureSet>> | null = null;
+    if (bytes) {
+      try {
+        setResult = await verifyAgileSignatureSet(
+          new Uint8Array(bytes),
+          certificate.proof.signatures,
+          [
+            { alg: 'Ed25519', public_key: pin.public_key, key_id: pin.key_id },
+            { alg: 'ML-DSA-65', public_key: pin.pq_public_key, key_id: pin.pq_key_id },
+          ],
+          {
+            ...agilityPassthrough(options),
+            policy: 'hybrid_all',
+            requiredAlgorithms: [...REVOCER_AUTHORITY_V2_REQUIRED_ALGORITHMS],
+          },
+        );
+      } catch { setResult = null; }
+    }
+    if (setResult?.verified === true) {
+      checks.signature = true;
+    } else {
+      addReason(reasons, `invalid_revoker_authority_signature (${setResult?.reason ?? 'signature_set_unverified'})`);
+    }
+  }
+
+  return {
+    valid: Object.values(checks).every(Boolean),
+    checks,
+    reasons,
+    certificate_digest: certificateDigest,
+  };
+}
+
+/** Verify one root-signed, time-bounded, target-scoped, HYBRID
+ * (Ed25519 + ML-DSA-65) status-key certificate. Never throws. */
+export async function verifyRevokerAuthorityCertificateV2(
+  certificate: unknown,
+  options: RevokerAuthorityOptionsV2 = {},
+): Promise<RevokerAuthorityVerificationV2> {
+  try {
+    return await verifyRevokerAuthorityCertificateV2Core(certificate, options);
+  } catch {
+    return {
+      valid: false,
+      checks: {
+        structure: false,
+        algorithm_set: false,
+        authority: false,
+        scope: false,
+        validity: false,
+        signature: false,
+      },
+      reasons: ['invalid_revoker_authority_input'],
+      certificate_digest: null,
+    };
+  }
+}
+
+async function previousStatusChecksV2(
+  candidate: Obj,
+  previous: unknown,
+  certificate: Obj,
+  checks: StatusVerificationV2['checks'],
+  reasons: string[],
+  options: RevokerAuthorityOptionsV2,
+): Promise<void> {
+  if (candidate.sequence === 0) {
+    if (candidate.previous_status_digest !== null) {
+      addReason(reasons, 'initial_status_has_previous_digest');
+      return;
+    }
+    if (previous === undefined) {
+      checks.sequence = true;
+      checks.terminal = true;
+      return;
+    }
+  } else if (previous === undefined) {
+    addReason(reasons, 'missing_previous_status');
+    checks.terminal = true;
+    return;
+  }
+
+  // The chain boundary: a v2 successor requires a v2 predecessor. A v1
+  // previousStatus (or any other malformed shape) refuses here rather than
+  // being spliced onto a hybrid chain.
+  if (!statusStructureV2(previous)
+      || previous.authority_domain !== candidate.authority_domain
+      || previous.revoker_authority_digest !== candidate.revoker_authority_digest
+      || !targetEqual(previous.target, candidate.target)
+      || previous.proof.key_id !== certificate.revoker_key.key_id
+      || previous.proof.pq_key_id !== certificate.revoker_key.pq_key_id) {
+    addReason(reasons, 'invalid_previous_status');
+    return;
+  }
+
+  let previousBytes: Buffer | null = null;
+  try { previousBytes = signingBytes(unsigned(previous), STATUS_V2_DOMAIN); } catch { previousBytes = null; }
+  let previousSigResult: Awaited<ReturnType<typeof verifyAgileSignatureSet>> | null = null;
+  if (previousBytes) {
+    try {
+      previousSigResult = await verifyAgileSignatureSet(
+        new Uint8Array(previousBytes),
+        previous.proof.signatures,
+        [
+          { alg: 'Ed25519', public_key: certificate.revoker_key.public_key, key_id: certificate.revoker_key.key_id },
+          { alg: 'ML-DSA-65', public_key: certificate.revoker_key.pq_public_key, key_id: certificate.revoker_key.pq_key_id },
+        ],
+        {
+          ...agilityPassthrough(options),
+          policy: 'hybrid_all',
+          requiredAlgorithms: [...STATUS_V2_REQUIRED_ALGORITHMS],
+        },
+      );
+    } catch { previousSigResult = null; }
+  }
+  if (previousSigResult?.verified !== true) {
+    addReason(reasons, 'invalid_previous_status');
+    return;
+  }
+
+  const previousIssuedAt = strictInstantMs(previous.issued_at);
+  const previousNextUpdate = previous.next_update === null
+    ? NaN : strictInstantMs(previous.next_update);
+  if (!Number.isFinite(previousIssuedAt)
+      || (previous.status === 'not_revoked'
+        && (!Number.isFinite(previousNextUpdate) || previousNextUpdate <= previousIssuedAt))
+      || (previous.status === 'revoked' && previous.next_update !== null)) {
+    addReason(reasons, 'invalid_previous_status');
+    return;
+  }
+
+  if (previous.status === 'revoked') {
+    addReason(reasons, 'terminal_revocation');
+  } else {
+    checks.terminal = true;
+  }
+
+  if (candidate.sequence !== previous.sequence + 1) {
+    addReason(reasons, 'sequence_not_monotonic');
+  } else if (candidate.previous_status_digest !== safeDigest(previous)) {
+    addReason(reasons, 'previous_status_digest_mismatch');
+  } else if (strictInstantMs(candidate.issued_at) <= previousIssuedAt) {
+    addReason(reasons, 'status_issued_at_not_monotonic');
+  } else {
+    checks.sequence = true;
+  }
+}
+
+async function verifyStatusArtifactV2Core(
+  expectedTarget: unknown,
+  status: unknown,
+  options: StatusVerificationOptionsV2 = {},
+): Promise<StatusVerificationV2> {
+  const result = indeterminateStatusV2();
+  result.status_digest = safeDigest(status);
+
+  if (!statusStructureV2(status, options.targetRegistry)) {
+    addReason(result.reasons, 'invalid_status_structure');
+    return result;
+  }
+  result.checks.structure = true;
+  result.sequence = status.sequence;
+  result.next_update = status.next_update;
+
+  result.checks.algorithm_set = algorithmSetMatchesRegistered(
+    status.required_algorithms,
+    STATUS_V2_REQUIRED_ALGORITHMS,
+  );
+  if (!result.checks.algorithm_set) addReason(result.reasons, 'invalid_status_algorithm_set');
+
+  if (!validTarget(expectedTarget, options.targetRegistry) || !targetEqual(expectedTarget, status.target)) {
+    addReason(result.reasons, 'status_target_mismatch');
+  } else {
+    result.checks.target = true;
+  }
+
+  const certificateAt = strictInstantMs(status.issued_at);
+  const certificateResult = await verifyRevokerAuthorityCertificateV2(options.certificate, {
+    ...agilityPassthrough(options),
+    authorityPin: options.authorityPin,
+    now: certificateAt,
+    targetRegistry: options.targetRegistry,
+  });
+  if (!certificateResult.valid || !certificateStructureV2(options.certificate)) {
+    addReason(result.reasons, 'invalid_revoker_authority_certificate');
+    for (const reason of certificateResult.reasons) addReason(result.reasons, reason);
+    return result;
+  }
+  const certificate = options.certificate;
+  result.checks.certificate = true;
+
+  if (status.authority_domain !== certificate.authority_domain
+      || !validAuthorityPinV2(options.authorityPin)
+      || status.authority_domain !== options.authorityPin.authority_domain) {
+    addReason(result.reasons, 'status_authority_domain_mismatch');
+  } else {
+    result.checks.authority = true;
+  }
+
+  if (!certificate.scope.allowed_target_types.includes(status.target.type)
+      || !certificate.scope.allowed_usages.includes(status.target.usage)) {
+    addReason(result.reasons, 'status_target_outside_revoker_scope');
+  } else {
+    result.checks.scope = true;
+  }
+
+  if (status.revoker_authority_digest !== certificateResult.certificate_digest) {
+    addReason(result.reasons, 'revoker_authority_digest_mismatch');
+    result.checks.certificate = false;
+  }
+
+  if (status.proof.key_id !== certificate.revoker_key.key_id
+      || status.proof.pq_key_id !== certificate.revoker_key.pq_key_id) {
+    addReason(result.reasons, 'invalid_status_signature');
+  } else {
+    let bytes: Buffer | null = null;
+    try { bytes = signingBytes(unsigned(status), STATUS_V2_DOMAIN); } catch { bytes = null; }
+    let setResult: Awaited<ReturnType<typeof verifyAgileSignatureSet>> | null = null;
+    if (bytes) {
+      try {
+        setResult = await verifyAgileSignatureSet(
+          new Uint8Array(bytes),
+          status.proof.signatures,
+          [
+            { alg: 'Ed25519', public_key: certificate.revoker_key.public_key, key_id: certificate.revoker_key.key_id },
+            { alg: 'ML-DSA-65', public_key: certificate.revoker_key.pq_public_key, key_id: certificate.revoker_key.pq_key_id },
+          ],
+          {
+            ...agilityPassthrough(options),
+            policy: 'hybrid_all',
+            requiredAlgorithms: [...STATUS_V2_REQUIRED_ALGORITHMS],
+          },
+        );
+      } catch { setResult = null; }
+    }
+    if (setResult?.verified === true) {
+      result.checks.signature = true;
+    } else {
+      addReason(result.reasons, `invalid_status_signature (${setResult?.reason ?? 'signature_set_unverified'})`);
+    }
+  }
+
+  const now = decisionTimeMs(options.now);
+  const issuedAt = strictInstantMs(status.issued_at);
+  const certificateExpiresAt = strictInstantMs(certificate.expires_at);
+  if (!Number.isFinite(now) || !Number.isFinite(issuedAt)) {
+    addReason(result.reasons, 'invalid_status_time');
+  } else if (issuedAt > now) {
+    addReason(result.reasons, 'status_not_yet_valid');
+  } else if (status.status === 'revoked') {
+    if (status.next_update !== null) {
+      addReason(result.reasons, 'revoked_status_has_next_update');
+    } else {
+      result.checks.freshness = true;
+    }
+  } else {
+    const nextUpdate = strictInstantMs(status.next_update);
+    if (!Number.isFinite(nextUpdate) || nextUpdate <= issuedAt) {
+      addReason(result.reasons, 'invalid_status_window');
+    } else if (nextUpdate > certificateExpiresAt) {
+      addReason(result.reasons, 'status_window_exceeds_certificate');
+    } else if (now >= nextUpdate) {
+      addReason(result.reasons, 'status_stale');
+    } else {
+      result.checks.freshness = true;
+    }
+  }
+
+  await previousStatusChecksV2(
+    status,
+    options.previousStatus,
+    certificate,
+    result.checks,
+    result.reasons,
+    options,
+  );
+
+  const valid = Object.values(result.checks).every(Boolean);
+  if (!valid) return result;
+  result.valid = true;
+  result.outcome = status.status === 'revoked' ? 'revoked' : 'current_not_revoked';
+  return result;
+}
+
+/**
+ * Verify current status for one exact target under the HYBRID
+ * (Ed25519 + ML-DSA-65) profile. Never throws. Same sequence/predecessor
+ * discipline as verifyStatusArtifact, restricted to an EP-STATUS-v2 chain
+ * (see the CHAIN BOUNDARY note above the v2 section header).
+ */
+export async function verifyStatusArtifactV2(
+  expectedTarget: unknown,
+  status: unknown,
+  options: StatusVerificationOptionsV2 = {},
+): Promise<StatusVerificationV2> {
+  try {
+    return await verifyStatusArtifactV2Core(expectedTarget, status, options);
+  } catch {
+    const result = indeterminateStatusV2();
+    result.status_digest = safeDigest(status);
+    addReason(result.reasons, 'invalid_status_input');
+    return result;
+  }
+}
+
+/**
+ * Route a certificate of EITHER version to its verifier. A v1 certificate
+ * keeps the exact v1 verdict; a v2 certificate gets the hybrid check. A
+ * certificate whose '@version' is neither refuses on the version marker,
+ * through the v1 verifier, which is the fail-closed answer.
+ */
+export async function verifyRevokerAuthorityCertificateStatement(
+  certificate: unknown,
+  options: RevokerAuthorityOptions | RevokerAuthorityOptionsV2 = {},
+): Promise<RevokerAuthorityVerification | RevokerAuthorityVerificationV2> {
+  if (certificate && typeof certificate === 'object' && !Array.isArray(certificate)
+      && (certificate as Obj)['@version'] === REVOCER_AUTHORITY_V2_VERSION) {
+    return verifyRevokerAuthorityCertificateV2(certificate, options as RevokerAuthorityOptionsV2);
+  }
+  return verifyRevokerAuthorityCertificate(certificate, options as RevokerAuthorityOptions);
+}
+
+/**
+ * Route a status head of EITHER version to its verifier. Same fail-closed
+ * dispatch as verifyRevokerAuthorityCertificateStatement above.
+ */
+export async function verifyStatusArtifactStatement(
+  expectedTarget: unknown,
+  status: unknown,
+  options: StatusVerificationOptions | StatusVerificationOptionsV2 = {},
+): Promise<StatusVerification | StatusVerificationV2> {
+  if (status && typeof status === 'object' && !Array.isArray(status)
+      && (status as Obj)['@version'] === STATUS_V2_VERSION) {
+    return verifyStatusArtifactV2(expectedTarget, status, options as StatusVerificationOptionsV2);
+  }
+  return verifyStatusArtifact(expectedTarget, status, options as StatusVerificationOptions);
 }

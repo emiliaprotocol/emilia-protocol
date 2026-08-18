@@ -20,11 +20,24 @@ import {
   statusArtifactDigest,
   verifyRevokerAuthorityCertificate,
   verifyStatusArtifact,
+  REVOCER_AUTHORITY_V2_VERSION,
+  REVOCER_AUTHORITY_V2_DOMAIN,
+  REVOCER_AUTHORITY_V2_REQUIRED_ALGORITHMS,
+  STATUS_V2_VERSION,
+  STATUS_V2_DOMAIN,
+  STATUS_V2_REQUIRED_ALGORITHMS,
+  verifyRevokerAuthorityCertificateV2,
+  verifyStatusArtifactV2,
+  verifyRevokerAuthorityCertificateStatement,
+  verifyStatusArtifactStatement,
   type RevokerAuthorityPin,
+  type RevokerAuthorityPinV2,
   type StatusState,
   type StatusTarget,
   type StatusTargetRegistry,
 } from '../../packages/verify/status.js';
+import { ML_DSA_65_PUBLIC_KEY_BYTES, ML_DSA_65_SIGNATURE_BYTES } from '../../packages/verify/pq-signature-agility.js';
+import { checkOperationPolicy, type FipsPosture } from '../../packages/verify/fips-mode.js';
 
 // Kept byte-identical to the resolver in packages/verify/src/status.ts. The
 // end-to-end conformance vectors (mint a registered foreign type here, accept
@@ -64,6 +77,8 @@ const AUTHORITY_INPUT_KEYS = [
   'expiresAt',
   'signer',
   'targetRegistry',
+  'fipsPosture',
+  'allowUnvalidatedMldsa',
 ] as const;
 const STATUS_INPUT_KEYS = [
   'authorityPin',
@@ -75,7 +90,12 @@ const STATUS_INPUT_KEYS = [
   'previousStatus',
   'signer',
   'targetRegistry',
+  'fipsPosture',
+  'allowUnvalidatedMldsa',
 ] as const;
+/** Optional fields on both build inputs: never required, so v1 issuance with
+ * no FIPS posture supplied is untouched (see enforceFipsSigningPolicy above). */
+const OPTIONAL_INPUT_KEYS = ['targetRegistry', 'fipsPosture', 'allowUnvalidatedMldsa'] as const;
 const AUTHORITY_PIN_KEYS = ['authority_domain', 'authority_id', 'key_id', 'public_key'] as const;
 const SCOPE_KEYS = ['allowed_target_types', 'allowed_usages'] as const;
 const TARGET_KEYS = ['type', 'id', 'digest', 'usage'] as const;
@@ -109,7 +129,8 @@ const STATUS_PROOF_KEYS = ['algorithm', 'key_id', 'signature_b64u'] as const;
 
 export interface StatusSignerContext {
   readonly artifact: 'revoker_authority_certificate' | 'status';
-  readonly domain: typeof REVOCER_AUTHORITY_DOMAIN | typeof STATUS_DOMAIN;
+  readonly domain: typeof REVOCER_AUTHORITY_DOMAIN | typeof STATUS_DOMAIN
+    | typeof REVOCER_AUTHORITY_V2_DOMAIN | typeof STATUS_V2_DOMAIN;
   readonly keyId: string;
 }
 
@@ -182,6 +203,13 @@ export interface BuildRevokerAuthorityCertificateInput {
   readonly signer: ExternalEd25519Signer;
   /** Relying-party-pinned target vocabulary; omitted means the core set only. */
   readonly targetRegistry?: StatusTargetRegistry;
+  /** Opt-in FIPS posture consult at the signing call site (see
+   * enforceFipsSigningPolicy). Omitted: byte-identical to today. */
+  readonly fipsPosture?: FipsPosture;
+  /** Passed through to checkOperationPolicy when this build also signs an
+   * ML-DSA-65 leg (buildRevokerAuthorityCertificateV2). Ignored by the v1
+   * (Ed25519-only) builder. */
+  readonly allowUnvalidatedMldsa?: boolean;
 }
 
 export interface BuildStatusArtifactInput {
@@ -196,6 +224,10 @@ export interface BuildStatusArtifactInput {
   readonly signer: ExternalEd25519Signer;
   /** Relying-party-pinned target vocabulary; omitted means the core set only. */
   readonly targetRegistry?: StatusTargetRegistry;
+  /** Opt-in FIPS posture consult at the signing call site (see
+   * enforceFipsSigningPolicy). Omitted: byte-identical to today. */
+  readonly fipsPosture?: FipsPosture;
+  readonly allowUnvalidatedMldsa?: boolean;
 }
 
 export class StatusIssuanceError extends Error {
@@ -428,11 +460,39 @@ function signingBytes(value: Obj, domain: string): Buffer {
   return Buffer.from(`${domain}${canonicalize(value)}`, 'utf8');
 }
 
+/**
+ * Opt-in FIPS posture consult at the signing call site. When
+ * `fipsOptions.posture` is NOT supplied, this function does not run
+ * checkOperationPolicy at all -- issuance behavior is byte-identical to
+ * before this consult existed (no live crypto.getFips() probe runs, no new
+ * refusal path is reachable). When a posture IS supplied (the caller
+ * explicitly opted in, e.g. a gov-strict deployment that pins its own
+ * getFipsPosture() snapshot), a denied Ed25519 operation policy refuses
+ * issuance here with a named 'fips_policy_denied' reason before any bytes
+ * reach the signer. This never asserts FIPS validation of the issued
+ * artifact -- see packages/verify/src/fips-mode.ts's own module header for
+ * the ceiling of what "permitted" means.
+ */
+function enforceFipsSigningPolicy(
+  alg: 'Ed25519' | 'ML-DSA-65',
+  fipsOptions?: { posture?: FipsPosture; allowUnvalidatedMldsa?: boolean },
+): void {
+  if (!fipsOptions || fipsOptions.posture === undefined) return;
+  const decision = checkOperationPolicy(alg, fipsOptions.posture, {
+    allow_unvalidated_mldsa: fipsOptions.allowUnvalidatedMldsa === true,
+  });
+  if (!decision.permitted) {
+    fail('fips_policy_denied', `${alg} signing refused under the configured FIPS posture: ${decision.reason ?? 'unknown'}`);
+  }
+}
+
 async function signatureFrom(
   signer: ExternalEd25519Signer,
   body: Obj,
   context: StatusSignerContext,
+  fipsOptions?: { posture?: FipsPosture; allowUnvalidatedMldsa?: boolean },
 ): Promise<string> {
+  enforceFipsSigningPolicy('Ed25519', fipsOptions);
   const bytes = signingBytes(body, context.domain);
   let output: string | Uint8Array;
   try {
@@ -562,7 +622,7 @@ export async function buildRevokerAuthorityCertificate(
     input,
     'certificate input',
     AUTHORITY_INPUT_KEYS,
-    AUTHORITY_INPUT_KEYS.filter((key) => key !== 'targetRegistry'),
+    AUTHORITY_INPUT_KEYS.filter((key) => !(OPTIONAL_INPUT_KEYS as readonly string[]).includes(key)),
   );
   validateAuthorityPin(input.authorityPin);
   identifier(input.certificateId, 'certificateId');
@@ -598,7 +658,7 @@ export async function buildRevokerAuthorityCertificate(
     artifact: 'revoker_authority_certificate',
     domain: REVOCER_AUTHORITY_DOMAIN,
     keyId: input.authorityPin.key_id,
-  });
+  }, { posture: input.fipsPosture, allowUnvalidatedMldsa: input.allowUnvalidatedMldsa });
   const artifact = deepFreeze({
     ...body,
     proof: {
@@ -630,7 +690,8 @@ export async function buildStatusArtifact(
     input,
     'status input',
     STATUS_INPUT_KEYS,
-    STATUS_INPUT_KEYS.filter((key) => key !== 'previousStatus' && key !== 'targetRegistry'),
+    STATUS_INPUT_KEYS.filter((key) => key !== 'previousStatus'
+      && !(OPTIONAL_INPUT_KEYS as readonly string[]).includes(key)),
   );
   validateAuthorityPin(input.authorityPin);
   validateTarget(input.target, input.targetRegistry);
@@ -708,7 +769,7 @@ export async function buildStatusArtifact(
     artifact: 'status',
     domain: STATUS_DOMAIN,
     keyId: certificate.revoker_key.key_id,
-  });
+  }, { posture: input.fipsPosture, allowUnvalidatedMldsa: input.allowUnvalidatedMldsa });
   const artifact = deepFreeze({
     ...body,
     proof: {
@@ -734,3 +795,601 @@ export async function buildStatusArtifact(
   }
   return artifact;
 }
+
+// ===========================================================================
+// EP-REVOKER-AUTHORITY-v2 / EP-STATUS-v2 -- hybrid issuer-side builders
+// ===========================================================================
+/**
+ * The v2 VERIFIERS are not re-implemented here, for the same reason the v1
+ * comment above states: packages/verify/src/status.ts is the published,
+ * portable verifier, and this module composes it rather than re-deriving the
+ * hybrid checks. What lives here is the issuer half: buildRevokerAuthorityCertificateV2
+ * / buildStatusArtifactV2, the v2 siblings of the v1 builders above, same
+ * closed-input discipline, same "no private key material in this API"
+ * boundary -- callers inject an EXTERNAL hybrid signer (one Ed25519 leg, one
+ * ML-DSA-65 leg), never a raw secret key.
+ */
+
+const AUTHORITY_PIN_KEYS_V2 = ['authority_domain', 'authority_id', 'key_id', 'public_key', 'pq_key_id', 'pq_public_key'] as const;
+const STATUS_KEYS_V2 = [
+  '@version',
+  'authority_domain',
+  'revoker_authority_digest',
+  'target',
+  'status',
+  'sequence',
+  'previous_status_digest',
+  'issued_at',
+  'next_update',
+  'required_algorithms',
+  'proof',
+] as const;
+const AUTHORITY_INPUT_KEYS_V2 = [
+  'certificateId',
+  'authorityPin',
+  'revokerId',
+  'revokerPublicKey',
+  'revokerPqPublicKey',
+  'scope',
+  'issuedAt',
+  'expiresAt',
+  'signer',
+  'targetRegistry',
+  'fipsPosture',
+  'allowUnvalidatedMldsa',
+] as const;
+const STATUS_INPUT_KEYS_V2 = [
+  'authorityPin',
+  'certificate',
+  'target',
+  'status',
+  'issuedAt',
+  'nextUpdate',
+  'previousStatus',
+  'signer',
+  'targetRegistry',
+  'fipsPosture',
+  'allowUnvalidatedMldsa',
+] as const;
+
+/** Minimal KMS/HSM/software ML-DSA-65 seam, mirroring ExternalEd25519Signer.
+ * It deliberately has no private-key property. */
+export interface ExternalMlDsaSigner {
+  readonly algorithm: 'ML-DSA-65';
+  readonly keyId: string;
+  sign(
+    bytes: Uint8Array,
+    context: Readonly<StatusSignerContext>,
+  ): Promise<string | Uint8Array>;
+}
+
+/** An external signer that produces BOTH legs of an EP-*-v2 hybrid proof. */
+export interface ExternalHybridSigner {
+  readonly ed25519: ExternalEd25519Signer;
+  readonly mldsa: ExternalMlDsaSigner;
+}
+
+export interface RevokerAuthorityKeyV2 {
+  readonly key_id: string;
+  readonly public_key: string;
+  readonly pq_key_id: string;
+  readonly pq_public_key: string;
+}
+
+export interface RevokerAuthorityCertificateV2 {
+  readonly '@version': typeof REVOCER_AUTHORITY_V2_VERSION;
+  readonly certificate_id: string;
+  readonly authority_domain: string;
+  readonly authority_id: string;
+  readonly revoker_id: string;
+  readonly revoker_key: Readonly<RevokerAuthorityKeyV2>;
+  readonly scope: Readonly<{
+    allowed_target_types: readonly string[];
+    allowed_usages: readonly string[];
+  }>;
+  readonly issued_at: string;
+  readonly expires_at: string;
+  readonly required_algorithms: readonly string[];
+  readonly proof: Readonly<{
+    key_id: string;
+    pq_key_id: string;
+    signatures: readonly { alg: string; sig: string; key_id?: string }[];
+  }>;
+}
+
+export interface StatusArtifactV2 {
+  readonly '@version': typeof STATUS_V2_VERSION;
+  readonly authority_domain: string;
+  readonly revoker_authority_digest: string;
+  readonly target: Readonly<StatusTarget>;
+  readonly status: StatusState;
+  readonly sequence: number;
+  readonly previous_status_digest: string | null;
+  readonly issued_at: string;
+  readonly next_update: string | null;
+  readonly required_algorithms: readonly string[];
+  readonly proof: Readonly<{
+    key_id: string;
+    pq_key_id: string;
+    signatures: readonly { alg: string; sig: string; key_id?: string }[];
+  }>;
+}
+
+export interface BuildRevokerAuthorityCertificateV2Input {
+  readonly certificateId: string;
+  readonly authorityPin: RevokerAuthorityPinV2;
+  readonly revokerId: string;
+  /** Ed25519 SPKI DER, base64url. */
+  readonly revokerPublicKey: string;
+  /** ML-DSA-65 raw public key bytes, base64url. */
+  readonly revokerPqPublicKey: string;
+  readonly scope: RevokerAuthorityScope;
+  readonly issuedAt: string;
+  readonly expiresAt: string;
+  readonly signer: ExternalHybridSigner;
+  readonly targetRegistry?: StatusTargetRegistry;
+  readonly fipsPosture?: FipsPosture;
+  readonly allowUnvalidatedMldsa?: boolean;
+}
+
+export interface BuildStatusArtifactV2Input {
+  readonly authorityPin: RevokerAuthorityPinV2;
+  readonly certificate: unknown;
+  readonly target: StatusTarget;
+  readonly status: StatusState;
+  readonly issuedAt: string;
+  readonly nextUpdate: string | null;
+  readonly previousStatus?: unknown;
+  readonly signer: ExternalHybridSigner;
+  readonly targetRegistry?: StatusTargetRegistry;
+  readonly fipsPosture?: FipsPosture;
+  readonly allowUnvalidatedMldsa?: boolean;
+}
+
+function loadMlDsaPublicKey(value: unknown): Buffer | null {
+  return canonicalBase64url(value, ML_DSA_65_PUBLIC_KEY_BYTES);
+}
+
+function pqRevokerKeyIdIssuer(publicKeyB64u: unknown): string | null {
+  const raw = loadMlDsaPublicKey(publicKeyB64u);
+  if (!raw) return null;
+  return `ep:revoker-key:ml-dsa-65:sha256:${crypto.createHash('sha256').update(raw).digest('hex')}`;
+}
+
+/** Derive the complete ML-DSA-65 revoker-key identifier from raw base64url bytes. */
+export function deriveRevokerPqKeyId(publicKeyRawB64u: string): string {
+  const id = pqRevokerKeyIdIssuer(publicKeyRawB64u);
+  if (!id) {
+    fail('invalid_revoker_public_key', 'revoker ML-DSA-65 public key must be canonical base64url raw bytes');
+  }
+  return id as string;
+}
+
+function validateAuthorityPinV2(value: unknown): asserts value is RevokerAuthorityPinV2 {
+  closedObject(value, 'authorityPin', AUTHORITY_PIN_KEYS_V2);
+  if (typeof value.authority_domain !== 'string' || !AUTHORITY_DOMAIN.test(value.authority_domain)) {
+    fail('invalid_authority_pin', 'authorityPin.authority_domain is invalid');
+  }
+  identifier(value.authority_id, 'authorityPin.authority_id');
+  identifier(value.key_id, 'authorityPin.key_id');
+  if (typeof value.public_key !== 'string' || !loadEd25519Key(value.public_key)) {
+    fail('invalid_authority_pin', 'authorityPin.public_key must be canonical base64url Ed25519 SPKI DER');
+  }
+  identifier(value.pq_key_id, 'authorityPin.pq_key_id');
+  if (typeof value.pq_public_key !== 'string' || !pqRevokerKeyIdIssuer(value.pq_public_key)) {
+    fail('invalid_authority_pin', 'authorityPin.pq_public_key must be canonical base64url ML-DSA-65 raw public key');
+  }
+}
+
+function validateMlDsaSigner(value: unknown, expectedKeyId: string): asserts value is ExternalMlDsaSigner {
+  if (value === null || (typeof value !== 'object' && typeof value !== 'function')) {
+    fail('invalid_signer', 'an external ML-DSA-65 signer is required');
+  }
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key === 'string' && RAW_KEY_FIELD.test(key)) {
+      fail('raw_private_key_refused', 'external signer input must not contain private key material');
+    }
+  }
+  const signer = value as Partial<ExternalMlDsaSigner>;
+  if (signer.algorithm !== 'ML-DSA-65') {
+    fail('invalid_signer', 'external signer algorithm must be ML-DSA-65');
+  }
+  if (typeof signer.keyId !== 'string' || signer.keyId !== expectedKeyId) {
+    fail('signer_key_id_mismatch', 'external signer key ID does not match the exact expected key ID');
+  }
+  if (typeof signer.sign !== 'function') {
+    fail('invalid_signer', 'external signer requires async sign(bytes, context)');
+  }
+}
+
+function validateHybridSigner(
+  value: unknown,
+  expectedEdKeyId: string,
+  expectedPqKeyId: string,
+): asserts value is ExternalHybridSigner {
+  if (!value || typeof value !== 'object') {
+    fail('invalid_signer', 'an external hybrid signer {ed25519, mldsa} is required');
+  }
+  const signer = value as Partial<ExternalHybridSigner>;
+  validateSigner(signer.ed25519, expectedEdKeyId);
+  validateMlDsaSigner(signer.mldsa, expectedPqKeyId);
+}
+
+/**
+ * Sign `body` under BOTH registered algorithms via an external hybrid signer.
+ * Same FIPS-consult discipline as signatureFrom (see enforceFipsSigningPolicy):
+ * with no fipsOptions.posture supplied, no policy consult runs at all.
+ */
+async function signatureSetFrom(
+  signer: ExternalHybridSigner,
+  body: Obj,
+  context: StatusSignerContext,
+  fipsOptions?: { posture?: FipsPosture; allowUnvalidatedMldsa?: boolean },
+): Promise<{ signatures: Array<{ alg: 'Ed25519' | 'ML-DSA-65'; sig: string; key_id: string }> }> {
+  enforceFipsSigningPolicy('Ed25519', fipsOptions);
+  enforceFipsSigningPolicy('ML-DSA-65', fipsOptions);
+  const bytes = signingBytes(body, context.domain);
+
+  let edOutput: string | Uint8Array;
+  try {
+    edOutput = await signer.ed25519.sign(new Uint8Array(bytes), Object.freeze({ ...context }));
+  } catch (cause) {
+    const detail = cause instanceof Error && cause.message ? `: ${cause.message}` : '';
+    fail('signer_failure', `external Ed25519 signer failed${detail}`, cause);
+  }
+  let edSig: string;
+  if (typeof edOutput === 'string') {
+    if (!canonicalBase64url(edOutput, 64)) {
+      fail('invalid_signature', 'external Ed25519 signer returned a non-canonical signature');
+    }
+    edSig = edOutput;
+  } else if (edOutput instanceof Uint8Array && edOutput.byteLength === 64) {
+    edSig = Buffer.from(edOutput).toString('base64url');
+  } else {
+    fail('invalid_signature', 'external Ed25519 signer must return 64 signature bytes or canonical base64url');
+  }
+
+  let pqOutput: string | Uint8Array;
+  try {
+    pqOutput = await signer.mldsa.sign(new Uint8Array(bytes), Object.freeze({ ...context }));
+  } catch (cause) {
+    const detail = cause instanceof Error && cause.message ? `: ${cause.message}` : '';
+    fail('signer_failure', `external ML-DSA-65 signer failed${detail}`, cause);
+  }
+  let pqSig: string;
+  if (typeof pqOutput === 'string') {
+    if (!canonicalBase64url(pqOutput, ML_DSA_65_SIGNATURE_BYTES)) {
+      fail('invalid_signature', 'external ML-DSA-65 signer returned a non-canonical signature');
+    }
+    pqSig = pqOutput;
+  } else if (pqOutput instanceof Uint8Array && pqOutput.byteLength === ML_DSA_65_SIGNATURE_BYTES) {
+    pqSig = Buffer.from(pqOutput).toString('base64url');
+  } else {
+    fail('invalid_signature', 'external ML-DSA-65 signer must return raw signature bytes or canonical base64url');
+  }
+
+  return {
+    signatures: [
+      { alg: 'Ed25519', sig: edSig, key_id: signer.ed25519.keyId },
+      { alg: 'ML-DSA-65', sig: pqSig, key_id: signer.mldsa.keyId },
+    ],
+  };
+}
+
+async function certificateForStatusV2(
+  certificate: unknown,
+  authorityPin: RevokerAuthorityPinV2,
+  issuedAt: string,
+  registry?: StatusTargetRegistry,
+): Promise<RevokerAuthorityCertificateV2> {
+  const result = await verifyRevokerAuthorityCertificateV2(certificate, {
+    authorityPin,
+    now: issuedAt,
+    targetRegistry: registry,
+  });
+  if (!result.valid) {
+    fail(
+      'invalid_revoker_authority_certificate',
+      `revoker authority certificate is invalid at status issuance time: ${result.reasons.join(', ')}`,
+    );
+  }
+  return certificate as RevokerAuthorityCertificateV2;
+}
+
+/** Build and externally sign one closed, HYBRID EP-REVOKER-AUTHORITY-v2 certificate. */
+export async function buildRevokerAuthorityCertificateV2(
+  input: BuildRevokerAuthorityCertificateV2Input,
+): Promise<RevokerAuthorityCertificateV2> {
+  closedObject(
+    input,
+    'certificate input',
+    AUTHORITY_INPUT_KEYS_V2,
+    AUTHORITY_INPUT_KEYS_V2.filter((key) => !(OPTIONAL_INPUT_KEYS as readonly string[]).includes(key)),
+  );
+  validateAuthorityPinV2(input.authorityPin);
+  identifier(input.certificateId, 'certificateId');
+  identifier(input.revokerId, 'revokerId');
+  validateScope(input.scope, input.targetRegistry);
+  const issuedAtMs = instant(input.issuedAt, 'issuedAt');
+  const expiresAtMs = instant(input.expiresAt, 'expiresAt');
+  if (issuedAtMs >= expiresAtMs) {
+    fail('invalid_certificate_window', 'expiresAt must be later than issuedAt');
+  }
+  const revokerKeyId = deriveRevokerKeyId(input.revokerPublicKey);
+  const revokerPqKeyId = deriveRevokerPqKeyId(input.revokerPqPublicKey);
+  validateHybridSigner(input.signer, input.authorityPin.key_id, input.authorityPin.pq_key_id);
+
+  const body: Obj = {
+    '@version': REVOCER_AUTHORITY_V2_VERSION,
+    certificate_id: input.certificateId,
+    authority_domain: input.authorityPin.authority_domain,
+    authority_id: input.authorityPin.authority_id,
+    revoker_id: input.revokerId,
+    revoker_key: {
+      key_id: revokerKeyId,
+      public_key: input.revokerPublicKey,
+      pq_key_id: revokerPqKeyId,
+      pq_public_key: input.revokerPqPublicKey,
+    },
+    scope: {
+      allowed_target_types: [...input.scope.allowed_target_types],
+      allowed_usages: [...input.scope.allowed_usages],
+    },
+    issued_at: input.issuedAt,
+    expires_at: input.expiresAt,
+    required_algorithms: [...REVOCER_AUTHORITY_V2_REQUIRED_ALGORITHMS],
+  };
+  const { signatures } = await signatureSetFrom(input.signer, body, {
+    artifact: 'revoker_authority_certificate',
+    domain: REVOCER_AUTHORITY_V2_DOMAIN,
+    keyId: input.authorityPin.key_id,
+  }, { posture: input.fipsPosture, allowUnvalidatedMldsa: input.allowUnvalidatedMldsa });
+  const artifact = deepFreeze({
+    ...body,
+    proof: {
+      key_id: input.authorityPin.key_id,
+      pq_key_id: input.authorityPin.pq_key_id,
+      signatures,
+    },
+  }) as unknown as RevokerAuthorityCertificateV2;
+
+  const verification = await verifyRevokerAuthorityCertificateV2(artifact, {
+    authorityPin: input.authorityPin,
+    now: input.issuedAt,
+    targetRegistry: input.targetRegistry,
+  });
+  if (!verification.valid) {
+    fail(
+      'certificate_round_trip_failed',
+      `issued revoker authority certificate failed verification: ${verification.reasons.join(', ')}`,
+    );
+  }
+  return artifact;
+}
+
+async function validatePreviousStatusV2(
+  value: unknown,
+  target: StatusTarget,
+  certificate: RevokerAuthorityCertificateV2,
+  certificateDigest: string,
+  issuedAtMs: number,
+  registry: StatusTargetRegistry | undefined,
+): Promise<StatusArtifactV2> {
+  closedObject(value, 'previousStatus', STATUS_KEYS_V2);
+  const previous = value as Obj;
+  if (previous['@version'] !== STATUS_V2_VERSION
+      || previous.authority_domain !== certificate.authority_domain
+      || previous.revoker_authority_digest !== certificateDigest) {
+    fail('invalid_previous_status', 'previousStatus is not bound to the same authority certificate (v2 chain requires a v2 predecessor)');
+  }
+  validateTarget(previous.target, registry);
+  if (!targetEqual(previous.target as StatusTarget, target)) {
+    fail('invalid_previous_status', 'previousStatus is not bound to the exact target');
+  }
+  if (previous.status !== 'not_revoked' && previous.status !== 'revoked') {
+    fail('invalid_previous_status', 'previousStatus.status is invalid');
+  }
+  if (!Number.isSafeInteger(previous.sequence) || (previous.sequence as number) < 0) {
+    fail('invalid_previous_status', 'previousStatus.sequence is invalid');
+  }
+  if (previous.previous_status_digest !== null
+      && (typeof previous.previous_status_digest !== 'string' || !DIGEST.test(previous.previous_status_digest))) {
+    fail('invalid_previous_status', 'previousStatus.previous_status_digest is invalid');
+  }
+  const previousIssuedAtMs = instant(previous.issued_at, 'previousStatus.issued_at');
+  if (issuedAtMs <= previousIssuedAtMs) {
+    fail('non_monotonic_status_time', 'issuedAt must be later than previousStatus.issued_at');
+  }
+  if (previous.status === 'revoked') {
+    if (previous.next_update !== null) {
+      fail('invalid_previous_status', 'a revoked previousStatus must have next_update null');
+    }
+    fail('terminal_revocation', 'cannot issue a successor after a terminal revocation');
+  }
+  const previousNextUpdateMs = instant(previous.next_update, 'previousStatus.next_update');
+  if (previousNextUpdateMs <= previousIssuedAtMs) {
+    fail('invalid_previous_status', 'previousStatus has an invalid status window');
+  }
+  if (!Array.isArray(previous.required_algorithms)
+      || previous.required_algorithms.length !== STATUS_V2_REQUIRED_ALGORITHMS.length
+      || previous.required_algorithms.some((a: unknown, i: number) => a !== STATUS_V2_REQUIRED_ALGORITHMS[i])) {
+    fail('invalid_previous_status', 'previousStatus.required_algorithms is not the registered v2 set');
+  }
+  const proof = previous.proof as Obj;
+  closedObject(proof, 'previousStatus.proof', ['key_id', 'pq_key_id', 'signatures']);
+  if (proof.key_id !== certificate.revoker_key.key_id || proof.pq_key_id !== certificate.revoker_key.pq_key_id) {
+    fail('invalid_previous_status', 'previousStatus proof key ids do not match the certificate revoker_key');
+  }
+  const unsignedPrevious: Obj = {};
+  for (const [key, member] of Object.entries(previous)) {
+    if (key !== 'proof') unsignedPrevious[key] = member;
+  }
+  const bytes = signingBytes(unsignedPrevious, STATUS_V2_DOMAIN);
+  const setResult = await verifyAgileSignatureSetIssuer(
+    bytes,
+    proof.signatures,
+    certificate.revoker_key,
+  );
+  if (!setResult) {
+    fail('invalid_previous_status', 'previousStatus signature set is invalid');
+  }
+  return previous as unknown as StatusArtifactV2;
+}
+
+/**
+ * Thin issuer-side signature-set check used only to validate a PRESENTED
+ * previousStatus head before extending its chain (mirrors the read-only use
+ * of crypto.verify in validatePreviousStatus above, widened to the set). Not
+ * exported: the authoritative hybrid signature verification is
+ * verifyStatusArtifactV2 in packages/verify/src/status.ts; this exists only
+ * because validatePreviousStatusV2 needs a yes/no answer to keep extending a
+ * chain it is already holding one head of, the same narrow role
+ * crypto.verify(...) plays in the v1 issuer today.
+ */
+async function verifyAgileSignatureSetIssuer(
+  bytes: Buffer,
+  signatures: unknown,
+  revokerKey: RevokerAuthorityKeyV2,
+): Promise<boolean> {
+  const { verifyAgileSignatureSet } = await import('../../packages/verify/pq-signature-agility.js');
+  if (!Array.isArray(signatures)) return false;
+  const result = await verifyAgileSignatureSet(
+    new Uint8Array(bytes),
+    signatures,
+    [
+      { alg: 'Ed25519', public_key: revokerKey.public_key, key_id: revokerKey.key_id },
+      { alg: 'ML-DSA-65', public_key: revokerKey.pq_public_key, key_id: revokerKey.pq_key_id },
+    ],
+    { policy: 'hybrid_all', requiredAlgorithms: [...STATUS_V2_REQUIRED_ALGORITHMS] },
+  );
+  return result.verified === true;
+}
+
+/** Build and externally sign one closed, predecessor-bound, HYBRID EP-STATUS-v2 head. */
+export async function buildStatusArtifactV2(
+  input: BuildStatusArtifactV2Input,
+): Promise<StatusArtifactV2> {
+  closedObject(
+    input,
+    'status input',
+    STATUS_INPUT_KEYS_V2,
+    STATUS_INPUT_KEYS_V2.filter((key) => key !== 'previousStatus'
+      && !(OPTIONAL_INPUT_KEYS as readonly string[]).includes(key)),
+  );
+  validateAuthorityPinV2(input.authorityPin);
+  validateTarget(input.target, input.targetRegistry);
+  if (input.status !== 'not_revoked' && input.status !== 'revoked') {
+    fail('invalid_status', 'status must be not_revoked or revoked');
+  }
+  const issuedAtMs = instant(input.issuedAt, 'issuedAt');
+  const certificate = await certificateForStatusV2(
+    input.certificate,
+    input.authorityPin,
+    input.issuedAt,
+    input.targetRegistry,
+  );
+  const certificateDigest = revokerAuthorityCertificateDigest(certificate);
+  if (!certificate.scope.allowed_target_types.includes(input.target.type)
+      || !certificate.scope.allowed_usages.includes(input.target.usage)) {
+    fail('target_outside_scope', 'target is outside the revoker authority certificate scope');
+  }
+
+  if (input.status === 'revoked') {
+    if (input.nextUpdate !== null) {
+      fail('invalid_status_window', 'terminal revoked status requires nextUpdate null');
+    }
+  } else {
+    const nextUpdateMs = instant(input.nextUpdate, 'nextUpdate');
+    if (nextUpdateMs <= issuedAtMs) {
+      fail('invalid_status_window', 'nextUpdate must be later than issuedAt');
+    }
+    const certificateExpiresAtMs = instant(certificate.expires_at, 'certificate.expires_at');
+    if (nextUpdateMs > certificateExpiresAtMs) {
+      fail('invalid_status_window', 'status window exceeds the revoker authority certificate');
+    }
+  }
+
+  let sequence = 0;
+  let previousStatusDigest: string | null = null;
+  if (Object.hasOwn(input, 'previousStatus')) {
+    const previous = await validatePreviousStatusV2(
+      input.previousStatus,
+      input.target,
+      certificate,
+      certificateDigest,
+      issuedAtMs,
+      input.targetRegistry,
+    );
+    if (previous.sequence >= Number.MAX_SAFE_INTEGER) {
+      fail('sequence_exhausted', 'previousStatus.sequence cannot be incremented safely');
+    }
+    sequence = previous.sequence + 1;
+    previousStatusDigest = statusArtifactDigest(previous);
+  }
+
+  validateHybridSigner(input.signer, certificate.revoker_key.key_id, certificate.revoker_key.pq_key_id);
+  if (!REVOKER_KEY_ID.test(input.signer.ed25519.keyId)) {
+    fail('invalid_signer', 'status signer Ed25519 key ID must be a complete revoker-key digest ID');
+  }
+
+  const body: Obj = {
+    '@version': STATUS_V2_VERSION,
+    authority_domain: certificate.authority_domain,
+    revoker_authority_digest: certificateDigest,
+    target: {
+      type: input.target.type,
+      id: input.target.id,
+      digest: input.target.digest,
+      usage: input.target.usage,
+    },
+    status: input.status,
+    sequence,
+    previous_status_digest: previousStatusDigest,
+    issued_at: input.issuedAt,
+    next_update: input.nextUpdate,
+    required_algorithms: [...STATUS_V2_REQUIRED_ALGORITHMS],
+  };
+  const { signatures } = await signatureSetFrom(input.signer, body, {
+    artifact: 'status',
+    domain: STATUS_V2_DOMAIN,
+    keyId: certificate.revoker_key.key_id,
+  }, { posture: input.fipsPosture, allowUnvalidatedMldsa: input.allowUnvalidatedMldsa });
+  const artifact = deepFreeze({
+    ...body,
+    proof: {
+      key_id: certificate.revoker_key.key_id,
+      pq_key_id: certificate.revoker_key.pq_key_id,
+      signatures,
+    },
+  }) as unknown as StatusArtifactV2;
+
+  const verification = await verifyStatusArtifactV2(input.target, artifact, {
+    authorityPin: input.authorityPin,
+    certificate,
+    previousStatus: input.previousStatus,
+    now: input.issuedAt,
+    targetRegistry: input.targetRegistry,
+  });
+  const expectedOutcome = input.status === 'revoked' ? 'revoked' : 'current_not_revoked';
+  if (!verification.valid || verification.outcome !== expectedOutcome) {
+    fail(
+      'status_round_trip_failed',
+      `issued status artifact failed verification: ${verification.reasons.join(', ')}`,
+    );
+  }
+  return artifact;
+}
+
+export {
+  REVOCER_AUTHORITY_V2_VERSION,
+  REVOCER_AUTHORITY_V2_DOMAIN,
+  REVOCER_AUTHORITY_V2_REQUIRED_ALGORITHMS,
+  STATUS_V2_VERSION,
+  STATUS_V2_DOMAIN,
+  STATUS_V2_REQUIRED_ALGORITHMS,
+  verifyRevokerAuthorityCertificateV2,
+  verifyStatusArtifactV2,
+  verifyRevokerAuthorityCertificateStatement,
+  verifyStatusArtifactStatement,
+};
+export type { RevokerAuthorityPinV2 };

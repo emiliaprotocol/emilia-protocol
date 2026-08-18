@@ -33,6 +33,7 @@
  * is a refusal, not a warning). All vocabularies are closed.
  */
 import crypto from 'node:crypto';
+import { type AgilityOptions } from './pq-signature-agility.js';
 type Obj = Record<string, any>;
 type KeyRef = string | {
     public_key: string;
@@ -123,5 +124,163 @@ export declare function verifyRelianceAgreement(agreement: Obj, opts?: Agreement
  * @returns {{valid:boolean, reasons:string[], agreement_digest?:string, event_digest?:string}}
  */
 export declare function verifyRelianceEvent(event: Obj, opts?: EventOptions): Obj;
+/**
+ * HYBRID MIGRATION, following the same five moves as packages/verify/src/
+ * revocation.ts's EP-REVOCATION-v2 addition (read that file's comment block
+ * for the full write-up; this is the short form for this artifact pair):
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. A second per-party leg changes the SHAPE
+ *    of `signatures` / `signature`, which is a wire-format change, so each
+ *    artifact takes a new `version` (EP-RELIANCE-AGREEMENT-v1 -> -v2,
+ *    EP-RELIANCE-EVENT-v1 -> -v2) rather than growing an optional field on
+ *    v1. verifyRelianceAgreement()/verifyRelianceEvent() above are untouched
+ *    and refuse a v2 object on the version marker before inspecting any
+ *    signature -- proven by the version-refusal tests below.
+ *
+ * 2. SET SHAPE. v1's `agreement.signatures` is already an array of one entry
+ *    PER PARTY; v2 adds a second dimension by turning each party's own entry
+ *    from a flat Ed25519 signature into a per-party AgileSignature SET
+ *    ({party, signatures:[{alg,sig,key_id?}, ...]}), mirroring
+ *    EP-SIG-AGILITY-v1's shape verbatim. v1's flat `event.signature` becomes
+ *    `{party:'relying_party', signatures:[...]}` the same way. Neither shape
+ *    carries a public key any more (v1 did, but the verifier only ever
+ *    trusted the PINNED key -- see the "signs nothing away" invariant test in
+ *    tests/reliance-agreement.test.ts); v2 drops the carried key entirely and
+ *    resolves both halves from `opts.trustedKeys[party's key_id]`.
+ *
+ * 3. ANTI-STRIPPING BYTES. `agreementV2SigningBytes`/`eventV2SigningBytes`
+ *    recompute the canonical body bytes from the PRESENTED fields with
+ *    `required_algorithms` forced to the REGISTERED set (never the value the
+ *    object happens to carry), under a v2-only domain separator distinct from
+ *    v1's. The registered-set guard means a caller can never trick these
+ *    functions into signing/verifying over a narrowed set; a narrowed
+ *    `required_algorithms` on the wire is instead caught structurally, up
+ *    front, by name.
+ *
+ * 4. V1 COMPATIBILITY. v1 stays synchronous and unchanged. v2 verification is
+ *    ASYNC (ML-DSA verification is async), so it is a separate entry point.
+ *    v2's non-signature structural checks (closed vocabularies, amount
+ *    strings, validity window, required_signers completeness, event-to-
+ *    agreement binding) are a deliberate DUPLICATE of v1's, not a shared
+ *    refactor: this file's harness only runs tests/reliance-agreement-v2.test.ts
+ *    for this change, so v1's own conformance suite cannot be re-run here to
+ *    prove a refactor left it byte-for-byte identical. Duplicating is the
+ *    honest choice under that constraint -- v1's existing body above is
+ *    untouched and unreachable from any v2 code path.
+ *
+ * 5. NAMED REFUSALS. Same house style as v1 in this file: an ordered
+ *    `reasons` array and a `fail(reason)` early-return helper (not
+ *    revocation.ts's `checks` object -- this file's own convention already
+ *    differs from that one, so v2 follows v1's local style rather than
+ *    importing a second one). Nothing throws on caller-controlled content; an
+ *    unavailable ML-DSA backend surfaces as a named refusal via
+ *    verifyAgileSignatureSet's own reason, never a silent pass.
+ */
+export declare const RELIANCE_AGREEMENT_V2_VERSION = "EP-RELIANCE-AGREEMENT-v2";
+export declare const RELIANCE_EVENT_V2_VERSION = "EP-RELIANCE-EVENT-v2";
+export declare const RELIANCE_AGREEMENT_V2_DOMAIN = "EP-RELIANCE-AGREEMENT-v2\0";
+export declare const RELIANCE_EVENT_V2_DOMAIN = "EP-RELIANCE-EVENT-v2\0";
+/** The registered required algorithm set, in canonical order (agreement side). */
+export declare const RELIANCE_AGREEMENT_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+/** The registered required algorithm set, in canonical order (event side). */
+export declare const RELIANCE_EVENT_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+/** A v2 party/relying-party key pin: BOTH public halves, pinned out of band. */
+export interface RelianceV2KeyPin {
+    /** Ed25519 base64url SPKI DER. */
+    public_key?: string;
+    /** ML-DSA-65 base64url raw public key bytes. */
+    pq_public_key?: string;
+}
+export interface RelianceAgreementV2Options extends AgilityOptions {
+    now?: number | string | Date;
+    trustedKeys?: Record<string, RelianceV2KeyPin>;
+}
+export interface RelianceEventV2Options extends RelianceAgreementV2Options {
+    agreement?: Obj;
+    relianceResult?: Obj;
+}
+/** One issuer-side hybrid signer: Ed25519 + ML-DSA-65 key material for one party. */
+export interface RelianceHybridSigner {
+    /** Required for agreement signers; ignored for the single event signer. */
+    party?: string;
+    privateKey: crypto.KeyObject;
+    /** ML-DSA-65 secret key: 4032 raw bytes, or base64url of them. */
+    pqSecretKey: Uint8Array | string;
+    /** ML-DSA-65 public key: 1952 raw bytes, or base64url of them. */
+    pqPublicKeyB64u: Uint8Array | string;
+}
+/**
+ * The bytes EVERY party's signature set covers for an EP-RELIANCE-AGREEMENT-v2
+ * agreement: the whole unsigned body (same whole-body convention as v1's
+ * agreementSigningBytes), with `required_algorithms` forced to the REGISTERED
+ * set, under a v2-only domain separator. Narrowing `required_algorithms` on
+ * the wire, or stripping any party's leg, changes nothing about these bytes
+ * (they are always computed over the true registered set); it is instead
+ * caught structurally, by name, before signature verification is attempted.
+ */
+export declare function agreementV2SigningBytes(unsignedBodyV2: Obj, requiredAlgorithms?: readonly string[]): Buffer;
+/** The bytes the relying party's signature set covers for an EP-RELIANCE-EVENT-v2 event. */
+export declare function eventV2SigningBytes(unsignedBodyV2: Obj, requiredAlgorithms?: readonly string[]): Buffer;
+/** Digest of the v2 agreement body (domain-separated, signature envelope excluded). */
+export declare function relianceAgreementV2Digest(agreement: Obj): string;
+/** Digest of the v2 event body (domain-separated, signature envelope excluded). */
+export declare function relianceEventV2Digest(event: Obj): string;
+/**
+ * Sign an EP-RELIANCE-AGREEMENT-v2 payload as one or more parties, each under
+ * BOTH Ed25519 and ML-DSA-65 over the SAME bytes. Issuer-side test/reference
+ * tooling; verification never trusts carried key material, only pinned keys
+ * (opts.trustedKeys). THROWS rather than emit a half-hybrid agreement: a
+ * signer missing either half, or a signing pass that fails to produce both
+ * legs, is a programming error, not attacker input.
+ */
+export declare function signRelianceAgreementV2(payload: Obj, signers?: RelianceHybridSigner[]): Promise<Obj>;
+/**
+ * Sign an EP-RELIANCE-EVENT-v2 payload as the relying party, under BOTH
+ * Ed25519 and ML-DSA-65 over the SAME bytes. THROWS rather than emit a
+ * half-hybrid event.
+ */
+export declare function signRelianceEventV2(payload: Obj, signer: RelianceHybridSigner): Promise<Obj>;
+/**
+ * Verify an EP-RELIANCE-AGREEMENT-v2 against pinned party key PAIRS (Ed25519 +
+ * ML-DSA-65 per party). Same non-signature structural proof as
+ * verifyRelianceAgreement (v1) -- see that function's doc comment -- except
+ * every REQUIRED party must carry a full hybrid signature SET that verifies
+ * under BOTH pinned halves. ASYNC (ML-DSA verification is async). Fail-closed:
+ * never throws on caller input; a v1 object refuses immediately on the
+ * version marker.
+ *
+ * @param {object} agreement
+ * @param {object} [opts]
+ * @param {Object<string,{public_key?:string, pq_public_key?:string}>} [opts.trustedKeys]
+ *   key_id -> pinned {Ed25519 SPKI b64u, ML-DSA-65 raw b64u} pair
+ * @param {number|string|Date} [opts.now]
+ * @returns {{valid:boolean, reasons:string[], digest?:string, required_signers?:string[]}}
+ */
+export declare function verifyRelianceAgreementV2(agreement: Obj, opts?: RelianceAgreementV2Options): Promise<Obj>;
+/**
+ * Verify an EP-RELIANCE-EVENT-v2: the per-action claim instrument binding one
+ * action's reliance verdict to an EP-RELIANCE-AGREEMENT-v2. Same proof shape
+ * as verifyRelianceEvent (v1) -- see that function's doc comment -- except
+ * the referenced agreement is checked with verifyRelianceAgreementV2 and the
+ * event's own signature is a hybrid SET verified under the agreement's
+ * relying_party pinned key PAIR. ASYNC. Fail-closed; never throws.
+ *
+ * @param {object} event
+ * @param {object} [opts]
+ * @param {object} [opts.agreement]       the EP-RELIANCE-AGREEMENT-v2 relied on
+ * @param {object} [opts.relianceResult]  the reliance result record the event binds
+ * @param {Object<string,{public_key?:string, pq_public_key?:string}>} [opts.trustedKeys]
+ * @param {number|string|Date} [opts.now]
+ * @returns {{valid:boolean, reasons:string[], agreement_digest?:string, event_digest?:string}}
+ */
+export declare function verifyRelianceEventV2(event: Obj, opts?: RelianceEventV2Options): Promise<Obj>;
+/**
+ * Route an agreement of EITHER version to its verifier. v1 agreements get the
+ * exact v1 verdict (unchanged, synchronous body); v2 agreements get the
+ * hybrid check. Mirrors verifyRevocationStatement in revocation.ts.
+ */
+export declare function verifyRelianceAgreementStatement(agreement: Obj, opts?: RelianceAgreementV2Options): Promise<Obj>;
+/** Route an event of EITHER version to its verifier. Mirrors verifyRevocationStatement. */
+export declare function verifyRelianceEventStatement(event: Obj, opts?: RelianceEventV2Options): Promise<Obj>;
 export {};
 //# sourceMappingURL=reliance-agreement.d.ts.map

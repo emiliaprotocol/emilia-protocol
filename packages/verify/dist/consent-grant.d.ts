@@ -1,3 +1,50 @@
+/**
+ * EP-CONSENT-GRANT-v1 — the scoped, revocable STANDING-CONSENT artifact.
+ *
+ * Fills binding 3 of Blake Morrison's Command Authority Envelope
+ * (draft-morrison-ot-command-authority): a "consent grant" that is scoped,
+ * revocable, and names {asset, control_verb, expiry}. This is DISTINCT from the
+ * per-action receipt at the binding moment (CAE binding 4, which is what an EP
+ * receipt IS). EP always HAD the pieces (policy scoping, directory scope,
+ * pinning, revocation statements); until now it did not ship one first-class
+ * object that is exactly a standing grant. This module is that object.
+ *
+ * THE TWO ARTIFACTS, kept distinct on purpose:
+ *   - The GRANT (this file) is STANDING AUTHORITY: "principal P authorizes
+ *     control_verb V on asset A until expiry E, subject to constraints C." It is
+ *     issued once and holds over a window; it is revocable at any time.
+ *   - The per-action RECEIPT (index.js verifyReceipt / verifyTrustReceipt) is
+ *     the BINDING MOMENT: a named human's device-bound signature over the EXACT
+ *     action, at the moment of consequence, before execution.
+ *   A receipt "acts under" a grant by carrying the grant's grant_hash;
+ *   verifyReceiptUnderGrant() is that composition.
+ *
+ * HONEST BOUNDARY (the same currency bound as everywhere else in this package):
+ *   Neither the grant nor the receipt establishes BUSINESS correctness — that
+ *   the authorized operation is the right thing to do. Offline verification of
+ *   EITHER is AUTHENTICITY-AS-OF-COMMIT, never proof of CURRENT VALIDITY: a grant
+ *   authentic today may have been revoked one second later, and absence of a
+ *   revocation statement is NOT proof of not-revoked. Revocation currency needs a
+ *   FRESH revocation snapshot pushed to the verifier, exactly like any other EP
+ *   status (see docs/EP-REVOCATION-SPEC.md §7 and EP-CURRENCY-v1). This module
+ *   checks a PRESENTED revocation statement and refuses when one binds the grant;
+ *   it does not and cannot manufacture the absence of one.
+ *
+ * REUSE, NOT FORK: canonicalize() + the sha256 helper, the "sha256:<hex>"
+ * convention, the Ed25519 (crypto.verify(null, digest, ...)) signing convention,
+ * and the RFC-3339-with-offset window profile are all imported/mirrored from
+ * index.js. Revocation is checked with verifyRevocation() from revocation.js
+ * against a 'commit'-typed target keyed by grant_hash. No new canonicalization,
+ * no new signature scheme, no new revocation machinery.
+ *
+ * FAIL-CLOSED: every check refuses on missing / malformed / expired / unpinned /
+ * revoked input with a DISTINCT reason. A default is always the weakest outcome
+ * (invalid / not covered).
+ *
+ * @license Apache-2.0
+ */
+import crypto from 'node:crypto';
+import { type AgilityOptions } from './pq-signature-agility.js';
 type Obj = Record<string, any>;
 interface ConsentGrantOptions {
     now?: number | string | Date;
@@ -208,5 +255,164 @@ export declare function verifyReceiptUnderGrant(receipt: Obj, grant: Obj, opts?:
     checks: Record<string, boolean>;
     binding_strength: "none" | "signed_action" | "top_level" | "caller_override";
 };
+/**
+ * Follows the reference hybrid migration written up in full in
+ * packages/verify/src/revocation.ts (search for "EP-REVOCATION-v2" there for
+ * the five-move pattern this copies). Short form as applied here:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. v1's `signature` string becomes v2's
+ *    `signatures` array, which is a wire-format change, so the artifact takes
+ *    a new `profile` (EP-CONSENT-GRANT-v1 -> EP-CONSENT-GRANT-v2) instead of
+ *    growing an optional field on v1. verifyConsentGrant() above is untouched
+ *    and still refuses a v2 grant on its very first content check
+ *    (`grant.profile !== CONSENT_GRANT_VERSION`) before it ever looks at a
+ *    v2-only field, so it cannot crash on one.
+ *
+ * 2. SET SHAPE. `signature` (string) becomes `signatures`: an array shaped
+ *    exactly like EP-SIG-AGILITY-v1's AgileSignature ({ alg, sig, key_id? }),
+ *    one entry per algorithm, in the registered order. The grant body also
+ *    carries a `required_algorithms` field. Ed25519 keeps its base64url SPKI
+ *    DER convention (via the caller's out-of-band pin); ML-DSA-65 carries raw
+ *    base64url bytes, because it has no SPKI encoding EP consumes. Unlike
+ *    EP-REVOCATION-v2, this artifact carries NO self-asserted key material at
+ *    all -- verifyConsentGrant already required an out-of-band pinned key for
+ *    v1, and v2 keeps that property, just widened to both algorithms.
+ *
+ * 3. ANTI-STRIPPING BYTES. grantSignedBodyV2() strips grant_hash and
+ *    signatures (plural) but KEEPS required_algorithms in the body, and
+ *    REFUSES to produce bytes at all unless the grant's own
+ *    required_algorithms is exactly CONSENT_GRANT_V2_REQUIRED_ALGORITHMS.
+ *    grant_hash and BOTH signatures are computed over those bytes. A narrowed
+ *    or reordered required_algorithms therefore fails three ways at once: the
+ *    algorithm_set check (direct comparison), and the hash + signature_set_valid
+ *    checks (grantSignedBodyV2 refuses to even compute bytes to check against).
+ *
+ * 4. V1 COMPATIBILITY. verifyConsentGrant stays synchronous and unchanged.
+ *    verifyConsentGrantV2 is a new, separate, ASYNC entry point (ML-DSA-65
+ *    verification is async); verifyConsentGrantStatement() routes on
+ *    `grant.profile` for a caller holding a mixed bag, mirroring
+ *    verifyRevocationStatement().
+ *
+ * 5. NAMED REFUSALS. Every failure path sets a named boolean in `checks` and
+ *    pushes a human-readable string to `errors`; nothing throws on grant
+ *    contents, pinned keys, or signatures -- only canonicalize()/crypto calls
+ *    wrapped in try/catch. An absent or failing ML-DSA backend surfaces
+ *    through verifyAgileSignatureSet's own 'pq_backend_unavailable' reason as
+ *    a refusal, never a pass on the Ed25519 leg alone.
+ *
+ * HONEST BOUNDARIES. Everything the v1 header says still holds: offline
+ * verification proves the PRESENTED grant is authentic and in-window as of
+ * the commit it was signed at, never that it is still LIVE. Revocation
+ * currency and business correctness are exactly as out of scope as they are
+ * for v1. v1 revocation statements remain valid evidence against a v2
+ * grant's hash exactly as they do today for v1 grants -- there is no
+ * v2-specific revocation path.
+ */
+export declare const CONSENT_GRANT_V2_VERSION = "EP-CONSENT-GRANT-v2";
+/** The registered required algorithm set, in canonical order. */
+export declare const CONSENT_GRANT_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+export interface ConsentGrantV2Signature {
+    alg?: unknown;
+    sig?: unknown;
+    key_id?: unknown;
+}
+/** A v2 principal pin: BOTH public halves, pinned out of band. Mirrors the
+ * single pinnedPrincipalKey string v1 takes, widened to carry both algorithms. */
+export interface PinnedPrincipalKeysV2 {
+    /** Ed25519 base64url SPKI DER. */
+    public_key?: string;
+    /** ML-DSA-65 base64url raw public key bytes. */
+    pq_public_key?: string;
+}
+export interface ConsentGrantV2Options extends AgilityOptions {
+    now?: number | string | Date;
+    revocation?: Obj;
+    revokerKeys?: Record<string, Obj>;
+    revocationMaxAgeSeconds?: number;
+}
+export interface GrantV2Result {
+    valid: boolean;
+    checks: Record<string, boolean>;
+    errors: string[];
+}
+export interface ConsentGrantV2Signer {
+    /** Ed25519 private key. */
+    privateKey: crypto.KeyObject;
+    /** ML-DSA-65 secret key: 4032 raw bytes, or base64url of them. */
+    pqSecretKey: Uint8Array | string;
+    /** ML-DSA-65 public key: 1952 raw bytes, or base64url of them. Validated
+     *  for length only (catches a swapped secret/public pair at issuance) --
+     *  never embedded in the grant; this artifact carries no self-asserted
+     *  key material. */
+    pqPublicKeyB64u: Uint8Array | string;
+}
+/**
+ * Compute the v2 grant_hash: "sha256:" + hex over the canonical bytes of the
+ * grant with grant_hash and signatures excluded (required_algorithms stays
+ * in). Returns null (never throws) if the grant is unusable or its
+ * required_algorithms is not the registered set.
+ */
+export declare function computeGrantHashV2(grant: Obj): string | null;
+/**
+ * REFERENCE ISSUER (tests / examples): mint an EP-CONSENT-GRANT-v2 hybrid
+ * grant. Same spec/signer split as buildConsentGrant(), widened to a signer
+ * carrying BOTH an Ed25519 private key and ML-DSA-65 secret+public key
+ * material (mirrors lib/revocation/revocation.ts's RevocationV2Signer /
+ * buildRevocationV2). THROWS rather than emit a half-hybrid grant --
+ * issuer-side misuse is a programming error, and an unavailable ML-DSA
+ * backend makes signAgileSet() throw, so a grant missing the PQ leg is never
+ * produced.
+ *
+ * @param {object} spec  grant fields WITHOUT profile/required_algorithms/
+ *   grant_hash/signatures: { grant_id, principal, asset, control_verb,
+ *   constraints?, issued_at, expires_at }.
+ * @param {object} signer  { privateKey: Ed25519 KeyObject, pqSecretKey,
+ *   pqPublicKeyB64u }.
+ * @returns {object} the complete EP-CONSENT-GRANT-v2 grant.
+ */
+export declare function buildConsentGrantV2(spec: Obj, signer: ConsentGrantV2Signer): Promise<Obj>;
+/**
+ * Verify an EP-CONSENT-GRANT-v2 hybrid standing consent grant, fully offline.
+ * FAIL-CLOSED: every gating check must be true; any one false yields
+ * valid:false, and a v2 grant NEVER verifies on one leg alone. Never throws
+ * on caller-controlled input (grant contents, pinned keys, signatures).
+ *
+ * Establishes, all fail-closed (see the checks object for the full set):
+ *   (version)              grant.profile === CONSENT_GRANT_V2_VERSION.
+ *   (structure)             the same asset/control_verb sanity guard v1 uses.
+ *   (algorithm_set)         grant.required_algorithms is EXACTLY the
+ *                           registered set, order-sensitive.
+ *   (legs_present)          grant.signatures carries one well-formed entry
+ *                           per required algorithm, no duplicates, no extras.
+ *   (key_pinned)            BOTH an Ed25519 and an ML-DSA-65 principal key
+ *                           are pinned (identified-but-not-trusted).
+ *   (within_window)         now is within [issued_at, expires_at].
+ *   (hash)                  grant_hash binds the v2 body (including
+ *                           required_algorithms).
+ *   (signature_set_valid)   both signatures verify over the recomputed bytes
+ *                           under the PINNED keys (never any self-asserted
+ *                           key material -- this artifact carries none).
+ *   (revocation)            if opts.revocation is supplied, the EXISTING v1
+ *                           verifyRevocation() from revocation.js against a
+ *                           {target_type:'commit', target_id: grant.grant_id,
+ *                           action_hash: grant.grant_hash} target -- no
+ *                           v2-specific revocation path.
+ *
+ * @param {object} grant  the EP-CONSENT-GRANT-v2 object.
+ * @param {{public_key?:string, pq_public_key?:string}|undefined} pinnedPrincipalKeys
+ *   the principal's Ed25519 (base64url SPKI DER) and ML-DSA-65 (base64url raw
+ *   bytes) public keys. REQUIRED -- either half missing => refuse (unpinned).
+ * @param {object} [opts]
+ * @returns {Promise<{valid:boolean, checks:Record<string,boolean>, errors:string[]}>}
+ */
+export declare function verifyConsentGrantV2(grant: Obj, pinnedPrincipalKeys: PinnedPrincipalKeysV2 | undefined, opts?: ConsentGrantV2Options): Promise<GrantV2Result>;
+/**
+ * Route a grant of EITHER version to its verifier. v1 grants get the exact
+ * v1 verdict (sync, wrapped as a resolved Promise); v2 grants get the async
+ * hybrid check. A grant whose profile is neither refuses on the profile
+ * marker, through the v1 verifier -- the fail-closed answer. Mirrors
+ * verifyRevocationStatement() in revocation.ts.
+ */
+export declare function verifyConsentGrantStatement(grant: Obj, pinnedKeys: string | PinnedPrincipalKeysV2 | undefined, opts?: ConsentGrantOptions | ConsentGrantV2Options): Promise<GrantResult | GrantV2Result>;
 export {};
 //# sourceMappingURL=consent-grant.d.ts.map
