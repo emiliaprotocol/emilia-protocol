@@ -5,20 +5,14 @@
  * EMILIA Protocol — MCP Server
  * @license Apache-2.0
  *
- * Trust evaluation tools for AI agents.
- * Add this server to any MCP-compatible client to give your agent
- * access to EP trust profiles and policy evaluation.
+ * Exact-action approval tools for AI agents.
+ * Add this server to an MCP-compatible client to request authorization before
+ * a consequential action, check the signoff, and verify its receipt.
  *
- * PRIMARY TOOLS (trust-profile-first):
- *   ep_trust_profile   — Get an entity's full trust profile (canonical)
- *   ep_trust_evaluate  — Evaluate an entity against a trust policy
- *   ep_submit_receipt  — Submit a transaction receipt
- *
- * SECONDARY TOOLS:
- *   ep_search_entities — Search for entities
- *   ep_verify_receipt  — Verify receipt against Merkle root
- *   ep_register_entity — Register a new entity
- *   ep_leaderboard     — Get top entities
+ * DEFAULT ACTION FRONT DOOR:
+ *   ep_guard_action    — Request authorization for the exact action
+ *   ep_check_signoff   — Check pending, denied, approved, or consumed state
+ *   ep_verify_receipt  — Verify the stored receipt and anchor
  *
  * V1.0 ADDITIONS:
  *   ep_create_delegation    — Create a delegation record (principal → agent)
@@ -280,10 +274,9 @@ const TOOLS = [
     },
     {
         name: 'ep_verify_receipt',
-        description: 'Verify a trust receipt — its signature and Merkle inclusion against the ' +
-            'anchored root. Read-only. Returns valid/invalid plus the verified claim ' +
-            '(action, approver, outcome) and anchor status; use it to independently ' +
-            'confirm a receipt was issued by EP and has not been tampered with.',
+        description: 'Ask the configured EMILIA service to verify a stored trust receipt and ' +
+            'report its hash and anchor status. Read-only, but not an offline verifier: ' +
+            'the result is the service response for the supplied receipt_id.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -1560,23 +1553,23 @@ function formatEvaluation(data) {
 // =============================================================================
 // Server
 // =============================================================================
-const server = new Server({ name: 'emilia-protocol', version: '1.0.0' }, { capabilities: { tools: {}, resources: {}, prompts: {} } });
-// The default surface is the trust-gate + pre-action protocol — the reason
-// to install this server. The legacy registry/reputation tools (entity
-// scoring, leaderboards, disputes, identity continuity, ZK proofs) remain
-// fully implemented and callable, but are hidden from tool discovery unless
-// EP_INCLUDE_REGISTRY_TOOLS=true, so an agent sees a focused, coherent set.
-const CORE_TOOL_NAMES = new Set([
-    'ep_guard_action', 'ep_check_signoff', // the gate
+export const MCP_SERVER_VERSION = '2.1.0';
+const server = new Server({ name: 'emilia-protocol', version: MCP_SERVER_VERSION }, { capabilities: { tools: {}, resources: {}, prompts: {} } });
+// The default surface is one protected-action front door. Identity, handshake,
+// commit, delegation, and registry/reputation tools remain implemented, but an
+// agent must not have to sort through them before finding the action guard.
+const ACTION_TOOL_NAMES = new Set([
+    'ep_guard_action', 'ep_check_signoff',
+    'ep_verify_receipt',
+]);
+const PROTOCOL_TOOL_NAMES = new Set([
     'ep_initiate_handshake', 'ep_add_presentation', // pre-action binding
     'ep_verify_handshake', 'ep_get_handshake', 'ep_revoke_handshake',
     'ep_issue_commit', 'ep_verify_commit', 'ep_get_commit_status',
     'ep_revoke_commit', 'ep_bind_receipt_to_commit',
-    'ep_verify_receipt', // offline-verify a receipt
-    'ep_list_policies', // discover policies
     'ep_create_delegation', 'ep_verify_delegation', // delegated authority
-    'ep_install_preflight', // vet software before install
 ]);
+const INCLUDE_PROTOCOL_TOOLS = process.env.EP_INCLUDE_PROTOCOL_TOOLS === 'true';
 const INCLUDE_REGISTRY_TOOLS = process.env.EP_INCLUDE_REGISTRY_TOOLS === 'true';
 // MCP tool annotations (title + behavior hints) — required by the Anthropic
 // directory review ("All tools must include a title and the applicable
@@ -1641,9 +1634,20 @@ function withAnnotations(tool) {
         },
     };
 }
-const ADVERTISED_TOOLS = (INCLUDE_REGISTRY_TOOLS
-    ? TOOLS
-    : TOOLS.filter((t) => CORE_TOOL_NAMES.has(t.name))).map(withAnnotations);
+export function advertisedToolsFor({ includeProtocolTools = false, includeRegistryTools = false, } = {}) {
+    if (includeRegistryTools)
+        return TOOLS.map(withAnnotations);
+    const names = new Set(ACTION_TOOL_NAMES);
+    if (includeProtocolTools) {
+        for (const name of PROTOCOL_TOOL_NAMES)
+            names.add(name);
+    }
+    return TOOLS.filter((tool) => names.has(tool.name)).map(withAnnotations);
+}
+const ADVERTISED_TOOLS = advertisedToolsFor({
+    includeProtocolTools: INCLUDE_PROTOCOL_TOOLS,
+    includeRegistryTools: INCLUDE_REGISTRY_TOOLS,
+});
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: ADVERTISED_TOOLS }));
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const params = request.params;

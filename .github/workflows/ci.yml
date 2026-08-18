@@ -879,6 +879,12 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20
+          cache: npm
+      # The evaluator verifies the externally produced result through Gate's
+      # repository-local verification path. Install the locked workspace graph
+      # before importing that path; the external Rust source and vector bundle
+      # remain immutable and separately pinned below.
+      - run: npm ci --ignore-scripts
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.94.1 --profile minimal --no-self-update
       - name: Rebuild external verifier from Cargo.lock

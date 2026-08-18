@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.emiliaprotocol/mcp-server",
   "title": "Emilia Protocol",
-  "description": "Trust & human sign-off for AI agents: approval required before irreversible agent actions",
-  "version": "1.0.4",
+  "description": "Exact-action approval for consequential AI-agent actions: request signoff, check status, and verify the resulting receipt",
+  "version": "2.1.0",
   "repository": {
     "url": "https://github.com/emiliaprotocol/emilia-protocol",
     "source": "github"
@@ -14,7 +14,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@emilia-protocol/mcp-server",
-      "version": "1.0.4",
+      "version": "2.1.0",
       "transport": {
         "type": "stdio"
       },
@@ -22,9 +22,21 @@
       "environmentVariables": [
         {
           "name": "EP_API_KEY",
-          "description": "Optional API key for write operations (registering entities, submitting receipts). Public read tools work without it.",
+          "description": "API key for live action-guard, signoff, and write operations. Public receipt lookup may work without it.",
           "isRequired": false,
           "isSecret": true
+        },
+        {
+          "name": "EP_INCLUDE_PROTOCOL_TOOLS",
+          "description": "Set to true to advertise handshake, commit, and delegation tools in addition to the default three-tool action front door.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "EP_INCLUDE_REGISTRY_TOOLS",
+          "description": "Set to true to advertise the complete 36-tool legacy registry and reputation catalog.",
+          "isRequired": false,
+          "isSecret": false
         }
       ]
     }

@@ -26,7 +26,7 @@ let strictJsonGate;
 try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
 catch { ({ strictJsonGate } = await import('../verify/strict-json.js')); }
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
-const MCP_GUARD_INSTALL_SPEC = '@emilia-protocol/mcp-guard@0.4.5';
+const MCP_GUARD_INSTALL_SPEC = '@emilia-protocol/mcp-guard@0.5.0';
 
 function lstatIfPresent(target) {
   try { return fs.lstatSync(target); }
@@ -136,7 +136,11 @@ if (input.source === 'openapi') {
 // scan never saw is caught by defaultIrreversible:true.
 const annEntries = rep.results.map(({ action, classification: c }) => {
   const gated = c.decision === 'gate' || c.decision === 'review_fail_closed';
-  const actionType = c.category ? (rep.manifest.actions.find((a) => a.match?.tool === action.name)?.action_type || action.name) : action.name;
+  // The reviewed manifest is the action-identity contract. The wrapper must
+  // bind the exact same action_type even for an unrecognized mutator that was
+  // defaulted fail-closed; otherwise a receipt acquired from the manifest can
+  // never satisfy the generated runtime guard.
+  const actionType = rep.manifest.actions.find((a) => a.match?.tool === action.name)?.action_type || action.name;
   const note = c.decision === 'review_fail_closed' ? '  // REVIEW: unrecognized mutator, defaulted fail-closed — confirm or set false'
     : c.decision === 'gate' ? `  // ${c.assurance_class}` : '  // read-only';
   return gated
@@ -200,14 +204,17 @@ export function guardDispatch(dispatch, runtime = {}) {
 }
 
 /** Local setup check only. Never use ephemeral state in production. */
-export function guardDispatchDemo(dispatch) {
+export function guardDispatchDemo(dispatch, runtime = {}) {
   if (process.env.NODE_ENV === 'production') {
     throw new TypeError('[emilia] demo guard is unavailable in production');
   }
   return withMcpGuard(dispatch, {
     annotations,
     defaultIrreversible: true,
-    verifyOpts: { trustedKeys: [] },
+    verifyOpts: {
+      trustedKeys: Array.isArray(runtime.trustedKeys) ? runtime.trustedKeys : [],
+      verifyAssurance: runtime.verifyAssurance,
+    },
     enforceDemand: true,
     allowEphemeralLedger: true,
   });
@@ -217,12 +224,12 @@ export { manifest };
 `;
 
 const verifySetupJs = `// SPDX-License-Identifier: Apache-2.0
-// GENERATED local setup check. It performs no network request and executes no
-// consequential handler. Ephemeral state here is intentional and demo-only.
+// GENERATED local setup check. It performs no network request and only invokes
+// its own synthetic handler. Ephemeral state here is intentional and demo-only.
 // It writes nothing unless --emit-handoff is explicit, and then only creates
 // scan-adoption-handoff.json beside this file without replacing existing bytes.
 import assert from 'node:assert/strict';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
 import {
   closeSync,
   fsyncSync,
@@ -234,7 +241,41 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { bindToolAction } from '@emilia-protocol/mcp-guard';
 import { guardDispatchDemo } from './guard.mjs';
+
+function canonicalize(value) {
+  if (value === null || value === undefined) return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(canonicalize).join(',') + ']';
+  if (typeof value === 'object') {
+    return '{' + Object.keys(value).sort()
+      .map((key) => JSON.stringify(key) + ':' + canonicalize(value[key]))
+      .join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
+
+function mintSyntheticReceipt(action, receiptId, privateKey, publicKey) {
+  const payload = {
+    receipt_id: receiptId,
+    subject: 'agent:scan-local-rr1-fixture',
+    created_at: new Date().toISOString(),
+    claim: {
+      action_type: action,
+      outcome: 'allow_with_signoff',
+      approver: 'ep:approver:synthetic-local-fixture',
+    },
+  };
+  return {
+    '@version': 'EP-RECEIPT-v1',
+    payload,
+    signature: {
+      algorithm: 'Ed25519',
+      value: sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url'),
+    },
+    public_key: publicKey,
+  };
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 const manifestFile = 'action-control.manifest.json';
@@ -316,36 +357,133 @@ if (cli.emitHandoff) {
   if (selectedActions.length === 0) throw new Error('at least one visible consequential action must be explicitly selected');
 }
 
-let called = false;
+let syntheticHandlerCalls = 0;
 const rawDispatch = async () => {
-  called = true;
+  syntheticHandlerCalls += 1;
   return { executed: true };
 };
-const guarded = guardDispatchDemo(rawDispatch);
-const checkedTools = selectedActions.length > 0
-  ? selectedActions.map((action) => action.selector.tool)
-  : [visibleConsequential[0]?.selector.tool || '__emilia_local_consequential_check__'];
-for (const tool of checkedTools) {
-  const result = await guarded(tool, {});
-  assert.equal(result?.ep_refused, true, 'missing receipt was not refused');
-  assert.equal(result?.code, 'emilia_receipt_required', 'unexpected refusal code');
-  assert.equal(result?.stage, 'consent', 'unexpected refusal stage');
+const keyPair = generateKeyPairSync('ed25519');
+const publicKey = keyPair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+const guarded = guardDispatchDemo(rawDispatch, {
+  trustedKeys: [publicKey],
+  // This local fixture checks control flow, exact-action binding, and one-use
+  // consumption. It does not claim a named human or hardware-backed assurance.
+  verifyAssurance: (_receipt, { requiredTier }) => ({
+    ok: true,
+    tier: requiredTier,
+    reason: 'synthetic_local_fixture',
+  }),
+});
+const checkedActions = selectedActions.length > 0
+  ? selectedActions
+  : [visibleConsequential[0] || {
+    id: 'synthetic.local-check',
+    selector: { protocol: 'mcp', tool: '__emilia_local_consequential_check__' },
+    action_type: '__emilia_local_consequential_check__',
+    assurance_class: 'class_a',
+    receipt_required: true,
+  }];
+const rr1Cases = [];
+for (const [index, selected] of checkedActions.entries()) {
+  const tool = selected.selector.tool;
+  const approvedArgs = { rr1_fixture: { marker: 'approved', sequence: index + 1 } };
+  const approvedAction = bindToolAction(tool, approvedArgs, selected.action_type);
+
+  const beforeMissing = syntheticHandlerCalls;
+  const missing = await guarded(tool, approvedArgs);
+  assert.equal(missing?.ep_refused, true, 'missing receipt was not refused');
+  assert.equal(missing?.code, 'emilia_receipt_required', 'unexpected refusal code');
+  assert.equal(syntheticHandlerCalls, beforeMissing, 'missing receipt reached the synthetic handler');
+  rr1Cases.push({
+    case_id: 'RR1-01-missing-receipt:' + tool,
+    expected: 'emilia_receipt_required',
+    observed: missing.code,
+    handler_calls_after: syntheticHandlerCalls,
+  });
+
+  const validReceipt = mintSyntheticReceipt(
+    approvedAction,
+    'rr1_valid_' + (index + 1),
+    keyPair.privateKey,
+    publicKey,
+  );
+  const admitted = await guarded(tool, { ...approvedArgs, __ep: { receipt: validReceipt } });
+  assert.equal(
+    admitted?.executed,
+    true,
+    'valid synthetic receipt was not admitted: ' + JSON.stringify(admitted),
+  );
+  assert.equal(syntheticHandlerCalls, beforeMissing + 1, 'valid receipt did not invoke exactly one synthetic handler');
+  rr1Cases.push({
+    case_id: 'RR1-02-valid-receipt:' + tool,
+    expected: 'admitted',
+    observed: 'admitted',
+    handler_calls_after: syntheticHandlerCalls,
+  });
+
+  const substitutionReceipt = mintSyntheticReceipt(
+    approvedAction,
+    'rr1_substitution_' + (index + 1),
+    keyPair.privateKey,
+    publicKey,
+  );
+  const substituted = await guarded(tool, {
+    rr1_fixture: { marker: 'substituted', sequence: index + 1 },
+    __ep: { receipt: substitutionReceipt },
+  });
+  assert.equal(substituted?.rejected?.reason, 'action_mismatch', 'substituted action was not refused');
+  assert.equal(syntheticHandlerCalls, beforeMissing + 1, 'substitution reached the synthetic handler');
+  rr1Cases.push({
+    case_id: 'RR1-03-action-substitution:' + tool,
+    expected: 'action_mismatch',
+    observed: substituted.rejected.reason,
+    handler_calls_after: syntheticHandlerCalls,
+  });
+
+  const replay = await guarded(tool, { ...approvedArgs, __ep: { receipt: validReceipt } });
+  assert.equal(replay?.rejected?.reason, 'replay_refused', 'spent receipt was not refused');
+  assert.equal(syntheticHandlerCalls, beforeMissing + 1, 'replay reached the synthetic handler');
+  rr1Cases.push({
+    case_id: 'RR1-04-replay:' + tool,
+    expected: 'replay_refused',
+    observed: replay.rejected.reason,
+    handler_calls_after: syntheticHandlerCalls,
+  });
 }
 let unknownTool = '__emilia_unscanned_local_check__';
 while (visibleByTool.has(unknownTool)) unknownTool += '_next';
+const beforeUnknown = syntheticHandlerCalls;
 const unknownResult = await guarded(unknownTool, {});
 assert.equal(unknownResult?.ep_refused, true, 'an unscanned runtime tool was not refused');
-assert.equal(called, false, 'underlying handler was called by an unscanned runtime tool');
+assert.equal(syntheticHandlerCalls, beforeUnknown, 'an unscanned runtime tool reached the synthetic handler');
 
-console.log('EMILIA PROTECT CHECK: PASS — underlying handler was not called.');
-console.log('This proves only that the generated local wrapper refused the selected synthetic call(s).');
+const rr1ResultCore = {
+  profile: 'EP-RR-1-LOCAL-v1',
+  manifest_sha256: manifestDigest,
+  tested_actions: checkedActions.map((action) => ({
+    selector: action.selector,
+    action_type: action.action_type,
+    assurance_class: action.assurance_class,
+    receipt_required: action.receipt_required,
+  })),
+  cases: rr1Cases,
+  synthetic_handler_calls: syntheticHandlerCalls,
+};
+const rr1ResultsDigest = 'sha256:' + createHash('sha256')
+  .update(Buffer.from(JSON.stringify(rr1ResultCore), 'utf8'))
+  .digest('hex');
+
+console.log('EMILIA RR-1 CHECK: PASS — ' + rr1Cases.length + '/' + rr1Cases.length + ' cases matched the protected-action contract.');
+console.log('The synthetic local handler ran exactly ' + (syntheticHandlerCalls === 1 ? 'once.' : syntheticHandlerCalls + ' times.'));
+console.log("This proves only the generated local wrapper's synthetic receipt-required loop.");
 console.log('Production still requires a durable ledger, shared atomic store, pinned keys, and a non-bypassable dispatch boundary.');
 console.log('Manifest digest to review: ' + manifestDigest);
 console.log('Generated scaffold digest: ' + scaffoldDigest);
+console.log('RR-1 results digest: ' + rr1ResultsDigest);
 
 if (cli.emitHandoff) {
   const handoff = {
-    '@version': 'EP-SCAN-ADOPTION-HANDOFF-v1',
+    '@version': 'EP-SCAN-ADOPTION-HANDOFF-v2',
     reviewed_manifest: {
       file: manifestFile,
       sha256: manifestDigest,
@@ -372,6 +510,32 @@ if (cli.emitHandoff) {
           'durable_state',
           'trusted_key_configuration',
           'signed_refusal_artifact',
+          'public_verification',
+        ],
+      },
+    },
+    local_rr1: {
+      status: 'passed',
+      ...rr1ResultCore,
+      results_digest: rr1ResultsDigest,
+      state: 'ephemeral_demo_only',
+      evidence_class: 'self_attested_local_reproduction',
+      claim_boundary: {
+        asserted: [
+          'missing_receipt_refused',
+          'synthetic_exact_action_admitted',
+          'synthetic_action_substitution_refused',
+          'synthetic_receipt_replay_refused',
+        ],
+        not_asserted: [
+          'named_human_approval',
+          'hardware_backed_assurance',
+          'production_issuer_trust',
+          'production_enforcement',
+          'complete_mediation',
+          'credential_isolation',
+          'durable_state',
+          'real_world_effect',
           'public_verification',
         ],
       },

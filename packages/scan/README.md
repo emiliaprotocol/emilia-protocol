@@ -17,7 +17,7 @@ npx @emilia-protocol/scan ./openapi.json           # classify your HTTP API surf
 # generate reviewed protection files (dry-run by default)
 npx @emilia-protocol/scan protect ./tools.json
 npx @emilia-protocol/scan protect ./tools.json --apply
-node emilia/verify-setup.mjs                       # synthetic local refusal check
+node emilia/verify-setup.mjs                       # synthetic local 4-case RR-1 check
 node emilia/verify-setup.mjs --emit-handoff \
   --reviewed-manifest-digest 'sha256:<reviewed-digest>' \
   --action '<reviewed-tool-name>'                  # replace placeholders after review
@@ -80,7 +80,7 @@ accepts MCP tool lists and generates a `withMcpGuard` wrap. OpenAPI remains a
 passive scan/manifest surface in this release: the command refuses to generate
 a verification-only HTTP middleware until durable one-use consumption is wired.
 Generated integration instructions install the audited runtime exactly with
-`npm install --save-exact @emilia-protocol/mcp-guard@0.4.5`.
+`npm install --save-exact @emilia-protocol/mcp-guard@0.5.0`.
 
 It does exactly three things, and never more:
 
@@ -91,15 +91,17 @@ It does exactly three things, and never more:
    tier (`class_a` or `quorum`) and the fields the receipt must bind.
 3. **Protect one declared MCP surface** — emit a proposed `agent-action-control`
    manifest, a production wrapper, integration instructions, and a local
-   synthetic refusal check. You still review and install the wrapper.
+   synthetic four-case receipt-required check. You still review and install the wrapper.
 
 The MCP production wrapper requires a durable provenance ledger and a shared
 atomic consumption store. It refuses to initialize without both. The generated
-`verify-setup.mjs` deliberately uses ephemeral demo state so it can prove one
-narrow fact locally: a synthetic destructive call without a receipt was refused
-and its handler was not invoked. That check does not prove provider credentials
-are unreachable through some other path, that your production state is durable,
-or that your keys and approval adapters are correctly configured.
+`verify-setup.mjs` deliberately uses an ephemeral key, synthetic assurance, and
+process-local state to exercise four control-flow cases: no receipt refuses, a
+receipt for the exact action admits, changed arguments refuse, and a spent
+receipt cannot admit again. Its only handler is a synthetic local function. The
+check does not establish named-human approval, hardware assurance, production
+issuer trust, credential isolation, durable state, complete mediation, or a
+real-world effect.
 
 ## Machine-readable adoption handoff
 
@@ -121,7 +123,7 @@ Creation is no-replace: an existing regular file, symlink, or hard link is never
 followed or overwritten. The verification command makes no network request,
 launches no process, and never invokes the supplied consequential handler.
 
-The JSON contract is `EP-SCAN-ADOPTION-HANDOFF-v1`:
+The JSON contract is `EP-SCAN-ADOPTION-HANDOFF-v2`:
 
 - `reviewed_manifest` binds the SHA-256 digest of the exact reviewed manifest
   file bytes. Emission fails unless the caller-supplied digest matches.
@@ -136,6 +138,11 @@ The JSON contract is `EP-SCAN-ADOPTION-HANDOFF-v1`:
   refusal. It explicitly does not assert production enforcement, complete
   mediation, credential isolation, durable state, trusted-key configuration, a
   signed refusal artifact, or public verification.
+- `local_rr1` binds the manifest digest and tested action contracts, records the
+  ordered four-case result for every selected action and the number of synthetic
+  handler calls, then computes a deterministic SHA-256 over those fields. It is
+  a self-attested local reproduction with synthetic assurance and ephemeral
+  state, not evidence of a real approver or protected deployment.
 
 The handoff has no timestamp and reads no ambient identity or host source. It
 does not include tool arguments, credential values, input descriptions, source

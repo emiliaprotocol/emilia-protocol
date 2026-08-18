@@ -181,8 +181,9 @@ export function checkPackedPackageExports() {
         const setupOutput = run(process.execPath, [
             path.join(protectedOutput, 'verify-setup.mjs'),
         ], temporary);
-        if (!setupOutput.includes('EMILIA PROTECT CHECK: PASS')) {
-            throw new Error('packed scan protect setup check did not prove refusal');
+        if (!setupOutput.includes('EMILIA RR-1 CHECK: PASS — 4/4 cases matched the protected-action contract.')
+            || !setupOutput.includes('The synthetic local handler ran exactly once.')) {
+            throw new Error('packed scan RR-1 setup check did not prove its four-case action contract');
         }
         const imports = targets.filter((target) => target.kind === 'module');
         const assets = targets.filter((target) => target.kind === 'asset');
