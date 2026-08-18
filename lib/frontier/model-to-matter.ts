@@ -28,6 +28,12 @@ import {
 } from '../evidence/evidence-graph.js';
 import { trustProgramDigest } from '../../packages/gate/trust-program.js';
 import { computeCaid, verifyCaid } from '../../caid/impl/js/caid.mjs';
+import {
+  signAgile,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgileSignature,
+} from '@emilia-protocol/verify/pq-signature-agility';
 
 export const M2M_ACTION_VERSION = 'EP-MODEL-TO-MATTER-ACTION-v1';
 export const M2M_PROFILE_VERSION = 'EP-MODEL-TO-MATTER-PROFILE-v1';
@@ -70,6 +76,25 @@ export const M2M_EVIDENCE_TYPES = Object.freeze([
 
 const EVIDENCE_DOMAIN = `${M2M_EVIDENCE_VERSION}\0`;
 const EFFECT_DOMAIN = `${M2M_EFFECT_VERSION}\0`;
+
+/**
+ * Hybrid (Ed25519 + ML-DSA-65) siblings of the evidence and effect artifacts.
+ * REFERENCE MIGRATION FOLLOWED: packages/verify/src/revocation.ts
+ * EP-REVOCATION-v2. Five moves: (1) version bump, not a field bump -- v1
+ * verifiers below are untouched and refuse a v2 artifact on the version
+ * marker before inspecting any signature; (2) set shape -- `signature`
+ * carries `required_algorithms` plus a `signatures` array shaped exactly
+ * like EP-SIG-AGILITY-v1's AgileSignature; (3) anti-stripping -- the
+ * required set is committed INSIDE the signed bytes (signingBytesV2 below);
+ * (4) v1 stays synchronous, v2 is a separate async entry point; (5) named
+ * refusals, nothing throws, an absent ML-DSA backend is
+ * 'pq_backend_unavailable', never a pass.
+ */
+export const M2M_EVIDENCE_V2_VERSION = 'EP-MODEL-TO-MATTER-EVIDENCE-v2';
+export const M2M_EFFECT_V2_VERSION = 'EP-MODEL-TO-MATTER-EFFECT-v2';
+export const M2M_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+const EVIDENCE_V2_DOMAIN = `${M2M_EVIDENCE_V2_VERSION}\0`;
+const EFFECT_V2_DOMAIN = `${M2M_EFFECT_V2_VERSION}\0`;
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/;
 const M2M_CAID_RE = /^caid:1:science\.bio\.experiment\.execute\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const RELIANCE_PROGRAM_VERSION = 'EP-RELIANCE-PROGRAM-v1';
@@ -239,6 +264,86 @@ function verifySignature(document: any, domain: string, digestField: string): an
   } catch {
     return fail('signature_invalid');
   }
+}
+
+function pqKeyIdFor(pqPublicKeyB64u: string): string {
+  return `ep:m2m:pq-key:sha256:${sha256hex(Buffer.from(pqPublicKeyB64u, 'base64url')).slice(0, 16)}`;
+}
+
+function toRawKeyBytes(value: unknown): Uint8Array | null {
+  if (value instanceof Uint8Array) return value;
+  if (typeof value !== 'string' || value.length === 0) return null;
+  try {
+    const decoded = Buffer.from(value, 'base64url');
+    return decoded.toString('base64url') === value ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Domain-separated bytes for the v2 hybrid signature. Wraps the SAME v1
+ * signingBytes() output and commits the registered algorithm set alongside
+ * it (anti-stripping; move 3 in the module-header migration notes above): a
+ * narrowed or stripped set changes these bytes, and the surviving leg no
+ * longer verifies.
+ */
+function signingBytesV2(domain: string, body: any): Buffer {
+  return Buffer.from(canonicalize({
+    domain: signingBytes(domain, body).toString('base64url'),
+    required_algorithms: [...M2M_V2_REQUIRED_ALGORITHMS],
+  }));
+}
+
+function signedBodyDigestV2(domain: string, document: any): string {
+  return `sha256:${sha256hex(signingBytesV2(domain, unsigned(document)))}`;
+}
+
+/**
+ * v2 hybrid twin of verifySignature. ASYNC (ML-DSA verification is async).
+ * Verifies via verifyAgileSignatureSet under policy 'hybrid_all' -- one leg
+ * alone never verifies, and a missing/duplicated leg is a named refusal.
+ */
+async function verifySignatureV2(document: any, domain: string, digestField: string): Promise<any> {
+  const sig = document?.signature;
+  const fail = (reason: string) => ({ verified: false, reason });
+  if (!sig
+    || !Array.isArray(sig.required_algorithms)
+    || sig.required_algorithms.length !== M2M_V2_REQUIRED_ALGORITHMS.length
+    || !M2M_V2_REQUIRED_ALGORITHMS.every((alg, index) => sig.required_algorithms[index] === alg)
+    || typeof sig.public_key !== 'string'
+    || typeof sig.pq_public_key !== 'string'
+    || !Array.isArray(sig.signatures)
+    || sig.signatures.length !== M2M_V2_REQUIRED_ALGORITHMS.length
+    || !validDigest(sig[digestField])) {
+    return fail('signature_missing_or_malformed');
+  }
+  let digestValue;
+  try { digestValue = signedBodyDigestV2(domain, document); } catch { return fail('uncanonicalizable'); }
+  if (digestValue !== sig[digestField]) return fail('digest_mismatch');
+  const keyId = keyIdFor(sig.public_key);
+  if (sig.key_id !== undefined && sig.key_id !== keyId) return fail('key_id_mismatch');
+  const pqKeyId = pqKeyIdFor(sig.pq_public_key);
+  if (sig.pq_key_id !== undefined && sig.pq_key_id !== pqKeyId) return fail('pq_key_id_mismatch');
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(
+      new Uint8Array(signingBytesV2(domain, unsigned(document))),
+      sig.signatures,
+      [
+        { alg: 'Ed25519', public_key: sig.public_key, key_id: keyId },
+        { alg: 'ML-DSA-65', public_key: sig.pq_public_key, key_id: pqKeyId },
+      ],
+      { policy: 'hybrid_all', requiredAlgorithms: [...M2M_V2_REQUIRED_ALGORITHMS] },
+    );
+  } catch {
+    // verifyAgileSignatureSet documents that it never throws; an injected
+    // backend that does is still a refusal here, never a pass.
+    setResult = null;
+  }
+  return setResult?.verified === true
+    ? { verified: true, digest: digestValue, key_id: keyId, pq_key_id: pqKeyId }
+    : fail('signature_invalid');
 }
 
 function assertAction(action) {
@@ -585,13 +690,16 @@ function boundReplayDigest(replayDigest: any, binding: any): any {
   });
 }
 
-function assertEvidenceBody(body: any): void {
+// `version` defaults to the exact v1 constant, so every existing call site
+// (which omits it) is byte-identical to before this parameter existed.
+// signModelToMatterEvidenceV2 passes M2M_EVIDENCE_V2_VERSION explicitly.
+function assertEvidenceBody(body: any, version: string = M2M_EVIDENCE_VERSION): void {
   assertNoRawContent(body);
   assertOnlyKeys(body, new Set([
     '@version', 'evidence_type', 'action_digest', 'issuer_id', 'issued_at',
     'expires_at', 'claims', 'outcome',
   ]), 'evidence');
-  if (body['@version'] !== M2M_EVIDENCE_VERSION) throw new Error(`evidence @version must be ${M2M_EVIDENCE_VERSION}`);
+  if (body['@version'] !== version) throw new Error(`evidence @version must be ${version}`);
   if (!M2M_EVIDENCE_TYPES.includes(body.evidence_type)) throw new Error('unsupported evidence_type');
   assertDigest(body.action_digest, 'action_digest');
   assertString(body.issuer_id, 'issuer_id');
@@ -672,6 +780,53 @@ export function signModelToMatterEvidence(input: any, privateKey: any): any {
       public_key: publicKey,
       evidence_digest: evidenceDigest,
       signature_b64u: crypto.sign(null, signingBytes(EVIDENCE_DOMAIN, body), privateKey).toString('base64url'),
+    },
+  });
+}
+
+/**
+ * Hybrid (Ed25519 + ML-DSA-65) twin of signModelToMatterEvidence. There is no
+ * KMS/HSM ML-DSA-65 custody path today (see docs/protocol/pq-hybrid-program.md),
+ * so the ML-DSA-65 secret key is a raw key passed directly, exactly like the
+ * existing raw-privateKey Ed25519 convention this file already uses. The
+ * ML-DSA-65 leg goes through signAgile verbatim; this module never
+ * reimplements FIPS 204 signing.
+ */
+export async function signModelToMatterEvidenceV2(input: any, keys: {
+  ed25519: any;
+  mldsa65: { public_key: Uint8Array | string; private_key: Uint8Array | string; key_id?: string };
+}): Promise<any> {
+  if (!isObject(input)) throw new Error('evidence input must be an object');
+  const body = { ...clone(input), '@version': M2M_EVIDENCE_V2_VERSION };
+  assertEvidenceBody(body, M2M_EVIDENCE_V2_VERSION);
+  const publicKey = publicKeyToB64u(keys?.ed25519);
+  const pqPublicKeyBytes = toRawKeyBytes(keys?.mldsa65?.public_key);
+  if (!pqPublicKeyBytes || pqPublicKeyBytes.length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+    throw new Error(`mldsa65.public_key must be the raw ${ML_DSA_65_PUBLIC_KEY_BYTES}-byte key or its base64url encoding`);
+  }
+  const pqPublicKey = Buffer.from(pqPublicKeyBytes).toString('base64url');
+  const bytes = signingBytesV2(EVIDENCE_V2_DOMAIN, body);
+  const evidenceDigest = `sha256:${sha256hex(bytes)}`;
+  const ed25519Sig = crypto.sign(null, bytes, keys.ed25519).toString('base64url');
+  const mldsaSignature = await signAgile(new Uint8Array(bytes), {
+    alg: 'ML-DSA-65',
+    private_key: keys.mldsa65.private_key,
+    key_id: keys.mldsa65.key_id,
+  });
+  const signatures: AgileSignature[] = [
+    { alg: 'Ed25519', sig: ed25519Sig, key_id: keyIdFor(publicKey) },
+    mldsaSignature,
+  ];
+  return deepFreeze({
+    ...body,
+    signature: {
+      required_algorithms: [...M2M_V2_REQUIRED_ALGORITHMS],
+      key_id: keyIdFor(publicKey),
+      public_key: publicKey,
+      pq_key_id: pqKeyIdFor(pqPublicKey),
+      pq_public_key: pqPublicKey,
+      evidence_digest: evidenceDigest,
+      signatures,
     },
   });
 }
@@ -759,8 +914,16 @@ export function physicalStateMeasurementDigest(artifact: any): string {
  * Verify signature first, then acceptance under caller-pinned issuer identity,
  * action, time, claims, and revocation state.
  */
-export function verifyModelToMatterEvidence(artifact: any, opts: any = {}): any {
-  const output = (overrides = {}) => ({
+/**
+ * Post-signature acceptance policy, shared verbatim by v1 and v2. Extracted
+ * unchanged from the body of verifyModelToMatterEvidence so the two entry
+ * points can never diverge on acceptance semantics -- only on how the
+ * signature itself is checked above this point. The one behavioral addition
+ * (the `pq_public_key` clause below) is a no-op for every v1 artifact, which
+ * never carries that field, so v1's own acceptance behavior is unchanged.
+ */
+function acceptModelToMatterEvidence(artifact: any, opts: any, evidenceDigest: string): any {
+  const output = (overrides: any = {}) => ({
     verified: false,
     accepted: false,
     revoked: false,
@@ -768,18 +931,15 @@ export function verifyModelToMatterEvidence(artifact: any, opts: any = {}): any 
     reason: null,
     ...overrides,
   });
-  if (!isObject(artifact) || artifact['@version'] !== M2M_EVIDENCE_VERSION) {
-    return output({ reason: 'unsupported_version' });
-  }
-  const sig = verifySignature(artifact, EVIDENCE_DOMAIN, 'evidence_digest');
-  if (!sig.verified) return output({ reason: sig.reason });
   const verified = output({
     verified: true,
-    evidence_digest: sig.digest,
+    evidence_digest: evidenceDigest,
     issuer_id: artifact.issuer_id,
     evidence_type: artifact.evidence_type,
   });
-  try { assertEvidenceBody(unsigned(artifact)); } catch { return { ...verified, reason: 'evidence_body_invalid' }; }
+  // artifact['@version'] is already known-good here: the version-specific
+  // wrapper (verifyModelToMatterEvidence / V2) checked it before calling in.
+  try { assertEvidenceBody(unsigned(artifact), artifact['@version']); } catch { return { ...verified, reason: 'evidence_body_invalid' }; }
   if (opts.expectedType && artifact.evidence_type !== opts.expectedType) {
     return { ...verified, reason: 'wrong_type' };
   }
@@ -803,7 +963,13 @@ export function verifyModelToMatterEvidence(artifact: any, opts: any = {}): any 
   if (asOf >= expiresAt) return { ...verified, reason: 'expired' };
 
   const pins = Array.isArray(opts.pinnedIssuerKeys) ? opts.pinnedIssuerKeys : [];
-  const keyMatches = pins.filter((pin) => pin?.public_key === artifact.signature.public_key);
+  // The pq_public_key clause is a no-op for v1 artifacts (signature never
+  // carries that field there, so the comparison is always true) and, for a
+  // v2 artifact, requires the pin to bind BOTH signed public halves, not
+  // just the classical one.
+  const keyMatches = pins.filter((pin) => pin?.public_key === artifact.signature.public_key
+    && (artifact.signature.pq_public_key === undefined
+      || pin?.pq_public_key === artifact.signature.pq_public_key));
   const acceptedPin = keyMatches.find((pin) => pin?.issuer_id === artifact.issuer_id);
   if (!acceptedPin) {
     return {
@@ -878,6 +1044,49 @@ export function verifyModelToMatterEvidence(artifact: any, opts: any = {}): any 
       limitation: 'This verifies a signed claim from a pinned sensor network; it is not physical truth.',
     } : {}),
   };
+}
+
+/** Verify signature first, then acceptance under caller-pinned issuer identity, action, time, claims, and revocation state. */
+export function verifyModelToMatterEvidence(artifact: any, opts: any = {}): any {
+  const output = (overrides: any = {}) => ({
+    verified: false, accepted: false, revoked: false, establishes_physical_truth: false, reason: null, ...overrides,
+  });
+  if (!isObject(artifact) || artifact['@version'] !== M2M_EVIDENCE_VERSION) {
+    return output({ reason: 'unsupported_version' });
+  }
+  const sig = verifySignature(artifact, EVIDENCE_DOMAIN, 'evidence_digest');
+  if (!sig.verified) return output({ reason: sig.reason });
+  return acceptModelToMatterEvidence(artifact, opts, sig.digest);
+}
+
+/**
+ * v2 hybrid twin. v1 above is untouched and stays synchronous; it refuses a
+ * v2 artifact on the version marker before inspecting any signature. ASYNC
+ * because ML-DSA verification is async, which is why this is a separate
+ * entry point rather than a signature change to verifyModelToMatterEvidence.
+ */
+export async function verifyModelToMatterEvidenceV2(artifact: any, opts: any = {}): Promise<any> {
+  const output = (overrides: any = {}) => ({
+    verified: false, accepted: false, revoked: false, establishes_physical_truth: false, reason: null, ...overrides,
+  });
+  if (!isObject(artifact) || artifact['@version'] !== M2M_EVIDENCE_V2_VERSION) {
+    return output({ reason: 'unsupported_version' });
+  }
+  const sig = await verifySignatureV2(artifact, EVIDENCE_V2_DOMAIN, 'evidence_digest');
+  if (!sig.verified) return output({ reason: sig.reason });
+  return acceptModelToMatterEvidence(artifact, opts, sig.digest);
+}
+
+/**
+ * Route an evidence artifact of EITHER version to its verifier. A v2
+ * artifact is detected by its `@version` marker; anything else (including a
+ * malformed non-object) routes to the v1 verifier, which is fail-closed.
+ */
+export async function verifyModelToMatterEvidenceAny(artifact: any, opts: any = {}): Promise<any> {
+  if (isObject(artifact) && artifact['@version'] === M2M_EVIDENCE_V2_VERSION) {
+    return verifyModelToMatterEvidenceV2(artifact, opts);
+  }
+  return verifyModelToMatterEvidence(artifact, opts);
 }
 
 /** Build an EP-AEG graph whose identity is unchanged by any external storage choice. */
@@ -1457,13 +1666,16 @@ export function createModelToMatterExecutor({
   });
 }
 
-function assertEffectBody(body: any): void {
+// `version` defaults to the exact v1 constant, so every existing call site
+// (which omits it) is byte-identical to before this parameter existed.
+// signModelToMatterEffectV2 passes M2M_EFFECT_V2_VERSION explicitly.
+function assertEffectBody(body: any, version: string = M2M_EFFECT_VERSION): void {
   assertNoRawContent(body);
   assertOnlyKeys(body, new Set([
     '@version', 'action_digest', 'action_caid', 'clearance_replay_digest',
     'executor_id', 'executed_at', 'status', 'observed_effect_digest',
   ]), 'effect');
-  if (body['@version'] !== M2M_EFFECT_VERSION) throw new Error(`effect @version must be ${M2M_EFFECT_VERSION}`);
+  if (body['@version'] !== version) throw new Error(`effect @version must be ${version}`);
   assertDigest(body.action_digest, 'action_digest');
   if (typeof body.action_caid !== 'string' || !M2M_CAID_RE.test(body.action_caid)) {
     throw new Error('action_caid must be a Model-to-Matter CAID');
@@ -1516,20 +1728,89 @@ export function signModelToMatterEffect(input: any, privateKey: any): any {
   });
 }
 
-/** Verify the executor statement and keep the physical-truth limitation explicit. */
-export function verifyModelToMatterEffect(effect: any, opts: any = {}): any {
-  const output = (overrides = {}) => ({
+/**
+ * Hybrid (Ed25519 + ML-DSA-65) twin of signModelToMatterEffect. Same raw-key
+ * convention as signModelToMatterEvidenceV2 above; see its comment for the
+ * custody rationale.
+ */
+export async function signModelToMatterEffectV2(input: any, keys: {
+  ed25519: any;
+  mldsa65: { public_key: Uint8Array | string; private_key: Uint8Array | string; key_id?: string };
+}): Promise<any> {
+  if (!isObject(input)) throw new Error('effect input must be an object');
+  assertAction(input.action);
+  if (input.clearance?.['@version'] !== M2M_CLEARANCE_VERSION
+    || input.clearance?.verdict !== 'clear_to_execute') {
+    throw new Error('effect receipt requires a clear_to_execute clearance');
+  }
+  const actionDigest = modelToMatterActionDigest(input.action);
+  const actionCaid = modelToMatterCaid(input.action).caid;
+  if (input.clearance.action_digest !== actionDigest) throw new Error('clearance binds a different action');
+  if (input.clearance.action_caid !== actionCaid) throw new Error('clearance binds a different CAID');
+  if (input.executor_id !== input.action.executor.executor_id) throw new Error('executor_id does not match the action');
+  const body = {
+    '@version': M2M_EFFECT_V2_VERSION,
+    action_digest: actionDigest,
+    action_caid: actionCaid,
+    clearance_replay_digest: input.clearance.replay_digest,
+    executor_id: input.executor_id,
+    executed_at: input.executed_at,
+    status: input.status,
+    observed_effect_digest: input.observed_effect_digest,
+  };
+  assertEffectBody(body, M2M_EFFECT_V2_VERSION);
+  if (strictInstantMs(body.executed_at) < strictInstantMs(input.action.requested_at)) {
+    throw new Error('executed_at cannot be before the action was requested');
+  }
+  const publicKey = publicKeyToB64u(keys?.ed25519);
+  const pqPublicKeyBytes = toRawKeyBytes(keys?.mldsa65?.public_key);
+  if (!pqPublicKeyBytes || pqPublicKeyBytes.length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+    throw new Error(`mldsa65.public_key must be the raw ${ML_DSA_65_PUBLIC_KEY_BYTES}-byte key or its base64url encoding`);
+  }
+  const pqPublicKey = Buffer.from(pqPublicKeyBytes).toString('base64url');
+  const bytes = signingBytesV2(EFFECT_V2_DOMAIN, body);
+  const effectDigest = `sha256:${sha256hex(bytes)}`;
+  const ed25519Sig = crypto.sign(null, bytes, keys.ed25519).toString('base64url');
+  const mldsaSignature = await signAgile(new Uint8Array(bytes), {
+    alg: 'ML-DSA-65',
+    private_key: keys.mldsa65.private_key,
+    key_id: keys.mldsa65.key_id,
+  });
+  const signatures: AgileSignature[] = [
+    { alg: 'Ed25519', sig: ed25519Sig, key_id: keyIdFor(publicKey) },
+    mldsaSignature,
+  ];
+  return deepFreeze({
+    ...body,
+    signature: {
+      required_algorithms: [...M2M_V2_REQUIRED_ALGORITHMS],
+      key_id: keyIdFor(publicKey),
+      public_key: publicKey,
+      pq_key_id: pqKeyIdFor(pqPublicKey),
+      pq_public_key: pqPublicKey,
+      effect_digest: effectDigest,
+      signatures,
+    },
+  });
+}
+
+/**
+ * Post-signature acceptance policy, shared verbatim by v1 and v2. See
+ * acceptModelToMatterEvidence above for why this is an extraction rather
+ * than a duplication: the pq_public_key clause is a no-op for v1 effects.
+ */
+function acceptModelToMatterEffect(effect: any, opts: any, effectDigest: string): any {
+  const output = (overrides: any = {}) => ({
     verified: false,
     accepted: false,
     establishes_physical_truth: false,
     reason: null,
     ...overrides,
   });
-  if (!isObject(effect) || effect['@version'] !== M2M_EFFECT_VERSION) return output({ reason: 'unsupported_version' });
-  const sig = verifySignature(effect, EFFECT_DOMAIN, 'effect_digest');
-  if (!sig.verified) return output({ reason: sig.reason });
-  const verified = output({ verified: true, effect_digest: sig.digest });
-  try { assertEffectBody(unsigned(effect)); } catch { return { ...verified, reason: 'effect_body_invalid' }; }
+  const verified = output({ verified: true, effect_digest: effectDigest });
+  // effect['@version'] is already known-good here: the version-specific
+  // wrapper (verifyModelToMatterEffect / V2) checked it before calling in.
+  try { assertEffectBody(unsigned(effect), effect['@version']); } catch { return { ...verified, reason: 'effect_body_invalid' }; }
   let expectedAction;
   let expectedCaid;
   try {
@@ -1548,8 +1829,12 @@ export function verifyModelToMatterEffect(effect: any, opts: any = {}): any {
     return { ...verified, reason: 'execution_before_action' };
   }
   const pins = Array.isArray(opts.pinnedExecutorKeys) ? opts.pinnedExecutorKeys : [];
+  // pq_public_key clause: no-op for v1 (field absent there), required match
+  // for v2 (both signed public halves must be pinned, not just the classical one).
   const pin = pins.find((candidate) => candidate?.executor_id === effect.executor_id
-    && candidate?.public_key === effect.signature.public_key);
+    && candidate?.public_key === effect.signature.public_key
+    && (effect.signature.pq_public_key === undefined
+      || candidate?.pq_public_key === effect.signature.pq_public_key));
   if (!pin) return { ...verified, reason: 'executor_key_not_pinned' };
   return {
     ...verified,
@@ -1557,6 +1842,40 @@ export function verifyModelToMatterEffect(effect: any, opts: any = {}): any {
     reason: null,
     limitation: 'The receipt proves what the pinned executor signed; it does not independently prove sensor accuracy or physical truth.',
   };
+}
+
+/** Verify the executor statement and keep the physical-truth limitation explicit. */
+export function verifyModelToMatterEffect(effect: any, opts: any = {}): any {
+  const output = (overrides: any = {}) => ({
+    verified: false, accepted: false, establishes_physical_truth: false, reason: null, ...overrides,
+  });
+  if (!isObject(effect) || effect['@version'] !== M2M_EFFECT_VERSION) return output({ reason: 'unsupported_version' });
+  const sig = verifySignature(effect, EFFECT_DOMAIN, 'effect_digest');
+  if (!sig.verified) return output({ reason: sig.reason });
+  return acceptModelToMatterEffect(effect, opts, sig.digest);
+}
+
+/**
+ * v2 hybrid twin. v1 above is untouched and stays synchronous; it refuses a
+ * v2 artifact on the version marker before inspecting any signature. ASYNC
+ * because ML-DSA verification is async.
+ */
+export async function verifyModelToMatterEffectV2(effect: any, opts: any = {}): Promise<any> {
+  const output = (overrides: any = {}) => ({
+    verified: false, accepted: false, establishes_physical_truth: false, reason: null, ...overrides,
+  });
+  if (!isObject(effect) || effect['@version'] !== M2M_EFFECT_V2_VERSION) return output({ reason: 'unsupported_version' });
+  const sig = await verifySignatureV2(effect, EFFECT_V2_DOMAIN, 'effect_digest');
+  if (!sig.verified) return output({ reason: sig.reason });
+  return acceptModelToMatterEffect(effect, opts, sig.digest);
+}
+
+/** Route an effect artifact of EITHER version to its verifier (fail-closed default: v1). */
+export async function verifyModelToMatterEffectAny(effect: any, opts: any = {}): Promise<any> {
+  if (isObject(effect) && effect['@version'] === M2M_EFFECT_V2_VERSION) {
+    return verifyModelToMatterEffectV2(effect, opts);
+  }
+  return verifyModelToMatterEffect(effect, opts);
 }
 
 /**

@@ -34,6 +34,11 @@ import {
   verifyCapabilityScope,
 } from '../../packages/gate/capability-receipt.js';
 import { canonicalize } from '../../packages/gate/execution-binding.js';
+import {
+  signAgile,
+  verifyAgileSignatureSet,
+  type AgileSignature,
+} from '@emilia-protocol/verify/pq-signature-agility';
 
 const ACTION_TYPE = 'health.medi-cal.hospice-claim-payment.1';
 const PROFILE_ID = 'medi-cal.hospice-integrity.v1';
@@ -42,6 +47,20 @@ const AUTHORIZATION_VERSION = 'EP-HEALTH-PROGRAM-INTEGRITY-AUTHORIZATION-v1';
 const EVIDENCE_PACKET_VERSION = 'EP-HEALTH-PROGRAM-INTEGRITY-EVIDENCE-PACKET-v1';
 const PROVIDER_EVIDENCE_VERSION = 'EP-SYNTHETIC-HOSPICE-PROVIDER-EVIDENCE-v1';
 const STATEFUL_PROVIDER_EVIDENCE_VERSION = 'EP-HEALTH-PROGRAM-INTEGRITY-PROVIDER-EVIDENCE-v1';
+/**
+ * Hybrid (Ed25519 + ML-DSA-65) sibling of the synthetic provider-evidence
+ * artifact below. REFERENCE MIGRATION FOLLOWED: packages/verify/src/revocation.ts
+ * EP-REVOCATION-v2 -- version bump not a field bump (v1's buildProviderEvidence
+ * / verifyProviderEvidence are untouched and stay synchronous), set-shaped
+ * signatures reused verbatim from EP-SIG-AGILITY-v1, the registered algorithm
+ * set committed inside the signed bytes (providerEvidenceV2SignedBytes),
+ * async v2 entry points, and named refusals (null, never a throw or a
+ * partial pass). Both keys here are the SAME kind of fixed, deliberately
+ * synthetic demo key as SYNTHETIC_PROVIDER_PRIVATE_KEY above: never a
+ * production trust anchor, never returned by any public interface.
+ */
+const PROVIDER_EVIDENCE_V2_VERSION = 'EP-SYNTHETIC-HOSPICE-PROVIDER-EVIDENCE-v2';
+const PROVIDER_EVIDENCE_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/;
 const OPERATION_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const PAIRWISE_MEMBER_REF_RE = /^pairwise:[A-Za-z0-9][A-Za-z0-9._~-]{7,127}$/;
@@ -185,6 +204,23 @@ const SYNTHETIC_PROVIDER_PUBLIC_KEY = createPublicKey({
 })
   .export({ type: 'spki', format: 'der' })
   .toString('base64url');
+
+// This is a deliberately fixed demo-only ML-DSA-65 keypair, the PQ sibling
+// of SYNTHETIC_PROVIDER_PRIVATE_KEY above: not a production trust anchor,
+// never returned by any public interface. Generated lazily (ML-DSA keygen
+// needs the async @noble/post-quantum module) and memoized so it is computed
+// once per process, deterministically, from a fixed 32-byte seed.
+let syntheticProviderPqKeyPairPromise: Promise<{ publicKey: Uint8Array; secretKey: Uint8Array }> | null = null;
+function syntheticProviderPqKeyPair(): Promise<{ publicKey: Uint8Array; secretKey: Uint8Array }> {
+  if (!syntheticProviderPqKeyPairPromise) {
+    syntheticProviderPqKeyPairPromise = (async () => {
+      const mod: any = await import('@noble/post-quantum/ml-dsa.js');
+      const seed = Buffer.from('02'.repeat(32), 'hex');
+      return mod.ml_dsa65.keygen(new Uint8Array(seed));
+    })();
+  }
+  return syntheticProviderPqKeyPairPromise;
+}
 
 const INTERNAL_STATE = Symbol('synthetic-hospice-program-integrity-state');
 const STATE_BY_INPUT = new WeakMap();
@@ -591,6 +627,126 @@ function verifyProviderEvidence(evidence: any, action: any, caid: any, actionDig
   return {
     evidenceDigest: digest(evidence),
   };
+}
+
+/**
+ * The bytes BOTH legs sign: the body plus the REGISTERED algorithm set,
+ * independently recomputed by the verifier (never taken from what the
+ * evidence presents) -- anti-stripping, move 3 in the migration notes above.
+ */
+function providerEvidenceV2SignedBytes(body: any): Buffer {
+  return Buffer.from(canonicalize({
+    body,
+    required_algorithms: [...PROVIDER_EVIDENCE_V2_REQUIRED_ALGORITHMS],
+  }), 'utf8');
+}
+
+/** Hybrid (Ed25519 + ML-DSA-65) twin of buildProviderEvidence. Exported for direct testing. */
+export async function buildProviderEvidenceV2(action: any, caid: any, actionDigest: any): Promise<any> {
+  const body = {
+    '@version': PROVIDER_EVIDENCE_V2_VERSION,
+    provider_key_id: 'synthetic-provider-key-v1',
+    provider_npi: action.provider_npi,
+    operation_id: action.operation_id,
+    caid,
+    action_digest: actionDigest,
+    status: 'committed',
+    effect: {
+      effect_id: `synthetic-provider-effect:${action.operation_id}`,
+      status: 'claim_recorded',
+    },
+  };
+  const bytes = providerEvidenceV2SignedBytes(body);
+  const pq = await syntheticProviderPqKeyPair();
+  const pqPublicKeyB64u = Buffer.from(pq.publicKey).toString('base64url');
+  const ed25519Sig = sign(null, bytes, SYNTHETIC_PROVIDER_PRIVATE_KEY).toString('base64url');
+  const mldsaSignature = await signAgile(new Uint8Array(bytes), {
+    alg: 'ML-DSA-65',
+    private_key: pq.secretKey,
+    key_id: 'synthetic-provider-pq-key-v1',
+  });
+  const signatures: AgileSignature[] = [
+    { alg: 'Ed25519', sig: ed25519Sig, key_id: 'synthetic-provider-key-v1' },
+    mldsaSignature,
+  ];
+  return {
+    body,
+    signature: {
+      required_algorithms: [...PROVIDER_EVIDENCE_V2_REQUIRED_ALGORITHMS],
+      public_key: SYNTHETIC_PROVIDER_PUBLIC_KEY,
+      pq_public_key: pqPublicKeyB64u,
+      signatures,
+    },
+  };
+}
+
+/**
+ * v2 hybrid twin of verifyProviderEvidence. v1 above is untouched and stays
+ * synchronous; it refuses a v2 artifact on the version marker before
+ * inspecting any signature. ASYNC because ML-DSA verification is async.
+ */
+export async function verifyProviderEvidenceV2(
+  evidence: any, action: any, caid: any, actionDigest: any,
+): Promise<{ evidenceDigest: string } | null> {
+  if (!isRecord(evidence) || !isRecord(evidence.body) || !isRecord(evidence.signature)) return null;
+  const { body, signature } = evidence;
+  if (body['@version'] !== PROVIDER_EVIDENCE_V2_VERSION
+      || !Array.isArray(signature.required_algorithms)
+      || signature.required_algorithms.length !== PROVIDER_EVIDENCE_V2_REQUIRED_ALGORITHMS.length
+      || !PROVIDER_EVIDENCE_V2_REQUIRED_ALGORITHMS.every((alg, index) => signature.required_algorithms[index] === alg)
+      || signature.public_key !== SYNTHETIC_PROVIDER_PUBLIC_KEY
+      || typeof signature.pq_public_key !== 'string'
+      || !Array.isArray(signature.signatures)
+      || signature.signatures.length !== PROVIDER_EVIDENCE_V2_REQUIRED_ALGORITHMS.length) return null;
+  const pq = await syntheticProviderPqKeyPair();
+  const pinnedPqPublicKeyB64u = Buffer.from(pq.publicKey).toString('base64url');
+  // Verify under the PINNED synthetic key only, never the presented one --
+  // even though both are fixed demo constants here, this keeps the shape
+  // identical to a real relying-party pin check.
+  if (signature.pq_public_key !== pinnedPqPublicKeyB64u) return null;
+  const bytes = providerEvidenceV2SignedBytes(body);
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(
+      new Uint8Array(bytes),
+      signature.signatures,
+      [
+        { alg: 'Ed25519', public_key: SYNTHETIC_PROVIDER_PUBLIC_KEY },
+        { alg: 'ML-DSA-65', public_key: pinnedPqPublicKeyB64u },
+      ],
+      { policy: 'hybrid_all', requiredAlgorithms: [...PROVIDER_EVIDENCE_V2_REQUIRED_ALGORITHMS] },
+    );
+  } catch {
+    // verifyAgileSignatureSet documents that it never throws; an injected
+    // backend that does is still a refusal here, never a pass.
+    setResult = null;
+  }
+  if (setResult?.verified !== true) return null;
+  const expectedEffectId = `synthetic-provider-effect:${action.operation_id}`;
+  if (body.provider_npi !== action.provider_npi
+      || body.operation_id !== action.operation_id
+      || body.caid !== caid
+      || body.action_digest !== actionDigest
+      || body.status !== 'committed'
+      || !isRecord(body.effect)
+      || body.effect.effect_id !== expectedEffectId
+      || body.effect.status !== 'claim_recorded') return null;
+  return {
+    evidenceDigest: digest(evidence),
+  };
+}
+
+/**
+ * Route provider evidence of EITHER version to its verifier (fail-closed
+ * default: v1, so a malformed or unrecognized version never verifies).
+ */
+export async function verifyProviderEvidenceAny(
+  evidence: any, action: any, caid: any, actionDigest: any,
+): Promise<{ evidenceDigest: string } | null> {
+  if (isRecord(evidence) && isRecord(evidence.body) && evidence.body['@version'] === PROVIDER_EVIDENCE_V2_VERSION) {
+    return verifyProviderEvidenceV2(evidence, action, caid, actionDigest);
+  }
+  return verifyProviderEvidence(evidence, action, caid, actionDigest);
 }
 
 function prepare(input: any, options: any): any {

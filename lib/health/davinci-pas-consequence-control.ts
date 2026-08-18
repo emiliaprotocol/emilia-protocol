@@ -16,6 +16,12 @@ import type {
 } from '../../packages/gate/proposal-to-effect.js';
 import { canonicalize } from '../canonical-json.js';
 import {
+  signAgile,
+  verifyAgileSignatureSet,
+  type AgileSignature,
+} from '@emilia-protocol/verify/pq-signature-agility';
+import { checkOperationPolicy, type FipsPosture } from '@emilia-protocol/verify/fips-mode';
+import {
   DAVINCI_PAS_ACTION_TYPE,
   DAVINCI_PAS_BINDING_TYPE,
   DAVINCI_PAS_IG_VERSION,
@@ -44,6 +50,38 @@ export const DAVINCI_PAS_CONSEQUENCE_PACKET_VERSION =
   'EMILIA-DAVINCI-PAS-CONSEQUENCE-PACKET-v1';
 export const DAVINCI_PAS_CONSEQUENCE_CONTROL_VERSION =
   'EMILIA-DAVINCI-PAS-CONSEQUENCE-CONTROL-v1';
+
+/**
+ * EP-APPROVAL-v1 DaVinci PAS packet, hybrid (Ed25519 + ML-DSA-65) profile.
+ * REFERENCE MIGRATION FOLLOWED: packages/verify/src/revocation.ts
+ * EP-REVOCATION-v2. Five moves, in order:
+ *   1. VERSION BUMP, NOT A FIELD BUMP -- a second signature changes the SHAPE
+ *      of `proof`, so the packet takes a new `@version`
+ *      (...PACKET-v1 -> ...PACKET-v2). verifyDavinciPasConsequencePacket()
+ *      (v1) is untouched and still accepts only what it accepted before.
+ *   2. SET SHAPE -- `proof` carries `required_algorithms` plus a `signatures`
+ *      array shaped exactly like EP-SIG-AGILITY-v1's AgileSignature
+ *      ({ alg, sig, key_id? }), reused verbatim from
+ *      packages/verify/src/pq-signature-agility.ts.
+ *   3. ANTI-STRIPPING BYTES -- required_algorithms is INSIDE the signed bytes
+ *      (davinciPasV2SignedBytes below), rebuilt by the verifier from the
+ *      REGISTERED set, never from what the packet presents.
+ *   4. V1 COMPATIBILITY -- v1 packets keep verifying through the unchanged
+ *      sync verifier. V2 verification is ASYNC (ML-DSA verification is
+ *      async), a separate entry point, with a router
+ *      (verifyDavinciPasConsequencePacketAny) for callers holding either.
+ *   5. NAMED REFUSALS -- every failure sets a named reason; nothing throws;
+ *      an absent ML-DSA backend is 'pq_backend_unavailable', never a pass.
+ *
+ * HONEST BOUNDARY: same as v1 -- this proves a PRESENTED packet is authentic
+ * and binds its exact action; it is relying-party evidence, not an audit
+ * opinion or a certification. The ML-DSA-65 backend is a pure-JS FIPS 204
+ * implementation, not a validated module; see fips-mode.ts.
+ */
+export const DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION =
+  'EMILIA-DAVINCI-PAS-CONSEQUENCE-PACKET-v2';
+export const DAVINCI_PAS_CONSEQUENCE_V2_REQUIRED_ALGORITHMS =
+  Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
 
 export const DAVINCI_PAS_CONSEQUENCE_LIMITATIONS = Object.freeze([
   'This packet covers a PHI-free synthetic Da Vinci PAS 2.2.1 reference path, not a live payer, provider, EHR, or utilization-management deployment.',
@@ -126,6 +164,7 @@ const BINDING_IG_FIELDS = Object.freeze([
   'claim_response_profile',
 ] as const);
 const PROOF_FIELDS = Object.freeze(['alg', 'key_id', 'signature_b64u'] as const);
+const PROOF_V2_FIELDS = Object.freeze(['profile', 'required_algorithms', 'signatures'] as const);
 const BASE64URL_RE = /^[A-Za-z0-9_-]+$/;
 const ISO_INSTANT_RE =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/;
@@ -172,6 +211,7 @@ const PROHIBITED_PHI_FIELD_ALIASES = new Set([
   'telephone',
 ]);
 const SIGNATURE_DOMAIN = `${DAVINCI_PAS_CONSEQUENCE_PACKET_VERSION}:SIGNATURE\0`;
+const SIGNATURE_DOMAIN_V2 = `${DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION}:SIGNATURE\0`;
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -266,6 +306,36 @@ function signerShape(value: unknown): value is HealthcareAssuranceSigner {
     && value.algorithm === 'Ed25519'
     && identifier(value.key_id)
     && typeof value.sign === 'function';
+}
+
+/**
+ * A v2 hybrid signer pair: the SAME injected Ed25519 custody signer shape as
+ * v1 (there is no honest KMS/HSM ML-DSA-65 custody path today; see
+ * docs/protocol/pq-hybrid-program.md), plus an ML-DSA-65 secret key used only
+ * through signAgile (never reimplemented here).
+ */
+export interface DavinciPasHybridSigners {
+  ed25519: HealthcareAssuranceSigner;
+  mldsa65: {
+    key_id: string;
+    /** Raw ML-DSA-65 secret key (4032 bytes) or its base64url encoding. */
+    private_key: Uint8Array | string;
+  };
+}
+
+function hybridSignerShape(value: unknown): value is DavinciPasHybridSigners {
+  return isObject(value)
+    && signerShape(value.ed25519)
+    && isObject(value.mldsa65)
+    && identifier(value.mldsa65.key_id)
+    && (value.mldsa65.private_key instanceof Uint8Array
+      || typeof value.mldsa65.private_key === 'string');
+}
+
+function algorithmSetMatchesRegistered(value: unknown): value is string[] {
+  return Array.isArray(value)
+    && value.length === DAVINCI_PAS_CONSEQUENCE_V2_REQUIRED_ALGORITHMS.length
+    && value.every((alg, index) => alg === DAVINCI_PAS_CONSEQUENCE_V2_REQUIRED_ALGORITHMS[index]);
 }
 
 function publicAttempt(value: unknown): ConsequenceAttemptBinding | null {
@@ -418,6 +488,20 @@ export interface DavinciPasConsequenceControlOptions {
   assurance: {
     relying_party_id: string;
     signer: HealthcareAssuranceSigner;
+    /**
+     * Opt-in FIPS posture consult at the classical (Ed25519) signing call
+     * site. Omit entirely and signing behavior is byte-identical to before
+     * this field existed. When present, a denied checkOperationPolicy()
+     * verdict refuses issuance with a named reason instead of signing.
+     */
+    fips?: { posture?: FipsPosture; allow_unvalidated_mldsa?: boolean };
+    /**
+     * Opt-in hybrid (Ed25519 + ML-DSA-65) signer pair for
+     * exportReliancePacketV2(). Omitting this leaves exportReliancePacketV2
+     * a named refusal ('pas_hybrid_signer_not_configured'); it never falls
+     * back to signing only the classical leg.
+     */
+    hybrid?: DavinciPasHybridSigners;
   };
   mutate_pas_sandbox(input: {
     tenant_id: string;
@@ -536,6 +620,10 @@ export function createDavinciPasConsequenceControl(
       || !identifier(options.assurance.relying_party_id)
       || !signerShape(options.assurance.signer)) {
     throw new Error('pas_assurance_signer_required');
+  }
+  if (options.assurance.hybrid !== undefined
+      && !hybridSignerShape(options.assurance.hybrid)) {
+    throw new Error('pas_assurance_hybrid_signer_invalid');
   }
   if (typeof options.mutate_pas_sandbox !== 'function') {
     throw new Error('pas_sandbox_mutation_required');
@@ -1067,17 +1155,34 @@ export function createDavinciPasConsequenceControl(
     };
   }
 
-  async function exportReliancePacket(input: {
+  /**
+   * Shared discovery/validation walk used by BOTH exportReliancePacket (v1)
+   * and exportReliancePacketV2. Extracted so the v2 hybrid packet can never
+   * diverge from v1 on which events, proposal, and prepared context it binds
+   * to -- only the version marker and the proof shape differ downstream.
+   */
+  async function resolveReliancePacketContext(input: {
     tenant_id: string;
     operation_id: string;
-  }): Promise<JsonObject> {
-    if (!identifier(input?.tenant_id)) return refusal('tenant_required');
-    if (!identifier(input?.operation_id)) return refusal('operation_id_required');
+  }): Promise<
+    | { ok: false; refusal: JsonObject }
+    | {
+      ok: true;
+      proposal: ProposalToEffectProposal;
+      prepared: HealthcareEvidenceEvent;
+      terminal: HealthcareEvidenceEvent;
+      events: HealthcareEvidenceEvent[];
+      preparedIndex: number;
+      terminalIndex: number;
+    }
+  > {
+    if (!identifier(input?.tenant_id)) return { ok: false, refusal: refusal('tenant_required') };
+    if (!identifier(input?.operation_id)) return { ok: false, refusal: refusal('operation_id_required') };
     const events = await eventsFor(input.tenant_id, input.operation_id)
       .catch(() => null);
-    if (!events) return refusal('pas_evidence_store_unavailable');
+    if (!events) return { ok: false, refusal: refusal('pas_evidence_store_unavailable') };
     if (!validEvidenceStream(events, input.tenant_id, input.operation_id)) {
-      return refusal('pas_reliance_evidence_invalid');
+      return { ok: false, refusal: refusal('pas_reliance_evidence_invalid') };
     }
     let terminalIndex = -1;
     for (let index = events.length - 1; index >= 0; index -= 1) {
@@ -1098,7 +1203,7 @@ export function createDavinciPasConsequenceControl(
         || (terminal.payload.decision.startsWith('RECONCILED_')
           ? terminal.event_type !== 'RECONCILIATION'
           : terminal.event_type !== 'EXECUTION')) {
-      return refusal('pas_reliance_packet_not_available');
+      return { ok: false, refusal: refusal('pas_reliance_packet_not_available') };
     }
     let preparedIndex = -1;
     for (let index = terminalIndex - 1; index >= 0; index -= 1) {
@@ -1116,7 +1221,7 @@ export function createDavinciPasConsequenceControl(
         || !isObject(prepared.payload.proposal)
         || digest(prepared.payload.binding) !== prepared.payload.binding_digest
         || digest(prepared.payload.proposal) !== prepared.payload.proposal_digest) {
-      return refusal('pas_reliance_packet_not_available');
+      return { ok: false, refusal: refusal('pas_reliance_packet_not_available') };
     }
     const proposal = prepared.payload.proposal as ProposalToEffectProposal;
     const selected = preparedContext([prepared], proposal, input.tenant_id);
@@ -1128,11 +1233,24 @@ export function createDavinciPasConsequenceControl(
         || selected.binding.caid !== proposal.caid
         || selected.binding.action_digest !== proposal.action_digest
         || terminal.payload.binding_digest !== digest(selected.binding)) {
-      return refusal('pas_prepared_context_mismatch');
+      return { ok: false, refusal: refusal('pas_prepared_context_mismatch') };
     }
+    return {
+      ok: true, proposal, prepared, terminal, events, preparedIndex, terminalIndex,
+    };
+  }
+
+  function buildReliancePacketBody(
+    version: string,
+    input: { tenant_id: string; operation_id: string },
+    context: Extract<Awaited<ReturnType<typeof resolveReliancePacketContext>>, { ok: true }>,
+  ): JsonObject {
+    const {
+      proposal, prepared, terminal, events, preparedIndex, terminalIndex,
+    } = context;
     const eventDigests = events.map((event) => digest(event));
-    const body = {
-      '@version': DAVINCI_PAS_CONSEQUENCE_PACKET_VERSION,
+    return {
+      '@version': version,
       profile_id: DAVINCI_PAS_CONSEQUENCE_PROFILE_ID,
       relying_party_id: options.assurance.relying_party_id,
       tenant_id: input.tenant_id,
@@ -1153,12 +1271,32 @@ export function createDavinciPasConsequenceControl(
       terminal_event_digest: eventDigests[terminalIndex],
       limitations: [...DAVINCI_PAS_CONSEQUENCE_LIMITATIONS],
     };
+  }
+
+  async function exportReliancePacket(input: {
+    tenant_id: string;
+    operation_id: string;
+  }): Promise<JsonObject> {
+    const context = await resolveReliancePacketContext(input);
+    if (!context.ok) return context.refusal;
+    const body = buildReliancePacketBody(DAVINCI_PAS_CONSEQUENCE_PACKET_VERSION, input, context);
     if (prohibitedPhi(body)) return refusal('pas_reliance_packet_phi_refused');
     const packetDigest = digest(body);
     const bytes = Buffer.from(`${SIGNATURE_DOMAIN}${canonicalize({
       packet_digest: packetDigest,
       body,
     })}`);
+    // Opt-in FIPS consult. Omitting options.assurance.fips (the default,
+    // every existing deployment) leaves this branch untaken and signing
+    // byte-identical to before this consult existed.
+    if (options.assurance.fips) {
+      const decision = checkOperationPolicy('Ed25519', options.assurance.fips.posture, {
+        allow_unvalidated_mldsa: options.assurance.fips.allow_unvalidated_mldsa,
+      });
+      if (!decision.permitted) {
+        return refusal('pas_fips_policy_denied', { fips_reason: decision.reason });
+      }
+    }
     const signature = await options.assurance.signer.sign(bytes);
     const signatureB64u = typeof signature === 'string'
       ? signature
@@ -1174,7 +1312,67 @@ export function createDavinciPasConsequenceControl(
     };
   }
 
-  return Object.freeze({ prepare, execute, reconcile, exportReliancePacket });
+  /**
+   * EP-APPROVAL-v1 DaVinci PAS packet, hybrid profile
+   * (EMILIA-DAVINCI-PAS-CONSEQUENCE-PACKET-v2). Opt-in: refuses by name when
+   * options.assurance.hybrid is not configured, and never falls back to
+   * signing only the classical leg. See DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION
+   * for the five-move migration this follows.
+   */
+  async function exportReliancePacketV2(input: {
+    tenant_id: string;
+    operation_id: string;
+  }): Promise<JsonObject> {
+    if (!options.assurance.hybrid) return refusal('pas_hybrid_signer_not_configured');
+    const context = await resolveReliancePacketContext(input);
+    if (!context.ok) return context.refusal;
+    const body = buildReliancePacketBody(DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION, input, context);
+    if (prohibitedPhi(body)) return refusal('pas_reliance_packet_phi_refused');
+    const packetDigest = digest(body);
+    // The registered algorithm set is committed INSIDE the signed bytes so a
+    // narrowed/stripped set changes the bytes and the surviving leg no
+    // longer verifies (anti-stripping; see revocation.ts move 3).
+    const bytes = Buffer.from(`${SIGNATURE_DOMAIN_V2}${canonicalize({
+      packet_digest: packetDigest,
+      required_algorithms: [...DAVINCI_PAS_CONSEQUENCE_V2_REQUIRED_ALGORITHMS],
+      body,
+    })}`);
+    let signatures: AgileSignature[];
+    try {
+      const ed25519Sig = await options.assurance.hybrid.ed25519.sign(bytes);
+      const ed25519SigB64u = typeof ed25519Sig === 'string'
+        ? ed25519Sig
+        : Buffer.from(ed25519Sig).toString('base64url');
+      const mldsaSignature = await signAgile(new Uint8Array(bytes), {
+        alg: 'ML-DSA-65',
+        private_key: options.assurance.hybrid.mldsa65.private_key,
+        key_id: options.assurance.hybrid.mldsa65.key_id,
+      });
+      signatures = [
+        { alg: 'Ed25519', sig: ed25519SigB64u, key_id: options.assurance.hybrid.ed25519.key_id },
+        mldsaSignature,
+      ];
+    } catch (error) {
+      // signAgile refuses (never silently downgrades) when the ML-DSA
+      // backend is unavailable; that refusal is preserved, never a pass.
+      return refusal('pas_hybrid_signing_failed', {
+        detail: safeReason(error, 'pas_hybrid_signing_failed'),
+      });
+    }
+    return {
+      ...body,
+      packet_digest: packetDigest,
+      proof: {
+        profile: DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION,
+        required_algorithms: [...DAVINCI_PAS_CONSEQUENCE_V2_REQUIRED_ALGORITHMS],
+        signatures,
+      },
+    };
+  }
+
+  return Object.freeze({
+    prepare, execute, reconcile, exportReliancePacket, exportReliancePacketV2,
+  });
 }
 
 export type DavinciPasConsequenceControl = ReturnType<
@@ -1390,13 +1588,283 @@ export function verifyDavinciPasConsequencePacket(
   return { valid: reasons.length === 0, reasons };
 }
 
+/**
+ * v2 hybrid twin of verifyDavinciPasConsequencePacket. v1 is UNTOUCHED above
+ * this point: it refuses a v2 packet on the version marker
+ * ('packet_profile_invalid', since packet['@version'] !== v1's constant)
+ * before it ever inspects packet.proof, so a deployed v1 verifier can never
+ * accept a hybrid packet on the strength of the one leg it understands.
+ *
+ * ASYNC because ML-DSA-65 verification is async (verifyAgileSignatureSet);
+ * this is why it is a separate entry point rather than a signature change to
+ * the v1 function above.
+ */
+export async function verifyDavinciPasConsequencePacketV2(
+  packet: unknown,
+  pin: {
+    relying_party_id: string;
+    key_id: string;
+    public_key_spki_b64u: string;
+    pq_key_id: string;
+    /** ML-DSA-65: base64url of the raw 1952-byte public key. */
+    pq_public_key_b64u: string;
+    tenant_id?: string;
+    operation_id?: string;
+  },
+): Promise<{ valid: boolean; reasons: string[] }> {
+  const reasons: string[] = [];
+  const add = (reason: string) => {
+    if (!reasons.includes(reason)) reasons.push(reason);
+  };
+  const phi = prohibitedPhi(packet);
+  if (phi && phi !== 'input_complexity_limit' && phi !== 'malformed_field') {
+    add('packet_contains_prohibited_phi');
+  }
+  if (!isObject(packet)) {
+    return { valid: false, reasons: ['packet_profile_invalid'] };
+  }
+  if (phi === 'input_complexity_limit' || phi === 'malformed_field') {
+    return { valid: false, reasons: ['packet_shape_invalid'] };
+  }
+  if (!exactKeys(packet, PACKET_FIELDS)) {
+    add('packet_shape_invalid');
+    return { valid: false, reasons };
+  }
+  if (packet['@version'] !== DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION
+      || packet.profile_id !== DAVINCI_PAS_CONSEQUENCE_PROFILE_ID
+      || !identifier(packet.relying_party_id)) {
+    add('packet_profile_invalid');
+  }
+
+  const pinValid = isObject(pin)
+    && identifier(pin.relying_party_id)
+    && identifier(pin.key_id)
+    && typeof pin.public_key_spki_b64u === 'string'
+    && BASE64URL_RE.test(pin.public_key_spki_b64u)
+    && identifier(pin.pq_key_id)
+    && typeof pin.pq_public_key_b64u === 'string'
+    && BASE64URL_RE.test(pin.pq_public_key_b64u)
+    && (pin.tenant_id === undefined || identifier(pin.tenant_id))
+    && (pin.operation_id === undefined || identifier(pin.operation_id));
+  if (!pinValid) add('verification_pin_invalid');
+  if (pinValid && packet.relying_party_id !== pin.relying_party_id) {
+    add('relying_party_mismatch');
+  }
+  if (!identifier(packet.tenant_id)) {
+    add('packet_tenant_invalid');
+  } else if (pinValid && pin.tenant_id !== undefined
+      && packet.tenant_id !== pin.tenant_id) {
+    add('packet_tenant_mismatch');
+  }
+  if (!identifier(packet.operation_id)) {
+    add('packet_operation_invalid');
+  } else if (pinValid && pin.operation_id !== undefined
+      && packet.operation_id !== pin.operation_id) {
+    add('packet_operation_mismatch');
+  }
+  if (!validInstant(packet.generated_at)
+      || typeof packet.proposal_digest !== 'string'
+      || !DIGEST_RE.test(packet.proposal_digest)
+      || !Array.isArray(packet.limitations)
+      || packet.limitations.length !== DAVINCI_PAS_CONSEQUENCE_LIMITATIONS.length
+      || !DAVINCI_PAS_CONSEQUENCE_LIMITATIONS.every(
+        (limitation, index) => packet.limitations[index] === limitation,
+      )) {
+    add('packet_shape_invalid');
+  }
+
+  const decisionSemantics: Record<string, {
+    reconciliation_required: boolean;
+    retry_safe: boolean;
+  }> = {
+    EXECUTED: { reconciliation_required: false, retry_safe: false },
+    INDETERMINATE: { reconciliation_required: true, retry_safe: false },
+    RECONCILED_EXECUTED: { reconciliation_required: false, retry_safe: false },
+    RECONCILED_NOT_EXECUTED: { reconciliation_required: false, retry_safe: true },
+  };
+  const decision = typeof packet.decision === 'string'
+    ? decisionSemantics[packet.decision]
+    : undefined;
+  if (!decision
+      || packet.reconciliation_required !== decision.reconciliation_required
+      || packet.retry_safe !== decision.retry_safe) {
+    add('packet_decision_invalid');
+  }
+
+  let canonicalBinding: ReturnType<typeof canonicalizeDavinciPasMaterialAction> | null = null;
+  const binding = packet.binding;
+  if (!exactKeys(binding, BINDING_FIELDS)
+      || binding['@type'] !== DAVINCI_PAS_BINDING_TYPE
+      || binding.profile_id !== DAVINCI_PAS_PROFILE_ID
+      || binding.rail !== DAVINCI_PAS_MEDICAL_RAIL
+      || !exactKeys(binding.ig, BINDING_IG_FIELDS)
+      || binding.ig.package !== 'hl7.fhir.us.davinci-pas'
+      || binding.ig.version !== DAVINCI_PAS_IG_VERSION
+      || binding.ig.fhir_release !== 'R4'
+      || binding.ig.claim_profile !== DAVINCI_PAS_CLAIM_PROFILE
+      || binding.ig.claim_response_profile !== DAVINCI_PAS_CLAIM_RESPONSE_PROFILE) {
+    add('packet_binding_invalid');
+  } else {
+    try {
+      canonicalBinding = canonicalizeDavinciPasMaterialAction(binding.action);
+    } catch {
+      add('packet_binding_invalid');
+    }
+  }
+  if (!canonicalBinding
+      || typeof packet.caid !== 'string'
+      || packet.caid !== binding?.caid
+      || packet.caid !== canonicalBinding.caid) {
+    add('packet_caid_invalid');
+  }
+  if (!canonicalBinding
+      || typeof packet.action_digest !== 'string'
+      || !DIGEST_RE.test(packet.action_digest)
+      || packet.action_digest !== binding?.action_digest
+      || packet.action_digest !== canonicalBinding.action_digest) {
+    add('packet_action_digest_invalid');
+  }
+  if (binding?.action?.operation_id !== packet.operation_id) {
+    add('packet_operation_mismatch');
+  }
+  try {
+    if (typeof packet.binding_digest !== 'string'
+        || !DIGEST_RE.test(packet.binding_digest)
+        || packet.binding_digest !== digest(binding)) {
+      add('packet_binding_digest_invalid');
+    }
+  } catch {
+    add('packet_binding_digest_invalid');
+  }
+
+  const eventDigests = packet.event_digests;
+  let eventRootValid = Array.isArray(eventDigests)
+    && eventDigests.length >= 2
+    && eventDigests.length <= 10_000
+    && eventDigests.every((entry: unknown) => (
+      typeof entry === 'string' && DIGEST_RE.test(entry)
+    ))
+    && Number.isSafeInteger(packet.event_count)
+    && packet.event_count === eventDigests.length
+    && typeof packet.event_root === 'string'
+    && DIGEST_RE.test(packet.event_root)
+    && typeof packet.prepared_event_digest === 'string'
+    && DIGEST_RE.test(packet.prepared_event_digest)
+    && typeof packet.terminal_event_digest === 'string'
+    && DIGEST_RE.test(packet.terminal_event_digest);
+  if (eventRootValid) {
+    const preparedIndex = eventDigests.indexOf(packet.prepared_event_digest);
+    const terminalIndex = eventDigests.lastIndexOf(packet.terminal_event_digest);
+    eventRootValid = packet.event_root === digest(eventDigests)
+      && preparedIndex >= 0
+      && terminalIndex > preparedIndex
+      && terminalIndex === eventDigests.length - 1;
+  }
+  if (!eventRootValid) add('packet_event_root_invalid');
+  if (!Number.isSafeInteger(packet.event_count)) add('packet_shape_invalid');
+
+  // Set shape: required_algorithms exact and order-sensitive (narrowing is
+  // the stripping attack's cover story, refused here AND independently by
+  // the signature check below, which rebuilds the bytes from the REGISTERED
+  // set regardless of what the packet claims).
+  const proofShape = exactKeys(packet.proof, PROOF_V2_FIELDS)
+    && packet.proof.profile === DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION
+    && algorithmSetMatchesRegistered(packet.proof.required_algorithms)
+    && Array.isArray(packet.proof.signatures)
+    && packet.proof.signatures.length === DAVINCI_PAS_CONSEQUENCE_V2_REQUIRED_ALGORITHMS.length;
+  if (!proofShape) add('packet_proof_invalid');
+
+  let body: JsonObject | null = null;
+  let expectedDigest: string | null = null;
+  try {
+    body = clone(packet);
+    delete body.packet_digest;
+    delete body.proof;
+    expectedDigest = digest(body);
+  } catch {
+    add('packet_shape_invalid');
+  }
+  if (!body || !expectedDigest
+      || typeof packet.packet_digest !== 'string'
+      || !DIGEST_RE.test(packet.packet_digest)
+      || packet.packet_digest !== expectedDigest) {
+    add('packet_digest_mismatch');
+  }
+  if (proofShape && pinValid && body && expectedDigest === packet.packet_digest) {
+    const bytes = Buffer.from(`${SIGNATURE_DOMAIN_V2}${canonicalize({
+      packet_digest: packet.packet_digest,
+      required_algorithms: [...DAVINCI_PAS_CONSEQUENCE_V2_REQUIRED_ALGORITHMS],
+      body,
+    })}`);
+    let setResult;
+    try {
+      setResult = await verifyAgileSignatureSet(
+        new Uint8Array(bytes),
+        packet.proof.signatures,
+        [
+          { alg: 'Ed25519', public_key: pin.public_key_spki_b64u, key_id: pin.key_id },
+          { alg: 'ML-DSA-65', public_key: pin.pq_public_key_b64u, key_id: pin.pq_key_id },
+        ],
+        {
+          policy: 'hybrid_all',
+          requiredAlgorithms: [...DAVINCI_PAS_CONSEQUENCE_V2_REQUIRED_ALGORITHMS],
+        },
+      );
+    } catch {
+      // verifyAgileSignatureSet documents that it never throws; an injected
+      // backend that does is still a refusal here, never a pass.
+      setResult = null;
+    }
+    if (setResult?.verified !== true) add('packet_signature_invalid');
+  } else if (!proofShape || !pinValid) {
+    add('packet_signature_invalid');
+  }
+  return { valid: reasons.length === 0, reasons };
+}
+
+/**
+ * Route a packet of EITHER version to its verifier. v1 packets get the exact
+ * v1 verdict; v2 packets get the hybrid check. A packet whose `@version` is
+ * neither refuses on the version marker, through the v1 verifier (fail-closed).
+ */
+export async function verifyDavinciPasConsequencePacketAny(
+  packet: unknown,
+  pin: {
+    relying_party_id: string;
+    key_id: string;
+    public_key_spki_b64u: string;
+    pq_key_id?: string;
+    pq_public_key_b64u?: string;
+    tenant_id?: string;
+    operation_id?: string;
+  },
+): Promise<{ valid: boolean; reasons: string[] }> {
+  if (isObject(packet) && packet['@version'] === DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION
+      && typeof pin?.pq_key_id === 'string' && typeof pin?.pq_public_key_b64u === 'string') {
+    return verifyDavinciPasConsequencePacketV2(packet, pin as {
+      relying_party_id: string;
+      key_id: string;
+      public_key_spki_b64u: string;
+      pq_key_id: string;
+      pq_public_key_b64u: string;
+      tenant_id?: string;
+      operation_id?: string;
+    });
+  }
+  return verifyDavinciPasConsequencePacket(packet, pin);
+}
+
 const davinciPasConsequenceControl = {
   DAVINCI_PAS_AEB_REQUIREMENT_REF,
   DAVINCI_PAS_CONSEQUENCE_PACKET_VERSION,
+  DAVINCI_PAS_CONSEQUENCE_PACKET_V2_VERSION,
+  DAVINCI_PAS_CONSEQUENCE_V2_REQUIRED_ALGORITHMS,
   DAVINCI_PAS_CONSEQUENCE_PROFILE_ID,
   createDavinciPasConsequenceControl,
   createDavinciPasProposalToEffectProfile,
   verifyDavinciPasConsequencePacket,
+  verifyDavinciPasConsequencePacketV2,
+  verifyDavinciPasConsequencePacketAny,
 };
 
 export default davinciPasConsequenceControl;

@@ -25,6 +25,12 @@ import type {
 } from '../../packages/gate/proposal-to-effect.js';
 import { canonicalize } from '../canonical-json.js';
 import { hashCanonicalAction } from '../guard-policies.js';
+import {
+  signAgile,
+  verifyAgileSignatureSet,
+  type AgileSignature,
+} from '@emilia-protocol/verify/pq-signature-agility';
+import { checkOperationPolicy, type FipsPosture } from '@emilia-protocol/verify/fips-mode';
 
 type JsonObject = Record<string, any>;
 
@@ -42,6 +48,36 @@ export const HEALTHCARE_ASSURANCE_TRUST_BUNDLE_VERSION =
   'EMILIA-HEALTHCARE-ASSURANCE-TRUST-BUNDLE-v1';
 export const HEALTHCARE_ASSURANCE_ASSERTION_VERSION =
   'EMILIA-HEALTHCARE-ASSURANCE-ASSERTION-v1';
+
+/**
+ * Hybrid (Ed25519 + ML-DSA-65) siblings of the assertion and packet above.
+ * REFERENCE MIGRATION FOLLOWED: packages/verify/src/revocation.ts
+ * EP-REVOCATION-v2. Five moves, in order:
+ *   1. VERSION BUMP, NOT A FIELD BUMP -- a second signature changes the SHAPE
+ *      of `proof`, so each artifact takes a new `@version`. v1's
+ *      checkHealthcareAssurancePacketInternalConsistency() and
+ *      verifyHealthcareAssurancePacketOffline() are left callable with their
+ *      original single-argument behavior; a v2 packet fails v1's exact-version
+ *      check ('packet_shape_invalid') before any proof is inspected.
+ *   2. SET SHAPE -- `proof` carries `required_algorithms` plus a `signatures`
+ *      array shaped exactly like EP-SIG-AGILITY-v1's AgileSignature
+ *      ({ alg, sig, key_id? }), reused verbatim.
+ *   3. ANTI-STRIPPING BYTES -- required_algorithms is INSIDE the signed bytes
+ *      (see signAssuranceValueV2 below), rebuilt by the verifier from the
+ *      REGISTERED set, never from what the artifact presents.
+ *   4. V1 COMPATIBILITY -- v1 stays fully synchronous. V2 verification is
+ *      ASYNC (ML-DSA verification is async): separate entry points
+ *      (verifyHealthcareAssurancePacketOfflineV2) plus a router
+ *      (verifyHealthcareAssurancePacketOfflineAny).
+ *   5. NAMED REFUSALS -- every failure names a reason; nothing throws; an
+ *      absent ML-DSA backend is 'pq_backend_unavailable', never a pass.
+ */
+export const HEALTHCARE_ASSURANCE_ASSERTION_V2_VERSION =
+  'EMILIA-HEALTHCARE-ASSURANCE-ASSERTION-v2';
+export const HEALTHCARE_ASSURANCE_PACKET_V2_VERSION =
+  'EMILIA-HEALTHCARE-CONSEQUENCE-ASSURANCE-PACKET-v2';
+export const HEALTHCARE_ASSURANCE_V2_REQUIRED_ALGORITHMS =
+  Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
 export const HOSPICE_ACTION_VERSION =
   'EP-HEALTH-PROGRAM-INTEGRITY-ACTION-v1';
 export const HOSPICE_PROFILE_ID = 'medi-cal.hospice-integrity.v1';
@@ -277,11 +313,64 @@ function signerShape(value: unknown): value is HealthcareAssuranceSigner {
     && typeof value.sign === 'function';
 }
 
+/**
+ * v2 hybrid signer: the SAME injected Ed25519 custody signer shape as v1
+ * (there is no honest KMS/HSM ML-DSA-65 custody path today; see
+ * docs/protocol/pq-hybrid-program.md), plus an ML-DSA-65 secret key used only
+ * through signAgile (never reimplemented here).
+ */
+export interface HealthcareAssuranceHybridSigner {
+  ed25519: HealthcareAssuranceSigner;
+  mldsa65: {
+    key_id: string;
+    /** Raw ML-DSA-65 secret key (4032 bytes) or its base64url encoding. */
+    private_key: Uint8Array | string;
+  };
+}
+
+function hybridSignerShape(value: unknown): value is HealthcareAssuranceHybridSigner {
+  return isPlainObject(value)
+    && signerShape(value.ed25519)
+    && isPlainObject(value.mldsa65)
+    && identifier(value.mldsa65.key_id)
+    && (value.mldsa65.private_key instanceof Uint8Array
+      || typeof value.mldsa65.private_key === 'string');
+}
+
+export function assuranceProofV2Shape(value: unknown): value is JsonObject {
+  return exactKeys(value, ['profile', 'required_algorithms', 'signatures'])
+    && value.profile === HEALTHCARE_ASSURANCE_PACKET_V2_VERSION
+    && Array.isArray(value.required_algorithms)
+    && value.required_algorithms.length === HEALTHCARE_ASSURANCE_V2_REQUIRED_ALGORITHMS.length
+    && HEALTHCARE_ASSURANCE_V2_REQUIRED_ALGORITHMS.every(
+      (alg, index) => value.required_algorithms[index] === alg,
+    )
+    && Array.isArray(value.signatures)
+    && value.signatures.length === HEALTHCARE_ASSURANCE_V2_REQUIRED_ALGORITHMS.length;
+}
+
+/**
+ * The single custody call site (injected signer.sign()) this file's proof
+ * primitives all fund through. Opt-in FIPS consult: `fips` is undefined for
+ * every existing caller, so this branch is not taken and behavior is
+ * byte-identical to before the consult existed (pinned by a regression
+ * test). When `fips` is supplied and the policy denies the classical leg,
+ * this refuses BEFORE calling signer.sign(), never after.
+ */
 async function signAssuranceValue(
   domain: string,
   value: unknown,
   signer: HealthcareAssuranceSigner,
+  fips?: { posture?: FipsPosture; allow_unvalidated_mldsa?: boolean },
 ): Promise<JsonObject> {
+  if (fips) {
+    const decision = checkOperationPolicy('Ed25519', fips.posture, {
+      allow_unvalidated_mldsa: fips.allow_unvalidated_mldsa,
+    });
+    if (!decision.permitted) {
+      throw new Error(`healthcare_assurance_fips_policy_denied:${decision.reason}`);
+    }
+  }
   const signed = await signer.sign(signingBytes(domain, value));
   const signature = typeof signed === 'string'
     ? canonicalBase64url(signed, 64)
@@ -298,10 +387,47 @@ async function signAssuranceValue(
   };
 }
 
+/**
+ * v2 hybrid twin of signAssuranceValue. Signs the SAME domain-separated bytes
+ * signingBytes() produces, plus the registered algorithm set committed
+ * INSIDE those bytes (anti-stripping; move 3 above), under BOTH Ed25519 and
+ * ML-DSA-65. The ML-DSA-65 leg goes through signAgile verbatim -- this module
+ * never reimplements FIPS 204 signing.
+ */
+export async function signAssuranceValueV2(
+  domain: string,
+  value: unknown,
+  signer: HealthcareAssuranceHybridSigner,
+): Promise<JsonObject> {
+  const bytes = Buffer.from(canonicalize({
+    domain: signingBytes(domain, value).toString('base64url'),
+    required_algorithms: [...HEALTHCARE_ASSURANCE_V2_REQUIRED_ALGORITHMS],
+  }));
+  const ed25519Sig = await signer.ed25519.sign(bytes);
+  const ed25519SigB64u = typeof ed25519Sig === 'string'
+    ? ed25519Sig
+    : Buffer.from(ed25519Sig).toString('base64url');
+  const mldsaSignature = await signAgile(new Uint8Array(bytes), {
+    alg: 'ML-DSA-65',
+    private_key: signer.mldsa65.private_key,
+    key_id: signer.mldsa65.key_id,
+  });
+  const signatures: AgileSignature[] = [
+    { alg: 'Ed25519', sig: ed25519SigB64u, key_id: signer.ed25519.key_id },
+    mldsaSignature,
+  ];
+  return {
+    profile: HEALTHCARE_ASSURANCE_PACKET_V2_VERSION,
+    required_algorithms: [...HEALTHCARE_ASSURANCE_V2_REQUIRED_ALGORITHMS],
+    signatures,
+  };
+}
+
 async function signedAssuranceAssertion(
   role: Exclude<HealthcareAssuranceRole, 'evaluator'>,
   body: JsonObject,
   signer: HealthcareAssuranceSigner,
+  fips?: { posture?: FipsPosture; allow_unvalidated_mldsa?: boolean },
 ): Promise<JsonObject> {
   const assertion = {
     '@version': HEALTHCARE_ASSURANCE_ASSERTION_VERSION,
@@ -310,7 +436,23 @@ async function signedAssuranceAssertion(
   };
   return {
     ...assertion,
-    proof: await signAssuranceValue(`assertion:${role}`, assertion, signer),
+    proof: await signAssuranceValue(`assertion:${role}`, assertion, signer, fips),
+  };
+}
+
+export async function signedAssuranceAssertionV2(
+  role: Exclude<HealthcareAssuranceRole, 'evaluator'>,
+  body: JsonObject,
+  signer: HealthcareAssuranceHybridSigner,
+): Promise<JsonObject> {
+  const assertion = {
+    '@version': HEALTHCARE_ASSURANCE_ASSERTION_V2_VERSION,
+    role,
+    body: clone(body),
+  };
+  return {
+    ...assertion,
+    proof: await signAssuranceValueV2(`assertion:${role}`, assertion, signer),
   };
 }
 
@@ -1163,6 +1305,23 @@ export interface HealthcareConsequenceControlOptions {
       aeb: HealthcareAssuranceSigner;
       provider: HealthcareAssuranceSigner;
     };
+    /**
+     * Opt-in FIPS posture consult at every signAssuranceValue() custody call
+     * site. Omit entirely (every existing deployment) and signing stays
+     * byte-identical to before this field existed.
+     */
+    fips?: { posture?: FipsPosture; allow_unvalidated_mldsa?: boolean };
+    /**
+     * Opt-in hybrid (Ed25519 + ML-DSA-65) signer set for
+     * exportAssurancePacketV2(). Omitting this leaves exportAssurancePacketV2
+     * a named refusal; it never falls back to signing only the classical leg.
+     */
+    hybrid?: {
+      evaluator: HealthcareAssuranceHybridSigner;
+      receipt: HealthcareAssuranceHybridSigner;
+      aeb: HealthcareAssuranceHybridSigner;
+      provider: HealthcareAssuranceHybridSigner;
+    };
   };
   mutate_sandbox(input: {
     tenant_id: string;
@@ -1196,6 +1355,10 @@ export function createHealthcareConsequenceControl(
         ASSURANCE_ROLES.map((role) => options.assurance.signers[role].key_id),
       ).size !== ASSURANCE_ROLES.length) {
     throw new Error('healthcare_assurance_signers_required');
+  }
+  if (options.assurance.hybrid !== undefined
+      && !ASSURANCE_ROLES.every((role) => hybridSignerShape(options.assurance.hybrid![role]))) {
+    throw new Error('healthcare_assurance_hybrid_signers_invalid');
   }
   if (!options.evidence_store
       || options.evidence_store.appendOnly !== true
@@ -1762,6 +1925,7 @@ export function createHealthcareConsequenceControl(
           receipt,
         ),
         options.assurance.signers.receipt,
+        options.assurance.fips,
       );
       aebAssertion = await signedAssuranceAssertion(
         'aeb',
@@ -1776,6 +1940,7 @@ export function createHealthcareConsequenceControl(
           aeb,
         ),
         options.assurance.signers.aeb,
+        options.assurance.fips,
       );
       if (provider) {
         providerAssertion = await signedAssuranceAssertion(
@@ -1791,6 +1956,7 @@ export function createHealthcareConsequenceControl(
             provider,
           ),
           options.assurance.signers.provider,
+          options.assurance.fips,
         );
       }
     } catch {
@@ -1848,11 +2014,102 @@ export function createHealthcareConsequenceControl(
         'packet:evaluator',
         packet,
         options.assurance.signers.evaluator,
+        options.assurance.fips,
       );
-    } catch {
-      return refusal('healthcare_assurance_signing_failed');
+    } catch (error) {
+      return refusal('healthcare_assurance_signing_failed', {
+        detail: safeReason(error, 'healthcare_assurance_signing_failed'),
+      });
     }
     const consistency = checkHealthcareAssurancePacketInternalConsistency(packet);
+    if (!consistency.consistent) {
+      return refusal('healthcare_assurance_evidence_conflict');
+    }
+    return packet;
+  }
+
+  /**
+   * Hybrid (Ed25519 + ML-DSA-65) sibling of exportAssurancePacket. Opt-in:
+   * refuses by name when options.assurance.hybrid is not configured, and
+   * never falls back to signing only the classical leg.
+   *
+   * COMPOSED over exportAssurancePacket rather than re-walking proposal,
+   * event, and provider discovery a second time: the v1 packet's BODY
+   * (proposal binding, findings, chronology, outcome) is exactly what a v2
+   * packet for the same input must also bind to, so a v2 export re-signs
+   * that identical content at each level (assertions, then packet) under the
+   * v2 version markers and hybrid proof shape. The v1 classical signature
+   * computed along the way is discarded, never returned or reused as a v2
+   * leg -- v2 legs are ALWAYS freshly signed under options.assurance.hybrid.
+   */
+  async function exportAssurancePacketV2(input: {
+    tenant_id: string;
+    operation_id: string;
+  }): Promise<JsonObject> {
+    if (!options.assurance.hybrid) {
+      return refusal('healthcare_assurance_hybrid_signer_not_configured');
+    }
+    const v1 = await exportAssurancePacket(input);
+    if (v1.ok === false) return v1;
+    const hybrid = options.assurance.hybrid;
+
+    async function reassertV2(
+      role: Exclude<HealthcareAssuranceRole, 'evaluator'>,
+    ): Promise<JsonObject | null> {
+      const assertion = v1.protocol_evidence?.[role];
+      if (!isPlainObject(assertion)) return null;
+      return signedAssuranceAssertionV2(role, assertion.body, hybrid[role]);
+    }
+
+    let receiptAssertionV2: JsonObject | null;
+    let aebAssertionV2: JsonObject | null;
+    let providerAssertionV2: JsonObject | null;
+    try {
+      receiptAssertionV2 = await reassertV2('receipt');
+      aebAssertionV2 = await reassertV2('aeb');
+      providerAssertionV2 = v1.protocol_evidence?.provider !== undefined
+        ? await reassertV2('provider')
+        : null;
+    } catch (error) {
+      return refusal('healthcare_assurance_hybrid_signing_failed', {
+        detail: safeReason(error, 'healthcare_assurance_hybrid_signing_failed'),
+      });
+    }
+    if (!receiptAssertionV2 || !aebAssertionV2) {
+      return refusal('healthcare_assurance_hybrid_signing_failed');
+    }
+
+    const packetBody: JsonObject = {
+      ...v1,
+      '@version': HEALTHCARE_ASSURANCE_PACKET_V2_VERSION,
+      protocol_evidence: {
+        ...v1.protocol_evidence,
+        receipt: receiptAssertionV2,
+        aeb: aebAssertionV2,
+        ...(providerAssertionV2 ? { provider: providerAssertionV2 } : {}),
+      },
+    };
+    delete packetBody.packet_digest;
+    delete packetBody.proof;
+    if (prohibitedPhi(packetBody)) {
+      return refusal('healthcare_assurance_packet_phi_refused');
+    }
+    const packet: JsonObject = {
+      ...packetBody,
+      packet_digest: digest(packetBody),
+    };
+    try {
+      packet.proof = await signAssuranceValueV2('packet:evaluator', packet, hybrid.evaluator);
+    } catch (error) {
+      return refusal('healthcare_assurance_hybrid_signing_failed', {
+        detail: safeReason(error, 'healthcare_assurance_hybrid_signing_failed'),
+      });
+    }
+    const consistency = checkHealthcareAssurancePacketInternalConsistency(packet, {
+      version: HEALTHCARE_ASSURANCE_PACKET_V2_VERSION,
+      assertionVersion: HEALTHCARE_ASSURANCE_ASSERTION_V2_VERSION,
+      proofShapeCheck: assuranceProofV2Shape,
+    });
     if (!consistency.consistent) {
       return refusal('healthcare_assurance_evidence_conflict');
     }
@@ -1864,24 +2121,34 @@ export function createHealthcareConsequenceControl(
     execute,
     reconcile,
     exportAssurancePacket,
+    exportAssurancePacketV2,
   });
 }
 
 export type HealthcareConsequenceControl =
   ReturnType<typeof createHealthcareConsequenceControl>;
 
+/**
+ * The `version`/`proofShapeCheck` parameters default to the exact v1
+ * constants, so every existing call site (which omits them) is
+ * byte-identical to before these parameters existed. This is COMPOSITION,
+ * not a v1 behavior change: v2 supplies its own version and proof-shape
+ * check rather than a parallel copy of this function drifting from it.
+ */
 function assuranceAssertion(
   value: unknown,
   role: Exclude<HealthcareAssuranceRole, 'evaluator'>,
+  version: string = HEALTHCARE_ASSURANCE_ASSERTION_VERSION,
+  proofShapeCheck: (proof: unknown) => boolean = assuranceProofShape,
 ): JsonObject | null {
   if (!exactKeys(value, ['@version', 'body', 'proof', 'role'])
-      || value['@version'] !== HEALTHCARE_ASSURANCE_ASSERTION_VERSION
+      || value['@version'] !== version
       || value.role !== role
       || !isPlainObject(value.body)
       || value.body.role !== role
       || !isPlainObject(value.body.projection)
       || !DIGEST_RE.test(value.body.artifact_digest)
-      || !assuranceProofShape(value.proof)) {
+      || !proofShapeCheck(value.proof)) {
     return null;
   }
   return value;
@@ -1890,13 +2157,26 @@ function assuranceAssertion(
 /**
  * Checks only packet shape, allowlisted projections, digests, and cross-field
  * consistency. It does not establish signer trust or evidence authenticity.
+ *
+ * `options` defaults to the exact v1 version/proof-shape constants, so the
+ * single-argument v1 call sites throughout this file are byte-identical to
+ * before this parameter existed. The v2 verify path (below) passes the v2
+ * version and assuranceProofV2Shape explicitly.
  */
 export function checkHealthcareAssurancePacketInternalConsistency(
   packet: unknown,
+  options: {
+    version?: string;
+    assertionVersion?: string;
+    proofShapeCheck?: (proof: unknown) => boolean;
+  } = {},
 ): {
   consistent: boolean;
   reasons: string[];
 } {
+  const packetVersion = options.version ?? HEALTHCARE_ASSURANCE_PACKET_VERSION;
+  const assertionVersion = options.assertionVersion ?? HEALTHCARE_ASSURANCE_ASSERTION_VERSION;
+  const proofShapeCheck = options.proofShapeCheck ?? assuranceProofShape;
   const reasons: string[] = [];
   if (!exactKeys(packet, [
     '@version',
@@ -1914,7 +2194,7 @@ export function checkHealthcareAssurancePacketInternalConsistency(
     'relying_party_id',
     'tenant_id',
     'verification_scope',
-  ]) || packet['@version'] !== HEALTHCARE_ASSURANCE_PACKET_VERSION) {
+  ]) || packet['@version'] !== packetVersion) {
     return { consistent: false, reasons: ['packet_shape_invalid'] };
   }
   if (prohibitedPhi(packet)) reasons.push('packet_contains_prohibited_phi');
@@ -1925,7 +2205,7 @@ export function checkHealthcareAssurancePacketInternalConsistency(
       || packet.packet_digest !== digest(packetBody)) {
     reasons.push('packet_digest_invalid');
   }
-  if (!assuranceProofShape(packet.proof)) {
+  if (!proofShapeCheck(packet.proof)) {
     reasons.push('packet_proof_shape_invalid');
   }
   if (!identifier(packet.relying_party_id)
@@ -1978,8 +2258,12 @@ export function checkHealthcareAssurancePacketInternalConsistency(
     reasons.push('packet_proposal_binding_invalid');
   }
 
-  const receipt = assuranceAssertion(packet.protocol_evidence?.receipt, 'receipt');
-  const aeb = assuranceAssertion(packet.protocol_evidence?.aeb, 'aeb');
+  const receipt = assuranceAssertion(
+    packet.protocol_evidence?.receipt, 'receipt', assertionVersion, proofShapeCheck,
+  );
+  const aeb = assuranceAssertion(
+    packet.protocol_evidence?.aeb, 'aeb', assertionVersion, proofShapeCheck,
+  );
   const receiptBody = receipt?.body;
   const aebBody = aeb?.body;
   const receiptValue = receiptProjection(receiptBody?.projection);
@@ -2042,6 +2326,8 @@ export function checkHealthcareAssurancePacketInternalConsistency(
   const provider = assuranceAssertion(
     packet.protocol_evidence?.provider,
     'provider',
+    assertionVersion,
+    proofShapeCheck,
   );
   if (reconciled && !provider) {
     reasons.push('packet_reconciliation_evidence_required');
@@ -2188,4 +2474,173 @@ export function verifyHealthcareAssurancePacketOffline(
     }
   }
   return { valid: reasons.length === 0, reasons: [...new Set(reasons)] };
+}
+
+/** v2 trust pin: BOTH public halves, pinned out of band. */
+export interface HealthcareAssuranceHybridKeyPin {
+  key_id: string;
+  public_key_spki_b64u: string;
+  pq_key_id: string;
+  /** ML-DSA-65: base64url of the raw 1952-byte public key. */
+  pq_public_key_b64u: string;
+}
+
+export interface HealthcareAssuranceHybridTrustBundle {
+  '@version': typeof HEALTHCARE_ASSURANCE_PACKET_V2_VERSION;
+  relying_party_id: string;
+  evaluator: HealthcareAssuranceHybridKeyPin;
+  receipt: HealthcareAssuranceHybridKeyPin;
+  aeb: HealthcareAssuranceHybridKeyPin;
+  provider: HealthcareAssuranceHybridKeyPin;
+}
+
+function hybridTrustPin(value: unknown): HealthcareAssuranceHybridKeyPin | null {
+  if (!exactKeys(value, ['key_id', 'pq_key_id', 'pq_public_key_b64u', 'public_key_spki_b64u'])
+      || !identifier(value.key_id)
+      || !identifier(value.pq_key_id)
+      || canonicalBase64url(value.public_key_spki_b64u) === null
+      || canonicalBase64url(value.pq_public_key_b64u, 1952) === null) {
+    return null;
+  }
+  // Curve/type-pin the classical half the same way trustPin() does, so an
+  // Ed448 (or any non-Ed25519) SPKI masquerading as the pin fails here too.
+  if (trustPin({ key_id: value.key_id, public_key_spki_b64u: value.public_key_spki_b64u }) === null) {
+    return null;
+  }
+  return value as HealthcareAssuranceHybridKeyPin;
+}
+
+/**
+ * v2 hybrid twin of verifyPinnedSignature. ASYNC (ML-DSA verification is
+ * async). Verifies under the PINNED keys only, via verifyAgileSignatureSet
+ * with policy 'hybrid_all' -- one leg alone never verifies.
+ */
+export async function verifyPinnedSignatureV2(
+  domain: string,
+  value: JsonObject,
+  proof: unknown,
+  pin: unknown,
+): Promise<boolean> {
+  if (!assuranceProofV2Shape(proof) || !isPlainObject(pin)) return false;
+  const resolvedPin = hybridTrustPin(pin);
+  if (!resolvedPin) return false;
+  const bytes = Buffer.from(canonicalize({
+    domain: signingBytes(domain, value).toString('base64url'),
+    required_algorithms: [...HEALTHCARE_ASSURANCE_V2_REQUIRED_ALGORITHMS],
+  }));
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(
+      new Uint8Array(bytes),
+      (proof as JsonObject).signatures,
+      [
+        { alg: 'Ed25519', public_key: resolvedPin.public_key_spki_b64u, key_id: resolvedPin.key_id },
+        { alg: 'ML-DSA-65', public_key: resolvedPin.pq_public_key_b64u, key_id: resolvedPin.pq_key_id },
+      ],
+      {
+        policy: 'hybrid_all',
+        requiredAlgorithms: [...HEALTHCARE_ASSURANCE_V2_REQUIRED_ALGORITHMS],
+      },
+    );
+  } catch {
+    // verifyAgileSignatureSet documents that it never throws; an injected
+    // backend that does is still a refusal here, never a pass.
+    return false;
+  }
+  return setResult?.verified === true;
+}
+
+/**
+ * v2 hybrid twin of verifyHealthcareAssurancePacketOffline. v1 above is
+ * UNTOUCHED and stays synchronous; it refuses a v2 packet on the version
+ * marker (via checkHealthcareAssurancePacketInternalConsistency's exact-key
+ * check) before ever inspecting packet.proof. ASYNC because ML-DSA
+ * verification is async, which is why this is a separate entry point rather
+ * than a signature change to the v1 function.
+ */
+export async function verifyHealthcareAssurancePacketOfflineV2(
+  packet: unknown,
+  trust: unknown,
+): Promise<{
+  valid: boolean;
+  reasons: string[];
+}> {
+  const reasons = [
+    ...checkHealthcareAssurancePacketInternalConsistency(packet, {
+      version: HEALTHCARE_ASSURANCE_PACKET_V2_VERSION,
+      assertionVersion: HEALTHCARE_ASSURANCE_ASSERTION_V2_VERSION,
+      proofShapeCheck: assuranceProofV2Shape,
+    }).reasons,
+  ];
+  if (!exactKeys(trust, [
+    '@version',
+    'aeb',
+    'evaluator',
+    'provider',
+    'receipt',
+    'relying_party_id',
+  ]) || trust['@version'] !== HEALTHCARE_ASSURANCE_PACKET_V2_VERSION
+      || !identifier(trust.relying_party_id)
+      || !ASSURANCE_ROLES.every((role) => hybridTrustPin(trust[role]) !== null)
+      || new Set(ASSURANCE_ROLES.map((role) => trust[role].key_id)).size
+        !== ASSURANCE_ROLES.length
+      || new Set(ASSURANCE_ROLES.map((role) => trust[role].pq_key_id)).size
+        !== ASSURANCE_ROLES.length) {
+    reasons.push('relying_party_trust_bundle_invalid');
+  }
+  if (!isPlainObject(packet) || !isPlainObject(trust)
+      || packet.relying_party_id !== trust.relying_party_id) {
+    reasons.push('relying_party_binding_invalid');
+    return { valid: false, reasons: [...new Set(reasons)] };
+  }
+  const packetForSignature = clone(packet);
+  const packetProof = packetForSignature.proof;
+  delete packetForSignature.proof;
+  if (!(await verifyPinnedSignatureV2(
+    'packet:evaluator',
+    packetForSignature,
+    packetProof,
+    trust.evaluator,
+  ))) {
+    reasons.push('evaluator_signature_invalid');
+  }
+  for (const role of ['receipt', 'aeb', 'provider'] as const) {
+    const assertion = packet.protocol_evidence?.[role];
+    if (role === 'provider' && assertion === undefined
+        && !RECONCILED_DECISIONS.has(packet.outcome?.decision)) {
+      continue;
+    }
+    if (!isPlainObject(assertion)) {
+      reasons.push(`${role}_signature_invalid`);
+      continue;
+    }
+    const unsigned = clone(assertion);
+    const proof = unsigned.proof;
+    delete unsigned.proof;
+    if (!(await verifyPinnedSignatureV2(
+      `assertion:${role}`,
+      unsigned,
+      proof,
+      trust[role],
+    ))) {
+      reasons.push(`${role}_signature_invalid`);
+    }
+  }
+  return { valid: reasons.length === 0, reasons: [...new Set(reasons)] };
+}
+
+/**
+ * Route a packet of EITHER version to its verifier. v1 packets get the exact
+ * v1 verdict; v2 packets get the hybrid check. A packet whose `@version` is
+ * neither refuses on the version marker, through the v1 verifier
+ * (fail-closed).
+ */
+export async function verifyHealthcareAssurancePacketOfflineAny(
+  packet: unknown,
+  trust: unknown,
+): Promise<{ valid: boolean; reasons: string[] }> {
+  if (isPlainObject(packet) && packet['@version'] === HEALTHCARE_ASSURANCE_PACKET_V2_VERSION) {
+    return verifyHealthcareAssurancePacketOfflineV2(packet, trust);
+  }
+  return verifyHealthcareAssurancePacketOffline(packet, trust);
 }
