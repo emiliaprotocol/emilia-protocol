@@ -15,6 +15,10 @@ const ACTION_NAME = /^[a-z][a-z0-9]*(?:[._:-][a-z0-9]+)*$/;
 function snapshot(value) {
     return JSON.parse(canonicalizeFiniteJson(value));
 }
+/** Internal strict-JSON snapshot used to freeze the local adapter selector. */
+export function snapshotProtectedActionValue(value) {
+    return deepFreeze(snapshot(value));
+}
 function deepFreeze(value) {
     if (value === null || typeof value !== 'object' || Object.isFrozen(value))
         return value;
@@ -80,7 +84,7 @@ export function prepareProtectedActionInvocation(registry, action, parameters) {
     }
     let frozenParameters;
     try {
-        frozenParameters = deepFreeze(snapshot(parameters));
+        frozenParameters = snapshotProtectedActionValue(parameters);
     }
     catch {
         return Object.freeze({ ok: false, reason: 'protected_action_parameters_invalid' });

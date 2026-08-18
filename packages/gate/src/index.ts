@@ -89,7 +89,10 @@ import {
   FORMAL_RUNTIME_CONFIG,
   FORMAL_RUNTIME_INVARIANT_MAP,
 } from './formal-runtime-map.js';
-import { prepareProtectedActionInvocation } from './protected-action-registry.js';
+import {
+  prepareProtectedActionInvocation,
+  snapshotProtectedActionValue,
+} from './protected-action-registry.js';
 import {
   CAPABILITY_RECEIPT_VERSION,
   CAPABILITY_STATE_VERSION,
@@ -2246,7 +2249,19 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     selector?: any; receipt?: any; observedAction?: any; fieldOriginEvidence?: any;
     admissibilityProfile?: any; reliancePacket?: any; admissibility?: any; capability?: any;
   } = {}, protectedRegistry: unknown, opts: { recordExecution?: boolean } = {}) {
-    const requirement = resolveRequirement(selector);
+    let frozenSelector: any;
+    try {
+      frozenSelector = snapshotProtectedActionValue(selector);
+    } catch {
+      return {
+        ok: false,
+        status: 409,
+        reason: 'protected_action_selector_invalid',
+        body: { rejected: { type: 'protected_action_registry', reason: 'protected_action_selector_invalid' } },
+        authorization: null,
+      };
+    }
+    const requirement = resolveRequirement(frozenSelector);
     const action = requirement?.action_type ?? null;
     const prepared = prepareProtectedActionInvocation(protectedRegistry, action, observedAction);
     if (!prepared.ok) {
@@ -2259,7 +2274,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       };
     }
     return run({
-      selector,
+      selector: frozenSelector,
       receipt,
       observedAction: prepared.parameters,
       fieldOriginEvidence,

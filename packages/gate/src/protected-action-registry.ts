@@ -45,6 +45,11 @@ function snapshot(value: unknown): unknown {
   return JSON.parse(canonicalizeFiniteJson(value));
 }
 
+/** Internal strict-JSON snapshot used to freeze the local adapter selector. */
+export function snapshotProtectedActionValue(value: unknown): unknown {
+  return deepFreeze(snapshot(value));
+}
+
 function deepFreeze(value: unknown): unknown {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return value;
   for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
@@ -110,7 +115,7 @@ export function prepareProtectedActionInvocation(
 
   let frozenParameters: unknown;
   try {
-    frozenParameters = deepFreeze(snapshot(parameters));
+    frozenParameters = snapshotProtectedActionValue(parameters);
   } catch {
     return Object.freeze({ ok: false, reason: 'protected_action_parameters_invalid' });
   }

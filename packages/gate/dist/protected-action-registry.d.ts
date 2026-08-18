@@ -18,6 +18,8 @@ export type PreparedProtectedAction = Readonly<{
     ok: false;
     reason: string;
 }>;
+/** Internal strict-JSON snapshot used to freeze the local adapter selector. */
+export declare function snapshotProtectedActionValue(value: unknown): unknown;
 /** Create a registry that can be populated only before trusted-startup sealing. */
 export declare function createProtectedActionRegistry(): ProtectedActionRegistry;
 /**

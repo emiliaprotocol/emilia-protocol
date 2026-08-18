@@ -136,6 +136,30 @@ test("runRegistered refuses unsealed, unknown, invalid, and counterfeit registri
   assert.equal(counterfeit.reason, "protected_action_registry_invalid");
   assert.equal(calls, 0);
 });
+test("selector accessors cannot change the manifest-selected handler between preflight and admission", async () => {
+  let calls = 0;
+  let reads = 0;
+  const registry = createProtectedActionRegistry();
+  registry.register("finance.read_balance", () => true, async () => {
+    calls += 1;
+  });
+  registry.register("finance.change_payee", validPayee, async () => {
+    calls += 1;
+  });
+  registry.seal();
+  const gate = createGate({ manifest: MANIFEST, allowEphemeralStore: true });
+  const selector = {
+    protocol: "mcp",
+    get tool() {
+      reads += 1;
+      return reads === 1 ? "read_balance" : "change_payee";
+    }
+  };
+  const result = await gate.runRegistered({ selector, observedAction: {} }, registry);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "protected_action_selector_invalid");
+  assert.equal(calls, 0);
+});
 test("manifest resolution selects the handler and agent-carried names cannot redirect it", async () => {
   const calls = [];
   const registry = createProtectedActionRegistry();
