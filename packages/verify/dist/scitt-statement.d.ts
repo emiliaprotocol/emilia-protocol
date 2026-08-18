@@ -60,6 +60,7 @@
  * untrusted input.
  */
 import crypto from 'node:crypto';
+import { type AgilityOptions } from './pq-signature-agility.js';
 import { type CborResult } from './receipt-cose-encoding.js';
 export declare const EP_SCITT_STATEMENT_PROFILE = "EP-SCITT-STATEMENT-v1";
 /** RFC 9943 Section 10.1: media type of the Signed Statement COSE object. */
@@ -203,4 +204,124 @@ export interface ScittRegistrationRequest {
  * explicit act.
  */
 export declare function describeScittRegistrationRequest(statement: Uint8Array, endpointUrl: string): CborResult<ScittRegistrationRequest>;
+/**
+ * ALGORITHM IDENTIFIER PROVENANCE. `COSE_ALG_ML_DSA_65` is imported from
+ * `receipt-cose-encoding.ts`, which traces it to
+ * `packages/verify/src/aeb-mcgraw-delegation-adapter.ts`
+ * (`MCGRAW_BUDGET_COSE_ALGORITHM = -49`, "RFC 9964 COSE Algorithms registry
+ * value for ML-DSA-65") -- a value this repository already verifies foreign
+ * COSE_Sign1 objects under. Nothing here is recalled from memory or invented.
+ *
+ * WHY A PAIR. RFC 9943 Section 6 defines a Signed Statement as a COSE_Sign1,
+ * which carries exactly one signature. The multi-signer COSE container
+ * (COSE_Sign) has no definition anywhere in this repository, so it is not
+ * hand-rolled here. v2 is therefore an EP-DEFINED PAIRING of two individually
+ * conforming Signed Statements over the SAME payload, one per registered
+ * algorithm, each carrying the required set in a PROTECTED header. RFC 9943
+ * Section 6.1 Figure 3 permits additional protected labels (`* label => any`),
+ * so each half remains a conforming Signed Statement in its own right.
+ *
+ * THE COORDINATION BOUNDARY, STATED PLAINLY AND NOT SMOOTHED OVER. A
+ * Transparency Service registers ONE Signed Statement. Register one half of a
+ * v2 pair and the resulting Receipt covers that half only; there is no
+ * transparency mechanism here that carries the pairing. The hybrid property is
+ * a RELYING-PARTY pin evaluated by verifyEpScittSignedStatementHybrid over both
+ * halves, and it does not survive a round trip through a Transparency Service.
+ * Making it survive requires a SCITT-side profile that this repository cannot
+ * define unilaterally.
+ *
+ * The five moves are identical to EP-COSE-ENCODING-v0.2:
+ *   1. VERSION BUMP. New profile marker; `verifyEpScittSignedStatement` is
+ *      UNTOUCHED and refuses either half with `unexpected_protected_header`
+ *      (its closed label set has no `ep.required_algs`) before any signature
+ *      work. Asserted by test.
+ *   2. SET SHAPE. COSE algorithm VALUES [-8, -49] in registered order.
+ *   3. ANTI-STRIPPING BYTES. The set is a protected header in BOTH halves, so
+ *      it is inside each Sig_structure; the verifier rebuilds both expected
+ *      protected headers from the REGISTERED set, the pinned kid, the pinned
+ *      iss, and the `sub` it recomputed from the payload, and requires byte
+ *      equality.
+ *   4. V1 COMPATIBILITY. The v1 builder and verifier stay synchronous and
+ *      unchanged; v2 is a separate async entry point.
+ *   5. NAMED REFUSALS. Every path returns a named reason; nothing throws on
+ *      untrusted input; a missing ML-DSA backend refuses.
+ *
+ * WHAT IT IS STILL NOT. `valid: true` means VERIFIED, never REGISTERED. Both
+ * statement signatures are transport/registration attestations. The EP
+ * receipt's own approval signature inside the payload is Ed25519 only, so a v2
+ * pair does not make the carried receipt post-quantum protected. Opt-in; not
+ * deployed, default, or certified.
+ */
+export declare const EP_SCITT_STATEMENT_HYBRID_PROFILE = "EP-SCITT-STATEMENT-v2";
+/** The registered required COSE algorithm set, in canonical order. */
+export declare const EP_SCITT_STATEMENT_V2_REQUIRED_ALGORITHMS: readonly [-8, -49];
+/** Every refusal reason the v2 entry points add on top of EP_SCITT_REFUSALS. */
+export declare const EP_SCITT_V2_REFUSALS: readonly ["hybrid_pair_incomplete", "hybrid_payload_mismatch", "algorithm_set_mismatch", "protected_header_mismatch", "pq_backend_unavailable", "invalid_pq_signing_key", "invalid_pq_public_key"];
+/** The protected header of one half of a v2 pair; the set is a signed member. */
+export declare function epScittV2ProtectedHeader(alg: number, kid: string, iss: string, sub: string, requiredAlgorithms?: readonly number[]): Map<unknown, unknown>;
+export interface BuildScittHybridOptions extends BuildScittStatementOptions {
+    /** ML-DSA-65 raw 4032-byte secret key of the SCITT Issuer, or base64url. */
+    statementPqSecretKey: Uint8Array | string;
+}
+export interface BuiltScittHybridPair {
+    /** Tagged COSE_Sign1 Signed Statement, alg -8 (EdDSA). */
+    classical: Uint8Array;
+    /** Tagged COSE_Sign1 Signed Statement, alg -49 (ML-DSA-65). */
+    pq: Uint8Array;
+    payload: Uint8Array;
+    iss: string;
+    sub: string;
+    caid: string;
+    payloadSha256: string;
+}
+/** Build an EP-SCITT-STATEMENT-v2 hybrid Signed Statement pair. */
+export declare function buildEpScittHybridSignedStatement(receipt: unknown, opts: BuildScittHybridOptions, agility?: AgilityOptions): Promise<CborResult<BuiltScittHybridPair>>;
+export interface VerifyScittHybridOptions {
+    /** SPKI-DER base64url Ed25519 public key pinned for the SCITT Issuer. */
+    statementPublicKeyBase64url: string;
+    /** base64url raw 1952-byte ML-DSA-65 public key pinned for the SCITT Issuer. */
+    statementPqPublicKeyBase64url: string;
+    /** SPKI-DER base64url Ed25519 public key pinned for the RECEIPT issuer. */
+    receiptIssuerPublicKeyBase64url: string;
+    /** REQUIRED in v2: both halves must carry exactly this iss. */
+    expectedIss: string;
+    /** REQUIRED in v2: both halves must carry exactly this kid. */
+    expectedKid: string;
+    expectedSub?: string;
+    receiptVerifier?: (receipt: unknown, publicKeyBase64url: string) => {
+        valid?: unknown;
+    };
+    agility?: AgilityOptions;
+}
+export interface VerifyScittHybridResult {
+    valid: boolean;
+    checks: {
+        pair_present: boolean;
+        deterministic_encoding: boolean;
+        cose_structure: boolean;
+        algorithm_set: boolean;
+        payload_identical: boolean;
+        cwt_claims: boolean;
+        statement_signatures: boolean;
+        payload_canonical: boolean;
+        receipt_signature: boolean;
+        sub_binding: boolean;
+    };
+    reason?: string;
+    /** Always false. This module never registers anything. */
+    registered: false;
+    receipt?: unknown;
+    iss?: string;
+    sub?: string;
+    payloadSha256?: string;
+}
+/**
+ * Verify an EP-SCITT-STATEMENT-v2 hybrid Signed Statement pair, fail-closed.
+ * `valid: true` still means VERIFIED, never REGISTERED, and the pairing is a
+ * relying-party pin that no Transparency Service conveys.
+ */
+export declare function verifyEpScittSignedStatementHybrid(pair: {
+    classical?: unknown;
+    pq?: unknown;
+} | null | undefined, opts: VerifyScittHybridOptions): Promise<VerifyScittHybridResult>;
 //# sourceMappingURL=scitt-statement.d.ts.map

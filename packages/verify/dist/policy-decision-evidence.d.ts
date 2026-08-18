@@ -9,6 +9,7 @@
  */
 import { type KeyObject } from 'node:crypto';
 import { type AebAdapter, type AebDigest } from './aeb-adapter-contract.js';
+import { type AgilityOptions } from './pq-signature-agility.js';
 type Obj = Record<string, unknown>;
 export declare const POLICY_DECISION_EVIDENCE_VERSION = "EP-POLICY-DECISION-EVIDENCE-v1";
 export declare const POLICY_DECISION_EVIDENCE_TYP = "ep-policy-decision-evidence+jwt";
@@ -97,5 +98,98 @@ export declare function createPolicyDecisionEvidenceAdapter(constructorPins: {
     config: PolicyDecisionEvidenceAdapterConfig;
     trust_roots: readonly PolicyDecisionEvidenceTrustRoot[];
 }): AebAdapter;
+/**
+ * Same five-move migration as EP-REVOCATION-v2, and the same reason the JOSE
+ * `alg` header disappears in v2 as in EP-AUTHORIZATION-SERVER-CONFIRMATION-v2:
+ * this repository carries no traceable JOSE algorithm identifier for ML-DSA-65
+ * (the only in-tree ML-DSA algorithm identifier is the COSE one, RFC 9964, in
+ * packages/verify/src/aeb-mcgraw-delegation-adapter.ts), and
+ * docs/protocol/pq-hybrid-program.md records the JOSE registration as unfinished
+ * draft work. Rather than squat on the JOSE registry with an invented value,
+ * the v2 protected header carries no `alg` at all: each signature carries its
+ * own label from EP's own closed registry (EP-SIG-AGILITY-v1), and the header
+ * commits to the required SET.
+ *
+ *   1. VERSION BUMP. `ep_version` becomes the v2 marker and `typ` changes, so
+ *      the unchanged v1 parser (signableClaims / verifyStatement) refuses a v2
+ *      statement on the version marker before touching a signature, without
+ *      throwing. Asserted by test.
+ *   2. SET SHAPE. `signatures: [{ alg, sig, key_id }]`, the EP-SIG-AGILITY-v1
+ *      AgileSignature shape, one entry per registered algorithm.
+ *   3. ANTI-STRIPPING BYTES. `required_algorithms` is a member of the protected
+ *      header, which is inside the ASCII `<protected>.<payload>` signing input
+ *      both legs cover. The verifier rebuilds the expected header from the PIN
+ *      and the REGISTERED set and requires byte equality.
+ *   4. V1 COMPATIBILITY. signPolicyDecisionEvidence() and the synchronous
+ *      AebAdapter path are unchanged and stay synchronous. ML-DSA verification
+ *      is async and AebAdapter.verifyNative() is synchronous by contract, so v2
+ *      is a separate async entry point; there is no hybrid adapter here.
+ *   5. NAMED REFUSALS. Nothing throws on caller input; a missing ML-DSA backend
+ *      is `pq_backend_unavailable` and never a pass on the classical leg.
+ *
+ * COORDINATION BOUNDARY. The signer is an OPA or Cerbos integration that
+ * vendored this helper. Shipping the v2 verifier does not make any policy-engine
+ * integration emit v2 statements: each one must deploy an ML-DSA-65 key and the
+ * v2 signer first. Opt-in; not deployed, default, or certified.
+ *
+ * UNCHANGED BOUNDARY. v2 changes the signature algebra and nothing else. A
+ * verified statement still proves only that a pinned integration observed and
+ * signed this machine-policy decision. A machine ALLOW is still not human
+ * authorization.
+ */
+export declare const POLICY_DECISION_EVIDENCE_V2_VERSION = "EP-POLICY-DECISION-EVIDENCE-v2";
+export declare const POLICY_DECISION_EVIDENCE_V2_TYP = "ep-policy-decision-evidence+hybrid";
+/** The registered required algorithm set, in canonical order. */
+export declare const POLICY_DECISION_EVIDENCE_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+export interface PolicyDecisionEvidenceV2Claims extends Omit<PolicyDecisionEvidenceClaims, 'ep_version'> {
+    ep_version: typeof POLICY_DECISION_EVIDENCE_V2_VERSION;
+}
+export interface PolicyDecisionEvidenceHybridStatement {
+    protected: string;
+    payload: string;
+    signatures: Array<{
+        alg: string;
+        sig: string;
+        key_id: string;
+    }>;
+}
+export interface PolicyDecisionEvidenceV2KeyPin {
+    key_id: string;
+    /** Ed25519 base64url SPKI DER. */
+    public_key: string;
+    pq_key_id: string;
+    /** ML-DSA-65 base64url raw 1952-byte public key. */
+    pq_public_key: string;
+}
+export interface PolicyDecisionEvidenceV2Signer {
+    key_id: string;
+    private_key: KeyObject;
+    pq_key_id: string;
+    /** ML-DSA-65 raw 4032-byte secret key (Uint8Array or base64url). */
+    pq_secret_key: Uint8Array | string;
+}
+export interface PolicyDecisionEvidenceV2Result {
+    valid: boolean;
+    checks: Record<string, boolean>;
+    errors: string[];
+    claims?: PolicyDecisionEvidenceV2Claims;
+}
+/** The v2 protected header; `required_algorithms` is a signed member of it. */
+export declare function policyDecisionEvidenceV2ProtectedHeader(keyId: string, pqKeyId: string, requiredAlgorithms?: readonly string[]): Obj;
+/** ASCII `<protected>.<payload>`: the exact v1 signing-input convention. */
+export declare function policyDecisionEvidenceV2SigningInput(protectedB64u: string, payloadB64u: string): Buffer;
+/** Sign a v2 policy decision statement under BOTH registered algorithms. */
+export declare function signPolicyDecisionEvidenceV2(claims: PolicyDecisionEvidenceV2Claims, signer: PolicyDecisionEvidenceV2Signer, options?: AgilityOptions): Promise<PolicyDecisionEvidenceHybridStatement>;
+/**
+ * verifyPolicyDecisionEvidenceV2 -- FAIL-CLOSED hybrid check against a pinned
+ * key pair and a pinned adapter config. Never throws on caller input; a v2
+ * statement NEVER verifies on one leg alone.
+ *
+ * SCOPE. Header shape, committed algorithm set, both legs under pinned keys,
+ * and closed claim validity against the config. Freshness, engine/policy
+ * allow-lists beyond the closed claim check, status, and AEB acceptance stay
+ * with the unchanged synchronous v1 adapter.
+ */
+export declare function verifyPolicyDecisionEvidenceV2(statement: unknown, pin: PolicyDecisionEvidenceV2KeyPin | null | undefined, config: PolicyDecisionEvidenceAdapterConfig | null | undefined, options?: AgilityOptions): Promise<PolicyDecisionEvidenceV2Result>;
 export {};
 //# sourceMappingURL=policy-decision-evidence.d.ts.map

@@ -22,6 +22,7 @@
 import crypto from 'node:crypto';
 import { verifyTrustReceipt, canonicalize } from './index.js';
 import { canonicalizeStrictJson } from './strict-json.js';
+import { verifyAgileSignatureSet, } from './pq-signature-agility.js';
 export const PROVENANCE_VERSION = 'EP-PROVENANCE-CHAIN-v1';
 const DEFAULT_HUMAN_KEY_CLASSES = ['A'];
 // Normalize to a bare lowercase hex digest, but ONLY if it is a well-formed
@@ -457,5 +458,369 @@ export function verifyProvenanceOffline(doc, opts = {}) {
     }
     const valid = Object.values(checks).every(Boolean);
     return { valid, checks, errors, links, agent_identity: agentIdentity, liability };
+}
+// ===========================================================================
+// EP-PROVENANCE-CHAIN-v2 -- hybrid (Ed25519 + ML-DSA-65) delegation-link proof
+// ===========================================================================
+/**
+ * Reference hybrid migration for this surface. The chain document's OWN
+ * cryptographic surface -- the part packages/verify/src/provenance.ts owns
+ * directly -- is the delegation-link proof (delegationProofBytes /
+ * verifyDetachedSignature above). The embedded root/action receipts remain
+ * whatever EP-RECEIPT-v1/v2 the receipt-issuance hybridization workstream
+ * (packages/issue, packages/verify/src/index.ts) ships; this file composes
+ * verifyTrustReceipt UNCHANGED in both v1 and v2, exactly as the v1 header
+ * describes ("adds NO new trust"). Copies the five moves from
+ * EP-REVOCATION-v2 (packages/verify/src/revocation.ts):
+ *
+ * 1. VERSION BUMP. The document's `@version` moves EP-PROVENANCE-CHAIN-v1 to
+ *    -v2. verifyProvenanceOffline above is UNCHANGED and refuses a v2
+ *    document on the version marker before inspecting any delegation proof.
+ * 2. SET SHAPE. Each delegation link's `proof_set` (replacing v1's `proof`)
+ *    carries `required_algorithms` plus a `signatures` array shaped exactly
+ *    like EP-SIG-AGILITY-v1's AgileSignature ({alg, sig, key_id?}), one entry
+ *    per algorithm, reusing that shape verbatim.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is INSIDE the signed bytes
+ *    (delegationProofV2Bytes), independently recomputed by the verifier from
+ *    the registered set -- never read off the presented link.
+ * 4. V1 COMPATIBILITY. v1 documents keep verifying, unchanged, through the
+ *    sync verifyProvenanceOffline above. v2 verification is a separate ASYNC
+ *    entry point (ML-DSA verification is async) because a delegation chain
+ *    may be arbitrarily long and every hop's proof must be awaited.
+ * 5. NAMED REFUSALS. Nothing throws on caller input; a missing ML-DSA backend
+ *    is a refusal via the agility module's `pq_backend_unavailable`, never a
+ *    skipped check and never a pass on the Ed25519 leg alone.
+ *
+ * HARDENING BEYOND V1. verifyDelegationProofSetV2 verifies ONLY against the
+ * relying-party-PINNED key pair for the delegator -- it never reads a public
+ * key off the presented proof at all, so there is no "presented key equals
+ * pinned key" indirection to get wrong (v1's proof_key_bound check exists
+ * only because v1 carries the signer's public key inline; v2 doesn't).
+ */
+export const PROVENANCE_V2_VERSION = 'EP-PROVENANCE-CHAIN-v2';
+export const PROVENANCE_DELEGATION_PROOF_V2_VERSION = 'EP-PROVENANCE-DELEGATION-PROOF-v2';
+/** The registered required algorithm set, in canonical order. */
+export const PROVENANCE_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+function algorithmSetMatchesRegisteredProvenance(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === PROVENANCE_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === PROVENANCE_V2_REQUIRED_ALGORITHMS[i]);
+}
+/**
+ * Bytes BOTH legs sign for one delegation link's hybrid proof. Same signed
+ * field subset as v1's delegationProofBytes (DELEGATION_PROOF_FIELDS),
+ * domain-separated and committing the REGISTERED algorithm set. Recomputed
+ * independently by the verifier; never trusts a presented algorithm list.
+ */
+export function delegationProofV2Bytes(link, requiredAlgorithms = PROVENANCE_V2_REQUIRED_ALGORITHMS) {
+    if (!algorithmSetMatchesRegisteredProvenance(requiredAlgorithms)) {
+        throw new Error('delegationProofV2Bytes: algorithm set is not the registered EP-PROVENANCE-CHAIN-v2 set');
+    }
+    const subset = {
+        '@version': PROVENANCE_DELEGATION_PROOF_V2_VERSION,
+        required_algorithms: [...requiredAlgorithms],
+    };
+    for (const f of DELEGATION_PROOF_FIELDS)
+        subset[f] = link[f] ?? null;
+    return Buffer.from(canonicalize(subset), 'utf8');
+}
+/**
+ * Verify one v2 (hybrid) delegation-link `proof_set`. FAIL-CLOSED, never
+ * throws. A missing pin, a stripped leg, or a narrowed `required_algorithms`
+ * all refuse; neither algorithm alone ever suffices.
+ */
+export async function verifyDelegationProofSetV2(link, pin, opts = {}) {
+    try {
+        const proofSet = link?.proof_set;
+        if (!proofSet || typeof proofSet !== 'object' || Array.isArray(proofSet))
+            return false;
+        if (!algorithmSetMatchesRegisteredProvenance(proofSet.required_algorithms))
+            return false;
+        const signatures = proofSet.signatures;
+        if (!Array.isArray(signatures) || signatures.length !== 2)
+            return false;
+        const seen = new Set();
+        for (const s of signatures) {
+            if (!s || typeof s !== 'object' || Array.isArray(s) || typeof s.alg !== 'string' || seen.has(s.alg)) {
+                return false;
+            }
+            seen.add(s.alg);
+        }
+        if (!PROVENANCE_V2_REQUIRED_ALGORITHMS.every((alg) => seen.has(alg)))
+            return false;
+        if (typeof pin?.public_key !== 'string' || !pin.public_key
+            || typeof pin?.pq_public_key !== 'string' || !pin.pq_public_key)
+            return false;
+        const bytes = delegationProofV2Bytes(link);
+        const setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), signatures, [
+            { alg: 'Ed25519', public_key: pin.public_key },
+            { alg: 'ML-DSA-65', public_key: pin.pq_public_key },
+        ], { ...opts, policy: 'hybrid_all', requiredAlgorithms: [...PROVENANCE_V2_REQUIRED_ALGORITHMS] });
+        return setResult.verified === true;
+    }
+    catch {
+        return false;
+    }
+}
+/**
+ * Verify an EP-PROVENANCE-CHAIN-v2 document fully offline. FAIL CLOSED.
+ * Identical control flow to verifyProvenanceOffline (root/action receipt
+ * verification via the unchanged verifyTrustReceipt, scope containment,
+ * monotonic constraints, leaf-permits-action) except each delegation link's
+ * proof is verified via verifyDelegationProofSetV2 (hybrid, async) against
+ * `link.proof_set` instead of verifyDetachedSignature against `link.proof`.
+ */
+export async function verifyProvenanceOfflineV2(doc, opts = {}) {
+    opts = opts && typeof opts === 'object' ? opts : {};
+    const humanKeyClasses = opts.humanKeyClasses || DEFAULT_HUMAN_KEY_CLASSES;
+    const allowUnsignedDelegations = opts.allowUnsignedDelegations === true;
+    const now = opts.now === undefined ? Date.now() : opts.now;
+    const requireActionApprovalAlways = opts.requireActionApprovalAlways === true;
+    const checks = {
+        version: false, root_receipt_valid: false, root_human_signoff: false,
+        per_action_required: true, action_receipt_valid: true, action_human_signoff: true,
+        execution_binding: true, chain_anchored: true, chain_links_bound: true,
+        delegations_signed: true, proof_key_bound: true, delegations_not_expired: true,
+        scope_containment: true, constraints_monotonic: true, leaf_permits_action: true, temporal_containment: true,
+    };
+    const errors = [];
+    const links = [];
+    const fail = (key, msg) => { checks[key] = false; errors.push(msg); };
+    const validVerificationProfile = (profile) => (profile
+        && typeof profile === 'object'
+        && profile.approver_keys
+        && typeof profile.approver_keys === 'object'
+        && typeof profile.log_public_key === 'string'
+        && profile.log_public_key.length > 0
+        && typeof profile.rp_id === 'string'
+        && profile.rp_id.length > 0
+        && Array.isArray(profile.allowed_origins)
+        && profile.allowed_origins.length > 0
+        && profile.allowed_origins.every((origin) => typeof origin === 'string' && origin.length > 0));
+    if (!Number.isFinite(now)) {
+        fail('delegations_not_expired', 'verification reference time must be finite');
+        return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+    }
+    if (doc === null || typeof doc !== 'object' || Array.isArray(doc)) {
+        errors.push(`unsupported version: ${doc?.['@version']}`);
+        return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+    }
+    try {
+        canonicalizeStrictJson(doc, { maxDepth: 64, maxNodes: 100_000, maxStringBytes: 4_194_304 });
+    }
+    catch {
+        fail('chain_links_bound', 'provenance document is outside the bounded canonical JSON domain');
+        return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+    }
+    if (doc?.['@version'] !== PROVENANCE_V2_VERSION) {
+        errors.push(`unsupported version: ${doc?.['@version']}`);
+        return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+    }
+    checks.version = true;
+    const root = doc.root_signoff;
+    const rootVerification = opts.rootVerification || opts.root_verification;
+    if (!root?.receipt) {
+        fail('root_receipt_valid', 'missing root_signoff.receipt');
+    }
+    else if (!validVerificationProfile(rootVerification)) {
+        fail('root_receipt_valid', 'relying-party root verification profile is required');
+    }
+    else {
+        const rootProfile = rootVerification;
+        const r0 = verifyTrustReceipt(root.receipt, {
+            approverKeys: rootProfile.approver_keys,
+            logPublicKey: rootProfile.log_public_key,
+            rpId: rootProfile.rp_id,
+            allowedOrigins: rootProfile.allowed_origins,
+        });
+        checks.root_receipt_valid = r0.valid;
+        if (!r0.valid)
+            errors.push(`root receipt failed v1 verification: ${(r0.errors || []).join('; ')}`);
+        checks.root_human_signoff = hasHumanSignoff(root.receipt, humanKeyClasses);
+        if (!checks.root_human_signoff)
+            errors.push(`root receipt carries no human signoff (need key_class in [${humanKeyClasses.join(', ')}])`);
+    }
+    const exec = doc.execution || {};
+    let reversibilityAsserted = false;
+    if (typeof opts.reversibilityAsserted === 'function') {
+        try {
+            reversibilityAsserted = opts.reversibilityAsserted(exec) === true;
+        }
+        catch {
+            reversibilityAsserted = false;
+        }
+    }
+    const needApproval = requireActionApprovalAlways || !reversibilityAsserted;
+    const approval = doc.action_approval;
+    const actionVerification = opts.actionVerification || opts.action_verification;
+    if (needApproval && !approval?.receipt) {
+        fail('per_action_required', 'execution is irreversible (or approval is always required) but no action_approval is present');
+    }
+    if (approval?.receipt) {
+        if (!validVerificationProfile(actionVerification)) {
+            fail('action_receipt_valid', 'relying-party action verification profile is required');
+        }
+        else {
+            const actionProfile = actionVerification;
+            const ra = verifyTrustReceipt(approval.receipt, {
+                approverKeys: actionProfile.approver_keys,
+                logPublicKey: actionProfile.log_public_key,
+                rpId: actionProfile.rp_id,
+                allowedOrigins: actionProfile.allowed_origins,
+            });
+            checks.action_receipt_valid = ra.valid;
+            if (!ra.valid)
+                errors.push(`action_approval receipt failed v1 verification: ${(ra.errors || []).join('; ')}`);
+        }
+        if (exec.irreversible === true) {
+            checks.action_human_signoff = hasHumanSignoff(approval.receipt, humanKeyClasses);
+            if (!checks.action_human_signoff)
+                errors.push('action_approval for an irreversible action carries no human signoff');
+        }
+        const executionHash = hexOf(exec.action_hash);
+        const approvalHash = hexOf(approval.receipt.action_hash);
+        checks.execution_binding = executionHash !== ''
+            && approvalHash !== ''
+            && executionHash === approvalHash;
+        if (!checks.execution_binding)
+            errors.push('execution.action_hash does not match action_approval.receipt.action_hash');
+    }
+    const chain = Array.isArray(doc.delegation_chain) ? [...doc.delegation_chain] : [];
+    chain.sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+    const delegationKeys = opts.delegationKeys || {};
+    const rootApprovers = doc.root_signoff?.receipt ? receiptApprovers(doc.root_signoff.receipt) : new Set();
+    const rootExpiry = latestContextExpiry(doc.root_signoff?.receipt);
+    const rootScope = doc.root_signoff?.receipt ? rootAuthorizedScope(doc.root_signoff.receipt) : [];
+    let parent = {
+        scope: rootScope, max_value_usd: null,
+        expires_at: rootExpiry !== null ? new Date(rootExpiry).toISOString() : undefined,
+        id: '(root human signoff)',
+    };
+    if (chain.length > 0) {
+        const head = chain[0];
+        checks.chain_anchored = rootApprovers.has(head.delegator);
+        if (!checks.chain_anchored)
+            errors.push(`delegation chain head delegator "${head.delegator}" does not name a root-receipt approver`);
+    }
+    let prevDelegatee = null;
+    for (const link of chain) {
+        const linkReport = { sequence: link.sequence, delegation_id: link.delegation_id, ok: true, issues: [] };
+        if (prevDelegatee !== null) {
+            if (link.parent_ref !== prevDelegatee || link.delegator !== prevDelegatee) {
+                checks.chain_links_bound = false;
+                linkReport.ok = false;
+                linkReport.issues.push('inter_hop_link_broken');
+                errors.push(`delegation ${link.delegation_id}: parent_ref "${link.parent_ref}" / delegator "${link.delegator}" does not bind to prior delegatee "${prevDelegatee}"`);
+            }
+        }
+        const expM = Date.parse(link.expires_at);
+        if (Number.isNaN(expM) || expM < now) {
+            checks.delegations_not_expired = false;
+            linkReport.ok = false;
+            linkReport.issues.push('expired');
+            errors.push(`delegation ${link.delegation_id} is expired`);
+        }
+        if (link.proof_set) {
+            const pin = delegationKeys[link.delegator];
+            if (!pin?.public_key || !pin?.pq_public_key) {
+                checks.proof_key_bound = false;
+                linkReport.ok = false;
+                linkReport.issues.push('no_pinned_delegator_key_pair');
+                errors.push(`delegation ${link.delegation_id}: no pinned Ed25519 + ML-DSA-65 key pair for delegator "${link.delegator}" (cannot bind proof)`);
+            }
+            else {
+                const proofOk = await verifyDelegationProofSetV2(link, pin, opts);
+                if (!proofOk) {
+                    checks.delegations_signed = false;
+                    linkReport.ok = false;
+                    linkReport.issues.push('signature_set_invalid');
+                    errors.push(`delegation ${link.delegation_id} hybrid proof set does not verify under the pinned Ed25519 + ML-DSA-65 keys`);
+                }
+            }
+        }
+        else if (!allowUnsignedDelegations) {
+            checks.delegations_signed = false;
+            linkReport.ok = false;
+            linkReport.issues.push('unsigned');
+            errors.push(`delegation ${link.delegation_id} has no verifiable proof_set (fail-closed)`);
+        }
+        const violations = scopeContainmentViolations(parent, link);
+        if (violations.length > 0) {
+            checks.scope_containment = false;
+            linkReport.ok = false;
+            linkReport.issues.push(...violations);
+            for (const v of violations)
+                errors.push(`delegation ${link.delegation_id}: ${v}`);
+        }
+        if (!constraintsMonotonic(parent.constraints, link.constraints)) {
+            checks.constraints_monotonic = false;
+            linkReport.ok = false;
+            linkReport.issues.push('constraints_relaxed');
+            errors.push(`delegation ${link.delegation_id}: constraints relax a parent restriction (not monotonic)`);
+        }
+        links.push(linkReport);
+        let effectiveCap;
+        if (link.max_value_usd === null || link.max_value_usd === undefined)
+            effectiveCap = parent.max_value_usd;
+        else if (parent.max_value_usd === null || parent.max_value_usd === undefined)
+            effectiveCap = link.max_value_usd;
+        else
+            effectiveCap = Math.min(Number(link.max_value_usd), Number(parent.max_value_usd));
+        parent = { ...link, max_value_usd: effectiveCap };
+        prevDelegatee = link.delegatee;
+    }
+    const actionType = executedActionType(doc);
+    if (!actionType) {
+        checks.leaf_permits_action = false;
+        errors.push('cannot determine executed action_type from action_approval (no per-action approval present)');
+    }
+    else if (!scopePermits(parent.scope, actionType)) {
+        checks.leaf_permits_action = false;
+        const where = chain.length > 0 ? 'leaf delegation' : 'root authority';
+        errors.push(`${where} scope [${(parent.scope || []).join(', ')}] does not permit executed action "${actionType}"`);
+    }
+    {
+        const commit = approval?.receipt ? committedAtMs(approval.receipt) : null;
+        const leafExp = Date.parse(parent.expires_at ?? '');
+        if (commit !== null && !Number.isNaN(leafExp) && commit > leafExp) {
+            checks.temporal_containment = false;
+            errors.push('per-action approval committed_at is after the leaf delegation expires_at');
+        }
+    }
+    let agentIdentity = null;
+    if (doc.agent_identity) {
+        agentIdentity = {
+            agent_id: doc.agent_identity.agent_id ?? null,
+            claimed_by: doc.agent_identity.claimed_by ?? null,
+            claim_only: true,
+            attestation_signature_valid: doc.agent_identity.attestation ? verifyDetachedSignature(doc.agent_identity.attestation) : null,
+        };
+        if (agentIdentity.attestation_signature_valid === false)
+            errors.push('advisory: agent_identity.attestation signature does not verify (not gating)');
+    }
+    let liability = null;
+    if (doc.liability) {
+        liability = {
+            owner: doc.liability.owner ?? null,
+            owner_name: doc.liability.owner_name ?? null,
+            evidence_only: true,
+            attestation_signature_valid: doc.liability.attestation ? verifyDetachedSignature(doc.liability.attestation) : null,
+        };
+        if (liability.attestation_signature_valid === false)
+            errors.push('advisory: liability.attestation signature does not verify (not gating)');
+    }
+    const valid = Object.values(checks).every(Boolean);
+    return { valid, checks, errors, links, agent_identity: agentIdentity, liability };
+}
+/**
+ * Route a document of EITHER version to its verifier. A `@version` naming
+ * neither refuses through the v1 (sync) verifier's version check, which is
+ * the fail-closed answer.
+ */
+export async function verifyProvenanceOfflineStatement(doc, opts = {}) {
+    if (doc && typeof doc === 'object' && !Array.isArray(doc) && doc['@version'] === PROVENANCE_V2_VERSION) {
+        return verifyProvenanceOfflineV2(doc, opts);
+    }
+    return verifyProvenanceOffline(doc, opts);
 }
 //# sourceMappingURL=provenance.js.map

@@ -8,6 +8,7 @@
  */
 import { type KeyObject } from 'node:crypto';
 import { type AebDigest, type AebJson } from './aeb-adapter-contract.js';
+import { type AgileSignature, type AgilityOptions } from './pq-signature-agility.js';
 export declare const DISCOVERY_PERMIT_DISCOVERY_VERSION = "EP-DISCOVERY-PERMIT-DISCOVERY-v1";
 export declare const DISCOVERY_PERMIT_BINDING_VERSION = "EP-DISCOVERY-PERMIT-BINDING-v1";
 export declare const DISCOVERY_PERMIT_RESOLUTION_VERSION = "EP-DISCOVERY-PERMIT-RESOLUTION-v1";
@@ -180,4 +181,68 @@ export declare function isDiscoveryPermitResolverAttestation(value: unknown): va
  */
 export declare function signDiscoveryPermitResolverAttestation(options: SignDiscoveryPermitResolverAttestationOptions, signer: DiscoveryPermitResolverAttestationSigner): DiscoveryPermitResolverAttestation;
 export declare function verifyDiscoveryPermitResolverAttestationSignature(attestation: unknown, pin: DiscoveryPermitResolverPin): attestation is DiscoveryPermitResolverAttestation;
+/**
+ * Reference hybrid migration for this surface. Copies the five moves from
+ * EP-REVOCATION-v2 (packages/verify/src/revocation.ts):
+ *
+ * 1. VERSION BUMP. `@type` moves EP-DISCOVERY-PERMIT-RESOLVER-ATTESTATION-v1
+ *    -> -v2. isDiscoveryPermitResolverAttestation / verify...Signature above
+ *    are UNCHANGED; a v2 attestation fails the v1 shape check on `@type`
+ *    before any signature is inspected.
+ * 2. SET SHAPE. The single `signature` field is replaced by `signatures`, an
+ *    array of exactly the two AgileSignature entries ({alg, sig, key_id}) for
+ *    Ed25519 and ML-DSA-65, reusing EP-SIG-AGILITY-v1's shape verbatim.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is a BODY field (inside the
+ *    signed bytes), independently recomputed by the verifier from the
+ *    registered set.
+ * 4. V1 COMPATIBILITY. v1 attestations keep verifying, unchanged, through the
+ *    sync functions above. v2 verification is a separate ASYNC entry point;
+ *    verifyDiscoveryPermitResolverAttestationStatement routes on `@type`.
+ * 5. NAMED REFUSALS. Nothing throws on caller input; a missing ML-DSA backend
+ *    is 'pq_backend_unavailable' from the agility module, never a pass on the
+ *    Ed25519 leg alone.
+ */
+export declare const DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_VERSION = "EP-DISCOVERY-PERMIT-RESOLVER-ATTESTATION-v2";
+export declare const DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_DOMAIN = "EP-DISCOVERY-PERMIT-RESOLVER-ATTESTATION-v2\0";
+/** The registered required algorithm set, in canonical order. */
+export declare const DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+export interface DiscoveryPermitResolverAttestationV2Body extends Omit<DiscoveryPermitResolverAttestationBody, '@type'> {
+    '@type': typeof DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_VERSION;
+    required_algorithms: readonly string[];
+}
+export interface DiscoveryPermitResolverAttestationV2 extends Omit<DiscoveryPermitResolverAttestationV2Body, '@type'> {
+    '@type': typeof DISCOVERY_PERMIT_RESOLVER_ATTESTATION_V2_VERSION;
+    signatures: readonly AgileSignature[];
+}
+export interface DiscoveryPermitResolverAttestationV2Signer {
+    key_id: string;
+    private_key: KeyObject;
+    pq_key_id: string;
+    /** ML-DSA-65 secret key: raw bytes or base64url, 4032 bytes. */
+    pq_private_key: Uint8Array | string;
+}
+export interface DiscoveryPermitResolverV2Pin {
+    resolver_id: string;
+    key_id: string;
+    public_key: string;
+    pq_key_id: string;
+    /** ML-DSA-65: base64url of the raw 1952-byte public key. */
+    pq_public_key: string;
+}
+export declare function isDiscoveryPermitResolverAttestationV2(value: unknown): value is DiscoveryPermitResolverAttestationV2;
+/**
+ * Produce a domain-separated hybrid resolver statement (Ed25519 + ML-DSA-65)
+ * over the exact resolution body and every relying-party-relevant join digest.
+ */
+export declare function signDiscoveryPermitResolverAttestationV2(options: SignDiscoveryPermitResolverAttestationOptions, signer: DiscoveryPermitResolverAttestationV2Signer): Promise<DiscoveryPermitResolverAttestationV2>;
+/**
+ * Verify a hybrid resolver attestation. Async because ML-DSA-65 verification
+ * is async; a v2 attestation never verifies on one leg alone (FAIL-CLOSED).
+ */
+export declare function verifyDiscoveryPermitResolverAttestationSignatureV2(attestation: unknown, pin: DiscoveryPermitResolverV2Pin, options?: AgilityOptions): Promise<boolean>;
+/**
+ * Route an attestation of EITHER version to its verifier. An `@type` naming
+ * neither version refuses through the v1 shape check, which is fail-closed.
+ */
+export declare function verifyDiscoveryPermitResolverAttestationStatement(attestation: unknown, pin: DiscoveryPermitResolverPin | DiscoveryPermitResolverV2Pin, options?: AgilityOptions): Promise<boolean>;
 //# sourceMappingURL=discovery-permit-contract.d.ts.map

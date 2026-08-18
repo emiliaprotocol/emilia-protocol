@@ -11,6 +11,7 @@
  */
 import { KeyObject } from 'node:crypto';
 import { type AebDigest } from './aeb-adapter-contract.js';
+import { type AgileSignature } from './pq-signature-agility.js';
 export declare const A2A_PROTOCOL_VERSION = "1.0";
 export declare const A2A_ACTION_MEDIA_TYPE = "application/vnd.emilia.action+json";
 export declare const A2A_RECEIPT_EXTENSION_URI = "https://emiliaprotocol.ai/extensions/a2a/receipt-binding/v1";
@@ -173,4 +174,77 @@ export declare function createA2AReceiptPresentation(input: CreateA2AReceiptPres
  * Success remains evidence correlation; it never grants execution authority.
  */
 export declare function verifyA2AReceiptPresentation(input: VerifyA2AReceiptPresentationInput): A2AReceiptPresentationVerification;
+/**
+ * Reference hybrid migration for this surface. Copies the five moves from
+ * EP-REVOCATION-v2 (packages/verify/src/revocation.ts):
+ *
+ * 1. VERSION BUMP. `@version` moves EP-A2A-RECEIPT-BINDING-v1 -> -v2 (and the
+ *    presentation wrapper's `@version` moves in lockstep, since it embeds the
+ *    binding artifact). signBinding/verifyBindingSignature and
+ *    createA2AReceiptPresentation/verifyA2AReceiptPresentation above are
+ *    UNCHANGED; validBindingArtifact refuses a v2 artifact on `@version`
+ *    before any signature is inspected.
+ * 2. SET SHAPE. The single `signature` field is replaced by `signatures`, an
+ *    array of exactly the two AgileSignature entries ({alg, sig, key_id}) for
+ *    Ed25519 and ML-DSA-65, reusing EP-SIG-AGILITY-v1's shape verbatim.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is a BODY field (inside the
+ *    signed bytes), independently recomputed from the registered set.
+ * 4. V1 COMPATIBILITY. v1 artifacts keep verifying, unchanged, through the
+ *    sync functions above. v2 verification is a separate ASYNC entry point.
+ * 5. NAMED REFUSALS. Nothing throws on caller input; a missing ML-DSA backend
+ *    is 'pq_backend_unavailable' from the agility module, never a pass on the
+ *    Ed25519 leg alone.
+ */
+export declare const A2A_RECEIPT_BINDING_V2_VERSION = "EP-A2A-RECEIPT-BINDING-v2";
+export declare const A2A_RECEIPT_BINDING_V2_DOMAIN = "EP-A2A-RECEIPT-BINDING-v2\0";
+export declare const A2A_RECEIPT_PRESENTATION_V2_VERSION = "EP-A2A-RECEIPT-PRESENTATION-v2";
+/** The registered required algorithm set, in canonical order. */
+export declare const A2A_RECEIPT_BINDING_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+export interface A2AReceiptBindingV2Body extends Omit<A2AReceiptBindingBody, '@version'> {
+    '@version': typeof A2A_RECEIPT_BINDING_V2_VERSION;
+    required_algorithms: readonly string[];
+}
+export interface A2AReceiptBindingV2Artifact extends A2AReceiptBindingV2Body {
+    signatures: readonly AgileSignature[];
+}
+export interface A2AReceiptV2Signer {
+    key_id: string;
+    private_key: KeyObject;
+    pq_key_id: string;
+    /** ML-DSA-65 secret key: raw bytes or base64url, 4032 bytes. */
+    pq_private_key: Uint8Array | string;
+}
+export interface A2AReceiptV2TrustRoot {
+    key_id: string;
+    public_key: string;
+    pq_key_id: string;
+    /** ML-DSA-65: base64url of the raw 1952-byte public key. */
+    pq_public_key: string;
+}
+export interface A2AReceiptPresentationV2Payload {
+    '@version': typeof A2A_RECEIPT_PRESENTATION_V2_VERSION;
+    action: unknown;
+    receipt: unknown;
+    receipt_extensions: A2AReceiptExtensionsCompanion;
+    binding_artifact: A2AReceiptBindingV2Artifact;
+}
+export interface CreateA2AReceiptPresentationV2Input extends Omit<CreateA2AReceiptPresentationInput, 'signer'> {
+    signer: A2AReceiptV2Signer;
+}
+export interface VerifyA2AReceiptPresentationV2Input extends Omit<VerifyA2AReceiptPresentationInput, 'trust_roots'> {
+    trust_roots: readonly A2AReceiptV2TrustRoot[];
+}
+/** Create one A2A proof retry carrying the base receipt plus its hybrid-signed binding. */
+export declare function createA2AReceiptPresentationV2(input: CreateA2AReceiptPresentationV2Input): Promise<A2AReceiptPresentation>;
+/**
+ * Verify the portable A2A/receipt correlation under EP-A2A-RECEIPT-BINDING-v2.
+ * Async because ML-DSA-65 verification is async. Same decision scope as v1:
+ * correlation only, never execution authority.
+ */
+export declare function verifyA2AReceiptPresentationV2(input: VerifyA2AReceiptPresentationV2Input): Promise<A2AReceiptPresentationVerification>;
+/**
+ * Route a presentation of EITHER binding version to its verifier. A presented
+ * `@version` naming neither refuses through the v1 shape check, fail-closed.
+ */
+export declare function verifyA2AReceiptPresentationStatement(input: VerifyA2AReceiptPresentationInput | VerifyA2AReceiptPresentationV2Input): Promise<A2AReceiptPresentationVerification>;
 //# sourceMappingURL=a2a-receipt-binding.d.ts.map

@@ -58,6 +58,7 @@
  */
 import crypto from 'node:crypto';
 import { canonicalize, verifyReceipt } from './index.js';
+import { signAgile, verifyAgileSignature, } from './pq-signature-agility.js';
 export const COSE_ENCODING_PROFILE = 'EP-COSE-ENCODING-v0.1';
 /** The map-key ordering this profile ships (see module doc + README). */
 export const CBOR_DETERMINISTIC_ORDER = 'rfc8949-4.2.1-bytewise-encoded-key';
@@ -759,6 +760,349 @@ export function verifyReceiptCoseSign1(coseBytes, opts) {
         checks,
         receipt,
         caid: headerCaid,
+        payloadSha256: crypto.createHash('sha256').update(payload).digest('hex'),
+    };
+}
+// ===========================================================================
+// EP-COSE-ENCODING-v0.2 -- the hybrid (EdDSA + ML-DSA-65) transport pair
+// ===========================================================================
+/**
+ * WHERE THE ML-DSA-65 ALGORITHM IDENTIFIER COMES FROM. It is not invented here
+ * and it is not recalled from memory. COSE_ALG_ML_DSA_65 below is the value
+ * this repository already carries and already verifies against:
+ * `packages/verify/src/aeb-mcgraw-delegation-adapter.ts` exports
+ * `MCGRAW_BUDGET_COSE_ALGORITHM = -49` under the comment "RFC 9964 COSE
+ * Algorithms registry value for ML-DSA-65", and that adapter parses real
+ * foreign COSE_Sign1 objects signed under it. The classical value -8 (EdDSA,
+ * RFC 9053 Section 2.2) is the one this module already used. Both are
+ * in-repository-traceable, so this profile adds a real PQ leg rather than a
+ * registration-gated placeholder.
+ *
+ * WHY A PAIR OF COSE_Sign1 OBJECTS AND NOT ONE MULTI-SIGNATURE OBJECT. A
+ * COSE_Sign1 (RFC 9052, tag 18) carries exactly one signature. The standard
+ * multi-signer container is COSE_Sign, and this repository contains no
+ * definition of it: no tag value, no COSE_Signature structure, no
+ * "Signature" Sig_structure context string. Hand-rolling that container from
+ * memory is exactly the mistake this profile refuses to make. So v0.2 is an
+ * EP-DEFINED PAIRING of two individually conforming COSE_Sign1 objects over
+ * the SAME payload bytes, one per registered algorithm. Stated plainly: the
+ * pair is EP's composition, not a COSE object. A generic COSE implementation
+ * handed one half sees one ordinary, valid COSE_Sign1 and learns nothing about
+ * the other half; requiring both is a relying-party decision this verifier
+ * makes for you, and it is the only place the hybrid property lives.
+ *
+ * The five moves from EP-REVOCATION-v2:
+ *
+ * 1. VERSION BUMP. New profile marker EP-COSE-ENCODING-v0.2. The v0.1
+ *    verifier `verifyReceiptCoseSign1` is UNTOUCHED and refuses either half of
+ *    a v0.2 pair with `unexpected_protected_header`, because its closed
+ *    protected-label set does not contain `ep.required_algs` -- and it refuses
+ *    there BEFORE it checks any signature. Asserted by test.
+ * 2. SET SHAPE. The required set is the COSE algorithm VALUES [-8, -49], in
+ *    registered order, so the commitment stays COSE-native integers rather
+ *    than a second EP naming scheme on the wire.
+ * 3. ANTI-STRIPPING BYTES. `ep.required_algs` is a PROTECTED (signed) header in
+ *    BOTH halves, so it is inside each half's Sig_structure. Drop the ML-DSA
+ *    half and narrow the surviving header's set and that half's signature stops
+ *    verifying, because the protected bytes changed. Leave it intact and the
+ *    missing half is a structural refusal. The verifier rebuilds the expected
+ *    protected header from the REGISTERED set and from the CAID it recomputed
+ *    itself, and requires byte equality with both presented headers.
+ * 4. V1 COMPATIBILITY. `buildReceiptCoseSign1` and `verifyReceiptCoseSign1`
+ *    are unchanged and stay SYNCHRONOUS. ML-DSA verification is asynchronous,
+ *    so v0.2 is a separate async entry point.
+ * 5. NAMED REFUSALS. Every path returns a named reason; nothing throws on
+ *    untrusted input; an absent ML-DSA backend is `pq_backend_unavailable`
+ *    and never a pass on the EdDSA half.
+ *
+ * TRUST SEMANTICS, UNCHANGED FROM v0.1 AND LOAD-BEARING. Both envelope
+ * signatures are TRANSPORT/REGISTRATION attestations by the envelope key
+ * holder. Neither is the approval signature and neither confers approval,
+ * authorization, or trust semantics. Approval is still proven exclusively by
+ * the receipt's own signature inside the payload -- which is Ed25519 only, so a
+ * v0.2 pair does NOT make the carried receipt post-quantum protected. It makes
+ * the TRANSPORT leg hybrid and nothing more. Opt-in; not deployed, default, or
+ * certified anywhere.
+ */
+/**
+ * RFC 9964 COSE Algorithms registry value for ML-DSA-65. Traced in-repository
+ * to packages/verify/src/aeb-mcgraw-delegation-adapter.ts
+ * (MCGRAW_BUDGET_COSE_ALGORITHM), which verifies foreign COSE_Sign1 objects
+ * under it. Not recalled from memory, not invented here.
+ */
+export const COSE_ALG_ML_DSA_65 = -49;
+export const COSE_HYBRID_ENCODING_PROFILE = 'EP-COSE-ENCODING-v0.2';
+/** Private (non-IANA-registered) protected-header label carrying the required set. */
+export const COSE_HEADER_EP_REQUIRED_ALGS = 'ep.required_algs';
+/** The registered required COSE algorithm set, in canonical order. */
+export const COSE_HYBRID_REQUIRED_ALGORITHMS = Object.freeze([
+    COSE_ALG_EDDSA, COSE_ALG_ML_DSA_65,
+]);
+const COSE_HYBRID_PROTECTED_LABELS = new Set([
+    COSE_HEADER_ALG, COSE_HEADER_CONTENT_TYPE, COSE_HEADER_KID,
+    COSE_HEADER_EP_CAID, COSE_HEADER_EP_REQUIRED_ALGS,
+]);
+function coseHybridSetMatchesRegistered(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === COSE_HYBRID_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === COSE_HYBRID_REQUIRED_ALGORITHMS[i]);
+}
+/**
+ * The protected header of one half of a v0.2 pair. `ep.required_algs` is a
+ * member, so it lands inside the Sig_structure that half signs.
+ */
+export function coseHybridProtectedHeader(alg, kid, caid, requiredAlgorithms = COSE_HYBRID_REQUIRED_ALGORITHMS) {
+    if (!coseHybridSetMatchesRegistered(requiredAlgorithms)) {
+        throw new Error('coseHybridProtectedHeader: algorithm set is not the registered EP-COSE-ENCODING-v0.2 set');
+    }
+    return new Map([
+        [COSE_HEADER_ALG, alg],
+        [COSE_HEADER_CONTENT_TYPE, COSE_RECEIPT_CONTENT_TYPE],
+        [COSE_HEADER_KID, UTF8.encode(kid)],
+        [COSE_HEADER_EP_CAID, caid],
+        [COSE_HEADER_EP_REQUIRED_ALGS, [...requiredAlgorithms]],
+    ]);
+}
+/**
+ * Build an EP-COSE-ENCODING-v0.2 hybrid transport pair over one receipt.
+ * Issuer-side misuse and an unavailable ML-DSA backend REFUSE (Result-typed,
+ * like the rest of this module) rather than emitting a one-legged pair.
+ */
+export async function buildReceiptCoseHybrid(receipt, opts, agility = {}) {
+    if (!isPlainObject(receipt) || !isPlainObject(receipt.payload)) {
+        return refuse('invalid_receipt_document');
+    }
+    let canonical;
+    try {
+        canonical = canonicalize(receipt);
+    }
+    catch {
+        return refuse('outside_canonical_profile');
+    }
+    const caidResult = receiptActionCaid(receipt.payload.action);
+    if (!caidResult.ok)
+        return caidResult;
+    if (typeof opts?.kid !== 'string' || opts.kid.length === 0)
+        return refuse('invalid_kid');
+    const key = opts?.envelopePrivateKey;
+    if (!(key instanceof crypto.KeyObject) || key.asymmetricKeyType !== 'ed25519') {
+        return refuse('invalid_envelope_key');
+    }
+    const payload = UTF8.encode(canonical);
+    const halves = [];
+    for (const alg of COSE_HYBRID_REQUIRED_ALGORITHMS) {
+        const protectedEncoded = encodeDeterministicCbor8949(coseHybridProtectedHeader(alg, opts.kid, caidResult.value.caid));
+        if (!protectedEncoded.ok)
+            return protectedEncoded;
+        const sigStruct = sigStructureBytes(protectedEncoded.value, payload);
+        if (!sigStruct.ok)
+            return sigStruct;
+        let signature;
+        try {
+            const agile = await signAgile(new Uint8Array(sigStruct.value), alg === COSE_ALG_EDDSA
+                ? { alg: 'Ed25519', private_key: key }
+                : { alg: 'ML-DSA-65', private_key: opts.envelopePqSecretKey }, agility);
+            signature = new Uint8Array(Buffer.from(agile.sig, 'base64url'));
+        }
+        catch {
+            return refuse(alg === COSE_ALG_EDDSA ? 'invalid_envelope_key' : 'pq_backend_unavailable');
+        }
+        const body = encodeDeterministicCbor8949([
+            protectedEncoded.value, new Map(), payload, signature,
+        ]);
+        if (!body.ok)
+            return body;
+        halves.push(concatBytes([Uint8Array.of(COSE_SIGN1_TAG_BYTE), body.value]));
+    }
+    return {
+        ok: true,
+        value: { classical: halves[0], pq: halves[1], payload, caid: caidResult.value.caid },
+    };
+}
+function parseHybridHalf(coseBytes, expectedAlg, expectedKid) {
+    if (!(coseBytes instanceof Uint8Array) || coseBytes.length < 2)
+        return refuse('malformed_cbor');
+    if (coseBytes[0] !== COSE_SIGN1_TAG_BYTE)
+        return refuse('cose_structure_invalid');
+    const decoded = decodeDeterministicCbor8949(coseBytes.subarray(1), { textKeysOnly: false });
+    if (!decoded.ok)
+        return decoded;
+    const arr = decoded.value;
+    if (!Array.isArray(arr) || arr.length !== 4)
+        return refuse('cose_structure_invalid');
+    const [protectedBytes, unprotected, payload, signature] = arr;
+    if (!(protectedBytes instanceof Uint8Array) || !(payload instanceof Uint8Array)
+        || !(signature instanceof Uint8Array) || !(unprotected instanceof Map)) {
+        return refuse('cose_structure_invalid');
+    }
+    if (unprotected.size !== 0)
+        return refuse('unprotected_headers_present');
+    const headerResult = decodeDeterministicCbor8949(protectedBytes, { textKeysOnly: false });
+    if (!headerResult.ok)
+        return headerResult;
+    if (!(headerResult.value instanceof Map))
+        return refuse('cose_structure_invalid');
+    const headers = headerResult.value;
+    if (headers.has(COSE_HEADER_CRIT))
+        return refuse('crit_unsupported');
+    for (const label of headers.keys()) {
+        if (!COSE_HYBRID_PROTECTED_LABELS.has(label))
+            return refuse('unexpected_protected_header');
+    }
+    if (headers.get(COSE_HEADER_ALG) !== expectedAlg)
+        return refuse('unsupported_envelope_alg');
+    if (headers.get(COSE_HEADER_CONTENT_TYPE) !== COSE_RECEIPT_CONTENT_TYPE) {
+        return refuse('content_type_mismatch');
+    }
+    const headerKid = headers.get(COSE_HEADER_KID);
+    if (!(headerKid instanceof Uint8Array) || headerKid.length === 0)
+        return refuse('kid_missing');
+    if (compareBytes(headerKid, UTF8.encode(expectedKid)) !== 0)
+        return refuse('kid_mismatch');
+    const headerCaid = headers.get(COSE_HEADER_EP_CAID);
+    if (typeof headerCaid !== 'string')
+        return refuse('caid_missing');
+    if (!coseHybridSetMatchesRegistered(headers.get(COSE_HEADER_EP_REQUIRED_ALGS))) {
+        return refuse('algorithm_set_mismatch');
+    }
+    return {
+        ok: true,
+        value: { protectedBytes, payload, signature, alg: expectedAlg, caid: headerCaid },
+    };
+}
+/**
+ * Verify an EP-COSE-ENCODING-v0.2 hybrid transport pair, fail-closed.
+ *
+ * A `valid: true` result establishes, under the THREE pinned keys supplied:
+ * both halves are deterministically encoded conforming COSE_Sign1 objects over
+ * BYTE-IDENTICAL payloads; each half's protected header equals the header
+ * rebuilt from the REGISTERED algorithm set, the pinned kid, and the CAID the
+ * verifier recomputed itself; the envelope signer attested to those payload
+ * bytes under BOTH EdDSA and ML-DSA-65; the payload is the receipt's canonical
+ * JSON form; and the receipt verifies under its OWN Ed25519 signature and the
+ * pinned issuer key.
+ *
+ * It does NOT establish acceptance, authorization, execution, currency, or any
+ * post-quantum property of the CARRIED RECEIPT: the receipt's own approval
+ * signature remains Ed25519.
+ */
+export async function verifyReceiptCoseHybrid(pair, opts) {
+    const checks = {
+        pair_present: false,
+        deterministic_encoding: false,
+        cose_structure: false,
+        algorithm_set: false,
+        payload_identical: false,
+        envelope_signatures: false,
+        payload_canonical: false,
+        receipt_signature: false,
+        caid_consistent: false,
+    };
+    const fail = (reason) => ({ valid: false, checks, reason });
+    if (!pair || typeof pair !== 'object'
+        || !(pair.classical instanceof Uint8Array) || !(pair.pq instanceof Uint8Array)) {
+        return fail('hybrid_pair_incomplete');
+    }
+    if (typeof opts?.expectedKid !== 'string' || opts.expectedKid.length === 0) {
+        return fail('invalid_kid');
+    }
+    checks.pair_present = true;
+    const classical = parseHybridHalf(pair.classical, COSE_ALG_EDDSA, opts.expectedKid);
+    if (!classical.ok)
+        return fail(classical.reason);
+    const pq = parseHybridHalf(pair.pq, COSE_ALG_ML_DSA_65, opts.expectedKid);
+    if (!pq.ok)
+        return fail(pq.reason);
+    checks.deterministic_encoding = true;
+    checks.cose_structure = true;
+    checks.algorithm_set = true;
+    if (compareBytes(classical.value.payload, pq.value.payload) !== 0) {
+        return fail('hybrid_payload_mismatch');
+    }
+    if (classical.value.caid !== pq.value.caid)
+        return fail('caid_mismatch');
+    checks.payload_identical = true;
+    const payload = classical.value.payload;
+    // The payload must BE canonical JSON, byte for byte, before anything derived
+    // from it (the CAID the protected headers are rebuilt against) is trusted.
+    let payloadText;
+    try {
+        payloadText = FATAL_UTF8.decode(payload);
+    }
+    catch {
+        return fail('payload_not_canonical_json');
+    }
+    let receipt;
+    try {
+        receipt = JSON.parse(payloadText);
+    }
+    catch {
+        return fail('payload_not_canonical_json');
+    }
+    let recanonical;
+    try {
+        recanonical = canonicalize(receipt);
+    }
+    catch {
+        return fail('payload_not_canonical_json');
+    }
+    if (recanonical !== payloadText)
+        return fail('payload_not_canonical_json');
+    checks.payload_canonical = true;
+    const recomputed = receiptActionCaid(receipt.payload?.action);
+    if (!recomputed.ok)
+        return fail(recomputed.reason);
+    if (recomputed.value.caid !== classical.value.caid)
+        return fail('caid_mismatch');
+    if (opts.expectedCaid !== undefined && opts.expectedCaid !== classical.value.caid) {
+        return fail('caid_mismatch');
+    }
+    // Rebuild both protected headers from the REGISTERED set, the pinned kid, and
+    // the CAID this verifier recomputed. The presented halves never choose what
+    // they are checked against.
+    for (const [half, alg] of [
+        [classical.value, COSE_ALG_EDDSA],
+        [pq.value, COSE_ALG_ML_DSA_65],
+    ]) {
+        let expected;
+        try {
+            expected = encodeDeterministicCbor8949(coseHybridProtectedHeader(alg, opts.expectedKid, recomputed.value.caid));
+        }
+        catch {
+            return fail('algorithm_set_mismatch');
+        }
+        if (!expected.ok)
+            return fail(expected.reason);
+        if (compareBytes(expected.value, half.protectedBytes) !== 0) {
+            return fail('protected_header_mismatch');
+        }
+    }
+    checks.caid_consistent = true;
+    // Both envelope legs over their OWN Sig_structure, under the PINNED keys.
+    // Policy hybrid_all with the full registry: a missing leg can never pass.
+    const classicalSig = sigStructureBytes(classical.value.protectedBytes, payload);
+    if (!classicalSig.ok)
+        return fail(classicalSig.reason);
+    const pqSig = sigStructureBytes(pq.value.protectedBytes, payload);
+    if (!pqSig.ok)
+        return fail(pqSig.reason);
+    const legs = [
+        await verifyAgileSignature(classicalSig.value, { alg: 'Ed25519', sig: Buffer.from(classical.value.signature).toString('base64url') }, { alg: 'Ed25519', public_key: opts.envelopePublicKeyBase64url }, opts.agility ?? {}),
+        await verifyAgileSignature(pqSig.value, { alg: 'ML-DSA-65', sig: Buffer.from(pq.value.signature).toString('base64url') }, { alg: 'ML-DSA-65', public_key: opts.envelopePqPublicKeyBase64url }, opts.agility ?? {}),
+    ];
+    const failedLeg = legs.find((leg) => leg.verified !== true);
+    if (failedLeg)
+        return fail(`envelope_signature_invalid:${failedLeg.alg}:${failedLeg.reason}`);
+    checks.envelope_signatures = true;
+    const receiptResult = verifyReceipt(receipt, opts.receiptIssuerPublicKeyBase64url);
+    if (!receiptResult.valid)
+        return fail('receipt_invalid');
+    checks.receipt_signature = true;
+    return {
+        valid: true,
+        checks,
+        receipt,
+        caid: classical.value.caid,
         payloadSha256: crypto.createHash('sha256').update(payload).digest('hex'),
     };
 }

@@ -9,6 +9,7 @@
 import crypto from 'node:crypto';
 import { canonicalizeStrictJson } from './strict-json.js';
 import { DIVERGENCE_OUTCOMES, MAX_EFFECT_STRING_LENGTH, MAX_OBSERVED_EFFECTS, OUTCOME_SOURCE_ROLES, evaluatePredictedEffects, predictedEffectsDigest, validatePredictedEffects, } from './effect-predicates.js';
+import { signAgileSet, verifyAgileSignatureSet, ML_DSA_65_PUBLIC_KEY_BYTES, } from './pq-signature-agility.js';
 export const OUTCOME_ATTESTATION_VERSION = 'EP-OUTCOME-ATTESTATION-v1';
 export const OUTCOME_ATTESTATION_DOMAIN = 'EP-OUTCOME-ATTESTATION-v1\0';
 export const OUTCOME_BINDING_VERSION = 'EP-OUTCOME-BINDING-v1';
@@ -1037,6 +1038,460 @@ export function verifyOutcomeBindingCore(receipt, attestation, opts = {}, verify
         ...result,
         result_digest: outcomeBindingResultDigest(result),
     };
+}
+// ===========================================================================
+// EP-OUTCOME-ATTESTATION-v2 / EP-OUTCOME-OBSERVATION-v2 -- hybrid
+// (Ed25519 + ML-DSA-65)
+// ===========================================================================
+/**
+ * Reference hybrid migration for both signed artifacts in this file. Copies
+ * the five moves from EP-REVOCATION-v2 (packages/verify/src/revocation.ts):
+ *
+ * 1. VERSION BUMP. `@version` moves -v1 to -v2 for each artifact.
+ *    verifyOutcomeAttestation/verifyOutcomeObservation above are UNCHANGED
+ *    and refuse a v2 artifact on the `@version` marker (via `exactKeys`
+ *    against the unchanged v1 key sets, since `required_algorithms` is not a
+ *    v1 field) before any signature is inspected.
+ * 2. SET SHAPE. `proof.signatures` carries exactly the two AgileSignature
+ *    entries ({alg, sig, key_id}) for Ed25519 and ML-DSA-65, reusing
+ *    EP-SIG-AGILITY-v1's shape verbatim.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is a TOP-LEVEL field of the
+ *    artifact (inside the signed bytes via the existing `unsigned()` helper,
+ *    which strips only `proof`), independently recomputed from the
+ *    registered set.
+ * 4. V1 COMPATIBILITY. v1 artifacts keep verifying, unchanged, through the
+ *    sync functions above. v2 verification is a separate ASYNC entry point.
+ * 5. NAMED REFUSALS. Nothing throws on caller input; a missing ML-DSA backend
+ *    is 'pq_backend_unavailable' from the agility module, never a pass on the
+ *    Ed25519 leg alone.
+ *
+ * SCOPE BOUNDARY: only the two SIGNED leaves (executor attestation, source
+ * observation) are hybridized here. verifyOutcomeObservationSet /
+ * verifyOutcomeBindingCore / verifyOutcomeBindingSetCore are COMPOSITIONS
+ * that reconcile predictions against already-verified observations; they
+ * take a caller-injected verifyReceipt and operate on whichever version's
+ * verify* function opts route to. Rewiring those compositions to accept a
+ * mixed v1/v2 observation bag is a separate, larger change left to the
+ * receipt-issuance hybridization workstream (packages/issue,
+ * packages/verify/src/index.ts) that owns EP-RECEIPT-v1/v2 itself; this file
+ * adds the leaves purely additively so lib/evidence/evidence-graph.ts's
+ * existing EP-OUTCOME-BINDING-v1 consumption is unaffected.
+ */
+export const OUTCOME_ATTESTATION_V2_VERSION = 'EP-OUTCOME-ATTESTATION-v2';
+export const OUTCOME_ATTESTATION_V2_DOMAIN = 'EP-OUTCOME-ATTESTATION-v2\0';
+export const OUTCOME_OBSERVATION_V2_VERSION = 'EP-OUTCOME-OBSERVATION-v2';
+export const OUTCOME_OBSERVATION_V2_DOMAIN = 'EP-OUTCOME-OBSERVATION-v2\0';
+/** The registered required algorithm set, in canonical order. */
+export const OUTCOME_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+const PQ_KEY_ID_RE = /^ep:executor-key:ml-dsa-65:sha256:[0-9a-f]{64}$/;
+const PQ_SOURCE_KEY_ID_RE = /^ep:outcome-source-key:ml-dsa-65:sha256:[0-9a-f]{64}$/;
+const TOP_V2_KEYS = new Set([...TOP_KEYS, 'required_algorithms']);
+const OBSERVATION_V2_KEYS = new Set([...OBSERVATION_KEYS, 'required_algorithms']);
+const PROOF_V2_KEYS = new Set(['key_id', 'pq_key_id', 'public_key', 'pq_public_key', 'signatures']);
+function algorithmSetMatchesRegisteredOutcome(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === OUTCOME_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === OUTCOME_V2_REQUIRED_ALGORITHMS[i]);
+}
+function pqExecutorKeyId(publicKeyRawB64u) {
+    try {
+        if (typeof publicKeyRawB64u !== 'string' || publicKeyRawB64u.length === 0)
+            return '';
+        const raw = Buffer.from(publicKeyRawB64u, 'base64url');
+        if (raw.length !== ML_DSA_65_PUBLIC_KEY_BYTES || raw.toString('base64url') !== publicKeyRawB64u)
+            return '';
+        return `ep:executor-key:ml-dsa-65:sha256:${sha256hex(raw)}`;
+    }
+    catch {
+        return '';
+    }
+}
+function pqOutcomeSourceKeyId(publicKeyRawB64u) {
+    try {
+        if (typeof publicKeyRawB64u !== 'string' || publicKeyRawB64u.length === 0)
+            return '';
+        const raw = Buffer.from(publicKeyRawB64u, 'base64url');
+        if (raw.length !== ML_DSA_65_PUBLIC_KEY_BYTES || raw.toString('base64url') !== publicKeyRawB64u)
+            return '';
+        return `ep:outcome-source-key:ml-dsa-65:sha256:${sha256hex(raw)}`;
+    }
+    catch {
+        return '';
+    }
+}
+function signingBytesV2(attestation) {
+    return Buffer.from(`${OUTCOME_ATTESTATION_V2_DOMAIN}${canonicalize(unsigned(attestation))}`, 'utf8');
+}
+function observationSigningBytesV2(observation) {
+    return Buffer.from(`${OUTCOME_OBSERVATION_V2_DOMAIN}${canonicalize(unsigned(observation))}`, 'utf8');
+}
+/** Build an executor-signed hybrid observed-effects attestation. */
+export async function buildOutcomeAttestationV2({ receipt_id, receipt_digest, action_hash, consumption_nonce, execution_id, executor_id, executed_at, observed_effects, signer, } = {}) {
+    const observedValidation = validateObservedEffects(observed_effects);
+    if (!observedValidation.ok)
+        throw new Error(observedValidation.errors.join('; '));
+    if (typeof receipt_id !== 'string' || !receipt_id)
+        throw new Error('receipt_id is required');
+    if (!normalizeDigest(receipt_digest))
+        throw new Error('receipt_digest must be sha256:<64-hex>');
+    if (!normalizeDigest(action_hash))
+        throw new Error('action_hash must be sha256:<64-hex>');
+    if (typeof consumption_nonce !== 'string' || !consumption_nonce)
+        throw new Error('consumption_nonce is required');
+    if (typeof execution_id !== 'string' || !execution_id)
+        throw new Error('execution_id is required');
+    if (typeof executor_id !== 'string' || !executor_id)
+        throw new Error('executor_id is required');
+    if (!Number.isFinite(strictInstantMs(executed_at)))
+        throw new Error('executed_at must be a strict RFC 3339 instant');
+    const s = signer;
+    if (!s?.privateKey)
+        throw new Error('signer.privateKey is required');
+    if (!s?.pqPrivateKey)
+        throw new Error('signer.pqPrivateKey is required');
+    const publicKey = s.publicKey || publicKeyB64u(s.privateKey);
+    const keyId = executorKeyId(publicKey);
+    if (s.key_id !== undefined && s.key_id !== keyId)
+        throw new Error('signer.key_id does not match signer public key');
+    const pqPublicKey = s.pqPublicKey;
+    if (typeof pqPublicKey !== 'string' || !pqPublicKey)
+        throw new Error('signer.pqPublicKey is required');
+    const pqKeyId = pqExecutorKeyId(pqPublicKey);
+    if (!pqKeyId)
+        throw new Error('signer.pqPublicKey must be a canonical 1952-byte ML-DSA-65 key');
+    if (s.pq_key_id !== undefined && s.pq_key_id !== pqKeyId)
+        throw new Error('signer.pq_key_id does not match signer pq public key');
+    const body = {
+        '@version': OUTCOME_ATTESTATION_V2_VERSION,
+        receipt_id,
+        receipt_digest: normalizeDigest(receipt_digest),
+        action_hash: normalizeDigest(action_hash),
+        consumption_nonce,
+        execution_id,
+        executor_id,
+        executed_at,
+        observed_effects,
+        observed_effects_digest: observedEffectsDigest(observed_effects),
+        required_algorithms: [...OUTCOME_V2_REQUIRED_ALGORITHMS],
+    };
+    const bytes = signingBytesV2(body);
+    const signatures = await signAgileSet(new Uint8Array(bytes), [
+        { alg: 'Ed25519', private_key: s.privateKey, key_id: keyId },
+        { alg: 'ML-DSA-65', private_key: s.pqPrivateKey, key_id: pqKeyId },
+    ]);
+    return {
+        ...body,
+        proof: { key_id: keyId, pq_key_id: pqKeyId, public_key: publicKey, pq_public_key: pqPublicKey, signatures },
+    };
+}
+/** Verify a hybrid executor attestation. Async; never verifies on one leg alone. */
+export async function verifyOutcomeAttestationV2(attestation, opts = {}) {
+    opts = opts && typeof opts === 'object' ? opts : {};
+    const executorKeys = opts.executorKeys && typeof opts.executorKeys === 'object' ? opts.executorKeys : {};
+    const { now } = opts;
+    const checks = {
+        structure: false,
+        observation_digest: false,
+        algorithm_set: false,
+        executor_key_pinned: false,
+        signature: false,
+        execution_time: false,
+    };
+    const errors = [];
+    const out = () => ({ valid: Object.values(checks).every(Boolean), checks, errors });
+    try {
+        canonicalize(attestation);
+    }
+    catch {
+        errors.push('malformed_outcome_attestation: outside canonical JSON domain');
+        return out();
+    }
+    if (!exactKeys(attestation, TOP_V2_KEYS)
+        || attestation?.['@version'] !== OUTCOME_ATTESTATION_V2_VERSION
+        || typeof attestation.receipt_id !== 'string' || !attestation.receipt_id
+        || !normalizeDigest(attestation.receipt_digest)
+        || !normalizeDigest(attestation.action_hash)
+        || typeof attestation.consumption_nonce !== 'string' || !attestation.consumption_nonce
+        || typeof attestation.execution_id !== 'string' || !attestation.execution_id
+        || typeof attestation.executor_id !== 'string' || !attestation.executor_id
+        || !DIGEST_RE.test(attestation.observed_effects_digest || '')
+        || !exactKeys(attestation.proof, PROOF_V2_KEYS)
+        || !KEY_ID_RE.test(attestation.proof.key_id || '')
+        || !PQ_KEY_ID_RE.test(attestation.proof.pq_key_id || '')
+        || typeof attestation.proof.public_key !== 'string'
+        || typeof attestation.proof.pq_public_key !== 'string'
+        || !Array.isArray(attestation.proof.signatures) || attestation.proof.signatures.length !== 2) {
+        errors.push('malformed_outcome_attestation');
+        return out();
+    }
+    const observedValidation = validateObservedEffects(attestation.observed_effects);
+    if (!observedValidation.ok) {
+        errors.push(...observedValidation.errors);
+        return out();
+    }
+    checks.structure = true;
+    checks.observation_digest = observedEffectsDigest(attestation.observed_effects)
+        === attestation.observed_effects_digest;
+    if (!checks.observation_digest)
+        errors.push('observed_effects_digest_mismatch');
+    checks.algorithm_set = algorithmSetMatchesRegisteredOutcome(attestation.required_algorithms);
+    if (!checks.algorithm_set)
+        errors.push('required_algorithms_not_registered_set');
+    const seenAlgs = new Set();
+    let sigsMalformed = false;
+    for (const s of attestation.proof.signatures) {
+        if (!s || typeof s !== 'object' || typeof s.alg !== 'string' || typeof s.sig !== 'string' || seenAlgs.has(s.alg)) {
+            sigsMalformed = true;
+            break;
+        }
+        seenAlgs.add(s.alg);
+    }
+    const legsPresent = !sigsMalformed && OUTCOME_V2_REQUIRED_ALGORITHMS.every((alg) => seenAlgs.has(alg));
+    const derivedKeyId = executorKeyId(attestation.proof.public_key);
+    const derivedPqKeyId = pqExecutorKeyId(attestation.proof.pq_public_key);
+    const pin = executorKeys[attestation.executor_id];
+    checks.executor_key_pinned = legsPresent
+        && derivedKeyId === attestation.proof.key_id
+        && derivedPqKeyId === attestation.proof.pq_key_id
+        && pin?.public_key === attestation.proof.public_key
+        && pin?.pq_public_key === attestation.proof.pq_public_key
+        && (pin?.key_id === undefined || pin.key_id === derivedKeyId)
+        && (pin?.pq_key_id === undefined || pin.pq_key_id === derivedPqKeyId);
+    if (!checks.executor_key_pinned)
+        errors.push('executor_key_not_pinned');
+    if (checks.executor_key_pinned) {
+        const bytes = signingBytesV2(attestation);
+        let setResult;
+        try {
+            setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), attestation.proof.signatures, [
+                { alg: 'Ed25519', public_key: pin.public_key, key_id: derivedKeyId },
+                { alg: 'ML-DSA-65', public_key: pin.pq_public_key, key_id: derivedPqKeyId },
+            ], { ...opts, policy: 'hybrid_all', requiredAlgorithms: [...OUTCOME_V2_REQUIRED_ALGORITHMS] });
+        }
+        catch {
+            setResult = null;
+        }
+        checks.signature = setResult?.verified === true;
+    }
+    if (!checks.signature)
+        errors.push('executor_signature_invalid');
+    const executedAt = strictInstantMs(attestation.executed_at);
+    const nowMs = now === undefined ? Date.now() : strictInstantMs(now);
+    checks.execution_time = Number.isFinite(executedAt)
+        && Number.isFinite(nowMs)
+        && executedAt <= nowMs;
+    if (!checks.execution_time)
+        errors.push('execution_time_invalid_or_future');
+    return out();
+}
+/** Build a hybrid-signed observation from an executor, system of record, or independent observer. */
+export async function buildOutcomeObservationV2({ receipt_id, receipt_digest, action_hash, action_caid, consumption_nonce, operation_id, source, observed_from, observed_until, attested_at, observed_effects, signer, } = {}) {
+    const observedValidation = validateObservedEffects(observed_effects);
+    if (!observedValidation.ok)
+        throw new Error(observedValidation.errors.join('; '));
+    if (typeof receipt_id !== 'string' || !receipt_id)
+        throw new Error('receipt_id is required');
+    if (!normalizeDigest(receipt_digest))
+        throw new Error('receipt_digest must be sha256:<64-hex>');
+    if (!normalizeDigest(action_hash))
+        throw new Error('action_hash must be sha256:<64-hex>');
+    if (action_caid !== undefined && (typeof action_caid !== 'string' || !action_caid)) {
+        throw new Error('action_caid must be a non-empty string when present');
+    }
+    if (typeof consumption_nonce !== 'string' || !consumption_nonce)
+        throw new Error('consumption_nonce is required');
+    if (typeof operation_id !== 'string' || !operation_id)
+        throw new Error('operation_id is required');
+    if (!exactKeys(source, SOURCE_KEYS)
+        || !OUTCOME_SOURCE_ROLES.includes(source.role)
+        || typeof source.source_id !== 'string' || !source.source_id
+        || typeof source.source_class !== 'string' || !source.source_class
+        || (source.facility_id !== undefined
+            && (typeof source.facility_id !== 'string' || !source.facility_id))) {
+        throw new Error('source must carry a closed role, source_id, source_class, and optional facility_id');
+    }
+    const fromMs = strictInstantMs(observed_from);
+    const untilMs = strictInstantMs(observed_until);
+    const attestedMs = strictInstantMs(attested_at);
+    if (![fromMs, untilMs, attestedMs].every(Number.isFinite)
+        || fromMs > untilMs || untilMs > attestedMs) {
+        throw new Error('observation timestamps must be strict RFC 3339 instants ordered observed_from <= observed_until <= attested_at');
+    }
+    const s = signer;
+    if (!s?.privateKey)
+        throw new Error('signer.privateKey is required');
+    if (!s?.pqPrivateKey)
+        throw new Error('signer.pqPrivateKey is required');
+    const publicKey = s.publicKey || publicKeyB64u(s.privateKey);
+    const keyId = outcomeSourceKeyId(publicKey);
+    if (s.key_id !== undefined && s.key_id !== keyId)
+        throw new Error('signer.key_id does not match signer public key');
+    const pqPublicKey = s.pqPublicKey;
+    if (typeof pqPublicKey !== 'string' || !pqPublicKey)
+        throw new Error('signer.pqPublicKey is required');
+    const pqKeyId = pqOutcomeSourceKeyId(pqPublicKey);
+    if (!pqKeyId)
+        throw new Error('signer.pqPublicKey must be a canonical 1952-byte ML-DSA-65 key');
+    if (s.pq_key_id !== undefined && s.pq_key_id !== pqKeyId)
+        throw new Error('signer.pq_key_id does not match signer pq public key');
+    const body = {
+        '@version': OUTCOME_OBSERVATION_V2_VERSION,
+        receipt_id,
+        receipt_digest: normalizeDigest(receipt_digest),
+        action_hash: normalizeDigest(action_hash),
+        ...(action_caid === undefined ? {} : { action_caid }),
+        consumption_nonce,
+        operation_id,
+        source,
+        observed_from,
+        observed_until,
+        attested_at,
+        observed_effects,
+        observed_effects_digest: observedEffectsDigest(observed_effects),
+        required_algorithms: [...OUTCOME_V2_REQUIRED_ALGORITHMS],
+    };
+    const bytes = observationSigningBytesV2(body);
+    const signatures = await signAgileSet(new Uint8Array(bytes), [
+        { alg: 'Ed25519', private_key: s.privateKey, key_id: keyId },
+        { alg: 'ML-DSA-65', private_key: s.pqPrivateKey, key_id: pqKeyId },
+    ]);
+    return {
+        ...body,
+        proof: { key_id: keyId, pq_key_id: pqKeyId, public_key: publicKey, pq_public_key: pqPublicKey, signatures },
+    };
+}
+/** Verify one hybrid-signed outcome observation. Async; never verifies on one leg alone. */
+export async function verifyOutcomeObservationV2(observation, opts = {}) {
+    const sourceKeys = (opts.sourceKeys && typeof opts.sourceKeys === 'object' ? opts.sourceKeys : {});
+    const checks = {
+        structure: false,
+        observation_digest: false,
+        algorithm_set: false,
+        source_key_pinned: false,
+        source_metadata_pinned: false,
+        source_key_current: false,
+        signature: false,
+        observation_time: false,
+    };
+    const errors = [];
+    const out = () => ({ valid: Object.values(checks).every(Boolean), checks, errors });
+    try {
+        canonicalize(observation);
+    }
+    catch {
+        errors.push('malformed_outcome_observation: outside canonical JSON domain');
+        return out();
+    }
+    if (!exactKeys(observation, OBSERVATION_V2_KEYS)
+        || observation?.['@version'] !== OUTCOME_OBSERVATION_V2_VERSION
+        || typeof observation.receipt_id !== 'string' || !observation.receipt_id
+        || !normalizeDigest(observation.receipt_digest)
+        || !normalizeDigest(observation.action_hash)
+        || (observation.action_caid !== undefined
+            && (typeof observation.action_caid !== 'string' || !observation.action_caid))
+        || typeof observation.consumption_nonce !== 'string' || !observation.consumption_nonce
+        || typeof observation.operation_id !== 'string' || !observation.operation_id
+        || !exactKeys(observation.source, SOURCE_KEYS)
+        || !OUTCOME_SOURCE_ROLES.includes(observation.source?.role)
+        || typeof observation.source?.source_id !== 'string' || !observation.source.source_id
+        || typeof observation.source?.source_class !== 'string' || !observation.source.source_class
+        || (observation.source?.facility_id !== undefined
+            && (typeof observation.source.facility_id !== 'string' || !observation.source.facility_id))
+        || !DIGEST_RE.test(observation.observed_effects_digest || '')
+        || !exactKeys(observation.proof, PROOF_V2_KEYS)
+        || !SOURCE_KEY_ID_RE.test(observation.proof.key_id || '')
+        || !PQ_SOURCE_KEY_ID_RE.test(observation.proof.pq_key_id || '')
+        || typeof observation.proof.public_key !== 'string'
+        || typeof observation.proof.pq_public_key !== 'string'
+        || !Array.isArray(observation.proof.signatures) || observation.proof.signatures.length !== 2) {
+        errors.push('malformed_outcome_observation');
+        return out();
+    }
+    const observedValidation = validateObservedEffects(observation.observed_effects);
+    if (!observedValidation.ok) {
+        errors.push(...observedValidation.errors);
+        return out();
+    }
+    checks.structure = true;
+    checks.observation_digest = observedEffectsDigest(observation.observed_effects)
+        === observation.observed_effects_digest;
+    if (!checks.observation_digest)
+        errors.push('observed_effects_digest_mismatch');
+    checks.algorithm_set = algorithmSetMatchesRegisteredOutcome(observation.required_algorithms);
+    if (!checks.algorithm_set)
+        errors.push('required_algorithms_not_registered_set');
+    const seenAlgs = new Set();
+    let sigsMalformed = false;
+    for (const s of observation.proof.signatures) {
+        if (!s || typeof s !== 'object' || typeof s.alg !== 'string' || typeof s.sig !== 'string' || seenAlgs.has(s.alg)) {
+            sigsMalformed = true;
+            break;
+        }
+        seenAlgs.add(s.alg);
+    }
+    const legsPresent = !sigsMalformed && OUTCOME_V2_REQUIRED_ALGORITHMS.every((alg) => seenAlgs.has(alg));
+    const observationKey = canonicalOutcomeSourceKey(observation.proof.public_key);
+    const derivedPqKeyId = pqOutcomeSourceKeyId(observation.proof.pq_public_key);
+    const pin = sourceKeys[observation.source.source_id];
+    const pinnedKey = canonicalOutcomeSourceKey(pin?.public_key);
+    checks.source_key_pinned = legsPresent
+        && observationKey !== null
+        && pinnedKey !== null
+        && observationKey.key_id === observation.proof.key_id
+        && pinnedKey.key_id === observationKey.key_id
+        && derivedPqKeyId === observation.proof.pq_key_id
+        && pin?.pq_public_key === observation.proof.pq_public_key
+        && (pin.key_id === undefined || pin.key_id === observationKey.key_id)
+        && (pin.pq_key_id === undefined || pin.pq_key_id === derivedPqKeyId);
+    if (!checks.source_key_pinned)
+        errors.push('outcome_source_key_not_pinned');
+    checks.source_metadata_pinned = pin?.role === observation.source.role
+        && pin?.source_class === observation.source.source_class
+        && (pin.facility_id === undefined || pin.facility_id === observation.source.facility_id);
+    if (!checks.source_metadata_pinned)
+        errors.push('outcome_source_metadata_not_pinned');
+    if (checks.source_key_pinned && checks.source_metadata_pinned) {
+        const bytes = observationSigningBytesV2(observation);
+        let setResult;
+        try {
+            setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), observation.proof.signatures, [
+                { alg: 'Ed25519', public_key: pinnedKey.public_key, key_id: observationKey.key_id },
+                { alg: 'ML-DSA-65', public_key: pin.pq_public_key, key_id: derivedPqKeyId },
+            ], { ...opts, policy: 'hybrid_all', requiredAlgorithms: [...OUTCOME_V2_REQUIRED_ALGORITHMS] });
+        }
+        catch {
+            setResult = null;
+        }
+        checks.signature = setResult?.verified === true;
+    }
+    if (!checks.signature)
+        errors.push('outcome_source_signature_invalid');
+    const fromMs = strictInstantMs(observation.observed_from);
+    const untilMs = strictInstantMs(observation.observed_until);
+    const attestedMs = strictInstantMs(observation.attested_at);
+    const nowMs = opts.now === undefined ? Date.now() : strictInstantMs(opts.now);
+    checks.observation_time = [fromMs, untilMs, attestedMs, nowMs].every(Number.isFinite)
+        && fromMs <= untilMs && untilMs <= attestedMs && attestedMs <= nowMs;
+    if (!checks.observation_time)
+        errors.push('observation_time_invalid_or_future');
+    const validFromMs = strictInstantMs(pin?.valid_from);
+    const validToMs = strictInstantMs(pin?.valid_to);
+    const status = pin?.status;
+    const compromisedAtMs = pin?.compromised_at === undefined
+        ? NaN : strictInstantMs(pin.compromised_at);
+    const statusShapeValid = status === 'active' || status === 'retired' || status === 'compromised';
+    const compromiseShapeValid = status === 'compromised'
+        ? Number.isFinite(compromisedAtMs)
+        : pin?.compromised_at === undefined;
+    checks.source_key_current = statusShapeValid
+        && compromiseShapeValid
+        && [validFromMs, validToMs, attestedMs].every(Number.isFinite)
+        && validFromMs <= attestedMs
+        && attestedMs <= validToMs
+        && (status !== 'compromised' || attestedMs < compromisedAtMs);
+    if (!checks.source_key_current)
+        errors.push('outcome_source_key_not_current');
+    return out();
 }
 export const OUTCOME_BINDING_OUTCOMES = DIVERGENCE_OUTCOMES;
 //# sourceMappingURL=outcome-binding.js.map

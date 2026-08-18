@@ -13,6 +13,7 @@ import crypto from 'node:crypto';
 // @ts-expect-error -- narrowed and cross-checked below.
 import { computeCaid } from '../vendor/caid.mjs';
 import { canonicalizeAeb, digestAeb, } from './aeb-adapter-contract.js';
+import { signAgileSet, verifyAgileSignatureSet, ML_DSA_65_PUBLIC_KEY_BYTES, } from './pq-signature-agility.js';
 import { strictJsonGate } from './strict-json.js';
 export const POLICY_DECISION_EVIDENCE_VERSION = 'EP-POLICY-DECISION-EVIDENCE-v1';
 export const POLICY_DECISION_EVIDENCE_TYP = 'ep-policy-decision-evidence+jwt';
@@ -486,5 +487,257 @@ export function createPolicyDecisionEvidenceAdapter(constructorPins) {
             }
         },
     });
+}
+// ===========================================================================
+// EP-POLICY-DECISION-EVIDENCE-v2 -- the hybrid (Ed25519 + ML-DSA-65) statement
+// ===========================================================================
+/**
+ * Same five-move migration as EP-REVOCATION-v2, and the same reason the JOSE
+ * `alg` header disappears in v2 as in EP-AUTHORIZATION-SERVER-CONFIRMATION-v2:
+ * this repository carries no traceable JOSE algorithm identifier for ML-DSA-65
+ * (the only in-tree ML-DSA algorithm identifier is the COSE one, RFC 9964, in
+ * packages/verify/src/aeb-mcgraw-delegation-adapter.ts), and
+ * docs/protocol/pq-hybrid-program.md records the JOSE registration as unfinished
+ * draft work. Rather than squat on the JOSE registry with an invented value,
+ * the v2 protected header carries no `alg` at all: each signature carries its
+ * own label from EP's own closed registry (EP-SIG-AGILITY-v1), and the header
+ * commits to the required SET.
+ *
+ *   1. VERSION BUMP. `ep_version` becomes the v2 marker and `typ` changes, so
+ *      the unchanged v1 parser (signableClaims / verifyStatement) refuses a v2
+ *      statement on the version marker before touching a signature, without
+ *      throwing. Asserted by test.
+ *   2. SET SHAPE. `signatures: [{ alg, sig, key_id }]`, the EP-SIG-AGILITY-v1
+ *      AgileSignature shape, one entry per registered algorithm.
+ *   3. ANTI-STRIPPING BYTES. `required_algorithms` is a member of the protected
+ *      header, which is inside the ASCII `<protected>.<payload>` signing input
+ *      both legs cover. The verifier rebuilds the expected header from the PIN
+ *      and the REGISTERED set and requires byte equality.
+ *   4. V1 COMPATIBILITY. signPolicyDecisionEvidence() and the synchronous
+ *      AebAdapter path are unchanged and stay synchronous. ML-DSA verification
+ *      is async and AebAdapter.verifyNative() is synchronous by contract, so v2
+ *      is a separate async entry point; there is no hybrid adapter here.
+ *   5. NAMED REFUSALS. Nothing throws on caller input; a missing ML-DSA backend
+ *      is `pq_backend_unavailable` and never a pass on the classical leg.
+ *
+ * COORDINATION BOUNDARY. The signer is an OPA or Cerbos integration that
+ * vendored this helper. Shipping the v2 verifier does not make any policy-engine
+ * integration emit v2 statements: each one must deploy an ML-DSA-65 key and the
+ * v2 signer first. Opt-in; not deployed, default, or certified.
+ *
+ * UNCHANGED BOUNDARY. v2 changes the signature algebra and nothing else. A
+ * verified statement still proves only that a pinned integration observed and
+ * signed this machine-policy decision. A machine ALLOW is still not human
+ * authorization.
+ */
+export const POLICY_DECISION_EVIDENCE_V2_VERSION = 'EP-POLICY-DECISION-EVIDENCE-v2';
+export const POLICY_DECISION_EVIDENCE_V2_TYP = 'ep-policy-decision-evidence+hybrid';
+/** The registered required algorithm set, in canonical order. */
+export const POLICY_DECISION_EVIDENCE_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+const V2_HEADER_KEYS = new Set(['ep_version', 'typ', 'kid', 'pq_kid', 'required_algorithms']);
+const V2_SIGNATURE_KEYS = new Set(['alg', 'sig', 'key_id']);
+const V2_STATEMENT_KEYS = new Set(['protected', 'payload', 'signatures']);
+function policyV2SetMatchesRegistered(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === POLICY_DECISION_EVIDENCE_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === POLICY_DECISION_EVIDENCE_V2_REQUIRED_ALGORITHMS[i]);
+}
+/** The v2 protected header; `required_algorithms` is a signed member of it. */
+export function policyDecisionEvidenceV2ProtectedHeader(keyId, pqKeyId, requiredAlgorithms = POLICY_DECISION_EVIDENCE_V2_REQUIRED_ALGORITHMS) {
+    if (!policyV2SetMatchesRegistered(requiredAlgorithms)) {
+        throw new Error('policyDecisionEvidenceV2ProtectedHeader: algorithm set is not the registered EP-POLICY-DECISION-EVIDENCE-v2 set');
+    }
+    return {
+        ep_version: POLICY_DECISION_EVIDENCE_V2_VERSION,
+        typ: POLICY_DECISION_EVIDENCE_V2_TYP,
+        kid: keyId,
+        pq_kid: pqKeyId,
+        required_algorithms: [...requiredAlgorithms],
+    };
+}
+/** ASCII `<protected>.<payload>`: the exact v1 signing-input convention. */
+export function policyDecisionEvidenceV2SigningInput(protectedB64u, payloadB64u) {
+    return Buffer.from(`${protectedB64u}.${payloadB64u}`, 'ascii');
+}
+function v2SignableClaims(value) {
+    if (!isRecord(value) || value.ep_version !== POLICY_DECISION_EVIDENCE_V2_VERSION)
+        return false;
+    // Reuse the v1 claim validator verbatim by swapping only the version marker,
+    // so the two versions cannot drift on claim semantics.
+    return signableClaims({ ...value, ep_version: POLICY_DECISION_EVIDENCE_VERSION });
+}
+/** Sign a v2 policy decision statement under BOTH registered algorithms. */
+export async function signPolicyDecisionEvidenceV2(claims, signer, options = {}) {
+    if (!v2SignableClaims(claims)
+        || !validIdentifier(signer?.key_id) || !validIdentifier(signer?.pq_key_id)
+        || !validPrivateKey(signer?.private_key)) {
+        throw new TypeError('valid closed v2 policy decision claims and Ed25519 + ML-DSA-65 signer required');
+    }
+    const header = canonicalizeAeb(policyDecisionEvidenceV2ProtectedHeader(signer.key_id, signer.pq_key_id));
+    const payload = canonicalizeAeb(claims);
+    const protectedB64u = Buffer.from(header, 'utf8').toString('base64url');
+    const payloadB64u = Buffer.from(payload, 'utf8').toString('base64url');
+    const signatures = await signAgileSet(new Uint8Array(policyDecisionEvidenceV2SigningInput(protectedB64u, payloadB64u)), [
+        { alg: 'Ed25519', private_key: signer.private_key, key_id: signer.key_id },
+        { alg: 'ML-DSA-65', private_key: signer.pq_secret_key, key_id: signer.pq_key_id },
+    ], options);
+    return {
+        protected: protectedB64u,
+        payload: payloadB64u,
+        signatures: signatures.map((s) => ({ alg: s.alg, sig: s.sig, key_id: String(s.key_id ?? '') })),
+    };
+}
+/**
+ * verifyPolicyDecisionEvidenceV2 -- FAIL-CLOSED hybrid check against a pinned
+ * key pair and a pinned adapter config. Never throws on caller input; a v2
+ * statement NEVER verifies on one leg alone.
+ *
+ * SCOPE. Header shape, committed algorithm set, both legs under pinned keys,
+ * and closed claim validity against the config. Freshness, engine/policy
+ * allow-lists beyond the closed claim check, status, and AEB acceptance stay
+ * with the unchanged synchronous v1 adapter.
+ */
+export async function verifyPolicyDecisionEvidenceV2(statement, pin, config, options = {}) {
+    const checks = {
+        structure: true,
+        version: true,
+        algorithm_set: true,
+        legs_present: true,
+        engine_key_pinned: true,
+        claims_valid: true,
+        signature_valid: true,
+        signature_binds_statement: true,
+    };
+    const errors = [];
+    const fail = (key, msg) => { checks[key] = false; errors.push(msg); };
+    const done = (claims) => ({ valid: Object.values(checks).every(Boolean), checks, errors, ...(claims ? { claims } : {}) });
+    if (!isRecord(statement) || !exactKeys(statement, V2_STATEMENT_KEYS)
+        || typeof statement.protected !== 'string' || typeof statement.payload !== 'string') {
+        fail('structure', 'statement must be the exact closed { protected, payload, signatures } shape');
+        fail('signature_valid', 'statement shape refused before any signature was inspected');
+        return done();
+    }
+    const header = parseJsonSegment(statement.protected);
+    const rawClaims = parseJsonSegment(statement.payload);
+    if (!header || !rawClaims) {
+        fail('structure', 'protected header and payload must be strict-JSON base64url segments');
+        fail('signature_valid', 'statement segments refused before any signature was inspected');
+        return done();
+    }
+    if (!exactKeys(header, V2_HEADER_KEYS)) {
+        fail('structure', 'protected header must use the exact closed v2 key set');
+    }
+    if (header.ep_version !== POLICY_DECISION_EVIDENCE_V2_VERSION) {
+        fail('version', `unsupported version: ${String(header.ep_version)}`);
+    }
+    if (header.typ !== POLICY_DECISION_EVIDENCE_V2_TYP) {
+        fail('structure', `protected header typ must be ${POLICY_DECISION_EVIDENCE_V2_TYP}`);
+    }
+    if (!policyV2SetMatchesRegistered(header.required_algorithms)) {
+        fail('algorithm_set', `protected header required_algorithms must be exactly ${JSON.stringify([...POLICY_DECISION_EVIDENCE_V2_REQUIRED_ALGORITHMS])} (set narrowing / widening refused)`);
+    }
+    const signatures = Array.isArray(statement.signatures) ? statement.signatures : null;
+    if (!signatures || signatures.length === 0) {
+        fail('legs_present', 'signatures must carry one entry per required algorithm');
+    }
+    else {
+        const presented = new Set();
+        let malformed = false;
+        for (const s of signatures) {
+            if (!isRecord(s) || !exactKeys(s, V2_SIGNATURE_KEYS)
+                || typeof s.alg !== 'string' || typeof s.sig !== 'string' || typeof s.key_id !== 'string') {
+                fail('legs_present', 'each signatures entry must be { alg, sig, key_id }');
+                malformed = true;
+                break;
+            }
+            if (presented.has(s.alg)) {
+                fail('legs_present', `duplicate signature for algorithm "${s.alg}"`);
+                malformed = true;
+                break;
+            }
+            presented.add(s.alg);
+        }
+        if (!malformed) {
+            for (const alg of POLICY_DECISION_EVIDENCE_V2_REQUIRED_ALGORITHMS) {
+                if (!presented.has(alg))
+                    fail('legs_present', `missing required ${alg} signature (leg stripped)`);
+            }
+            for (const alg of presented) {
+                if (!POLICY_DECISION_EVIDENCE_V2_REQUIRED_ALGORITHMS.includes(alg)) {
+                    fail('legs_present', `unexpected algorithm "${alg}" outside the registered set`);
+                }
+            }
+        }
+    }
+    const pinnedEd = isRecord(pin) && typeof pin.public_key === 'string' ? pin.public_key : '';
+    const pinnedPq = isRecord(pin) && typeof pin.pq_public_key === 'string' ? pin.pq_public_key : '';
+    if (!pinnedEd || !pinnedPq
+        || !validIdentifier(pin?.key_id)
+        || !validIdentifier(pin?.pq_key_id)) {
+        fail('engine_key_pinned', 'a pinned Ed25519 + ML-DSA-65 policy-engine key pair is required (identified but not trusted)');
+    }
+    else {
+        if (publicKey(pinnedEd) === null) {
+            fail('engine_key_pinned', 'pinned Ed25519 key is not a canonical Ed25519 SPKI');
+        }
+        const pqBytes = decodeBase64url(pinnedPq);
+        if (!pqBytes || pqBytes.length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+            fail('engine_key_pinned', `pinned ML-DSA-65 key must be ${ML_DSA_65_PUBLIC_KEY_BYTES} raw bytes, base64url`);
+        }
+        if (header.kid !== pin.key_id) {
+            fail('engine_key_pinned', 'protected header kid != pinned Ed25519 key_id');
+        }
+        if (header.pq_kid !== pin.pq_key_id) {
+            fail('engine_key_pinned', 'protected header pq_kid != pinned ML-DSA-65 key_id');
+        }
+    }
+    if (checks.engine_key_pinned) {
+        let expected = null;
+        try {
+            expected = Buffer.from(canonicalizeAeb(policyDecisionEvidenceV2ProtectedHeader(pin.key_id, pin.pq_key_id)), 'utf8').toString('base64url');
+        }
+        catch {
+            expected = null;
+        }
+        if (expected === null || expected !== statement.protected) {
+            fail('structure', 'protected header does not equal the header rebuilt from the pin and the registered algorithm set');
+        }
+    }
+    const parsedConfig = parseConfig(config);
+    if (!parsedConfig) {
+        fail('claims_valid', 'a valid pinned adapter configuration is required');
+    }
+    else if (!v2SignableClaims(rawClaims)
+        || rawClaims.iss !== parsedConfig.issuer || rawClaims.aud !== parsedConfig.audience
+        || !parsedConfig.allowed_engines.includes(rawClaims.engine)
+        || !parsedConfig.allowed_policy_digests.includes(rawClaims.policy_digest)
+        || canonicalAction(rawClaims.action, parsedConfig.action_type) === null) {
+        fail('claims_valid', 'claims are not the exact closed v2 claim set for this pinned configuration');
+    }
+    let setResult;
+    try {
+        setResult = await verifyAgileSignatureSet(new Uint8Array(policyDecisionEvidenceV2SigningInput(statement.protected, statement.payload)), signatures ?? [], [
+            { alg: 'Ed25519', public_key: pinnedEd, key_id: pin?.key_id },
+            { alg: 'ML-DSA-65', public_key: pinnedPq, key_id: pin?.pq_key_id },
+        ], {
+            ...options,
+            policy: 'hybrid_all',
+            requiredAlgorithms: [...POLICY_DECISION_EVIDENCE_V2_REQUIRED_ALGORITHMS],
+        });
+    }
+    catch {
+        setResult = null;
+    }
+    if (setResult?.verified !== true) {
+        const reason = String(setResult?.reason ?? 'signature_set_unverified');
+        const failedLeg = Array.isArray(setResult?.results)
+            ? setResult.results.find((r) => r?.verified !== true) ?? null
+            : null;
+        fail('signature_valid', `policy decision signature set does not verify under the pinned Ed25519 + ML-DSA-65 keys (${reason})`);
+        if (failedLeg?.reason === 'signature_invalid') {
+            fail('signature_binds_statement', 'signature set does not bind the presented protected header and payload bytes');
+        }
+    }
+    return done(checks.claims_valid ? rawClaims : undefined);
 }
 //# sourceMappingURL=policy-decision-evidence.js.map

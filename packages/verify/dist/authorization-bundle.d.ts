@@ -1,4 +1,5 @@
 import { type AebDigest } from './aeb-adapter-contract.js';
+import { type AgileSignature, type AgileSigningKey, type AgilityOptions } from './pq-signature-agility.js';
 type Obj = Record<string, unknown>;
 export declare const AUTHORIZATION_BUNDLE_VERSION = "EP-AUTHORIZATION-BUNDLE-v1";
 export type AuthorizationBundleVerdict = 'SATISFIED' | 'REFUSE' | 'INDETERMINATE';
@@ -94,5 +95,94 @@ export interface AuthorizationBundleGrantBindingResult {
  * store; this pure helper does not claim distributed or cross-domain locking.
  */
 export declare function bindAuthorizationBundleToGrant(current: AuthorizationBundleGrantBindingState | null, requested: AuthorizationBundleGrantBindingState): AuthorizationBundleGrantBindingResult;
+/**
+ * REFERENCE-DERIVED HYBRID MIGRATION. Copies, move for move, the reference
+ * hybrid migration documented in docs/protocol/pq-hybrid-program.md, section
+ * "PATTERN: the reference hybrid migration" (EP-REVOCATION-v2 in
+ * packages/verify/src/revocation.ts). The five moves, applied to Class B/C
+ * approver signoffs inside the bundle:
+ *
+ * 1. VERSION BUMP, NOT A FIELD BUMP. A second signature per signoff changes
+ *    the SHAPE of the signoff's proof, a wire-format change, so the bundle
+ *    takes a new `bundle_version` (EP-AUTHORIZATION-BUNDLE-v1 -> -v2).
+ *    verifyAuthorizationBundle() above is untouched: it requires
+ *    `bundle.bundle_version === AUTHORIZATION_BUNDLE_VERSION` (v1) as part of
+ *    its closed-shape gate, so a v2 bundle refuses on `bundle_malformed`
+ *    before any signature inspection, and never throws.
+ * 2. SET SHAPE. Each Class B/C signoff's flat `signature` string is replaced
+ *    by `proof`, carrying `required_algorithms` plus a `signatures` array
+ *    shaped exactly like EP-SIG-AGILITY-v1's AgileSignature
+ *    ({ alg, sig, key_id? }).
+ * 3. ANTI-STRIPPING BYTES. The required algorithm SET is committed INSIDE the
+ *    signed bytes (signoffV2SigningBytes below), alongside the context digest
+ *    each signoff already binds. Drop the ML-DSA leg and narrow
+ *    `required_algorithms` and the surviving Ed25519 signature no longer
+ *    verifies, because the bytes changed.
+ * 4. V1 COMPATIBILITY. v1 bundles keep verifying, unchanged, through
+ *    verifyAuthorizationBundle (which stays synchronous internally, even
+ *    though its public wrapper always returns a value directly). v2
+ *    verification is a SEPARATE, ASYNC entry point (ML-DSA verification is
+ *    async); verifyAuthorizationBundleAny() routes on `bundle_version` for
+ *    callers holding a mixed bag. The v1 verifier is never made async.
+ * 5. NAMED REFUSALS. Every failure path is a reason string folded into the
+ *    same `reasons` list v1 uses; nothing throws on caller input (mirrored by
+ *    the same hostile-proxy try/catch wrapper v1 uses). An absent ML-DSA
+ *    backend makes the affected signoff's signature check fail, which is
+ *    surfaced through the existing 'signoff_signature_invalid' reason --
+ *    never a skipped check and never a pass on the classical leg alone.
+ *
+ * SCOPE BOUNDARY (honest, not a hedge): Class A signoffs are UNCHANGED in v2.
+ * verifyClassASignoff remains the sole authority for a Class A signoff exactly
+ * as in v1 -- Class A is a hardware-authenticator (WebAuthn/passkey) ceremony,
+ * and a PQ upgrade there is gated on FIDO Alliance / W3C WebAuthn PQC
+ * extensions landing in browsers and authenticators, not on EP code (see
+ * docs/protocol/pq-hybrid-program.md, priority item 2). Only Class B/C
+ * signoffs -- EP-issued Ed25519 keys this module verifies directly -- gain the
+ * ML-DSA-65 leg. A v2 bundle's Class B/C approver key entries carry BOTH
+ * `public_key` and `pq_public_key`; a key entry missing the PQ half fails the
+ * affected signoff, never a silent single-leg pass.
+ *
+ * HONEST BOUNDARIES carry over unchanged from v1: SATISFIED never means
+ * AUTHORIZED. The ML-DSA backend is @noble/post-quantum's pure-JS FIPS 204
+ * implementation, not independently audited and not a FIPS validated module.
+ * v2 does NOT retroactively protect bundles already issued under v1.
+ */
+export declare const AUTHORIZATION_BUNDLE_V2_VERSION = "EP-AUTHORIZATION-BUNDLE-v2";
+/** The registered required algorithm set, in canonical order. */
+export declare const AUTHORIZATION_BUNDLE_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+export interface AuthorizationBundleSignoffV2Proof {
+    required_algorithms: readonly string[];
+    signatures: AgileSignature[];
+}
+/** v2 Class B/C approver key: BOTH public halves. Class A entries need not carry pq_public_key. */
+export interface AuthorizationBundleKeyEntryV2 extends AuthorizationBundleKeyEntry {
+    pq_public_key?: string;
+}
+export interface AuthorizationBundleVerificationOptionsV2 extends Omit<AuthorizationBundleVerificationOptions, 'approverKeys'> {
+    approverKeys: Record<string, AuthorizationBundleKeyEntryV2>;
+    mldsaBackend?: AgilityOptions['mldsaBackend'];
+    mldsaBackendLoader?: AgilityOptions['mldsaBackendLoader'];
+}
+/**
+ * The bytes BOTH legs sign for one signoff: the context digest that signoff
+ * binds, plus the committed `required_algorithms` set, under a dedicated v2
+ * domain tag. This REPLACES v1's convention of signing the raw context-digest
+ * bytes directly (crypto.sign over the bare 32-byte digest) -- v2 needs
+ * structure to commit the algorithm set into, so it moves to the same
+ * domain-separated canonical-JSON convention every other hybrid surface uses.
+ * Recomputed independently by the verifier from the PRESENTED context digest
+ * and the REGISTERED set.
+ */
+export declare function signoffV2SigningBytes(contextDigest: AebDigest, requiredAlgorithms?: readonly string[]): Buffer;
+/** Mint a real hybrid Class B/C signoff proof over one context digest. Throws on issuer misuse. */
+export declare function signAuthorizationBundleSignoffV2(contextDigest: AebDigest, signers: AgileSigningKey[], options?: AgilityOptions): Promise<AuthorizationBundleSignoffV2Proof>;
+/**
+ * Fail-closed public wrapper for EP-AUTHORIZATION-BUNDLE-v2. Hostile proxies,
+ * accessors, and malformed option objects are protocol input and must produce
+ * a verdict instead of escaping as an exception.
+ */
+export declare function verifyAuthorizationBundleV2(bundle: unknown, options: AuthorizationBundleVerificationOptionsV2): Promise<AuthorizationBundleVerificationResult>;
+/** Route a bundle of EITHER version to its own verifier, on `bundle_version`. */
+export declare function verifyAuthorizationBundleAny(bundle: unknown, options: AuthorizationBundleVerificationOptions | AuthorizationBundleVerificationOptionsV2): Promise<AuthorizationBundleVerificationResult>;
 export {};
 //# sourceMappingURL=authorization-bundle.d.ts.map

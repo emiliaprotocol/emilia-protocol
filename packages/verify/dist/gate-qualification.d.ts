@@ -1,3 +1,4 @@
+import { type AgilityOptions } from './pq-signature-agility.js';
 type Obj = Record<string, any>;
 export type QualificationDigest = `sha256:${string}`;
 export declare const CANDIDATE_MANIFEST_VERSION = "EP-CANDIDATE-MANIFEST-v1";
@@ -148,5 +149,102 @@ export declare const QualificationStatusSchema: Readonly<{
 export declare const RuntimeCandidateMeasurementSchema: Readonly<{
     validate: typeof validateRuntimeCandidateMeasurement;
 }>;
+/**
+ * THIS PATH NEVER ACCEPTS. It refuses with `alg_registration_pending`. Read
+ * why before using it, because the reason is the deliverable.
+ *
+ * DSSE IS A FOREIGN-GOVERNED WIRE FORMAT AND IT CARRIES NO ALGORITHM
+ * IDENTIFIER AT ALL. A DSSE signature is `{ keyid, sig }`. There is no `alg`
+ * field to populate, so there is nothing for a relying party to check the
+ * declared algorithm against, and algorithm choice is inferred entirely from
+ * whatever key material the verifier's own policy has filed under that
+ * `keyid`. That is workable for a single algorithm; it is exactly the
+ * confusion EP-SIG-AGILITY-v1 exists to prevent once two are in play.
+ *
+ * WHAT IS ACTUALLY MISSING, named precisely (two things, both external):
+ *
+ *   1. A DSSE-LEVEL ALGORITHM IDENTIFIER, or a profile that binds `keyid` to
+ *      an algorithm inside the signed bytes. There is no candidate to trace:
+ *      the only ML-DSA-65 algorithm identifier anywhere in this repository is
+ *      the COSE one (-49, RFC 9964, see
+ *      packages/verify/src/aeb-mcgraw-delegation-adapter.ts), and COSE
+ *      identifiers are not DSSE identifiers. Inventing a DSSE-side value from
+ *      memory is precisely the failure this gate exists to prevent.
+ *
+ *   2. A SIGNED LOCATION FOR THE REQUIRED-ALGORITHM SET. DSSE's PAE covers
+ *      exactly `payloadType` and `payload` and nothing else; the `signatures`
+ *      array is outside the signature. So the required set must live inside the
+ *      payload. But the payload of four of the six artifact classes this module
+ *      verifies is an in-toto Statement, and two of its four predicate types
+ *      are in-toto.io's, not EP's (TEST_RESULT_PREDICATE,
+ *      QUALIFICATION_STATEMENT_PREDICATE). EP may not add a top-level member to
+ *      an in-toto Statement, nor a field to a foreign predicate, without
+ *      leaving the format it claims to speak. Changing `payloadType` to an
+ *      EP-owned media type would put the set inside the PAE, but the artifact
+ *      would then no longer be an in-toto attestation, which is the whole point
+ *      of using DSSE here.
+ *
+ * Note that (2) is not solved by (1). Even with a registered DSSE algorithm
+ * identifier, a set commitment with nowhere signed to live means leg-stripping
+ * is caught only by relying-party policy, never by the bytes. The reference
+ * migration (EP-REVOCATION-v2) is explicit that the byte-level commitment is
+ * the point and that policy alone is the weaker property.
+ *
+ * WHAT IS IMPLEMENTED HERE ANYWAY. The complete STRUCTURAL v2, so that the day
+ * both gaps close the only change is removing the gate: exact envelope and
+ * signature-entry shapes, exact per-algorithm signature length pins (Ed25519
+ * 64, ML-DSA-65 3309 -- note the v1 path's 512-byte signature cap cannot carry
+ * an ML-DSA-65 signature at all), the required-algorithm set rebuilt from the
+ * REGISTERED set and never narrowed to what an envelope presented, per-leg
+ * verification through the unmodified EP-SIG-AGILITY-v1 module, and threshold
+ * accounting over accepted keyids. The gate is applied LAST, after that work,
+ * and `accepted` is false on every path.
+ *
+ * NOT GATED, AND UNCHANGED: everything above this line. `verifyEnvelope` and
+ * the whole v1 qualification pipeline are untouched, synchronous, and
+ * Ed25519-only. `packages/gate/src/gate-qualification-v2.ts` orchestrates
+ * admission custody over a QualificationDecision and contains no signature
+ * code of its own, so it needs no change and gets none.
+ */
+export declare const GATE_QUALIFICATION_HYBRID_PROFILE = "EP-GATE-QUALIFICATION-DSSE-HYBRID-v2";
+/** The registered required algorithm set, in canonical order. */
+export declare const GATE_QUALIFICATION_HYBRID_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+/** The single named refusal this gate returns until both gaps above close. */
+export declare const GATE_QUALIFICATION_HYBRID_GATE_REASON = "alg_registration_pending";
+export interface HybridArtifactTrustPolicy {
+    /** keyid -> { alg, public_key }. Ed25519: SPKI base64url or PEM. ML-DSA-65: raw base64url. */
+    keys: Record<string, {
+        alg: string;
+        public_key: string;
+    }>;
+    accepted_keyids: string[];
+    threshold: number;
+}
+export interface HybridDsseResult {
+    /** ALWAYS false while the gate stands. */
+    accepted: boolean;
+    reason: string;
+    checks: {
+        structure: boolean;
+        algorithm_set: boolean;
+        legs_present: boolean;
+        signature_lengths: boolean;
+        /** Verdict the leg checks reached; reported, never converted into acceptance. */
+        signatures_would_verify: boolean;
+        threshold_met: boolean;
+        /** Always false: the gate below. */
+        algorithm_registered: boolean;
+    };
+    errors: string[];
+}
+/**
+ * Structural verification of a hybrid DSSE envelope, followed unconditionally
+ * by the registration gate. `accepted` is false on every path; the checks
+ * object reports how far the structure got so the eventual un-gating is a
+ * one-line change and not a rewrite.
+ *
+ * Never throws on caller input.
+ */
+export declare function verifyHybridDsseEnvelope(envelope: unknown, expectedPayloadType: string, trust: HybridArtifactTrustPolicy | null | undefined, options?: AgilityOptions): Promise<HybridDsseResult>;
 export {};
 //# sourceMappingURL=gate-qualification.d.ts.map

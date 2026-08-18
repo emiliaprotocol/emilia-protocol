@@ -1,3 +1,4 @@
+import { type AgilityOptions } from './pq-signature-agility.js';
 type Obj = Record<string, any>;
 interface OutcomeOptions {
     executorKeys?: Record<string, Obj>;
@@ -173,6 +174,71 @@ export declare function verifyOutcomeBindingCore(receipt: Obj, attestation: Obj,
     attestation_result: any;
     outcome_binding: Obj;
 };
+/**
+ * Reference hybrid migration for both signed artifacts in this file. Copies
+ * the five moves from EP-REVOCATION-v2 (packages/verify/src/revocation.ts):
+ *
+ * 1. VERSION BUMP. `@version` moves -v1 to -v2 for each artifact.
+ *    verifyOutcomeAttestation/verifyOutcomeObservation above are UNCHANGED
+ *    and refuse a v2 artifact on the `@version` marker (via `exactKeys`
+ *    against the unchanged v1 key sets, since `required_algorithms` is not a
+ *    v1 field) before any signature is inspected.
+ * 2. SET SHAPE. `proof.signatures` carries exactly the two AgileSignature
+ *    entries ({alg, sig, key_id}) for Ed25519 and ML-DSA-65, reusing
+ *    EP-SIG-AGILITY-v1's shape verbatim.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is a TOP-LEVEL field of the
+ *    artifact (inside the signed bytes via the existing `unsigned()` helper,
+ *    which strips only `proof`), independently recomputed from the
+ *    registered set.
+ * 4. V1 COMPATIBILITY. v1 artifacts keep verifying, unchanged, through the
+ *    sync functions above. v2 verification is a separate ASYNC entry point.
+ * 5. NAMED REFUSALS. Nothing throws on caller input; a missing ML-DSA backend
+ *    is 'pq_backend_unavailable' from the agility module, never a pass on the
+ *    Ed25519 leg alone.
+ *
+ * SCOPE BOUNDARY: only the two SIGNED leaves (executor attestation, source
+ * observation) are hybridized here. verifyOutcomeObservationSet /
+ * verifyOutcomeBindingCore / verifyOutcomeBindingSetCore are COMPOSITIONS
+ * that reconcile predictions against already-verified observations; they
+ * take a caller-injected verifyReceipt and operate on whichever version's
+ * verify* function opts route to. Rewiring those compositions to accept a
+ * mixed v1/v2 observation bag is a separate, larger change left to the
+ * receipt-issuance hybridization workstream (packages/issue,
+ * packages/verify/src/index.ts) that owns EP-RECEIPT-v1/v2 itself; this file
+ * adds the leaves purely additively so lib/evidence/evidence-graph.ts's
+ * existing EP-OUTCOME-BINDING-v1 consumption is unaffected.
+ */
+export declare const OUTCOME_ATTESTATION_V2_VERSION = "EP-OUTCOME-ATTESTATION-v2";
+export declare const OUTCOME_ATTESTATION_V2_DOMAIN = "EP-OUTCOME-ATTESTATION-v2\0";
+export declare const OUTCOME_OBSERVATION_V2_VERSION = "EP-OUTCOME-OBSERVATION-v2";
+export declare const OUTCOME_OBSERVATION_V2_DOMAIN = "EP-OUTCOME-OBSERVATION-v2\0";
+/** The registered required algorithm set, in canonical order. */
+export declare const OUTCOME_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+interface OutcomeV2Options extends AgilityOptions {
+    executorKeys?: Record<string, {
+        public_key?: string;
+        pq_public_key?: string;
+        key_id?: string;
+        pq_key_id?: string;
+    }>;
+    now?: string;
+}
+/** Build an executor-signed hybrid observed-effects attestation. */
+export declare function buildOutcomeAttestationV2({ receipt_id, receipt_digest, action_hash, consumption_nonce, execution_id, executor_id, executed_at, observed_effects, signer, }?: Obj): Promise<Obj>;
+/** Verify a hybrid executor attestation. Async; never verifies on one leg alone. */
+export declare function verifyOutcomeAttestationV2(attestation: Obj, opts?: OutcomeV2Options): Promise<{
+    valid: boolean;
+    checks: Record<string, boolean>;
+    errors: string[];
+}>;
+/** Build a hybrid-signed observation from an executor, system of record, or independent observer. */
+export declare function buildOutcomeObservationV2({ receipt_id, receipt_digest, action_hash, action_caid, consumption_nonce, operation_id, source, observed_from, observed_until, attested_at, observed_effects, signer, }?: Obj): Promise<Obj>;
+/** Verify one hybrid-signed outcome observation. Async; never verifies on one leg alone. */
+export declare function verifyOutcomeObservationV2(observation: Obj, opts?: OutcomeSetOptions & AgilityOptions): Promise<{
+    valid: boolean;
+    checks: Record<string, boolean>;
+    errors: string[];
+}>;
 export declare const OUTCOME_BINDING_OUTCOMES: readonly string[];
 export {};
 //# sourceMappingURL=outcome-binding.d.ts.map

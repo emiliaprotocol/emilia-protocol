@@ -18,6 +18,7 @@
  */
 import { type KeyObject } from 'node:crypto';
 import { AEC_VERSION } from './evidence-chain.js';
+import { type AgilityOptions } from './pq-signature-agility.js';
 import type { AebExecutionConditionsResult } from './aeb-execution-conditions.js';
 export declare const AEB_ADAPTER_VERSION = "AEB-ADAPTER-v1";
 export declare const AEB_EVALUATION_VERSION = "AEB-EVALUATION-v1";
@@ -443,4 +444,118 @@ export declare function reconcileAebExecutionDurable(store: unknown, reservation
     reason: string;
 }>;
 export { canonicalize as canonicalizeAeb, digest as digestAeb, typedDigest as digestAebTyped };
+/**
+ * SCOPE. This migrates the ONE signature surface in this module that EP owns
+ * and mints: the native verification attestation a pinned native verifier or
+ * protocol gateway signs. The AEB ADAPTER halves (aeb-aps, aeb-ccs, aeb-chap,
+ * aeb-mcgraw, aeb-oasnt, aeb-oauth-transaction-challenge, aeb-psea, aeb-wag,
+ * aeb-wimse-oauth, ap2-native, fido-ap2-bridge) verify artifacts minted by
+ * FOREIGN signers under foreign wire formats and are deliberately excluded:
+ * the foreign signer chooses the algorithm, so there is no EP leg to add.
+ *
+ * The five moves from EP-REVOCATION-v2 (docs/protocol/pq-hybrid-program.md),
+ * applied here:
+ *
+ * 1. VERSION BUMP. A second signature changes the SHAPE of `signature`, so the
+ *    attestation takes a new `@version`. `nativeAttestationShape()` above is
+ *    untouched and pins `@version` to the v1 marker, so the SYNCHRONOUS v1
+ *    adapter (createAebNativeVerificationAttestationAdapter) refuses a v2
+ *    attestation with `native_attestation_malformed` BEFORE it inspects any
+ *    signature, and it does not throw. That refusal is asserted by test.
+ *
+ * 2. SET SHAPE. `proof` carries `required_algorithms` plus a `signatures`
+ *    array shaped exactly like EP-SIG-AGILITY-v1's AgileSignature
+ *    ({ alg, sig, key_id? }), one entry per registered algorithm. Ed25519
+ *    keeps its base64url SPKI DER public key; ML-DSA-65 carries raw base64url
+ *    public key bytes.
+ *
+ * 3. ANTI-STRIPPING BYTES. The required algorithm SET is inside the signed
+ *    bytes. The verifier rebuilds those bytes from the REGISTERED set and from
+ *    the body it re-derived itself, so a narrowed `required_algorithms` both
+ *    fails structurally AND breaks the surviving classical signature.
+ *
+ * 4. V1 COMPATIBILITY. The v1 signer/verifier and the v1 AebAdapter are
+ *    unchanged and stay SYNCHRONOUS. ML-DSA verification is asynchronous, and
+ *    the AebAdapter contract's verifyNative() is synchronous by definition, so
+ *    v2 is a SEPARATE async entry point rather than a new adapter. There is no
+ *    hybrid AebAdapter in this release, and that is a contract limit, not an
+ *    oversight.
+ *
+ * 5. NAMED REFUSALS. Every failure names a check and pushes an error; nothing
+ *    throws on caller input. An absent ML-DSA backend surfaces as
+ *    `pq_backend_unavailable` through the agility result and is never a pass
+ *    on the classical leg.
+ *
+ * HONEST BOUNDARY. A verified v2 attestation proves a pinned verifier signed
+ * exactly this native result under BOTH algorithms. It does not make the
+ * FOREIGN artifact the verifier examined post-quantum secure: that artifact's
+ * own signature is whatever its issuer used. This profile is opt-in and is not
+ * deployed, default, or certified anywhere.
+ */
+export declare const AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION = "EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v2";
+export declare const AEB_NATIVE_VERIFICATION_ATTESTATION_V2_DOMAIN = "EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v2\0";
+/** The registered required algorithm set, in canonical order. */
+export declare const AEB_NATIVE_ATTESTATION_V2_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
+export interface AebNativeVerificationAttestationV2Body extends Omit<AebNativeVerificationAttestationBody, '@version'> {
+    '@version': typeof AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION;
+}
+export interface AebNativeAttestationV2Signature {
+    alg?: unknown;
+    sig?: unknown;
+    key_id?: unknown;
+}
+export interface AebNativeAttestationV2Proof {
+    profile?: unknown;
+    required_algorithms?: unknown;
+    /** Ed25519: base64url SPKI DER. */
+    public_key?: unknown;
+    /** ML-DSA-65: base64url of the raw 1952-byte public key. */
+    pq_public_key?: unknown;
+    signatures?: unknown;
+    [key: string]: unknown;
+}
+export interface AebNativeVerificationAttestationV2 extends AebNativeVerificationAttestationV2Body {
+    proof: AebNativeAttestationV2Proof;
+}
+/** A v2 verifier pin: BOTH public halves, pinned out of band by the relying party. */
+export interface AebNativeAttestationV2KeyPin {
+    key_id: string;
+    /** Ed25519 base64url SPKI DER. */
+    public_key: string;
+    pq_key_id: string;
+    /** ML-DSA-65 base64url raw public key bytes. */
+    pq_public_key: string;
+}
+export interface AebNativeAttestationV2Signer {
+    key_id: string;
+    private_key: KeyObject;
+    pq_key_id: string;
+    /** ML-DSA-65 raw 4032-byte secret key (Uint8Array or base64url). */
+    pq_secret_key: Uint8Array | string;
+    /** ML-DSA-65 raw 1952-byte public key, base64url. Placed in the proof. */
+    pq_public_key: string;
+}
+export interface AebNativeAttestationV2Result {
+    valid: boolean;
+    checks: Record<string, boolean>;
+    errors: string[];
+}
+/**
+ * The bytes BOTH legs sign: the domain tag, the attestation body, and the
+ * REGISTERED algorithm set. Recomputed independently by the verifier; the
+ * presented attestation never chooses what it is checked against.
+ */
+export declare function aebNativeAttestationV2SigningBytes(body: AebNativeVerificationAttestationV2Body, requiredAlgorithms?: readonly string[]): Buffer;
+/**
+ * Sign a v2 native verification attestation under BOTH registered algorithms.
+ * Issuer-side misuse throws (a programming error, not attacker input); an
+ * unavailable ML-DSA backend throws rather than silently minting a v2
+ * attestation with one leg.
+ */
+export declare function signAebNativeVerificationAttestationV2(body: AebNativeVerificationAttestationV2Body, signer: AebNativeAttestationV2Signer, options?: AgilityOptions): Promise<AebNativeVerificationAttestationV2>;
+/**
+ * verifyAebNativeVerificationAttestationV2 -- FAIL-CLOSED hybrid check.
+ * Never throws on caller input. A v2 attestation NEVER verifies on one leg.
+ */
+export declare function verifyAebNativeVerificationAttestationV2(attestation: unknown, pin: AebNativeAttestationV2KeyPin | null | undefined, options?: AgilityOptions): Promise<AebNativeAttestationV2Result>;
 //# sourceMappingURL=aeb-adapter-contract.d.ts.map

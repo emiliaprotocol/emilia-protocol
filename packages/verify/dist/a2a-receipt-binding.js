@@ -13,6 +13,7 @@
 import crypto, { KeyObject } from 'node:crypto';
 import { digestAeb } from './aeb-adapter-contract.js';
 import { canonicalizeStrictJson } from './strict-json.js';
+import { signAgileSet, verifyAgileSignatureSet, } from './pq-signature-agility.js';
 export const A2A_PROTOCOL_VERSION = '1.0';
 export const A2A_ACTION_MEDIA_TYPE = 'application/vnd.emilia.action+json';
 export const A2A_RECEIPT_EXTENSION_URI = 'https://emiliaprotocol.ai/extensions/a2a/receipt-binding/v1';
@@ -576,5 +577,388 @@ export function verifyA2AReceiptPresentation(input) {
     result.decision_scope.receipt_verified = result.checks.receipt;
     result.valid = Object.values(result.checks).every(Boolean) && result.reasons.length === 0;
     return result;
+}
+// ===========================================================================
+// EP-A2A-RECEIPT-BINDING-v2 / EP-A2A-RECEIPT-PRESENTATION-v2 -- hybrid
+// (Ed25519 + ML-DSA-65)
+// ===========================================================================
+/**
+ * Reference hybrid migration for this surface. Copies the five moves from
+ * EP-REVOCATION-v2 (packages/verify/src/revocation.ts):
+ *
+ * 1. VERSION BUMP. `@version` moves EP-A2A-RECEIPT-BINDING-v1 -> -v2 (and the
+ *    presentation wrapper's `@version` moves in lockstep, since it embeds the
+ *    binding artifact). signBinding/verifyBindingSignature and
+ *    createA2AReceiptPresentation/verifyA2AReceiptPresentation above are
+ *    UNCHANGED; validBindingArtifact refuses a v2 artifact on `@version`
+ *    before any signature is inspected.
+ * 2. SET SHAPE. The single `signature` field is replaced by `signatures`, an
+ *    array of exactly the two AgileSignature entries ({alg, sig, key_id}) for
+ *    Ed25519 and ML-DSA-65, reusing EP-SIG-AGILITY-v1's shape verbatim.
+ * 3. ANTI-STRIPPING BYTES. `required_algorithms` is a BODY field (inside the
+ *    signed bytes), independently recomputed from the registered set.
+ * 4. V1 COMPATIBILITY. v1 artifacts keep verifying, unchanged, through the
+ *    sync functions above. v2 verification is a separate ASYNC entry point.
+ * 5. NAMED REFUSALS. Nothing throws on caller input; a missing ML-DSA backend
+ *    is 'pq_backend_unavailable' from the agility module, never a pass on the
+ *    Ed25519 leg alone.
+ */
+export const A2A_RECEIPT_BINDING_V2_VERSION = 'EP-A2A-RECEIPT-BINDING-v2';
+export const A2A_RECEIPT_BINDING_V2_DOMAIN = `${A2A_RECEIPT_BINDING_V2_VERSION}\0`;
+export const A2A_RECEIPT_PRESENTATION_V2_VERSION = 'EP-A2A-RECEIPT-PRESENTATION-v2';
+/** The registered required algorithm set, in canonical order. */
+export const A2A_RECEIPT_BINDING_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65']);
+const BINDING_V2_BODY_KEYS = new Set([
+    '@version', 'extension_name', 'protocol_version', 'target_interface_url',
+    'agent_card_digest', 'task_id', 'context_id', 'task_snapshot_digest',
+    'initiating_message_id', 'initiating_message_digest', 'proof_message_id',
+    'proof_message_digest', 'base_receipt_digest', 'base_action_digest', 'caid',
+    'issued_at', 'expires_at', 'required_algorithms',
+]);
+const BINDING_V2_KEYS = new Set([...BINDING_V2_BODY_KEYS, 'signatures']);
+const PRESENTATION_V2_KEYS = new Set([
+    '@version', 'action', 'receipt', 'receipt_extensions', 'binding_artifact',
+]);
+function algorithmSetMatchesRegisteredA2A(algorithms) {
+    return Array.isArray(algorithms)
+        && algorithms.length === A2A_RECEIPT_BINDING_V2_REQUIRED_ALGORITHMS.length
+        && algorithms.every((a, i) => a === A2A_RECEIPT_BINDING_V2_REQUIRED_ALGORITHMS[i]);
+}
+function signingBytesV2(body) {
+    return Buffer.from(`${A2A_RECEIPT_BINDING_V2_DOMAIN}${canonicalizeStrictJson(body)}`, 'utf8');
+}
+function bindingBodyV2(artifact) {
+    const { signatures: _signatures, ...body } = artifact;
+    return body;
+}
+function validBindingArtifactV2(value) {
+    if (!isObject(value) || !exactKeys(value, BINDING_V2_KEYS)
+        || value['@version'] !== A2A_RECEIPT_BINDING_V2_VERSION
+        || value.extension_name !== A2A_RECEIPT_EXTENSION_NAME
+        || value.protocol_version !== A2A_PROTOCOL_VERSION
+        || !validHttpsUrl(value.target_interface_url)
+        || !validDigest(value.agent_card_digest)
+        || !exactString(value.task_id) || !exactString(value.context_id)
+        || !validDigest(value.task_snapshot_digest)
+        || !exactString(value.initiating_message_id) || !validDigest(value.initiating_message_digest)
+        || !exactString(value.proof_message_id) || !validDigest(value.proof_message_digest)
+        || !validDigest(value.base_receipt_digest) || !validDigest(value.base_action_digest)
+        || typeof value.caid !== 'string' || !CAID_RE.test(value.caid)
+        || !Number.isFinite(instant(value.issued_at)) || !Number.isFinite(instant(value.expires_at))
+        || instant(value.issued_at) >= instant(value.expires_at)
+        || !algorithmSetMatchesRegisteredA2A(value.required_algorithms)
+        || !Array.isArray(value.signatures) || value.signatures.length !== 2)
+        return false;
+    const seen = new Set();
+    for (const sig of value.signatures) {
+        if (!isObject(sig) || typeof sig.alg !== 'string' || typeof sig.sig !== 'string'
+            || typeof sig.key_id !== 'string' || sig.key_id.length === 0
+            || seen.has(sig.alg))
+            return false;
+        seen.add(sig.alg);
+    }
+    return A2A_RECEIPT_BINDING_V2_REQUIRED_ALGORITHMS.every((alg) => seen.has(alg));
+}
+function validPresentationPayloadV2(value) {
+    return isObject(value) && exactKeys(value, PRESENTATION_V2_KEYS)
+        && value['@version'] === A2A_RECEIPT_PRESENTATION_V2_VERSION
+        && validCompanion(value.receipt_extensions)
+        && validBindingArtifactV2(value.binding_artifact);
+}
+async function signBindingV2(body, signer) {
+    if (!exactString(signer?.key_id) || !isEd25519PrivateKey(signer?.private_key)
+        || !exactString(signer?.pq_key_id)) {
+        throw new TypeError('hybrid A2A receipt-binding signer (Ed25519 + ML-DSA-65) required');
+    }
+    const detached = strictClone(body);
+    const bytes = signingBytesV2(detached);
+    const signatures = await signAgileSet(new Uint8Array(bytes), [
+        { alg: 'Ed25519', private_key: signer.private_key, key_id: signer.key_id },
+        { alg: 'ML-DSA-65', private_key: signer.pq_private_key, key_id: signer.pq_key_id },
+    ]);
+    return Object.freeze({ ...detached, signatures });
+}
+async function verifyBindingSignatureV2(artifact, roots, options = {}) {
+    const byAlg = new Map(artifact.signatures.map((s) => [s.alg, s]));
+    const edKeyId = byAlg.get('Ed25519')?.key_id;
+    const pqKeyId = byAlg.get('ML-DSA-65')?.key_id;
+    const root = roots.find((candidate) => isObject(candidate)
+        && candidate.key_id === edKeyId && candidate.pq_key_id === pqKeyId);
+    if (!root)
+        return false;
+    const bytes = signingBytesV2(bindingBodyV2(artifact));
+    let setResult;
+    try {
+        setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), artifact.signatures, [
+            { alg: 'Ed25519', public_key: root.public_key, key_id: root.key_id },
+            { alg: 'ML-DSA-65', public_key: root.pq_public_key, key_id: root.pq_key_id },
+        ], { ...options, policy: 'hybrid_all', requiredAlgorithms: [...A2A_RECEIPT_BINDING_V2_REQUIRED_ALGORITHMS] });
+    }
+    catch {
+        return false;
+    }
+    return setResult.verified === true;
+}
+/** Create one A2A proof retry carrying the base receipt plus its hybrid-signed binding. */
+export async function createA2AReceiptPresentationV2(input) {
+    if (input.protocol_version !== A2A_PROTOCOL_VERSION) {
+        throw new TypeError(`A2A protocol version ${A2A_PROTOCOL_VERSION} required`);
+    }
+    if (!validHttpsUrl(input.target_interface_url))
+        throw new TypeError('canonical HTTPS A2A target required');
+    const agentCard = strictClone(input.agent_card);
+    const task = strictClone(input.task);
+    const initiatingMessage = strictClone(input.initiating_message);
+    const proofMessage = strictClone(input.proof_message);
+    const receipt = strictClone(input.base_receipt);
+    const receiptBinding = strictClone(input.receipt_binding);
+    if (!agentCardSupportsReceiptExtension(agentCard, input.target_interface_url)) {
+        throw new TypeError('Agent Card must advertise the selected A2A v1.0 interface and EMILIA receipt extension');
+    }
+    if (!validTask(task))
+        throw new TypeError('closed A2A auth-required Task required');
+    if (!validMessage(initiatingMessage) || initiatingMessage.role !== 'ROLE_USER') {
+        throw new TypeError('closed initiating A2A user Message required');
+    }
+    if (!validMessage(proofMessage) || proofMessage.role !== 'ROLE_USER') {
+        throw new TypeError('closed A2A proof user Message required');
+    }
+    if (proofMessage.taskId !== task.id || proofMessage.contextId !== task.contextId) {
+        throw new TypeError('proof Message must bind the supplied Task id and contextId');
+    }
+    if ((proofMessage.extensions ?? []).some((uri) => uri === A2A_RECEIPT_EXTENSION_URI)
+        || Object.hasOwn(proofMessage.metadata ?? {}, A2A_RECEIPT_EXTENSION_URI)) {
+        throw new TypeError('proof Message already carries the EMILIA A2A extension');
+    }
+    if (!isObject(receiptBinding)
+        || !exactKeys(receiptBinding, new Set(['caid', 'action_digest']))
+        || typeof receiptBinding.caid !== 'string' || !CAID_RE.test(receiptBinding.caid)
+        || !validDigest(receiptBinding.action_digest)) {
+        throw new TypeError('valid receipt CAID and action digest required');
+    }
+    const action = actionFromInitiatingMessage(initiatingMessage);
+    const actionDigest = digestAeb(action);
+    if (actionDigest !== receiptBinding.action_digest) {
+        throw new TypeError('receipt action digest does not match the initiating A2A action Part');
+    }
+    if (!Number.isFinite(instant(input.issued_at)) || !Number.isFinite(instant(input.expires_at))
+        || instant(input.issued_at) >= instant(input.expires_at)) {
+        throw new TypeError('bounded millisecond-precision A2A binding validity required');
+    }
+    const body = {
+        '@version': A2A_RECEIPT_BINDING_V2_VERSION,
+        extension_name: A2A_RECEIPT_EXTENSION_NAME,
+        protocol_version: A2A_PROTOCOL_VERSION,
+        target_interface_url: input.target_interface_url,
+        agent_card_digest: digestAeb(agentCard),
+        task_id: task.id,
+        context_id: task.contextId,
+        task_snapshot_digest: digestAeb(task),
+        initiating_message_id: initiatingMessage.messageId,
+        initiating_message_digest: messageDigest(initiatingMessage),
+        proof_message_id: proofMessage.messageId,
+        proof_message_digest: messageDigest(proofMessage),
+        base_receipt_digest: digestAeb(receipt),
+        base_action_digest: actionDigest,
+        caid: receiptBinding.caid,
+        issued_at: input.issued_at,
+        expires_at: input.expires_at,
+        required_algorithms: [...A2A_RECEIPT_BINDING_V2_REQUIRED_ALGORITHMS],
+    };
+    const artifact = await signBindingV2(body, input.signer);
+    const companion = Object.freeze({
+        version: RECEIPT_EXTENSIONS_VERSION,
+        base_receipt_digest: artifact.base_receipt_digest,
+        base_action_digest: artifact.base_action_digest,
+        entries: Object.freeze([Object.freeze({
+                name: A2A_RECEIPT_EXTENSION_NAME,
+                operation_id: artifact.task_id,
+                consequence_digest: null,
+                artifact_digest: digestAeb(artifact),
+            })]),
+    });
+    const payload = {
+        '@version': A2A_RECEIPT_PRESENTATION_V2_VERSION,
+        action,
+        receipt,
+        receipt_extensions: companion,
+        binding_artifact: artifact,
+    };
+    const message = strictClone({
+        ...proofMessage,
+        extensions: [...(proofMessage.extensions ?? []), A2A_RECEIPT_EXTENSION_URI],
+        metadata: { ...(proofMessage.metadata ?? {}), [A2A_RECEIPT_EXTENSION_URI]: payload },
+    });
+    return Object.freeze({ message, artifact, companion });
+}
+/**
+ * Verify the portable A2A/receipt correlation under EP-A2A-RECEIPT-BINDING-v2.
+ * Async because ML-DSA-65 verification is async. Same decision scope as v1:
+ * correlation only, never execution authority.
+ */
+export async function verifyA2AReceiptPresentationV2(input) {
+    const result = blankVerification();
+    let agentCard;
+    let task;
+    let initiatingMessage;
+    let presentationMessage;
+    let expectedAction;
+    let negotiatedExtensions;
+    let trustRoots;
+    try {
+        agentCard = strictClone(input.agent_card);
+        task = strictClone(input.task);
+        initiatingMessage = strictClone(input.initiating_message);
+        presentationMessage = strictClone(input.presentation_message);
+        expectedAction = strictClone(input.expected_action);
+        negotiatedExtensions = strictClone(input.negotiated_extensions);
+        trustRoots = strictClone(input.trust_roots);
+    }
+    catch {
+        addReason(result, 'presentation_malformed');
+        return result;
+    }
+    if (!validTask(task) || !validMessage(initiatingMessage)
+        || initiatingMessage.role !== 'ROLE_USER'
+        || !validMessage(presentationMessage) || presentationMessage.role !== 'ROLE_USER') {
+        addReason(result, 'presentation_malformed');
+        return result;
+    }
+    const extensions = presentationMessage.extensions ?? [];
+    const payload = isObject(presentationMessage.metadata)
+        ? presentationMessage.metadata[A2A_RECEIPT_EXTENSION_URI]
+        : undefined;
+    if (extensions.filter((uri) => uri === A2A_RECEIPT_EXTENSION_URI).length !== 1
+        || !validPresentationPayloadV2(payload)) {
+        addReason(result, 'presentation_malformed');
+        return result;
+    }
+    result.checks.shape = true;
+    const artifact = payload.binding_artifact;
+    const companion = payload.receipt_extensions;
+    result.checks.protocol = input.protocol_version === A2A_PROTOCOL_VERSION
+        && artifact.protocol_version === A2A_PROTOCOL_VERSION;
+    if (!result.checks.protocol)
+        addReason(result, 'protocol_version_mismatch');
+    const negotiated = Array.isArray(negotiatedExtensions)
+        && negotiatedExtensions.every((uri) => typeof uri === 'string')
+        && new Set(negotiatedExtensions).size === negotiatedExtensions.length
+        && negotiatedExtensions.some((uri) => uri === A2A_RECEIPT_EXTENSION_URI);
+    result.checks.extension = negotiated;
+    if (!negotiated)
+        addReason(result, 'extension_not_negotiated');
+    result.checks.target = validHttpsUrl(input.target_interface_url)
+        && artifact.target_interface_url === input.target_interface_url
+        && artifact.agent_card_digest === digestAeb(agentCard)
+        && agentCardSupportsReceiptExtension(agentCard, input.target_interface_url);
+    if (!result.checks.target)
+        addReason(result, 'target_binding_mismatch');
+    const taskIdMatches = artifact.task_id === task.id
+        && presentationMessage.taskId === task.id;
+    const contextMatches = artifact.context_id === task.contextId
+        && presentationMessage.contextId === task.contextId;
+    result.checks.task = taskIdMatches && contextMatches
+        && artifact.task_snapshot_digest === digestAeb(task);
+    if (!taskIdMatches)
+        addReason(result, 'task_binding_mismatch');
+    if (!contextMatches)
+        addReason(result, 'context_binding_mismatch');
+    if (artifact.task_snapshot_digest !== digestAeb(task))
+        addReason(result, 'task_snapshot_digest_mismatch');
+    let initiatingAction = null;
+    try {
+        initiatingAction = actionFromInitiatingMessage(initiatingMessage);
+    }
+    catch {
+        addReason(result, 'initiating_action_part_invalid');
+    }
+    const expectedActionDigest = digestAeb(expectedAction);
+    result.checks.initiating_message = artifact.initiating_message_id === initiatingMessage.messageId
+        && artifact.initiating_message_digest === messageDigest(initiatingMessage)
+        && initiatingAction !== null
+        && digestAeb(initiatingAction) === expectedActionDigest;
+    if (artifact.initiating_message_id !== initiatingMessage.messageId) {
+        addReason(result, 'initiating_message_id_mismatch');
+    }
+    if (artifact.initiating_message_digest !== messageDigest(initiatingMessage)) {
+        addReason(result, 'initiating_message_digest_mismatch');
+    }
+    if (initiatingAction === null || digestAeb(initiatingAction) !== expectedActionDigest) {
+        addReason(result, 'initiating_action_mismatch');
+    }
+    result.checks.presentation_message = artifact.proof_message_id === presentationMessage.messageId
+        && artifact.proof_message_digest === messageDigest(presentationMessage);
+    if (artifact.proof_message_id !== presentationMessage.messageId)
+        addReason(result, 'proof_message_id_mismatch');
+    if (artifact.proof_message_digest !== messageDigest(presentationMessage))
+        addReason(result, 'proof_message_digest_mismatch');
+    const expectedArtifactDigest = digestAeb(artifact);
+    result.checks.companion = companion.base_receipt_digest === artifact.base_receipt_digest
+        && companion.base_action_digest === artifact.base_action_digest
+        && companion.entries[0].operation_id === artifact.task_id
+        && companion.entries[0].artifact_digest === expectedArtifactDigest;
+    if (!result.checks.companion)
+        addReason(result, 'receipt_companion_mismatch');
+    result.checks.signature = await verifyBindingSignatureV2(artifact, trustRoots);
+    if (!result.checks.signature)
+        addReason(result, 'binding_signature_invalid');
+    const now = instant(input.now);
+    result.checks.validity = Number.isFinite(now)
+        && now >= instant(artifact.issued_at) && now < instant(artifact.expires_at);
+    if (!result.checks.validity)
+        addReason(result, 'binding_outside_validity');
+    const receiptDigestMatches = digestAeb(payload.receipt) === artifact.base_receipt_digest;
+    const actionMatches = digestAeb(payload.action) === artifact.base_action_digest
+        && artifact.base_action_digest === expectedActionDigest;
+    const caidMatches = typeof input.expected_caid === 'string'
+        && CAID_RE.test(input.expected_caid)
+        && artifact.caid === input.expected_caid;
+    if (!receiptDigestMatches)
+        addReason(result, 'base_receipt_digest_mismatch');
+    if (!actionMatches)
+        addReason(result, 'base_action_digest_mismatch');
+    if (!caidMatches)
+        addReason(result, 'caid_mismatch');
+    if (canonicalizeStrictJson(payload.action) !== canonicalizeStrictJson(expectedAction)) {
+        addReason(result, 'presented_action_mismatch');
+    }
+    if (typeof input.verify_receipt !== 'function') {
+        addReason(result, 'receipt_verifier_required');
+    }
+    let verifiedReceipt = null;
+    if (typeof input.verify_receipt === 'function') {
+        try {
+            verifiedReceipt = strictClone(input.verify_receipt(strictClone(payload.receipt)));
+        }
+        catch {
+            verifiedReceipt = null;
+        }
+    }
+    const receiptVerified = isObject(verifiedReceipt)
+        && verifiedReceipt.valid === true
+        && verifiedReceipt.action_digest === artifact.base_action_digest
+        && verifiedReceipt.caid === artifact.caid;
+    if (typeof input.verify_receipt === 'function' && !receiptVerified) {
+        addReason(result, 'receipt_verification_failed');
+    }
+    result.checks.receipt = receiptDigestMatches && actionMatches && caidMatches
+        && canonicalizeStrictJson(payload.action) === canonicalizeStrictJson(expectedAction)
+        && receiptVerified;
+    result.decision_scope.receipt_verified = result.checks.receipt;
+    result.valid = Object.values(result.checks).every(Boolean) && result.reasons.length === 0;
+    return result;
+}
+/**
+ * Route a presentation of EITHER binding version to its verifier. A presented
+ * `@version` naming neither refuses through the v1 shape check, fail-closed.
+ */
+export async function verifyA2AReceiptPresentationStatement(input) {
+    const message = input.presentation_message;
+    const metadata = isObject(message) ? message.metadata : undefined;
+    const payload = isObject(metadata) ? metadata[A2A_RECEIPT_EXTENSION_URI] : undefined;
+    if (isObject(payload) && payload['@version'] === A2A_RECEIPT_PRESENTATION_V2_VERSION) {
+        return verifyA2AReceiptPresentationV2(input);
+    }
+    return verifyA2AReceiptPresentation(input);
 }
 //# sourceMappingURL=a2a-receipt-binding.js.map
