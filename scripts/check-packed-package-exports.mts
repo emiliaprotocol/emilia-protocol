@@ -21,6 +21,7 @@ const PACKAGES = [
   { name: '@emilia-protocol/attest', directory: 'packages/attest' },
   { name: '@emilia-protocol/issue', directory: 'packages/issue' },
   { name: '@emilia-protocol/langchain', directory: 'packages/langchain' },
+  { name: '@emilia-protocol/langgraph', directory: 'packages/langgraph' },
   { name: '@emilia-protocol/openai-agents', directory: 'packages/openai-agents' },
   { name: '@emilia-protocol/openai-guard', directory: 'packages/openai-guard' },
   { name: '@emilia-protocol/fire-drill', directory: 'packages/fire-drill' },

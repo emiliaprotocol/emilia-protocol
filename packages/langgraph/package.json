@@ -1,0 +1,58 @@
+{
+  "name": "@emilia-protocol/langgraph",
+  "version": "0.1.0",
+  "description": "Bind LangGraph Agent Inbox human responses to exact, one-time EMILIA authority. Accept uses the frozen interrupt, edit requires fresh authority for the edited action, and response or ignore never authorize tool execution.",
+  "type": "module",
+  "main": "index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "dist/",
+    "src/",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
+    "test": "node --test"
+  },
+  "keywords": [
+    "emilia-protocol",
+    "langgraph",
+    "agent-inbox",
+    "human-in-the-loop",
+    "exact-action",
+    "authorization",
+    "ai-agent"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@emilia-protocol/require-receipt": "^0.8.0"
+  },
+  "peerDependencies": {
+    "@langchain/langgraph": ">=0.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/langgraph": {
+      "optional": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/langgraph"
+  },
+  "homepage": "https://www.emiliaprotocol.ai/agent-guard",
+  "publishConfig": {
+    "access": "public"
+  }
+}

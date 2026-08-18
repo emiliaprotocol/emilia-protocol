@@ -73,16 +73,16 @@ describe('release-chain coverage', () => {
 
   it('forbids ambiguous generic tag provenance in favor of exact package publishers', () => {
     expect(existsSync('.github/workflows/release.yml')).toBe(false);
-    expect(auditReleaseChain()).toEqual({ packages: 26, npm: 20, pypi: 5, go: 1 });
+    expect(auditReleaseChain()).toEqual({ packages: 27, npm: 21, pypi: 5, go: 1 });
   });
 
   it('every declared package uses its complete verifiable release chain', () => {
-    expect(auditReleaseChain()).toEqual({ packages: 26, npm: 20, pypi: 5, go: 1 });
+    expect(auditReleaseChain()).toEqual({ packages: 27, npm: 21, pypi: 5, go: 1 });
   });
 
   it('every declared npm and PyPI package uses reproducible registry-byte verification', () => {
     const result = auditReleaseChain();
-    expect(result).toMatchObject({ npm: 20, pypi: 5 });
+    expect(result).toMatchObject({ npm: 21, pypi: 5 });
   });
 
   it('keeps all npm package code in an unprivileged job and OIDC only in the protected publisher', () => {
@@ -143,7 +143,7 @@ describe('release-chain coverage', () => {
   it('delegates Verify, Gate, and every other npm trusted-publisher caller to the same split workflow', () => {
     const registry = JSON.parse(readFileSync('release/release-packages.v1.json', 'utf8'));
     const npmEntries = registry.packages.filter((entry) => entry.ecosystem === 'npm');
-    expect(npmEntries).toHaveLength(20);
+    expect(npmEntries).toHaveLength(21);
     for (const entry of npmEntries) {
       const text = readFileSync(path.join('.github/workflows', entry.workflow), 'utf8');
       const workflow = YAML.parse(text);
