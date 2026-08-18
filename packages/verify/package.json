@@ -27,6 +27,10 @@
       "types": "./dist/revocation.d.ts",
       "import": "./revocation.js"
     },
+    "./revocation.js": {
+      "types": "./dist/revocation.d.ts",
+      "import": "./revocation.js"
+    },
     "./pq-hybrid": {
       "types": "./dist/pq-hybrid.d.ts",
       "import": "./pq-hybrid.js"
