@@ -5,7 +5,10 @@ import {
   ACTION_REFUSAL_CLAIM_BOUNDARY,
   actionRefusalStatementDigest,
   signActionRefusalStatement,
+  signActionRefusalStatementV2,
   verifyActionRefusalStatement,
+  verifyActionRefusalStatementV2,
+  ACTION_REFUSAL_STATEMENT_V2_VERSION,
 } from '@/packages/gate/action-refusal-statement.js';
 import {
   buildArenaRefusalInput,
@@ -55,6 +58,67 @@ export function signArenaRefusal({
     refusal_digest: actionRefusalStatementDigest(statement),
     binding,
   });
+}
+
+// ===========================================================================
+// EP-ARENA-PUBLIC-REFUSAL-v2 -- adoption of the ALREADY-BUILT
+// EP-ACTION-REFUSAL-STATEMENT-v2 hybrid signer/verifier
+// (packages/gate/src/action-refusal-statement.ts). This file is a pure
+// delegator: the hybrid signature-agility machinery (set shape,
+// anti-stripping bytes, named refusals) lives entirely in the underlying
+// gate package, already following the reference migration
+// (docs/protocol/pq-hybrid-program.md, EP-REVOCATION-v2). Wiring it through
+// here is additive: the v1 path (signArenaRefusal / verifyArenaPublicProjection,
+// PUBLIC_PROFILE) is completely unchanged, and a v1 caller sees zero
+// behavior difference. verifyArenaPublicProjection (v1) already refuses a v2
+// projection cleanly on the `profile` marker before any signature
+// inspection (a v2 projection's `profile` is EP-ARENA-PUBLIC-REFUSAL-v2, not
+// PUBLIC_PROFILE) and never throws.
+// ===========================================================================
+
+export const PUBLIC_PROFILE_V2 = 'EP-ARENA-PUBLIC-REFUSAL-v2';
+
+export function signArenaRefusalV2({
+  allowance,
+  action,
+  reason,
+  attemptId,
+  attemptNonce,
+  refusedAt,
+  expiresAt,
+  signer,
+}: {
+  allowance: ArenaAllowance;
+  action: ArenaAction;
+  reason: string;
+  attemptId: string;
+  attemptNonce: string;
+  refusedAt: string;
+  expiresAt: string;
+  signer: {
+    issuer_id: string;
+    key_id: string;
+    private_key: KeyLike;
+    pq_public_key: string;
+    pq_private_key: string | Uint8Array;
+  };
+}) {
+  const binding = deriveArenaActionBinding(action);
+  return signActionRefusalStatementV2(buildArenaRefusalInput({
+    allowance,
+    action,
+    binding,
+    reason,
+    refusalId: `refusal:${attemptId}`,
+    relyingPartyId: 'arena:emilia:public',
+    nonce: attemptNonce,
+    refusedAt,
+    expiresAt,
+  }) as any, signer).then((statement) => Object.freeze({
+    statement,
+    refusal_digest: actionRefusalStatementDigest(statement),
+    binding,
+  }));
 }
 
 function isRecord(value: unknown): value is Record<string, any> {
@@ -156,6 +220,106 @@ export function verifyArenaPublicProjection(projection: unknown, now = Date.now(
       return refusedResult(atIssuance.reason || 'arena_refusal_invalid');
     }
     const current = verifyActionRefusalStatement(statement, {
+      trusted_keys: trustedKeys,
+      expected,
+      now,
+      max_future_skew_sec: 0,
+    });
+    return {
+      integrity_verified: true as const,
+      currently_valid: current.verified,
+      reason: null,
+      current_reason: current.reason,
+      accepted: null,
+      issuer_trust: 'arena_session_key_from_public_record' as const,
+      refusal_digest: projection.refusal_digest,
+      caid: binding.caid,
+      action_digest: binding.action_digest,
+      claim_boundary: PUBLIC_BOUNDARY,
+    };
+  } catch {
+    return refusedResult('arena_projection_invalid');
+  }
+}
+
+/**
+ * Verify a public Arena projection whose refusal_artifact is an
+ * EP-ACTION-REFUSAL-STATEMENT-v2 hybrid statement. ASYNC (ML-DSA
+ * verification is async), a separate entry point from the v1 sync verifier
+ * above. FAIL-CLOSED, mirrors verifyArenaPublicProjection move for move.
+ */
+export async function verifyArenaPublicProjectionV2(projection: unknown, now = Date.now()) {
+  try {
+    if (!isRecord(projection) || projection.profile !== PUBLIC_PROFILE_V2
+        || projection.claim_boundary !== PUBLIC_BOUNDARY
+        || !isRecord(projection.attempt) || !isRecord(projection.attempt.action)
+        || !isRecord(projection.issuer) || !isRecord(projection.refusal_artifact)
+        || projection.attempt.decision !== 'refuse'
+        || typeof projection.attempt.reason !== 'string'
+        || typeof projection.attempt.attempt_id !== 'string'
+        || typeof projection.attempt.created_at !== 'string'
+        || typeof projection.refusal_digest !== 'string'
+        || typeof projection.issuer.issuer_id !== 'string'
+        || typeof projection.issuer.key_id !== 'string'
+        || typeof projection.issuer.public_key !== 'string'
+        || typeof projection.issuer.pq_public_key !== 'string'
+        || projection.challenge_id !== 'emilia.arena.allowance'
+        || projection.challenge_version !== 1) {
+      return refusedResult('arena_projection_invalid');
+    }
+    const binding = deriveArenaActionBinding(projection.attempt.action);
+    const expectedRequirement = arenaRequirementForReason(projection.attempt.reason);
+    if (binding.caid !== projection.attempt.caid
+        || binding.action_digest !== projection.attempt.action_digest
+        || expectedRequirement === null
+        || projection.refusal_artifact.refusal_id !== `refusal:${projection.attempt.attempt_id}`
+        || projection.refusal_artifact.refusal_class !== 'authorization_refused'
+        || projection.refusal_artifact.claim_boundary !== ACTION_REFUSAL_CLAIM_BOUNDARY
+        || projection.refusal_artifact['@version'] !== ACTION_REFUSAL_STATEMENT_V2_VERSION
+        || actionRefusalStatementDigest(projection.refusal_artifact) !== projection.refusal_digest) {
+      return refusedResult('arena_projection_binding_mismatch');
+    }
+    const statement = projection.refusal_artifact;
+    if (!isRecord(statement.program) || typeof statement.nonce !== 'string') {
+      return refusedResult('arena_refusal_invalid');
+    }
+    const statementRefusedAt = canonicalInstant(statement.refused_at);
+    const attemptCreatedAt = canonicalInstant(projection.attempt.created_at);
+    if (!Array.isArray(statement.failed_requirement_ids)
+        || statement.failed_requirement_ids.length !== 1
+        || statement.failed_requirement_ids[0] !== expectedRequirement
+        || statementRefusedAt === null
+        || attemptCreatedAt === null
+        || statementRefusedAt !== attemptCreatedAt) {
+      return refusedResult('arena_projection_binding_mismatch');
+    }
+    const trustedKeys = {
+      [projection.issuer.key_id]: {
+        issuer_id: projection.issuer.issuer_id,
+        public_key: projection.issuer.public_key,
+        pq_public_key: projection.issuer.pq_public_key,
+      },
+    };
+    const expected = {
+      caid: binding.caid,
+      action_digest: binding.action_digest,
+      relying_party_id: 'arena:emilia:public',
+      program_id: statement.program.program_id,
+      program_version: statement.program.version,
+      source_digest: statement.program.source_digest,
+      program_digest: statement.program.program_digest,
+      nonce: statement.nonce,
+    };
+    const atIssuance = await verifyActionRefusalStatementV2(statement, {
+      trusted_keys: trustedKeys,
+      expected,
+      now: Date.parse(statement.refused_at),
+      max_future_skew_sec: 0,
+    });
+    if (!atIssuance.verified || atIssuance.refusal_digest !== projection.refusal_digest) {
+      return refusedResult(atIssuance.reason || 'arena_refusal_invalid');
+    }
+    const current = await verifyActionRefusalStatementV2(statement, {
       trusted_keys: trustedKeys,
       expected,
       now,

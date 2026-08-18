@@ -17,6 +17,12 @@ import {
   projectMobileAction,
 } from '../../packages/mobile/presentation.js';
 import { checkOrderWithinEnvelope, computeCompliance, runSettlementOnce } from './curtailment.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgilityOptions,
+} from '../../packages/verify/pq-signature-agility.js';
 
 export const GRACE_MOBILE_ACTION_VERSION = 'EP-GRACE-CURTAILMENT-ACTION-v1';
 export const GRACE_MOBILE_CONTROL_VERSION = 'EP-GRACE-CURTAILMENT-MOBILE-CONTROL-v1';
@@ -117,6 +123,106 @@ export function verifyGraceArtifact(artifact: any, { publicKeySpkiB64u, keyId, v
       key,
       Buffer.from(signature.value, 'base64url'),
     );
+  } catch {
+    return false;
+  }
+}
+
+// ===========================================================================
+// Grace artifact signature envelope -- v2 (hybrid Ed25519 + ML-DSA-65). This
+// is the shared signing/verification envelope every Grace curtailment
+// artifact type uses (EP-GRACE-CURTAILMENT-ACTION-v1, -MOBILE-CONTROL-v1,
+// -COSA-DISPATCH-v1, -COSA-ACK-v1): hybridizing the envelope hybridizes every
+// artifact `@version` that carries it. Follows the reference hybrid migration
+// (docs/protocol/pq-hybrid-program.md, EP-REVOCATION-v2):
+//
+// 1. VERSION BUMP, NOT A FIELD BUMP. The signature envelope takes a new
+//    `profile` marker distinct from the artifact's own `@version` (which
+//    still names its artifact TYPE, e.g. EP-GRACE-COSA-DISPATCH-v1, and is
+//    untouched). verifyGraceArtifact() (v1) is unchanged: a v2 signature
+//    carries `.profile`, not `.algorithm`, so `signature.algorithm !== 'Ed25519'`
+//    refuses it structurally BEFORE any cryptography, and never throws.
+// 2. SET SHAPE. `signature` carries `required_algorithms` plus a `signatures`
+//    array shaped like EP-SIG-AGILITY-v1's AgileSignature.
+// 3. ANTI-STRIPPING BYTES. required_algorithms is committed INSIDE the signed
+//    bytes (graceArtifactV2SigningBytes); narrowing it changes the bytes.
+// 4. V1 COMPATIBILITY. v1 artifacts verify unchanged through
+//    verifyGraceArtifact(). v2 verification is ASYNC, a separate entry point.
+// 5. NAMED REFUSALS. Nothing throws on caller input; a missing leg or absent
+//    ML-DSA backend is a `false` return, never a pass.
+// ===========================================================================
+
+export const GRACE_ARTIFACT_SIGNATURE_V2_PROFILE = 'EP-GRACE-ARTIFACT-SIGNATURE-v2';
+export const GRACE_ARTIFACT_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+function graceAlgorithmSetV2(algorithms: any): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === GRACE_ARTIFACT_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a: any, i: number) => a === GRACE_ARTIFACT_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+function graceArtifactV2SigningBytes(signed: any, requiredAlgorithms: readonly string[] = GRACE_ARTIFACT_V2_REQUIRED_ALGORITHMS): Buffer {
+  if (!graceAlgorithmSetV2(requiredAlgorithms)) {
+    throw new TypeError('graceArtifactV2SigningBytes: algorithm set is not the registered v2 set');
+  }
+  return Buffer.from(canonicalize({ ...signed, required_algorithms: [...requiredAlgorithms] }), 'utf8');
+}
+
+export async function signGraceArtifactV2(body: any, {
+  privateKey, keyId, pqPrivateKey, pqPublicKey, pqKeyId,
+}: any = {}): Promise<any> {
+  if (!record(body) || !isCanonicalizable(body) || !validId(keyId) || !validId(pqKeyId)) {
+    throw new TypeError('canonical artifact body and both signer key IDs are required');
+  }
+  const key = privateEd25519(privateKey);
+  if (!key) throw new TypeError('an Ed25519 private key is required');
+  const pqPub = pqPublicKey instanceof Uint8Array ? Buffer.from(pqPublicKey).toString('base64url') : pqPublicKey;
+  if (typeof pqPub !== 'string' || Buffer.from(pqPub, 'base64url').length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+    throw new TypeError('a raw 1952-byte ML-DSA-65 public key is required');
+  }
+  const signed = { ...structuredClone(body), signer_key_id: keyId, pq_signer_key_id: pqKeyId };
+  const bytes = graceArtifactV2SigningBytes(signed);
+  const signatures = await signAgileSet(new Uint8Array(bytes), [
+    { alg: 'Ed25519', private_key: key, key_id: keyId },
+    { alg: 'ML-DSA-65', private_key: pqPrivateKey, key_id: pqKeyId },
+  ]);
+  return {
+    ...signed,
+    signature: {
+      profile: GRACE_ARTIFACT_SIGNATURE_V2_PROFILE,
+      required_algorithms: [...GRACE_ARTIFACT_V2_REQUIRED_ALGORITHMS],
+      signatures,
+    },
+  };
+}
+
+export async function verifyGraceArtifactV2(artifact: any, {
+  publicKeySpkiB64u, keyId, pqPublicKeyB64u, pqKeyId, version,
+}: any = {}, options: AgilityOptions = {}): Promise<boolean> {
+  try {
+    if (!record(artifact) || artifact['@version'] !== version
+        || artifact.signer_key_id !== keyId || !validId(keyId)
+        || artifact.pq_signer_key_id !== pqKeyId || !validId(pqKeyId)
+        || !record(artifact.signature) || artifact.signature.profile !== GRACE_ARTIFACT_SIGNATURE_V2_PROFILE
+        || !graceAlgorithmSetV2(artifact.signature.required_algorithms)
+        || !Array.isArray(artifact.signature.signatures)
+        || Object.keys(artifact.signature).length !== 3) return false;
+    const edKey = publicSpki(publicKeySpkiB64u);
+    if (!edKey || typeof pqPublicKeyB64u !== 'string'
+        || Buffer.from(pqPublicKeyB64u, 'base64url').length !== ML_DSA_65_PUBLIC_KEY_BYTES) return false;
+    const { signature, ...body } = artifact;
+    if (!isCanonicalizable(body)) return false;
+    const bytes = graceArtifactV2SigningBytes(body);
+    const result = await verifyAgileSignatureSet(new Uint8Array(bytes), signature.signatures, [
+      { alg: 'Ed25519', public_key: publicKeySpkiB64u },
+      { alg: 'ML-DSA-65', public_key: pqPublicKeyB64u },
+    ], {
+      mldsaBackend: options.mldsaBackend,
+      mldsaBackendLoader: options.mldsaBackendLoader,
+      policy: 'hybrid_all',
+      requiredAlgorithms: [...GRACE_ARTIFACT_V2_REQUIRED_ALGORITHMS],
+    });
+    return result.verified === true;
   } catch {
     return false;
   }

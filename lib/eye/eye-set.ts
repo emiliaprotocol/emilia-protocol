@@ -97,6 +97,12 @@ import type { KeyObject } from 'node:crypto';
 // re-implement nothing cryptographic of the receipt path.
 import { canonicalize } from '../../packages/issue/index.js';
 import { strictJsonGate } from '../strict-json.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgilityOptions,
+} from '../../packages/verify/pq-signature-agility.js';
 
 export const EYE_SET_VERSION = 'EP-EYE-SET-v1';
 
@@ -618,10 +624,354 @@ export function verifyEyeSet(
   return { valid, checks, errors, posture };
 }
 
+// ===========================================================================
+// EP-EYE-SET-v2 -- the hybrid (Ed25519 + ML-DSA-65) Eye Security Event Token.
+// Follows the reference hybrid migration (docs/protocol/pq-hybrid-program.md,
+// EP-REVOCATION-v2), adapted for a JOSE-shaped artifact: ML-DSA has no
+// registered JOSE `alg` yet (draft-ietf-cose-dilithium is not finalized), so
+// v2 does NOT try to widen the RFC 7515 compact/JWS grammar with an
+// unregistered alg. It defines a NEW, honestly-distinct v2 envelope (a JSON
+// object carrying the same header/payload plus a set-shaped proof) rather
+// than overloading JWS "alg" with a value no verifier outside EP understands.
+//
+// 1. VERSION BUMP, NOT A FIELD BUMP. v1 SETs are RFC 8417 compact strings
+//    (`header.payload.sig`). v2 is a JSON object tagged `@version:
+//    EP-EYE-SET-v2`. verifyEyeSet() (v1) is UNCHANGED: it requires
+//    `typeof setCompact === 'string'`, so a v2 JSON object refuses immediately
+//    ('SET is not a non-empty compact string') before any signature
+//    inspection, and never throws.
+// 2. SET SHAPE. `proof` carries `required_algorithms` plus a `signatures`
+//    array shaped like EP-SIG-AGILITY-v1's AgileSignature.
+// 3. ANTI-STRIPPING BYTES. required_algorithms is committed INSIDE the signed
+//    bytes (eyeSetV2SigningBytes, over the SAME header/payload the v1
+//    signing input covers); narrowing the set changes the bytes.
+// 4. V1 COMPATIBILITY. v1 SETs keep verifying unchanged through
+//    verifyEyeSet(). v2 verification is ASYNC, a separate entry point.
+// 5. NAMED REFUSALS. Every failure sets a named check false and pushes an
+//    error; nothing throws on caller input. An absent ML-DSA backend is a
+//    refusal, never a skipped check and never a pass on the classical leg.
+//
+// Every honest boundary from the v1 module header still applies unchanged:
+// NEVER A GATE, the posture is advice never allow/deny, and a fully
+// compromised emitter is out of scope for either version.
+// ===========================================================================
+
+export const EYE_SET_V2_VERSION = 'EP-EYE-SET-v2';
+export const EYE_SET_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+function eyeSetAlgorithmSetV2(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === EYE_SET_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === EYE_SET_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+/**
+ * The bytes BOTH legs sign: the same canonicalized {header, payload} the v1
+ * JWS signing input covers, domain-separated under the v2 version tag, plus
+ * the committed required_algorithms set. Recomputed independently by the
+ * verifier from the PRESENTED header/payload and the REGISTERED set.
+ */
+function eyeSetV2SigningBytes(
+  header: Record<string, unknown>,
+  payload: Record<string, unknown>,
+  requiredAlgorithms: readonly string[] = EYE_SET_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!eyeSetAlgorithmSetV2(requiredAlgorithms)) {
+    throw new TypeError('eyeSetV2SigningBytes: algorithm set is not the registered EP-EYE-SET-v2 set');
+  }
+  return Buffer.from(
+    `${EYE_SET_V2_VERSION}\0${canonicalize({ header, payload, required_algorithms: [...requiredAlgorithms] })}`,
+    'utf8',
+  );
+}
+
+export interface EyeSetV2Signer {
+  kid: string;
+  iss?: string;
+  /** Ed25519 private key (Node crypto KeyObject). */
+  privateKey: KeyObject;
+  /** ML-DSA-65 secret key: 4032 raw bytes, or base64url of them. */
+  pqPrivateKey: Uint8Array | string;
+  /** ML-DSA-65 public key: 1952 raw bytes, or base64url of them. */
+  pqPublicKey: Uint8Array | string;
+}
+
+/**
+ * buildEyeSetV2 -- emit an Eye advisory as an EP-EYE-SET-v2 hybrid envelope.
+ * Same advisory validation and 'clear'-status refusal as buildEyeSet (v1);
+ * only the signature envelope changes. THROWS rather than emit a
+ * half-hybrid SET: an unavailable ML-DSA backend makes signAgileSet throw.
+ */
+export async function buildEyeSetV2(
+  advisory,
+  {
+    signer,
+    audience,
+    jti,
+    iat,
+    exp,
+  }: {
+    signer?: EyeSetV2Signer;
+    audience?: string;
+    jti?: string;
+    iat?: number;
+    exp?: number;
+  } = {},
+) {
+  if (!advisory || typeof advisory !== 'object') {
+    throw new Error('buildEyeSetV2 requires an advisory object');
+  }
+  if (!signer || !isStr(signer.kid) || !signer.privateKey || !signer.pqPrivateKey || !signer.pqPublicKey) {
+    throw new Error('buildEyeSetV2 requires signer.{kid, privateKey, pqPrivateKey, pqPublicKey}');
+  }
+
+  const status = advisory.status;
+  if (status === CLEAR_STATUS) {
+    throw new Error(
+      "buildEyeSetV2: 'clear' is the default-path no-change posture and MUST NOT be "
+      + 'emitted as a posture-change event (fail-closed)',
+    );
+  }
+  if (!ACTIONABLE_STATUSES.includes(status)) {
+    throw new Error(`buildEyeSetV2: status "${status}" is not an actionable posture-change status`);
+  }
+  const scopeBindingHash = advisory.scope_binding_hash;
+  if (!isStr(scopeBindingHash)) {
+    throw new Error('buildEyeSetV2 requires advisory.scope_binding_hash');
+  }
+  const reasonCodes = advisory.reason_codes;
+  if (!isStrArray(reasonCodes)) {
+    throw new Error('buildEyeSetV2 requires non-empty advisory.reason_codes');
+  }
+  const recommendedPolicyAction = advisory.recommended_policy_action ?? advisory.recommended_action;
+  if (!isStr(recommendedPolicyAction)) {
+    throw new Error('buildEyeSetV2 requires advisory.recommended_policy_action (or recommended_action)');
+  }
+  if (!isStr(advisory.advisory_hash)) throw new Error('buildEyeSetV2 requires advisory.advisory_hash');
+  if (!isStr(advisory.expires_at)) throw new Error('buildEyeSetV2 requires advisory.expires_at');
+
+  const pqPub = signer.pqPublicKey instanceof Uint8Array
+    ? Buffer.from(signer.pqPublicKey).toString('base64url') : signer.pqPublicKey;
+  if (typeof pqPub !== 'string' || Buffer.from(pqPub, 'base64url').length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+    throw new Error('buildEyeSetV2 requires a raw 1952-byte ML-DSA-65 public key');
+  }
+
+  const header = { typ: EYE_SET_TYP, kid: signer.kid };
+  const payload: Record<string, unknown> = {
+    iss: isStr(signer.iss) ? signer.iss : signer.kid,
+    iat: isEpochSeconds(iat) ? iat : Math.floor(Date.now() / 1000),
+    jti: isStr(jti) ? jti : crypto.randomUUID(),
+    sub_id: scopeBindingHash,
+    events: {
+      [EYE_ADVISORY_EVENT_URI]: {
+        status,
+        reason_codes: [...reasonCodes],
+        recommended_policy_action: recommendedPolicyAction,
+        advisory_hash: advisory.advisory_hash,
+        expires_at: advisory.expires_at,
+        never_sole_gate: true,
+      },
+    },
+  };
+  if (isStr(audience)) payload.aud = audience;
+  if (isEpochSeconds(exp)) payload.exp = exp;
+
+  const bytes = eyeSetV2SigningBytes(header, payload);
+  const signatures = await signAgileSet(new Uint8Array(bytes), [
+    { alg: 'Ed25519', private_key: signer.privateKey, key_id: signer.kid },
+    { alg: 'ML-DSA-65', private_key: signer.pqPrivateKey, key_id: signer.kid },
+  ]);
+
+  return {
+    '@version': EYE_SET_V2_VERSION,
+    header,
+    payload,
+    proof: {
+      required_algorithms: [...EYE_SET_V2_REQUIRED_ALGORITHMS],
+      pq_public_key: pqPub,
+      signatures,
+    },
+  };
+}
+
+/**
+ * verifyEyeSetV2 -- FAIL-CLOSED verification of an EP-EYE-SET-v2 envelope.
+ * Same posture semantics and gates as verifyEyeSet (v1): NEVER returns
+ * allow/deny; on valid:true returns the advisory POSTURE only.
+ */
+export async function verifyEyeSetV2(
+  envelope: unknown,
+  opts: {
+    pinnedKeys?: Record<string, { public_key: string; pq_public_key: string } | string>;
+    audience?: string;
+    requireFresh?: boolean;
+    maxAgeSec?: number;
+    now?: number;
+  } & AgilityOptions = {},
+) {
+  const checks = {
+    version: false,
+    typ_ok: false,
+    emitter_key_pinned: false,
+    algorithm_set: false,
+    jws_signature_valid: false,
+    claims_present: false,
+    audience_match: true,
+    fresh: true,
+    status_is_actionable: false,
+    never_sole_gate_present: false,
+  };
+  const errors: string[] = [];
+  const fail = (key: keyof typeof checks, msg: string) => { checks[key] = false; errors.push(msg); };
+  const done = () => ({ valid: false, checks, errors, posture: null });
+
+  if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) {
+    fail('version', 'SET is not a non-empty envelope object');
+    return done();
+  }
+  const env = envelope as Record<string, any>;
+  if (env['@version'] !== EYE_SET_V2_VERSION) {
+    fail('version', `unsupported version: ${String(env['@version'])}`);
+    return done();
+  }
+  checks.version = true;
+
+  const header = env.header;
+  const payload = env.payload;
+  const proof = env.proof;
+  if (!header || typeof header !== 'object' || Array.isArray(header)
+      || Object.keys(header).some((name) => !['typ', 'kid'].includes(name))
+      || !isStr(header.kid) || header.kid.length > 256) {
+    fail('typ_ok', 'JOSE header is outside the EP Eye SET v2 profile');
+    return done();
+  }
+  if (header.typ !== EYE_SET_TYP) {
+    fail('typ_ok', `typ "${header.typ}" is not "${EYE_SET_TYP}"`);
+    return done();
+  }
+  checks.typ_ok = true;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    fail('claims_present', 'SET payload is not an object');
+    return done();
+  }
+  if (!proof || typeof proof !== 'object' || Array.isArray(proof)
+      || !eyeSetAlgorithmSetV2(proof.required_algorithms)
+      || typeof proof.pq_public_key !== 'string' || !Array.isArray(proof.signatures)) {
+    fail('algorithm_set', 'proof is missing or is not the registered EP-EYE-SET-v2 shape');
+    return done();
+  }
+  checks.algorithm_set = true;
+
+  const pinnedKey = resolvePinnedKey(opts.pinnedKeys, header.kid, payload.iss);
+  const pinnedEntry = opts.pinnedKeys?.[header.kid] ?? opts.pinnedKeys?.[payload.iss];
+  const pinnedPq = pinnedEntry && typeof pinnedEntry === 'object' ? (pinnedEntry as any).pq_public_key : undefined;
+  if (!pinnedKey || typeof pinnedPq !== 'string' || pinnedPq.length === 0) {
+    fail('emitter_key_pinned', `no pinned Ed25519 + ML-DSA-65 key pair for emitter kid "${header.kid}" / iss "${payload.iss}"`);
+    return done();
+  }
+  checks.emitter_key_pinned = true;
+
+  let bytes: Buffer;
+  try {
+    bytes = eyeSetV2SigningBytes(header, payload, EYE_SET_V2_REQUIRED_ALGORITHMS);
+  } catch {
+    fail('jws_signature_valid', 'signing input is not canonicalizable');
+    return done();
+  }
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), proof.signatures, [
+      { alg: 'Ed25519', public_key: pinnedKey },
+      { alg: 'ML-DSA-65', public_key: pinnedPq },
+    ], {
+      mldsaBackend: opts.mldsaBackend,
+      mldsaBackendLoader: opts.mldsaBackendLoader,
+      policy: 'hybrid_all',
+      requiredAlgorithms: [...EYE_SET_V2_REQUIRED_ALGORITHMS],
+    });
+  } catch { setResult = null; }
+  if (setResult?.verified !== true) {
+    fail('jws_signature_valid', `hybrid signature set does not verify under the pinned keys (${setResult?.reason ?? 'unverified'})`);
+    return done();
+  }
+  checks.jws_signature_valid = true;
+
+  const event = singleEvent(payload);
+  const claimProblems: string[] = [];
+  if (!isStr(payload.iss)) claimProblems.push('iss');
+  if (!isEpochSeconds(payload.iat)) claimProblems.push('iat');
+  if (!isStr(payload.jti)) claimProblems.push('jti');
+  if (!isStr(payload.aud)) claimProblems.push('aud');
+  if (!isStr(payload.sub_id)) claimProblems.push('sub_id');
+  if (!event) {
+    claimProblems.push('events (exactly one advisory event member required)');
+  } else {
+    if (!isStr(event.status)) claimProblems.push('events.status');
+    if (!isStrArray(event.reason_codes)) claimProblems.push('events.reason_codes');
+    if (!isStr(event.recommended_policy_action)) claimProblems.push('events.recommended_policy_action');
+    if (!isStr(event.advisory_hash)) claimProblems.push('events.advisory_hash');
+    if (!isStr(event.expires_at)) claimProblems.push('events.expires_at');
+  }
+  if (claimProblems.length > 0) {
+    fail('claims_present', `missing/ill-typed required claims: ${claimProblems.join(', ')}`);
+    return done();
+  }
+  checks.claims_present = true;
+
+  if (isStr(opts.audience) && payload.aud !== opts.audience) {
+    fail('audience_match', `aud "${payload.aud}" != expected audience "${opts.audience}"`);
+  }
+
+  if (opts.requireFresh === true) {
+    const now = isEpochSeconds(opts.now) ? opts.now : Math.floor(Date.now() / 1000);
+    if (isEpochSeconds(payload.exp) && payload.exp <= now) {
+      fail('fresh', `SET exp ${payload.exp} is not after now ${now} (expired)`);
+    }
+    const expiresAtMs = Date.parse(event.expires_at);
+    if (Number.isNaN(expiresAtMs)) {
+      fail('fresh', `events.expires_at "${event.expires_at}" is not a parseable timestamp`);
+    } else if (Math.floor(expiresAtMs / 1000) <= now) {
+      fail('fresh', `events.expires_at "${event.expires_at}" is in the past (stale)`);
+    }
+    if (isEpochSeconds(opts.maxAgeSec)) {
+      const age = now - payload.iat;
+      if (age > opts.maxAgeSec) fail('fresh', `iat age ${age}s exceeds maxAgeSec ${opts.maxAgeSec}s (stale issuance)`);
+    }
+  }
+
+  if (ACTIONABLE_STATUSES.includes(event.status)) {
+    checks.status_is_actionable = true;
+  } else {
+    fail('status_is_actionable', `event status "${event.status}" is not an actionable posture-change status`);
+  }
+  if (event.never_sole_gate === true) {
+    checks.never_sole_gate_present = true;
+  } else {
+    fail('never_sole_gate_present', 'event member does not carry never_sole_gate:true');
+  }
+
+  const valid = Object.values(checks).every(Boolean);
+  const posture = valid
+    ? {
+        status: event.status,
+        reason_codes: [...event.reason_codes],
+        recommended_policy_action: event.recommended_policy_action,
+        scope_binding_hash: payload.sub_id,
+        advisory_hash: event.advisory_hash,
+        expires_at: event.expires_at,
+        never_sole_gate: true,
+      }
+    : null;
+  return { valid, checks, errors, posture };
+}
+
 const eyeSet = {
   buildEyeSet,
   verifyEyeSet,
+  buildEyeSetV2,
+  verifyEyeSetV2,
   EYE_SET_VERSION,
+  EYE_SET_V2_VERSION,
   EYE_SET_TYP,
   EYE_ADVISORY_EVENT_URI,
 };

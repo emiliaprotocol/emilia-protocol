@@ -29,6 +29,12 @@ import crypto from 'node:crypto';
 import { canonicalize } from '../../packages/verify/index.js';
 import { evaluateReliance, RELIANCE_PROFILE_VERSION } from '../../packages/verify/reliance.js';
 import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgilityOptions,
+} from '../../packages/verify/pq-signature-agility.js';
+import {
   assertRxArtifactPrivacy,
   assertRxSignedArtifactPrivacy,
   buildPrivateRxAppealBundle,
@@ -159,6 +165,207 @@ export function verifyRxArtifact(artifact, opts: {
     // `typeof ... !== 'number'` is redundant with Number.isFinite at runtime (isFinite
     // is already false for non-numbers) but gives TS a narrowing signal it can carry
     // into the later `opts.now` / `opts.maxStalenessSec` arithmetic in this same OR chain.
+    if (typeof opts.now !== 'number' || !Number.isFinite(opts.now) || Number.isNaN(at) || at > opts.now
+      || (bounded && (typeof opts.maxStalenessSec !== 'number' || !Number.isFinite(opts.maxStalenessSec) || opts.maxStalenessSec < 0
+        || (opts.now - at) > opts.maxStalenessSec * 1000))) {
+      return { ...out, reason: 'stale' };
+    }
+  }
+  out.accepted = true;
+  return out;
+}
+
+// ===========================================================================
+// EP-RX-EVIDENCE-ARTIFACT-v2 -- the hybrid (Ed25519 + ML-DSA-65) Rx evidence
+// artifact signature envelope. Covers EP-RX-BENEFIT-v1, EP-RX-CLINICAL-v1,
+// EP-RX-CONSENT-v1, and EP-RX-DENIAL-v1: every artifact `@type` these Rx
+// reliance evidence legs use shares this ONE signature envelope, so hybridizing
+// the envelope hybridizes all four @type bodies at once. Follows the reference
+// hybrid migration (docs/protocol/pq-hybrid-program.md, EP-REVOCATION-v2):
+//
+// 1. VERSION BUMP, NOT A FIELD BUMP. The signature ENVELOPE takes a new domain
+//    marker (EP-RX-EVIDENCE-ARTIFACT-v1 -> -v2); the artifact's own @type
+//    (EP-RX-BENEFIT-v1 etc.) is untouched -- that identity is a separate
+//    concern from the signature shape, exactly as the v1 domain tag already is.
+//    verifyRxArtifact() (v1) is unchanged: a v2 signature has no `.algorithm`
+//    field, so `sig.algorithm !== 'Ed25519'` refuses it with 'signature_malformed'
+//    BEFORE any cryptography, and never throws.
+// 2. SET SHAPE. `signature` carries `required_algorithms` plus a `signatures`
+//    array shaped like EP-SIG-AGILITY-v1's AgileSignature ({alg, sig, key_id?}).
+//    Ed25519 keeps its base64url SPKI DER public key; ML-DSA-65 carries raw
+//    base64url public key bytes.
+// 3. ANTI-STRIPPING BYTES. required_algorithms is INSIDE the signed bytes
+//    (artifactV2SigningBytes). Narrowing the set changes the bytes, so a
+//    surviving Ed25519 signature no longer verifies over the narrowed claim.
+// 4. V1 COMPATIBILITY. v1 artifacts keep verifying, unchanged, through
+//    verifyRxArtifact(). v2 verification is ASYNC (ML-DSA verification is
+//    async), so it is the separate verifyRxArtifactV2() entry point.
+// 5. NAMED REFUSALS. Every failure returns a reason string; nothing throws on
+//    caller input. An absent ML-DSA backend surfaces as a signature_invalid
+//    refusal (verifyAgileSignatureSet's pq_backend_unavailable), never a pass.
+// ===========================================================================
+
+export const RX_ARTIFACT_V2_PROFILE = 'EP-RX-EVIDENCE-ARTIFACT-v2';
+export const RX_ARTIFACT_V2_DOMAIN = 'EP-RX-EVIDENCE-ARTIFACT-v2\0';
+export const RX_ARTIFACT_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+// The v2 signature envelope's own exact field set. lib/ncpdp/privacy.ts's
+// assertRxSignedArtifactPrivacy() hardcodes the v1 SIGNATURE_FIELDS set and
+// `algorithm === 'Ed25519'`, so it is not reused for v2 signatures -- this is
+// the v2-specific analogue, checked directly against the presented envelope.
+const RX_ARTIFACT_V2_SIGNATURE_KEYS = new Set([
+  'profile', 'required_algorithms', 'key_id', 'public_key', 'pq_key_id', 'pq_public_key', 'digest', 'signatures',
+]);
+
+function rxArtifactKeyId(publicKeyB64u: string): string {
+  return `ep:rx-artifact-key:sha256:${sha256hex(Buffer.from(publicKeyB64u, 'base64url'))}`;
+}
+function rxArtifactPqKeyId(publicKeyRawB64u: string): string {
+  return `ep:rx-artifact-key:ml-dsa-65:sha256:${sha256hex(Buffer.from(publicKeyRawB64u, 'base64url'))}`;
+}
+
+function algorithmSetMatchesRxV2(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === RX_ARTIFACT_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === RX_ARTIFACT_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+function artifactV2SigningBytes(
+  unsigned: Record<string, any>,
+  requiredAlgorithms: readonly string[] = RX_ARTIFACT_V2_REQUIRED_ALGORITHMS,
+): Buffer {
+  if (!algorithmSetMatchesRxV2(requiredAlgorithms)) {
+    throw new Error('artifactV2SigningBytes: algorithm set is not the registered EP-RX-EVIDENCE-ARTIFACT-v2 set');
+  }
+  return Buffer.from(
+    RX_ARTIFACT_V2_DOMAIN + canonicalize({ ...unsigned, required_algorithms: [...requiredAlgorithms] }),
+    'utf8',
+  );
+}
+
+export interface RxArtifactV2Signer {
+  /** Ed25519 issuer private key (Node crypto KeyObject). */
+  privateKey: crypto.KeyObject;
+  /** ML-DSA-65 secret key: 4032 raw bytes, or base64url of them. */
+  pqPrivateKey: Uint8Array | string;
+  /** ML-DSA-65 public key: 1952 raw bytes, or base64url of them. */
+  pqPublicKey: Uint8Array | string;
+}
+
+/**
+ * Sign an Rx evidence artifact under EP-RX-EVIDENCE-ARTIFACT-v2 (hybrid).
+ * THROWS rather than emit a half-hybrid artifact: an unavailable ML-DSA
+ * backend makes signAgileSet throw, so an artifact missing the PQ leg is
+ * never produced.
+ */
+export async function signRxArtifactV2(body: Record<string, any>, signer: RxArtifactV2Signer): Promise<Record<string, any>> {
+  if (!body || typeof body !== 'object' || typeof body['@type'] !== 'string') {
+    throw new Error('artifact body needs an @type');
+  }
+  assertRxArtifactPrivacy(body);
+  if (!signer?.privateKey || !signer.pqPrivateKey || !signer.pqPublicKey) {
+    throw new Error('signRxArtifactV2 requires signer.{privateKey, pqPrivateKey, pqPublicKey}');
+  }
+  const publicKeyObject = crypto.createPublicKey(signer.privateKey);
+  if (publicKeyObject.asymmetricKeyType !== 'ed25519') throw new Error('Rx artifacts require an Ed25519 signing key');
+  const publicKey = publicKeyObject.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const pqPublicKey = signer.pqPublicKey instanceof Uint8Array
+    ? Buffer.from(signer.pqPublicKey).toString('base64url')
+    : signer.pqPublicKey;
+  if (Buffer.from(pqPublicKey, 'base64url').length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+    throw new Error('signRxArtifactV2 requires a raw 1952-byte ML-DSA-65 public key');
+  }
+  const clonedBody = structuredClone(body);
+  const bytes = artifactV2SigningBytes(clonedBody);
+  const edKeyId = rxArtifactKeyId(publicKey);
+  const pqKeyId = rxArtifactPqKeyId(pqPublicKey);
+  const signatures = await signAgileSet(new Uint8Array(bytes), [
+    { alg: 'Ed25519', private_key: signer.privateKey, key_id: edKeyId },
+    { alg: 'ML-DSA-65', private_key: signer.pqPrivateKey, key_id: pqKeyId },
+  ]);
+  return {
+    ...clonedBody,
+    signature: {
+      profile: RX_ARTIFACT_V2_PROFILE,
+      required_algorithms: [...RX_ARTIFACT_V2_REQUIRED_ALGORITHMS],
+      key_id: edKeyId,
+      public_key: publicKey,
+      pq_key_id: pqKeyId,
+      pq_public_key: pqPublicKey,
+      digest: `sha256:${sha256hex(bytes)}`,
+      signatures,
+    },
+  };
+}
+
+/**
+ * Verify an EP-RX-EVIDENCE-ARTIFACT-v2 hybrid artifact. FAIL-CLOSED, never
+ * throws. `verified` = both legs verify over the recomputed bytes; `accepted`
+ * additionally requires the presented key PAIR to be pinned by the relying
+ * party (both halves together -- never mix-and-match across issuers) and, if
+ * a staleness bound is supplied, fresh.
+ */
+export async function verifyRxArtifactV2(artifact: any, opts: {
+  expectType?: string;
+  expectActionHash?: string;
+  pinnedKeyPairs?: { public_key: string; pq_public_key: string }[];
+  now?: number;
+  maxStalenessSec?: number;
+} & AgilityOptions = {}) {
+  const out: { verified: boolean; accepted: boolean; reason: string | null } = { verified: false, accepted: false, reason: null };
+  if (!artifact || typeof artifact !== 'object') return { ...out, reason: 'absent' };
+  if (opts.expectType && artifact['@type'] !== opts.expectType) return { ...out, reason: 'wrong_type' };
+  const sig = artifact.signature;
+  if (!sig || sig.profile !== RX_ARTIFACT_V2_PROFILE
+      || !algorithmSetMatchesRxV2(sig.required_algorithms)
+      || typeof sig.public_key !== 'string' || typeof sig.pq_public_key !== 'string'
+      || !Array.isArray(sig.signatures)) {
+    return { ...out, reason: 'signature_malformed' };
+  }
+  // assertRxSignedArtifactPrivacy() (lib/ncpdp/privacy.ts) is v1-specific: its
+  // exact signature-field set and `algorithm === 'Ed25519'` gate are for the
+  // flat v1 envelope and would reject every v2 signature shape. The body
+  // privacy profile (never PHI, exact @type field set) is version-independent,
+  // so it is checked directly; the v2 signature envelope's own exactness is
+  // checked here instead of re-deriving privacy.ts's v1-only SIGNATURE_FIELDS.
+  const { signature: _s, ...body } = artifact;
+  try { assertRxArtifactPrivacy(body); } catch { return { ...out, reason: 'privacy_profile_violation' }; }
+  if (Object.keys(sig).length !== RX_ARTIFACT_V2_SIGNATURE_KEYS.size
+      || Object.keys(sig).some((k) => !RX_ARTIFACT_V2_SIGNATURE_KEYS.has(k))) {
+    return { ...out, reason: 'signature_malformed' };
+  }
+  let bytes: Buffer;
+  try { bytes = artifactV2SigningBytes(body); } catch { return { ...out, reason: 'uncanonicalizable' }; }
+  if (opts.expectActionHash && artifact.action_hash !== opts.expectActionHash) return { ...out, reason: 'action_binding_mismatch' };
+
+  // key ids are ALWAYS re-derived from the carried public keys; a
+  // present-but-divergent envelope key_id is a refusal (anti key_id spoof),
+  // same discipline as authority-proof.ts / revocation.ts.
+  if (sig.key_id !== rxArtifactKeyId(sig.public_key) || sig.pq_key_id !== rxArtifactPqKeyId(sig.pq_public_key)) {
+    return { ...out, reason: 'key_id_mismatch' };
+  }
+
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), sig.signatures, [
+      { alg: 'Ed25519', public_key: sig.public_key },
+      { alg: 'ML-DSA-65', public_key: sig.pq_public_key },
+    ], {
+      mldsaBackend: opts.mldsaBackend,
+      mldsaBackendLoader: opts.mldsaBackendLoader,
+      policy: 'hybrid_all',
+      requiredAlgorithms: [...RX_ARTIFACT_V2_REQUIRED_ALGORITHMS],
+    });
+  } catch { setResult = null; }
+  if (setResult?.verified !== true) return { ...out, reason: 'signature_invalid' };
+  out.verified = true;
+
+  const pins = Array.isArray(opts.pinnedKeyPairs) ? opts.pinnedKeyPairs : [];
+  const pinned = pins.some((p) => p?.public_key === sig.public_key && p?.pq_public_key === sig.pq_public_key);
+  if (!pinned) return { ...out, reason: 'issuer_key_not_pinned' };
+
+  if (opts.now !== undefined || opts.maxStalenessSec !== undefined) {
+    const at = strictInstantMs(artifact.issued_at);
+    const bounded = opts.maxStalenessSec !== undefined;
     if (typeof opts.now !== 'number' || !Number.isFinite(opts.now) || Number.isNaN(at) || at > opts.now
       || (bounded && (typeof opts.maxStalenessSec !== 'number' || !Number.isFinite(opts.maxStalenessSec) || opts.maxStalenessSec < 0
         || (opts.now - at) > opts.maxStalenessSec * 1000))) {

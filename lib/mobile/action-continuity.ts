@@ -8,6 +8,12 @@ import {
   buildMobileActionIdentity as computeMobileActionIdentity,
   mobileActionFingerprint,
 } from '../../packages/mobile/action-identity.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgilityOptions,
+} from '../../packages/verify/pq-signature-agility.js';
 
 export { MOBILE_ACTION_CAID_TYPE, mobileActionFingerprint };
 export const MOBILE_DECISION_PASSPORT_VERSION = 'EP-MOBILE-DECISION-PASSPORT-v1';
@@ -303,6 +309,198 @@ export function verifyMobileProviderOutcome(evidence: any, {
   } catch {
     return refused('provider_outcome_signature_invalid');
   }
+  return {
+    valid: true,
+    reason: null,
+    outcome: evidence.outcome,
+    evidence_digest: canonicalDigest(evidence),
+  };
+}
+
+// ===========================================================================
+// EP-MOBILE-PROVIDER-OUTCOME-v2 -- the hybrid (Ed25519 + ML-DSA-65) provider
+// outcome evidence. Follows the reference hybrid migration
+// (docs/protocol/pq-hybrid-program.md, EP-REVOCATION-v2):
+//
+// 1. VERSION BUMP, NOT A FIELD BUMP. A new `@version`
+//    (EP-MOBILE-PROVIDER-OUTCOME-v1 -> -v2). verifyMobileProviderOutcome()
+//    (v1) is unchanged: `exactMembers(evidence, PROVIDER_OUTCOME_KEYS)`
+//    demands the exact v1 key set, so a v2 envelope (whose `proof` carries
+//    different members) fails `malformed_provider_outcome` BEFORE any
+//    signature inspection, and never throws.
+// 2. SET SHAPE. `proof` carries `required_algorithms` plus a `signatures`
+//    array shaped like EP-SIG-AGILITY-v1's AgileSignature.
+// 3. ANTI-STRIPPING BYTES. required_algorithms is committed INSIDE the
+//    signed bytes (providerSigningBytesV2); narrowing it changes the bytes.
+// 4. V1 COMPATIBILITY. v1 evidence keeps verifying, unchanged, through
+//    verifyMobileProviderOutcome(). v2 verification is ASYNC, a separate
+//    entry point.
+// 5. NAMED REFUSALS. Every failure returns a named reason; nothing throws on
+//    caller input. An absent ML-DSA backend is a refusal.
+// ===========================================================================
+
+export const MOBILE_PROVIDER_OUTCOME_V2_VERSION = 'EP-MOBILE-PROVIDER-OUTCOME-v2';
+export const MOBILE_PROVIDER_OUTCOME_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+const PROVIDER_OUTCOME_V2_DOMAIN = `${MOBILE_PROVIDER_OUTCOME_V2_VERSION}\0`;
+const PROVIDER_OUTCOME_V2_KEYS = new Set([
+  '@version', 'operation_id', 'action_caid', 'action_digest', 'consumption_nonce',
+  'executor_id', 'outcome', 'observed_at', 'provider_reference', 'proof',
+]);
+const PROVIDER_PROOF_V2_KEYS = new Set([
+  'profile', 'required_algorithms', 'key_id', 'public_key', 'pq_key_id', 'pq_public_key', 'signatures',
+]);
+
+function providerOutcomeAlgorithmSetV2(algorithms: any): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === MOBILE_PROVIDER_OUTCOME_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a: any, i: number) => a === MOBILE_PROVIDER_OUTCOME_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+function providerOutcomeBodyV2(input: any) {
+  return {
+    '@version': MOBILE_PROVIDER_OUTCOME_V2_VERSION,
+    operation_id: input.operationId,
+    action_caid: input.actionCaid,
+    action_digest: input.actionDigest,
+    consumption_nonce: input.consumptionNonce,
+    executor_id: input.executorId,
+    outcome: input.outcome,
+    observed_at: input.observedAt,
+    provider_reference: input.providerReference,
+  };
+}
+
+function providerSigningBytesV2(body: any, requiredAlgorithms: readonly string[] = MOBILE_PROVIDER_OUTCOME_V2_REQUIRED_ALGORITHMS): Buffer {
+  if (!providerOutcomeAlgorithmSetV2(requiredAlgorithms)) {
+    throw new TypeError('providerSigningBytesV2: algorithm set is not the registered v2 set');
+  }
+  const canonical = canonicalize({ ...body, required_algorithms: [...requiredAlgorithms] });
+  if (!canonical.ok) throw new TypeError('provider outcome is not canonicalizable');
+  return Buffer.from(`${PROVIDER_OUTCOME_V2_DOMAIN}${canonical.canonical}`, 'utf8');
+}
+
+export function mobilePqExecutorKeyId(pqPublicKeyRawB64u: any): string {
+  return `ep:executor-key:ml-dsa-65:sha256:${crypto.createHash('sha256')
+    .update(Buffer.from(pqPublicKeyRawB64u, 'base64url')).digest('hex')}`;
+}
+
+/**
+ * Build and hybrid-sign an EP-MOBILE-PROVIDER-OUTCOME-v2. THROWS rather than
+ * emit a half-hybrid outcome: an unavailable ML-DSA backend makes
+ * signAgileSet throw.
+ */
+export async function buildMobileProviderOutcomeV2(input: any = {}): Promise<any> {
+  if (!boundedString(input.operationId) || !CAID.test(input.actionCaid || '')
+      || !SHA256.test(input.actionDigest || '') || !boundedString(input.consumptionNonce)
+      || !boundedString(input.executorId) || !['executed', 'refused'].includes(input.outcome)
+      || !boundedString(input.observedAt, 64)
+      || !Number.isFinite(Date.parse(input.observedAt))
+      || !boundedString(input.providerReference)
+      || !input.privateKey || !input.pqPrivateKey || !input.pqPublicKey) {
+    throw new TypeError('a complete, CAID-bound provider outcome and signer.{privateKey,pqPrivateKey,pqPublicKey} are required');
+  }
+  const body = providerOutcomeBodyV2(input);
+  const publicKey = crypto.createPublicKey(input.privateKey)
+    .export({ type: 'spki', format: 'der' }).toString('base64url');
+  const pqPublicKey = input.pqPublicKey instanceof Uint8Array
+    ? Buffer.from(input.pqPublicKey).toString('base64url') : input.pqPublicKey;
+  if (typeof pqPublicKey !== 'string' || Buffer.from(pqPublicKey, 'base64url').length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+    throw new TypeError('buildMobileProviderOutcomeV2 requires a raw 1952-byte ML-DSA-65 public key');
+  }
+  const edKeyId = mobileExecutorKeyId(publicKey);
+  const pqKeyId = mobilePqExecutorKeyId(pqPublicKey);
+  const bytes = providerSigningBytesV2(body);
+  const signatures = await signAgileSet(new Uint8Array(bytes), [
+    { alg: 'Ed25519', private_key: input.privateKey, key_id: edKeyId },
+    { alg: 'ML-DSA-65', private_key: input.pqPrivateKey, key_id: pqKeyId },
+  ]);
+  return {
+    ...body,
+    proof: {
+      profile: MOBILE_PROVIDER_OUTCOME_V2_VERSION,
+      required_algorithms: [...MOBILE_PROVIDER_OUTCOME_V2_REQUIRED_ALGORITHMS],
+      key_id: edKeyId,
+      public_key: publicKey,
+      pq_key_id: pqKeyId,
+      pq_public_key: pqPublicKey,
+      signatures,
+    },
+  };
+}
+
+/**
+ * Verify EP-MOBILE-PROVIDER-OUTCOME-v2. FAIL-CLOSED, never throws. A missing
+ * leg, a narrowed algorithm set, or an unpinned executor key pair refuses.
+ */
+export async function verifyMobileProviderOutcomeV2(evidence: any, {
+  expected = {},
+  executorKeys = {},
+  notBefore = null,
+  now = new Date().toISOString(),
+}: any = {}, options: AgilityOptions = {}) {
+  const refused = (reason: string) => ({ valid: false, reason, outcome: null, evidence_digest: null });
+  if (!exactMembers(evidence, PROVIDER_OUTCOME_V2_KEYS)
+      || evidence['@version'] !== MOBILE_PROVIDER_OUTCOME_V2_VERSION
+      || !boundedString(evidence.operation_id) || !CAID.test(evidence.action_caid || '')
+      || !SHA256.test(evidence.action_digest || '') || !boundedString(evidence.consumption_nonce)
+      || !boundedString(evidence.executor_id)
+      || !['executed', 'refused'].includes(evidence.outcome)
+      || !boundedString(evidence.observed_at, 64)
+      || !boundedString(evidence.provider_reference)
+      || !exactMembers(evidence.proof, PROVIDER_PROOF_V2_KEYS)
+      || evidence.proof.profile !== MOBILE_PROVIDER_OUTCOME_V2_VERSION
+      || !providerOutcomeAlgorithmSetV2(evidence.proof.required_algorithms)
+      || !/^ep:executor-key:sha256:[0-9a-f]{64}$/.test(evidence.proof.key_id || '')
+      || !B64URL.test(evidence.proof.public_key || '')
+      || !/^ep:executor-key:ml-dsa-65:sha256:[0-9a-f]{64}$/.test(evidence.proof.pq_key_id || '')
+      || !B64URL.test(evidence.proof.pq_public_key || '')
+      || !Array.isArray(evidence.proof.signatures)) {
+    return refused('malformed_provider_outcome');
+  }
+  if (evidence.operation_id !== expected.operation_id
+      || evidence.action_caid !== expected.action_caid
+      || evidence.action_digest !== expected.action_digest
+      || evidence.consumption_nonce !== expected.consumption_nonce
+      || evidence.executor_id !== expected.executor_id
+      || evidence.proof.key_id !== expected.executor_key_id) {
+    return refused('provider_outcome_binding_mismatch');
+  }
+  const observedAt = Date.parse(evidence.observed_at);
+  const earliestAt = notBefore === null ? null : Date.parse(notBefore);
+  const nowAt = Date.parse(now);
+  if (!Number.isFinite(observedAt) || !Number.isFinite(nowAt)
+      || (notBefore !== null && !Number.isFinite(earliestAt))
+      || (earliestAt !== null && observedAt < earliestAt)
+      || observedAt > nowAt) {
+    return refused('provider_outcome_time_invalid');
+  }
+  const pin = record(executorKeys) ? executorKeys[evidence.executor_id] : null;
+  const derivedKeyId = mobileExecutorKeyId(evidence.proof.public_key);
+  const derivedPqKeyId = mobilePqExecutorKeyId(evidence.proof.pq_public_key);
+  if (!record(pin) || pin.public_key !== evidence.proof.public_key
+      || pin.pq_public_key !== evidence.proof.pq_public_key
+      || derivedKeyId !== evidence.proof.key_id
+      || derivedPqKeyId !== evidence.proof.pq_key_id
+      || (pin.key_id !== undefined && pin.key_id !== derivedKeyId)
+      || (pin.pq_key_id !== undefined && pin.pq_key_id !== derivedPqKeyId)) {
+    return refused('executor_key_not_pinned');
+  }
+  const { proof: _proof, ...body } = evidence;
+  let bytes: Buffer;
+  try { bytes = providerSigningBytesV2(body); } catch { return refused('provider_outcome_signature_invalid'); }
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), evidence.proof.signatures, [
+      { alg: 'Ed25519', public_key: pin.public_key },
+      { alg: 'ML-DSA-65', public_key: pin.pq_public_key },
+    ], {
+      mldsaBackend: options.mldsaBackend,
+      mldsaBackendLoader: options.mldsaBackendLoader,
+      policy: 'hybrid_all',
+      requiredAlgorithms: [...MOBILE_PROVIDER_OUTCOME_V2_REQUIRED_ALGORITHMS],
+    });
+  } catch { setResult = null; }
+  if (setResult?.verified !== true) return refused('provider_outcome_signature_invalid');
   return {
     valid: true,
     reason: null,

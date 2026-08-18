@@ -48,6 +48,12 @@ import {
   predictedEffectsDigest,
   validatePredictedEffects,
 } from './effect-predicates.js';
+import {
+  signAgileSet,
+  verifyAgileSignatureSet,
+  ML_DSA_65_PUBLIC_KEY_BYTES,
+  type AgilityOptions,
+} from '../../packages/verify/pq-signature-agility.js';
 
 export const EVIDENCE_GRAPH_VERSION = 'EP-AEG-v1';
 export const RELIANCE_RESULT_VERSION = 'EP-RELIANCE-RESULT-v1';
@@ -759,5 +765,166 @@ export function verifyRelianceResult(
   checks.issuer_pinned = pinnedVerifierKeys.includes(doc.verifier_key);
   const verified = checks.structure && checks.result_digest
     && checks.result_consistent && checks.signature;
+  return { verified, accepted: verified && checks.issuer_pinned, checks };
+}
+
+// ===========================================================================
+// EP-RELIANCE-RESULT-v2 -- the hybrid (Ed25519 + ML-DSA-65) signed reliance
+// verdict. Follows the reference hybrid migration
+// (docs/protocol/pq-hybrid-program.md, EP-REVOCATION-v2):
+//
+// 1. VERSION BUMP, NOT A FIELD BUMP. The signed payload takes a new
+//    `@version` (EP-RELIANCE-RESULT-v1 -> -v2). verifyRelianceResult() (v1)
+//    is unchanged: it requires `doc.payload['@version'] === RELIANCE_RESULT_VERSION`,
+//    so a v2 document with `EP-RELIANCE-RESULT-v2` refuses on the version
+//    marker BEFORE any signature inspection, and never throws.
+// 2. SET SHAPE. `proof` carries `required_algorithms` plus a `signatures`
+//    array shaped like EP-SIG-AGILITY-v1's AgileSignature.
+// 3. ANTI-STRIPPING BYTES. required_algorithms is committed INSIDE the
+//    signed bytes; narrowing it changes the bytes the surviving Ed25519
+//    signature was made over, so it no longer verifies.
+// 4. V1 COMPATIBILITY. v1 documents keep verifying, unchanged, through
+//    verifyRelianceResult(). v2 verification is ASYNC, a separate entry
+//    point (verifyRelianceResultAny routes on @version).
+// 5. NAMED REFUSALS. Every failure sets a named check false; nothing throws
+//    on caller input. An absent ML-DSA backend is a refusal.
+// ===========================================================================
+
+export const RELIANCE_RESULT_V2_VERSION = 'EP-RELIANCE-RESULT-v2';
+export const RELIANCE_RESULT_V2_REQUIRED_ALGORITHMS = Object.freeze(['Ed25519', 'ML-DSA-65'] as const);
+
+function relianceResultAlgorithmSetV2(algorithms: unknown): algorithms is string[] {
+  return Array.isArray(algorithms)
+    && algorithms.length === RELIANCE_RESULT_V2_REQUIRED_ALGORITHMS.length
+    && algorithms.every((a, i) => a === RELIANCE_RESULT_V2_REQUIRED_ALGORITHMS[i]);
+}
+
+export interface RelianceResultV2Signer {
+  /** Ed25519 private key (Node crypto KeyLike). */
+  privateKey: KeyLike;
+  /** ML-DSA-65 secret key: 4032 raw bytes, or base64url of them. */
+  pqPrivateKey: Uint8Array | string;
+  /** ML-DSA-65 public key: 1952 raw bytes, or base64url of them. */
+  pqPublicKey: Uint8Array | string;
+}
+
+/**
+ * EP-RELIANCE-RESULT-v2 -- hybrid signed verdict. THROWS rather than emit a
+ * half-hybrid document: an unavailable ML-DSA backend makes signAgileSet
+ * throw, so a document missing the PQ leg is never produced.
+ */
+export async function signRelianceResultV2(
+  result: any,
+  policy: any,
+  signer: RelianceResultV2Signer,
+  opts: { evaluated_at?: string | null } = {},
+): Promise<{ payload: Record<string, any>; proof: Record<string, any> }> {
+  opts = opts && typeof opts === 'object' && !Array.isArray(opts) ? opts : {};
+  if (!signer?.privateKey || !signer.pqPrivateKey || !signer.pqPublicKey) {
+    throw new Error('signRelianceResultV2 requires signer.{privateKey, pqPrivateKey, pqPublicKey}');
+  }
+  const resultDigest = `sha256:${sha256hex(canon(result))}`;
+  const payload = {
+    '@version': RELIANCE_RESULT_V2_VERSION,
+    verdict: result.verdict,
+    reasons: result.reasons,
+    action_digest: result.action_digest,
+    graph_digest: result.graph?.graph_digest ?? null,
+    policy_digest: `sha256:${sha256hex(canon(policy))}`,
+    policy_id: policy?.policy_id ?? null,
+    reliance_purpose: policy?.reliance_purpose ?? null,
+    replay_digest: result.replay_digest,
+    outcome_binding: result.outcome_binding ?? null,
+    result_digest: resultDigest,
+    result,
+    evaluated_at: opts.evaluated_at ?? null,
+  };
+  const pub = crypto.createPublicKey(signer.privateKey as any).export({ type: 'spki', format: 'der' }).toString('base64url');
+  const pqPub = signer.pqPublicKey instanceof Uint8Array
+    ? Buffer.from(signer.pqPublicKey).toString('base64url') : signer.pqPublicKey;
+  if (typeof pqPub !== 'string' || Buffer.from(pqPub, 'base64url').length !== ML_DSA_65_PUBLIC_KEY_BYTES) {
+    throw new Error('signRelianceResultV2 requires a raw 1952-byte ML-DSA-65 public key');
+  }
+  const bytes = Buffer.from(canon({ payload, required_algorithms: [...RELIANCE_RESULT_V2_REQUIRED_ALGORITHMS] }), 'utf8');
+  const signatures = await signAgileSet(new Uint8Array(bytes), [
+    { alg: 'Ed25519', private_key: signer.privateKey as any },
+    { alg: 'ML-DSA-65', private_key: signer.pqPrivateKey },
+  ]);
+  return {
+    payload,
+    proof: {
+      profile: RELIANCE_RESULT_V2_VERSION,
+      required_algorithms: [...RELIANCE_RESULT_V2_REQUIRED_ALGORITHMS],
+      verifier_key: pub,
+      pq_verifier_key: pqPub,
+      signatures,
+    },
+  };
+}
+
+/**
+ * Verify EP-RELIANCE-RESULT-v2. FAIL-CLOSED, never throws. `verified` = the
+ * hybrid signature set verifies over the recomputed payload bytes and the
+ * embedded result is self-consistent; `accepted` additionally requires the
+ * presented (Ed25519, ML-DSA-65) key PAIR to be pinned by the caller.
+ */
+export async function verifyRelianceResultV2(
+  doc: any,
+  pinnedVerifierKeyPairs: { verifier_key: string; pq_verifier_key: string }[] = [],
+  options: AgilityOptions = {},
+): Promise<{ verified: boolean; accepted: boolean; checks: Record<string, boolean> }> {
+  const checks: Record<string, boolean> = {
+    structure: false, version: false, algorithm_set: false, result_digest: false,
+    result_consistent: false, signature: false, issuer_pinned: false,
+  };
+  try { doc = JSON.parse(canon(doc)); }
+  catch { return { verified: false, accepted: false, checks }; }
+  if (!doc?.payload || !doc?.proof || typeof doc.proof !== 'object') {
+    return { verified: false, accepted: false, checks };
+  }
+  checks.structure = true;
+  checks.version = doc.payload['@version'] === RELIANCE_RESULT_V2_VERSION
+    && doc.proof.profile === RELIANCE_RESULT_V2_VERSION;
+  if (!checks.version) return { verified: false, accepted: false, checks };
+  checks.algorithm_set = relianceResultAlgorithmSetV2(doc.proof.required_algorithms)
+    && typeof doc.proof.verifier_key === 'string' && typeof doc.proof.pq_verifier_key === 'string'
+    && Array.isArray(doc.proof.signatures);
+  if (!checks.algorithm_set) return { verified: false, accepted: false, checks };
+
+  try {
+    checks.result_digest = typeof doc.payload.result_digest === 'string'
+      && doc.payload.result_digest === `sha256:${sha256hex(canon(doc.payload.result))}`;
+    checks.result_consistent = checks.result_digest
+      && doc.payload.result?.verdict === doc.payload.verdict
+      && doc.payload.result?.action_digest === doc.payload.action_digest
+      && doc.payload.result?.replay_digest === doc.payload.replay_digest;
+  } catch {
+    checks.result_digest = false;
+    checks.result_consistent = false;
+  }
+  if (!checks.result_consistent) return { verified: false, accepted: false, checks };
+
+  const bytes = Buffer.from(canon({
+    payload: doc.payload,
+    required_algorithms: [...RELIANCE_RESULT_V2_REQUIRED_ALGORITHMS],
+  }), 'utf8');
+  let setResult;
+  try {
+    setResult = await verifyAgileSignatureSet(new Uint8Array(bytes), doc.proof.signatures, [
+      { alg: 'Ed25519', public_key: doc.proof.verifier_key },
+      { alg: 'ML-DSA-65', public_key: doc.proof.pq_verifier_key },
+    ], {
+      mldsaBackend: options.mldsaBackend,
+      mldsaBackendLoader: options.mldsaBackendLoader,
+      policy: 'hybrid_all',
+      requiredAlgorithms: [...RELIANCE_RESULT_V2_REQUIRED_ALGORITHMS],
+    });
+  } catch { setResult = null; }
+  checks.signature = setResult?.verified === true;
+  checks.issuer_pinned = pinnedVerifierKeyPairs.some(
+    (p) => p?.verifier_key === doc.proof.verifier_key && p?.pq_verifier_key === doc.proof.pq_verifier_key,
+  );
+  const verified = checks.structure && checks.version && checks.algorithm_set
+    && checks.result_digest && checks.result_consistent && checks.signature;
   return { verified, accepted: verified && checks.issuer_pinned, checks };
 }

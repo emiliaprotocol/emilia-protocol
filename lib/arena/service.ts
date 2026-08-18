@@ -17,8 +17,11 @@ import {
 import {
   ARENA_PUBLIC_CLAIM_BOUNDARY,
   ARENA_PUBLIC_REFUSAL_PROFILE,
+  PUBLIC_PROFILE_V2 as ARENA_PUBLIC_REFUSAL_PROFILE_V2,
   signArenaRefusal,
+  signArenaRefusalV2,
   verifyArenaPublicProjection,
+  verifyArenaPublicProjectionV2,
 } from './refusal';
 
 const CHALLENGE_ID = 'emilia.arena.allowance';
@@ -99,6 +102,57 @@ function storedRefusalProjection({
       issuer_id: session.issuer_id,
       key_id: session.key_id,
       public_key: session.public_key,
+    },
+    claim_boundary: ARENA_PUBLIC_CLAIM_BOUNDARY,
+  };
+}
+
+/**
+ * EP-ARENA-PUBLIC-REFUSAL-v2 projection wrapper. Additive: only meaningful
+ * when the session carries hybrid signer material (see the hybrid-adoption
+ * note at the signArenaRefusal call site below).
+ */
+function storedRefusalProjectionV2({
+  session,
+  action,
+  attemptId,
+  reason,
+  createdAt,
+  caid,
+  actionDigest,
+  artifact,
+  refusalDigest,
+}: {
+  session: Record<string, any>;
+  action: ArenaAction;
+  attemptId: string;
+  reason: string;
+  createdAt: string;
+  caid: string;
+  actionDigest: string;
+  artifact: unknown;
+  refusalDigest: string;
+}) {
+  return {
+    profile: ARENA_PUBLIC_REFUSAL_PROFILE_V2,
+    challenge_id: CHALLENGE_ID,
+    challenge_version: CHALLENGE_VERSION,
+    attempt: {
+      attempt_id: attemptId,
+      action,
+      caid,
+      action_digest: actionDigest,
+      decision: 'refuse',
+      reason,
+      created_at: createdAt,
+    },
+    refusal_artifact: artifact,
+    refusal_digest: refusalDigest,
+    issuer: {
+      issuer_id: session.issuer_id,
+      key_id: session.key_id,
+      public_key: session.public_key,
+      pq_public_key: session.pq_public_key,
     },
     claim_boundary: ARENA_PUBLIC_CLAIM_BOUNDARY,
   };
@@ -339,6 +393,62 @@ export async function submitArenaAttempt({
     throw new ArenaServiceError(503, 'arena_signer_unavailable');
   }
 
+  // -- EP-ACTION-REFUSAL-STATEMENT-v2 adoption (additive, opt-in) --
+  // signActionRefusalStatement/signActionRefusalStatementV2 both already
+  // exist in packages/gate/src/action-refusal-statement.ts; this wires the
+  // ALREADY-BUILT v2 hybrid path through the arena's refusal issuance
+  // additively. No session in this deployment carries pq_public_key /
+  // pq_private_key_encrypted today (the session row has no such column), so
+  // this is dormant and byte-identical to the v1-only path above until a
+  // session is provisioned with hybrid signer material -- the same posture
+  // pq-hybrid-program.md documents for every "dual" adoption: v1 issuance is
+  // untouched, and the hybrid twin is minted best-effort alongside it, never
+  // in place of it. A v2 signing/verification failure here NEVER fails the
+  // request: the v1 refusal above is already committed as the artifact of
+  // record.
+  let hybridSigned: { statement: any; refusal_digest: string } | null = null;
+  if (typeof auth.session.pq_public_key === 'string' && auth.session.pq_public_key.length > 0
+      && typeof auth.session.pq_private_key_encrypted === 'string' && auth.session.pq_private_key_encrypted.length > 0) {
+    try {
+      const pqPrivateKey = open(auth.session.pq_private_key_encrypted);
+      const privateKey = crypto.createPrivateKey({
+        key: Buffer.from(open(auth.session.private_key_encrypted), 'base64url'),
+        format: 'der',
+        type: 'pkcs8',
+      });
+      const candidate = await signArenaRefusalV2({
+        allowance: auth.session.allowance_profile as ArenaAllowance,
+        action,
+        reason: result.reason,
+        attemptId: result.attempt_id,
+        attemptNonce: result.attempt_nonce,
+        refusedAt,
+        expiresAt: refusalExpiresAt,
+        signer: {
+          issuer_id: auth.session.issuer_id,
+          key_id: auth.session.key_id,
+          private_key: privateKey,
+          pq_public_key: auth.session.pq_public_key,
+          pq_private_key: pqPrivateKey,
+        },
+      });
+      const hybridVerification = await verifyArenaPublicProjectionV2(storedRefusalProjectionV2({
+        session: auth.session,
+        action,
+        attemptId: result.attempt_id,
+        reason: result.reason,
+        createdAt: refusedAt,
+        caid: binding.caid,
+        actionDigest: binding.action_digest,
+        artifact: candidate.statement,
+        refusalDigest: candidate.refusal_digest,
+      }), now);
+      if (hybridVerification.integrity_verified) hybridSigned = candidate;
+    } catch {
+      hybridSigned = null;
+    }
+  }
+
   let committed: any;
   try {
     committed = await store.rpc('commit_arena_refusal', {
@@ -360,6 +470,12 @@ export async function submitArenaAttempt({
     refusal_digest: signed.refusal_digest,
     claim_boundary: ARENA_CLAIM_BOUNDARY,
     note: 'Technical refusal in a synthetic no-egress challenge; not a legal determination or production event.',
+    // Additive hybrid twin (see the adoption note above); absent whenever the
+    // session has no pq signer material, which is every session today.
+    ...(hybridSigned ? {
+      hybrid_refusal_artifact: hybridSigned.statement,
+      hybrid_refusal_digest: hybridSigned.refusal_digest,
+    } : {}),
   });
 }
 
