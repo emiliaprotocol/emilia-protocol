@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:incident-action-authorization-field-group:v0.1",
+  "title": "Incident Action Authorization Field Group v0.1",
+  "description": "Unsubmitted, implementation-neutral proposal for coding one AI-agent action in an incident.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "incident_ref",
+    "action_ref",
+    "action_summary",
+    "action_class",
+    "authorization",
+    "execution",
+    "sources",
+    "coding_limitations"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "aiuc-incident-fields-v0.1"
+    },
+    "incident_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scheme", "id", "url"],
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "action_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "action_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "action_class": {
+      "enum": [
+        "read_only",
+        "additive_write",
+        "modify_write",
+        "destructive",
+        "monetary_low",
+        "monetary_high",
+        "external_commit"
+      ]
+    },
+    "authorization": {
+      "$ref": "#/$defs/authorization"
+    },
+    "execution": {
+      "$ref": "#/$defs/execution"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "coding_limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "evidence_grade": {
+      "enum": [
+        "E0_no_reviewable_evidence",
+        "E1_party_attested",
+        "E2_independently_correlated",
+        "E3_artifact_verifiable"
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "basis_summary",
+        "decision_timing",
+        "evidence_grade",
+        "evidence_refs"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "standing_authority",
+            "specific_approval",
+            "denied",
+            "revoked",
+            "outside_scope",
+            "authority_absent",
+            "indeterminate"
+          ]
+        },
+        "basis_summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision_timing": {
+          "enum": [
+            "before_attempt",
+            "after_attempt",
+            "indeterminate"
+          ]
+        },
+        "evidence_grade": {
+          "$ref": "#/$defs/evidence_grade"
+        },
+        "evidence_refs": {
+          "$ref": "#/$defs/evidence_refs"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": ["specific_approval", "denied", "revoked"]
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "decision_timing": {
+                "const": "before_attempt"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_grade": {
+                "const": "E0_no_reviewable_evidence"
+              }
+            },
+            "required": ["evidence_grade"]
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "indeterminate"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_grade", "evidence_refs"],
+      "properties": {
+        "status": {
+          "enum": [
+            "proposed_only",
+            "blocked",
+            "effected",
+            "effect_reversed",
+            "indeterminate"
+          ]
+        },
+        "evidence_grade": {
+          "$ref": "#/$defs/evidence_grade"
+        },
+        "evidence_refs": {
+          "$ref": "#/$defs/evidence_refs"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "url",
+        "title",
+        "source_role",
+        "published_at",
+        "accessed_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_role": {
+          "enum": [
+            "incident_registry",
+            "affected_party",
+            "system_operator",
+            "independent_reporting",
+            "post_incident_operator_documentation",
+            "other"
+          ]
+        },
+        "published_at": {
+          "type": ["string", "null"],
+          "format": "date"
+        },
+        "accessed_at": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  }
+}
