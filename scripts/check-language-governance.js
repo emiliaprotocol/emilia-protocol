@@ -61,6 +61,46 @@ const RETIRED_PHRASES = [
         label: 'post-quantum COSE (conflates tracks: generic COSE envelope is EdDSA; ML-DSA-65 COSE is the McGraw adapter only)',
         pattern: /post-quantum cose|quantum[- ]resistant cose/i,
     },
+    // Evidence-product overclaim guardrails (crossing-record hostile review
+    // 2026-08-18). These are claims a drafting agent actually produced and that
+    // key compromise, backdating, dishonest issuers, incomplete observation, or
+    // legal interpretation make indefensible as categorical statements. Negated
+    // honest-boundary forms and quoted mentions are allowed.
+    {
+        label: 'non-repudiable (key compromise and backdating defeat the categorical claim)',
+        pattern: /non[- ]?repudiable|non[- ]?repudiation/i,
+        // Allowed: negations, an isolated quoted mention of the bare phrase, and
+        // the phrase sitting inside a same-line quotation of external text (a
+        // straight-double-quote or curly-quote span that wraps the whole match).
+        // Apostrophes inside the quoted text, e.g. "a user's consent", do not
+        // count as quote delimiters here. Multi-line quotations are handled
+        // separately in scan() via quote-parity tracking.
+        exclude: (line) => /\b(not|never|no|cannot claim|does not (provide|establish))\b[^.]{0,80}non[- ]?repudia/i.test(line)
+            || /["'][.,;]?non[- ]?repudia[a-z]*[.,;]?["']/i.test(line)
+            || /"[^"]*non[- ]?repudia[a-z]*[^"]*"/i.test(line)
+            || /\u201c[^\u201d]*non[- ]?repudia[a-z]*[^\u201d]*\u201d/i.test(line),
+    },
+    {
+        label: 'forgery is impossible (signature validity under pinned keys is the honest claim)',
+        pattern: /forgery is impossible|impossible to forge|cannot be forged/i,
+        exclude: (line) => /\b(not|never|no)\b[^.]{0,60}(impossible to forge|cannot be forged)/i.test(line)
+            || /"[^"]*(forgery is impossible|impossible to forge|cannot be forged)[^"]*"/i.test(line)
+            || /\u201c[^\u201d]*(forgery is impossible|impossible to forge|cannot be forged)[^\u201d]*\u201d/i.test(line),
+    },
+    {
+        label: 'proves compliance (evidence supports assessment; legal interpretation is not ours to claim)',
+        pattern: /proves? (regulatory )?compliance|compliance[- ]proof/i,
+        exclude: (line) => /\b(not|never|no|does not|cannot)\b[^.]{0,60}prove[sn]? (regulatory )?compliance/i.test(line)
+            || /["'\u201c]proves? compliance[.,;]?["'\u201d]/i.test(line),
+    },
+    {
+        label: 'no competitor has this (unverifiable market claim)',
+        pattern: /no competitor (has|can|offers)|nobody else (has|can|offers)/i,
+    },
+    {
+        label: 'prices risk accurately (actuarial claim we cannot substantiate)',
+        pattern: /prices? risk accurately|accurate risk pricing/i,
+    },
     {
         label: 'machine counterparties',
         pattern: /machine counterparties/i,
@@ -94,12 +134,18 @@ const RETIRED_PHRASES = [
 /** Directories to skip entirely.
  * strategy-private is gitignored business material (never checked out on CI and
  * not public-facing), so scanning it only produces local-only false failures. */
-const EXCLUDED_DIRS = new Set(['node_modules', '.git', '.next', 'archive', 'strategy-private']);
+const EXCLUDED_DIRS = new Set(['node_modules', '.git', '.next', 'archive', 'strategy-private',
+    // Byte-pinned historical record: frozen clean-room kits and POSTED/staged
+    // I-D artifacts cannot be edited retroactively (hash pins and the public
+    // record). Wording defects found there are fixed in the NEXT substantive
+    // revision of the draft, never by rewriting history.
+    'clean-room', 'posted', 'RENDERS']);
 /** Relative paths of files that discuss retired phrases in deprecation context */
 const EXCLUDED_FILES = new Set([
     'docs/STYLE-GUIDE.md',
     'docs/CANONICAL-LANGUAGE.md',
     'docs/EP_LANGUAGE_REFRESH_SUMMARY.md',
+    'docs/protocol/crossing-record-decisions.md',
     'docs/REWRITE_EVERYTHING_SUMMARY.md',
 ]);
 // ---------------------------------------------------------------------------
@@ -192,8 +238,26 @@ function scan() {
             continue;
         }
         const lines = content.split('\n');
+        // Track straight-double-quote parity across lines so a genuine quotation
+        // of an external document (e.g. an RFC definition or a cited draft's own
+        // text) that happens to wrap past a line break is recognized as a MENTION,
+        // not a claim. A line with zero '"' characters that opens while a quote
+        // is still open (odd parity carried from a prior line) is entirely inside
+        // that quotation and is skipped for every rule. Lines that contain a '"'
+        // themselves still go through the normal per-rule exclude() checks below,
+        // so a real claim sitting next to an unrelated quote is still caught.
+        let quoteOpenEnteringLine = false;
+        const lineFullyInsideCarriedQuote = [];
+        for (let i = 0; i < lines.length; i++) {
+            const quoteCharCount = (lines[i].match(/"/g) || []).length;
+            lineFullyInsideCarriedQuote[i] = quoteOpenEnteringLine && quoteCharCount === 0;
+            if (quoteCharCount % 2 === 1)
+                quoteOpenEnteringLine = !quoteOpenEnteringLine;
+        }
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
+            if (lineFullyInsideCarriedQuote[i])
+                continue;
             for (const rule of RETIRED_PHRASES) {
                 if (rule.pattern.test(line)) {
                     // Check per-rule exclusion
