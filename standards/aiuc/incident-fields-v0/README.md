@@ -30,8 +30,9 @@ not claim that AIUC-1 requires these fields.
   carries and each rejected with a specific named failure.
 - `validate.selftest.mjs`: zero-dependency node:test suite covering the positive example, every
   hostile vector, and report determinism.
-- `validate.test.mjs`: repository Vitest bridge that executes the complete
-  zero-dependency self-test, so the public runner is also enforced in CI.
+- The repository CI executes `validate.selftest.mjs` directly, so the public
+  zero-dependency runner is enforced without folding this standards artifact
+  into the repository-wide proof-stat measurement.
 
 ## Adoption boundary
 
