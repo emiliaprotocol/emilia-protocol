@@ -31,7 +31,7 @@ All eight elements — T, I, A, L, S, H, C, W, CH — are captured in the signof
 
 - **Authenticity**: the signature binds the attestation to the private key held by the authenticated identity. Under Federal Rule of Evidence 901 (US) / corresponding provisions elsewhere, this is a strong authentication basis IF the operator can establish that the private key was controlled by the named human at the time.
 - **Integrity**: the hash chain and anchored Merkle root make log tampering detectable by any verifier. Integrity does not establish truth, but it establishes that the recorded evidence has not been altered post hoc.
-- **Non-repudiation (weak form)**: the signer cannot plausibly deny having produced the signature without also claiming key compromise. Key compromise remains a valid defense; EP does not eliminate it, but it does produce a specific, investigable timeline for when compromise would have to have occurred.
+- **Cryptographic attribution (weak form)**: the signer cannot plausibly deny having produced the signature without also claiming key compromise. Key compromise remains a valid defense; EP does not eliminate it, but it does produce a specific, investigable timeline for when compromise would have to have occurred. This is a technical attribution property, not a legal conclusion of non-repudiation: whether a given jurisdiction's non-repudiation or authentication standard is satisfied is a determination for counsel, not something EP or this document establishes by itself.
 
 **What this does NOT support:**
 
@@ -150,7 +150,7 @@ this Agreement if and only if:
   (c) it includes a binding_hash matching the canonical binding envelope
       for the referenced action.
 
-Section 2 (Non-Repudiation Defense). A Party against whom an Attestation is
+Section 2 (Rebuttal of Attribution). A Party against whom an Attestation is
 asserted may rebut authenticity only by demonstrating, with specific and
 contemporaneous evidence:
   (a) compromise of the authenticating key material prior to Attestation, or

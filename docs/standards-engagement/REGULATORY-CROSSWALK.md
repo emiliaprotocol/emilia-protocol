@@ -16,7 +16,11 @@ Scope discipline: EP proves authorization and evidence integrity — a **necessa
 condition. Instrument numbers below are real as of 2026; forward-looking secondary legislation and
 sectoral rules are marked **(anticipated)** and are *not* asserted as existing law. EP does not claim
 to be named by any regulator today; it claims to be the implementation that meets the stated
-requirement.
+requirement. Where this crosswalk describes receipts as "attributable" evidence, that names a
+technical property: a signature that verifies under a pinned key and can be disputed only by
+claiming key compromise. This document does not establish that receipts meet any instrument's
+legal or evidentiary standard for a binding signature; that determination belongs to the
+regulator, court, or the buyer's counsel in the applicable regime.
 
 ## European Union
 
@@ -38,14 +42,14 @@ requirement.
 | **OMB federal-AI-use guidance** | Human oversight for rights-/safety-impacting agency AI | EP receipts as the oversight evidence for federal high-impact AI | In force (per current memoranda) |
 | **DoD Directive 3000.09** | Appropriate levels of human judgment over force | Quorum (two-person rule) + bounded on-the-loop envelopes; see HUMAN_CONTROL_CROSSWALK | In force |
 | **FedRAMP AI control overlay** | Authorization evidence for cloud AI agent actions | EP receipt generation/verification in the authorization package | (anticipated) |
-| **SEC / CFTC AI rulemaking** | Tamper-evident human-approval records for AI-driven trading/advice | Non-repudiable, one-time receipts bound to the order | (anticipated / emerging) |
+| **SEC / CFTC AI rulemaking** | Tamper-evident human-approval records for AI-driven trading/advice | Cryptographically attributable, one-time receipts bound to the order | (anticipated / emerging) |
 
 ## Sectoral
 
 | Instrument (real) | The requirement | EP feature | Status |
 |---|---|---|---|
 | **FERC Order 2222 + NERC CIP family** | Verifiable records for DER/AI-driven grid dispatch; AI-system controls | **Proof-of-Curtailment (PIP-014) / GRACE**: human-authorized, attested, settlement-grade dispatch evidence | Order 2222 in force; AI-system controls (anticipated) |
-| **Basel framework + EBA guidance** | Non-repudiable evidence of human signoff for AI risk-model decisions | Receipts as the signoff evidence | (anticipated / emerging) |
+| **Basel framework + EBA guidance** | Cryptographically attributable evidence of human signoff for AI risk-model decisions | Receipts as the signoff evidence | (anticipated / emerging) |
 | **FDA AI/ML device guidance** | Human oversight + traceability for high-risk clinical AI | Clinical authorization profile (EP-CLINICAL-AUTHORIZATION-PROFILE) | Guidance issued; profile drafted |
 | **ISO/IEC 42001 (AIMS)** + **42006** (auditing bodies) + **23894** (AI risk) | Audit trails + authorization evidence for certified AI management systems | Receipts as the A.8-style automated-decision audit-trail evidence | 42001 published; 42006 recent |
 

@@ -18,7 +18,7 @@ table for the project phase.
 
 To the NCCoE AI Agent Identity and Authorization team,
 
-Thank you for the concept paper. We write to contribute a concrete, open primitive aimed directly at three questions you raise: how an agent proves its authority to perform a specific action; how agent identity is bound to human identity for human-in-the-loop authorizations; and how non-repudiation can bind an action back to a human authorization in a tamper-proof, verifiable manner.
+Thank you for the concept paper. We write to contribute a concrete, open primitive aimed directly at three questions you raise: how an agent proves its authority to perform a specific action; how agent identity is bound to human identity for human-in-the-loop authorizations; and how an action can be cryptographically and verifiably bound back to a human authorization in a tamper-evident manner.
 
 We are EMILIA Protocol, an open standards effort (Apache-2.0, published as IETF Internet-Drafts). We are pre-revenue with no production deployment yet; we offer the following as engineering contributions to a shared problem, not as a product pitch.
 
@@ -30,7 +30,7 @@ We are EMILIA Protocol, an open standards effort (Apache-2.0, published as IETF 
 
 **Composing the full authorization story.** EP-AEC (Authorization Evidence Chain) composes delegation, policy-permit, and human-authorization receipts into a single artifact that yields an offline SATISFIED/UNSATISFIED evidence verdict — letting a verifier reconstruct the complete chain from "this human authorized" through "this policy permitted" to "this agent acted." The executor makes the separate authorization decision.
 
-**Long-term non-repudiation.** EP-EVIDENCE-RECORD provides RFC 4998-style, crypto-agile long-term retention, so receipts remain verifiable as algorithms age — relevant to audit and retention obligations long after an action occurs.
+**Long-term cryptographic attribution.** EP-EVIDENCE-RECORD provides RFC 4998-style, crypto-agile long-term retention, so receipts remain verifiable as algorithms age — relevant to audit and retention obligations long after an action occurs.
 
 **Interoperability and assurance.** We maintain JavaScript, Python, and Go reference verifiers that agree on a public conformance suite, plus machine-checked TLA+/Alloy models of the core protocols. We treat that as a cross-language consistency check, not a clean-room independent-implementation claim. We consider cross-verifier agreement and formal models prerequisites for any primitive proposed as a standard.
 

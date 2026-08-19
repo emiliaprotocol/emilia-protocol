@@ -6,7 +6,7 @@
  * retention is 10-25+ years (see the GAGAS / Uniform Guidance mapping). But any
  * fixed algorithm (Ed25519, SHA-256) weakens over that horizon. Following the
  * approach of RFC 4998 (Evidence Record Syntax), an evidence record preserves a
- * protected artifact's non-repudiation across algorithm aging by a CHAIN of
+ * protected artifact's cryptographic attribution across algorithm aging by a CHAIN of
  * renewals: each renewal re-timestamps the *previous* attestation under a fresh
  * (possibly stronger) hash, BEFORE the older algorithm is broken. Verifying the
  * chain proves the artifact has been continuously, independently time-anchored

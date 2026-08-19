@@ -56,7 +56,7 @@ This document covers security considerations specific to Accountable Signoff -- 
 Signoff attestation must be collected through a channel that provides:
 - **Authentication**: The approver's identity is verified.
 - **Integrity**: The attestation cannot be modified in transit.
-- **Non-repudiation**: The approver cannot deny having given signoff.
+- **Cryptographic attribution**: The approver's signature is bound to a pinned key, so signoff can be attributed to them; disputing it requires claiming key compromise.
 
 **Approved channels**:
 - **Passkey / WebAuthn**: Preferred. Hardware-bound credential with user presence verification.

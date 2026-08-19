@@ -16,7 +16,7 @@ establish comprehension, lawfulness, or freedom from coercion. This crosswalk ma
 | Authorization by trained, authorized personnel | Class-A device-bound signoff binds the authorization to a specific enrolled approver, not a shared login |
 | Operation within a defined envelope / ROE | `authorization_scope` (effect class, target set, geofence, window) + signed ROE/policy reference; PEP fails closed outside scope |
 | Human ability to terminate engagement | Revocation + continuous evaluation; a revoked authorization fails closed |
-| Auditability / traceability of decisions | Tamper-evident, non-repudiable, third-party-verifiable without trusting the operator |
+| Auditability / traceability of decisions | Tamper-evident, cryptographically attributable, third-party-verifiable without trusting the operator |
 | Two-person / multi-party authorization where required | Quorum (m-of-n distinct humans, ordered chain) |
 
 ## EU AI Act — Article 14 (Human Oversight)

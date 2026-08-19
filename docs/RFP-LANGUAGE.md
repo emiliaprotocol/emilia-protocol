@@ -9,7 +9,11 @@ the property, so more than one vendor can answer and the buyer is not locked in.
 every clause with running code, but the clauses never name EMILIA.
 
 Adapt freely. Delete verticals you do not need. Strike any clause your risk owner does not
-want. These are drafting aids, not legal advice.
+want. These are drafting aids, not legal advice. Where a clause below refers to attribution,
+that names a technical property: a signature that verifies under a pinned key and can be
+disputed only by claiming key compromise. Whether that technical property satisfies the
+buyer's jurisdiction's legal standard for a binding signature is a determination for the
+buyer's counsel, not something any vendor's artifact establishes by itself.
 
 ## Core requirement (use in any vertical)
 
@@ -21,9 +25,10 @@ want. These are drafting aids, not legal advice.
 > vendor's infrastructure**. Absence of a valid artifact SHALL cause the action to be refused
 > before execution, not logged after it.
 
-> **Non-repudiation and replay.** A valid artifact SHALL be bound to a single action instance
-> such that it cannot be replayed to authorize a second action, and an artifact valid for one
-> action SHALL NOT verify against a different action.
+> **Attribution and replay.** A valid artifact SHALL be cryptographically attributable to the
+> named signer under a pinned key and SHALL be bound to a single action instance such that it
+> cannot be replayed to authorize a second action; an artifact valid for one action SHALL NOT
+> verify against a different action.
 
 > **Independence from the vendor's continued operation.** The buyer SHALL be able to verify
 > historical authorization artifacts using only the published verification algorithm and pinned

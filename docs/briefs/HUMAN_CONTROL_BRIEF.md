@@ -54,8 +54,10 @@ and that nothing was forged, replayed, or moved to an action outside the scope.
 ## What it proves — and what it does not
 
 **Proves:** a specific, pinned human (or quorum) authorized this exact action / envelope,
-at a stated scope, within a validity window, under a referenced authority; the record
-cannot be forged, replayed, re-targeted, or repudiated; anyone can verify it offline.
+at a stated scope, within a validity window, under a referenced authority; the record's
+signature verifies only under the pinned key, so forging it requires possession of that key,
+and any replay or re-targeting to a different action or scope invalidates the signature;
+anyone can verify it offline.
 
 **Does not prove:** that the human *understood* the action (a WYSIWYS / display concern),
 that they were uncoerced, or that the action was lawful or wise. EMILIA is a **necessary,

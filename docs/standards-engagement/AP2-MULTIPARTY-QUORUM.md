@@ -23,7 +23,7 @@ immediately:
 
 Today an AP2 deployment can only model this out-of-band, in the merchant's or operator's
 own system — which puts the multi-party control back inside the party whose conduct an
-auditor would examine, and breaks the non-repudiation guarantee AP2 worked to establish.
+auditor would examine, and undermines the cryptographic-attribution guarantee AP2 worked to establish.
 
 ## The proposal: a quorum profile, additive over mandates
 
@@ -41,8 +41,8 @@ rather than one. Concretely:
   so the extension is strictly additive and backward-compatible.
 
 Because each member is just another verifiable signature over the existing cart, AP2's
-non-repudiation and dispute-attribution properties extend naturally: the audit trail now
-shows *which named humans* authorized, in what order, bound to the exact cart.
+cryptographic-attribution and dispute-attribution properties extend naturally: the audit
+trail now shows *which named humans* authorized, in what order, bound to the exact cart.
 
 ## Why this is offered, and by whom
 

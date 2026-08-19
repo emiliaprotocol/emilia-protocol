@@ -83,3 +83,17 @@ Do not use these as primary descriptions:
 - credit score for the agent economy
 - software trust as the whole category
 - another general-purpose agent authorization gateway
+
+## Retired claim language (indefensible categorical claims)
+
+These are not framing preferences; they are claims a hostile review showed our own docs
+already carried, each defeated by a concrete, named failure mode. Enforced by
+`scripts/check-language-governance.ts`.
+
+| Retired phrase | Why it is indefensible | Replace with |
+|---|---|---|
+| non-repudiable / non-repudiation (as a claim about an EP artifact) | Key compromise and backdating defeat the categorical claim | "signed and attributable under pinned keys" / "cryptographically attributable." In a legal-facing document, pair it with the boundary: attribution is a technical property; legal non-repudiation is a legal conclusion no artifact can guarantee by itself. |
+| forgery is impossible / cannot be forged / impossible to forge | Never claim impossibility | State the actual mechanism: "a signature that does not verify under the pinned key is refused" or "forging a receipt requires possession of the signing key." |
+| proves compliance / compliance-proof | Legal interpretation of what satisfies a regulation is not ours to claim | "supports compliance assessment" / "provides evidence a compliance reviewer can verify." Keep any mapping tables intact; only the verb changes. |
+| no competitor has this / nobody else has this / nobody else can | Unverifiable market claim | Name the specific, checkable capability gap instead of a categorical claim about the entire market. |
+| prices risk accurately / accurate risk pricing | An actuarial claim EP cannot substantiate; EP supplies evidence to a pricing process, it does not price risk | Describe the evidence EP supplies (e.g., "gives underwriters signed evidence of human authorization to price against"), never the pricing outcome itself. |

@@ -75,7 +75,7 @@ binding_material_version
 **Properties**:
 - Content-addresses the exact action context.
 - Any change to any field (action, parties, policy, payload, nonce, expiry) produces a different hash.
-- Cannot be forged without knowing all input fields.
+- Producing a matching hash requires knowing every input field it commits to.
 
 ## 4. One-Time Consumption
 

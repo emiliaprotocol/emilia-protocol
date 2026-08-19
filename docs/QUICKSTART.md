@@ -62,7 +62,7 @@ verify_receipt(doc, signer_public_key_base64url).valid  # True/False
 
 ## What you just got
 - **Pre-action enforcement:** the irreversible thing can't happen until policy passes.
-- **Named human sign-off:** a signed, non-repudiable "yes" bound to the exact action.
+- **Named human sign-off:** a signed, cryptographically attributable "yes" bound to the exact action, verifiable under pinned keys.
 - **A receipt:** Ed25519-signed, Merkle-anchored, verifiable offline in JS *or* Python.
 
 Next: [`/mcp`](https://www.emiliaprotocol.ai/mcp) · the 90-second demo (`mcp-server/demo-2act.mjs`) · the EU AI Act Article 14 kit (`docs/eu-ai-act-article-14-kit.md`).

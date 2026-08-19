@@ -208,8 +208,9 @@ export default function HumanControlPage() {
               A specific, pinned human — or quorum of distinct humans — authorized this exact
               action or bounded envelope, at a stated scope, within a validity window, under a
               referenced authority. Given signature soundness and uncompromised signing keys,
-              the record cannot be forged, replayed, re-targeted, or repudiated, and anyone can
-              verify it offline.
+              the record&apos;s signature verifies only under the pinned key, so forging it
+              requires possession of that key, and any replay or re-targeting to a different
+              action or scope invalidates the signature. Anyone can verify it offline.
             </p>
           </motion.div>
           <motion.div {...reveal(0.08)} style={{ ...styles.card, padding: 26, borderTop: `2px solid ${color.t3}` }}>
