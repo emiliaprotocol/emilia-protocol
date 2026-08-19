@@ -91,7 +91,8 @@ function sorted(value) {
     return value;
 }
 function sha256(value) {
-    return `sha256:${crypto.createHash("sha256").update(value).digest("hex")}`;
+    // This is a public conformance-report digest, never a credential or password hash.
+    return `sha256:${crypto.hash("sha256", value, "hex")}`;
 }
 function wimseAuthority() {
     const result = mapWimseOAuthCrossingAuthority({
