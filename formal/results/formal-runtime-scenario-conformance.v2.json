@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "8bfa1100b821c9cca00a7f06b4b1da30e9a28b8cd9f7de1931ab0dd0ce929cc1"
+      "sha256": "23027315f34abef5dc3b296c52b315449ef3d1151cbb3eb4f79a10b5bb503792"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1026,6 +1026,10 @@
       "sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f"
     },
     {
+      "path": "packages/verify/dist/aeb-crossing-record.js",
+      "sha256": "da5192549826461030bb977983823d01979342625de5508970a664a8e60ed650"
+    },
+    {
       "path": "packages/verify/dist/aeb-discovery-permit-adapter.js",
       "sha256": "c7956840468fae36f5b280deade5f5dbe0c1fee03a309e250b785cec08de9c8d"
     },
@@ -1115,7 +1119,7 @@
     },
     {
       "path": "packages/verify/dist/evidence-record.js",
-      "sha256": "eb123f4bd0c182cce32520a8c5df833427af95ad9bb563e2b420353cfad644d1"
+      "sha256": "61818855e7ecc9ab987d27c758b24164a3e5668b1a224068715913a269178556"
     },
     {
       "path": "packages/verify/dist/federation.js",
@@ -1143,7 +1147,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "309b4f8e24f7f68ad42c4a2b82c8d538ea1306f4f52b099163d327afcd76b086"
+      "sha256": "acf51c9eddabe3b6a202645ebcb865efb834de460e7914862ddba5e9de0057f1"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1283,7 +1287,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "2acd0e353ec481eead0c35379374893b32df586a376c88a7d6d683e922521cf5"
+      "sha256": "f9d1801ed6324b769f23c314d6cc6bbad5bf7ff5160fc651a4757b2f4c433e6c"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
