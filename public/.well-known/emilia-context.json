@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-19T01:45:59.459Z",
+  "evidence_snapshot_at": "2026-08-19T07:12:25.364Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "2921a3a20f0bec59b7025be70b6c6b37c4cdb822a46f06315036538da1aa9c52",
+    "input_digest_sha256": "5da1301a7d4569d07c9d774fd76be6b1165c52d550d606f8172073dfea360ed6",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "4e1b6f6e79e3ce9bcda94db380443466bdb019b8046fbfe68159b95d2284906f",
-        "bytes": 46552
+        "sha256": "86be06cd2271f07ccfcc474d7d96e6a624886c63910ff9603092b7c23ebaa21b",
+        "bytes": 46556
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "063d74d211b0060aad96330f6e9c8923891aef4e8d6b019e41819e0e0a873cad",
+        "sha256": "9b62006df083a9a1247a169fdc8c30cc526ee5d8ed8ca545987df3a7204124f4",
         "bytes": 4298
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "6fa4032174d2ef86b770f6b04f7674687b08473a5700dc7db543dfa0e2b271c3",
+        "sha256": "a8e3272f6145052c8324e544837804d9649b0fae41aa850b67826d4685ec9f64",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "75c758beb1532b35b4740b1be15d4b69b89ae79178229af2a485e847ea230121",
+        "sha256": "8953f613f82b1fbb91569f9e87c1116082c1f718deb7c37805e0065e7685fe7c",
         "bytes": 385871
       },
       {
@@ -70,9 +70,9 @@
   },
   "identity": {
     "name": "EMILIA",
-    "category": "authority system for autonomous work",
+    "category": "authority system for autonomous action",
     "core_line": "Every consequential agent action enters with authority and exits with a receipt.",
-    "summary": "EMILIA is building the universal authority toll booth for autonomous work. At a configured protected boundary, a human or institution defines a finite operating mandate and agents work unattended inside it. EMILIA Gate is the customer-owned toll booth: it verifies the authority and evidence the owner requires for the exact action, reserves accepted authority before provider entry, admits or refuses the crossing, preserves executed or indeterminate outcomes, refuses blind replay, and returns an action-bound receipt packet. Native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems remain attributable to their issuers. EMILIA Protocol is the open Action Receipt Contract underneath Gate; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier. Universal describes the intended cross-stack contract, not current coverage or operation of a central global network.",
+    "summary": "EMILIA is building the universal authority toll booth for autonomous action. At a configured protected boundary, a human or institution defines a finite operating mandate and agents work unattended inside it. EMILIA Gate is the customer-owned toll booth: it verifies the authority and evidence the owner requires for the exact action, reserves accepted authority before provider entry, admits or refuses the crossing, preserves executed or indeterminate outcomes, refuses blind replay, and returns an action-bound receipt packet. Native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems remain attributable to their issuers. EMILIA Protocol is the open Action Receipt Contract underneath Gate; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier. Universal describes the intended cross-stack contract, not current coverage or operation of a central global network.",
     "message_order": [
       "Lead with every consequential agent action entering with authority and exiting with a receipt.",
       "Explain EMILIA Gate as the customer-owned authority toll booth at a configured protected boundary.",
@@ -298,7 +298,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "7943c4e57f3861ec5e162df439b493d6daa5ab56c7b82d89365fe2f78b94bc6e",
+      "manifest_sha256": "524f4b54012bce1df1dd137f639109dcbcd60ae230fa1ba14c71dcb4cc7f2549",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -330,7 +330,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "0bcd10444621404863c135ab818865364da1843f939ab9900c590f98a3756bc6",
+        "evidenceSha256": "f2de1caf5080791f2bd6e11a4ff785aedbb3d8cedc55a723cfe9d522da5af5c2",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -400,7 +400,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "edce57ce2d75dbb694aa88510a1648189dbd89f4275451f62519100604169f30"
+      "evidence_bundle_sha256": "61dfa82272b764ebf6c82aec4d0d66f5fa7d0623601ed04328537c03d42eae68"
     },
     "caid": {
       "core_vectors": 48,

@@ -26,7 +26,7 @@ export default function AboutPage() {
         <div className="ep-tag ep-hero-badge">About</div>
         <h1 className="ep-hero-text" style={styles.h1}>The team behind EMILIA Protocol</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          EMILIA is building the universal authority toll booth for autonomous work. At configured protected boundaries, every consequential agent action enters with authority and exits with a receipt. EMILIA Protocol is the open Action Receipt Contract underneath Gate, published as active individual IETF Internet-Drafts. The protocol is formally analyzed: 26 TLA+ invariants are checked by TLC and 35 Alloy facts run in CI on every change. The reference runtime is Apache 2.0. Below are the people responsible for it, the advisors guiding it, and the entity behind it.
+          EMILIA is building the universal authority toll booth for autonomous action. At configured protected boundaries, every consequential agent action enters with authority and exits with a receipt. EMILIA Protocol is the open Action Receipt Contract underneath Gate, published as active individual IETF Internet-Drafts. The protocol is formally analyzed: 26 TLA+ invariants are checked by TLC and 35 Alloy facts run in CI on every change. The reference runtime is Apache 2.0. Below are the people responsible for it, the advisors guiding it, and the entity behind it.
         </p>
       </section>
 
