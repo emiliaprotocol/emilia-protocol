@@ -767,7 +767,7 @@
     },
     {
       "path": "packages/gate/dist/remedy-program-receipt.js",
-      "sha256": "1b6b6faf7da0964bf201578800af87915c791bf445846afe920caab06c28dd44"
+      "sha256": "5b36ac8ff90781e51feb1349479fa5e3ff801dc6e5d06ce225f06d804fba8402"
     },
     {
       "path": "packages/gate/dist/remedy-program.js",
