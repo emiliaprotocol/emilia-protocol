@@ -238,6 +238,10 @@
       "types": "./dist/reliance-program.d.ts",
       "import": "./reliance-program.js"
     },
+    "./reliance-compilation-record": {
+      "types": "./dist/reliance-compilation-record.d.ts",
+      "import": "./reliance-compilation-record.js"
+    },
     "./trust-program-adapters": {
       "types": "./dist/trust-program-adapters.d.ts",
       "import": "./trust-program-adapters.js"
@@ -462,6 +466,7 @@
     "receipt-program.js",
     "trust-program.js",
     "reliance-program.js",
+    "reliance-compilation-record.js",
     "trust-program-adapters.js",
     "trust-program-postgres.js",
     "trust-program-revocation.js",

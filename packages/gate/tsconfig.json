@@ -88,6 +88,7 @@
     "src/receipt-program.ts",
     "src/trust-program.ts",
     "src/reliance-program.ts",
+    "src/reliance-compilation-record.ts",
     "src/trust-program-adapters.ts",
     "src/trust-program-postgres.ts",
     "src/trust-program-revocation.ts",
