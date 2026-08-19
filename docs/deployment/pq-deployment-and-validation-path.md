@@ -9,8 +9,8 @@ formats or verifier logic.
 The program's original closing sentence named them (`docs/protocol/pq-hybrid-program.md`):
 
 > most hybrid profiles are opt-in, receipt dual issuance is custody-conditioned,
-> no production key or relying-party verification is evidenced, and nothing here
-> makes the ML-DSA operation FIPS validated.
+> no production key or relying-party verification is evidenced, and the ML-DSA
+> operation is not FIPS validated.
 
 More adapter code does not move any clause in that sentence. This document says
 what does: provisioning, registration, live interop, relying-party acceptance,
