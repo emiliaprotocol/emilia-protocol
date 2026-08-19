@@ -63,11 +63,12 @@
  * module makes that pin available and refuses without it; it cannot make a
  * verifier that never asks.
  *
- * The PQ key is SOFTWARE-HELD (see the custody-boundary note in
- * lib/key-custody.ts): no KMS or HSM ML-DSA-65 signing path exists for EP
- * today, and the default backend is a pure-JS FIPS 204 implementation that is
- * not independently audited and is not a FIPS validated module. Issuing under
- * this profile is not a certification claim.
+ * The PQ key follows the registered signer's declared custody boundary (see
+ * lib/key-custody.ts). The bundled software backend keeps the key in process
+ * memory. The external signer contract and AWS KMS adapter can move signing out
+ * of process, but this repository has not made a live AWS call and the adapter
+ * does not make the ML-DSA operation FIPS validated. Issuing under this profile
+ * is not a certification claim.
  *
  * An absent ML-DSA backend is a REFUSAL (`pq_backend_unavailable`), never a
  * pass on the classical leg alone.

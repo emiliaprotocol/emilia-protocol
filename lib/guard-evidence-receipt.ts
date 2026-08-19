@@ -276,12 +276,12 @@ function evidenceReceiptPayload({ receiptId, base, approved, rejected, consumed,
 // before; it never falls back to signing one leg and calling it hybrid.
 //
 // THE CUSTODY BOUNDARY IS NOT SYMMETRIC, AND THAT IS RECORDED, NOT SMOOTHED
-// OVER. The Ed25519 leg may sit behind Vault Transit or a PKCS#11 HSM. There is
-// no KMS or HSM ML-DSA-65 signing path available to EP today, so the PQ leg is a
-// SOFTWARE-held key and its backend is a pure-JS FIPS 204 implementation that is
-// not independently audited and is not a FIPS validated module. Serving this
-// document is not a certification claim, and this profile is not on in any
-// deployment.
+// OVER. The Ed25519 leg may sit behind Vault Transit or a PKCS#11 HSM. The PQ
+// leg may use the bundled software backend or the external signer contract,
+// including the AWS KMS adapter. The declared custody label is not verified by
+// this code, no live AWS interop result exists, and neither path makes the
+// ML-DSA operation FIPS validated. Serving this document is not a certification
+// claim, and this profile is not on in any deployment.
 //
 // ANTI-STRIPPING IS NOT REIMPLEMENTED HERE. The bytes both legs sign come from
 // @emilia-protocol/verify's hybridReceiptSignedBytes(), which wraps the payload

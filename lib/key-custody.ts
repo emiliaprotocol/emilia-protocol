@@ -130,34 +130,26 @@ export function createExternalCustodySigner({ mode, keyId, sign, getPublicKey }:
 // heard of hybrid signing keeps getting byte-identical Ed25519 signatures.
 //
 // HONEST CUSTODY BOUNDARY -- READ THIS. The Ed25519 note at the top of
-// lib/custody-signers.ts records the real state of the art: AWS KMS and GCP
-// Cloud KMS do not sign Ed25519 at all, so honest external Ed25519 custody
-// means Vault Transit or a PKCS#11 HSM. The ML-DSA-65 situation is strictly
-// worse and this interface records it rather than papering over it:
+// lib/custody-signers.ts records the realistic external-custody options for the
+// classical leg. The ML-DSA-65 leg now has two explicit paths:
 //
-//   EP HAS NOT ADOPTED a KMS or HSM ML-DSA-65 signing path. The PQ leg here
-//   is a SOFTWARE-HELD key: the default backend is the agility module's
-//   @noble/post-quantum ML-DSA-65 implementation (pure JS, not independently
-//   audited, not a FIPS validated module), and the secret key lives in
-//   process memory, not behind a custody boundary.
+//   - softwareMldsaSigner() keeps the secret in process memory and uses the
+//     bundled pure-JS backend. It is not independently audited or FIPS validated.
+//   - EP-PQ-CUSTODY-EXTERNAL-v1 accepts an operator-supplied remote signer and
+//     verifies its output before use. EP-PQ-CUSTODY-AWS-KMS-v1 implements that
+//     contract for AWS KMS against documented API shapes.
 //
-//   The reason is adoption, not availability. Corrected 2026-08-18: AWS KMS
-//   has offered generally available ML-DSA-65 signing since 2025-06-13
-//   (KeySpec ML_DSA_65, SigningAlgorithm ML_DSA_SHAKE_256), verified from AWS
-//   primary documentation. Use lib/pq-custody-external.ts to attach such a
-//   signer; it refuses fail-closed rather than falling back to this software
-//   backend. Note that doing so improves CUSTODY ONLY: CMVP certificate 4884
-//   (AWS KMS HSM, FIPS 140-3 Level 3, validated 2024-11-18) does not list
-//   ML-DSA among its approved algorithms, so no FIPS claim improves.
+// No live AWS signing call or production key is evidence in this repository.
+// The external seam also cannot observe a hardware boundary, so its custody
+// label is an operator declaration with verified_by_code=false. AWS KMS improves
+// key custody only: CMVP certificate 4884 does not list ML-DSA among its approved
+// algorithms, so the adapter does not improve the ML-DSA FIPS claim.
 //
 // That asymmetry is a PROPERTY OF THE DEPLOYMENT, not a detail to hide, so
-// PqCustodySigner carries an explicit `custody` field whose only honest value
-// today is 'software'. createPqCustodySigner() refuses any other value unless
-// the caller passes an explicit attestation string, because "kms" on a signer
-// that is not in a KMS is exactly the kind of claim this repository does not
-// make. assertProductionKeyCustody() is deliberately NOT extended to bless a
-// software PQ key: a gov-strict deployment that requires kms/hsm custody
-// still requires it, and the PQ leg does not satisfy it.
+// PqCustodySigner carries an explicit `custody` field. 'software' is the safe
+// default; non-software labels must come from an operator-owned external signer
+// integration whose declaration is recorded rather than inferred. A gov-strict
+// deployment still requires an accepted kms/hsm declaration for both legs.
 //
 // ANTI-STRIPPING IS NOT THIS MODULE'S JOB. signSet() returns one signature
 // per required algorithm over the SAME caller-supplied bytes. Committing the
@@ -200,9 +192,8 @@ export interface PqCustodySigner {
   keyId: string;
   algorithm: 'ML-DSA-65';
   /**
-   * How the secret key is held. 'software' is the only honest value today
-   * (see the custody-boundary note above); anything else must be an explicit
-   * operator attestation about their own deployment.
+   * How the secret key is held. 'software' is the conservative default;
+   * anything else is an explicit operator declaration about its deployment.
    */
   custody: string;
   /** base64url of the raw 1952-byte ML-DSA-65 public key, or a resolver for it. */
@@ -222,7 +213,7 @@ export interface HybridCustodySigner extends CustodySigner {
     requiredAlgorithms: readonly HybridCustodyAlgorithm[];
     /** The Ed25519 leg this signer wraps; sign() delegates to it verbatim. */
     classical: CustodySigner;
-    /** The software-held ML-DSA-65 leg. */
+    /** The ML-DSA-65 leg and its declared custody boundary. */
     pq: PqCustodySigner;
   };
   /**
@@ -249,9 +240,9 @@ const B64URL_RE = /^[A-Za-z0-9_-]+$/;
  * Wrap an ML-DSA-65 sign callback as the PQ leg of a hybrid custody signer.
  * Mirrors createExternalCustodySigner: shape validation only, no crypto here.
  *
- * @throws when `custody` claims a boundary the deployment does not have. The
- *   default 'software' is the honest value; pass a different one only as an
- *   operator attestation about custody you actually operate.
+ * @throws when required signer metadata is absent. The default 'software' is
+ *   conservative; pass a different label only as an operator attestation about
+ *   custody you actually operate, preferably through EP-PQ-CUSTODY-EXTERNAL-v1.
  */
 export function createPqCustodySigner({ keyId, sign, getPublicKey, custody = 'software' }: {
   keyId: string;
@@ -266,7 +257,7 @@ export function createPqCustodySigner({ keyId, sign, getPublicKey, custody = 'so
     throw new Error('createPqCustodySigner requires a sign(bytes) function');
   }
   if (!custody || typeof custody !== 'string') {
-    throw new Error('createPqCustodySigner requires a custody label; "software" is the honest value today (no KMS/HSM ML-DSA path exists)');
+    throw new Error('createPqCustodySigner requires a non-empty custody label; "software" is the conservative default and external labels are operator declarations');
   }
   return {
     keyId,
@@ -447,9 +438,11 @@ export function resolveIssuerSigner(config: KeyCustodyConfig = getKeyCustodyConf
 
 // --- Custody-resolved issuance posture ---------------------------------------
 //
-// WHY THIS EXISTS. Every hybrid profile in this repository is opt-in, so a
-// deployment that does nothing gets no post-quantum leg for any action it
-// authorizes, and a receipt cannot be given one afterwards: re-attestation
+// WHY THIS EXISTS. Most hybrid profiles in this repository are opt-in. The
+// receipt profile can resolve to dual issuance by default only when an accepted
+// hybrid custody signer is registered. A deployment that does nothing still
+// gets no post-quantum leg, and a receipt cannot be given one afterwards:
+// re-attestation
 // (EP-EVIDENCE-REATTESTATION-v1) can re-anchor an old receipt's integrity while
 // the classical algorithm is still unbroken, but that is re-anchored evidence,
 // not a signature the issuer made at the time. The fix is NOT a blanket flip.
@@ -457,14 +450,13 @@ export function resolveIssuerSigner(config: KeyCustodyConfig = getKeyCustodyConf
 // of it: may this deployment mint an ML-DSA-65 leg at all, and if not, under
 // which named reason?
 //
-// THE REFUSAL THAT MATTERS IS pq_custody_not_permitted. There is no KMS or HSM
-// ML-DSA-65 signing path available to EP today, so PqCustodySigner.custody is
-// 'software' and the secret key lives in process memory.
-// assertProductionKeyCustody() deliberately does not bless that, and neither
-// does this function: a deployment under gov-strict (or production) still
-// requires kms/hsm custody, and a changed default must never quietly hand it a
-// software-held PQ key. Below gov-strict the software leg is permitted, which
-// is the posture dev, test, and non-gov deployments actually run under.
+// THE REFUSAL THAT MATTERS IS pq_custody_not_permitted. A software-backed PQ
+// signer does not satisfy kms/hsm custody. An external signer may declare kms or
+// hsm custody, but this function records that declaration; it does not verify
+// hardware confinement. A deployment under gov-strict (or production) still
+// requires an accepted kms/hsm declaration, and a changed default must never
+// quietly hand it a software-held PQ key. Below gov-strict the software leg is
+// permitted.
 //
 // SCOPE. This decides CUSTODY only. It does not know the issuance-mode
 // vocabulary (disabled/enabled/dual/required); packages/gate's
@@ -547,8 +539,7 @@ export function describeHybridCustodyPosture({ signer, config }: {
     gov_strict: govStrict,
   };
 
-  // Below gov-strict, a software-held PQ leg is the honest and permitted
-  // arrangement: it is what every non-gov deployment can actually run today.
+  // Below gov-strict, a software-held PQ leg remains a permitted arrangement.
   if (!govStrict) {
     return Object.freeze({ ...base, pq_leg_permitted: true, reason: null, detail: null });
   }

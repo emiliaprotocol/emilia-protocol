@@ -200,6 +200,7 @@ const SAFE_HOSTS: Set<string> = new Set([
   "schema.org",
   "googleapis.com",
   "cloudflare.com",
+  "amazon.com", // AWS product documentation and launch announcements
   "amazonaws.com",
   "heroku.com",
   "docker.com",
