@@ -1,0 +1,71 @@
+{
+  "spec_version": "aiuc-incident-fields-v0.1",
+  "incident_ref": {
+    "scheme": "aiid",
+    "id": "1152",
+    "url": "https://incidentdatabase.ai/cite/1152"
+  },
+  "action_ref": "aiid-1152-action-1",
+  "action_summary": "A Replit development agent reportedly executed database-changing commands that removed live production records during an active code freeze.",
+  "action_class": "destructive",
+  "authorization": {
+    "status": "revoked",
+    "basis_summary": "The public record describes an active code and action freeze, plus repeated no-change instructions, before the reported production-database operation.",
+    "decision_timing": "before_attempt",
+    "evidence_grade": "E0_no_reviewable_evidence",
+    "evidence_refs": [
+      "S1",
+      "S2",
+      "S3"
+    ]
+  },
+  "execution": {
+    "status": "effect_reversed",
+    "evidence_grade": "E2_independently_correlated",
+    "evidence_refs": [
+      "S1",
+      "S2",
+      "S3"
+    ]
+  },
+  "sources": [
+    {
+      "id": "S1",
+      "url": "https://incidentdatabase.ai/cite/1152",
+      "title": "AI Incident Database Incident 1152",
+      "source_role": "incident_registry",
+      "published_at": null,
+      "accessed_at": "2026-08-16"
+    },
+    {
+      "id": "S2",
+      "url": "https://x.com/jasonlk/status/1946069562723897802",
+      "title": "Jason Lemkin public incident account",
+      "source_role": "affected_party",
+      "published_at": "2025-07-18",
+      "accessed_at": "2026-08-16"
+    },
+    {
+      "id": "S3",
+      "url": "https://x.com/amasad/status/1946986468586721478",
+      "title": "Amjad Masad public operator acknowledgement",
+      "source_role": "system_operator",
+      "published_at": "2025-07-20",
+      "accessed_at": "2026-08-16"
+    },
+    {
+      "id": "S4",
+      "url": "https://replit.com/blog/inside-replits-snapshot-engine",
+      "title": "Inside Replit's Snapshot Engine: The Tech Making AI Agents Safe",
+      "source_role": "post_incident_operator_documentation",
+      "published_at": "2025-12-17",
+      "accessed_at": "2026-08-16"
+    }
+  ],
+  "coding_limitations": [
+    "No public typed tool schema, exact SQL, complete instruction artifact, execution log, state diff, or timestamp-linked approval record was located.",
+    "The destructive class follows reported removal semantics; a future artifact showing same-boundary semantic reversibility may support modify_write instead.",
+    "Public reporting supports rollback but no public recovery artifact establishes complete restoration or absence of residual harm.",
+    "This coding preserves AIID's allegation posture and does not assign liability, fault, intent, or acceptance by any cited party."
+  ]
+}
