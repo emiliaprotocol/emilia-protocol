@@ -116,3 +116,26 @@ repository (JavaScript, Python, Go, one team) and one externally authored
 from-spec Rust implementation agree on the 193-vector historical input set; the original
 signed statement remains bound to its 162-vector input set, and this one is
 bound to the 193-vector set at `a904480`.
+
+### Rust verifier / J Diesel NY — 2026-08-18 (SCITT Statement Reproduction)
+
+- File: [`rust-cleanroom/statement-2026-08-18.json`](rust-cleanroom/statement-2026-08-18.json),
+  published as received.
+- Per-vector results: [`rust-cleanroom/results/scitt-statement.v1.json.results.json`](rust-cleanroom/results/scitt-statement.v1.json.results.json)
+- Verifier: `ext:verifier:emilia-cleanroom-rust` (J Diesel NY), same key_id
+  `ep:external-verifier-key:sha256:87c8c5029475f53a` as the 2026-07-07 statement.
+- Source repository: [`jdieselny/ecr-wg/rust/ep-cleanroom-verifier`](https://github.com/jdieselny/ecr-wg/tree/main/rust/ep-cleanroom-verifier) at commit `5528222`
+- Target file: `conformance/scitt-statement/vectors.json` (5 of 5 vectors pass, zero divergences, status: `verified`).
+- The statement declares repository commit `51c2b65d`, but that commit
+  predates the SCITT vector file; the suite was added by its child
+  `63b462e7`. The signed `suite_digests` value exactly matches the five-vector
+  file introduced at `63b462e7` and still present on main, and the signed
+  `results_digests` value matches the received result bytes. The commit field
+  therefore is not treated as a valid repository pin for this statement.
+
+**Maintainer verification, 2026-08-19.** The statement signature is accepted
+under the previously pinned verifier key. Each of the five reported results
+matches the corresponding vector's published expectation. This records an
+external reproduction by the named Rust implementation; it does not establish
+strict construction independence, SCITT registration, or Transparency Service
+acceptance.
