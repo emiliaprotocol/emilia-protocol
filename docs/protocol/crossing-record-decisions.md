@@ -53,6 +53,11 @@ Dossier rendering. Technical invariants only.
    yield distinct units; any two conformant implementations yield
    byte-identical units for the same authority (cross-implementation parity
    vectors, same discipline as cross-language refusal-string parity).
+   Different native authority systems emit records conforming to the same
+   canonical crossing-record contract and verifier semantics; their complete
+   records are not expected to be byte-identical because native provenance,
+   authority-instance, evidence, mapping-profile, constraint, and replay-unit
+   fields legitimately differ.
 
 ## Release and reconciliation
 
@@ -75,12 +80,19 @@ Dossier rendering. Technical invariants only.
 11. Post-crossing stamps rely on source heads: append-only source,
     inclusion proof, consistency or monotonic progression, independent or
     freshness-bounded head. The freshness window is a relying-party policy
-    knob: inside the window a verdict, outside it INDETERMINATE.
+    knob. Outside it, the source-status axis is STALE, a new crossing is not
+    admitted, and any higher-level review or completeness conclusion that
+    depends on current source state is INDETERMINATE. These values remain
+    separate; staleness is never flattened into one whole-record verdict.
 12. Admission requirements and later review requirements are separate
     digests. A review verdict never rewrites an admission verdict and is
-    never emitted alone where an admission verdict exists. Review must
-    distinguish never-present, withheld, and plaintext-deleted-with-digest-
-    retained evidence. Redacted entries remain committed leaves
+    never emitted alone where an admission verdict exists. Every record
+    carries an explicit admission-reference state: PRESENT, MISSING,
+    NOT_APPLICABLE, or INDETERMINATE. An admitted crossing requires PRESENT
+    plus the admission-record digest; MISSING and INDETERMINATE are
+    non-authorizing and cannot support a claim that admission occurred. Review
+    must distinguish never-present, withheld, and plaintext-deleted-with-
+    digest-retained evidence. Redacted entries remain committed leaves
     (DISCLOSED / COMMITTED_UNDISCLOSED); redaction never vanishes.
 
 ## Presentation
@@ -92,6 +104,11 @@ Dossier rendering. Technical invariants only.
     provenance and tested agreement. They do not establish that a deployed
     binary equals the source, and no runtime-attestation requirement is
     introduced.
+
+15. Cross-protocol conformance means one canonical record contract, one
+    portable verifier, and the same bounded reason semantics. It does not
+    mean that two different authority systems produce the same record bytes
+    or that their native grants are semantically equivalent.
 
 ## Language
 

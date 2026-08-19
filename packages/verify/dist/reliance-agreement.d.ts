@@ -13,7 +13,8 @@
  * agreement references the evidence condition by DIGEST of a reliance profile
  * (EP-RELIANCE-PROFILE-v1); it never reinvents evidence policy. The per-action
  * RELIANCE EVENT then binds ONE action's reliance verdict to the agreement,
- * making both the commitment and the act of reliance non-repudiable.
+ * making both the commitment and the act of reliance cryptographically attributable to the
+ * signing parties.
  *
  * WHAT VERIFICATION PROVES — AND DOES NOT
  * ---------------------------------------

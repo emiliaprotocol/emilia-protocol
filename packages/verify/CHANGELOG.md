@@ -5,6 +5,17 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Added `EP-AEB-CROSSING-RECORD-v1`, a carrier-neutral, hybrid-signed record
+  that binds one exact action, native authority instance, replay unit, mapping
+  profile, admission reference, consumption evidence, relying-party boundary,
+  executor, audience, and state domain. The verifier is evidence-only and
+  never authorizes a later crossing. Reference WIMSE/OAuth authorization-server
+  and BCR mappings share one open projection contract without claiming native
+  semantic equivalence. Fifteen deterministic composition cases cover
+  substitution, signature stripping, stale status, missing admission evidence,
+  wrong trust roots, local narrowing, forbidden broadening, and carrier
+  injection.
+
 - Repinned the OASNT AEB adapter to draft-thallapelly-oasnt-02 (archived text
   SHA-256 3a134b63…) and implemented the -02 `asl` assurance claim: registry
   syntax validation, relying-party assurance floor in the pinned config

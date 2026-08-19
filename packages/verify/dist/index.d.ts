@@ -340,4 +340,5 @@ export declare function verifyOutcomeBindingSet(receipt: any, observations: any[
 export declare function evaluateAgentBinding(context: any, opts?: Obj): Obj;
 export { resolveOperatorKeys, verifyFederatedReceiptOffline, verifyFederatedReceipt, } from './federation.js';
 export { verifyQuorum } from './quorum.js';
+export { AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS, AEB_CROSSING_RECORD_VERSION, BCR_CROSSING_ADAPTER, BCR_CROSSING_MAPPING_PROFILE, WIMSE_OAUTH_CROSSING_ADAPTER, WIMSE_OAUTH_CROSSING_MAPPING_PROFILE, crossingRecordContractDigest, crossingRecordDigest, crossingRecordSignedBytes, issueAebCrossingRecord, mapBcrCrossingAuthority, mapWimseOAuthCrossingAuthority, verifyAebCrossingRecord, } from './aeb-crossing-record.js';
 //# sourceMappingURL=index.d.ts.map
