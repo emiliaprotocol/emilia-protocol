@@ -130,7 +130,7 @@ export { verifyProvenanceOffline, PROVENANCE_VERSION } from './provenance.js';
 // (trusted-time anchor; complements the strong ordered chain's proof of order).
 export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestation.js';
 // EP-EVIDENCE-RECORD-v1: long-term, crypto-agile preservation (RFC 4998-style
-// renewal chain) so a receipt's non-repudiation survives algorithm aging.
+// renewal chain) so a receipt's cryptographic attribution survives algorithm aging.
 export { verifyEvidenceRecord, verifyEvidenceRecordAgile, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
 // EP-SIG-AGILITY-v1: per-artifact signature-algorithm agility (Ed25519 and
 // ML-DSA-65 over the SAME canonical bytes) so evidence outlives algorithms.
@@ -2142,6 +2142,10 @@ export function evaluateAgentBinding(context, opts = {}) {
 export { resolveOperatorKeys, verifyFederatedReceiptOffline, verifyFederatedReceipt, } from './federation.js';
 // EP-QUORUM-v1 — multi-party (M-of-N / ordered) approval, additive over EP-SIGNOFF-v1.
 export { verifyQuorum } from './quorum.js';
+// EP-AEB-CROSSING-RECORD-v1 — carrier-neutral evidence that one exact action
+// crossed one relying-party boundary under one verified native authority
+// instance. Verification is evidence-only and never authorizes another entry.
+export { AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS, AEB_CROSSING_RECORD_VERSION, BCR_CROSSING_ADAPTER, BCR_CROSSING_MAPPING_PROFILE, WIMSE_OAUTH_CROSSING_ADAPTER, WIMSE_OAUTH_CROSSING_MAPPING_PROFILE, crossingRecordContractDigest, crossingRecordDigest, crossingRecordSignedBytes, issueAebCrossingRecord, mapBcrCrossingAuthority, mapWimseOAuthCrossingAuthority, verifyAebCrossingRecord, } from './aeb-crossing-record.js';
 // EP-AEC-v1 is available through the explicit `./evidence-chain` package subpath.
 // It is not re-exported here because evidence-chain.js composes this module and a
 // main-entry re-export would create a circular initialization path.

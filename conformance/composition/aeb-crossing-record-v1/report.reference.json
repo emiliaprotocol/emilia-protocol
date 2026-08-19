@@ -1,0 +1,180 @@
+{
+  "@version": "AEB-CROSSING-RECORD-REFERENCE-REPORT-v1",
+  "cases": [
+    {
+      "category": "mapping",
+      "expected": "EP-AEB-CROSSING-WIMSE-OAUTH-v1",
+      "id": "MAPPING-WIMSE-OAUTH",
+      "observed": {
+        "mapping_profile": "EP-AEB-CROSSING-WIMSE-OAUTH-v1",
+        "replay_unit": "sha256:81e547258605c94ece86e295ff6c459ecb674cba8e856e0c0db312cada4b96e6"
+      },
+      "passed": true
+    },
+    {
+      "category": "mapping",
+      "expected": "EP-AEB-CROSSING-BCR-v1",
+      "id": "MAPPING-BCR",
+      "observed": {
+        "mapping_profile": "EP-AEB-CROSSING-BCR-v1",
+        "replay_unit": "sha256:5720aef8c4a1b4570db63cabac5109260b2dc472411bec4d662912dd6e6ed77b"
+      },
+      "passed": true
+    },
+    {
+      "category": "mapping",
+      "expected": "same projection keys; different native authority instance",
+      "id": "OPEN-SET-SHARED-CONTRACT",
+      "observed": {
+        "different_instances": true,
+        "same_keys": true
+      },
+      "passed": true
+    },
+    {
+      "category": "positive",
+      "expected": "verified evidence; never fresh authority",
+      "id": "HYBRID-OFFLINE-VERIFICATION",
+      "observed": {
+        "algorithms": [
+          "Ed25519",
+          "ML-DSA-65"
+        ],
+        "execution_authorizing": false,
+        "verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "positive",
+      "expected": "both verify under one record contract without native equivalence",
+      "id": "ONE-VERIFIER-MULTIPLE-NATIVE-SYSTEMS",
+      "observed": {
+        "bcr_verified": true,
+        "records_differ": true,
+        "wimse_verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "contract_digest_mismatch",
+      "id": "ACTION-SUBSTITUTION",
+      "observed": {
+        "reason": "contract_digest_mismatch",
+        "verified": false
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "contract_digest_mismatch",
+      "id": "REPLAY-UNIT-SUBSTITUTION",
+      "observed": {
+        "reason": "contract_digest_mismatch",
+        "verified": false
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "contract_digest_mismatch",
+      "id": "MAPPING-PROFILE-SUBSTITUTION",
+      "observed": {
+        "reason": "contract_digest_mismatch",
+        "verified": false
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "hybrid_leg_missing",
+      "id": "HYBRID-STRIPPING",
+      "observed": {
+        "reason": "hybrid_leg_missing",
+        "verified": false
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "signature_invalid",
+      "id": "WRONG-RELYING-PARTY-KEY",
+      "observed": {
+        "reason": "signature_invalid",
+        "verified": false
+      },
+      "passed": true
+    },
+    {
+      "category": "boundary",
+      "expected": "STALE plus REFUSE",
+      "id": "STALE-REMAINS-STALE",
+      "observed": {
+        "admission": "REFUSE",
+        "status": "STALE",
+        "verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "boundary",
+      "expected": "MISSING plus INDETERMINATE",
+      "id": "MISSING-ADMISSION-IS-NONAUTHORIZING",
+      "observed": {
+        "admission": "INDETERMINATE",
+        "admission_reference": "MISSING",
+        "verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "boundary",
+      "expected": "native ACCEPTED may become local REFUSE",
+      "id": "LOCAL-NARROWING-ALLOWED",
+      "observed": {
+        "admission": "REFUSE",
+        "native": "ACCEPTED",
+        "verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "authority_broadened",
+      "id": "LOCAL-BROADENING-REFUSED",
+      "observed": {
+        "issue_result": "authority_broadened"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "malformed_record",
+      "id": "CARRIER-INJECTION-REFUSED",
+      "observed": {
+        "reason": "malformed_record",
+        "verified": false
+      },
+      "passed": true
+    }
+  ],
+  "known_limits": [
+    "This run exercises the EMILIA reference implementation; it is not an independent implementation.",
+    "A verified crossing record is evidence of a past boundary decision and never authorizes another action.",
+    "The two mappings share a projection contract and verifier; they do not claim native semantic equivalence.",
+    "A passing report does not prove every authority format is supported, IETF adoption, certification, or production deployment."
+  ],
+  "mappings": [
+    "EP-AEB-CROSSING-WIMSE-OAUTH-v1",
+    "EP-AEB-CROSSING-BCR-v1"
+  ],
+  "passed": true,
+  "profile": "EP-AEB-CROSSING-RECORD-COMPOSITION-v1",
+  "record_version": "EP-AEB-CROSSING-RECORD-v1",
+  "required_algorithms": [
+    "Ed25519",
+    "ML-DSA-65"
+  ],
+  "results_digest": "sha256:bb22bb80117e0a5a3d22ac55c5ca71c6d977aa9429149e64908ca6391ae2c34a"
+}

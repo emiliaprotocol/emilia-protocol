@@ -727,6 +727,38 @@ Signer public keys are discoverable at `/.well-known/ep-keys.json` on any EP ope
 curl https://ep.example.com/.well-known/ep-keys.json
 ```
 
+## Carrier-neutral action-crossing records
+
+`aeb-crossing-record.js` issues and verifies `EP-AEB-CROSSING-RECORD-v1`: a
+signed record that one relying-party boundary evaluated one exact action under
+one verified native authority instance. The record binds the native replay
+unit, content-addressed mapping profile, exact action, admission and
+consumption evidence, audience, executor, and owning state domain.
+
+```js
+import {
+  mapWimseOAuthCrossingAuthority,
+  issueAebCrossingRecord,
+  verifyAebCrossingRecord,
+} from '@emilia-protocol/verify/aeb-crossing-record';
+```
+
+Native authority is an open set behind one closed projection contract. The
+package includes reference mappings for a WIMSE/OAuth authorization-server
+decision and an EMILIA bounded-capability receipt. Those mappings do not claim
+native semantic equivalence and do not produce identical record bytes. A
+conformant boundary can narrow native acceptance to a local refusal; it can
+never broaden rejected, stale, or indeterminate authority into admission.
+
+The record requires Ed25519 and ML-DSA-65 over the same signed body. Verifying
+the record proves only that the pinned record signer made the recorded claim.
+It never authorizes a new crossing, proves a physical effect, or replaces the
+native authority system. Run the deterministic hostile suite with:
+
+```sh
+npm run conformance:composition:crossing-record
+```
+
 ## Reliance gap reports (acceptance preflight)
 
 `reliance-gap.js` wraps the reliance kernel (`reliance.js`) into a diagnostic:

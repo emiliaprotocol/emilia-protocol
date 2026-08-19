@@ -2362,6 +2362,25 @@ export {
 // EP-QUORUM-v1 — multi-party (M-of-N / ordered) approval, additive over EP-SIGNOFF-v1.
 export { verifyQuorum } from './quorum.js';
 
+// EP-AEB-CROSSING-RECORD-v1 — carrier-neutral evidence that one exact action
+// crossed one relying-party boundary under one verified native authority
+// instance. Verification is evidence-only and never authorizes another entry.
+export {
+  AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS,
+  AEB_CROSSING_RECORD_VERSION,
+  BCR_CROSSING_ADAPTER,
+  BCR_CROSSING_MAPPING_PROFILE,
+  WIMSE_OAUTH_CROSSING_ADAPTER,
+  WIMSE_OAUTH_CROSSING_MAPPING_PROFILE,
+  crossingRecordContractDigest,
+  crossingRecordDigest,
+  crossingRecordSignedBytes,
+  issueAebCrossingRecord,
+  mapBcrCrossingAuthority,
+  mapWimseOAuthCrossingAuthority,
+  verifyAebCrossingRecord,
+} from './aeb-crossing-record.js';
+
 // EP-AEC-v1 is available through the explicit `./evidence-chain` package subpath.
 // It is not re-exported here because evidence-chain.js composes this module and a
 // main-entry re-export would create a circular initialization path.
