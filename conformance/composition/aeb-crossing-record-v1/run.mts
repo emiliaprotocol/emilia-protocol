@@ -119,7 +119,8 @@ function sorted(value: any): Json {
 }
 
 function sha256(value: string): string {
-  return `sha256:${crypto.createHash("sha256").update(value).digest("hex")}`;
+  // This is a public conformance-report digest, never a credential or password hash.
+  return `sha256:${crypto.hash("sha256", value, "hex")}`;
 }
 
 function wimseAuthority(): CrossingNativeAuthority {
