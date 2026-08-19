@@ -18,16 +18,18 @@
  *     post-quantum leg  ->  `dual`
  *   - no dual-signer custody signer                            ->  `disabled`
  *                                                                  (hybrid_signer_absent)
- *   - a dual signer, but custody REFUSES the software PQ leg   ->  `disabled`
+ *   - a dual signer, but custody REFUSES its declared PQ leg   ->  `disabled`
  *                                                                  (pq_custody_not_permitted)
  *
- * The refusal is the half worth stating loudly. There is no KMS or HSM
- * ML-DSA-65 signing path available to EP today, so the PQ leg is software-held
- * and assertProductionKeyCustody() does not bless it. A gov-strict deployment
- * that requires kms/hsm custody is therefore NOT quietly handed a software PQ
- * key because a default changed: it stays classical-only and the resolved
- * posture carries the named reason for it. There is no silent downgrade here
- * and no silent upgrade either.
+ * The refusal is the half worth stating loudly. EP now has a provider-neutral
+ * external ML-DSA-65 signer contract and an AWS KMS adapter, but no code here
+ * registers either at boot and the repository has not made a live AWS signing
+ * call. Custody remains an operator declaration rather than a fact this module
+ * can observe. A gov-strict deployment is therefore NOT quietly handed a
+ * software PQ key because a default changed: it stays classical-only unless a
+ * registered signer declares an accepted kms/hsm boundary, and the resolved
+ * posture carries the named reason otherwise. There is no silent downgrade
+ * here and no silent upgrade either.
  *
  * WHAT THIS REPOSITORY STILL DOES NOT DO. No code here registers a custody
  * signer at boot, hybrid or otherwise, and no Gate call site in this repository
@@ -144,7 +146,7 @@ export declare const HYBRID_PROFILE_REASONS: Readonly<{
     DUAL_PAYLOAD_MISMATCH: "dual_payload_mismatch";
     /** default resolution: no dual-signer custody signer is registered. */
     HYBRID_SIGNER_ABSENT: "hybrid_signer_absent";
-    /** default resolution: custody refuses the software-held ML-DSA-65 leg. */
+    /** default resolution: custody refuses the registered ML-DSA-65 leg. */
     PQ_CUSTODY_NOT_PERMITTED: "pq_custody_not_permitted";
     /** default resolution: the deployment's own custody policy is not satisfied. */
     CUSTODY_POLICY_NOT_SATISFIED: "custody_policy_not_satisfied";
@@ -234,7 +236,7 @@ export interface HybridCustodyPostureInput {
     hybrid_signer_present?: boolean;
     /** May this deployment mint the ML-DSA-65 leg under its own custody policy? */
     pq_leg_permitted?: boolean;
-    /** The PQ leg's custody label ('software' is the only honest value today). */
+    /** The PQ leg's operator-declared custody label. */
     pq_custody?: string | null;
     /** The custody layer's named refusal, when it refused. */
     reason?: string | null;
@@ -253,8 +255,8 @@ export type HybridPostureSource = 'operator' | 'custody_default';
  * discovering a silent downgrade later.
  *
  * `custody` is recorded even when an operator setting won, so a deployment that
- * explicitly turned hybrid on over a refusing custody policy can still see that
- * its PQ leg is software-held. An explicit setting is an operator attestation
+ * explicitly turned hybrid on over a refusing custody policy can still see the
+ * declared custody boundary. An explicit setting is an operator attestation
  * about their own deployment; this module records it rather than second-guesses
  * it, and it never lets a DEFAULT make that attestation on their behalf.
  */

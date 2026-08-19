@@ -203,7 +203,7 @@ Wave 2 landed the two things priority item 1 was blocked on plus the reference m
 
 **The seam (`lib/key-custody.ts`, `lib/custody-signers.ts`).** `CustodySigner` is unchanged and every existing call site is untouched. `createHybridCustodySigner({ classical, pq })` WRAPS a `CustodySigner` and returns one that still satisfies `CustodySigner` exactly (same `keyId`, `custody`, `publicKeySpkiB64u`, and a `sign()` that returns byte-identical Ed25519 bytes), plus `signSet()` for callers that opt in. `registerCustodySigner()` and `resolveIssuerSigner()` take it with no change; `isHybridCustodySigner()` is how an aware call site detects it. The post-quantum leg is `createPqCustodySigner()` (shape validation only) with the concrete backend in `softwareMldsaSigner()`.
 
-The custody note is recorded, not smoothed over: **EP has not adopted a KMS or HSM ML-DSA-65 signing path**, so `PqCustodySigner.custody` is `'software'`, the secret key lives in process memory, and the default backend is a pure-JS FIPS 204 implementation that is not independently audited and is not a FIPS validated module. `assertProductionKeyCustody()` was deliberately NOT extended to bless it: a deployment that requires kms/hsm custody still requires it, and the PQ leg does not satisfy it.
+The custody note is recorded, not smoothed over. The bundled `softwareMldsaSigner()` keeps its secret key in process memory and uses a pure-JS backend that is not independently audited or FIPS validated. EP now also ships `EP-PQ-CUSTODY-EXTERNAL-v1` and an AWS KMS adapter. The external seam never accepts secret key material and verifies returned signatures, but the custody label remains an operator declaration and the repository has not made a live AWS call. `assertProductionKeyCustody()` still does not bless a software PQ key: a deployment that requires kms/hsm custody still requires an accepted external custody declaration for the PQ leg.
 
 **Corrected 2026-08-18.** An earlier revision of this paragraph said no such path existed. That was wrong, and the correction matters more than the original claim.
 
@@ -211,7 +211,8 @@ VERIFIED DIRECTLY (fetched and read 2026-08-18, primary sources named):
 - AWS KMS supports ML-DSA key specs `ML_DSA_44`, `ML_DSA_65`, `ML_DSA_87` for asymmetric KMS keys, with the `ML_DSA_SHAKE_256` signing algorithm, private key never leaving KMS unencrypted (https://docs.aws.amazon.com/kms/latest/developerguide/asymmetric-key-specs.html). The launch announcement is dated 2025-06-13 and states general availability, initially in US West (N. California) and Europe (Milan) (https://aws.amazon.com/about-aws/whats-new/2025/06/aws-kms-post-quantum-ml-dsa-digital-signatures/).
 - CMVP certificate 4884 covers the AWS Key Management Service HSM, FIPS 140-3 Level 3, validated 2024-11-18, and its approved-algorithm list contains AES, ECDSA, HMAC-SHA, RSA, SHA, Counter DRBG, KAS-ECC, KDA, KDF and KTS-IFC, with NO ML-DSA and no FIPS 204 (https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4884).
 
-So the honest reason EP's PQ leg is software-held is ADOPTION, not availability.
+So the honest reason EP's bundled PQ leg is software-held is configuration and
+deployment, not the absence of an external custody interface.
 
 **What adopting a managed KMS would and would not change.** It would move the PQ secret key out of EP's process and let `custody` report `'kms'`. It would change EP's FIPS posture by nothing at all. Because ML-DSA is absent from certificate 4884's approved algorithms, the truthful sentence about that deployment is "executes on hardware that holds a FIPS 140-3 Level 3 module validation for other algorithms," never "runs inside a validated module." Invoking an unapproved algorithm inside a validated module is a defined condition in FIPS 140-3 terms, not a technicality.
 
@@ -233,7 +234,7 @@ Two further boundaries survive any custody move: verification stays pure-JS soft
 
 The honest boundary is stated in the module and repeated here: inside a hybrid proof one leg alone never verifies, but the commit ROW remains a valid v1 artifact, so requiring the PQ leg is a relying-party PIN. This makes the pin available and refuses without it; it cannot make a verifier that never asks.
 
-**What the battalion should NOT do.** Do not add an optional second signature to an existing `-v1` artifact. Do not make an existing synchronous verifier async. Do not narrow `requiredAlgorithms` to what an artifact presented. Do not treat a missing ML-DSA backend as a skipped check. Do not describe any of this as deployed, default, or certified: every hybrid profile in the repository is opt-in, and none of them is on in any deployment.
+**What the battalion should NOT do.** Do not add an optional second signature to an existing `-v1` artifact. Do not make an existing synchronous verifier async. Do not narrow `requiredAlgorithms` to what an artifact presented. Do not treat a missing ML-DSA backend as a skipped check. Do not describe any of this as deployed or certified. Most hybrid profiles remain opt-in; the receipt profile resolves to dual issuance only for a deployment that has registered an accepted dual signer. No deployment or relying-party acceptance is evidenced here.
 
 ---
 

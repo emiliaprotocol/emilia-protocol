@@ -22,14 +22,11 @@
 //   import { vaultTransitSigner } from './custody-signers.js';
 //   registerCustodySigner(vaultTransitSigner({ vault, keyName, publicKeySpkiB64u }));
 
-// POST-QUANTUM LEG (see softwareMldsaSigner below). EP HAS NOT ADOPTED a KMS
-// or HSM ML-DSA-65 signing path, so the PQ factory below is SOFTWARE custody,
-// stated as such in its `custody` field, and it is the only PQ factory here.
-// Corrected 2026-08-18: this is an adoption gap, not an availability gap. AWS
-// KMS has signed ML-DSA-65 since 2025-06-13 (verified from AWS primary docs).
-// To attach one, use lib/pq-custody-external.ts, which pins the 3309-byte
-// signature and 1952-byte public key, refuses fail-closed, and never falls
-// back to this software backend.
+// POST-QUANTUM LEG (see softwareMldsaSigner below). This file's concrete PQ
+// factory is intentionally SOFTWARE custody. For remote custody, use
+// lib/pq-custody-external.ts; lib/pq-custody-aws-kms.ts implements that contract
+// for AWS KMS. The external seam pins the 3309-byte signature and 1952-byte
+// public key, refuses fail-closed, and never falls back to this software backend.
 //
 // THAT LABEL IS LOAD-BEARING, NOT DECORATION. describeHybridCustodyPosture()
 // in lib/key-custody.js reads it to resolve a deployment's DEFAULT issuance

@@ -1137,9 +1137,9 @@ function configureHybridSigner(options: DataRecord, context: DataRecord): {
       || typeof signer.publicKeys.pq_public_key !== 'string') {
     throw new TypeError('remedy receipt v2 signer requires keyId, publicKeys { public_key, pq_public_key }, and signSet(bytes)');
   }
-  // The classical leg's custody gate is unchanged from v1. The ML-DSA leg is
-  // software-held either way (there is no KMS/HSM ML-DSA path today), which is
-  // why this profile does not satisfy a kms/hsm-only custody requirement.
+  // The classical leg's custody gate is unchanged from v1. The ML-DSA leg uses
+  // the signer's declared custody boundary. This code validates the declaration
+  // shape but cannot observe the hardware boundary behind it.
   if (!allowEphemeralState && !['kms', 'hsm'].includes(signer.custody as string)) {
     throw new TypeError('production remedy receipt v2 classical signer custody must be kms or hsm');
   }

@@ -84,8 +84,8 @@ describe('describeHybridCustodyPosture', () => {
     expect(posture.reason).toBe(HYBRID_CUSTODY_POSTURE_REASONS.PQ_CUSTODY_NOT_PERMITTED);
     expect(posture.reason).toBe('pq_custody_not_permitted');
     expect(posture.detail).toBe('pq_leg_custody:software');
-    // No KMS/HSM ML-DSA path exists today, so 'software' is the only value a
-    // real PQ leg carries and this refusal is the state of the art, not a bug.
+    // This fixture deliberately uses the bundled software signer. The external
+    // signer seam is tested separately; software must still refuse gov-strict.
     expect(posture.pq_custody).toBe('software');
     expect(CUSTODY_BOUNDARY_LABELS).not.toContain(posture.pq_custody as any);
   });
