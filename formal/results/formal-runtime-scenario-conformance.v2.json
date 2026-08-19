@@ -1115,7 +1115,7 @@
     },
     {
       "path": "packages/verify/dist/evidence-record.js",
-      "sha256": "eb123f4bd0c182cce32520a8c5df833427af95ad9bb563e2b420353cfad644d1"
+      "sha256": "61818855e7ecc9ab987d27c758b24164a3e5668b1a224068715913a269178556"
     },
     {
       "path": "packages/verify/dist/federation.js",
@@ -1143,7 +1143,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "309b4f8e24f7f68ad42c4a2b82c8d538ea1306f4f52b099163d327afcd76b086"
+      "sha256": "5fe5322f6a1f9c7d7f1a46f5ea41326889e93bf8cb6cc7ca0f95f88f87ad5e29"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1283,7 +1283,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "2acd0e353ec481eead0c35379374893b32df586a376c88a7d6d683e922521cf5"
+      "sha256": "fed025df37905400cc2b434104ccaee9e337347afcc268ac6632c2e964fbd319"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

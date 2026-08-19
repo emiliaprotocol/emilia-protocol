@@ -130,7 +130,7 @@ export { verifyProvenanceOffline, PROVENANCE_VERSION } from './provenance.js';
 // (trusted-time anchor; complements the strong ordered chain's proof of order).
 export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestation.js';
 // EP-EVIDENCE-RECORD-v1: long-term, crypto-agile preservation (RFC 4998-style
-// renewal chain) so a receipt's non-repudiation survives algorithm aging.
+// renewal chain) so a receipt's cryptographic attribution survives algorithm aging.
 export { verifyEvidenceRecord, verifyEvidenceRecordAgile, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
 // EP-SIG-AGILITY-v1: per-artifact signature-algorithm agility (Ed25519 and
 // ML-DSA-65 over the SAME canonical bytes) so evidence outlives algorithms.
