@@ -488,7 +488,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           scripts/download-tla2tools.sh tla2tools.jar
-      - name: "TEMPORARY: regenerate PR 626 security case for governed review"
+      - name: Execute exact claims and require the checked-in security case to be current
         env:
           # Every claim's implementations[] entry is dynamically import()ed to
           # confirm the named export is real and callable. packages/gate/src
@@ -496,7 +496,7 @@ jobs:
           # renamed-in-place convention, so this step needs the same loader
           # hook the other steps in this job already have.
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
-        run: npm run security-case:emit
+        run: npm run check:security-case
       - name: Replay bounded formal traces against runtime behavior
         env:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
