@@ -108,6 +108,10 @@ import {
   createAdmissibilityProfileTrustAdapter,
   signRelianceProgram,
 } from '@emilia-protocol/gate/reliance-program';
+import {
+  createRelianceProgramCompilationRecord,
+  renderRelianceProgramCompilationRecord,
+} from '@emilia-protocol/gate/reliance-compilation-record';
 
 const signed = signRelianceProgram(customerOwnedSource, rpPrivateKey);
 const compiled = compileRelianceProgram(signed, {
@@ -119,6 +123,12 @@ const compiled = compileRelianceProgram(signed, {
   },
   profiles: relyingPartyPinnedAdmissibilityProfiles,
 });
+
+// Package the exact source-to-Gate mapping for institutional review. A
+// reviewer recompiles independently and verifies this record against the
+// reproduced compiler result. The record is not authority or execution proof.
+const compilationRecord = createRelianceProgramCompilationRecord(compiled);
+const reviewMarkdown = renderRelianceProgramCompilationRecord(compilationRecord);
 
 // `compiled.program` is EP-GATE-TRUST-PROGRAM-PROFILE-v1.
 // The adapter runs the already-shipped profile evaluator under a constructor-

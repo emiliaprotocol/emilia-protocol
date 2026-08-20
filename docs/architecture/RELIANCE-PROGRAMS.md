@@ -239,6 +239,29 @@ envelope. Consumers pin `source_digest` and `program_digest` as appropriate and
 still construct Gate with relying-party-owned verifiers, trust roots, storage,
 clock, action binding, and downstream owner controls.
 
+### 4.1 Institution-readable compilation record
+
+`createRelianceProgramCompilationRecord(compiled)` produces a closed,
+content-addressed `EP-RELIANCE-PROGRAM-COMPILATION-RECORD-v1` review artifact.
+It identifies the relying party and source digest, the exact CAID and action
+digest, the compiler target, validity interval, consequence owner, and every
+source-profile-to-Trust-Program requirement mapping. A deterministic Markdown
+renderer presents the same fields for institutional review.
+
+An external reviewer reproduces the record by independently verifying and
+compiling the signed source with the pinned profile catalog, then calling
+`verifyRelianceProgramCompilationRecord(record, reproducedCompilation)`. A
+matching record shows that the two compiler runs produced the same mapping. It
+does not establish that the source policy is true, complete, lawful, or wise,
+and it is not action authority, provider admission, execution evidence, or an
+outcome receipt.
+
+The record therefore packages the useful institutional-compiler property
+without turning natural-language policy into ambient machine permission. Any
+source clause that cannot be represented by the closed Reliance Program model
+must remain unsupported and be designed explicitly, as described in
+[`RELIANCE-PROGRAM-CANNOT-EXPRESS.md`](./RELIANCE-PROGRAM-CANNOT-EXPRESS.md).
+
 ## 5. Hostile coverage
 
 The conformance catalog and
