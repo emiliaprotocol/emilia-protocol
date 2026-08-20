@@ -7,7 +7,7 @@
     "canonicalization": "recursive key-sorted JSON (RFC 8785-style)",
     "anchor": "SHA-256 sorted-pair Merkle"
   },
-  "count": 13,
+  "count": 14,
   "vectors": [
     {
       "id": "accept_minimal",
@@ -168,6 +168,37 @@
         "anchor": {
           "alg": "EP-MERKLE-v2",
           "leaf_hash": "407f447a518bd5dd58e4c17b09934eb0e5041816b9cebf85d2a44b70d3fba0ab",
+          "merkle_proof": [
+            {
+              "hash": "52ab2e6d1cf6ebb89e4d01bb94ca71b5df78f609154b2735251abbeb37274038",
+              "position": "right"
+            }
+          ],
+          "merkle_root": "388fbc92013502492595c9092b268c1ec0ab562ae2bec40602e83a9cca0239c3"
+        }
+      }
+    },
+    {
+      "id": "reject_v2_lifted_anchor_valid_path",
+      "description": "v2 anchor with a VALID Merkle path whose leaf is bound to a DIFFERENT receipt (a lifted anchor) is refused — the leaf must equal SHA-256(0x00||canon(payload)) of THIS receipt, so a proof-valid but unbound anchor is rejected on the self-check alone",
+      "expect": {
+        "valid": false
+      },
+      "reason": "anchor_leaf_unbound",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_v2_lifted_anchor",
+          "issuer": "ep:demo"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "I_SakVM9jL9VzT9ipunqYsTkSroOcJMmNKOutYgTqppYRgjW6AaTJtY6JCd-YjG_l0KgMbM2z2S9nPAz7klQAg"
+        },
+        "anchor": {
+          "alg": "EP-MERKLE-v2",
+          "leaf_hash": "49e4fa6eec990de1897dfcdd3b7a7cb6af458bf8d8a2aaddb9c61837bb26f804",
           "merkle_proof": [
             {
               "hash": "52ab2e6d1cf6ebb89e4d01bb94ca71b5df78f609154b2735251abbeb37274038",
