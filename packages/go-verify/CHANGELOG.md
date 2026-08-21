@@ -13,7 +13,7 @@
 
 ### Security
 
-- Pin repository and release verification to Go 1.26.6, which closes the
+- Pin repository and release verification to Go 1.26.7, which closes the
   invoked `encoding/asn1` recursion vulnerability reported as GO-2026-5972,
   while retaining Go 1.21 language compatibility for the module source.
 

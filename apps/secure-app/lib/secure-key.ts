@@ -11,8 +11,8 @@
 
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
-import { p256 } from '@noble/curves/p256';
-import { sha256 } from '@noble/hashes/sha256';
+import { p256 } from '@noble/curves/nist.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import {
   SOFTWARE_KEY_PROVENANCE,
   assertSoftwareSignerAllowed,
@@ -46,7 +46,7 @@ export interface SoftwareSignResult {
 async function getSoftwareKey(): Promise<Uint8Array> {
   let hex = await SecureStore.getItemAsync(SOFTWARE_KEY_ITEM);
   if (!hex) {
-    hex = Buffer.from(p256.utils.randomPrivateKey()).toString('hex');
+    hex = Buffer.from(p256.utils.randomSecretKey()).toString('hex');
     await SecureStore.setItemAsync(SOFTWARE_KEY_ITEM, hex, {
       keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
     });
@@ -107,7 +107,10 @@ export async function signChallengeWithSoftwareKey(
   const signedData = new Uint8Array(authData.length + 32);
   signedData.set(authData, 0);
   signedData.set(sha256(clientDataJSON), authData.length);
-  const signature = p256.sign(sha256(signedData), privateKey).toDERRawBytes();
+  const signature = p256.sign(sha256(signedData), privateKey, {
+    prehash: false,
+    format: 'der',
+  });
   const b64u = (bytes: Uint8Array): string => Buffer.from(bytes).toString('base64url');
 
   return {
