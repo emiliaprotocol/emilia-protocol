@@ -495,11 +495,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "02d3754f802c013828930471f467853c8f464ce55ce44c0a9359cbfc5efb83f3"
+      "sha256": "e751d977ef30a7d7294dc8463234bd6d56de1471b0a0c0addc2f52abc29b04e4"
     },
     {
       "path": "package.json",
-      "sha256": "6704398dc525054a22321a695645f5c1fd3adbc5ca705625b68e45cdfe5942cc"
+      "sha256": "b550aa574d0ce75fd8acb054a774822f02918241655afbe493f610b580b30b40"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1343,7 +1343,7 @@
     },
     {
       "path": "scripts/standalone-runtime-targets.mjs",
-      "sha256": "b05e4ec2f1f6789af711c27bf9e11eb3804e67a31d750256947c81c4faf7708b"
+      "sha256": "048090c3deb373204db7017ba3491fccf0d9f25e0008e48f6986b61b15a3d807"
     }
   ],
   "limitations": [
