@@ -17,14 +17,14 @@ const inputs = () => ({
 
 test('the time-bounded Expo quarantine accepts only the pinned eligible fallback versions', () => {
   assert.deepEqual(
-    verifyExpoQuarantine({ ...inputs(), now: new Date('2026-08-15T16:00:00Z') }),
-    ['expo', 'expo-asset', 'expo-screen-capture'],
+    verifyExpoQuarantine({ ...inputs(), now: new Date('2026-08-21T16:00:00Z') }),
+    ['expo', 'expo-asset'],
   );
 });
 
 test('the Expo quarantine fails as soon as a held patch becomes eligible', () => {
   assert.throws(
-    () => verifyExpoQuarantine({ ...inputs(), now: new Date('2026-08-21T14:26:28Z') }),
+    () => verifyExpoQuarantine({ ...inputs(), now: new Date('2026-08-27T10:50:12Z') }),
     /quarantine expired/u,
   );
 });
@@ -33,7 +33,7 @@ test('an unreviewed Expo Doctor exclusion cannot hide behind the quarantine', ()
   const candidate = inputs();
   candidate.packageJson.expo.install.exclude.push('expo-secure-store');
   assert.throws(
-    () => verifyExpoQuarantine({ ...candidate, now: new Date('2026-08-15T16:00:00Z') }),
+    () => verifyExpoQuarantine({ ...candidate, now: new Date('2026-08-21T16:00:00Z') }),
     /exclusions and quarantine exceptions differ/u,
   );
 });
