@@ -11,6 +11,7 @@ describe('public product naming and navigation contract', () => {
     const navigation = read('components/SiteNav.tsx');
     const expectedLinks = [
       ['/authority-brain', '/map'],
+      ['/protect', '/protect'],
       ['/gate', '/gate'],
       ['/use-cases', '/solutions'],
       ['/docs', '/developers'],
@@ -23,6 +24,20 @@ describe('public product naming and navigation contract', () => {
     for (const promotedExperiment of ['/signal', '/assurance', '/grace', '/model-to-matter']) {
       expect(navigation).not.toContain(`[\'${promotedExperiment}\', \'${promotedExperiment}\']`);
     }
+  });
+
+  it('makes the self-service protection path discoverable and gives it an activation handoff', () => {
+    const homepage = read('app/HomePageClient.tsx');
+    const sitemap = read('app/sitemap.ts');
+    const builder = read('app/protect/ProtectionBuilder.tsx');
+    const activationCli = read('packages/gate/bin/ep-protect.mts');
+
+    expect(homepage).toContain('href="/protect"');
+    expect(sitemap).toContain("{ path: '/protect'");
+    expect(builder).toContain('ep-protect activate');
+    expect(builder).toContain('customer-owned-mcp-gateway');
+    expect(activationCli).toContain('activateProtectionPlan');
+    expect(activationCli).toContain('signProtectionActivation');
   });
 
   it('keeps stable entry points for the renamed products', () => {

@@ -9,6 +9,7 @@ type NavLink = [string, string];
 
 const NAV_LINKS: NavLink[] = [
   ['/authority-brain', '/map'],
+  ['/protect', '/protect'],
   ['/gate', '/gate'],
   ...(process.env.NEXT_PUBLIC_WORKS_V0 === '1' ? [['/works', '/works'] as NavLink] : []),
   ['/use-cases', '/solutions'],

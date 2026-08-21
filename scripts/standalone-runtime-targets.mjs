@@ -99,6 +99,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'apps/consequence-control-service/src/production-config.ts',
   'apps/consequence-control-service/src/server.ts',
   'apps/secure-app/lib/ep-signoff.ts',
+  'packages/gate/bin/ep-protect.mts',
   // scripts/ (excluding scripts/ts-loader/** -- the resolution hook itself,
   // which cannot depend on TypeScript stripping to bootstrap -- and this
   // file plus build-ts-runtime.mjs, the meta build tools that produce these

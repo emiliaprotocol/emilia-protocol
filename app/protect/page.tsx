@@ -26,7 +26,7 @@ export default function ProtectPage(): React.ReactElement {
       <SiteNav />
       <main>
         <section className={styles.hero}>
-          <div className={styles.eyebrow}>EMILIA CONSEQUENCE FIREWALL / PERSONAL PREVIEW</div>
+          <div className={styles.eyebrow}>EMILIA CONSEQUENCE FIREWALL / SELF-SERVICE BETA</div>
           <h1>Choose what AI must never do without your authority.</h1>
           <p className={styles.lede}>
             Pick the consequences that should require your authority before an AI agent,

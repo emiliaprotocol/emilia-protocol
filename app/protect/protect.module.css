@@ -56,6 +56,13 @@
 .resultRows small { color: #8f9a92; }
 .resultRows em { color: #d7b56d; font-family: var(--font-mono, monospace); font-size: 10px; font-style: normal; text-transform: uppercase; }
 .result > p { margin-top: 22px !important; display: flex; gap: 9px; align-items: flex-start; color: #aeb8b1; font-size: 13px; line-height: 1.6; }
+.activation { margin-top: 26px; padding: 24px; border: 1px solid rgba(255,255,255,.14); background: #050706; }
+.activation h3 { margin-top: 10px; font-size: 22px; }
+.activation p { margin-top: 10px; max-width: 760px; color: #aeb8b1; font-size: 14px; line-height: 1.65; }
+.activation code { margin-top: 18px; padding: 16px; display: block; overflow-x: auto; border-left: 3px solid #67f69a; color: #d8ffe4; background: #020302; font-family: var(--font-mono, monospace); font-size: 12px; line-height: 1.65; white-space: nowrap; }
+.activationLinks { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; }
+.activationLinks a { padding: 10px 13px; border: 1px solid rgba(103,246,154,.45); color: #67f69a; font-size: 12px; font-weight: 700; text-decoration: none; }
+.activation small { margin-top: 16px; display: block; color: #7f8b83; font-size: 11px; line-height: 1.6; }
 
 .truth { padding: 54px 0; display: grid; grid-template-columns: .8fr 1.2fr; gap: 70px; border-top: 1px solid rgba(255,255,255,.12); border-bottom: 1px solid rgba(255,255,255,.12); }
 .truth p { color: #aeb8b1; font-size: 18px; line-height: 1.7; }

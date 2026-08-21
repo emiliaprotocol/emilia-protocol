@@ -22,6 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/adopt',                 priority: 0.99, changeFrequency: 'weekly' },
     { path: '/signal',                priority: 0.98, changeFrequency: 'weekly' },
     { path: '/gate',                  priority: 0.98, changeFrequency: 'weekly' },
+    { path: '/protect',               priority: 0.98, changeFrequency: 'weekly' },
     { path: '/assurance',             priority: 0.92, changeFrequency: 'weekly' },
     { path: '/model-to-matter',       priority: 0.9, changeFrequency: 'monthly' },
     { path: '/scan',                  priority: 0.95, changeFrequency: 'weekly' },
