@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "3d7c9b6b5a7a59dfa1e35f3411552a516c146e2a0f21f49004ec24d0c6109443"
+      "sha256": "6704398dc525054a22321a695645f5c1fd3adbc5ca705625b68e45cdfe5942cc"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -554,6 +554,10 @@
       "sha256": "694ca5aa76029afcacf6509890d482e852fb7de7e81c18404e5dfc3a85104d8f"
     },
     {
+      "path": "packages/gate/dist/adapter-manifest.js",
+      "sha256": "3a83a887a1953ba5b8a663eeb735b745f988dd822ac549144271c11efce114a0"
+    },
+    {
       "path": "packages/gate/dist/admission-store-postgres.js",
       "sha256": "b394a417dcf457bb4abe511a7200818415ad4b810808eaf34d2130b16851023e"
     },
@@ -571,7 +575,7 @@
     },
     {
       "path": "packages/gate/dist/allowance.js",
-      "sha256": "3fb990656562c605e2acdf6b328b2d201509c5176a36d794d0887e4a23684114"
+      "sha256": "5b2d19f376702cc09f9b4589d0c18301209bf237598153db6befd919c3d05f8c"
     },
     {
       "path": "packages/gate/dist/authority-allocation.js",
@@ -659,7 +663,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "ae1ad017a140ce1d4b21aee2c03f8e4bdf75f667ba9239ca3cc8f4f0cdbf0db9"
+      "sha256": "874ee354d433612e6b5aaad6c9c9dd735a3bc45c00b732c20fa254ca70eb7379"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -704,6 +708,10 @@
     {
       "path": "packages/gate/dist/protected-action-registry.js",
       "sha256": "1a331ec8da2dcc60639d93f81b96b1c1c057c742689e3e9a0f42b3d74de4787c"
+    },
+    {
+      "path": "packages/gate/dist/protection-activation.js",
+      "sha256": "fd8e144651986a39fe378df6d7ebbe51aaf1f3c30ac6064b13ac71ae11d53450"
     },
     {
       "path": "packages/gate/dist/protection-plan.js",
@@ -790,6 +798,10 @@
       "sha256": "5b1481a20550f4ea093f0c4139fbfdbfc60c35704e61e2afdec80f7c291fc675"
     },
     {
+      "path": "packages/gate/dist/state-domain-migration.js",
+      "sha256": "9c9f0563227b55609995e123da845200004d6638c94471263ad44c928a2995a6"
+    },
+    {
       "path": "packages/gate/dist/store-postgres.js",
       "sha256": "6c690524a33006ac7790762e057f202cf0d591d16cf44b69305bb2164acd49c2"
     },
@@ -859,7 +871,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "7b6be0652864492f8374bdc994b54bcabeb4c33dbe528ffdb81079a39e43c805"
+      "sha256": "289772b88619ff2da403a10393d12d3f0690a3b2f2bbbf78bbd0091bd4081ab8"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
