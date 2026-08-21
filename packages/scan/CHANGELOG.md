@@ -3,6 +3,12 @@
 
 ## Unreleased
 
+## 0.4.2 (2026-08-21)
+
+- Reissue the source-discovery release with npm 12-compatible packed-consumer
+  verification. Both array and keyed `npm pack --json` reports remain subject
+  to the same tarball, export, and executable-consumer checks.
+
 ## 0.4.1 (2026-08-21)
 
 - Reissue the source-discovery release from the exact protected `main` commit
