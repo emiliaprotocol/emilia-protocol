@@ -117,6 +117,9 @@ export default defineConfig({
       // The CCS 1.1.14 L1/AEB composition suite is likewise a portable
       // node:test program executed by its dedicated conformance command.
       'conformance/composition/ccs-l1-aeb-v1/run.test.mts',
+      // The CCS-05 v1.3/AEB independent implementation uses the same portable
+      // node:test contract and is executed by its dedicated conformance command.
+      'conformance/composition/ccs-v13-aeb-v1/run.test.mts',
       // These public composition runners intentionally use node:test so the
       // external authors can execute them without adopting Vitest.
       'conformance/composition/jesske-ai-enablement-v0.1/run.test.mjs',
