@@ -154,6 +154,17 @@ export default function ProtectionBuilder({ presets }: { presets: Preset[] }): R
             ))}
           </div>
           <p><Unplug size={16} aria-hidden />This unsigned draft does not claim your systems are protected. Pin it as owner authority, install each owning connector, and verify its refusal probe first.</p>
+          <div className={styles.activation}>
+            <span className={styles.eyebrow}>STEP 2 / SIGN LOCALLY</span>
+            <h3>Activate the plan with your own key.</h3>
+            <p>EMILIA never receives the private key. The Gate utility signs the exact plan on your machine and writes a customer-owned activation artifact.</p>
+            <code>npx --package @emilia-protocol/gate@0.23.16 ep-protect activate {plan.plan_id}.emilia-protection-plan.json --private-key owner.pem --tenant my-tenant --gateway my-mcp-gateway --authorizer my-owner --key-id owner-key-1 --out activation.json</code>
+            <div className={styles.activationLinks}>
+              <a href="https://www.npmjs.com/package/@emilia-protocol/gate" target="_blank" rel="noopener noreferrer">Install EMILIA Gate</a>
+              <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/examples/customer-owned-mcp-gateway" target="_blank" rel="noopener noreferrer">Run the customer-owned MCP gateway</a>
+            </div>
+            <small>Active protection begins only after the gateway verifies this activation, owns the protected tool path, and passes the refusal probe.</small>
+          </div>
         </section>
       ) : null}
     </section>

@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.23.15",
+  "version": "0.23.16",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -12,6 +12,10 @@
   "type": "module",
   "main": "index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "ep-assure": "./ep-assure.mjs",
+    "ep-protect": "./bin/ep-protect.mjs"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -434,12 +438,22 @@
     "./protection-plan": {
       "types": "./dist/protection-plan.d.ts",
       "import": "./protection-plan.js"
+    },
+    "./protection-activation": {
+      "types": "./dist/protection-activation.d.ts",
+      "import": "./protection-activation.js"
+    },
+    "./adapter-manifest": {
+      "types": "./dist/adapter-manifest.d.ts",
+      "import": "./adapter-manifest.js"
+    },
+    "./state-domain-migration": {
+      "types": "./dist/state-domain-migration.d.ts",
+      "import": "./state-domain-migration.js"
     }
   },
-  "bin": {
-    "ep-assure": "./ep-assure.mjs"
-  },
   "files": [
+    "bin/ep-protect.mjs",
     "index.js",
     "dist",
     "src",
@@ -521,6 +535,9 @@
     "trusted-context.js",
     "apertomemory-context.js",
     "protection-plan.js",
+    "protection-activation.js",
+    "adapter-manifest.js",
+    "state-domain-migration.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
     "key-registry.js",
@@ -596,9 +613,9 @@
     "cf1": "node cf1.mjs"
   },
   "dependencies": {
-    "@noble/curves": "2.2.0",
     "@emilia-protocol/require-receipt": "0.8.0",
-    "@emilia-protocol/verify": "3.20.3"
+    "@emilia-protocol/verify": "3.20.3",
+    "@noble/curves": "^2.3.0"
   },
   "keywords": [
     "emilia",

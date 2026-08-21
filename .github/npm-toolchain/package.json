@@ -2,6 +2,6 @@
   "name": "emilia-workflow-npm-toolchain",
   "private": true,
   "dependencies": {
-    "npm": "11.18.0"
+    "npm": "^12.0.2"
   }
 }

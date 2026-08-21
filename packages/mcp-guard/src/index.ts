@@ -968,6 +968,118 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
 }
 
 /**
+ * Assemble a production MCP gateway from a customer-verified protection
+ * activation. The activation verifier stays in Gate. This wrapper consumes
+ * only its verified result and pins that result again at the owning process.
+ *
+ * The gateway never receives provider credentials. They remain inside the
+ * supplied handler. A signed activation configures which exact MCP tools map
+ * to which action families; it is not per-action authorization and does not
+ * prove connector coverage or deployment.
+ */
+export function withCustomerOwnedProtectionGateway(
+  handler: (...args: any[]) => any,
+  options: AnyRecord = {},
+): any {
+  if (typeof handler !== 'function') {
+    throw new TypeError('customer-owned MCP gateway requires a tool handler');
+  }
+  const verified = options.verifiedActivation;
+  if (!verified || verified.accepted !== true
+      || !verified.activation || !verified.manifest
+      || typeof verified.activation_digest !== 'string'
+      || !/^sha256:[0-9a-f]{64}$/.test(verified.activation_digest)) {
+    throw new TypeError('customer-owned MCP gateway requires a verified protection activation');
+  }
+  if (typeof options.expectedActivationDigest !== 'string'
+      || options.expectedActivationDigest !== verified.activation_digest) {
+    throw new TypeError('customer-owned MCP gateway activation pin mismatch');
+  }
+  if (verified.activation.tenant_id !== options.tenantId
+      || verified.activation.gateway_id !== options.gatewayId
+      || verified.owner_id !== options.expectedOwnerId
+      || verified.owner_key_id !== options.expectedOwnerKeyId) {
+    throw new TypeError('customer-owned MCP gateway owner or context pin mismatch');
+  }
+  if (!(options.ledger instanceof ProvenanceLedger) || options.ledger.durable !== true) {
+    throw new TypeError('customer-owned MCP gateway requires a durable provenance ledger');
+  }
+  if (!options.store || options.store.durable !== true
+      || typeof options.store.reserve !== 'function'
+      || typeof options.store.commit !== 'function'
+      || typeof options.store.release !== 'function') {
+    throw new TypeError('customer-owned MCP gateway requires a durable consumption store');
+  }
+  if (!Array.isArray(verified.manifest.actions) || verified.manifest.actions.length < 1) {
+    throw new TypeError('customer-owned MCP gateway manifest is empty');
+  }
+
+  const annotations: AnyRecord = {};
+  const selectedTools: string[] = [];
+  for (const action of verified.manifest.actions) {
+    if (!action || typeof action !== 'object' || Array.isArray(action)
+        || action.match?.protocol !== 'mcp') continue;
+    const tool = action.match.tool;
+    if (typeof tool !== 'string' || tool.length < 1 || tool.length > 256
+        || typeof action.action_type !== 'string' || action.action_type.length < 1
+        || (action.assurance_class !== 'class_a' && action.assurance_class !== 'quorum')) {
+      throw new TypeError('customer-owned MCP gateway manifest action is invalid');
+    }
+    if (Object.hasOwn(annotations, tool)) {
+      throw new TypeError('customer-owned MCP gateway tool mapping is ambiguous');
+    }
+    annotations[tool] = Object.freeze({
+      irreversible: true,
+      action: action.action_type,
+      assuranceClass: action.assurance_class,
+    });
+    selectedTools.push(tool);
+  }
+
+  const readOnlyTools = options.readOnlyTools ?? [];
+  if (!Array.isArray(readOnlyTools)
+      || readOnlyTools.some((tool) => typeof tool !== 'string' || tool.length < 1 || tool.length > 256)
+      || new Set(readOnlyTools).size !== readOnlyTools.length) {
+    throw new TypeError('customer-owned MCP gateway read-only tool set is invalid');
+  }
+  for (const tool of readOnlyTools) {
+    if (Object.hasOwn(annotations, tool)) {
+      throw new TypeError('customer-owned MCP gateway read-only tool conflicts with protection manifest');
+    }
+    annotations[tool] = Object.freeze({ irreversible: false, readOnlyHint: true });
+  }
+
+  const guarded = withMcpGuard(handler, {
+    annotations,
+    defaultIrreversible: true,
+    trustReadOnlyHints: false,
+    verifyOpts: options.verifyOpts ?? {},
+    requestConsent: options.requestConsent,
+    requestClassASignoff: options.requestClassASignoff,
+    issueReceipt: options.issueReceipt,
+    enforceDemand: options.enforceDemand ?? true,
+    ledger: options.ledger,
+    store: options.store,
+  });
+  Object.defineProperty(guarded, 'protection', {
+    enumerable: true,
+    configurable: false,
+    writable: false,
+    value: Object.freeze({
+      activation_digest: verified.activation_digest,
+      manifest_digest: verified.manifest_digest,
+      owner_id: verified.owner_id,
+      owner_key_id: verified.owner_key_id,
+      tenant_id: options.tenantId,
+      gateway_id: options.gatewayId,
+      selected_mcp_tools: Object.freeze(selectedTools.sort()),
+      claim_boundary: verified.claim_boundary,
+    }),
+  });
+  return guarded;
+}
+
+/**
  * Wrap an MCP dispatcher with the live v1 enforcement loop from
  * @emilia-protocol/sdk's `client.requireReceipt()`.
  *
@@ -1114,6 +1226,7 @@ function readAnnotation(ann: AnyRecord, key: string, args: AnyRecord, extra: Any
 
 export default {
   withMcpGuard,
+  withCustomerOwnedProtectionGateway,
   withMcpLoopBreaker,
   createMcpLoopBreaker,
   withMcpReceiptGuard,

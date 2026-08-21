@@ -223,6 +223,17 @@ export declare class ProvenanceLedger {
  */
 export declare function withMcpGuard(handler: (...args: any[]) => any, options?: AnyRecord): any;
 /**
+ * Assemble a production MCP gateway from a customer-verified protection
+ * activation. The activation verifier stays in Gate. This wrapper consumes
+ * only its verified result and pins that result again at the owning process.
+ *
+ * The gateway never receives provider credentials. They remain inside the
+ * supplied handler. A signed activation configures which exact MCP tools map
+ * to which action families; it is not per-action authorization and does not
+ * prove connector coverage or deployment.
+ */
+export declare function withCustomerOwnedProtectionGateway(handler: (...args: any[]) => any, options?: AnyRecord): any;
+/**
  * Wrap an MCP dispatcher with the live v1 enforcement loop from
  * @emilia-protocol/sdk's `client.requireReceipt()`.
  *
@@ -242,6 +253,7 @@ export declare function withMcpGuard(handler: (...args: any[]) => any, options?:
 export declare function withMcpReceiptGuard(handler: (...args: any[]) => any, options?: AnyRecord): any;
 declare const _default: {
     withMcpGuard: typeof withMcpGuard;
+    withCustomerOwnedProtectionGateway: typeof withCustomerOwnedProtectionGateway;
     withMcpLoopBreaker: typeof withMcpLoopBreaker;
     createMcpLoopBreaker: typeof createMcpLoopBreaker;
     withMcpReceiptGuard: typeof withMcpReceiptGuard;

@@ -97,7 +97,7 @@ export declare function issueGateAllowance({ authorizationReceipt, allowance, pr
 /**
  * Execute one typed, in-envelope action through the existing capability ledger.
  */
-export declare function executeWithGateAllowance({ allowance, capabilityReceipt, secret, action, operationId, store, executeAction, verifyAuthorizationReceipt, verifyAllowanceStatus, trustedAllowanceKeys, trustedCapabilityIssuerKeys, expected, providerEntryGuard, now, }?: {
+export declare function executeWithGateAllowance({ allowance, capabilityReceipt, secret, action, operationId, store, executeAction, verifyAuthorizationReceipt, verifyAllowanceStatus, trustedAllowanceKeys, trustedCapabilityIssuerKeys, expected, providerEntryGuard, controlDomainId, now, }?: {
     allowance?: RiskRecord;
     capabilityReceipt?: RiskRecord;
     secret?: Buffer | string;
@@ -125,6 +125,7 @@ export declare function executeWithGateAllowance({ allowance, capabilityReceipt,
     trustedCapabilityIssuerKeys?: string[];
     expected?: ExpectedAllowanceContext;
     providerEntryGuard?: ((context: RiskRecord) => any) | null;
+    controlDomainId?: string;
     now?: number | (() => number);
 }): Promise<RiskRecord>;
 declare const _default: {

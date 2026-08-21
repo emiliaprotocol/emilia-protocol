@@ -25,8 +25,12 @@ never replaces — your tool's own checks.
 
 ```bash
 pip install emilia-crewai          # brings in emilia-verify
-pip install "emilia-crewai[crewai]" # also install CrewAI (optional peer)
 ```
+
+CrewAI remains a duck-typed optional peer and is not installed transitively.
+Install the CrewAI version selected by your application after auditing its own
+dependency graph. This avoids making EMILIA an installation path for CrewAI's
+currently unpatched optional ChromaDB dependency chain.
 
 ## Quick start
 

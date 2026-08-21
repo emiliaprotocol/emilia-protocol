@@ -44,6 +44,9 @@ export { EXTERNAL_VERIFICATION_STATEMENT_VERSION, EXTERNAL_VERIFICATION_DOMAIN, 
 export { EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR, createEg1Harness, makeGateInvoke, runEg1, mintDeviceSignoff, mintQuorumEvidence, } from './eg1-conformance.js';
 export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 export { PROTECTION_PLAN_VERSION, PROTECTION_COVERAGE_STATES, PROTECTION_PRESETS, createProtectionPlan, evaluateProtectionCoverage, type ProtectionCoverageState, type ProtectionAssuranceClass, type ProtectionPreset, } from './protection-plan.js';
+export { PROTECTION_ACTIVATION_VERSION, PROTECTION_ACTIVATION_CLAIM_BOUNDARY, signProtectionActivation, verifyProtectionActivation, type ProtectionActivationExpected, } from './protection-activation.js';
+export { ADAPTER_MANIFEST_VERSION, ADAPTER_MANIFEST_CLAIM_BOUNDARY, signAdapterManifest, loadAdapterManifestRegistry, } from './adapter-manifest.js';
+export { STATE_DOMAIN_MIGRATION_RECEIPT_VERSION, STATE_DOMAIN_MIGRATION_CLAIM_BOUNDARY, signStateDomainMigrationReceipt, verifyStateDomainMigrationReceipt, migrateStateDomain, } from './state-domain-migration.js';
 export { mintBreakGlassAuthorization, verifyBreakGlass, consumeBreakGlass, buildBreakGlassEvidence, runBreakGlass, BREAKGLASS_VERSION, BREAKGLASS_EVIDENCE_KIND, };
 export { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS } from './runtime-monitor.js';
 export * from './provider-entry.js';

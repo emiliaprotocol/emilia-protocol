@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 2.4.4 (2026-08-21)
+
+### Added
+
+- Add same-team Go verification for the opt-in Ed25519 and ML-DSA-65 hybrid
+  signature profiles, including hybrid authorization receipts and refusal-code
+  parity with the JavaScript and Python conformance runners.
+
+### Security
+
+- Bind the declared hybrid algorithm set into the signed bytes and refuse
+  stripped, duplicated, unsupported, malformed, or incomplete signature legs.
+- Update the verified build toolchain to Go 1.26.7 and Cloudflare CIRCL 1.6.5;
+  the module retains Go 1.21 language compatibility.
+
 ## 2.4.3 (2026-08-15)
 
 ### Fixed
@@ -13,7 +28,7 @@
 
 ### Security
 
-- Pin repository and release verification to Go 1.26.6, which closes the
+- Pin repository and release verification to Go 1.26.7, which closes the
   invoked `encoding/asn1` recursion vulnerability reported as GO-2026-5972,
   while retaining Go 1.21 language compatibility for the module source.
 

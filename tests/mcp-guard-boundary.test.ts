@@ -16,9 +16,17 @@ import {
   PROVENANCE_POSTGRES_SQL,
   ProvenanceLedger,
   withMcpGuard as createMcpGuard,
+  withCustomerOwnedProtectionGateway,
   withMcpReceiptGuard,
   withMcpLoopBreaker,
 } from '../packages/mcp-guard/index.js';
+import {
+  createProtectionPlan,
+} from '../packages/gate/protection-plan.js';
+import {
+  signProtectionActivation,
+  verifyProtectionActivation,
+} from '../packages/gate/protection-activation.js';
 
 const withMcpGuard = (handler: (...args: any[]) => any, options: any = {}) =>
   createMcpGuard(handler, { allowEphemeralLedger: true, ...options });
@@ -750,5 +758,130 @@ describe('@emilia-protocol/mcp-guard boundary hardening', () => {
     expect(nonFinite.stage).toBe('bind');
     expect(nonFinite.rejected.reason).toBe('action_binding_invalid');
     expect(ran).toBe(false);
+  });
+});
+
+describe('customer-owned MCP protection gateway', () => {
+  function activatedProtection() {
+    const pair = crypto.generateKeyPairSync('ed25519');
+    const publicKey = pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+    const activation = signProtectionActivation({
+      activation_id: 'activation:mcp-gateway:01',
+      tenant_id: 'tenant:mcp-customer',
+      gateway_id: 'gateway:mcp-customer',
+      epoch: 1,
+      issued_at: '2026-08-20T17:55:00.000Z',
+      valid_from: '2026-08-20T17:56:00.000Z',
+      expires_at: '2026-08-21T18:00:00.000Z',
+      plan: createProtectionPlan({
+        planId: 'mcp-customer',
+        ownerLabel: 'MCP customer',
+        createdAt: '2026-08-20T17:54:00.000Z',
+        selections: [{ presetId: 'spend-money' }, { presetId: 'publish-code' }],
+      }),
+    }, {
+      issuer_id: 'customer:mcp',
+      key_id: 'key:mcp-protection',
+      private_key: pair.privateKey,
+    });
+    return verifyProtectionActivation(activation, {
+      trusted_keys: {
+        'key:mcp-protection': { issuer_id: 'customer:mcp', public_key: publicKey },
+      },
+      expected: {
+        activation_id: 'activation:mcp-gateway:01',
+        tenant_id: 'tenant:mcp-customer',
+        gateway_id: 'gateway:mcp-customer',
+        authorizer_id: 'customer:mcp',
+      },
+      now: '2026-08-20T18:00:00.000Z',
+    });
+  }
+
+  function durableLedger() {
+    const entries: any[] = [];
+    return ProvenanceLedger.open({
+      store: {
+        durable: true as const,
+        async load() { return structuredClone(entries); },
+        async append({ expectedSequence, expectedPreviousHash, entry }) {
+          if (expectedSequence !== entries.length
+            || expectedPreviousHash !== (entries.at(-1)?.entry_hash ?? '')) {
+            return { ok: false as const, reason: 'head_conflict' as const };
+          }
+          entries.push(structuredClone(entry));
+          return { ok: true as const };
+        },
+      },
+    });
+  }
+
+  it('requires an exact customer activation pin and durable production state', async () => {
+    const verified = activatedProtection();
+    const ledger = await durableLedger();
+    const store = {
+      durable: true,
+      async reserve() { return { ok: true, token: 'token' }; },
+      async commit() { return { ok: true }; },
+      async release() { return { ok: true }; },
+    };
+    const base = {
+      verifiedActivation: verified,
+      expectedActivationDigest: verified.activation_digest,
+      expectedOwnerId: 'customer:mcp',
+      expectedOwnerKeyId: 'key:mcp-protection',
+      tenantId: 'tenant:mcp-customer',
+      gatewayId: 'gateway:mcp-customer',
+      ledger,
+      store,
+    };
+    expect(() => withCustomerOwnedProtectionGateway(async () => ({ ok: true }), {
+      ...base,
+      expectedActivationDigest: 'sha256:' + '0'.repeat(64),
+    })).toThrow(/activation pin mismatch/i);
+    expect(() => withCustomerOwnedProtectionGateway(async () => ({ ok: true }), {
+      ...base,
+      store: { ...store, durable: false },
+    })).toThrow(/durable consumption store/i);
+  });
+
+  it('maps selected tools exactly, refuses unknown mutations, and permits local read-only tools', async () => {
+    const verified = activatedProtection();
+    const ledger = await durableLedger();
+    const store = {
+      durable: true,
+      async reserve() { return { ok: true, token: 'token' }; },
+      async commit() { return { ok: true }; },
+      async release() { return { ok: true }; },
+    };
+    let providerCalls = 0;
+    const gateway = withCustomerOwnedProtectionGateway(async (name, args) => {
+      providerCalls += 1;
+      return { name, args };
+    }, {
+      verifiedActivation: verified,
+      expectedActivationDigest: verified.activation_digest,
+      expectedOwnerId: 'customer:mcp',
+      expectedOwnerKeyId: 'key:mcp-protection',
+      tenantId: 'tenant:mcp-customer',
+      gatewayId: 'gateway:mcp-customer',
+      ledger,
+      store,
+      readOnlyTools: ['get_balance'],
+    });
+
+    const selected = await gateway('release_payment', { amount_usd: 10 });
+    expect(selected.status).toBe(402);
+    expect(selected.required.action).toContain('payment.release');
+    const unknown = await gateway('install_unknown_package', { name: 'attacker' });
+    expect(unknown.status).toBe(402);
+    expect(providerCalls).toBe(0);
+    await expect(gateway('get_balance', {})).resolves.toEqual({ name: 'get_balance', args: {} });
+    expect(providerCalls).toBe(1);
+    expect(gateway.protection).toMatchObject({
+      activation_digest: verified.activation_digest,
+      selected_mcp_tools: ['deploy_production', 'release_payment'],
+      claim_boundary: 'customer_pinned_gateway_configuration_not_per_action_authority_connector_coverage_deployment_or_effect_truth',
+    });
   });
 });

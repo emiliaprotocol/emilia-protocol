@@ -122,7 +122,8 @@ export default function HomePage(): React.ReactElement {
                 cross-stack; each Gate remains customer-owned and local to its configured boundary.
               </p>
               <div className="ep-home-calm-actions">
-                <Link href="/scan" className="ep-home-hero-primary">Run the local Authority Map</Link>
+                <Link href="/protect" className="ep-home-hero-primary">Choose what AI must not do</Link>
+                <Link href="/scan" className="ep-home-hero-secondary">Run the local Authority Map →</Link>
                 <Link href="/pilot" className="ep-home-hero-secondary">Scope one protected workflow →</Link>
                 <Link href="/gate/live" className="ep-home-hero-secondary">Open the Gate reference →</Link>
               </div>

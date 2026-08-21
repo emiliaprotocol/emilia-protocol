@@ -1,0 +1,60 @@
+{
+  "@version": "EP-FINANCE-LOSS-BOUNDARY-v1",
+  "claim_boundary": "synthetic_local_reference_showing_pre_entry_refusal_single_admitted_provider_attempt_and_separate_provider_effect_evidence_not_source_truth_not_invoice_validity_not_settlement_not_payment_loss_prevention",
+  "network_requests": 0,
+  "money_moved": false,
+  "protection_plan": {
+    "version": "EMILIA-PROTECTION-PLAN-v1",
+    "selection": "spend-money",
+    "authority": "unsigned_owner_draft",
+    "activation": "not_active"
+  },
+  "vendor_change": {
+    "injected_email": {
+      "admitted": false,
+      "reason": "field_origin_control_untrusted:/new_account_digest",
+      "effects": 0
+    },
+    "bounded_memo": {
+      "admitted": true,
+      "reason": null,
+      "effects": 1
+    }
+  },
+  "payout": {
+    "allowed": {
+      "admitted": true,
+      "provider_calls": 1
+    },
+    "replay": {
+      "admitted": false,
+      "reason": "operation_already_committed",
+      "provider_calls": 1
+    },
+    "frozen": {
+      "admitted": false,
+      "reason": "capability_control_domain_frozen",
+      "provider_calls": 1
+    }
+  },
+  "outcomes": {
+    "diverged": {
+      "provider_outcome": {
+        "evidence_digest": "sha256:ed5ab49f065c799c329c9afa434fd94cdfc47788b070baf5c448366ac7fe3f13",
+        "observed_at": "2026-08-20T18:00:00.000Z",
+        "value": "COMMITTED"
+      },
+      "effect_relation": {
+        "evidence_digest": "sha256:42678930837aeaa7a8f148d3e43dad8c5ec33ca8ea1d367c5b445d2bf3f119b3",
+        "observed_at": "2026-08-20T18:00:00.000Z",
+        "value": "DIVERGED"
+      },
+      "execution_right": "CONSUMED"
+    },
+    "unknown": {
+      "state": "INDETERMINATE",
+      "execution_right": "CONSUMED",
+      "blind_retry": "state_conflict"
+    }
+  }
+}

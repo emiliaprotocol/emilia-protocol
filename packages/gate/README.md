@@ -59,6 +59,27 @@ if (!out.ok) throw out.body; // 428 Receipt Required
 console.log(out.packet.verdict); // "rely"
 ```
 
+### Activate a self-service protection plan
+
+Build and download a plan at `https://www.emiliaprotocol.ai/protect`, then sign
+that exact plan locally with a customer-owned Ed25519 key:
+
+```bash
+npx --package @emilia-protocol/gate@0.23.16 ep-protect activate plan.json \
+  --private-key owner.pem \
+  --tenant my-tenant \
+  --gateway my-mcp-gateway \
+  --authorizer my-owner \
+  --key-id owner-key-1 \
+  --out activation.json
+```
+
+The command refuses duplicate-member JSON, incomplete context, non-Ed25519
+keys, and overwriting an existing output. The signed activation is gateway
+configuration, not per-action authority and not proof that a connector is
+installed. The customer-owned MCP composition is runnable at
+`examples/customer-owned-mcp-gateway`.
+
 ### Seal reviewed handlers at trusted startup
 
 `runRegistered()` removes the caller-supplied callback from the execution

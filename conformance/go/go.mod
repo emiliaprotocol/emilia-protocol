@@ -6,15 +6,15 @@
 // third-party implementation, so it is pinned here instead.
 module github.com/emiliaprotocol/emilia-protocol/conformance/go
 
-go 1.22.0
+go 1.25.0
 
-toolchain go1.26.6
+toolchain go1.26.7
 
 require (
-	github.com/cloudflare/circl v1.6.1
+	github.com/cloudflare/circl v1.6.5
 	github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2 v2.0.0
 )
 
-require golang.org/x/sys v0.10.0 // indirect
+require golang.org/x/sys v0.47.0 // indirect
 
 replace github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2 => ../../packages/go-verify
