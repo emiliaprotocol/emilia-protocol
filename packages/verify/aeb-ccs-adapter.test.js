@@ -9,7 +9,7 @@ import test from 'node:test';
 // @ts-expect-error -- independently cross-checked in this test.
 import { computeCaid } from './vendor/caid.mjs';
 import { AEB_ADAPTER_VERSION, AEB_REGISTRY_VERSION, AEB_REQUIREMENT_VERSION, InMemoryAebConsumptionStore, adapterPinDigest, authorizeAebExecution, digestAeb, evaluateAebEvidence, mappingProfileDigest, reconcileAebExecution, registryEntryDigest, unifiedRegistryDigest, verifyAebEvaluation, } from './aeb-adapter-contract.js';
-import { CCS_AEB_ADAPTER_ID, CCS_AEB_ADAPTER_VERSION, CCS_AEB_CONFIG_VERSION, CCS_AEB_TRUST_ROOT_VERSION, CCS_CAID_MAPPER_ID, CCS_CAID_MAPPING_VERSION, CCS_PYPI_ARTIFACT_VERSION, CCS_PYPI_DISTRIBUTION_VERSION, CCS_PYPI_RUNTIME_VERSION, CCS_L1_AEB_ADAPTER_ID, CCS_L1_AEB_ADAPTER_VERSION, CCS_L1_AEB_CONFIG_VERSION, CCS_L1_AEB_TRUST_ROOT_VERSION, CCS_L1_CAID_MAPPER_ID, CCS_L1_CAID_MAPPING_VERSION, CCS_L1_PYPI_DISTRIBUTION_VERSION, CCS_L1_PYPI_SDIST_SHA256, CCS_L1_PYPI_SOURCE_LOCK, CCS_L1_PYPI_WHEEL_SHA256, CCS_L1_REFERENCE_VECTOR_SHA256, createCcsL1AebActionDefinition, createCcsPyPiL1AebAdapter, createCcsAebActionDefinition, createCcsNativeActionDefinition, createCcsPyPiHmacAebAdapter, } from './aeb-ccs-adapter.js';
+import { CCS_AEB_ADAPTER_ID, CCS_AEB_ADAPTER_VERSION, CCS_AEB_CONFIG_VERSION, CCS_AEB_TRUST_ROOT_VERSION, CCS_CAID_MAPPER_ID, CCS_CAID_MAPPING_VERSION, CCS_PYPI_ARTIFACT_VERSION, CCS_PYPI_DISTRIBUTION_VERSION, CCS_PYPI_RUNTIME_VERSION, CCS_L1_AEB_ADAPTER_ID, CCS_L1_AEB_ADAPTER_VERSION, CCS_L1_AEB_CONFIG_VERSION, CCS_L1_AEB_TRUST_ROOT_VERSION, CCS_L1_CAID_MAPPER_ID, CCS_L1_CAID_MAPPING_VERSION, CCS_L1_PYPI_DISTRIBUTION_VERSION, CCS_L1_PYPI_SDIST_SHA256, CCS_L1_PYPI_SOURCE_LOCK, CCS_L1_PYPI_WHEEL_SHA256, CCS_L1_REFERENCE_VECTOR_SHA256, CCS_V13_AEB_ADAPTER_ID, CCS_V13_AEB_CONFIG_VERSION, CCS_V13_AEB_TRUST_ROOT_VERSION, CCS_V13_CAID_MAPPER_ID, CCS_V13_CAID_MAPPING_VERSION, CCS_V13_DRAFT_SHA256, CCS_V13_SOURCE_LOCK, createCcsV13AebActionDefinition, createCcsV13AebAdapter, createCcsL1AebActionDefinition, createCcsPyPiL1AebAdapter, createCcsAebActionDefinition, createCcsNativeActionDefinition, createCcsPyPiHmacAebAdapter, } from './aeb-ccs-adapter.js';
 const NOW = '2026-08-10T19:00:00Z';
 const NOW_SECONDS = Date.parse(NOW) / 1000;
 const ACTION_TYPE = 'agent.tool-invocation.1';
@@ -344,6 +344,191 @@ test('CCS 1.1.14 status uncertainty and presenter pin replacement never become a
     });
     assert.equal(relabeledProfile.mapping, 'INDETERMINATE');
     assert.ok(relabeledProfile.reasons.includes('mapping_profile_invalid'));
+});
+const V13_PRIVATE_KEY = crypto.createPrivateKey({
+    key: Buffer.concat([
+        Buffer.from('302e020100300506032b657004220420', 'hex'),
+        crypto.createHash('sha256').update('emilia/ccs-05-v1.3-independent-interop/v1').digest(),
+    ]),
+    format: 'der',
+    type: 'pkcs8',
+});
+const V13_PUBLIC_KEY = crypto.createPublicKey(V13_PRIVATE_KEY);
+const V13_PUBLIC_RAW = V13_PUBLIC_KEY.export({ type: 'spki', format: 'der' }).subarray(-32);
+function v13Hash(value) {
+    return crypto.createHash('sha256').update(canonicalPythonSubset(value), 'utf8').digest('hex');
+}
+function mintV13Receipt(params = { left: 19, right: 23 }) {
+    const fullParamsHash = v13Hash(params);
+    const unsigned = {
+        trace_id: '0123456789abcdef',
+        verdict: 'allow',
+        timestamp: 1_914_451_200,
+        tool: 'sum',
+        params_hash: fullParamsHash.slice(0, 16),
+        rule_summary: 'bounded_integer_inputs=allow',
+        receipt: '00112233445566778899aabbccddeeff',
+        verified_at: 1_914_451_200,
+        block_reason: '',
+        request_hash: `sha256:${v13Hash({
+            agent_id: 'agent:emilia-interop',
+            params,
+            timestamp: 1_914_451_200,
+            tool: 'sum',
+            trace_id: '0123456789abcdef',
+        })}`,
+        response_hash: `sha256:${v13Hash({ result: params.left + params.right })}`,
+        runtime_context_hash: `sha256:${v13Hash({ environment: 'local-live-run', tenant: 'public-interop' })}`,
+        action: `ccs:tool-invoke:sum:${fullParamsHash}`,
+        config_hash: `sha256:${v13Hash({ policy_floor: 'bounded-integer-sum-v1' })}`,
+        issuer: 'https://emilia-protocol.example/interop/ccs-v13',
+        audience: 'https://gate.example/admit',
+        nonce: '00112233445566778899aabbccddeeff',
+        sequence: 1,
+        issued_at: 1_914_451_200,
+        expires_at: 1_914_451_260,
+        max_clock_skew: 5,
+    };
+    return {
+        ...unsigned,
+        signature: crypto.sign(null, Buffer.from(canonicalPythonSubset(unsigned), 'utf8'), V13_PRIVATE_KEY).toString('hex'),
+    };
+}
+function v13Profile(actionType = ACTION_TYPE) {
+    const pin = {
+        version: CCS_V13_CAID_MAPPING_VERSION,
+        definition: createCcsV13AebActionDefinition(actionType),
+        registry_entry_ref: 'mapping:ccs-v13-tool-action',
+        mapper_id: CCS_V13_CAID_MAPPER_ID,
+        resolver: {
+            id: CCS_V13_CAID_MAPPER_ID,
+            version: '1',
+            implementation_digest: digestAeb({ implementation: CCS_V13_CAID_MAPPER_ID, version: '1' }),
+        },
+        semantic_equivalence: {
+            assertion: 'EQUIVALENT_UNDER_PROFILE',
+            loss_policy: 'NO_MATERIAL_FIELD_LOSS',
+            omitted_material_fields: [],
+            omitted_nonmaterial_fields: [
+                'trace_id', 'verdict', 'timestamp', 'params_hash', 'rule_summary', 'receipt',
+                'verified_at', 'block_reason', 'request_hash', 'response_hash',
+                'runtime_context_hash', 'config_hash', 'issuer', 'audience', 'nonce',
+                'sequence', 'issued_at', 'expires_at', 'max_clock_skew', 'signature',
+            ],
+        },
+        profile_digest: digestAeb(null),
+    };
+    pin.profile_digest = mappingProfileDigest('ccs-v13-tool-action', pin);
+    return pin;
+}
+function v13Fixture() {
+    const config = {
+        '@version': CCS_V13_AEB_CONFIG_VERSION,
+        evidence_role: 'machine-policy-decision',
+        subject: { id: 'system:ccs-v13-independent-verifier', kind: 'system' },
+        issuer: 'https://emilia-protocol.example/interop/ccs-v13',
+        audience: 'https://gate.example/admit',
+        action_type: ACTION_TYPE,
+        allowed_tools: ['sum'],
+        max_receipt_age_seconds: 300,
+        max_clock_skew_seconds: 5,
+        deployment_scope: 'pinned-ed25519-issuer',
+    };
+    const root = {
+        '@version': CCS_V13_AEB_TRUST_ROOT_VERSION,
+        issuer: config.issuer,
+        key_id: 'emilia-ccs-v13-public-test-key-1',
+        algorithm: 'Ed25519',
+        public_key_raw_base64: V13_PUBLIC_RAW.toString('base64'),
+        public_key_fingerprint_sha256_16: crypto.createHash('sha256').update(V13_PUBLIC_RAW).digest('hex').slice(0, 16),
+    };
+    const action = {
+        action_type: ACTION_TYPE,
+        parameters: { tool: 'sum', arguments: { left: 19, right: 23 } },
+    };
+    const adapter = createCcsV13AebAdapter({ config, trust_roots: [root] });
+    const input = {
+        artifact: mintV13Receipt(),
+        artifact_ref: 'ccs:v13:live-sum-001',
+        status: {
+            checked_at: '2030-09-01T00:00:20Z',
+            expires_at: '2030-09-01T00:01:00Z',
+            revocation_checked: true,
+            revoked: false,
+            consumed: false,
+        },
+        trust_roots: [root],
+        adapter_config: config,
+        expected_action: action,
+        now: '2030-09-01T00:00:20Z',
+    };
+    return { config, root, action, adapter, input };
+}
+test('CCS-05 v1.3 source lock is distinct from the published 1.1.14 package profile', () => {
+    assert.equal(CCS_V13_DRAFT_SHA256, 'c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9');
+    assert.match(CCS_V13_SOURCE_LOCK, /draft-correctover-ccs-05/);
+    assert.notEqual(CCS_V13_SOURCE_LOCK, CCS_L1_PYPI_SOURCE_LOCK);
+});
+test('CCS-05 v1.3 receipt verifies under a pinned issuer and maps the executor-owned exact action', () => {
+    const f = v13Fixture();
+    assert.equal(f.adapter.id, CCS_V13_AEB_ADAPTER_ID);
+    const native = f.adapter.verifyNative(f.input);
+    assert.equal(native.native_verification, 'VERIFIED', JSON.stringify(native));
+    assert.equal(native.acceptance, 'ACCEPTED', JSON.stringify(native));
+    const mapped = f.adapter.mapAction({ ...f.input, profile: v13Profile(), native });
+    assert.equal(mapped.mapping, 'MATCH', JSON.stringify(mapped));
+    assert.equal(mapped.action_digest, digestAeb(f.action));
+    assert.match(mapped.caid ?? '', /^caid:1:agent\.tool-invocation\.1:jcs-sha256:/);
+});
+test('CCS-05 v1.3 refuses signature, audience, freshness, full-digest, substitution, replay, and status uncertainty independently', () => {
+    const f = v13Fixture();
+    const tampered = structuredClone(f.input.artifact);
+    tampered.response_hash = `sha256:${'f'.repeat(64)}`;
+    assert.deepEqual(f.adapter.verifyNative({ ...f.input, artifact: tampered }).reasons, ['ccs:v13_signature_invalid']);
+    const wrongAudience = { ...f.config, audience: 'https://attacker.example/admit' };
+    const wrongAudienceAdapter = createCcsV13AebAdapter({ config: wrongAudience, trust_roots: [f.root] });
+    const audienceResult = wrongAudienceAdapter.verifyNative({
+        ...f.input,
+        adapter_config: wrongAudience,
+        trust_roots: [f.root],
+    });
+    assert.ok(audienceResult.reasons.includes('ccs:v13_audience_mismatch'));
+    const expired = f.adapter.verifyNative({ ...f.input, now: '2030-09-01T00:02:00Z' });
+    assert.ok(expired.reasons.includes('ccs:v13_receipt_expired'));
+    const native = f.adapter.verifyNative(f.input);
+    const substituted = f.adapter.mapAction({
+        ...f.input,
+        expected_action: { ...f.action, parameters: { tool: 'sum', arguments: { left: 19, right: 24 } } },
+        profile: v13Profile(),
+        native,
+    });
+    assert.equal(substituted.mapping, 'MISMATCH');
+    const shortDigestCollisionClaim = structuredClone(f.input.artifact);
+    shortDigestCollisionClaim.action = `${shortDigestCollisionClaim.action.slice(0, -48)}${'0'.repeat(48)}`;
+    const unsigned = { ...shortDigestCollisionClaim };
+    delete unsigned.signature;
+    shortDigestCollisionClaim.signature = crypto.sign(null, Buffer.from(canonicalPythonSubset(unsigned), 'utf8'), V13_PRIVATE_KEY).toString('hex');
+    const fullDigestMismatchNative = f.adapter.verifyNative({ ...f.input, artifact: shortDigestCollisionClaim });
+    assert.equal(fullDigestMismatchNative.native_verification, 'VERIFIED');
+    const fullDigestMismatch = f.adapter.mapAction({
+        ...f.input,
+        artifact: shortDigestCollisionClaim,
+        profile: v13Profile(),
+        native: fullDigestMismatchNative,
+    });
+    assert.equal(fullDigestMismatch.mapping, 'MISMATCH');
+    assert.ok(fullDigestMismatch.reasons.includes('ccs:v13_exact_action_projection_mismatch'));
+    const consumed = f.adapter.verifyNative({
+        ...f.input,
+        status: { ...f.input.status, consumed: true },
+    });
+    assert.equal(consumed.acceptance, 'REJECTED');
+    assert.ok(consumed.reasons.includes('evidence_consumed'));
+    const unavailable = f.adapter.verifyNative({
+        ...f.input,
+        status: { ...f.input.status, unavailable: true },
+    });
+    assert.equal(unavailable.acceptance, 'INDETERMINATE');
 });
 test('source lock names the PyPI label and the runtime bytes separately', () => {
     assert.equal(CCS_PYPI_DISTRIBUTION_VERSION, '1.1.0');

@@ -1,0 +1,274 @@
+{
+  "@version": "CCS-05-V1.3-AEB-COMPOSITION-REPORT-v1",
+  "profile": "ccs-v13-aeb-v1",
+  "pins": {
+    "draft_url": "https://www.ietf.org/archive/id/draft-correctover-ccs-05.txt",
+    "draft_sha256": "c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9",
+    "source_lock": "draft-correctover-ccs-05-v1.3-c91f0fa31b1b9e5",
+    "reference_codeberg_commit": "a5cddf5093724ab149059ce1f2d507b5d0aeb36d",
+    "reference_pypi_version": "1.1.14",
+    "adapter_id": "native:ccs-05-v1.3-ed25519",
+    "adapter_version": "1",
+    "mapping_profile_digest": "sha256:0cc7a31b09bbb13d8d4c0a53f53c17c7911668795d2820b9837c029594eeffe8",
+    "sample_set_digest": "sha256:025e2fced6512318e211931f62a75b0388a17bc2e12f09c005b5c080ffeed7cc"
+  },
+  "checks": [
+    {
+      "id": "CCS-V13-SOURCE-PIN",
+      "layer": "CCS",
+      "description": "The official CCS-05 bytes and current public implementation coordinates are pinned.",
+      "passed": true,
+      "observed": {
+        "source": "draft-correctover-ccs-05-v1.3-c91f0fa31b1b9e5",
+        "draft_sha256": "c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9"
+      }
+    },
+    {
+      "id": "CCS-V13-SHAPE-SEPARATION",
+      "layer": "CCS",
+      "description": "The v1.3 draft shape is not relabeled as the published package v1.1 receipt.",
+      "passed": true,
+      "observed": {
+        "package_version": "1.1.14",
+        "receipt_fields": 22
+      }
+    },
+    {
+      "id": "LIVE-SUM-EXECUTED",
+      "layer": "LIVE-RUN",
+      "description": "The protected local operation executed and returned the response bound by the receipt.",
+      "passed": true,
+      "observed": {
+        "response": {
+          "result": 42
+        },
+        "response_hash": "sha256:0773698cf701d4082d365abcd08181974a52141a62ec0bf2eb2ab14996d02674"
+      }
+    },
+    {
+      "id": "CCS-V13-ED25519-ACCEPT",
+      "layer": "CCS",
+      "description": "The 22-field receipt verifies under the relying-party-pinned Ed25519 issuer.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "evidence_digest": "sha256:84f484b07cc94974fbbbbe7aad5b0f0850c6c201dc50dae826d6d3cdd138b644",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-v13-independent-verifier",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:e8e7ca30569eecefd2e7119be4f39a6cccb1b044f20fc1e4af9eef587d1f32a2",
+        "reasons": []
+      }
+    },
+    {
+      "id": "AEB-V13-EXACT-ACTION-MAP",
+      "layer": "AEB",
+      "description": "The full receipt action digest maps to the executor-owned exact action and CAID.",
+      "passed": true,
+      "observed": {
+        "mapping": "MATCH",
+        "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+        "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+        "reasons": []
+      }
+    },
+    {
+      "id": "CCS-V13-SIGNATURE-TAMPER",
+      "layer": "CCS",
+      "description": "Changing a signed response binding invalidates the receipt.",
+      "passed": true,
+      "observed": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:494d3427c0b946cc1b8a469551a68f8e35f5b679b8aa6bd460d61486f5735c74",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-v13-independent-verifier",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:494d3427c0b946cc1b8a469551a68f8e35f5b679b8aa6bd460d61486f5735c74",
+        "reasons": [
+          "ccs:v13_signature_invalid"
+        ]
+      }
+    },
+    {
+      "id": "CCS-V13-UNTRUSTED-KEY",
+      "layer": "CCS",
+      "description": "A relying-party root replacement cannot validate the receipt.",
+      "passed": true,
+      "observed": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:84f484b07cc94974fbbbbe7aad5b0f0850c6c201dc50dae826d6d3cdd138b644",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-v13-independent-verifier",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:84f484b07cc94974fbbbbe7aad5b0f0850c6c201dc50dae826d6d3cdd138b644",
+        "reasons": [
+          "ccs:v13_signature_invalid"
+        ]
+      }
+    },
+    {
+      "id": "CCS-V13-AUDIENCE",
+      "layer": "CCS",
+      "description": "A valid receipt is rejected for a different relying-party audience.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:84f484b07cc94974fbbbbe7aad5b0f0850c6c201dc50dae826d6d3cdd138b644",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-v13-independent-verifier",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:84f484b07cc94974fbbbbe7aad5b0f0850c6c201dc50dae826d6d3cdd138b644",
+        "reasons": [
+          "ccs:v13_audience_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "CCS-V13-EXPIRY",
+      "layer": "CCS",
+      "description": "A signed receipt outside its freshness window is rejected.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:84f484b07cc94974fbbbbe7aad5b0f0850c6c201dc50dae826d6d3cdd138b644",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-v13-independent-verifier",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:84f484b07cc94974fbbbbe7aad5b0f0850c6c201dc50dae826d6d3cdd138b644",
+        "reasons": [
+          "ccs:v13_receipt_expired"
+        ]
+      }
+    },
+    {
+      "id": "AEB-V13-PARAM-SUBSTITUTION",
+      "layer": "AEB",
+      "description": "Changing executor-owned arguments produces an exact-action mismatch.",
+      "passed": true,
+      "observed": {
+        "mapping": "MISMATCH",
+        "caid": null,
+        "action_digest": "sha256:25dd2cac3db9f934ea3b3f9c50e9a670a2bc737acfaf4c0dbe45674bec646b79",
+        "reasons": [
+          "ccs:v13_exact_action_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "AEB-V13-FULL-DIGEST",
+      "layer": "AEB",
+      "description": "A signed action preserving the 16-hex prefix but changing the full digest is refused.",
+      "passed": true,
+      "observed": {
+        "mapping": "MISMATCH",
+        "caid": null,
+        "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+        "reasons": [
+          "ccs:v13_exact_action_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "AEB-V13-REPLAY",
+      "layer": "AEB",
+      "description": "Consumed status prevents a second acceptance of the receipt replay unit.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:84f484b07cc94974fbbbbe7aad5b0f0850c6c201dc50dae826d6d3cdd138b644",
+        "status_digest": "sha256:ab725954c84e9f81d531d2c97e023da7b7988344ffe73d456813ffb23c3881b8",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-v13-independent-verifier",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:e8e7ca30569eecefd2e7119be4f39a6cccb1b044f20fc1e4af9eef587d1f32a2",
+        "reasons": [
+          "evidence_consumed"
+        ]
+      }
+    },
+    {
+      "id": "AEB-V13-STATUS-UNKNOWN",
+      "layer": "AEB",
+      "description": "Unavailable authenticated status remains INDETERMINATE.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "INDETERMINATE",
+        "evidence_digest": "sha256:84f484b07cc94974fbbbbe7aad5b0f0850c6c201dc50dae826d6d3cdd138b644",
+        "status_digest": "sha256:b2d5777d4f1298d618d9250274c50ef7ba52c42953c2bffa81efc1ec5ee19c4f",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-v13-independent-verifier",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:e8e7ca30569eecefd2e7119be4f39a6cccb1b044f20fc1e4af9eef587d1f32a2",
+        "reasons": [
+          "status_unavailable"
+        ]
+      }
+    },
+    {
+      "id": "AEB-V13-DENY-NONAUTHORIZING",
+      "layer": "AEB",
+      "description": "A native deny never becomes a mappable action admission.",
+      "passed": true,
+      "observed": {
+        "denyNative": {
+          "native_verification": "VERIFIED",
+          "acceptance": "REJECTED",
+          "evidence_digest": "sha256:cfe1364965780440276afb88c77a0806a3becc27c912f62e48517f40c44ce44a",
+          "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+          "evidence_role": "machine-policy-decision",
+          "subject": {
+            "id": "system:ccs-v13-independent-verifier",
+            "kind": "system"
+          },
+          "replay_unit": "sha256:b1d7d9500f574ae1e9bed041f07cc03b04280ee3a35217ea0679eb4604589ed0",
+          "reasons": [
+            "ccs:deny"
+          ]
+        },
+        "denyMapping": {
+          "mapping": "INDETERMINATE",
+          "caid": null,
+          "action_digest": null,
+          "reasons": [
+            "native_acceptance_required"
+          ]
+        }
+      }
+    }
+  ],
+  "passed": true,
+  "known_limits": [
+    "This is an independent implementation of the CCS-05 v1.3 receipt profile, not a claim that ccs-verifier 1.1.14 emits the same shape.",
+    "The public test keys are not production trust anchors.",
+    "A CCS allow is machine-policy-decision evidence. It is not human authorization, AEB admission, provider entry, or effect proof.",
+    "The adapter verifies the Ed25519 signature. The legacy HMAC receipt field is retained as signed issuer data, not a cross-domain trust root.",
+    "A passing report is a self-attested reproduction package until an external operator independently runs it."
+  ],
+  "report_digest": "sha256:de00938d556a48a9aa83ad95994b4d6dcc7d926f618ba4c32950bde31087a603"
+}

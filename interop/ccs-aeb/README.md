@@ -2,6 +2,16 @@
 
 # CCS to AEB experimental composition
 
+## CCS-05 v1.3 independent implementation
+
+The separate
+[`ccs-v13-aeb-v1`](../../conformance/composition/ccs-v13-aeb-v1/README.md)
+package implements the 22-field receipt shape described by
+`draft-correctover-ccs-05`, runs a local protected operation, emits a signed
+sample set, and maps the full parameter digest to an executor-constructed CAID.
+It remains separate because the latest public `ccs-verifier==1.1.14` package
+and Codeberg head still emit the distinct receipt-version 1.1 contract.
+
 This directory contains a runnable, source-locked composition between the
 artifact actually emitted by the `ccs-verifier` PyPI distribution and the
 EMILIA Action Evidence Boundary (AEB).

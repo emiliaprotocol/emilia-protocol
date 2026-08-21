@@ -2,10 +2,11 @@
 /**
  * Source-locked CCS adapters for AEB-ADAPTER-v1.
  *
- * The current profile verifies the Ed25519 L1 receipt published with
- * ccs-verifier 1.1.14 under a relying-party-pinned issuer key. The historical
- * 1.1.0 profile remains available only for reproducing the older HMAC result
- * shape; it is not silently upgraded or relabeled.
+ * The package-backed profile verifies the Ed25519 L1 receipt published with
+ * ccs-verifier 1.1.14. A separate adapter implements the 22-field v1.3 shape
+ * source-locked to draft-correctover-ccs-05. The historical 1.1.0 profile
+ * remains available only for reproducing the older HMAC result shape; none of
+ * these byte contracts is silently upgraded or relabeled as another.
  *
  * A CCS ALLOW is exposed only as machine-policy-decision evidence. It is not
  * human authorization, execution authority, provider entry, or effect proof.
@@ -1172,6 +1173,443 @@ export function createCcsPyPiL1AebAdapter(constructorPins: {
         return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
       } catch {
         return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['ccs:l1_unexpected_mapping_error'] };
+      }
+    },
+  });
+}
+
+/**
+ * CCS-05 calls the extended receipt shape "v1.3", while the latest public
+ * ccs-verifier package (1.1.14) still emits its distinct receipt_version 1.1
+ * shape. This profile is therefore source-locked to the Internet-Draft bytes
+ * and intentionally does not relabel the package-backed adapter above.
+ */
+export const CCS_V13_DRAFT_URL = 'https://www.ietf.org/archive/id/draft-correctover-ccs-05.txt';
+export const CCS_V13_DRAFT_SHA256 = 'c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9';
+export const CCS_V13_REFERENCE_CODEBERG_COMMIT = 'a5cddf5093724ab149059ce1f2d507b5d0aeb36d';
+export const CCS_V13_REFERENCE_PYPI_VERSION = '1.1.14';
+export const CCS_V13_SOURCE_LOCK = 'draft-correctover-ccs-05-v1.3-c91f0fa31b1b9e5';
+export const CCS_V13_AEB_ADAPTER_ID = 'native:ccs-05-v1.3-ed25519';
+export const CCS_V13_AEB_ADAPTER_VERSION = '1';
+export const CCS_V13_AEB_CONFIG_VERSION = 'AEB-CCS-05-V1.3-CONFIG-v1';
+export const CCS_V13_AEB_TRUST_ROOT_VERSION = 'AEB-CCS-05-V1.3-ROOT-v1';
+export const CCS_V13_CAID_MAPPING_VERSION = 'AEB-CCS-05-V1.3-TOOL-ACTION-MAPPING-v1';
+export const CCS_V13_CAID_MAPPER_ID = 'mapper:ccs-05-v1.3-tool-action-v1';
+
+export interface CcsV13Receipt {
+  trace_id: string;
+  verdict: 'allow' | 'deny' | 'escalate';
+  timestamp: number;
+  tool: string;
+  params_hash: string;
+  rule_summary: string;
+  receipt: string;
+  verified_at: number;
+  block_reason: string;
+  request_hash: string;
+  response_hash: string;
+  runtime_context_hash: string;
+  action: string;
+  config_hash: string;
+  issuer: string;
+  audience: string;
+  nonce: string;
+  sequence: number;
+  issued_at: number;
+  expires_at: number;
+  max_clock_skew: number;
+  signature: string;
+}
+
+export interface CcsV13AebAdapterConfig {
+  '@version': typeof CCS_V13_AEB_CONFIG_VERSION;
+  evidence_role: string;
+  subject: AebEvidenceSubject;
+  issuer: string;
+  audience: string;
+  action_type: string;
+  allowed_tools: string[];
+  max_receipt_age_seconds: number;
+  max_clock_skew_seconds: number;
+  deployment_scope: 'pinned-ed25519-issuer';
+}
+
+export interface CcsV13Ed25519TrustRoot {
+  '@version': typeof CCS_V13_AEB_TRUST_ROOT_VERSION;
+  issuer: string;
+  key_id: string;
+  algorithm: 'Ed25519';
+  public_key_raw_base64: string;
+  public_key_fingerprint_sha256_16: string;
+}
+
+const CCS_V13_RECEIPT_KEYS = new Set([
+  'trace_id', 'verdict', 'timestamp', 'tool', 'params_hash', 'rule_summary',
+  'receipt', 'verified_at', 'block_reason', 'request_hash', 'response_hash',
+  'runtime_context_hash', 'action', 'config_hash', 'issuer', 'audience',
+  'nonce', 'sequence', 'issued_at', 'expires_at', 'max_clock_skew', 'signature',
+]);
+const CCS_V13_CONFIG_KEYS = new Set([
+  '@version', 'evidence_role', 'subject', 'issuer', 'audience', 'action_type',
+  'allowed_tools', 'max_receipt_age_seconds', 'max_clock_skew_seconds',
+  'deployment_scope',
+]);
+const CCS_V13_ROOT_KEYS = new Set([
+  '@version', 'issuer', 'key_id', 'algorithm', 'public_key_raw_base64',
+  'public_key_fingerprint_sha256_16',
+]);
+const CCS_V13_ACTION_KEYS = new Set(['action_type', 'parameters']);
+const CCS_V13_ACTION_PARAMETER_KEYS = new Set(['tool', 'arguments']);
+const CCS_V13_PROFILE_KEYS = new Set([
+  'version', 'definition', 'registry_entry_ref', 'mapper_id', 'resolver',
+  'semantic_equivalence', 'profile_digest',
+]);
+const CCS_V13_RESOLVER_KEYS = new Set(['id', 'version', 'implementation_digest']);
+const CCS_V13_EQUIVALENCE_KEYS = new Set([
+  'assertion', 'loss_policy', 'omitted_material_fields', 'omitted_nonmaterial_fields',
+]);
+const CCS_V13_MAPPING_PROFILE_ID = 'ccs-v13-tool-action';
+const CCS_V13_MAPPING_REGISTRY_REF = 'mapping:ccs-v13-tool-action';
+const CCS_V13_OMITTED_NONMATERIAL_FIELDS = Object.freeze([
+  'trace_id', 'verdict', 'timestamp', 'params_hash', 'rule_summary', 'receipt',
+  'verified_at', 'block_reason', 'request_hash', 'response_hash',
+  'runtime_context_hash', 'config_hash', 'issuer', 'audience', 'nonce',
+  'sequence', 'issued_at', 'expires_at', 'max_clock_skew', 'signature',
+]);
+const CCS_V13_ACTION_RE = /^ccs:tool-invoke:([A-Za-z0-9][A-Za-z0-9._/-]{0,255}):([0-9a-f]{64})$/;
+const HEX_128_RE = /^[0-9a-f]{128}$/;
+
+interface ParsedV13Pins {
+  config: CcsV13AebAdapterConfig;
+  root: CcsV13Ed25519TrustRoot;
+  rootKey: Buffer;
+  configDigest: AebDigest;
+  rootsDigest: AebDigest;
+}
+
+interface VerifiedCcsV13 {
+  receipt: CcsV13Receipt;
+  replayUnit: AebDigest;
+}
+
+function validSha256Binding(value: unknown, optional = false): value is string {
+  return (optional && value === '') || (typeof value === 'string' && DIGEST_RE.test(value));
+}
+
+function parseV13Receipt(value: unknown): CcsV13Receipt | null {
+  if (!isRecord(value) || !exactKeys(value, CCS_V13_RECEIPT_KEYS)
+      || typeof value.trace_id !== 'string' || !HEX_16_RE.test(value.trace_id)
+      || !['allow', 'deny', 'escalate'].includes(String(value.verdict))
+      || !finiteNonNegative(value.timestamp) || !validCcsToken(value.tool)
+      || typeof value.params_hash !== 'string' || !HEX_16_RE.test(value.params_hash)
+      || !validText(value.rule_summary)
+      || typeof value.receipt !== 'string' || !HEX_32_RE.test(value.receipt)
+      || !finiteNonNegative(value.verified_at) || !validText(value.block_reason)
+      || !validSha256Binding(value.request_hash)
+      || !validSha256Binding(value.response_hash, true)
+      || !validSha256Binding(value.runtime_context_hash, true)
+      || !validSha256Binding(value.config_hash)
+      || !validHttpsUri(value.issuer) || !validHttpsUri(value.audience)
+      || typeof value.nonce !== 'string' || !HEX_32_RE.test(value.nonce)
+      || !safeInteger(value.sequence) || !finiteNonNegative(value.issued_at)
+      || !finiteNonNegative(value.expires_at) || !finiteNonNegative(value.max_clock_skew)
+      || typeof value.signature !== 'string' || !HEX_128_RE.test(value.signature)) return null;
+  const actionMatch = typeof value.action === 'string' ? CCS_V13_ACTION_RE.exec(value.action) : null;
+  if (!actionMatch || actionMatch[1] !== value.tool || actionMatch[2].slice(0, 16) !== value.params_hash) return null;
+  if (value.verdict === 'allow' ? value.block_reason !== '' : value.block_reason.length === 0) return null;
+  return strictFiniteJsonClone(value) as CcsV13Receipt | null;
+}
+
+function parseV13Config(value: unknown): CcsV13AebAdapterConfig | null {
+  if (!isRecord(value) || !exactKeys(value, CCS_V13_CONFIG_KEYS)
+      || value['@version'] !== CCS_V13_AEB_CONFIG_VERSION
+      || typeof value.evidence_role !== 'string' || !ROLE_RE.test(value.evidence_role)
+      || !isRecord(value.subject) || !exactKeys(value.subject, SUBJECT_KEYS)
+      || !validIdentifier(value.subject.id) || value.subject.kind !== 'system'
+      || !validHttpsUri(value.issuer) || !validHttpsUri(value.audience)
+      || typeof value.action_type !== 'string' || !ACTION_TYPE_RE.test(value.action_type)
+      || !sortedUniqueStrings(value.allowed_tools, validCcsToken)
+      || !safeInteger(value.max_receipt_age_seconds) || Number(value.max_receipt_age_seconds) === 0
+      || !safeInteger(value.max_clock_skew_seconds)
+      || value.deployment_scope !== 'pinned-ed25519-issuer') return null;
+  return strictJsonClone(value) as CcsV13AebAdapterConfig | null;
+}
+
+function parseV13Root(value: unknown, config: CcsV13AebAdapterConfig):
+  { root: CcsV13Ed25519TrustRoot; key: Buffer } | null {
+  if (!isRecord(value) || !exactKeys(value, CCS_V13_ROOT_KEYS)
+      || value['@version'] !== CCS_V13_AEB_TRUST_ROOT_VERSION
+      || value.issuer !== config.issuer || !validIdentifier(value.key_id)
+      || value.algorithm !== 'Ed25519'
+      || typeof value.public_key_fingerprint_sha256_16 !== 'string'
+      || !HEX_FP16_RE.test(value.public_key_fingerprint_sha256_16)) return null;
+  const key = decodeCanonicalBase64(value.public_key_raw_base64, 32);
+  if (!key) return null;
+  const fingerprint = crypto.createHash('sha256').update(key).digest('hex').slice(0, 16);
+  if (fingerprint !== value.public_key_fingerprint_sha256_16) return null;
+  const root = strictJsonClone(value) as CcsV13Ed25519TrustRoot | null;
+  return root ? { root, key } : null;
+}
+
+function parseV13Pins(input: {
+  config: CcsV13AebAdapterConfig;
+  trust_roots: readonly CcsV13Ed25519TrustRoot[];
+}): ParsedV13Pins {
+  const config = parseV13Config(input?.config);
+  if (!config || !Array.isArray(input?.trust_roots) || input.trust_roots.length !== 1) {
+    throw new TypeError('one valid relying-party-pinned CCS-05 v1.3 Ed25519 root is required');
+  }
+  const parsedRoot = parseV13Root(input.trust_roots[0], config);
+  if (!parsedRoot) throw new TypeError('valid issuer-scoped CCS-05 v1.3 Ed25519 root required');
+  return {
+    config,
+    root: parsedRoot.root,
+    rootKey: parsedRoot.key,
+    configDigest: digestAeb(config),
+    rootsDigest: digestAeb(input.trust_roots),
+  };
+}
+
+function verifyV13Signature(receipt: CcsV13Receipt, rawPublicKey: Buffer): boolean {
+  const signature = Buffer.from(receipt.signature, 'hex');
+  if (signature.length !== 64) return false;
+  let publicKey;
+  try {
+    publicKey = crypto.createPublicKey({
+      key: Buffer.concat([ED25519_SPKI_PREFIX, rawPublicKey]),
+      format: 'der',
+      type: 'spki',
+    });
+  } catch {
+    return false;
+  }
+  const payload = { ...receipt } as Obj;
+  delete payload.signature;
+  try {
+    return crypto.verify(
+      null,
+      Buffer.from(canonicalizeFiniteJson(payload), 'utf8'),
+      publicKey,
+      signature,
+    );
+  } catch {
+    return false;
+  }
+}
+
+function verifyV13Artifact(value: unknown, pins: ParsedV13Pins, now: string):
+  { ok: true; value: VerifiedCcsV13 } |
+  { ok: false; verified: boolean; acceptance: Acceptance; reason: string } {
+  const receipt = parseV13Receipt(value);
+  if (!receipt) {
+    return { ok: false, verified: false, acceptance: 'REJECTED', reason: 'ccs:v13_artifact_malformed' };
+  }
+  if (!verifyV13Signature(receipt, pins.rootKey)) {
+    return { ok: false, verified: false, acceptance: 'REJECTED', reason: 'ccs:v13_signature_invalid' };
+  }
+  if (receipt.issuer !== pins.config.issuer) {
+    return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:v13_untrusted_issuer' };
+  }
+  if (receipt.audience !== pins.config.audience) {
+    return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:v13_audience_mismatch' };
+  }
+  if (!pins.config.allowed_tools.includes(receipt.tool)) {
+    return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:v13_tool_not_pinned' };
+  }
+  if (receipt.max_clock_skew > pins.config.max_clock_skew_seconds
+      || receipt.expires_at <= receipt.issued_at
+      || receipt.timestamp < receipt.issued_at
+      || receipt.verified_at < receipt.issued_at
+      || receipt.timestamp > receipt.expires_at + receipt.max_clock_skew
+      || receipt.verified_at > receipt.expires_at + receipt.max_clock_skew) {
+    return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:v13_time_bounds_invalid' };
+  }
+  const nowSeconds = Date.parse(now) / 1000;
+  if (!Number.isFinite(nowSeconds)) {
+    return { ok: false, verified: true, acceptance: 'INDETERMINATE', reason: 'ccs:v13_current_time_invalid' };
+  }
+  if (nowSeconds > receipt.expires_at + receipt.max_clock_skew) {
+    return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:v13_receipt_expired' };
+  }
+  if (nowSeconds < receipt.issued_at - receipt.max_clock_skew) {
+    return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:v13_receipt_not_yet_valid' };
+  }
+  if (nowSeconds - receipt.issued_at > pins.config.max_receipt_age_seconds) {
+    return { ok: false, verified: true, acceptance: 'REJECTED', reason: 'ccs:v13_receipt_too_old' };
+  }
+  return {
+    ok: true,
+    value: {
+      receipt,
+      replayUnit: digestAeb({ source: CCS_V13_SOURCE_LOCK, issuer: receipt.issuer, nonce: receipt.nonce }),
+    },
+  };
+}
+
+function canonicalV13Action(value: unknown, actionType: string): Obj | null {
+  if (!isRecord(value) || !exactKeys(value, CCS_V13_ACTION_KEYS)
+      || value.action_type !== actionType || !isRecord(value.parameters)
+      || !exactKeys(value.parameters, CCS_V13_ACTION_PARAMETER_KEYS)
+      || !validCcsToken(value.parameters.tool)) return null;
+  const argumentsValue = normalizeCcsInteropJson(value.parameters.arguments);
+  if (!isRecord(argumentsValue)) return null;
+  return strictJsonClone({
+    action_type: actionType,
+    parameters: { tool: value.parameters.tool, arguments: argumentsValue },
+  });
+}
+
+export function createCcsV13AebActionDefinition(actionType: string): Obj {
+  if (!ACTION_TYPE_RE.test(actionType)) throw new TypeError('valid CAID action type required');
+  return {
+    '@version': CCS_V13_CAID_MAPPING_VERSION,
+    source: CCS_V13_SOURCE_LOCK,
+    source_media_type: 'application/x-ccs-receipt+json',
+    projection: 'ccs-v13-signed-tool-and-full-params-digest-v1',
+    action_type: actionType,
+    suite: 'jcs-sha256',
+    definitions: [{
+      action_type: actionType,
+      required_fields: [
+        { name: 'action_type', type: 'string' },
+        { name: 'parameters', type: 'object' },
+      ],
+      optional_fields: [],
+    }],
+  };
+}
+
+function validV13MappingProfile(profile: AebPinnedProfile, actionType: string): unknown[] | null {
+  const expectedResolverDigest = digestAeb({ implementation: CCS_V13_CAID_MAPPER_ID, version: '1' });
+  if (!isRecord(profile) || !exactKeys(profile, CCS_V13_PROFILE_KEYS)
+      || profile.version !== CCS_V13_CAID_MAPPING_VERSION
+      || profile.registry_entry_ref !== CCS_V13_MAPPING_REGISTRY_REF
+      || profile.mapper_id !== CCS_V13_CAID_MAPPER_ID
+      || !isRecord(profile.resolver) || !exactKeys(profile.resolver, CCS_V13_RESOLVER_KEYS)
+      || profile.resolver.id !== CCS_V13_CAID_MAPPER_ID
+      || profile.resolver.version !== '1'
+      || profile.resolver.implementation_digest !== expectedResolverDigest
+      || !isRecord(profile.semantic_equivalence)
+      || !exactKeys(profile.semantic_equivalence, CCS_V13_EQUIVALENCE_KEYS)
+      || profile.semantic_equivalence.assertion !== 'EQUIVALENT_UNDER_PROFILE'
+      || profile.semantic_equivalence.loss_policy !== 'NO_MATERIAL_FIELD_LOSS'
+      || !Array.isArray(profile.semantic_equivalence.omitted_material_fields)
+      || profile.semantic_equivalence.omitted_material_fields.length !== 0
+      || !Array.isArray(profile.semantic_equivalence.omitted_nonmaterial_fields)
+      || !sameDigest(profile.semantic_equivalence.omitted_nonmaterial_fields, CCS_V13_OMITTED_NONMATERIAL_FIELDS)
+      || !isRecord(profile.definition) || !Array.isArray(profile.definition.definitions)
+      || !sameDigest(profile.definition, createCcsV13AebActionDefinition(actionType))
+      || profile.profile_digest !== mappingProfileDigest(CCS_V13_MAPPING_PROFILE_ID, profile)) return null;
+  return profile.definition.definitions;
+}
+
+function fallbackV13(input: Omit<AebAdapterInput, 'profile'>, pins: ParsedV13Pins): AebNativeResult {
+  const evidenceDigest = safeDigest(input.artifact);
+  return {
+    native_verification: 'FAILED',
+    acceptance: 'REJECTED',
+    evidence_digest: evidenceDigest,
+    status_digest: statusDigest(input.status),
+    evidence_role: pins.config.evidence_role,
+    subject: { ...pins.config.subject },
+    replay_unit: evidenceDigest,
+    reasons: [],
+  };
+}
+
+/** Build the source-locked CCS-05 v1.3 Ed25519 enforcement adapter. */
+export function createCcsV13AebAdapter(constructorPins: {
+  config: CcsV13AebAdapterConfig;
+  trust_roots: readonly CcsV13Ed25519TrustRoot[];
+}): AebAdapter {
+  const pins = parseV13Pins(constructorPins);
+  return Object.freeze({
+    id: CCS_V13_AEB_ADAPTER_ID,
+    version: CCS_V13_AEB_ADAPTER_VERSION,
+    verifyNative(input: Omit<AebAdapterInput, 'profile'>): AebNativeResult {
+      const result = fallbackV13(input, pins);
+      try {
+        if (safeDigest(input.adapter_config) !== pins.configDigest
+            || safeDigest(input.trust_roots) !== pins.rootsDigest) {
+          result.reasons = ['ccs:v13_constructor_pin_mismatch'];
+          return result;
+        }
+        const verified = verifyV13Artifact(input.artifact, pins, input.now);
+        if (!verified.ok) {
+          result.native_verification = verified.verified ? 'VERIFIED' : 'FAILED';
+          result.acceptance = verified.acceptance;
+          result.reasons = [verified.reason];
+          return result;
+        }
+        result.native_verification = 'VERIFIED';
+        result.replay_unit = verified.value.replayUnit;
+        const status = statusDisposition(input.status, input.now);
+        const decisionAcceptance: Acceptance = verified.value.receipt.verdict === 'allow'
+          ? 'ACCEPTED'
+          : verified.value.receipt.verdict === 'deny' ? 'REJECTED' : 'INDETERMINATE';
+        result.acceptance = combineAcceptance(decisionAcceptance, status.acceptance);
+        result.reasons = [
+          ...(verified.value.receipt.verdict === 'allow' ? [] : [`ccs:${verified.value.receipt.verdict}`]),
+          ...status.reasons,
+        ];
+        return result;
+      } catch {
+        result.reasons = ['ccs:v13_unexpected_adapter_error'];
+        return result;
+      }
+    },
+    mapAction(input: AebAdapterInput & { native: AebNativeResult }): AebMappingResult {
+      try {
+        if (input.native.native_verification !== 'VERIFIED' || input.native.acceptance !== 'ACCEPTED') {
+          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['native_acceptance_required'] };
+        }
+        if (safeDigest(input.adapter_config) !== pins.configDigest
+            || safeDigest(input.trust_roots) !== pins.rootsDigest) {
+          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['mapping_constructor_pin_mismatch'] };
+        }
+        const definitions = validV13MappingProfile(input.profile, pins.config.action_type);
+        if (!definitions) {
+          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['mapping_profile_invalid'] };
+        }
+        const verified = verifyV13Artifact(input.artifact, pins, input.now);
+        if (!verified.ok || verified.value.receipt.verdict !== 'allow') {
+          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['accepted_allow_statement_required'] };
+        }
+        const expected = canonicalV13Action(input.expected_action, pins.config.action_type);
+        if (!expected || !isRecord(expected.parameters) || !isRecord(expected.parameters.arguments)) {
+          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['missing_or_ambiguous_exact_action'] };
+        }
+        const fullParamsHash = l1ArgsDigest(expected.parameters.arguments);
+        const receipt = verified.value.receipt;
+        const expectedAction = fullParamsHash
+          ? `ccs:tool-invoke:${String(expected.parameters.tool)}:${fullParamsHash}`
+          : null;
+        const semanticMatch = expected.parameters.tool === receipt.tool
+          && fullParamsHash?.slice(0, 16) === receipt.params_hash
+          && expectedAction === receipt.action;
+        const actionDigest = digestAeb(expected);
+        if (!semanticMatch) {
+          return {
+            mapping: 'MISMATCH',
+            caid: null,
+            action_digest: actionDigest,
+            reasons: ['ccs:v13_exact_action_projection_mismatch'],
+          };
+        }
+        let computed: unknown;
+        try {
+          computed = computeCaid(expected, { suite: 'jcs-sha256', definitions });
+        } catch {
+          computed = null;
+        }
+        if (!isRecord(computed) || typeof computed.caid !== 'string'
+            || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)
+            || computed.digest !== actionDigest) {
+          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+        }
+        return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
+      } catch {
+        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['ccs:v13_unexpected_mapping_error'] };
       }
     },
   });
