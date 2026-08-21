@@ -88,6 +88,7 @@ export * from './open-exposure-ledger.js';
 export * from './open-exposure-ledger-postgres.js';
 export * from './coverage-reconciliation-attestation.js';
 export * from './coverage-reconciliation-runner.js';
+export * from './cap1-coverage-composition.js';
 export * from './receipt-census.js';
 export * from './loss-experience-feed.js';
 export { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';

@@ -127,6 +127,7 @@
     "src/open-exposure-ledger-postgres.ts",
     "src/coverage-reconciliation-attestation.ts",
     "src/coverage-reconciliation-runner.ts",
+    "src/cap1-coverage-composition.ts",
     "src/receipt-census.ts",
     "src/loss-experience-feed.ts",
     "src/cross-rail-authority.ts",

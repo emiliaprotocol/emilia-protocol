@@ -1,0 +1,20 @@
+{
+  "profile": "EP-CAP1-OBSERVED-BUNDLE-SOURCE-LOCK-v1",
+  "repository": "https://github.com/Certisyn-Inc/certisyn-drafts",
+  "commit": "0980d3201aa2caab3cbad5c6e9bc99b422370b43",
+  "tree_path": "cap-1",
+  "draft": {
+    "path": "cap-1/draft-hillier-coverage-attestation-00.txt",
+    "sha256": "7a9eeb1fbdb1fee95697622546d2ae7efba762fff193d6ee34765233539ac353"
+  },
+  "schema": {
+    "path": "cap-1/src/CAP-1.schema.json",
+    "sha256": "4453f216089543780bfecc4295cc4a61462fdc585b88d1e35b7d1aba79716b4a"
+  },
+  "vector_manifest": {
+    "path": "cap-1/src/vectors/manifest.json",
+    "sha256": "170aa81efc74c5278a2fb6e3bcc22bc91fb1706e9fb8faf1ce6d575e5ce3d965"
+  },
+  "vector_bundle_sha256": "327e7516e4838f616a06e5a81fa583b8125f85cf2ae277849c2e9fd08d77a72b",
+  "claim_boundary": "emilia_reproduction_pin_not_cap1_normative_identification"
+}
