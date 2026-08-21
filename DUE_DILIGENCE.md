@@ -22,7 +22,7 @@ baseline. It changes the evidence map, not the reviewed implementation.
 | --- | --- | --- |
 | Tests and build | **8,865 tests across 533 files** in [`lib/proof-stats.json`](lib/proof-stats.json); the production Next.js build is rerun during the release gate. | Passing tests are scoped regression evidence, not whole-system proof. |
 | Executable security case | **35 claims over 259 hashed evidence files**, execution passed, bundle SHA-256 `97e0819213534bbae070b9356c6a121fc28a41cc221232c8005227e1f62c7792`. | Repository-defined assurance is not an accredited audit. |
-| Conformance | **21 suites and 331 vectors** across JavaScript, Python, and Go same-team ports; a source-free 30-file clean-room v2 kit rebuilds byte-for-byte. | Strict independent clean-room acceptance remains false until a separately attested implementation is accepted. |
+| Conformance | **21 suites and 332 vectors** across JavaScript, Python, and Go same-team ports; a source-free 30-file clean-room v2 kit rebuilds byte-for-byte. | Strict independent clean-room acceptance remains false until a separately attested implementation is accepted. |
 | Formal evidence | 26 principal TLC invariants; 78 selected model/runtime scenarios with 51 paired negative controls; 20 Tamarin obligations and 8 deliberately unsafe counterexamples; 35 Alloy facts and 32 assertions. | These are bounded or symbolic models under stated assumptions, not mechanized whole-program refinement. |
 | Dependencies and releases | Root and nested production audits report zero known vulnerabilities; release-chain validation covers **26 packages**; packed exports pass for 12 packages. | Publish an SBOM and third-party notice bundle with each release. |
 | Secrets and licensing | Full-history Gitleaks scan found no secret; repository-boundary and Apache-2.0 header checks pass; every public package manifest declares a license. | Repeat scans in CI and during a transaction-specific data-room export. |
@@ -106,7 +106,7 @@ Current measured evidence includes:
 
 - 8,865 tests across 533 files;
 - 35 executable claims over 259 content-addressed evidence files;
-- 21 suites and 331 conformance vectors;
+- 21 suites and 332 conformance vectors;
 - 78 selected model/runtime scenarios, 51 paired negative controls, and 21
   claims under explicit projection relations;
 - two formally verified obligations linked to runtime claims, 21 bounded

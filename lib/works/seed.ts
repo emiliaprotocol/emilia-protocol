@@ -242,7 +242,7 @@ export const SEED_CARDS: CapabilityCardRecord[] = [
     builder_id: 'emilia-protocol-maintainers',
     listing_id: 'ep-conformance-catalog',
     claim: {
-      statement: 'The conformance manifest records 21 suites and 331 vectors with status "pass" for 3 same-team reference implementations (JavaScript, Python, Go).',
+      statement: 'The conformance manifest records 21 suites and 332 vectors with status "pass" for 3 same-team reference implementations (JavaScript, Python, Go).',
       status: 'VERIFIED',
       scope: `conformance/conformance-manifest.json at revision ${REV_SHORT} of emiliaprotocol/emilia-protocol`,
       source: {
@@ -262,7 +262,7 @@ export const SEED_CARDS: CapabilityCardRecord[] = [
     builder_id: 'emilia-protocol-maintainers',
     listing_id: 'ep-conformance-catalog',
     claim: {
-      statement: 'A maintainer run of `npm run check:public-conformance-claims` at this revision reported PASS: 21 suites, 331 vectors, 359 external hostility cases; 8854 automated test cases across 532 files.',
+      statement: 'A maintainer run of `npm run check:public-conformance-claims` at this revision reported PASS: 21 suites, 332 vectors, 359 external hostility cases; 8854 automated test cases across 532 files.',
       status: 'ASSERTED',
       scope: `scripts/check-public-conformance-claims.mjs at revision ${REV_SHORT} of emiliaprotocol/emilia-protocol`,
       source: {

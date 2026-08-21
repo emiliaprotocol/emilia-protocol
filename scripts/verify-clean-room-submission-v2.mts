@@ -11,9 +11,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE_RELATIVE_PATH = 'conformance/clean-room/v2/bundle.v2.json';
 const EXPECTED_MANIFEST_SHA256 =
-  '75fb2f8bd2136e30138c7a81403cf531c03157fa0cc550d727e2022cf97d9c90';
+  '13142b17d23571788ae96787b766741d8949c81732d645615f568f44b46887fe';
 const EXPECTED_MANIFEST_CLAIM_SHA256 =
-  '8578e002b7a6afbd7c4d26db70b99a722af5a1442db26427f2fea42276258702';
+  '017b8340109035d8b8280444957782df68f1619f98e9c417e46fdd9ca2f3237b';
 const EXPECTED_AUTHORITY_COMPANION_SHA256 =
   '121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959';
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
@@ -186,8 +186,8 @@ export function validateBundleDefinitionV2(bundle: any): void {
   }
 
   exactKeys(bundle.totals, ['suites', 'vectors'], ['suites', 'vectors'], 'bundle.totals');
-  if (bundle.totals.suites !== 21 || bundle.totals.vectors !== 331) {
-    throw new Error('bundle must pin exactly 21 suites and 331 vectors');
+  if (bundle.totals.suites !== 21 || bundle.totals.vectors !== 332) {
+    throw new Error('bundle must pin exactly 21 suites and 332 vectors');
   }
   if (!Array.isArray(bundle.suites) || bundle.suites.length !== 21) {
     throw new Error('bundle must contain exactly 21 suites');
@@ -231,8 +231,8 @@ export function validateBundleDefinitionV2(bundle: any): void {
       authorityCompanion = executionHash;
     }
   }
-  if (vectorCount !== 331 || vectorCount !== bundle.totals.vectors) {
-    throw new Error('bundle suite total is not exactly 331 vectors');
+  if (vectorCount !== 332 || vectorCount !== bundle.totals.vectors) {
+    throw new Error('bundle suite total is not exactly 332 vectors');
   }
   if (authorityCompanion !== EXPECTED_AUTHORITY_COMPANION_SHA256) {
     throw new Error('bundle Authority Document execution companion hash is not pinned');
@@ -274,8 +274,8 @@ function validateSourceManifest(bundle: JsonObject, bytes: Buffer, manifest: any
   if (canonicalDigest(unsigned) !== manifest.manifest_sha256) {
     throw new Error('current conformance manifest canonical claim hash is invalid');
   }
-  if (manifest.totals?.suites !== 21 || manifest.totals?.vectors !== 331) {
-    throw new Error('current conformance manifest is not the pinned 21-suite/331-vector set');
+  if (manifest.totals?.suites !== 21 || manifest.totals?.vectors !== 332) {
+    throw new Error('current conformance manifest is not the pinned 21-suite/332-vector set');
   }
   if (!Array.isArray(manifest.suites) || manifest.suites.length !== bundle.suites.length) {
     throw new Error('current conformance manifest suite list is incomplete');
@@ -878,8 +878,8 @@ export function verifyCleanRoomSubmissionV2({
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
-  if (suites.length !== 21 || vectorCount !== 331) {
-    throw new Error('external clean-room evaluation did not complete all 21 suites and 331 vectors');
+  if (suites.length !== 21 || vectorCount !== 332) {
+    throw new Error('external clean-room evaluation did not complete all 21 suites and 332 vectors');
   }
 
   const report: JsonObject = {

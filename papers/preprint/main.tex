@@ -7,11 +7,11 @@
 %
 % Content is a faithful carriage of papers/authorization-receipts-preprint.md,
 % with evidence-backed claims and reference revisions synchronized to repo state.
-% Canonical Markdown SHA-256: 61e1065ee2591a90214782f27fe13c036335c9114ea0b9fbe6a6956f0cb32d63
+% Canonical Markdown SHA-256: 730f633cc50cdb81a99bde224e6c940210de7a9f0d63ad060795e71ef3adf4c5
 % Every quantitative claim is traceable to a repository artifact:
-%   - conformance 21 suites / 331 vectors -> conformance/conformance-manifest.json
-%     (totals.suites=21, totals.vectors=331)
-%     manifest_sha256=8578e002b7a6afbd7c4d26db70b99a722af5a1442db26427f2fea42276258702
+%   - conformance 21 suites / 332 vectors -> conformance/conformance-manifest.json
+%     (totals.suites=21, totals.vectors=332)
+%     manifest_sha256=017b8340109035d8b8280444957782df68f1619f98e9c417e46fdd9ca2f3237b
 %   - all Tamarin lemma output blocks -> formal/PROOF_STATUS.md (verbatim)
 %   - TLA+ 413,137 states / 45,342 distinct / 26 invariants -> formal/PROOF_STATUS.md
 %   - Alloy 15 + 7 + 6 + 4 = 32 assertions -> formal/PROOF_STATUS.md
@@ -244,7 +244,7 @@ approver-held keys, atomic terminal consumption, and offline verification are th
 analyzed core. A host-record binding profile and evidence-sufficiency graph are
 secondary compositions and are not claimed as new cryptographic primitives.
 \item \textbf{Bounded validation.} The reference implementation,
-21-suite/331-vector conformance battery, and separately authored Rust verifier
+21-suite/332-vector conformance battery, and separately authored Rust verifier
 validate encoding and interoperability. They are not presented as independent
 security proofs.
 \end{itemize}
@@ -1262,7 +1262,7 @@ deployment topologies or components it does not model.
 
 \section{Implementation and Conformance}
 
-A reference implementation of the receipt, quorum, evidence-chain, binding, and evidence-graph layers is published under Apache-2.0. The conformance battery (21 suites, 331 vectors) is self-contained: each vector carries its own public key and document, requiring no server or shared state. The conformance battery of 21 suites comprising 331 vectors is adversarial (reject vectors each pin one invariant: tampered bytes, wrong key, replay, malformed signature, broken Merkle anchor) and deterministic (regenerable byte-identically from fixed seeds). Further suites cover quorum
+A reference implementation of the receipt, quorum, evidence-chain, binding, and evidence-graph layers is published under Apache-2.0. The conformance battery (21 suites, 332 vectors) is self-contained: each vector carries its own public key and document, requiring no server or shared state. The conformance battery of 21 suites comprising 332 vectors is adversarial (reject vectors each pin one invariant: tampered bytes, wrong key, replay, malformed signature, broken Merkle anchor) and deterministic (regenerable byte-identically from fixed seeds). Further suites cover quorum
 semantics, device signoffs, revocation timing, trusted-time attestation, the full
 trust receipt with Merkle inclusion and signed checkpoint (including a
 transparency-statement digest profile), provenance chains, evidence records, a
@@ -1273,7 +1273,7 @@ over a checkpoint head, and an independent RFC 3161 timestamp-proof profile.
 
 The implementation status is stated precisely, because it is the most tempting
 place to overclaim. The JavaScript, Python, and Go reference verifiers live in
-\emph{one repository}: they are same-team ports whose agreement across all 331
+\emph{one repository}: they are same-team ports whose agreement across all 332
 current vectors is cross-language consistency evidence, not three independent
 implementations. A historical Ed25519-signed
 \code{EP-EXTERNAL-VERIFICATION-STATEMENT-v1} from COSA / J Diesel NY records
@@ -1515,7 +1515,7 @@ headers, verbatim tool output, falsification history, and re-run instructions; t
 TLA+ and Alloy models with checked configurations and a proof-status ledger that
 keeps \emph{specified} and \emph{verified} separate; the reference implementation
 (receipt, quorum, evidence-chain, host-record binding, and evidence-graph layers,
-with JavaScript, Python, and Go same-team ports); the 21-suite / 331-vector
+with JavaScript, Python, and Go same-team ports); the 21-suite / 332-vector
 conformance battery with deterministic regeneration scripts; the pinned external
 Rust source and evaluator; the 359-case hostility campaign; the aggregate
 conformance case; the historical third-party reproduction statement; and the worked

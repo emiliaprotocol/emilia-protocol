@@ -9,12 +9,12 @@ counts and claims must remain separate.
 
 | Surface | Pinned scope | Current result | Honest boundary |
 | --- | --- | --- | --- |
-| Same-team cross-language corpus | [`conformance-manifest.json`](conformance-manifest.json) | **21 suites / 331 vectors** agree across JavaScript, Python, and Go | Three ports maintained in one repository by one team; a consistency check, not three independent implementations |
+| Same-team cross-language corpus | [`conformance-manifest.json`](conformance-manifest.json) | **21 suites / 332 vectors** agree across JavaScript, Python, and Go | Three ports maintained in one repository by one team; a consistency check, not three independent implementations |
 | External Rust baseline | [`external/rust-cleanroom-jdieselny.v1.json`](external/rust-cleanroom-jdieselny.v1.json) | **16 suites / 164 vectors**, plus **359 hostility cases** (353 structured and 6 raw-parser cases) | Externally authored and time-pinned; construction evidence is not yet an independently attested strict clean-room acceptance |
 | Referee / AEB-1 | A separate `AEB-1-REFEREE-MANIFEST-v1` described in [`docs/REFEREE.md`](../docs/REFEREE.md) | 13-case offline runner self-test | Not included in either corpus count; not production mediation, certification, deployment evidence, or authorization |
 
 Do not add the Rust baseline, Referee adapters, AEB-1 cases, invariants, formal
-states, fuzz cases, or ordinary unit tests to the 21-suite/331-vector total.
+states, fuzz cases, or ordinary unit tests to the 21-suite/332-vector total.
 Each has its own manifest and claim boundary.
 
 ## Same-team JavaScript / Python / Go corpus
@@ -62,7 +62,7 @@ which pins:
 
 The newer suites in the 21-suite live corpus are not attributed to Rust. The
 external result is interoperability evidence over its time-pinned input set,
-not a claim that Rust passed all 331 current vectors. Its implementation-signed
+not a claim that Rust passed all 332 current vectors. Its implementation-signed
 construction statement predates the pinned hardening commit, so
 `strict_clean_room_acceptance` remains false until a qualifying independent
 attestation is pinned and verified.
@@ -87,7 +87,7 @@ closed cases, expected results, schemas, limits, and deterministic-run policy;
 the report separately records the command, executable digest, and result
 digests. Referee manifests are not members of
 [`conformance-manifest.json`](conformance-manifest.json) and MUST NOT increase
-its 21 suites, 331 vectors, or three same-team implementation count. This also
+its 21 suites, 332 vectors, or three same-team implementation count. This also
 prevents a protocol adapter from inflating the external Rust baseline.
 
 The public consequence-boundary profile and pack are:

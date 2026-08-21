@@ -51,7 +51,7 @@ The broader rejected package remains governed by the repository's legacy
 preprint synchronization guard. These are dated synchronization values for that
 preserved package, not claims added back to the focused cryptology revision:
 
-- Conformance 21 suites / 331 vectors
+- Conformance 21 suites / 332 vectors
 - 20 composed obligations + 8 deliberate falsifications
 - TLA+ 413,137 states / 26 invariants
 - Alloy 32 assertions across four CI-gated models, version 6.2.0

@@ -3,8 +3,8 @@
   "claim_scope": "source-free current-bundle conformance input; independent construction acceptance requires a separate trusted-attestor signature",
   "source_manifest": {
     "path": "conformance/conformance-manifest.json",
-    "sha256": "75fb2f8bd2136e30138c7a81403cf531c03157fa0cc550d727e2022cf97d9c90",
-    "manifest_sha256": "8578e002b7a6afbd7c4d26db70b99a722af5a1442db26427f2fea42276258702"
+    "sha256": "13142b17d23571788ae96787b766741d8949c81732d645615f568f44b46887fe",
+    "manifest_sha256": "017b8340109035d8b8280444957782df68f1619f98e9c417e46fdd9ca2f3237b"
   },
   "runner_protocol": {
     "version": "EP-CONFORMANCE-FILE-RUNNER-v2",
@@ -16,8 +16,8 @@
   "suites": [
     {
       "path": "conformance/vectors/receipts.v1.json",
-      "sha256": "888fc3a1e3e0fb5ec73e2d5cb6244869c2bb7673f42587635c64f5736b3a1fad",
-      "vectors": 13,
+      "sha256": "e27b31759c9c901f5cd6e2986758a249175ea14dbc818e401d42fb71280aa83b",
+      "vectors": 14,
       "result_contract": "typed_object"
     },
     {
@@ -145,6 +145,6 @@
   ],
   "totals": {
     "suites": 21,
-    "vectors": 331
+    "vectors": 332
   }
 }

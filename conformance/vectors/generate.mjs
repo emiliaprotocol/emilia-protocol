@@ -65,7 +65,17 @@ add('reject_legacy_v1_anchor_by_default', 'A legacy EP-MERKLE-v1 (sorted-pair, u
     const goodAnchorV2 = { alg: 'EP-MERKLE-v2', leaf_hash: v2Leaf, merkle_proof: [{ hash: v2Sibling, position: 'right' }], merkle_root: v2Root };
     add('accept_with_merkle_anchor_v2', 'Valid receipt with a v2 domain-separated, payload-bound Merkle anchor', true, null, KEY.pub, receipt(v2Payload, { anchor: goodAnchorV2 }));
     // Self-binding: a v2 anchor whose leaf_hash is NOT SHA-256(0x00||canon(payload)) is refused.
+    // This one's Merkle PATH is also invalid (sha('not-the-real-leaf') does not fold to v2Root),
+    // so it exercises the reject but cannot ISOLATE the payload-binding self-check: a verifier that
+    // skipped the binding check and only folded the path would still refuse it.
     add('reject_v2_unbound_leaf', 'v2 anchor leaf_hash not bound to the receipt payload is refused', false, 'anchor_leaf_unbound', KEY.pub, receipt({ receipt_id: 'tr_v2_unbound', issuer: 'ep:demo' }, { anchor: { alg: 'EP-MERKLE-v2', leaf_hash: sha('not-the-real-leaf'), merkle_proof: [{ hash: v2Sibling, position: 'right' }], merkle_root: v2Root } }));
+    // Isolating variant (lifted anchor): reuse accept_with_merkle_anchor_v2's OWN valid anchor
+    // (v2Leaf folds through v2Sibling to v2Root — a genuinely valid Merkle path) but attach it to a
+    // DIFFERENT receipt. leaf_hash is therefore proof-valid yet bound to another payload, so a
+    // path-only verifier ACCEPTS while a conformant one refuses on the leaf==SHA-256(0x00||canon(THIS
+    // payload)) self-check. This is the vector that demonstrates the binding axis rather than arguing
+    // it (unbound-but-otherwise-proof-valid); reject_v2_unbound_leaf above conflates it with a bad path.
+    add('reject_v2_lifted_anchor_valid_path', 'v2 anchor with a VALID Merkle path whose leaf is bound to a DIFFERENT receipt (a lifted anchor) is refused — the leaf must equal SHA-256(0x00||canon(payload)) of THIS receipt, so a proof-valid but unbound anchor is rejected on the self-check alone', false, 'anchor_leaf_unbound', KEY.pub, receipt({ receipt_id: 'tr_v2_lifted_anchor', issuer: 'ep:demo' }, { anchor: { alg: 'EP-MERKLE-v2', leaf_hash: v2Leaf, merkle_proof: [{ hash: v2Sibling, position: 'right' }], merkle_root: v2Root } }));
 }
 // ── REJECT class (each targets one invariant) ────────────────────────────────
 add('reject_unsupported_version', 'Unknown document version is refused', false, 'unsupported_version', KEY.pub, { '@version': 'EP-RECEIPT-v2', payload: { receipt_id: 'tr_v2' }, signature: { algorithm: 'Ed25519', value: sign({ receipt_id: 'tr_v2' }) } });
