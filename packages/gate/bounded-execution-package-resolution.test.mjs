@@ -24,10 +24,13 @@ function linkDeclaredDependencies(consumerRoot, packageJson) {
 test('a packed blank consumer resolves bounded-program, AdmissionStore, and consequence-boundary types', () => {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'emilia-gate-consumer-'));
   try {
-    const packOutput = JSON.parse(execFileSync('npm', [
+    const packReport = JSON.parse(execFileSync('npm', [
       'pack', '--ignore-scripts', '--json', '--pack-destination', temporaryRoot,
     ], { cwd: packageRoot, encoding: 'utf8' }));
-    const tarball = path.join(temporaryRoot, packOutput[0].filename);
+    const packEntries = Array.isArray(packReport) ? packReport : Object.values(packReport ?? {});
+    assert.equal(packEntries.length, 1, 'npm pack must return exactly one package');
+    assert.equal(typeof packEntries[0]?.filename, 'string', 'npm pack report must name the tarball');
+    const tarball = path.join(temporaryRoot, packEntries[0].filename);
     const installedGate = path.join(
       temporaryRoot, 'consumer', 'node_modules', '@emilia-protocol', 'gate',
     );

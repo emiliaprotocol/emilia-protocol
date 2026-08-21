@@ -149,11 +149,15 @@ export function checkPackedPackageExports() {
                 '--pack-destination',
                 temporary,
             ]));
-            if (!Array.isArray(report) || report.length !== 1
-                || typeof report[0]?.filename !== 'string') {
+            const entries = Array.isArray(report)
+                ? report
+                : report && typeof report === 'object'
+                    ? Object.values(report)
+                    : [];
+            if (entries.length !== 1 || typeof entries[0]?.filename !== 'string') {
                 throw new Error(`npm pack returned an invalid report for ${item.name}`);
             }
-            tarballs.push(path.join(temporary, report[0].filename));
+            tarballs.push(path.join(temporary, entries[0].filename));
         }
         fs.writeFileSync(path.join(temporary, 'package.json'), JSON.stringify({ private: true, type: 'module' }), { encoding: 'utf8', mode: 0o600 });
         run('npm', [

@@ -432,10 +432,15 @@ export function verifyReproduciblePackage(
     } catch {
       throw new Error(`npm pack ${label} did not return JSON: ${run.stdout}`);
     }
-    if (!Array.isArray(report) || report.length !== 1 || typeof report[0].filename !== 'string') {
+    const entries: any[] = Array.isArray(report)
+      ? report
+      : report && typeof report === 'object'
+        ? Object.values(report)
+        : [];
+    if (entries.length !== 1 || typeof entries[0]?.filename !== 'string') {
       throw new Error(`npm pack ${label} returned an unexpected report`);
     }
-    const [entry] = report;
+    const [entry] = entries;
     if (entry.name !== metadata.name
       || entry.version !== metadata.version
       || entry.filename !== expectedFilename) {

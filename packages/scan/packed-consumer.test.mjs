@@ -40,8 +40,10 @@ test('packed scan installs the audited guard and refuses hostile generated actio
     '--pack-destination',
     packs,
   ]));
-  assert.equal(packReport.length, 1);
-  const scanTarball = join(packs, packReport[0].filename);
+  const packEntries = Array.isArray(packReport) ? packReport : Object.values(packReport ?? {});
+  assert.equal(packEntries.length, 1);
+  assert.equal(typeof packEntries[0]?.filename, 'string');
+  const scanTarball = join(packs, packEntries[0].filename);
 
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
   run('npm', [

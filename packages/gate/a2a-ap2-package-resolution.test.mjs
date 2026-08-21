@@ -12,10 +12,13 @@ const repositoryRoot = path.resolve(gateRoot, '../..');
 const verifyRoot = path.join(repositoryRoot, 'packages/verify');
 
 function pack(packageRoot, destination) {
-  const output = JSON.parse(execFileSync('npm', [
+  const report = JSON.parse(execFileSync('npm', [
     'pack', '--ignore-scripts', '--json', '--pack-destination', destination,
   ], { cwd: packageRoot, encoding: 'utf8' }));
-  return path.join(destination, output[0].filename);
+  const entries = Array.isArray(report) ? report : Object.values(report ?? {});
+  assert.equal(entries.length, 1, 'npm pack must return exactly one package');
+  assert.equal(typeof entries[0]?.filename, 'string', 'npm pack report must name the tarball');
+  return path.join(destination, entries[0].filename);
 }
 
 function extract(tarball, target) {
