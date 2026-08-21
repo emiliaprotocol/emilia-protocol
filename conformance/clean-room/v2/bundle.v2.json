@@ -16,8 +16,8 @@
   "suites": [
     {
       "path": "conformance/vectors/receipts.v1.json",
-      "sha256": "888fc3a1e3e0fb5ec73e2d5cb6244869c2bb7673f42587635c64f5736b3a1fad",
-      "vectors": 13,
+      "sha256": "e27b31759c9c901f5cd6e2986758a249175ea14dbc818e401d42fb71280aa83b",
+      "vectors": 14,
       "result_contract": "typed_object"
     },
     {
