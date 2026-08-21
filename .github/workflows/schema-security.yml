@@ -59,6 +59,10 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
           persist-credentials: false
+          # This is the narrow pull_request_target exception the checkout action
+          # requires. The sparse tree is never executed: trusted base code parses
+          # only the migration ledger and SQL after rejecting unsafe file types.
+          allow-unsafe-pr-checkout: true
           path: candidate-data
           sparse-checkout: |
             supabase/migrations
