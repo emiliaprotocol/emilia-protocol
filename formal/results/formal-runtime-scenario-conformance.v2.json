@@ -11,7 +11,7 @@
     },
     {
       "path": "apps/secure-app/lib/secure-key.ts",
-      "sha256": "85d66e618d5f61643d6d9ab702cd19f6d5a12cc1a0058c6f34624df15cb7ff76"
+      "sha256": "d8ed9affeddb80483060bb6b2b1704e185554d4d258af169e11e3657c87d0ff1"
     },
     {
       "path": "apps/secure-app/lib/security-boundary.mjs",
@@ -495,7 +495,7 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "02dec237a1335f066f9151ea755ab6202865cc79f7dbddae12cf755364f3c26e"
+      "sha256": "02d3754f802c013828930471f467853c8f464ce55ce44c0a9359cbfc5efb83f3"
     },
     {
       "path": "package.json",

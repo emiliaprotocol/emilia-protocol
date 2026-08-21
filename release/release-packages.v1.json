@@ -35,8 +35,8 @@
           "sha256": "f25baabd302fd8ce31cd3ae8791eeddda58efe6d1aa2324474f6e0e0bcb635f2"
         },
         {
-          "spec": "@emilia-protocol/verify@3.20.2",
-          "sha256": "e7f8fa6f48f03f71ffffe98f227009553653192f04c4976afc1cef33ced341d8"
+          "spec": "@emilia-protocol/verify@3.20.3",
+          "sha256": "192cedacd1be18b88980b2343e1167726dea9e343a74d45d91e8cc0d132c1af8"
         }
       ]
     },
