@@ -3,6 +3,12 @@
 
 ## Unreleased
 
+## 0.23.17 (2026-08-21)
+
+- Reissue the customer-owned consequence-protection release from the exact
+  protected `main` commit after the immutable `0.23.16` tag correctly remained
+  bound to an earlier commit whose publication preflight failed under npm 12's
+  remote-dependency policy.
 - Add a sealed protected-action registry and `gate.runRegistered()`. Reviewed
   handlers are installed only during trusted startup, the pinned manifest
   selects the handler, and frozen validated parameters enter the existing

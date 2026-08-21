@@ -268,10 +268,18 @@ export function verifyRegistryDependencyTarball(
     } catch {
       throw new Error(`npm pack returned invalid JSON for ${dependency.spec}`);
     }
-    if (!Array.isArray(report) || report.length !== 1) {
+    const reportEntries: unknown[] = Array.isArray(report)
+      ? report
+      : report !== null
+        && typeof report === 'object'
+        && Object.keys(report).length === 1
+        && Object.keys(report)[0] === dependency.name
+        ? [(report as Record<string, unknown>)[dependency.name]]
+        : [];
+    if (reportEntries.length !== 1) {
       throw new Error(`npm pack must return exactly one tarball for ${dependency.spec}`);
     }
-    const filename: unknown = (report[0] as any)?.filename;
+    const filename: unknown = (reportEntries[0] as any)?.filename;
     if (typeof filename !== 'string'
       || filename !== path.basename(filename)
       || !/^[a-z0-9][a-z0-9._-]*\.tgz$/u.test(filename)) {

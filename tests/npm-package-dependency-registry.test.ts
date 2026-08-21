@@ -54,7 +54,7 @@ describe('npm internal dependency registry guard', () => {
       {
         metadata: GATE_METADATA,
         directory: 'packages/gate',
-        version: '0.23.16',
+        version: '0.23.17',
         verifyVersion: '3.20.3',
         verifySha256: 'df14fd5791f8d69fe01be84fc926cb16b491b3a4b3bea33d50b5af9b648ef848',
       },
@@ -224,6 +224,43 @@ describe('npm internal dependency registry guard', () => {
       pin,
       { fetcher: registryFetcher(bytes, { extraArchives: ['substitute.tgz'] }) },
     )).toThrow(/unexpected registry archives/);
+  });
+
+  it('accepts npm 12 keyed pack reports without weakening the single-package boundary', () => {
+    const bytes = Buffer.from('canonical registry tarball');
+    const dependency = {
+      field: 'dependencies',
+      name: '@emilia-protocol/verify',
+      range: '3.15.0',
+      spec: '@emilia-protocol/verify@3.15.0',
+    };
+    const pin = {
+      spec: dependency.spec,
+      sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+    };
+    const filename = 'emilia-protocol-verify-3.15.0.tgz';
+
+    expect(verifyRegistryDependencyTarball(
+      dependency,
+      pin,
+      {
+        fetcher: registryFetcher(bytes, {
+          filename,
+          report: { [dependency.name]: { filename } },
+        }),
+      },
+    )).toMatchObject({ filename, sha256: pin.sha256 });
+
+    expect(() => verifyRegistryDependencyTarball(
+      dependency,
+      pin,
+      {
+        fetcher: registryFetcher(bytes, {
+          filename,
+          report: { '@emilia-protocol/substitute': { filename } },
+        }),
+      },
+    )).toThrow(/exactly one tarball/);
   });
 
   it('materializes tests from the verified registry tarball only after its hash matches', () => {
