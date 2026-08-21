@@ -42,7 +42,7 @@ node conformance/run.mjs
 ```
 
 ```
-EP-RECEIPT-v1                   — 13 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-RECEIPT-v1                   — 14 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-SIGNOFF-v1                   — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-RESOLUTION-v1                — 33 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-QUORUM-v1                    — 16 vectors   JavaScript ✓   Python ✓   Go ✓
