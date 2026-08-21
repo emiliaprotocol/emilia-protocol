@@ -66,10 +66,17 @@ function examinedEvidence(eligibleUnits, results) {
 
 test('the copied upstream vector objects are object-pinned to the observed Certisyn commit', async () => {
   const lock = await json(path.join(HERE, 'source-lock.json'));
-  const manifest = await json(path.join(UPSTREAM, 'manifest.json'));
+  const manifestBytes = await readFile(path.join(UPSTREAM, 'manifest.json'));
+  const manifest = JSON.parse(manifestBytes);
+  assert.equal(
+    createHash('sha256').update(manifestBytes).digest('hex'),
+    lock.source.local_observed_vector_manifest_sha256,
+  );
   assert.equal(cap1ObjectDigest(manifest), `sha256:${lock.source.observed_vector_manifest_object_sha256}`);
   for (const entry of lock.observed_vectors) {
-    const document = await json(path.join(UPSTREAM, entry.file));
+    const bytes = await readFile(path.join(UPSTREAM, entry.file));
+    const document = JSON.parse(bytes);
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), entry.local_sha256, entry.file);
     assert.equal(cap1ObjectDigest(document), `sha256:${entry.object_sha256}`, entry.file);
   }
 });
