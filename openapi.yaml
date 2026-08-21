@@ -6122,7 +6122,7 @@ paths:
                     properties:
                       state: { type: string, enum: [owner_review_required] }
                       instruction: { type: string }
-        '400': { description: Invalid, empty, duplicate, unknown, or weakened selection }
+        '400': { description: 'Invalid, empty, duplicate, unknown, or weakened selection' }
         '413': { description: Request body exceeds 64 KiB }
         '415': { description: Content-Type is not application/json }
         '429': { description: Public planner rate exceeded }
