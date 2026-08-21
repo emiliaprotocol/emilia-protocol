@@ -143,5 +143,72 @@ export declare function createCcsPyPiL1AebAdapter(constructorPins: {
     config: CcsL1AebAdapterConfig;
     trust_roots: readonly CcsL1Ed25519TrustRoot[];
 }): AebAdapter;
+/**
+ * CCS-05 calls the extended receipt shape "v1.3", while the latest public
+ * ccs-verifier package (1.1.14) still emits its distinct receipt_version 1.1
+ * shape. This profile is therefore source-locked to the Internet-Draft bytes
+ * and intentionally does not relabel the package-backed adapter above.
+ */
+export declare const CCS_V13_DRAFT_URL = "https://www.ietf.org/archive/id/draft-correctover-ccs-05.txt";
+export declare const CCS_V13_DRAFT_SHA256 = "c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9";
+export declare const CCS_V13_REFERENCE_CODEBERG_COMMIT = "a5cddf5093724ab149059ce1f2d507b5d0aeb36d";
+export declare const CCS_V13_REFERENCE_PYPI_VERSION = "1.1.14";
+export declare const CCS_V13_SOURCE_LOCK = "draft-correctover-ccs-05-v1.3-c91f0fa31b1b9e5";
+export declare const CCS_V13_AEB_ADAPTER_ID = "native:ccs-05-v1.3-ed25519";
+export declare const CCS_V13_AEB_ADAPTER_VERSION = "1";
+export declare const CCS_V13_AEB_CONFIG_VERSION = "AEB-CCS-05-V1.3-CONFIG-v1";
+export declare const CCS_V13_AEB_TRUST_ROOT_VERSION = "AEB-CCS-05-V1.3-ROOT-v1";
+export declare const CCS_V13_CAID_MAPPING_VERSION = "AEB-CCS-05-V1.3-TOOL-ACTION-MAPPING-v1";
+export declare const CCS_V13_CAID_MAPPER_ID = "mapper:ccs-05-v1.3-tool-action-v1";
+export interface CcsV13Receipt {
+    trace_id: string;
+    verdict: 'allow' | 'deny' | 'escalate';
+    timestamp: number;
+    tool: string;
+    params_hash: string;
+    rule_summary: string;
+    receipt: string;
+    verified_at: number;
+    block_reason: string;
+    request_hash: string;
+    response_hash: string;
+    runtime_context_hash: string;
+    action: string;
+    config_hash: string;
+    issuer: string;
+    audience: string;
+    nonce: string;
+    sequence: number;
+    issued_at: number;
+    expires_at: number;
+    max_clock_skew: number;
+    signature: string;
+}
+export interface CcsV13AebAdapterConfig {
+    '@version': typeof CCS_V13_AEB_CONFIG_VERSION;
+    evidence_role: string;
+    subject: AebEvidenceSubject;
+    issuer: string;
+    audience: string;
+    action_type: string;
+    allowed_tools: string[];
+    max_receipt_age_seconds: number;
+    max_clock_skew_seconds: number;
+    deployment_scope: 'pinned-ed25519-issuer';
+}
+export interface CcsV13Ed25519TrustRoot {
+    '@version': typeof CCS_V13_AEB_TRUST_ROOT_VERSION;
+    issuer: string;
+    key_id: string;
+    algorithm: 'Ed25519';
+    public_key_raw_base64: string;
+    public_key_fingerprint_sha256_16: string;
+}
+export declare function createCcsV13AebActionDefinition(actionType: string): Obj;
+/** Build the source-locked CCS-05 v1.3 Ed25519 enforcement adapter. */
+export declare function createCcsV13AebAdapter(constructorPins: {
+    config: CcsV13AebAdapterConfig;
+    trust_roots: readonly CcsV13Ed25519TrustRoot[];
+}): AebAdapter;
 export {};
 //# sourceMappingURL=aeb-ccs-adapter.d.ts.map

@@ -1,0 +1,98 @@
+{
+  "@version": "CCS-05-V1.3-INDEPENDENT-SAMPLE-SET-v1",
+  "source_lock": {
+    "draft_url": "https://www.ietf.org/archive/id/draft-correctover-ccs-05.txt",
+    "draft_sha256": "c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9",
+    "codeberg_reference_commit": "a5cddf5093724ab149059ce1f2d507b5d0aeb36d",
+    "pypi_reference_version": "1.1.14"
+  },
+  "live_run": {
+    "command": {
+      "intake_version": "1.3",
+      "agent_id": "agent:emilia-independent-interop",
+      "tool": "sum",
+      "params": {
+        "left": 19,
+        "right": 23
+      },
+      "timestamp": 1914451200,
+      "trace_id": "0123456789abcdef",
+      "runtime_context": {
+        "environment": "local-live-run",
+        "tenant": "public-interop"
+      }
+    },
+    "response": {
+      "result": 42
+    }
+  },
+  "receipts": [
+    {
+      "id": "allow-live-sum",
+      "receipt": {
+        "trace_id": "0123456789abcdef",
+        "verdict": "allow",
+        "timestamp": 1914451200,
+        "tool": "sum",
+        "params_hash": "e03c3c56f2455b23",
+        "rule_summary": "bounded_integer_inputs=allow",
+        "verified_at": 1914451200,
+        "block_reason": "",
+        "request_hash": "sha256:94935a3a41eb14f6c833c6e00bd52bbeaa647522affc1f286694cf08ced43532",
+        "response_hash": "sha256:0773698cf701d4082d365abcd08181974a52141a62ec0bf2eb2ab14996d02674",
+        "runtime_context_hash": "sha256:01b0c8531488e96b48080de8fdadb94a9316ee635b8ca222917ccf9556e61cb5",
+        "action": "ccs:tool-invoke:sum:e03c3c56f2455b2399296bb3267095aa2be601675a1da50d973657002a920824",
+        "config_hash": "sha256:0a2cb5833fd0e709463b8660e5a34d9434005e2b3d9b786ac30341e36f327e58",
+        "issuer": "https://emilia-protocol.example/interop/ccs-v13",
+        "audience": "https://gate.example/admit",
+        "nonce": "00112233445566778899aabbccddeeff",
+        "sequence": 1,
+        "issued_at": 1914451200,
+        "expires_at": 1914451260,
+        "max_clock_skew": 5,
+        "receipt": "6cfc176093b385e14aeb8b74c07548dd",
+        "signature": "6d6cbdefe4a44235a75d3830dbb7e83dc0e92838234ef6f51027bfba0c86b24cb084d5f41820b22b428fd17178930bb6e42d8549c424cdddfe62140237247107"
+      }
+    },
+    {
+      "id": "deny-out-of-policy",
+      "receipt": {
+        "trace_id": "fedcba9876543210",
+        "verdict": "deny",
+        "timestamp": 1914451200,
+        "tool": "sum",
+        "params_hash": "78258af9dfbd5730",
+        "rule_summary": "bounded_integer_inputs=deny",
+        "verified_at": 1914451200,
+        "block_reason": "bounded_integer_inputs",
+        "request_hash": "sha256:5b1ce220cce49a77e38b8e0b5e18d76d4a4483fb679cd8efe598c30c73d52e5b",
+        "response_hash": "",
+        "runtime_context_hash": "sha256:01b0c8531488e96b48080de8fdadb94a9316ee635b8ca222917ccf9556e61cb5",
+        "action": "ccs:tool-invoke:sum:78258af9dfbd5730d1661fb419d5b5edd2b8e5e7a7aa1cee9b4665d3b0bfbd6f",
+        "config_hash": "sha256:0a2cb5833fd0e709463b8660e5a34d9434005e2b3d9b786ac30341e36f327e58",
+        "issuer": "https://emilia-protocol.example/interop/ccs-v13",
+        "audience": "https://gate.example/admit",
+        "nonce": "ffeeddccbbaa99887766554433221100",
+        "sequence": 2,
+        "issued_at": 1914451200,
+        "expires_at": 1914451260,
+        "max_clock_skew": 5,
+        "receipt": "bad4d18c42609249c2425d87ab41b258",
+        "signature": "321f675492712689362bf0b0ef45cb974cf5947d8756995bc4feefb2bdc857786211a4d264e58599d4e8cdd9edeb4df992b46ae5af222650c2cf12ffd9107600"
+      }
+    }
+  ],
+  "relying_party_trust_root": {
+    "@version": "AEB-CCS-05-V1.3-ROOT-v1",
+    "issuer": "https://emilia-protocol.example/interop/ccs-v13",
+    "key_id": "emilia-ccs-v13-public-test-key-1",
+    "algorithm": "Ed25519",
+    "public_key_raw_base64": "wCoVgQhCMoWGG/WaoNlBrvbvqFQiImpL+XraY2wiOIU=",
+    "public_key_fingerprint_sha256_16": "1ee5b6c0f2e58ce6"
+  },
+  "limits": [
+    "The signing and legacy-HMAC keys are public deterministic test material.",
+    "The CCS legacy receipt field is generated but AEB relies on the pinned Ed25519 signature for cross-domain verification.",
+    "The allow receipt is machine-policy-decision evidence and is not human authorization or provider-effect proof."
+  ]
+}
