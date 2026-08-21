@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-21T19:16:07.731Z",
+  "evidence_snapshot_at": "2026-08-21T19:38:53.785Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "8c96a5f53ac52cdf6aa19f5d4b15aa2c3c50329b1fa1af0a1444899a218fe694",
+    "input_digest_sha256": "b123068ed64929aa79f1e9839acc0e68a7bbd46a0eaa635d8675254529da14a3",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "26854c002829d7dac2973ab6f0424361966125bcd979876610d9c7388d45b61e",
+        "sha256": "9161a596bf95b5fe499237459f03404fccf32fa93d2b460ce0351ca62d802257",
         "bytes": 4298
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "75fb2f8bd2136e30138c7a81403cf531c03157fa0cc550d727e2022cf97d9c90",
+        "sha256": "13142b17d23571788ae96787b766741d8949c81732d645615f568f44b46887fe",
         "bytes": 6361
       },
       {
@@ -294,11 +294,11 @@
     },
     "cross_language_conformance": {
       "suites": 21,
-      "vectors": 331,
+      "vectors": 332,
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "8578e002b7a6afbd7c4d26db70b99a722af5a1442db26427f2fea42276258702",
+      "manifest_sha256": "017b8340109035d8b8280444957782df68f1619f98e9c417e46fdd9ca2f3237b",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -457,7 +457,7 @@
       "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
       "scope": "time_pinned_vector_set",
       "relation_to_current_bundle": "time_pinned_prior_vector_set",
-      "current_vectors": 331
+      "current_vectors": 332
     },
     "hostility": {
       "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
