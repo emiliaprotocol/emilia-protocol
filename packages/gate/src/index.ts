@@ -222,6 +222,16 @@ export {
 } from './eg1-conformance.js';
 export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 export {
+  PROTECTION_PLAN_VERSION,
+  PROTECTION_COVERAGE_STATES,
+  PROTECTION_PRESETS,
+  createProtectionPlan,
+  evaluateProtectionCoverage,
+  type ProtectionCoverageState,
+  type ProtectionAssuranceClass,
+  type ProtectionPreset,
+} from './protection-plan.js';
+export {
   mintBreakGlassAuthorization,
   verifyBreakGlass,
   consumeBreakGlass,
