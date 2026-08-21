@@ -5,8 +5,11 @@
 // owner's plain-language selections into the existing Action Control Manifest.
 import { createDefaultActionControlManifest, toActionControl, validateActionControlManifest, } from './action-control-manifest.js';
 export const PROTECTION_PLAN_VERSION = 'EMILIA-PROTECTION-PLAN-v1';
+export const PROTECTION_CLAIM_SCOPE = 'ai_actions_through_verified_surface';
+export const DEFAULT_PROTECTION_FRESHNESS_SEC = 900;
 export const PROTECTION_COVERAGE_STATES = Object.freeze([
-    'protected',
+    'protected_from_ai_actions',
+    'attention',
     'connector_required',
     'observation_only',
     'not_protected',
@@ -94,6 +97,19 @@ function strictInstant(value) {
         throw new TypeError('protection_created_at_invalid');
     return normalized;
 }
+function optionalCanonicalInstant(value) {
+    if (typeof value !== 'string' || !Number.isFinite(Date.parse(value)))
+        return null;
+    const normalized = new Date(value).toISOString();
+    return normalized === value ? normalized : null;
+}
+function positiveBoundedSeconds(value, fallback, label) {
+    const normalized = value === undefined ? fallback : value;
+    if (!Number.isSafeInteger(normalized) || Number(normalized) < 0 || Number(normalized) > 86_400) {
+        throw new TypeError(`${label}_invalid`);
+    }
+    return Number(normalized);
+}
 function requestedAssurance(value, floor) {
     const requested = value === undefined ? floor : value;
     if (requested !== 'class_a' && requested !== 'quorum') {
@@ -173,45 +189,89 @@ export function createProtectionPlan({ planId, ownerLabel = 'Local owner', creat
         }),
     });
 }
-export function evaluateProtectionCoverage(plan, verifiedCoverage = null) {
+export function evaluateProtectionCoverage(plan, verifiedCoverage = null, options = {}) {
     if (!plan || plan['@version'] !== PROTECTION_PLAN_VERSION || !Array.isArray(plan.selections)) {
         throw new TypeError('protection_plan_invalid');
     }
-    const trusted = verifiedCoverage?.accepted === true
+    const now = strictInstant(options.now ?? new Date().toISOString());
+    const nowMs = Date.parse(now);
+    const maxAgeSec = positiveBoundedSeconds(options.maxAgeSec, DEFAULT_PROTECTION_FRESHNESS_SEC, 'protection_coverage_max_age');
+    const maxFutureSkewSec = positiveBoundedSeconds(options.maxFutureSkewSec, 30, 'protection_coverage_max_future_skew');
+    const trustedShape = verifiedCoverage?.accepted === true
         && verifiedCoverage?.verification === 'verified'
         && Array.isArray(verifiedCoverage?.surfaces);
+    const generatedAt = trustedShape
+        ? optionalCanonicalInstant(verifiedCoverage?.generated_at)
+        : null;
+    const generatedAtMs = generatedAt ? Date.parse(generatedAt) : null;
+    const verificationExpiresAt = generatedAtMs === null
+        ? null
+        : new Date(generatedAtMs + (maxAgeSec * 1000)).toISOString();
+    let reportAttentionReason = null;
+    if (trustedShape && !generatedAt)
+        reportAttentionReason = 'coverage_freshness_missing';
+    else if (generatedAtMs !== null && generatedAtMs > nowMs + (maxFutureSkewSec * 1000)) {
+        reportAttentionReason = 'coverage_report_from_future';
+    }
+    else if (generatedAtMs !== null && nowMs - generatedAtMs > maxAgeSec * 1000) {
+        reportAttentionReason = 'coverage_report_stale';
+    }
+    const timed = (entry) => ({
+        ...entry,
+        claim_scope: PROTECTION_CLAIM_SCOPE,
+        verified_at: generatedAt,
+        verification_expires_at: verificationExpiresAt,
+    });
     const actions = plan.selections.map((selection) => {
-        if (!trusted) {
-            return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'verification_required', reason: 'verified_coverage_required' };
+        if (!trustedShape) {
+            return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'verification_required', reason: 'verified_coverage_required' });
+        }
+        if (reportAttentionReason) {
+            return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'attention', reason: reportAttentionReason });
         }
         const surface = verifiedCoverage.surfaces.find((candidate) => candidate?.action_family === selection.action_type);
         if (!surface) {
-            return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'connector_required', reason: 'protected_surface_not_found' };
+            return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'connector_required', reason: 'protected_surface_not_found' });
         }
         if (surface.state === 'gated' && surface.refusal_probe_verified === true) {
-            return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'protected', reason: 'attested_gate_and_refusal_probe' };
+            return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'protected_from_ai_actions', reason: 'attested_gate_and_refusal_probe' });
+        }
+        if (surface.state === 'gated') {
+            return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'attention', reason: 'refusal_probe_not_verified' });
         }
         if (surface.state === 'witness_only') {
-            return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'observation_only', reason: 'traffic_observed_enforcement_unproven' };
+            return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'observation_only', reason: 'traffic_observed_enforcement_unproven' });
         }
         if (surface.state === 'ungated') {
-            return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'not_protected', reason: 'surface_ungated' };
+            return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'not_protected', reason: 'surface_ungated' });
         }
-        return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'verification_required', reason: surface.state === 'stale' ? 'coverage_stale' : 'coverage_unknown' };
+        return timed({
+            preset_id: selection.preset_id,
+            action_type: selection.action_type,
+            state: 'attention',
+            reason: surface.state === 'stale' ? 'coverage_stale' : 'refusal_probe_not_verified',
+        });
     });
-    const protectedCount = actions.filter((entry) => entry.state === 'protected').length;
-    const overall = protectedCount === actions.length && actions.length > 0
-        ? 'protected'
-        : (protectedCount > 0 ? 'partial' : 'not_active');
+    const protectedCount = actions.filter((entry) => entry.state === 'protected_from_ai_actions').length;
+    const attentionCount = actions.filter((entry) => entry.state === 'attention').length;
+    const overall = attentionCount > 0
+        ? 'attention'
+        : (protectedCount === actions.length && actions.length > 0
+            ? 'protected_from_ai_actions'
+            : (protectedCount > 0 ? 'partial' : 'not_active'));
     return Object.freeze({
         overall,
+        claim_scope: PROTECTION_CLAIM_SCOPE,
         protected_actions: protectedCount,
+        attention_actions: attentionCount,
         selected_actions: actions.length,
         actions: Object.freeze(actions.map((entry) => Object.freeze(entry))),
     });
 }
 export default {
     PROTECTION_PLAN_VERSION,
+    PROTECTION_CLAIM_SCOPE,
+    DEFAULT_PROTECTION_FRESHNESS_SEC,
     PROTECTION_COVERAGE_STATES,
     PROTECTION_PRESETS,
     createProtectionPlan,

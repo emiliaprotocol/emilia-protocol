@@ -97,6 +97,7 @@ describe('EMILIA consumer protection plan', () => {
     const coverage = evaluateProtectionCoverage(plan, {
       accepted: true,
       verification: 'verified',
+      generated_at: CREATED_AT,
       surfaces: [
         {
           action_family: 'payment.release',
@@ -109,14 +110,86 @@ describe('EMILIA consumer protection plan', () => {
           refusal_probe_verified: false,
         },
       ],
-    });
+    }, { now: CREATED_AT, maxAgeSec: 900 });
 
     expect(coverage.overall).toBe('partial');
     expect(coverage.actions).toEqual([
-      expect.objectContaining({ preset_id: 'spend-money', state: 'protected' }),
+      expect.objectContaining({
+        preset_id: 'spend-money',
+        state: 'protected_from_ai_actions',
+        verified_at: CREATED_AT,
+        verification_expires_at: '2026-08-20T12:15:00.000Z',
+      }),
       expect.objectContaining({ preset_id: 'delete-files', state: 'connector_required' }),
       expect.objectContaining({ preset_id: 'send-sensitive-data', state: 'observation_only' }),
     ]);
+  });
+
+  it('downgrades stale or failing coverage to attention instead of retaining a protected badge', () => {
+    const plan = createProtectionPlan({
+      planId: 'freshness-check',
+      createdAt: CREATED_AT,
+      selections: [{ presetId: 'publish-code' }],
+    });
+
+    const staleReport = evaluateProtectionCoverage(plan, {
+      accepted: true,
+      verification: 'verified',
+      generated_at: CREATED_AT,
+      surfaces: [{
+        action_family: 'deploy.production',
+        state: 'gated',
+        refusal_probe_verified: true,
+      }],
+    }, { now: '2026-08-20T12:15:01.000Z', maxAgeSec: 900 });
+    expect(staleReport.overall).toBe('attention');
+    expect(staleReport.actions[0]).toMatchObject({
+      state: 'attention',
+      reason: 'coverage_report_stale',
+      verified_at: CREATED_AT,
+      verification_expires_at: '2026-08-20T12:15:00.000Z',
+    });
+
+    const failedProbe = evaluateProtectionCoverage(plan, {
+      accepted: true,
+      verification: 'verified',
+      generated_at: CREATED_AT,
+      surfaces: [{
+        action_family: 'deploy.production',
+        state: 'unknown',
+        refusal_probe_verified: false,
+      }],
+    }, { now: CREATED_AT, maxAgeSec: 900 });
+    expect(failedProbe.overall).toBe('attention');
+    expect(failedProbe.actions[0]).toMatchObject({
+      state: 'attention',
+      reason: 'refusal_probe_not_verified',
+    });
+  });
+
+  it('scopes every earned protection claim to AI actions through the named surface', () => {
+    const plan = createProtectionPlan({
+      planId: 'scope-check',
+      createdAt: CREATED_AT,
+      selections: [{ presetId: 'delete-files' }],
+    });
+    const coverage = evaluateProtectionCoverage(plan, {
+      accepted: true,
+      verification: 'verified',
+      generated_at: CREATED_AT,
+      surfaces: [{
+        action_family: 'filesystem.delete',
+        state: 'gated',
+        refusal_probe_verified: true,
+      }],
+    }, { now: CREATED_AT });
+
+    expect(coverage.overall).toBe('protected_from_ai_actions');
+    expect(coverage.claim_scope).toBe('ai_actions_through_verified_surface');
+    expect(coverage.actions[0]).toMatchObject({
+      state: 'protected_from_ai_actions',
+      claim_scope: 'ai_actions_through_verified_surface',
+    });
   });
 
   it('requires verifier output before crediting even a gated-looking surface', () => {
@@ -129,12 +202,13 @@ describe('EMILIA consumer protection plan', () => {
     const coverage = evaluateProtectionCoverage(plan, {
       accepted: false,
       verification: 'unverified',
+      generated_at: CREATED_AT,
       surfaces: [{
         action_family: 'payment.release',
         state: 'gated',
         refusal_probe_verified: true,
       }],
-    });
+    }, { now: CREATED_AT });
 
     expect(coverage.overall).toBe('not_active');
     expect(coverage.actions[0].state).toBe('verification_required');

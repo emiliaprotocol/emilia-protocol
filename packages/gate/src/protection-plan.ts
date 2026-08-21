@@ -12,8 +12,11 @@ import {
 type Obj = Record<string, any>;
 
 export const PROTECTION_PLAN_VERSION = 'EMILIA-PROTECTION-PLAN-v1';
+export const PROTECTION_CLAIM_SCOPE = 'ai_actions_through_verified_surface';
+export const DEFAULT_PROTECTION_FRESHNESS_SEC = 900;
 export const PROTECTION_COVERAGE_STATES = Object.freeze([
-  'protected',
+  'protected_from_ai_actions',
+  'attention',
   'connector_required',
   'observation_only',
   'not_protected',
@@ -22,6 +25,11 @@ export const PROTECTION_COVERAGE_STATES = Object.freeze([
 
 export type ProtectionCoverageState = typeof PROTECTION_COVERAGE_STATES[number];
 export type ProtectionAssuranceClass = 'class_a' | 'quorum';
+export type ProtectionCoverageOptions = Readonly<{
+  now?: string;
+  maxAgeSec?: number;
+  maxFutureSkewSec?: number;
+}>;
 
 export type ProtectionPreset = Readonly<{
   id: string;
@@ -133,6 +141,20 @@ function strictInstant(value: unknown): string {
   return normalized;
 }
 
+function optionalCanonicalInstant(value: unknown): string | null {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return null;
+  const normalized = new Date(value).toISOString();
+  return normalized === value ? normalized : null;
+}
+
+function positiveBoundedSeconds(value: unknown, fallback: number, label: string): number {
+  const normalized = value === undefined ? fallback : value;
+  if (!Number.isSafeInteger(normalized) || Number(normalized) < 0 || Number(normalized) > 86_400) {
+    throw new TypeError(`${label}_invalid`);
+  }
+  return Number(normalized);
+}
+
 function requestedAssurance(value: unknown, floor: ProtectionAssuranceClass): ProtectionAssuranceClass {
   const requested = value === undefined ? floor : value;
   if (requested !== 'class_a' && requested !== 'quorum') {
@@ -224,40 +246,94 @@ export function createProtectionPlan({
   });
 }
 
-export function evaluateProtectionCoverage(plan: Obj, verifiedCoverage: Obj | null = null): Obj {
+export function evaluateProtectionCoverage(
+  plan: Obj,
+  verifiedCoverage: Obj | null = null,
+  options: ProtectionCoverageOptions = {},
+): Obj {
   if (!plan || plan['@version'] !== PROTECTION_PLAN_VERSION || !Array.isArray(plan.selections)) {
     throw new TypeError('protection_plan_invalid');
   }
-  const trusted = verifiedCoverage?.accepted === true
+  const now = strictInstant(options.now ?? new Date().toISOString());
+  const nowMs = Date.parse(now);
+  const maxAgeSec = positiveBoundedSeconds(
+    options.maxAgeSec,
+    DEFAULT_PROTECTION_FRESHNESS_SEC,
+    'protection_coverage_max_age',
+  );
+  const maxFutureSkewSec = positiveBoundedSeconds(
+    options.maxFutureSkewSec,
+    30,
+    'protection_coverage_max_future_skew',
+  );
+  const trustedShape = verifiedCoverage?.accepted === true
     && verifiedCoverage?.verification === 'verified'
     && Array.isArray(verifiedCoverage?.surfaces);
 
+  const generatedAt = trustedShape
+    ? optionalCanonicalInstant(verifiedCoverage?.generated_at)
+    : null;
+  const generatedAtMs = generatedAt ? Date.parse(generatedAt) : null;
+  const verificationExpiresAt = generatedAtMs === null
+    ? null
+    : new Date(generatedAtMs + (maxAgeSec * 1000)).toISOString();
+  let reportAttentionReason: string | null = null;
+  if (trustedShape && !generatedAt) reportAttentionReason = 'coverage_freshness_missing';
+  else if (generatedAtMs !== null && generatedAtMs > nowMs + (maxFutureSkewSec * 1000)) {
+    reportAttentionReason = 'coverage_report_from_future';
+  } else if (generatedAtMs !== null && nowMs - generatedAtMs > maxAgeSec * 1000) {
+    reportAttentionReason = 'coverage_report_stale';
+  }
+
+  const timed = (entry: Obj): Obj => ({
+    ...entry,
+    claim_scope: PROTECTION_CLAIM_SCOPE,
+    verified_at: generatedAt,
+    verification_expires_at: verificationExpiresAt,
+  });
+
   const actions = plan.selections.map((selection: Obj) => {
-    if (!trusted) {
-      return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'verification_required' as ProtectionCoverageState, reason: 'verified_coverage_required' };
+    if (!trustedShape) {
+      return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'verification_required' as ProtectionCoverageState, reason: 'verified_coverage_required' });
+    }
+    if (reportAttentionReason) {
+      return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'attention' as ProtectionCoverageState, reason: reportAttentionReason });
     }
     const surface = verifiedCoverage.surfaces.find((candidate: Obj) => candidate?.action_family === selection.action_type);
     if (!surface) {
-      return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'connector_required' as ProtectionCoverageState, reason: 'protected_surface_not_found' };
+      return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'connector_required' as ProtectionCoverageState, reason: 'protected_surface_not_found' });
     }
     if (surface.state === 'gated' && surface.refusal_probe_verified === true) {
-      return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'protected' as ProtectionCoverageState, reason: 'attested_gate_and_refusal_probe' };
+      return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'protected_from_ai_actions' as ProtectionCoverageState, reason: 'attested_gate_and_refusal_probe' });
+    }
+    if (surface.state === 'gated') {
+      return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'attention' as ProtectionCoverageState, reason: 'refusal_probe_not_verified' });
     }
     if (surface.state === 'witness_only') {
-      return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'observation_only' as ProtectionCoverageState, reason: 'traffic_observed_enforcement_unproven' };
+      return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'observation_only' as ProtectionCoverageState, reason: 'traffic_observed_enforcement_unproven' });
     }
     if (surface.state === 'ungated') {
-      return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'not_protected' as ProtectionCoverageState, reason: 'surface_ungated' };
+      return timed({ preset_id: selection.preset_id, action_type: selection.action_type, state: 'not_protected' as ProtectionCoverageState, reason: 'surface_ungated' });
     }
-    return { preset_id: selection.preset_id, action_type: selection.action_type, state: 'verification_required' as ProtectionCoverageState, reason: surface.state === 'stale' ? 'coverage_stale' : 'coverage_unknown' };
+    return timed({
+      preset_id: selection.preset_id,
+      action_type: selection.action_type,
+      state: 'attention' as ProtectionCoverageState,
+      reason: surface.state === 'stale' ? 'coverage_stale' : 'refusal_probe_not_verified',
+    });
   });
-  const protectedCount = actions.filter((entry: Obj) => entry.state === 'protected').length;
-  const overall = protectedCount === actions.length && actions.length > 0
-    ? 'protected'
-    : (protectedCount > 0 ? 'partial' : 'not_active');
+  const protectedCount = actions.filter((entry: Obj) => entry.state === 'protected_from_ai_actions').length;
+  const attentionCount = actions.filter((entry: Obj) => entry.state === 'attention').length;
+  const overall = attentionCount > 0
+    ? 'attention'
+    : (protectedCount === actions.length && actions.length > 0
+      ? 'protected_from_ai_actions'
+      : (protectedCount > 0 ? 'partial' : 'not_active'));
   return Object.freeze({
     overall,
+    claim_scope: PROTECTION_CLAIM_SCOPE,
     protected_actions: protectedCount,
+    attention_actions: attentionCount,
     selected_actions: actions.length,
     actions: Object.freeze(actions.map((entry: Obj) => Object.freeze(entry))),
   });
@@ -265,6 +341,8 @@ export function evaluateProtectionCoverage(plan: Obj, verifiedCoverage: Obj | nu
 
 export default {
   PROTECTION_PLAN_VERSION,
+  PROTECTION_CLAIM_SCOPE,
+  DEFAULT_PROTECTION_FRESHNESS_SEC,
   PROTECTION_COVERAGE_STATES,
   PROTECTION_PRESETS,
   createProtectionPlan,

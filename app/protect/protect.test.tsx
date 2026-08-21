@@ -6,7 +6,7 @@ import ProtectPage from './page';
 describe('consumer Consequence Firewall page', () => {
   it('leads with the consequence and names every first protection choice', () => {
     const html = renderToStaticMarkup(<ProtectPage />);
-    expect(html).toContain('Choose what AI must never do silently');
+    expect(html).toContain('Choose what AI must never do without your authority');
     for (const label of [
       'Spend money',
       'Delete files',
@@ -21,7 +21,11 @@ describe('consumer Consequence Firewall page', () => {
     const html = renderToStaticMarkup(<ProtectPage />);
     expect(html).toContain('Choosing a protection creates configuration');
     expect(html).toContain('pin the rule');
-    expect(html).toContain('active refusal test passes');
+    expect(html).toContain('non-effecting refusal test passes');
+    expect(html).toContain('Protected from AI actions');
+    expect(html).toContain('Attention required');
+    expect(html).toContain('A probe is stale or failing');
     expect(html).not.toContain('You are protected');
+    expect(html).not.toMatch(/>PROTECTED</);
   });
 });

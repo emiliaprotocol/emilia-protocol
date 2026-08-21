@@ -59,7 +59,7 @@
 
 .truth { padding: 54px 0; display: grid; grid-template-columns: .8fr 1.2fr; gap: 70px; border-top: 1px solid rgba(255,255,255,.12); border-bottom: 1px solid rgba(255,255,255,.12); }
 .truth p { color: #aeb8b1; font-size: 18px; line-height: 1.7; }
-.steps { padding: 52px 0 92px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: rgba(255,255,255,.12); }
+.steps { padding: 52px 0 92px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: rgba(255,255,255,.12); }
 .steps article { padding: 28px; background: #080b09; }
 .steps span { color: #67f69a; font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: .12em; }
 .steps h3 { margin-top: 14px; font-size: 19px; }
