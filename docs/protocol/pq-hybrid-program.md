@@ -175,7 +175,7 @@ The repo defines **several hundred** `*_VERSION`/`@version` string constants (on
 
 - Every artifact today carries a **single, flat** `signature: { algorithm: 'Ed25519', value/signature_b64u: string }` (or `signatures: [...]` for the small number of *multi-signer-role* artifacts: `breakglass.ts`, `reliance-agreement.ts`, quorum members). Adding a second signature/algorithm changes that field's **shape**, not just its content — that is a wire-format change and, per this repo's own frozen-core discipline (PIP-001) and the SemVer-ish `-v1`/`-v2` suffixes already in use elsewhere (e.g. `EP-GATE-ADMISSION-RECORD-v2`, `EP-MERKLE-v2`, `EP-COVERAGE-POPULATION-v2`), it warrants a version bump for each artifact type touched (`-v1` → `-v2`, or an additive `hybrid_signature` sibling field with its own sub-version like `EP-SIG-AGILITY-v1` uses).
 - The **one exception** that does **not** need a schema bump: `EP-EVIDENCE-REATTESTATION-v1` already carries `alg: string` per entry (`'Ed25519' | 'ML-DSA-65'`) — the shape already anticipates multiple algorithms.
-- `EP-SIG-AGILITY-v1` and `EP-HYBRID-SIGNATURE-v1` are themselves already-versioned, already-shaped-for-multi-algorithm envelopes — they are the schema to reuse rather than reinvent per artifact.
+- `EP-SIG-AGILITY-v1` and the canonical `EP-HYBRID-v1` are themselves already-versioned, already-shaped-for-multi-algorithm envelopes. They are the schemas to reuse rather than reinvent per artifact. `EP-HYBRID-SIGNATURE-v1` is retired and appears elsewhere in this document only as migration history.
 - `EP-ENVELOPE-v1`'s `ALLOWED_ALGS` allow-list (`Ed25519, EdDSA, ES256`) would need `ML-DSA-65` added — a small, contained change relative to the receipt-shape changes elsewhere.
 
 ---

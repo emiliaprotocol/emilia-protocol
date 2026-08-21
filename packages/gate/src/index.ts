@@ -232,6 +232,26 @@ export {
   type ProtectionPreset,
 } from './protection-plan.js';
 export {
+  PROTECTION_ACTIVATION_VERSION,
+  PROTECTION_ACTIVATION_CLAIM_BOUNDARY,
+  signProtectionActivation,
+  verifyProtectionActivation,
+  type ProtectionActivationExpected,
+} from './protection-activation.js';
+export {
+  ADAPTER_MANIFEST_VERSION,
+  ADAPTER_MANIFEST_CLAIM_BOUNDARY,
+  signAdapterManifest,
+  loadAdapterManifestRegistry,
+} from './adapter-manifest.js';
+export {
+  STATE_DOMAIN_MIGRATION_RECEIPT_VERSION,
+  STATE_DOMAIN_MIGRATION_CLAIM_BOUNDARY,
+  signStateDomainMigrationReceipt,
+  verifyStateDomainMigrationReceipt,
+  migrateStateDomain,
+} from './state-domain-migration.js';
+export {
   mintBreakGlassAuthorization,
   verifyBreakGlass,
   consumeBreakGlass,

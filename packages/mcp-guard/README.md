@@ -88,6 +88,52 @@ MCP tool call ── classify ─┬─ reversible / read-only ─────�
 
 ## Wiring it into an MCP server's tool dispatch
 
+### Customer-owned protection activation
+
+`withCustomerOwnedProtectionGateway()` is the production assembly path for a
+customer-signed Consequence Firewall protection plan. Gate verifies the signed
+`EP-PROTECTION-ACTIVATION-v1` artifact first. The owning process then pins its
+exact digest, customer identity, customer key, tenant, and gateway before this
+wrapper derives the MCP tool map.
+
+```js
+import { withCustomerOwnedProtectionGateway } from '@emilia-protocol/mcp-guard';
+import { verifyProtectionActivation } from '@emilia-protocol/gate/protection-activation';
+
+const verifiedActivation = verifyProtectionActivation(activation, {
+  trusted_keys: customerKeys,
+  expected: {
+    activation_id: 'activation:finance:01',
+    tenant_id: 'tenant:finance',
+    gateway_id: 'gateway:finance:mcp',
+    authorizer_id: 'customer:finance',
+  },
+});
+
+const dispatch = withCustomerOwnedProtectionGateway(handleTool, {
+  verifiedActivation,
+  expectedActivationDigest: pinnedActivationDigest,
+  expectedOwnerId: 'customer:finance',
+  expectedOwnerKeyId: 'key:finance-protection',
+  tenantId: 'tenant:finance',
+  gatewayId: 'gateway:finance:mcp',
+  ledger: durableProvenanceLedger,
+  store: durableReceiptConsumptionStore,
+  readOnlyTools: ['get_balance'],
+});
+```
+
+Selected MCP tools inherit the signed manifest's action family and assurance
+floor. Unknown tools remain irreversible by default. Only a locally configured
+read-only set passes without a receipt. The wrapper receives the tool handler,
+not provider credentials, so the executor keeps credential custody.
+
+The signed activation is gateway configuration. It is not per-action
+authorization, proof that a connector was installed, proof of complete
+mediation, or proof of an external effect. Production assembly requires both a
+durable one-time consumption store and a durable, startup-verified provenance
+ledger.
+
 `withMcpGuard` wraps the dispatcher the server already calls. It does **not**
 touch transport, schemas, or the tool list.
 

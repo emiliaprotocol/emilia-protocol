@@ -434,6 +434,18 @@
     "./protection-plan": {
       "types": "./dist/protection-plan.d.ts",
       "import": "./protection-plan.js"
+    },
+    "./protection-activation": {
+      "types": "./dist/protection-activation.d.ts",
+      "import": "./protection-activation.js"
+    },
+    "./adapter-manifest": {
+      "types": "./dist/adapter-manifest.d.ts",
+      "import": "./adapter-manifest.js"
+    },
+    "./state-domain-migration": {
+      "types": "./dist/state-domain-migration.d.ts",
+      "import": "./state-domain-migration.js"
     }
   },
   "bin": {
@@ -521,6 +533,9 @@
     "trusted-context.js",
     "apertomemory-context.js",
     "protection-plan.js",
+    "protection-activation.js",
+    "adapter-manifest.js",
+    "state-domain-migration.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
     "key-registry.js",

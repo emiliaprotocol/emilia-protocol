@@ -134,6 +134,9 @@
     "src/apertomemory-context.ts",
     "src/hybrid-receipt-profile.ts",
     "src/protected-action-registry.ts",
-    "src/protection-plan.ts"
+    "src/protection-plan.ts",
+    "src/protection-activation.ts",
+    "src/adapter-manifest.ts",
+    "src/state-domain-migration.ts"
   ]
 }

@@ -1,0 +1,103 @@
+{
+  "@version": "EP-ARTIFACT-LIFECYCLE-REGISTRY-v1",
+  "claim_boundary": "repository_name_classification_not_runtime_existence_conformance_adoption_or_deployment",
+  "entries": [
+    {
+      "tag": "EP-ACTION-REMEDY-v1",
+      "status": "spec_only",
+      "evidence_paths": ["standards/posted/draft-schrock-action-remedy-receipts-00.xml"]
+    },
+    {
+      "tag": "EP-AEB-REQUIREMENT-v1",
+      "status": "spec_only",
+      "evidence_paths": ["standards/staged/NEXT-ACTION-EVIDENCE-BOUNDARY-04/UPLOAD-THIS/draft-schrock-action-evidence-boundary-04.xml"]
+    },
+    {
+      "tag": "EP-AEC-REPLAY-v1",
+      "status": "spec_only",
+      "evidence_paths": ["standards/staged/RENDERS/draft-schrock-ep-authorization-evidence-chain-05.txt"]
+    },
+    {
+      "tag": "EP-AEC-REQUIREMENT-v1",
+      "status": "spec_only",
+      "evidence_paths": ["standards/staged/RENDERS/draft-schrock-ep-authorization-evidence-chain-05.txt"]
+    },
+    {
+      "tag": "EP-ART14-CHECKLIST-v1",
+      "status": "document_only",
+      "evidence_paths": ["docs/ART14-EVIDENCE-CHECKLIST.md"]
+    },
+    {
+      "tag": "EP-ATTESTATION-BASELINE-v1",
+      "status": "document_only",
+      "evidence_paths": ["docs/ATTESTATION-BASELINE.md"]
+    },
+    {
+      "tag": "EP-BOUNDED-CAPABILITY-v1",
+      "status": "spec_only",
+      "evidence_paths": ["standards/staged/draft-schrock-ep-bounded-capability-receipts-04.xml"]
+    },
+    {
+      "tag": "EP-CERT-v1",
+      "status": "proposed",
+      "evidence_paths": ["docs/EP-CERTIFICATION-SCHEME.md"]
+    },
+    {
+      "tag": "EP-CONFORMANCE-RUN-REFERENCE-RUNNER-v1",
+      "status": "procedure_label",
+      "evidence_paths": ["docs/EP-EXTERNAL-VERIFICATION-STATEMENT-SPEC.md"]
+    },
+    {
+      "tag": "EP-CROSS-RAIL-AUTHORITY-LOOP-v1",
+      "status": "experimental_profile",
+      "evidence_paths": ["docs/protocol/cross-rail-authority-loop-v1.md"]
+    },
+    {
+      "tag": "EP-EYE-ADVISORY-v1",
+      "status": "spec_only",
+      "evidence_paths": ["standards/posted/draft-schrock-emilia-eye-00.xml"]
+    },
+    {
+      "tag": "EP-FIDO-AP2-CONSEQUENCE-BRIDGE-v1",
+      "status": "experimental_profile",
+      "evidence_paths": ["docs/protocol/fido-ap2-consequence-bridge-v1.md"]
+    },
+    {
+      "tag": "EP-GATE-ASSURANCE-BRIEF-v1",
+      "status": "document_only",
+      "evidence_paths": ["docs/briefs-src/emilia-assurance-brief.html"]
+    },
+    {
+      "tag": "EP-GATE-CONTROL-CATALOG-v1",
+      "status": "document_only",
+      "evidence_paths": ["docs/AUDITOR-CONTROL-CATALOG.md"]
+    },
+    {
+      "tag": "EP-GATE-SOC2-MAPPING-v1",
+      "status": "document_only",
+      "evidence_paths": ["docs/SOC2-CONTROL-MAPPING.md"]
+    },
+    {
+      "tag": "EP-HAC-v1",
+      "status": "spec_only",
+      "evidence_paths": ["standards/posted/draft-schrock-human-authorization-binding-00.xml"]
+    },
+    {
+      "tag": "EP-HYBRID-SIGNATURE-v1",
+      "status": "retired",
+      "evidence_paths": ["docs/POST-QUANTUM-MIGRATION.md", "docs/protocol/pq-hybrid-program.md"],
+      "allowed_paths": ["docs/POST-QUANTUM-MIGRATION.md", "docs/protocol/pq-hybrid-program.md"]
+    },
+    {
+      "tag": "EP-SPEC-v1",
+      "status": "retired",
+      "evidence_paths": ["docs/archive/EP-SPEC-v1.md"],
+      "allowed_paths": ["docs/archive/EP-SPEC-v1.md"]
+    },
+    {
+      "tag": "EP-WAG-SOURCE-LOCK-v1",
+      "status": "data_artifact",
+      "evidence_paths": ["standards/observatory/wag-00-source-lock.v1.json"]
+    }
+  ]
+}

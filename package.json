@@ -76,6 +76,7 @@
     "check:protocol": "node scripts/check-protocol-discipline.js && node scripts/check-write-discipline.js",
     "check:write-discipline": "node scripts/check-write-discipline.js",
     "check:repository-boundary": "node scripts/check-repository-boundary.js",
+    "check:artifact-lifecycle": "node scripts/check-artifact-lifecycle.mjs",
     "check:standards-staged": "node scripts/check-standards-staged.mjs",
     "check:model-to-matter-04": "node scripts/check-model-to-matter-04.mjs",
     "check:bounded-capability-02": "node scripts/check-bounded-capability-02.mjs",
