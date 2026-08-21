@@ -47,6 +47,7 @@ const NOW_MS = Date.parse(NOW);
 const INPUT_EXPIRES = '2026-08-20T18:15:00.000Z';
 const ADMISSION_EXPIRES = '2026-08-20T18:10:00.000Z';
 
+/** @returns {`sha256:${string}`} */
 function digest(label) {
   return `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 }
@@ -344,12 +345,24 @@ async function runPayoutCases() {
   });
   const controlAuthorityDigest = digest('finance-loss-boundary-control-authority');
   const store = createMemoryCapabilityStore({
-    verifyControlTransition: (input) => ({
-      authenticated: input.authorization?.authenticated === true,
-      authorized: input.authorization?.currently_authorized === true,
-      authority_instance_digest: input.authorization?.authority_instance_digest,
-      action_digest: input.authorization?.action_digest,
-    }),
+    verifyControlTransition: (input) => {
+      const authorization = input.authorization;
+      if (!authorization || typeof authorization !== 'object' || Array.isArray(authorization)) {
+        return { authenticated: false, authorized: false };
+      }
+      const claim = /** @type {{
+        authenticated?: unknown;
+        currently_authorized?: unknown;
+        authority_instance_digest?: string;
+        action_digest?: string;
+      }} */ (authorization);
+      return {
+        authenticated: claim.authenticated === true,
+        authorized: claim.currently_authorized === true,
+        authority_instance_digest: claim.authority_instance_digest,
+        action_digest: claim.action_digest,
+      };
+    },
   });
   if (!store.registerCapability(allowance.capabilityReceipt)) {
     throw new Error('finance_loss_capability_registration_failed');
@@ -357,6 +370,7 @@ async function runPayoutCases() {
   const registered = await store.registerControlDomain({ controlDomainId, now: NOW_MS });
   if (!registered.ok) throw new Error('finance_loss_control_domain_registration_failed');
   const allowanceArtifactDigest = allowanceDigest(allowance.allowance);
+  /** @type {Parameters<ReturnType<typeof createMemoryCapabilityStore>['advanceAllowanceStatus']>[0]} */
   const status = {
     allowance_profile_id: allowanceProfileId,
     allowance_digest: allowanceArtifactDigest,
@@ -370,8 +384,10 @@ async function runPayoutCases() {
   const advanced = await store.advanceAllowanceStatus(status);
   if (!advanced.ok) throw new Error('finance_loss_allowance_status_failed');
 
+  /** @type {Array<{params: Record<string, unknown>, options: Record<string, unknown>}>} */
+  const stripeCalls = [];
   const localStripe = {
-    calls: [],
+    calls: stripeCalls,
     accounts: { retrieve: async () => ({ id: 'acct_finance_demo' }) },
     payouts: {
       create: async (params, options) => {
@@ -476,9 +492,20 @@ function admissionInput(role, suffix) {
   };
 }
 
+/**
+ * @param {string} suffix
+ * @returns {import('../../packages/gate/admission-store.js').AdmissionSnapshotInput}
+ */
 function admissionSnapshot(suffix) {
   const operationId = `operation:${suffix}`;
   const admissionId = `admission:${suffix}`;
+  /** @type {Array<[import('../../packages/gate/admission-store.js').AdmissionResourceKind, string]>} */
+  const resourceReservations = [
+    ['replay', `receipt:${suffix}`],
+    ['budget', `budget:${suffix}`],
+    ['provider_operation', operationId],
+    ['external_lease', `lease:${suffix}`],
+  ];
   return {
     tenant_id: `tenant:${suffix}`,
     admission_id: admissionId,
@@ -523,12 +550,7 @@ function admissionSnapshot(suffix) {
       'qualification_statement', 'runtime_measurement', 'qualification_status',
       'agent_evaluation_evidence', 'aec',
     ].map((role) => admissionInput(role, suffix)),
-    resource_reservations: [
-      ['replay', `receipt:${suffix}`],
-      ['budget', `budget:${suffix}`],
-      ['provider_operation', operationId],
-      ['external_lease', `lease:${suffix}`],
-    ].map(([kind, resourceId]) => ({
+    resource_reservations: resourceReservations.map(([kind, resourceId]) => ({
       kind,
       resource_id: resourceId,
       reservation_id: `${kind}:${admissionId}`,
@@ -542,6 +564,10 @@ function admissionSnapshot(suffix) {
   };
 }
 
+/**
+ * @param {import('../../packages/gate/admission-store.js').AdmissionSnapshotInput} value
+ * @returns {import('../../packages/gate/admission-store.js').AdmissionCurrentnessObservation}
+ */
 function currentness(value) {
   return {
     '@version': ADMISSION_CURRENTNESS_VERSION,
@@ -566,6 +592,10 @@ function currentness(value) {
   };
 }
 
+/**
+ * @param {ReturnType<typeof createMemoryAdmissionStore>} store
+ * @param {import('../../packages/gate/admission-store.js').AdmissionSnapshotInput} value
+ */
 async function beginAdmission(store, value) {
   const reserved = await store.reserve(value);
   if (!reserved.ok) throw new Error(`finance_loss_reserve_failed:${reserved.reason}`);
@@ -631,6 +661,7 @@ async function runOutcomeCases() {
     expected_revision: 2,
     owner_token: unknownStart.reserved.owner_token,
   });
+  if (retry.ok) throw new Error('finance_loss_blind_retry_unexpectedly_admitted');
 
   return {
     diverged: {
@@ -678,4 +709,3 @@ export async function runFinanceLossBoundaryScenario() {
 if (process.argv[1] === new URL(import.meta.url).pathname) {
   console.log(JSON.stringify(await runFinanceLossBoundaryScenario(), null, 2));
 }
-

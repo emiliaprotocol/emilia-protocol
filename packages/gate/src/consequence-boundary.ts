@@ -726,7 +726,7 @@ export function createConsequenceBoundary<TResult>(
         result: outcome.result,
         evidence: outcome.evidence,
         attempt: attemptBinding,
-      });
+      } as const);
     }
     return Object.freeze({
       state: 'FAILED',
@@ -853,7 +853,7 @@ export function createConsequenceBoundary<TResult>(
         result: outcome.result,
         evidence: outcome.evidence,
         attempt: attemptBinding,
-      });
+      } as const);
     }
     return Object.freeze({
       state: 'FAILED',

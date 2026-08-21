@@ -1032,7 +1032,7 @@ export class GateQualificationV2 {
         legacyReasons,
         v2Reasons: decision.reasons,
       },
-    });
+    } as const);
   }
 
   async #stageAuthority(
@@ -1342,7 +1342,7 @@ export class GateQualificationV2 {
       admissionId: snapshot.body.admission_id,
       evidence: verified.evidence,
       relation: related.relation,
-    });
+    } as const);
   }
 
   async execute(
