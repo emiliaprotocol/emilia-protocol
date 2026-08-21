@@ -602,6 +602,10 @@
       "sha256": "23a59cdf5d31496c44673248181d070af7589e845b3493a8989a044e1311d257"
     },
     {
+      "path": "packages/gate/dist/cap1-coverage-composition.js",
+      "sha256": "fbf30834fa752b12fa3af567993d424a6657fb7a69cec026098f173554db0f2e"
+    },
+    {
       "path": "packages/gate/dist/capability-receipt.js",
       "sha256": "a0d0ded274778b7d11c31bced9583a587d96efe94ebdca3d24bfe40caf8ff8d5"
     },
@@ -663,7 +667,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "874ee354d433612e6b5aaad6c9c9dd735a3bc45c00b732c20fa254ca70eb7379"
+      "sha256": "441a029ee018a1058ea0c946d9823d8b9d72fe8f8b99db04d99ad6bebafcaa38"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -871,7 +875,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "289772b88619ff2da403a10393d12d3f0690a3b2f2bbbf78bbd0091bd4081ab8"
+      "sha256": "8ee8c68eb871abde079f34f1e7df44a18a1552bee4c970d5280dc1ed34a85268"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
