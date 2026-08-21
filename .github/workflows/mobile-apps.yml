@@ -219,7 +219,7 @@ jobs:
           cache: npm
           cache-dependency-path: apps/secure-app/package-lock.json
       - name: Install secure-app dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci --ignore-scripts --include=dev
       - name: Generate disposable iOS native project
         run: npx expo prebuild --platform ios --clean
       - name: Compile iOS release app without signing
@@ -260,7 +260,7 @@ jobs:
           java-version: '17'
           cache: gradle
       - name: Install secure-app dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci --ignore-scripts --include=dev
       - name: Generate disposable Android native project
         run: npx expo prebuild --platform android --clean --no-install
       - name: Compile unsigned Android release app

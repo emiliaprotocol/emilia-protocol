@@ -3,27 +3,19 @@
   "entries": [
     {
       "package": "expo",
-      "accepted_spec": "~57.0.11",
-      "accepted_version": "57.0.11",
-      "doctor_required_version": "57.0.13",
-      "required_version_published_at": "2026-08-14T14:25:27.591Z",
-      "eligible_at": "2026-08-21T14:25:27.591Z"
+      "accepted_spec": "~57.0.13",
+      "accepted_version": "57.0.13",
+      "doctor_required_version": "57.0.15",
+      "required_version_published_at": "2026-08-20T10:50:11.540Z",
+      "eligible_at": "2026-08-27T10:50:11.540Z"
     },
     {
       "package": "expo-asset",
-      "accepted_spec": "~57.0.9",
-      "accepted_version": "57.0.9",
-      "doctor_required_version": "57.0.11",
-      "required_version_published_at": "2026-08-14T14:26:27.415Z",
-      "eligible_at": "2026-08-21T14:26:27.415Z"
-    },
-    {
-      "package": "expo-screen-capture",
-      "accepted_spec": "~57.0.1",
-      "accepted_version": "57.0.1",
-      "doctor_required_version": "57.0.2",
-      "required_version_published_at": "2026-08-14T14:21:49.120Z",
-      "eligible_at": "2026-08-21T14:21:49.120Z"
+      "accepted_spec": "~57.0.11",
+      "accepted_version": "57.0.11",
+      "doctor_required_version": "57.0.13",
+      "required_version_published_at": "2026-08-20T10:48:59.047Z",
+      "eligible_at": "2026-08-27T10:48:59.047Z"
     }
   ]
 }

@@ -17,18 +17,17 @@
     "install": {
       "exclude": [
         "expo",
-        "expo-asset",
-        "expo-screen-capture"
+        "expo-asset"
       ]
     }
   },
   "dependencies": {
-    "@noble/curves": "1.9.7",
-    "@noble/hashes": "1.8.0",
-    "expo": "~57.0.11",
-    "expo-asset": "~57.0.9",
+    "@noble/curves": "2.3.0",
+    "@noble/hashes": "2.3.0",
+    "expo": "~57.0.13",
+    "expo-asset": "~57.0.11",
     "expo-local-authentication": "~57.0.2",
-    "expo-screen-capture": "~57.0.1",
+    "expo-screen-capture": "~57.0.2",
     "expo-secure-store": "~57.0.1",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
@@ -42,6 +41,6 @@
   },
   "devDependencies": {
     "babel-preset-expo": "~57.0.0",
-    "expo-doctor": "1.20.1"
+    "expo-doctor": "1.20.2"
   }
 }
