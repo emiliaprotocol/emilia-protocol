@@ -897,3 +897,75 @@ test('a provider success followed by commit failure remains reconcilable without
     'executed',
   );
 });
+
+test('a frozen customer control domain refuses an allowance before provider entry', async () => {
+  const keys = material();
+  const receipt = authorizationReceipt(keys);
+  const input = allowanceInput(receipt, keys);
+  const issued = issueGateAllowance({
+    authorizationReceipt: receipt,
+    allowance: input,
+    signer: keys.signer,
+    capabilityIssuerPrivateKey: keys.pair.privateKey,
+    capabilityRevocationMode: 'direct',
+  });
+  const authorityDigest = D('allowance-control-authority');
+  const store = createMemoryCapabilityStore({
+    verifyControlTransition: (candidate) => ({
+      authenticated: candidate.authorization?.authenticated === true,
+      authorized: candidate.authorization?.currently_authorized === true,
+      authority_instance_digest: candidate.authorization?.authority_instance_digest,
+      action_digest: candidate.authorization?.action_digest,
+    }),
+  });
+  assert.equal(store.registerCapability(issued.capabilityReceipt), true);
+  initializeCurrentStatus(store, issued);
+  const controlDomainId = 'control-domain:allowance-finance';
+  assert.equal((await store.registerControlDomain({ controlDomainId, now: NOW })).ok, true);
+  const freezeDigest = D('allowance-control-freeze');
+  assert.equal((await store.freezeControlDomain({
+    controlDomainId,
+    operationId: 'allowance-control-freeze:01',
+    actionDigest: freezeDigest,
+    authorization: {
+      authenticated: true,
+      currently_authorized: true,
+      authority_instance_digest: authorityDigest,
+      action_digest: freezeDigest,
+    },
+    now: NOW + 1,
+  })).ok, true);
+
+  let providerCalls = 0;
+  const action = payout('payout:frozen-control-domain');
+  const result = await executeWithGateAllowance({
+    allowance: issued.allowance,
+    capabilityReceipt: issued.capabilityReceipt,
+    secret: issued.secret,
+    action,
+    operationId: action.operation_id,
+    store,
+    executeAction: async () => {
+      providerCalls += 1;
+      return { id: 'must_not_exist' };
+    },
+    verifyAuthorizationReceipt: () => true,
+    verifyAllowanceStatus: () => currentStatus(),
+    trustedAllowanceKeys: keys.trustedKeys,
+    trustedCapabilityIssuerKeys: [keys.publicKey],
+    expected: {
+      allowance_id: input.allowance_id,
+      tenant_id: input.tenant_id,
+      subject_id: input.subject_id,
+      audience: input.audience,
+      connector_id: input.connector_id,
+      authorizer_id: keys.signer.issuer_id,
+    },
+    controlDomainId,
+    now: NOW + 2,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'capability_control_domain_frozen');
+  assert.equal(providerCalls, 0);
+});
