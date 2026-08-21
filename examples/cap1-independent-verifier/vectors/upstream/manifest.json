@@ -1,0 +1,102 @@
+[
+ {
+  "id": "PV-01",
+  "kind": "positive",
+  "expect": "conform",
+  "why": "complete run, catalogued basis"
+ },
+ {
+  "id": "PV-02",
+  "kind": "positive",
+  "expect": "conform",
+  "why": "policy and scope dispositions, still complete"
+ },
+ {
+  "id": "PV-03",
+  "kind": "positive",
+  "expect": "conform",
+  "why": "failure reported and verdict capped"
+ },
+ {
+  "id": "PV-04",
+  "kind": "positive",
+  "expect": "conform",
+  "why": "withholding digest-bound"
+ },
+ {
+  "id": "PV-05",
+  "kind": "positive",
+  "expect": "conform",
+  "why": "two strata at different granularity"
+ },
+ {
+  "id": "NC-01",
+  "kind": "negative",
+  "expect": "refuse",
+  "rule": "R1-no-silent-remainder",
+  "why": "two units vanish from the accounting; the counts no longer reconcile"
+ },
+ {
+  "id": "NC-02",
+  "kind": "negative",
+  "expect": "refuse",
+  "rule": "R2-closed-disposition",
+  "why": "an open reason string replaces a vocabulary member"
+ },
+ {
+  "id": "NC-03",
+  "kind": "negative",
+  "expect": "refuse",
+  "rule": "R3-withholding-digest-bound",
+  "why": "a unit is withheld with no digest of what was withheld"
+ },
+ {
+  "id": "NC-04",
+  "kind": "negative",
+  "expect": "refuse",
+  "rule": "R4-denominator-basis",
+  "why": "a catalogue denominator is asserted without naming the catalogue"
+ },
+ {
+  "id": "NC-05",
+  "kind": "negative",
+  "expect": "refuse",
+  "rule": "R5-counts-well-formed",
+  "why": "examined exceeds eligible"
+ },
+ {
+  "id": "NC-06",
+  "kind": "negative",
+  "expect": "refuse",
+  "rule": "R6-absence-is-scoped",
+  "why": "an absence is asserted against no population"
+ },
+ {
+  "id": "NC-07",
+  "kind": "negative",
+  "expect": "refuse",
+  "rule": "R7-incomplete-not-clean",
+  "why": "a unit failed and the run is still reported complete"
+ },
+ {
+  "id": "NC-08",
+  "kind": "negative",
+  "expect": "refuse",
+  "rule": "R8-supports-bounds-citation",
+  "why": "a cited stratum states no supported claim classes"
+ },
+ {
+  "id": "NC-09",
+  "kind": "negative",
+  "expect": "refuse",
+  "rule": "R1-no-silent-remainder",
+  "why": "a count-only ledger: the disposition totals are present but no unit is named"
+ },
+ {
+  "id": "NC-10",
+  "kind": "negative",
+  "expect": "refuse",
+  "rule": "R7-incomplete-not-clean",
+  "why": "incomplete is declared but no capped verdict is given"
+ }
+]

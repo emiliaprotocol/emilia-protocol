@@ -1,0 +1,58 @@
+{
+ "profile": "cap/1",
+ "producer": {
+  "name": "reference",
+  "version": "cap-1-ref/1.0.0",
+  "policy": "policy/1"
+ },
+ "subject": {
+  "kind": "artefact",
+  "ref": "vector-subject",
+  "digest": {
+   "algorithm": "SHA-256",
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+ },
+ "strata": [
+  {
+   "id": "detectors",
+   "population": "catalogued detector units",
+   "basis": {
+    "kind": "catalogue",
+    "catalogue_version": "1.0.0",
+    "catalogue_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+   },
+   "eligible": 8,
+   "examined": 4,
+   "unexamined": [
+    {
+     "unit": "pdf.ts",
+     "disposition": "not_applicable",
+     "detail": "subject is not a PDF"
+    },
+    {
+     "unit": "audio.ts",
+     "disposition": "not_applicable",
+     "detail": "subject carries no audio stream"
+    }
+   ],
+   "supports": [
+    "absence-of-detector-finding"
+   ]
+  }
+ ],
+ "absence_assertions": [
+  {
+   "assertion": "No manipulation indicator was observed.",
+   "stratum": "detectors",
+   "qualifier": "Not observed within the examined units of this stratum."
+  }
+ ],
+ "integrity": {
+  "complete": true,
+  "uncapped_verdict": "pass",
+  "capped_to": null,
+  "unaccounted": [],
+  "statement": "Every dispatched unit reached a recorded outcome."
+ }
+}

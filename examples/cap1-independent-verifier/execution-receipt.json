@@ -1,0 +1,48 @@
+{
+  "artifact": "EMILIA-CAP1-INDEPENDENT-EXECUTION-RECEIPT-v1",
+  "frozen_head": "47872cc9ada21b181a9ef46f1cb64ef730464866",
+  "source_lock_sha256": "b9a81f830a92705786272733c27254d3b35d0bccd0821bed24a57fc4293da149",
+  "implementation_lock_sha256": "f6f4b7b62d10f806cc64a402a2aa73c1ff2417ac12cdc4bd7b81705b005136a7",
+  "environment": {
+    "node": "v26.5.0",
+    "platform": "darwin",
+    "platform_version": "26.5.2",
+    "arch": "arm64"
+  },
+  "commands": [
+    {
+      "command": "node --test examples/cap1-independent-verifier/run.test.mjs",
+      "exit_code": 0,
+      "result": {
+        "tests": 11,
+        "passed": 11,
+        "failed": 0
+      }
+    },
+    {
+      "command": "node examples/cap1-independent-verifier/run-reference.mjs",
+      "exit_code": 0,
+      "result": {
+        "vectors": 15,
+        "passed": 15,
+        "positive": 5,
+        "negative": 10
+      }
+    },
+    {
+      "command": "node scripts/check-repository-boundary.js",
+      "exit_code": 0,
+      "result": "public tracked tree contains no prohibited private-document paths"
+    }
+  ],
+  "reference_report": {
+    "file": "report.reference.json",
+    "sha256": "135e6a2485a9c882deb0ff1bf2617f3e048c23e025cd072c01a87062e35e60a4"
+  },
+  "preflight_history": {
+    "superseded_head": "d44fbdc2",
+    "status": "ABORTED_BEFORE_COMPLETE_VECTOR_RUN",
+    "reason": "The first focused test found unrelated JSON appended to the local NC-01 fixture. The test exited nonzero on JSON parsing. The fixture was repaired, every local fixture byte hash was added to source-lock.json, and 47872cc9 was frozen before the successful full run."
+  },
+  "claim_boundary": "The result covers the fifteen vector objects observed at the pinned Certisyn commit. It does not show that the Internet-Draft normatively binds that bundle, that any declared source population was complete or true, or that an examined unit was evaluated at a stated technique or depth."
+}
