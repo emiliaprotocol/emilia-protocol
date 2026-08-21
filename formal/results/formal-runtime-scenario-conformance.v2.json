@@ -707,7 +707,7 @@
     },
     {
       "path": "packages/gate/dist/protection-plan.js",
-      "sha256": "220a868c8b88a87d8245890661feb123d247e957126b37520d9382804e1f0c1a"
+      "sha256": "2c027d6bf4a274f0a6d9ed6fed0cdbe623132273b179da936b61d85c96e24861"
     },
     {
       "path": "packages/gate/dist/provider-entry.js",
