@@ -155,10 +155,18 @@ export function verifyRegistryDependencyTarball(dependency, pin, { fetcher = fet
         catch {
             throw new Error(`npm pack returned invalid JSON for ${dependency.spec}`);
         }
-        if (!Array.isArray(report) || report.length !== 1) {
+        const reportEntries = Array.isArray(report)
+            ? report
+            : report !== null
+                && typeof report === 'object'
+                && Object.keys(report).length === 1
+                && Object.keys(report)[0] === dependency.name
+                ? [report[dependency.name]]
+                : [];
+        if (reportEntries.length !== 1) {
             throw new Error(`npm pack must return exactly one tarball for ${dependency.spec}`);
         }
-        const filename = report[0]?.filename;
+        const filename = reportEntries[0]?.filename;
         if (typeof filename !== 'string'
             || filename !== path.basename(filename)
             || !/^[a-z0-9][a-z0-9._-]*\.tgz$/u.test(filename)) {

@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+## 0.4.1 (2026-08-21)
+
+- Reissue the source-discovery release from the exact protected `main` commit
+  after the immutable `0.4.0` tag's publication preflight failed before any
+  registry upload.
 - Add bounded `scan source` discovery for MCP, LangChain, Vercel AI SDK,
   Genkit, Python, and Java registrations with per-registration source evidence.
 - Add tightening-only composition findings and `scan diff` against a reviewed,

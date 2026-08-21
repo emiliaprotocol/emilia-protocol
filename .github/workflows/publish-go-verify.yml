@@ -258,7 +258,10 @@ jobs:
           export GOMODCACHE="$CACHE_DIR/mod"
           export GOCACHE="$CACHE_DIR/cache"
           mkdir -p release-artifacts
-          for _ in $(seq 1 30); do
+          # proxy.golang.org may negatively cache a lookup made immediately
+          # before this workflow creates the immutable tag. Keep checking the
+          # public proxy without falling back to direct VCS resolution.
+          for _ in $(seq 1 90); do
             if go mod download -json "$RELEASE_MODULE@v$RELEASE_VERSION" \
               > "$CACHE_DIR/proxy-candidate.json"; then
               cp "$CACHE_DIR/proxy-candidate.json" release-artifacts/go-verify-proxy-raw.json
