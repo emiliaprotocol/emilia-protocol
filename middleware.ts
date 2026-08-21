@@ -75,6 +75,12 @@ const ROUTE_POLICIES = {
   'POST /api/pilot/sandbox/provision': { rateCategory: 'submit', useAuth: false },
   'GET /api/pilot/sandbox/report':     { rateCategory: 'read', useAuth: true },
 
+  // Public Consequence Firewall planner. This endpoint creates only a local,
+  // unsigned owner draft. It cannot activate Gate, mint authority, or establish
+  // protection, so keep the limiter IP-scoped until the separate owner-pinning
+  // ceremony exists.
+  'POST /api/v1/protection-plans':      { rateCategory: 'register', useAuth: false },
+
   // SCIM 2.0 provisioning (RFC 7644). The IdP authenticates with an ep_scim_
   // bearer token; rate-limit per token + IP. Initial directory sync is bursty,
   // so creates use the write category. The token-mint route is gated by the

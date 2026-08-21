@@ -6030,6 +6030,103 @@ paths:
         '429': { description: Public reference-run rate exceeded }
         '503': { description: Reference scenario unavailable }
 
+  /api/v1/protection-plans:
+    get:
+      tags: [EMILIA Gate]
+      operationId: listConsequenceFirewallProtectionPresets
+      summary: List the closed plain-language protection presets
+      description: |
+        Returns the six reference presets used by the local Consequence Firewall
+        planner. A preset is configuration input only; listing or selecting it
+        does not establish authority, complete mediation, or active protection.
+      security: []
+      responses:
+        '200':
+          description: Reference preset catalog and limitation
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: ['@version', reference_only, presets, limitation]
+                properties:
+                  '@version': { type: string, enum: [EMILIA-PROTECTION-PLAN-v1] }
+                  reference_only: { type: boolean, enum: [true] }
+                  presets:
+                    type: array
+                    minItems: 6
+                    maxItems: 6
+                    items:
+                      type: object
+                  limitation: { type: string }
+        '429': { description: Public planner rate exceeded }
+    post:
+      tags: [EMILIA Gate]
+      operationId: createConsequenceFirewallProtectionPlanDraft
+      summary: Compile selected consequences into an unsigned local plan draft
+      description: |
+        Compiles one or more closed presets into an Action Control Manifest.
+        The result is an unsigned owner draft and remains inactive. The owner
+        must review and pin it, install every owning connector, and verify an
+        active refusal probe before any selected path may be called Protected.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [plan_id, selections]
+              properties:
+                plan_id:
+                  type: string
+                  pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'
+                owner_label:
+                  type: string
+                  minLength: 1
+                  maxLength: 160
+                selections:
+                  type: array
+                  minItems: 1
+                  maxItems: 6
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [preset_id]
+                    properties:
+                      preset_id:
+                        type: string
+                        enum: [spend-money, delete-files, change-access, publish-code, send-sensitive-data, control-machines]
+                      assurance_class:
+                        type: string
+                        enum: [class_a, quorum]
+      responses:
+        '201':
+          description: Unsigned, inactive local protection-plan draft
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [reference_only, plan, next]
+                properties:
+                  reference_only: { type: boolean, enum: [true] }
+                  plan:
+                    type: object
+                    description: EMILIA-PROTECTION-PLAN-v1 unsigned owner draft
+                  next:
+                    type: object
+                    additionalProperties: false
+                    required: [state, instruction]
+                    properties:
+                      state: { type: string, enum: [owner_review_required] }
+                      instruction: { type: string }
+        '400': { description: 'Invalid, empty, duplicate, unknown, or weakened selection' }
+        '413': { description: Request body exceeds 64 KiB }
+        '415': { description: Content-Type is not application/json }
+        '429': { description: Public planner rate exceeded }
+
   /api/v1/gate/reference-scenario:
     get:
       tags: [EMILIA Gate]

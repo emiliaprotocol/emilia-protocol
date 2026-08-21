@@ -659,7 +659,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "668ecb3e521789fb5fb6546d3c21e0e6f3da8a7585719e2bf0f68e503a7b4c14"
+      "sha256": "ae1ad017a140ce1d4b21aee2c03f8e4bdf75f667ba9239ca3cc8f4f0cdbf0db9"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -704,6 +704,10 @@
     {
       "path": "packages/gate/dist/protected-action-registry.js",
       "sha256": "1a331ec8da2dcc60639d93f81b96b1c1c057c742689e3e9a0f42b3d74de4787c"
+    },
+    {
+      "path": "packages/gate/dist/protection-plan.js",
+      "sha256": "2c027d6bf4a274f0a6d9ed6fed0cdbe623132273b179da936b61d85c96e24861"
     },
     {
       "path": "packages/gate/dist/provider-entry.js",
@@ -855,7 +859,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "a0b3bb4ea26ced2236dc9a2d93e75449c52181b5197227812729260e3787eca9"
+      "sha256": "7b6be0652864492f8374bdc994b54bcabeb4c33dbe528ffdb81079a39e43c805"
     },
     {
       "path": "packages/gate/src/network-witness.ts",

@@ -430,6 +430,10 @@
     "./trusted-context/apertomemory": {
       "types": "./dist/apertomemory-context.d.ts",
       "import": "./apertomemory-context.js"
+    },
+    "./protection-plan": {
+      "types": "./dist/protection-plan.d.ts",
+      "import": "./protection-plan.js"
     }
   },
   "bin": {
@@ -516,6 +520,7 @@
     "zk-range-proof.js",
     "trusted-context.js",
     "apertomemory-context.js",
+    "protection-plan.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
     "key-registry.js",
