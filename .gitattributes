@@ -504,6 +504,7 @@ packages/gate/bounded-execution-report.test.js linguist-generated=true
 packages/gate/breakglass-v2.test.js linguist-generated=true
 packages/gate/breakglass.test.js linguist-generated=true
 packages/gate/business-authorization.test.js linguist-generated=true
+packages/gate/cap1-coverage-composition.test.js linguist-generated=true
 packages/gate/capability-gate.test.js linguist-generated=true
 packages/gate/capability-receipt-v2.test.js linguist-generated=true
 packages/gate/capability-receipt.test.js linguist-generated=true
