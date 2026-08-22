@@ -491,7 +491,7 @@
     },
     {
       "path": "lib/strict-json.js",
-      "sha256": "333e0dfcce807d97727f1a349258c7241295001389273f4010a5c88c42636d29"
+      "sha256": "405d62fdf68a10f3feab0ce4644605863b65b5d96100beff7f532789933c3e32"
     },
     {
       "path": "package-lock.json",
@@ -539,7 +539,7 @@
     },
     {
       "path": "packages/gate/dist/action-escrow.js",
-      "sha256": "887357e0a27b40cb985ecdad433ceabbf645c0ef39d63d5c335ab1cd5deafd85"
+      "sha256": "f109f68329f8ff6fe82a86127ea657dac945f6b0d19871a345a6ca706ecc7e5c"
     },
     {
       "path": "packages/gate/dist/action-packs.js",
@@ -607,7 +607,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "24e4bd0f226e41baf46cec768fcdf96bd029403eb3f9ec4a632f25c7e92d185f"
+      "sha256": "986cefc8c20a4960632855223abdb967a4215cc4660b0f6d41076c0da0bbefe7"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -815,7 +815,7 @@
     },
     {
       "path": "packages/gate/dist/strict-json.js",
-      "sha256": "952f0dc36a04c5a70a163a37b2cbdeba26088f802b72db67a6df4dd8c180a58a"
+      "sha256": "5b3d3bdd892681b6d11106be153442836498c31e57ebdde2f3d3c7b25cb4bd3f"
     },
     {
       "path": "packages/gate/dist/trust-program-revocation.js",
@@ -839,7 +839,7 @@
     },
     {
       "path": "packages/gate/src/action-escrow.ts",
-      "sha256": "acee368af3db92c8acaa72a21b67795c04df3913e17f79be859af7b2423014df"
+      "sha256": "eda961054e155bd9df0478258d4970c5b6b0cb94ce8696005c4d5b0299328b86"
     },
     {
       "path": "packages/gate/src/aeb-consumption-store.ts",
@@ -855,7 +855,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "d963425f0f2cbb280979008ad1d83577a96e59060cb3e5c152f4e3b7d50c6bbe"
+      "sha256": "fda6750e1d44ff5eff3ff1cb3da7ec10da7bfec409d6e1aeb1e5263430b8eda1"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -955,7 +955,7 @@
     },
     {
       "path": "packages/mobile/dist/strict-json.js",
-      "sha256": "f90b238282b5b5b833ddc02ff991cb0cd8f206f1dd538000672c7a14ac686ecd"
+      "sha256": "164d66dce859210501d53bfe01687f321a4c6c930c02abd374385d92fa9f6473"
     },
     {
       "path": "packages/mobile/enrollment.js",
@@ -991,7 +991,7 @@
     },
     {
       "path": "packages/require-receipt/dist/strict-json.js",
-      "sha256": "f90b238282b5b5b833ddc02ff991cb0cd8f206f1dd538000672c7a14ac686ecd"
+      "sha256": "164d66dce859210501d53bfe01687f321a4c6c930c02abd374385d92fa9f6473"
     },
     {
       "path": "packages/require-receipt/index.js",
@@ -1247,7 +1247,7 @@
     },
     {
       "path": "packages/verify/dist/strict-json.js",
-      "sha256": "333e0dfcce807d97727f1a349258c7241295001389273f4010a5c88c42636d29"
+      "sha256": "405d62fdf68a10f3feab0ce4644605863b65b5d96100beff7f532789933c3e32"
     },
     {
       "path": "packages/verify/dist/surface-binding.js",
