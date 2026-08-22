@@ -1,0 +1,233 @@
+{
+  "artifact": "EMILIA-CAP1-INDEPENDENT-RUN-v1",
+  "source": {
+    "specification": "draft-hillier-coverage-attestation-00",
+    "source_repository": "https://github.com/Certisyn-Inc/certisyn-drafts",
+    "source_commit": "0980d3201aa2caab3cbad5c6e9bc99b422370b43",
+    "specification_sha256": "7a9eeb1fbdb1fee95697622546d2ae7efba762fff193d6ee34765233539ac353",
+    "schema_sha256": "4453f216089543780bfecc4295cc4a61462fdc585b88d1e35b7d1aba79716b4a",
+    "observed_vector_manifest_sha256": "170aa81efc74c5278a2fb6e3bcc22bc91fb1706e9fb8faf1ce6d575e5ce3d965"
+  },
+  "implementation_lock_sha256": "f6f4b7b62d10f806cc64a402a2aa73c1ff2417ac12cdc4bd7b81705b005136a7",
+  "vector_scope": "fifteen vector objects observed at the pinned Certisyn commit; not a bundle normatively identified by the Internet-Draft",
+  "observed_manifest_sha256": "a154c691297bfe79c6dc97d054fe3532eba9aff2ac546833314d6f4f130a2fff",
+  "runtime": {
+    "node": "v26.5.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "summary": {
+    "total": 15,
+    "passed": 15,
+    "positive": 5,
+    "negative": 10
+  },
+  "cases": [
+    {
+      "id": "PV-01",
+      "kind": "positive",
+      "expected": "conform",
+      "expected_rule": null,
+      "vector_sha256": "522bbb6f2cc97557ec60151c7e8403328ab1f47ac272b3108b75b72b0f2a9a86",
+      "document_digest": "sha256:8911517d5dd239a28967eb9b4f88d10003d536e9f540764f0142960428186b17",
+      "verdict": "CONFORMS",
+      "primary_rule": null,
+      "observed_rules": [],
+      "passed": true
+    },
+    {
+      "id": "PV-02",
+      "kind": "positive",
+      "expected": "conform",
+      "expected_rule": null,
+      "vector_sha256": "28a8a7893d990df0ce46ea000ed0deb964d9783d3d2db43ae8db28675ddf469a",
+      "document_digest": "sha256:4037f918634ae5302a389a46a7afba8db5ac1899ff01755a615ec77e0016f9a3",
+      "verdict": "CONFORMS",
+      "primary_rule": null,
+      "observed_rules": [],
+      "passed": true
+    },
+    {
+      "id": "PV-03",
+      "kind": "positive",
+      "expected": "conform",
+      "expected_rule": null,
+      "vector_sha256": "e04577d858edc490afada75edb3b18aea0c84a1e13f3bbb7e63ffb51ae5804ee",
+      "document_digest": "sha256:a3a7e46d83a391f5342c9e846976480b29842e6e56328c96126ed05cb51e43d7",
+      "verdict": "CONFORMS",
+      "primary_rule": null,
+      "observed_rules": [],
+      "passed": true
+    },
+    {
+      "id": "PV-04",
+      "kind": "positive",
+      "expected": "conform",
+      "expected_rule": null,
+      "vector_sha256": "ca6c5ffc984c57b86431815315d4317ea9fec0be63789e3fb14914c84ac34978",
+      "document_digest": "sha256:f29c4d0dfe692f879c0b46669d36bfa08b6704fbb9484c921e50d15f119532c1",
+      "verdict": "CONFORMS",
+      "primary_rule": null,
+      "observed_rules": [],
+      "passed": true
+    },
+    {
+      "id": "PV-05",
+      "kind": "positive",
+      "expected": "conform",
+      "expected_rule": null,
+      "vector_sha256": "5a89f3482de4b51bf7dfcc22e53bac29cb28889e0e2c31a6d47d587e0c422672",
+      "document_digest": "sha256:52a4b34d2f4e31eb6bd372013889dfd61c3e8eb2d55db2d0a5ca34cde9e70e39",
+      "verdict": "CONFORMS",
+      "primary_rule": null,
+      "observed_rules": [],
+      "passed": true
+    },
+    {
+      "id": "NC-01",
+      "kind": "negative",
+      "expected": "refuse",
+      "expected_rule": "R1-no-silent-remainder",
+      "vector_sha256": "3014b70d91db9aa3667043941e528abf260d195f3106f3757f044a450e29c1f1",
+      "document_digest": "sha256:39ad2a9351bdb9b405bb485d0f240b3edf5824be60d57ae43263fb5dc972186e",
+      "verdict": "REFUSES",
+      "primary_rule": "R1-no-silent-remainder",
+      "observed_rules": [
+        "R1-no-silent-remainder"
+      ],
+      "passed": true
+    },
+    {
+      "id": "NC-02",
+      "kind": "negative",
+      "expected": "refuse",
+      "expected_rule": "R2-closed-disposition",
+      "vector_sha256": "f3d2e52fc328ccfb2066e63af9c6243b0b6d1ecbfcbd7f6985fc5b10fb6875ce",
+      "document_digest": "sha256:9824bcb20bedb534ad6e8ceb5e24e616abda8370974931894648201bbc6fe0b4",
+      "verdict": "REFUSES",
+      "primary_rule": "R2-closed-disposition",
+      "observed_rules": [
+        "R2-closed-disposition"
+      ],
+      "passed": true
+    },
+    {
+      "id": "NC-03",
+      "kind": "negative",
+      "expected": "refuse",
+      "expected_rule": "R3-withholding-digest-bound",
+      "vector_sha256": "555a6e243db4b2df047b948e07ecf5facc5ea59761913402165efd0dd22ef9d6",
+      "document_digest": "sha256:6544eb49a18ecd53db58140b773c327ffda766f68390325cbdd70a74dd8336e2",
+      "verdict": "REFUSES",
+      "primary_rule": "R3-withholding-digest-bound",
+      "observed_rules": [
+        "R3-withholding-digest-bound"
+      ],
+      "passed": true
+    },
+    {
+      "id": "NC-04",
+      "kind": "negative",
+      "expected": "refuse",
+      "expected_rule": "R4-denominator-basis",
+      "vector_sha256": "97b89bf57531bcadd4b06a29c378bc8d3ce068458ea80fc7f1298d9d5d66dded",
+      "document_digest": "sha256:78a0764d64a60df890ba8767d9f77aeda3b00376eafbb7d9d258a4126715822e",
+      "verdict": "REFUSES",
+      "primary_rule": "R4-denominator-basis",
+      "observed_rules": [
+        "R4-denominator-basis"
+      ],
+      "passed": true
+    },
+    {
+      "id": "NC-05",
+      "kind": "negative",
+      "expected": "refuse",
+      "expected_rule": "R5-counts-well-formed",
+      "vector_sha256": "596cccce773b95196c920262e027e137a1271bde2584f34c2ecd15a7411f0c04",
+      "document_digest": "sha256:c1852829ca242f744c52dd613533fa38b8c3936b49f86a4f6d638411d2f9a5c2",
+      "verdict": "REFUSES",
+      "primary_rule": "R5-counts-well-formed",
+      "observed_rules": [
+        "R5-counts-well-formed",
+        "R1-no-silent-remainder"
+      ],
+      "passed": true
+    },
+    {
+      "id": "NC-06",
+      "kind": "negative",
+      "expected": "refuse",
+      "expected_rule": "R6-absence-is-scoped",
+      "vector_sha256": "1172630500c946585f7ebfebbeed7f0f892a81642245bbe1f9f4298721bc33df",
+      "document_digest": "sha256:0a62b9776fb37a0d8028422435b5dd941ad7511fb75240c8028150dfce80f4a3",
+      "verdict": "REFUSES",
+      "primary_rule": "R6-absence-is-scoped",
+      "observed_rules": [
+        "R6-absence-is-scoped"
+      ],
+      "passed": true
+    },
+    {
+      "id": "NC-07",
+      "kind": "negative",
+      "expected": "refuse",
+      "expected_rule": "R7-incomplete-not-clean",
+      "vector_sha256": "89600bd03819ea8a4faf49f9d2a5ba535cf9e4134e9a28deb6dc0e54ae7da5b2",
+      "document_digest": "sha256:69334c0cfcc0ecbddd4a5761a8e3ab441dc757633b3fd23ae5034f5608e4a5cd",
+      "verdict": "REFUSES",
+      "primary_rule": "R7-incomplete-not-clean",
+      "observed_rules": [
+        "R7-incomplete-not-clean"
+      ],
+      "passed": true
+    },
+    {
+      "id": "NC-08",
+      "kind": "negative",
+      "expected": "refuse",
+      "expected_rule": "R8-supports-bounds-citation",
+      "vector_sha256": "a2f080972d49dd4872398638e9ee84bfe84ffd0de0c1809d875960f4694f562e",
+      "document_digest": "sha256:66c2b176890f3dba744cc4e37689ccafc09748cd54ef3b764b8fe96c37eb5101",
+      "verdict": "REFUSES",
+      "primary_rule": "R8-supports-bounds-citation",
+      "observed_rules": [
+        "R8-supports-bounds-citation"
+      ],
+      "passed": true
+    },
+    {
+      "id": "NC-09",
+      "kind": "negative",
+      "expected": "refuse",
+      "expected_rule": "R1-no-silent-remainder",
+      "vector_sha256": "c0b99ad856e5512478c4281a4561e571e452bfa7b62964e518e101d191eed84a",
+      "document_digest": "sha256:4dc79cbaba0500bff34f28cabeb3ea5412394a4a5a3b9c35e5186e6e32676bfb",
+      "verdict": "REFUSES",
+      "primary_rule": "R1-no-silent-remainder",
+      "observed_rules": [
+        "R1-no-silent-remainder"
+      ],
+      "passed": true
+    },
+    {
+      "id": "NC-10",
+      "kind": "negative",
+      "expected": "refuse",
+      "expected_rule": "R7-incomplete-not-clean",
+      "vector_sha256": "d4910869eb26fc3256e35559038340922516ed7baa2307ebc35a7ef4ad843bfb",
+      "document_digest": "sha256:464efdbe2f3e571f9be55f8ec55afdbaff54ed404fccbb375c70da17c25a3097",
+      "verdict": "REFUSES",
+      "primary_rule": "R7-incomplete-not-clean",
+      "observed_rules": [
+        "R7-incomplete-not-clean"
+      ],
+      "passed": true
+    }
+  ],
+  "claim_boundary": [
+    "CAP-1 conformance is internal consistency, not source-population completeness or truth.",
+    "This verifier is independent of the Certisyn verifier code, but it was run by the EMILIA team.",
+    "The document digest uses EMILIA recursively key-sorted JSON, not a native CAP-1 canonicalization."
+  ]
+}

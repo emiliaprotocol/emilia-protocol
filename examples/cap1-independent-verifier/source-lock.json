@@ -1,0 +1,143 @@
+{
+  "artifact": "EMILIA-CAP1-INDEPENDENT-SOURCE-LOCK-v1",
+  "source": {
+    "specification": "draft-hillier-coverage-attestation-00",
+    "repository": "https://github.com/Certisyn-Inc/certisyn-drafts",
+    "commit": "0980d3201aa2caab3cbad5c6e9bc99b422370b43",
+    "specification_sha256": "7a9eeb1fbdb1fee95697622546d2ae7efba762fff193d6ee34765233539ac353",
+    "schema_sha256": "4453f216089543780bfecc4295cc4a61462fdc585b88d1e35b7d1aba79716b4a",
+    "observed_vector_manifest_sha256": "170aa81efc74c5278a2fb6e3bcc22bc91fb1706e9fb8faf1ce6d575e5ce3d965",
+    "local_observed_vector_manifest_sha256": "a154c691297bfe79c6dc97d054fe3532eba9aff2ac546833314d6f4f130a2fff",
+    "observed_vector_manifest_object_sha256": "8a8c48c62df8675e22631c73e7f1a41896b1155166bd29c1a5714d06040d4e86",
+    "scope": "the fifteen vector objects observed at the pinned Certisyn commit; the Internet-Draft does not normatively identify this bundle"
+  },
+  "construction": {
+    "method": "written from the draft and normative schema without reading, importing, invoking, translating, or porting the Certisyn verifier implementations",
+    "frozen_before_vector_execution": true,
+    "local_vector_copy": "JSON-object preserving; patch tooling added a trailing newline, so original upstream byte hashes and canonical object hashes are both recorded"
+  },
+  "implementation_files": [
+    {
+      "file": "verify.mjs",
+      "sha256": "a2286e354c24535d69a99c68cba0fc23fb0c7b40a1451f460111c3ac05ff9c53"
+    },
+    {
+      "file": "run.mjs",
+      "sha256": "b05ab17941cfe08d031db6970bac177e39b57edf59a3885f42f5181564cf6cfc"
+    },
+    {
+      "file": "run.test.mjs",
+      "sha256": "fc6ba1b5b35ebd72bc1e0c251e880de43331737f8e8ad01cab5bf002dbc5f906"
+    },
+    {
+      "file": "run-reference.mjs",
+      "sha256": "20021f8bd82f4e770b46d3dd9d687b6270708a834ca71385a361cc9bdc5a6fbc"
+    },
+    {
+      "file": "INTERPRETATION.md",
+      "sha256": "4805eb575eec817577c606b10f20791cb3279269576711de2b979cf0e382056a"
+    },
+    {
+      "file": "README.md",
+      "sha256": "e7a074b18790b1b5cdfe989b2e3d196d521f3434b02fb0a32cdcb74283bfc984"
+    },
+    {
+      "file": "NOTICE.md",
+      "sha256": "0597a9ea5a4d83e742a3fc76824fbc3c7b6a5a66721f68a012f6a758da6e2b09"
+    }
+  ],
+  "implementation_lock_method": "SHA-256 over LC_ALL=C filename-sorted sha256sum lines for implementation_files",
+  "implementation_lock_sha256": "f6f4b7b62d10f806cc64a402a2aa73c1ff2417ac12cdc4bd7b81705b005136a7",
+  "observed_vectors": [
+    {
+      "file": "PV-01.json",
+      "sha256": "e601693d13a5135a2cf482a77d0dace5ef4ac9b723b112849c8d0b165d827245",
+      "local_sha256": "522bbb6f2cc97557ec60151c7e8403328ab1f47ac272b3108b75b72b0f2a9a86",
+      "object_sha256": "8911517d5dd239a28967eb9b4f88d10003d536e9f540764f0142960428186b17"
+    },
+    {
+      "file": "PV-02.json",
+      "sha256": "ad49b07d2a4ca56b90fe55bec1e34c923cb98f8f199f7b28de7de3f1638dd9e1",
+      "local_sha256": "28a8a7893d990df0ce46ea000ed0deb964d9783d3d2db43ae8db28675ddf469a",
+      "object_sha256": "4037f918634ae5302a389a46a7afba8db5ac1899ff01755a615ec77e0016f9a3"
+    },
+    {
+      "file": "PV-03.json",
+      "sha256": "15443a62a188429b8f15dc61170b21e14414ad7e742d34496e3374f2a0599f46",
+      "local_sha256": "e04577d858edc490afada75edb3b18aea0c84a1e13f3bbb7e63ffb51ae5804ee",
+      "object_sha256": "a3a7e46d83a391f5342c9e846976480b29842e6e56328c96126ed05cb51e43d7"
+    },
+    {
+      "file": "PV-04.json",
+      "sha256": "e53e256ed7c470478c541b8c0d34bc2f4e3061ab0fc748ecaeaa5a412df74e24",
+      "local_sha256": "ca6c5ffc984c57b86431815315d4317ea9fec0be63789e3fb14914c84ac34978",
+      "object_sha256": "f29c4d0dfe692f879c0b46669d36bfa08b6704fbb9484c921e50d15f119532c1"
+    },
+    {
+      "file": "PV-05.json",
+      "sha256": "ff151370b87ed6ca573a7caf926838c5fc2941acc4397819bfe15321907957e3",
+      "local_sha256": "5a89f3482de4b51bf7dfcc22e53bac29cb28889e0e2c31a6d47d587e0c422672",
+      "object_sha256": "52a4b34d2f4e31eb6bd372013889dfd61c3e8eb2d55db2d0a5ca34cde9e70e39"
+    },
+    {
+      "file": "NC-01.json",
+      "sha256": "31e430d5f67447fe3e3e09c154ecd29c396615f58bfb761b36f1d1a03189ebbf",
+      "local_sha256": "3014b70d91db9aa3667043941e528abf260d195f3106f3757f044a450e29c1f1",
+      "object_sha256": "39ad2a9351bdb9b405bb485d0f240b3edf5824be60d57ae43263fb5dc972186e"
+    },
+    {
+      "file": "NC-02.json",
+      "sha256": "c80682f911cfeffd55e2765281371aa012473250b7bc0829130a6e5b23858554",
+      "local_sha256": "f3d2e52fc328ccfb2066e63af9c6243b0b6d1ecbfcbd7f6985fc5b10fb6875ce",
+      "object_sha256": "9824bcb20bedb534ad6e8ceb5e24e616abda8370974931894648201bbc6fe0b4"
+    },
+    {
+      "file": "NC-03.json",
+      "sha256": "32182f23e7dc6277fa3356586f08603e0271692a37bd853f06d9b2b09cb8be75",
+      "local_sha256": "555a6e243db4b2df047b948e07ecf5facc5ea59761913402165efd0dd22ef9d6",
+      "object_sha256": "6544eb49a18ecd53db58140b773c327ffda766f68390325cbdd70a74dd8336e2"
+    },
+    {
+      "file": "NC-04.json",
+      "sha256": "a74eb88b9b2f33c8b3c9109d74e9701f6213aa40231693c12df7769852803019",
+      "local_sha256": "97b89bf57531bcadd4b06a29c378bc8d3ce068458ea80fc7f1298d9d5d66dded",
+      "object_sha256": "78a0764d64a60df890ba8767d9f77aeda3b00376eafbb7d9d258a4126715822e"
+    },
+    {
+      "file": "NC-05.json",
+      "sha256": "a62e87ac94ae3412fae81da3e5cee2538d8ec0475184014ab60b42e8ea98c8d8",
+      "local_sha256": "596cccce773b95196c920262e027e137a1271bde2584f34c2ecd15a7411f0c04",
+      "object_sha256": "c1852829ca242f744c52dd613533fa38b8c3936b49f86a4f6d638411d2f9a5c2"
+    },
+    {
+      "file": "NC-06.json",
+      "sha256": "6f501de2359a45bb4ff0177717109b380beba81cc538e49e73dd54947926b5b0",
+      "local_sha256": "1172630500c946585f7ebfebbeed7f0f892a81642245bbe1f9f4298721bc33df",
+      "object_sha256": "0a62b9776fb37a0d8028422435b5dd941ad7511fb75240c8028150dfce80f4a3"
+    },
+    {
+      "file": "NC-07.json",
+      "sha256": "cfe6ce89ac96e653ee59249a0f0c281f1f559d4740a0f8c49cb388125280ed18",
+      "local_sha256": "89600bd03819ea8a4faf49f9d2a5ba535cf9e4134e9a28deb6dc0e54ae7da5b2",
+      "object_sha256": "69334c0cfcc0ecbddd4a5761a8e3ab441dc757633b3fd23ae5034f5608e4a5cd"
+    },
+    {
+      "file": "NC-08.json",
+      "sha256": "90fc8dcc0382e610c818140da9b3a1a8e70467ec7ddf477b0438d67bbebba614",
+      "local_sha256": "a2f080972d49dd4872398638e9ee84bfe84ffd0de0c1809d875960f4694f562e",
+      "object_sha256": "66c2b176890f3dba744cc4e37689ccafc09748cd54ef3b764b8fe96c37eb5101"
+    },
+    {
+      "file": "NC-09.json",
+      "sha256": "8afb5d9deb53d2c3877af3028a90923ee7c3d6159e956a5f55a27fc2754531c1",
+      "local_sha256": "c0b99ad856e5512478c4281a4561e571e452bfa7b62964e518e101d191eed84a",
+      "object_sha256": "4dc79cbaba0500bff34f28cabeb3ea5412394a4a5a3b9c35e5186e6e32676bfb"
+    },
+    {
+      "file": "NC-10.json",
+      "sha256": "07833b7821b9cae16b65db65471f61c9c750394c9dd5e7b281319bea3e2b4abc",
+      "local_sha256": "d4910869eb26fc3256e35559038340922516ed7baa2307ebc35a7ef4ad843bfb",
+      "object_sha256": "464efdbe2f3e571f9be55f8ec55afdbaff54ed404fccbb375c70da17c25a3097"
+    }
+  ]
+}
