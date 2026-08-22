@@ -35,7 +35,6 @@ Before filing, one of these conditions must be true:
 2. the documented exception is satisfied by a named external implementer or deployment that
    demonstrates the wire-level gap, with the evidence and overlap review recorded.
 
-Justin Kintzele's explicit coauthor approval is also required. After those gates, regenerate from
-the reviewed source, rerun the tests and document checks, and create a separate isolated
-`UPLOAD-THIS` packet from the exact approved bytes.
-
+Justin Kintzele approved submission as coauthor by email on 2026-08-21. After the repository filing
+gate clears, regenerate from the reviewed source, rerun the tests and document checks, and create a
+separate isolated `UPLOAD-THIS` packet from the exact approved bytes.

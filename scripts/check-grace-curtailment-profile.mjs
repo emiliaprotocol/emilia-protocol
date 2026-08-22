@@ -70,6 +70,9 @@ const listed = new Map();
 for (const line of manifest) {
   const match = /^([a-f0-9]{64})  (.+)$/.exec(line);
   invariant(match, `malformed checksum line: ${line}`);
+  if (!match) {
+    continue;
+  }
   listed.set(match[2], match[1]);
 }
 invariant(JSON.stringify([...listed.keys()].sort()) === JSON.stringify(expected),

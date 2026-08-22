@@ -1,6 +1,6 @@
 # GRACE curtailment -00 validation record
 
-Validated on 2026-08-21 against a clean worktree based on `origin/main` at `162d680b`.
+Validated on 2026-08-21 against a clean worktree after merging `origin/main` at `3a029cc3`.
 
 ## Executable receipt
 
@@ -59,7 +59,7 @@ The circuit labels its actuator and meter as simulations and claims no physical 
 - The packet contains no `UPLOAD-THIS` directory.
 - The repository's new-name filing freeze runs through 2026-11-01 unless its named-external-gap
   exception is documented.
-- Coauthor review is pending.
+- Justin Kintzele approved submission as coauthor by email on 2026-08-21.
 - Nothing was submitted to the IETF.
 
 ## Claim limits
@@ -67,4 +67,3 @@ The circuit labels its actuator and meter as simulations and claims no physical 
 The packet does not claim physical meter truth, baseline correctness, tariff eligibility, payment,
 complete mediation, production COSA integration, utility adoption, external reproduction, an
 independent implementation, SCITT registration, hardware key custody, or FIPS validation.
-
