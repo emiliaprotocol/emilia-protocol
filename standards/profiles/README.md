@@ -10,6 +10,9 @@ filing.
 - `draft-schrock-ep-human-oversight-profile-00`: regulatory implementation
   profile. Trigger: a standards or government partner needs a portable mapping
   from oversight controls to evidence requirements.
+- `NEXT-GRID-CURTAILMENT-00/`: rebuilt GRACE partner-review candidate over the
+  current executable curtailment flow. It is held for coauthor review and a
+  named external validation trigger; it is not a Datatracker upload packet.
 
 The Reliance Agreement moved to `../staged/` after its implementation and
 claim-boundary review. Its movement does not imply legal, insurance, or partner

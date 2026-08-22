@@ -1,0 +1,728 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                               J. Kintzele
+Expires: 22 February 2027                                           COSA
+                                                          21 August 2026
+
+
+   GRACE: Evidence-Bound Grid Curtailment Admission, Observation, and
+                         Single-Use Settlement
+               draft-schrock-kintzele-grid-curtailment-00
+
+Abstract
+
+   This document defines GRACE, an application profile for one bounded
+   grid.curtailment action.  The profile binds an exact action to a
+   finite participation envelope, distinct human approvals when
+   required, one-attempt executor admission, an authenticated actuator
+   acknowledgment, separately authenticated meter observations, an
+   Action State Signed Statement, and one-time admission to a settlement
+   effect.  Missing or ambiguous post-invocation evidence is preserved
+   as indeterminate and cannot authorize blind retry.
+
+   GRACE verifies signed inputs and deterministic computations.  It does
+   not establish physical meter truth, baseline correctness, tariff
+   eligibility, actual payment, complete mediation, or a physical grid
+   deployment.  An optional hybrid artifact-signature profile combines
+   Ed25519 with ML-DSA-65 and requires both signatures to verify.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 22 February 2027.
+
+
+
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027                [Page 1]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Requirements Language . . . . . . . . . . . . . . . . . .   3
+   2.  Terminology and Roles . . . . . . . . . . . . . . . . . . . .   3
+   3.  Trust and Deployment Inputs . . . . . . . . . . . . . . . . .   4
+   4.  Curtailment Action  . . . . . . . . . . . . . . . . . . . . .   4
+   5.  Participation Envelope and Containment  . . . . . . . . . . .   5
+   6.  Human Authorization . . . . . . . . . . . . . . . . . . . . .   5
+   7.  Executor Admission and Refusal Semantics  . . . . . . . . . .   5
+   8.  Dispatch Acknowledgment . . . . . . . . . . . . . . . . . . .   6
+   9.  Meter Statement and Compliance Computation  . . . . . . . . .   7
+   10. Outcome Binding . . . . . . . . . . . . . . . . . . . . . . .   7
+   11. Action State Signed Statement . . . . . . . . . . . . . . . .   8
+   12. Single-Use Settlement Admission . . . . . . . . . . . . . . .   8
+   13. Proof-of-Curtailment Bundle . . . . . . . . . . . . . . . . .   8
+   14. Artifact Signature Profiles . . . . . . . . . . . . . . . . .   9
+   15. Privacy Considerations  . . . . . . . . . . . . . . . . . . .   9
+   16. Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   17. Implementation Status . . . . . . . . . . . . . . . . . . . .  10
+   18. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+   19. Normative References  . . . . . . . . . . . . . . . . . . . .  10
+   20. Informative References  . . . . . . . . . . . . . . . . . . .  12
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  12
+
+1.  Introduction
+
+   A curtailment instruction can cross several administrative and
+   technical boundaries before it changes electrical load.
+   Authentication of the dispatcher alone does not answer whether the
+   exact event fit a customer-approved participation envelope, whether
+   the required people approved it, whether the executor admitted it
+   only once, or whether later measurement refers to the same action.
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027                [Page 2]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+   GRACE keeps those questions separate.  It defines an exact action, a
+   bounded envelope, pre-dispatch authorization and admission checks,
+   separately authenticated execution and measurement claims, outcome
+   reconciliation, and single-use settlement admission.  Each relying
+   party selects and pins its own issuers, keys, policies, adapters,
+   clocks, and state stores.
+
+   The profile does not define a demand-response tariff, a baseline
+   methodology, a physical meter, a scheduler, or a payment rail.  Those
+   systems remain authoritative for their own claims.  GRACE binds their
+   signed inputs to one action and records the result of deterministic
+   verification.
+
+1.1.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   BCP 14 is indexed by the RFC Editor at [BCP14].
+
+2.  Terminology and Roles
+
+   Participation Envelope  A customer-approved, finite set of power,
+      energy, count, duration, notice, and time-window bounds.  The
+      current profile identifier is EP-FLEX-ENVELOPE-v2.
+
+   Curtailment Action  The closed EP-GRACE-CURTAILMENT-ACTION-v1 object
+      that identifies one requested power-reduction event.
+
+   Admission  The executor-side decision that the exact action may enter
+      effect custody once.  Admission is not evidence that the effect
+      occurred.
+
+   Actuator  The deployment-pinned adapter that attempts the physical or
+      scheduler operation and signs an acknowledgment.
+
+   Meter  A separately pinned observation source.  A meter statement is
+      a signed source claim, not proof of physical truth or calibration.
+
+   Settlement Effect  A deployment-supplied downstream operation invoked
+      only after the required evidence reconciles.  GRACE controls at-
+      most-one invocation attempt for one entitlement key.  It does not
+      define or prove payment.
+
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027                [Page 3]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+3.  Trust and Deployment Inputs
+
+   A conforming deployment MUST independently configure the accepted
+   action and envelope versions, approver roster and threshold, WebAuthn
+   relying-party identifier and origins, actuator and meter keys, source
+   roles and control-domain identifiers, validity and freshness policy,
+   Action State signing key, execution store, settlement store, and
+   settlement adapter.  Presenter-supplied trust anchors or policy
+   values MUST NOT influence acceptance.
+
+   Every protected effect path for which a deployment claims GRACE
+   enforcement MUST pass through the same admission boundary.  An
+   implementation that can be bypassed may still emit evidence, but it
+   MUST NOT claim complete enforcement.
+
+4.  Curtailment Action
+
+   The action MUST be a closed JSON object [RFC8259] that can be
+   serialized with JCS [RFC8785].  Unknown, duplicated, missing, or non-
+   canonicalizable members are a refusal.  Its required members are:
+
+   {
+     "@version": "EP-GRACE-CURTAILMENT-ACTION-v1",
+     "action_id": "grace:event:...",
+     "action_type": "grid.curtailment",
+     "effect_class": "power_reduction",
+     "facility": "facility:...",
+     "target_delta_kw": "18000",
+     "window": {
+       "not_before": "2026-07-15T20:15:00.000Z",
+       "not_after": "2026-07-15T21:45:00.000Z"
+     },
+     "issued_at": "2026-07-15T20:00:00.000Z",
+     "expires_at": "2026-07-15T21:45:00.000Z",
+     "baseline_method_hash": "sha256:...",
+     "control_mode": "human_on_the_loop",
+     "envelope_id": "grace:envelope:...",
+     "requested_by": "ep:agent:grid-coordinator"
+   }
+
+   target_delta_kw MUST be a positive decimal string with at most three
+   fractional digits.  Timestamps MUST be UTC RFC 3339 timestamps with
+   millisecond precision.  issued_at MUST precede window.not_before.
+   expires_at MUST equal window.not_after.  control_mode is either
+   human_on_the_loop or human_in_the_loop.  The baseline-method digest
+   commits to the program-selected method; it does not validate that
+   method.
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027                [Page 4]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+   The verifier MUST derive the action digest and CAID [EP-CAID] from
+   the exact controlled-action projection.  A supplied identifier MUST
+   NOT replace that derivation.
+
+5.  Participation Envelope and Containment
+
+   The action names one EP-FLEX-ENVELOPE-v2 envelope.  The relying party
+   MUST obtain that envelope from its pinned authority and MUST verify
+   that it applies to the facility, program, and evaluation time.  The
+   bounds object contains positive max_event_mw, max_period_mwh,
+   max_events, max_event_hours, min_notice_minutes, and a participation
+   window.
+
+   Before dispatch, the executor MUST compare power with power, energy
+   with energy, count with count, and duration with duration.  The
+   action's MW cannot exceed max_event_mw.  Its MW multiplied by window
+   duration cannot exceed the remaining period MWh budget.  One more
+   event and its duration must fit the remaining event and event-hour
+   budgets.  Its notice and window must fit the envelope.
+
+   A required bound or present spent-accounting value that is missing,
+   negative, or unparseable is a refusal.  An omitted spent value
+   asserts zero prior settled usage; deployments that cannot make that
+   assertion MUST return indeterminate rather than use zero.
+
+6.  Human Authorization
+
+   The relying party selects an ordered approver roster and a threshold
+   using the action-bound authorization evidence in [EP-RECEIPTS].  Each
+   accepted approval MUST be a Class-A WebAuthn [WEBAUTHN] signoff over
+   a context that binds the controlled action digest, presentation
+   digest, policy digest, initiator, approver, roster index, threshold,
+   validity window, relying-party profile, app, platform, credential,
+   and device key.
+
+   The verifier MUST require user verification, the pinned relying-party
+   identifier and origin, distinct approvers, distinct device and
+   credential identifiers, initiator exclusion, the exact roster index,
+   and the selected threshold.  The quorum semantics are those of
+   [EP-QUORUM].  A valid signature that does not match the relying
+   party's current roster, policy, action, presentation, or ceremony
+   window is a refusal.
+
+7.  Executor Admission and Refusal Semantics
+
+   The executor applies the Action Evidence Boundary [EP-AEB] in this
+   order:
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027                [Page 5]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+   1.  Validate the closed action and require it to be active.
+
+   2.  Derive and verify action-to-envelope containment.
+
+   3.  Derive the expected outcome policy and require its digest to be
+       inside the human-approved policy bytes.
+
+   4.  Verify the human authorization against the pinned profile.
+
+   5.  Require the pinned actuator, meter, Action State signer,
+       execution store, settlement store, and settlement adapter.
+
+   6.  Atomically reserve the exact execution idempotency key before
+       invoking the actuator.
+
+   The execution idempotency key MUST bind the action identifier and
+   action digest.  The shared store MUST be durable, atomic, and
+   ownership-fenced.  Concurrent reservation failure is refuse_replay.
+   Storage unavailability is a refusal before invocation.
+
+   If invocation begins and the result is lost, malformed, or raises an
+   exception, the executor MUST return execution_indeterminate, preserve
+   or burn the reservation, set retry_safe to false, and MUST NOT
+   blindly invoke the effect again.  Authenticated reconciliation is
+   required.
+
+   Pre-invocation failures use a mechanism-named refusal such as
+   refuse_action, refuse_action_not_active, refuse_outside_envelope,
+   refuse_outcome_policy, refuse_authorization, or
+   refuse_adapter_unavailable.  Post-invocation evidence failures use
+   effect_unconfirmed and are not retry authorization.
+
+8.  Dispatch Acknowledgment
+
+   The dispatch request binds the complete action, action digest,
+   envelope digest, human-authorization digest, idempotency key, and
+   operator.  The actuator acknowledgment MUST bind the event
+   identifier, action digest, dispatch-request digest, idempotency key,
+   actuator identity, status, and dispatch time, and MUST verify under
+   the pinned actuator key.
+
+   An accepted acknowledgment is the actuator's authenticated claim that
+   it dispatched the request.  It is not independent measurement and
+   does not establish that electrical load changed.
+
+
+
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027                [Page 6]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+9.  Meter Statement and Compliance Computation
+
+   The meter statement MUST bind the meter identifier, event identifier,
+   action digest, exact action window, unit, baseline MW, ordered
+   sequence of timestamped load intervals, measurement class,
+   observation time, and signer key identifier.  It MUST verify under a
+   separately pinned meter key.
+
+   The meter statement MUST NOT contain baseline_method_hash.  Program
+   and tariff rules remain in the authorized action and relying-party
+   policy.  This separates a signed measurement-source claim from the
+   rule used to interpret it.
+
+   The reference computation subtracts average interval load from the
+   signed baseline MW, divides the delivered MW by ordered MW, and marks
+   the event compliant at a profile-selected threshold.  A deployment
+   MUST pin the computation and threshold it uses.  The result states
+   what follows from the accepted inputs.  It does not prove the
+   baseline was economically correct, the readings were physically true,
+   or the event qualifies under a tariff.
+
+10.  Outcome Binding
+
+   The action's human-approved policy binds source-routed predictions
+   for an executor observation and an independent-observer meter
+   observation.  Each Outcome Observation [EP-OUTCOME] MUST bind the
+   authorization record, action digest, CAID, consumption nonce,
+   operation identifier, facility, observation window, source role,
+   source class, and observed effect.
+
+   The relying party MUST pin source keys, roles, classes, control
+   domains, status and validity, distinctness requirements, observation
+   windows, and maximum attestation delay.  A declared control domain is
+   relying-party policy input, not proof of organizational independence.
+
+   Settlement admission requires a reconciled outcome with the profile-
+   selected in-bounds result.  Missing, stale, invalid, wrong-window,
+   same-domain, or otherwise insufficient observations produce
+   effect_unconfirmed.  They MUST NOT be converted to success, failure,
+   or retry authorization.
+
+
+
+
+
+
+
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027                [Page 7]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+11.  Action State Signed Statement
+
+   After outcome reconciliation, the profile emits a COSE_Sign1
+   [RFC9052] Action State Signed Statement using [ACTION-STATE] format
+   version 2 and media type application/agent-action-capsule+json.  The
+   statement binds the action, operator, developer, authorization
+   digest, dispatch-request digest, meter digest, constraints evaluated,
+   disposition, and confirmed effect.
+
+   The capsule identifier is derived from canonical capsule bytes.  The
+   JSON wrapper, COSE payload, protected headers, key identifier, and
+   statement digest MUST cross-check.  The current reference output is
+   an unregistered_signed_statement.  It is not a SCITT transparency-
+   service registration or proof of ledger inclusion.
+
+12.  Single-Use Settlement Admission
+
+   The one-time entitlement key is the injective serialization of
+   [envelope_id, event_id, meter_payload_digest] under profile EP-GRACE-
+   SETTLE-v1.  Every member is required.  The meter digest MUST be a
+   lowercase SHA-256 digest of the accepted signed meter body.
+
+   Only a compliant computation and an in-bounds reconciled outcome may
+   reach the settlement adapter.  The settlement store MUST reserve the
+   entitlement atomically before invocation.  A duplicate is
+   settlement_already_consumed.  If invocation begins and its result is
+   unknown, the implementation MUST commit or preserve the reservation
+   and MUST NOT issue another settlement attempt under the same
+   entitlement.
+
+   This is at-most-one admission to the configured settlement effect in
+   one authoritative state domain.  It is not exactly-once physical
+   payment, global double-spend prevention across independent
+   authorities, tariff eligibility, or evidence that funds moved.
+
+13.  Proof-of-Curtailment Bundle
+
+   The EP-GRACE-PROOF-OF-CURTAILMENT-v1 bundle is a signed, offline-
+   verifiable summary.  It binds the action and action digest, envelope
+   digest, baseline-method digest, authorization digest, dispatch-
+   request digest, actuator-acknowledgment digest, meter-payload digest,
+   Outcome Binding result digest and outcome, deterministic compliance
+   result, Action State statement digest, and settlement admission
+   result.
+
+   Bundle verification establishes integrity and binding relative to the
+   verifier's pinned trust and policy inputs.  It does not independently
+   establish any source claim as real-world truth.
+
+
+
+Schrock & Kintzele      Expires 22 February 2027                [Page 8]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+14.  Artifact Signature Profiles
+
+   The baseline profile signs canonical artifact bytes with Ed25519.
+   The optional EP-GRACE-ARTIFACT-SIGNATURE-v2 profile uses a fixed
+   required algorithm list, in order: Ed25519 and ML-DSA-65 [FIPS204].
+   Its signing bytes commit to the complete artifact and the required
+   algorithm list.
+
+   A v2 verifier MUST require exactly one signature under each
+   independently pinned key and MUST accept only when both signatures
+   verify.  Missing algorithms, reordered or narrowed requirements, key
+   substitution, malformed signatures, or an unavailable ML-DSA verifier
+   are refusals.  A v1 verifier MUST NOT silently accept a v2 artifact.
+
+   Hybrid signing provides cryptographic migration evidence.  It does
+   not make a software-held key hardware-backed, FIPS validated,
+   deployed, or operationally independent.  A deployment claiming the
+   hybrid profile MUST identify and protect both actual signing keys.
+
+15.  Privacy Considerations
+
+   Curtailment records can reveal facility identity, capacity, operating
+   schedules, energy consumption, human approvers, device identifiers,
+   and commercial program terms.  Implementations SHOULD minimize
+   portable fields, disclose raw intervals only to parties that require
+   them, use digests when independent recomputation is not required, and
+   apply retention and access policies appropriate to critical-
+   infrastructure data.
+
+   Selective disclosure or encryption cannot repair an overbroad signed
+   source object.  Deployments SHOULD separate public verification
+   material from restricted operational evidence and preserve enough
+   binding information to detect substitution.
+
+16.  Security Considerations
+
+   The principal attacks are action substitution, envelope overflow,
+   stale approval, initiator self-approval, duplicate approvers,
+   dispatch replay, lost acknowledgment, actuator-key substitution,
+   meter-key substitution, market-rule smuggling into meter data,
+   observation-source collapse, wrapper substitution, signature-leg
+   stripping, and duplicate settlement admission.  The preceding
+   sections require fail-closed checks for each.
+
+
+
+
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027                [Page 9]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+   Key compromise remains a trust-root failure.  Historical signatures
+   can establish what a key signed; they do not prove who controlled the
+   key or that the signed claim was true.  A separately keyed meter
+   under the same operator's control may improve fault isolation but
+   does not create organizational independence.
+
+   GRACE cannot prove that the selected baseline is fair, a meter is
+   calibrated or untampered, a scheduler has no bypass, a declared
+   control domain is honest, a payment rail moved funds, or an
+   authority's upstream population is complete.  Deployment claims MUST
+   state those acceptance roots.
+
+17.  Implementation Status
+
+   This section records implementation evidence and may be removed
+   before publication as an RFC.
+
+   The public EMILIA repository [GRACE-IMPLEMENTATION] contains a
+   TypeScript reference circuit for exact action construction, two
+   distinct Class-A approvals, bounded admission, a COSA-labeled
+   simulated actuator, a separately keyed simulated meter, Outcome
+   Binding, an Action State Signed Statement, and one-time settlement
+   admission.  The adapters are marked simulation: true.  The circuit is
+   not evidence of a physical grid event, production COSA integration,
+   utility adoption, meter truth, or an actual payment.
+
+   At the repository revision identified in the companion validation
+   record, 80 targeted tests pass across four files.  They cover the
+   curtailment and mobile-grid state machines, production route
+   boundary, and an 11-case Ed25519 plus ML-DSA-65 hostile signature
+   matrix.  Six declared vertical vectors [GRACE-VECTORS] cover the
+   accepted path and refusals for missing independent outcome signature,
+   self-approval, inactive action, replay, and meter-rule smuggling.
+   These are same-team reference results, not an independent
+   implementation or interoperability claim.
+
+18.  IANA Considerations
+
+   This document has no IANA actions.  The grid.curtailment and EP-
+   GRACE-* identifiers are profile-local strings and are not entries in
+   an IANA registry.
+
+19.  Normative References
+
+
+
+
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027               [Page 10]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+   [ACTION-STATE]
+              Mih, S. W., "An Agent Action Capsule Profile for SCITT",
+              Work in Progress, Internet-Draft, draft-mih-scitt-agent-
+              action-capsule-02, July 2026,
+              <https://datatracker.ietf.org/doc/draft-mih-scitt-agent-
+              action-capsule/>.
+
+   [BCP14]    IETF, "Key words for use in RFCs to Indicate Requirement
+              Levels", <https://www.rfc-editor.org/info/bcp14>.
+
+   [EP-AEB]   Schrock, I., "Action Evidence Boundary: Binding Verified
+              Authorization Evidence to Agent Execution", Work in
+              Progress, Internet-Draft, draft-schrock-action-evidence-
+              boundary-04, August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-action-
+              evidence-boundary/>.
+
+   [EP-CAID]  Schrock, I., "Canonical Action Identifier: Stable Identity
+              for Material Agent Actions", Work in Progress, Internet-
+              Draft, draft-schrock-canonical-action-identifier-02,
+              August 2026, <https://datatracker.ietf.org/doc/draft-
+              schrock-canonical-action-identifier/>.
+
+   [EP-OUTCOME]
+              Schrock, I., "Outcome Binding for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-outcome-binding-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              outcome-binding/>.
+
+   [EP-QUORUM]
+              Schrock, I., "Multi-Party Quorum Authorization for High-
+              Risk Agent Actions", Work in Progress, Internet-Draft,
+              draft-schrock-ep-quorum-03, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              quorum/>.
+
+   [EP-RECEIPTS]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-12, August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-receipts/>.
+
+   [FIPS204]  National Institute of Standards and Technology, "Module-
+              Lattice-Based Digital Signature Standard", FIPS 204,
+              August 2024, <https://doi.org/10.6028/NIST.FIPS.204>.
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027               [Page 11]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8259]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
+              Interchange Format", STD 90, RFC 8259,
+              DOI 10.17487/RFC8259, December 2017,
+              <https://www.rfc-editor.org/info/rfc8259>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+   [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
+              Structures and Process", STD 96, RFC 9052,
+              DOI 10.17487/RFC9052, August 2022,
+              <https://www.rfc-editor.org/info/rfc9052>.
+
+   [WEBAUTHN] World Wide Web Consortium, "Web Authentication: An API for
+              accessing Public Key Credentials - Level 2", April 2021,
+              <https://www.w3.org/TR/webauthn-2/>.
+
+20.  Informative References
+
+   [GRACE-IMPLEMENTATION]
+              EMILIA Protocol, "GRACE Reference Implementation", 2026,
+              <https://github.com/emiliaprotocol/emilia-
+              protocol/tree/main/lib/grace>.
+
+   [GRACE-VECTORS]
+              EMILIA Protocol, "GRACE Mobile Grid Vertical Composition
+              Vectors", 2026, <https://github.com/emiliaprotocol/emilia-
+              protocol/blob/main/conformance/vectors/grace-mobile-
+              grid.v1.json>.
+
+Authors' Addresses
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027               [Page 12]
+
+Internet-Draft              GRACE Curtailment                August 2026
+
+
+   Justin Kintzele
+   COSA
+   United States of America
+   Email: jkintzele@jdieselny.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock & Kintzele      Expires 22 February 2027               [Page 13]

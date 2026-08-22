@@ -1,141 +1,203 @@
-# PIP-014 — `grid.curtailment` Action-Type Profile + Proof-of-Curtailment Bundle
+# PIP-014: `grid.curtailment` Action Profile and GRACE Evidence Bundle
 
-**Status:** Draft (GRACE vertical — COSA × EMILIA)
-**Builds on:** `draft-schrock-ep-authorization-receipts` (EP-RECEIPT-v1), PIP-013 (Human-Oversight
-Profile), PIP-012 (profile/envelope registry).
-**Reference implementation:** `examples/grace/proof_of_curtailment.py` (runs green; verifies under
-the published `emilia_verify`, zero new crypto).
-**Scope note:** This profile makes curtailment evidence *tamper-evident* and *designed for
-settlement*. It does not compute or warrant the baseline — that belongs to the applicable
-program/tariff. Necessary, not sufficient.
+**Status:** Implemented reference profile, partner review pending
 
----
+**Profile:** `EP-GRACE-PROOF-OF-CURTAILMENT-v1`
 
-## 1. Purpose
+**Action:** `EP-GRACE-CURTAILMENT-ACTION-v1` / `grid.curtailment`
 
-Define a vertical action-type, `grid.curtailment`, and a **Proof-of-Curtailment Bundle**, so a
-market-authorized party can authorize a bounded, reversible compute-curtailment event and any third
-party can verify — offline, without trusting the operator — *who* authorized it, *what* was allowed,
-*whether* the facility complied, and *what* should be paid.
+**Reference path:** `lib/grace/`, `examples/grace/`, and `conformance/vectors/grace-mobile-grid.v1.json`
 
-The profile reuses the standard EP receipt primitive (`EP-RECEIPT-v1`: Ed25519 over RFC-8785/JCS
-canonical `payload`). No new cryptography. `grid.curtailment` registers in the EP profile registry
-(PIP-012).
+## 1. Claim boundary
 
-## 2. Roles & keys
+GRACE binds one exact curtailment action to a finite participation envelope, distinct Class-A human
+approvals, one-attempt executor admission, a signed actuator acknowledgment, a separately keyed
+meter statement, source-routed Outcome Observations, an Action State Signed Statement, and
+single-use admission to a settlement adapter.
 
-| Role | Holds | Purpose |
-|------|-------|---------|
-| **Authorizing party** | Ed25519 signing key (device-bound via PIP-013 signoff; quorum for hard cuts) | Signs the curtailment **order**. Public key pinned by the controller out-of-band. |
-| **Facility** | Ed25519 key | Signs the **acknowledgment** (posture entered). |
-| **Attested meter** | Ed25519 key (revenue-grade meter / smart PDU, signed at source) | Signs the **telemetry**. Distinct key from the authorizer (separation of authenticity vs authorization). |
+GRACE verifies signed inputs and deterministic computation. It does not establish physical meter
+truth, baseline correctness, tariff eligibility, actual payment, complete mediation, a production
+COSA integration, utility adoption, or a physical grid deployment. Its reference actuator and meter
+are explicitly simulated.
 
-The authorizing party is whoever the tariff/program designates — ISO, utility, aggregator/CSP, or the
-facility operator. Its human decision is captured as a PIP-013 named-human (or quorum) signoff.
+## 2. Current composition
 
-## 3. The order — `grid.curtailment` payload
+```text
+EP-FLEX-ENVELOPE-v2
+        |
+EP-GRACE-CURTAILMENT-ACTION-v1
+        |
+two distinct Class-A mobile approvals
+        |
+durable reserve-before-dispatch
+        |
+signed actuator acknowledgment
+        |
+separately keyed meter statement
+        |
+executor + independent-observer Outcome Binding
+        |
+Action State v2 COSE_Sign1 statement
+        |
+EP-GRACE-SETTLE-v1 one-time settlement admission
+        |
+EP-GRACE-PROOF-OF-CURTAILMENT-v1
+```
 
-An `EP-RECEIPT-v1` whose `payload` carries:
+The action, presentation, policy, dispatch request, acknowledgment, meter statement, Outcome
+Binding result, Action State statement, and settlement entitlement are joined by canonical digests.
 
-| Field | Req | Meaning |
-|-------|-----|---------|
-| `action_type` | ✔ | Constant `"grid.curtailment"`. |
-| `effect_class` | ✔ | `"power_reduction"`. |
-| `facility` | ✔ | Target facility id (or fleet id). |
-| `target_delta_kw` | ✔ | Committed reduction. (`target_delta_w` permitted for small/demo loads.) |
-| `window` | ✔ | `{ not_before, not_after }` (epoch seconds or RFC 3339). |
-| `expires_at` | ✔ | Hard expiry; SHOULD equal `window.not_after`. |
-| `baseline_method_hash` | ✔ | `sha256:` of the program's prescribed baseline method id. Pins the method; does not define it. |
-| `control_mode` | ✔ | PIP-013 value, typically `"on_the_loop"` (bounded envelope) or `"in_the_loop"`. |
-| `protected_lanes` | ○ | Lanes that never shed (e.g. `["life-safety","contractual-slo"]`). |
-| `telemetry_sources` | ○ | Meter ids whose attestations are accepted for settlement. |
-| `approver` | ○ | Stable id of the authorizing party. |
-| `max_duration` | ○ | Cap independent of the window. |
+## 3. Closed action object
 
-Hard cuts (large `target_delta_kw` or full-site) **MUST** use EP-QUORUM (m-of-n distinct signers).
-
-## 4. Gate predicates (fail-closed)
-
-The controller changes posture **only if all** hold (see `gate()` in the reference):
-
-1. `verify_receipt(order, pinned_authority_pub).valid` — Ed25519 over canonical payload, against the
-   **pinned** authority key (a forged/wrong-key order fails here).
-2. `payload.action_type == "grid.curtailment"`.
-3. `window.not_before <= now <= window.not_after`.
-4. `now < expires_at`.
-
-Otherwise: refuse, no posture change.
-
-## 5. Telemetry attestation
-
-An `EP-RECEIPT-v1` signed by the **meter** key, `payload`:
+The action has exactly these members:
 
 ```json
-{ "meter_id": "...", "unit": "watt",
+{
+  "@version": "EP-GRACE-CURTAILMENT-ACTION-v1",
+  "action_id": "grace:event:...",
+  "action_type": "grid.curtailment",
+  "effect_class": "power_reduction",
+  "facility": "facility:...",
+  "target_delta_kw": "18000",
+  "window": {
+    "not_before": "2026-07-15T20:15:00.000Z",
+    "not_after": "2026-07-15T21:45:00.000Z"
+  },
+  "issued_at": "2026-07-15T20:00:00.000Z",
+  "expires_at": "2026-07-15T21:45:00.000Z",
   "baseline_method_hash": "sha256:...",
-  "samples": [ { "t": <epoch_s>, "w": <watts> }, ... ] }
+  "control_mode": "human_on_the_loop",
+  "envelope_id": "grace:envelope:...",
+  "requested_by": "ep:agent:grid-coordinator"
+}
 ```
 
-The signature covers the whole payload, so altering any sample breaks verification (tamper-evident).
-Streaming deployments MAY add an `anchor` (Merkle proof) per EP-RECEIPT-v1; the verifier checks it
-when present.
+Unknown, missing, duplicated, or non-canonicalizable members refuse. `expires_at` equals
+`window.not_after`. `issued_at` precedes `window.not_before`. The controlled-action projection is
+used to derive the action digest and CAID and to build the human presentation.
 
-## 6. Proof-of-Curtailment Bundle
+## 4. Envelope containment
+
+`EP-FLEX-ENVELOPE-v2` contains positive bounds for:
+
+- `max_event_mw`
+- `max_period_mwh`
+- `max_events`
+- `max_event_hours`
+- `min_notice_minutes`
+- the participation window
+
+The Gate compares power with power, energy with energy, counts with counts, and hours with hours.
+A required bound or present spent-accounting value that is missing, negative, or unparseable
+refuses. Omitted spent values mean zero only when the deployment can make that assertion.
+
+## 5. Human authorization
+
+The current reference profile requires two distinct Class-A WebAuthn approvals from a
+relying-party-pinned roster. Each approval binds:
+
+- the controlled action, presentation, and policy digests;
+- initiator, approver, roster index, and threshold;
+- decision and ceremony window;
+- relying-party profile, platform, app, credential, and device key.
+
+The verifier requires user verification, the pinned RP ID and origins, distinct people and devices,
+initiator exclusion, admitted roles, exact roster indices, and the two-person threshold.
+
+## 6. Executor admission and uncertainty
+
+Before invocation, the Gate validates the action, active window, envelope containment, signed
+outcome-policy digest, human authorization, and all deployment-pinned adapters and stores. It then
+atomically reserves `grace:{action_id}:{action_hash}` in durable, ownership-fenced state.
+
+Pre-invocation failures are mechanism-named refusals. Concurrent reservation is `refuse_replay`.
+If dispatch may have occurred but its result is lost or invalid, the state is
+`execution_indeterminate`, `retry_safe` is false, and the action is not blindly retried. A later
+measurement or outcome failure is `effect_unconfirmed`, also with no retry authority.
+
+## 7. Measurement and Outcome Binding
+
+The meter statement contains measurement data only. It binds the meter, event, action digest, exact
+window, baseline MW, timestamped intervals, measurement class, observation time, and signing key.
+It must not contain `baseline_method_hash`. The program-selected rule remains in the authorized
+action and relying-party policy.
+
+The compliance calculation uses the accepted meter intervals. The result says what follows from
+those signed inputs. It does not prove the baseline was correct or the readings were physically
+true.
+
+The actuator and meter each produce an Outcome Observation. The meter uses a distinct pinned key,
+source class, and relying-party-declared control domain. That declaration is policy input, not proof
+of organizational independence. Missing or insufficient source evidence remains unconfirmed.
+
+## 8. Action State
+
+After reconciliation, GRACE emits a COSE_Sign1 Signed Statement using
+`draft-mih-scitt-agent-action-capsule-02`, format version 2. The statement binds the authorization,
+dispatch request, meter statement, constraints, disposition, and confirmed-effect claim. The
+capsule identifier, protected headers, COSE payload, JSON wrapper, and statement digest
+cross-check.
+
+The current output is an `unregistered_signed_statement`. It is not a SCITT transparency-service
+registration or proof of ledger inclusion.
+
+## 9. Single-use settlement admission
+
+`EP-GRACE-SETTLE-v1` derives an injective entitlement key from:
 
 ```json
-{ "order": <EP-RECEIPT-v1>,            "authority_pub": "<spki-b64u>",
-  "acknowledgment": <EP-RECEIPT-v1>,   "facility_pub":  "<spki-b64u>",
-  "telemetry": <EP-RECEIPT-v1>,        "meter_pub":     "<spki-b64u>",
-  "delivered_kwh": <number> }
+["envelope_id", "event_id", "meter_payload_digest"]
 ```
 
-**Verification predicates** (see `verify_bundle()` — all MUST pass):
+Only a compliant computation and an in-bounds reconciled outcome may reach the settlement adapter.
+The entitlement is atomically reserved before invocation. A duplicate is
+`settlement_already_consumed`. An exception after invocation burns or preserves the reservation and
+cannot authorize a second attempt.
 
-1. `order` verifies against `authority_pub`.
-2. `acknowledgment` verifies against `facility_pub`.
-3. `telemetry` verifies against `meter_pub`.
-4. **method pinned:** `telemetry.baseline_method_hash == order.baseline_method_hash`.
-5. **arithmetic bound to evidence:** recomputing delivered kWh from the *signed* `samples`
-   (trapezoidal integral of `baseline − actual` over the window) equals `delivered_kwh`.
+This is at-most-one admission to the configured settlement effect in one authoritative state
+domain. It is not exactly-once physical payment or global double-spend prevention.
 
-Any failure ⇒ bundle INVALID. This is what an ISO/auditor runs, offline, with no account.
+## 10. Artifact signatures
 
-## 6a. Call order (which packages run, in sequence)
+The baseline artifact envelope uses Ed25519. The optional
+`EP-GRACE-ARTIFACT-SIGNATURE-v2` profile requires both Ed25519 and ML-DSA-65. The required algorithm
+list is covered by the signing bytes, and verification refuses missing legs, a narrowed list,
+substituted keys, malformed signatures, or an unavailable ML-DSA backend.
 
+The optional hybrid path is implemented and tested. It is not the default reference-circuit output,
+and the repository does not claim hardware custody, FIPS validation, or production deployment for
+its test keys.
+
+## 11. Current implementation status
+
+| Piece | Current status |
+|---|---|
+| Exact action, presentation, and CAID derivation | Implemented and tested |
+| Dimensioned envelope containment | Implemented and tested |
+| Two distinct Class-A mobile approvals | Implemented and tested |
+| Durable one-attempt dispatch | Implemented and tested against the store contract |
+| Signed COSA-labeled actuator acknowledgment | Simulated reference adapter |
+| Separately keyed signed meter statement | Simulated reference adapter |
+| Outcome Binding and Action State v2 Signed Statement | Implemented and tested |
+| One-time settlement admission | Implemented and tested against the store contract |
+| Ed25519 plus ML-DSA-65 hybrid artifact envelope | Optional path implemented and tested |
+| Physical actuator, revenue meter, production store, and payment rail | Not supplied or claimed |
+| Utility, ISO, tariff, or external implementer validation | Not established |
+
+The targeted current receipt is 80 passing tests across:
+
+```bash
+npx vitest run \
+  tests/grace-curtailment.test.ts \
+  tests/grace-mobile-grid.test.ts \
+  lib/grace/mobile-grid-v2.test.ts \
+  tests/mobile-production-routes.test.ts
 ```
-ISSUE  order/ack/telemetry   ──▶ emilia_verify.canonicalize()  +  Ed25519 sign
-                                  (packages/python-verify · packages/verify parity)
 
-GATE   at the facility       ──▶ emilia_verify.verify_receipt(order, authority_pub)   [fail-closed]
-                                  + window / expiry / action_type predicates (§4)
+## 12. Publication status
 
-MEASURE attested meter       ──▶ ISSUE(telemetry, meter_key)        (signed samples)
-
-VERIFY  the bundle (anyone)  ──▶ verify_receipt(order,  authority_pub)
-                                  verify_receipt(ack,    facility_pub)
-                                  verify_receipt(telem,  meter_pub)
-                                  + method-hash equality  + delivered_kwh recompute (§6)
-```
-
-Only `emilia_verify` (shipped) is invoked; the GRACE-specific glue (`gate`, `measure`,
-`verify_bundle`) is in `examples/grace/proof_of_curtailment.py`. No new crypto is introduced at any
-step.
-
-## 7. Standards alignment
-
-- `grid.curtailment` is a **profile of** `draft-schrock-ep-authorization-receipts`, registered via
-  PIP-012; it does not fork the receipt spec.
-- Human authorization rides PIP-013 (`control_mode`, named-human/quorum signoff).
-- The Bundle is a GRACE profile that references the IETF draft normatively. Grid/utility-body
-  engagement cross-references the IETF work rather than competing with it.
-
-## 8. What's built vs. to build (honest status)
-
-| Piece | Status |
-|-------|--------|
-| EP-RECEIPT-v1 issue/verify, JCS canonical, Ed25519 | **shipped** (`packages/python-verify`, `packages/verify`) |
-| `grid.curtailment` order + gate, telemetry attestation, Bundle + verify, adversarial cases | **prototype** (`examples/grace/`, green) |
-| `emilia verify-curtailment bundle.json` CLI subcommand | to add (on `packages/verify/cli.js`) |
-| Real smart-PDU telemetry adapter (CSV/API → signed) | to add |
-| Signed-at-source revenue-grade meter / HSM attestation | follow-on |
-| Quorum on hard cuts wired into the order path | to add (EP-QUORUM exists) |
+The previous June 2026 document in `standards/archive/` was never filed and is superseded as a
+technical description by the review candidate in
+`standards/profiles/NEXT-GRID-CURTAILMENT-00/`. The candidate remains a partner-triggered profile,
+not a published Internet-Draft. The repository's new-name filing freeze prevents a `-00` submission
+through 2026-11-01 unless the recorded named-external-gap exception is met.
