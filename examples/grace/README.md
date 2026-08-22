@@ -4,9 +4,10 @@
 A COSA and EMILIA composition: the actuator moves the load; EMILIA verifies the
 authorization and binds the resulting evidence.
 
-> When the grid asks an AI datacenter to reduce load, GRACE proves *who* authorized it,
-> *what* was allowed, *whether* the facility complied, and *what* should be paid — verifiable
-> by anyone, offline, without trusting the operator's own logs.
+> When the grid asks an AI datacenter to reduce load, GRACE binds *who* authorized one exact
+> event, *what* was allowed, which signed execution and meter claims were accepted, and the
+> deterministic result computed from those inputs. The bundle is offline-verifiable against
+> pinned trust inputs. It does not prove meter truth, tariff eligibility, or payment.
 
 ## Run the mobile-to-settlement circuit
 
@@ -46,8 +47,9 @@ fresh clone of this repo runs as-is.
    (the same dual-key separation as COSA L5 authenticity vs EMILIA L7 authorization).
 5. **Prove** — delivered kWh = baseline − actual, integrated from the *signed* samples, against a
    **pinned baseline method** (the program's own method — we pin its hash, we don't invent it).
-6. **Settle** — emit a **Proof-of-Curtailment Bundle** (order + acknowledgment + attested
-   telemetry + computed kWh) that anyone can verify offline. The ISO pays against proof.
+6. **Settlement admission** — emit a **Proof-of-Curtailment Bundle** (order + acknowledgment +
+   signed telemetry + deterministic compliance result), then admit at most one invocation attempt
+   to the configured settlement adapter for the entitlement key.
 7. **Adversarial** — tamper a watt reading → bundle **INVALID**; forge the order with a non-pinned
    key → **REFUSED**; replay after the window → **REFUSED**.
 
@@ -57,11 +59,10 @@ Everything verifies under the **real published EMILIA verifier** (`emilia_verify
 Ed25519 over RFC-8785 / JCS-canonical bytes) with **zero new crypto**. The receipt model is the
 standard EP one; `grid.curtailment` is just an action-type profile on top of it.
 
-EP proves the order was authorized by a pinned party, the telemetry is untampered, and the kWh
-was computed from those signed samples against the pinned method. It does **not** claim the
-baseline is physically perfect — baseline estimation belongs to the program/tariff. EP makes the
-*application* of the market's own method **tamper-evident against method swaps, telemetry backfill,
-and input manipulation**. Necessary, not sufficient.
+The verifier establishes that the configured policy accepted the human evidence, signed actuator
+claim, and signed meter claim, and that the result was computed from those accepted bytes. It does
+**not** establish that the baseline is economically correct, the readings are physically true, the
+event qualifies under a tariff, or funds moved. Necessary, not sufficient.
 
 ## Where this plugs in
 

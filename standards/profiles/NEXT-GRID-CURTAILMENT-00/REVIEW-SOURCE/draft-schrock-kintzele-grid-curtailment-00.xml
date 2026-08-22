@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-kintzele-grid-curtailment-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="GRACE Curtailment">GRACE: Evidence-Bound Grid Curtailment Admission, Observation, and Single-Use Settlement</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-kintzele-grid-curtailment-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <author fullname="Justin D Kintzele">
+      <organization>J Diesel NY, LLC</organization>
+      <address><postal><country>US</country></postal><email>jkintzele@jdieselny.com</email></address>
+    </author>
+    <date year="2026" month="August" day="21"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>demand response</keyword>
+    <keyword>grid curtailment</keyword>
+    <keyword>outcome evidence</keyword>
+    <abstract>
+      <t>This document defines GRACE, an application profile for one bounded
+      <tt>grid.curtailment</tt> action. The profile binds an exact action to a
+      finite participation envelope, distinct human approvals when required,
+      one-attempt executor admission, an authenticated actuator
+      acknowledgment, separately authenticated meter observations, an Action
+      State Signed Statement, and one-time admission to a settlement effect.
+      Missing or ambiguous post-invocation evidence is preserved as
+      indeterminate and cannot authorize blind retry.</t>
+      <t>GRACE verifies signed inputs and deterministic computations. It does
+      not establish physical meter truth, baseline correctness, tariff
+      eligibility, actual payment, complete mediation, or a physical grid
+      deployment. An optional hybrid artifact-signature profile combines
+      Ed25519 with ML-DSA-65 and requires both signatures to verify.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="introduction"><name>Introduction</name>
+      <t>A curtailment instruction can cross several administrative and
+      technical boundaries before it changes electrical load. Authentication
+      of the dispatcher alone does not answer whether the exact event fit a
+      customer-approved participation envelope, whether the required people
+      approved it, whether the executor admitted it only once, or whether
+      later measurement refers to the same action.</t>
+      <t>GRACE keeps those questions separate. It defines an exact action, a
+      bounded envelope, pre-dispatch authorization and admission checks,
+      separately authenticated execution and measurement claims, outcome
+      reconciliation, and single-use settlement admission. Each relying party
+      selects and pins its own issuers, keys, policies, adapters, clocks, and
+      state stores.</t>
+      <t>The profile does not define a demand-response tariff, a baseline
+      methodology, a physical meter, a scheduler, or a payment rail. Those
+      systems remain authoritative for their own claims. GRACE binds their
+      signed inputs to one action and records the result of deterministic
+      verification.</t>
+      <section anchor="requirements-language"><name>Requirements Language</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+        NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+        "MAY", and "OPTIONAL" in this document are to be interpreted as
+        described in BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/>
+        when, and only when, they appear in all capitals, as shown here.</t>
+        <t>BCP 14 is indexed by the RFC Editor at <xref target="BCP14"/>.</t>
+      </section>
+    </section>
+
+    <section anchor="terminology"><name>Terminology and Roles</name>
+      <dl>
+        <dt>Participation Envelope</dt>
+        <dd>A customer-approved, finite set of power, energy, count,
+        duration, notice, and time-window bounds. The current profile identifier
+        is <tt>EP-FLEX-ENVELOPE-v2</tt>.</dd>
+        <dt>Curtailment Action</dt>
+        <dd>The closed <tt>EP-GRACE-CURTAILMENT-ACTION-v1</tt> object that
+        identifies one requested power-reduction event.</dd>
+        <dt>Admission</dt>
+        <dd>The executor-side decision that the exact action may enter effect
+        custody once. Admission is not evidence that the effect occurred.</dd>
+        <dt>Actuator</dt>
+        <dd>The deployment-pinned adapter that attempts the physical or
+        scheduler operation and signs an acknowledgment.</dd>
+        <dt>Meter</dt>
+        <dd>A separately pinned observation source. A meter statement is a
+        signed source claim, not proof of physical truth or calibration.</dd>
+        <dt>Settlement Effect</dt>
+        <dd>A deployment-supplied downstream operation invoked only after the
+        required evidence reconciles. GRACE controls at-most-one invocation
+        attempt for one entitlement key. It does not define or prove payment.</dd>
+      </dl>
+    </section>
+
+    <section anchor="trust"><name>Trust and Deployment Inputs</name>
+      <t>A conforming deployment <bcp14>MUST</bcp14> independently configure
+      the accepted action and envelope versions, approver roster and threshold,
+      WebAuthn relying-party identifier and origins, actuator and meter keys,
+      source roles and control-domain identifiers, validity and freshness
+      policy, Action State signing key, execution store, settlement store, and
+      settlement adapter. Presenter-supplied trust anchors or policy values
+      <bcp14>MUST NOT</bcp14> influence acceptance.</t>
+      <t>Every protected effect path for which a deployment claims GRACE
+      enforcement <bcp14>MUST</bcp14> pass through the same admission boundary.
+      An implementation that can be bypassed may still emit evidence, but it
+      <bcp14>MUST NOT</bcp14> claim complete enforcement.</t>
+    </section>
+
+    <section anchor="action"><name>Curtailment Action</name>
+      <t>The action <bcp14>MUST</bcp14> be a closed JSON object
+      <xref target="RFC8259"/> that can be serialized with JCS
+      <xref target="RFC8785"/>. Unknown, duplicated, missing, or
+      non-canonicalizable members are a refusal. Its required members are:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-GRACE-CURTAILMENT-ACTION-v1",
+  "action_id": "grace:event:...",
+  "action_type": "grid.curtailment",
+  "effect_class": "power_reduction",
+  "facility": "facility:...",
+  "target_delta_kw": "18000",
+  "window": {
+    "not_before": "2026-07-15T20:15:00.000Z",
+    "not_after": "2026-07-15T21:45:00.000Z"
+  },
+  "issued_at": "2026-07-15T20:00:00.000Z",
+  "expires_at": "2026-07-15T21:45:00.000Z",
+  "baseline_method_hash": "sha256:...",
+  "control_mode": "human_on_the_loop",
+  "envelope_id": "grace:envelope:...",
+  "requested_by": "ep:agent:grid-coordinator"
+}
+]]></sourcecode>
+      <t><tt>target_delta_kw</tt> <bcp14>MUST</bcp14> be a positive decimal
+      string with at most three fractional digits. Timestamps
+      <bcp14>MUST</bcp14> be UTC RFC 3339 timestamps with millisecond precision.
+      <tt>issued_at</tt> <bcp14>MUST</bcp14> precede
+      <tt>window.not_before</tt>. <tt>expires_at</tt>
+      <bcp14>MUST</bcp14> equal <tt>window.not_after</tt>.
+      <tt>control_mode</tt> is either <tt>human_on_the_loop</tt> or
+      <tt>human_in_the_loop</tt>. The baseline-method digest commits to the
+      program-selected method; it does not validate that method.</t>
+      <t>The verifier <bcp14>MUST</bcp14> derive the action digest and CAID
+      <xref target="EP-CAID"/> from the exact controlled-action projection.
+      A supplied identifier <bcp14>MUST NOT</bcp14> replace that derivation.</t>
+    </section>
+
+    <section anchor="envelope"><name>Participation Envelope and Containment</name>
+      <t>The action names one <tt>EP-FLEX-ENVELOPE-v2</tt> envelope. The
+      relying party <bcp14>MUST</bcp14> obtain that envelope from its pinned
+      authority and <bcp14>MUST</bcp14> verify that it applies to the facility,
+      program, and evaluation time. The bounds object contains positive
+      <tt>max_event_mw</tt>, <tt>max_period_mwh</tt>, <tt>max_events</tt>,
+      <tt>max_event_hours</tt>, <tt>min_notice_minutes</tt>, and a participation
+      window.</t>
+      <t>Before dispatch, the executor <bcp14>MUST</bcp14> compare power with
+      power, energy with energy, count with count, and duration with duration.
+      The action's MW cannot exceed <tt>max_event_mw</tt>. Its MW multiplied by
+      window duration cannot exceed the remaining period MWh budget. One more
+      event and its duration must fit the remaining event and event-hour
+      budgets. Its notice and window must fit the envelope.</t>
+      <t>A required bound or present spent-accounting value that is missing,
+      negative, or unparseable is a refusal. An omitted spent value asserts
+      zero prior settled usage; deployments that cannot make that assertion
+      <bcp14>MUST</bcp14> return indeterminate rather than use zero.</t>
+    </section>
+
+    <section anchor="human"><name>Human Authorization</name>
+      <t>The relying party selects an ordered approver roster and a threshold
+      using the action-bound authorization evidence in
+      <xref target="EP-RECEIPTS"/>.
+      Each accepted approval <bcp14>MUST</bcp14> be a Class-A WebAuthn
+      <xref target="WEBAUTHN"/> signoff over a context that binds the controlled
+      action digest, presentation digest, policy digest, initiator, approver,
+      roster index, threshold, validity window, relying-party profile, app,
+      platform, credential, and device key.</t>
+      <t>The verifier <bcp14>MUST</bcp14> require user verification, the pinned
+      relying-party identifier and origin, distinct approvers, distinct device
+      and credential identifiers, initiator exclusion, the exact roster index,
+      and the selected threshold. The quorum semantics are those of
+      <xref target="EP-QUORUM"/>. A valid signature that does not match the
+      relying party's current roster, policy, action, presentation, or ceremony
+      window is a refusal.</t>
+    </section>
+
+    <section anchor="admission"><name>Executor Admission and Refusal Semantics</name>
+      <t>The executor applies the Action Evidence Boundary
+      <xref target="EP-AEB"/> in this order:</t>
+      <ol>
+        <li>Validate the closed action and require it to be active.</li>
+        <li>Derive and verify action-to-envelope containment.</li>
+        <li>Derive the expected outcome policy and require its digest to be
+        inside the human-approved policy bytes.</li>
+        <li>Verify the human authorization against the pinned profile.</li>
+        <li>Require the pinned actuator, meter, Action State signer, execution
+        store, settlement store, and settlement adapter.</li>
+        <li>Atomically reserve the exact execution idempotency key before
+        invoking the actuator.</li>
+      </ol>
+      <t>The execution idempotency key <bcp14>MUST</bcp14> bind the action
+      identifier and action digest. The shared store <bcp14>MUST</bcp14> be
+      durable, atomic, and ownership-fenced. Concurrent reservation failure is
+      <tt>refuse_replay</tt>. Storage unavailability is a refusal before
+      invocation.</t>
+      <t>If invocation begins and the result is lost, malformed, or raises an
+      exception, the executor <bcp14>MUST</bcp14> return
+      <tt>execution_indeterminate</tt>, preserve or burn the reservation, set
+      <tt>retry_safe</tt> to false, and <bcp14>MUST NOT</bcp14> blindly invoke
+      the effect again. Authenticated reconciliation is required.</t>
+      <t>Pre-invocation failures use a mechanism-named refusal such as
+      <tt>refuse_action</tt>, <tt>refuse_action_not_active</tt>,
+      <tt>refuse_outside_envelope</tt>, <tt>refuse_outcome_policy</tt>,
+      <tt>refuse_authorization</tt>, or <tt>refuse_adapter_unavailable</tt>.
+      Post-invocation evidence failures use <tt>effect_unconfirmed</tt> and are
+      not retry authorization.</t>
+    </section>
+
+    <section anchor="dispatch"><name>Dispatch Acknowledgment</name>
+      <t>The dispatch request binds the complete action, action digest, envelope
+      digest, human-authorization digest, idempotency key, and operator. The
+      actuator acknowledgment <bcp14>MUST</bcp14> bind the event identifier,
+      action digest, dispatch-request digest, idempotency key, actuator
+      identity, status, and dispatch time, and <bcp14>MUST</bcp14> verify under
+      the pinned actuator key.</t>
+      <t>An accepted acknowledgment is the actuator's authenticated claim that
+      it dispatched the request. It is not independent measurement and does not
+      establish that electrical load changed.</t>
+    </section>
+
+    <section anchor="meter"><name>Meter Statement and Compliance Computation</name>
+      <t>The meter statement <bcp14>MUST</bcp14> bind the meter identifier,
+      event identifier, action digest, exact action window, unit, baseline MW,
+      ordered sequence of timestamped load intervals, measurement class,
+      observation time, and signer key identifier. It <bcp14>MUST</bcp14> verify
+      under a separately pinned meter key.</t>
+      <t>The meter statement <bcp14>MUST NOT</bcp14> contain
+      <tt>baseline_method_hash</tt>. Program and tariff rules remain in the
+      authorized action and relying-party policy. This separates a signed
+      measurement-source claim from the rule used to interpret it.</t>
+      <t>The reference computation subtracts average interval load from the
+      signed baseline MW, divides the delivered MW by ordered MW, and marks the
+      event compliant at a profile-selected threshold. A deployment
+      <bcp14>MUST</bcp14> pin the computation and threshold it uses. The result
+      states what follows from the accepted inputs. It does not prove the
+      baseline was economically correct, the readings were physically true,
+      or the event qualifies under a tariff.</t>
+    </section>
+
+    <section anchor="outcome"><name>Outcome Binding</name>
+      <t>The action's human-approved policy binds source-routed predictions for
+      an executor observation and an independent-observer meter observation.
+      Each Outcome Observation <xref target="EP-OUTCOME"/>
+      <bcp14>MUST</bcp14> bind the authorization record, action digest, CAID,
+      consumption nonce, operation identifier, facility, observation window,
+      source role, source class, and observed effect.</t>
+      <t>The relying party <bcp14>MUST</bcp14> pin source keys, roles, classes,
+      control domains, status and validity, distinctness requirements,
+      observation windows, and maximum attestation delay. A declared control
+      domain is relying-party policy input, not proof of organizational
+      independence.</t>
+      <t>Settlement admission requires a reconciled outcome with the
+      profile-selected in-bounds result. Missing, stale, invalid, wrong-window,
+      same-domain, or otherwise insufficient observations produce
+      <tt>effect_unconfirmed</tt>. They <bcp14>MUST NOT</bcp14> be converted to
+      success, failure, or retry authorization.</t>
+    </section>
+
+    <section anchor="action-state"><name>Action State Signed Statement</name>
+      <t>After outcome reconciliation, the profile emits a COSE_Sign1
+      <xref target="RFC9052"/> Action State Signed Statement using
+      <xref target="ACTION-STATE"/> format version 2 and media type
+      <tt>application/agent-action-capsule+json</tt>. The statement binds the
+      action, operator, developer, authorization digest, dispatch-request
+      digest, meter digest, constraints evaluated, disposition, and confirmed
+      effect.</t>
+      <t>The capsule identifier is derived from canonical capsule bytes. The
+      JSON wrapper, COSE payload, protected headers, key identifier, and
+      statement digest <bcp14>MUST</bcp14> cross-check. The current reference
+      output is an <tt>unregistered_signed_statement</tt>. It is not a SCITT
+      transparency-service registration or proof of ledger inclusion.</t>
+    </section>
+
+    <section anchor="settlement"><name>Single-Use Settlement Admission</name>
+      <t>The one-time entitlement key is the injective serialization of
+      <tt>[envelope_id, event_id, meter_payload_digest]</tt> under profile
+      <tt>EP-GRACE-SETTLE-v1</tt>. Every member is required. The meter digest
+      <bcp14>MUST</bcp14> be a lowercase SHA-256 digest of the accepted signed
+      meter body.</t>
+      <t>Only a compliant computation and an in-bounds reconciled outcome may
+      reach the settlement adapter. The settlement store
+      <bcp14>MUST</bcp14> reserve the entitlement atomically before invocation.
+      A duplicate is <tt>settlement_already_consumed</tt>. If invocation begins
+      and its result is unknown, the implementation <bcp14>MUST</bcp14> commit
+      or preserve the reservation and <bcp14>MUST NOT</bcp14> issue another
+      settlement attempt under the same entitlement.</t>
+      <t>This is at-most-one admission to the configured settlement effect in
+      one authoritative state domain. It is not exactly-once physical payment,
+      global double-spend prevention across independent authorities, tariff
+      eligibility, or evidence that funds moved.</t>
+    </section>
+
+    <section anchor="bundle"><name>Proof-of-Curtailment Bundle</name>
+      <t>The <tt>EP-GRACE-PROOF-OF-CURTAILMENT-v1</tt> bundle is a signed,
+      offline-verifiable summary. It binds the action and action digest,
+      envelope digest, baseline-method digest, authorization digest,
+      dispatch-request digest, actuator-acknowledgment digest, meter-payload
+      digest, Outcome Binding result digest and outcome, deterministic
+      compliance result, Action State statement digest, and settlement
+      admission result.</t>
+      <t>Bundle verification establishes integrity and binding relative to the
+      verifier's pinned trust and policy inputs. It does not independently
+      establish any source claim as real-world truth.</t>
+    </section>
+
+    <section anchor="signatures"><name>Artifact Signature Profiles</name>
+      <t>The baseline profile signs canonical artifact bytes with Ed25519. The
+      optional <tt>EP-GRACE-ARTIFACT-SIGNATURE-v2</tt> profile uses a fixed
+      required algorithm list, in order: <tt>Ed25519</tt> and
+      <tt>ML-DSA-65</tt> <xref target="FIPS204"/>. Its signing bytes commit to
+      the complete artifact and the required algorithm list.</t>
+      <t>A v2 verifier <bcp14>MUST</bcp14> require exactly one signature under
+      each independently pinned key and <bcp14>MUST</bcp14> accept only when
+      both signatures verify. Missing algorithms, reordered or narrowed
+      requirements, key substitution, malformed signatures, or an unavailable
+      ML-DSA verifier are refusals. A v1 verifier <bcp14>MUST NOT</bcp14>
+      silently accept a v2 artifact.</t>
+      <t>Hybrid signing provides cryptographic migration evidence. It does not
+      make a software-held key hardware-backed, FIPS validated, deployed, or
+      operationally independent. A deployment claiming the hybrid profile
+      <bcp14>MUST</bcp14> identify and protect both actual signing keys.</t>
+    </section>
+
+    <section anchor="privacy"><name>Privacy Considerations</name>
+      <t>Curtailment records can reveal facility identity, capacity, operating
+      schedules, energy consumption, human approvers, device identifiers, and
+      commercial program terms. Implementations <bcp14>SHOULD</bcp14> minimize
+      portable fields, disclose raw intervals only to parties that require
+      them, use digests when independent recomputation is not required, and
+      apply retention and access policies appropriate to critical-infrastructure
+      data.</t>
+      <t>Selective disclosure or encryption cannot repair an overbroad signed
+      source object. Deployments <bcp14>SHOULD</bcp14> separate public
+      verification material from restricted operational evidence and preserve
+      enough binding information to detect substitution.</t>
+    </section>
+
+    <section anchor="security"><name>Security Considerations</name>
+      <t>The principal attacks are action substitution, envelope overflow,
+      stale approval, initiator self-approval, duplicate approvers, dispatch
+      replay, lost acknowledgment, actuator-key substitution, meter-key
+      substitution, market-rule smuggling into meter data, observation-source
+      collapse, wrapper substitution, signature-leg stripping, and duplicate
+      settlement admission. The preceding sections require fail-closed checks
+      for each.</t>
+      <t>Key compromise remains a trust-root failure. Historical signatures can
+      establish what a key signed; they do not prove who controlled the key or
+      that the signed claim was true. A separately keyed meter under the same
+      operator's control may improve fault isolation but does not create
+      organizational independence.</t>
+      <t>GRACE cannot prove that the selected baseline is fair, a meter is
+      calibrated or untampered, a scheduler has no bypass, a declared control
+      domain is honest, a payment rail moved funds, or an authority's upstream
+      population is complete. Deployment claims <bcp14>MUST</bcp14> state those
+      acceptance roots.</t>
+    </section>
+
+    <section anchor="implementation"><name>Implementation Status</name>
+      <t>This section records implementation evidence and may be removed before
+      publication as an RFC.</t>
+      <t>The public EMILIA repository <xref target="GRACE-IMPLEMENTATION"/>
+      contains a TypeScript reference circuit
+      for exact action construction, two distinct Class-A approvals, bounded
+      admission, a COSA-labeled simulated actuator, a separately keyed
+      simulated meter, Outcome Binding, an Action State Signed Statement, and
+      one-time settlement admission. The adapters are marked
+      <tt>simulation: true</tt>. The circuit is not evidence of a physical grid
+      event, production COSA integration, utility adoption, meter truth, or an
+      actual payment.</t>
+      <t>At the repository revision identified in the companion validation
+      record, 80 targeted tests pass across four files. They cover the
+      curtailment and mobile-grid state machines, production route boundary,
+      and an 11-case Ed25519 plus ML-DSA-65 hostile signature matrix. Six
+      declared vertical vectors <xref target="GRACE-VECTORS"/> cover the
+      accepted path and refusals for
+      missing independent outcome signature, self-approval, inactive action,
+      replay, and meter-rule smuggling. These are same-team reference results,
+      not an independent implementation or interoperability claim.</t>
+    </section>
+
+    <section anchor="iana"><name>IANA Considerations</name>
+      <t>This document has no IANA actions. The <tt>grid.curtailment</tt> and
+      <tt>EP-GRACE-*</tt> identifiers are profile-local strings and are not
+      entries in an IANA registry.</t>
+    </section>
+  </middle>
+  <back>
+    <references><name>Normative References</name>
+      <reference anchor="BCP14" target="https://www.rfc-editor.org/info/bcp14">
+        <front><title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="IETF"/><date/></front>
+      </reference>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8259.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9052.xml"/>
+      <reference anchor="WEBAUTHN" target="https://www.w3.org/TR/webauthn-2/">
+        <front><title>Web Authentication: An API for accessing Public Key Credentials - Level 2</title>
+          <author><organization>World Wide Web Consortium</organization></author><date year="2021" month="April"/></front>
+      </reference>
+      <reference anchor="FIPS204" target="https://doi.org/10.6028/NIST.FIPS.204">
+        <front><title>Module-Lattice-Based Digital Signature Standard</title>
+          <author><organization>National Institute of Standards and Technology</organization></author><date year="2024" month="August"/></front>
+        <seriesInfo name="FIPS" value="204"/>
+      </reference>
+      <reference anchor="EP-CAID" target="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">
+        <front><title>Canonical Action Identifier: Stable Identity for Material Agent Actions</title>
+          <author fullname="Iman Schrock"/><date year="2026" month="August"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-02"/>
+      </reference>
+      <reference anchor="EP-RECEIPTS" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
+        <front><title>Authorization Receipts for High-Risk Agent Actions</title>
+          <author fullname="Iman Schrock"/><date year="2026" month="August"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-12"/>
+      </reference>
+      <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
+        <front><title>Multi-Party Quorum Authorization for High-Risk Agent Actions</title>
+          <author fullname="Iman Schrock"/><date year="2026" month="July"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-quorum-03"/>
+      </reference>
+      <reference anchor="EP-AEB" target="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">
+        <front><title>Action Evidence Boundary: Binding Verified Authorization Evidence to Agent Execution</title>
+          <author fullname="Iman Schrock"/><date year="2026" month="August"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-04"/>
+      </reference>
+      <reference anchor="EP-OUTCOME" target="https://datatracker.ietf.org/doc/draft-schrock-ep-outcome-binding/">
+        <front><title>Outcome Binding for High-Risk Agent Actions</title>
+          <author fullname="Iman Schrock"/><date year="2026" month="July"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-outcome-binding-00"/>
+      </reference>
+      <reference anchor="ACTION-STATE" target="https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/">
+        <front><title>An Agent Action Capsule Profile for SCITT</title>
+          <author fullname="Steven Walter Mih"/><date year="2026" month="July"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-02"/>
+      </reference>
+    </references>
+    <references><name>Informative References</name>
+      <reference anchor="GRACE-IMPLEMENTATION" target="https://github.com/emiliaprotocol/emilia-protocol/tree/main/lib/grace">
+        <front><title>GRACE Reference Implementation</title>
+          <author><organization>EMILIA Protocol</organization></author><date year="2026"/></front>
+      </reference>
+      <reference anchor="GRACE-VECTORS" target="https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/vectors/grace-mobile-grid.v1.json">
+        <front><title>GRACE Mobile Grid Vertical Composition Vectors</title>
+          <author><organization>EMILIA Protocol</organization></author><date year="2026"/></front>
+      </reference>
+    </references>
+  </back>
+</rfc>

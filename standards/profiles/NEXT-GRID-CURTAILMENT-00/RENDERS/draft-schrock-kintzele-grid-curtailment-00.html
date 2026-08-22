@@ -1,0 +1,1971 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>GRACE: Evidence-Bound Grid Curtailment Admission, Observation, and Single-Use Settlement</title>
+<meta content="Iman Schrock" name="author">
+<meta content="Justin D Kintzele" name="author">
+<meta content="
+       This document defines GRACE, an application profile for one bounded
+       grid.curtailment  action. The profile binds an exact action to a
+      finite participation envelope, distinct human approvals when required,
+      one-attempt executor admission, an authenticated actuator
+      acknowledgment, separately authenticated meter observations, an Action
+      State Signed Statement, and one-time admission to a settlement effect.
+      Missing or ambiguous post-invocation evidence is preserved as
+      indeterminate and cannot authorize blind retry. 
+       GRACE verifies signed inputs and deterministic computations. It does
+      not establish physical meter truth, baseline correctness, tariff
+      eligibility, actual payment, complete mediation, or a physical grid
+      deployment. An optional hybrid artifact-signature profile combines
+      Ed25519 with ML-DSA-65 and requires both signatures to verify. 
+    " name="description">
+<meta content="xml2rfc 3.34.0" name="generator">
+<meta content="AI agents" name="keyword">
+<meta content="demand response" name="keyword">
+<meta content="grid curtailment" name="keyword">
+<meta content="outcome evidence" name="keyword">
+<meta content="draft-schrock-kintzele-grid-curtailment-00" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.34.0
+    Python 3.14.5
+    ConfigArgParse 1.7.5
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.10.0
+    pycountry 26.2.16
+    PyYAML 6.0.3
+    requests 2.34.2
+    wcwidth 0.8.1
+-->
+<link href="draft-schrock-kintzele-grid-curtailment-00.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">/*
+
+  NOTE: Changes at the bottom of this file overrides some earlier settings.
+
+  Once the style has stabilized and has been adopted as an official RFC style,
+  this can be consolidated so that style settings occur only in one place, but
+  for now the contents of this file consists first of the initial CSS work as
+  provided to the RFC Formatter (xml2rfc) work, followed by itemized and
+  commented changes found necessary during the development of the v3
+  formatters.
+
+*/
+
+/* fonts */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
+
+:root {
+  --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
+  --font-serif: 'Noto Serif', 'Times', 'Times New Roman', serif;
+  --font-mono: 'Roboto Mono', Courier, 'Courier New', monospace;
+}
+
+@viewport {
+  zoom: 1.0;
+}
+@-ms-viewport {
+  width: extend-to-zoom;
+  zoom: 1.0;
+}
+/* general and mobile first */
+html {
+}
+body {
+  max-width: 90%;
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  overflow-wrap: break-word;
+}
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  line-height: 1.3;
+}
+#title {
+  clear: both;
+  border-bottom: 1px solid #ddd;
+  margin: 0 0 0.5em 0;
+  padding: 1em 0 0.5em;
+}
+.author {
+  padding-bottom: 4px;
+}
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  margin-top: -20px;  /* provide offset for in-page anchors */
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h5, h6 {
+  font-size: 14px;
+}
+#n-copyright-notice {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+/* general structure */
+p {
+  padding: 0;
+  margin: 0 0 1em 0;
+  text-align: left;
+}
+div, span {
+  position: relative;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+@media print {
+  svg {
+    max-height: 850px;
+    max-width: 660px;
+  }
+}
+svg[font-family~="serif" i], svg [font-family~="serif" i] {
+  font-family: var(--font-serif);
+}
+svg[font-family~="sans-serif" i], svg [font-family~="sans-serif" i] {
+  font-family: var(--font-sans);
+}
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  display: table;
+  border: none;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 1em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.ulBare, li.ulBare {
+  margin-left: 0em !important;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+/* 
+dl.nohang > dt {
+  float: none;
+}
+*/
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+/* XXX probably not this:
+a.selfRef:hover {
+  background-color: transparent;
+  cursor: default;
+} */
+
+/* Figures */
+tt, code, pre {
+  background-color: #f9f9f9;
+  font-family: var(--font-mono);
+}
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption {
+  font-style: italic;
+  margin: 0 0 1em 0;
+}
+@media screen {
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    max-width: calc(100% - 22px);
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 1.2em 2em;
+}
+blockquote {
+  background-color: #f9f9f9;
+  color: #111; /* Arlen: WCAG 2019 */
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin: 1em 0;
+}
+blockquote > *:last-child {
+  margin-bottom: 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+.xref {
+  overflow-wrap: normal;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+table p {
+  /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
+     be allowed within tables more generally, it would be far better to select on a class. */
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  color: #666; /* Arlen: AHDJ 2019 */
+  text-decoration: none;
+  visibility: hidden;
+  user-select: none;
+  -ms-user-select: none;
+  -o-user-select:none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media screen {
+  aside:hover > a.pilcrow,
+  p:hover > a.pilcrow,
+  blockquote:hover > a.pilcrow,
+  div:hover > a.pilcrow,
+  li:hover > a.pilcrow,
+  pre:hover > a.pilcrow {
+    visibility: visible;
+  }
+  a.pilcrow:hover {
+    background-color: transparent;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: 0.9em;
+}
+#identifiers dt {
+  width: 3em;
+  clear: left;
+}
+#identifiers dd {
+  float: left;
+  margin-bottom: 0;
+}
+/* Fix PDF info block run off issue */
+@media print {
+  #identifiers dd {
+    max-width: 100%;
+  }
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #666; /* Arlen: WCAG 2019 */
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc  {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+nav.toc ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+nav.toc li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.refSubseries {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 600px) {
+  .index ul {
+    -moz-column-count: 2;
+    -moz-column-gap: 20px;
+  }
+  .index ul ul {
+    -moz-column-count: 1;
+    -moz-column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  font-family: var(--font-sans);
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+
+/* temporary notes */
+.rfcEditorRemove::before {
+  position: absolute;
+  top: 0.2em;
+  right: 0.2em;
+  padding: 0.2em;
+  content: "The RFC Editor will remove this note";
+  color: #9e2a00; /* Arlen: WCAG 2019 */
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+}
+.rfcEditorRemove {
+  position: relative;
+  padding-top: 1.8em;
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  border-radius: 3px;
+}
+.cref {
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 1023px) {
+  body {
+    padding-top: 2em;
+  }
+  #title {
+    padding: 1em 0;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: -18px;  /* provide offset for in-page anchors */
+    padding-top: 38px;
+  }
+  #identifiers dd {
+    max-width: 60%;
+  }
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    border-bottom: 1px solid #ccc;
+  }
+  #toc h2 {
+    margin: -1px 0 0 0;
+    padding: 4px 0 4px 6px;
+    padding-right: 1em;
+    min-width: 190px;
+    font-size: 1.1em;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 6px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 1024px) {
+  body {
+    max-width: 724px;
+    margin: 42px auto;
+    padding-left: 1.5em;
+    padding-right: 29em;
+  }
+  #toc {
+    position: fixed;
+    top: 42px;
+    right: 42px;
+    width: 25%;
+    margin: 0;
+    padding: 0 1em;
+    z-index: 1;
+  }
+  #toc h2 {
+    border-top: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 0;
+    overflow: auto;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  .breakable pre {
+    break-inside: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* This is commented out here, as the string-set: doesn't
+   pass W3C validation currently */
+/*
+.ears thead .left {
+  string-set: ears-top-left content();
+}
+
+.ears thead .center {
+  string-set: ears-top-center content();
+}
+
+.ears thead .right {
+  string-set: ears-top-right content();
+}
+
+.ears tfoot .left {
+  string-set: ears-bottom-left content();
+}
+
+.ears tfoot .center {
+  string-set: ears-bottom-center content();
+}
+
+.ears tfoot .right {
+  string-set: ears-bottom-right content();
+}
+*/
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+  /* The following is commented out here, but set appropriately by in code, as
+     the content depends on the document */
+  /*
+  @top-left {
+    content: 'Internet-Draft';
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-left {
+    content: string(ears-top-left);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-center {
+    content: string(ears-top-center);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-right {
+    content: string(ears-top-right);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @bottom-left {
+    content: string(ears-bottom-left);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-center {
+    content: string(ears-bottom-center);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-right {
+      content: '[Page ' counter(page) ']';
+      vertical-align: top;
+      border-top: solid 1px #ccc;
+  }
+  */
+
+}
+
+/* Changes introduced to fix issues found during implementation */
+/* Make sure links are clickable even if overlapped by following H* */
+a {
+  z-index: 2;
+}
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Leave room in document info to show Internet-Draft on one line */
+#identifiers dt {
+  width: 8em;
+}
+
+/* Don't waste quite as much whitespace between label and value in doc info */
+#identifiers dd {
+  margin-left: 1em;
+}
+
+/* Give floating toc a background color (needed when it's a div inside section */
+#toc {
+  background-color: white;
+}
+
+/* Make the collapsed ToC header render white on gray also when it's a link */
+@media screen and (max-width: 1023px) {
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+}
+
+/* Give the bottom of the ToC some whitespace */
+@media screen and (min-width: 1024px) {
+  #toc {
+    padding: 0 0 1em 1em;
+  }
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* prevent monospace from becoming overly large */
+tt, code, pre {
+  font-size: 95%;
+}
+
+/* Fix the height/width aspect for ascii art*/
+.sourcecode pre,
+.art-text pre {
+  line-height: 1.12;
+}
+
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin-right: 0.5em;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 30em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Provide table alignment support.  We can't use the alignX classes above
+   since they do unwanted things with caption and other styling. */
+table.right {
+ margin-left: auto;
+ margin-right: 0;
+}
+table.center {
+ margin-left: auto;
+ margin-right: auto;
+}
+table.left {
+ margin-left: 0;
+ margin-right: auto;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+caption a[href] {
+  color: #222;
+}
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+/* Tweak the invisible space above H* in order not to overlay links in text above */
+ h2 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 31px;
+ }
+ h3 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+ h4 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+/* Float artwork pilcrow to the right */
+@media screen {
+  .artwork a.pilcrow {
+    display: block;
+    line-height: 0.7;
+    margin-top: 0.15em;
+  }
+}
+/* Make pilcrows on dd visible */
+@media screen {
+  dd:hover > a.pilcrow {
+    visibility: visible;
+  }
+}
+/* Make the placement of figcaption match that of a table's caption
+   by removing the figure's added bottom margin */
+.alignLeft.art-text,
+.alignCenter.art-text,
+.alignRight.art-text {
+   margin-bottom: 0;
+}
+.alignLeft,
+.alignCenter,
+.alignRight {
+  margin: 1em 0 0 0;
+}
+/* In print, the pilcrow won't show on hover, so prevent it from taking up space,
+   possibly even requiring a new line */
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+/* Styling for the external metadata */
+div#external-metadata {
+  background-color: #eee;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  display: none;
+}
+div#internal-metadata {
+  padding: 0.5em;                       /* to match the external-metadata padding */
+}
+/* Styling for title RFC Number */
+h1#rfcnum {
+  clear: both;
+  margin: 0 0 -1em;
+  padding: 1em 0 0 0;
+}
+/* Make .olPercent look the same as <ol><li> */
+dl.olPercent > dd {
+  margin-bottom: 0.25em;
+  min-height: initial;
+}
+/* Give aside some styling to set it apart */
+aside {
+  border-left: 1px solid #ddd;
+  margin: 1em 0 1em 2em;
+  padding: 0.2em 2em;
+}
+aside > dl,
+aside > ol,
+aside > ul,
+aside > table,
+aside > p {
+  margin-bottom: 0.5em;
+}
+/* Additional page break settings */
+@media print {
+  figcaption, table caption {
+    page-break-before: avoid;
+  }
+}
+/* Font size adjustments for print */
+@media print {
+  body  { font-size: 10pt;      line-height: normal; max-width: 96%; }
+  h1    { font-size: 1.72em;    padding-top: 1.5em; } /* 1*1.2*1.2*1.2 */
+  h2    { font-size: 1.44em;    padding-top: 1.5em; } /* 1*1.2*1.2 */
+  h3    { font-size: 1.2em;     padding-top: 1.5em; } /* 1*1.2 */
+  h4    { font-size: 1em;       padding-top: 1.5em; }
+  h5, h6 { font-size: 1em;      margin: initial; padding: 0.5em 0 0.3em; }
+}
+/* Sourcecode margin in print, when there's no pilcrow */
+@media print {
+  .artwork,
+  .artwork > pre,
+  .sourcecode {
+    margin-bottom: 1em;
+  }
+}
+/* Avoid narrow tables forcing too narrow table captions, which may render badly */
+table {
+  min-width: 20em;
+}
+/* ol type a */
+ol.type-a { list-style-type: lower-alpha; }
+ol.type-A { list-style-type: upper-alpha; }
+ol.type-i { list-style-type: lower-roman; }
+ol.type-I { list-style-type: upper-roman; }
+/* Apply the print table and row borders in general, on request from the RPC,
+and increase the contrast between border and odd row background slightly */
+table {
+  border: 1px solid #ddd;
+}
+td {
+  border-top: 1px solid #ddd;
+}
+tr {
+  break-inside: avoid;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f8f8f8;
+}
+/* Use style rules to govern display of the TOC. */
+@media screen and (max-width: 1023px) {
+  #toc nav { display: none; }
+  #toc.active nav { display: block; }
+}
+/* Add support for keepWithNext */
+.keepWithNext {
+  break-after: avoid-page;
+  break-after: avoid-page;
+}
+/* Add support for keepWithPrevious */
+.keepWithPrevious {
+  break-before: avoid-page;
+}
+/* Change the approach to avoiding breaks inside artwork etc. */
+figure, pre, table, .artwork, .sourcecode  {
+  break-before: auto;
+  break-after: auto;
+}
+/* Avoid breaks between <dt> and <dd> */
+dl {
+  break-before: auto;
+  break-inside: auto;
+}
+dt {
+  break-before: auto;
+  break-after: avoid-page;
+}
+dd {
+  break-before: avoid-page;
+  break-after: auto;
+  orphans: 3;
+  widows: 3
+}
+span.break, dd.break {
+  margin-bottom: 0;
+  min-height: 0;
+  break-before: auto;
+  break-inside: auto;
+  break-after: auto;
+}
+/* Undo break-before ToC */
+@media print {
+  #toc {
+    break-before: auto;
+  }
+}
+/* Text in compact lists should not get extra bottom margin space,
+   since that would makes the list not compact */
+ul.compact p, .ulCompact p,
+ol.compact p, .olCompact p {
+ margin: 0;
+}
+/* But the list as a whole needs the extra space at the end */
+section ul.compact,
+section .ulCompact,
+section ol.compact,
+section .olCompact {
+  margin-bottom: 1em;                    /* same as p not within ul.compact etc. */
+}
+/* The tt and code background above interferes with for instance table cell
+   backgrounds.  Changed to something a bit more selective. */
+tt, code {
+  background-color: transparent;
+}
+p tt, p code, li tt, li code, dt tt, dt code {
+  background-color: #f8f8f8;
+}
+/* Tweak the pre margin -- 0px doesn't come out well */
+pre {
+   margin-top: 0.5px;
+}
+/* Tweak the compact list text */
+ul.compact, .ulCompact,
+ol.compact, .olCompact,
+dl.compact, .dlCompact {
+  line-height: normal;
+}
+/* Don't add top margin for nested lists */
+li > ul, li > ol, li > dl,
+dd > ul, dd > ol, dd > dl,
+dl > dd > dl {
+  margin-top: initial;
+}
+/* Elements that should not be rendered on the same line as a <dt> */
+/* This should match the element list in writer.text.TextWriter.render_dl() */
+dd > div.artwork:first-child,
+dd > aside:first-child,
+dd > blockquote:first-child,
+dd > figure:first-child,
+dd > ol:first-child,
+dd > div.sourcecode:first-child,
+dd > table:first-child,
+dd > ul:first-child {
+  clear: left;
+}
+/* fix for weird browser behaviour when <dd/> is empty */
+dt+dd:empty::before{
+  content: "\00a0";
+}
+/* Make paragraph spacing inside <li> smaller than in body text, to fit better within the list */
+li > p {
+  margin-bottom: 0.5em
+}
+/* Don't let p margin spill out from inside list items */
+li > p:last-of-type:only-child {
+  margin-bottom: 0;
+}
+</style>
+<link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">GRACE Curtailment</td>
+<td class="right">August 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Schrock &amp; Kintzele</td>
+<td class="center">Expires 22 February 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Network Working Group</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-schrock-kintzele-grid-curtailment-00</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-08-21" class="published">21 August 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Informational</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-02-22">22 February 2027</time></dd>
+<dt class="label-authors">Authors:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">I. Schrock</div>
+<div class="org">EMILIA Protocol, Inc.</div>
+</div>
+<div class="author">
+      <div class="author-name">J. D Kintzele</div>
+<div class="org">J Diesel NY, LLC</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">GRACE: Evidence-Bound Grid Curtailment Admission, Observation, and Single-Use Settlement</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">This document defines GRACE, an application profile for one bounded
+      <code>grid.curtailment</code> action. The profile binds an exact action to a
+      finite participation envelope, distinct human approvals when required,
+      one-attempt executor admission, an authenticated actuator
+      acknowledgment, separately authenticated meter observations, an Action
+      State Signed Statement, and one-time admission to a settlement effect.
+      Missing or ambiguous post-invocation evidence is preserved as
+      indeterminate and cannot authorize blind retry.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-2">GRACE verifies signed inputs and deterministic computations. It does
+      not establish physical meter truth, baseline correctness, tariff
+      eligibility, actual payment, complete mediation, or a physical grid
+      deployment. An optional hybrid artifact-signature profile combines
+      Ed25519 with ML-DSA-65 and requires both signatures to verify.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 22 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-requirements-language" class="internal xref">Requirements Language</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1" class="keepWithNext"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-terminology-and-roles" class="internal xref">Terminology and Roles</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-trust-and-deployment-inputs" class="internal xref">Trust and Deployment Inputs</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-curtailment-action" class="internal xref">Curtailment Action</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-participation-envelope-and-" class="internal xref">Participation Envelope and Containment</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-human-authorization" class="internal xref">Human Authorization</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-executor-admission-and-refu" class="internal xref">Executor Admission and Refusal Semantics</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-dispatch-acknowledgment" class="internal xref">Dispatch Acknowledgment</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-meter-statement-and-complia" class="internal xref">Meter Statement and Compliance Computation</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-outcome-binding" class="internal xref">Outcome Binding</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-action-state-signed-stateme" class="internal xref">Action State Signed Statement</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-single-use-settlement-admis" class="internal xref">Single-Use Settlement Admission</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-proof-of-curtailment-bundle" class="internal xref">Proof-of-Curtailment Bundle</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-artifact-signature-profiles" class="internal xref">Artifact Signature Profiles</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
+            <p id="section-toc.1-1.15.1"><a href="#section-15" class="auto internal xref">15</a>. <a href="#name-privacy-considerations" class="internal xref">Privacy Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
+            <p id="section-toc.1-1.16.1"><a href="#section-16" class="auto internal xref">16</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
+            <p id="section-toc.1-1.17.1"><a href="#section-17" class="auto internal xref">17</a>. <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18">
+            <p id="section-toc.1-1.18.1"><a href="#section-18" class="auto internal xref">18</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19">
+            <p id="section-toc.1-1.19.1"><a href="#section-19" class="auto internal xref">19</a>. <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20">
+            <p id="section-toc.1-1.20.1"><a href="#section-20" class="auto internal xref">20</a>. <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21">
+            <p id="section-toc.1-1.21.1"><a href="#appendix-A" class="auto internal xref"></a><a href="#name-authors-addresses" class="internal xref">Authors' Addresses</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">A curtailment instruction can cross several administrative and
+      technical boundaries before it changes electrical load. Authentication
+      of the dispatcher alone does not answer whether the exact event fit a
+      customer-approved participation envelope, whether the required people
+      approved it, whether the executor admitted it only once, or whether
+      later measurement refers to the same action.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">GRACE keeps those questions separate. It defines an exact action, a
+      bounded envelope, pre-dispatch authorization and admission checks,
+      separately authenticated execution and measurement claims, outcome
+      reconciliation, and single-use settlement admission. Each relying party
+      selects and pins its own issuers, keys, policies, adapters, clocks, and
+      state stores.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">The profile does not define a demand-response tariff, a baseline
+      methodology, a physical meter, a scheduler, or a payment rail. Those
+      systems remain authoritative for their own claims. GRACE binds their
+      signed inputs to one action and records the result of deterministic
+      verification.<a href="#section-1-3" class="pilcrow">¶</a></p>
+<div id="requirements-language">
+<section id="section-1.1">
+        <h3 id="name-requirements-language">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-requirements-language" class="section-name selfRef">Requirements Language</a>
+        </h3>
+<p id="section-1.1-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+        NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+        "MAY", and "OPTIONAL" in this document are to be interpreted as
+        described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span>
+        when, and only when, they appear in all capitals, as shown here.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">BCP 14 is indexed by the RFC Editor at <span>[<a href="#BCP14" class="cite xref">BCP14</a>]</span>.<a href="#section-1.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="terminology">
+<section id="section-2">
+      <h2 id="name-terminology-and-roles">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-terminology-and-roles" class="section-name selfRef">Terminology and Roles</a>
+      </h2>
+<span class="break"></span><dl class="dlParallel" id="section-2-1">
+        <dt id="section-2-1.1">Participation Envelope</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.2">A customer-approved, finite set of power, energy, count,
+        duration, notice, and time-window bounds. The current profile identifier
+        is <code>EP-FLEX-ENVELOPE-v2</code>.<a href="#section-2-1.2" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.3">Curtailment Action</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.4">The closed <code>EP-GRACE-CURTAILMENT-ACTION-v1</code> object that
+        identifies one requested power-reduction event.<a href="#section-2-1.4" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.5">Admission</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.6">The executor-side decision that the exact action may enter effect
+        custody once. Admission is not evidence that the effect occurred.<a href="#section-2-1.6" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.7">Actuator</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.8">The deployment-pinned adapter that attempts the physical or
+        scheduler operation and signs an acknowledgment.<a href="#section-2-1.8" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.9">Meter</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.10">A separately pinned observation source. A meter statement is a
+        signed source claim, not proof of physical truth or calibration.<a href="#section-2-1.10" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.11">Settlement Effect</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.12">A deployment-supplied downstream operation invoked only after the
+        required evidence reconciles. GRACE controls at-most-one invocation
+        attempt for one entitlement key. It does not define or prove payment.<a href="#section-2-1.12" class="pilcrow">¶</a>
+</dd>
+      <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="trust">
+<section id="section-3">
+      <h2 id="name-trust-and-deployment-inputs">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-trust-and-deployment-inputs" class="section-name selfRef">Trust and Deployment Inputs</a>
+      </h2>
+<p id="section-3-1">A conforming deployment <span class="bcp14">MUST</span> independently configure
+      the accepted action and envelope versions, approver roster and threshold,
+      WebAuthn relying-party identifier and origins, actuator and meter keys,
+      source roles and control-domain identifiers, validity and freshness
+      policy, Action State signing key, execution store, settlement store, and
+      settlement adapter. Presenter-supplied trust anchors or policy values
+      <span class="bcp14">MUST NOT</span> influence acceptance.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<p id="section-3-2">Every protected effect path for which a deployment claims GRACE
+      enforcement <span class="bcp14">MUST</span> pass through the same admission boundary.
+      An implementation that can be bypassed may still emit evidence, but it
+      <span class="bcp14">MUST NOT</span> claim complete enforcement.<a href="#section-3-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="action">
+<section id="section-4">
+      <h2 id="name-curtailment-action">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-curtailment-action" class="section-name selfRef">Curtailment Action</a>
+      </h2>
+<p id="section-4-1">The action <span class="bcp14">MUST</span> be a closed JSON object
+      <span>[<a href="#RFC8259" class="cite xref">RFC8259</a>]</span> that can be serialized with JCS
+      <span>[<a href="#RFC8785" class="cite xref">RFC8785</a>]</span>. Unknown, duplicated, missing, or
+      non-canonicalizable members are a refusal. Its required members are:<a href="#section-4-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4-2">
+<pre>
+{
+  "@version": "EP-GRACE-CURTAILMENT-ACTION-v1",
+  "action_id": "grace:event:...",
+  "action_type": "grid.curtailment",
+  "effect_class": "power_reduction",
+  "facility": "facility:...",
+  "target_delta_kw": "18000",
+  "window": {
+    "not_before": "2026-07-15T20:15:00.000Z",
+    "not_after": "2026-07-15T21:45:00.000Z"
+  },
+  "issued_at": "2026-07-15T20:00:00.000Z",
+  "expires_at": "2026-07-15T21:45:00.000Z",
+  "baseline_method_hash": "sha256:...",
+  "control_mode": "human_on_the_loop",
+  "envelope_id": "grace:envelope:...",
+  "requested_by": "ep:agent:grid-coordinator"
+}
+</pre><a href="#section-4-2" class="pilcrow">¶</a>
+</div>
+<p id="section-4-3"><code>target_delta_kw</code> <span class="bcp14">MUST</span> be a positive decimal
+      string with at most three fractional digits. Timestamps
+      <span class="bcp14">MUST</span> be UTC RFC 3339 timestamps with millisecond precision.
+      <code>issued_at</code> <span class="bcp14">MUST</span> precede
+      <code>window.not_before</code>. <code>expires_at</code>
+        <span class="bcp14">MUST</span> equal <code>window.not_after</code>.
+      <code>control_mode</code> is either <code>human_on_the_loop</code> or
+      <code>human_in_the_loop</code>. The baseline-method digest commits to the
+      program-selected method; it does not validate that method.<a href="#section-4-3" class="pilcrow">¶</a></p>
+<p id="section-4-4">The verifier <span class="bcp14">MUST</span> derive the action digest and CAID
+      <span>[<a href="#EP-CAID" class="cite xref">EP-CAID</a>]</span> from the exact controlled-action projection.
+      A supplied identifier <span class="bcp14">MUST NOT</span> replace that derivation.<a href="#section-4-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="envelope">
+<section id="section-5">
+      <h2 id="name-participation-envelope-and-">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-participation-envelope-and-" class="section-name selfRef">Participation Envelope and Containment</a>
+      </h2>
+<p id="section-5-1">The action names one <code>EP-FLEX-ENVELOPE-v2</code> envelope. The
+      relying party <span class="bcp14">MUST</span> obtain that envelope from its pinned
+      authority and <span class="bcp14">MUST</span> verify that it applies to the facility,
+      program, and evaluation time. The bounds object contains positive
+      <code>max_event_mw</code>, <code>max_period_mwh</code>, <code>max_events</code>,
+      <code>max_event_hours</code>, <code>min_notice_minutes</code>, and a participation
+      window.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-2">Before dispatch, the executor <span class="bcp14">MUST</span> compare power with
+      power, energy with energy, count with count, and duration with duration.
+      The action's MW cannot exceed <code>max_event_mw</code>. Its MW multiplied by
+      window duration cannot exceed the remaining period MWh budget. One more
+      event and its duration must fit the remaining event and event-hour
+      budgets. Its notice and window must fit the envelope.<a href="#section-5-2" class="pilcrow">¶</a></p>
+<p id="section-5-3">A required bound or present spent-accounting value that is missing,
+      negative, or unparseable is a refusal. An omitted spent value asserts
+      zero prior settled usage; deployments that cannot make that assertion
+      <span class="bcp14">MUST</span> return indeterminate rather than use zero.<a href="#section-5-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="human">
+<section id="section-6">
+      <h2 id="name-human-authorization">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-human-authorization" class="section-name selfRef">Human Authorization</a>
+      </h2>
+<p id="section-6-1">The relying party selects an ordered approver roster and a threshold
+      using the action-bound authorization evidence in
+      <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>.
+      Each accepted approval <span class="bcp14">MUST</span> be a Class-A WebAuthn
+      <span>[<a href="#WEBAUTHN" class="cite xref">WEBAUTHN</a>]</span> signoff over a context that binds the controlled
+      action digest, presentation digest, policy digest, initiator, approver,
+      roster index, threshold, validity window, relying-party profile, app,
+      platform, credential, and device key.<a href="#section-6-1" class="pilcrow">¶</a></p>
+<p id="section-6-2">The verifier <span class="bcp14">MUST</span> require user verification, the pinned
+      relying-party identifier and origin, distinct approvers, distinct device
+      and credential identifiers, initiator exclusion, the exact roster index,
+      and the selected threshold. The quorum semantics are those of
+      <span>[<a href="#EP-QUORUM" class="cite xref">EP-QUORUM</a>]</span>. A valid signature that does not match the
+      relying party's current roster, policy, action, presentation, or ceremony
+      window is a refusal.<a href="#section-6-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="admission">
+<section id="section-7">
+      <h2 id="name-executor-admission-and-refu">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-executor-admission-and-refu" class="section-name selfRef">Executor Admission and Refusal Semantics</a>
+      </h2>
+<p id="section-7-1">The executor applies the Action Evidence Boundary
+      <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span> in this order:<a href="#section-7-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-7-2">
+        <li id="section-7-2.1">Validate the closed action and require it to be active.<a href="#section-7-2.1" class="pilcrow">¶</a>
+</li>
+        <li id="section-7-2.2">Derive and verify action-to-envelope containment.<a href="#section-7-2.2" class="pilcrow">¶</a>
+</li>
+        <li id="section-7-2.3">Derive the expected outcome policy and require its digest to be
+        inside the human-approved policy bytes.<a href="#section-7-2.3" class="pilcrow">¶</a>
+</li>
+        <li id="section-7-2.4">Verify the human authorization against the pinned profile.<a href="#section-7-2.4" class="pilcrow">¶</a>
+</li>
+        <li id="section-7-2.5">Require the pinned actuator, meter, Action State signer, execution
+        store, settlement store, and settlement adapter.<a href="#section-7-2.5" class="pilcrow">¶</a>
+</li>
+        <li id="section-7-2.6">Atomically reserve the exact execution idempotency key before
+        invoking the actuator.<a href="#section-7-2.6" class="pilcrow">¶</a>
+</li>
+      </ol>
+<p id="section-7-3">The execution idempotency key <span class="bcp14">MUST</span> bind the action
+      identifier and action digest. The shared store <span class="bcp14">MUST</span> be
+      durable, atomic, and ownership-fenced. Concurrent reservation failure is
+      <code>refuse_replay</code>. Storage unavailability is a refusal before
+      invocation.<a href="#section-7-3" class="pilcrow">¶</a></p>
+<p id="section-7-4">If invocation begins and the result is lost, malformed, or raises an
+      exception, the executor <span class="bcp14">MUST</span> return
+      <code>execution_indeterminate</code>, preserve or burn the reservation, set
+      <code>retry_safe</code> to false, and <span class="bcp14">MUST NOT</span> blindly invoke
+      the effect again. Authenticated reconciliation is required.<a href="#section-7-4" class="pilcrow">¶</a></p>
+<p id="section-7-5">Pre-invocation failures use a mechanism-named refusal such as
+      <code>refuse_action</code>, <code>refuse_action_not_active</code>,
+      <code>refuse_outside_envelope</code>, <code>refuse_outcome_policy</code>,
+      <code>refuse_authorization</code>, or <code>refuse_adapter_unavailable</code>.
+      Post-invocation evidence failures use <code>effect_unconfirmed</code> and are
+      not retry authorization.<a href="#section-7-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="dispatch">
+<section id="section-8">
+      <h2 id="name-dispatch-acknowledgment">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-dispatch-acknowledgment" class="section-name selfRef">Dispatch Acknowledgment</a>
+      </h2>
+<p id="section-8-1">The dispatch request binds the complete action, action digest, envelope
+      digest, human-authorization digest, idempotency key, and operator. The
+      actuator acknowledgment <span class="bcp14">MUST</span> bind the event identifier,
+      action digest, dispatch-request digest, idempotency key, actuator
+      identity, status, and dispatch time, and <span class="bcp14">MUST</span> verify under
+      the pinned actuator key.<a href="#section-8-1" class="pilcrow">¶</a></p>
+<p id="section-8-2">An accepted acknowledgment is the actuator's authenticated claim that
+      it dispatched the request. It is not independent measurement and does not
+      establish that electrical load changed.<a href="#section-8-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="meter">
+<section id="section-9">
+      <h2 id="name-meter-statement-and-complia">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-meter-statement-and-complia" class="section-name selfRef">Meter Statement and Compliance Computation</a>
+      </h2>
+<p id="section-9-1">The meter statement <span class="bcp14">MUST</span> bind the meter identifier,
+      event identifier, action digest, exact action window, unit, baseline MW,
+      ordered sequence of timestamped load intervals, measurement class,
+      observation time, and signer key identifier. It <span class="bcp14">MUST</span> verify
+      under a separately pinned meter key.<a href="#section-9-1" class="pilcrow">¶</a></p>
+<p id="section-9-2">The meter statement <span class="bcp14">MUST NOT</span> contain
+      <code>baseline_method_hash</code>. Program and tariff rules remain in the
+      authorized action and relying-party policy. This separates a signed
+      measurement-source claim from the rule used to interpret it.<a href="#section-9-2" class="pilcrow">¶</a></p>
+<p id="section-9-3">The reference computation subtracts average interval load from the
+      signed baseline MW, divides the delivered MW by ordered MW, and marks the
+      event compliant at a profile-selected threshold. A deployment
+      <span class="bcp14">MUST</span> pin the computation and threshold it uses. The result
+      states what follows from the accepted inputs. It does not prove the
+      baseline was economically correct, the readings were physically true,
+      or the event qualifies under a tariff.<a href="#section-9-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="outcome">
+<section id="section-10">
+      <h2 id="name-outcome-binding">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-outcome-binding" class="section-name selfRef">Outcome Binding</a>
+      </h2>
+<p id="section-10-1">The action's human-approved policy binds source-routed predictions for
+      an executor observation and an independent-observer meter observation.
+      Each Outcome Observation <span>[<a href="#EP-OUTCOME" class="cite xref">EP-OUTCOME</a>]</span>
+        <span class="bcp14">MUST</span> bind the authorization record, action digest, CAID,
+      consumption nonce, operation identifier, facility, observation window,
+      source role, source class, and observed effect.<a href="#section-10-1" class="pilcrow">¶</a></p>
+<p id="section-10-2">The relying party <span class="bcp14">MUST</span> pin source keys, roles, classes,
+      control domains, status and validity, distinctness requirements,
+      observation windows, and maximum attestation delay. A declared control
+      domain is relying-party policy input, not proof of organizational
+      independence.<a href="#section-10-2" class="pilcrow">¶</a></p>
+<p id="section-10-3">Settlement admission requires a reconciled outcome with the
+      profile-selected in-bounds result. Missing, stale, invalid, wrong-window,
+      same-domain, or otherwise insufficient observations produce
+      <code>effect_unconfirmed</code>. They <span class="bcp14">MUST NOT</span> be converted to
+      success, failure, or retry authorization.<a href="#section-10-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="action-state">
+<section id="section-11">
+      <h2 id="name-action-state-signed-stateme">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-action-state-signed-stateme" class="section-name selfRef">Action State Signed Statement</a>
+      </h2>
+<p id="section-11-1">After outcome reconciliation, the profile emits a COSE_Sign1
+      <span>[<a href="#RFC9052" class="cite xref">RFC9052</a>]</span> Action State Signed Statement using
+      <span>[<a href="#ACTION-STATE" class="cite xref">ACTION-STATE</a>]</span> format version 2 and media type
+      <code>application/agent-action-capsule+json</code>. The statement binds the
+      action, operator, developer, authorization digest, dispatch-request
+      digest, meter digest, constraints evaluated, disposition, and confirmed
+      effect.<a href="#section-11-1" class="pilcrow">¶</a></p>
+<p id="section-11-2">The capsule identifier is derived from canonical capsule bytes. The
+      JSON wrapper, COSE payload, protected headers, key identifier, and
+      statement digest <span class="bcp14">MUST</span> cross-check. The current reference
+      output is an <code>unregistered_signed_statement</code>. It is not a SCITT
+      transparency-service registration or proof of ledger inclusion.<a href="#section-11-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="settlement">
+<section id="section-12">
+      <h2 id="name-single-use-settlement-admis">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-single-use-settlement-admis" class="section-name selfRef">Single-Use Settlement Admission</a>
+      </h2>
+<p id="section-12-1">The one-time entitlement key is the injective serialization of
+      <code>[envelope_id, event_id, meter_payload_digest]</code> under profile
+      <code>EP-GRACE-SETTLE-v1</code>. Every member is required. The meter digest
+      <span class="bcp14">MUST</span> be a lowercase SHA-256 digest of the accepted signed
+      meter body.<a href="#section-12-1" class="pilcrow">¶</a></p>
+<p id="section-12-2">Only a compliant computation and an in-bounds reconciled outcome may
+      reach the settlement adapter. The settlement store
+      <span class="bcp14">MUST</span> reserve the entitlement atomically before invocation.
+      A duplicate is <code>settlement_already_consumed</code>. If invocation begins
+      and its result is unknown, the implementation <span class="bcp14">MUST</span> commit
+      or preserve the reservation and <span class="bcp14">MUST NOT</span> issue another
+      settlement attempt under the same entitlement.<a href="#section-12-2" class="pilcrow">¶</a></p>
+<p id="section-12-3">This is at-most-one admission to the configured settlement effect in
+      one authoritative state domain. It is not exactly-once physical payment,
+      global double-spend prevention across independent authorities, tariff
+      eligibility, or evidence that funds moved.<a href="#section-12-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="bundle">
+<section id="section-13">
+      <h2 id="name-proof-of-curtailment-bundle">
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-proof-of-curtailment-bundle" class="section-name selfRef">Proof-of-Curtailment Bundle</a>
+      </h2>
+<p id="section-13-1">The <code>EP-GRACE-PROOF-OF-CURTAILMENT-v1</code> bundle is a signed,
+      offline-verifiable summary. It binds the action and action digest,
+      envelope digest, baseline-method digest, authorization digest,
+      dispatch-request digest, actuator-acknowledgment digest, meter-payload
+      digest, Outcome Binding result digest and outcome, deterministic
+      compliance result, Action State statement digest, and settlement
+      admission result.<a href="#section-13-1" class="pilcrow">¶</a></p>
+<p id="section-13-2">Bundle verification establishes integrity and binding relative to the
+      verifier's pinned trust and policy inputs. It does not independently
+      establish any source claim as real-world truth.<a href="#section-13-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="signatures">
+<section id="section-14">
+      <h2 id="name-artifact-signature-profiles">
+<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-artifact-signature-profiles" class="section-name selfRef">Artifact Signature Profiles</a>
+      </h2>
+<p id="section-14-1">The baseline profile signs canonical artifact bytes with Ed25519. The
+      optional <code>EP-GRACE-ARTIFACT-SIGNATURE-v2</code> profile uses a fixed
+      required algorithm list, in order: <code>Ed25519</code> and
+      <code>ML-DSA-65</code> <span>[<a href="#FIPS204" class="cite xref">FIPS204</a>]</span>. Its signing bytes commit to
+      the complete artifact and the required algorithm list.<a href="#section-14-1" class="pilcrow">¶</a></p>
+<p id="section-14-2">A v2 verifier <span class="bcp14">MUST</span> require exactly one signature under
+      each independently pinned key and <span class="bcp14">MUST</span> accept only when
+      both signatures verify. Missing algorithms, reordered or narrowed
+      requirements, key substitution, malformed signatures, or an unavailable
+      ML-DSA verifier are refusals. A v1 verifier <span class="bcp14">MUST NOT</span>
+      silently accept a v2 artifact.<a href="#section-14-2" class="pilcrow">¶</a></p>
+<p id="section-14-3">Hybrid signing provides cryptographic migration evidence. It does not
+      make a software-held key hardware-backed, FIPS validated, deployed, or
+      operationally independent. A deployment claiming the hybrid profile
+      <span class="bcp14">MUST</span> identify and protect both actual signing keys.<a href="#section-14-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="privacy">
+<section id="section-15">
+      <h2 id="name-privacy-considerations">
+<a href="#section-15" class="section-number selfRef">15. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
+      </h2>
+<p id="section-15-1">Curtailment records can reveal facility identity, capacity, operating
+      schedules, energy consumption, human approvers, device identifiers, and
+      commercial program terms. Implementations <span class="bcp14">SHOULD</span> minimize
+      portable fields, disclose raw intervals only to parties that require
+      them, use digests when independent recomputation is not required, and
+      apply retention and access policies appropriate to critical-infrastructure
+      data.<a href="#section-15-1" class="pilcrow">¶</a></p>
+<p id="section-15-2">Selective disclosure or encryption cannot repair an overbroad signed
+      source object. Deployments <span class="bcp14">SHOULD</span> separate public
+      verification material from restricted operational evidence and preserve
+      enough binding information to detect substitution.<a href="#section-15-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security">
+<section id="section-16">
+      <h2 id="name-security-considerations">
+<a href="#section-16" class="section-number selfRef">16. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<p id="section-16-1">The principal attacks are action substitution, envelope overflow,
+      stale approval, initiator self-approval, duplicate approvers, dispatch
+      replay, lost acknowledgment, actuator-key substitution, meter-key
+      substitution, market-rule smuggling into meter data, observation-source
+      collapse, wrapper substitution, signature-leg stripping, and duplicate
+      settlement admission. The preceding sections require fail-closed checks
+      for each.<a href="#section-16-1" class="pilcrow">¶</a></p>
+<p id="section-16-2">Key compromise remains a trust-root failure. Historical signatures can
+      establish what a key signed; they do not prove who controlled the key or
+      that the signed claim was true. A separately keyed meter under the same
+      operator's control may improve fault isolation but does not create
+      organizational independence.<a href="#section-16-2" class="pilcrow">¶</a></p>
+<p id="section-16-3">GRACE cannot prove that the selected baseline is fair, a meter is
+      calibrated or untampered, a scheduler has no bypass, a declared control
+      domain is honest, a payment rail moved funds, or an authority's upstream
+      population is complete. Deployment claims <span class="bcp14">MUST</span> state those
+      acceptance roots.<a href="#section-16-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="implementation">
+<section id="section-17">
+      <h2 id="name-implementation-status">
+<a href="#section-17" class="section-number selfRef">17. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
+      </h2>
+<p id="section-17-1">This section records implementation evidence and may be removed before
+      publication as an RFC.<a href="#section-17-1" class="pilcrow">¶</a></p>
+<p id="section-17-2">The public EMILIA repository <span>[<a href="#GRACE-IMPLEMENTATION" class="cite xref">GRACE-IMPLEMENTATION</a>]</span>
+      contains a TypeScript reference circuit
+      for exact action construction, two distinct Class-A approvals, bounded
+      admission, a COSA-labeled simulated actuator, a separately keyed
+      simulated meter, Outcome Binding, an Action State Signed Statement, and
+      one-time settlement admission. The adapters are marked
+      <code>simulation: true</code>. The circuit is not evidence of a physical grid
+      event, production COSA integration, utility adoption, meter truth, or an
+      actual payment.<a href="#section-17-2" class="pilcrow">¶</a></p>
+<p id="section-17-3">At the repository revision identified in the companion validation
+      record, 80 targeted tests pass across four files. They cover the
+      curtailment and mobile-grid state machines, production route boundary,
+      and an 11-case Ed25519 plus ML-DSA-65 hostile signature matrix. Six
+      declared vertical vectors <span>[<a href="#GRACE-VECTORS" class="cite xref">GRACE-VECTORS</a>]</span> cover the
+      accepted path and refusals for
+      missing independent outcome signature, self-approval, inactive action,
+      replay, and meter-rule smuggling. These are same-team reference results,
+      not an independent implementation or interoperability claim.<a href="#section-17-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="iana">
+<section id="section-18">
+      <h2 id="name-iana-considerations">
+<a href="#section-18" class="section-number selfRef">18. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-18-1">This document has no IANA actions. The <code>grid.curtailment</code> and
+      <code>EP-GRACE-*</code> identifiers are profile-local strings and are not
+      entries in an IANA registry.<a href="#section-18-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-19">
+      <h2 id="name-normative-references">
+<a href="#section-19" class="section-number selfRef">19. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+      </h2>
+<dl class="references">
+<dt id="ACTION-STATE">[ACTION-STATE]</dt>
+      <dd>
+<span class="refAuthor">Mih, S. W.</span>, <span class="refTitle">"An Agent Action Capsule Profile for SCITT"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-mih-scitt-agent-action-capsule-02</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/">https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="BCP14">[BCP14]</dt>
+      <dd>
+<span class="refAuthor">IETF</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span>&lt;<a href="https://www.rfc-editor.org/info/bcp14">https://www.rfc-editor.org/info/bcp14</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="EP-AEB">[EP-AEB]</dt>
+      <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Action Evidence Boundary: Binding Verified Authorization Evidence to Agent Execution"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-action-evidence-boundary-04</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="EP-CAID">[EP-CAID]</dt>
+      <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Canonical Action Identifier: Stable Identity for Material Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-canonical-action-identifier-02</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="EP-OUTCOME">[EP-OUTCOME]</dt>
+      <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Outcome Binding for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-outcome-binding-00</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-outcome-binding/">https://datatracker.ietf.org/doc/draft-schrock-ep-outcome-binding/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="EP-QUORUM">[EP-QUORUM]</dt>
+      <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Multi-Party Quorum Authorization for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-quorum-03</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="EP-RECEIPTS">[EP-RECEIPTS]</dt>
+      <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Receipts for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-receipts-12</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="FIPS204">[FIPS204]</dt>
+      <dd>
+<span class="refAuthor">National Institute of Standards and Technology</span>, <span class="refTitle">"Module-Lattice-Based Digital Signature Standard"</span>, <span class="seriesInfo">FIPS 204</span>, <time datetime="2024-08" class="refDate">August 2024</time>, <span>&lt;<a href="https://doi.org/10.6028/NIST.FIPS.204">https://doi.org/10.6028/NIST.FIPS.204</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2119">[RFC2119]</dt>
+      <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+      <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8259">[RFC8259]</dt>
+      <dd>
+<span class="refAuthor">Bray, T., Ed.</span>, <span class="refTitle">"The JavaScript Object Notation (JSON) Data Interchange Format"</span>, <span class="seriesInfo">STD 90</span>, <span class="seriesInfo">RFC 8259</span>, <span class="seriesInfo">DOI 10.17487/RFC8259</span>, <time datetime="2017-12" class="refDate">December 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8259">https://www.rfc-editor.org/info/rfc8259</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8785">[RFC8785]</dt>
+      <dd>
+<span class="refAuthor">Rundgren, A.</span>, <span class="refAuthor">Jordan, B.</span>, and <span class="refAuthor">S. Erdtman</span>, <span class="refTitle">"JSON Canonicalization Scheme (JCS)"</span>, <span class="seriesInfo">RFC 8785</span>, <span class="seriesInfo">DOI 10.17487/RFC8785</span>, <time datetime="2020-06" class="refDate">June 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8785">https://www.rfc-editor.org/info/rfc8785</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9052">[RFC9052]</dt>
+      <dd>
+<span class="refAuthor">Schaad, J.</span>, <span class="refTitle">"CBOR Object Signing and Encryption (COSE): Structures and Process"</span>, <span class="seriesInfo">STD 96</span>, <span class="seriesInfo">RFC 9052</span>, <span class="seriesInfo">DOI 10.17487/RFC9052</span>, <time datetime="2022-08" class="refDate">August 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9052">https://www.rfc-editor.org/info/rfc9052</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="WEBAUTHN">[WEBAUTHN]</dt>
+    <dd>
+<span class="refAuthor">World Wide Web Consortium</span>, <span class="refTitle">"Web Authentication: An API for accessing Public Key Credentials - Level 2"</span>, <time datetime="2021-04" class="refDate">April 2021</time>, <span>&lt;<a href="https://www.w3.org/TR/webauthn-2/">https://www.w3.org/TR/webauthn-2/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<section id="section-20">
+      <h2 id="name-informative-references">
+<a href="#section-20" class="section-number selfRef">20. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+      </h2>
+<dl class="references">
+<dt id="GRACE-IMPLEMENTATION">[GRACE-IMPLEMENTATION]</dt>
+      <dd>
+<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"GRACE Reference Implementation"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/lib/grace">https://github.com/emiliaprotocol/emilia-protocol/tree/main/lib/grace</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="GRACE-VECTORS">[GRACE-VECTORS]</dt>
+    <dd>
+<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"GRACE Mobile Grid Vertical Composition Vectors"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/vectors/grace-mobile-grid.v1.json">https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/vectors/grace-mobile-grid.v1.json</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<div id="authors-addresses">
+<section id="appendix-A">
+      <h2 id="name-authors-addresses">
+<a href="#name-authors-addresses" class="section-name selfRef">Authors' Addresses</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Iman Schrock</span></div>
+<div dir="auto" class="left"><span class="org">EMILIA Protocol, Inc.</span></div>
+<div dir="auto" class="left"><span class="country-name">United States of America</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:team@emiliaprotocol.ai" class="email">team@emiliaprotocol.ai</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Justin D Kintzele</span></div>
+<div dir="auto" class="left"><span class="org">J Diesel NY, LLC</span></div>
+<div dir="auto" class="left"><span class="country-name">United States of America</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:jkintzele@jdieselny.com" class="email">jkintzele@jdieselny.com</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

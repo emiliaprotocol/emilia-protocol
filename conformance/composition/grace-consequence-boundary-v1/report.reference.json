@@ -1,0 +1,87 @@
+{
+  "@version": "GRACE-CONSEQUENCE-BOUNDARY-REFERENCE-REPORT-v1",
+  "profile": "EP-GRACE-CONSEQUENCE-BOUNDARY-COMPOSITION-v1",
+  "cases": [
+    {
+      "id": "GRACE-THROUGH-CANONICAL-BOUNDARY",
+      "category": "positive",
+      "passed": true,
+      "expected": "one synthetic GRACE execution under one 18 MW aggregate reservation",
+      "observed": {
+        "state": "EXECUTED",
+        "provider_calls": 1,
+        "grace_verdict": "executed_measured_settled",
+        "committed_watts": "18000000"
+      }
+    },
+    {
+      "id": "AGGREGATE-ENVELOPE-REFUSES-SECOND-EVENT",
+      "category": "hostile",
+      "passed": true,
+      "expected": "capacity refusal before provider entry",
+      "observed": {
+        "state": "REFUSED",
+        "reason": "consequence_envelope_capacity_exceeded",
+        "provider_calls": 0
+      }
+    },
+    {
+      "id": "CURTAILMENT-SUBSTITUTION-REFUSED",
+      "category": "hostile",
+      "passed": true,
+      "expected": "exact-action refusal before provider entry",
+      "observed": {
+        "state": "REFUSED",
+        "reason": "exact_action_binding_mismatch",
+        "provider_calls": 0
+      }
+    },
+    {
+      "id": "LOST-RESPONSE-KEEPS-CAPACITY-UNAVAILABLE",
+      "category": "boundary",
+      "passed": true,
+      "expected": "INDETERMINATE, no blind retry, capacity remains unavailable",
+      "observed": {
+        "first": "INDETERMINATE",
+        "retry": "REFUSED",
+        "provider_calls": 1,
+        "committed_watts": "18000000"
+      }
+    },
+    {
+      "id": "AUTHENTICATED-RECONCILIATION-DOES-NOT-REEXECUTE",
+      "category": "positive",
+      "passed": true,
+      "expected": "terminal reconciliation with the original provider-call count unchanged",
+      "observed": {
+        "state": "EXECUTED",
+        "provider_calls": 1
+      }
+    },
+    {
+      "id": "TELEMETRY-CANNOT-MINT-CAPACITY",
+      "category": "boundary",
+      "passed": true,
+      "expected": "impact derives only from the material requested curtailment",
+      "observed": {
+        "impact_watts": "18000000"
+      }
+    }
+  ],
+  "passed": true,
+  "composition": {
+    "native_authority": "GRACE mobile Class-A authorization",
+    "exact_action": "CAID under a relying-party-pinned mapping",
+    "admission": "AEB plus Gate at-most-one provider entry",
+    "aggregate_limit": "hybrid-signed state-domain-owned consequence envelope",
+    "provider": "synthetic GRACE actuator, meter, and settlement adapters"
+  },
+  "known_limits": [
+    "This is an EMILIA reference composition, not an independent implementation.",
+    "The actuator and meter are synthetic; no physical grid event is claimed.",
+    "The envelope bounds admitted requested watts in one owning state domain; it does not prove delivered power.",
+    "At-most-one provider entry is not exactly-once physical effect.",
+    "Rate, entropy, anomaly, and telemetry signals do not create or enlarge hard capacity."
+  ],
+  "results_digest": "sha256:0114cc0e14272afb193635fd288b1f8937eb2447d7e22c6b48c7ebf91eebfd84"
+}
