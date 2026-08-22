@@ -6,10 +6,11 @@
  * ------------
  * The evidence side of demand response for AI-scale loads: a utility or ISO
  * grants faster interconnection to a facility that promises to curtail, and
- * the promise is only bankable if the CLAIM is verifiable — who authorized
- * participation, what a given event ordered, whether the facility complied,
- * and what should be paid. EP does not turn the power down (the facility's
- * BMS/DCIM does); EP makes turning it down AUTHORIZED, PROVABLE, and PAYABLE.
+ * the evidence chain is useful only if the CLAIM is verifiable: who
+ * authorized participation, what a given event ordered, which signed inputs
+ * the relying party accepted, and what deterministic result followed. EP does
+ * not turn the power down (the facility's BMS/DCIM does), establish meter
+ * truth, determine tariff eligibility, or prove payment.
  *
  * Pieces, all riding the existing stack (no new cryptography):
  *  - FLEX ENVELOPE: a human-authorized participation commitment with hard
@@ -32,8 +33,8 @@
  *    (baseline_method_hash) is refused, never quietly accepted.
  *  - ONE-TIME SETTLEMENT: a settlement CONSUMES a unique entitlement
  *    keyed by {entitlement_id, event_id, meter_window_digest}; a second
- *    settlement over the same key is refused with a typed reason, so the
- *    same curtailment event can never be sold twice.
+ *    settlement over the same key is refused with a typed reason inside the
+ *    settlement authority's own authoritative state domain.
  */
 
 export const FLEX_ENVELOPE_VERSION = 'EP-FLEX-ENVELOPE-v2';
@@ -235,9 +236,9 @@ const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/i;
  * This key is exactly the NONCE for EP's existing one-time-consumption
  * discipline (EP-SMT-CONSUME-v1, packages/verify/consumption-proof.js): a
  * settlement authority operating a witnessed sparse-Merkle consumption log
- * inserts this key at settlement time, making a double settlement
- * offline-detectable by any third party holding two log heads, the same
- * way receipt-nonce double-spend is.
+ * inserts this key at settlement time. A verified consumption proof can show
+ * the state of that authority's log; it does not establish global completeness
+ * across independent authorities or payment rails.
  *
  * Fail-closed: any missing or malformed part yields no key, with a typed
  * reason — an incomplete claim can never settle.
@@ -251,8 +252,8 @@ export function settlementEntitlementKey(claim: any): { key: string | null, reas
 }
 
 /**
- * Process-local reference settlement consumption: the same curtailment event
- * cannot settle twice inside one JavaScript process. Mirrors the consumedNonces discipline the
+ * Process-local reference settlement consumption: the same entitlement key
+ * cannot be admitted twice inside one JavaScript process. Mirrors the consumedNonces discipline the
  * evidence-challenge loop already enforces (lib/negotiate/
  * evidence-challenge.js): the registry is an explicit Set the settlement
  * authority owns; no registry, no settlement. A second settlement

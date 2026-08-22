@@ -76,7 +76,9 @@ The following unfiled standalone candidates were retired on 2026-07-14:
   is being filed.
 - `ASSURANCE-LETTER-MIGRATION-RETIRED.md`: tombstone for the abandoned data and
   API migration; it is not an executable plan.
-- `draft-schrock-kintzele-grid-curtailment-00`: unfiled application candidate;
+- `draft-schrock-kintzele-grid-curtailment-00`: unfiled June application candidate, superseded as a
+  technical description by the held partner-review packet at
+  `../profiles/NEXT-GRID-CURTAILMENT-00/`; the archived source remains preserved as history;
   archived outside the seven-draft submission packet.
 - `submission-notes/`: historical filing instructions, retained for audit but
   not part of an upload packet.

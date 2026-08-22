@@ -81,6 +81,7 @@
     "check:repository-boundary": "node scripts/check-repository-boundary.js",
     "check:artifact-lifecycle": "node scripts/check-artifact-lifecycle.mjs",
     "check:standards-staged": "node scripts/check-standards-staged.mjs",
+    "check:grace-curtailment-profile": "node scripts/check-grace-curtailment-profile.mjs",
     "check:model-to-matter-04": "node scripts/check-model-to-matter-04.mjs",
     "check:bounded-capability-02": "node scripts/check-bounded-capability-02.mjs",
     "check:bounded-capability-03": "node scripts/check-bounded-capability-03.mjs",
