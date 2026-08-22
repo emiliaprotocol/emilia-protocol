@@ -3,6 +3,13 @@
 
 ## Unreleased
 
+## 0.23.18 (2026-08-21)
+
+- Reissue the customer-owned consequence-protection release after npm 12
+  changed `npm pack --json` from an array to a keyed object. The release
+  verifier now accepts both documented report shapes without weakening any
+  packed-artifact or consumer check.
+
 ## 0.23.17 (2026-08-21)
 
 - Reissue the customer-owned consequence-protection release from the exact
