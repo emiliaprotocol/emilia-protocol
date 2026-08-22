@@ -344,6 +344,47 @@ describe('durable mailbox and delivery receipts', () => {
       .toMatchObject({ delivery_status: 'REFUSED', reason: 'envelope_id_conflict' });
   });
 
+  it('serializes same-sequence equivocation across filesystem store instances', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const firstService = mailbox(createFileAgentMailboxStore({ directory }));
+    const secondService = mailbox(createFileAgentMailboxStore({ directory }));
+    const first = noteEnvelope({
+      envelopeId: 'message:concurrent-sequence-first',
+      payload: { text: 'First statement at sequence one.' },
+    });
+    const conflicting = noteEnvelope({
+      envelopeId: 'message:concurrent-sequence-second',
+      payload: { text: 'Conflicting statement at sequence one.' },
+    });
+
+    const receipts = await Promise.all([
+      firstService.deliver(first, { recipientId: 'agent:iman' }),
+      secondService.deliver(conflicting, { recipientId: 'agent:iman' }),
+    ]);
+    expect(receipts.map((receipt) => receipt.delivery_status).sort()).toEqual(['ACCEPTED', 'REFUSED']);
+    expect(receipts.find((receipt) => receipt.delivery_status === 'REFUSED')).toMatchObject({
+      reason: 'thread_sequence_conflict',
+      authorizes: false,
+    });
+    expect(await firstService.list('agent:iman')).toHaveLength(1);
+  });
+
+  it('serializes identical concurrent deliveries across filesystem store instances', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const firstService = mailbox(createFileAgentMailboxStore({ directory }));
+    const secondService = mailbox(createFileAgentMailboxStore({ directory }));
+    const envelope = noteEnvelope();
+
+    const receipts = await Promise.all([
+      firstService.deliver(envelope, { recipientId: 'agent:iman' }),
+      secondService.deliver(envelope, { recipientId: 'agent:iman' }),
+    ]);
+    expect(receipts.map((receipt) => receipt.delivery_status).sort()).toEqual(['ACCEPTED', 'DUPLICATE']);
+    expect(await secondService.list('agent:iman')).toHaveLength(1);
+  });
+
   it('refuses relative storage paths and surfaces corrupted durable records', async () => {
     expect(() => createFileAgentMailboxStore({ directory: 'relative/mailbox' }))
       .toThrow(/mailbox_store_directory_must_be_absolute/);
@@ -396,6 +437,11 @@ describe('durable mailbox and delivery receipts', () => {
     expect(verifyAgentMailboxDeliveryReceipt(badSignature, verificationOptions).reason)
       .toBe('delivery_receipt_signature_invalid');
 
+    const wrongReceiptId = structuredClone(accepted);
+    wrongReceiptId.receipt_id = 'delivery:content-derived-id-mismatch';
+    expect(verifyAgentMailboxDeliveryReceipt(wrongReceiptId, verificationOptions).reason)
+      .toBe('delivery_receipt_id_mismatch');
+
     const refused = await service.deliver({}, { recipientId: 'agent:iman' });
     expect(verifyAgentMailboxDeliveryReceipt(refused, {
       mailboxId: 'mailbox:nomadic-demo',
@@ -408,6 +454,33 @@ describe('durable mailbox and delivery receipts', () => {
       reason: 'envelope_shape_invalid',
       authorizes: false,
     });
+
+    const acceptedWithReason = structuredClone(accepted);
+    acceptedWithReason.reason = 'accepted receipts cannot carry refusal reasons';
+    expect(verifyAgentMailboxDeliveryReceipt(acceptedWithReason, verificationOptions).reason)
+      .toBe('delivery_receipt_shape_invalid');
+
+    for (const invalidReason of [null, '', 'x'.repeat(257)]) {
+      const malformedRefusal = structuredClone(refused);
+      malformedRefusal.reason = invalidReason;
+      expect(verifyAgentMailboxDeliveryReceipt(malformedRefusal, {
+        mailboxId: 'mailbox:nomadic-demo',
+        publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
+        keyId: mailboxService.keyId,
+      }).reason).toBe('delivery_receipt_shape_invalid');
+    }
+  });
+
+  it('does not let a throwing chime listener suppress an accepted receipt', async () => {
+    const service = mailbox();
+    service.subscribe('agent:iman', () => { throw new Error('subscriber failed'); });
+    const envelope = noteEnvelope();
+
+    expect(await service.deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'ACCEPTED', authorizes: false });
+    expect(await service.list('agent:iman')).toHaveLength(1);
+    expect(await service.deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'DUPLICATE', authorizes: false });
   });
 
   it('validates service configuration and recipient-facing method inputs', async () => {
@@ -556,6 +629,71 @@ describe('GRACE action proposal composition', () => {
     expect(extractMailboxActionProposal(substituted, {
       verifiedEnvelope: { accepted: true, envelope_digest: agentMailboxDigest(substituted) },
     })).toMatchObject({ valid: false, reason: 'action_digest_mismatch' });
+
+    const cyclic: any = { message_type: 'action_proposal' };
+    cyclic.payload = cyclic;
+    expect(() => extractMailboxActionProposal(cyclic, {
+      verifiedEnvelope: { accepted: true, envelope_digest: `sha256:${'0'.repeat(64)}` },
+    })).not.toThrow();
+    expect(extractMailboxActionProposal(cyclic, {
+      verifiedEnvelope: { accepted: true, envelope_digest: `sha256:${'0'.repeat(64)}` },
+    })).toMatchObject({ valid: false, reason: 'verified_envelope_required' });
+
+    const symbolBearing: any = structuredClone(envelope);
+    symbolBearing.payload.action[Symbol('hidden')] = 'dispatch';
+    expect(extractMailboxActionProposal(symbolBearing, {
+      verifiedEnvelope: { accepted: true, envelope_digest: `sha256:${'0'.repeat(64)}` },
+    })).toMatchObject({ valid: false, reason: 'verified_envelope_required' });
+
+    const oversized: any = structuredClone(envelope);
+    oversized.payload.action.oversized = 'x'.repeat(262_145);
+    expect(extractMailboxActionProposal(oversized, {
+      verifiedEnvelope: { accepted: true, envelope_digest: `sha256:${'0'.repeat(64)}` },
+    })).toMatchObject({ valid: false, reason: 'verified_envelope_required' });
+  });
+
+  it('snapshots the exact action across the asynchronous admission boundary', async () => {
+    const { action, envelope } = graceProposalEnvelope();
+    const verified = verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    });
+    const extracted = extractMailboxActionProposal(envelope, { verifiedEnvelope: verified });
+    const tampered: any = structuredClone(extracted);
+    tampered.action.action_id = 'curtailment:attacker-substitution';
+    let verifierCalled = false;
+    expect(await admitMailboxActionProposal({
+      proposal: tampered,
+      verifyAdmission: async () => {
+        verifierCalled = true;
+        throw new Error('must not be called');
+      },
+    })).toMatchObject({
+      admitted: false,
+      ready_for_executor: false,
+      reason: 'proposal_action_digest_mismatch',
+    });
+    expect(verifierCalled).toBe(false);
+
+    const admitted = await admitMailboxActionProposal({
+      proposal: extracted,
+      verifyAdmission: async (detachedProposal) => {
+        detachedProposal.action.action_id = 'curtailment:mutated-inside-verifier';
+        return {
+          verified: true,
+          accepted: true,
+          action_digest: extracted.action_digest,
+          admission_digest: `sha256:${'d'.repeat(64)}`,
+        };
+      },
+    });
+    expect(admitted).toMatchObject({
+      admitted: true,
+      ready_for_executor: true,
+      action,
+      action_digest: graceDigest(action),
+    });
+    expect(admitted.action.action_id).toBe(action.action_id);
+    expect(Object.isFrozen(admitted.action)).toBe(true);
   });
 
   it('refuses every incomplete external admission state', async () => {

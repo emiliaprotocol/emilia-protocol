@@ -48,6 +48,15 @@ const ENVELOPE_KEYS = new Set([
 ]);
 const SIGNATURE_KEYS = new Set(['algorithm', 'value']);
 const AUTHORITY_KEYS = new Set(['authorizes']);
+const ACTION_PROPOSAL_KEYS = new Set([
+  'valid',
+  'authorizes',
+  'reason',
+  'action_profile',
+  'action_digest',
+  'action',
+  'envelope_digest',
+]);
 const RECEIPT_KEYS = new Set([
   '@version',
   'receipt_id',
@@ -64,6 +73,7 @@ const RECEIPT_KEYS = new Set([
 ]);
 const MAX_CANONICAL_NODES = 10_000;
 const MAX_CANONICAL_STRING_BYTES = 262_144;
+const FILE_STORE_QUEUES = new Map<string, Promise<void>>();
 
 type JsonRecord = Record<string, any>;
 
@@ -163,6 +173,30 @@ function verify(domain: Buffer, value: JsonRecord, signature: unknown, publicKey
 
 function canonicalCopy<T>(value: T): T {
   return JSON.parse(canonical(value));
+}
+
+function deepFreeze<T>(value: T): T {
+  if (Array.isArray(value)) {
+    for (const item of value) deepFreeze(item);
+  } else if (isRecord(value)) {
+    for (const item of Object.values(value)) deepFreeze(item);
+  }
+  return Object.freeze(value);
+}
+
+async function serializeFileStore<T>(key: string, operation: () => Promise<T>): Promise<T> {
+  const previous = FILE_STORE_QUEUES.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => { release = resolve; });
+  const tail = previous.then(() => current);
+  FILE_STORE_QUEUES.set(key, tail);
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (FILE_STORE_QUEUES.get(key) === tail) FILE_STORE_QUEUES.delete(key);
+  }
 }
 
 export function createAgentMailboxEnvelope(input: {
@@ -395,27 +429,15 @@ export function createFileAgentMailboxStore({ directory }: { directory: string }
   if (typeof directory !== 'string' || !path.isAbsolute(directory)) {
     throw new TypeError('mailbox_store_directory_must_be_absolute');
   }
-  const recordsDirectory = path.join(directory, 'records');
+  const recordsDirectory = path.resolve(directory, 'records');
   const ready = mkdir(recordsDirectory, { recursive: true, mode: 0o700 });
   const filename = (recipientId: string, envelopeId: string) => path.join(recordsDirectory, `${storageKey(recipientId, envelopeId)}.json`);
-  let putQueue = Promise.resolve();
-  async function serializePut<T>(operation: () => Promise<T>): Promise<T> {
-    const previous = putQueue;
-    let release!: () => void;
-    putQueue = new Promise<void>((resolve) => { release = resolve; });
-    await previous;
-    try {
-      return await operation();
-    } finally {
-      release();
-    }
-  }
   return Object.freeze({
     durable: true,
     deliveryAtomicity: 'single_process',
     bodyBound: true,
     async put(record) {
-      return serializePut(async () => {
+      return serializeFileStore(recordsDirectory, async () => {
         await ready;
         const target = filename(record.recipient_id, record.envelope_id);
         let names = (await readdir(recordsDirectory)).filter((name) => name.endsWith('.json'));
@@ -444,39 +466,43 @@ export function createFileAgentMailboxStore({ directory }: { directory: string }
       });
     },
     async list(recipientId) {
-      await ready;
-      const names = (await readdir(recordsDirectory)).filter((name) => name.endsWith('.json'));
-      const records = await Promise.all(names.map(async (name) => parseStoredEnvelope(
-        await readFile(path.join(recordsDirectory, name), 'utf8'),
-      )));
-      return records
-        .filter((record) => record.recipient_id === recipientId)
-        .sort((left, right) => left.envelope.sequence - right.envelope.sequence)
-        .map(copyRecord);
+      return serializeFileStore(recordsDirectory, async () => {
+        await ready;
+        const names = (await readdir(recordsDirectory)).filter((name) => name.endsWith('.json'));
+        const records = await Promise.all(names.map(async (name) => parseStoredEnvelope(
+          await readFile(path.join(recordsDirectory, name), 'utf8'),
+        )));
+        return records
+          .filter((record) => record.recipient_id === recipientId)
+          .sort((left, right) => left.envelope.sequence - right.envelope.sequence)
+          .map(copyRecord);
+      });
     },
     async acknowledge(recipientId, envelopeId, readAt) {
-      await ready;
-      const target = filename(recipientId, envelopeId);
-      let record: StoredEnvelope;
-      try {
-        record = parseStoredEnvelope(await readFile(target, 'utf8'));
-      } catch (error: any) {
-        if (error?.code === 'ENOENT') return false;
-        throw error;
-      }
-      if (record.read_at !== null) return true;
-      record.read_at = readAt;
-      const temporary = path.join(recordsDirectory, `.${storageKey(recipientId, envelopeId)}.${crypto.randomUUID()}.tmp`);
-      let handle;
-      try {
-        handle = await open(temporary, 'wx', 0o600);
-        await handle.writeFile(canonical(record), 'utf8');
-        await handle.sync();
-      } finally {
-        await handle?.close();
-      }
-      await rename(temporary, target);
-      return true;
+      return serializeFileStore(recordsDirectory, async () => {
+        await ready;
+        const target = filename(recipientId, envelopeId);
+        let record: StoredEnvelope;
+        try {
+          record = parseStoredEnvelope(await readFile(target, 'utf8'));
+        } catch (error: any) {
+          if (error?.code === 'ENOENT') return false;
+          throw error;
+        }
+        if (record.read_at !== null) return true;
+        record.read_at = readAt;
+        const temporary = path.join(recordsDirectory, `.${storageKey(recipientId, envelopeId)}.${crypto.randomUUID()}.tmp`);
+        let handle;
+        try {
+          handle = await open(temporary, 'wx', 0o600);
+          await handle.writeFile(canonical(record), 'utf8');
+          await handle.sync();
+        } finally {
+          await handle?.close();
+        }
+        await rename(temporary, target);
+        return true;
+      });
     },
   });
 }
@@ -536,7 +562,9 @@ export function verifyAgentMailboxDeliveryReceipt(receipt: unknown, options: {
       || !identifier(receipt.recipient_id)
       || !canonicalInstant(receipt.received_at)
       || !DELIVERY_STATUSES.has(receipt.delivery_status)
-      || (receipt.reason !== null && typeof receipt.reason !== 'string')
+      || (receipt.delivery_status === 'REFUSED'
+        ? typeof receipt.reason !== 'string' || receipt.reason.length < 1 || [...receipt.reason].length > 256
+        : receipt.reason !== null)
       || receipt.authorizes !== false
       || receipt.signer_key_id !== options?.keyId
       || !exactKeys(receipt.signature, SIGNATURE_KEYS)
@@ -550,6 +578,9 @@ export function verifyAgentMailboxDeliveryReceipt(receipt: unknown, options: {
   const publicKey = publicEd25519(options?.publicKeySpkiB64u);
   if (!publicKey) return refusal('delivery_receipt_key_invalid');
   const { signature, ...unsigned } = receipt;
+  const { receipt_id: receiptId, ...core } = unsigned;
+  const expectedReceiptId = `delivery:${agentMailboxDigest(core).slice('sha256:'.length)}`;
+  if (receiptId !== expectedReceiptId) return refusal('delivery_receipt_id_mismatch');
   if (!verify(RECEIPT_DOMAIN, unsigned, signature.value, publicKey)) {
     return refusal('delivery_receipt_signature_invalid');
   }
@@ -663,7 +694,13 @@ export function createAgentMailbox(options: {
           message_type: candidate.message_type,
           received_at: receivedAt,
         });
-        for (const listener of listeners.get(recipientId) ?? []) listener(notification);
+        for (const listener of listeners.get(recipientId) ?? []) {
+          try {
+            listener(notification);
+          } catch {
+            // Delivery is already durable. A local chime cannot suppress its receipt.
+          }
+        }
       }
       return receipt({
         envelopeId: candidate.envelope_id,
@@ -695,8 +732,14 @@ export function extractMailboxActionProposal(envelope: unknown, options: {
   if (!isRecord(envelope) || envelope.message_type !== 'action_proposal') {
     return refusal('not_an_action_proposal');
   }
+  let envelopeDigest: string;
+  try {
+    envelopeDigest = agentMailboxDigest(envelope);
+  } catch {
+    return refusal('verified_envelope_required');
+  }
   if (options?.verifiedEnvelope?.accepted !== true
-      || options.verifiedEnvelope.envelope_digest !== agentMailboxDigest(envelope)) {
+      || options.verifiedEnvelope.envelope_digest !== envelopeDigest) {
     return refusal('verified_envelope_required');
   }
   const payload = envelope.payload;
@@ -718,7 +761,7 @@ export function extractMailboxActionProposal(envelope: unknown, options: {
     reason: null,
     action_profile: payload.action_profile,
     action_digest: payload.action_digest,
-    action: canonicalCopy(payload.action),
+    action: deepFreeze(canonicalCopy(payload.action)),
     envelope_digest: options.verifiedEnvelope.envelope_digest,
   });
 }
@@ -742,15 +785,35 @@ export async function admitMailboxActionProposal(input: {
     admission_digest?: string;
   }>;
 }) {
-  if (!input?.proposal?.valid || input.proposal.authorizes !== false) {
+  if (!exactKeys(input?.proposal, ACTION_PROPOSAL_KEYS)
+      || input.proposal.valid !== true
+      || input.proposal.authorizes !== false
+      || input.proposal.reason !== null
+      || !identifier(input.proposal.action_profile)
+      || !DIGEST.test(input.proposal.action_digest)
+      || !DIGEST.test(input.proposal.envelope_digest)
+      || !isRecord(input.proposal.action)) {
     return admissionRefusal('valid_action_proposal_required');
   }
   if (typeof input.verifyAdmission !== 'function') {
     return admissionRefusal('admission_verifier_required');
   }
+  let actionSnapshot: JsonRecord;
+  try {
+    actionSnapshot = canonicalCopy(input.proposal.action);
+  } catch {
+    return admissionRefusal('proposal_action_not_canonical');
+  }
+  if (agentMailboxDigest(actionSnapshot) !== input.proposal.action_digest) {
+    return admissionRefusal('proposal_action_digest_mismatch');
+  }
+  const verifierProposal = canonicalCopy({
+    ...input.proposal,
+    action: actionSnapshot,
+  });
   let admission;
   try {
-    admission = await input.verifyAdmission(input.proposal);
+    admission = await input.verifyAdmission(verifierProposal);
   } catch {
     return admissionRefusal('admission_verification_indeterminate', 'INDETERMINATE');
   }
@@ -769,7 +832,7 @@ export async function admitMailboxActionProposal(input: {
     state: 'ADMITTED' as const,
     ready_for_executor: true,
     reason: null,
-    action: canonicalCopy(input.proposal.action),
+    action: deepFreeze(actionSnapshot),
     action_digest: input.proposal.action_digest,
     envelope_digest: input.proposal.envelope_digest,
     admission_digest: admission.admission_digest,
