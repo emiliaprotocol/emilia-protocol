@@ -1,4 +1,6 @@
 export declare const MAX_JSON_DEPTH = 64;
+export declare const DEFAULT_MAX_JSON_NODES = 100000;
+export declare const DEFAULT_MAX_JSON_STRING_BYTES: number;
 export interface StrictCanonicalJsonLimits {
     maxDepth?: number;
     maxNodes?: number;
@@ -36,6 +38,8 @@ declare const strictJson: {
     canonicalizeFiniteJson: typeof canonicalizeFiniteJson;
     isStrictCanonicalJson: typeof isStrictCanonicalJson;
     MAX_JSON_DEPTH: number;
+    DEFAULT_MAX_JSON_NODES: number;
+    DEFAULT_MAX_JSON_STRING_BYTES: number;
 };
 export default strictJson;
 //# sourceMappingURL=strict-json.d.ts.map

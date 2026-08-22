@@ -165,19 +165,29 @@ describe('checkRateLimit (in-memory fallback)', () => {
 // ---------------------------------------------------------------------------
 
 describe('getClientIP', () => {
-  it('returns the last IP in x-forwarded-for', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('ignores caller-supplied forwarding headers off a trusted platform', () => {
     const req = makeRequest({ 'x-forwarded-for': '1.2.3.4, 5.6.7.8' });
-    expect(getClientIP(req)).toBe('5.6.7.8');
+    expect(getClientIP(req)).toBe('unknown');
   });
 
-  it('returns a single x-forwarded-for value directly', () => {
-    const req = makeRequest({ 'x-forwarded-for': '10.0.0.1' });
-    expect(getClientIP(req)).toBe('10.0.0.1');
+  it('does not trust a caller-supplied Vercel marker off the Vercel platform', () => {
+    const req = makeRequest({
+      'x-vercel-id': 'iad1::abc',
+      'x-vercel-forwarded-for': '203.0.113.8',
+      'x-forwarded-for': '198.51.100.9',
+    });
+    expect(getClientIP(req)).toBe('unknown');
   });
 
-  it('falls back to x-real-ip when x-forwarded-for is absent', () => {
-    const req = makeRequest({ 'x-real-ip': '192.168.1.1' });
-    expect(getClientIP(req)).toBe('192.168.1.1');
+  it('uses the Vercel-overwritten forwarding header on the Vercel platform', () => {
+    vi.stubEnv('VERCEL', '1');
+    const req = makeRequest({
+      'x-vercel-forwarded-for': '203.0.113.8',
+      'x-forwarded-for': '198.51.100.9',
+    });
+    expect(getClientIP(req)).toBe('203.0.113.8');
   });
 
   it('returns "unknown" when no IP headers present', () => {
@@ -185,17 +195,20 @@ describe('getClientIP', () => {
     expect(getClientIP(req)).toBe('unknown');
   });
 
-  it('trims whitespace from the extracted IP', () => {
-    const req = makeRequest({ 'x-forwarded-for': '1.1.1.1,  2.2.2.2  ' });
+  it('trims whitespace from the trusted Vercel forwarding value', () => {
+    vi.stubEnv('VERCEL', '1');
+    const req = makeRequest({
+      'x-vercel-forwarded-for': '1.1.1.1,  2.2.2.2  ',
+    });
     expect(getClientIP(req)).toBe('2.2.2.2');
   });
 
-  it('x-forwarded-for takes priority over x-real-ip', () => {
+  it('does not accept x-real-ip without an explicit trusted platform marker', () => {
     const req = makeRequest({
       'x-forwarded-for': '9.9.9.9',
       'x-real-ip': '8.8.8.8',
     });
-    expect(getClientIP(req)).toBe('9.9.9.9');
+    expect(getClientIP(req)).toBe('unknown');
   });
 });
 

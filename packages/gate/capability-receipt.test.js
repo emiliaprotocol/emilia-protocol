@@ -45,6 +45,7 @@ const DEFAULT_SCOPE_ACTIONS = [
     scopedAction('unknown_guard_disposition', { amount: 10 }),
     scopedAction('freeze_during_status_observation', { amount: 10 }),
     scopedAction('late_entry_after_release', { amount: 10 }),
+    scopedAction('commit_lost_after_effect', { amount: 10 }),
 ];
 function options(overrides = {}) {
     return {
@@ -1523,6 +1524,52 @@ test('final negative evidence after provider entry records the outcome but never
         now: NOW + 1_001,
     });
     assert.equal(blindRetry.reason, 'operation_already_committed');
+});
+test('two failed post-effect commits still fence a blind retry from a second effect', async () => {
+    const keys = issuer();
+    const action = scopedAction('commit_lost_after_effect', { amount: 10 });
+    const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));
+    const underlying = createMemoryCapabilityStore();
+    assert.equal(underlying.registerCapability(minted.capabilityReceipt), true);
+    let effects = 0;
+    let commitAttempts = 0;
+    const failingCommitStore = {
+        ...underlying,
+        async commitSpend() {
+            commitAttempts += 1;
+            if (commitAttempts === 1)
+                throw new Error('simulated primary commit loss');
+            return { ok: false, reason: 'simulated_commit_loss' };
+        },
+    };
+    const first = await executeWithCapability({
+        capabilityReceipt: minted.capabilityReceipt,
+        secret: minted.secret,
+        action,
+        operationId: action.operation_id,
+        store: failingCommitStore,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        verifyBaseReceipt: () => true,
+        executeAction: async () => { effects += 1; return 'provider-accepted'; },
+        now: NOW,
+    });
+    assert.equal(first.reason, 'capability_commit_indeterminate');
+    assert.equal(commitAttempts, 2);
+    assert.equal(effects, 1);
+    const retry = await executeWithCapability({
+        capabilityReceipt: minted.capabilityReceipt,
+        secret: minted.secret,
+        action,
+        operationId: action.operation_id,
+        store: underlying,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        verifyBaseReceipt: () => true,
+        executeAction: async () => { effects += 1; },
+        now: NOW + 1,
+    });
+    assert.equal(retry.reason, 'operation_in_flight');
+    assert.equal(effects, 1);
+    assert.equal(underlying.getState(minted.capabilityReceipt.capability.id).consumed_amount, 10);
 });
 test('capability refuses invalid secret, currency, and unverified base authority', async () => {
     const keys = issuer();

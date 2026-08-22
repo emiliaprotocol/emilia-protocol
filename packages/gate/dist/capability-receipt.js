@@ -833,11 +833,10 @@ function assertCapabilityShape(capability) {
         throw new TypeError('capability consumed is issuer-initialized and must be zero');
     return true;
 }
-function verifyTrustedIssuer(publicKey, trustedIssuerKeys, allowUntrustedIssuer) {
-    if (!Array.isArray(trustedIssuerKeys) || trustedIssuerKeys.length === 0) {
-        return allowUntrustedIssuer === true;
-    }
-    return trustedIssuerKeys.includes(publicKey);
+function verifyTrustedIssuer(publicKey, trustedIssuerKeys) {
+    return Array.isArray(trustedIssuerKeys)
+        && trustedIssuerKeys.length > 0
+        && trustedIssuerKeys.includes(publicKey);
 }
 /**
  * Mint a signed capability envelope. The issuer must sign the capability
@@ -901,16 +900,17 @@ export function mintCapabilityReceipt(baseReceipt, { issuerPrivateKey, budget, e
  * @param {object} capabilityReceipt
  * @param {object} [options]
  * @param {string[]} [options.trustedIssuerKeys]
- * @param {boolean} [options.allowUntrustedIssuer]
+ * @param {boolean} [options.allowUntrustedIssuer] Deprecated and ignored. A
+ * caller must pin at least one issuer key; self-signed authority is refused.
  */
-export function verifyCapabilityReceipt(capabilityReceipt, { trustedIssuerKeys = [], allowUntrustedIssuer = false, } = {}) {
+export function verifyCapabilityReceipt(capabilityReceipt, { trustedIssuerKeys = [], allowUntrustedIssuer: _allowUntrustedIssuer = false, } = {}) {
     try {
         if (!isRecord(capabilityReceipt) || capabilityReceipt['@version'] !== CAPABILITY_RECEIPT_VERSION)
             return { ok: false, reason: 'malformed_capability_receipt' };
         const receipt = validateBaseReceipt(capabilityReceipt.receipt);
         assertCapabilityShape(capabilityReceipt.capability);
         const signature = capabilitySignature(capabilityReceipt);
-        if (!signature || !verifyTrustedIssuer(signature.public_key, trustedIssuerKeys, allowUntrustedIssuer)) {
+        if (!signature || !verifyTrustedIssuer(signature.public_key, trustedIssuerKeys)) {
             return { ok: false, reason: 'capability_issuer_not_trusted' };
         }
         const ok = verify(null, Buffer.from(canonicalize(capabilityUnsignedBody(receipt, capabilityReceipt.capability)), 'utf8'), createPublicKey({ key: Buffer.from(signature.public_key, 'base64url'), format: 'der', type: 'spki' }), Buffer.from(signature.value, 'base64url'));
@@ -919,6 +919,14 @@ export function verifyCapabilityReceipt(capabilityReceipt, { trustedIssuerKeys =
     catch (error) {
         return { ok: false, reason: 'capability_malformed', detail: error?.message || 'invalid capability' };
     }
+}
+function verifyCapabilityReceiptIntegrity(capabilityReceipt) {
+    const signature = capabilitySignature(capabilityReceipt);
+    if (!signature)
+        return { ok: false, reason: 'malformed_capability_receipt' };
+    return verifyCapabilityReceipt(capabilityReceipt, {
+        trustedIssuerKeys: [signature.public_key],
+    });
 }
 function fieldToBytes(value) {
     const bytes = Buffer.alloc(SHARE_BYTES);
@@ -1261,7 +1269,7 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
             return transitionMemoryControlDomain('restore', options);
         },
         registerCapability(capabilityReceipt) {
-            const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
+            const verified = verifyCapabilityReceiptIntegrity(capabilityReceipt);
             if (!verified.ok)
                 return false;
             const state = capabilityStateFromEnvelope(capabilityReceipt);
@@ -2465,7 +2473,7 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
             return transitionPostgresControlDomain('restore', options);
         },
         async registerCapability(capabilityReceipt) {
-            const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
+            const verified = verifyCapabilityReceiptIntegrity(capabilityReceipt);
             if (!verified.ok)
                 return false;
             const state = capabilityStateFromEnvelope(capabilityReceipt);
@@ -3995,11 +4003,11 @@ function capabilitySignatureV2(capabilityReceipt) {
 /**
  * FAIL-CLOSED hybrid verifier for one EP-CAPABILITY-RECEIPT-v2 envelope. Never
  * throws on caller input; a v2 envelope NEVER verifies on one leg alone. Trust
- * follows the same model as v1: a pinned issuer PAIR is required unless
- * allowUntrustedIssuer is set, in which case the presented (self-asserted) pair is
- * used and is explicitly untrusted.
+ * follows the same model as v1: a pinned issuer PAIR is required. The legacy
+ * allowUntrustedIssuer option is ignored so a self-signed envelope can never
+ * become authority through this public verifier.
  */
-export async function verifyCapabilityReceiptV2(capabilityReceipt, { trustedIssuerKeys = [], allowUntrustedIssuer = false, mldsaBackend, mldsaBackendLoader, } = {}) {
+export async function verifyCapabilityReceiptV2(capabilityReceipt, { trustedIssuerKeys = [], allowUntrustedIssuer: _allowUntrustedIssuer = false, mldsaBackend, mldsaBackendLoader, } = {}) {
     try {
         if (!isRecord(capabilityReceipt) || capabilityReceipt['@version'] !== CAPABILITY_RECEIPT_V2_VERSION) {
             return { ok: false, reason: 'malformed_capability_receipt' };
@@ -4015,10 +4023,7 @@ export async function verifyCapabilityReceiptV2(capabilityReceipt, { trustedIssu
             ? trustedIssuerKeys.some((pin) => isRecord(pin)
                 && pin.public_key === presentedEdKey && pin.pq_public_key === presentedPqKey)
             : false;
-        const trusted = (Array.isArray(trustedIssuerKeys) && trustedIssuerKeys.length > 0)
-            ? pinnedPair
-            : allowUntrustedIssuer === true;
-        if (!trusted)
+        if (!pinnedPair)
             return { ok: false, reason: 'capability_issuer_not_trusted' };
         const derivedEdKeyId = capabilityEdKeyId(presentedEdKey);
         const derivedPqKeyId = capabilityPqKeyId(presentedPqKey);
@@ -4076,7 +4081,7 @@ export async function verifyCapabilityReceiptV2(capabilityReceipt, { trustedIssu
             capability: capabilityReceipt.capability,
             issuer_public_key: presentedEdKey,
             issuer_pq_public_key: presentedPqKey,
-            issuer_trusted: (Array.isArray(trustedIssuerKeys) && trustedIssuerKeys.length > 0),
+            issuer_trusted: true,
         };
     }
     catch (error) {

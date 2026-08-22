@@ -223,6 +223,10 @@ function validString(value, max = 512) {
     && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
+function validHumanAuthorityIdentifier(value, max = 512) {
+  return validString(value, max) && /^[\x20-\x7e]+$/.test(value);
+}
+
 function validDigest(value) {
   return typeof value === 'string' && DIGEST_RE.test(value);
 }
@@ -266,7 +270,7 @@ export function createActionEscrowReleaseBindingMoment(input) {
     if (!isPlainObject(input)
       || !validDigest(input.agreement_digest)
       || !validDigest(input.document_action_binding_digest)
-      || !validString(input.milestone_id, 256)
+      || !validHumanAuthorityIdentifier(input.milestone_id, 256)
       || !validDigest(input.release_action_digest)
       || !validDigest(input.profile_digest)
       || !validDigest(input.evidence_digest)
@@ -275,10 +279,10 @@ export function createActionEscrowReleaseBindingMoment(input) {
     }
     const template = input.release_action_template;
     if (template.action_type !== 'escrow.milestone.release'
-      || !validString(template.amount, 128)
-      || !validString(template.currency, 16)
-      || !validString(template.payee_id, 512)
-      || !validString(template.destination_id, 512)
+      || !validHumanAuthorityIdentifier(template.amount, 128)
+      || !validHumanAuthorityIdentifier(template.currency, 16)
+      || !validHumanAuthorityIdentifier(template.payee_id, 512)
+      || !validHumanAuthorityIdentifier(template.destination_id, 512)
       || !validDigest(template.document_sha256)
       || !validDigest(template.material_terms_sha256)
       || template.completion_evidence_sha256 !== input.evidence_digest

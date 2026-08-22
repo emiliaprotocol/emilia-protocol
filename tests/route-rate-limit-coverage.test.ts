@@ -62,7 +62,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const API_DIR = path.join(ROOT, 'app', 'api');
 const MUTATING = ['POST', 'PUT', 'PATCH', 'DELETE'] as const;
 
-interface CompiledPolicy { method: string; regex: RegExp; raw: string }
+interface CompiledPolicy {
+  method: string;
+  regex: RegExp;
+  raw: string;
+  wildcardCount: number;
+  literalLength: number;
+}
 
 function loadPolicies(): CompiledPolicy[] {
   const src = fs.readFileSync(path.join(ROOT, 'middleware.ts'), 'utf8');
@@ -77,6 +83,8 @@ function loadPolicies(): CompiledPolicy[] {
     // Same compilation middleware performs: '*' stands for one path segment.
     regex: new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]+')}$`),
     raw: `${method} ${pattern}`,
+    wildcardCount: (pattern.match(/\*/g) || []).length,
+    literalLength: pattern.replace(/\*/g, '').length,
   }));
 }
 
@@ -108,6 +116,29 @@ describe('rate-limit classification coverage', () => {
 
   it('parses the policy table', () => {
     expect(policies.length).toBeGreaterThan(100);
+  });
+
+  it('has no overlapping route patterns with conflicting policy semantics', () => {
+    const conflicts: string[] = [];
+    for (let left = 0; left < policies.length; left += 1) {
+      for (let right = left + 1; right < policies.length; right += 1) {
+        const a = policies[left];
+        const b = policies[right];
+        if (a.method !== b.method) continue;
+        const probes = [a.raw.split(' ')[1], b.raw.split(' ')[1]]
+          .map((pattern) => pattern.replace(/\*/g, 'probe'));
+        const sameSpecificity = a.wildcardCount === b.wildcardCount
+          && a.literalLength === b.literalLength;
+        if (sameSpecificity && probes.some((probe) => a.regex.test(probe) && b.regex.test(probe))) {
+          conflicts.push(`${a.raw} overlaps ${b.raw}`);
+        }
+      }
+    }
+    expect(conflicts, `Overlapping route policies make classification order-dependent:\n${conflicts.join('\n')}`)
+      .toEqual([]);
+    const source = fs.readFileSync(path.join(ROOT, 'middleware.ts'), 'utf8');
+    expect(source).toContain('left.wildcardCount - right.wildcardCount');
+    expect(source).toContain('right.literalLength - left.literalLength');
   });
 
   it('classifies every mutating route under app/api', () => {
