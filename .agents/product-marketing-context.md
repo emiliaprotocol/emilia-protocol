@@ -1,6 +1,6 @@
 # Product Marketing Context
 
-*Last updated: 2026-08-12*
+*Last updated: 2026-08-22*
 
 ## Product Overview
 
@@ -88,27 +88,27 @@ Do not lead a buyer or a language model with the draft portfolio, formal-method 
 2. Dogfood it on an EMILIA-controlled public repository and demonstrate authorized deployment, stale or mismatched evidence refusal, replay refusal, denied bypass configuration, and `INDETERMINATE` handling without blind retry.
 3. Obtain ten external installations that enable the rule on at least one real environment, three organizations that use it repeatedly, and one buyer-funded protected-deployment pilot.
 4. If the Action shows demand, release a genuinely useful free GitHub App so App installations—not Action invocations—can test the path toward GitHub's current 100-install threshold for a paid Marketplace plan. Treat the threshold as a distribution requirement, not as proof that 100 installations are easy or as a company milestone by itself.
-5. Change the deck's first paid wedge only after the GitHub path produces stronger buyer evidence than the named payer workflow. Until then, GitHub is the developer-distribution and technical-validation lane; payer adverse determinations remain the stated paid wedge.
+5. Change the deck's first paid wedge only after the GitHub path produces stronger buyer evidence than the named finance workflow. Until then, GitHub is the developer-distribution and technical-validation lane; finance-operations vendor bank-detail changes or payment releases remain the stated paid wedge.
 
 **Long-term option, not current claim:** Scoped conformance and customer-authorized aggregate evidence may eventually help buyers compare an agent in a named workflow and environment. EMILIA does not passively centralize customer receipts, publish a universal agent reliability score, certify agents, or operate an investment marketplace. Any future financing product belongs to a regulated platform; EMILIA may supply authority and evidence infrastructure to that platform.
 
-### First paid wedge: payer adverse medical-necessity determinations
+### First paid wedge: finance-operations payment controls
 
-**Target companies:** Health plans, utilization-management vendors, delegated medical groups, and healthcare administrators using AI to support decisions that may deny, delay, or modify care based on medical necessity.
+**Target companies:** Organizations where automated workflows or agents can change vendor bank details or release payments.
 
-**Decision-makers:** Medical directors, utilization-management leaders, compliance and legal leaders, CISOs, CIOs, and audit or assurance teams.
+**Decision-makers:** Controllers, treasury and accounts-payable leaders, vendor-master owners, payment-risk and internal-control operators, CISOs, and audit or assurance teams.
 
-**Safety rule:** No valid licensed-review evidence, no adverse determination.
+**Safety rule:** No accepted exact-action authority and required evidence, no provider entry.
 
-**Job to be done:** Demonstrate that the required qualified reviewer evaluated the exact case, criteria version, proposed outcome, and material facts before the adverse determination was issued.
+**Job to be done:** Enforce the customer's approval and evidence requirements over the exact vendor bank-detail change or payment release before the covered provider path is invoked, then preserve portable evidence of the admission decision and any authenticated uncertainty.
 
-**Fail-closed behavior:** Missing, stale, invalid, unqualified, or mismatched review evidence blocks the adverse determination and routes to the payer's lawful human-review or patient-protective fallback. It does not block medically necessary care.
+**Fail-closed behavior:** Missing, stale, exhausted, invalid, or mismatched authority blocks provider entry on a completely mediated covered path and routes to the customer's exception or review process. Gate does not prove that bank details are correct, that fraud is absent, or that the payment provider succeeded.
 
-**Regulatory boundary:** Regulatory requirements can create demand for demonstrable human review, but no law should be described as mandating EMILIA, cryptographic receipts, or this implementation.
+**Regulatory boundary:** Regulation, contractual controls, and audit expectations may create demand for demonstrable authorization and evidence, but no rule should be described as mandating EMILIA, cryptographic receipts, or this implementation.
 
 ### Later expansion
 
-Payments, government disbursement, code and cloud administration, grid operations, and physical action are expansion profiles after a leverage-bearing deployment is established. They demonstrate horizontal applicability; they are not simultaneous opening wedges.
+Payer and other clinical workflows, government disbursement, code and cloud administration, grid operations, and physical action are expansion profiles after a leverage-bearing deployment is established. They demonstrate horizontal applicability; they are not simultaneous opening wedges.
 
 ## Personas
 
@@ -116,7 +116,7 @@ Payments, government disbursement, code and cloud administration, grid operation
 | --- | --- | --- | --- |
 | AI platform engineer | Fast integration and deterministic behavior | Existing agents can reach privileged tools directly | One MCP or HTTP guard with machine-readable refusal and retry |
 | Security architect / CISO | Complete mediation, key ownership, replay resistance, and auditability | Identity and permissions do not prove approval of the exact action | Executor-side enforcement under customer-pinned policy and trust roots |
-| Payer medical director | Qualified review and defensible adverse determinations | AI-supported workflows can obscure whether licensed review actually occurred | Exact case-bound licensed-review evidence before an adverse decision |
+| Controller / treasury / AP leader | Controlled vendor changes and payment releases | Credentials and workflow logs do not prove that the exact financial action met the required approval path | Exact-action admission under customer-owned authority, with portable evidence and explicit uncertainty |
 | Compliance / legal leader | Reproducible evidence and honest scope | Operator-controlled logs are difficult to rely on across boundaries | Portable evidence plus explicit assumptions, limitations, and refusal reasons |
 | Auditor / independent assurer | Re-performance rather than management assertion | Runtime reports can repeat the operator's own conclusion | Content-addressed assurance packages and independently pinned re-performance |
 | Financial buyer | Deployment risk, integration cost, and accountability | A protocol alone does not operate a production control | Managed Gate, evidence operations, support, SLA, and scoped assurance services |
@@ -174,8 +174,8 @@ Payments, government disbursement, code and cloud administration, grid operation
 | "Why should we trust a startup?" | You do not have to trust EMILIA as the verifier or trust root. Pin your own keys and profiles, run the open verifier, and reproduce the evidence independently. |
 | "Is EMILIA a certification body?" | No. Current services verify, re-perform, and package scoped evidence. Audit conclusions belong to the auditor; future certification requires independent governance and authorized assessors. |
 | "Does a signature prove the human understood?" | No. It proves the enrolled credential completed the specified ceremony over exact bytes. Comprehension, wisdom, legality, and outcome remain outside the claim. |
-| "Does healthcare law require EMILIA?" | No. The paid wedge addresses the operational evidence problem created by requirements for qualified human determination. Never claim a statute mandates EMILIA or cryptographic receipts. |
-| "Does Gate make an action safe?" | No. Gate proves and enforces the customer's authorization conditions. It does not judge whether the authorized action is wise, legal, medically correct, or physically successful. |
+| "Does Gate prove the vendor bank details are correct or stop every fraud path?" | No. Gate enforces the customer's exact-action authority and evidence requirements on completely mediated covered paths. Source truth, unmediated paths, fraud absence, and provider success remain outside the claim. |
+| "Does Gate make an action safe?" | No. Gate proves and enforces the customer's authorization conditions. It does not judge whether the authorized action is wise, legal, correct, or physically successful. |
 
 ## Switching Dynamics
 
@@ -196,7 +196,7 @@ Payments, government disbursement, code and cloud administration, grid operation
 - "Who approved that action?"
 - "What stops the agent from calling the API directly?"
 - "Can an auditor verify this without trusting our logs?"
-- "Can we prove a licensed reviewer made this determination?"
+- "Who approved this vendor bank-detail change, and what exactly did they approve?"
 
 **Canonical EMILIA language:**
 
@@ -207,7 +207,7 @@ Payments, government disbursement, code and cloud administration, grid operation
 - "Authority infrastructure for autonomous work."
 - "The agent is ephemeral. Authority state survives."
 - "No valid authority, no consequential mutation."
-- "No valid licensed-review evidence, no adverse determination."
+- "No accepted exact-action authority and required evidence, no provider entry."
 - "A policy decision is not the same as human authorization."
 - "Complete mediation at the system of record."
 - "EMILIA operates the control; the customer controls the authority, credentials, and evidence."
@@ -245,7 +245,7 @@ Quantitative proof changes as the repository evolves. Never copy counts into new
 
 **Adoption goal:** Make local Authority Brain → review the Authority Map → protect one tool → factual handoff the fastest free path into the product.
 
-**Revenue goal:** Sell a payer or utilization-management pilot that enforces and evidences licensed review before an adverse medical-necessity determination.
+**Revenue goal:** Sell a finance-operations pilot that enforces one covered vendor bank-detail change or payment release under customer-owned exact-action authority and evidence requirements.
 
 **Primary conversion actions:**
 

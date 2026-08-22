@@ -40,7 +40,7 @@ const MCP_SOFTWARE_JSONLD = {
   url: 'https://www.emiliaprotocol.ai/mcp',
   downloadUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
   installUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
-  softwareVersion: '1.0.0',
+  softwareVersion: '2.1.1',
   license: 'https://www.apache.org/licenses/LICENSE-2.0',
   author: { '@type': 'Organization', name: 'EMILIA Protocol' },
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
@@ -109,7 +109,7 @@ const FLOW = [
   ['Action proceeds + a receipt is minted', 'offline-verifiable proof, forever'],
 ];
 
-const DIRS = ['Official MCP Registry', 'Glama', 'Smithery', 'mcp.so', 'PulseMCP', 'awesome-mcp-servers'];
+const DIRS = ['npm', 'Official MCP Registry'];
 
 export default async function McpPage() {
   const nonce = (await headers()).get('x-nonce') ?? '';

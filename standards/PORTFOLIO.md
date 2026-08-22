@@ -1,6 +1,6 @@
 # EMILIA Standards Portfolio
 
-Updated: 2026-08-06
+Updated: 2026-08-22
 
 ## One story
 
@@ -116,10 +116,10 @@ profile and lifecycle portfolio remains intact.
 ## Portfolio views that must not collapse
 
 The canonical presentation surface is not the active profile portfolio. The
-complete active portfolio remains the 23-entry `STATUS.json.active_datatracker`
+complete active portfolio remains the 24-entry `STATUS.json.active_datatracker`
 inventory, including its distinct evidence profiles and lifecycle drafts; all
-20 active `draft-schrock-*` records and all three coauthored records retain their
-individual status. Neither presentation order nor appearance in another view
+20 sole-authored records and all four coauthored records retain their individual
+status. Neither presentation order nor appearance in another view
 retires, merges, replaces, or demotes an active draft.
 
 Separately, the **runtime execution spine** is:
@@ -139,7 +139,7 @@ Exact revisions, source paths, Datatracker URLs, and snapshot digests for both
 views are recorded in `STATUS.json`.
 
 The extension-agnostic responsibility, input/output, claim-boundary, external
-dependency, and overlap review for all 20 active `draft-schrock-*` series is in
+dependency, and overlap review for all 20 active sole-authored series is in
 [`PORTFOLIO-RESPONSIBILITY-MATRIX.md`](PORTFOLIO-RESPONSIBILITY-MATRIX.md).
 That matrix is the required input to any future consolidation proposal.
 
@@ -229,6 +229,15 @@ acceptance-prefix integrity under its stated assumptions, states the offline
 anti-backdating limit, and separates historical acceptance from current policy
 and status acceptance.
 
+On **August 22, 2026**, the coauthored GRACE application profile
+`draft-schrock-kintzele-grid-curtailment-00` was published as an active
+individual Internet-Draft. The retained XML and TXT in
+`profiles/NEXT-GRID-CURTAILMENT-00/` were verified byte-for-byte against the
+immutable IETF archive. Publication does not establish physical meter truth,
+baseline correctness, tariff eligibility, payment, complete mediation,
+implementation, deployment, working-group adoption, RFC status, or IETF
+endorsement.
+
 The published line also retains Authority Introduction-03, Quorum-03, Bounded
 Capability Receipts-02, and the other current individual drafts listed in
 `STATUS.json`. Model-to-Matter remains deliberately separate: publication does
@@ -242,19 +251,22 @@ endorsement.
 
 The exact submitted-byte packet remains in `staged/UPLOAD-THIS/` as retained
 publication provenance, with its checksums and review renders. It is not an
-upload queue. Canonical current snapshots are in `posted/`; the IETF archive
-remains authoritative for rendered forms and live status.
+upload queue. Current snapshot locations are recorded in `STATUS.json`; the
+coauthored GRACE-00 packet remains under `profiles/`, while the sole-authored
+line is in `posted/`. The IETF archive remains authoritative for rendered forms
+and live status.
 
 ## New-filing freeze
 
 A 90-day freeze on new Internet-Draft names and `-00` filings is in effect from
 2026-08-04 through 2026-11-01, inclusive. Maintenance revisions under an
-existing active draft name remain allowed. The only exception requires all of
-the following: a wire-level gap, demonstration by a named external implementer
-or named external deployment, recorded evidence of that demonstration, and a
-recorded overlap review showing that the gap is not already owned by an active
-draft or adjacent specification. No active draft is retired or merged by this
-freeze, and the distinct active profile portfolio remains intact.
+existing active draft name remain allowed. The standing exception requires a
+wire-level gap demonstrated by a named external implementer or deployment,
+recorded evidence, and an overlap review. GRACE-00 was filed under a separately
+recorded one-time founder override after its local gates and coauthor approval;
+that override does not claim that the standing exception was satisfied. No
+active draft is retired or merged by this freeze, and the distinct active
+profile portfolio remains intact.
 
 ## Disposition ledger
 
@@ -268,6 +280,7 @@ These are decisions, not an indefinite waiting room:
 | PQC | Retired as a standalone draft | Evidence Record crypto agility and anti-stripping |
 | Model-to-Matter | Active Experimental profile; current -04 published August 6 | Seven-role clearance, physical-state source claims, and program and requirement digest binding are current; deployment claims require a real executor |
 | Human Oversight | Partner-triggered profile | A regulator or management-system standards partner validates the mapping |
+| GRACE grid curtailment | Active individual draft; -00 published August 22 | Coauthored application profile; preserve its physical-truth, tariff, payment, deployment, adoption, and endorsement nonclaims |
 | Reliance Agreement | Active individual draft; -00 published August 3 | Narrow signed terms and reliance-event wire format; legal and insurance outcomes remain out of scope |
 
 Retired sources remain in `archive/`; held application profiles live in

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -41,6 +42,16 @@ test('reference run checks native protocols separately from AEB composition', ()
     'sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603',
   );
   assert.equal(report.source_protocol_checks.length >= 5, true);
+  const publishedOasntCheck = report.source_protocol_checks.find(
+    (entry) => entry.id === 'OASNT-02-TOKEN-ACCEPT',
+  );
+  assert.ok(publishedOasntCheck, 'published OASNT check must name the pinned -02 revision');
+  assert.match(publishedOasntCheck.description, /OASNT-02/);
+  assert.equal(
+    report.source_protocol_checks.some((entry) => /OASNT-01/.test(`${entry.id} ${entry.description}`)),
+    false,
+    'report must not mix the retired -01 label into its pinned -02 evidence',
+  );
   assert.equal(report.aeb_composition_checks.length >= 5, true);
   assert.equal(report.source_protocol_checks.every((entry) => entry.passed), true);
   assert.equal(report.aeb_composition_checks.every((entry) => entry.passed), true);
@@ -62,6 +73,17 @@ test('two native legs join one exact action without collapsing their roles', () 
   assert.equal(report.composition.first_admission, 'AUTHORIZED');
   assert.equal(report.composition.first_outcome, 'RECONCILIATION_REQUIRED');
   assert.equal(report.composition.replay_admission, 'REFUSED');
+});
+
+test('checked-in reference report matches the current runner output', () => {
+  const checkedIn = JSON.parse(readFileSync(new URL('report.reference.json', import.meta.url), 'utf8'));
+  const current = runSuite({
+    runner_name: checkedIn.runner.name,
+    runner_affiliation: checkedIn.runner.affiliation,
+    runner_revision: checkedIn.runner.revision,
+    executed_at: checkedIn.runner.executed_at,
+  });
+  assert.deepEqual(checkedIn, current);
 });
 
 test('an external execution is not mislabeled as an independent implementation', () => {

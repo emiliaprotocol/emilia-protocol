@@ -66,7 +66,18 @@ The circuit labels its actuator and meter as simulations and claims no physical 
 - The exact upload source is
   `REVIEW-SOURCE/draft-schrock-kintzele-grid-curtailment-00.xml`, pinned by `SHA256SUMS.txt`. The
   packet contains no duplicate `UPLOAD-THIS` copy.
-- Nothing was submitted to the IETF.
+- Datatracker submission 167956 was accepted and revision `-00` was posted on 2026-08-22.
+- As verified on 2026-08-22, the Datatracker record lists
+  `draft-schrock-kintzele-grid-curtailment-00` as an active individual Internet-Draft with an
+  expiry date of 2027-02-23.
+- The retained XML is byte-for-byte identical to
+  `https://www.ietf.org/archive/id/draft-schrock-kintzele-grid-curtailment-00.xml` at
+  `sha256:0c656d9cbdb0701a23668420460a6d1143efcf74db8919f4a9c24f4fd5697ba6`.
+- The retained TXT is byte-for-byte identical to
+  `https://www.ietf.org/archive/id/draft-schrock-kintzele-grid-curtailment-00.txt` at
+  `sha256:8dd61f1f66077d64bb185c3a7a5354f46bb19f0d2f28beb9e2ff728a049adb87`.
+- Accepted submission, Datatracker posting, and archive-byte verification do not establish an
+  implementation, deployment, working-group adoption, RFC status, or IETF endorsement.
 
 ## Claim limits
 

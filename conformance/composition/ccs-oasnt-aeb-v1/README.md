@@ -4,7 +4,7 @@
 This kit proves one bounded two-leg composition:
 
 - the pinned CCS PyPI HMAC result is verified as `machine-policy-decision`;
-- the published OASNT-01 token is verified as `human-authorization`;
+- the published OASNT-02 token is verified as `human-authorization`;
 - each adapter independently maps its native artifact to the same exact
   `payment.transfer.1` action, CAID, and action digest;
 - AEB keeps both roles separate, requires both, signs the evaluation, reserves
@@ -47,9 +47,9 @@ The private key is read locally and is never copied into the repository.
 
 The CCS checks cover the distribution labeled `ccs-verifier==1.1.0`, whose
 installed runtime identifies as `0.4.1`. They do not claim conformance to later
-CCS draft text. The OASNT checks use the published `-01` compact-token vector
-and pin the archived `draft-thallapelly-oasnt-01.txt` bytes as
-`sha256:7a5651b32017fa8945d71ce1007b2270559ad157b74100ade962f1d3382cab19`.
+CCS draft text. The OASNT checks use the published `-02` compact-token vector
+and pin the archived `draft-thallapelly-oasnt-02.txt` bytes as
+`sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603`.
 The token's request fingerprint remains signed, but this profile deliberately
 joins only the exact native action. A passing report is not independent
 implementation evidence, deployment evidence, certification, IETF adoption,

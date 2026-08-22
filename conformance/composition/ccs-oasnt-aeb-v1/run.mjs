@@ -489,12 +489,12 @@ export function runSuite(input) {
         check('CCS-PINNED-HMAC-ACCEPT', 'CCS', 'Pinned CCS 1.1.0 distribution/runtime 0.4.1 HMAC artifact verifies as machine-policy evidence.', result.ccsNative.native_verification === 'VERIFIED' && result.ccsNative.acceptance === 'ACCEPTED', { verification: result.ccsNative.native_verification, acceptance: result.ccsNative.acceptance }),
         check('CCS-MUTATED-PARAMS-REFUSE', 'CCS', 'Mutation after receipt creation is refused by the pinned CCS adapter.', result.tamperedCcsNative.acceptance === 'REJECTED', { acceptance: result.tamperedCcsNative.acceptance, reasons: result.tamperedCcsNative.reasons }),
         check('CCS-NATIVE-ACTION-MAP', 'CCS', 'CCS command material maps losslessly to the shared native-action projection.', result.ccsMapping.mapping === 'MATCH', { mapping: result.ccsMapping.mapping, caid: result.ccsMapping.caid }),
-        check('OASNT-01-TOKEN-ACCEPT', 'OASNT', 'Published OASNT-01 compact token verifies under the pinned enrolled key.', result.publishedOasntNative.native_verification === 'VERIFIED'
+        check('OASNT-02-TOKEN-ACCEPT', 'OASNT', 'Published OASNT-02 compact token verifies under the pinned enrolled key.', result.publishedOasntNative.native_verification === 'VERIFIED'
             && result.publishedOasntNative.acceptance === 'ACCEPTED', {
             verification: result.publishedOasntNative.native_verification,
             acceptance: result.publishedOasntNative.acceptance,
         }),
-        check('OASNT-COMPOSITION-TOKEN-ACCEPT', 'OASNT', 'Synthetic action-only OASNT-01 token verifies under its pinned enrolled key for this composition.', result.oasntNative.native_verification === 'VERIFIED' && result.oasntNative.acceptance === 'ACCEPTED', { verification: result.oasntNative.native_verification, acceptance: result.oasntNative.acceptance }),
+        check('OASNT-COMPOSITION-TOKEN-ACCEPT', 'OASNT', 'Synthetic action-only OASNT-02 token verifies under its pinned enrolled key for this composition.', result.oasntNative.native_verification === 'VERIFIED' && result.oasntNative.acceptance === 'ACCEPTED', { verification: result.oasntNative.native_verification, acceptance: result.oasntNative.acceptance }),
         check('OASNT-ACTION-SUBSTITUTION-REFUSE', 'OASNT', 'Changing the expected action makes the published token fail closed.', result.changedOasntNative.acceptance === 'REJECTED', { acceptance: result.changedOasntNative.acceptance, reasons: result.changedOasntNative.reasons }),
         check('OASNT-NATIVE-ACTION-MAP', 'OASNT', 'OASNT maps the signed native action to the pinned AEB profile.', result.oasntMapping.mapping === 'MATCH', { mapping: result.oasntMapping.mapping, caid: result.oasntMapping.caid }),
     ];

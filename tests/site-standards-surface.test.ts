@@ -19,6 +19,16 @@ describe('canonical standards presentation surface', () => {
     ]);
     expect(status.canonical_four_document_surface.status).toBe('presentation_only_no_consolidation');
     expect(status.active_profile_portfolio.active_datatracker_count).toBe(status.active_datatracker_count);
+    expect(status.active_datatracker).toHaveLength(status.active_datatracker_count);
+    expect(status.active_schrock_datatracker_count).toBe(
+      status.active_datatracker.filter((entry: { draft: string }) => entry.draft.startsWith('draft-schrock-')).length,
+    );
+    expect(status.active_profile_portfolio.sole_authored_datatracker_count).toBe(20);
+    expect(status.active_profile_portfolio.coauthored_datatracker_count).toBe(4);
+    expect(status.active_datatracker).toContainEqual(expect.objectContaining({
+      draft: 'draft-schrock-kintzele-grid-curtailment',
+      revision: '00',
+    }));
   });
 
   it('makes the website consume the governed revision source instead of hardcoding revisions', () => {

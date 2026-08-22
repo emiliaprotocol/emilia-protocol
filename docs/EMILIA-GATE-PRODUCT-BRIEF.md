@@ -190,13 +190,13 @@ Plant the gate at every actuator boundary, widest-adoption-first:
 
 ## Standards
 
-The governed repository inventory currently tracks 23 active Datatracker records: 20
-`draft-schrock-*` records and three coauthored records. Current snapshots include AE-CHALLENGE -03,
-AEB -03, CAID -02, Architecture -02, AEC -05, Authorization Receipts -10, Bounded Capability
-Receipts -03, Quorum -03, and Model-to-Matter -04. `standards/STATUS.json` is the repository source
-and the live Datatracker is authoritative for current revision and status. None is an RFC, an adopted
-working-group item, or IETF endorsement. Conformance is earned by executable harnesses, not asserted
-by draft status.
+The governed repository inventory currently tracks 24 active Datatracker records: 20
+sole-authored records and four coauthored records. Current snapshots include AE-CHALLENGE -07,
+AEB -04, CAID -02, Architecture -02, AEC -05, Authorization Receipts -12, Bounded Capability
+Receipts -04, Quorum -03, Model-to-Matter -04, and the coauthored GRACE Grid Curtailment -00.
+`standards/STATUS.json` is the repository source and the live Datatracker is authoritative for
+current revision and status. None is an RFC, an adopted working-group item, or IETF endorsement.
+Conformance is earned by executable harnesses, not asserted by draft status.
 
 Gate Qualification v2 is an implementation profile over existing public formats and extension
 points. It is not a new Internet-Draft and must not be described as IETF submission, review, adoption,
