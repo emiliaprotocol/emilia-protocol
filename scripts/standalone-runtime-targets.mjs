@@ -21,6 +21,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'lib/evidence/evidence-graph.ts',
   'lib/aml/screening.ts',
   'lib/aml/watchlist.ts',
+  'lib/agent-mailbox.ts',
   'lib/auth-projections.ts',
   'lib/canonical-writer.ts',
   'lib/crypto.ts',
