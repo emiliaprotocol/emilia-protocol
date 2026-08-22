@@ -115,6 +115,20 @@ existing Gate path then reserves authority before provider entry, commits it
 after a returned effect, and records an attempted-but-unknown effect as
 `INDETERMINATE`. `run(fn)` remains available for existing integrations.
 
+### Reserve aggregate consequence capacity
+
+`@emilia-protocol/gate/consequence-envelope` adds an optional signed capacity
+reservation before provider entry. One owning state domain atomically accounts
+for a relying-party-defined conservative impact contribution. Capacity never
+refills from a timer, and disconnected operation requires a preissued,
+epoch-bound, nonrenewable slice already deducted from the parent.
+
+The bundled memory store is explicitly test-only. Production callers must
+supply a durable, owner-fenced, epoch-fenced local-atomic store. An uncertain
+provider outcome keeps capacity unavailable until separately authenticated
+reconciliation establishes commitment or non-commitment. Telemetry and anomaly
+models cannot mint capacity, and no envelope record proves a physical effect.
+
 ## Customer-owned Reliance Programs
 
 `@emilia-protocol/gate/reliance-program` turns a relying party's signed policy

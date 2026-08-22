@@ -165,6 +165,20 @@ Dossier rendering. Technical invariants only.
     own (the single-use physics of decision 6 applies to shared capacity
     unchanged).
 
+24. The "operator-declared local floor" in decision 23 is not an
+    independently replenishing allowance. It means a preissued,
+    epoch-bound, nonrenewable local envelope slice whose full capacity was
+    atomically deducted from the parent envelope before disconnection. An
+    expired slice cannot renew itself, and an unreachable parent cannot
+    mint a replacement. The process-local store is explicitly test-only.
+    A production store must provide durable, owner-fenced, epoch-fenced
+    local atomicity. Where envelope and provider-attempt records live in
+    different stores, the conservative reference ordering makes capacity
+    unavailable before provider entry and reports uncertain coordination
+    as INDETERMINATE; it does not claim one cross-store database
+    transaction. A deployment may claim joint atomicity only when one
+    owning transaction actually covers both records.
+
 ## Language
 
 16. Native authority systems are an OPEN SET behind one bounded adapter

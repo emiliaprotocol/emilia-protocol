@@ -123,7 +123,8 @@ function approval({ action, presentation, policy, approver, role, index }) {
   };
 }
 
-function scenario() {
+/** Build the synthetic, digest-bound GRACE input used by composition profiles. */
+export function createGraceReferenceInput() {
   const envelope = {
     '@version': FLEX_ENVELOPE_VERSION,
     envelope_id: 'grace:envelope:reference-summer-2026',
@@ -179,7 +180,8 @@ function scenario() {
   };
 }
 
-function runtime() {
+/** Create fresh, process-local reference adapters for one synthetic run. */
+export function createGraceReferenceRuntime() {
   const actuatorKey = ed25519('ep:key:cosa-reference');
   const meterKey = ed25519('ep:key:meter-reference');
   const capsuleKey = ed25519('ep:key:action-state-reference');
@@ -201,7 +203,12 @@ function runtime() {
   };
 }
 
-async function execute(input, state, overrides: { actuator?: any; meter?: any } = {}) {
+/** Execute one GRACE reference input. This does not assert a physical grid event. */
+export async function executeGraceReferenceInput(
+  input: ReturnType<typeof createGraceReferenceInput>,
+  state: ReturnType<typeof createGraceReferenceRuntime>,
+  overrides: { actuator?: any; meter?: any } = {},
+) {
   return executeGraceCurtailment({
     ...input,
     executionStore: state.executionStore,
@@ -219,15 +226,18 @@ async function execute(input, state, overrides: { actuator?: any; meter?: any } 
 }
 
 export async function runGraceReferenceScenario() {
-  const input = scenario();
-  const state = runtime();
-  const positive = await execute(input, state);
-  const replay = await execute(input, state);
+  const input = createGraceReferenceInput();
+  const state = createGraceReferenceRuntime();
+  const positive = await executeGraceReferenceInput(input, state);
+  const replay = await executeGraceReferenceInput(input, state);
 
   const changed = { ...input.action, target_delta_kw: '19000' };
-  const substitution = await execute({ ...input, action: changed }, runtime());
+  const substitution = await executeGraceReferenceInput(
+    { ...input, action: changed },
+    createGraceReferenceRuntime(),
+  );
 
-  const meterState = runtime();
+  const meterState = createGraceReferenceRuntime();
   const meter = {
     verify: verifyReferenceMeterStatement,
     async observe(args) {
@@ -235,7 +245,7 @@ export async function runGraceReferenceScenario() {
       return { ...statement, baseline_method_hash: input.action.baseline_method_hash };
     },
   };
-  const meterSmuggling = await execute(input, meterState, { meter });
+  const meterSmuggling = await executeGraceReferenceInput(input, meterState, { meter });
 
   return {
     reference_only: true,

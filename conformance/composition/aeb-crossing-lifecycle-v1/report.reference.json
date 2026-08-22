@@ -1,0 +1,141 @@
+{
+  "@version": "AEB-CROSSING-LIFECYCLE-REFERENCE-REPORT-v1",
+  "cases": [
+    {
+      "category": "positive",
+      "expected": "EXECUTED with one provider call",
+      "id": "OAUTH-ISSUED-ARTIFACT-THROUGH",
+      "observed": {
+        "native_system": "oauth-transaction-challenge",
+        "provider_calls": 1,
+        "replay_unit": "sha256:2563696b123541c5d82e7380d82264dc8f1406e132551ec3ad9f86fb528e4bab",
+        "state": "EXECUTED"
+      },
+      "passed": true
+    },
+    {
+      "category": "positive",
+      "expected": "EXECUTED with one provider call",
+      "id": "HUMAN-AUTHORIZATION-THROUGH",
+      "observed": {
+        "native_system": "oasnt",
+        "provider_calls": 1,
+        "replay_unit": "sha256:8e403d5a42ac28d8e56c23dbb667a8347d9b7f4bef11e67d77467c28cda41bb5",
+        "state": "EXECUTED"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "native_replay_conflict before provider entry",
+      "id": "WRAPPER-INDEPENDENT-REPLAY",
+      "observed": {
+        "first": "EXECUTED",
+        "provider_calls_second": 0,
+        "reason": "native_replay_conflict",
+        "second": "REFUSED"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "one EXECUTED, one REFUSED, one provider call",
+      "id": "CONCURRENT-ADMISSION-AT-MOST-ONE",
+      "observed": {
+        "provider_calls": 1,
+        "states": [
+          "EXECUTED",
+          "REFUSED"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "exact_action_binding_mismatch before provider entry",
+      "id": "EXECUTOR-OBSERVED-SUBSTITUTION-REFUSED",
+      "observed": {
+        "provider_calls": 0,
+        "reason": "exact_action_binding_mismatch",
+        "state": "REFUSED"
+      },
+      "passed": true
+    },
+    {
+      "category": "boundary",
+      "expected": "INDETERMINATE with retry refused",
+      "id": "LOST-RESPONSE-INDETERMINATE",
+      "observed": {
+        "invoked": true,
+        "provider_calls": 1,
+        "retry_allowed": false,
+        "state": "INDETERMINATE"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "REFUSED without another provider call",
+      "id": "BLIND-RETRY-REFUSED",
+      "observed": {
+        "provider_calls": 1,
+        "reason": "consumption_conflict",
+        "state": "REFUSED"
+      },
+      "passed": true
+    },
+    {
+      "category": "positive",
+      "expected": "EXECUTED by reconciliation with original provider-call count unchanged",
+      "id": "AUTHENTICATED-RECONCILIATION-NO-REEXECUTION",
+      "observed": {
+        "provider_calls": 1,
+        "state": "EXECUTED"
+      },
+      "passed": true
+    },
+    {
+      "category": "boundary",
+      "expected": "verified historical evidence cannot replace native authority",
+      "id": "CROSSING-RECORD-NONAUTHORIZING",
+      "observed": {
+        "crossing_record_valid": true,
+        "provider_calls": 0,
+        "reason": "exact_action_binding_mismatch",
+        "state": "REFUSED"
+      },
+      "passed": true
+    },
+    {
+      "category": "boundary",
+      "expected": "distinct native adapters, roles, and replay units remain visible",
+      "id": "NATIVE-PROVENANCE-PRESERVED",
+      "observed": {
+        "human_adapter": "native:oasnt",
+        "human_role": "human-authorization",
+        "oauth_adapter": "native:oauth-transaction-challenge",
+        "oauth_role": "transaction-authorization",
+        "replay_units_distinct": true
+      },
+      "passed": true
+    }
+  ],
+  "defining_contract": {
+    "crossing_record_authority": "NONE",
+    "exact_action_from_executor_observation": true,
+    "native_authority_open_set": true,
+    "provider_entry_attempts": "AT_MOST_ONE",
+    "replay_unit_wrapper_independent": true,
+    "uncertainty_retry_policy": "REFUSE"
+  },
+  "known_limits": [
+    "This run exercises the EMILIA reference implementation; it is not an independent implementation.",
+    "At-most-one provider entry is not exactly-once physical effect.",
+    "The OAuth and OASNT artifacts conform to one lifecycle contract; their native semantics are not asserted equivalent.",
+    "A verified crossing record is historical evidence and never authorizes a later action.",
+    "Guarantees apply only to completely mediated protected boundaries using durable owning stores."
+  ],
+  "passed": true,
+  "profile": "EP-AEB-CROSSING-LIFECYCLE-COMPOSITION-v1",
+  "results_digest": "sha256:6754035950c403db118d8a085f24190bf3e2694f0af327bb39f5b193f78f57bf"
+}
