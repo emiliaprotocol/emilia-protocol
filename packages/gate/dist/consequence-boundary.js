@@ -89,6 +89,18 @@ function secureAttemptStore(value) {
         && typeof value.transition === 'function'
         && typeof value.reconcile === 'function';
 }
+function secureConsequenceEnvelope(value) {
+    return isObject(value)
+        && (value.guaranteeClass === 'durable-local-atomic'
+            || value.guaranteeClass === 'test-only-process-local')
+        && isObject(value.envelope)
+        && typeof value.envelope_digest === 'string'
+        && typeof value.reserve === 'function'
+        && typeof value.beginProviderEntry === 'function'
+        && typeof value.releaseNotEntered === 'function'
+        && typeof value.settle === 'function'
+        && typeof value.reconcile === 'function';
+}
 function validEvidence(value) {
     const record = dataRecord(value);
     return record !== null
@@ -257,6 +269,10 @@ export function createConsequenceBoundary(options) {
         || typeof options.attempts.recover !== 'function'
         || typeof options.local_authorize !== 'function'
         || typeof options.invoke !== 'function'
+        || (options.consequence_envelope !== undefined
+            && !secureConsequenceEnvelope(options.consequence_envelope))
+        || (options.consequence_envelope?.guaranteeClass === 'test-only-process-local'
+            && options.allow_test_consequence_envelope !== true)
         || (options.now !== undefined && typeof options.now !== 'function')) {
         throw new TypeError('consequence_boundary_configuration_invalid');
     }
@@ -333,6 +349,26 @@ export function createConsequenceBoundary(options) {
         }
         const reservationKey = authorization.reservation_key;
         const actionDigest = digestAeb(action);
+        let envelopeReservation = null;
+        if (options.consequence_envelope) {
+            let capacity;
+            try {
+                capacity = await options.consequence_envelope.reserve({
+                    operation_id: evaluation.operation_id,
+                    state_domain_id: options.consequence_envelope.envelope.state_domain_id,
+                    expected_epoch: options.consequence_envelope.envelope.epoch,
+                    action,
+                });
+            }
+            catch {
+                capacity = { status: 'REFUSED', reason: 'consequence_envelope_unavailable' };
+            }
+            if (capacity.status !== 'RESERVED') {
+                await options.aeb.store.release(reservationKey).catch(() => false);
+                return refused(capacity.reason);
+            }
+            envelopeReservation = capacity.reservation;
+        }
         const providerIdempotencyKey = consequenceBoundaryProviderIdempotencyKey({
             provider,
             caid: evaluation.caid,
@@ -357,6 +393,9 @@ export function createConsequenceBoundary(options) {
                 throw new Error('attempt_id_invalid');
         }
         catch {
+            if (envelopeReservation) {
+                await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
+            }
             await options.aeb.store.release(reservationKey).catch(() => false);
             return refused('attempt_allocation_failed');
         }
@@ -371,10 +410,16 @@ export function createConsequenceBoundary(options) {
             reserved = await options.attempts.store.reserve(attemptBinding);
         }
         catch {
+            if (envelopeReservation) {
+                await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
+            }
             await options.aeb.store.release(reservationKey).catch(() => false);
             return refused('attempt_store_unavailable');
         }
         if (!reserved.reserved) {
+            if (envelopeReservation) {
+                await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
+            }
             await options.aeb.store.release(reservationKey).catch(() => false);
             return refused(reserved.reason || 'attempt_conflict');
         }
@@ -382,6 +427,23 @@ export function createConsequenceBoundary(options) {
             ...attemptBinding,
             owner: reserved.owner,
         };
+        if (envelopeReservation) {
+            const capacityEntry = await options.consequence_envelope
+                .beginProviderEntry(envelopeReservation)
+                .catch(() => ({ status: 'REFUSED', reason: 'consequence_envelope_unavailable' }));
+            if (capacityEntry.status !== 'ENTERED') {
+                const attemptReleased = await options.attempts.store.transition({
+                    ...attempt,
+                    expected_state: 'RESERVED',
+                    next_state: 'RELEASED',
+                }).catch(() => false);
+                await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
+                await options.aeb.store.release(reservationKey).catch(() => false);
+                return attemptReleased
+                    ? refused(capacityEntry.reason)
+                    : indeterminate('attempt_release_unconfirmed', false, publicAttempt(attempt));
+            }
+        }
         try {
             const started = await options.attempts.store.transition({
                 ...attempt,
@@ -389,11 +451,19 @@ export function createConsequenceBoundary(options) {
                 next_state: 'INVOKING',
             });
             if (!started) {
+                if (envelopeReservation) {
+                    await options.consequence_envelope.settle(envelopeReservation, 'INDETERMINATE').catch(() => null);
+                    return indeterminate('attempt_start_conflict', false, publicAttempt(attempt));
+                }
                 await options.aeb.store.release(reservationKey).catch(() => false);
                 return refused('attempt_start_conflict');
             }
         }
         catch {
+            if (envelopeReservation) {
+                await options.consequence_envelope.settle(envelopeReservation, 'INDETERMINATE').catch(() => null);
+                return indeterminate('attempt_store_unavailable', false, publicAttempt(attempt));
+            }
             await options.aeb.store.release(reservationKey).catch(() => false);
             return refused('attempt_store_unavailable');
         }
@@ -415,6 +485,9 @@ export function createConsequenceBoundary(options) {
                 expected_state: 'INVOKING',
                 next_state: 'INDETERMINATE',
             }).catch(() => false);
+            if (envelopeReservation) {
+                await options.consequence_envelope.settle(envelopeReservation, 'INDETERMINATE').catch(() => null);
+            }
             return indeterminate('provider_outcome_indeterminate', true, publicAttempt(attempt));
         }
         const frozen = await options.attempts.store.transition({
@@ -423,7 +496,18 @@ export function createConsequenceBoundary(options) {
             next_state: 'INDETERMINATE',
         }).catch(() => false);
         if (!frozen) {
+            if (envelopeReservation) {
+                await options.consequence_envelope.settle(envelopeReservation, 'INDETERMINATE').catch(() => null);
+            }
             return indeterminate('attempt_freeze_failed', true, publicAttempt(attempt));
+        }
+        if (envelopeReservation) {
+            const held = await options.consequence_envelope
+                .settle(envelopeReservation, 'INDETERMINATE')
+                .catch(() => ({ status: 'REFUSED', reason: 'consequence_envelope_unavailable' }));
+            if (held.status !== 'INDETERMINATE') {
+                return indeterminate('consequence_envelope_indeterminate_unconfirmed', true, publicAttempt(attempt));
+            }
         }
         const outcome = normalizeEffectOutcome(rawOutcome);
         if (!outcome) {
@@ -461,6 +545,15 @@ export function createConsequenceBoundary(options) {
         }).catch(() => false);
         if (!terminal) {
             return indeterminate('attempt_terminal_record_unconfirmed', true, publicAttempt(attempt));
+        }
+        if (envelopeReservation) {
+            const capacityTerminal = await options.consequence_envelope
+                .settle(envelopeReservation, outcome.state === 'EXECUTED' ? 'COMMITTED' : 'PROVEN_NOT_COMMITTED')
+                .catch(() => ({ status: 'REFUSED', reason: 'consequence_envelope_unavailable' }));
+            const expectedCapacityState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
+            if (capacityTerminal.status !== expectedCapacityState) {
+                return indeterminate('consequence_envelope_terminal_unconfirmed', true, publicAttempt(attempt));
+            }
         }
         if (outcome.state === 'EXECUTED') {
             return Object.freeze({
@@ -582,6 +675,18 @@ export function createConsequenceBoundary(options) {
         }).catch(() => false);
         if (!terminal) {
             return indeterminate('attempt_terminal_record_unconfirmed', true, attemptBinding);
+        }
+        if (options.consequence_envelope) {
+            const capacityTerminal = await options.consequence_envelope.reconcile({
+                operation_id: evaluation.operation_id,
+                action_digest: digestAeb(action),
+                outcome: outcome.state === 'EXECUTED' ? 'COMMITTED' : 'PROVEN_NOT_COMMITTED',
+                recovery_authorization: input.recovery_authorization,
+            }).catch(() => ({ status: 'REFUSED', reason: 'consequence_envelope_unavailable' }));
+            const expectedCapacityState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
+            if (capacityTerminal.status !== expectedCapacityState) {
+                return indeterminate('consequence_envelope_reconciliation_unconfirmed', true, attemptBinding);
+            }
         }
         if (outcome.state === 'EXECUTED') {
             return Object.freeze({

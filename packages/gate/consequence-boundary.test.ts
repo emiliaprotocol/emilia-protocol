@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
+import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
 import {
   adapterPinDigest,
   digestAeb,
@@ -10,6 +11,7 @@ import {
   registryEntryDigest,
   unifiedRegistryDigest,
 } from '@emilia-protocol/verify/aeb-adapter-contract';
+import { loadDefaultAgilityMldsaBackend } from '@emilia-protocol/verify/pq-signature-agility';
 import {
   consequenceBoundaryProviderIdempotencyKey,
   createConsequenceBoundary,
@@ -17,6 +19,13 @@ import {
   type ConsequenceBoundaryAttemptReference,
   type ConsequenceBoundaryProviderEvidence,
 } from './consequence-boundary.js';
+import {
+  FINANCE_CUMULATIVE_EXPOSURE_PROFILE,
+  createConsequenceEnvelopeBoundary,
+  createMemoryConsequenceEnvelopeStore,
+  issueConsequenceEnvelope,
+  type ConsequenceEnvelopeBoundary,
+} from './src/consequence-envelope.js';
 
 const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION = Object.freeze({
@@ -284,6 +293,7 @@ function makeBoundary({
   f = fixture(),
   aebStore = durableAebStore(),
   attempts = attemptStore(),
+  consequenceEnvelope = undefined as ConsequenceEnvelopeBoundary | undefined,
   localAuthorize = () => true,
   invoke = async () => ({ state: 'EXECUTED' as const, evidence: executedEvidence(), result: { id: 'effect-1' } }),
 } = {}) {
@@ -302,11 +312,76 @@ function makeBoundary({
         return { ...structuredClone(row.binding), owner: row.owner as any };
       },
     },
+    consequence_envelope: consequenceEnvelope,
+    allow_test_consequence_envelope: consequenceEnvelope ? true : undefined,
     local_authorize: localAuthorize,
     invoke,
     now: () => NOW,
   });
   return { boundary, aebStore, attempts };
+}
+
+async function unitConsequenceEnvelope(capacityUnits = '1') {
+  const edPrivate = crypto.createPrivateKey({
+    key: {
+      crv: 'Ed25519',
+      d: 'EBsZ3aVNd8cSzmZECgG0MMAPTreFIhgDFtTY9UTkQ_Y',
+      x: 'c_kUSHs4ymdA65GF3OV8C3PDWhelodqfOvCmFe-6oUI',
+      kty: 'OKP',
+    },
+    format: 'jwk',
+  });
+  const edPublic = crypto.createPublicKey(edPrivate);
+  const pqPair = ml_dsa65.keygen(new Uint8Array(32).fill(0x61));
+  const mldsaBackend = await loadDefaultAgilityMldsaBackend();
+  assert.ok(mldsaBackend);
+  const envelope = await issueConsequenceEnvelope({
+    envelope_id: 'envelope:boundary-integration:1',
+    state_domain_id: 'state-domain:boundary-integration',
+    epoch: 1,
+    capacity_units: capacityUnits,
+    impact_profile_id: FINANCE_CUMULATIVE_EXPOSURE_PROFILE.id,
+    impact_profile_digest: FINANCE_CUMULATIVE_EXPOSURE_PROFILE.digest,
+    validity: {
+      not_before: '2026-08-09T12:00:00.000Z',
+      not_after: '2026-08-09T12:10:00.000Z',
+    },
+    issuer: { id: 'authority:boundary-integration', key_id: 'envelope-ed' },
+    parent_allocation: null,
+    renewable: false,
+  }, {
+    signing_keys: [
+      { alg: 'Ed25519', key_id: 'envelope-ed', private_key: edPrivate },
+      { alg: 'ML-DSA-65', key_id: 'envelope-pq', private_key: pqPair.secretKey },
+    ],
+    mldsaBackend,
+  });
+  return createConsequenceEnvelopeBoundary({
+    envelope,
+    verification_keys: [
+      {
+        alg: 'Ed25519',
+        key_id: 'envelope-ed',
+        public_key: edPublic.export({ type: 'spki', format: 'der' }).toString('base64url'),
+      },
+      {
+        alg: 'ML-DSA-65',
+        key_id: 'envelope-pq',
+        public_key: Buffer.from(pqPair.publicKey).toString('base64url'),
+      },
+    ],
+    mldsaBackend,
+    profile: {
+      ...FINANCE_CUMULATIVE_EXPOSURE_PROFILE,
+      derive() {
+        return { ok: true as const, impact_units: 1n };
+      },
+    },
+    store: createMemoryConsequenceEnvelopeStore(),
+    allow_test_store: true,
+    now: () => NOW,
+    authorize_recovery: ({ recovery_authorization }) => recovery_authorization === 'recovery:approved',
+  });
 }
 
 test('neutral consequence boundary executes native mandate evidence without requiring a receipt or human role', async () => {
@@ -634,4 +709,88 @@ test('INDETERMINATE is closed to replay but can be reconciled through separately
   assert.equal(reconciled.state, 'EXECUTED');
   const replay = await h.boundary.run(input(f));
   assert.equal(replay.state, 'REFUSED');
+});
+
+test('a shared consequence envelope refuses oversubscription before a second provider entry', async () => {
+  const envelope = await unitConsequenceEnvelope('1');
+  const first = fixture({ operationId: 'operation:capacity:first', replayId: 'native-mandate:capacity:first' });
+  const second = fixture({ operationId: 'operation:capacity:second', replayId: 'native-mandate:capacity:second' });
+  let providerCalls = 0;
+  const invoke = async () => {
+    providerCalls += 1;
+    return { state: 'EXECUTED' as const, evidence: executedEvidence(), result: { admitted: true } };
+  };
+  const firstBoundary = makeBoundary({ f: first, consequenceEnvelope: envelope, invoke });
+  const secondBoundary = makeBoundary({ f: second, consequenceEnvelope: envelope, invoke });
+
+  assert.equal((await firstBoundary.boundary.run(input(first))).state, 'EXECUTED');
+  const refused = await secondBoundary.boundary.run(input(second));
+  assert.equal(refused.state, 'REFUSED');
+  assert.equal(refused.reason, 'consequence_envelope_capacity_exceeded');
+  assert.equal(providerCalls, 1);
+  assert.equal(secondBoundary.aebStore.operations.size, 0);
+  assert.deepEqual(envelope.snapshot(), {
+    capacity_units: '1',
+    available_units: '0',
+    held_units: '0',
+    committed_units: '1',
+  });
+});
+
+test('unknown provider outcome keeps aggregate capacity unavailable and reconciliation never reexecutes', async () => {
+  const envelope = await unitConsequenceEnvelope('1');
+  const f = fixture({ operationId: 'operation:capacity:unknown', replayId: 'native-mandate:capacity:unknown' });
+  let providerCalls = 0;
+  const h = makeBoundary({
+    f,
+    consequenceEnvelope: envelope,
+    invoke: async () => {
+      providerCalls += 1;
+      throw new Error('response_lost');
+    },
+  });
+  const first = await h.boundary.run(input(f));
+  assert.equal(first.state, 'INDETERMINATE');
+  assert.ok(first.attempt);
+  assert.equal(providerCalls, 1);
+  assert.equal(envelope.snapshot().committed_units, '1');
+
+  const retry = await h.boundary.run(input(f));
+  assert.equal(retry.state, 'REFUSED');
+  assert.equal(providerCalls, 1);
+
+  const reconciled = await h.boundary.reconcile({
+    evaluation: f.evaluation,
+    action: ACTION,
+    artifacts: f.artifacts,
+    attempt: first.attempt,
+    outcome: { state: 'EXECUTED', evidence: executedEvidence(), result: { id: 'effect:reconciled' } },
+    recovery_authorization: 'recovery:approved',
+  });
+  assert.equal(reconciled.state, 'EXECUTED');
+  assert.equal(providerCalls, 1);
+  assert.equal(envelope.snapshot().committed_units, '1');
+});
+
+test('authoritative non-commitment releases aggregate capacity without reviving spent authority', async () => {
+  const envelope = await unitConsequenceEnvelope('1');
+  const f = fixture({ operationId: 'operation:capacity:failed', replayId: 'native-mandate:capacity:failed' });
+  const h = makeBoundary({
+    f,
+    consequenceEnvelope: envelope,
+    invoke: async () => ({
+      state: 'FAILED',
+      reason: 'provider_declined',
+      evidence: {
+        evidence_id: 'provider-evidence:capacity-failed',
+        observed_at: '2026-08-09T12:00:02.000Z',
+        evidence_digest: digestAeb({ provider: 'bank', outcome: 'not-committed', id: 'capacity' }),
+      },
+    }),
+  });
+  const failed = await h.boundary.run(input(f));
+  assert.equal(failed.state, 'FAILED');
+  assert.equal(envelope.snapshot().available_units, '1');
+  assert.equal(envelope.snapshot().committed_units, '0');
+  assert.equal((await h.boundary.run(input(f))).state, 'REFUSED');
 });
