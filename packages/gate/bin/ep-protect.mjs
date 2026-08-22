@@ -3,7 +3,7 @@
 // Generated from ep-protect.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
 import { randomUUID } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { strictJsonGate } from '@emilia-protocol/verify/strict-json';
 import { signProtectionActivation } from '../protection-activation.js';
@@ -52,7 +52,7 @@ export function activateProtectionPlan(args, now = new Date()) {
         writeFileSync(outPath, rendered, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
     return { output: outPath || '-', activation };
 }
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) {
     try {
         const result = activateProtectionPlan(process.argv.slice(2));
         if (result.output === '-')

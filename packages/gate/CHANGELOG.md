@@ -3,6 +3,15 @@
 
 ## Unreleased
 
+## 0.23.19 (2026-08-21)
+
+- Make the installed `ep-protect` executable resolve npm's bin symlink before
+  deciding whether it is the process entry point. Version 0.23.18 could exit
+  successfully without activating or writing an artifact when invoked through
+  the normal npm-installed command.
+- Add a subprocess regression that invokes the executable through an
+  npm-shaped symlink and requires an activation artifact to be written.
+
 ## 0.23.18 (2026-08-21)
 
 - Reissue the customer-owned consequence-protection release after npm 12
