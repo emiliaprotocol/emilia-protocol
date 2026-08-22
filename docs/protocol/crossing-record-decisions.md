@@ -127,6 +127,44 @@ Dossier rendering. Technical invariants only.
     list. Physical-world and correctness claims require a separately
     authenticated observer whose stamp is itself subject to this rule.
 
+## The locked boundary contract (2026-08-21)
+
+21. The settled architecture statement, locked; amend only through this
+    file, with the reason: At a completely mediated protected boundary,
+    EMILIA derives the material action from executor-observed facts under a
+    relying-party-pinned mapping; verifies the required native authority,
+    narrowing or refusing it and never broadening it; derives a
+    profile-defined replay unit from the verified authority instance;
+    atomically makes that replay unit unavailable in the owning state
+    domain before provider entry; permits at most one admitted provider
+    attempt; and emits independently verifiable records that keep
+    evaluation, admission, authority consumption, provider outcome, effect
+    observation, and reconciliation separate. Uncertainty never becomes
+    authority to retry.
+
+22. Naming is layered and frozen: "authority toll booth" is the public
+    metaphor; "protected consequence boundary" is the technical
+    architecture term; AEB is the standards contract; EMILIA Gate is the
+    product; the AEB Crossing Record is the evidence. No additional
+    acronym is introduced between AEB and Gate. Properties of this
+    contract are described as defining, never as unique or without
+    competitor, and comparative claims are made row by row against named
+    external work, never from memory.
+
+23. Aggregate consequence limits are RESERVATIONS, not detections. A
+    shared consequence envelope is a signed, epoch-bound capacity owned by
+    exactly ONE state domain; boundaries atomically reserve an operator-
+    specified conservative impact contribution against it before provider
+    entry, and a reservation that would exceed the envelope refuses before
+    entry. An unreachable envelope authority is a refusal, subject only to
+    an operator-declared local floor. Envelope refill or rollover is
+    receipted authority issuance, never a timer side effect. Rate,
+    entropy, velocity, correlation, and anomaly models may tighten policy
+    or page an operator; they never create or substitute for the hard
+    safety conclusion, and no envelope spans state domains it does not
+    own (the single-use physics of decision 6 applies to shared capacity
+    unchanged).
+
 ## Language
 
 16. Native authority systems are an OPEN SET behind one bounded adapter
