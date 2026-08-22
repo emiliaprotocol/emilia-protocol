@@ -55,7 +55,16 @@ invariant(xml.includes('unregistered_signed_statement'), 'draft missing Action S
 invariant(xml.includes('80 targeted tests pass across four files'), 'draft test receipt is stale');
 invariant(Array.isArray(vectors.vectors) && vectors.vectors.length === 6, 'GRACE vector count must remain six');
 
-invariant(!existsSync(new URL('UPLOAD-THIS/', packet)), 'held partner profile must not contain UPLOAD-THIS');
+const readme = readFileSync(new URL('README.md', packet), 'utf8');
+const validation = readFileSync(new URL('VALIDATION.md', packet), 'utf8');
+invariant(readme.includes('explicitly authorized a one-time override'),
+  'GRACE publication override is not recorded in README');
+invariant(validation.includes('explicitly authorized immediate filing'),
+  'GRACE publication authorization is not recorded in validation receipt');
+invariant(readme.includes('does not claim that the separate\nnamed-external-implementation exception was satisfied'),
+  'GRACE publication override must not imply external implementation');
+invariant(!existsSync(new URL('UPLOAD-THIS/', packet)),
+  'single-source upload profile must not contain a drifting UPLOAD-THIS duplicate');
 const renderDir = new URL('RENDERS/', packet);
 const actualRenders = readdirSync(renderDir).filter((name) => !name.startsWith('.')).sort();
 invariant(JSON.stringify(actualRenders) === JSON.stringify(renderNames),
@@ -81,4 +90,4 @@ for (const [relative, digest] of listed) {
   invariant(sha256(readFileSync(new URL(relative, packet))) === digest, `${relative}: checksum mismatch`);
 }
 
-console.log('GRACE curtailment profile: claim boundary, current identifiers, six vectors, held status, and artifact checksums PASS.');
+console.log('GRACE curtailment profile: claim boundary, current identifiers, six vectors, publication authorization, and artifact checksums PASS.');

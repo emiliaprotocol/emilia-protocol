@@ -49,18 +49,23 @@ The circuit labels its actuator and meter as simulations and claims no physical 
   The PDF is not a native xml2rfc PDF because the local xml2rfc installation lacks the optional
   WeasyPrint native libraries.
 - `npm run check:grace-curtailment-profile` checks current profile identifiers, prohibited
-  overclaims, the meter-rule boundary, Action State limits, six declared vertical vectors, held
-  publication status, and all four artifact digests.
+  overclaims, the meter-rule boundary, Action State limits, six declared vertical vectors,
+  publication authorization, and all four artifact digests.
 
-## Publication receipt
+## Publication authorization
 
 - `https://datatracker.ietf.org/doc/draft-schrock-kintzele-grid-curtailment/` returned HTTP 404 on
   2026-08-21.
-- The packet contains no `UPLOAD-THIS` directory.
-- The repository's new-name filing freeze runs through 2026-11-01 unless its named-external-gap
-  exception is documented.
+- The repository's ordinary new-name filing freeze would run through 2026-11-01.
+- On 2026-08-21, founder Iman Schrock explicitly authorized immediate filing as a one-time internal
+  governance override after the final source, renders, hashes, tests, formal scenarios, security
+  case, and production build passed.
+- This override does not claim that the named-external-implementation exception was satisfied.
 - Justin D Kintzele approved submission as coauthor and confirmed the exact published metadata
   `Justin D Kintzele`, `J Diesel NY, LLC`, and `jkintzele@jdieselny.com` by email on 2026-08-21.
+- The exact upload source is
+  `REVIEW-SOURCE/draft-schrock-kintzele-grid-curtailment-00.xml`, pinned by `SHA256SUMS.txt`. The
+  packet contains no duplicate `UPLOAD-THIS` copy.
 - Nothing was submitted to the IETF.
 
 ## Claim limits
