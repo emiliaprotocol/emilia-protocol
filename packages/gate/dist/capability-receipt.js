@@ -2896,6 +2896,14 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
             validateActionDigest(actionDigest);
             const at = nowMs(now);
             return transaction(async (query) => {
+                // Match reserveSpend and beginProviderEntry: capability state is the
+                // first lock whenever a transition can move reserved budget. Locking
+                // the operation first here would deadlock against provider entry,
+                // which locks state before the same operation.
+                const stateResult = await query(CAPABILITY_SQL.readState, [capabilityId]);
+                const state = stateResult?.rows?.[0];
+                if (!state)
+                    return { ok: false, reason: 'capability_not_registered' };
                 const operationResult = await query(CAPABILITY_SQL.readOperation, [operationNamespace, operationId]);
                 const operation = operationResult?.rows?.[0];
                 if (!operation)

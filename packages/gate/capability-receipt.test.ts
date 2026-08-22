@@ -4002,7 +4002,7 @@ test('real PostgreSQL serializes emergency freeze against provider entry and pre
     const entryAfterReleaseStore = createPostgresCapabilityStore({
       transaction: transactionFor({
         before(sql) {
-          if (sql === CAPABILITY_SQL.readOperation) lateEntryReachedLock.release();
+          if (sql === CAPABILITY_SQL.readState) lateEntryReachedLock.release();
         },
       }),
       verifyControlTransition,
