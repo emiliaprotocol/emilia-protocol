@@ -4,6 +4,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
+  blindRetryNotice,
   buildAuthorityNotification,
   simulateAuthorityPolicy,
   type AuthorityInboxEntry,
@@ -76,6 +77,7 @@ export default function AuthorityInboxPage(): React.ReactElement {
   const items = data?.authority_inbox ?? [];
   const visible = filter === 'ALL' ? items : items.filter((item) => item.state === filter);
   const selected = items.find((item) => item.receipt_id === selectedId) ?? visible[0] ?? null;
+  const priorIndeterminate = selected ? blindRetryNotice(selected) : null;
   const states = [...new Set(items.map((item) => item.state))];
 
   const simulation = useMemo(() => simulateAuthorityPolicy({
@@ -267,6 +269,18 @@ export default function AuthorityInboxPage(): React.ReactElement {
                       {STATE_LABELS[selected.state]}
                     </span>
                   </div>
+
+                  {priorIndeterminate ? (
+                    <div className={styles.blindRetryWarning} role="alert">
+                      <strong>Reconcile this attempt before issuing new authority</strong>
+                      <p>
+                        The prior provider outcome is indeterminate and retry-safe is false.
+                        A fresh approval could authorize the same effect twice. Complete an
+                        authenticated reconciliation first.
+                      </p>
+                      <code>{priorIndeterminate.prior_receipt_id}</code>
+                    </div>
+                  ) : null}
 
                   <dl className={styles.facts}>
                     <div><dt>CAID</dt><dd><code>{short(selected.exact_action.action_caid, 34)}</code></dd></div>

@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "6f652bc53eeb111f4c7e2308bf38d2a5f65eb1b0aaddb61048f09e7c4bb12e82"
+      "sha256": "2bc4b14a588cab9713122a7621e6de9fa54df9ea1188e00cc7843bbaabb796b2"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -607,7 +607,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "a0d0ded274778b7d11c31bced9583a587d96efe94ebdca3d24bfe40caf8ff8d5"
+      "sha256": "24e4bd0f226e41baf46cec768fcdf96bd029403eb3f9ec4a632f25c7e92d185f"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -667,7 +667,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "441a029ee018a1058ea0c946d9823d8b9d72fe8f8b99db04d99ad6bebafcaa38"
+      "sha256": "79692b29aad9757f8f7ea5cfcece74ce6cbf979a731fd52d4452bb954648bdaa"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -723,7 +723,7 @@
     },
     {
       "path": "packages/gate/dist/provider-entry.js",
-      "sha256": "6ce34d4fe67739776965bc845d322e80eb3192137880f6fb38f26ff408ffbc25"
+      "sha256": "72eed666338cbf335b861d270cd62c133037899ddd319e25c8de4134f6242a92"
     },
     {
       "path": "packages/gate/dist/receipt-census.js",
@@ -855,7 +855,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "9085451ce4b48f89d29926230950b28152242e9610287c0a8e861ddc2972cbd1"
+      "sha256": "d963425f0f2cbb280979008ad1d83577a96e59060cb3e5c152f4e3b7d50c6bbe"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -875,7 +875,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "8ee8c68eb871abde079f34f1e7df44a18a1552bee4c970d5280dc1ed34a85268"
+      "sha256": "e7d74db259fd70beb9363ecea6a83f5701e13fa5eae731c2e398421a28086f3f"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -1031,7 +1031,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "113b453abf7cc4ff8e4e6d74732dd5da80c48b91e1c3ec10bbab5e7bbc258811"
+      "sha256": "19f4ad5c4cad003f7955cebdd1f8675d85941f75ac6ffc168f6a296897704668"
     },
     {
       "path": "packages/verify/dist/aeb-aps-adapter.js",
@@ -1303,7 +1303,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "261f4429044c5a7c434aea63751852606cbed2ca3f9c96830dd24868800f43f3"
+      "sha256": "8b69f50cc4708dc42fec576d66b23f8a05645a2afa094e36463bbd282deabe10"
     },
     {
       "path": "packages/verify/src/authority-program.ts",

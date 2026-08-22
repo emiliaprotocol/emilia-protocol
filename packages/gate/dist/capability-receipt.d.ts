@@ -12,6 +12,7 @@
  * the budget.  The reservation remains blocked until reconciliation.
  */
 import { randomBytes, type KeyObject } from 'node:crypto';
+import { type ProviderEntryGuard } from './provider-entry.js';
 import { type AgilityOptions } from '@emilia-protocol/verify/pq-signature-agility';
 export declare const CAPABILITY_RECEIPT_VERSION = "EP-CAPABILITY-RECEIPT-v1";
 export declare const CAPABILITY_STATE_VERSION = "EP-CAPABILITY-STATE-v1";
@@ -152,7 +153,7 @@ type ExecuteWithCapabilityOptions = {
     operationId?: string | null;
     now?: number | (() => number);
     thresholdSecretVerified?: boolean;
-    providerEntryGuard?: ((context: Record<string, any>) => any) | null;
+    providerEntryGuard?: ProviderEntryGuard | null;
 };
 type ExecuteWithCapabilityResult = {
     ok: boolean;

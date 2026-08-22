@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import test from 'node:test';
 
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
@@ -252,6 +253,27 @@ test('a preissued local slice is globally deducted, epoch-bound, and nonrenewabl
   });
   assert.equal(child.snapshot().capacity_units, '300');
   assert.deepEqual(await child.renew(), { status: 'REFUSED', reason: 'consequence_envelope_new_signed_epoch_required' });
+
+  const bounded = await child.reserve({
+    operation_id: 'operation:edge:bounded',
+    state_domain_id: 'state-domain:finance-edge-one',
+    expected_epoch: 1,
+    action: { action_type: 'finance.vendor-payment.1', amount_minor: 300, currency: 'USD' },
+  });
+  assert.equal(bounded.status, 'RESERVED');
+  assert.deepEqual(await child.reserve({
+    operation_id: 'operation:edge:overflow',
+    state_domain_id: 'state-domain:finance-edge-one',
+    expected_epoch: 1,
+    action: { action_type: 'finance.vendor-payment.1', amount_minor: 1, currency: 'USD' },
+  }), { status: 'REFUSED', reason: 'consequence_envelope_capacity_exceeded' });
+  assert.equal(parent.boundary.snapshot().committed_units, '300');
+});
+
+test('consequence envelopes contain no timer-driven refill path', () => {
+  const source = fs.readFileSync(new URL('./src/consequence-envelope.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /\bset(?:Interval|Timeout)\s*\(/u);
+  assert.match(source, /NEW_SIGNED_EPOCH_ONLY/u);
 });
 
 test('grid hard safety derives conservative impact; telemetry cannot increase capacity', async () => {

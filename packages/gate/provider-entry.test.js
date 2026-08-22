@@ -27,6 +27,19 @@ test('provider-entry context is immutable and a throwing guard fails closed', as
     assert.throws(() => { context.observed_action.amount = 1; }, TypeError);
     assert.deepEqual(await evaluateProviderEntryGuard(async () => { throw new Error('status down'); }, context), { ok: false, reason: 'provider_entry_guard_unavailable', status: 503, reservation: 'hold' });
 });
+test('every unavailable or malformed provider-entry refusal pins the reservation to hold', async () => {
+    const context = providerEntryContext({ authorization: {}, now: NOW });
+    for (const guard of [
+        'not-a-function',
+        async () => null,
+        async () => ({ ok: 'yes' }),
+        async () => { throw new Error('status down'); },
+    ]) {
+        const result = await evaluateProviderEntryGuard(guard, context);
+        assert.equal(result.ok, false);
+        assert.equal(result.reservation, 'hold');
+    }
+});
 test('organization status guard refuses stale, mismatched, unauthenticated, and suspended state', async () => {
     let observation = {
         organization_id: 'org_a',
@@ -50,12 +63,28 @@ test('organization status guard refuses stale, mismatched, unauthenticated, and 
         reservation: 'burn',
         evidence: { organization_id: 'org_a', status: 'suspended', epoch: 5 },
     });
-    observation = { ...observation, status: 'active', authenticated: false };
-    assert.equal((await guard(context)).reason, 'organization_status_unauthenticated');
-    observation = { ...observation, authenticated: true, organization_id: 'org_b' };
-    assert.equal((await guard(context)).reason, 'organization_status_mismatch');
-    observation = { ...observation, organization_id: 'org_a', observed_at: new Date(NOW - 6_000).toISOString() };
-    assert.equal((await guard(context)).reason, 'organization_status_stale');
+    for (const [candidate, reason] of [
+        [{ ...observation, status: 'active', authenticated: false }, 'organization_status_unauthenticated'],
+        [{ ...observation, status: 'active', authenticated: true, organization_id: 'org_b' }, 'organization_status_mismatch'],
+        [{ ...observation, status: 'active', organization_id: 'org_a', epoch: -1 }, 'organization_status_epoch_invalid'],
+        [{ ...observation, status: 'active', organization_id: 'org_a', observed_at: new Date(NOW - 6_000).toISOString() }, 'organization_status_stale'],
+    ]) {
+        observation = candidate;
+        const result = await guard(context);
+        assert.equal(result.reason, reason);
+        assert.equal(result.reservation, 'hold');
+    }
+    const unavailable = createOrganizationStatusProviderEntryGuard({
+        organizationId: 'org_a',
+        resolveStatus: async () => { throw new Error('status source down'); },
+        now: NOW,
+    });
+    assert.deepEqual(await unavailable(context), {
+        ok: false,
+        reason: 'organization_status_unavailable',
+        status: 503,
+        reservation: 'hold',
+    });
 });
 test('composed guards stop at the first refusal and preserve prior evidence', async () => {
     let second = 0;
@@ -65,7 +94,7 @@ test('composed guards stop at the first refusal and preserve prior evidence', as
     assert.equal(result.reason, 'panic');
     assert.equal(second, 1);
 });
-test('Gate burns a pending receipt when the organization panics before provider entry', async () => {
+test('an observation-only organization guard cannot authorize an unserialized Gate path', async () => {
     const harness = createEg1Harness({ action: ACTION, now: () => NOW, idPrefix: 'provider-entry' });
     let status = 'suspended';
     const organizationGuard = createOrganizationStatusProviderEntryGuard({
@@ -94,7 +123,7 @@ test('Gate burns a pending receipt when the organization panics before provider 
     let effects = 0;
     const first = await gate.run({ selector: SELECTOR, receipt, observedAction: ACTION }, async () => { effects += 1; });
     assert.equal(first.ok, false);
-    assert.equal(first.authorization.reason, 'organization_suspended');
+    assert.equal(first.authorization.reason, 'provider_entry_serialized_control_domain_required');
     assert.equal(effects, 0);
     status = 'active';
     const replay = await gate.run({ selector: SELECTOR, receipt, observedAction: ACTION }, async () => { effects += 1; });

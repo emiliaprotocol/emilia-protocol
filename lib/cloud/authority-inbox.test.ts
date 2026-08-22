@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   authorityInboxMetrics,
+  blindRetryNotice,
   buildAuthorityNotification,
   projectAuthorityInboxEntry,
   simulateAuthorityPolicy,
@@ -152,6 +153,22 @@ describe('authority inbox metrics', () => {
 });
 
 describe('policy simulation and notifications', () => {
+  it('surfaces a prior indeterminate attempt before any new authority', () => {
+    const item = projectAuthorityInboxEntry({
+      ...base,
+      status: 'consumed',
+      consumed_at: '2026-08-18T10:10:00.000Z',
+    });
+    expect(blindRetryNotice(item)).toEqual({
+      prior_attempt_state: 'INDETERMINATE',
+      prior_receipt_id: 'r_01',
+      retry_safe: false,
+      required_next_step: 'AUTHENTICATED_RECONCILIATION',
+      authorizes_new_authority: false,
+    });
+    expect(blindRetryNotice(projectAuthorityInboxEntry(base))).toBeNull();
+  });
+
   it('returns a non-authorizing policy preview', () => {
     const result = simulateAuthorityPolicy({
       action_type: 'large_payment_release',

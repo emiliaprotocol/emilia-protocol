@@ -15,6 +15,7 @@
  */
 import { createHash, createPrivateKey, createPublicKey, randomBytes, randomUUID, sign, timingSafeEqual, verify, } from 'node:crypto';
 import { canonicalize } from './execution-binding.js';
+import { evaluateProviderEntryGuard, providerEntryContext, requiredProviderEntryControlDomain, } from './provider-entry.js';
 import { signAgileSet, verifyAgileSignatureSet, ML_DSA_65_PUBLIC_KEY_BYTES, } from '@emilia-protocol/verify/pq-signature-agility';
 export const CAPABILITY_RECEIPT_VERSION = 'EP-CAPABILITY-RECEIPT-v1';
 export const CAPABILITY_STATE_VERSION = 'EP-CAPABILITY-STATE-v1';
@@ -2895,6 +2896,14 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
             validateActionDigest(actionDigest);
             const at = nowMs(now);
             return transaction(async (query) => {
+                // Match reserveSpend and beginProviderEntry: capability state is the
+                // first lock whenever a transition can move reserved budget. Locking
+                // the operation first here would deadlock against provider entry,
+                // which locks state before the same operation.
+                const stateResult = await query(CAPABILITY_SQL.readState, [capabilityId]);
+                const state = stateResult?.rows?.[0];
+                if (!state)
+                    return { ok: false, reason: 'capability_not_registered' };
                 const operationResult = await query(CAPABILITY_SQL.readOperation, [operationNamespace, operationId]);
                 const operation = operationResult?.rows?.[0];
                 if (!operation)
@@ -3262,6 +3271,13 @@ export async function executeWithCapability({ capabilityReceipt, secret, action,
     if (providerEntryGuard !== null && typeof providerEntryGuard !== 'function') {
         throw new TypeError('providerEntryGuard must be a function when configured');
     }
+    const requiredControlDomainId = requiredProviderEntryControlDomain(providerEntryGuard);
+    if (requiredControlDomainId !== null && controlDomainId !== requiredControlDomainId) {
+        return { ok: false, reason: 'capability_provider_entry_control_domain_required' };
+    }
+    if (requiredControlDomainId !== null && store?.controlDomainCapable !== true) {
+        return { ok: false, reason: 'capability_control_domain_store_required' };
+    }
     if (typeof requireHumanAuthorization !== 'boolean') {
         return { ok: false, reason: 'capability_human_authorization_configuration_invalid' };
     }
@@ -3395,32 +3411,38 @@ export async function executeWithCapability({ capabilityReceipt, secret, action,
         };
     }
     if (providerEntryGuard) {
-        let entryVerdict;
-        try {
-            entryVerdict = await providerEntryGuard(Object.freeze({
-                authorization: structuredClone(authorization),
-                human_authorization: humanAuthorizationResult
-                    ? structuredClone(humanAuthorizationResult)
-                    : null,
-                budget_guarantee: structuredClone(budgetGuarantee),
-                selector: structuredClone(selector),
-                observed_action: structuredClone(immutableAction),
-                capability: structuredClone({
-                    id: verified.capability.id,
+        const baseEntryContext = providerEntryContext({
+            authorization,
+            selector,
+            observedAction: immutableAction,
+            capability: {
+                id: verified.capability.id,
+                operation_id: operationId,
+                action_digest: scope.action_digest,
+                action_fence_digest: scope.action_fence_digest,
+            },
+            now,
+        });
+        const entryVerdict = await evaluateProviderEntryGuard(providerEntryGuard, Object.freeze({
+            ...baseEntryContext,
+            human_authorization: humanAuthorizationResult
+                ? structuredClone(humanAuthorizationResult)
+                : null,
+            budget_guarantee: structuredClone(budgetGuarantee),
+        }));
+        if (!entryVerdict || entryVerdict.ok !== true) {
+            if (entryVerdict?.reason === 'provider_entry_guard_disposition_invalid') {
+                return {
+                    ok: false,
+                    reason: 'capability_provider_entry_disposition_invalid',
+                    authorization,
+                    ...composition,
                     operation_id: operationId,
                     action_digest: scope.action_digest,
                     action_fence_digest: scope.action_fence_digest,
-                }),
-            }));
-        }
-        catch {
-            entryVerdict = {
-                ok: false,
-                reason: 'provider_entry_guard_unavailable',
-                reservation: 'hold',
-            };
-        }
-        if (!entryVerdict || entryVerdict.ok !== true) {
+                    ...(scope.caid ? { caid: scope.caid } : {}),
+                };
+            }
             const suppliedDisposition = entryVerdict?.reservation;
             // Absence is uncertainty, not proof that provider entry did not happen.
             // Authority is restored only when a guard explicitly returns `release`.

@@ -4,8 +4,12 @@
 /**
  * EMILIA Guard — Claude Code PreToolUse hook.
  *
- * Catches irreversible / high-risk tool calls BEFORE they execute and requires
- * a named human's approval. Two modes, both FAIL-CLOSED:
+ * Heuristically catches common irreversible or high-risk tool calls before
+ * they execute and requires a human confirmation. This hook is a safety net,
+ * not an exact-action authorization boundary. Encoded, split, or novel command
+ * shapes can evade classification. Exact command mapping and receipt
+ * enforcement belong in the credential-owning shell or provider integration.
+ * Two modes, both fail closed for anything this hook classifies:
  *
  *   • Local mode (no account): a high-risk call returns `ask`, forcing a human
  *     permission prompt. Zero config, works offline. A free safety net.
@@ -14,8 +18,9 @@
  *     named human approves on their own device (Face ID / passkey) and the
  *     action proceeds only with an offline-verifiable Trust Receipt.
  *
- * Fail-closed invariant: on ANY error, timeout, or ambiguity the decision is
- * `ask` or `deny` — NEVER `allow`. A trust gate that fails open is not a gate.
+ * This heuristic layer never emits `allow`. On a matched call, error, timeout,
+ * or ambiguity it emits `ask` or `deny`. Unmatched calls return to Claude
+ * Code's normal permission flow and are not evidence that the call is safe.
  *
  * Reads a PreToolUse event on stdin; writes a permissionDecision on stdout.
  * https://code.claude.com/docs/en/hooks
@@ -24,7 +29,8 @@ import process from 'node:process';
 const BASE_URL = process.env.EP_BASE_URL || 'https://www.emiliaprotocol.ai';
 const API_KEY = process.env.EP_API_KEY || '';
 const ORG_ID = process.env.EP_ORG_ID || '';
-const TIMEOUT_S = Math.min(Number(process.env.EP_SIGNOFF_TIMEOUT_S) || 280, 590);
+const requestedTimeout = Number(process.env.EP_SIGNOFF_TIMEOUT_S);
+const TIMEOUT_S = Math.min(Number.isFinite(requestedTimeout) && requestedTimeout > 0 ? requestedTimeout : 30, 60);
 const POLL_MS = 3000;
 // ── decision emitters ───────────────────────────────────────────────────────
 function emit(decision, reason) {
@@ -120,7 +126,6 @@ if (flags.length === 0)
 const label = tool === 'Bash' ? `\`${(ti.command || '').slice(0, 120)}\``
     : tool.startsWith('mcp__') ? tool
         : `${tool} ${ti.file_path || ''}`.trim();
-const moneyOnly = flags.every((f) => f === 'external_or_money_action');
 // ── local mode: no account → force a human prompt (fail-closed) ──────────────
 if (!API_KEY || !ORG_ID) {
     emit('ask', `EMILIA — high-risk action (${flags.join(', ')}): ${label}. `
@@ -164,11 +169,7 @@ try {
         emit('deny', `EMILIA — BLOCKED by policy: ${(mint.reasons || []).join('; ') || 'denied'}. receipt ${mint.receipt_id}. Do not proceed.`);
     }
     if (!mint.signoff_required) {
-        // EMILIA adjudicates money/external actions. For purely-local risk it has no
-        // policy — never let a "no signoff" answer silently allow it; ask the human.
-        if (moneyOnly)
-            emit('allow', `EMILIA — allowed by policy. receipt ${mint.receipt_id} (verifiable offline).`);
-        emit('ask', `EMILIA — no money/external policy matched, but locally high-risk (${flags.join(', ')}): ${label}. Confirm a human intends this.`);
+        emit('ask', `EMILIA recorded the heuristic projection but this hook cannot authorize the exact provider action. receipt ${mint.receipt_id}. Confirm the actual command and arguments at the credential-owning boundary.`);
     }
     const sign = await ep('/api/v1/signoffs/request', {
         method: 'POST',
@@ -181,7 +182,7 @@ try {
         const r = await ep(`/api/v1/trust-receipts/${encodeURIComponent(mint.receipt_id)}`);
         const st = r.receipt_status || r.status || 'pending';
         if (['approved_pending_consume', 'approved', 'consumed', 'fulfilled'].includes(st)) {
-            emit('allow', `EMILIA — APPROVED by a named human on their device. receipt ${mint.receipt_id}. Verify offline: npx @emilia-protocol/verify`);
+            emit('ask', `EMILIA received a named-human approval for the heuristic projection. receipt ${mint.receipt_id}. Review the exact command and arguments before proceeding; exact authorization must be enforced at the credential-owning boundary.`);
         }
         if (['denied', 'rejected', 'revoked'].includes(st)) {
             emit('deny', `EMILIA — a named human REJECTED this action. receipt ${mint.receipt_id}. Do not proceed.`);

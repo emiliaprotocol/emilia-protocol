@@ -939,8 +939,20 @@ function deriveEvaluation(options) {
                 legs.push(base);
                 continue;
             }
+            const replayProbe = adapter.verifyNative({
+                artifact,
+                artifact_ref: `urn:emilia:aeb-wrapper-parity:${digest({ artifact_ref: input.artifact_ref })}`,
+                status,
+                trust_roots: trustRoots,
+                adapter_config: adapterConfig,
+                expected_action: expectedAction,
+                now: options.evaluated_at,
+            });
+            const replayUnitStable = isObject(replayProbe)
+                && validDigest(replayProbe.replay_unit)
+                && replayProbe.replay_unit === native.replay_unit;
             base.native_verification = native.native_verification;
-            base.acceptance = native.acceptance;
+            base.acceptance = replayUnitStable ? native.acceptance : 'INDETERMINATE';
             base.evidence_role = native.evidence_role;
             base.subject = { id: native.subject.id, kind: native.subject.kind };
             base.replay_unit = native.replay_unit;
@@ -951,6 +963,8 @@ function deriveEvaluation(options) {
                 }));
             }
             base.reasons.push(...native.reasons);
+            if (!replayUnitStable)
+                base.reasons.push('replay_unit_wrapper_dependent');
             const roleEntry = roleRegistryEntry(options.config, native.evidence_role);
             const allowedSubjectKinds = roleEntry && isObject(roleEntry.definition) && Array.isArray(roleEntry.definition.subject_kinds)
                 ? roleEntry.definition.subject_kinds.map(String) : [];
@@ -1012,6 +1026,27 @@ function deriveEvaluation(options) {
         }
         base.reasons = sortedUnique(base.reasons);
         legs.push(base);
+    }
+    const replayBindings = new Map();
+    for (const [legIndex, leg] of legs.entries()) {
+        if (leg.native_verification !== 'VERIFIED')
+            continue;
+        const key = `${leg.adapter_id}\u0000${leg.replay_unit}`;
+        const prior = replayBindings.get(key);
+        if (!prior) {
+            replayBindings.set(key, { evidenceDigest: leg.evidence_digest, legIndexes: [legIndex] });
+            continue;
+        }
+        if (prior.evidenceDigest === leg.evidence_digest) {
+            prior.legIndexes.push(legIndex);
+            continue;
+        }
+        for (const collisionIndex of [...prior.legIndexes, legIndex]) {
+            const collision = legs[collisionIndex];
+            collision.acceptance = 'INDETERMINATE';
+            collision.verdict = 'INDETERMINATE';
+            collision.reasons = sortedUnique([...collision.reasons, 'replay_unit_authority_collision']);
+        }
     }
     const zero = ('sha256:' + '0'.repeat(64));
     let composition = {

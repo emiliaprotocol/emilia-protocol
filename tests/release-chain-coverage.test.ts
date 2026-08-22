@@ -208,6 +208,26 @@ describe('release-chain coverage', () => {
     expect(validateGoTagWorkflowText(workflow)).toBe(true);
   });
 
+  it('bounds registry propagation waits instead of leaving a reissue window open-ended', () => {
+    const npm = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    expect(() => validateReusableNpmWorkflowText(npm.replace(
+      'for attempt in {1..120}; do',
+      'for attempt in {1..121}; do',
+    ))).toThrow(/propagation window/);
+    expect(() => validateReusableNpmWorkflowText(npm.replace('sleep 5', 'sleep 6'))).toThrow(
+      /propagation window/,
+    );
+
+    const go = readFileSync('.github/workflows/publish-go-verify.yml', 'utf8');
+    expect(() => validateGoTagWorkflowText(go.replace(
+      'for _ in $(seq 1 90); do',
+      'for _ in $(seq 1 91); do',
+    ))).toThrow(/propagation window/);
+    expect(() => validateGoTagWorkflowText(go.replace('sleep 10', 'sleep 11'))).toThrow(
+      /propagation window/,
+    );
+  });
+
   it('refuses a Go tag publisher without public-proxy source comparison', () => {
     const workflow = readFileSync('.github/workflows/publish-go-verify.yml', 'utf8');
     const weakened = workflow.replace('diff -ru packages/go-verify "$PROXY_DIR"', 'true # comparison removed');

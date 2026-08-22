@@ -117,6 +117,18 @@ function requireBefore(text: string, earlier: string, later: string, label: stri
   }
 }
 
+function requireBoundedPropagationWindow(
+  text: string,
+  label: string,
+  attempts: string,
+  delay: string,
+  maximumSeconds: number,
+): void {
+  if (!text.includes(attempts) || !text.includes(delay)) {
+    throw new Error(`${label} propagation window must remain bounded to ${maximumSeconds} seconds`);
+  }
+}
+
 function requireOnlyActionRef(text: string, expected: string, label: string): void {
   const action = expected.slice(0, expected.lastIndexOf('@'));
   const actionPattern = new RegExp(`${escapeRegExp(action)}@[^\\s#"']+`, 'gu');
@@ -261,6 +273,13 @@ export function validateReusableNpmWorkflowText(text: string): boolean {
     'node scripts/check-npm-package-dependencies.mjs --install-pinned "$PACKAGE_DIR"',
     'group: registry-publish-${{ inputs.package_name }}',
   ], 'reusable npm workflow');
+  requireBoundedPropagationWindow(
+    text,
+    'reusable npm workflow registry verification',
+    'for attempt in {1..120}; do',
+    'sleep 5',
+    600,
+  );
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.checkout, 'reusable npm workflow checkout action');
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.attest, 'reusable npm workflow attestation action');
   if (text.includes('ref: ${{ inputs.release_tag }}')
@@ -415,6 +434,13 @@ export function validateGoTagWorkflowText(text: string): boolean {
     'diff -ru packages/go-verify "$PROXY_DIR"',
     'release-artifacts/go-verify-proxy.zip',
   ], 'Go tag workflow');
+  requireBoundedPropagationWindow(
+    text,
+    'Go public-proxy verification',
+    'for _ in $(seq 1 90); do',
+    'sleep 10',
+    900,
+  );
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.checkout, 'Go tag workflow checkout action');
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.attest, 'Go tag workflow attestation action');
   let workflow: any;
