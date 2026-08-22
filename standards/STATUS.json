@@ -1,9 +1,10 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-08-16",
-  "active_datatracker_count": 23,
-  "active_schrock_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. AEB-04, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive before promotion. Retained submission packets in standards/staged are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
+  "updated": "2026-08-22",
+  "active_datatracker_count": 24,
+  "active_schrock_datatracker_count": 21,
+  "sole_authored_datatracker_count": 20,
+  "posted_snapshot_policy": "standards/posted contains the current published revision of each of the 20 active sole-authored draft-schrock-* Datatracker records represented in this repository. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. AEB-04, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -13,7 +14,7 @@
     "held": "Temporary state only. No document may remain held without a dated decision or explicit external trigger.",
     "canonical_presentation_surface": "Reader-facing navigation across current active individual drafts. It creates no consolidation, replacement, update, obsolescence, retirement, or merger relationship.",
     "publication_provenance_packet": "Exact submitted bytes retained for audit after publication. Not an upload candidate or filing queue.",
-    "new_filing_freeze": "No new Internet-Draft name or -00 filing may enter the filing lane from 2026-08-04 through 2026-11-01 inclusive. Maintenance revisions under active names remain allowed. The sole exception requires a wire-level gap demonstrated by a named external implementer or named external deployment, recorded evidence, and recorded overlap review."
+    "new_filing_freeze": "No new Internet-Draft name or -00 filing may enter the filing lane from 2026-08-04 through 2026-11-01 inclusive without the standing named-external-gap exception or a separately recorded governance override. Maintenance revisions under active names remain allowed. GRACE -00 is the sole recorded one-time governance override and does not claim that the named-external-gap exception was satisfied."
   },
   "decision_vocabulary": {
     "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
@@ -78,9 +79,10 @@
   "active_profile_portfolio": {
     "status": "preserved_distinct_from_navigation_views",
     "source_of_truth": "active_datatracker",
-    "active_datatracker_count": 23,
-    "active_schrock_datatracker_count": 20,
-    "coauthored_datatracker_count": 3,
+    "active_datatracker_count": 24,
+    "active_schrock_datatracker_count": 21,
+    "sole_authored_datatracker_count": 20,
+    "coauthored_datatracker_count": 4,
     "relationship": "The canonical PRESENTATION surface and runtime execution spine are navigation views over active work. Neither view retires, merges, replaces, updates, obsoletes, subordinates, or demotes an active profile or lifecycle draft."
   },
   "runtime_execution_spine": {
@@ -137,15 +139,24 @@
     "through_date": "2026-11-01",
     "through_date_inclusive": true,
     "duration": "90 days",
-    "scope": "No new Internet-Draft name and no -00 filing may enter the filing lane during the freeze.",
+    "scope": "No new Internet-Draft name and no -00 filing may enter the filing lane during the freeze without the standing exception or a separately recorded governance override.",
     "maintenance_revisions": "Allowed under an existing active Datatracker draft name.",
-    "only_exception": {
+    "standing_exception": {
       "all_conditions_required": true,
       "gap": "A wire-level gap that cannot be handled by maintenance of an active draft.",
       "demonstration": "Demonstrated by a named external implementer or named external deployment.",
       "recorded_evidence": "Retained evidence identifies the implementer or deployment and demonstrates the wire-level interoperability gap.",
       "overlap_review": "A retained review records overlap with the active portfolio and adjacent specifications and shows that none already owns the gap."
     },
+    "recorded_one_time_overrides": [
+      {
+        "draft": "draft-schrock-kintzele-grid-curtailment-00",
+        "authorized_on": "2026-08-21",
+        "published_on": "2026-08-22",
+        "basis": "Founder-authorized one-time internal governance override after local source, render, checksum, conformance, security-case, and production-build gates passed and the coauthor approved submission.",
+        "boundary": "This override does not claim that the standing named-external-implementation exception was satisfied."
+      }
+    ],
     "active_draft_policy": "No active draft is retired or merged by this freeze.",
     "profile_policy": "The distinct active profile portfolio remains intact."
   },
@@ -354,6 +365,16 @@
       "layer": "architecture",
       "role": "Coauthored Agent Gateway deployment and exact-action authorization gap analysis",
       "next_action": "Published August 6; coordinate -04 hygiene and related-work corrections with Linda Dunbar before any further revision"
+    },
+    {
+      "draft": "draft-schrock-kintzele-grid-curtailment",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Coauthored GRACE application profile for exact grid-curtailment admission, authenticated actuator and meter evidence, Action State, and single-use settlement",
+      "source": "standards/profiles/NEXT-GRID-CURTAILMENT-00/REVIEW-SOURCE/draft-schrock-kintzele-grid-curtailment-00.xml",
+      "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-kintzele-grid-curtailment/",
+      "snapshot_sha256": "0c656d9cbdb0701a23668420460a6d1143efcf74db8919f4a9c24f4fd5697ba6",
+      "next_action": "Published August 22; use -00 as the current coauthored GRACE application-profile baseline while preserving its physical-truth, baseline-correctness, tariff-eligibility, payment, complete-mediation, deployment, adoption, and endorsement nonclaims"
     }
   ],
   "replaced_datatracker": [
@@ -739,6 +760,18 @@
         "state": "published_ietf_archive_verified_exact_local_match"
       }
     ]
+  },
+  "august_22_2026_grace_publication": {
+    "filing_date": "2026-08-22",
+    "publication_status": "published_and_ietf_archive_verified_2026_08_22",
+    "draft": "draft-schrock-kintzele-grid-curtailment-00",
+    "datatracker_submission_id": 167956,
+    "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-kintzele-grid-curtailment/",
+    "source": "standards/profiles/NEXT-GRID-CURTAILMENT-00/REVIEW-SOURCE/draft-schrock-kintzele-grid-curtailment-00.xml",
+    "xml_sha256": "0c656d9cbdb0701a23668420460a6d1143efcf74db8919f4a9c24f4fd5697ba6",
+    "txt_sha256": "8dd61f1f66077d64bb185c3a7a5354f46bb19f0d2f28beb9e2ff728a049adb87",
+    "verification": "The Datatracker lists revision -00 as an active individual Internet-Draft. The retained XML and TXT are byte-for-byte identical to the immutable IETF archive artifacts. This is publication, not working-group adoption, RFC status, implementation evidence, deployment evidence, or IETF endorsement.",
+    "state": "published_ietf_archive_verified_exact_local_match"
   },
   "retired_absorbed": [
     {

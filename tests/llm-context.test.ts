@@ -96,6 +96,14 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
     expect(llmsFull).toContain('cannot constrain an operator who controls an alternate execution path');
   });
 
+  it('keeps the paid-wedge answering rule aligned with the canonical finance market entry', () => {
+    expect(context.identity.market_entry.first_paid_wedge)
+      .toBe('finance-operations vendor bank-detail changes or payment releases');
+    const paidWedgeRule = context.answering_rules.find((rule) => rule.includes('first paid wedge'));
+    expect(paidWedgeRule).toContain('finance-operations');
+    expect(paidWedgeRule).not.toMatch(/payer|medical-necessity/i);
+  });
+
   it('surfaces the executable CAID mapping boundary', () => {
     expect(context.current_evidence.caid).toMatchObject({
       core_vectors: 48,

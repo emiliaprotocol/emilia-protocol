@@ -2,11 +2,12 @@
 
 This directory keeps local source snapshots for revisions already published on
 the IETF Datatracker. It contains the current published revision of all 20
-active `draft-schrock-*` records represented in this repository, plus the
-locally retained coauthored Memory Projection Record snapshot. Datatracker is
+sole-authored records represented in this repository, plus the locally retained
+coauthored Memory Projection Record snapshot. Datatracker is
 authoritative for current revisions and status; see
-[`../STATUS.json`](../STATUS.json) for the complete 23-record active inventory,
-including the three coauthored records.
+[`../STATUS.json`](../STATUS.json) for the complete 24-record active inventory,
+including four coauthored records. The GRACE-00 source and renders remain in
+the checksum-pinned `../profiles/NEXT-GRID-CURTAILMENT-00/` packet.
 
 Do not upload a file from this directory as a new draft. Maintenance revisions
 may be prepared in `../staged/`, rendered and tested, then filed through the
@@ -86,7 +87,7 @@ admission and one-time consequence custody.
 This spine is a separate navigation view. It is not the four-document
 presentation surface or a replacement portfolio. AEC appears in both views
 because evidence satisfaction feeds runtime admission, not because the views
-are equivalent. The complete active portfolio remains the 23-record inventory
+are equivalent. The complete active portfolio remains the 24-record inventory
 in [`../STATUS.json`](../STATUS.json), with each draft's scope and revision
 history preserved.
 
@@ -201,3 +202,11 @@ The retained `../staged/NEXT-ACTION-EVIDENCE-BOUNDARY-04` and
 `../staged/NEXT-AUTHORIZATION-RECEIPTS-12` packets are publication provenance,
 not upload candidates. Revisions AEB-03 and Authorization Receipts-11 are
 retained in `../archive/`.
+
+## August 22, 2026 GRACE publication
+
+The coauthored `draft-schrock-kintzele-grid-curtailment-00` was posted as an
+active individual Internet-Draft. Its retained XML and TXT in
+`../profiles/NEXT-GRID-CURTAILMENT-00/` match the immutable IETF archive
+byte-for-byte. The profile packet records the accepted submission, posting,
+digests, and explicit nonclaims.

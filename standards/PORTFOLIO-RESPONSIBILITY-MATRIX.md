@@ -1,13 +1,13 @@
-# Active `draft-schrock-*` responsibility matrix
+# Active sole-authored series responsibility matrix
 
-Updated: 2026-08-16
+Updated: 2026-08-22
 
 ## Decision and method
 
-This matrix covers all 20 active `draft-schrock-*` series in
+This matrix covers all 20 active sole-authored series in
 `STATUS.json.active_datatracker`. It is extension-agnostic: every current XML
 source in `standards/posted/` was read for its abstract, top-level sections,
-explicit claim boundary, inputs, and outputs. The three active coauthored
+explicit claim boundary, inputs, and outputs. The four active coauthored
 records in `STATUS.json` remain tracked separately and are not candidates for
 unilateral consolidation here.
 

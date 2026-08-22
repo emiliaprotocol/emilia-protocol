@@ -1,6 +1,6 @@
 # PIP-014: `grid.curtailment` Action Profile and GRACE Evidence Bundle
 
-**Status:** Implemented reference profile, partner review pending
+**Status:** Implemented reference profile; coauthored individual Internet-Draft -00 published
 
 **Profile:** `EP-GRACE-PROOF-OF-CURTAILMENT-v1`
 
@@ -197,7 +197,10 @@ npx vitest run \
 ## 12. Publication status
 
 The previous June 2026 document in `standards/archive/` was never filed and is superseded as a
-technical description by the review candidate in
-`standards/profiles/NEXT-GRID-CURTAILMENT-00/`. The candidate remains a partner-triggered profile,
-not a published Internet-Draft. The repository's new-name filing freeze prevents a `-00` submission
-through 2026-11-01 unless the recorded named-external-gap exception is met.
+technical description by the source in `standards/profiles/NEXT-GRID-CURTAILMENT-00/`.
+`draft-schrock-kintzele-grid-curtailment-00` was posted on the IETF Datatracker on August 22, 2026,
+after a separately recorded one-time governance override and coauthor approval. The retained XML
+and TXT match the immutable IETF archive byte-for-byte. This is an active individual
+Internet-Draft, not an RFC, adopted working-group item, implementation or deployment result, or
+IETF endorsement. The publication does not satisfy or claim the standing named-external-gap
+exception.

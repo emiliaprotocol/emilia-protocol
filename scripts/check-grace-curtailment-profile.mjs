@@ -57,12 +57,29 @@ invariant(Array.isArray(vectors.vectors) && vectors.vectors.length === 6, 'GRACE
 
 const readme = readFileSync(new URL('README.md', packet), 'utf8');
 const validation = readFileSync(new URL('VALIDATION.md', packet), 'utf8');
+const standardsStatus = JSON.parse(readFileSync(new URL('../standards/STATUS.json', import.meta.url), 'utf8'));
 invariant(readme.includes('explicitly authorized a one-time override'),
   'GRACE publication override is not recorded in README');
 invariant(validation.includes('explicitly authorized immediate filing'),
   'GRACE publication authorization is not recorded in validation receipt');
 invariant(readme.includes('does not claim that the separate\nnamed-external-implementation exception was satisfied'),
   'GRACE publication override must not imply external implementation');
+invariant(readme.includes('Datatracker submission 167956 was accepted and revision `-00` was posted'),
+  'GRACE README must distinguish accepted submission from Datatracker posting');
+invariant(validation.includes('Datatracker submission 167956 was accepted and revision `-00` was posted'),
+  'GRACE validation receipt must record the posted revision');
+invariant(!validation.includes('Nothing was submitted to the IETF'),
+  'GRACE validation receipt still says the published draft was not submitted');
+invariant(validation.includes('0c656d9cbdb0701a23668420460a6d1143efcf74db8919f4a9c24f4fd5697ba6'),
+  'GRACE validation receipt must pin the IETF archive XML digest');
+invariant(validation.includes('8dd61f1f66077d64bb185c3a7a5354f46bb19f0d2f28beb9e2ff728a049adb87'),
+  'GRACE validation receipt must pin the IETF archive TXT digest');
+const activeGrace = standardsStatus.active_datatracker.find(
+  (entry) => entry.draft === 'draft-schrock-kintzele-grid-curtailment',
+);
+invariant(activeGrace?.revision === '00', 'standards status must list the active GRACE -00 revision');
+invariant(activeGrace?.snapshot_sha256 === '0c656d9cbdb0701a23668420460a6d1143efcf74db8919f4a9c24f4fd5697ba6',
+  'standards status must pin the verified GRACE -00 XML');
 invariant(!existsSync(new URL('UPLOAD-THIS/', packet)),
   'single-source upload profile must not contain a drifting UPLOAD-THIS duplicate');
 const renderDir = new URL('RENDERS/', packet);
@@ -90,4 +107,4 @@ for (const [relative, digest] of listed) {
   invariant(sha256(readFileSync(new URL(relative, packet))) === digest, `${relative}: checksum mismatch`);
 }
 
-console.log('GRACE curtailment profile: claim boundary, current identifiers, six vectors, publication authorization, and artifact checksums PASS.');
+console.log('GRACE curtailment profile: claim boundary, current identifiers, six vectors, posted revision, and artifact checksums PASS.');

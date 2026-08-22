@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.emiliaprotocol/mcp-server",
   "title": "Emilia Protocol",
-  "description": "Exact-action approval for consequential AI-agent actions: request signoff, check status, and verify the resulting receipt",
+  "description": "Exact-action approval for consequential agent actions: request, track, and verify signed receipts.",
   "version": "2.1.1",
   "repository": {
     "url": "https://github.com/emiliaprotocol/emilia-protocol",

@@ -1,13 +1,34 @@
-# Listing EMILIA on the MCP registries
+# Publishing EMILIA to the MCP Registry
 
 `@emilia-protocol/mcp-server` is published to npm. This is how we get it discoverable
-in the directories AI clients actually query. Do the official registry first — it's the
-canonical source — then the aggregators.
+through the official MCP Registry. npm publication and MCP Registry publication are
+separate states; neither should be inferred from the other.
 
 ## 1. Official MCP Registry (`registry.modelcontextprotocol.io`)
 
-The canonical, Anthropic-maintained registry. We publish with the `mcp-publisher` CLI,
-which reads [`/server.json`](../server.json) at the repo root.
+The official community registry is at `registry.modelcontextprotocol.io`. We publish
+with the `mcp-publisher` CLI, which reads [`/server.json`](../server.json) at the repo
+root.
+
+Live state checked on 2026-08-22:
+
+- The Registry API returned active versions `1.0.0` and `1.0.4`, with `1.0.4` marked
+  latest.
+- npm returned `@emilia-protocol/mcp-server@2.1.1` with
+  `mcpName=io.github.emiliaprotocol/mcp-server`.
+- The repository manifest now targets `2.1.1` and passes live
+  `mcp-publisher validate` after keeping its description within the Registry's
+  100-character schema limit.
+- Validation is not publication. Version `2.1.1` is registered only after
+  `mcp-publisher publish` succeeds and a fresh Registry API response marks it latest.
+
+Recheck the live Registry without relying on this dated snapshot:
+
+```bash
+curl -fsS \
+  'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.emiliaprotocol%2Fmcp-server' \
+  | jq '.servers[] | {version: .server.version, status: ._meta["io.modelcontextprotocol.registry/official"].status, latest: ._meta["io.modelcontextprotocol.registry/official"].isLatest}'
+```
 
 ```bash
 # Install the publisher CLI (Homebrew, or download a release binary)
@@ -16,6 +37,7 @@ brew install mcp-publisher        # or: see github.com/modelcontextprotocol/regi
 # From the repo root (where server.json lives):
 mcp-publisher login github        # opens GitHub OAuth — authorizes the
                                   # `io.github.emiliaprotocol/*` namespace
+mcp-publisher validate            # live schema and package validation only
 mcp-publisher publish             # validates server.json and publishes
 ```
 
@@ -32,13 +54,19 @@ Notes:
 - **Versions must line up.** `server.json` `version` + `packages[0].version` must point at a
   published npm version whose `package.json` contains `mcpName`. Bump all three together, then
   tag `mcp-vX.Y.Z` to republish npm before re-running `mcp-publisher publish`.
+- **Descriptions are limited to 100 characters.** The Registry rejects an otherwise aligned
+  manifest with HTTP 422 when `server.json.description` exceeds the schema limit. The
+  `tests/mcp-registry-manifest.test.ts` regression test locks this constraint and package alignment.
 - To use a domain namespace instead (`ai.emiliaprotocol/mcp-server`), switch to
   `mcp-publisher login dns` and add the TXT record it prints.
 - Bump the `version` in `server.json` to match each new npm release, then re-run `publish`.
 - If the CLI reports a schema mismatch, regenerate against the latest schema:
   `mcp-publisher init` writes a fresh `server.json` skeleton you can merge.
 
-## 2. Aggregator directories
+## 2. Optional aggregator directories
+
+The entries below are submission targets, not verified current EMILIA listings. Check each live
+directory before saying EMILIA is listed there.
 
 | Directory | Action | URL |
 |---|---|---|

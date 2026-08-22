@@ -46,6 +46,7 @@ Interoperability evidence: 21 conformance suites and 332 current vectors across 
 - [draft-ferro-schrock-memory-projection-record](https://datatracker.ietf.org/doc/draft-ferro-schrock-memory-projection-record/): Signed record of exact context bytes projected by a memory adapter, with explicit nonclaims; snapshot revision -01, check Datatracker for current status.
 - [draft-mih-sato-agent-accountability-composition](https://datatracker.ietf.org/doc/draft-mih-sato-agent-accountability-composition/): Coauthored composition perspective; snapshot revision -00, check Datatracker for current status.
 - [draft-dunbar-dmsc-gw-scenarios-gap-analysis](https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/): Coauthored Agent Gateway deployment and exact-action authorization gap analysis; snapshot revision -03, check Datatracker for current status.
+- [draft-schrock-kintzele-grid-curtailment](https://datatracker.ietf.org/doc/draft-schrock-kintzele-grid-curtailment/): Coauthored GRACE application profile for exact grid-curtailment admission, authenticated actuator and meter evidence, Action State, and single-use settlement; snapshot revision -00, check Datatracker for current status.
 
 ## Evidence
 

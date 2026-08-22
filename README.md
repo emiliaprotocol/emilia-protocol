@@ -327,24 +327,24 @@ portfolio.
 The runtime path is [Architecture-02](standards/posted/draft-schrock-ep-architecture-02.xml)
 → [CAID-02](standards/posted/draft-schrock-canonical-action-identifier-02.xml)
 → [AEC-05](standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
-→ [AEB-03](standards/posted/draft-schrock-action-evidence-boundary-03.xml):
+→ [AEB-04](standards/posted/draft-schrock-action-evidence-boundary-04.xml):
 system boundaries, exact material-action matching, evidence satisfaction, then
 executor-side admission and durable consequence custody. AEC appears in both
 views because evidence satisfaction feeds runtime admission, not because the
 views are equivalent.
 
-The complete active portfolio remains 23 Datatracker records: 20 active
-`draft-schrock-*` records and three coauthored records, each with its own scope
-and revision history. See the [standards guide](standards/README.md),
+The complete active portfolio remains 24 Datatracker records: 20 sole-authored
+records and four coauthored records, each with its own scope and revision
+history. See the [standards guide](standards/README.md),
 [portfolio](standards/PORTFOLIO.md), and machine-readable
 [status inventory](standards/STATUS.json).
 
 | | |
 |---|---|
-| **IETF Internet-Drafts** | Current local snapshots: [posted inventory](standards/posted/README.md) · authoritative live status: [IETF Datatracker](https://datatracker.ietf.org/) |
+| **IETF Internet-Drafts** | Current local snapshot paths: [status inventory](standards/STATUS.json) · sole-authored [posted inventory](standards/posted/README.md) · authoritative live status: [IETF Datatracker](https://datatracker.ietf.org/) |
 | **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). A consistency check across one team's ports, not clean-room independent implementations. Separately, an externally authored from-spec Rust implementation ([source public](https://github.com/jdieselny/ecr-wg/tree/main/rust/ep-cleanroom-verifier)) passes the pinned 16-suite/164-vector bundle and the pinned 359-case hostility campaign under an evaluator-controlled rebuild from an immutable source tree. Its checked-in construction evidence remains implementer-signed, not third-party-attested ([signed statement](examples/external-verification/statements/rust-cleanroom/)); strict clean-room acceptance waits for the corrected third-party-attested manifest and independently pinned attestor key. |
 | **Formal-model evidence** | 26 bounded TLA+ safety properties held in their configured state spaces; this is not implementation refinement or an unbounded proof · 35 Alloy facts, 32 assertions across four models · two composed symbolic Dolev-Yao models covering challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, execution, and six dedicated claim boundaries. Twenty Tamarin lemmas verify — 17 all-traces obligations and 3 exists-trace witnesses; eight deliberately weakened variants produce concrete attack traces when load-bearing checks are removed ([formal/tamarin/](formal/tamarin/)). |
-| **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |
+| **MCP distribution** | npm package `@emilia-protocol/mcp-server` · official Registry publication is tracked separately in [MCP-REGISTRY.md](docs/MCP-REGISTRY.md); aggregator listings are not inferred from either state |
 | **License** | Apache-2.0 |
 
 Three same-team reference ports (JS / Python / Go) agree across all 21 suites and 332 vectors. Separately, an externally authored Rust implementation rebuilt from a pinned public source tree passes the pinned 16-suite/164-vector clean-room bundle and a 359-case hostility campaign, re-run in its own CI lane on every change. The newer AEC acceptance and four-outcome resolution suites are not attributed to Rust. That is external interoperability evidence, not strict clean-room construction acceptance; the aggregate CI case records the strict acceptance count as zero pending independent attestation. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).

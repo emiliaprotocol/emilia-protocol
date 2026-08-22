@@ -629,14 +629,14 @@ export function runSuite(input: RunnerInput) {
     check('CCS-NATIVE-ACTION-MAP', 'CCS', 'CCS command material maps losslessly to the shared native-action projection.',
       result.ccsMapping.mapping === 'MATCH',
       { mapping: result.ccsMapping.mapping, caid: result.ccsMapping.caid }),
-    check('OASNT-01-TOKEN-ACCEPT', 'OASNT', 'Published OASNT-01 compact token verifies under the pinned enrolled key.',
+    check('OASNT-02-TOKEN-ACCEPT', 'OASNT', 'Published OASNT-02 compact token verifies under the pinned enrolled key.',
       result.publishedOasntNative.native_verification === 'VERIFIED'
         && result.publishedOasntNative.acceptance === 'ACCEPTED',
       {
         verification: result.publishedOasntNative.native_verification,
         acceptance: result.publishedOasntNative.acceptance,
       }),
-    check('OASNT-COMPOSITION-TOKEN-ACCEPT', 'OASNT', 'Synthetic action-only OASNT-01 token verifies under its pinned enrolled key for this composition.',
+    check('OASNT-COMPOSITION-TOKEN-ACCEPT', 'OASNT', 'Synthetic action-only OASNT-02 token verifies under its pinned enrolled key for this composition.',
       result.oasntNative.native_verification === 'VERIFIED' && result.oasntNative.acceptance === 'ACCEPTED',
       { verification: result.oasntNative.native_verification, acceptance: result.oasntNative.acceptance }),
     check('OASNT-ACTION-SUBSTITUTION-REFUSE', 'OASNT', 'Changing the expected action makes the published token fail closed.',

@@ -18,13 +18,16 @@ Start here:
 
 A draft published on the IETF Datatracker is an **active individual
 Internet-Draft**. It is not an RFC, not an adopted working-group item, and not
-IETF endorsement. New revisions are prepared in `staged/`, while immutable
-published snapshots and superseded history live in `posted/` and `archive/`.
+IETF endorsement. New revisions are ordinarily prepared in `staged/`.
+`STATUS.json` records each current snapshot path; sole-authored published
+snapshots live in `posted/`, GRACE-00 remains in its checksum-pinned profile
+packet, and superseded history lives in `archive/`.
 
 Published snapshots are checked byte-for-byte against the immutable IETF
-archive before promotion to `posted/`. Exact submitted bytes, checksums, and
-local review renders remain retained under `staged/` as provenance. The IETF
-archive is authoritative for rendered forms and live status.
+archive before their local path is recorded as current. Exact submitted bytes,
+checksums, and local review renders remain retained under `staged/` or the
+document's recorded profile packet as provenance. The IETF archive is
+authoritative for rendered forms and live status.
 
 ## Cohesive architecture
 
@@ -69,9 +72,9 @@ the distinct profile and lifecycle portfolio remains intact.
 ## Separate portfolio and runtime views
 
 The presentation surface does not replace the active profile portfolio. The
-complete active portfolio remains the 23 records in
-`STATUS.json.active_datatracker`, including 20 active `draft-schrock-*` records
-and three coauthored records, each with its own scope and revision history.
+complete active portfolio remains the 24 records in
+`STATUS.json.active_datatracker`, including 20 sole-authored records and four
+coauthored records, each with its own scope and revision history.
 
 The separate runtime execution spine is **Architecture-02 -> CAID-02 ->
 AEC-05 -> AEB-04**: architecture and decision boundaries, exact material-action
@@ -141,22 +144,32 @@ acceptance-prefix integrity property, states the offline anti-backdating limit,
 and separates historical acceptance from current policy and status acceptance.
 Their isolated packets remain under `staged/NEXT-*` as publication provenance.
 
+## August 22 GRACE publication
+
+The coauthored GRACE application profile
+`draft-schrock-kintzele-grid-curtailment-00` was published as an active
+individual Internet-Draft on August 22, 2026. The retained XML and TXT under
+`profiles/NEXT-GRID-CURTAILMENT-00/` were checked byte-for-byte against the
+immutable IETF archive. Publication is not implementation evidence, deployment
+evidence, working-group adoption, RFC status, or IETF endorsement.
+
 ## New-filing freeze
 
 A 90-day freeze on new Internet-Draft names and `-00` filings is in effect from
 2026-08-04 through 2026-11-01, inclusive. Maintenance revisions under an
-existing active draft name remain allowed. The only exception requires a
-wire-level gap demonstrated by a named external implementer or named external
-deployment, recorded evidence of that demonstration, and a recorded overlap
-review showing that no active draft or adjacent specification already owns the
-gap. No active draft is retired or merged by this freeze, and the distinct
-active profile portfolio remains intact.
+existing active draft name remain allowed. The standing exception requires a
+wire-level gap demonstrated by a named external implementer or deployment,
+recorded evidence, and a recorded overlap review. GRACE-00 is the sole recorded
+one-time governance override, and it does not claim that the standing exception
+was satisfied. No active draft is retired or merged by this freeze, and the
+distinct active profile portfolio remains intact.
 
 ## Directory layout
 
 - `posted/`: canonical source snapshots for revisions already on Datatracker.
 - `archive/`: superseded revisions and retired standalone candidates.
-- `profiles/`: held application profiles that are not in the filing lane.
+- `profiles/`: application-profile packets; each packet states its own live
+  publication status and claim boundary.
 - `staged/`: revision work plus the explicitly labeled, retained August 3
   publication-provenance packet.
 - `observatory/`: revision-pinned source catalog and generated comparison data.
