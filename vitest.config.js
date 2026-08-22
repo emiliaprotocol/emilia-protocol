@@ -120,6 +120,10 @@ export default defineConfig({
       // The CCS-05 v1.3/AEB independent implementation uses the same portable
       // node:test contract and is executed by its dedicated conformance command.
       'conformance/composition/ccs-v13-aeb-v1/run.test.mts',
+      // Portable State Handoff's report and schema suites are public
+      // node:test programs, matching the other composition runners above.
+      'conformance/composition/portable-state-handoff-v0.1/run.test.mts',
+      'conformance/composition/portable-state-handoff-v0.1/schemas.test.mts',
       // These public composition runners intentionally use node:test so the
       // external authors can execute them without adopting Vitest.
       'conformance/composition/jesske-ai-enablement-v0.1/run.test.mjs',
