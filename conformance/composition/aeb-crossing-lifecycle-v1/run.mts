@@ -25,8 +25,13 @@ import {
   unifiedRegistryDigest,
   type AebAdapter,
   type AebEvaluationRecord,
+  type AebPinnedAdapter,
   type AebPinnedConfig,
   type AebPinnedProfile,
+  type AebRegistryEntry,
+  type AebRegistryEntryKind,
+  type AebStatusInput,
+  type AebUnifiedRegistry,
 } from '../../../packages/verify/aeb-adapter-contract.js';
 import {
   OAUTH_TXN_CHALLENGE_AEB_ADAPTER_ID,
@@ -140,8 +145,18 @@ function sha256(value: string): string {
   return `sha256:${crypto.hash('sha256', value, 'hex')}`;
 }
 
-function registryEntry(entryId: string, kind: string, definition: unknown) {
-  const entry: Obj = { kind, version: '1', status: 'active', definition };
+function registryEntry(
+  entryId: string,
+  kind: AebRegistryEntryKind,
+  definition: unknown,
+): AebRegistryEntry {
+  const entry: AebRegistryEntry = {
+    kind,
+    version: '1',
+    status: 'active',
+    definition,
+    definition_digest: digestAeb(null),
+  };
   entry.definition_digest = registryEntryDigest(entryId, entry);
   return entry;
 }
@@ -159,7 +174,7 @@ interface NativeFixture {
   profile: AebPinnedProfile;
   artifact_ref: string;
   artifact: unknown;
-  status: Obj;
+  status: AebStatusInput;
   action: Obj;
 }
 
@@ -393,9 +408,9 @@ function oasntFixture(): NativeFixture {
 }
 
 function evaluateFixture(native: NativeFixture, operationId: string) {
-  const profile: Obj = structuredClone(native.profile);
+  const profile: AebPinnedProfile = structuredClone(native.profile);
   profile.profile_digest = mappingProfileDigest(native.profile_id, profile);
-  const entries: Obj = {
+  const entries: Record<string, AebRegistryEntry> = {
     [profile.registry_entry_ref]: registryEntry(
       profile.registry_entry_ref,
       'mapping-profile',
@@ -407,17 +422,19 @@ function evaluateFixture(native: NativeFixture, operationId: string) {
       { role: native.role, subject_kinds: [native.subject_kind] },
     ),
   };
-  const registry: Obj = {
+  const registry: AebUnifiedRegistry = {
     '@version': 'EP-EVIDENCE-REGISTRY-v1',
     registry_id: `registry:${native.native_system}`,
     epoch: 1,
     entries,
+    registry_digest: digestAeb(null),
   };
   registry.registry_digest = unifiedRegistryDigest(registry);
-  const pin: Obj = {
+  const pin: AebPinnedAdapter = {
     version: native.adapter_version,
     trust_roots: native.trust_roots,
     config: native.config,
+    config_digest: digestAeb(null),
     max_status_age_sec: 120,
   };
   pin.config_digest = adapterPinDigest(native.adapter_id, pin);

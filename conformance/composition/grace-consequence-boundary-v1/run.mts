@@ -22,6 +22,14 @@ import {
   mappingProfileDigest,
   registryEntryDigest,
   unifiedRegistryDigest,
+  type AebAdapter,
+  type AebPinnedAdapter,
+  type AebPinnedConfig,
+  type AebPinnedProfile,
+  type AebRegistryEntry,
+  type AebRegistryEntryKind,
+  type AebStatusInput,
+  type AebUnifiedRegistry,
 } from '../../../packages/verify/aeb-adapter-contract.js';
 import { computeCaid } from '../../../packages/verify/vendor/caid.mjs';
 import { loadDefaultAgilityMldsaBackend } from '../../../packages/verify/pq-signature-agility.js';
@@ -121,8 +129,18 @@ function sha256(value: string): string {
   return `sha256:${crypto.hash('sha256', value, 'hex')}`;
 }
 
-function registryEntry(entryId: string, kind: string, definition: unknown) {
-  const entry: Obj = { kind, version: '1', status: 'active', definition };
+function registryEntry(
+  entryId: string,
+  kind: AebRegistryEntryKind,
+  definition: unknown,
+): AebRegistryEntry {
+  const entry: AebRegistryEntry = {
+    kind,
+    version: '1',
+    status: 'active',
+    definition,
+    definition_digest: digestAeb(null),
+  };
   entry.definition_digest = registryEntryDigest(entryId, entry);
   return entry;
 }
@@ -134,10 +152,12 @@ function evaluationFixture(operationId: string) {
   if (!('caid' in caid) || typeof caid.caid !== 'string') {
     throw new Error(`GRACE CAID failed: ${JSON.stringify(caid)}`);
   }
-  const adapter = {
+  const adapter: AebAdapter = {
     id: 'ep:adapter:grace-mobile-authorization:v1',
     version: '1',
-    verifyNative({ artifact, status, trust_roots }: Obj) {
+    verifyNative(input) {
+      const artifact = input.artifact as Obj;
+      const { status, trust_roots } = input;
       const verified = trust_roots.includes('trust:grace-reference')
         && verifyGraceMobileAuthorization({
           action: artifact.action,
@@ -170,7 +190,9 @@ function evaluationFixture(operationId: string) {
         reasons: verified ? [] : ['grace_mobile_authorization_refused'],
       };
     },
-    mapAction({ artifact, native, expected_action }: Obj) {
+    mapAction(input) {
+      const artifact = input.artifact as Obj;
+      const { native, expected_action } = input;
       const exact = digestAeb(materialAction(artifact.action)) === digestAeb(expected_action);
       return {
         mapping: native.native_verification === 'VERIFIED' && exact ? 'MATCH' : 'INDETERMINATE',
@@ -180,7 +202,7 @@ function evaluationFixture(operationId: string) {
       };
     },
   };
-  const profile: Obj = {
+  const profile: AebPinnedProfile = {
     version: '1',
     definition: { definitions: [ACTION_DEFINITION] },
     registry_entry_ref: 'mapping:grace-curtailment',
@@ -196,9 +218,10 @@ function evaluationFixture(operationId: string) {
       omitted_material_fields: [],
       omitted_nonmaterial_fields: [],
     },
+    profile_digest: digestAeb(null),
   };
   profile.profile_digest = mappingProfileDigest('grace-curtailment', profile);
-  const entries: Obj = {
+  const entries: Record<string, AebRegistryEntry> = {
     'mapping:grace-curtailment': registryEntry(
       'mapping:grace-curtailment',
       'mapping-profile',
@@ -210,21 +233,23 @@ function evaluationFixture(operationId: string) {
       { role: 'human-authorization', subject_kinds: ['organization'] },
     ),
   };
-  const registry: Obj = {
+  const registry: AebUnifiedRegistry = {
     '@version': 'EP-EVIDENCE-REGISTRY-v1',
     registry_id: 'registry:grace-consequence-boundary',
     epoch: 1,
     entries,
+    registry_digest: digestAeb(null),
   };
   registry.registry_digest = unifiedRegistryDigest(registry);
-  const pin: Obj = {
+  const pin: AebPinnedAdapter = {
     version: '1',
     trust_roots: ['trust:grace-reference'],
     config: { mode: 'synthetic-reference' },
+    config_digest: digestAeb(null),
     max_status_age_sec: 300,
   };
   pin.config_digest = adapterPinDigest(adapter.id, pin);
-  const config: Obj = {
+  const config: AebPinnedConfig = {
     '@version': 'AEB-ADAPTER-v1',
     relying_party_id: 'rp:grace-grid-operator',
     evaluator_keys: { 'evaluator:grace-reference': { public_key: ED_PUBLIC_SPKI } },
@@ -248,7 +273,7 @@ function evaluationFixture(operationId: string) {
     authorizationEvidence: grace.authorizationEvidence,
     authorizationProfile: grace.authorizationProfile,
   };
-  const status = {
+  const status: AebStatusInput = {
     checked_at: EVALUATED_AT,
     expires_at: '2026-07-15T20:20:00.000Z',
     revocation_checked: true,

@@ -15,7 +15,7 @@ import {
   createMemoryConsequenceEnvelopeStore,
   issueConsequenceEnvelope,
   verifyConsequenceEnvelope,
-} from './src/consequence-envelope.js';
+} from './dist/consequence-envelope.js';
 
 const NOW = '2027-01-15T08:00:30.000Z';
 const ED_PRIVATE_JWK = {

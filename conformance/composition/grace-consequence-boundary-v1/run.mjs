@@ -84,7 +84,13 @@ function sha256(value) {
     return `sha256:${crypto.hash('sha256', value, 'hex')}`;
 }
 function registryEntry(entryId, kind, definition) {
-    const entry = { kind, version: '1', status: 'active', definition };
+    const entry = {
+        kind,
+        version: '1',
+        status: 'active',
+        definition,
+        definition_digest: digestAeb(null),
+    };
     entry.definition_digest = registryEntryDigest(entryId, entry);
     return entry;
 }
@@ -98,7 +104,9 @@ function evaluationFixture(operationId) {
     const adapter = {
         id: 'ep:adapter:grace-mobile-authorization:v1',
         version: '1',
-        verifyNative({ artifact, status, trust_roots }) {
+        verifyNative(input) {
+            const artifact = input.artifact;
+            const { status, trust_roots } = input;
             const verified = trust_roots.includes('trust:grace-reference')
                 && verifyGraceMobileAuthorization({
                     action: artifact.action,
@@ -131,7 +139,9 @@ function evaluationFixture(operationId) {
                 reasons: verified ? [] : ['grace_mobile_authorization_refused'],
             };
         },
-        mapAction({ artifact, native, expected_action }) {
+        mapAction(input) {
+            const artifact = input.artifact;
+            const { native, expected_action } = input;
             const exact = digestAeb(materialAction(artifact.action)) === digestAeb(expected_action);
             return {
                 mapping: native.native_verification === 'VERIFIED' && exact ? 'MATCH' : 'INDETERMINATE',
@@ -157,6 +167,7 @@ function evaluationFixture(operationId) {
             omitted_material_fields: [],
             omitted_nonmaterial_fields: [],
         },
+        profile_digest: digestAeb(null),
     };
     profile.profile_digest = mappingProfileDigest('grace-curtailment', profile);
     const entries = {
@@ -168,12 +179,14 @@ function evaluationFixture(operationId) {
         registry_id: 'registry:grace-consequence-boundary',
         epoch: 1,
         entries,
+        registry_digest: digestAeb(null),
     };
     registry.registry_digest = unifiedRegistryDigest(registry);
     const pin = {
         version: '1',
         trust_roots: ['trust:grace-reference'],
         config: { mode: 'synthetic-reference' },
+        config_digest: digestAeb(null),
         max_status_age_sec: 300,
     };
     pin.config_digest = adapterPinDigest(adapter.id, pin);

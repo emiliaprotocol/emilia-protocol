@@ -25,7 +25,7 @@ import {
   createMemoryConsequenceEnvelopeStore,
   issueConsequenceEnvelope,
   type ConsequenceEnvelopeBoundary,
-} from './src/consequence-envelope.js';
+} from './dist/consequence-envelope.js';
 
 const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION = Object.freeze({

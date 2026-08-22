@@ -80,7 +80,13 @@ function sha256(value) {
     return `sha256:${crypto.hash('sha256', value, 'hex')}`;
 }
 function registryEntry(entryId, kind, definition) {
-    const entry = { kind, version: '1', status: 'active', definition };
+    const entry = {
+        kind,
+        version: '1',
+        status: 'active',
+        definition,
+        definition_digest: digestAeb(null),
+    };
     entry.definition_digest = registryEntryDigest(entryId, entry);
     return entry;
 }
@@ -315,12 +321,14 @@ function evaluateFixture(native, operationId) {
         registry_id: `registry:${native.native_system}`,
         epoch: 1,
         entries,
+        registry_digest: digestAeb(null),
     };
     registry.registry_digest = unifiedRegistryDigest(registry);
     const pin = {
         version: native.adapter_version,
         trust_roots: native.trust_roots,
         config: native.config,
+        config_digest: digestAeb(null),
         max_status_age_sec: 120,
     };
     pin.config_digest = adapterPinDigest(native.adapter_id, pin);
