@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.23.19",
+  "version": "0.23.20",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -439,6 +439,18 @@
       "types": "./dist/apertomemory-context.d.ts",
       "import": "./apertomemory-context.js"
     },
+    "./trusted-context/memory-projection": {
+      "types": "./dist/memory-projection-context.d.ts",
+      "import": "./memory-projection-context.js"
+    },
+    "./trusted-context/sheesh": {
+      "types": "./dist/sheesh-context.d.ts",
+      "import": "./sheesh-context.js"
+    },
+    "./trusted-context/zep": {
+      "types": "./dist/zep-context.d.ts",
+      "import": "./zep-context.js"
+    },
     "./protection-plan": {
       "types": "./dist/protection-plan.d.ts",
       "import": "./protection-plan.js"
@@ -539,6 +551,9 @@
     "zk-range-proof.js",
     "trusted-context.js",
     "apertomemory-context.js",
+    "memory-projection-context.js",
+    "sheesh-context.js",
+    "zep-context.js",
     "protection-plan.js",
     "protection-activation.js",
     "adapter-manifest.js",

@@ -3,6 +3,14 @@
 
 ## Unreleased
 
+## 0.23.20 (2026-08-21)
+
+- Add provider-neutral memory projection records for SHEESH/SOMA and Zep,
+  binding pinned source and projection bytes to one exact action while keeping
+  verified context separate from authorization.
+- Refuse provider/profile substitution, stale verification state, projection
+  drift, and replay with seven bounded positive and hostile cases.
+
 ## 0.23.19 (2026-08-21)
 
 - Make the installed `ep-protect` executable resolve npm's bin symlink before

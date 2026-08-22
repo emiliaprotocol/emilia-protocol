@@ -1,7 +1,8 @@
 # EMILIA Trusted Context Pack v1
 
-Status: implemented product profile; not an Internet-Draft, RFC, independent
-ApertoMemory conformance result, or claim that a model used particular context.
+Status: implemented product profile; not an Internet-Draft, RFC, native-memory
+provider conformance result, provider endorsement, or claim that a model used
+particular context.
 
 ## Purpose
 
@@ -23,8 +24,9 @@ native memory provider
   -> independently verified execution and outcome continuity
 ```
 
-ApertoMemory is the first provider plug-in. The Gate kernel remains
-provider-neutral.
+ApertoMemory is the first provider plug-in. EMILIA-owned SHEESH/SOMA and Zep
+interop profiles now exercise the same neutral record and Gate kernel. They do
+not redefine either provider's native format, access controls, or truth model.
 
 The source format is the independent IETF Internet-Draft
 [`draft-ferro-apertomemory`](https://datatracker.ietf.org/doc/draft-ferro-apertomemory/).
@@ -130,6 +132,56 @@ paired exactly as 007 (positive custody), 008 (unproven custody), 011
 (non-owner signer), 012 (unaccepted named author), and 014 (empty/malformed
 custody map with recall isolation).
 
+## Provider-neutral v1 envelope adapter
+
+`createMemoryProjectionContextProvider()` is the common Gate-side verifier for
+`MEMORY-PROJECTION-RECORD-v1`. A relying party pins the provider identifier,
+source profile, context-frame profile, adapter keys, status source, freshness
+limits, and maximum delivered-entry count. Runtime evidence cannot replace any
+of those inputs.
+
+The adapter verifies the signed envelope, exact profile, exact frame, key
+status, freshness, exclusions, and projection commitment. Full verification of
+the request, policy, trust snapshot, native source bytes, fragments, and
+projection bytes remains a separate producer-side or assurance procedure.
+
+## SHEESH/SOMA interop boundary
+
+The EMILIA-owned `urn:emilia:source-profile:sheesh-soma:v0.1` profile consumes
+the documented repository boundary without claiming a SHEESH standard. Each
+source envelope commits to:
+
+- the repository URI;
+- the exact revision identifier;
+- one normalized `somatic_index.json`, `.cogobj`, or `.cogobj.enc` path;
+- the exact source-file bytes; and
+- the exact projected fragment bytes.
+
+Absolute paths, traversal segments, backslashes, empty segments, and unrelated
+file extensions are refused before signing. The default native result is
+`unverified` with unknown authorship and no custody claim. A deployment-owned
+source verifier may assert a stronger class only when it returns a result bound
+to the exact source-envelope digest. The same verifier is rerun during full
+projection verification.
+
+The checked-in implementation is based on a field guide supplied by the
+upstream author. No public native SHEESH implementation or independently
+versioned conformance suite was available for this work, so this profile is an
+EMILIA interop contract and not a reciprocal implementation result.
+
+## Zep interop boundary
+
+The EMILIA-owned `urn:emilia:source-profile:zep-context:v0.1` profile commits to
+the Zep project identifier, graph identifier, episode identifier, exact raw
+result bytes, and exact projected fragment bytes. It does not treat a Zep API
+response as a Zep signature or as proof that a graph fact is true.
+
+Zep policy controls and provider permissions remain native Zep concerns. The
+adapter records the exact policy and trust-snapshot bytes selected by the
+operator, then signs their digests into the neutral projection record. The
+default native result remains `unverified` unless a deployment-owned verifier
+establishes and reproduces a stronger bounded result.
+
 ## Privacy boundary
 
 Gate receives signed records and digests. The runtime evidence envelope does
@@ -149,15 +201,21 @@ evidence role and therefore cannot unlock execution.
 ## Implementation
 
 - provider-neutral kernel: `packages/gate/src/trusted-context.ts`
+- provider-neutral v1 envelope adapter:
+  `packages/gate/src/memory-projection-context.ts`
 - ApertoMemory provider: `packages/gate/src/apertomemory-context.ts`
+- SHEESH/SOMA interop adapter: `packages/gate/src/sheesh-context.ts`
+- Zep interop adapter: `packages/gate/src/zep-context.ts`
 - signed source records: `interop/apertomemory-emilia/`
 - neutral producer/verifier: `packages/verify/src/memory-projection.ts`
 - v1 schema: `public/schemas/memory-projection-record-v1.schema.json`
 - reciprocal v1 vectors:
   `interop/apertomemory-emilia/memory-projection-record.v1.vectors.json`
-- hostile tests: `packages/gate/trusted-context.test.ts`
+- hostile tests: `packages/gate/trusted-context.test.ts` and
+  `packages/gate/trusted-context-providers.test.ts`
+- multi-provider runnable demo: `examples/trusted-context-multi-provider/`
 - package exports: `@emilia-protocol/gate/trusted-context` and
-  `@emilia-protocol/gate/trusted-context/apertomemory`
+  provider entries under `@emilia-protocol/gate/trusted-context/*`
 
 ## Commercial packaging
 
@@ -182,7 +240,9 @@ vectors are implemented. Reciprocal v1 execution by ApertoMemory or another
 independently governed implementation remains pending, so no independent v1
 interoperability claim is made.
 
-No live customer memory system is connected. Production claims still require a
-real provider adapter deployment, durable Gate admission state, managed
-key/status operations, independently governed execution/outcome evidence, and
-customer-specific privacy and retention approval.
+No live customer memory system is connected. The SHEESH/SOMA and Zep cases use
+synthetic source bytes and do not establish native provider conformance,
+reciprocal interoperability, provider adoption, or source truth. Production
+claims still require a real provider adapter deployment, durable Gate admission
+state, managed key/status operations, independently governed execution/outcome
+evidence, and customer-specific privacy and retention approval.

@@ -26,6 +26,8 @@
     "demo:ai-operations-authority": "node examples/ai-operations-authority-interface/demo.mjs",
     "demo:receipt-program": "node examples/receipt-program/demo.mjs",
     "demo:recovery-admission": "node examples/recovery-admission/demo.mjs",
+    "demo:trusted-context-multi-provider": "node examples/trusted-context-multi-provider/run.mjs",
+    "test:trusted-context-multi-provider": "node --test packages/gate/trusted-context-providers.test.js examples/trusted-context-multi-provider/run.test.mjs",
     "test:authority-loop": "node --test examples/authority-loop-v1/demo.test.mjs",
     "test:audit-procedure-evidence": "node --test examples/audit-procedure-evidence/demo.test.mjs && node examples/audit-procedure-evidence/demo.mjs",
     "test:ai-operations-authority": "vitest run tests/ai-operations-authority-interface.test.ts",
