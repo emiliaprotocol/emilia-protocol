@@ -110,6 +110,23 @@ Dossier rendering. Technical invariants only.
     mean that two different authority systems produce the same record bytes
     or that their native grants are semantically equivalent.
 
+## Scope of proof
+
+20. A crossing record can establish that: a pinned issuer signed a specific
+    assertion; a mapping profile identified exact canonical action bytes;
+    the boundary admitted or refused that action; the relevant authority was
+    reserved and consumed, released, or left unresolved; a separately
+    authenticated outcome assertion was bound to the admitted action; and an
+    uncertain result remained INDETERMINATE and did not authorize a blind
+    retry. It does NOT independently establish that: a physical process
+    occurred exactly as represented; a real-world object had its claimed
+    identity; value was delivered or settled; an upstream decision was
+    substantively correct; a human process (such as a review) was fair or
+    competent; or that the record is legally sufficient for every reader.
+    Domain claims in any document, pack, or demo must stay inside the first
+    list. Physical-world and correctness claims require a separately
+    authenticated observer whose stamp is itself subject to this rule.
+
 ## Language
 
 16. Native authority systems are an OPEN SET behind one bounded adapter
