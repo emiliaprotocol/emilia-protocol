@@ -9,6 +9,7 @@
  */
 import { type AebAdapter, type AebDigest, type AebDurableConsumptionStore, type AebEvaluationRecord, type AebPinnedConfig, type AebStatusInput } from '@emilia-protocol/verify/aeb-adapter-contract';
 import type { AebExecutionConditionsResult } from '@emilia-protocol/verify/aeb-execution-conditions';
+import type { ConsequenceEnvelopeBoundary } from './consequence-envelope.js';
 export declare const CONSEQUENCE_BOUNDARY_VERSION = "EMILIA-CONSEQUENCE-BOUNDARY-v1";
 export declare const CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN = "EMILIA-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1";
 export interface ConsequenceBoundaryProvider {
@@ -38,6 +39,9 @@ export interface ConsequenceBoundaryAttemptReference extends ConsequenceBoundary
 export type ConsequenceBoundaryAttemptTransition = {
     expected_state: 'RESERVED';
     next_state: 'INVOKING';
+} | {
+    expected_state: 'RESERVED';
+    next_state: 'RELEASED';
 } | {
     expected_state: 'INVOKING';
     next_state: 'INDETERMINATE';
@@ -127,6 +131,10 @@ export interface ConsequenceBoundaryOptions<TResult> {
     };
     local_authorize(context: Readonly<ConsequenceBoundaryAuthorizationContext>): boolean | Promise<boolean>;
     invoke(context: Readonly<ConsequenceBoundaryEffectContext>): ConsequenceBoundaryEffectOutcome<TResult> | Promise<ConsequenceBoundaryEffectOutcome<TResult>>;
+    /** Optional state-domain-owned capacity reservation before provider entry. */
+    consequence_envelope?: ConsequenceEnvelopeBoundary;
+    /** Conformance-only escape hatch for a process-local envelope reference. */
+    allow_test_consequence_envelope?: true;
     now?: () => string;
 }
 export interface ConsequenceBoundaryRunInput {

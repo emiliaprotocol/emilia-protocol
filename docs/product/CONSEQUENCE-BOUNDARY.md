@@ -20,6 +20,15 @@ then performs the same six operations for every source:
    authenticated custody-recovery path may reconcile the attempt later from
    provider-native evidence without resurrecting the original authority.
 
+An optional state-domain consequence envelope adds one conservative aggregate
+reservation before provider entry. The envelope is hybrid-signed, epoch-bound,
+nonrenewable, and owned by one state domain. Finance profiles reserve cumulative
+minor units; grid profiles reserve requested watts. Rate, entropy, anomaly, and
+telemetry signals may tighten an outer policy, but cannot mint or expand hard
+capacity. A process-local store is available only behind an explicit test flag;
+production callers must supply a durable, owner-fenced, epoch-fenced local-
+atomic store.
+
 `@emilia-protocol/gate/consequence-boundary` is the neutral library facade for
 that lifecycle. It does not acquire approval, mint a receipt, replace a native
 mandate, or decide that one evidence role is always human. The relying party
@@ -29,6 +38,8 @@ decision; another deployment may require only its own native authority object.
 `EP-AUTHORIZATION-BUNDLE-v1` can supply the human-evidence leg without changing
 this executor API. Its optional OAuth/RAR projection remains a separate native
 profile; the boundary never treats OAuth as the universal trust model.
+`@emilia-protocol/gate/consequence-envelope` is the aggregate-reservation
+extension. It does not authorize an action and does not prove a physical effect.
 
 ## Stable integration contracts
 
@@ -38,6 +49,8 @@ profile; the boundary never treats OAuth as the universal trust model.
   this relying party authorizes the exact effect.
 - **Admission custody:** owner-fenced durable reservation and replay fencing.
 - **Effect adapter:** provider invocation plus authoritative terminal evidence.
+- **Aggregate envelope (optional):** signed capacity plus a conservative,
+  relying-party-pinned impact profile in one owning state domain.
 
 The provider adapter may report `FAILED` only with authenticated evidence that
 the protected effect did not occur. Exceptions, timeouts, malformed responses,
@@ -78,3 +91,13 @@ stores, enterprise provider adapters, fleet reconciliation, and evidence
 exports. Evidence and provider credentials remain in the customer's execution
 domain; the managed plane distributes pins and policy but does not become the
 universal authorization server.
+
+## Executable references
+
+- `conformance/composition/aeb-crossing-lifecycle-v1` sends OAuth transaction
+  authority and OASNT human authority through one lifecycle while retaining
+  different native provenance and replay units.
+- `conformance/composition/grace-consequence-boundary-v1` sends the shipped
+  synthetic GRACE path through the same boundary under an 18 MW aggregate
+  envelope. It proves authorization, admission, capacity, replay, and
+  reconciliation behavior, not a real curtailment event or delivered power.
