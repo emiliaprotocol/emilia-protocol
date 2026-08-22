@@ -83,11 +83,12 @@ async function renderRuntime({ relativeSource, sourcePath, banner }) {
   // didn't silently drop the license notice, not one exact literal form.
   const spdxLine = '// SPDX-License-Identifier: Apache-2.0\n';
   let outputText = result.outputText;
-  // Gate's package-level Node 20 suite runs after `npm run build`, so generated
-  // JavaScript tests must load the compiled package output. The TypeScript
-  // sources keep importing ./src for source-level coverage; only their
-  // standalone runtime companions are redirected to ./dist.
-  if (relativeSource.startsWith('packages/gate/') && /\.test\.m?ts$/.test(relativeSource)) {
+  // Package-level Node 20 suites run after `npm run build`, so generated
+  // JavaScript tests must load compiled package output. The TypeScript sources
+  // keep importing ./src for source-level coverage; only their standalone
+  // runtime companions are redirected to ./dist.
+  if (/^packages\/(?:gate|verify)\//.test(relativeSource)
+    && /\.test\.m?ts$/.test(relativeSource)) {
     outputText = outputText.replace(/(\bfrom\s+['"])\.\/src\//g, '$1./dist/');
   }
   let shebangMatch = outputText.match(/^#!.*\n/);

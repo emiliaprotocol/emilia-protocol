@@ -1167,7 +1167,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "acf51c9eddabe3b6a202645ebcb865efb834de460e7914862ddba5e9de0057f1"
+      "sha256": "a88ff5c81f2d31973a742952285d1073f4b957beae4accd490eb391e57b5c1dd"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1196,6 +1196,10 @@
     {
       "path": "packages/verify/dist/policy-decision-evidence.js",
       "sha256": "d5a71f276c808faad49b21487511cabaaa5868675ab9404d23f8f5568cc227ce"
+    },
+    {
+      "path": "packages/verify/dist/portable-state-handoff.js",
+      "sha256": "0cd1eb2cab36153e407809cb9442f54199633ea380788535da209c40d80e50d5"
     },
     {
       "path": "packages/verify/dist/pq-signature-agility.js",
@@ -1232,6 +1236,10 @@
     {
       "path": "packages/verify/dist/scitt-statement.js",
       "sha256": "22cf4983fe58b82e1c68b302587844c0036d3b0078a888d417c8356d791d4222"
+    },
+    {
+      "path": "packages/verify/dist/soma-cogobj-profile.js",
+      "sha256": "9a6dd1c050033a7ef6a9646c20a1a6ada21cfd1edf6736fd41b70c6b35a1b2ad"
     },
     {
       "path": "packages/verify/dist/status.js",
@@ -1307,7 +1315,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "f9d1801ed6324b769f23c314d6cc6bbad5bf7ff5160fc651a4757b2f4c433e6c"
+      "sha256": "7a4c34e0f08b7ad4dbccb1f07b89b2b9fc6ba40b53108a8b260e3a44caa7497e"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
@@ -1335,7 +1343,7 @@
     },
     {
       "path": "scripts/build-standalone-runtimes.mjs",
-      "sha256": "161b81295d0e91507dff6ceeb30cec34838da82d7a7eb6315f1936c447169440"
+      "sha256": "02f128f0021416f56af26f5a073eca6e3ed9ee4ca91446d90e20b5eff453031d"
     },
     {
       "path": "scripts/check-formal-runtime-traces.mjs",

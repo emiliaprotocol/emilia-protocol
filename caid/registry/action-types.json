@@ -1,8 +1,8 @@
 {
   "meta": {
     "registry": "caid-action-types",
-    "registry_version": 2,
-    "updated": "2026-08-06",
+    "registry_version": 3,
+    "updated": "2026-08-21",
     "license": "CC0-1.0",
     "trust_note": "CAID carries no trust semantics. A registered type defines WHAT must be inside the digested content, never whether the action was authorized, executed, safe, or wise. See GOVERNANCE.md.",
     "entry_schema_note": "Each entry in 'types' conforms to the normative type entry schema in DESIGN.md section 3. Local (private) definition files MUST use the same entry schema; there is no reserved private-use syntax. Field types are the closed v1 set: string, amount-string, digest, enum, timestamp, integer, boolean, object, array. 'values_ref' on an enum either names an external code set or is an inline pipe-separated list prefixed 'inline:'. Date-only values use type string with an ISO 8601 date note; type timestamp is always full RFC 3339 UTC with Z.",
@@ -1034,6 +1034,101 @@
       "optional_fields": [],
       "digest_notes": "The source digest commits the complete authoritative action object.",
       "references": []
+    },
+    {
+      "action_type": "agent.state.export.1",
+      "status": "active",
+      "risk_class": "irreversible-data",
+      "summary": "Release of one exact, signed portable-state manifest from a named source to a named recipient.",
+      "required_fields": [
+        {"name": "handoff_id", "type": "string"},
+        {"name": "manifest_digest", "type": "digest"},
+        {"name": "payload_profile", "type": "string"},
+        {"name": "transfer_mode", "type": "enum", "values_ref": "inline: COPY"},
+        {"name": "source_agent", "type": "string"},
+        {"name": "source_boundary_id", "type": "string"},
+        {"name": "recipient_agent", "type": "string"},
+        {"name": "recipient_boundary_id", "type": "string"},
+        {"name": "relying_party_id", "type": "string"},
+        {"name": "scope_digest", "type": "digest"},
+        {"name": "expires_at", "type": "timestamp"},
+        {"name": "nonce", "type": "string"}
+      ],
+      "optional_fields": [],
+      "digest_notes": "Every field is material. Export authority releases only the manifest identified by manifest_digest to the named recipient; it grants no recipient-side import authority.",
+      "references": ["EP-PORTABLE-STATE-HANDOFF-v0.1"]
+    },
+    {
+      "action_type": "agent.state.import.1",
+      "status": "active",
+      "risk_class": "irreversible-data",
+      "summary": "Atomic recipient-side admission and commit of one exact portable-state manifest.",
+      "required_fields": [
+        {"name": "handoff_id", "type": "string"},
+        {"name": "manifest_digest", "type": "digest"},
+        {"name": "payload_profile", "type": "string"},
+        {"name": "transfer_mode", "type": "enum", "values_ref": "inline: COPY"},
+        {"name": "source_agent", "type": "string"},
+        {"name": "source_boundary_id", "type": "string"},
+        {"name": "recipient_agent", "type": "string"},
+        {"name": "recipient_boundary_id", "type": "string"},
+        {"name": "relying_party_id", "type": "string"},
+        {"name": "scope_digest", "type": "digest"},
+        {"name": "expires_at", "type": "timestamp"},
+        {"name": "nonce", "type": "string"}
+      ],
+      "optional_fields": [],
+      "digest_notes": "Every field is material. A conforming boundary consumes this action and commits the declared state heads in one local atomic transition.",
+      "references": ["EP-PORTABLE-STATE-HANDOFF-v0.1"]
+    },
+    {
+      "action_type": "agent.state.key-release.1",
+      "status": "active",
+      "risk_class": "irreversible-access",
+      "summary": "Release of key access for the exact VAULT object set in a portable-state handoff.",
+      "required_fields": [
+        {"name": "handoff_id", "type": "string"},
+        {"name": "manifest_digest", "type": "digest"},
+        {"name": "payload_profile", "type": "string"},
+        {"name": "transfer_mode", "type": "enum", "values_ref": "inline: COPY"},
+        {"name": "source_agent", "type": "string"},
+        {"name": "source_boundary_id", "type": "string"},
+        {"name": "recipient_agent", "type": "string"},
+        {"name": "recipient_boundary_id", "type": "string"},
+        {"name": "relying_party_id", "type": "string"},
+        {"name": "scope_digest", "type": "digest"},
+        {"name": "expires_at", "type": "timestamp"},
+        {"name": "nonce", "type": "string"},
+        {"name": "vault_set_digest", "type": "digest"}
+      ],
+      "optional_fields": [],
+      "digest_notes": "vault_set_digest commits the ordered VAULT object identifiers and object digests. It does not claim that a key was usable at the recipient.",
+      "references": ["EP-PORTABLE-STATE-HANDOFF-v0.1"]
+    },
+    {
+      "action_type": "agent.state.retire-source.1",
+      "status": "active",
+      "risk_class": "irreversible-data",
+      "summary": "Retirement of source-side state only after a matching recipient import receipt exists.",
+      "required_fields": [
+        {"name": "handoff_id", "type": "string"},
+        {"name": "manifest_digest", "type": "digest"},
+        {"name": "payload_profile", "type": "string"},
+        {"name": "transfer_mode", "type": "enum", "values_ref": "inline: COPY"},
+        {"name": "source_agent", "type": "string"},
+        {"name": "source_boundary_id", "type": "string"},
+        {"name": "recipient_agent", "type": "string"},
+        {"name": "recipient_boundary_id", "type": "string"},
+        {"name": "relying_party_id", "type": "string"},
+        {"name": "scope_digest", "type": "digest"},
+        {"name": "expires_at", "type": "timestamp"},
+        {"name": "nonce", "type": "string"},
+        {"name": "import_receipt_digest", "type": "digest"},
+        {"name": "retirement_set_digest", "type": "digest"}
+      ],
+      "optional_fields": [],
+      "digest_notes": "import_receipt_digest binds retirement to one matching ACCEPTED or PARTIAL import receipt. retirement_set_digest binds exactly the accepted object identifiers and object digests, excluding unavailable objects. Retirement is separate from copy and never transfers operational authority.",
+      "references": ["EP-PORTABLE-STATE-HANDOFF-v0.1"]
     }
   ]
 }

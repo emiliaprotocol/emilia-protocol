@@ -38,6 +38,8 @@ export * from './a2a-receipt-binding.js';
 export * from './ap2-native-adapter.js';
 export * from './a2a-evidence-challenge.js';
 export * from './memory-projection.js';
+export * from './portable-state-handoff.js';
+export * from './soma-cogobj-profile.js';
 export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';
 // EP-COSE-ENCODING-v0.1: encoding-equivalence profile — deterministic

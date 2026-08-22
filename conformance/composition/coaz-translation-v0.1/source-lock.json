@@ -30,7 +30,7 @@
     },
     {
       "path": "caid/registry/action-types.json",
-      "sha256": "73598966f8b9d85eb072ede0087233e5e322eae3b917773494b635308c737de4"
+      "sha256": "e3e1e3052461ad9279b7f38b3df502c2d4e2293aea40636d2da8766f205240e7"
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/run.mjs",

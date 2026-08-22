@@ -50,6 +50,8 @@
     "src/orprg.ts",
     "src/platform-attestation.ts",
     "src/memory-projection.ts",
+    "src/portable-state-handoff.ts",
+    "src/soma-cogobj-profile.ts",
     "src/evidence-chain.ts",
     "src/authority-program.ts",
     "src/aeb-adapter-contract.ts",

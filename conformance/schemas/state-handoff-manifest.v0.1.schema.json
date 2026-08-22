@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.emiliaprotocol.ai/schema/state-handoff-manifest.v0.1.schema.json",
+  "title": "EP Portable State Handoff Manifest v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "handoff_id",
+    "transfer_mode",
+    "payload_profile",
+    "source_agent",
+    "source_boundary_id",
+    "recipient_agent",
+    "recipient_boundary_id",
+    "relying_party_id",
+    "created_at",
+    "snapshot_at",
+    "expires_at",
+    "nonce",
+    "index",
+    "objects",
+    "scope_digest",
+    "authority",
+    "nonclaims",
+    "signature_policy",
+    "signatures"
+  ],
+  "properties": {
+    "@version": { "const": "EP-STATE-HANDOFF-MANIFEST-v0.1" },
+    "handoff_id": { "$ref": "#/$defs/text" },
+    "transfer_mode": { "const": "COPY" },
+    "payload_profile": { "$ref": "#/$defs/text" },
+    "source_agent": { "$ref": "#/$defs/text" },
+    "source_boundary_id": { "$ref": "#/$defs/text" },
+    "recipient_agent": { "$ref": "#/$defs/text" },
+    "recipient_boundary_id": { "$ref": "#/$defs/text" },
+    "relying_party_id": { "$ref": "#/$defs/text" },
+    "created_at": { "$ref": "#/$defs/time" },
+    "snapshot_at": { "$ref": "#/$defs/time" },
+    "expires_at": { "$ref": "#/$defs/time" },
+    "nonce": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001f\\u007f]+$" },
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ordered_object_ids", "index_digest"],
+      "properties": {
+        "ordered_object_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/text" }
+        },
+        "index_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "objects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/descriptor" }
+    },
+    "scope_digest": { "$ref": "#/$defs/digest" },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "source_actions", "recipient_action"],
+      "properties": {
+        "profile": { "const": "EP-STATE-HANDOFF-AUTHORITY-v0.1" },
+        "source_actions": {
+          "oneOf": [
+            { "const": ["agent.state.export.1"] },
+            { "const": ["agent.state.export.1", "agent.state.key-release.1"] }
+          ]
+        },
+        "recipient_action": { "const": "agent.state.import.1" }
+      }
+    },
+    "nonclaims": { "$ref": "#/$defs/nonclaims" },
+    "signature_policy": { "$ref": "#/$defs/signaturePolicy" },
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/signature" }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[^\\u0000-\\u001f\\u007f]+$" },
+    "time": { "type": "string", "format": "date-time", "maxLength": 64 },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "nullableDigest": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/digest" }
+      ]
+    },
+    "descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "position",
+        "object_id",
+        "object_digest",
+        "media_type",
+        "schema_uri",
+        "required",
+        "snapshot_at",
+        "sensitivity",
+        "disposition",
+        "generation",
+        "predecessor_digest"
+      ],
+      "properties": {
+        "position": { "type": "integer", "minimum": 0, "maximum": 4095 },
+        "object_id": { "$ref": "#/$defs/text" },
+        "object_digest": { "$ref": "#/$defs/digest" },
+        "media_type": { "$ref": "#/$defs/text" },
+        "schema_uri": { "$ref": "#/$defs/text" },
+        "required": { "type": "boolean" },
+        "snapshot_at": { "$ref": "#/$defs/time" },
+        "sensitivity": { "enum": ["OPEN", "PROTECTED", "VAULT"] },
+        "disposition": { "enum": ["ACTIVE", "TOMBSTONE"] },
+        "generation": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "predecessor_digest": { "$ref": "#/$defs/nullableDigest" }
+      }
+    },
+    "nonclaims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_truth",
+        "authority_transfer",
+        "source_population_completeness",
+        "physical_erasure",
+        "trusted_time"
+      ],
+      "properties": {
+        "source_truth": { "const": "NOT_ESTABLISHED" },
+        "authority_transfer": { "const": "PROHIBITED" },
+        "source_population_completeness": { "const": "NOT_ESTABLISHED" },
+        "physical_erasure": { "const": "NOT_ESTABLISHED" },
+        "trusted_time": { "const": "NOT_ESTABLISHED" }
+      }
+    },
+    "signaturePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "required_algorithms"],
+      "properties": {
+        "profile": { "const": "EP-SIG-AGILITY-v1" },
+        "required_algorithms": {
+          "oneOf": [
+            { "const": ["Ed25519"] },
+            { "const": ["Ed25519", "ML-DSA-65"] }
+          ]
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "sig", "key_id"],
+      "properties": {
+        "alg": { "enum": ["Ed25519", "ML-DSA-65"] },
+        "sig": { "type": "string", "minLength": 1, "maxLength": 8192, "pattern": "^[A-Za-z0-9_-]+$" },
+        "key_id": { "$ref": "#/$defs/text" }
+      }
+    }
+  }
+}

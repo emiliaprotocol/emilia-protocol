@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.emiliaprotocol.ai/schema/soma-cogobj.v0.1.schema.json",
+  "title": "SOMA COGOBJ v0.1 Payload Object",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "object_id",
+    "domain",
+    "schema_uri",
+    "snapshot",
+    "sensitivity",
+    "protection",
+    "disposition",
+    "origin",
+    "lineage",
+    "authority_semantics",
+    "content"
+  ],
+  "properties": {
+    "@version": { "const": "SOMA-COGOBJ-v0.1" },
+    "object_id": { "$ref": "#/$defs/text" },
+    "domain": { "$ref": "#/$defs/text" },
+    "schema_uri": { "$ref": "#/$defs/text" },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asserted_at", "source_mutability", "observed_at", "freshness_basis_digest"],
+      "properties": {
+        "asserted_at": { "$ref": "#/$defs/time" },
+        "source_mutability": { "enum": ["IMMUTABLE", "MUTABLE", "UNKNOWN"] },
+        "observed_at": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/time" }] },
+        "freshness_basis_digest": { "$ref": "#/$defs/nullableDigest" }
+      }
+    },
+    "sensitivity": { "enum": ["OPEN", "PROTECTED", "VAULT"] },
+    "protection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "profile", "key_reference_digest"],
+      "properties": {
+        "mode": { "enum": ["PLAINTEXT", "OPAQUE-CIPHERTEXT"] },
+        "profile": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/text" }] },
+        "key_reference_digest": { "$ref": "#/$defs/nullableDigest" }
+      }
+    },
+    "disposition": { "enum": ["ACTIVE", "TOMBSTONE"] },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assertion_class", "issuer", "asserted_at", "source_digest", "transform_id"],
+      "properties": {
+        "assertion_class": {
+          "enum": ["operator-pinned", "approver-supplied", "agent-generated", "imported", "derived"]
+        },
+        "issuer": { "$ref": "#/$defs/text" },
+        "asserted_at": { "$ref": "#/$defs/time" },
+        "source_digest": { "$ref": "#/$defs/nullableDigest" },
+        "transform_id": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/text" }] }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation", "predecessor_digest"],
+      "properties": {
+        "generation": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "predecessor_digest": { "$ref": "#/$defs/nullableDigest" }
+      }
+    },
+    "authority_semantics": { "const": "NONE" },
+    "content": true
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[^\\u0000-\\u001f\\u007f]+$" },
+    "time": { "type": "string", "format": "date-time", "maxLength": 64 },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "nullableDigest": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }] }
+  }
+}
