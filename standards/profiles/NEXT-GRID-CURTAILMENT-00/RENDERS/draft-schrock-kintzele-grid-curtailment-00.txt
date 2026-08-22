@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                               J. Kintzele
-Expires: 22 February 2027                                           COSA
+Intended status: Informational                             J. D Kintzele
+Expires: 22 February 2027                               J Diesel NY, LLC
                                                           21 August 2026
 
 
@@ -674,8 +674,8 @@ Schrock & Kintzele      Expires 22 February 2027               [Page 12]
 Internet-Draft              GRACE Curtailment                August 2026
 
 
-   Justin Kintzele
-   COSA
+   Justin D Kintzele
+   J Diesel NY, LLC
    United States of America
    Email: jkintzele@jdieselny.com
 

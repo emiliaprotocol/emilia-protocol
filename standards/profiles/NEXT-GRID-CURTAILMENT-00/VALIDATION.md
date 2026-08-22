@@ -59,7 +59,8 @@ The circuit labels its actuator and meter as simulations and claims no physical 
 - The packet contains no `UPLOAD-THIS` directory.
 - The repository's new-name filing freeze runs through 2026-11-01 unless its named-external-gap
   exception is documented.
-- Justin Kintzele approved submission as coauthor by email on 2026-08-21.
+- Justin D Kintzele approved submission as coauthor and confirmed the exact published metadata
+  `Justin D Kintzele`, `J Diesel NY, LLC`, and `jkintzele@jdieselny.com` by email on 2026-08-21.
 - Nothing was submitted to the IETF.
 
 ## Claim limits
