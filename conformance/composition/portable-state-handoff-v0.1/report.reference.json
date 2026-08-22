@@ -1,0 +1,112 @@
+{
+  "@version": "EP-STATE-HANDOFF-CONFORMANCE-REPORT-v0.1",
+  "profile": "EP-PORTABLE-STATE-HANDOFF-v0.1",
+  "payload_profile": "EP-STATE-PAYLOAD-SOMA-COGOBJ-v0.1",
+  "authority_profile": "EP-STATE-HANDOFF-AUTHORITY-v0.1",
+  "implementations": [
+    {
+      "name": "Continuum independent producer",
+      "path": "examples/portable-state-handoff/continuum-exporter.mjs",
+      "role": "source"
+    },
+    {
+      "name": "EMILIA portable-state recipient",
+      "path": "packages/verify/src/portable-state-handoff.ts",
+      "role": "recipient"
+    }
+  ],
+  "implementation_independence": {
+    "status": "SEPARATE_MODULES_AND_CANONICALIZERS",
+    "boundary": "same_repository_and_team_not_external_independence"
+  },
+  "cases": [
+    { "id": "independent-producer-roundtrip", "expected_result": "ACCEPTED", "class": "positive", "status": "PASS" },
+    { "id": "source-release-plus-atomic-import", "expected_result": "ACCEPTED", "class": "positive", "status": "PASS" },
+    { "id": "authority-shaped-payload", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "object-tamper", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "required-object-omission", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "unlisted-object-insertion", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "bounded-canonical-input", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "future-created-manifest", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "object-snapshot-after-set-cut", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "observation-after-snapshot", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "origin-assertion-after-snapshot", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "optional-object-omission", "expected_result": "PARTIAL", "class": "edge", "status": "PASS" },
+    { "id": "source-release-not-consumed", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "recipient-refusal-no-authority-burn", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "recipient-boundary-signer-substitution", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "recipient-commit-action-substitution", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "head-change-during-commit", "expected_result": "INDETERMINATE", "class": "hostile", "status": "PASS" },
+    { "id": "commit-acknowledgement-lost", "expected_result": "INDETERMINATE", "class": "edge", "status": "PASS" },
+    { "id": "repeated-bundle-requires-explicit-reconciliation", "expected_result": "INDETERMINATE", "class": "hostile", "status": "PASS" },
+    { "id": "reconciliation-without-retry", "expected_result": "ACCEPTED", "class": "positive", "status": "PASS" },
+    { "id": "lineage-rollback", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "lineage-fork", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "lineage-gap", "expected_result": "INDETERMINATE", "class": "edge", "status": "PASS" },
+    { "id": "vault-plaintext", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "vault-ciphertext-with-release", "expected_result": "ACCEPTED", "class": "positive", "status": "PASS" },
+    { "id": "unknown-required-payload-profile", "expected_result": "INDETERMINATE", "class": "edge", "status": "PASS" },
+    { "id": "hybrid-manifest", "expected_result": "ACCEPTED", "class": "positive", "status": "PASS" },
+    { "id": "hybrid-leg-stripping", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "hybrid-import-receipt", "expected_result": "ACCEPTED", "class": "positive", "status": "PASS" },
+    { "id": "hybrid-import-receipt-stripping", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "post-import-source-retirement-binding", "expected_result": "ACCEPTED", "class": "positive", "status": "PASS" },
+    { "id": "partial-retirement-excludes-unavailable", "expected_result": "ACCEPTED", "class": "positive", "status": "PASS" },
+    { "id": "action-substitution-caid-change", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "recipient-substitution-caid-change", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "tombstone-with-erasure-nonclaim", "expected_result": "ACCEPTED", "class": "edge", "status": "PASS" },
+    { "id": "accepted-receipt-without-admission-record", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "accepted-receipt-with-failure-reason", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "accepted-receipt-with-unavailable-state", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "partial-receipt-without-unavailable-state", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "failed-receipt-without-reason", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "receipt-issued-before-completion", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "failed-reconciliation-receipt", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "receipt-boundary-substitution", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "receipt-state-set-substitution", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "receipt-authority-caid-substitution", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "ambiguous-payload-adapter", "expected_result": "INDETERMINATE", "class": "hostile", "status": "PASS" },
+    { "id": "runtime-caid-registry-drift", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "trusted-time-not-established", "expected_result": "NOT_ESTABLISHED", "class": "edge", "status": "PASS" },
+    { "id": "malformed-payload-fails-closed", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "source-verifier-exception", "expected_result": "INDETERMINATE", "class": "hostile", "status": "PASS" },
+    { "id": "payload-adapter-exception", "expected_result": "INDETERMINATE", "class": "hostile", "status": "PASS" },
+    { "id": "recipient-admission-lookup-exception", "expected_result": "INDETERMINATE", "class": "hostile", "status": "PASS" },
+    { "id": "recipient-head-read-exception", "expected_result": "INDETERMINATE", "class": "hostile", "status": "PASS" },
+    { "id": "recipient-commit-response-unknown", "expected_result": "INDETERMINATE", "class": "hostile", "status": "PASS" },
+    { "id": "vault-availability-exception", "expected_result": "INDETERMINATE", "class": "hostile", "status": "PASS" },
+    { "id": "independent-producer-unicode-parity", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "hostile-receipt-canonical-input", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" },
+    { "id": "hostile-manifest-relationship-input", "expected_result": "REFUSED", "class": "hostile", "status": "PASS" }
+  ],
+  "summary": {
+    "total": 58,
+    "passed": 58,
+    "positive": 8,
+    "hostile": 44,
+    "edge": 6
+  },
+  "normative_ep_actions": [
+    "agent.state.export.1",
+    "agent.state.import.1",
+    "agent.state.key-release.1",
+    "agent.state.retire-source.1"
+  ],
+  "optional_noncore_profiles": [
+    "WEXP execution-evidence appraisal",
+    "CAP-1 examined-set coverage",
+    "WIMSE workload identity",
+    "SCITT registration and timestamping",
+    "SAIHM encrypted cell carriage"
+  ],
+  "nonclaims": [
+    "does_not_prove_source_state_truth",
+    "does_not_prove_source_population_completeness",
+    "does_not_transfer_reusable_authority",
+    "does_not_prove_physical_erasure",
+    "does_not_establish_trusted_time",
+    "does_not_establish_external_implementation_independence",
+    "is_not_an_ietf_submission_adoption_or_deployment"
+  ],
+  "report_digest": "sha256:1eb63b3fbe3b0e0b1de26010430cca66cef6d0c9f16f6bedd9c25bc1d34cedff"
+}

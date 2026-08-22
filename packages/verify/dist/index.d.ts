@@ -35,6 +35,8 @@ export * from './a2a-receipt-binding.js';
 export * from './ap2-native-adapter.js';
 export * from './a2a-evidence-challenge.js';
 export * from './memory-projection.js';
+export * from './portable-state-handoff.js';
+export * from './soma-cogobj-profile.js';
 export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';
 export { COSE_ENCODING_PROFILE, CBOR_DETERMINISTIC_ORDER, COSE_RECEIPT_CONTENT_TYPE, COSE_ALG_EDDSA, COSE_HEADER_EP_CAID, encodeDeterministicCbor8949, decodeDeterministicCbor8949, receiptToCborBytes, receiptFromCborBytes, receiptActionCaid, buildReceiptCoseSign1, verifyReceiptCoseSign1, } from './receipt-cose-encoding.js';

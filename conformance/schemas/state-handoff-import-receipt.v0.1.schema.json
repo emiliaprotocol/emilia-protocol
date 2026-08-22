@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.emiliaprotocol.ai/schema/state-handoff-import-receipt.v0.1.schema.json",
+  "title": "EP Portable State Handoff Import Receipt v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "receipt_kind",
+    "handoff_id",
+    "manifest_digest",
+    "payload_profile",
+    "importer_boundary_id",
+    "result",
+    "accepted_object_ids",
+    "unavailable_objects",
+    "reasons",
+    "authority_evidence",
+    "admission_record_digest",
+    "completed_at",
+    "issued_at",
+    "nonclaims",
+    "signature_policy",
+    "signatures"
+  ],
+  "properties": {
+    "@version": { "const": "EP-STATE-HANDOFF-IMPORT-RECEIPT-v0.1" },
+    "receipt_kind": { "enum": ["INITIAL", "RECONCILIATION"] },
+    "handoff_id": { "$ref": "#/$defs/text" },
+    "manifest_digest": { "$ref": "#/$defs/digest" },
+    "payload_profile": { "$ref": "#/$defs/text" },
+    "importer_boundary_id": { "$ref": "#/$defs/text" },
+    "result": { "enum": ["ACCEPTED", "PARTIAL", "REFUSED", "INDETERMINATE"] },
+    "accepted_object_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/text" }
+    },
+    "unavailable_objects": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["object_id", "reason"],
+        "properties": {
+          "object_id": { "$ref": "#/$defs/text" },
+          "reason": { "$ref": "#/$defs/text" }
+        }
+      }
+    },
+    "reasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/text" }
+    },
+    "authority_evidence": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stage", "action", "caid", "receipt_digest"],
+        "properties": {
+          "stage": { "enum": ["SOURCE_RELEASE", "RECIPIENT_COMMIT"] },
+          "action": {
+            "enum": ["agent.state.export.1", "agent.state.import.1", "agent.state.key-release.1"]
+          },
+          "caid": { "$ref": "#/$defs/text" },
+          "receipt_digest": { "$ref": "#/$defs/digest" }
+        }
+      }
+    },
+    "admission_record_digest": { "$ref": "#/$defs/nullableDigest" },
+    "completed_at": { "$ref": "#/$defs/time" },
+    "issued_at": { "$ref": "#/$defs/time" },
+    "nonclaims": { "$ref": "#/$defs/nonclaims" },
+    "signature_policy": { "$ref": "#/$defs/signaturePolicy" },
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/signature" }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[^\\u0000-\\u001f\\u007f]+$" },
+    "time": { "type": "string", "format": "date-time", "maxLength": 64 },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "nullableDigest": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }] },
+    "nonclaims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_truth", "authority_transfer", "source_population_completeness", "physical_erasure", "trusted_time"],
+      "properties": {
+        "source_truth": { "const": "NOT_ESTABLISHED" },
+        "authority_transfer": { "const": "PROHIBITED" },
+        "source_population_completeness": { "const": "NOT_ESTABLISHED" },
+        "physical_erasure": { "const": "NOT_ESTABLISHED" },
+        "trusted_time": { "const": "NOT_ESTABLISHED" }
+      }
+    },
+    "signaturePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "required_algorithms"],
+      "properties": {
+        "profile": { "const": "EP-SIG-AGILITY-v1" },
+        "required_algorithms": {
+          "oneOf": [
+            { "const": ["Ed25519"] },
+            { "const": ["Ed25519", "ML-DSA-65"] }
+          ]
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "sig", "key_id"],
+      "properties": {
+        "alg": { "enum": ["Ed25519", "ML-DSA-65"] },
+        "sig": { "type": "string", "minLength": 1, "maxLength": 8192, "pattern": "^[A-Za-z0-9_-]+$" },
+        "key_id": { "$ref": "#/$defs/text" }
+      }
+    }
+  }
+}
