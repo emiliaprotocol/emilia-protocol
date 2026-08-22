@@ -7,6 +7,7 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { canonicalize } from './execution-binding.js';
 import { executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, CAPABILITY_STATE_DDL, CAPABILITY_SQL, mintCapabilityReceipt, reconstructCapabilitySecret, splitCapabilitySecret, verifyCapabilityReceipt, verifyCapabilityScope, CAPABILITY_RECEIPT_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, capabilityActionDigest, capabilityBaseReceiptDigest, } from './capability-receipt.js';
+import { createOrganizationStatusProviderEntryGuard } from './dist/provider-entry.js';
 const NOW = Date.parse('2026-07-18T22:00:00.000Z');
 const require = createRequire(import.meta.url);
 function baseReceipt({ privateKey, publicKey, receiptId = 'base_1' } = {}) {
@@ -42,6 +43,8 @@ const DEFAULT_SCOPE_ACTIONS = [
     scopedAction('crash_before_provider_entry', { amount: 10 }),
     scopedAction('post_entry_negative_evidence', { amount: 10 }),
     scopedAction('unknown_guard_disposition', { amount: 10 }),
+    scopedAction('freeze_during_status_observation', { amount: 10 }),
+    scopedAction('late_entry_after_release', { amount: 10 }),
 ];
 function options(overrides = {}) {
     return {
@@ -1263,6 +1266,97 @@ test('an unknown provider-entry disposition fails closed and holds the reservati
     assert.equal(store.getOperation(action.operation_id).status, 'reserved');
     assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
     assert.equal(store.getState(minted.capabilityReceipt.capability.id).reserved_amount, 10);
+});
+test('a committed freeze defeats a still-fresh ACTIVE observation before provider entry', async () => {
+    const keys = issuer();
+    const action = scopedAction('freeze_during_status_observation', { amount: 10 });
+    const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));
+    const controlDomainId = 'org:freeze-race';
+    const store = createMemoryCapabilityStore({
+        verifyControlTransition: async ({ action_digest }) => ({
+            authenticated: true,
+            authorized: true,
+            authority_instance_digest: `sha256:${'a5'.repeat(32)}`,
+            action_digest,
+        }),
+    });
+    assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+    assert.equal((await store.registerControlDomain({ controlDomainId, now: NOW })).ok, true);
+    let effects = 0;
+    let froze = false;
+    const guard = createOrganizationStatusProviderEntryGuard({
+        organizationId: 'org:freeze-race',
+        controlDomainId,
+        maxAgeMs: 5_000,
+        now: NOW + 50,
+        resolveStatus: async () => {
+            if (!froze) {
+                froze = true;
+                const frozen = await store.freezeControlDomain({
+                    controlDomainId,
+                    operationId: 'freeze:during-status-observation',
+                    actionDigest: `sha256:${'b6'.repeat(32)}`,
+                    authorization: { current: true },
+                    now: NOW,
+                });
+                assert.equal(frozen.ok, true);
+            }
+            return {
+                organization_id: 'org:freeze-race',
+                status: 'active',
+                epoch: 1,
+                observed_at: new Date(NOW - 4_900).toISOString(),
+                authenticated: true,
+            };
+        },
+    });
+    const result = await executeWithCapability({
+        capabilityReceipt: minted.capabilityReceipt,
+        secret: minted.secret,
+        action,
+        operationId: action.operation_id,
+        store,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        verifyBaseReceipt: () => true,
+        providerEntryGuard: guard,
+        controlDomainId,
+        executeAction: async () => { effects += 1; },
+        now: NOW + 50,
+    });
+    assert.equal(result.reason, 'capability_control_domain_frozen');
+    assert.equal(effects, 0);
+    assert.equal(store.getOperation(action.operation_id).status, 'released');
+});
+test('memory store refuses provider entry after deadline recovery releases the reservation', async () => {
+    const keys = issuer();
+    const action = scopedAction('late_entry_after_release', { amount: 10 });
+    const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));
+    const store = createMemoryCapabilityStore({ providerEntryTimeoutMs: 1_000 });
+    assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+    const capabilityId = minted.capabilityReceipt.capability.id;
+    const reserved = await store.reserveSpend({
+        capabilityId,
+        capabilityFingerprint: store.getState(capabilityId).capability_fingerprint,
+        operationId: action.operation_id,
+        actionDigest: capabilityActionDigest(action),
+        amount: action.amount,
+        currency: action.currency,
+        now: NOW,
+    });
+    assert.equal(reserved.ok, true);
+    assert.equal((await store.recoverPreEntrySpend({
+        capabilityId,
+        operationId: action.operation_id,
+        actionDigest: capabilityActionDigest(action),
+        now: reserved.entry_deadline_at,
+    })).ok, true);
+    assert.equal((await store.beginProviderEntry({
+        capabilityId,
+        operationId: action.operation_id,
+        reservationToken: reserved.reservation_token,
+        now: reserved.entry_deadline_at + 10,
+    })).reason, 'capability_operation_already_finalized');
+    assert.equal(store.getState(capabilityId).consumed_amount, 0);
 });
 test('negative evidence must be final and fresh before it releases a still-reserved operation', async () => {
     const keys = issuer();
@@ -3577,6 +3671,59 @@ test('real PostgreSQL serializes emergency freeze against provider entry and pre
         releaseFreeze.release();
         assert.equal((await freezingFirst).epoch, 8);
         assert.equal((await enteringLate).reservation, 'released');
+        const deadlineAction = scopedAction('late_entry_after_release', { amount: 10 });
+        const deadlineReservation = await store.reserveSpend({
+            capabilityId,
+            capabilityFingerprint: fingerprint,
+            operationId: deadlineAction.operation_id,
+            actionDigest: capabilityActionDigest(deadlineAction),
+            amount: 10,
+            currency: 'USD',
+            now: NOW + 19,
+        });
+        assert.equal(deadlineReservation.ok, true);
+        const releaseLocked = latch();
+        const releaseDeadline = latch();
+        const lateEntryReachedLock = latch();
+        let releaseHeld = false;
+        const releaseFirstStore = createPostgresCapabilityStore({
+            transaction: transactionFor({
+                async after(sql) {
+                    if (!releaseHeld && sql === CAPABILITY_SQL.readOperation) {
+                        releaseHeld = true;
+                        releaseLocked.release();
+                        await releaseDeadline.waiting;
+                    }
+                },
+            }),
+            verifyControlTransition,
+        });
+        const entryAfterReleaseStore = createPostgresCapabilityStore({
+            transaction: transactionFor({
+                before(sql) {
+                    if (sql === CAPABILITY_SQL.readOperation)
+                        lateEntryReachedLock.release();
+                },
+            }),
+            verifyControlTransition,
+        });
+        const recoveringAtDeadline = releaseFirstStore.recoverPreEntrySpend({
+            capabilityId,
+            operationId: deadlineAction.operation_id,
+            actionDigest: capabilityActionDigest(deadlineAction),
+            now: deadlineReservation.entry_deadline_at,
+        });
+        await releaseLocked.waiting;
+        const entryTenMsLate = entryAfterReleaseStore.beginProviderEntry({
+            capabilityId,
+            operationId: deadlineAction.operation_id,
+            reservationToken: deadlineReservation.reservation_token,
+            now: deadlineReservation.entry_deadline_at + 10,
+        });
+        await lateEntryReachedLock.waiting;
+        releaseDeadline.release();
+        assert.equal((await recoveringAtDeadline).ok, true);
+        assert.equal((await entryTenMsLate).reason, 'capability_operation_already_finalized');
     }
     finally {
         await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);

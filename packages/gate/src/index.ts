@@ -70,6 +70,7 @@ import {
 import {
   evaluateProviderEntryGuard,
   providerEntryContext,
+  requiredProviderEntryControlDomain,
   type ProviderEntryGuard,
 } from './provider-entry.js';
 import {
@@ -1273,6 +1274,16 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     observedAction?: Record<string, any> | null;
     capability?: Record<string, any> | null;
   }) {
+    const requiredControlDomainId = requiredProviderEntryControlDomain(providerEntryGuard);
+    if (requiredControlDomainId !== null && capability === null) {
+      return Object.freeze({
+        ok: false,
+        reason: 'provider_entry_serialized_control_domain_required',
+        status: 503,
+        evidence: null,
+        reservation: 'hold' as const,
+      });
+    }
     return evaluateProviderEntryGuard(
       providerEntryGuard,
       providerEntryContext({ authorization, selector, observedAction, capability, now }),
@@ -2007,6 +2018,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             capability: input.capability,
           })
         : null,
+      controlDomainId: requiredProviderEntryControlDomain(providerEntryGuard) ?? undefined,
     };
     const capabilityResult = Array.isArray(context.shares)
       ? await executeWithThreshold(/** @type {any} */ ({ ...executorInput, shares: context.shares }))

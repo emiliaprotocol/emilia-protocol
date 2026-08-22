@@ -113,7 +113,9 @@ test('AEB-ADAPTER-v1 publishes the refusal and lifecycle vector set', () => {
         'authority_predicates_are_first_class_requirement_terms',
         'executor_cannot_satisfy_approval_role',
         'native_replay_unit_is_fenced_across_aeb_wrappers',
+        'distinct_verified_authorities_cannot_share_replay_unit',
         'presenter_status_cannot_establish_current_authority',
+        'online_profile_refuses_offline_authority_with_unknown_status',
         'registry_kind_substitution_is_indeterminate',
         'aec_is_the_composition_engine',
         'same_caid_different_normalized_action_refuses',
@@ -441,6 +443,33 @@ test('AEB gives adapters only immutable relying-party-pinned configuration', () 
     const result = evaluate(s, malicious);
     assert.equal(result.record.verdict, 'SATISFIED');
     assert.equal(s.config.adapters['test:operator'].config.mode, 'offline');
+});
+test('AEB refuses a verified adapter whose replay identity changes with the wrapper reference', () => {
+    const s = setup();
+    const verifyNative = s.adapter.verifyNative;
+    s.adapter.verifyNative = (input) => ({
+        ...verifyNative(input),
+        replay_unit: digestAeb({
+            adapter: s.adapter.id,
+            native_authority: input.artifact.replay_id,
+            forbidden_wrapper_reference: input.artifact_ref,
+        }),
+    });
+    const result = evaluate(s);
+    assert.equal(result.record.verdict, 'INDETERMINATE');
+    assert.equal(result.valid, false);
+    assert.ok(result.record.legs.every((leg) => leg.reasons.includes('replay_unit_wrapper_dependent')));
+});
+test('AEB refuses distinct verified authority artifacts that collide on one replay unit', () => {
+    const s = setup();
+    const legs = defaultLegs();
+    legs[1].artifact.replay_id = 'native:collision';
+    legs[2].artifact.replay_id = 'native:collision';
+    const result = evaluate(s, legs);
+    assert.equal(result.record.verdict, 'INDETERMINATE');
+    assert.equal(result.valid, false);
+    assert.ok(result.record.legs[1].reasons.includes('replay_unit_authority_collision'));
+    assert.ok(result.record.legs[2].reasons.includes('replay_unit_authority_collision'));
 });
 test('signed native bridge composes WIMSE possession and human authorization', () => {
     const requirement = {
@@ -868,6 +897,31 @@ test('execution-time verification refuses stale or newly revoked trusted status'
     });
     assert.equal(expired.valid, false);
     assert.equal(expired.checks.current_status, false);
+});
+test('an online any-of profile refuses weakest-adapter selection when offline authority status is unknown', () => {
+    const s = setup({
+        '@version': 'AEB-REQUIREMENT-v1',
+        all_of: [],
+        any_of: [['human-authorization', 'offline-mandate']],
+        terms: [
+            { type: 'initiator-exclusion', roles: ['human-authorization', 'offline-mandate'] },
+            { type: 'executor-exclusion', roles: ['human-authorization', 'offline-mandate'] },
+            { type: 'one-time-consumption' },
+        ],
+    });
+    s.config.registry.entries['role:offline-mandate'] = registryEntry('role:offline-mandate', 'evidence-role', '1', { role: 'offline-mandate', subject_kinds: ['human'] });
+    s.config.registry.registry_digest = unifiedRegistryDigest(s.config.registry);
+    const offline = leg('offline-mandate', CAID, 'artifact:offline-mandate', { id: 'human:offline-approver', kind: 'human' });
+    offline.status = status({
+        revocation_checked: false,
+        unavailable: true,
+    });
+    const result = evaluate(s, [offline]);
+    assert.equal(result.valid, false);
+    assert.equal(result.record.verdict, 'INDETERMINATE');
+    assert.equal(result.record.legs[0].verdict, 'INDETERMINATE');
+    assert.ok(result.record.legs[0].reasons.includes('status_unavailable'));
+    assert.ok(result.record.legs[0].reasons.includes('revocation_not_checked'));
 });
 test('AEB fails closed on unknown, duplicate, or weakened authority terms', () => {
     for (const terms of [

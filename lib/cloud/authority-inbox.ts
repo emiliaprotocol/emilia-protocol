@@ -372,6 +372,29 @@ export interface AuthorityNotification {
   authorizes: false;
 }
 
+export interface BlindRetryNotice {
+  prior_attempt_state: 'INDETERMINATE';
+  prior_receipt_id: string;
+  retry_safe: false;
+  required_next_step: 'AUTHENTICATED_RECONCILIATION';
+  authorizes_new_authority: false;
+}
+
+/**
+ * Surface an unresolved prior attempt before any operator considers issuing
+ * new authority. This is display evidence, not a release or retry decision.
+ */
+export function blindRetryNotice(entry: AuthorityInboxEntry): BlindRetryNotice | null {
+  if (entry.state !== 'INDETERMINATE') return null;
+  return Object.freeze({
+    prior_attempt_state: 'INDETERMINATE',
+    prior_receipt_id: entry.receipt_id,
+    retry_safe: false,
+    required_next_step: 'AUTHENTICATED_RECONCILIATION',
+    authorizes_new_authority: false,
+  });
+}
+
 export function buildAuthorityNotification(
   entry: AuthorityInboxEntry,
   notificationType: AuthorityNotification['notification_type'],

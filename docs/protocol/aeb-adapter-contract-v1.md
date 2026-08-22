@@ -105,7 +105,12 @@ signed result; it does not redefine WIMSE credential verification.
 Every accepted native result also carries a stable `replay_unit` derived from
 the native authorization itself. It does not include the AEB operation ID or
 consumption nonce. Changing the AEB wrapper therefore cannot make one native
-approval spendable again.
+approval spendable again. The evaluator probes every adapter with a second,
+deterministic wrapper reference and makes the leg `INDETERMINATE` if the replay
+unit changes. It also refuses an evaluation when two distinct verified native
+artifact digests from one adapter collapse onto the same replay unit. These
+checks turn wrapper parity and intra-evaluation collision detection into runtime
+invariants rather than adapter-specific documentation claims.
 
 ## Evaluation records
 

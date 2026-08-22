@@ -25,6 +25,14 @@ describe('/cloud/authority-inbox source contract', () => {
     expect(page).toContain('Creates no receipt, sends no message, and authorizes nothing.');
   });
 
+  it('shows the prior indeterminate attempt before the governance details', () => {
+    expect(page).toContain('blindRetryNotice(selected)');
+    expect(page).toContain('Reconcile this attempt before issuing new authority');
+    expect(page).toContain('retry-safe is false');
+    expect(page.indexOf('Reconcile this attempt before issuing new authority'))
+      .toBeLessThan(page.indexOf('<dl className={styles.facts}>'));
+  });
+
   it('returns the evidence-derived projection and metrics from the tenant route', () => {
     expect(route).toContain('projectAuthorityInboxEntry');
     expect(route).toContain('authorityInboxMetrics');

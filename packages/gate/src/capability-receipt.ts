@@ -27,6 +27,12 @@ import {
 } from 'node:crypto';
 import { canonicalize } from './execution-binding.js';
 import {
+  evaluateProviderEntryGuard,
+  providerEntryContext,
+  requiredProviderEntryControlDomain,
+  type ProviderEntryGuard,
+} from './provider-entry.js';
+import {
   signAgileSet,
   verifyAgileSignatureSet,
   ML_DSA_65_PUBLIC_KEY_BYTES,
@@ -187,7 +193,7 @@ type ExecuteWithCapabilityOptions = {
   operationId?: string | null;
   now?: number | (() => number);
   thresholdSecretVerified?: boolean;
-  providerEntryGuard?: ((context: Record<string, any>) => any) | null;
+  providerEntryGuard?: ProviderEntryGuard | null;
 };
 type ExecuteWithCapabilityResult = {
   ok: boolean;
@@ -3431,6 +3437,13 @@ export async function executeWithCapability({
   if (providerEntryGuard !== null && typeof providerEntryGuard !== 'function') {
     throw new TypeError('providerEntryGuard must be a function when configured');
   }
+  const requiredControlDomainId = requiredProviderEntryControlDomain(providerEntryGuard);
+  if (requiredControlDomainId !== null && controlDomainId !== requiredControlDomainId) {
+    return { ok: false, reason: 'capability_provider_entry_control_domain_required' };
+  }
+  if (requiredControlDomainId !== null && store?.controlDomainCapable !== true) {
+    return { ok: false, reason: 'capability_control_domain_store_required' };
+  }
   if (typeof requireHumanAuthorization !== 'boolean') {
     return { ok: false, reason: 'capability_human_authorization_configuration_invalid' };
   }
@@ -3555,31 +3568,41 @@ export async function executeWithCapability({
     };
   }
   if (providerEntryGuard) {
-    let entryVerdict;
-    try {
-      entryVerdict = await providerEntryGuard(Object.freeze({
-        authorization: structuredClone(authorization),
+    const baseEntryContext = providerEntryContext({
+      authorization,
+      selector,
+      observedAction: immutableAction,
+      capability: {
+        id: verified.capability.id,
+        operation_id: operationId,
+        action_digest: scope.action_digest,
+        action_fence_digest: scope.action_fence_digest,
+      },
+      now,
+    });
+    const entryVerdict = await evaluateProviderEntryGuard(
+      providerEntryGuard,
+      Object.freeze({
+        ...baseEntryContext,
         human_authorization: humanAuthorizationResult
           ? structuredClone(humanAuthorizationResult)
           : null,
         budget_guarantee: structuredClone(budgetGuarantee),
-        selector: structuredClone(selector),
-        observed_action: structuredClone(immutableAction),
-        capability: structuredClone({
-          id: verified.capability.id,
+      }),
+    );
+    if (!entryVerdict || entryVerdict.ok !== true) {
+      if (entryVerdict?.reason === 'provider_entry_guard_disposition_invalid') {
+        return {
+          ok: false,
+          reason: 'capability_provider_entry_disposition_invalid',
+          authorization,
+          ...composition,
           operation_id: operationId,
           action_digest: scope.action_digest,
           action_fence_digest: scope.action_fence_digest,
-        }),
-      }));
-    } catch {
-      entryVerdict = {
-        ok: false,
-        reason: 'provider_entry_guard_unavailable',
-        reservation: 'hold',
-      };
-    }
-    if (!entryVerdict || entryVerdict.ok !== true) {
+          ...(scope.caid ? { caid: scope.caid } : {}),
+        };
+      }
       const suppliedDisposition = entryVerdict?.reservation;
       // Absence is uncertainty, not proof that provider entry did not happen.
       // Authority is restored only when a guard explicitly returns `release`.

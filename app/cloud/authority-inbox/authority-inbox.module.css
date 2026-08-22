@@ -475,3 +475,20 @@
   .timelineRow { grid-template-columns: 12px minmax(0, 1fr); }
   .timelineRow time { grid-column: 2; }
 }
+.blindRetryWarning {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  border-radius: 0.75rem;
+  background: rgba(120, 53, 15, 0.2);
+}
+
+.blindRetryWarning strong,
+.blindRetryWarning p,
+.blindRetryWarning code {
+  display: block;
+}
+
+.blindRetryWarning p {
+  margin: 0.5rem 0;
+}

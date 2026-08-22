@@ -5,15 +5,15 @@
   "files": [
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "261f4429044c5a7c434aea63751852606cbed2ca3f9c96830dd24868800f43f3"
+      "sha256": "8b69f50cc4708dc42fec576d66b23f8a05645a2afa094e36463bbd282deabe10"
     },
     {
       "path": "docs/protocol/aeb-adapter-contract-v1.md",
-      "sha256": "e5ac1ea0a1bdbd5b94c9afe8b4529c27842f9dd007933f49fa4c77cde363b5a3"
+      "sha256": "dfc7ff5afa6f5a6caf91f07e90a6bc3278571a06f96aa8ee2514bb020a9d4d7a"
     },
     {
       "path": "conformance/vectors/aeb-adapter.v1.json",
-      "sha256": "9e3f6fafb290a135132b8febd2b12af2593b4f313a898e8622ca851643828083"
+      "sha256": "a770f32e7d41571aa6e23b41882a0a8115de2735e2c30dcdadf20096629c9f30"
     }
   ],
   "compatibility_policy": "An incompatible contract change requires AEB-ADAPTER-v2. A compatible change requires an explicit lock refresh and rerun of every dependent composition profile."
