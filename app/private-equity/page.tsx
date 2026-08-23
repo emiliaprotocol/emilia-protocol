@@ -10,10 +10,10 @@ import PortfolioTrackedLink from './PortfolioTrackedLink';
 import css from './private-equity.module.css';
 
 const PAGE_URL = 'https://www.emiliaprotocol.ai/private-equity';
-const PAGE_TITLE = 'Portfolio Authority Control for Private Equity AI Risk';
+const PAGE_TITLE = 'The Universal Authority Tollgate for Portfolio AI';
 const PAGE_DESCRIPTION =
-  'Control consequential AI agent actions inside portfolio companies with customer-owned authority, '
-  + 'open verification, and a 90-day finance-boundary pilot.';
+  'Scale agentic AI across private-equity portfolios without giving agents an open road into money, '
+  + 'systems, and assets. Start with one customer-owned finance tollgate.';
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: PAGE_URL,
-    title: 'Portfolio Authority Control for agentic AI',
+    title: 'The Universal Authority Tollgate for Portfolio AI',
     description: PAGE_DESCRIPTION,
     images: [
       {
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Portfolio Authority Control for agentic AI',
+    title: 'The Universal Authority Tollgate for Portfolio AI',
     description: PAGE_DESCRIPTION,
     images: ['/private-equity/opengraph-image'],
   },
@@ -301,15 +301,15 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
       <main className={css.page}>
         <section className={css.hero} aria-labelledby="pe-hero-title">
           <div className={css.heroCopy}>
-            <p className={css.eyebrow}>For private equity operating partners and portfolio finance leaders</p>
-            <h1 id="pe-hero-title">Portfolio Authority Control for agentic AI.</h1>
+            <p className={css.eyebrow}>The Universal Authority Tollgate for portfolio AI</p>
+            <h1 id="pe-hero-title">Give every consequential agent action a tollgate.</h1>
             <p className={css.heroLead}>
-              Fund one repeatable control pattern across the portfolio. Each company keeps its keys
-              and authority. EMILIA Gate controls exact finance actions where money can move.
+              Scale agentic AI without giving agents an open road into portfolio money, systems, and
+              assets. One sponsor can standardize the control contract. Each company owns its Gate.
             </p>
             <p className={css.boundaryStatement}>
-              On completely mediated covered paths, no accepted exact-action authority and required
-              evidence means no provider entry.
+              On completely mediated covered paths, the exact action must arrive with accepted
+              authority and required evidence before it can enter the consequential provider.
             </p>
             <div className={css.heroActions}>
               <PortfolioTrackedLink
@@ -321,14 +321,14 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
                   surface: 'protected_workflow_pilot',
                 }}
               >
-                Scope one portfolio pilot
+                Protect one portfolio boundary
               </PortfolioTrackedLink>
               <PortfolioTrackedLink
                 className={css.textLink}
                 href="#risk-lab"
                 eventDetail={{ event: 'risk_lab_opened', location: 'hero' }}
               >
-                Run the observe-only risk lab <span aria-hidden="true">↓</span>
+                Test the tollgate in observe mode <span aria-hidden="true">↓</span>
               </PortfolioTrackedLink>
             </div>
             <dl className={css.offerStrip} aria-label="Pilot terms">
@@ -373,12 +373,12 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
         <section className={css.introBand} aria-labelledby="why-portfolio-heading">
           <p className={css.sectionKicker}>The portfolio opportunity</p>
           <div>
-            <h2 id="why-portfolio-heading">One sponsor program. Company-owned authority.</h2>
+            <h2 id="why-portfolio-heading">AI creates the upside. Put a control boundary behind it.</h2>
             <p>
-              A sponsor can fund the same consequence-control discipline across companies without
-              centralizing their keys, approvals, or operational records. Start with one company and
-              one finance boundary. Repeat only after the control works under that company&apos;s systems,
-              people, and risk rules.
+              A sponsor can fund the same action-control discipline across companies without taking
+              custody of their keys, approvals, or operating records. Start with one company and one
+              finance boundary. Repeat only after the buyer reproduces the control under its own
+              systems, people, and risk rules.
             </p>
           </div>
         </section>
@@ -615,7 +615,7 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
 
         <section className={css.finalCta} aria-labelledby="final-cta-heading">
           <p className={css.sectionKicker}>Start with a real boundary</p>
-          <h2 id="final-cta-heading">Protect one portfolio-company finance workflow.</h2>
+          <h2 id="final-cta-heading">Put the first tollgate where portfolio money can move.</h2>
           <p>
             Bring the workflow, owner, executor path, current approval rule, and known bypasses. We will
             scope the smallest pilot that can produce a defensible yes or no.

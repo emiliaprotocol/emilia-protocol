@@ -28,8 +28,8 @@ const footer = readFileSync(resolve(ROOT, 'components/SiteFooter.tsx'), 'utf8');
 describe('private-equity portfolio customer page', () => {
   it('is an indexable, finance-first customer route with dedicated share metadata', () => {
     expect(page).toContain("alternates: { canonical: '/private-equity' }");
-    expect(page).toContain('Portfolio Authority Control for Private Equity AI Risk');
-    expect(page).toContain('Portfolio Authority Control for agentic AI.');
+    expect(page).toContain('The Universal Authority Tollgate for Portfolio AI');
+    expect(page).toContain('Give every consequential agent action a tollgate.');
     expect(page).toContain("url: '/private-equity/opengraph-image'");
     expect(page).toContain('robots: { index: true, follow: true }');
     expect(openGraphImage).toContain('export const size = { width: 1200, height: 630 }');
@@ -39,7 +39,8 @@ describe('private-equity portfolio customer page', () => {
 
   it('keeps the portfolio promise inside the complete-mediation boundary', () => {
     expect(page).toContain('On completely mediated covered paths');
-    expect(page).toContain('no accepted exact-action authority and required');
+    expect(page).toContain('must arrive with accepted');
+    expect(page).toContain('authority and required evidence before it can enter');
     expect(page).toContain('Gate does not establish');
     expect(page).toContain('does not cover every agent risk or make an investment safe');
     expect(page).toContain('Source truth, bypass paths, fraud absence, provider outcome');
@@ -48,7 +49,7 @@ describe('private-equity portfolio customer page', () => {
   });
 
   it('keeps private investment outreach separate from the public customer conversion', () => {
-    expect(page).toContain('Scope one portfolio pilot');
+    expect(page).toContain('Protect one portfolio boundary');
     expect(page).toContain('Customer deployment path only');
     expect(page).not.toContain('href="/investors"');
     expect(page).not.toMatch(/invest now|request investment|investment opportunity/i);

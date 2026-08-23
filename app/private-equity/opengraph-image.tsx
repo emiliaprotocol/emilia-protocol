@@ -2,7 +2,7 @@
 
 import { ImageResponse } from 'next/og';
 
-export const alt = 'Portfolio Authority Control for agentic AI at a customer-owned finance boundary';
+export const alt = 'The Universal Authority Tollgate for portfolio AI at a customer-owned finance boundary';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -30,14 +30,14 @@ export default function OpenGraphImage(): ImageResponse {
           }}
         >
           <div style={{ display: 'flex', color: '#71521d', fontSize: 19, letterSpacing: 2.4 }}>
-            EMILIA GATE / PRIVATE EQUITY
+            UNIVERSAL AUTHORITY TOLLGATE / PRIVATE EQUITY
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', fontSize: 70, fontWeight: 700, lineHeight: .98, letterSpacing: -3.5 }}>
-              Portfolio Authority Control for agentic AI.
+            <div style={{ display: 'flex', fontSize: 64, fontWeight: 700, lineHeight: .98, letterSpacing: -3.2 }}>
+              Give every consequential agent action a tollgate.
             </div>
             <div style={{ display: 'flex', marginTop: 28, color: '#625d56', fontSize: 25, lineHeight: 1.4 }}>
-              Sponsor-scale control. Company-owned authority.
+              One sponsor standard. Every company keeps control.
             </div>
           </div>
           <div style={{ display: 'flex', color: '#625d56', fontSize: 17 }}>
