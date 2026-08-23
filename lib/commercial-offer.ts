@@ -19,8 +19,8 @@ export const PROTECTED_WORKFLOW_PILOT = Object.freeze({
   durationLabel: '90 days',
   workflowCount: 1,
   workflowLabel: '1 protected workflow',
-  firstProfileLabel: 'Payer adverse medical-necessity determination',
-  safetyRuleLabel: 'No valid licensed-review evidence, no adverse determination',
+  firstProfileLabel: 'Finance operations vendor bank-detail change or payment release',
+  safetyRuleLabel: 'No accepted exact-action authority and required evidence, no provider entry',
   eligibilityLabel: 'Other consequential workflows remain eligible',
   rolloutLabel: 'Synthetic and read-only validation first; production only through a buyer-approved Gate boundary',
 });

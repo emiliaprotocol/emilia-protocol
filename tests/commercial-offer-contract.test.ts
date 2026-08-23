@@ -12,6 +12,9 @@ const pilotMetadata = readFileSync(resolve(ROOT, 'app/pilot/layout.tsx'), 'utf8'
 const intake = readFileSync(resolve(ROOT, 'app/api/pilot/request/route.ts'), 'utf8');
 const navigation = readFileSync(resolve(ROOT, 'components/SiteNav.tsx'), 'utf8');
 const govGuard = readFileSync(resolve(ROOT, 'app/govguard/page.tsx'), 'utf8');
+const finGuard = readFileSync(resolve(ROOT, 'app/finguard/page.tsx'), 'utf8');
+const home = readFileSync(resolve(ROOT, 'app/HomePageClient.tsx'), 'utf8');
+const assuranceBrief = readFileSync(resolve(ROOT, 'docs/EMILIA-ASSURANCE-PRODUCT-BRIEF.md'), 'utf8');
 const programIntegrity = readFileSync(
   resolve(ROOT, 'app/health/program-integrity/_components/ProgramIntegrityGate.tsx'),
   'utf8',
@@ -45,7 +48,7 @@ describe('commercial offer contract', () => {
     expect(pilotMetadata).not.toContain('Four Weeks');
     expect(pilotMetadata).not.toContain('Free');
     expect(navigation).not.toContain('href="/partners" className="ep-cta-secondary"');
-    const conversionSurfaces = `${pilotMetadata}\n${govGuard}\n${programIntegrity}`;
+    const conversionSurfaces = `${pilotMetadata}\n${govGuard}\n${finGuard}\n${programIntegrity}`;
     expect(conversionSurfaces).not.toMatch(/60[- ]day|60 days/i);
     expect(conversionSurfaces).toContain('90-day protected-workflow pilot');
     expect(conversionSurfaces).toContain('$25K');
@@ -67,18 +70,26 @@ describe('commercial offer contract', () => {
     expect(publicOffer).toContain('service level');
   });
 
-  it('defines one protected-workflow pilot with payer adverse determination as the first profile', () => {
+  it('defines one protected-workflow pilot with finance operations as the first profile', () => {
     expect(commercialOffer).toContain("id: 'protected_workflow_pilot_v1'");
     expect(commercialOffer).toContain("name: 'Protected-workflow pilot'");
     expect(commercialOffer).toContain('durationDays: 90');
     expect(commercialOffer).toContain("workflowLabel: '1 protected workflow'");
   });
 
-  it('names payer adverse determination first while keeping other workflows eligible', () => {
-    expect(commercialOffer).toContain("firstProfileLabel: 'Payer adverse medical-necessity determination'");
-    expect(commercialOffer).toContain("safetyRuleLabel: 'No valid licensed-review evidence, no adverse determination'");
-    expect(pilot).toContain('Other consequential workflows remain eligible');
+  it('names the finance boundary first while keeping other workflows eligible', () => {
+    expect(commercialOffer).toContain("firstProfileLabel: 'Finance operations vendor bank-detail change or payment release'");
+    expect(commercialOffer).toContain("safetyRuleLabel: 'No accepted exact-action authority and required evidence, no provider entry'");
+    expect(pilot).toMatch(/Other\s+consequential workflows remain eligible/);
+    expect(pilot).toContain("workflow: 'beneficiary_change'");
+    expect(pilot).toContain('Vendor / beneficiary bank-detail change · first finance profile');
     expect(pilot).toContain('payer_adverse_determination');
     expect(intake).toContain('payer_adverse_determination');
+    expect(finGuard).toContain('PROTECTED_WORKFLOW_PILOT.durationLabel');
+    expect(finGuard).not.toContain('Pilot in 30 days');
+    expect(home).toContain('Vendor bank-detail changes and payment releases');
+    expect(home).not.toContain('Payer adverse medical-necessity determinations contain');
+    expect(assuranceBrief).toContain('Finance Operations Assurance');
+    expect(assuranceBrief).not.toContain('Adverse Determination Assurance');
   });
 });

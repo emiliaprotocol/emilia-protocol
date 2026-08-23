@@ -17,16 +17,16 @@ import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 import { color, font, radius, styles } from '@/lib/tokens';
 
 const WORKFLOWS = [
-  ['payer_adverse_determination', 'Payer adverse medical-necessity determination · first profile'],
-  ['wire_release', 'Wire / payment release'],
-  ['beneficiary_change', 'Vendor / beneficiary bank-detail change'],
+  ['beneficiary_change', 'Vendor / beneficiary bank-detail change · first finance profile'],
+  ['wire_release', 'Wire / payment release · first finance profile'],
+  ['payer_adverse_determination', 'Payer adverse medical-necessity determination'],
   ['benefit_account_change', 'Benefit payment-destination change'],
   ['caseworker_override', 'Caseworker / examiner override'],
   ['clinical_action', 'Clinical / administrative healthcare action'],
   ['other', 'Another irreversible agent action'],
 ];
 
-const PRESELECT = { gov: 'benefit_account_change', fin: 'wire_release', health: 'payer_adverse_determination' };
+const PRESELECT = { gov: 'benefit_account_change', fin: 'beneficiary_change', health: 'payer_adverse_determination' };
 
 function publicRecordReturn(artifactId: string): { href: string; label: string } {
   const encoded = encodeURIComponent(artifactId);
@@ -44,7 +44,7 @@ function publicRecordReturn(artifactId: string): { href: string; label: string }
 
 export default function PilotPage(): React.ReactElement {
   const [form, setForm] = useState({
-    name: '', org: '', email: '', workflow: 'payer_adverse_determination', message: '', website: '',
+    name: '', org: '', email: '', workflow: 'beneficiary_change', message: '', website: '',
     offer_id: PROTECTED_WORKFLOW_PILOT.id, artifact_id: '',
   });
   const [state, setState] = useState('idle'); // idle | busy | done | error
@@ -114,10 +114,12 @@ export default function PilotPage(): React.ReactElement {
           {selectedOffer.durationLabel}. {selectedOffer.shortPriceLabel}.
         </h1>
         <p style={{ ...styles.body, maxWidth: 580 }}>
-          Start with {selectedOffer.firstProfileLabel.toLowerCase()}: {selectedOffer.safetyRuleLabel.toLowerCase()}.
-          Missing, stale, invalid, unqualified, or mismatched evidence routes to lawful human review or a
-          patient-protective fallback; it does not authorize withholding medically necessary care. Other consequential workflows remain eligible under the same fixed offer. EMILIA does not verify civil
-          identity, certify a deployment, judge medical correctness, take custody, or move money.
+          Start with {selectedOffer.firstProfileLabel.toLowerCase()}. The safety rule is simple:{' '}
+          {selectedOffer.safetyRuleLabel.toLowerCase()}. On a completely mediated covered path, missing,
+          stale, exhausted, invalid, or mismatched authority does not admit provider entry. Other
+          consequential workflows remain eligible under the same
+          fixed offer. EMILIA does not prove bank-detail correctness, payee identity, fraud absence,
+          provider success, legality, or business wisdom, and it does not take custody or move money.
         </p>
 
         {/* terms strip */}
@@ -145,10 +147,10 @@ export default function PilotPage(): React.ReactElement {
             <input id="p-name" required value={form.name} onChange={set('name')} style={input} placeholder="Jordan Chen" />
 
             <label style={lbl} htmlFor="p-org">Organization</label>
-            <input id="p-org" required value={form.org} onChange={set('org')} style={input} placeholder="First Example Bank / State Agency / Startup" />
+            <input id="p-org" required value={form.org} onChange={set('org')} style={input} placeholder="Portfolio company / Finance team / Enterprise" />
 
             <label style={lbl} htmlFor="p-email">Work email</label>
-            <input id="p-email" required type="email" value={form.email} onChange={set('email')} style={input} placeholder="you@organization.gov" />
+            <input id="p-email" required type="email" value={form.email} onChange={set('email')} style={input} placeholder="you@company.com" />
 
             <label style={lbl} htmlFor="p-workflow">The workflow to pilot</label>
             <select id="p-workflow" value={form.workflow} onChange={set('workflow')} style={{ ...input, appearance: 'auto' }}>

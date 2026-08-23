@@ -25,9 +25,9 @@ const TEAM = 'team@emiliaprotocol.ai';
 const MAX_PILOT_REQUEST_BYTES = 16 * 1024;
 
 const WORKFLOWS: Record<string, { label: string }> = {
-  payer_adverse_determination: { label: 'Payer adverse medical-necessity determination' },
-  wire_release: { label: 'Wire / payment release' },
   beneficiary_change: { label: 'Vendor / beneficiary bank-detail change' },
+  wire_release: { label: 'Wire / payment release' },
+  payer_adverse_determination: { label: 'Payer adverse medical-necessity determination' },
   benefit_account_change: { label: 'Benefit payment-destination change' },
   caseworker_override: { label: 'Caseworker / examiner override' },
   clinical_action: { label: 'Clinical / administrative healthcare action' },

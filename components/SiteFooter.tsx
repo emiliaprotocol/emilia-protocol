@@ -14,6 +14,7 @@ const COL_PRODUCT: FooterLink[] = [
 
 const COL_SOLUTIONS: FooterLink[] = [
   ['/use-cases', 'All Solutions'],
+  ['/private-equity', 'Private Equity'],
   ['/signal', 'Signal Discovery'],
   ['/assurance', 'Assurance'],
   ['/mcp', 'MCP Tool Calls'],

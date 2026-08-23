@@ -44,6 +44,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/govguard',              priority: 0.85, changeFrequency: 'monthly' },
     { path: '/health/program-integrity', priority: 0.9, changeFrequency: 'weekly' },
     { path: '/finguard',              priority: 0.85, changeFrequency: 'monthly' },
+    { path: '/private-equity',        priority: 0.9, changeFrequency: 'monthly' },
     { path: '/grace',                 priority: 0.85, changeFrequency: 'monthly' },
     { path: '/insurance',             priority: 0.9, changeFrequency: 'monthly' },
     { path: '/quorum',                priority: 0.9, changeFrequency: 'monthly' },

@@ -6,6 +6,7 @@
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 
 const PROTECTED_ACTIONS = [
   { type: 'vendor_bank_account_change', label: 'Vendor bank-account change', sample: 'AP user updates routing before $250K release' },
@@ -161,14 +162,16 @@ export default function FinGuardPage() {
         <section style={{ ...styles.section, paddingBottom: 96 }}>
           <div style={styles.container}>
             <div style={{ ...styles.card, padding: 40, textAlign: 'center' }}>
-              <h2 style={{ ...styles.h2, fontSize: 28 }}>Pilot in 30 days.</h2>
+              <h2 style={{ ...styles.h2, fontSize: 28 }}>
+                One finance workflow. {PROTECTED_WORKFLOW_PILOT.durationLabel}. {PROTECTED_WORKFLOW_PILOT.shortPriceLabel}.
+              </h2>
               <p style={{ ...styles.body, maxWidth: 540, margin: '16px auto 24px' }}>
-                Pick one workflow — beneficiary change, payout destination change, vendor
-                remittance update, or treasury release approval. We wire it to observe mode.
-                You get the audit of what would have been blocked. Flip to enforce on your timeline.
+                Pick one vendor bank-detail change or payment-release boundary. Start with synthetic
+                and read-only validation, then observe mode without blocking production. Enforcement
+                begins only after the buyer accepts the Gate boundary and complete-mediation design.
               </p>
               <a href="/pricing" style={cta.primary}>Get protected — see pricing</a>
-              {' '}<a href="/pilot?v=fin" style={cta.secondary}>Or scope a pilot</a>
+              {' '}<a href="/pilot?v=fin" style={cta.secondary}>Scope the 90-day pilot</a>
               <p style={{ fontSize: 13, color: color.t3, marginTop: 18 }}>
                 For your compliance file: <a href="/compliance/emilia-eu-ai-act-financial-services.pdf" style={{ color: color.blue, textDecoration: 'none' }}>EU AI Act mapping — financial services (PDF)</a>
                 {' '}· <a href="/rfp" style={{ color: color.blue, textDecoration: 'none' }}>RFP language</a>
