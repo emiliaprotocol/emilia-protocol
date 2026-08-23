@@ -256,10 +256,11 @@ export default function PricingPage(): React.ReactElement {
             </h2>
             <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.7, marginBottom: 30, maxWidth: 620 }}>
               The first profile is {PROTECTED_WORKFLOW_PILOT.firstProfileLabel.toLowerCase()}:{' '}
-              {PROTECTED_WORKFLOW_PILOT.safetyRuleLabel.toLowerCase()}. Missing or invalid evidence routes to lawful
-              human review or a patient-protective fallback; it is not authority to withhold medically necessary care.
-              Other consequential workflows remain eligible. Every pilot starts with synthetic and read-only validation,
-              and no production path changes until the buyer accepts the executor-bound Gate design.
+              {PROTECTED_WORKFLOW_PILOT.safetyRuleLabel.toLowerCase()}. Missing, stale, exhausted, invalid, or mismatched
+              authority does not admit provider entry on a completely mediated covered path. Gate does not prove bank-detail
+              correctness, payee identity, fraud absence, or provider success. Other consequential workflows remain eligible.
+              Every pilot starts with synthetic and read-only
+              validation, and no production path changes until the buyer accepts the executor-bound Gate design.
             </p>
             <div style={{ display: 'flex', gap: 36, flexWrap: 'wrap', marginBottom: 32 }}>
               {[[PROTECTED_WORKFLOW_PILOT.shortPriceLabel, 'fixed, scoped engagement'], [PROTECTED_WORKFLOW_PILOT.durationLabel, 'synthetic and read-only first'], [PROTECTED_WORKFLOW_PILOT.workflowLabel, 'buyer-selected consequence boundary']].map(([n, l]) => (

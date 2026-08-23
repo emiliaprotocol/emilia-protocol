@@ -347,20 +347,20 @@ export default function HomePage(): React.ReactElement {
               <motion.div {...reveal()}>
                 <div style={{ ...eyebrow, color: color.gold }}>First paid workflow</div>
                 <h2 style={{ ...styles.h2, color: '#FAFAF9', maxWidth: 590 }}>
-                  Start where a human decision already exists.
+                  Start where an agent can redirect or release money.
                 </h2>
                 <p style={{ fontSize: 17, color: 'rgba(250,250,249,0.72)', lineHeight: 1.72, maxWidth: 560, marginTop: 20 }}>
-                  Payer adverse medical-necessity determinations contain recurring review and appeal
-                  events, concrete action fields, and high consequence. EMILIA does not make the
-                  medical judgment. It binds the buyer&apos;s required licensed-review evidence to the
-                  exact adverse action at the protected boundary.
+                  Vendor bank-detail changes and payment releases are concrete, consequential, and
+                  already governed by customer approval rules. EMILIA Gate binds the exact proposed
+                  action to the customer&apos;s accepted authority and required evidence before the
+                  completely mediated provider path is entered.
                 </p>
                 <p style={{ fontFamily: font.mono, fontSize: 13, color: color.gold, lineHeight: 1.7, marginTop: 22 }}>
                   {PROTECTED_WORKFLOW_PILOT.safetyRuleLabel}.
                 </p>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 28 }}>
                   <Link href="/pilot" style={{ ...cta.primary, background: '#FAFAF9', color: '#1C1917' }}>Request the pilot</Link>
-                  <Link href="/health/program-integrity" style={{ ...cta.secondary, color: '#FAFAF9', borderColor: 'rgba(250,250,249,0.28)' }}>Inspect the reference profile</Link>
+                  <Link href="/finguard" style={{ ...cta.secondary, color: '#FAFAF9', borderColor: 'rgba(250,250,249,0.28)' }}>Inspect the finance profile</Link>
                 </div>
               </motion.div>
               <motion.div {...reveal(0.08)} style={{ borderTop: `3px solid ${color.gold}`, paddingTop: 26 }}>
@@ -375,7 +375,7 @@ export default function HomePage(): React.ReactElement {
                   <div key={line} style={{ padding: '13px 0', borderBottom: '1px solid rgba(255,255,255,0.14)', fontSize: 14.5, color: 'rgba(250,250,249,0.72)' }}>{line}</div>
                 ))}
                 <p style={{ fontSize: 13.5, color: 'rgba(250,250,249,0.52)', lineHeight: 1.65, marginTop: 22 }}>
-                  Agent and MCP vendors plus consultancies create distribution leverage. Payments,
+                  Agent and MCP vendors plus consultancies create distribution leverage. Healthcare,
                   privileged infrastructure, energy, and government are expansion paths—not claimed traction.
                 </p>
               </motion.div>

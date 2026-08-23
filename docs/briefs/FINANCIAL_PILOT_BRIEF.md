@@ -1,106 +1,78 @@
-# Financial Institutions Pilot Brief: Emilia Protocol
+# Finance Operations Protected-Workflow Pilot
 
-## What's new (June 2026)
-- **21 suites / 332 vectors across three same-team language ports**, plus a separately authored Rust verifier rebuilt from pinned public source and tested against 359 hostile cases — external interoperability evidence a relying party can reproduce without trusting the vendor.
-- **Payment-redirect / BEC defense, demonstrably:** the payee account is *inside* the signed action, so swapping it after approval breaks verification. Run `npx -y @emilia-protocol/crash-test --scenario procurement` to watch it reject a post-approval account swap, offline.
-- **Composition (EP-AEC):** EP composes policy-permit and human-authorization receipts into one offline SATISFIED/UNSATISFIED evidence verdict. The transaction executor separately authorizes, and can require both evidence legs on the same action.
+**Current offer:** $25,000 · 90 days · one buyer-selected workflow
 
-## Problem
+## The workflow
 
-Wire transfer fraud, beneficiary changes, and payout redirects execute through
-authenticated sessions. Attackers compromise credentials or manipulate authorized
-users, then route transactions through standard workflows. Existing controls verify
-identity but do not verify whether the specific transaction should proceed with the
-specified parameters. Fraudulent wires clear because they look identical to
-legitimate ones at the authentication layer.
+Choose one consequential finance action:
 
-## What Emilia Protocol Does
+- a vendor bank-detail change, **or**
+- a payment release.
 
-EP is an open authorization protocol that operates between authentication and
-execution. For financial workflows:
+EMILIA Gate places a customer-owned authority check immediately before the
+executor or system of record. The customer defines the operating mandate,
+required evidence, trust roots, expiry, and exception path. The safety rule is
+simple: **no accepted exact-action authority and required evidence, no provider
+entry.**
 
-1. **Exact Transaction Binding** -- Authorization is cryptographically bound to the
-   specific transaction parameters: beneficiary, amount, routing details, timestamp.
-   An authorization for one transaction cannot be applied to a different transaction.
-2. **Dual Signoff for Treasury** -- Policy rules enforce dual approval for transactions
-   above configurable thresholds. Both approvers attest to the exact same bound
-   transaction. Signoffs are non-transferable between transactions.
-3. **One-Time Consumption** -- Each authorization token is consumed on use. Intercepted
-   or recorded tokens cannot be replayed. There is no replay window.
-4. **SOX-Ready Evidence** -- Every transaction decision generates a tamper-evident
-   record containing: the bound action, the policy evaluated, the signoff chain,
-   timestamps, and the execution outcome. Records are structured for SOX audit
-   requirements.
+A standing mandate may authorize unattended work inside its limits. Fresh human
+approval is required only when the customer requires it or when the requested
+action falls outside the mandate.
 
-## Recommended First Workflow
+## Observe first
 
-**Beneficiary change or payout destination change.**
+The pilot starts with synthetic data and read-only validation. Together, we:
 
-This is the primary vector for business email compromise (BEC) wire fraud. A single
-beneficiary change redirects subsequent payments. EP wraps this action class:
+1. map the real approval path, executor boundary, credentials, and bypasses;
+2. define the material fields for the selected action and the customer's
+   authority and evidence requirements;
+3. run synthetic and read-only cases in observe mode, including missing, stale,
+   invalid, mismatched, and replayed authority; and
+4. compare Gate's decisions with the buyer's current process and agree on
+   acceptance criteria.
 
-- Binds authorization to the exact new beneficiary details
-- Enforces dual signoff above threshold
-- Prevents replay of change authorization
-- Generates per-change SOX-grade evidence
+No production path changes until the buyer accepts the Gate boundary, operating
+rules, exception path, and complete-mediation design. If accepted, the remaining
+pilot work can bind Gate to the covered production workflow only after every
+route to the selected action is mediated. If not, the pilot ends with the mapped
+boundary, test results, and recommended next decision.
 
-Integration is at the API layer. No changes to core banking or payment logic.
+## What the buyer receives
 
-## What the Pilot Proves in 30 Days
+- one action contract for the selected vendor change or payment release;
+- a boundary map naming the protected path and every known bypass;
+- customer-owned mandate, evidence, expiry, and exception rules;
+- synthetic and read-only decision results, including refusal cases;
+- a portable evidence packet for the admission decision and any authenticated
+  uncertainty; and
+- a production acceptance plan, or a documented no-go decision.
 
-| Week | Milestone |
-|------|-----------|
-| 1    | Integration with beneficiary change or wire initiation endpoint |
-| 2    | Policy configuration: thresholds, dual signoff rules, risk classes |
-| 3    | Red team exercise: replay attacks, BEC simulation, credential reuse |
-| 4    | SOX evidence review, audit trail validation |
+The packet can be cryptographically re-verified under customer-pinned keys
+without an EMILIA callback. That verifies the packet's integrity and the scoped
+decision. It does not establish source truth or prove what the payment provider
+did.
 
-**Primary findings:**
+## Production claim boundary
 
-- EP prevents transaction replay even with captured valid credentials
-- Dual approval is enforced at the transaction level, not the session level
-- Every transaction produces individually auditable SOX-grade evidence
-- Blocked and approved actions are equally documented
+On a completely mediated covered path, missing, stale, exhausted, invalid, or
+mismatched authority does not admit provider entry. Gate reserves accepted
+authority before entry, refuses replay, and records admission separately from
+provider and effect evidence. If entry occurred but the provider outcome cannot
+be established, the operation remains `INDETERMINATE`; Gate does not infer
+success or permit a blind retry.
 
-## Proof Points
+The pilot does **not**:
 
-| Metric | Value |
-|--------|-------|
-| **Internal security review (self-administered, see docs/security/AUDIT_METHODOLOGY.md)** | **100/100** (2026-04-02, all 10 categories at maximum) |
-| Automated Vitest cases | 7,000+ across 370+ files; all platform-applicable cases must pass |
-| TLA+ safety properties verified | 26 (TLC 2.19, 413,137 states, zero errors) — CI-enforced |
-| Alloy relational assertions verified | 35 facts + 32 assertions across four models (Alloy 6.2.0, zero counterexamples) — CI-enforced |
-| Mutation testing kill rate | ≥80% on protocol core (Stryker.js) |
-| Property-based tests | 19 fast-check generative tests on protocol invariants |
-| Red team attack scenarios | 85 cataloged cases |
-| Release security status | Repository security checks pass; live Strix retest and deployment validation remain open |
-| Write discipline exceptions in codebase | 0 |
-| Handshake creation p95 at 500 VUs | 87ms |
-| Staircase load test | 10 → 50 → 100 → 200 → 500 concurrent users |
-| CI quality gates | 27 across 12 automated workflows, all Actions SHA-pinned |
-| MCP tools | 34 across full EP surface; TypeScript + Python SDKs |
-| Supply chain | SBOM + provenance attestation on every release; DCO on every PR |
+- prove that bank details or payee identity are correct;
+- promise fraud prevention or cover an unmediated path;
+- produce a SOX-ready or SOX-grade conclusion, audit opinion, or certification;
+- prove provider success, settlement, or exact physical execution; or
+- take custody of or move money.
 
-Formal verification covers replay prevention, token binding, signoff bypass,
-context manipulation, and concurrent transaction interference. Red team scenarios
-include credential theft, session hijacking, insider collusion, and BEC attack
-chains. Load testing confirms the system sustains concurrent authorization
-requests without partial state or replay windows under contention.
+## Acceptance decision
 
-## Who buys this internally
+At day 90, the buyer decides whether the tested boundary and evidence are fit for
+production. The decision is based on the buyer's workflow, controls, integration
+constraints, and observed results, not on a generic security score.
 
-- Treasury
-- Payment operations
-- Fraud and risk
-- Controls
-- Security architecture
-- Compliance
-
-## Next Step
-
-Request a 30-day pilot deployment:
-
-**emiliaprotocol.ai/partners**
-
-Includes integration support, policy configuration, SOX evidence review,
-and red team exercise coordination.
+**Request the pilot:** [emiliaprotocol.ai/pilot?v=fin](https://www.emiliaprotocol.ai/pilot?v=fin)

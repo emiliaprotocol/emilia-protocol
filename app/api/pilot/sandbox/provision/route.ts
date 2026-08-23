@@ -58,6 +58,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         display_name: `Pilot · ${orgName}`,
         entity_type: 'agent',
         description: `Observe-mode pilot sandbox for ${orgName}`,
+        // The production schema still requires this deprecated compatibility
+        // column even though authentication resolves through api_keys below.
+        // Keep both values identical until migration 028 is confirmed applied
+        // to production and the compatibility write can be removed together
+        // with the corresponding write in /api/entity.
+        api_key_hash: keyHash,
         public_key: publicKeyB64,
         private_key_encrypted: seal(privateKeyB64),
         // Durable observe marker. The reconciliation migration also recognizes

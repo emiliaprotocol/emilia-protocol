@@ -77,15 +77,16 @@ actions that bypass the protected boundary.
 
 ## The first paid profile
 
-**Adverse Determination Assurance** is the first paid vertical:
+**Finance Operations Assurance** is the first paid vertical:
 
-> No AI-assisted adverse medical-necessity determination executes without
-> admissible evidence that the required qualified, licensed professional
-> reviewed that specific determination.
+> No accepted exact-action authority and required evidence, no provider entry.
 
-Missing or indeterminate evidence blocks the adverse determination, not care.
-The safe fallback is manual review or the patient-protective path configured by
-the payer. EMILIA does not determine medical necessity.
+The first profile covers one vendor bank-detail change or payment-release
+boundary. Missing, stale, exhausted, invalid, or mismatched authority does not
+admit provider entry on a completely mediated covered path. Gate does not prove
+bank-detail correctness, payee
+identity, fraud absence, provider success, legality, or business wisdom, and it
+does not take custody or move money.
 
 MCP and privileged enterprise tool calls remain the free distribution wedge:
 developers can install Gate quickly, prove the enforcement loop, and create the

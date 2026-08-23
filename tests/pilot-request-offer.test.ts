@@ -39,7 +39,7 @@ function request(body: Record<string, unknown>): Request {
       name: 'Ada Lovelace',
       org: 'Analytical Engines',
       email: 'ada@example.com',
-      workflow: 'payer_adverse_determination',
+      workflow: 'beneficiary_change',
       ...body,
     }),
   });
@@ -86,8 +86,8 @@ describe('pilot request commercial offer routing', () => {
     expect(emails[0].text).toContain('90 days');
     expect(emails[0].text).toContain('$25,000');
     expect(emails[0].text).toContain('1 protected workflow');
-    expect(emails[0].text).toContain('Payer adverse medical-necessity determination');
-    expect(emails[0].text).toContain('No valid licensed-review evidence, no adverse determination');
+    expect(emails[0].text).toContain('Finance operations vendor bank-detail change or payment release');
+    expect(emails[0].text).toContain('No accepted exact-action authority and required evidence, no provider entry');
   });
 
   it('keeps non-payer workflows eligible under the same offer', async () => {
