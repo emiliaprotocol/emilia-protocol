@@ -2,7 +2,7 @@
 
 import { ImageResponse } from 'next/og';
 
-export const alt = 'Protect the capital behind agentic action with a customer-owned authority tollgate';
+export const alt = 'Portfolio Authority Control for agentic AI at a customer-owned finance boundary';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -34,10 +34,10 @@ export default function OpenGraphImage(): ImageResponse {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', fontSize: 70, fontWeight: 700, lineHeight: .98, letterSpacing: -3.5 }}>
-              Protect the capital behind agentic action.
+              Portfolio Authority Control for agentic AI.
             </div>
             <div style={{ display: 'flex', marginTop: 28, color: '#625d56', fontSize: 25, lineHeight: 1.4 }}>
-              Customer-owned authority at the finance boundary.
+              Sponsor-scale control. Company-owned authority.
             </div>
           </div>
           <div style={{ display: 'flex', color: '#625d56', fontSize: 17 }}>
