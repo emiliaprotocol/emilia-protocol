@@ -1,0 +1,199 @@
+{
+  "profile": "AADP-EP-AUTHORIZATION-COMPOSITION-v0.1",
+  "source_basis": {
+    "aadp": {
+      "draft": "draft-saha-aadp-01",
+      "implementation_kind": "draft-derived-bounded-lifecycle-model"
+    },
+    "ep": {
+      "artifact": "EP-AUTHORIZATION-BUNDLE-v1",
+      "implementation_kind": "repository-runtime"
+    },
+    "onedoor": {
+      "revision": "5a1970f072c77b59463bcb26b48942a0c2ecb42c",
+      "executed": false,
+      "note": "inspected for implementation alignment; not executed by this runner"
+    }
+  },
+  "claim_boundary": {
+    "authorization_artifact_is_authority": false,
+    "aadp_re_evaluation_required": true,
+    "aadp_approval_single_use": true,
+    "aadp_permit_is_provider_idempotency_key": false,
+    "exactly_once_physical_effect_claimed": false
+  },
+  "summary": {
+    "passed": 14,
+    "total": 14
+  },
+  "passed": true,
+  "checks": [
+    {
+      "id": "AADP-EP-01",
+      "claim": "a natively verified exact EP artifact can support one AADP permit",
+      "passed": true,
+      "actual": {
+        "artifact_digest": "sha256:6d8a602f3a58a00c3436304d33d0d5732433ef302b30643b079cc3524f8b7dbf",
+        "action_digest": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "decision": "permitted"
+      }
+    },
+    {
+      "id": "AADP-EP-02",
+      "claim": "material AADP action substitution is refused by native EP verification",
+      "passed": true,
+      "actual": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "action_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "AADP-EP-03",
+      "claim": "tampered EP artifact bytes do not yield an AADP hook",
+      "passed": true,
+      "actual": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "context_audience_mismatch",
+          "contexts_do_not_share_one_policy_audience_and_binding",
+          "separation_of_duties_or_quorum_failed",
+          "signoff_context_or_key_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "AADP-EP-04",
+      "claim": "self-presented or unpinned approver keys are refused",
+      "passed": true,
+      "actual": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "approver_key_trust_unavailable",
+          "approver_keys_missing",
+          "separation_of_duties_or_quorum_failed",
+          "signoff_context_or_key_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "AADP-EP-05",
+      "claim": "wrong AADP relying-party audience is refused",
+      "passed": true,
+      "actual": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "context_audience_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "AADP-EP-06",
+      "claim": "unavailable action mapping is indeterminate",
+      "passed": true,
+      "actual": {
+        "verdict": "INDETERMINATE",
+        "reasons": [
+          "aadp_action_mapping_unavailable"
+        ]
+      }
+    },
+    {
+      "id": "AADP-EP-07",
+      "claim": "unavailable current EP policy is indeterminate, not cached authority",
+      "passed": true,
+      "actual": {
+        "verdict": "INDETERMINATE",
+        "reasons": [
+          "current_policy_unavailable_or_stale"
+        ]
+      }
+    },
+    {
+      "id": "AADP-EP-08",
+      "claim": "presenter-selected mapping-profile substitution is refused",
+      "passed": true,
+      "actual": {
+        "ok": false,
+        "decision": "refused",
+        "reason": "authorization_artifact_mismatch"
+      }
+    },
+    {
+      "id": "AADP-EP-09",
+      "claim": "missing required hook is refused",
+      "passed": true,
+      "actual": {
+        "verdict": "REFUSE",
+        "reasons": [
+          "authorization_artifact_malformed"
+        ]
+      }
+    },
+    {
+      "id": "AADP-EP-10",
+      "claim": "a valid EP artifact cannot overrule an AADP kill switch",
+      "passed": true,
+      "actual": {
+        "ok": false,
+        "decision": "refused",
+        "reason": "kill_switch_active"
+      }
+    },
+    {
+      "id": "AADP-EP-11",
+      "claim": "AADP approval remains single-use even when the artifact is still valid",
+      "passed": true,
+      "actual": {
+        "first": "permitted",
+        "second": "proposed",
+        "second_reason": "approval_ref_not_usable",
+        "permits": 1
+      }
+    },
+    {
+      "id": "AADP-EP-12",
+      "claim": "permit and provider keys remain separate from the artifact digest",
+      "passed": true,
+      "actual": {
+        "permit_id": "permit:1",
+        "provider_idempotency_key": "aadp-provider:6fb2ebf374b29afd9815c803e55630f32df4c3913821ad062b16df03ef11bc06",
+        "artifact_digest": "sha256:6d8a602f3a58a00c3436304d33d0d5732433ef302b30643b079cc3524f8b7dbf"
+      }
+    },
+    {
+      "id": "AADP-EP-13",
+      "claim": "unknown provider outcome is reported and does not reopen approval",
+      "passed": true,
+      "actual": {
+        "report": "timeout",
+        "retry": "proposed",
+        "retry_reason": "approval_ref_not_usable",
+        "permits": 1
+      }
+    },
+    {
+      "id": "AADP-EP-14",
+      "claim": "AADP source metadata is informational and cannot change the hook",
+      "passed": true,
+      "actual": {
+        "first": {
+          "profile": "AADP-AUTHORIZATION-ARTIFACT-v1",
+          "artifact_profile": "EP-AADP-AUTHORIZATION-ARTIFACT-v1",
+          "artifact_digest": "sha256:6d8a602f3a58a00c3436304d33d0d5732433ef302b30643b079cc3524f8b7dbf",
+          "action_mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
+          "action_digest": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3"
+        },
+        "second": {
+          "profile": "AADP-AUTHORIZATION-ARTIFACT-v1",
+          "artifact_profile": "EP-AADP-AUTHORIZATION-ARTIFACT-v1",
+          "artifact_digest": "sha256:6d8a602f3a58a00c3436304d33d0d5732433ef302b30643b079cc3524f8b7dbf",
+          "action_mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
+          "action_digest": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3"
+        }
+      }
+    }
+  ],
+  "report_digest": "sha256:49af4e8fe20ea2ba96ca2ccd7697d368f9c5161cb3777a788b5aef166ac6e7b2"
+}

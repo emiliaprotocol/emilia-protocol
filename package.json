@@ -43,6 +43,7 @@
     "conformance:composition:ccs-v13-aeb": "node --test conformance/composition/ccs-v13-aeb-v1/run.test.mjs && node conformance/composition/ccs-v13-aeb-v1/run.mjs --check",
     "conformance:composition:noa-policy-replay": "vitest run conformance/composition/noa-policy-replay-v0.1/run.test.mjs && node conformance/composition/noa-policy-replay-v0.1/run.mjs",
     "conformance:composition:caplease-emilia": "node --test conformance/composition/caplease-emilia-v0.1/run.test.mjs && node conformance/composition/caplease-emilia-v0.1/run.mjs --check",
+    "conformance:composition:aadp-ep": "npm --prefix packages/verify run build && node --test packages/verify/aadp-authorization-artifact.test.js conformance/composition/aadp-ep-authorization-v0.1/run.node-test.mjs && node conformance/composition/aadp-ep-authorization-v0.1/run.mjs --check",
     "conformance:composition:coaz-translation": "node conformance/composition/coaz-translation-v0.1/run.mjs",
     "pilot:finance-field-origin": "node conformance/composition/gap6-execution-evidence-v0.1/export-pilot-kit.mjs",
     "verify:finance-field-origin-pilot": "node conformance/composition/gap6-execution-evidence-v0.1/verify-pilot-kit.mjs",

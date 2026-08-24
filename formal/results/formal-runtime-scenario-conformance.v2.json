@@ -507,7 +507,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "f25ce97a684bf3d15801d7cfcb54ee4d474990987ef52fed565f3f6816e685a2"
+      "sha256": "14c6c5254234fd821a6d8e9dab0bc18102b0ea68a48b649f9eb6eee77b7eada0"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1042,6 +1042,10 @@
       "sha256": "5f9b0309165ff33cb1cb39ea50a91d06ba81c9b82c7f98b636803eb22f4e27ad"
     },
     {
+      "path": "packages/verify/dist/aadp-authorization-artifact.js",
+      "sha256": "f58b6a81a27614b3ff089343abb0f3340520c11af3d3eb52f63c38ba87199cec"
+    },
+    {
       "path": "packages/verify/dist/aeb-acceptance-profile.js",
       "sha256": "6a3f5d52205e336896cba828a8844c05dda521e6c4c93b971800f5596fc04fea"
     },
@@ -1187,7 +1191,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "b11416f71dc14e7f9f3ee4f277c96b5f41fcf6a703311648e2efcd3a0f1313a1"
+      "sha256": "24a38bfeb2eb98bf2f6d4f47000265efc9c97ab71a50bd0a92e5e03ccf805a86"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1335,7 +1339,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "4421936b15a8eaa890bbb8dea0b04c87df75cc38eb6cf287204410dd960def5b"
+      "sha256": "b98f02b992726287f0a692845991035ec203693e8dbd2e8a53009164ae21705d"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

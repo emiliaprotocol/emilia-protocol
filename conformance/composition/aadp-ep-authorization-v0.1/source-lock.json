@@ -1,0 +1,53 @@
+{
+  "@version": "AADP-EP-SOURCE-LOCK-v0.1",
+  "aadp": {
+    "draft": "draft-saha-aadp-01",
+    "published_at": "2026-08-20",
+    "text": {
+      "url": "https://www.ietf.org/archive/id/draft-saha-aadp-01.txt",
+      "sha256": "ba6d9db982b23f642227b5a8f9f68589d0f3692c2e97adbfa2ac8a18792d8db8"
+    },
+    "bounded_sections": [
+      "3.2 Decide Request",
+      "3.3 Decide Response",
+      "3.4 Report Request",
+      "7 Idempotency Semantics",
+      "8 Human Approval Lifecycle",
+      "10 Audit and Evidence Requirements",
+      "14 Versioning and Extensibility"
+    ]
+  },
+  "onedoor": {
+    "repository": "https://github.com/shamiksaharcciit-oss/onedoor",
+    "revision": "5a1970f072c77b59463bcb26b48942a0c2ecb42c",
+    "executed": false,
+    "inspected_files": [
+      {
+        "path": "onedoor/guardrail/approval_ref.py",
+        "sha256": "72b90df3c5e45386442e548eaf565c7049b6260842711db3354ce90271dac081"
+      },
+      {
+        "path": "onedoor/guardrail/decision.py",
+        "sha256": "83992810b7ac088d813de3e363fb21c944c29a07651773ec0ab01371a0116c43"
+      },
+      {
+        "path": "onedoor/guardrail/receipt.py",
+        "sha256": "25c03b4e90b63cc5eb074b317d502dcd5b6bc3b218cd55eee9657b76ae21e20b"
+      }
+    ]
+  },
+  "emilia": {
+    "repository": "https://github.com/emiliaprotocol/emilia-protocol",
+    "base_revision": "0c2609abecf74ea3e96509a8c453311b8c0b3af0",
+    "runtime_files": [
+      {
+        "path": "conformance/vectors/authorization-bundle.v1.json",
+        "sha256": "c0c01956b5ce064e2d7b868c7d84813425e69ce819efb4e374fce986937c76f4"
+      },
+      {
+        "path": "packages/verify/src/authorization-bundle.ts",
+        "sha256": "36b8bbb56579bb0db1f5f5d60a5532b0ff3f5d508273c84a905c379dd8d5da20"
+      }
+    ]
+  }
+}

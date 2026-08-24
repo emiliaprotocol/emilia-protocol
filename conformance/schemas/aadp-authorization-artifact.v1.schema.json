@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/aadp-authorization-artifact.v1.schema.json",
+  "title": "AADP Authorization Artifact Hook v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "artifact_profile",
+    "artifact_digest",
+    "action_mapping_profile",
+    "action_digest"
+  ],
+  "properties": {
+    "profile": {
+      "const": "AADP-AUTHORIZATION-ARTIFACT-v1"
+    },
+    "artifact_profile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifact_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "action_mapping_profile": {
+      "type": "string",
+      "format": "uri"
+    },
+    "action_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

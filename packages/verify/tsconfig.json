@@ -61,6 +61,7 @@
     "src/authorization-server-confirmation.ts",
     "src/authorization-bundle.ts",
     "src/oauth-rar-authorization-binding.ts",
+    "src/aadp-authorization-artifact.ts",
     "src/policy-decision-evidence.ts",
     "src/aeb-consequence-conformance.ts",
     "src/aeb-aps-adapter.ts",
