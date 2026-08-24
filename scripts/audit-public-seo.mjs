@@ -6,14 +6,17 @@ const BASE = new URL(process.argv[2] || process.env.SEO_BASE_URL || CANONICAL_OR
 const CONCURRENCY = Math.max(1, Math.min(24, Number(process.env.SEO_AUDIT_CONCURRENCY || 12)));
 const errors = [];
 const warnings = [];
+const HTML_ENTITY_MAP = Object.freeze({
+  '&amp;': '&',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&lt;': '<',
+  '&gt;': '>',
+});
 
 function decodeHtml(value = '') {
   return value
-    .replaceAll('&amp;', '&')
-    .replaceAll('&quot;', '"')
-    .replaceAll('&#39;', "'")
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>')
+    .replace(/&(amp|quot|#39|lt|gt);/g, (entity) => HTML_ENTITY_MAP[entity])
     .trim();
 }
 
