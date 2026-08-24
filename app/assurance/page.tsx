@@ -19,6 +19,7 @@ export const metadata: Metadata = {
     + 'underwriter packages for EMILIA Gate deployments. Verification remains open and reproducible.',
   alternates: { canonical: '/assurance' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Assurance Plane',
     description:
       'Re-perform Gate evidence under pinned inputs, record drift, and hand reproducible workpapers to auditors and underwriters.',

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Reliance Risk Evidence for Insurers — EMILIA Gate',
+  title: 'Reliance Risk Evidence for Insurers',
   description:
     'Gate 0.20 adds customer-owned loss terms, open-exposure custody, exact-action '
     + 'refusals, bounded population reconciliation, receipt census, and external '

@@ -8,6 +8,7 @@ export const metadata: Metadata = {
     'bank-change, beneficiary updates, and high-value payment release.',
   alternates: { canonical: '/product/financial-pack' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Financial Pack',
     description:
       'Authorization controls + SOX-ready evidence + AI-voice defense ' +

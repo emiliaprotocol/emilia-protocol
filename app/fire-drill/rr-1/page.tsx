@@ -13,9 +13,10 @@ import registryIndex from '../../../packages/fire-drill/registry-index.json';
 import reports from '../../../packages/fire-drill/reports.json';
 
 export const metadata: Metadata = {
-  title: 'RR-1 — the Receipt Required badge for MCP maintainers | EMILIA',
+  title: 'RR-1 — the Receipt Required badge for MCP maintainers',
   description:
     'We are testing the MCP ecosystem for receipt-required dangerous actions. RR-1 means your most dangerous action is safer than the ecosystem default: missing receipt blocked, valid receipt runs once, replay refused, forged refused.',
+  alternates: { canonical: '/fire-drill/rr-1' },
 };
 
 const BADGE = 'https://www.emiliaprotocol.ai/badges/rr-1.svg';
@@ -23,6 +24,7 @@ const BADGE_MD = `[![Receipt Required: RR-1](${BADGE})](https://www.emiliaprotoc
 
 export default function RR1Page() {
   const { rr1 } = reports as any;
+  const maintainers = Array.isArray(rr1.maintainers) ? rr1.maintainers : [];
   return (
     <>
       <SiteNav activePage="Fire Drill" />
@@ -110,16 +112,22 @@ export default function RR1Page() {
 
         <section style={styles.section}>
           <div style={styles.container}>
-            <h2 style={styles.h2}>Recent RR-1 earners.</h2>
-            <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
-              {rr1.maintainers.map((m: any) => (
-                <div key={m.name} style={{ ...styles.card, padding: 20 }}>
-                  <div style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1, textTransform: 'uppercase' }}>{m.type}</div>
-                  <div style={{ ...styles.h3, fontSize: 16, marginTop: 8 }}>{m.name}</div>
-                  <div style={{ ...styles.body, fontSize: 13, color: color.t2, marginTop: 8 }}>{m.dangerous_tool}</div>
-                </div>
-              ))}
-            </div>
+            <h2 style={styles.h2}>{maintainers.length ? 'Recent RR-1 earners.' : 'The RR-1 registry starts here.'}</h2>
+            {maintainers.length ? (
+              <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+                {maintainers.map((m: any) => (
+                  <div key={m.name} style={{ ...styles.card, padding: 20 }}>
+                    <div style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1, textTransform: 'uppercase' }}>{m.type}</div>
+                    <div style={{ ...styles.h3, fontSize: 16, marginTop: 8 }}>{m.name}</div>
+                    <div style={{ ...styles.body, fontSize: 13, color: color.t2, marginTop: 8 }}>{m.dangerous_tool}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ ...styles.body, color: color.t2, maxWidth: 720, marginTop: 16 }}>
+                No maintainers are listed yet. The first public entry will appear only after its declared tool surface passes the RR-1 harness and publishes the result.
+              </p>
+            )}
           </div>
         </section>
       </main>

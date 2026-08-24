@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   description: 'Run a synthetic AI-agent allowance challenge. Watch EMILIA Gate permit in-bounds actions, refuse out-of-bounds actions, and issue a shareable signed refusal.',
   alternates: { canonical: '/arena' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'Give your agent an allowance, not your account.',
     description: 'A public, synthetic challenge for bounded AI-agent authority. No money or production credentials are connected.',
     url: '/arena',

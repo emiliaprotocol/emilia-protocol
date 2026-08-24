@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'why they are strongest together.',
   alternates: { canonical: '/compare/permit-io' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Protocol vs Permit.io',
     description:
       'Authorization decides what an agent may do. EMILIA’s receipt proves a named human ' +

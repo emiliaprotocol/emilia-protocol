@@ -11,7 +11,7 @@ import {
 export const metadata = {
   // This page renders the posted Internet-Draft. "Internet-Draft", not "RFC" —
   // claiming RFC status for an individual I-D overstates IETF standing.
-  title: 'draft-schrock-ep-authorization-receipts-12 — EMILIA Protocol Specification',
+  title: 'Authorization Receipts Internet-Draft -12',
   description: 'EMILIA Protocol specification (IETF Internet-Draft) — verifiable human-authorization receipts for high-risk agent actions.',
   alternates: { canonical: '/spec' },
 };
@@ -120,6 +120,7 @@ export default function SpecPage() {
             Next: Human Authorization Binding -00 ↗
           </a>
         </nav>
+        <h1>EMILIA authorization receipts specification</h1>
         <div className="spec-badge">DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-12 · STANDARDS TRACK CANDIDATE · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
         <p className="spec-summary">
           Document 01 defines one action-bound organizational approval-evidence profile. Gate can

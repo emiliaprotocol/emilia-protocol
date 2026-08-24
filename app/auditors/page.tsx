@@ -16,7 +16,7 @@ import SiteFooter from '@/components/SiteFooter';
 import { color, font, radius, styles } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'Verify an Authorization Receipt — A Guide for Auditors — EMILIA Protocol',
+  title: 'Verify an Authorization Receipt — A Guide for Auditors',
   description:
     'How SOC 2, ISO 42001, and EU AI Act assessors independently verify EMILIA authorization receipts and Class-A device signoffs: two minutes, offline, no reliance on the auditee or on EMILIA.',
   alternates: { canonical: '/auditors' },

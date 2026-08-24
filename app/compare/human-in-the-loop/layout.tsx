@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'authorization receipt.',
   alternates: { canonical: '/compare/human-in-the-loop' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Protocol vs DIY Human-in-the-Loop',
     description:
       'Keep your Slack approval — make it bound, replay-resistant, and provable ' +

@@ -2,7 +2,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Agent Adoption Challenge — EMILIA',
+  title: 'Agent Adoption Challenge',
   description:
     'Describe an agent candidate, choose a synthetic job and allowance, add a user-present passkey ceremony, '
     + 'and watch the Arena evaluate an exact no-egress action.',

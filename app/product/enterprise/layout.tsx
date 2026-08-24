@@ -8,6 +8,7 @@ export const metadata: Metadata = {
     'extension with cryptographic action-binding and named signoff.',
   alternates: { canonical: '/product/enterprise' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Gate Enterprise',
     description:
       'Action-bound authorization layered on top of PAM. Cryptographic ' +

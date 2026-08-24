@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — EMILIA Protocol',
+  title: 'Terms of Service',
   description:
     'Terms governing use of the emiliaprotocol.ai website, the EMILIA Gate Cloud ' +
     'service, the open-source reference runtime, and the published SDKs.',
   alternates: { canonical: '/legal/terms' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Protocol Terms of Service',
     description: 'Terms for the websites, hosted service, and open-source artifacts.',
     url: 'https://www.emiliaprotocol.ai/legal/terms',

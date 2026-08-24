@@ -5,7 +5,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Try it: approve an AI agent action with Face ID — EMILIA Protocol',
+  title: 'Try it: approve an AI agent action with Face ID',
   description:
     'An AI agent tries to wire $82,000. Approve it on your own device with Face ID / Touch ID, then watch the approval verify — every check — in your browser, and watch a forged amount collapse. No account, nothing uploaded.',
   alternates: { canonical: '/try' },

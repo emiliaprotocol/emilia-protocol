@@ -8,6 +8,7 @@ export const metadata: Metadata = {
     'and caseworker accountability.',
   alternates: { canonical: '/product/government-pack' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Government Pack',
     description:
       'GovGuard fire drills, GG-1 conformance, and IG-ready evidence for ' +

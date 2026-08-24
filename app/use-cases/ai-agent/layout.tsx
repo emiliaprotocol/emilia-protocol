@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'Three-line SDK integration.',
   alternates: { canonical: '/use-cases/ai-agent' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Protocol for AI Agent Action Authorization',
     description:
       'The trust gate enterprise customers are asking your agent platform ' +

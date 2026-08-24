@@ -6,6 +6,7 @@ export const metadata: Metadata = {
     'A runnable compatibility lab showing why IAM and content controls are necessary but not sufficient for external reliance on consequential Google Cloud agent actions.',
   alternates: { canonical: '/labs/google-cloud-reliance' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'IAM says the agent may act. Can the customer prove why it did?',
     description:
       'Google Cloud-shaped IAM mutation: four attacks refused, an exact two-person authorization runs once, and replay is refused.',

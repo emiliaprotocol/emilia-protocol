@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — EMILIA Protocol',
+  title: 'Privacy Policy',
   description:
     'How EMILIA Protocol collects, uses, and protects personal data. ' +
     'Aligned with GDPR, UK GDPR, and CCPA. Functions as the working ' +
@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'supersedes it.',
   alternates: { canonical: '/legal/privacy' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Protocol Privacy Policy',
     description: 'Data collection, processing, retention, and rights.',
     url: 'https://www.emiliaprotocol.ai/legal/privacy',

@@ -11,6 +11,7 @@ export const metadata: Metadata = {
     'AI agents can reason about anything. They cannot tell when they should not act. Four ways autonomous agents cause irreversible damage — and the verified-human-sign-off step that prevents all four.',
   alternates: { canonical: '/why-agents-fail' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'Why agents fail',
     description: 'They do exactly what they are asked. Nothing checks whether it should happen. EMILIA is that check.',
     url: 'https://www.emiliaprotocol.ai/why-agents-fail',

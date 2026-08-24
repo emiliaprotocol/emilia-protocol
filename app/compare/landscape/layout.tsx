@@ -10,6 +10,7 @@ export const metadata: Metadata = {
     'enforced separation of duties.',
   alternates: { canonical: '/compare/landscape' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'The AI Agent Action-Governance Landscape',
     description:
       'EMILIA vs HumanLayer, Tenet, CIBA/WorkOS, and the IETF Delegation Receipt Protocol — ' +

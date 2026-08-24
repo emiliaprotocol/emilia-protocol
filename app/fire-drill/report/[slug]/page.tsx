@@ -37,8 +37,9 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
   const r = BY_SLUG[slug];
   if (!r) return { title: 'Report not found — EMILIA Fire Drill' };
   return {
-    title: `Fire Drill: ${r.name} — ${r.dangerous_tool} | EMILIA`,
+    title: `Fire Drill: ${r.name} — ${r.dangerous_tool}`,
     description: `EMILIA Fire Drill of ${r.name}: dangerous action ${r.dangerous_tool} (${FAMILY_LABEL[r.family] || r.family}) currently runs with no authorization receipt. Proposed fix: Receipt Required (RR-1).`,
+    alternates: { canonical: `/fire-drill/report/${slug}` },
   };
 }
 

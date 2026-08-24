@@ -7,6 +7,7 @@ export const metadata: Metadata = {
     + 'decisions, quorum progress, safe indeterminate outcomes, and portable decision passports.',
   alternates: { canonical: '/product/accountable-signoff' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Approver Apps',
     description:
       'Gate creates a CAID-locked exact-action challenge. The Approver app captures '

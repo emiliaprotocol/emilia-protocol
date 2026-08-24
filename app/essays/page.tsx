@@ -10,12 +10,13 @@ import { styles, color, font, radius } from '@/lib/tokens';
 import { ESSAYS } from '@/lib/essays';
 
 export const metadata: Metadata = {
-  title: 'Essays — EMILIA Protocol',
+  title: 'Essays',
   description:
     'Long-form essays on AI agent accountability: why the model becomes the ' +
     'crumple zone, and why authorization is not proof.',
   alternates: { canonical: '/essays' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'Essays — EMILIA Protocol',
     description:
       'Long-form essays on AI agent accountability from the EMILIA Protocol.',
