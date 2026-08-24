@@ -30,8 +30,11 @@ const footer = readFileSync(resolve(ROOT, 'components/SiteFooter.tsx'), 'utf8');
 describe('private-equity portfolio customer page', () => {
   it('is an indexable, finance-first customer route with dedicated share metadata', () => {
     expect(page).toContain("alternates: { canonical: '/private-equity' }");
-    expect(page).toContain('The Universal Authority Tollgate for Private Equity Portfolio AI');
-    expect(page).toContain('Give private-equity portfolio AI an authority tollgate.');
+    expect(page).toContain('Authority Controls for AI Across Private Equity Portfolios');
+    expect(page).toContain('Let AI agents work. Keep each portfolio company in control.');
+    expect(page).toContain('The Universal Authority Tollgate');
+    expect(page).not.toContain('Give private-equity portfolio AI an authority tollgate.');
+    expect(openGraphImage).toContain('Let AI agents work. Keep each portfolio company in control.');
     expect(page).toContain("url: '/private-equity/opengraph-image'");
     expect(page).toContain('robots: { index: true, follow: true }');
     expect(openGraphImage).toContain('export const size = { width: 1200, height: 630 }');

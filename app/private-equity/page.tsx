@@ -10,10 +10,10 @@ import PortfolioTrackedLink from './PortfolioTrackedLink';
 import css from './private-equity.module.css';
 
 const PAGE_URL = 'https://www.emiliaprotocol.ai/private-equity';
-const PAGE_TITLE = 'The Universal Authority Tollgate for Private Equity Portfolio AI';
+const PAGE_TITLE = 'Authority Controls for AI Across Private Equity Portfolios';
 const PAGE_DESCRIPTION =
-  'Scale agentic AI across private-equity portfolios without giving agents an open road into money, '
-  + 'systems, and assets. Start with one customer-owned finance tollgate.';
+  'Let AI agents work across your portfolio while each company keeps control of consequential '
+  + 'actions involving money, systems, and assets.';
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -306,11 +306,14 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
       <main className={css.page}>
         <section className={css.hero} aria-labelledby="pe-hero-title">
           <div className={css.heroCopy}>
-            <p className={css.eyebrow}>The Universal Authority Tollgate for portfolio AI</p>
-            <h1 id="pe-hero-title">Give private-equity portfolio AI an authority tollgate.</h1>
+            <p className={css.eyebrow}>The Universal Authority Tollgate</p>
+            <h1 id="pe-hero-title">
+              Let AI agents work. Keep each portfolio company in control.
+            </h1>
             <p className={css.heroLead}>
-              Scale agentic AI without giving agents an open road into portfolio money, systems, and
-              assets. One sponsor can standardize the control contract. Each company owns its Gate.
+              EMILIA puts a customer-owned authority tollgate before consequential actions involving
+              money, systems, and assets. Sponsors can standardize the control model. Each portfolio
+              company keeps its own authority, keys, and evidence.
             </p>
             <p className={css.boundaryStatement}>
               On completely mediated covered paths, the exact action must arrive with accepted

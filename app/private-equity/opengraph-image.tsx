@@ -2,7 +2,7 @@
 
 import { ImageResponse } from 'next/og';
 
-export const alt = 'The Universal Authority Tollgate for portfolio AI at a customer-owned finance boundary';
+export const alt = 'An EMILIA authority tollgate before a customer-owned finance boundary';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -34,10 +34,10 @@ export default function OpenGraphImage(): ImageResponse {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', fontSize: 64, fontWeight: 700, lineHeight: .98, letterSpacing: -3.2 }}>
-              Give every consequential agent action a tollgate.
+              Let AI agents work. Keep each portfolio company in control.
             </div>
             <div style={{ display: 'flex', marginTop: 28, color: '#625d56', fontSize: 25, lineHeight: 1.4 }}>
-              One sponsor standard. Every company keeps control.
+              One sponsor control model. Each company owns its Gate.
             </div>
           </div>
           <div style={{ display: 'flex', color: '#625d56', fontSize: 17 }}>
