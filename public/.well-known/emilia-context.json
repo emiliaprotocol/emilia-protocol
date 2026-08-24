@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-24T15:57:00.110Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "ea2270b10301216a807091a978f52e85939ac6b150b3584ca5bfa686cb052dd3",
+    "input_digest_sha256": "4ede3b81ada9febe2a0a47406d729f7d1a0d9d79ddfa43f567fef290a35ac6cc",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "76372b29ed0802b0a6642c9573d82f0f1a62cea90329489ab1e0ff3c01bfb308",
+        "sha256": "d1170f1eee9411df2911db08e00668d9e9fbfdded0c589f8adeaf9ee3cba4c07",
         "bytes": 4299
       },
       {
@@ -288,7 +288,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 10013,
+      "total": 10016,
       "files": 620,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
