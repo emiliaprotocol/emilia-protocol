@@ -34,6 +34,11 @@ const WORKFLOWS: Record<string, { label: string }> = {
   other: { label: 'Another irreversible agent action' },
 };
 
+const INTAKE_SOURCES = Object.freeze({
+  direct: { label: 'Direct' },
+  private_equity: { label: 'Private equity portfolio page' },
+} as const);
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const ARENA_SHARE_ID = /^arena_share_[0-9a-f]{40}$/;
 const AGENT_SHARE_ID = /^agent_share_[0-9a-f]{40}$/;
@@ -143,6 +148,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const message = clean(body.message, 2000);
     const requestedOfferId = clean(body.offer_id, 100);
     const offer = !requestedOfferId || requestedOfferId === PILOT_OFFER.id ? PILOT_OFFER : null;
+    const sourceKey = clean(body.source, 64) || 'direct';
+    const source = Object.hasOwn(INTAKE_SOURCES, sourceKey)
+      ? INTAKE_SOURCES[sourceKey as keyof typeof INTAKE_SOURCES]
+      : null;
     const artifactId = clean(body.artifact_id, 80);
     const workflowKey = WORKFLOWS[body.workflow] ? body.workflow : 'other';
     const workflow = WORKFLOWS[workflowKey];
@@ -150,6 +159,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!name || !org) return epProblem(400, 'missing_fields', 'Name and organization are required');
     if (!EMAIL_RE.test(email)) return epProblem(400, 'invalid_email', 'A valid work email is required');
     if (!offer) return epProblem(400, 'invalid_offer', 'The requested offer is not available');
+    if (!source) return epProblem(400, 'invalid_source', 'The pilot request source is not available');
     let publicArtifact: ValidatedPublicArtifact | null = null;
     if (artifactId) {
       if (!ARENA_SHARE_ID.test(artifactId)
@@ -191,6 +201,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           workflow: workflowKey,
           buyer_context_unverified: message,
           offer_id: offer.id,
+          source: sourceKey,
           public_artifact: publicArtifact,
         },
       });
@@ -208,6 +219,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         `New pilot request from ${name} (${email})\n` +
         `Organization: ${org}\n` +
         `Workflow: ${workflow.label}\n\n` +
+        `Source: ${source.label} (${sourceKey})\n` +
         `Offer: ${offer.name} (${offer.id})\n` +
         `Fixed scope: ${offer.durationLabel}; ${offer.priceLabel}; ${offer.workflowLabel}\n` +
         `First profile: ${offer.firstProfileLabel}\n` +

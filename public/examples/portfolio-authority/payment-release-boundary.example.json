@@ -1,0 +1,78 @@
+{
+  "schema": "https://www.emiliaprotocol.ai/schemas/portfolio-authority-boundary-example.v1.schema.json",
+  "artifact_version": "1",
+  "kind": "EMILIA_PORTFOLIO_AUTHORITY_BOUNDARY_EXAMPLE",
+  "status": "illustrative_non_authoritative",
+  "digest": {
+    "algorithm": "sha-256",
+    "canonicalization": "EMILIA_STRICT_JSON_V1",
+    "scope": "entire_document_excluding_digest_member",
+    "value": "sha256:af2aa3bb955d351d781528252a6741935ef86f6fbad632d8b84428476716390d"
+  },
+  "subject": {
+    "organization_id": "ep_entity_northstar_fictional",
+    "portfolio_company": "Northstar Components (fictional)",
+    "consent": "synthetic public example only"
+  },
+  "covered_action": {
+    "boundary_id": "payment_release_at_finance_provider",
+    "action_type": "large_payment_release",
+    "system_boundary": "fictional finance provider entry",
+    "material_fields": [
+      "payment_instruction_id",
+      "counterparty_name",
+      "amount",
+      "currency"
+    ]
+  },
+  "identifier_handling": {
+    "known_boundary_ids": [
+      "payment_release_at_finance_provider"
+    ],
+    "unknown_credential": "reject",
+    "unknown_organization_id": "reject",
+    "unknown_boundary_id": "reject",
+    "unknown_policy_id": "reject",
+    "identifier_inference_or_repair": "prohibited"
+  },
+  "authority_control": {
+    "owner": "portfolio company",
+    "safety_rule": "no accepted exact-action authority and required evidence, no provider entry",
+    "reserve_before_provider_entry": true,
+    "one_admitted_provider_attempt_on_shared_durable_paths": true,
+    "post_entry_uncertainty": "INDETERMINATE; refuse blind replay pending authenticated reconciliation"
+  },
+  "evidence_semantics": {
+    "posture_evidence": "Describes observed configuration or coverage only; it is not action admission.",
+    "admission_evidence": "Binds a Gate decision to one exact action and admitted attempt; it is not provider outcome or effect proof.",
+    "outcome_evidence": "Requires separate authenticated provider evidence; it does not by itself prove the intended real-world effect.",
+    "effect_evidence": "Requires a named effect predicate and admissible observation beyond admission and provider outcome."
+  },
+  "complete_mediation_review": {
+    "required": true,
+    "example_uncovered_paths": [
+      "direct provider credentials outside Gate",
+      "alternate payment workflow outside Gate",
+      "administrator bypass outside the accepted boundary"
+    ]
+  },
+  "sponsor_visibility": {
+    "buyer_agreed_outputs": [
+      "boundary coverage status",
+      "configuration and software digests",
+      "payload-minimized control-operation counts",
+      "named drift and integrity warnings"
+    ],
+    "retained_by_portfolio_company": [
+      "provider credentials",
+      "raw bank and payee data",
+      "approver credentials and detailed approvals",
+      "complete action evidence"
+    ]
+  },
+  "non_claims": [
+    "This file is not authority or deployable configuration.",
+    "It is not a certificate, audit opinion, insurance contract, or investment-safety statement.",
+    "Gate does not prove source truth, payee identity, fraud absence, legality, wisdom, provider success, or effects on unmediated paths."
+  ]
+}

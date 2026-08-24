@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.emiliaprotocol.ai/schemas/portfolio-authority-boundary-example.v1.schema.json",
+  "title": "EMILIA Portfolio Authority Boundary Example v1",
+  "description": "Validates the structure of an illustrative portfolio authority boundary example. Schema validity does not establish source truth, deployment coverage, action admission, provider outcome, real-world effect, certification, or audit sufficiency.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "artifact_version",
+    "kind",
+    "status",
+    "digest",
+    "subject",
+    "covered_action",
+    "identifier_handling",
+    "authority_control",
+    "evidence_semantics",
+    "complete_mediation_review",
+    "sponsor_visibility",
+    "non_claims"
+  ],
+  "properties": {
+    "schema": {
+      "const": "https://www.emiliaprotocol.ai/schemas/portfolio-authority-boundary-example.v1.schema.json"
+    },
+    "artifact_version": {
+      "const": "1"
+    },
+    "kind": {
+      "const": "EMILIA_PORTFOLIO_AUTHORITY_BOUNDARY_EXAMPLE"
+    },
+    "status": {
+      "const": "illustrative_non_authoritative"
+    },
+    "digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "canonicalization",
+        "scope",
+        "value"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "sha-256"
+        },
+        "canonicalization": {
+          "const": "EMILIA_STRICT_JSON_V1"
+        },
+        "scope": {
+          "const": "entire_document_excluding_digest_member"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "organization_id",
+        "portfolio_company",
+        "consent"
+      ],
+      "properties": {
+        "organization_id": {
+          "type": "string",
+          "pattern": "^ep_entity_[a-z0-9_]+$"
+        },
+        "portfolio_company": {
+          "type": "string",
+          "minLength": 1
+        },
+        "consent": {
+          "const": "synthetic public example only"
+        }
+      }
+    },
+    "covered_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boundary_id",
+        "action_type",
+        "system_boundary",
+        "material_fields"
+      ],
+      "properties": {
+        "boundary_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "system_boundary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "material_fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "identifier_handling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "known_boundary_ids",
+        "unknown_credential",
+        "unknown_organization_id",
+        "unknown_boundary_id",
+        "unknown_policy_id",
+        "identifier_inference_or_repair"
+      ],
+      "properties": {
+        "known_boundary_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "unknown_credential": {
+          "const": "reject"
+        },
+        "unknown_organization_id": {
+          "const": "reject"
+        },
+        "unknown_boundary_id": {
+          "const": "reject"
+        },
+        "unknown_policy_id": {
+          "const": "reject"
+        },
+        "identifier_inference_or_repair": {
+          "const": "prohibited"
+        }
+      }
+    },
+    "authority_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner",
+        "safety_rule",
+        "reserve_before_provider_entry",
+        "one_admitted_provider_attempt_on_shared_durable_paths",
+        "post_entry_uncertainty"
+      ],
+      "properties": {
+        "owner": {
+          "const": "portfolio company"
+        },
+        "safety_rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reserve_before_provider_entry": {
+          "const": true
+        },
+        "one_admitted_provider_attempt_on_shared_durable_paths": {
+          "const": true
+        },
+        "post_entry_uncertainty": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "evidence_semantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "posture_evidence",
+        "admission_evidence",
+        "outcome_evidence",
+        "effect_evidence"
+      ],
+      "properties": {
+        "posture_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "admission_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effect_evidence": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "complete_mediation_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "example_uncovered_paths"
+      ],
+      "properties": {
+        "required": {
+          "const": true
+        },
+        "example_uncovered_paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "sponsor_visibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "buyer_agreed_outputs",
+        "retained_by_portfolio_company"
+      ],
+      "properties": {
+        "buyer_agreed_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "retained_by_portfolio_company": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "non_claims": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

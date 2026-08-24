@@ -6,13 +6,14 @@ import SiteFooter from '@/components/SiteFooter';
 import SiteNav from '@/components/SiteNav';
 import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 import PortfolioActionRiskLab from './PortfolioActionRiskLab';
+import PortfolioTrackedLink from './PortfolioTrackedLink';
 import css from './private-equity.module.css';
 
 const PAGE_URL = 'https://www.emiliaprotocol.ai/private-equity';
-const PAGE_TITLE = 'Agentic AI Risk Controls for Private Equity Portfolios';
+const PAGE_TITLE = 'The Universal Authority Tollgate for Private Equity Portfolio AI';
 const PAGE_DESCRIPTION =
-  'Protect one portfolio-company finance workflow with customer-owned exact-action authority. '
-  + 'Start with a 90-day, $25K EMILIA Gate pilot for vendor bank-detail changes or payment releases.';
+  'Scale agentic AI across private-equity portfolios without giving agents an open road into money, '
+  + 'systems, and assets. Start with one customer-owned finance tollgate.';
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/private-equity' },
   keywords: [
     'agentic AI risk controls private equity',
+    'portfolio authority control',
     'private equity portfolio AI governance',
     'portfolio company AI risk management',
     'AI agent payment controls',
@@ -30,7 +32,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: PAGE_URL,
-    title: 'Protect the capital behind agentic action',
+    title: PAGE_TITLE,
     description: PAGE_DESCRIPTION,
     images: [
       {
@@ -43,7 +45,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Protect the capital behind agentic action',
+    title: PAGE_TITLE,
     description: PAGE_DESCRIPTION,
     images: ['/private-equity/opengraph-image'],
   },
@@ -62,6 +64,26 @@ const FAQ = [
       'No. The deployment model keeps credentials, trust roots, authority rules, and detailed action evidence with the portfolio company. A sponsor can fund a common control pattern and receive only the buyer-agreed, payload-minimized implementation evidence.',
   },
   {
+    question: 'What can a sponsor standardize across the portfolio?',
+    answer:
+      'A sponsor can standardize the boundary review, minimum control contract, evidence fields, rollout criteria, and payload-minimized reporting format. Each portfolio company still decides its authority rules and retains its keys, credentials, detailed approvals, and action records.',
+  },
+  {
+    question: 'Does EMILIA issue a certificate for a portfolio company?',
+    answer:
+      'No. EMILIA can produce scoped verification results, conformance records, deployment assessments, assurance packages, and workpapers whose inputs and limitations travel with them. These are not an audit opinion, accredited certification, or proof that an organization or investment is safe.',
+  },
+  {
+    question: 'What can an independent reviewer reproduce?',
+    answer:
+      'A reviewer can re-run supplied evidence packages under independently pinned keys, profiles, clocks, and input digests, then compare the result with the runtime claim. Re-performance can expose missing or inadmissible evidence and drift; it cannot recover live state that was never recorded or establish source truth.',
+  },
+  {
+    question: 'How does EMILIA Scan reduce implementation work?',
+    answer:
+      'Scan can prepare a customer-reviewable action inventory and draft control package for the named action surface, with unresolved blockers made explicit. It does not authorize an action, activate Gate, certify a deployment, or prove that every effect path is mediated. Buyer acceptance and a separately scoped Gate implementation are still required.',
+  },
+  {
     question: 'What does complete mediation mean?',
     answer:
       'Every path capable of producing the covered effect must cross Gate at the executor or system-of-record boundary. A sidecar, prompt filter, or voluntary agent call cannot constrain an alternate path that bypasses the deployed control.',
@@ -69,12 +91,12 @@ const FAQ = [
   {
     question: 'Does the Portfolio Action Risk Lab move or block money?',
     answer:
-      'No. It provisions a throwaway observe-only sandbox key and evaluates fictional finance-action metadata. It does not connect to an ERP, change vendor data, release a payment, authorize production use, or provide production protection.',
+      'No. It provisions a scoped observe-only sandbox key and evaluates fictional finance-action metadata. It does not connect to an ERP, change vendor data, release a payment, authorize production use, or provide production protection.',
   },
   {
     question: 'What is included in the first pilot?',
     answer:
-      'One buyer-selected vendor bank-detail change or payment-release workflow, 90 days, and a fixed $25K scope. Work begins with synthetic and read-only validation. A production path changes only after the buyer accepts the boundary, trust inputs, operating procedure, and complete-mediation design.',
+      'One buyer-selected vendor bank-detail change or payment-release workflow, 90 days, and a fixed $25K scope. Work remains synthetic and read-only. The pilot ends with a buyer-owned go or no-go decision; any production Gate implementation is separately scoped after buyer acceptance.',
   },
 ] as const;
 
@@ -88,10 +110,47 @@ const STRUCTURED_DATA = {
       name: PAGE_TITLE,
       description: PAGE_DESCRIPTION,
       isPartOf: { '@id': 'https://www.emiliaprotocol.ai/#website' },
+      mainEntity: { '@id': `${PAGE_URL}#service` },
       about: [
         { '@type': 'Thing', name: 'Private equity portfolio operations' },
         { '@type': 'Thing', name: 'AI agent authorization controls' },
         { '@type': 'Thing', name: 'Finance operations controls' },
+      ],
+    },
+    {
+      '@type': 'Service',
+      '@id': `${PAGE_URL}#service`,
+      name: 'EMILIA Portfolio Authority Control',
+      serviceType: 'Authority control and technical assurance for consequential agent actions',
+      url: PAGE_URL,
+      provider: {
+        '@type': 'Organization',
+        name: 'EMILIA Protocol',
+        url: 'https://www.emiliaprotocol.ai',
+      },
+      audience: {
+        '@type': 'BusinessAudience',
+        audienceType: 'Private equity operating partners and portfolio company finance leaders',
+      },
+      description: PAGE_DESCRIPTION,
+      areaServed: 'Worldwide',
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${PAGE_URL}#breadcrumb`,
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: 'https://www.emiliaprotocol.ai/',
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Private Equity',
+          item: PAGE_URL,
+        },
       ],
     },
     {
@@ -120,14 +179,14 @@ const PILOT_PHASES = [
   {
     number: '02',
     window: 'Days 31-60',
-    title: 'Observe before enforcing',
-    body: 'Run synthetic and buyer-approved read-only validation. Measure what the configured authority rule would hold, refuse, or allow without changing production behavior.',
+    title: 'Prepare, then observe',
+    body: 'Use Scan to prepare the customer-reviewable draft package, then run synthetic and buyer-approved read-only validation without changing production behavior.',
   },
   {
     number: '03',
     window: 'Days 61-90',
     title: 'Make a buyer-owned decision',
-    body: 'Deliver the boundary design, acceptance evidence, limitations, and operating procedure. Production enforcement begins only after explicit buyer acceptance.',
+    body: 'Deliver the boundary design, acceptance evidence, limitations, and operating procedure. End with a buyer-owned go or no-go decision; any production Gate implementation is separately scoped.',
   },
 ] as const;
 
@@ -149,6 +208,89 @@ const CONTROL_LAYERS = [
   },
 ] as const;
 
+const ENTRY_PATHS = [
+  {
+    number: '01',
+    status: 'Open now · synthetic only',
+    name: 'Portfolio Action Risk Lab',
+    audience: 'For an operating partner or finance leader testing the question',
+    body: 'Provision a scoped observe-only key and send fictional payment releases through one existing finance precheck. No ERP, bank, payment rail, or production control is connected.',
+    output: 'A fictional action digest and observed rule result, not a certificate or deployment finding.',
+    href: '#risk-lab',
+    cta: 'Run the risk lab',
+    eventDetail: { event: 'risk_lab_opened', location: 'engagement_ladder' } as const,
+  },
+  {
+    number: '02',
+    status: `${PROTECTED_WORKFLOW_PILOT.durationLabel} · ${PROTECTED_WORKFLOW_PILOT.shortPriceLabel} fixed scope`,
+    name: 'Portfolio Authority Pilot',
+    audience: 'For one sponsor and one consenting portfolio company',
+    body: 'Map one vendor bank-detail change or payment-release path, use Scan to prepare a reviewable control package, validate it in synthetic and buyer-approved read-only modes, and design the completely mediated customer-owned Gate boundary.',
+    output: 'A path map, draft control package, authority and evidence rule, acceptance plan, limitations, and buyer-owned go or no-go decision.',
+    href: '/pilot?v=fin&source=private_equity',
+    cta: 'Scope the fixed pilot',
+    eventDetail: {
+      event: 'pilot_scope_started',
+      location: 'engagement_ladder',
+      surface: 'protected_workflow_pilot',
+    } as const,
+  },
+  {
+    number: '03',
+    status: 'Scoped after boundary acceptance',
+    name: 'Portfolio Authority Program',
+    audience: 'For a sponsor funding a repeatable rollout pattern',
+    body: 'Deploy company-owned Gates by consenting portfolio company, operate the accepted boundaries, and add scoped assurance services without centralizing company keys, credentials, or raw action evidence.',
+    output: 'Buyer-agreed coverage and control-operation evidence. It is explicitly not an investment-safety certificate.',
+    href: 'mailto:team@emiliaprotocol.ai?subject=Portfolio%20Authority%20Program',
+    cta: 'Discuss a portfolio rollout',
+    eventDetail: {
+      event: 'assurance_surface_opened',
+      location: 'engagement_ladder',
+      surface: 'portfolio_authority_program',
+    } as const,
+  },
+] as const;
+
+const ASSURANCE_MODULES = [
+  {
+    name: 'Open verification',
+    status: 'Self-directed',
+    body: 'Re-perform a supplied assurance package under your own pinned inputs with the open ep-assure procedure.',
+    boundary: 'Tests what the supplied evidence supports. It does not establish source truth or deployment coverage.',
+    href: '/assurance#open-verification',
+    cta: 'Run the open procedure',
+    surface: 'open_verification',
+  },
+  {
+    name: 'Deployment Assurance',
+    status: 'Scoped service',
+    body: 'Review complete mediation, bypass routes, trust pins, replay state, failure behavior, retention, and active refusal probes for named boundaries.',
+    boundary: 'A vendor or customer deployment assessment, not independent certification.',
+    href: '/assurance',
+    cta: 'Inspect Deployment Assurance',
+    surface: 'deployment_assurance',
+  },
+  {
+    name: 'Continuous Assurance',
+    status: 'Scoped service',
+    body: 'Build content-addressed evidence packages on an agreed cadence and re-perform claimed verdicts to name drift, refusals, and missing evidence.',
+    boundary: 'The workpaper leaves an auditor or assurer conclusion blank by construction.',
+    href: '/assurance',
+    cta: 'Inspect Continuous Assurance',
+    surface: 'continuous_assurance',
+  },
+  {
+    name: 'Warranted Gate',
+    status: 'Separate contract after baseline',
+    body: 'A separately negotiated warranty may cover named Gate behavior at named enforcement points, for a named period and contractual limit.',
+    boundary: 'It does not warrant investment performance, legal compliance, wisdom, source truth, or bypassing actions.',
+    href: '/assurance',
+    cta: 'Read the warranty boundary',
+    surface: 'warranted_gate',
+  },
+] as const;
+
 export default async function PrivateEquityPage(): Promise<React.ReactElement> {
   const nonce = (await headers()).get('x-nonce') ?? '';
 
@@ -164,19 +306,35 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
       <main className={css.page}>
         <section className={css.hero} aria-labelledby="pe-hero-title">
           <div className={css.heroCopy}>
-            <p className={css.eyebrow}>For private equity operating partners and portfolio finance leaders</p>
-            <h1 id="pe-hero-title">Protect the capital behind agentic action.</h1>
+            <p className={css.eyebrow}>The Universal Authority Tollgate for portfolio AI</p>
+            <h1 id="pe-hero-title">Give private-equity portfolio AI an authority tollgate.</h1>
             <p className={css.heroLead}>
-              Agents are moving from advice to action. EMILIA Gate puts a customer-owned authority
-              tollgate at the systems where they change vendor bank details or release payments.
+              Scale agentic AI without giving agents an open road into portfolio money, systems, and
+              assets. One sponsor can standardize the control contract. Each company owns its Gate.
             </p>
             <p className={css.boundaryStatement}>
-              On completely mediated covered paths, no accepted exact-action authority and required
-              evidence means no provider entry.
+              On completely mediated covered paths, the exact action must arrive with accepted
+              authority and required evidence before it can enter the consequential provider.
             </p>
             <div className={css.heroActions}>
-              <a className={css.primaryButton} href="/pilot?v=fin">Scope one portfolio pilot</a>
-              <a className={css.textLink} href="#risk-lab">Run the observe-only risk lab <span aria-hidden="true">↓</span></a>
+              <PortfolioTrackedLink
+                className={css.primaryButton}
+                href="/pilot?v=fin&source=private_equity"
+                eventDetail={{
+                  event: 'pilot_scope_started',
+                  location: 'hero',
+                  surface: 'protected_workflow_pilot',
+                }}
+              >
+                Protect one portfolio boundary
+              </PortfolioTrackedLink>
+              <PortfolioTrackedLink
+                className={css.textLink}
+                href="#risk-lab"
+                eventDetail={{ event: 'risk_lab_opened', location: 'hero' }}
+              >
+                Test the tollgate in observe mode <span aria-hidden="true">↓</span>
+              </PortfolioTrackedLink>
             </div>
             <dl className={css.offerStrip} aria-label="Pilot terms">
               <div><dt>Scope</dt><dd>{PROTECTED_WORKFLOW_PILOT.workflowLabel}</dd></div>
@@ -220,12 +378,12 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
         <section className={css.introBand} aria-labelledby="why-portfolio-heading">
           <p className={css.sectionKicker}>The portfolio opportunity</p>
           <div>
-            <h2 id="why-portfolio-heading">One control pattern. Company-owned authority.</h2>
+            <h2 id="why-portfolio-heading">AI creates the upside. Put a control boundary behind it.</h2>
             <p>
-              A sponsor can fund the same consequence-control discipline across companies without
-              centralizing their keys, approvals, or operational records. Start with one company and
-              one finance boundary. Repeat only after the control works under that company&apos;s systems,
-              people, and risk rules.
+              A sponsor can fund the same action-control discipline across companies without taking
+              custody of their keys, approvals, or operating records. Start with one company and one
+              finance boundary. Repeat only after the buyer reproduces the control under its own
+              systems, people, and risk rules.
             </p>
           </div>
         </section>
@@ -261,14 +419,114 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
           </div>
         </section>
 
+        <section className={css.entrySection} aria-labelledby="entry-heading">
+          <div className={css.sectionHeading}>
+            <p className={css.sectionKicker}>Three ways in</p>
+            <h2 id="entry-heading">Test the question. Protect one boundary. Then earn the rollout.</h2>
+            <p>
+              The lab has no production consequence. The pilot has one fixed public scope. A portfolio
+              program begins only after a consenting company accepts its boundary and operating model.
+            </p>
+          </div>
+          <div className={css.entryGrid}>
+            {ENTRY_PATHS.map((entry) => (
+              <article className={css.entryCard} key={entry.number}>
+                <div className={css.entryTop}>
+                  <span>{entry.number}</span>
+                  <span>{entry.status}</span>
+                </div>
+                <p className={css.cardLabel}>{entry.audience}</p>
+                <h3>{entry.name}</h3>
+                <p>{entry.body}</p>
+                <div className={css.outputBox}>
+                  <span>Evidence output</span>
+                  <p>{entry.output}</p>
+                </div>
+                <PortfolioTrackedLink
+                  className={css.entryLink}
+                  href={entry.href}
+                  eventDetail={entry.eventDetail}
+                >
+                  {entry.cta} <span aria-hidden="true">→</span>
+                </PortfolioTrackedLink>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={css.assuranceSection} aria-labelledby="assurance-ladder-heading">
+          <div className={css.assuranceIntro}>
+            <p className={css.sectionKicker}>Control plus assurance</p>
+            <h2 id="assurance-ladder-heading">Every evidence surface, without a black-box certificate.</h2>
+            <p>
+              Gate controls the crossing. The Assurance Plane can verify, assess, re-perform, and package
+              the resulting evidence. A customer-appointed auditor, underwriter, regulator, or other
+              authorized reviewer keeps its own conclusion.
+            </p>
+            <p className={css.evidenceDistinction}>
+              Posture and coverage evidence are not action admission. Admission evidence is not provider
+              outcome or real-world effect proof. Each claim keeps its own evidence boundary.
+            </p>
+            <div className={css.assuranceActions}>
+              <a
+                className={css.primaryButton}
+                href="/examples/portfolio-authority/payment-release-boundary.example.json"
+                download
+              >
+                Download the boundary example
+              </a>
+              <a
+                className={css.textLink}
+                href="/schemas/portfolio-authority-boundary-example.v1.schema.json"
+              >
+                View the v1 schema
+              </a>
+              <a className={css.textLink} href="/assurance">Inspect the Assurance Plane</a>
+            </div>
+            <p className={css.artifactMeta}>
+              Schema v1 · canonical SHA-256 digest · covered and example uncovered paths · fail-closed
+              unknown-ID requirements. The file is illustrative and non-authoritative.
+            </p>
+          </div>
+          <div className={css.assuranceModules}>
+            {ASSURANCE_MODULES.map((module) => (
+              <article key={module.name}>
+                <div className={css.moduleTop}>
+                  <h3>{module.name}</h3>
+                  <span>{module.status}</span>
+                </div>
+                <p>{module.body}</p>
+                <small>{module.boundary}</small>
+                <PortfolioTrackedLink
+                  href={module.href}
+                  eventDetail={{
+                    event: 'assurance_surface_opened',
+                    location: 'engagement_ladder',
+                    surface: module.surface,
+                  }}
+                >
+                  {module.cta} <span aria-hidden="true">→</span>
+                </PortfolioTrackedLink>
+              </article>
+            ))}
+          </div>
+          <div className={css.certificateBoundary} role="note">
+            <strong>Evidence, not a certificate.</strong>
+            <span>
+              EMILIA does not currently operate a public certification scheme and does not issue an audit
+              opinion, accredited certification, insurance conclusion, or investment-safety rating.
+            </span>
+          </div>
+        </section>
+
         <section id="risk-lab" className={css.labSection} aria-labelledby="risk-lab-heading">
           <div className={css.labIntro}>
             <p className={css.sectionKicker}>Portfolio Action Risk Lab</p>
             <h2 id="risk-lab-heading">See the finance precheck before you discuss production.</h2>
             <p>
-              Provision one throwaway observe-only key for Northstar Components, a fictional company
-              consenting to this synthetic exercise. Then evaluate a vendor bank-detail change and a
-              payment release against the existing finance prechecks.
+              Provision one scoped observe-only key for Northstar Components, a fictional company
+              consenting to this synthetic exercise. Keep one payment-release boundary fixed, then compare
+              a single-signoff result, a dual-signoff result, and a hard refusal.
             </p>
             <ul>
               <li>No ERP connection</li>
@@ -308,6 +566,7 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
               <li>Customer-pinned authority and evidence rule</li>
               <li>Observe-mode precheck findings and limitations</li>
               <li>Boundary acceptance plan and operating procedure</li>
+              <li>Payload-minimized sponsor evidence design</li>
             </ul>
           </div>
         </section>
@@ -336,6 +595,12 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
             </article>
           </div>
           <a className={css.textLink} href="/security">Inspect the engineering and security boundary <span aria-hidden="true">→</span></a>
+          <div className={css.resourceRail} aria-label="Supporting evidence routes">
+            <a href="/assurance"><span>Assurance Plane</span><strong>Re-performance and scoped evidence</strong></a>
+            <a href="/auditors"><span>Auditor surface</span><strong>Reproducible workpapers</strong></a>
+            <a href="/protocol"><span>Open Protocol</span><strong>Formats, verification, and conformance</strong></a>
+            <a href="/pricing"><span>Commercial path</span><strong>Public pilot and deployment scope</strong></a>
+          </div>
         </section>
 
         <section className={css.faqSection} aria-labelledby="faq-heading">
@@ -355,14 +620,30 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
 
         <section className={css.finalCta} aria-labelledby="final-cta-heading">
           <p className={css.sectionKicker}>Start with a real boundary</p>
-          <h2 id="final-cta-heading">Protect one portfolio-company finance workflow.</h2>
+          <h2 id="final-cta-heading">Put the first tollgate where portfolio money can move.</h2>
           <p>
             Bring the workflow, owner, executor path, current approval rule, and known bypasses. We will
             scope the smallest pilot that can produce a defensible yes or no.
           </p>
           <div className={css.heroActions}>
-            <a className={css.primaryButtonLight} href="/pilot?v=fin">Scope the 90-day pilot</a>
-            <a className={css.textLinkLight} href="mailto:team@emiliaprotocol.ai?subject=Portfolio%20finance%20workflow">Email the team</a>
+            <PortfolioTrackedLink
+              className={css.primaryButtonLight}
+              href="/pilot?v=fin&source=private_equity"
+              eventDetail={{
+                event: 'pilot_scope_started',
+                location: 'final_cta',
+                surface: 'protected_workflow_pilot',
+              }}
+            >
+              Scope the 90-day pilot
+            </PortfolioTrackedLink>
+            <PortfolioTrackedLink
+              className={css.textLinkLight}
+              href="mailto:team@emiliaprotocol.ai?subject=Portfolio%20finance%20workflow"
+              eventDetail={{ event: 'team_email_started', location: 'final_cta' }}
+            >
+              Email the team
+            </PortfolioTrackedLink>
           </div>
           <small>
             Customer deployment path only. EMILIA is not an insurer, auditor, investment adviser, or

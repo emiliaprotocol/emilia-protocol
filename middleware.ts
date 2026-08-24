@@ -72,7 +72,7 @@ const ROUTE_POLICIES = {
 
   // Pilot-request intake (public lead form; honeypot + validation in route)
   'POST /api/pilot/request':          { rateCategory: 'pilot_request', useAuth: false },
-  'POST /api/pilot/sandbox/provision': { rateCategory: 'submit', useAuth: false },
+  'POST /api/pilot/sandbox/provision': { rateCategory: 'pilot_sandbox_provision', useAuth: false },
   'GET /api/pilot/sandbox/report':     { rateCategory: 'read', useAuth: true },
 
   // Public Consequence Firewall planner. This endpoint creates only a local,
