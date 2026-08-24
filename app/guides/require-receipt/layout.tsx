@@ -8,6 +8,7 @@ export const metadata: Metadata = {
     + 'mutation, and refuse replay.',
   alternates: { canonical: '/guides/require-receipt' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'Add Receipt Required to an MCP server in 10 minutes',
     description:
       'The adoption rail for agent tools: Action Control Manifest -> 428 Receipt Required -> human approval '

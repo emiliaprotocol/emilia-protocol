@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { color, font, styles } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'Pre-Execution Accountability Infrastructure — EMILIA Protocol',
+  title: 'Pre-Execution Accountability Infrastructure',
   description:
     'Audit logs, IAM, and GRC dashboards tell you what happened. EMILIA decides what is allowed to happen — binding identity, authority, policy, exact action, and a named human signoff before an irreversible AI action executes.',
   alternates: { canonical: '/pre-execution-accountability' },

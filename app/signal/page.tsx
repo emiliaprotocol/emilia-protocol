@@ -10,6 +10,7 @@ export const metadata: Metadata = {
     'EMILIA Signal reconstructs consequential workflows from governed exports, surfaces source-linked review leads, and prepares the exact boundary EMILIA Gate can protect.',
   alternates: { canonical: '/signal' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Signal',
     description: 'Find the consequential workflow. Bind the next decision. Preserve the evidence.',
     url: 'https://www.emiliaprotocol.ai/signal',

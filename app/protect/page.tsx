@@ -7,8 +7,9 @@ import ProtectionBuilder from './ProtectionBuilder';
 import styles from './protect.module.css';
 
 export const metadata: Metadata = {
-  title: 'Choose What AI Must Never Do Without Your Authority | EMILIA',
+  title: 'Choose What AI Must Never Do Without Your Authority',
   description: 'Build a local EMILIA Consequence Firewall protection plan for money movement, file deletion, access changes, production code, sensitive data, and machine commands.',
+  alternates: { canonical: '/protect' },
 };
 
 export default function ProtectPage(): React.ReactElement {

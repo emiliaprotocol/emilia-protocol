@@ -4,8 +4,9 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, grid, font, radius } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'Cross-Rail Authority for Agentic Commerce | EMILIA Protocol',
+  title: 'Cross-Rail Authority for Agentic Commerce',
   description: 'Payment partners move money. EMILIA determines whether an exact agent transaction is authorized to reach them.',
+  alternates: { canonical: '/financial' },
 };
 
 export default function FinancialPage() {

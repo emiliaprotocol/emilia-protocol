@@ -38,6 +38,7 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
   return {
     title: `${c.name} — advertises ${fam}`,
     description: `${c.name} advertises a high-risk ${fam} capability in the public MCP registry. Registry-level signal (name + description), not a tool-level scan. If it acts for an AI agent, it should require an authorization receipt.`,
+    alternates: { canonical: `/fire-drill/registry/${slug}` },
     robots: { index: false, follow: true },
   };
 }

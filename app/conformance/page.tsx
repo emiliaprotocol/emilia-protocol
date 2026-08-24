@@ -12,9 +12,10 @@ const DRAFT_URL = 'https://datatracker.ietf.org/doc/draft-schrock-action-evidenc
 const COMMAND = 'npx @emilia-protocol/verify aeb-conformance --reference';
 
 export const metadata: Metadata = {
-  title: 'AEB-1 Consequence-Admission Conformance Pack | EMILIA Protocol',
+  title: 'AEB-1 Consequence-Admission Conformance Pack',
   description:
     'A free, open reference self-test for exact-action admission, one-time consumption, indeterminate outcomes, and authenticated reconciliation.',
+  alternates: { canonical: '/conformance' },
 };
 
 const FORMATS = ['Receipt', 'Permit', 'Token', 'Credential', 'Mandate'];

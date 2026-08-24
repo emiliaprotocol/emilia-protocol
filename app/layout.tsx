@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import EuAiActBanner from '@/components/EuAiActBanner';
 import proofStats from '@/lib/proof-stats.json';
+import { ENTITY } from '@/lib/site-config';
 import './ep.css';
 
 const TEST_CASES = Number(proofStats.tests.total).toLocaleString('en-US');
@@ -22,27 +23,7 @@ export const metadata: Metadata = {
   description:
     'At protected boundaries, every consequential agent action enters with customer authority and exits '
     + 'with an action-bound receipt.',
-  applicationName: 'EMILIA Gate',
-  keywords: [
-    'AI agent authorization',
-    'AI agent firewall',
-    'consequence firewall',
-    'secure agent actions',
-    'authorization receipts',
-    'receipt required',
-    'pre-action authorization',
-    'AI agent trust',
-    'verifiable AI authorization',
-    'AI agent governance',
-    'agent action binding',
-    'MCP tool authorization',
-    'AI agent human approval',
-    'agent authority toll booth',
-    'agent action receipt',
-    'cryptographic AI controls',
-    'formal verification AI',
-    'AI agent fraud prevention',
-  ],
+  applicationName: 'EMILIA Protocol',
   authors: [{ name: 'EMILIA Protocol', url: 'https://www.emiliaprotocol.ai' }],
   creator: 'EMILIA Protocol',
   publisher: 'EMILIA Protocol',
@@ -83,23 +64,31 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/favicon.svg', type: 'image/svg+xml', sizes: 'any' },
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48' },
     ],
   },
   category: 'technology',
 };
 
 // Site-wide JSON-LD Organization + WebSite schema. Embedded in the root
-// layout so every page inherits it. Search engines use this for the
-// knowledge-panel "Organization" card and the SiteLinks Search Box.
+// layout so every page inherits it. Stable @ids let route-level structured
+// data refer back to the same site and organization entities.
 const ORGANIZATION_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
+  '@id': 'https://www.emiliaprotocol.ai/#organization',
   name: 'EMILIA Protocol',
-  alternateName: ['EP', 'Emilia Protocol'],
+  legalName: ENTITY.legalName,
+  alternateName: ['EMILIA', 'Emilia Protocol', 'emiliaprotocol.ai'],
   url: 'https://www.emiliaprotocol.ai',
-  logo: 'https://www.emiliaprotocol.ai/logo.png',
+  logo: {
+    '@type': 'ImageObject',
+    url: 'https://www.emiliaprotocol.ai/logo.png',
+    width: 512,
+    height: 512,
+  },
+  email: ENTITY.email,
   description:
     'EMILIA is the independent authority system for autonomous work. The commercial Gate enforcement '
     + 'product runs on the open Apache-2.0 EMILIA Protocol proof substrate.',
@@ -118,16 +107,11 @@ const ORGANIZATION_JSONLD = {
 const WEBSITE_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: 'EMILIA',
+  '@id': 'https://www.emiliaprotocol.ai/#website',
+  name: 'EMILIA Protocol',
+  alternateName: ['EMILIA', 'emiliaprotocol.ai'],
   url: 'https://www.emiliaprotocol.ai',
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: {
-      '@type': 'EntryPoint',
-      urlTemplate: 'https://www.emiliaprotocol.ai/explorer?q={search_term_string}',
-    },
-    'query-input': 'required name=search_term_string',
-  },
+  publisher: { '@id': 'https://www.emiliaprotocol.ai/#organization' },
 };
 
 // Reading headers() forces dynamic rendering per request.
@@ -145,8 +129,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="icon" href="/favicon.ico" sizes="32x32" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
+        <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+        <link rel="alternate" href="/llms.txt" type="text/plain" title="EMILIA LLM context index" />
+        <link
+          rel="alternate"
+          href="/.well-known/emilia-context.json"
+          type="application/json"
+          title="EMILIA machine-readable context"
+        />
         <script
           type="application/ld+json"
           suppressHydrationWarning
@@ -157,7 +148,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script
           type="application/ld+json"
           suppressHydrationWarning
-          // Site-wide WebSite schema with SiteLinks Search Box action.
+          // Site-wide WebSite schema linked to the Organization entity.
           dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSONLD) }}
           nonce={nonce}
         />

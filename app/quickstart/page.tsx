@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     + 'Gate irreversible actions behind a named human sign-off; verify receipts offline in JS or Python.',
   alternates: { canonical: '/quickstart' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Quickstart — human sign-off for agent actions in 5 minutes',
     description: 'Pick your stack, gate an irreversible action, mint a verifiable receipt.',
     url: 'https://www.emiliaprotocol.ai/quickstart',

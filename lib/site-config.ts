@@ -162,8 +162,8 @@ export const COMPLIANCE_ROADMAP: ComplianceRoadmap = {
     { item: 'Apache 2.0 license', status: 'shipped', evidence: 'github.com/emiliaprotocol/emilia-protocol/blob/main/LICENSE' },
     { item: 'NIST AI RMF mapping (governance + measurement)', status: 'shipped', evidence: 'github.com/emiliaprotocol/emilia-protocol/blob/main/docs/compliance/NIST-AI-RMF-MAPPING.md' },
     { item: 'EU AI Act high-risk-system control mapping', status: 'shipped', evidence: 'github.com/emiliaprotocol/emilia-protocol/blob/main/docs/compliance/EU-AI-ACT-MAPPING.md' },
-    { item: 'Formal verification — 26 TLA+ theorems, 35 Alloy facts + 32 assertions across four models in CI', status: 'shipped', evidence: '/spec, repo formal/ directory' },
-    { item: 'Open conformance suite + reference implementations', status: 'shipped', evidence: '/adopt, /spec' },
+    { item: 'Formal analysis and executable security case', status: 'shipped', evidence: '/proof' },
+    { item: 'Open conformance suite + reference implementations', status: 'shipped', evidence: '/conformance' },
     { item: 'Responsible disclosure policy + security.txt', status: 'shipped', evidence: '/.well-known/security.txt' },
   ],
   inProgress: [

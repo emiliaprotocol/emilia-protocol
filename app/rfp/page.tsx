@@ -15,7 +15,7 @@ import SiteFooter from '@/components/SiteFooter';
 import { color, font, radius, styles } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'RFP Language for AI Accountability — EMILIA Protocol',
+  title: 'RFP Language for AI Accountability',
   description:
     'Copy-paste procurement clauses requiring offline-verifiable, cryptographically bound human approval for autonomous AI actions. Anchored to an open IETF-submitted specification — not to any vendor.',
   alternates: { canonical: '/rfp' },

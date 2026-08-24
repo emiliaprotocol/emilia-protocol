@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: 'Action Escrow Contractor Demo',
   description:
     'A kitchen-renovation milestone demo with separate document verification, exact homeowner and contractor release approvals, simulated external custody, one-time Gate release, and portable evidence.',
+  alternates: { canonical: '/action-escrow' },
 };
 
 export default async function ActionEscrowPage() {

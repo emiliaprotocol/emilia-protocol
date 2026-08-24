@@ -18,8 +18,9 @@ import REGISTRY from '../../../packages/fire-drill/registry-index.json';
 const INDEX = aggregate(REPRESENTATIVE_CORPUS.map((c) => scan(c.manifest)));
 
 export const metadata: Metadata = {
-  title: 'The Receipt Declaration Report — EMILIA',
+  title: 'The Receipt Declaration Report',
   description: 'A static, revision-pinned view of where documented high-risk agent tools declare required receipt evidence.',
+  alternates: { canonical: '/fire-drill/report' },
 };
 
 const FAMILIES = [

@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     + 'and xAI can prove who approved every irreversible agent action — Accountable Signoff, authorization receipt, Policy Hash, Authority Chain.',
   alternates: { canonical: '/for-ai-companies' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'OAuth solved login. EMILIA solves accountability for AI agents.',
     description: 'A cryptographic answer to the question every lab hits: who approved this exact action?',
     url: 'https://www.emiliaprotocol.ai/for-ai-companies',

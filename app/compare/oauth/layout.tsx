@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'parameters before execution.',
   alternates: { canonical: '/compare/oauth' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Protocol vs OAuth — Action Binding for High-Risk Actions',
     description:
       'OAuth grants permission. EP grants permission for THIS exact action. ' +

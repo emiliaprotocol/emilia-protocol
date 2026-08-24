@@ -4,8 +4,9 @@ import { styles, cta, color, grid, font, radius } from '@/lib/tokens';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Government Fraud Prevention | EMILIA Protocol',
+  title: 'Government Fraud Prevention',
   description: 'EP for government payment integrity, benefit redirect controls, operator overrides, and high-risk administrative actions.',
+  alternates: { canonical: '/government' },
 };
 
 export default function GovernmentPage() {

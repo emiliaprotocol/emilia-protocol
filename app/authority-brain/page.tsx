@@ -16,6 +16,7 @@ export const metadata: Metadata = {
     'local AI governance tool',
   ],
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'See where your AI can act',
     description:
       'Discover visible action surfaces, review the Authority Map, and put customer authority in force before a consequential machine action.',
@@ -24,6 +25,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
+    images: ['/twitter-image'],
     title: 'EMILIA Authority Map',
     description: 'See where your AI can act. Put customer authority in force before it matters.',
   },

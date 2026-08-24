@@ -3,7 +3,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'European Digital Sovereignty for Accountable AI — EMILIA',
+  title: 'European Digital Sovereignty for Accountable AI',
   description:
     'EMILIA turns EU AI Act human oversight from a policy promise into an offline-verifiable '
     + 'authorization receipt: a named human approved the exact AI action, checkable by European '

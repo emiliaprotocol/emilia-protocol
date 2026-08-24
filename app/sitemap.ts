@@ -5,15 +5,11 @@ import { REPRESENTATIVE_CORPUS } from '../packages/fire-drill/corpus.js';
 // this file at /sitemap.xml automatically. Regenerated on each request
 // (cheap — no I/O), so adding a new page only requires updating this list.
 //
-// Priority and changeFrequency are hints to crawlers; Google largely
-// ignores them but other engines (Bing, Yandex, DuckDuckBot) still use them.
+// The groups below are editorial only. The emitted sitemap contains canonical
+// URLs and omits synthetic last-modified dates, priorities, and change-frequency
+// hints that are not backed by per-page source data.
 
 const BASE = 'https://www.emiliaprotocol.ai';
-
-// Last-modified for the whole site set to the build time. For pages with
-// content that changes more frequently (e.g. /explorer, dashboards),
-// override per-route below.
-const NOW = new Date();
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // Top-level marketing surfaces — highest crawl priority.
@@ -22,6 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/adopt',                 priority: 0.99, changeFrequency: 'weekly' },
     { path: '/signal',                priority: 0.98, changeFrequency: 'weekly' },
     { path: '/gate',                  priority: 0.98, changeFrequency: 'weekly' },
+    { path: '/diligence',             priority: 0.98, changeFrequency: 'weekly' },
     { path: '/protect',               priority: 0.98, changeFrequency: 'weekly' },
     { path: '/assurance',             priority: 0.92, changeFrequency: 'weekly' },
     { path: '/model-to-matter',       priority: 0.9, changeFrequency: 'monthly' },
@@ -29,6 +26,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/agent-guard',           priority: 0.85, changeFrequency: 'monthly' },
     { path: '/fire-drill',            priority: 0.95, changeFrequency: 'weekly' },
     { path: '/fire-drill/cf-1',       priority: 0.9,  changeFrequency: 'monthly' },
+    { path: '/fire-drill/rr-1',       priority: 0.85, changeFrequency: 'monthly' },
     { path: '/fire-drill/gallery',    priority: 0.8,  changeFrequency: 'weekly' },
     { path: '/fire-drill/report',     priority: 0.85, changeFrequency: 'weekly' },
     { path: '/pricing',               priority: 0.9, changeFrequency: 'monthly' },
@@ -40,6 +38,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/observatory',           priority: 0.95, changeFrequency: 'weekly' },
     { path: '/standards',             priority: 0.85, changeFrequency: 'monthly' },
     { path: '/proof',                 priority: 0.95, changeFrequency: 'weekly' },
+    { path: '/conformance',           priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/verify',                priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/verify-live',           priority: 0.85, changeFrequency: 'weekly' },
     { path: '/spec/trust-receipt',    priority: 0.85, changeFrequency: 'monthly' },
     { path: '/govguard',              priority: 0.85, changeFrequency: 'monthly' },
     { path: '/health/program-integrity', priority: 0.9, changeFrequency: 'weekly' },
@@ -53,10 +54,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/for-ai-companies',      priority: 0.9, changeFrequency: 'monthly' },
     { path: '/sovereignty',           priority: 0.9, changeFrequency: 'monthly' },
     { path: '/quickstart',            priority: 0.85, changeFrequency: 'monthly' },
+    { path: '/authority-brain',       priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/pilot',                 priority: 0.85, changeFrequency: 'monthly' },
+    { path: '/pilot/sandbox',         priority: 0.8, changeFrequency: 'monthly' },
+    { path: '/auditors',              priority: 0.85, changeFrequency: 'monthly' },
     { path: '/guides/require-receipt', priority: 0.85, changeFrequency: 'monthly' },
     { path: '/ai-agent-audit-trail',  priority: 0.9,  changeFrequency: 'monthly' },
     { path: '/ai-agent-approvals',    priority: 0.9,  changeFrequency: 'monthly' },
+    { path: '/pre-execution-accountability', priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/why-agents-fail',       priority: 0.85, changeFrequency: 'monthly' },
+    { path: '/proof-vs-measurement',  priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases',             priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/financial',             priority: 0.85, changeFrequency: 'monthly' },
+    { path: '/government',            priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases/government',  priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases/financial',   priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases/enterprise',  priority: 0.85, changeFrequency: 'monthly' },
@@ -89,6 +99,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/blog/what-is-pre-action-authorization',             priority: 0.75, changeFrequency: 'monthly' },
     { path: '/blog/how-formal-verification-works-for-protocols',  priority: 0.7,  changeFrequency: 'monthly' },
     { path: '/blog/ai-voice-cloning-fraud-defense',               priority: 0.75, changeFrequency: 'monthly' },
+    { path: '/blog/credentials-are-not-action-authorization',      priority: 0.75, changeFrequency: 'monthly' },
   ];
 
   // Long-form essays — agent-accountability arguments.
@@ -112,6 +123,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const functional = [
     { path: '/arena',       priority: 0.7, changeFrequency: 'weekly' },
     { path: '/demo',        priority: 0.9, changeFrequency: 'weekly' },
+    { path: '/action-escrow', priority: 0.8, changeFrequency: 'monthly' },
+    { path: '/try/receipt-required', priority: 0.8, changeFrequency: 'monthly' },
+    { path: '/try/multi-party', priority: 0.8, changeFrequency: 'monthly' },
     { path: '/signup',      priority: 0.85, changeFrequency: 'monthly' },
     { path: '/break-the-ceremony', priority: 0.8, changeFrequency: 'weekly' },
     { path: '/playground',  priority: 0.6, changeFrequency: 'weekly' },
@@ -141,6 +155,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/partners',   priority: 0.5, changeFrequency: 'monthly' },
     { path: '/badge',      priority: 0.5, changeFrequency: 'monthly' },
     { path: '/docs',       priority: 0.7, changeFrequency: 'weekly' },
+    { path: '/rfp',        priority: 0.7, changeFrequency: 'monthly' },
     { path: '/appeal',     priority: 0.3, changeFrequency: 'yearly' },
   ];
 
@@ -168,8 +183,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return allEntries.map((entry) => ({
     url: `${BASE}${(entry as any).path}`,
-    lastModified: NOW,
-    changeFrequency: (entry as any).changeFrequency,
-    priority: (entry as any).priority,
   })) as MetadataRoute.Sitemap;
 }

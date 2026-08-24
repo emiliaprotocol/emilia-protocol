@@ -5,12 +5,13 @@ import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata = {
-  title: 'Authorization Receipt Format (EP-RECEIPT-v1) — EMILIA Protocol',
+  title: 'Authorization Receipt Format (EP-RECEIPT-v1)',
   description:
     'The EP-RECEIPT-v1 specification: recursive canonical JSON, Ed25519 signatures, and '
     + 'sorted-pair Merkle anchors. Implementable in any language; verifiable offline in JS and Python.',
   alternates: { canonical: '/spec/trust-receipt' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'Authorization Receipt Format — EP-RECEIPT-v1',
     description: 'A signed, offline-verifiable record that an action was authorized. Implementable in any language.',
     url: 'https://www.emiliaprotocol.ai/spec/trust-receipt',

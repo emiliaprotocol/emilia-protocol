@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'action-binding and named accountable signoff.',
   alternates: { canonical: '/use-cases/enterprise' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Protocol for Enterprise Privileged Actions',
     description:
       'Action-bound authorization layered on top of PAM. Cryptographic ' +

@@ -5,12 +5,13 @@ import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'Changelog — EMILIA Protocol',
+  title: 'Changelog',
   description:
     'Release history for EMILIA Protocol — protocol spec, reference runtime, SDKs, and MCP server. '
     + 'Versioned, formally verified, shipped on a steady cadence.',
   alternates: { canonical: '/changelog' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Protocol — Changelog',
     description: 'What shipped, when. Protocol hardening, formal verification, SDKs, MCP server.',
     url: 'https://www.emiliaprotocol.ai/changelog',

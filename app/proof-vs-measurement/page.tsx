@@ -11,9 +11,10 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'Proof, not measurement — EMILIA & EU AI Act Article 14 | EMILIA',
+  title: 'Proof, not measurement — EU AI Act Article 14',
   description:
     'For Article 14 human oversight, a cryptographic authorization receipt proves a named human authorized the exact action — verifiable offline. An oversight score only measures how attentive the reviewer probably was. Proof vs measurement.',
+  alternates: { canonical: '/proof-vs-measurement' },
 };
 
 const ROWS = [

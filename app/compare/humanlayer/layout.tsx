@@ -8,6 +8,7 @@ export const metadata: Metadata = {
     'offline-verifiable authorization receipt. Approval convenience vs cryptographic evidence — which you need, and when.',
   alternates: { canonical: '/compare/humanlayer' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Protocol vs HumanLayer',
     description:
       'Approval plumbing vs provable authorization. Keep the Slack approval — change what it proves.',

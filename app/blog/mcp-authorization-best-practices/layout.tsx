@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'authorization for high-risk tools.',
   alternates: { canonical: '/blog/mcp-authorization-best-practices' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'MCP Authorization Best Practices in 2026',
     description:
       'Scope-level OAuth + per-invocation pre-action authorization for ' +

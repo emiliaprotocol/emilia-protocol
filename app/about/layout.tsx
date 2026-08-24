@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'About — EMILIA Protocol',
+  title: 'About',
   description:
     'The team and advisors behind EMILIA Protocol — the open protocol for ' +
     'verifiable pre-action authorization in AI agent and high-risk-action ' +
