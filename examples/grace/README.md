@@ -25,6 +25,27 @@ three to refuse.
 The browser control room at `/grace/live` uses the same implementation. Every adapter
 is visibly marked as a reference simulation; no physical grid event is claimed.
 
+## Run the TimesFM forecast-evidence profile
+
+```bash
+npm run demo:grace-timesfm
+npx vitest run tests/grace-forecast-evidence.test.ts
+```
+
+`EP-FORECAST-EVIDENCE-v0.1` turns a model run into a closed, signed, action-bound
+advisory object. The reference builder records the input-series digest, model and
+checkpoint digest, adapter configuration digest, horizon, p10/p50/p90 values,
+rolling-origin backtest receipt, and exact GRACE action digest. Gate can require the
+forecast to be fresh, cover the whole action window, stay within a pinned uncertainty
+bound, and conservatively support the proposed MW target.
+
+The runnable example is a deterministic adapter-contract fixture. It does not download,
+execute, benchmark, or validate Google TimesFM. A deployment must run its selected
+checkpoint, pin that checkpoint and adapter configuration, and sign the resulting
+evidence under a relying-party-trusted key. Forecast evidence is advisory only. It may
+tighten a policy, but it never authorizes dispatch, proves physical truth, replaces the
+separately keyed meter statement, or enters settlement as truth.
+
 ## Run the original receipt vector
 
 ```bash
