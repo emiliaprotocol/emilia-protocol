@@ -434,12 +434,20 @@
       "sha256": "9b2d63e77426094acdf668dd3b8bd8e1e2ff5af80a98c7f8e258d6c5a70b452e"
     },
     {
+      "path": "lib/grace/forecast-evidence.js",
+      "sha256": "90b85f8bd0e731079625fa649b4f71be098ed3d981659556b66bbc34d5fbf15e"
+    },
+    {
+      "path": "lib/grace/forecast-evidence.ts",
+      "sha256": "309f322414295bf99810b82a0f7217a48def486ce5c794c9f92dce42f228ac96"
+    },
+    {
       "path": "lib/grace/mobile-grid.js",
-      "sha256": "9e32b3eaf35b37894e39d3e699d13d723c725c44fc28d9101eefb15b59722f75"
+      "sha256": "01d350e33a7ab8200d73b718f2b82a75533134f5fb23c5c7f2f401e3c90836a5"
     },
     {
       "path": "lib/grace/mobile-grid.ts",
-      "sha256": "98b7621dc0ae1d3a78fdcc8a8e17ac239e6320e7863c5ef23157cabde827d81f"
+      "sha256": "a4d0adcc0c74f8f2d418da179f27f777756413ed71819ad8f8067dee322851b7"
     },
     {
       "path": "lib/grace/reference-adapters.js",
@@ -499,7 +507,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "6f652bc53eeb111f4c7e2308bf38d2a5f65eb1b0aaddb61048f09e7c4bb12e82"
+      "sha256": "f25ce97a684bf3d15801d7cfcb54ee4d474990987ef52fed565f3f6816e685a2"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1367,7 +1375,7 @@
     },
     {
       "path": "scripts/standalone-runtime-targets.mjs",
-      "sha256": "048090c3deb373204db7017ba3491fccf0d9f25e0008e48f6986b61b15a3d807"
+      "sha256": "0f1386807f389bda0b5f3953204912703c09851027f7fd4334dd8aa812294cff"
     }
   ],
   "limitations": [
