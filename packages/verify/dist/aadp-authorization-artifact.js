@@ -15,6 +15,7 @@ const ARTIFACT_KEYS = new Set([
     'profile',
     'artifact_profile',
     'artifact_digest',
+    'verification_outcome',
     'action_mapping_profile',
     'action_digest',
 ]);
@@ -91,6 +92,7 @@ export function parseAadpAuthorizationArtifact(value) {
         || record.profile !== AADP_AUTHORIZATION_ARTIFACT_VERSION
         || !nonEmptyString(record.artifact_profile)
         || !validDigest(record.artifact_digest)
+        || !['verified', 'not_satisfying', 'not_reachable'].includes(record.verification_outcome)
         || !absoluteUri(record.action_mapping_profile)
         || !validDigest(record.action_digest))
         return null;
@@ -98,6 +100,7 @@ export function parseAadpAuthorizationArtifact(value) {
         profile: AADP_AUTHORIZATION_ARTIFACT_VERSION,
         artifact_profile: record.artifact_profile,
         artifact_digest: record.artifact_digest,
+        verification_outcome: record.verification_outcome,
         action_mapping_profile: record.action_mapping_profile,
         action_digest: record.action_digest,
     };
@@ -130,10 +133,30 @@ export function matchAadpAuthorizationArtifact(presented, expected) {
     }
     return { verdict: 'MATCH', artifact: derived, reason: null };
 }
-function unavailable(reason) {
+function safeDigest(value) {
+    try {
+        return digestAeb(value);
+    }
+    catch {
+        return null;
+    }
+}
+function buildArtifact(input, actionDigest, artifactDigest, verificationOutcome) {
+    if (artifactDigest === null || !absoluteUri(input.actionMappingProfile))
+        return null;
+    return {
+        profile: AADP_AUTHORIZATION_ARTIFACT_VERSION,
+        artifact_profile: AADP_EP_AUTHORIZATION_ARTIFACT_PROFILE,
+        artifact_digest: artifactDigest,
+        verification_outcome: verificationOutcome,
+        action_mapping_profile: input.actionMappingProfile,
+        action_digest: actionDigest,
+    };
+}
+function unavailable(reason, artifact = null) {
     return {
         verdict: 'INDETERMINATE',
-        artifact: null,
+        artifact,
         mapped_action: null,
         authorization_decision: false,
         reasons: [reason],
@@ -159,29 +182,35 @@ export function deriveAadpEpAuthorizationArtifact(input) {
                 reasons: ['aadp_action_malformed'],
             };
         }
+        const aadpActionDigest = digestAeb(action);
+        const referencedArtifactDigest = safeDigest(input.bundle)
+            ?? (validDigest(input.artifactReferenceDigest) ? input.artifactReferenceDigest : null);
         if (!absoluteUri(input?.actionMappingProfile)
             || typeof input?.mapAction !== 'function') {
-            return unavailable('aadp_action_mapping_unavailable');
+            return unavailable('aadp_action_mapping_unavailable', buildArtifact(input, aadpActionDigest, referencedArtifactDigest, 'not_reachable'));
         }
         let mappedAction;
         try {
             mappedAction = input.mapAction(structuredClone(action));
         }
         catch {
-            return unavailable('aadp_action_mapping_unavailable');
+            return unavailable('aadp_action_mapping_unavailable', buildArtifact(input, aadpActionDigest, referencedArtifactDigest, 'not_reachable'));
         }
         const mappedRecord = dataRecord(mappedAction);
-        if (!mappedRecord)
-            return unavailable('aadp_action_mapping_unavailable');
-        const actionDigest = digestAeb(mappedRecord);
+        if (!mappedRecord) {
+            return unavailable('aadp_action_mapping_unavailable', buildArtifact(input, aadpActionDigest, referencedArtifactDigest, 'not_reachable'));
+        }
         const verification = verifyAuthorizationBundle(input.bundle, {
             ...input.bundleOptions,
             expectedAction: mappedRecord,
         });
         if (verification.verdict !== 'SATISFIED' || verification.bundle_digest === null) {
+            const verificationOutcome = verification.verdict === 'REFUSE'
+                ? 'not_satisfying'
+                : 'not_reachable';
             return {
                 verdict: verification.verdict === 'REFUSE' ? 'REFUSE' : 'INDETERMINATE',
-                artifact: null,
+                artifact: buildArtifact(input, aadpActionDigest, verification.bundle_digest ?? referencedArtifactDigest, verificationOutcome),
                 mapped_action: mappedRecord,
                 authorization_decision: false,
                 reasons: verification.reasons,
@@ -193,8 +222,9 @@ export function deriveAadpEpAuthorizationArtifact(input) {
                 profile: AADP_AUTHORIZATION_ARTIFACT_VERSION,
                 artifact_profile: AADP_EP_AUTHORIZATION_ARTIFACT_PROFILE,
                 artifact_digest: verification.bundle_digest,
+                verification_outcome: 'verified',
                 action_mapping_profile: input.actionMappingProfile,
-                action_digest: actionDigest,
+                action_digest: aadpActionDigest,
             },
             mapped_action: mappedRecord,
             authorization_decision: false,

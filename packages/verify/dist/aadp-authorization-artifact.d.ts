@@ -14,6 +14,7 @@ export interface AadpAuthorizationArtifact {
     profile: typeof AADP_AUTHORIZATION_ARTIFACT_VERSION;
     artifact_profile: string;
     artifact_digest: AebDigest;
+    verification_outcome: 'verified' | 'not_satisfying' | 'not_reachable';
     action_mapping_profile: string;
     action_digest: AebDigest;
 }
@@ -29,6 +30,7 @@ export interface AadpAction {
 }
 export interface DeriveAadpEpAuthorizationArtifactInput {
     bundle: unknown;
+    artifactReferenceDigest?: AebDigest;
     aadpAction: unknown;
     actionMappingProfile: string;
     mapAction: (action: AadpAction) => unknown;

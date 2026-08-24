@@ -32,6 +32,7 @@ capitals.
   "profile": "AADP-AUTHORIZATION-ARTIFACT-v1",
   "artifact_profile": "EP-AADP-AUTHORIZATION-ARTIFACT-v1",
   "artifact_digest": "sha256:6d8a602f3a58a00c3436304d33d0d5732433ef302b30643b079cc3524f8b7dbf",
+  "verification_outcome": "verified",
   "action_mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
   "action_digest": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3"
 }
@@ -41,12 +42,16 @@ The object is closed. Unknown or missing members are malformed.
 
 - `profile` MUST equal `AADP-AUTHORIZATION-ARTIFACT-v1`.
 - `artifact_profile` selects the native artifact-verification profile.
-- `artifact_digest` is SHA-256 over the exact canonical artifact verified by
-  that profile.
+- `artifact_digest` is SHA-256 over the exact canonical artifact, or the exact
+  artifact reference the PDP could not reach.
+- `verification_outcome` distinguishes `verified`, `not_satisfying`, and
+  `not_reachable`. The latter two have different remedies and MUST NOT be
+  collapsed.
 - `action_mapping_profile` is an absolute identifier for the
   relying-party-pinned mapping from the AADP action to the artifact's action
   model.
-- `action_digest` is SHA-256 over the canonical mapped action.
+- `action_digest` is SHA-256 over AADP's own canonical action identity. It is
+  not a foreign artifact action digest.
 
 The JSON Schema is
 `conformance/schemas/aadp-authorization-artifact.v1.schema.json`.
@@ -61,17 +66,21 @@ An AADP PDP implementing this profile:
 3. MUST derive the expected action from the AADP `action_type` and `params`
    using a locally pinned mapping profile.
 4. MUST verify that the native artifact binds that exact mapped action.
-5. MUST derive the profile-neutral object above and persist it in the approval
+5. MUST record whether native verification succeeded, found a reachable but
+   non-satisfying artifact, or could not reach the artifact or a required
+   verification dependency.
+6. MUST derive the profile-neutral object above and persist it in the approval
    and evidence record.
-6. MUST compare any presenter-supplied projection with the independently
+7. MUST compare any presenter-supplied projection with the independently
    derived object by exact canonical bytes.
-7. MUST continue the ordinary AADP approval, re-evaluation, permit,
+8. MUST continue the ordinary AADP approval, re-evaluation, permit,
    obligation, adapter, and report lifecycle.
 
 Malformed artifacts, failed native verification, action mismatch, profile
-substitution, and digest mismatch are hard refusals. An unavailable native
-verifier, trust source, current policy result, or action mapping is
-indeterminate and MUST NOT be converted into a permit.
+substitution, and digest mismatch record `not_satisfying` and are hard
+refusals. An unavailable native artifact, verifier, trust source, current
+policy result, or action mapping is recorded as `not_reachable`, is
+indeterminate, and MUST NOT be converted into a permit.
 
 ## 5. EP Authorization Bundle profile
 

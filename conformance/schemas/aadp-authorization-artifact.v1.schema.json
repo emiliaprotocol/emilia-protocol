@@ -8,6 +8,7 @@
     "profile",
     "artifact_profile",
     "artifact_digest",
+    "verification_outcome",
     "action_mapping_profile",
     "action_digest"
   ],
@@ -22,6 +23,9 @@
     "artifact_digest": {
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "verification_outcome": {
+      "enum": ["verified", "not_satisfying", "not_reachable"]
     },
     "action_mapping_profile": {
       "type": "string",

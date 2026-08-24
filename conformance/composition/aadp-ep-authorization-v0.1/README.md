@@ -18,17 +18,19 @@ action. Neither protocol inherits the other's transport or trust model.
   "profile": "AADP-AUTHORIZATION-ARTIFACT-v1",
   "artifact_profile": "EP-AADP-AUTHORIZATION-ARTIFACT-v1",
   "artifact_digest": "sha256:6d8a602f...",
+  "verification_outcome": "verified",
   "action_mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
   "action_digest": "sha256:a84820a5..."
 }
 ```
 
-An AADP implementation records this object only after the selected native
-verifier succeeds. The profile identifier selects the native verification
-rules. `artifact_digest` binds the exact verified artifact.
+An AADP implementation records whether the selected native verifier returned
+`verified`, `not_satisfying`, or `not_reachable`. The profile identifier
+selects the native verification rules. `artifact_digest` binds the exact
+artifact reference.
 `action_mapping_profile` identifies the relying-party-pinned mapping from the
-AADP action to the artifact's action model. `action_digest` binds the mapped
-material action.
+AADP action to the artifact's action model. `action_digest` binds AADP's own
+action identity, never the foreign artifact's action digest.
 
 The hook MUST NOT be treated as an approval, credential, permit, obligation,
 provider idempotency key, or authorization decision. A presenter-supplied hook
@@ -53,8 +55,8 @@ The runner executes fourteen cases:
 13. Timeout reporting without reopening approval.
 14. Informational AADP source metadata.
 
-All fourteen pass in `report.reference.json`. The report digest is
-`sha256:49af4e8fe20ea2ba96ca2ccd7697d368f9c5161cb3777a788b5aef166ac6e7b2`.
+All fourteen pass in `report.reference.json`. The deterministic digest is
+recorded in that report and changes only after a deliberate behavior change.
 
 ## Source boundary
 

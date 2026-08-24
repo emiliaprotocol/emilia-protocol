@@ -34,7 +34,8 @@
       "passed": true,
       "actual": {
         "artifact_digest": "sha256:6d8a602f3a58a00c3436304d33d0d5732433ef302b30643b079cc3524f8b7dbf",
-        "action_digest": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
+        "verification_outcome": "verified",
+        "action_digest": "sha256:c40d3cf498d31653c4ef3139a1e271b21c699f83a908a7070513155c03bcfbc0",
         "decision": "permitted"
       }
     },
@@ -51,10 +52,11 @@
     },
     {
       "id": "AADP-EP-03",
-      "claim": "tampered EP artifact bytes do not yield an AADP hook",
+      "claim": "tampered EP artifact bytes record not-satisfying and cannot support a permit",
       "passed": true,
       "actual": {
         "verdict": "REFUSE",
+        "verification_outcome": "not_satisfying",
         "reasons": [
           "context_audience_mismatch",
           "contexts_do_not_share_one_policy_audience_and_binding",
@@ -94,6 +96,7 @@
       "passed": true,
       "actual": {
         "verdict": "INDETERMINATE",
+        "verification_outcome": "not_reachable",
         "reasons": [
           "aadp_action_mapping_unavailable"
         ]
@@ -105,6 +108,7 @@
       "passed": true,
       "actual": {
         "verdict": "INDETERMINATE",
+        "verification_outcome": "not_reachable",
         "reasons": [
           "current_policy_unavailable_or_stale"
         ]
@@ -182,18 +186,20 @@
           "profile": "AADP-AUTHORIZATION-ARTIFACT-v1",
           "artifact_profile": "EP-AADP-AUTHORIZATION-ARTIFACT-v1",
           "artifact_digest": "sha256:6d8a602f3a58a00c3436304d33d0d5732433ef302b30643b079cc3524f8b7dbf",
+          "verification_outcome": "verified",
           "action_mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
-          "action_digest": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3"
+          "action_digest": "sha256:c40d3cf498d31653c4ef3139a1e271b21c699f83a908a7070513155c03bcfbc0"
         },
         "second": {
           "profile": "AADP-AUTHORIZATION-ARTIFACT-v1",
           "artifact_profile": "EP-AADP-AUTHORIZATION-ARTIFACT-v1",
           "artifact_digest": "sha256:6d8a602f3a58a00c3436304d33d0d5732433ef302b30643b079cc3524f8b7dbf",
+          "verification_outcome": "verified",
           "action_mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
-          "action_digest": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3"
+          "action_digest": "sha256:c40d3cf498d31653c4ef3139a1e271b21c699f83a908a7070513155c03bcfbc0"
         }
       }
     }
   ],
-  "report_digest": "sha256:49af4e8fe20ea2ba96ca2ccd7697d368f9c5161cb3777a788b5aef166ac6e7b2"
+  "report_digest": "sha256:9a557701d9928ae949b90e3aea9a62a01c209322dd3cb01401979e5e42b258de"
 }

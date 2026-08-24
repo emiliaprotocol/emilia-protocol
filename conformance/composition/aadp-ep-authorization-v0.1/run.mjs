@@ -195,10 +195,12 @@ export function runComposition() {
     });
     checks.push(check('AADP-EP-01', 'a natively verified exact EP artifact can support one AADP permit', {
         artifact_digest: positive.verified.artifact.artifact_digest,
+        verification_outcome: positive.verified.artifact.verification_outcome,
         action_digest: positive.verified.artifact.action_digest,
         decision: permitted.decision,
     }, (value) => value.decision === 'permitted'
-        && value.action_digest === FIXTURE.bundle.action_hash
+        && value.verification_outcome === 'verified'
+        && value.action_digest === digestAeb(aadpAction(BASE_REQUEST))
         && /^sha256:[0-9a-f]{64}$/.test(value.artifact_digest)));
     const changedAction = {
         ...BASE_REQUEST,
@@ -213,10 +215,12 @@ export function runComposition() {
     const tamperedBundle = structuredClone(FIXTURE.bundle);
     tamperedBundle.contexts[0].audience = 'https://attacker.example';
     const tampered = derive({ bundle: tamperedBundle });
-    checks.push(check('AADP-EP-03', 'tampered EP artifact bytes do not yield an AADP hook', {
+    checks.push(check('AADP-EP-03', 'tampered EP artifact bytes record not-satisfying and cannot support a permit', {
         verdict: tampered.verdict,
+        verification_outcome: tampered.artifact?.verification_outcome,
         reasons: tampered.reasons,
-    }, (value) => value.verdict === 'REFUSE'));
+    }, (value) => value.verdict === 'REFUSE'
+        && value.verification_outcome === 'not_satisfying'));
     const unpinned = derive({ options: bundleOptions({ approverKeys: {} }) });
     checks.push(check('AADP-EP-04', 'self-presented or unpinned approver keys are refused', {
         verdict: unpinned.verdict,
@@ -230,8 +234,10 @@ export function runComposition() {
     const noMapper = derive({ mapAction: () => { throw new Error('mapping registry unavailable'); } });
     checks.push(check('AADP-EP-06', 'unavailable action mapping is indeterminate', {
         verdict: noMapper.verdict,
+        verification_outcome: noMapper.artifact?.verification_outcome,
         reasons: noMapper.reasons,
     }, (value) => value.verdict === 'INDETERMINATE'
+        && value.verification_outcome === 'not_reachable'
         && value.reasons.includes('aadp_action_mapping_unavailable')));
     const policyUnavailable = derive({
         options: bundleOptions({
@@ -240,8 +246,10 @@ export function runComposition() {
     });
     checks.push(check('AADP-EP-07', 'unavailable current EP policy is indeterminate, not cached authority', {
         verdict: policyUnavailable.verdict,
+        verification_outcome: policyUnavailable.artifact?.verification_outcome,
         reasons: policyUnavailable.reasons,
     }, (value) => value.verdict === 'INDETERMINATE'
+        && value.verification_outcome === 'not_reachable'
         && value.reasons.includes('current_policy_unavailable_or_stale')));
     const profileSubstitution = preparedFlow();
     const changedHook = {

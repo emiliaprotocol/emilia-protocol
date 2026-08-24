@@ -23,6 +23,7 @@ Suggested AADP implementation-status sentence:
 
 > A profile-neutral authorization-artifact digest composition with EP
 > Authorization Bundles is implemented and exercised against fourteen
-> source-pinned cases. The profile records the verified artifact digest,
-> action-mapping profile, and exact mapped-action digest without treating the
-> artifact as an AADP permit or changing AADP's local trust model.
+> source-pinned cases. The profile records the artifact digest, three-state
+> verification outcome, pinned action-mapping profile, and AADP action digest
+> without treating the artifact as an AADP permit or changing AADP's local
+> trust model.

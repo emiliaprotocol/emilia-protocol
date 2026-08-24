@@ -1043,7 +1043,7 @@
     },
     {
       "path": "packages/verify/dist/aadp-authorization-artifact.js",
-      "sha256": "f58b6a81a27614b3ff089343abb0f3340520c11af3d3eb52f63c38ba87199cec"
+      "sha256": "5fd4730b0e2c85a83b1eb10268730787622882ce09f4815800e44c92f8a9dd69"
     },
     {
       "path": "packages/verify/dist/aeb-acceptance-profile.js",
