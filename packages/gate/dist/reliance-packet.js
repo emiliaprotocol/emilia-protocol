@@ -1,6 +1,7 @@
 // @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 // Auditor / insurer-facing reliance packet for an EMILIA Gate decision.
+import { CLAIM_ASSURANCE_ADMISSIBILITY_RESULT_VERSION, claimAssuranceResultCandidate, validateClaimAssuranceAdmissibilityResult, } from './claim-assurance-result.js';
 export const RELIANCE_PACKET_VERSION = 'EP-GATE-RELIANCE-PACKET-v1';
 // The CLOSED admissibility verdict set (mirror of lib/evidence/admissibility.js
 // ADMISSIBILITY_VERDICTS). The gate does NOT import that app module — it stays a
@@ -25,28 +26,104 @@ export const ADMISSIBILITY_VERDICTS = Object.freeze([
 function normalizeAdmissibility(adm) {
     if (!adm || typeof adm !== 'object')
         return null;
-    const verdict = typeof adm.verdict === 'string' ? adm.verdict : null;
+    const claimAssuranceCandidate = claimAssuranceResultCandidate(adm);
+    const claimAssuranceValidation = claimAssuranceCandidate === null
+        ? null
+        : validateClaimAssuranceAdmissibilityResult(claimAssuranceCandidate);
+    const isClaimAssurance = claimAssuranceValidation !== null;
+    // Never inspect or carry fields from an invalid Claim Assurance object. The
+    // validator's success value is the strict-cloned, deeply frozen snapshot.
+    // This prevents a malformed/getter-backed object from becoming green during
+    // normalization or mutating after the reliance verdict is computed.
+    if (claimAssuranceValidation && !claimAssuranceValidation.ok) {
+        return {
+            block: null,
+            is_claim_assurance: true,
+            admissibility_profile: null,
+            profile_hash: null,
+            verdict: null,
+            verdict_recognized: false,
+            admissible: false,
+            replay_digest: null,
+            challenge_id: null,
+            challenge_digest: null,
+            assurance_record_digest: null,
+            claim_case_digest: null,
+            action_digest: null,
+            claim_assurance_verdict: null,
+            profile_satisfied: false,
+            authorizes_action: null,
+            as_of: null,
+            evaluated_at: null,
+            reasons: [],
+            validation_error: claimAssuranceValidation.reason,
+        };
+    }
+    const normalizedInput = claimAssuranceValidation?.block ?? adm;
+    const verdict = typeof normalizedInput.verdict === 'string' ? normalizedInput.verdict : null;
     const recognized = verdict !== null && ADMISSIBILITY_VERDICTS.includes(verdict);
     // Only a recognized 'admissible' verdict reads as success. Missing, malformed,
     // or any other closed-set member (missing_evidence/stale/conflicted/unverifiable)
     // is non-admissible.
-    const admissible = recognized && verdict === 'admissible';
-    const profile = adm.admissibility_profile && typeof adm.admissibility_profile === 'object'
-        ? { id: adm.admissibility_profile.id ?? null, version: adm.admissibility_profile.version ?? null }
+    // A Claim Assurance result is evidence only. Its explicit non-authority bit
+    // is part of the bridge contract; a missing or changed value fails reliance
+    // closed instead of letting a claim-shaped object masquerade as authority.
+    const claimAssuranceBoundaryOk = !isClaimAssurance
+        || (claimAssuranceValidation?.ok === true && normalizedInput.authorizes_action === false);
+    const admissible = recognized && verdict === 'admissible' && claimAssuranceBoundaryOk;
+    const profile = normalizedInput.admissibility_profile && typeof normalizedInput.admissibility_profile === 'object'
+        ? { id: normalizedInput.admissibility_profile.id ?? null, version: normalizedInput.admissibility_profile.version ?? null }
         : null;
-    return {
+    const evaluation = {
+        is_claim_assurance: isClaimAssurance,
         admissibility_profile: profile,
-        profile_hash: typeof adm.profile_hash === 'string' ? adm.profile_hash : null,
+        profile_hash: typeof normalizedInput.profile_hash === 'string' ? normalizedInput.profile_hash : null,
         verdict: verdict, // preserved verbatim (including null / unrecognized) for the auditor
         verdict_recognized: recognized,
         admissible,
-        replay_digest: typeof adm.replay_digest === 'string' ? adm.replay_digest : null,
+        replay_digest: typeof normalizedInput.replay_digest === 'string' ? normalizedInput.replay_digest : null,
         // The evidence-challenge loop (lib/negotiate/evidence-challenge.js) keys each
         // round by challenge_id; challenge_digest is carried through when the caller
         // hashes the challenge. Either identifies which challenge round this verdict
         // answers. Both null-safe.
-        challenge_id: adm.challenge_id ?? null,
-        challenge_digest: typeof adm.challenge_digest === 'string' ? adm.challenge_digest : null,
+        challenge_id: normalizedInput.challenge_id ?? null,
+        challenge_digest: typeof normalizedInput.challenge_digest === 'string' ? normalizedInput.challenge_digest : null,
+        ...(isClaimAssurance ? {
+            assurance_record_digest: typeof normalizedInput.assurance_record_digest === 'string'
+                ? normalizedInput.assurance_record_digest : null,
+            claim_case_digest: typeof normalizedInput.claim_case_digest === 'string'
+                ? normalizedInput.claim_case_digest : null,
+            action_digest: typeof normalizedInput.action_digest === 'string' ? normalizedInput.action_digest : null,
+            claim_assurance_verdict: typeof normalizedInput.claim_assurance_verdict === 'string'
+                ? normalizedInput.claim_assurance_verdict : null,
+            profile_satisfied: normalizedInput.profile_satisfied === true,
+            authorizes_action: normalizedInput.authorizes_action === false ? false : null,
+            as_of: typeof normalizedInput.as_of === 'string' ? normalizedInput.as_of : null,
+            evaluated_at: typeof normalizedInput.evaluated_at === 'string' ? normalizedInput.evaluated_at : null,
+            reasons: Array.isArray(normalizedInput.reasons)
+                ? normalizedInput.reasons.filter((reason) => typeof reason === 'string')
+                : [],
+        } : {}),
+    };
+    return {
+        ...evaluation,
+        // A typed Claim Assurance result stays byte-for-byte within its closed
+        // public schema. Derived packet-local fields live in
+        // `admissibility_evaluation`; adding them to the typed block would make the
+        // block impossible to validate or re-consume. Legacy untyped admissibility
+        // blocks retain the enriched projection for backwards compatibility.
+        block: isClaimAssurance
+            ? normalizedInput
+            : {
+                admissibility_profile: evaluation.admissibility_profile,
+                profile_hash: evaluation.profile_hash,
+                verdict: evaluation.verdict,
+                verdict_recognized: evaluation.verdict_recognized,
+                admissible: evaluation.admissible,
+                replay_digest: evaluation.replay_digest,
+                challenge_id: evaluation.challenge_id,
+                challenge_digest: evaluation.challenge_digest,
+            },
     };
 }
 async function evidenceStatus(evidence) {
@@ -145,10 +222,19 @@ export async function buildReliancePacket({ decision, execution = null, evidence
             admissibility_profile: adm ? adm.admissibility_profile : null,
             admissibility_profile_hash: adm ? adm.profile_hash : null,
         },
-        // Full admissibility block (or null). The auditor / gate can re-check
-        // {profile_hash, verdict, replay_digest} against the profile the relying party
-        // pinned. Carried verbatim, fail-closed by construction (see normalizeAdmissibility).
-        admissibility: adm,
+        // Full admissibility block (or null). A valid typed Claim Assurance result is
+        // preserved exactly so it remains valid under its closed schema and can be
+        // re-consumed by Gate. Invalid typed inputs are never echoed under that type.
+        // Derived packet-local interpretation is carried separately below.
+        admissibility: adm?.block ?? null,
+        admissibility_evaluation: adm === null ? null : {
+            contract: adm.is_claim_assurance
+                ? CLAIM_ASSURANCE_ADMISSIBILITY_RESULT_VERSION
+                : 'legacy-untyped-admissibility',
+            verdict_recognized: adm.verdict_recognized,
+            admissible: adm.admissible,
+            validation_error: adm.validation_error ?? null,
+        },
         checks: [
             check('receipt_present_and_valid', allowed && !String(decision?.reason || '').startsWith('receipt_rejected'), decision?.reason || null),
             check('assurance_sufficient', allowed || decision?.reason !== 'assurance_too_low', decision?.reason === 'assurance_too_low' ? 'receipt tier below action requirement' : null),

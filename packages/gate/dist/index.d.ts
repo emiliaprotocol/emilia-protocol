@@ -40,6 +40,7 @@ export { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskM
 export { ACTION_CONTROL_MANIFEST_VERSION, ACTION_CONTROL_SCHEMA_URL, ACTION_CONTROL_CONFORMANCE_LEVEL, ACTION_CONTROL_DEFAULTS, ACTION_CONTROL_EVIDENCE_PROFILES, ACTION_CONTROL_CONFORMANCE_CHECKS, toActionControl, createDefaultActionControlManifest, findActionControl, resolveActionControl, validateActionControlManifest, } from './action-control-manifest.js';
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
 export { RELIANCE_PACKET_VERSION, ADMISSIBILITY_VERDICTS, buildReliancePacket } from './reliance-packet.js';
+export * from './claim-assurance-result.js';
 export { EXTERNAL_VERIFICATION_STATEMENT_VERSION, EXTERNAL_VERIFICATION_DOMAIN, externalVerificationDigest, signExternalVerificationStatement, verifyExternalVerificationStatement, } from './reports/external-verification.js';
 export { EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR, createEg1Harness, makeGateInvoke, runEg1, mintDeviceSignoff, mintQuorumEvidence, } from './eg1-conformance.js';
 export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
@@ -98,9 +99,10 @@ export * from './field-origin-evidence.js';
 export * from './recovery-admission.js';
 export * from './recovery-admission-postgres.js';
 export * from './recovery-admission-remedy.js';
+export * from './claim-assurance.js';
 export declare const ASSURANCE_TIERS: string[];
 /**
- * Structurally compare a PRE-COMPUTED admissibility block with a profile hash.
+ * Structurally compare a PRE-COMPUTED admissibility block with a profile pin.
  * This helper does NOT authenticate the block or establish evaluator provenance.
  * An execution gate must first verify a signature over the packet or recompute
  * the verdict from trusted evidence. createGate enforces that boundary through
@@ -531,17 +533,13 @@ export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, lo
             admissibility_profile_hash: string | null;
         };
         admissibility: {
-            admissibility_profile: {
-                id: any;
-                version: any;
-            } | null;
-            profile_hash: string | null;
-            verdict: string | null;
+            [x: string]: any;
+        } | null;
+        admissibility_evaluation: {
+            contract: string;
             verdict_recognized: boolean;
             admissible: boolean;
-            replay_digest: string | null;
-            challenge_id: any;
-            challenge_digest: string | null;
+            validation_error: string | null;
         } | null;
         checks: {
             detail?: string | {
@@ -792,17 +790,13 @@ export declare function createTrustedActionFirewall(opts?: CreateGateOptions): {
             admissibility_profile_hash: string | null;
         };
         admissibility: {
-            admissibility_profile: {
-                id: any;
-                version: any;
-            } | null;
-            profile_hash: string | null;
-            verdict: string | null;
+            [x: string]: any;
+        } | null;
+        admissibility_evaluation: {
+            contract: string;
             verdict_recognized: boolean;
             admissible: boolean;
-            replay_digest: string | null;
-            challenge_id: any;
-            challenge_digest: string | null;
+            validation_error: string | null;
         } | null;
         checks: {
             detail?: string | {

@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { findRepositoryBoundaryViolations } from '../scripts/check-repository-boundary.js';
+import {
+  findPublicKernelSemanticViolations,
+  findRepositoryBoundaryViolations,
+} from '../scripts/check-repository-boundary.js';
 
 describe('public/private repository boundary', () => {
   it('refuses canonical private paths and confidential document names', () => {
@@ -33,6 +36,39 @@ describe('public/private repository boundary', () => {
       'docs/compliance/AIUC-1-EMILIA-EVIDENCE-CROSSWALK.md',
       'docs/REPOSITORY-BOUNDARIES.md',
       'app/investors/page.tsx',
+    ])).toEqual([]);
+  });
+
+  it('keeps commercial strategy and merchandising out of public Claim Assurance kernel paths', () => {
+    expect(findPublicKernelSemanticViolations([
+      {
+        path: 'packages/verify/src/claim-assurance.ts',
+        content: 'Competitor: Certisyn. Private equity portfolio authority pricing.',
+      },
+      {
+        path: 'examples/claim-assurance-reference/README.md',
+        content: 'Hosted registry, Trust Center, catalogue, and certification mark.',
+      },
+    ])).toEqual([
+      'examples/claim-assurance-reference/README.md:commercial_concept:catalogue_merchandising',
+      'examples/claim-assurance-reference/README.md:commercial_concept:certification_ownership',
+      'examples/claim-assurance-reference/README.md:commercial_concept:operated_product_family',
+      'packages/verify/src/claim-assurance.ts:commercial_concept:commercial_terms',
+      'packages/verify/src/claim-assurance.ts:commercial_concept:competitor_material',
+      'packages/verify/src/claim-assurance.ts:commercial_concept:private_capital_strategy',
+    ]);
+  });
+
+  it('allows neutral kernel semantics and does not scan unrelated public surfaces', () => {
+    expect(findPublicKernelSemanticViolations([
+      {
+        path: 'packages/gate/src/claim-assurance.ts',
+        content: 'VERIFIED evidence remains non-authorizing and exact-action bound.',
+      },
+      {
+        path: 'app/pricing/page.tsx',
+        content: 'Public product catalogue and pricing.',
+      },
     ])).toEqual([]);
   });
 });
