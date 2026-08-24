@@ -35,6 +35,7 @@ export const RATE_LIMITS: Record<string, { window: number; max: number }> = {
   anchor:        { window: 21600, max: 1 },     // 1 anchor per 6 hours (cron only)
   waitlist:      { window: 3600, max: 5 },      // 5 waitlist signups per hour per IP
   pilot_request: { window: 3600, max: 5 },      // 5 public pilot requests per hour per IP
+  pilot_sandbox_provision: { window: 3600, max: 5 }, // 5 durable sandbox identities per hour per IP
   dispute_write: { window: 3600, max: 5 },      // 5 dispute actions per hour per key — sensitive write
   report_write:  { window: 3600, max: 3 },      // 3 human reports per hour per IP — abuse prevention
   cloud_read:    { window: 60, max: 100 },      // 100 cloud dashboard reads per minute per key
@@ -98,6 +99,7 @@ const FAIL_CLOSED_CATEGORIES = new Set([
   'report_write',
   'register',
   'pilot_request',
+  'pilot_sandbox_provision',
   'anchor',
   'cloud_write',
   'cloud_admin',

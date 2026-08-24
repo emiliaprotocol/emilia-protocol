@@ -14,6 +14,8 @@ const fixture = readFileSync(resolve(ROOT, 'app/private-equity/finance-lab-fixtu
 const openGraphImage = readFileSync(resolve(ROOT, 'app/private-equity/opengraph-image.tsx'), 'utf8');
 const analytics = readFileSync(resolve(ROOT, 'app/private-equity/portfolio-analytics.ts'), 'utf8');
 const trackedLink = readFileSync(resolve(ROOT, 'app/private-equity/PortfolioTrackedLink.tsx'), 'utf8');
+const middleware = readFileSync(resolve(ROOT, 'middleware.ts'), 'utf8');
+const rateLimit = readFileSync(resolve(ROOT, 'lib/rate-limit.ts'), 'utf8');
 const boundaryExample = JSON.parse(readFileSync(
   resolve(ROOT, 'public/examples/portfolio-authority/payment-release-boundary.example.json'),
   'utf8',
@@ -28,8 +30,8 @@ const footer = readFileSync(resolve(ROOT, 'components/SiteFooter.tsx'), 'utf8');
 describe('private-equity portfolio customer page', () => {
   it('is an indexable, finance-first customer route with dedicated share metadata', () => {
     expect(page).toContain("alternates: { canonical: '/private-equity' }");
-    expect(page).toContain('The Universal Authority Tollgate for Portfolio AI');
-    expect(page).toContain('Give every consequential agent action a tollgate.');
+    expect(page).toContain('The Universal Authority Tollgate for Private Equity Portfolio AI');
+    expect(page).toContain('Give private-equity portfolio AI an authority tollgate.');
     expect(page).toContain("url: '/private-equity/opengraph-image'");
     expect(page).toContain('robots: { index: true, follow: true }');
     expect(openGraphImage).toContain('export const size = { width: 1200, height: 630 }');
@@ -74,6 +76,8 @@ describe('private-equity portfolio customer page', () => {
     expect(fixture).toContain("risk_flags: ['known_compromised_device']");
     expect(fixture).toContain('Northstar Components (fictional, consenting sandbox company)');
     expect(lab).toContain('/api/pilot/sandbox/provision');
+    expect(middleware).toContain("'POST /api/pilot/sandbox/provision': { rateCategory: 'pilot_sandbox_provision'");
+    expect(rateLimit).toContain('pilot_sandbox_provision: { window: 3600, max: 5 }');
     expect(lab).toContain('does not authorize, block, mutate, or execute');
     expect(lab).toContain('Keep the boundary fixed. Change the evidence condition.');
     expect(lab).toContain('Copy the exact observe-mode request.');
@@ -95,6 +99,10 @@ describe('private-equity portfolio customer page', () => {
     expect(page).toContain('Portfolio Authority Pilot');
     expect(page).toContain('Portfolio Authority Program');
     expect(page).toContain('Scoped after boundary acceptance');
+    expect(page).toContain('any production Gate implementation is separately scoped');
+    expect(page).toContain('/pilot?v=fin&source=private_equity');
+    expect(page).not.toContain('Production enforcement begins');
+    expect(page).not.toContain('throwaway observe-only');
     expect(page).not.toMatch(/free pilot|portfolio-wide platform commitment required/i);
   });
 

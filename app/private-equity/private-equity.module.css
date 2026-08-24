@@ -1,7 +1,7 @@
 .shell {
   --pe-ink: #171412;
   --pe-muted: #625d56;
-  --pe-soft: #898178;
+  --pe-soft: #6f685f;
   --pe-line: #dcd6cc;
   --pe-paper: #f5f1ea;
   --pe-paper-deep: #ebe3d6;
@@ -584,7 +584,7 @@
   margin-top: 16px !important;
   color: var(--pe-soft) !important;
   font-family: var(--font-mono, "IBM Plex Mono", monospace);
-  font-size: 8px !important;
+  font-size: 11px !important;
   letter-spacing: .025em;
   line-height: 1.65 !important;
   text-transform: uppercase;

@@ -10,7 +10,7 @@ import PortfolioTrackedLink from './PortfolioTrackedLink';
 import css from './private-equity.module.css';
 
 const PAGE_URL = 'https://www.emiliaprotocol.ai/private-equity';
-const PAGE_TITLE = 'The Universal Authority Tollgate for Portfolio AI';
+const PAGE_TITLE = 'The Universal Authority Tollgate for Private Equity Portfolio AI';
 const PAGE_DESCRIPTION =
   'Scale agentic AI across private-equity portfolios without giving agents an open road into money, '
   + 'systems, and assets. Start with one customer-owned finance tollgate.';
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: PAGE_URL,
-    title: 'The Universal Authority Tollgate for Portfolio AI',
+    title: PAGE_TITLE,
     description: PAGE_DESCRIPTION,
     images: [
       {
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'The Universal Authority Tollgate for Portfolio AI',
+    title: PAGE_TITLE,
     description: PAGE_DESCRIPTION,
     images: ['/private-equity/opengraph-image'],
   },
@@ -91,12 +91,12 @@ const FAQ = [
   {
     question: 'Does the Portfolio Action Risk Lab move or block money?',
     answer:
-      'No. It provisions a throwaway observe-only sandbox key and evaluates fictional finance-action metadata. It does not connect to an ERP, change vendor data, release a payment, authorize production use, or provide production protection.',
+      'No. It provisions a scoped observe-only sandbox key and evaluates fictional finance-action metadata. It does not connect to an ERP, change vendor data, release a payment, authorize production use, or provide production protection.',
   },
   {
     question: 'What is included in the first pilot?',
     answer:
-      'One buyer-selected vendor bank-detail change or payment-release workflow, 90 days, and a fixed $25K scope. Work begins with synthetic and read-only validation. A production path changes only after the buyer accepts the boundary, trust inputs, operating procedure, and complete-mediation design.',
+      'One buyer-selected vendor bank-detail change or payment-release workflow, 90 days, and a fixed $25K scope. Work remains synthetic and read-only. The pilot ends with a buyer-owned go or no-go decision; any production Gate implementation is separately scoped after buyer acceptance.',
   },
 ] as const;
 
@@ -186,7 +186,7 @@ const PILOT_PHASES = [
     number: '03',
     window: 'Days 61-90',
     title: 'Make a buyer-owned decision',
-    body: 'Deliver the boundary design, acceptance evidence, limitations, and operating procedure. Production enforcement begins only after explicit buyer acceptance.',
+    body: 'Deliver the boundary design, acceptance evidence, limitations, and operating procedure. End with a buyer-owned go or no-go decision; any production Gate implementation is separately scoped.',
   },
 ] as const;
 
@@ -227,7 +227,7 @@ const ENTRY_PATHS = [
     audience: 'For one sponsor and one consenting portfolio company',
     body: 'Map one vendor bank-detail change or payment-release path, use Scan to prepare a reviewable control package, validate it in synthetic and buyer-approved read-only modes, and design the completely mediated customer-owned Gate boundary.',
     output: 'A path map, draft control package, authority and evidence rule, acceptance plan, limitations, and buyer-owned go or no-go decision.',
-    href: '/pilot?v=fin',
+    href: '/pilot?v=fin&source=private_equity',
     cta: 'Scope the fixed pilot',
     eventDetail: {
       event: 'pilot_scope_started',
@@ -307,7 +307,7 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
         <section className={css.hero} aria-labelledby="pe-hero-title">
           <div className={css.heroCopy}>
             <p className={css.eyebrow}>The Universal Authority Tollgate for portfolio AI</p>
-            <h1 id="pe-hero-title">Give every consequential agent action a tollgate.</h1>
+            <h1 id="pe-hero-title">Give private-equity portfolio AI an authority tollgate.</h1>
             <p className={css.heroLead}>
               Scale agentic AI without giving agents an open road into portfolio money, systems, and
               assets. One sponsor can standardize the control contract. Each company owns its Gate.
@@ -319,7 +319,7 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
             <div className={css.heroActions}>
               <PortfolioTrackedLink
                 className={css.primaryButton}
-                href="/pilot?v=fin"
+                href="/pilot?v=fin&source=private_equity"
                 eventDetail={{
                   event: 'pilot_scope_started',
                   location: 'hero',
@@ -524,7 +524,7 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
             <p className={css.sectionKicker}>Portfolio Action Risk Lab</p>
             <h2 id="risk-lab-heading">See the finance precheck before you discuss production.</h2>
             <p>
-              Provision one throwaway observe-only key for Northstar Components, a fictional company
+              Provision one scoped observe-only key for Northstar Components, a fictional company
               consenting to this synthetic exercise. Keep one payment-release boundary fixed, then compare
               a single-signoff result, a dual-signoff result, and a hard refusal.
             </p>
@@ -628,7 +628,7 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
           <div className={css.heroActions}>
             <PortfolioTrackedLink
               className={css.primaryButtonLight}
-              href="/pilot?v=fin"
+              href="/pilot?v=fin&source=private_equity"
               eventDetail={{
                 event: 'pilot_scope_started',
                 location: 'final_cta',
