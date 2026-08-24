@@ -215,6 +215,113 @@
   content: "";
 }
 
+.scanCompany {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-top: 22px;
+  padding: 17px 18px;
+  border: 1px solid var(--pe-line);
+  background: rgba(255, 253, 249, .92);
+}
+
+.scanCompany strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 16px;
+}
+
+.scanCompany > span {
+  padding: 6px 8px;
+  border: 1px solid #c9b57a;
+  color: var(--pe-brass-dark);
+  font-family: var(--font-mono, "IBM Plex Mono", monospace);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.scanFindings {
+  margin-top: 12px;
+  border: 1px solid var(--pe-line);
+  background: rgba(255, 253, 249, .92);
+}
+
+.scanFindings article {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  padding: 14px 15px;
+  border-bottom: 1px solid var(--pe-line);
+}
+
+.scanFindings article:last-child {
+  border-bottom: 0;
+}
+
+.scanFindings article > span,
+.scanFindings article > b {
+  font-family: var(--font-mono, "IBM Plex Mono", monospace);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.scanFindings article > span {
+  color: var(--pe-brass-dark);
+}
+
+.scanFindings article > b {
+  padding: 5px 7px;
+  border: 1px solid #d9c17e;
+  color: var(--pe-brass-dark);
+}
+
+.scanFindings strong,
+.scanFindings small {
+  display: block;
+}
+
+.scanFindings strong {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.scanFindings small {
+  margin-top: 4px;
+  color: var(--pe-soft);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.recommendedBoundary {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 17px 18px;
+  border: 1px solid #b9995c;
+  background: #fff8e8;
+}
+
+.recommendedBoundary strong,
+.recommendedBoundary small {
+  display: block;
+}
+
+.recommendedBoundary strong {
+  font-size: 13px;
+}
+
+.recommendedBoundary small {
+  margin-top: 5px;
+  color: #69552a;
+  font-size: 9px;
+}
+
 .actionCard,
 .providerCard,
 .gateCard {
@@ -359,10 +466,131 @@
   max-width: 780px;
 }
 
+.materialPanel {
+  display: grid;
+  grid-template-columns: minmax(250px, .7fr) minmax(0, 1.3fr);
+  margin-top: 52px;
+  border: 1px solid var(--pe-line);
+  background: var(--pe-white);
+}
+
+.materialLead {
+  padding: 27px;
+  border-right: 1px solid var(--pe-line);
+}
+
+.materialLead .cardLabel,
+.laneHeading .cardLabel {
+  margin: 0 0 12px;
+}
+
+.materialLead h3,
+.laneHeading h3 {
+  margin: 0;
+  font-size: 23px;
+  letter-spacing: -.03em;
+  line-height: 1.15;
+}
+
+.materialLead > p:last-child {
+  margin: 15px 0 0;
+  color: var(--pe-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.materialPanel ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.materialPanel li {
+  display: flex;
+  min-height: 92px;
+  align-items: center;
+  padding: 20px 23px;
+  border-right: 1px solid var(--pe-line);
+  border-bottom: 1px solid var(--pe-line);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.materialPanel li:nth-child(2n) {
+  border-right: 0;
+}
+
+.materialPanel li:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.materialPanel li::before {
+  margin-right: 11px;
+  color: var(--pe-green);
+  content: "✓";
+}
+
+.laneMap {
+  display: grid;
+  grid-template-columns: minmax(250px, .7fr) minmax(0, 1.3fr);
+  margin-top: 20px;
+  border: 1px solid var(--pe-line);
+  background: var(--pe-paper-deep);
+}
+
+.laneHeading {
+  padding: 27px;
+  border-right: 1px solid var(--pe-line);
+}
+
+.laneGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.laneGrid article {
+  min-height: 94px;
+  padding: 17px 20px;
+  border-right: 1px solid var(--pe-line);
+  border-bottom: 1px solid var(--pe-line);
+  background: rgba(255, 253, 249, .38);
+}
+
+.laneGrid article:nth-child(2n) {
+  border-right: 0;
+}
+
+.laneGrid article:last-child {
+  border-bottom: 0;
+}
+
+.laneGrid article:nth-last-child(2):nth-child(odd) {
+  border-bottom: 0;
+}
+
+.laneGrid span {
+  color: var(--pe-brass-dark);
+  font-family: var(--font-mono, "IBM Plex Mono", monospace);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.laneGrid p {
+  margin: 8px 0 0;
+  color: var(--pe-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .controlGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 52px;
+  margin-top: 20px;
   border: 1px solid var(--pe-line);
   background: var(--pe-white);
 }
@@ -1287,6 +1515,14 @@
   max-width: 800px;
 }
 
+.proofLead {
+  max-width: 720px;
+  margin: 22px 0 0;
+  color: var(--pe-muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
 .boundaryGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1470,11 +1706,11 @@
 
   .hero {
     gap: 46px;
-    padding: 64px 0;
+    padding: 48px 0 64px;
   }
 
   .hero h1 {
-    font-size: clamp(48px, 15vw, 70px);
+    font-size: clamp(44px, 13vw, 62px);
   }
 
   .offerStrip {
@@ -1505,11 +1741,19 @@
   }
 
   .controlGrid,
+  .materialPanel,
+  .laneMap,
   .phaseGrid,
   .ownershipRail,
   .boundaryGrid,
   .deliverables {
     grid-template-columns: 1fr;
+  }
+
+  .materialLead,
+  .laneHeading {
+    border-right: 0;
+    border-bottom: 1px solid var(--pe-line);
   }
 
   .scenarioGrid {
@@ -1586,6 +1830,35 @@
   .providerCard,
   .gateCard {
     padding: 16px;
+  }
+
+  .scanFindings article {
+    grid-template-columns: 1fr auto;
+  }
+
+  .scanFindings article > span {
+    grid-column: 1 / -1;
+  }
+
+  .materialPanel ul,
+  .laneGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .materialPanel li,
+  .materialPanel li:nth-child(2n),
+  .materialPanel li:nth-last-child(-n + 2),
+  .laneGrid article,
+  .laneGrid article:nth-child(2n),
+  .laneGrid article:last-child,
+  .laneGrid article:nth-last-child(2):nth-child(odd) {
+    border-right: 0;
+    border-bottom: 1px solid var(--pe-line);
+  }
+
+  .materialPanel li:last-child,
+  .laneGrid article:last-child {
+    border-bottom: 0;
   }
 
   .heroActions,

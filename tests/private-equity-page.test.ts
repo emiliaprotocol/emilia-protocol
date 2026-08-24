@@ -28,13 +28,15 @@ const sitemap = readFileSync(resolve(ROOT, 'app/sitemap.ts'), 'utf8');
 const footer = readFileSync(resolve(ROOT, 'components/SiteFooter.tsx'), 'utf8');
 
 describe('private-equity portfolio customer page', () => {
-  it('is an indexable, finance-first customer route with dedicated share metadata', () => {
+  it('is an indexable, scan-first customer route with dedicated share metadata', () => {
     expect(page).toContain("alternates: { canonical: '/private-equity' }");
-    expect(page).toContain('Authority Controls for AI Across Private Equity Portfolios');
-    expect(page).toContain('Let AI agents work. Keep each portfolio company in control.');
-    expect(page).toContain('The Universal Authority Tollgate');
+    expect(page).toContain('Portfolio Authority Scan for Private Equity');
+    expect(page).toContain('See what AI can change before it changes the company.');
+    expect(page).toContain('Portfolio Authority Scan');
+    expect(page).not.toContain('The Universal Authority Tollgate');
     expect(page).not.toContain('Give private-equity portfolio AI an authority tollgate.');
-    expect(openGraphImage).toContain('Let AI agents work. Keep each portfolio company in control.');
+    expect(openGraphImage).toContain('See what AI can change before it changes the company.');
+    expect(openGraphImage).toContain('PORTFOLIO AUTHORITY SCAN / PRIVATE EQUITY');
     expect(page).toContain("url: '/private-equity/opengraph-image'");
     expect(page).toContain('robots: { index: true, follow: true }');
     expect(openGraphImage).toContain('export const size = { width: 1200, height: 630 }');
@@ -54,6 +56,7 @@ describe('private-equity portfolio customer page', () => {
   });
 
   it('keeps private investment outreach separate from the public customer conversion', () => {
+    expect(page).toContain('Map a portfolio company');
     expect(page).toContain('Protect one portfolio boundary');
     expect(page).toContain('Customer deployment path only');
     expect(page).not.toContain('href="/investors"');
@@ -93,12 +96,13 @@ describe('private-equity portfolio customer page', () => {
     expect(lab).not.toContain("'\\n+  -H");
   });
 
-  it('keeps one canonical fixed-price offer inside a three-entry portfolio ladder', () => {
+  it('keeps one canonical fixed-price offer inside a scan-to-control portfolio ladder', () => {
     expect(page).toContain('PROTECTED_WORKFLOW_PILOT.workflowLabel');
     expect(page).toContain('PROTECTED_WORKFLOW_PILOT.durationLabel');
     expect(page).toContain('PROTECTED_WORKFLOW_PILOT.shortPriceLabel');
     expect(page).toContain('One finance workflow. 90 days. $25K.');
     expect(page).toContain('Portfolio Action Risk Lab');
+    expect(page).toContain('Portfolio Authority Scan');
     expect(page).toContain('Portfolio Authority Pilot');
     expect(page).toContain('Portfolio Authority Program');
     expect(page).toContain('Scoped after boundary acceptance');
@@ -164,10 +168,56 @@ describe('private-equity portfolio customer page', () => {
     expect(boundaryExample).not.toHaveProperty('pricing');
   });
 
+  it('makes company intake concrete without pretending a public arbitrary-format upload is live', () => {
+    expect(page).toContain('Bring the materials already sitting inside the company.');
+    expect(page).toContain('Repository and action inventories');
+    expect(page).toContain('MCP and OpenAPI manifests');
+    expect(page).toContain('Workflow and approval documents');
+    expect(page).toContain('Governed system exports');
+    expect(page).toContain('No public file upload happens on this page');
+    expect(page).toContain('we do not pretend every');
+    expect(page).toContain('arbitrary format is already supported');
+    expect(page).not.toContain('type="file"');
+  });
+
+  it('maps seven company-wide consequence lanes and returns a reviewable decision surface', () => {
+    for (const lane of [
+      'Money and assets',
+      'Identity and privilege',
+      'Systems and code',
+      'Data and privacy',
+      'Regulated decisions',
+      'External commitments',
+      'Physical operations',
+    ]) {
+      expect(page).toContain(`label: '${lane}'`);
+    }
+    expect(page).toContain('A source-linked inventory');
+    expect(page).toContain('owner questions');
+    expect(page).toContain('explicit blind spots');
+    expect(page).toContain('draft protection plan');
+    expect(page).toContain('one recommended Gate boundary');
+    expect(page).toContain('Unknown paths and missing evidence remain');
+    expect(page).not.toMatch(/universal risk score|AI safety score/i);
+  });
+
+  it('orders the buyer journey as Scan, one protected boundary, then portfolio rollout', () => {
+    const scan = page.indexOf("name: 'Portfolio Authority Scan'");
+    const pilot = page.indexOf("name: 'Portfolio Authority Pilot'");
+    const rollout = page.indexOf("name: 'Portfolio Authority Program'");
+    expect(scan).toBeGreaterThan(-1);
+    expect(scan).toBeLessThan(pilot);
+    expect(pilot).toBeLessThan(rollout);
+    expect(page).toContain('Scan the company. Protect one boundary. Then earn the rollout.');
+    expect(page).toContain('Synthetic proof, not company intake');
+  });
+
   it('makes Scan-assisted preparation useful without turning it into authority', () => {
-    expect(page).toContain('How does EMILIA Scan reduce implementation work?');
-    expect(page).toContain('customer-reviewable action inventory and draft control package');
+    expect(page).toContain('What does the Portfolio Authority Scan return?');
+    expect(page).toContain('customer-reviewable, source-linked action register');
     expect(page).toContain('It does not authorize an action, activate Gate, certify a deployment');
     expect(page).toContain('Buyer acceptance and a separately scoped Gate implementation are still required');
+    expect(page).toContain('Scan prepares the decision');
+    expect(page).toContain('does not grant authority or activate Gate');
   });
 });

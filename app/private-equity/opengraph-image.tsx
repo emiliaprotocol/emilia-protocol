@@ -2,7 +2,7 @@
 
 import { ImageResponse } from 'next/og';
 
-export const alt = 'An EMILIA authority tollgate before a customer-owned finance boundary';
+export const alt = 'An illustrative EMILIA Portfolio Authority Scan mapping consequential AI actions';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -30,18 +30,18 @@ export default function OpenGraphImage(): ImageResponse {
           }}
         >
           <div style={{ display: 'flex', color: '#71521d', fontSize: 19, letterSpacing: 2.4 }}>
-            UNIVERSAL AUTHORITY TOLLGATE / PRIVATE EQUITY
+            PORTFOLIO AUTHORITY SCAN / PRIVATE EQUITY
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', fontSize: 64, fontWeight: 700, lineHeight: .98, letterSpacing: -3.2 }}>
-              Let AI agents work. Keep each portfolio company in control.
+              See what AI can change before it changes the company.
             </div>
             <div style={{ display: 'flex', marginTop: 28, color: '#625d56', fontSize: 25, lineHeight: 1.4 }}>
-              One sponsor control model. Each company owns its Gate.
+              One company. Seven consequence lanes. One first boundary.
             </div>
           </div>
           <div style={{ display: 'flex', color: '#625d56', fontSize: 17 }}>
-            One finance workflow / 90 days / $25K / observe first
+            Source-linked map / owner review / blind spots visible
           </div>
         </div>
 
@@ -56,25 +56,26 @@ export default function OpenGraphImage(): ImageResponse {
             background: '#fffaf0',
           }}
         >
-          <div style={{ display: 'flex', color: '#71521d', fontSize: 16, letterSpacing: 2 }}>COVERED ACTION</div>
-          <div style={{ display: 'flex', marginTop: 15, fontSize: 29, fontWeight: 700 }}>payment.release</div>
-          <div style={{ display: 'flex', height: 62, justifyContent: 'center', alignItems: 'center', color: '#926f2d', fontSize: 30 }}>↓</div>
+          <div style={{ display: 'flex', color: '#71521d', fontSize: 16, letterSpacing: 2 }}>COMPANY WORKSPACE</div>
+          <div style={{ display: 'flex', marginTop: 15, fontSize: 29, fontWeight: 700 }}>Existing materials</div>
+          <div style={{ display: 'flex', height: 48, justifyContent: 'center', alignItems: 'center', color: '#926f2d', fontSize: 26 }}>↓</div>
           <div
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '22px 20px',
+              flexDirection: 'column',
+              padding: '18px 20px',
               border: '2px solid #926f2d',
               background: '#f8e8be',
             }}
           >
-            <div style={{ display: 'flex', fontSize: 28, fontWeight: 800 }}>GATE</div>
-            <div style={{ display: 'flex', color: '#71521d', fontSize: 17, fontWeight: 700 }}>HOLD</div>
+            <div style={{ display: 'flex', fontSize: 24, fontWeight: 800 }}>ACTION MAP</div>
+            <div style={{ display: 'flex', marginTop: 8, color: '#71521d', fontSize: 15, fontWeight: 700 }}>
+              Money · Access · Systems · Data
+            </div>
           </div>
-          <div style={{ display: 'flex', height: 62, justifyContent: 'center', alignItems: 'center', color: '#926f2d', fontSize: 30 }}>↓</div>
+          <div style={{ display: 'flex', height: 48, justifyContent: 'center', alignItems: 'center', color: '#926f2d', fontSize: 26 }}>↓</div>
           <div style={{ display: 'flex', color: '#625d56', fontSize: 16, lineHeight: 1.4 }}>
-            Provider entry only after accepted exact-action authority and required evidence.
+            Source-linked candidates, explicit blind spots, and one recommended Gate boundary.
           </div>
         </div>
       </div>
