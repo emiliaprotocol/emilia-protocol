@@ -43,7 +43,7 @@ describe('public/private repository boundary', () => {
     expect(findPublicKernelSemanticViolations([
       {
         path: 'packages/verify/src/claim-assurance.ts',
-        content: 'Competitor: Certisyn. Private equity portfolio authority pricing.',
+        content: 'Competitor comparison. Private equity portfolio authority pricing.',
       },
       {
         path: 'examples/claim-assurance-reference/README.md',
@@ -54,7 +54,7 @@ describe('public/private repository boundary', () => {
       'examples/claim-assurance-reference/README.md:commercial_concept:certification_ownership',
       'examples/claim-assurance-reference/README.md:commercial_concept:operated_product_family',
       'packages/verify/src/claim-assurance.ts:commercial_concept:commercial_terms',
-      'packages/verify/src/claim-assurance.ts:commercial_concept:competitor_material',
+      'packages/verify/src/claim-assurance.ts:commercial_concept:named_competitor_strategy',
       'packages/verify/src/claim-assurance.ts:commercial_concept:private_capital_strategy',
     ]);
   });

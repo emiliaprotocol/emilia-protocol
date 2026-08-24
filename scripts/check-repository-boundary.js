@@ -58,7 +58,7 @@ const PUBLIC_KERNEL_PREFIXES = [
     'public/schemas/ep-claim-case.schema.json',
 ];
 const PUBLIC_KERNEL_COMMERCIAL_CONCEPTS = [
-    { id: 'competitor_material', pattern: /\b(?:certisyn|hillier)\b/i },
+    { id: 'named_competitor_strategy', pattern: /\b(?:competitor|competitive comparison)\b/i },
     {
         id: 'private_capital_strategy',
         pattern: /\b(?:private equity|portfolio compan(?:y|ies)|portfolio authority|investment thesis|investor)\b/i,
