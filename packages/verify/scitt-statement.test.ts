@@ -21,6 +21,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  deriveScittStatementIdentityLayers,
   buildEpScittSignedStatement,
   verifyEpScittSignedStatement,
   describeScittRegistrationRequest,
@@ -241,6 +242,61 @@ test('a conforming statement verifies with every check green', () => {
   assert.equal(result.sub, built.sub);
   assert.equal(result.kid, KID);
   assert.equal(result.payloadSha256, built.payloadSha256);
+  assert.equal(result.identity?.statement_entry_digest,
+    `sha256:${crypto.createHash('sha256').update(built.statement).digest('hex')}`);
+  assert.equal(result.identity?.authorization_payload_digest,
+    `sha256:${crypto.createHash('sha256').update(canonicalize((RECEIPT as any).payload)).digest('hex')}`);
+});
+
+test('statement entry, signing input, and authorization payload are separate identities', () => {
+  const built = build();
+  const identity = deriveScittStatementIdentityLayers(built.statement);
+  assert.equal(identity.ok, true, (identity as any).reason);
+  if (!identity.ok) return;
+
+  assert.equal(identity.value.statement_entry_digest,
+    `sha256:${crypto.createHash('sha256').update(built.statement).digest('hex')}`);
+  assert.equal(identity.value.statement_payload_digest,
+    `sha256:${crypto.createHash('sha256').update(built.payload).digest('hex')}`);
+  assert.match(identity.value.signing_input_digest, /^sha256:[0-9a-f]{64}$/);
+  assert.notEqual(identity.value.statement_entry_digest, identity.value.signing_input_digest);
+  assert.equal(identity.value.authorization_payload_digest,
+    `sha256:${crypto.createHash('sha256').update(canonicalize((RECEIPT as any).payload)).digest('hex')}`);
+});
+
+test('changing only signature bytes changes entry identity but not signing-input identity', () => {
+  const built = build();
+  const decoded = must<unknown[]>(
+    decodeDeterministicCbor8949(built.statement.subarray(1), { textKeysOnly: false }) as any,
+    'statement body',
+  );
+  const twinSignature = new Uint8Array(decoded[3] as Uint8Array);
+  twinSignature[0] ^= 0x01;
+  const twinBody = must<Uint8Array>(
+    encodeDeterministicCbor8949([decoded[0], decoded[1], decoded[2], twinSignature]),
+    'twin body',
+  );
+  const twin = new Uint8Array(twinBody.length + 1);
+  twin[0] = COSE_SIGN1_TAG_BYTE;
+  twin.set(twinBody, 1);
+
+  const originalIdentity = deriveScittStatementIdentityLayers(built.statement);
+  const twinIdentity = deriveScittStatementIdentityLayers(twin);
+  assert.equal(originalIdentity.ok, true);
+  assert.equal(twinIdentity.ok, true);
+  if (!originalIdentity.ok || !twinIdentity.ok) return;
+  assert.notEqual(
+    originalIdentity.value.statement_entry_digest,
+    twinIdentity.value.statement_entry_digest,
+  );
+  assert.equal(
+    originalIdentity.value.signing_input_digest,
+    twinIdentity.value.signing_input_digest,
+  );
+  assert.equal(
+    originalIdentity.value.authorization_payload_digest,
+    twinIdentity.value.authorization_payload_digest,
+  );
 });
 
 test('VERIFIED is never REGISTERED: the result always reports registered false', () => {

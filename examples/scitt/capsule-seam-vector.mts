@@ -13,14 +13,12 @@
 //                              statements are ABOUT (recomputable on either side).
 //   - EP authorization receipt over that action (APPROVED and DENIED variants),
 //     natively Ed25519-signed and wrapped as a COSE_Sign1 SCITT Signed Statement.
-//   - authority_reference_digest = the digest a Capsule's *opaque authority
-//     reference* embeds to commit to the approval WITHOUT restating it. PINNED
-//     per profile (Songbo Bu byte-binding review, SCITT list 2026-07-02):
-//       * transparency profile: SHA-256( COSE_Sign1 bytes ) = statement_digest
-//         (the registered statement object; requires deterministic COSE)
-//       * offline profile:       SHA-256( JCS(receipt.payload) ) = receipt_payload_digest
-//     One per profile, labelled; both MUST NOT be accepted under one profile.
-//   - receipt_payload_digest is ALSO always present as the inner payload check.
+//   - authority_reference_digest = SHA-256(JCS(receipt.payload)). This commits
+//     to the authorization claim without restating it.
+//   - statement_entry_digest = SHA-256(exact COSE_Sign1 bytes). This is a
+//     separate locator for the exact envelope a transparency service registers.
+//   - signing_input_digest = SHA-256(Sig_structure). This identifies the bytes
+//     presented to the signature algorithm. It is not authorization by itself.
 //
 // Composition rule: authorization -> record, BY DIGEST, not containment. The
 // Capsule records subject_digest (same action) and carries authority_reference_
@@ -92,8 +90,9 @@ function buildReceiptStatement(payload) {
     payload_canonical: payloadBytes.toString('utf8'),
     native_signature_b64: nativeSig.toString('base64'),
     cose_sign1_b64: coseSign1.toString('base64'),
-    receipt_payload_digest: sha256hex(payloadBytes),   // authority-ref (offline)
-    statement_digest: sha256hex(coseSign1),             // authority-ref (registered)
+    receipt_payload_digest: sha256hex(payloadBytes),
+    signing_input_digest: sha256hex(sigStructure),
+    statement_entry_digest: sha256hex(coseSign1),
     _payloadBytes: payloadBytes,
     _coseSign1: coseSign1,
     _sigStructure: sigStructure,
@@ -190,7 +189,7 @@ function verifyStatement(s) {
 function vectorJson() {
   const strip = ({ _payloadBytes, _coseSign1, _sigStructure, _nativeSig, _coseSig, ...rest }) => rest;
   return {
-    vector: 'EP<->Capsule seam vector v1',
+    vector: 'EP<->Capsule seam vector v2',
     spec: 'docs/EP-CAPSULE-SEAM.md',
     canonicalization: 'RFC 8785 (JCS) over the EP I-JSON value subset; SHA-256 for all digests',
     issuer: {
@@ -202,18 +201,20 @@ function vectorJson() {
     action: ACTION,
     subject_digest: SUBJECT_DIGEST,
     authority_reference: {
-      // Pinned per profile (Songbo Bu byte-binding review, SCITT list 2026-07-02):
-      // the authority reference binds ONE digest, labelled by profile — never both
-      // under one profile. Transparency = the registered statement; offline = the
-      // payload. receipt_payload_digest is ALSO always carried as the inner check.
-      rule: 'authority_reference_digest is pinned per deployment profile and MUST be labelled. transparency: SHA-256(COSE_Sign1) (statement_digest) — the registered statement object. offline: SHA-256(JCS(receipt.payload)) (receipt_payload_digest). A profile pins exactly one; both MUST NOT be accepted under one profile. receipt_payload_digest is always present as the inner payload check after the statement is dereferenced.',
-      binding_by_profile: {
-        transparency: 'statement_digest',        // SHA-256(COSE_Sign1 bytes)
-        offline: 'receipt_payload_digest',       // SHA-256(JCS(receipt.payload))
+      rule: 'authority_reference_digest is SHA-256(JCS(receipt.payload)). A transparency profile carries statement_entry_digest separately to locate the exact logged envelope. signing_input_digest identifies the RFC 9052 Sig_structure. Neither SCITT digest substitutes for authorization verification.',
+      authorization_identity: 'receipt_payload_digest',
+      transparency_entry_locator: 'statement_entry_digest',
+      signed_input_identity: 'signing_input_digest',
+      approved: {
+        receipt_payload_digest: approved.receipt_payload_digest,
+        signing_input_digest: approved.signing_input_digest,
+        statement_entry_digest: approved.statement_entry_digest,
       },
-      cose_determinism: 'statement_digest is reproducible only under deterministic COSE: canonical CBOR + fixed protected header (alg=EdDSA(-8), cty=application/ep-receipt+json, kid), per EP-RECEIPT-SCITT-PROFILE.md. This generator emits exactly that canonical CBOR.',
-      approved: { receipt_payload_digest: approved.receipt_payload_digest, statement_digest: approved.statement_digest },
-      denied: { receipt_payload_digest: denied.receipt_payload_digest, statement_digest: denied.statement_digest },
+      denied: {
+        receipt_payload_digest: denied.receipt_payload_digest,
+        signing_input_digest: denied.signing_input_digest,
+        statement_entry_digest: denied.statement_entry_digest,
+      },
     },
     approved: strip(approved),
     denied: strip(denied),
@@ -233,12 +234,14 @@ function main() {
   console.log(`  subject_digest      = ${SUBJECT_DIGEST}`);
   console.log(`  issuer kid          = ${kid.toString('hex')}`);
   console.log('\n  APPROVED');
-  console.log(`    receipt_payload_digest (authority-ref, offline)   = ${approved.receipt_payload_digest}`);
-  console.log(`    statement_digest       (authority-ref, registered)= ${approved.statement_digest}`);
+  console.log(`    receipt_payload_digest (authorization reference) = ${approved.receipt_payload_digest}`);
+  console.log(`    signing_input_digest   (signed input identity)    = ${approved.signing_input_digest}`);
+  console.log(`    statement_entry_digest (transparency locator)     = ${approved.statement_entry_digest}`);
   console.log(`    native_sig=${a.nativeOk ? 'OK' : 'FAIL'} cose_sig=${a.coseOk ? 'OK' : 'FAIL'} canonical_stable=${a.canonicalStable ? 'OK' : 'FAIL'}`);
   console.log('\n  DENIED (verdict-complete)');
   console.log(`    receipt_payload_digest = ${denied.receipt_payload_digest}`);
-  console.log(`    statement_digest       = ${denied.statement_digest}`);
+  console.log(`    signing_input_digest   = ${denied.signing_input_digest}`);
+  console.log(`    statement_entry_digest = ${denied.statement_entry_digest}`);
   console.log(`    native_sig=${d.nativeOk ? 'OK' : 'FAIL'} cose_sig=${d.coseOk ? 'OK' : 'FAIL'} canonical_stable=${d.canonicalStable ? 'OK' : 'FAIL'}`);
 
   const negs = verifyNegatives();

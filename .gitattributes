@@ -353,6 +353,8 @@ conformance/composition/grace-consequence-boundary-v1/run.node-test.mjs linguist
 conformance/composition/portable-state-handoff-v0.1/run.mjs linguist-generated=true
 conformance/composition/portable-state-handoff-v0.1/run.test.mjs linguist-generated=true
 conformance/composition/portable-state-handoff-v0.1/schemas.test.mjs linguist-generated=true
+conformance/composition/scitt-statement-identity-v0.1/run.mjs linguist-generated=true
+conformance/composition/scitt-statement-identity-v0.1/run.node-test.mjs linguist-generated=true
 conformance/composition/wag-aeb-v1/run.mjs linguist-generated=true
 conformance/composition/wag-aeb-v1/run.test.mjs linguist-generated=true
 conformance/conformance.test.js linguist-generated=true

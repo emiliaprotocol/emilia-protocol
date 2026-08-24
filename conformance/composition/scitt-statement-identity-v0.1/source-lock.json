@@ -1,0 +1,21 @@
+{
+  "@version": "EP-SOURCE-LOCK-v1",
+  "retrieved_at": "2026-08-24",
+  "sources": [
+    {
+      "name": "Anton Sokolov initial SCITT identity report",
+      "url": "https://mailarchive.ietf.org/arch/msg/scitt/fzyFaUKmPlrDxibLm6Ejq7PEABg/",
+      "sha256": "df92d9a69844188d8c9383d7386f1a26c19eb34b431cd1aa7939c591bd91b3d9"
+    },
+    {
+      "name": "Henri Sivonen implementation response",
+      "url": "https://mailarchive.ietf.org/arch/msg/scitt/ImNFreOu9FBI2cJ4AITHi-dYK04/",
+      "sha256": "a9e8b16a9c99d942b60fb215de278402c72d8857549d44e9d9edf1b0840a1d4e"
+    },
+    {
+      "name": "Anton Sokolov synthesis and agenda request",
+      "url": "https://mailarchive.ietf.org/arch/msg/scitt/SMm65JC2jDGXq3WOOBJpzd3ODpk/",
+      "sha256": "6b87b38a27decf2958e993c2718e6de7b58441e76c68a9e86a63662e8c7e43a8"
+    }
+  ]
+}

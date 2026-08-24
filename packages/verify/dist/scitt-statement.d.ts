@@ -82,6 +82,31 @@ export declare const ISS_MAX_LENGTH = 8192;
 /** Every refusal reason this module can return. */
 export declare const EP_SCITT_REFUSALS: readonly ["invalid_receipt_document", "outside_canonical_profile", "invalid_action_object", "invalid_action_type", "invalid_kid", "invalid_iss", "invalid_signing_key", "malformed_cbor", "non_deterministic_encoding", "unsupported_item", "trailing_bytes", "duplicate_map_key", "cose_structure_invalid", "unprotected_headers_present", "crit_unsupported", "unexpected_protected_header", "unsupported_statement_alg", "content_type_mismatch", "kid_missing", "kid_mismatch", "cwt_claims_missing", "cwt_claims_malformed", "unexpected_cwt_claim", "iss_missing", "iss_malformed", "iss_mismatch", "sub_missing", "sub_malformed", "sub_mismatch", "invalid_public_key", "statement_signature_invalid", "payload_not_canonical_json", "receipt_invalid", "sub_not_bound_to_payload", "invalid_endpoint_url"];
 export type EpScittRefusal = (typeof EP_SCITT_REFUSALS)[number];
+/**
+ * Three identities that MUST NOT be substituted for one another.
+ *
+ * `statement_entry_digest` names the exact COSE_Sign1 envelope bytes. A
+ * signature normalization or a second valid randomized signature changes it.
+ * `signing_input_digest` names the RFC 9052 Sig_structure and is unchanged
+ * when only the signature bytes change. `authorization_payload_digest` is an
+ * EP-specific logical identity over the canonical receipt payload. It is
+ * present only when the COSE payload is a canonical EP-style receipt document.
+ */
+export interface ScittStatementIdentityLayers {
+    statement_entry_digest: string;
+    signing_input_digest: string;
+    statement_payload_digest: string;
+    authorization_payload_digest?: string;
+}
+/**
+ * Derive identity layers from a deterministically encoded COSE_Sign1 object.
+ *
+ * This function verifies neither the COSE signature nor authorization. It is
+ * deliberately an identity analyzer. Callers still MUST verify the relevant
+ * signature, issuer, profile, and relying-party policy before relying on any
+ * layer.
+ */
+export declare function deriveScittStatementIdentityLayers(statementBytes: Uint8Array): CborResult<ScittStatementIdentityLayers>;
 export interface BuildScittStatementOptions {
     /**
      * Ed25519 private key of the SCITT Issuer (the statement signer). This is a
@@ -169,6 +194,10 @@ export interface VerifyScittStatementResult {
     sub?: string;
     kid?: string;
     payloadSha256?: string;
+    /** Identity layers, kept separate so entry identity cannot mint authority. */
+    identity?: ScittStatementIdentityLayers & {
+        authorization_payload_digest: string;
+    };
 }
 /**
  * Verify an EP-SCITT-STATEMENT-v1 Signed Statement, fail-closed.

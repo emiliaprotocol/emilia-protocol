@@ -202,6 +202,62 @@ function sigStructureBytes(protectedBytes, payload) {
     //   [ "Signature1", body_protected, external_aad, payload ]
     return encodeDeterministicCbor8949(['Signature1', protectedBytes, new Uint8Array(0), payload]);
 }
+function sha256Digest(bytes) {
+    return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
+}
+/**
+ * Derive identity layers from a deterministically encoded COSE_Sign1 object.
+ *
+ * This function verifies neither the COSE signature nor authorization. It is
+ * deliberately an identity analyzer. Callers still MUST verify the relevant
+ * signature, issuer, profile, and relying-party policy before relying on any
+ * layer.
+ */
+export function deriveScittStatementIdentityLayers(statementBytes) {
+    if (!(statementBytes instanceof Uint8Array) || statementBytes.length < 2) {
+        return { ok: false, reason: 'malformed_cbor' };
+    }
+    if (statementBytes[0] !== COSE_SIGN1_TAG_BYTE) {
+        return { ok: false, reason: 'cose_structure_invalid' };
+    }
+    const decoded = decodeDeterministicCbor8949(statementBytes.subarray(1), {
+        textKeysOnly: false,
+    });
+    if (!decoded.ok)
+        return decoded;
+    if (!Array.isArray(decoded.value) || decoded.value.length !== 4) {
+        return { ok: false, reason: 'cose_structure_invalid' };
+    }
+    const [protectedBytes, unprotected, payload, signature] = decoded.value;
+    if (!(protectedBytes instanceof Uint8Array)
+        || !(unprotected instanceof Map)
+        || !(payload instanceof Uint8Array)
+        || !(signature instanceof Uint8Array)) {
+        return { ok: false, reason: 'cose_structure_invalid' };
+    }
+    const sigStruct = sigStructureBytes(protectedBytes, payload);
+    if (!sigStruct.ok)
+        return sigStruct;
+    const value = {
+        statement_entry_digest: sha256Digest(statementBytes),
+        signing_input_digest: sha256Digest(sigStruct.value),
+        statement_payload_digest: sha256Digest(payload),
+    };
+    try {
+        const payloadText = FATAL_UTF8.decode(payload);
+        const document = JSON.parse(payloadText);
+        if (isPlainObject(document) && isPlainObject(document.payload)
+            && canonicalize(document) === payloadText) {
+            value.authorization_payload_digest = sha256Digest(canonicalize(document.payload));
+        }
+    }
+    catch {
+        // Generic SCITT statements need not carry JSON or EP receipts. The three
+        // generic identity layers above remain valid without an EP authorization
+        // payload identity.
+    }
+    return { ok: true, value };
+}
 /**
  * Wrap an EP receipt as an EP-SCITT-STATEMENT-v1 Signed Statement.
  *
@@ -482,6 +538,10 @@ export function verifyEpScittSignedStatement(statementBytes, opts) {
     if (recomputed.value.caid !== sub)
         return fail('sub_not_bound_to_payload');
     checks.sub_binding = true;
+    const identity = deriveScittStatementIdentityLayers(statementBytes);
+    if (!identity.ok || typeof identity.value.authorization_payload_digest !== 'string') {
+        return fail('receipt_invalid');
+    }
     return {
         valid: true,
         checks,
@@ -491,6 +551,7 @@ export function verifyEpScittSignedStatement(statementBytes, opts) {
         sub,
         kid: kidText,
         payloadSha256: crypto.createHash('sha256').update(payload).digest('hex'),
+        identity: identity.value,
     };
 }
 /**
