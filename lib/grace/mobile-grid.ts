@@ -18,6 +18,13 @@ import {
 } from '../../packages/mobile/presentation.js';
 import { checkOrderWithinEnvelope, computeCompliance, runSettlementOnce } from './curtailment.js';
 import {
+  FORECAST_EVIDENCE_VERSION,
+  assessForecastForGrace,
+  forecastDigest,
+  reconcileForecastObservation,
+  validateForecastPolicy,
+} from './forecast-evidence.js';
+import {
   signAgileSet,
   verifyAgileSignatureSet,
   ML_DSA_65_PUBLIC_KEY_BYTES,
@@ -523,13 +530,25 @@ export function buildActionStateCapsule({
   dispatchRequestDigest,
   meterDigest,
   authorizationDigest,
+  forecastEvidenceDigest,
+  forecastReconciliationDigest,
+  forecastReconciliationStatus,
 }: any = {}): any {
   const actionCheck = validateCurtailmentAction(action);
   const requestDigest = stripDigest(dispatchRequestDigest);
   const responseDigest = stripDigest(meterDigest);
   const authorityDigest = stripDigest(authorizationDigest);
+  const forecastDigestValue = forecastEvidenceDigest === undefined
+    ? null : stripDigest(forecastEvidenceDigest);
+  const forecastReconciliationDigestValue = forecastReconciliationDigest === undefined
+    ? null : stripDigest(forecastReconciliationDigest);
   if (!actionCheck.valid || !validId(operator) || !validId(developer)
-      || !validInstant(timestamp) || !requestDigest || !responseDigest || !authorityDigest) {
+      || !validInstant(timestamp) || !requestDigest || !responseDigest || !authorityDigest
+      || (forecastEvidenceDigest !== undefined && !forecastDigestValue)
+      || (forecastReconciliationDigest !== undefined && !forecastReconciliationDigestValue)
+      || Boolean(forecastDigestValue) !== Boolean(forecastReconciliationDigestValue)
+      || (forecastDigestValue
+        && !['WITHIN_BAND', 'OUTSIDE_BAND', 'INDETERMINATE'].includes(forecastReconciliationStatus))) {
     throw new TypeError('verified action, authority, dispatch, and meter inputs are required');
   }
   const capsule = {
@@ -568,6 +587,18 @@ export function buildActionStateCapsule({
       { id: 'ep:grace:mobile_authorization', result: 'pass', severity: 'critical', blocking: true, evidence_digest: authorityDigest },
       { id: 'ep:grace:cosa_dispatch', result: 'pass', severity: 'critical', blocking: true, evidence_digest: requestDigest },
       { id: 'ep:grace:meter_confirmation', result: 'pass', severity: 'critical', blocking: true, evidence_digest: responseDigest },
+      ...(forecastDigestValue && forecastReconciliationDigestValue ? [
+        {
+          id: 'ep:grace:forecast_advisory', result: 'pass', severity: 'informational',
+          blocking: false, evidence_digest: forecastDigestValue,
+        },
+        {
+          id: 'ep:grace:forecast_reconciliation',
+          result: forecastReconciliationStatus === 'WITHIN_BAND' ? 'pass' : 'fail',
+          severity: 'informational',
+          blocking: false, evidence_digest: forecastReconciliationDigestValue,
+        },
+      ] : []),
     ],
   };
   const capsuleId = actionStateCapsuleId(capsule);
@@ -705,6 +736,9 @@ export async function executeGraceCurtailment({
   policy,
   authorizationEvidence,
   authorizationProfile,
+  forecastEvidence,
+  forecastTrust,
+  forecastPolicy,
   executionStore,
   actuator,
   actuatorTrust,
@@ -732,6 +766,56 @@ export async function executeGraceCurtailment({
   if (policy?.outcome_policy_digest !== predictedEffectsDigest(outcomePredictions)) {
     return { ok: false, verdict: 'refuse_outcome_policy', reason: 'outcome policy is not bound into the authorized policy bytes' };
   }
+  const actionHash = graceDigest(action);
+  let forecastAssessment: any = null;
+  if (forecastEvidence !== undefined && forecastPolicy === undefined) {
+    return { ok: false, verdict: 'refuse_forecast_policy', reason: 'forecast evidence requires relying-party policy' };
+  }
+  if (forecastPolicy !== undefined) {
+    if (!validateForecastPolicy(forecastPolicy)) {
+      return { ok: false, verdict: 'refuse_forecast_policy', reason: 'forecast policy is malformed' };
+    }
+    if (forecastEvidence === undefined) {
+      if (forecastPolicy?.required === true) {
+        return { ok: false, verdict: 'refuse_forecast_evidence', reason: 'required forecast evidence is missing' };
+      }
+    } else {
+      let signatureValid = false;
+      if (forecastTrust?.signature_profile === 'Ed25519') {
+        signatureValid = verifyGraceArtifact(forecastEvidence, {
+          publicKeySpkiB64u: forecastTrust.public_key_spki,
+          keyId: forecastTrust.key_id,
+          version: FORECAST_EVIDENCE_VERSION,
+        });
+      } else if (forecastTrust?.signature_profile === 'hybrid_all') {
+        signatureValid = await verifyGraceArtifactV2(forecastEvidence, {
+          publicKeySpkiB64u: forecastTrust.public_key_spki,
+          keyId: forecastTrust.key_id,
+          pqPublicKeyB64u: forecastTrust.pq_public_key,
+          pqKeyId: forecastTrust.pq_key_id,
+          version: FORECAST_EVIDENCE_VERSION,
+        }, forecastTrust.agility || {});
+      }
+      if (!signatureValid) {
+        return { ok: false, verdict: 'refuse_forecast_evidence', reason: 'forecast evidence failed pinned signature verification' };
+      }
+      forecastAssessment = assessForecastForGrace(forecastEvidence, {
+        policy: forecastPolicy,
+        expected_action_digest: actionHash,
+        expected_action_window: action.window,
+        action_target_mw: (Number(action.target_delta_kw) / 1000).toFixed(3),
+        now: gateAt,
+      });
+      if (!forecastAssessment.valid) {
+        return {
+          ok: false,
+          verdict: 'refuse_forecast_evidence',
+          reason: forecastAssessment.reasons[0] || 'forecast evidence did not satisfy relying-party policy',
+          forecast_assessment: forecastAssessment,
+        };
+      }
+    }
+  }
   const authorization = verifyGraceMobileAuthorization({
     action,
     presentation,
@@ -750,14 +834,15 @@ export async function executeGraceCurtailment({
       || typeof settlementStore.commit !== 'function' || typeof settle !== 'function') {
     return { ok: false, verdict: 'refuse_adapter_unavailable', reason: 'pinned actuator and meter adapters are required' };
   }
-
-  const actionHash = graceDigest(action);
   const requestBody = {
     '@version': GRACE_DISPATCH_VERSION,
     action,
     action_hash: actionHash,
     envelope_digest: graceDigest(envelope),
     authorization_digest: authorization.authorization_digest,
+    ...(forecastAssessment?.evidence_digest ? {
+      forecast_evidence_digest: forecastAssessment.evidence_digest,
+    } : {}),
     idempotency_key: `grace:${action.action_id}:${actionHash}`,
     dispatched_by: operator,
   };
@@ -906,6 +991,16 @@ export async function executeGraceCurtailment({
 
   const meterBody = Object.fromEntries(Object.entries(meterStatement).filter(([key]) => key !== 'signature'));
   const meterDigest = graceDigest(meterBody);
+  const forecastReconciliation = forecastAssessment?.valid
+    ? reconcileForecastObservation(forecastEvidence, {
+      observed_value_mw: Number(compliance.delivered_mw).toFixed(3),
+      observation_digest: meterDigest,
+      observed_at: meterStatement.observed_at,
+    })
+    : null;
+  const forecastReconciliationDigest = forecastReconciliation
+    ? forecastDigest(forecastReconciliation)
+    : undefined;
   const capsule = buildActionStateCapsule({
     action,
     operator,
@@ -914,6 +1009,11 @@ export async function executeGraceCurtailment({
     dispatchRequestDigest: requestDigest,
     meterDigest,
     authorizationDigest: (authorization.authorization_digest ?? undefined) as string | undefined,
+    ...(forecastAssessment?.evidence_digest ? {
+      forecastEvidenceDigest: forecastAssessment.evidence_digest,
+      forecastReconciliationDigest,
+      forecastReconciliationStatus: forecastReconciliation?.status,
+    } : {}),
   });
   const actionState = createActionStateSignedStatement(capsule, capsuleSigner);
   const settlementClaim = {
@@ -937,6 +1037,11 @@ export async function executeGraceCurtailment({
     envelope_digest: graceDigest(envelope),
     baseline_method_hash: action.baseline_method_hash,
     authorization_digest: authorization.authorization_digest,
+    ...(forecastAssessment?.evidence_digest ? {
+      forecast_evidence_digest: forecastAssessment.evidence_digest,
+      forecast_reconciliation_digest: forecastReconciliationDigest,
+      forecast_reconciliation_status: forecastReconciliation?.status,
+    } : {}),
     dispatch_request_digest: requestDigest,
     actuator_ack_digest: graceDigest(Object.fromEntries(Object.entries(acknowledgment).filter(([key]) => key !== 'signature'))),
     meter_payload_digest: meterDigest,
@@ -955,6 +1060,8 @@ export async function executeGraceCurtailment({
     verdict: settlement.settled ? 'executed_measured_settled' : 'executed_measured_not_settled',
     action_hash: actionHash,
     authorization,
+    forecast_assessment: forecastAssessment,
+    forecast_reconciliation: forecastReconciliation,
     acknowledgment,
     meter_statement: meterStatement,
     compliance,
