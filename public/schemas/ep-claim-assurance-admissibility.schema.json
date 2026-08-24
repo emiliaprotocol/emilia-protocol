@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.emiliaprotocol.ai/schemas/ep-claim-assurance-admissibility.schema.json",
+  "title": "EP-CLAIM-ASSURANCE-ADMISSIBILITY-v1",
+  "description": "A Gate-facing projection of a freshly re-performed Assurance Record, bound to the executor-observed exact action. It is an additional evidence condition and never action authority.",
+  "type": "object",
+  "required": [
+    "@type",
+    "admissibility_profile",
+    "profile_hash",
+    "verdict",
+    "replay_digest",
+    "assurance_record_digest",
+    "claim_case_digest",
+    "action_digest",
+    "claim_assurance_verdict",
+    "profile_satisfied",
+    "authorizes_action",
+    "as_of",
+    "evaluated_at",
+    "reasons"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "@type": { "const": "EP-CLAIM-ASSURANCE-ADMISSIBILITY-v1" },
+    "admissibility_profile": {
+      "type": "object",
+      "required": ["id", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+        },
+        "version": { "const": "1" }
+      }
+    },
+    "profile_hash": { "$ref": "#/$defs/digest" },
+    "verdict": {
+      "enum": ["admissible", "missing_evidence", "stale", "conflicted", "unverifiable"]
+    },
+    "replay_digest": { "$ref": "#/$defs/digest" },
+    "assurance_record_digest": { "$ref": "#/$defs/digest" },
+    "claim_case_digest": { "$ref": "#/$defs/digest" },
+    "action_digest": { "$ref": "#/$defs/digest" },
+    "claim_assurance_verdict": {
+      "enum": ["VERIFIED", "UNVERIFIED", "DIVERGED", "INDETERMINATE"]
+    },
+    "profile_satisfied": { "type": "boolean" },
+    "authorizes_action": { "const": false },
+    "as_of": { "$ref": "#/$defs/instant" },
+    "evaluated_at": { "$ref": "#/$defs/instant" },
+    "reasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "verdict": { "const": "admissible" } } },
+      "then": {
+        "properties": {
+          "claim_assurance_verdict": { "const": "VERIFIED" },
+          "profile_satisfied": { "const": true },
+          "authorizes_action": { "const": false }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "instant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    }
+  }
+}

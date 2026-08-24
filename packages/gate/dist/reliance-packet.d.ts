@@ -37,18 +37,12 @@ export declare function buildReliancePacket({ decision, execution, evidence, man
         } | null;
         admissibility_profile_hash: string | null;
     };
-    admissibility: {
-        admissibility_profile: {
-            id: any;
-            version: any;
-        } | null;
-        profile_hash: string | null;
-        verdict: string | null;
+    admissibility: Obj | null;
+    admissibility_evaluation: {
+        contract: string;
         verdict_recognized: boolean;
         admissible: boolean;
-        replay_digest: string | null;
-        challenge_id: any;
-        challenge_digest: string | null;
+        validation_error: string | null;
     } | null;
     checks: {
         detail?: string | Obj | undefined;

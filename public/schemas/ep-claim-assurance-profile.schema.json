@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.emiliaprotocol.ai/schemas/ep-claim-assurance-profile.schema.json",
+  "title": "EP-CLAIM-ASSURANCE-PROFILE-v1",
+  "description": "A relying-party-pinned bar for verifying one typed claim. The profile names exact verifier implementations, source-count requirements, and freshness bounds. It does not grant action authority.",
+  "type": "object",
+  "required": ["@type", "profile_id", "claim_type", "predicate", "requirements"],
+  "additionalProperties": false,
+  "properties": {
+    "@type": { "const": "EP-CLAIM-ASSURANCE-PROFILE-v1" },
+    "profile_id": { "$ref": "#/$defs/identifier" },
+    "claim_type": { "$ref": "#/$defs/label" },
+    "predicate": { "$ref": "#/$defs/label" },
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/requirement" }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "verifier": {
+      "type": "object",
+      "required": ["verifier_id", "verifier_version", "implementation_digest"],
+      "additionalProperties": false,
+      "properties": {
+        "verifier_id": { "$ref": "#/$defs/identifier" },
+        "verifier_version": { "$ref": "#/$defs/identifier" },
+        "implementation_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "required": [
+        "requirement_id",
+        "evidence_role",
+        "verifier",
+        "minimum_distinct_sources",
+        "max_age_seconds"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "requirement_id": { "$ref": "#/$defs/identifier" },
+        "evidence_role": { "$ref": "#/$defs/identifier" },
+        "verifier": { "$ref": "#/$defs/verifier" },
+        "minimum_distinct_sources": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "max_age_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 31536000
+        }
+      }
+    }
+  }
+}
