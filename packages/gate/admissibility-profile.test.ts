@@ -180,7 +180,7 @@ test('NO profile pinned => behavior byte-for-byte unchanged (allowed, no admissi
 
 test('verifyAdmissibilityAgainstPinnedProfile: matching hash + admissible => ok', () => {
   const r = verifyAdmissibilityAgainstPinnedProfile(
-    { id: 'p', profile_hash: PINNED_HASH },
+    { id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH },
     { admissibility: admissibilityBlock({ profileHash: PINNED_HASH }) },
   );
   assert.equal(r.ok, true);
@@ -189,12 +189,23 @@ test('verifyAdmissibilityAgainstPinnedProfile: matching hash + admissible => ok'
 });
 
 test('verifyAdmissibilityAgainstPinnedProfile: fail-closed refusals are distinct and named', () => {
-  const pin = { id: 'p', profile_hash: PINNED_HASH };
+  const pin = { id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH };
 
   // mismatched hash
   assert.equal(
     verifyAdmissibilityAgainstPinnedProfile(pin, admissibilityBlock({ profileHash: OTHER_HASH })).reason,
     'profile_hash_mismatch',
+  );
+  // a matching digest cannot relabel a different profile identifier
+  assert.equal(
+    verifyAdmissibilityAgainstPinnedProfile(
+      pin,
+      {
+        ...admissibilityBlock({ profileHash: PINNED_HASH }),
+        admissibility_profile: { id: 'ep:profile:substituted', version: '1' },
+      },
+    ).reason,
+    'profile_id_mismatch',
   );
   // non-admissible verdict names the verdict
   assert.equal(
