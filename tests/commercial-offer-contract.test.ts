@@ -14,6 +14,10 @@ const navigation = readFileSync(resolve(ROOT, 'components/SiteNav.tsx'), 'utf8')
 const govGuard = readFileSync(resolve(ROOT, 'app/govguard/page.tsx'), 'utf8');
 const finGuard = readFileSync(resolve(ROOT, 'app/finguard/page.tsx'), 'utf8');
 const home = readFileSync(resolve(ROOT, 'app/HomePageClient.tsx'), 'utf8');
+const staticLanding = readFileSync(resolve(ROOT, 'content/landing.html'), 'utf8');
+const publicStaticLanding = readFileSync(resolve(ROOT, 'public/landing.html'), 'utf8');
+const publicLegacyIndex = readFileSync(resolve(ROOT, 'public/index.html'), 'utf8');
+const sitemap = readFileSync(resolve(ROOT, 'app/sitemap.ts'), 'utf8');
 const assuranceBrief = readFileSync(resolve(ROOT, 'docs/EMILIA-ASSURANCE-PRODUCT-BRIEF.md'), 'utf8');
 const programIntegrity = readFileSync(
   resolve(ROOT, 'app/health/program-integrity/_components/ProgramIntegrityGate.tsx'),
@@ -74,7 +78,9 @@ describe('commercial offer contract', () => {
     expect(commercialOffer).toContain("id: 'protected_workflow_pilot_v1'");
     expect(commercialOffer).toContain("name: 'Protected-workflow pilot'");
     expect(commercialOffer).toContain('durationDays: 90');
-    expect(commercialOffer).toContain("workflowLabel: '1 protected workflow'");
+    expect(commercialOffer).toContain("workflowLabel: '1 assessed consequence boundary'");
+    expect(commercialOffer).toContain('Synthetic, read-only, sandbox, or shadow validation only');
+    expect(commercialOffer).toContain('any production activation is a separately scoped Gate Implementation');
   });
 
   it('names the finance boundary first while keeping other workflows eligible', () => {
@@ -91,5 +97,21 @@ describe('commercial offer contract', () => {
     expect(home).not.toContain('Payer adverse medical-necessity determinations contain');
     expect(assuranceBrief).toContain('Finance Operations Assurance');
     expect(assuranceBrief).not.toContain('Adverse Determination Assurance');
+  });
+
+  it('keeps legacy static landing and discovery surfaces inside the same offer boundary', () => {
+    for (const landing of [staticLanding, publicStaticLanding]) {
+      expect(landing).toContain('one $25K, 90-day nonproduction Protected-workflow pilot');
+      expect(landing).not.toMatch(/Request (government|financial|enterprise|agent) pilot/i);
+      expect(landing).not.toContain('Managed control plane with observability');
+      expect(landing).not.toContain('Private deployment with dedicated infrastructure, SLAs');
+      expect(landing).not.toMatch(/full audit trail|legal defensibility|Every state transition logged|immutable audit chain/i);
+    }
+    expect(publicLegacyIndex).toContain('no generally available service or SLA is claimed');
+    expect(publicLegacyIndex).not.toMatch(/EMILIA Gate Cloud|Every state transition logged|legal defensibility|Request Pilot/i);
+    expect(assuranceBrief).toContain('The only public paid offer is one `$25K`, 90-day, nonproduction');
+    expect(assuranceBrief).not.toContain('## What customers can buy now');
+    expect(sitemap).not.toContain("{ path: '/network'");
+    expect(sitemap).not.toContain("{ path: '/trust-desk'");
   });
 });

@@ -16,7 +16,7 @@ describe('/cloud/signoffs connected-console source contract', () => {
     expect(page).not.toContain('document.cookie');
     expect(page).toContain("const [apiKey, setApiKey] = useState('')");
     expect(page).toContain('type="password"');
-    expect(page).toContain('Cloud API key stays in React memory only');
+    expect(page).toContain('The test key stays in React memory only');
   });
 
   it('calls the approval queue, create, one-time consume, and evidence endpoints', () => {

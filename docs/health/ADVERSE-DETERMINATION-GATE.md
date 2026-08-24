@@ -123,7 +123,7 @@ Concretely, a third party holding only the packet can establish:
 
 The packet is an `EP-ASSURANCE-PACKAGE-v1`. An independent party re-performs
 every reliance verdict from the packaged evidence alone, under its own pinned
-keys, trusting nothing the package asserts, and reports drift between what the
+keys, recomputing the package/profile digests and every verdict, and reports drift between what the
 payer's runtime claimed and what the evidence supports. The re-performance
 workpaper always emits a null conclusion. The tool supports the procedure. A
 person concludes.

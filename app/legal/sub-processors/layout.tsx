@@ -3,13 +3,12 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Sub-processors — EMILIA Protocol',
   description:
-    'Third-party vendors that process data on behalf of EMILIA Protocol ' +
-    'customers. Updated whenever a data flow changes. Customers may ' +
-    'subscribe to change notifications.',
+    'Public vendor inventory for the current EMILIA website, repository, and ' +
+    'designed commercial components. Not a live customer DPA schedule.',
   alternates: { canonical: '/legal/sub-processors' },
   openGraph: {
     title: 'EMILIA Protocol Sub-processors',
-    description: 'Third-party data processors and their roles.',
+    description: 'Vendor inventory, stated roles, data categories, and current scope.',
     url: 'https://www.emiliaprotocol.ai/legal/sub-processors',
     type: 'article',
   },

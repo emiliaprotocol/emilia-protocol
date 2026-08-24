@@ -473,12 +473,13 @@ export default function ProgramIntegrityGate(): React.ReactElement {
       <section className={styles.nextSteps} aria-labelledby="program-integrity-next-step">
         <div>
           <div className={styles.eyebrow}>Practical next step</div>
-          <h2 id="program-integrity-next-step">Protect one workflow in the 90-day pilot.</h2>
+          <h2 id="program-integrity-next-step">Assess one workflow in the 90-day pilot.</h2>
           <p>
             The single $25K protected-workflow pilot begins with synthetic replay and a governed
             read-only export. EMILIA Signal surfaces approval-to-effect gaps and produces an
-            Action Control Manifest; production enforcement proceeds only through the buyer-approved
-            Gate boundary within that same 90-day pilot.
+            Action Control Manifest. The pilot does not activate production. Any production
+            enforcement requires a separately scoped Gate Implementation after the buyer accepts
+            the boundary, trust inputs, operating procedure, and complete-mediation design.
           </p>
           <a href="/pilot?v=health" className={styles.pilotAction}>
             Scope the protected-workflow pilot

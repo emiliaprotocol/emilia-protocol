@@ -241,7 +241,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
   </div>
   <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
     <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" rel="noopener noreferrer" class="gh-star"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Star</a>
-    <a href="/partners" class="btn-outline-gold">Request Pilot</a>
+    <a href="/pilot" class="btn-outline-gold">Review Pilot</a>
   </div>
 </div>
 </nav>
@@ -255,7 +255,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
   <div class="hero-ctas">
     <a href="/protocol" class="btn-gold-outline">Read the Protocol</a>
     <a href="/use-cases" class="btn-ghost">Explore Use Cases</a>
-    <a href="/partners" class="btn-gold-solid">Request Pilot</a>
+    <a href="/pilot" class="btn-gold-solid">Review Pilot</a>
   </div>
   <div class="hero-stats">
     <div class="stat">
@@ -301,7 +301,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section>
   <div class="container fade-in">
     <div class="eyebrow">THE PROBLEM</div>
-    <h2 class="section-title">Built for approved-looking workflows<br>where ordinary auth fails</h2>
+    <h2 class="section-title">Reference profiles for approved-looking workflows<br>where ordinary auth is insufficient</h2>
     <div class="problem-grid">
       <div class="problem-item">
         <h3>Benefit payment redirection</h3>
@@ -329,7 +329,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section>
   <div class="container fade-in">
     <div class="eyebrow">CONTROL SURFACES</div>
-    <h2 class="section-title">Built for the workflows where weak<br>authorization causes real damage</h2>
+    <h2 class="section-title">Inspectable profiles for workflows where weak<br>authorization can cause real damage</h2>
     <div class="buyer-grid">
       <div class="buyer-card">
         <h3>Government Fraud Prevention</h3>
@@ -338,17 +338,17 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
       </div>
       <div class="buyer-card">
         <h3>Financial Infrastructure Controls</h3>
-        <p>Enforce ceremony-grade authorization on wire transfers, limit changes, account modifications, and privileged treasury actions.</p>
+        <p>Model ceremony-grade authorization for wire transfers, limit changes, account modifications, and privileged treasury actions.</p>
         <a href="/use-cases/financial" class="card-link">See architecture &#8594;</a>
       </div>
       <div class="buyer-card">
         <h3>Enterprise Privileged Actions</h3>
-        <p>Require bound authorization for infrastructure changes, data exports, permission escalations, and production deployments.</p>
+        <p>Model bound authorization for infrastructure changes, data exports, permission escalations, and production deployments.</p>
         <a href="/use-cases/enterprise" class="card-link">See architecture &#8594;</a>
       </div>
       <div class="buyer-card">
         <h3>AI/Agent Execution Governance</h3>
-        <p>Gate autonomous agent actions behind protocol-enforced trust ceremonies before any irreversible real-world execution.</p>
+        <p>Model how autonomous agent actions can require protocol-enforced trust ceremonies before a covered real-world execution.</p>
         <a href="/use-cases/ai-agent" class="card-link">See architecture &#8594;</a>
       </div>
     </div>
@@ -361,20 +361,20 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section>
   <div class="container fade-in">
     <div class="eyebrow">PROTOCOL DISCIPLINE</div>
-    <h2 class="section-title">What EP proves before action</h2>
+    <h2 class="section-title">What a valid EP artifact binds</h2>
     <div class="bindings-list">
       <div class="binding-item">
         <span class="binding-num">01</span>
         <div class="binding-content">
           <h3>Actor identity</h3>
-          <p>Cryptographically verified identity of the entity requesting the action.</p>
+          <p>Pinned cryptographic identifier and verification input for the entity requesting the action; not civil identity.</p>
         </div>
       </div>
       <div class="binding-item">
         <span class="binding-num">02</span>
         <div class="binding-content">
           <h3>Authority chain</h3>
-          <p>Complete delegation path from root authority to the acting principal.</p>
+          <p>Delegation evidence from issuer to acting principal, evaluated under pinned relying-party inputs.</p>
         </div>
       </div>
       <div class="binding-item">
@@ -388,7 +388,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
         <span class="binding-num">04</span>
         <div class="binding-content">
           <h3>Policy version and hash</h3>
-          <p>Immutable reference to the exact policy version that authorized this action.</p>
+          <p>Content-addressed reference to the exact policy version evaluated for this action.</p>
         </div>
       </div>
       <div class="binding-item">
@@ -402,14 +402,14 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
         <span class="binding-num">06</span>
         <div class="binding-content">
           <h3>One-time consumption</h3>
-          <p>Each ceremony token is consumed on use -- no replay, no reuse, no ambiguity.</p>
+          <p>On a configured shared durable path, accepted authority is consumed once and replay is refused.</p>
         </div>
       </div>
       <div class="binding-item">
         <span class="binding-num">07</span>
         <div class="binding-content">
-          <h3>Immutable event traceability</h3>
-          <p>Append-only audit trail linking every authorization to its outcome.</p>
+          <h3>Linked event integrity</h3>
+          <p>Content-addressed events can link authorization and observed outcome evidence; they do not prove a complete population or external effect.</p>
         </div>
       </div>
       <div class="binding-item">
@@ -459,7 +459,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section>
   <div class="container fade-in">
     <div class="eyebrow">FROM PROTOCOL TO PRODUCT</div>
-    <h2 class="section-title">Deployment options at every layer</h2>
+    <h2 class="section-title">Implementation states at every layer</h2>
     <div class="layers-list">
       <div class="layer-item">
         <span class="layer-badge">OPEN</span>
@@ -469,22 +469,22 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
       <div class="layer-item">
         <span class="layer-badge">OPEN</span>
         <span class="layer-name">Open Runtime</span>
-        <span class="layer-desc">Self-hosted reference implementation for on-premise deployment.</span>
+        <span class="layer-desc">Inspectable self-hosted reference implementation; integrated production deployment is separately scoped.</span>
       </div>
       <div class="layer-item">
-        <span class="layer-badge">MANAGED</span>
-        <span class="layer-name">EMILIA Gate Cloud</span>
-        <span class="layer-desc">Managed control plane with observability, analytics, and policy management.</span>
+        <span class="layer-badge">PROTOTYPE</span>
+        <span class="layer-name">Gate operations reference UI</span>
+        <span class="layer-desc">Non-operating interface prototype for synthetic or developer-configured test data.</span>
       </div>
       <div class="layer-item">
-        <span class="layer-badge">PRIVATE</span>
-        <span class="layer-name">EMILIA Gate Enterprise</span>
-        <span class="layer-desc">Private deployment with dedicated infrastructure, SLAs, and compliance controls.</span>
+        <span class="layer-badge">SCOPED</span>
+        <span class="layer-name">Gate Implementation</span>
+        <span class="layer-desc">A separately scoped production implementation after buyer acceptance; no generally available service or SLA is claimed.</span>
       </div>
       <div class="layer-item">
-        <span class="layer-badge">VERTICAL</span>
-        <span class="layer-name">Vertical Packs</span>
-        <span class="layer-desc">Pre-built policy templates for government, financial services, and agent governance.</span>
+        <span class="layer-badge">REFERENCE</span>
+        <span class="layer-name">Solution profiles</span>
+        <span class="layer-desc">Inspectable examples for finance, government, enterprise, and agent workflows, not simultaneous commercial offers or deployments.</span>
       </div>
     </div>
   </div>
@@ -494,12 +494,12 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section>
   <div class="container fade-in">
     <div class="eyebrow">START LIGHTER</div>
-    <h2 class="section-title">Start lighter with Emilia Eye</h2>
-    <p class="section-desc" style="margin-bottom:32px">Emilia Eye is a three-phase behavioral monitoring layer: Observe (log without blocking), Shadow (flag without enforcing), Enforce (full EP ceremony required). Teams deploy Eye first — before any workflow redesign — and promote to enforcement when ready.</p>
+    <h2 class="section-title">Inspect the Emilia Eye reference profile</h2>
+    <p class="section-desc" style="margin-bottom:32px">Emilia Eye models Observe, Shadow, and Enforce states for evaluation. The public surface is an implementation reference, not evidence of a hosted monitoring service, customer deployment, or production enforcement.</p>
     <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:32px;max-width:620px">
       <div style="display:flex;gap:12px;align-items:baseline">
         <span style="color:var(--gold);font-size:14px;flex-shrink:0">+</span>
-        <span style="font-size:15px;color:var(--t2);line-height:1.6">OBSERVE: passive logging, zero friction, full audit trail from day one</span>
+        <span style="font-size:15px;color:var(--t2);line-height:1.6">OBSERVE: evaluate supplied events without blocking; coverage depends on the connected source set</span>
       </div>
       <div style="display:flex;gap:12px;align-items:baseline">
         <span style="color:var(--gold);font-size:14px;flex-shrink:0">+</span>
@@ -507,7 +507,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
       </div>
       <div style="display:flex;gap:12px;align-items:baseline">
         <span style="color:var(--gold);font-size:14px;flex-shrink:0">+</span>
-        <span style="font-size:15px;color:var(--t2);line-height:1.6">ENFORCE: full ceremony required — direct escalation into Handshake and Signoff</span>
+        <span style="font-size:15px;color:var(--t2);line-height:1.6">ENFORCE PROFILE: models escalation into Handshake and Signoff; production activation is separate</span>
       </div>
     </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap">
@@ -523,27 +523,28 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section>
   <div class="container fade-in">
     <div class="eyebrow">START HERE</div>
-    <h2 class="section-title">Best first workflow to protect</h2>
+    <h2 class="section-title">One pilot, several eligible workflow profiles</h2>
+    <p class="section-desc">The public offer is one $25K, 90-day nonproduction Protected-workflow pilot. Finance operations is the initial offered profile. Other consequential workflows use the same intake and do not create separate pilots.</p>
     <div class="buyer-grid">
       <div class="buyer-card">
         <h3>Government</h3>
         <p>Payment destination change. Bind the operator, the beneficiary, and the approval chain before the disbursement system executes.</p>
-        <a href="/use-cases/government" class="card-link">Request government pilot &#8594;</a>
+        <a href="/pilot" class="card-link">Review the canonical pilot &#8594;</a>
       </div>
       <div class="buyer-card">
         <h3>Financial</h3>
         <p>Beneficiary change. Require ceremony-grade authorization before any wire transfer destination is modified.</p>
-        <a href="/use-cases/financial" class="card-link">Request financial pilot &#8594;</a>
+        <a href="/pilot" class="card-link">Review the canonical pilot &#8594;</a>
       </div>
       <div class="buyer-card">
         <h3>Enterprise</h3>
         <p>Privileged production change. Gate infrastructure modifications behind action-bound trust ceremonies.</p>
-        <a href="/use-cases/enterprise" class="card-link">Request enterprise pilot &#8594;</a>
+        <a href="/pilot" class="card-link">Review the canonical pilot &#8594;</a>
       </div>
       <div class="buyer-card">
         <h3>AI / Agent</h3>
         <p>Destructive tool-use action. Require accountable signoff before any agent executes an irreversible operation.</p>
-        <a href="/use-cases/ai-agent" class="card-link">Request agent pilot &#8594;</a>
+        <a href="/pilot" class="card-link">Review the canonical pilot &#8594;</a>
       </div>
     </div>
   </div>
@@ -555,7 +556,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section>
   <div class="container fade-in">
     <div class="eyebrow">WHY NOW</div>
-    <h2 class="section-title">Why banks and agencies buy now</h2>
+    <h2 class="section-title">Why banks and agencies evaluate this boundary</h2>
     <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:32px;max-width:760px">
       <div style="display:flex;gap:16px;align-items:baseline">
         <span style="font-family:var(--mono);font-size:11px;color:var(--gold);flex-shrink:0">01</span>
@@ -567,33 +568,33 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
       </div>
       <div style="display:flex;gap:16px;align-items:baseline">
         <span style="font-family:var(--mono);font-size:11px;color:var(--gold);flex-shrink:0">03</span>
-        <p style="font-size:16px;color:var(--t2);line-height:1.7">EP proves what happened, who owned the decision, and why the action was allowed -- reconstructable evidence for audit, compliance, and legal defensibility.</p>
+        <p style="font-size:16px;color:var(--t2);line-height:1.7">EP binds supplied decision evidence for independent re-performance. It does not by itself prove source truth, population completeness, external effect, or a legal conclusion.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- HOW EP DEPLOYS -->
+<!-- HOW EP COMPOSES -->
 <section>
   <div class="container fade-in">
-    <div class="eyebrow">HOW EMILIA DEPLOYS IN PRACTICE</div>
-    <h2 class="section-title">Four layers, one control surface</h2>
+    <div class="eyebrow">HOW THE REFERENCE COMPONENTS COMPOSE</div>
+    <h2 class="section-title">Four components, one proposed control boundary</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:24px">
       <div class="card">
         <h3 style="color:#22C55E;font-size:13px;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Start with Eye</h3>
-        <p style="font-size:15px;color:var(--t2);line-height:1.6">Observe, shadow, then enforce. Eye runs alongside existing workflows — logging first, flagging without blocking, then enforcing full ceremony when ready.</p>
+        <p style="font-size:15px;color:var(--t2);line-height:1.6">Eye models observe, shadow, and enforce states over supplied or developer-configured events. The public surface is not a live monitor.</p>
       </div>
       <div class="card">
         <h3 style="color:#22C55E;font-size:13px;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Enforce with Handshake</h3>
-        <p style="font-size:15px;color:var(--t2);line-height:1.6">Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption. Seven properties verified before execution proceeds.</p>
+        <p style="font-size:15px;color:var(--t2);line-height:1.6">Reference code evaluates canonical binding, replay resistance, and one-time consumption. Production prevention requires a completely mediated Gate Implementation.</p>
       </div>
       <div class="card">
         <h3 style="color:#22C55E;font-size:13px;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Own with Signoff</h3>
-        <p style="font-size:15px;color:var(--t2);line-height:1.6">Named human ownership when policy requires it. Not MFA. Cryptographically bound, action-specific accountability before execution.</p>
+        <p style="font-size:15px;color:var(--t2);line-height:1.6">Captures a named human decision when the mandate or local policy requires it. It is not universal identity or proof of wisdom.</p>
       </div>
       <div class="card">
         <h3 style="color:#22C55E;font-size:13px;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Seal with Commit</h3>
-        <p style="font-size:15px;color:var(--t2);line-height:1.6">Atomic write to the immutable audit chain. Handshake consumed, signoff consumed, event chain sealed. Execution released. Cannot be undone.</p>
+        <p style="font-size:15px;color:var(--t2);line-height:1.6">Links content-addressed decision and event evidence. Integrity is checkable; completeness, external effect, and immutable storage require separate evidence.</p>
       </div>
     </div>
   </div>
@@ -602,8 +603,8 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <!-- WHAT BUYERS GET -->
 <section>
   <div class="container fade-in">
-    <div class="eyebrow">WHAT BUYERS GET</div>
-    <h2 class="section-title">Evidence, not assertions</h2>
+    <div class="eyebrow">WHAT AN ENGAGEMENT CAN DELIVER</div>
+    <h2 class="section-title">Bounded evidence, explicit limits</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:24px">
       <div style="padding:16px;border:1px solid rgba(34,197,94,0.15);border-radius:8px">
         <h4 style="color:var(--t1);font-size:14px;margin-bottom:4px">Decision record</h4>
@@ -611,7 +612,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
       </div>
       <div style="padding:16px;border:1px solid rgba(34,197,94,0.15);border-radius:8px">
         <h4 style="color:var(--t1);font-size:14px;margin-bottom:4px">Event chain</h4>
-        <p style="color:var(--t3);font-size:13px;line-height:1.5">Every state transition logged, immutable, append-only</p>
+        <p style="color:var(--t3);font-size:13px;line-height:1.5">Linked supplied events with integrity checks; completeness requires an independent population anchor</p>
       </div>
       <div style="padding:16px;border:1px solid rgba(34,197,94,0.15);border-radius:8px">
         <h4 style="color:var(--t1);font-size:14px;margin-bottom:4px">Policy snapshot</h4>
@@ -623,7 +624,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
       </div>
       <div style="padding:16px;border:1px solid rgba(34,197,94,0.15);border-radius:8px">
         <h4 style="color:var(--t1);font-size:14px;margin-bottom:4px">Reconstruction-ready</h4>
-        <p style="color:var(--t3);font-size:13px;line-height:1.5">Export-ready for audit, compliance, and legal defensibility</p>
+        <p style="color:var(--t3);font-size:13px;line-height:1.5">Export material for a buyer, auditor, or counsel to evaluate under their own criteria</p>
       </div>
     </div>
   </div>
@@ -634,11 +635,11 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <!-- CTA STRIP -->
 <div class="cta-strip fade-in">
   <div class="container">
-    <h2>Enforce trust before high-risk action</h2>
+    <h2>Evaluate authority before a high-risk action</h2>
     <div class="hero-ctas">
       <a href="/protocol" class="btn-gold-outline">Read the Protocol</a>
       <a href="/use-cases" class="btn-ghost">Explore Use Cases</a>
-      <a href="/partners" class="btn-gold-solid">Request Pilot</a>
+      <a href="/pilot" class="btn-gold-solid">Review Pilot</a>
     </div>
   </div>
 </div>

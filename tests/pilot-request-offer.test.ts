@@ -85,7 +85,8 @@ describe('pilot request commercial offer routing', () => {
     expect(emails[0].text).toContain('Protected-workflow pilot');
     expect(emails[0].text).toContain('90 days');
     expect(emails[0].text).toContain('$25,000');
-    expect(emails[0].text).toContain('1 protected workflow');
+    expect(emails[0].text).toContain('1 assessed consequence boundary');
+    expect(emails[0].text).toContain('Synthetic, read-only, sandbox, or shadow validation only; any production activation is a separately scoped Gate Implementation');
     expect(emails[0].text).toContain('Finance operations vendor bank-detail change or payment release');
     expect(emails[0].text).toContain('No accepted exact-action authority and required evidence, no provider entry');
   });
@@ -103,7 +104,7 @@ describe('pilot request commercial offer routing', () => {
     expect(emails[0].text).toContain('Protected-workflow pilot');
     expect(emails[0].text).toContain('90 days');
     expect(emails[0].text).toContain('$25,000');
-    expect(emails[0].text).toContain('1 protected workflow');
+    expect(emails[0].text).toContain('1 assessed consequence boundary');
     expect(emails[0].text).not.toContain('provider rail');
 
     vi.mocked(fetch).mockClear();
@@ -169,7 +170,7 @@ describe('pilot request commercial offer routing', () => {
     expect(defaultMessages).toHaveLength(1);
     expect(defaultMessages[0].to).toBe('team@emiliaprotocol.ai');
     expect(defaultMessages[0].text).toContain('90 days');
-    expect(defaultMessages[0].text).toContain('1 protected workflow');
+    expect(defaultMessages[0].text).toContain('1 assessed consequence boundary');
 
     vi.mocked(fetch).mockClear();
     mockGetGuardedClient.mockClear();

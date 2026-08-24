@@ -17,17 +17,18 @@ const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-'
 const rand = () => Math.random().toString(36).slice(2, 6);
 
 interface FieldProps {
+  id: string;
   label: React.ReactNode;
   children: React.ReactNode;
   hint?: React.ReactNode;
 }
 
-function Field({ label, children, hint }: FieldProps) {
+function Field({ id, label, children, hint }: FieldProps) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={styles.label}>{label}</label>
+      <label htmlFor={id} style={styles.label}>{label}</label>
       {children}
-      {hint && <div style={{ fontSize: 12, color: color.t3, marginTop: 4 }}>{hint}</div>}
+      {hint && <div id={`${id}-hint`} style={{ fontSize: 12, color: color.t3, marginTop: 4 }}>{hint}</div>}
     </div>
   );
 }
@@ -117,28 +118,29 @@ export default function SignupPage() {
     <div style={styles.page}>
       <SiteNav activePage="" />
 
-      <section style={{ ...styles.section, maxWidth: 720, paddingTop: 110, paddingBottom: 80 }}>
+      <main style={{ ...styles.section, maxWidth: 720, paddingTop: 110, paddingBottom: 80 }}>
         {!result ? (
           <>
-            <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.gold, marginBottom: 20 }}>
-              Start free
+            <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.goldDark, marginBottom: 20 }}>
+              Experimental public registry sandbox
             </div>
-            <h1 style={{ ...styles.h1, marginBottom: 12 }}>Get a sandbox API key in 30 seconds.</h1>
+            <h1 style={{ ...styles.h1, marginBottom: 12 }}>Create a nonproduction sandbox credential.</h1>
             <p style={{ ...styles.body, maxWidth: 560 }}>
-              Register an entity on the live network and get a real EMILIA API key &mdash; no credit
-              card, no sales call. Free sandbox tier. Use it to issue authorization receipts, run handshakes,
-              and call the gate from your agent.
+              Register a test entity in the experimental public registry and receive a reference API
+              credential. Use it to exercise development paths for authorization receipts, handshakes,
+              and Gate calls. This is a rate-limited sandbox, not a production service, customer
+              deployment, service-level commitment, or global authority network.
             </p>
 
             <form onSubmit={handleSubmit} style={{ ...styles.card, marginTop: 28 }}>
-              <Field label="Name" hint="Your agent, app, or service. Becomes your public entity handle.">
-                <input className="ep-input" style={styles.input} value={form.display_name} onChange={(e) => update('display_name', e.target.value)} placeholder="Acme Invoice Agent" maxLength={200} />
+              <Field id="signup-name" label="Name" hint="Your test agent, app, or service. Becomes an experimental public registry handle.">
+                <input id="signup-name" aria-describedby="signup-name-hint" className="ep-input" style={styles.input} value={form.display_name} onChange={(e) => update('display_name', e.target.value)} placeholder="Acme Invoice Agent" maxLength={200} />
               </Field>
-              <Field label="What is it?" hint="One line — what it does. Required.">
-                <input className="ep-input" style={styles.input} value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Pays vendor invoices from approved POs" />
+              <Field id="signup-description" label="What is it?" hint="One line describing the test entity. Required.">
+                <input id="signup-description" aria-describedby="signup-description-hint" className="ep-input" style={styles.input} value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Tests invoice actions against approved POs" />
               </Field>
-              <Field label="Type">
-                <select className="ep-input" style={styles.input} value={form.entity_type} onChange={(e) => update('entity_type', e.target.value)}>
+              <Field id="signup-type" label="Type">
+                <select id="signup-type" className="ep-input" style={styles.input} value={form.entity_type} onChange={(e) => update('entity_type', e.target.value)}>
                   {TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               </Field>
@@ -152,14 +154,14 @@ export default function SignupPage() {
                 {submitting ? 'Creating your key…' : 'Create my sandbox key →'}
               </button>
               <p style={{ fontSize: 12, color: color.t3, marginTop: 14, textAlign: 'center' }}>
-                Free sandbox · rate-limited · no card. Need scale or SLAs? <Link href="/pricing" style={{ color: color.gold }}>See pricing</Link>.
+                Experimental sandbox · rate-limited · no card · no production SLA. <Link href="/pricing" style={{ color: color.goldDark }}>See the current commercial boundary</Link>.
               </p>
             </form>
           </>
         ) : (
           <>
             <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.green, marginBottom: 20 }}>
-              You&rsquo;re on the network
+              Experimental registration created
             </div>
             <h1 style={{ ...styles.h1, marginBottom: 12 }}>Save your key &mdash; it&rsquo;s shown once.</h1>
             <p style={{ ...styles.body, maxWidth: 560 }}>
@@ -177,11 +179,11 @@ export default function SignupPage() {
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
               <Link href="/docs" className="ep-cta" style={cta.primary}>Read the quickstart →</Link>
               <Link href="/agent-guard" className="ep-cta-secondary" style={cta.secondary}>Guard an agent</Link>
-              <Link href="/explorer" className="ep-cta-ghost" style={cta.ghost}>Find yourself on the network →</Link>
+              <Link href="/explorer" className="ep-cta-ghost" style={cta.ghost}>Inspect the experimental registry →</Link>
             </div>
           </>
         )}
-      </section>
+      </main>
 
       <SiteFooter />
     </div>

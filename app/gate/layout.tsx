@@ -70,7 +70,7 @@ const GATE_JSONLD = {
     },
     {
       '@type': 'WebPage',
-      name: 'EMILIA Assurance Plane',
+      name: 'EMILIA Claim-to-Consequence Assurance',
       url: 'https://www.emiliaprotocol.ai/assurance',
     },
   ],

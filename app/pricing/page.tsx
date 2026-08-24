@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 const C = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }): React.ReactElement => (
-  <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
+  <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 clamp(20px, 6vw, 32px)', ...style }}>{children}</div>
 );
 
 const TIERS: Array<{
@@ -62,7 +62,7 @@ const TIERS: Array<{
     price: PROTECTED_WORKFLOW_PILOT.shortPriceLabel,
     priceNote: `fixed scope · ${PROTECTED_WORKFLOW_PILOT.durationLabel}`,
     priceIsLabel: false,
-    tagline: 'Protect one buyer-selected consequence boundary, beginning with synthetic and read-only validation before any accepted production change.',
+    tagline: 'Evaluate and design one buyer-selected consequence boundary in synthetic, read-only, sandbox, or shadow mode. Production activation is scoped separately.',
     accent: color.blue,
     cta: { label: 'Scope the pilot', href: '/pilot' },
     ctaStyle: 'primary' as const,
@@ -73,8 +73,9 @@ const TIERS: Array<{
       `First profile: ${PROTECTED_WORKFLOW_PILOT.firstProfileLabel}`,
       PROTECTED_WORKFLOW_PILOT.safetyRuleLabel,
       PROTECTED_WORKFLOW_PILOT.eligibilityLabel,
-      'Synthetic replay and governed read-only validation first',
-      'Buyer-approved executor boundary before production',
+      'Synthetic replay and governed read-only validation',
+      'Production decision packet and draft Gate Implementation SOW',
+      'No production actuation or provider credential custody in the pilot',
       'Action Control Manifest and acceptance test plan',
     ],
   },
@@ -117,7 +118,7 @@ const TIERS: Array<{
       'SAML/OIDC identity and SCIM provisioning integration',
       'Durable consumption, open-exposure, reconciliation, dispute, and remedy operations',
       'Evidence retention, export, observability, and SIEM integration',
-      'Negotiated support, service level, and deployment warranty',
+      'Negotiated support and service-level terms, subject to a separately approved contract',
     ],
   },
 ];
@@ -139,11 +140,11 @@ const PACKS = [
   { name: 'Multi-party profile', body: 'Distinct-human, initiator-excluded quorum evidence for actions that require more than one approval.', href: '/quorum' },
 ];
 
-function Check({ on, accent }: { on: boolean | unknown; accent: string }): React.ReactElement {
-  return on ? (
-    <span style={{ color: accent, fontWeight: 700 }}>&#10003;</span>
-  ) : (
-    <span style={{ color: color.border }}>&mdash;</span>
+function Check({ on }: { on: boolean | unknown }): React.ReactElement {
+  return (
+    <span style={{ color: on ? color.t1 : color.t2, fontFamily: font.mono, fontSize: 10, fontWeight: on ? 700 : 500 }}>
+      {on ? 'Included' : 'Not included'}
+    </span>
   );
 }
 
@@ -151,11 +152,12 @@ export default function PricingPage(): React.ReactElement {
   return (
     <div style={{ minHeight: '100vh', background: color.bg, color: color.t1, fontFamily: font.sans }}>
       <SiteNav activePage="Pricing" />
+      <main>
 
       {/* HERO */}
       <section style={{ paddingTop: 120, paddingBottom: 56 }}>
         <C>
-          <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.gold, marginBottom: 24 }}>
+          <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.goldDark, marginBottom: 24 }}>
             Pricing
           </div>
           <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(38px, 5vw, 64px)', letterSpacing: -2.2, lineHeight: 1.0, color: color.t1, margin: '0 0 24px', maxWidth: 780 }}>
@@ -167,7 +169,7 @@ export default function PricingPage(): React.ReactElement {
             can carry accepted evaluation evidence into that decision when needed. It is not identity, certification,
             or authority. Implementation is scoped; Operated Gate is quoted only for a customer-specific deployment.
           </p>
-          <p style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: color.gold, lineHeight: 1.65, margin: '18px 0 0' }}>
+          <p style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: color.goldDark, lineHeight: 1.65, margin: '18px 0 0' }}>
             {GATE_QUALIFICATION.boundaryLine}
           </p>
         </C>
@@ -188,6 +190,23 @@ export default function PricingPage(): React.ReactElement {
                 boxShadow: t.highlight ? '0 8px 30px rgba(176,141,53,0.10)' : 'none',
               }}>
                 <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 18, color: color.t1, marginBottom: 8 }}>{t.name}</div>
+                {!t.available && (
+                  <div style={{
+                    alignSelf: 'flex-start',
+                    marginBottom: 12,
+                    padding: '5px 8px',
+                    border: `1px solid ${color.gold}`,
+                    borderRadius: radius.sm,
+                    color: color.t2,
+                    fontFamily: font.mono,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: 0.7,
+                    textTransform: 'uppercase',
+                  }}>
+                    Not generally available
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
                   <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: t.priceIsLabel ? 19 : 28, letterSpacing: t.priceIsLabel ? 0 : -1, color: t.priceIsLabel ? color.t2 : color.t1 }}>{t.price}</span>
                 </div>
@@ -208,7 +227,7 @@ export default function PricingPage(): React.ReactElement {
                     target="_blank"
                     rel="noopener noreferrer"
                     className={t.ctaStyle === 'primary' ? 'ep-cta' : 'ep-cta-secondary'}
-                    style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), justifyContent: 'center', width: '100%', marginTop: 'auto' }}
+                    style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), boxSizing: 'border-box', justifyContent: 'center', width: '100%', marginTop: 'auto' }}
                   >
                     {t.cta.label}
                   </a>
@@ -216,7 +235,7 @@ export default function PricingPage(): React.ReactElement {
                   <Link
                     href={t.cta.href}
                     className={t.ctaStyle === 'primary' ? 'ep-cta' : 'ep-cta-secondary'}
-                    style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), justifyContent: 'center', width: '100%', marginTop: 'auto' }}
+                    style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), boxSizing: 'border-box', justifyContent: 'center', width: '100%', marginTop: 'auto' }}
                   >
                     {t.cta.label}
                   </Link>
@@ -227,7 +246,7 @@ export default function PricingPage(): React.ReactElement {
           <p style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, letterSpacing: 0.3, marginTop: 20, lineHeight: 1.6 }}>
             No seat tax and no generic API-call bundle. Production pricing follows the number and risk of protected
             workflows, the deployment boundary, evidence retention, integrations, and service level.
-            {' '}<Link href="/pilot/sandbox" style={{ color: color.gold }}>Run the free sandbox first &rarr;</Link>
+            {' '}<Link href="/pilot/sandbox" style={{ color: color.goldDark }}>Run the free sandbox first &rarr;</Link>
           </p>
           <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, maxWidth: 760, marginTop: 18 }}>
             <strong style={{ color: color.t1 }}>{GATE_QUALIFICATION.name} is an open entry path, not a pricing or certification tier.</strong>{' '}
@@ -239,7 +258,7 @@ export default function PricingPage(): React.ReactElement {
             EMILIA can verify customer-supplied loss terms, reserve declared open exposure, and emit
             bounded risk evidence. EMILIA does not insure, bear or allocate loss, adjudicate disputes
             or losses, prove coverage, causation, solvency, or population completeness, or move money.{' '}
-            <Link href="/gate#reliance-risk-plane" style={{ color: color.gold }}>See the shipped boundary &rarr;</Link>
+            <Link href="/gate#reliance-risk-plane" style={{ color: color.goldDark }}>See the shipped boundary &rarr;</Link>
           </p>
         </C>
       </section>
@@ -252,18 +271,19 @@ export default function PricingPage(): React.ReactElement {
               Start here &middot; one protected workflow
             </div>
             <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3.2vw, 42px)', letterSpacing: -1.4, lineHeight: 1.08, color: '#FAFAF9', marginBottom: 18 }}>
-              Protect one real consequence boundary in 90 days.
+              Design one real consequence boundary in 90 days.
             </h2>
             <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.7, marginBottom: 30, maxWidth: 620 }}>
               The first profile is {PROTECTED_WORKFLOW_PILOT.firstProfileLabel.toLowerCase()}:{' '}
               {PROTECTED_WORKFLOW_PILOT.safetyRuleLabel.toLowerCase()}. Missing, stale, exhausted, invalid, or mismatched
               authority does not admit provider entry on a completely mediated covered path. Gate does not prove bank-detail
               correctness, payee identity, fraud absence, or provider success. Other consequential workflows remain eligible.
-              Every pilot starts with synthetic and read-only
-              validation, and no production path changes until the buyer accepts the executor-bound Gate design.
+              The pilot stays synthetic, read-only, sandbox, or shadow only. It
+              ends with a production decision packet and draft SOW; production
+              activation is a separately scoped Gate Implementation.
             </p>
             <div style={{ display: 'flex', gap: 36, flexWrap: 'wrap', marginBottom: 32 }}>
-              {[[PROTECTED_WORKFLOW_PILOT.shortPriceLabel, 'fixed, scoped engagement'], [PROTECTED_WORKFLOW_PILOT.durationLabel, 'synthetic and read-only first'], [PROTECTED_WORKFLOW_PILOT.workflowLabel, 'buyer-selected consequence boundary']].map(([n, l]) => (
+              {[[PROTECTED_WORKFLOW_PILOT.shortPriceLabel, 'fixed, scoped engagement'], [PROTECTED_WORKFLOW_PILOT.durationLabel, 'nonproduction pilot only'], [PROTECTED_WORKFLOW_PILOT.workflowLabel, 'buyer-selected consequence boundary']].map(([n, l]) => (
                 <div key={n}>
                   <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 26, letterSpacing: -1, color: '#FAFAF9' }}>{n}</div>
                   <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 0.4, color: 'rgba(250,250,249,0.55)' }}>{l}</div>
@@ -281,28 +301,38 @@ export default function PricingPage(): React.ReactElement {
       {/* OPEN-CORE LINE */}
       <section style={{ padding: '80px 0', background: 'rgba(245,244,240,0.45)', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
         <C>
-          <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
+          <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.goldDark, marginBottom: 16 }}>
             Open verification, paid operation
           </div>
           <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(24px, 2.8vw, 34px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, maxWidth: 520, marginBottom: 36 }}>
             Protocol proves. Gate prevents.
           </h2>
           <div className="ep-pricing-table" style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, overflowX: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 110px 110px', alignItems: 'center', padding: '14px 24px', borderBottom: `1px solid ${color.borderHover}`, background: 'rgba(245,244,240,0.6)' }}>
-              <span style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: color.t1, fontWeight: 700 }}>Capability</span>
-              {['Open', 'Diagnose', 'Implement', 'Operate'].map((h) => (
-                <span key={h} style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: color.t1, fontWeight: 700, textAlign: 'center' }}>{h}</span>
-              ))}
-            </div>
-            {OPEN_CORE.map((row, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 110px 110px', alignItems: 'center', padding: '16px 24px', borderBottom: i < OPEN_CORE.length - 1 ? `1px solid ${color.border}` : 'none' }}>
-                <span style={{ fontSize: 14, color: color.t2 }}>{row[0]}</span>
-                <span style={{ textAlign: 'center' }}><Check on={row[1]} accent={color.green} /></span>
-                <span style={{ textAlign: 'center' }}><Check on={row[2]} accent={color.blue} /></span>
-                <span style={{ textAlign: 'center' }}><Check on={row[3]} accent={color.gold} /></span>
-                <span style={{ textAlign: 'center' }}><Check on={row[4]} accent={color.gold} /></span>
-              </div>
-            ))}
+            <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse' }}>
+              <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+                Capabilities included in the Open, Diagnose, Implement, and Operate stages
+              </caption>
+              <thead>
+                <tr style={{ background: 'rgba(245,244,240,0.6)' }}>
+                  <th scope="col" style={{ width: '45%', padding: '14px 24px', borderBottom: `1px solid ${color.borderHover}`, fontFamily: font.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: color.t1, fontWeight: 700, textAlign: 'left' }}>Capability</th>
+                  {['Open', 'Diagnose', 'Implement', 'Operate'].map((heading) => (
+                    <th key={heading} scope="col" style={{ width: '13.75%', padding: '14px 8px', borderBottom: `1px solid ${color.borderHover}`, fontFamily: font.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: color.t1, fontWeight: 700, textAlign: 'center' }}>{heading}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {OPEN_CORE.map((row, index) => (
+                  <tr key={String(row[0])}>
+                    <th scope="row" style={{ padding: '16px 24px', borderBottom: index < OPEN_CORE.length - 1 ? `1px solid ${color.border}` : 'none', fontSize: 14, color: color.t2, fontWeight: 400, textAlign: 'left' }}>{row[0]}</th>
+                    {row.slice(1).map((included, cellIndex) => (
+                      <td key={cellIndex} style={{ padding: '16px 8px', borderBottom: index < OPEN_CORE.length - 1 ? `1px solid ${color.border}` : 'none', textAlign: 'center' }}>
+                        <Check on={included} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </C>
       </section>
@@ -312,18 +342,18 @@ export default function PricingPage(): React.ReactElement {
         <C>
             <div className="ep-pricing-assurance-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(280px, 0.9fr)', gap: 48, alignItems: 'start' }}>
             <div>
-              <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
+              <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.goldDark, marginBottom: 16 }}>
                 Assurance services
               </div>
               <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(24px, 2.8vw, 34px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, maxWidth: 620, marginBottom: 16 }}>
-                Assurance is a service layer, not a proprietary verdict.
+                Claim-to-Consequence Assurance is the family. Its Assurance Plane is the service layer.
               </h2>
               <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.7, maxWidth: 640, marginBottom: 28 }}>
                 Verification remains open and reproducible. Paid engagements help teams operate repeatable
                 re-performance, maintain conformance records and continuous evidence, and prepare bounded packages
                 for auditors and underwriters. EMILIA does not issue audit opinions or accredited certifications.
               </p>
-              <Link href="/assurance" className="ep-cta-secondary" style={cta.secondary}>Explore the Assurance Plane &rarr;</Link>
+              <Link href="/assurance" className="ep-cta-secondary" style={cta.secondary}>Explore Claim-to-Consequence Assurance &rarr;</Link>
             </div>
             <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '26px 28px' }}>
               {[
@@ -345,7 +375,7 @@ export default function PricingPage(): React.ReactElement {
       {/* SOLUTION PROFILES */}
       <section style={{ padding: '80px 0', borderBottom: `1px solid ${color.border}` }}>
         <C>
-          <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
+          <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.goldDark, marginBottom: 16 }}>
             Gate solution profiles
           </div>
           <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(24px, 2.8vw, 34px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, maxWidth: 560, marginBottom: 16 }}>
@@ -387,6 +417,7 @@ export default function PricingPage(): React.ReactElement {
         </C>
       </section>
 
+      </main>
       <SiteFooter />
     </div>
   );

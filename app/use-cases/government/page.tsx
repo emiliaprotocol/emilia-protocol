@@ -1,18 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, cta, color, font, radius, grid } from '@/lib/tokens';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
+import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 export default function GovernmentUseCasePage() {
-  const [form, setForm] = useState({ name:'', org:'', title:'', email:'', surface:'', problem:'', notes:'' });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState(null);
-
-  const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
   useEffect(() => {
     const els = document.querySelectorAll('.ep-reveal');
     const obs = new IntersectionObserver(
@@ -23,37 +17,23 @@ export default function GovernmentUseCasePage() {
     return () => obs.disconnect();
   }, []);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setSubmitting(true); setError(null);
-    try {
-      const res = await fetch('/api/inquiries', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'pilot-government', ...form }),
-      });
-      if (!res.ok) throw new Error('Submission failed');
-      setSubmitted(true);
-    } catch (err) { setError(err.message); }
-    setSubmitting(false);
-  }
-
   const PROBLEMS = [
     { title: 'Benefits redirect inside authorized sessions', body: 'Threat actors change payment destinations, mailing/contact routes, or identity evidence within legitimate authenticated workflows. The session looks valid. The action is not.' },
     { title: 'Operator overrides without action-level accountability', body: 'Caseworkers and system operators can modify records, approve exceptions, and redirect funds. Current audit trails capture who logged in, not who authorized the exact action.' },
-    { title: 'Payment destination changes in approved workflows', body: 'Wire destinations, direct deposit targets, and disbursement accounts change inside sessions that pass every existing authentication check.' },
+    { title: 'Payment destination changes in approved workflows', body: 'Wire destinations, direct-deposit targets, and disbursement accounts can change inside otherwise authenticated sessions.' },
   ];
 
   const HOW_EP_HELPS = [
-    { title: 'Receipt binds exact action', body: 'Every high-risk action generates an authorization receipt that binds the actor, policy, action parameters, nonce, and execution-binding fields before execution proceeds.' },
-    { title: 'Signoff ensures named human accountability', body: 'No high-risk action executes without a named principal signing off. The signoff is bound to the exact action context, not a blanket session approval.' },
-    { title: 'Evidence packet for IG and controller review', body: 'Every receipt, signoff, and execution produces a packet showing which actions would have required approval, which policy fired, and how to verify representative receipts offline.' },
-    { title: 'Replay-resistant authorization', body: 'Each authorization is one-time consumable. A captured handshake cannot be replayed to authorize a different payment, amount, or destination.' },
+    { title: 'Receipt binds exact action', body: 'A configured protected action can require a receipt that binds the enrolled credential, policy, action parameters, nonce, and execution-binding fields.' },
+    { title: 'Signoff when policy requires it', body: 'A fresh human decision is one authority source. Gate requires it only when the buyer-pinned profile names it for the exact action.' },
+    { title: 'Evidence packet for authorized review', body: 'A configured path can export scoped receipt, decision, policy, admission, and outcome evidence without deciding what conclusion an Inspector General, controller, or auditor should reach.' },
+    { title: 'Replay-resistant admission', body: 'Within a shared durable state domain, accepted authority is reserved before provider entry and cannot be replayed for a different payment, amount, or destination.' },
   ];
 
   const WORKFLOWS = [
-    { title: 'Vendor payment destination change', body: 'A supplier payment destination changes before the next disbursement run. GovGuard binds the exact new destination, vendor, policy, and named approver before the change can be treated as authorized.' },
-    { title: 'Disbursement or grant release', body: 'A treasury or program payment is ready to leave. GovGuard requires Class-A accountable signoff, and escalates million-dollar releases to dual authorization.' },
-    { title: 'Provider enrollment or eligibility override', body: 'A provider record, payment address, eligibility result, or caseworker override changes inside a valid session. GovGuard binds the exact exception to policy and named ownership.' },
+    { title: 'Vendor payment destination change', body: 'A candidate profile binds the exact new destination, vendor, policy, and required authority evidence before a completely mediated path admits provider entry.' },
+    { title: 'Disbursement or grant release', body: 'A buyer can define the exact release, evidence threshold, and optional quorum under its own policy. EMILIA does not determine whether the payment is correct or lawful.' },
+    { title: 'Provider enrollment or eligibility override', body: 'A candidate profile can bind an exact enrollment, payment-address, eligibility, or caseworker exception to the buyer-pinned policy and evidence requirement.' },
   ];
 
   const cardStyle = (accent) => ({
@@ -67,16 +47,20 @@ export default function GovernmentUseCasePage() {
   return (
     <div style={styles.page}>
       <SiteNav activePage="" />
+      <main>
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
         <div className="ep-tag ep-hero-badge" style={{ color: color.green }}>Use Case / Government</div>
-        <h1 className="ep-hero-text" style={styles.h1}>Pre-payment control for government fraud</h1>
+        <h1 className="ep-hero-text" style={styles.h1}>Government action-control solution profile</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          The hardest fraud to stop is the fraud that happens inside legitimate sessions. Vendor payment destinations, disbursements, benefit routing, provider enrollment, and operator overrides can all pass existing authentication. GovGuard enforces trust before the high-risk action, not after the loss.
+          Vendor payment destinations, disbursements, benefit routing, provider enrollment, and
+          operator overrides are candidate protected workflows. On a completely mediated covered
+          path, Gate evaluates exact authority and required evidence before provider entry. It does
+          not prove fraud absence, source truth, program eligibility, or legal compliance.
         </p>
         <div className="ep-hero-text">
-          <a href="/pilot/sandbox?v=gov" className="ep-cta" style={cta.primary}>Run GovGuard Fire Drill</a>
+          <a href="/pilot?v=gov" className="ep-cta" style={cta.primary}>Scope the protected-workflow pilot</a>
         </div>
       </section>
 
@@ -89,9 +73,9 @@ export default function GovernmentUseCasePage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '$233B-$521B', label: 'GAO annual federal fraud loss estimate, 2018-2022 data (GAO-24-105833)', accent: color.green },
-              { value: 'GG-1', label: 'GovGuard conformance: missing receipt, wrong org, wrong approver, replay, tamper, and execution mismatch refused', accent: color.green },
-              { value: '0',     label: 'Action-level authorization receipts in most government workflows today', accent: color.t3 },
+              { value: 'Exact', label: 'Bind the administrative or payment action, not only the session', accent: color.green },
+              { value: 'Pinned', label: 'Keep authority and evidence requirements buyer-controlled', accent: color.green },
+              { value: 'Closed', label: 'Scope prevention to completely mediated covered paths', accent: color.t3 },
             ].map((s, i) => (
               <div key={i} style={{ padding: '28px 24px', borderRight: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
                 <div style={{ fontFamily: font.sans, fontSize: 28, fontWeight: 700, color: s.accent, marginBottom: 6 }}>{s.value}</div>
@@ -107,7 +91,9 @@ export default function GovernmentUseCasePage() {
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>The problem</h2>
           <p style={styles.body}>
-            Government systems authenticate users. They authorize sessions. They log activity after the fact. What they do not do is enforce trust at the exact moment a high-risk action is about to execute.
+            Government systems authenticate users and log activity. A program may still need an
+            independently checkable exact-action boundary before one selected consequence reaches
+            its system of record. This page is a solution profile, not an adoption claim.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -127,7 +113,9 @@ export default function GovernmentUseCasePage() {
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>How EMILIA helps</h2>
             <p style={styles.body}>
-              EMILIA inserts a control layer between authentication and action execution. It does not replace identity management or session controls. It adds action-level trust enforcement where none exists today.
+              EMILIA can add a separate control layer between authentication and one configured
+              executor. It does not replace identity management, eligibility systems, payment rails,
+              or administrative judgment.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
@@ -145,13 +133,13 @@ export default function GovernmentUseCasePage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 32 }}>
           <h2 style={styles.h2}>What changes with EMILIA</h2>
-          <p style={styles.body}>Before EMILIA, a benefits redirect inside an authenticated session is invisible until post-incident review. After EMILIA:</p>
+          <p style={styles.body}>On a completely mediated protected path, a buyer-pinned profile can add:</p>
         </div>
         {[
-          'Every payment destination change requires a cryptographic handshake binding the exact new destination, amount, and authorizing principal',
-          'Every operator override produces a named signoff record tied to the specific action, not a session log entry',
-          'Every high-risk action is replay-resistant and one-time consumable',
-          'Inspector General and GAO auditors receive action-level evidence chains, not session-level access logs',
+          'An evidence requirement binding the exact new destination, amount, and configured authority inputs',
+          'An action-bound human decision record when the buyer-pinned policy requires one',
+          'Shared durable reservation and replay refusal for accepted exact-action authority',
+          'Scoped evidence exports that can support authorized oversight and control-testing procedures',
         ].map((item, i) => (
           <div key={i} className={`ep-list-item ep-reveal ep-stagger-${i + 1}`}>
             <span className="ep-list-bullet">+</span>
@@ -165,7 +153,7 @@ export default function GovernmentUseCasePage() {
         <div style={styles.section}>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>Best first workflow</h2>
-            <p style={styles.body}>Pick one high-risk action surface and start with an observe-mode fire drill. These are the three most common starting points in government environments.</p>
+            <p style={styles.body}>Pick one action surface for a synthetic, read-only, sandbox, or shadow assessment. These are candidate profiles, not claims about common agency deployments.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {WORKFLOWS.map((w, i) => (
@@ -183,59 +171,25 @@ export default function GovernmentUseCasePage() {
       <section style={{ borderTop: `4px solid ${color.gold}`, background: '#1C1917', padding: '80px 0', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.04) 0%, transparent 70%)' }} />
         <div style={{ ...styles.section, position: 'relative', zIndex: 1 }}>
-          <div style={{ fontFamily: font.mono, fontSize: 10, color: color.green, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 }}>Government Fraud Prevention</div>
+          <div style={{ fontFamily: font.mono, fontSize: 10, color: color.green, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 }}>Government solution profile</div>
           <h2 style={{ fontFamily: font.sans, fontSize: 32, fontWeight: 700, color: '#FAFAF9', marginBottom: 16, lineHeight: 1.2, maxWidth: 560 }}>
             Trust before high-risk action in government workflows
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', maxWidth: 520, lineHeight: 1.7, marginBottom: 32 }}>
-            EMILIA is selectively working with government agencies, system integrators, and public-sector technology teams to pilot action-level trust enforcement.
+            The one public offer is {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} for {PROTECTED_WORKFLOW_PILOT.durationLabel} to assess one
+            buyer-selected consequence boundary. Finance operations remains the initial offered
+            profile; government workflows are an eligible solution profile for fit review. It uses no production provider credentials or
+            actuation. Production requires a separate Gate Implementation after the buyer accepts
+            the boundary.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="/pilot/sandbox?v=gov" className="ep-cta" style={cta.primary}>Run GovGuard Fire Drill</a>
+            <a href="/pilot?v=gov" className="ep-cta" style={cta.primary}>Scope the protected-workflow pilot</a>
             <a href="/docs" className="ep-cta-secondary" style={{ ...cta.secondary, borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(250,250,249,0.7)' }}>See Government Architecture →</a>
           </div>
         </div>
       </section>
 
-      {/* Pilot form */}
-      <section id="pilot" style={styles.section}>
-        <div className="ep-reveal" style={{ marginBottom: 32 }}>
-          <h2 style={styles.h2}>Request a pilot</h2>
-        </div>
-        {submitted ? (
-          <div style={{ border: `1px solid ${color.border}`, borderTop: `2px solid ${color.green}`, borderRadius: radius.base, padding: 40, textAlign: 'center' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: color.green, marginBottom: 8 }}>Thank you</div>
-            <p style={{ color: color.t2, fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
-          </div>
-        ) : (
-          <div style={styles.card}>
-            <div style={grid.cols2}>
-              {[['name','Name'],['org','Agency / Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
-                <div key={k}>
-                  <label style={styles.label}>{label}</label>
-                  <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
-                </div>
-              ))}
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Trust surface of interest</label>
-                <input className="ep-input" style={styles.input} placeholder="e.g. benefits disbursement, payment routing, operator approvals" value={form.surface} onChange={e => update('surface', e.target.value)} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Problem description</label>
-                <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Notes</label>
-                <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
-              </div>
-            </div>
-            {error && <p style={{ color: '#DC2626', fontSize: 13, marginTop: 12 }}>{error}</p>}
-            <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...(!form.name || !form.email ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
-              {submitting ? 'Submitting...' : 'Request Pilot'}
-            </button>
-          </div>
-        )}
-      </section>
+      </main>
 
       <SiteFooter />
     </div>

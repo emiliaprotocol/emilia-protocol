@@ -73,7 +73,7 @@ const STAGES = [
   {
     n: '5',
     title: 'Receipt',
-    body: 'The completed authorization receipt proves who authorized what, under which policy, for which exact parameters.',
+    body: 'The completed authorization receipt binds the supplied signer, authority, policy, and exact parameters for independent verification under pinned trust inputs.',
   },
   {
     n: '6',
@@ -83,11 +83,11 @@ const STAGES = [
 ];
 
 const PILOT_TERMS = [
-  [PROTECTED_WORKFLOW_PILOT.workflowLabel, 'Pick one disbursement or change flow to protect.'],
+  [PROTECTED_WORKFLOW_PILOT.workflowLabel, 'Pick one disbursement or change flow to assess.'],
   ['Synthetic + read-only first', 'Validate the evidence path before a buyer approves production enforcement.'],
   [PROTECTED_WORKFLOW_PILOT.durationLabel, 'One fixed, time-boxed engagement.'],
   [PROTECTED_WORKFLOW_PILOT.shortPriceLabel, 'One fixed public pilot price.'],
-  ['Audit packet', 'Receipts, decisions, and evidence your auditors can verify offline.'],
+  ['Bounded evidence packet', 'Receipts, decisions, and verification material for a buyer or auditor to re-perform offline.'],
 ];
 
 // The wound: vendor bank-account-change fraud. Two columns — what happens
@@ -102,12 +102,12 @@ const WOUND_COMPARE = [
   {
     label: 'Without GovGuard',
     accent: 'red',
-    body: 'The payment releases to the fraudulent account. The money is gone and irreversible. The audit log shows a valid session, but no one can prove who approved the bank-account change before it moved.',
+    body: 'In the modeled unprotected path, the payment releases after a valid-session bank change without action-bound approval evidence.',
   },
   {
     label: 'With GovGuard',
     accent: 'gold',
-    body: 'The bank-account change is flagged at the action boundary and held pending a named human\'s device signoff. Once that person approves, an authorization receipt is issued and the payment releases with provable approval. If no one approves, no money moves.',
+    body: 'In a completely mediated implementation, the bank-account change can be held pending the named approver\'s device-bound decision. A matching receipt is required before that covered provider path admits the action.',
   },
 ];
 
@@ -134,14 +134,14 @@ export default function GovGuardPage() {
         <section style={{ ...styles.sectionWide, paddingTop: 80, paddingBottom: 56 }}>
           <div style={styles.eyebrow}>EMILIA Gate solution profile &middot; Government</div>
           <h1 style={{ ...styles.h1Large, maxWidth: 880 }}>
-            Pre-payment control for government fraud.
+            Reference control profile for government payment integrity.
           </h1>
           <p style={{ ...styles.body, maxWidth: 780, marginTop: 18, fontSize: 18 }}>
-            GovGuard catches the fraud path authentication misses: vendor payment
-            destinations, disbursements, benefit routing, provider enrollment, and
-            eligibility overrides changing inside valid sessions. High-risk actions
-            get named human approval and a verifiable authorization receipt before
-            money or regulated state moves.
+            GovGuard models action paths authentication alone does not settle: vendor
+            payment destinations, disbursements, benefit routing, provider enrollment,
+            and eligibility overrides changing inside valid sessions. In a completely
+            mediated production implementation, a covered high-risk action can require
+            named approval and a verifiable authorization receipt before provider entry.
           </p>
           <p style={{ ...styles.body, maxWidth: 740, marginTop: 8 }}>
             For treasurers, controllers, program-integrity teams, and Inspectors General:
@@ -151,8 +151,8 @@ export default function GovGuardPage() {
           <p style={{ ...styles.body, maxWidth: 740, marginTop: 8, fontSize: 15, color: color.t2 }}>
             The <a href="https://www.gao.gov/products/gao-24-105833" style={{ color: color.t1, textDecoration: 'underline' }}>Government Accountability Office estimated in 2024</a> that federal
             fraud losses are hundreds of billions of dollars annually. GovGuard does
-            not claim to detect every fraud pattern; it closes the action-level proof
-            gap before high-risk changes execute.
+            not claim to detect every fraud pattern. The profile is designed to address
+            one action-level authority gap on explicitly covered paths.
           </p>
           <p style={{ ...styles.body, maxWidth: 740, marginTop: 8, fontSize: 15, color: color.t2 }}>
             GovGuard binds each action to one accountable approver. Where statute or policy
@@ -160,16 +160,16 @@ export default function GovGuardPage() {
             with <a href="/quorum" style={{ color: color.t1, textDecoration: 'underline' }}>EMILIA Quorum</a>.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
-            <a href="/pilot/sandbox?v=gov" style={cta.primary}>Run the GovGuard fire drill</a>
-            <a href="/health/program-integrity" style={cta.secondary}>Run the healthcare integrity scenario</a>
-            <a href="/pilot?v=gov" style={cta.secondary}>Scope the 90-day protected-workflow pilot</a>
+            <a href="/pilot?v=gov" style={cta.primary}>Review the 90-day protected-workflow pilot</a>
+            <a href="/pilot/sandbox?v=gov" style={cta.secondary}>Inspect the synthetic fire drill</a>
           </div>
           <p style={{ fontSize: 13, color: color.t3, marginTop: 16, maxWidth: 740, lineHeight: 1.6 }}>
-            Start in observe mode. Nothing gets blocked at first. You see what would
-            have needed signoff and get a procurement-grade evidence packet.
+            The current nonproduction pilot starts with synthetic and read-only evaluation. It can
+            produce a bounded evidence packet for buyer review, not a procurement,
+            audit, or production-effect conclusion.
           </p>
           <div style={{ marginTop: 18, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: font.mono, fontWeight: 700, fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: '#fff', background: color.green, padding: '6px 12px', borderRadius: 6 }}>GG-1 Enforced</span>
+            <span style={{ fontFamily: font.mono, fontWeight: 700, fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: '#fff', background: color.green, padding: '6px 12px', borderRadius: 6 }}>GG-1 reference suite</span>
             <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/GOVGUARD-CONFORMANCE.md" style={{ color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>Conformance spec</a>
             <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/tests/govguard-gg1-conformance.test.js" style={{ color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>CI test</a>
           </div>
@@ -311,14 +311,14 @@ export default function GovGuardPage() {
         </section>
 
         <section style={styles.section}>
-          <div style={styles.eyebrow}>DEPLOYMENT &amp; ASSURANCE</div>
-          <h2 style={styles.h2}>It runs where your security review needs it to run.</h2>
+          <div style={styles.eyebrow}>TARGET DEPLOYMENT &amp; ASSURANCE</div>
+          <h2 style={styles.h2}>Customer-controlled deployment paths are separately scoped.</h2>
           <p style={{ ...styles.body, maxWidth: 700 }}>
-            On-prem and air-gapped deployment is available - a self-contained offline
-            installer that runs with no route off the host. SSO (SAML 2.0 / OIDC) and
-            SCIM 2.0 provisioning connect the named humans who can sign off to your
-            directory. And the evidence is verifiable offline, without EMILIA: a receipt
-            checks out with pure crypto, on a machine that has never touched our network.
+            Reference components support offline verification and inform target on-premises,
+            disconnected, SAML/OIDC, and SCIM integration designs. No generally available
+            government deployment, installer, directory integration, or SLA is claimed.
+            Each production topology, credential path, identity source, and support boundary
+            requires a separate Gate Implementation and buyer acceptance.
           </p>
         </section>
 
@@ -329,8 +329,9 @@ export default function GovGuardPage() {
               Pick one workflow: vendor payment destination, disbursement release,
               grant disbursement, provider enrollment, benefit routing, or eligibility
               override. The single 90-day protected-workflow pilot starts with synthetic
-              and read-only validation, then uses a buyer-approved Gate boundary for
-              production enforcement. Fixed pilot fee: $25K.
+              and read-only validation. It ends with a production decision packet and
+              draft implementation SOW, not production enforcement. Any activation is a
+              separately scoped Gate Implementation. Fixed pilot fee: $25K.
             </p>
             <a href="/pilot/sandbox?v=gov" style={cta.primary}>
               Run the GovGuard fire drill

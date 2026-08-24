@@ -111,16 +111,16 @@ export default function SettingsPage(): React.ReactElement {
   return (
     <div style={s.page}>
       <div style={s.container}>
-        <div style={s.eyebrow}>Cloud / Settings</div>
-        <h1 style={s.h1}>Configuration</h1>
-        <p style={s.subtitle}>Manage your EMILIA Gate Cloud deployment settings and preferences.</p>
+        <div style={s.eyebrow}>Prototype / Settings</div>
+        <h1 style={s.h1}>Settings interaction sample</h1>
+        <p style={s.subtitle}>Explore a non-persistent configuration UI. Values do not configure a hosted service or production deployment.</p>
 
         {error && <div style={s.error}>{error}</div>}
-        {saved && <div style={s.success}>Settings saved successfully.</div>}
+        {saved && <div style={s.success}>Prototype state updated in this browser session.</div>}
 
         <div style={s.card}>
           <div style={s.cardTitle}>Organization</div>
-          <div style={s.cardDesc}>Basic organization and deployment configuration.</div>
+          <div style={s.cardDesc}>Synthetic organization and topology fields for interface review.</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={s.fieldGroup}>
               <label style={s.label}>Organization Name</label>
@@ -149,10 +149,10 @@ export default function SettingsPage(): React.ReactElement {
 
         <div style={s.card}>
           <div style={s.cardTitle}>Notifications</div>
-          <div style={s.cardDesc}>Configure alert delivery channels and webhook integrations.</div>
+          <div style={s.cardDesc}>Illustrative delivery-channel controls. This prototype sends no notifications.</div>
           <div style={s.fieldGroup}>
             <label style={s.label}>Webhook URL</label>
-            <input style={s.input} placeholder="https://hooks.example.com/ep-alerts" value={config.webhookUrl} onChange={e => update('webhookUrl', e.target.value)} />
+            <input style={s.input} placeholder="https://hooks.example.invalid/ep-alerts" value={config.webhookUrl} onChange={e => update('webhookUrl', e.target.value)} />
           </div>
           <div style={s.row}>
             <div>
@@ -178,8 +178,8 @@ export default function SettingsPage(): React.ReactElement {
         </div>
 
         <div style={s.card}>
-          <div style={s.cardTitle}>Security &amp; Compliance</div>
-          <div style={s.cardDesc}>Enforcement and audit settings for your deployment.</div>
+          <div style={s.cardTitle}>Authority &amp; evidence</div>
+          <div style={s.cardDesc}>Designed controls for a future buyer-accepted deployment. Toggling them here proves neither enforcement nor compliance.</div>
           <div style={s.row}>
             <div>
               <div style={s.rowLabel}>Require signoffs on all handshakes</div>
@@ -190,14 +190,14 @@ export default function SettingsPage(): React.ReactElement {
           <div style={s.row}>
             <div>
               <div style={s.rowLabel}>Audit logging</div>
-              <div style={s.rowDesc}>Write all operations to tamper-evident audit ledger</div>
+              <div style={s.rowDesc}>Model writing scoped operations to an integrity-checkable evidence ledger</div>
             </div>
             <Toggle value={config.auditLogging} onToggle={() => update('auditLogging', !config.auditLogging)} />
           </div>
           <div style={{ ...s.row, borderBottom: 'none' }}>
             <div>
-              <div style={s.rowLabel}>Require MFA for cloud access</div>
-              <div style={s.rowDesc}>Enforce multi-factor authentication for all cloud dashboard users</div>
+              <div style={s.rowLabel}>Require MFA for operator access</div>
+              <div style={s.rowDesc}>Model multi-factor authentication for operator identities</div>
             </div>
             <Toggle value={config.mfaRequired} onToggle={() => update('mfaRequired', !config.mfaRequired)} />
           </div>
@@ -205,7 +205,7 @@ export default function SettingsPage(): React.ReactElement {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button style={s.btnDanger}>Reset to Defaults</button>
-          <button style={s.btn} onClick={handleSave}>Save Changes</button>
+          <button style={s.btn} onClick={handleSave}>Apply prototype state</button>
         </div>
       </div>
     </div>

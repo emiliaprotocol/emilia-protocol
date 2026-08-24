@@ -5,7 +5,7 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, color, font } from '@/lib/tokens';
 import { ENTITY } from '@/lib/site-config';
 
-const EFFECTIVE = '2026-05-05';
+const EFFECTIVE = '2026-08-23';
 
 export default function AcceptableUsePage() {
   return (
@@ -54,7 +54,7 @@ export default function AcceptableUsePage() {
 
         <h2 style={styles.h2}>3. Brand and trademark</h2>
         <p style={styles.body}>
-          The EMILIA Protocol name, logos, and brand assets are owned by {ENTITY.legalName}. You may use them to refer to the protocol in good faith — for example, "powered by EMILIA Protocol", "EP-compliant", "EMILIA Protocol verifier" — provided you do not imply endorsement, partnership, or certification we have not given. Don't reuse our marks for products that compete with the hosted service or that misrepresent your relationship with us.
+          The EMILIA Protocol name, logos, and brand assets are owned by {ENTITY.legalName}. You may use them to refer to the protocol in good faith — for example, "powered by EMILIA Protocol" or "EMILIA Protocol verifier" — provided you do not imply endorsement, partnership, certification, conformance, or a commercial relationship we have not established. Do not reuse our marks in a way that creates customer confusion or misrepresents your relationship with us.
         </p>
 
         <h2 style={styles.h2}>4. Reporting violations</h2>
@@ -64,7 +64,7 @@ export default function AcceptableUsePage() {
 
         <h2 style={styles.h2}>5. Enforcement</h2>
         <p style={styles.body}>
-          We may investigate, suspend, or terminate access in response to suspected violations. Where we identify content or activity that violates this policy on the hosted service, we may remove the content and notify the affected customer. We cooperate with lawful requests from competent authorities consistent with the Privacy Policy.
+          We may investigate, suspend, or terminate access to interfaces we operate in response to suspected violations. Any enforcement terms for a future contracted service must also be stated in its agreement. We respond to lawful requests from competent authorities consistent with the Privacy Policy and applicable law.
         </p>
 
         <h2 style={styles.h2}>6. Changes</h2>

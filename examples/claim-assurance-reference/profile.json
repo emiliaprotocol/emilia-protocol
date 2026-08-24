@@ -1,0 +1,19 @@
+{
+  "@type": "EP-CLAIM-ASSURANCE-PROFILE-v1",
+  "profile_id": "emilia.reference.synthetic-vendor-destination.v1",
+  "claim_type": "finance.vendor-payment-destination",
+  "predicate": "proposed-destination-is-approved",
+  "requirements": [
+    {
+      "requirement_id": "two-synthetic-destination-observations",
+      "evidence_role": "DESTINATION_OBSERVATION",
+      "verifier": {
+        "verifier_id": "emilia.reference.synthetic-destination",
+        "verifier_version": "1.0.0",
+        "implementation_digest": "sha256:791e600e7fbd458b3848e6ff373ed4ab500f287ba1c6d031de14988d21bc1372"
+      },
+      "minimum_distinct_sources": 2,
+      "max_age_seconds": 3600
+    }
+  ]
+}

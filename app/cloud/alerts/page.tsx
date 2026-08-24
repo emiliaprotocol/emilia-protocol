@@ -44,7 +44,7 @@ const s = {
 const MOCK_ALERTS = [
   { id: 'alrt_01', title: 'Demo screening match detected', severity: 'critical', status: 'active', tenant: 'demo-finance-beta', handshake: 'hs_1d6e4b9a', policy: 'screening-demo', message: 'Synthetic entity match found during demo vendor onboarding handshake.', triggered: '2026-03-22T09:55:11Z' },
   { id: 'alrt_02', title: 'Demo consent record missing', severity: 'high', status: 'active', tenant: 'demo-health-gamma', handshake: 'hs_3c1b9e7d', policy: 'privacy-consent-v2', message: 'Synthetic consent record missing before processing. Demo policy violation flagged.', triggered: '2026-03-22T11:48:02Z' },
-  { id: 'alrt_03', title: 'Audit ledger latency elevated', severity: 'medium', status: 'active', tenant: null, handshake: null, policy: null, message: 'Audit ledger write latency exceeding 200ms threshold for 15 minutes.', triggered: '2026-03-22T13:20:00Z' },
+  { id: 'alrt_03', title: 'Demo ledger latency elevated', severity: 'medium', status: 'active', tenant: null, handshake: null, policy: null, message: 'Synthetic ledger write latency crossed the sample threshold for 15 minutes.', triggered: '2026-03-22T13:20:00Z' },
   { id: 'alrt_04', title: 'Signoff challenge expired', severity: 'low', status: 'acknowledged', tenant: 'demo-finance-beta', handshake: 'hs_1d6e4b9a', policy: 'screening-demo', message: 'Synthetic signoff challenge sig_e2f9a6 expired without attestation.', triggered: '2026-03-19T10:00:00Z' },
   { id: 'alrt_05', title: 'Data residency constraint violated', severity: 'high', status: 'resolved', tenant: 'demo-finance-beta', handshake: 'hs_2e8d1f4a', policy: 'data-residency', message: 'Synthetic handshake data routed through the wrong demo region.', triggered: '2026-03-21T15:12:09Z' },
 ];
@@ -91,9 +91,9 @@ export default function AlertsPage(): React.ReactElement {
   return (
     <div style={s.page}>
       <div style={s.container}>
-        <div style={s.eyebrow}>Cloud / Alerts</div>
-        <h1 style={s.h1}>Alert Center</h1>
-        <p style={s.subtitle}>Monitor policy violations, system alerts, and escalations.</p>
+        <div style={s.eyebrow}>Prototype / Synthetic alerts</div>
+        <h1 style={s.h1}>Alert interaction sample</h1>
+        <p style={s.subtitle}>Explore synthetic policy, system, and escalation records. Buttons change only local prototype state.</p>
 
         {error && <div style={s.error}>{error}</div>}
 

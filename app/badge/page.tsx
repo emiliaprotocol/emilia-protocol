@@ -40,7 +40,10 @@ export default function BadgePage(): React.ReactElement {
         <div className="ep-tag ep-hero-badge" style={{ color: color.gold }}>Badge</div>
         <h1 className="ep-hero-text" style={styles.h1}>Works with EMILIA</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          Wired EMILIA into your agent, app, or platform? Add the badge so your users can see that irreversible actions require a named human&rsquo;s signoff — and that every approval mints a receipt they can verify offline.
+          Wired EMILIA into your agent, app, or platform? Add the badge to signal that configured
+          protected paths require admissible customer authority and policy evidence before provider
+          entry, and leave portable evidence. When the customer mandate or local policy calls for a
+          fresh human decision, EMILIA can bind the named signoff to the exact action.
         </p>
       </section>
 
@@ -62,8 +65,9 @@ export default function BadgePage(): React.ReactElement {
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
         <h2 className="ep-reveal" style={styles.h2}>What the badge means — and what it doesn&rsquo;t</h2>
         <ul className="ep-reveal" style={styles.list}>
-          <li>It means your project integrates EMILIA to gate real, consequential actions behind a human signoff. Use it when that is actually true.</li>
-          <li>It is <strong>not</strong> a certification, audit, or endorsement by us. It is a way for builders to signal they put a named human in the loop.</li>
+          <li>It means your project integrates EMILIA at a configured protected action path, requiring admissible finite customer authority and policy evidence before provider entry. Use it only where that is actually true.</li>
+          <li>A finite mandate can authorize unattended work. Named-human signoff is required only when the customer mandate or local policy says it is.</li>
+          <li>It is <strong>not</strong> a certification, audit, endorsement, or claim that every action path is covered.</li>
           <li>Please link the badge to <code style={{ fontFamily: font.mono, fontSize: 13, color: color.blue }}>https://www.emiliaprotocol.ai</code>, and don&rsquo;t alter the mark&rsquo;s colors or wording.</li>
         </ul>
       </section>

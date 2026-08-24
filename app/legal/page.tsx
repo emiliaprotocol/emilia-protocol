@@ -15,7 +15,7 @@ const DOCS = [
   },
   {
     title: 'Terms of Service',
-    desc: 'Use of the Apache-2.0 reference runtime, the hosted EMILIA Gate Cloud service, the SDKs, and the documentation site.',
+    desc: 'Use of the website, public prototypes, documentation, and inquiry surfaces. Open-source artifacts remain governed by their own licences.',
     href: '/legal/terms',
     accent: color.gold,
   },
@@ -27,7 +27,7 @@ const DOCS = [
   },
   {
     title: 'Sub-processors',
-    desc: 'Third-party vendors that handle data on behalf of EMILIA Protocol customers. Updated when any data-flow change is made.',
+    desc: 'Third-party vendors used for the current website and inquiry flows, with the scope and status of each data flow stated explicitly.',
     href: '/legal/sub-processors',
     accent: color.t1,
   },
@@ -52,7 +52,7 @@ export default function LegalIndexPage() {
         <div className="ep-tag ep-hero-badge">Legal</div>
         <h1 className="ep-hero-text" style={styles.h1}>Legal documents</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          The substantive commitments in these documents are accurate today; we update the pages when our practices change. For procurement, DPA negotiation, customer-specific clauses, or jurisdiction-specific addenda contact <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.blue }}>{ENTITY.legalEmail}</a>.
+          These documents describe the current website, public prototypes, and inquiry flows. EMILIA does not represent that a generally available hosted Gate or assurance service is operating today. Any future paid implementation or hosted service requires a separately signed agreement. For procurement or contract questions, contact <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.blue }}>{ENTITY.legalEmail}</a>.
         </p>
       </section>
 

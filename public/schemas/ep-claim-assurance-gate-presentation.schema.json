@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.emiliaprotocol.ai/schemas/ep-claim-assurance-gate-presentation.schema.json",
+  "title": "EP-CLAIM-ASSURANCE-GATE-PRESENTATION-v1",
+  "description": "The strict inline presentation Gate re-performs with deployment-pinned profile bytes and verifier implementations. A precomputed Assurance Record is intentionally insufficient.",
+  "type": "object",
+  "required": ["@type", "claim_case"],
+  "additionalProperties": false,
+  "properties": {
+    "@type": { "const": "EP-CLAIM-ASSURANCE-GATE-PRESENTATION-v1" },
+    "claim_case": {
+      "$ref": "https://www.emiliaprotocol.ai/schemas/ep-claim-case.schema.json"
+    }
+  }
+}

@@ -49,6 +49,7 @@ const COL_PROTOCOL: FooterLink[] = [
 const COL_COMPANY: FooterLink[] = [
   ['/about', 'About'],
   ['/partners', 'Partners'],
+  ['/trust', 'Trust Center'],
   ['/security', 'Security'],
   ['/auditors', 'For Auditors'],
   [`mailto:${ENTITY.email}`, 'Contact'],
@@ -97,7 +98,7 @@ export default function SiteFooter({}: SiteFooterProps) {
               independently reproducible proof. Assurance re-performs the record.
             </div>
           </div>
-          <a href="/gate" className="ep-footer-link" style={{ fontFamily: font.mono, fontSize: 12, color: color.gold }}>
+          <a href="/gate" className="ep-footer-link" style={{ fontFamily: font.mono, fontSize: 12, color: color.goldDark }}>
             Explore EMILIA Gate &rarr;
           </a>
         </div>

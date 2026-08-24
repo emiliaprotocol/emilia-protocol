@@ -3,9 +3,8 @@
  *
  * @license Apache-2.0
  *
- * The durable product: a live URL a seller shares with their enterprise
- * buyer. Every claim is signed and timestamped; buyer-side independent
- * verification ships day 21.
+ * Historical evaluation record. The route remains available for inspecting
+ * the prototype's output shape; it is not a current service or offer.
  *
  * Rendering philosophy: calm, enterprise, attestation-shaped. No hero,
  * no CTA — this is a trust document, not a marketing page.
@@ -21,21 +20,37 @@ const ACCENT = color.blue;
 
 type PageParams = { params: Promise<{ slug: string }> };
 
+async function loadArchivedPage(slug: string) {
+  try {
+    return { page: await getPublishedPage(slug), unavailable: false };
+  } catch {
+    return { page: null, unavailable: true };
+  }
+}
+
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
   const { slug } = await params;
-  const page = await getPublishedPage(slug);
-  if (!page) return { title: 'Not found' };
+  const { page, unavailable } = await loadArchivedPage(slug);
+  if (unavailable) {
+    return {
+      title: 'Historical AI Trust Page Evaluation Unavailable',
+      description: 'An archived evaluation record is unavailable. No current verification service is offered.',
+      robots: { index: false, follow: false, nocache: true },
+    };
+  }
+  if (!page) return { title: 'Not found', robots: { index: false, follow: false, nocache: true } };
   const c = page.customer;
   return {
-    title: `${c.company} · AI Trust Page`,
-    description: `Published AI security, data handling, and incident response attestations for ${c.company}.`,
-    robots: { index: false, follow: false }, // only buyer with the URL
+    title: `${c.company} · Historical AI Trust Page Evaluation`,
+    description: `Archived evaluation record containing stored AI security, data handling, and incident response statements for ${c.company}.`,
+    robots: { index: false, follow: false, nocache: true },
   };
 }
 
 export default async function TrustPage({ params }: PageParams) {
   const { slug } = await params;
-  const page = await getPublishedPage(slug);
+  const { page, unavailable } = await loadArchivedPage(slug);
+  if (unavailable) return <ArchivedRecordUnavailable />;
   if (!page) notFound();
 
   const customer = page.customer;
@@ -45,12 +60,21 @@ export default async function TrustPage({ params }: PageParams) {
   const expiresAt = customer?.engagement?.expires_at ? new Date(customer.engagement.expires_at) : null;
 
   const statusStyle =
-    status === 'stale' ? { border: color.red, bg: '#FEF2F2', label: '● Stale — needs refresh' } :
-    status === 'expiring' ? { border: '#F59E0B', bg: '#FFFBEB', label: '● Expiring soon' } :
-    { border: color.border, bg: color.card, label: '● Current' };
+    status === 'stale' ? { border: color.red, bg: '#FEF2F2', label: 'Stored status: stale' } :
+    status === 'expiring' ? { border: '#F59E0B', bg: '#FFFBEB', label: 'Stored status: expiring' } :
+    { border: color.border, bg: color.card, label: 'Stored status: current at capture' };
 
   return (
     <div style={{ ...styles.page, background: color.card }}>
+      <aside style={{ borderBottom: `1px solid ${color.border}`, background: '#FFFBEB' }}>
+        <div style={{ maxWidth: 880, margin: '0 auto', padding: '14px 24px', fontSize: 13, color: color.t2, lineHeight: 1.55 }}>
+          <strong style={{ color: color.t1 }}>Historical evaluation artifact.</strong>{' '}
+          AI Trust Desk is not a current commercial service. This stored record is preserved to
+          inspect the prototype&rsquo;s output shape; it is not a current verification, endorsement,
+          audit, customer-status claim, or service commitment.
+        </div>
+      </aside>
+
       {/* Status bar */}
       <div style={{ borderBottom: `1px solid ${statusStyle.border}`, background: statusStyle.bg }}>
         <div style={{
@@ -64,8 +88,8 @@ export default async function TrustPage({ params }: PageParams) {
               background: color.card, border: `1px solid ${statusStyle.border}`,
               padding: '3px 10px', borderRadius: 999, fontWeight: 600,
             }}>{statusStyle.label}</span>
-            {deliveredAt && <span>Last verified {deliveredAt.toLocaleDateString('en-US', { dateStyle: 'medium' })}</span>}
-            {expiresAt && <span>· Expires {expiresAt.toLocaleDateString('en-US', { dateStyle: 'medium' })}</span>}
+            {deliveredAt && <span>Stored delivery date {deliveredAt.toLocaleDateString('en-US', { dateStyle: 'medium' })}</span>}
+            {expiresAt && <span>· Stored expiry date {expiresAt.toLocaleDateString('en-US', { dateStyle: 'medium' })}</span>}
           </div>
           <a href="#verify" style={{ color: color.t3, textDecoration: 'underline' }}>How to verify</a>
         </div>
@@ -77,7 +101,7 @@ export default async function TrustPage({ params }: PageParams) {
           <div style={{
             fontFamily: font.mono, fontSize: 11, color: ACCENT,
             letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600,
-          }}>AI Trust Page</div>
+          }}>Historical AI Trust Page Evaluation</div>
           <h1 style={{
             fontFamily: font.sans, fontSize: 40, fontWeight: 700,
             letterSpacing: '-0.01em', color: color.t1, margin: '8px 0 0',
@@ -88,7 +112,7 @@ export default async function TrustPage({ params }: PageParams) {
             </p>
           )}
           <div style={{ fontSize: 14, color: color.t2, marginTop: 20, lineHeight: 1.6, maxWidth: 680 }}>
-            This page contains published attestations about{' '}
+            This archived evaluation record contains stored statements about{' '}
             <strong style={{ color: color.t1 }}>{customer.company}</strong>&apos;s AI product
             security, data handling, and incident response posture.
             {customer.engagement?.buyer_name && (
@@ -102,11 +126,11 @@ export default async function TrustPage({ params }: PageParams) {
       <section>
         <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 24px' }}>
           <h2 style={{ fontFamily: font.sans, fontSize: 24, fontWeight: 700, letterSpacing: '-0.01em', margin: 0 }}>
-            Published attestations
+            Stored evaluation statements
           </h2>
           <p style={{ fontSize: 14, color: color.t3, marginTop: 8 }}>
-            Each claim is signed by AI Trust Desk and timestamped. Hashes are computed over
-            the canonical text of the attestation.
+            Each stored claim includes a timestamp, digest, and prototype signature field. The
+            digest is computed over the canonical text of the statement.
           </p>
           <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
             {customer.claims.map((claim) => (
@@ -124,22 +148,17 @@ export default async function TrustPage({ params }: PageParams) {
           </h2>
           <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.7, marginTop: 16 }}>
             <p>
-              Every claim on this page includes a SHA-256 hash over its canonical text and an
-              HMAC signature by AI Trust Desk. The signature covers the claim hash and the
-              timestamp together, so a backdated claim produces a signature that no longer verifies.
+              The stored SHA-256 value can be recomputed over canonical claim text to detect a
+              mismatch. The prototype also stored an HMAC over the claim hash and timestamp.
             </p>
             <p style={{ marginTop: 12 }}>
-              To verify a claim today, email{' '}
-              <a href="mailto:verify@aitrustdesk.com" style={{ color: ACCENT, textDecoration: 'underline' }}>
-                verify@aitrustdesk.com
-              </a>{' '}
-              with the <code style={codeStyle}>claim_id</code> (starts with <code style={codeStyle}>clm_</code>).
-              We will reply with the canonical claim text and signing metadata within 1 business day.
+              HMAC verification depends on an operator-held secret, so this archived page does not
+              provide independent public proof of origin. Neither a matching digest nor HMAC proves
+              the underlying statement true, constitutes an audit, or records buyer acceptance.
             </p>
             <p style={{ marginTop: 12 }}>
-              An automated verification endpoint at{' '}
-              <code style={codeStyle}>/api/verify/[claim_id]</code> is rolling out. When live,
-              this paragraph will link directly.
+              No current verification response time, endpoint availability, reviewer coverage, or
+              refresh service is promised for this historical evaluation record.
             </p>
           </div>
         </div>
@@ -152,7 +171,7 @@ export default async function TrustPage({ params }: PageParams) {
           gap: 12, fontSize: 12, color: color.t3,
         }}>
           <div>
-            Published by <a href="/trust-desk" style={{ color: color.t2, textDecoration: 'underline' }}>AI Trust Desk</a>
+            Archived by <a href="/trust-desk" style={{ color: color.t2, textDecoration: 'underline' }}>AI Trust Desk evaluation</a>
             {' · '}
             powered by <Link href="/" style={{ color: color.t2, textDecoration: 'underline' }}>Emilia Protocol</Link>
           </div>
@@ -163,10 +182,28 @@ export default async function TrustPage({ params }: PageParams) {
   );
 }
 
-const codeStyle = {
-  background: color.cardHover, padding: '2px 6px', borderRadius: 3,
-  fontFamily: font.mono, fontSize: 12, color: color.t1,
-};
+function ArchivedRecordUnavailable(): React.ReactElement {
+  return (
+    <div style={{ ...styles.page, background: color.card }}>
+      <main style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px' }}>
+        <div style={{ fontFamily: font.mono, fontSize: 11, color: ACCENT, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600 }}>
+          Historical evaluation artifact
+        </div>
+        <h1 style={{ fontFamily: font.sans, fontSize: 36, fontWeight: 700, letterSpacing: '-0.01em', color: color.t1, margin: '12px 0 0' }}>
+          This archived record is unavailable.
+        </h1>
+        <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.7, marginTop: 18 }}>
+          The evaluation record cannot be rendered from its stored material. AI Trust Desk is not
+          a current commercial or verification service, and no response time, refresh, or delivery
+          commitment applies to this historical route.
+        </p>
+        <Link href="/trust-desk" style={{ display: 'inline-block', color: color.blue, marginTop: 18 }}>
+          Read the Trust Desk archive notice
+        </Link>
+      </main>
+    </div>
+  );
+}
 
 interface Claim {
   claim_id: string;

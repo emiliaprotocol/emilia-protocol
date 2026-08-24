@@ -356,7 +356,7 @@ export default function GatePage() {
                 ['/product/accountable-signoff', 'Approver Apps', 'Lock the human decision to the exact CAID, show material revisions, and track the consequence without blind replay.'],
                 ['/action-escrow', 'Action Escrow', 'Keep document execution, exact release approval, custodian state, and one-time consequence control as separate verifiable rows.'],
                 ['/protocol', 'EMILIA Protocol', 'Define the portable evidence and open verification rules beneath Gate.'],
-                ['/assurance', 'Assurance Plane', 'Re-perform exact-action evidence, conformance results, and stated formal-model scope; record drift and prepare the technical handoff.'],
+                ['/assurance', 'Claim-to-Consequence Assurance', 'Connect claims to portable records and Gate; use the Assurance Plane service layer to re-perform evidence, record drift, and prepare bounded review packages.'],
               ].map(([href, title, body]) => (
                 <a key={title} href={href} className="ep-gate-stack-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 0.7fr) minmax(280px, 1.3fr) auto', gap: 24, alignItems: 'center', padding: '20px 0', borderBottom: `1px solid ${color.border}`, textDecoration: 'none' }}>
                   <strong style={{ ...styles.h3, fontSize: 16 }}>{title}</strong>

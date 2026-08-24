@@ -19,7 +19,12 @@ export default function EnterprisePage() {
     try {
       const res = await fetch('/api/inquiries', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'pilot-enterprise', ...form }),
+        body: JSON.stringify({
+          type: 'partner',
+          partnerType: 'Gate Implementation inquiry',
+          trustSurface: form.surface,
+          ...form,
+        }),
       });
       if (!res.ok) throw new Error('Submission failed');
       setSubmitted(true);
@@ -27,50 +32,53 @@ export default function EnterprisePage() {
     setSubmitting(false);
   }
 
-  // Honest enterprise feature list. SAML 2.0 SP + OIDC RP live at
+  // Artifact inventory, not a claim that an integrated enterprise service is
+  // generally available. SAML 2.0 SP + OIDC RP live at
   // app/api/sso/* (lib/sso/, docs/SSO.md); SCIM 2.0 at app/api/scim/v2/*
   // (lib/scim/, docs/SCIM.md); air-gap installer at deploy/airgap/ with a CI
   // audit job. K8s / VMware / OpenShift packaging remains genuinely roadmap:
   // no Helm charts, no operators, no OVF templates in repo.
   const FEATURES = [
-    { title: 'VPC / private deployment', body: 'EP runs entirely within your infrastructure boundary. No trust data, policy configurations, or signoff records leave your network. Reference AWS CloudFormation template ships in infrastructure/aws/.' },
-    { title: 'SSO — SAML 2.0 + OIDC', body: 'Approvers and admins authenticate through your IdP (Okta, Entra ID, Ping, Google). SAML Service Provider and OIDC Relying Party are built in; signature validation uses vetted libraries, never custom crypto. A successful login mints a signed EP session; the IdP client secret is sealed at rest (AES-256-GCM). Your live IdP tenant is connected during onboarding.' },
-    { title: 'SCIM 2.0 provisioning', body: 'Provision — and deprovision — the named humans who can sign off, directly from your directory (RFC 7643/7644: Users, Groups, deactivation, filtering). A provisioned human becomes eligible to enroll a signing passkey; offboarding in your IdP revokes their signing credentials in the same sync.' },
-    { title: 'Air-gapped deployment', body: 'A self-contained offline installer: build the bundle on a connected machine, transfer one tarball, install with no network. The running stack has no route off the host — enforced by the network driver, not configuration discipline. The full run on your isolated hardware is validated during onboarding.' },
-    { title: 'Data residency', body: 'All trust data, event records, and policy configurations reside in your chosen jurisdiction. Meet data sovereignty requirements without architectural compromise.' },
-    { title: 'Evidence retention & legal hold', body: 'Receipts are durable, offline-verifiable evidence by construction. Formal retention policies and legal-hold workflows are scoped per engagement (roadmap); today: full event search and audit-report export.' },
-    { title: 'Regulator artifact exports', body: 'Generate structured evidence packages for regulatory examination, mapped to control families used in SOX and sector-specific frameworks (full FISMA / PCI-DSS mapping is roadmap).' },
-    { title: 'Investigation tooling', body: 'Query and reconstruct action sequences across time, principals, and trust surfaces via the events API and audit reports. A dedicated forensic investigation mode is engagement-scoped (roadmap).' },
-    { title: 'Delegated administration', body: 'Hierarchical administration with scoped permissions. Delegate policy management, signoff configuration, and evidence access to business units without granting global control.' },
+    { title: 'VPC / private deployment', body: 'A reference AWS CloudFormation template ships in infrastructure/aws/. Customer isolation, no-egress posture, key ownership, and lifecycle controls must be established and accepted in a separate Gate Implementation; no customer deployment is implied.' },
+    { title: 'SSO — SAML 2.0 + OIDC', body: 'Reference SAML Service Provider and OIDC Relying Party paths are implemented with library-backed signature validation. A live customer IdP tenant, identity mapping, key custody, and operating procedure are deployment-specific and not part of the nonproduction pilot.' },
+    { title: 'SCIM 2.0 provisioning', body: 'Reference RFC 7643/7644-shaped Users, Groups, deactivation, and filtering paths are implemented. Production directory integration, offboarding latency, credential revocation, and operating evidence require deployment testing.' },
+    { title: 'Air-gapped deployment', body: 'A self-contained offline bundle and static no-egress checks exist. A full run on the buyer\'s isolated hardware, network controls, update path, and operational acceptance remain separate implementation work.' },
+    { title: 'Data residency', body: 'Customer-controlled regional placement is a deployment target, not a generally available hosted-service claim. Jurisdiction, subprocessors, backups, support access, and key ownership must be contracted and verified per implementation.' },
+    { title: 'Evidence retention & legal hold', body: 'Receipts can be verified offline. Formal retention policies, legal hold, population completeness, and customer export are separately scoped; a signed receipt alone does not establish an immutable or complete audit trail.' },
+    { title: 'Regulator artifact exports', body: 'Implemented report artifacts can support an examination procedure. Framework mappings, evidence sufficiency, and any compliance conclusion remain with the customer and its independent assessor.' },
+    { title: 'Investigation tooling', body: 'Reference event and report surfaces support bounded reconstruction from supplied records. A production forensic workflow, completeness anchor, and retention operation remain engagement-scoped.' },
+    { title: 'Delegated administration', body: 'Scoped administration is an implementation target. Role mapping, separation of duties, break-glass handling, and revocation must be validated under the customer\'s policy before production use.' },
   ];
 
   const ROADMAP = [
-    { title: 'On-prem Kubernetes / VMware / OpenShift packaging', body: 'Container images, AWS CFN templates, and the air-gap compose bundle ship today. Helm charts, OpenShift operators, and VMware OVF templates are roadmap — pilots needing them get them as part of the engagement.' },
-    { title: 'PIV / CAC / Login.gov integration', body: 'Government identity rails beyond SAML/OIDC — smart-card (PIV/CAC) authentication and Login.gov (private_key_jwt) — are pilot-track for federal engagements.' },
+    { title: 'On-prem Kubernetes / VMware / OpenShift packaging', body: 'Container images, AWS CFN templates, and the air-gap compose bundle exist. Helm charts, OpenShift operators, and VMware OVF templates are roadmap and carry no delivery commitment; they may be evaluated in a separate Gate Implementation scope.' },
+    { title: 'PIV / CAC / Login.gov integration', body: 'Government identity rails beyond SAML/OIDC, including smart-card authentication and Login.gov private_key_jwt, are roadmap and are not included in the public pilot.' },
   ];
 
   return (
     <div style={styles.page}>
       <SiteNav activePage="" />
+      <main>
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 60 }}>
         <div style={styles.eyebrowBlue}>Product / Enterprise</div>
-        <h1 style={styles.h1}>EMILIA Gate Enterprise</h1>
+        <h1 style={styles.h1}>Enterprise Gate implementation pathways</h1>
         <p style={{ ...styles.body, maxWidth: 640 }}>
-          Hardened deployment for regulated environments that require private infrastructure, data residency, and compliance-grade evidence.
+          Reference components exist for private and disconnected environments. An integrated customer deployment is not generally available and is not included in the public nonproduction pilot.
         </p>
-        <a href="#pilot" className="ep-cta" style={cta.primary}>Request Enterprise Pilot</a>
+        <a href="#implementation" className="ep-cta" style={cta.primary}>Discuss Gate Implementation</a>
       </section>
 
       {/* Features */}
       <section style={styles.sectionAlt}>
         <div style={styles.section}>
-          <h2 style={styles.h2}>Enterprise capabilities</h2>
+          <h2 style={styles.h2}>Implemented artifacts and deployment work</h2>
           <p style={styles.body}>
-            Gate Enterprise deploys the enforcement and control plane within your infrastructure.
-            It includes the managed Gate capabilities plus private trust roots, deployment controls,
-            and evidence operations for regulated environments.
+            These are reference components and scoped implementation targets, not proof of a live
+            managed service, customer deployment, certification, or operating effectiveness. A
+            buyer first completes the nonproduction protected-workflow pilot. Production activation,
+            if accepted, requires a separately contracted Gate Implementation.
           </p>
           <div style={grid.auto(280)}>
             {FEATURES.map((f, i) => (
@@ -89,8 +97,8 @@ export default function EnterprisePage() {
         <div style={styles.eyebrowBlue}>Roadmap (pilot-track)</div>
         <h2 style={styles.h2}>Asked-for, not yet shipped.</h2>
         <p style={styles.body}>
-          Items below come up in nearly every enterprise pilot conversation.
-          They are scoped per engagement rather than shipped off-the-shelf.
+          These requested integrations are scoped per implementation rather than shipped
+          or promised as part of the public pilot.
         </p>
         <div style={grid.auto(280)}>
           {ROADMAP.map((f, i) => (
@@ -104,14 +112,14 @@ export default function EnterprisePage() {
 
       {/* Deployment models */}
       <section style={styles.section}>
-        <h2 style={styles.h2}>Deployment models</h2>
-        <p style={styles.body}>Gate Enterprise supports multiple deployment topologies based on your security requirements and infrastructure constraints.</p>
+        <h2 style={styles.h2}>Deployment targets</h2>
+        <p style={styles.body}>These topologies describe separate Gate Implementation paths. They are not generally available managed-service offerings.</p>
         <div style={grid.stack}>
           {[
-            { title: 'Customer VPC (AWS today)', body: 'EP control plane deployed in your cloud account. You control the network boundary, encryption keys, and data lifecycle. We provide the container images, the AWS CloudFormation template (infrastructure/aws/template.yaml), configuration, and operational runbooks.' },
-            { title: 'Private cloud / on-prem (pilot-track)', body: 'On-premises deployment for environments that require physical infrastructure control. Container images run anywhere Linux runs; Helm charts, OpenShift operators, and VMware OVF templates are scoped per pilot rather than shipped as off-the-shelf artifacts.' },
-            { title: 'Air-gapped', body: 'A self-contained offline installer (deploy/airgap/): build the bundle on a connected machine, transfer one tarball, and install with no network — the running stack has no route off the host, enforced by the network driver. The bundle is built and statically validated in CI (self-containment audit plus a proof that receipts verify with zero network); the full no-egress container run and the deployment on your certified-isolated hardware are performed together during onboarding.' },
-            { title: 'Hybrid', body: 'Policy management and event exploration in Gate Cloud, with approval orchestration and evidence storage in your infrastructure. This reduces operational burden while keeping sensitive records within your boundary.' },
+            { title: 'Customer VPC (AWS reference)', body: 'Container and CloudFormation artifacts provide a starting point. Network isolation, keys, data lifecycle, configuration, runbooks, and operational acceptance are buyer-specific implementation work.' },
+            { title: 'Private cloud / on-prem (target)', body: 'Container-based private deployment is a design path. Helm charts, OpenShift operators, and VMware OVF templates are not shipped off-the-shelf.' },
+            { title: 'Air-gapped (reference bundle)', body: 'The repository includes an offline bundle and static self-containment checks. The buyer must separately validate the full no-egress runtime, transfer, update, recovery, and hardware-specific controls.' },
+            { title: 'Hybrid (designed)', body: 'A split control/data-plane topology is designed but no generally available Gate Cloud service is operating. Data flow, support access, custody, and failure semantics require a separate implementation and security review.' },
           ].map((d, i) => (
             <div key={i} className="ep-card-hover" style={styles.card}>
               <div style={styles.cardTitle}>{d.title}</div>
@@ -121,10 +129,11 @@ export default function EnterprisePage() {
         </div>
       </section>
 
-      {/* Pilot form */}
-      <section id="pilot" style={styles.sectionAlt}>
+      {/* Gate Implementation inquiry. This is not a second public pilot. */}
+      <section id="implementation" style={styles.sectionAlt}>
         <div style={styles.section}>
-          <h2 style={styles.h2}>Request Enterprise Pilot</h2>
+          <h2 style={styles.h2}>Discuss a separate Gate Implementation</h2>
+          <p style={styles.body}>The fixed $25K, 90-day protected-workflow pilot is nonproduction. This inquiry is for buyers who want to scope the distinct production implementation stage after accepting a boundary design.</p>
           {submitted ? (
             <div style={{ ...styles.card, textAlign: 'center', padding: 40 }}>
               <div style={{ fontSize: 20, fontWeight: 700, color: color.green, marginBottom: 8 }}>Thank you</div>
@@ -135,32 +144,33 @@ export default function EnterprisePage() {
               <div style={grid.cols2}>
                 {[['name','Name'],['org','Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
                   <div key={k}>
-                    <label style={styles.label}>{label}</label>
-                    <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
+                    <label htmlFor={`implementation-${k}`} style={styles.label}>{label}</label>
+                    <input id={`implementation-${k}`} type={k === 'email' ? 'email' : 'text'} className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
                   </div>
                 ))}
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.label}>Trust surface of interest</label>
-                  <input className="ep-input" style={styles.input} placeholder="e.g. payment controls, privilege escalation, agent governance" value={form.surface} onChange={e => update('surface', e.target.value)} />
+                  <label htmlFor="implementation-surface" style={styles.label}>Trust surface of interest</label>
+                  <input id="implementation-surface" className="ep-input" style={styles.input} placeholder="e.g. payment controls, privilege escalation, agent governance" value={form.surface} onChange={e => update('surface', e.target.value)} />
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.label}>Problem description</label>
-                  <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
+                  <label htmlFor="implementation-problem" style={styles.label}>Problem description</label>
+                  <textarea id="implementation-problem" className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.label}>Notes</label>
-                  <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
+                  <label htmlFor="implementation-notes" style={styles.label}>Notes</label>
+                  <input id="implementation-notes" className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
                 </div>
               </div>
               {error && <p style={{ color: color.red, fontSize: 13, marginTop: 12 }}>{error}</p>}
               <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...(!form.name || !form.email ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
-                {submitting ? 'Submitting...' : 'Request Enterprise Pilot'}
+                {submitting ? 'Submitting...' : 'Discuss Gate Implementation'}
               </button>
             </div>
           )}
         </div>
       </section>
 
+      </main>
       <SiteFooter />
     </div>
   );

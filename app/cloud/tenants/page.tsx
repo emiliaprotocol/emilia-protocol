@@ -40,7 +40,7 @@ interface Tenant {
   id: string;
   name: string;
   slug: string;
-  plan: string;
+  profile: string;
   status: string;
   region: string;
   handshakes: number;
@@ -50,18 +50,18 @@ interface Tenant {
 }
 
 const MOCK_TENANTS = [
-  { id: 'ten_demo_alpha', name: 'Demo Agency Alpha', slug: 'demo-agency-alpha', plan: 'enterprise', status: 'active', region: 'us-east-1', handshakes: 6234, policies: 12, members: 24, created: '2025-08-15T00:00:00Z' },
-  { id: 'ten_demo_beta', name: 'Demo Finance Beta', slug: 'demo-finance-beta', plan: 'enterprise', status: 'active', region: 'eu-west-1', handshakes: 4102, policies: 8, members: 18, created: '2025-10-01T00:00:00Z' },
-  { id: 'ten_demo_gamma', name: 'Demo Health Gamma', slug: 'demo-health-gamma', plan: 'business', status: 'active', region: 'eu-central-1', handshakes: 2891, policies: 6, members: 11, created: '2025-11-20T00:00:00Z' },
-  { id: 'ten_demo_delta', name: 'Demo Benefits Delta', slug: 'demo-benefits-delta', plan: 'business', status: 'suspended', region: 'us-west-2', handshakes: 890, policies: 4, members: 7, created: '2026-01-10T00:00:00Z' },
-  { id: 'ten_demo_echo', name: 'Demo Infrastructure Echo', slug: 'demo-infra-echo', plan: 'enterprise', status: 'active', region: 'us-east-1', handshakes: 1456, policies: 9, members: 32, created: '2026-02-05T00:00:00Z' },
+  { id: 'ten_demo_alpha', name: 'Demo Agency Alpha', slug: 'demo-agency-alpha', profile: 'government', status: 'active', region: 'sample-us-1', handshakes: 6234, policies: 12, members: 24, created: '2025-08-15T00:00:00Z' },
+  { id: 'ten_demo_beta', name: 'Demo Finance Beta', slug: 'demo-finance-beta', profile: 'finance', status: 'active', region: 'sample-eu-1', handshakes: 4102, policies: 8, members: 18, created: '2025-10-01T00:00:00Z' },
+  { id: 'ten_demo_gamma', name: 'Demo Health Gamma', slug: 'demo-health-gamma', profile: 'health', status: 'active', region: 'sample-eu-2', handshakes: 2891, policies: 6, members: 11, created: '2025-11-20T00:00:00Z' },
+  { id: 'ten_demo_delta', name: 'Demo Benefits Delta', slug: 'demo-benefits-delta', profile: 'government', status: 'suspended', region: 'sample-us-2', handshakes: 890, policies: 4, members: 7, created: '2026-01-10T00:00:00Z' },
+  { id: 'ten_demo_echo', name: 'Demo Infrastructure Echo', slug: 'demo-infra-echo', profile: 'infrastructure', status: 'active', region: 'sample-us-1', handshakes: 1456, policies: 9, members: 32, created: '2026-02-05T00:00:00Z' },
 ];
 
 const statusColor = { active: '#22C55E', suspended: '#f87171', pending: '#22C55E' };
-const planBadge = (plan) => {
-  const map = { enterprise: ['rgba(34,197,94,0.1)', '#22C55E'], business: ['rgba(59,130,246,0.1)', '#3B82F6'] };
-  const [bg, fg] = map[plan] || ['rgba(122,128,154,0.1)', '#7a809a'];
-  return <span style={s.badge(bg, fg)}>{plan}</span>;
+const profileBadge = (profile) => {
+  const map = { finance: ['rgba(34,197,94,0.1)', '#22C55E'], government: ['rgba(59,130,246,0.1)', '#3B82F6'] };
+  const [bg, fg] = map[profile] || ['rgba(122,128,154,0.1)', '#7a809a'];
+  return <span style={s.badge(bg, fg)}>{profile}</span>;
 };
 
 export default function TenantsPage(): React.ReactElement {
@@ -95,20 +95,20 @@ export default function TenantsPage(): React.ReactElement {
   return (
     <div style={s.page}>
       <div style={s.container}>
-        <div style={s.eyebrow}>Cloud / Tenants</div>
-        <h1 style={s.h1}>Tenant Management</h1>
-        <p style={s.subtitle}>View and manage organizations using your EMILIA Gate Cloud deployment.</p>
+        <div style={s.eyebrow}>Prototype / Isolation samples</div>
+        <h1 style={s.h1}>Synthetic tenant-isolation view</h1>
+        <p style={s.subtitle}>Inspect fictional scopes and sample counts. These are not customers, plans, regions, or deployed organizations.</p>
 
         {error && <div style={s.error}>{error}</div>}
 
         <div style={s.topBar}>
           <input
             style={s.searchInput}
-            placeholder="Search tenants..."
+            placeholder="Search synthetic scopes..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <button style={s.btn}>+ Add Tenant</button>
+          <button style={s.btn}>+ Add sample scope</button>
         </div>
 
         <div style={s.grid}>
@@ -121,11 +121,11 @@ export default function TenantsPage(): React.ReactElement {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={s.dot(statusColor[t.status])} />
-                  {planBadge(t.plan)}
+                  {profileBadge(t.profile)}
                 </div>
               </div>
               <div style={s.row}>
-                <span style={s.rowLabel}>Region</span>
+                <span style={s.rowLabel}>Sample region</span>
                 <span style={{ ...s.mono, color: '#7a809a' }}>{t.region}</span>
               </div>
               <div style={s.row}>
@@ -147,7 +147,7 @@ export default function TenantsPage(): React.ReactElement {
             </div>
           ))}
           {filtered.length === 0 && (
-            <div style={{ ...s.card, textAlign: 'center', color: '#4a4f6a', padding: 40, gridColumn: '1 / -1' }}>No tenants match your search.</div>
+            <div style={{ ...s.card, textAlign: 'center', color: '#4a4f6a', padding: 40, gridColumn: '1 / -1' }}>No sample scopes match your search.</div>
           )}
         </div>
       </div>

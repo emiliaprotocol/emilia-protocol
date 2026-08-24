@@ -1,31 +1,30 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Government Pack — GovGuard Fraud-Control Bundle',
+  title: 'Government Authority Reference Profile | EMILIA',
   description:
-    'Packaged GovGuard controls for vendor payment destinations, disbursement ' +
-    'releases, benefit routing, provider enrollment, eligibility overrides, ' +
-    'and caseworker accountability.',
+    'Implemented GovGuard reference adapters and evidence boundaries for consequential '
+    + 'public-sector actions, without deployment or compliance claims.',
   alternates: { canonical: '/product/government-pack' },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: 'EMILIA Government Pack',
+    title: 'EMILIA Government Authority Reference Profile',
     description:
-      'GovGuard fire drills, GG-1 conformance, and IG-ready evidence for ' +
-      'public-sector fraud-control workflows.',
+      'See what GovGuard implements, what remains designed, and what a real '
+      + 'government Gate boundary would still require.',
     url: 'https://www.emiliaprotocol.ai/product/government-pack',
-    type: 'article',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'EMILIA Government Authority Reference Profile',
+    description: 'Reference adapters and explicit boundaries for consequential government actions.',
   },
   keywords: [
-    'government AI authorization',
-    'benefit integrity pack',
-    'government fraud-control fire drill',
-    'vendor payment destination control',
-    'provider enrollment control',
-    'eligibility override audit',
-    'SNAP authorization',
-    'Medicaid AI controls',
-    'NIST AI RMF',
-    'IG audit evidence',
+    'government AI action authorization',
+    'public sector agent authority control',
+    'government payment destination control',
+    'GovGuard reference profile',
   ],
 };
 

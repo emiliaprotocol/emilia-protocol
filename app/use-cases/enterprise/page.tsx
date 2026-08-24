@@ -1,18 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, cta, color, font, radius, grid } from '@/lib/tokens';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
+import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 export default function EnterpriseUseCasePage() {
-  const [form, setForm] = useState({ name:'', org:'', title:'', email:'', surface:'', problem:'', notes:'' });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState(null);
-
-  const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
   useEffect(() => {
     const els = document.querySelectorAll('.ep-reveal');
     const obs = new IntersectionObserver(
@@ -23,31 +17,17 @@ export default function EnterpriseUseCasePage() {
     return () => obs.disconnect();
   }, []);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setSubmitting(true); setError(null);
-    try {
-      const res = await fetch('/api/inquiries', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'pilot-enterprise', ...form }),
-      });
-      if (!res.ok) throw new Error('Submission failed');
-      setSubmitted(true);
-    } catch (err) { setError(err.message); }
-    setSubmitting(false);
-  }
-
   const PROBLEMS = [
-    { title: 'Privileged access escalation inside approved sessions', body: 'Administrators and operators escalate privileges within authenticated sessions. The session is valid. The escalation is uncontrolled. No action-level enforcement exists to bind the exact privileged action to the exact authority chain.' },
-    { title: 'Configuration changes without action-level accountability', body: 'Infrastructure configuration changes, security policy modifications, and access control updates happen inside legitimate admin sessions. Post-incident logs show who was logged in, not who authorized the specific change.' },
-    { title: 'Deployment approvals without parameter binding', body: 'Production deployments proceed through approval workflows that authorize the deployment action but do not bind the exact deployment parameters: which artifact, which environment, which configuration, which principal approved.' },
+    { title: 'Privileged changes inside authenticated sessions', body: 'A valid session can still leave a gap between broad role authority and the exact privilege escalation, data export, or configuration change being attempted.' },
+    { title: 'Action evidence split across systems', body: 'Identity, ticket, policy, approval, deployment, and outcome records may live in separate systems without an independently checkable exact-action join.' },
+    { title: 'Approvals without complete parameter binding', body: 'Some deployment workflows approve a change category without binding the exact artifact, environment, configuration, and authority evidence evaluated at provider entry.' },
   ];
 
   const HOW_EP_HELPS = [
-    { title: 'Authority chain verification', body: 'Every privileged action requires verification of the complete authority chain: which principal requested, under what role, with what delegated authority, approved by whom. The chain is cryptographically bound to the exact action.' },
-    { title: 'Exact action binding', body: 'A deployment approval binds the exact artifact hash, target environment, configuration parameters, and authorizing principal. An approval for staging cannot be replayed against production.' },
+    { title: 'Authority chain verification', body: 'For a configured protected action, Gate can require relying-party-pinned principal, role, delegation, and approval evidence bound to the exact material parameters.' },
+    { title: 'Exact action binding', body: 'A buyer-pinned profile can bind an approval to the exact artifact hash, target environment, configuration parameters, and authority evidence. A staging action does not match a production action.' },
     { title: 'Accountable signoff for protected actions', body: 'Where the pinned profile requires it, Gate refuses the configured privileged action without a named signoff bound to the exact parameters. The resulting record is tamper-evident under its signed and content-addressed inputs.' },
-    { title: 'Replay-resistant authorization', body: 'Each privileged action authorization is one-time consumable. Captured approvals cannot be replayed for different parameters, different environments, or different time windows.' },
+    { title: 'Replay-resistant admission', body: 'Within a shared durable consumption domain, accepted authority is reserved before provider entry and cannot be reused for a different action or blind retry.' },
   ];
 
   const RISK_SCENARIOS = [
@@ -68,16 +48,19 @@ export default function EnterpriseUseCasePage() {
   return (
     <div style={styles.page}>
       <SiteNav activePage="" />
+      <main>
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
         <div className="ep-tag ep-hero-badge" style={{ color: color.gold }}>Use Case / Enterprise</div>
         <h1 className="ep-hero-text" style={styles.h1}>Action-level control for high-risk enterprise operations</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          Privileged access escalation, configuration changes, and deployment approvals happen inside authenticated sessions every day. The control gap is not identity. It is the absence of a trust-control layer that binds the exact high-risk action to the exact authority chain before execution.
+          Privileged access escalation, configuration changes, and deployment approvals can occur
+          inside authenticated sessions. This solution profile tests whether a buyer-owned exact-action
+          boundary closes a material gap before one selected privileged executor.
         </p>
         <div className="ep-hero-text">
-          <a href="#pilot" className="ep-cta" style={cta.primary}>Request Pilot</a>
+          <a href="/pilot" className="ep-cta" style={cta.primary}>Scope the protected-workflow pilot</a>
         </div>
       </section>
 
@@ -90,9 +73,9 @@ export default function EnterpriseUseCasePage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '80%', label: 'Of breaches involve privileged credential abuse (Verizon DBIR)', accent: color.gold },
-              { value: '56d', label: 'Average dwell time before detection in enterprises', accent: color.gold },
-              { value: '0',   label: 'Action-level binding on most deployment pipelines today', accent: color.t3 },
+              { value: 'Exact', label: 'Bind the protected action, not only the authenticated session', accent: color.gold },
+              { value: 'Shared', label: 'Use durable state for reservation, replay refusal, and outcome handling', accent: color.gold },
+              { value: 'Closed', label: 'Scope prevention to completely mediated covered paths', accent: color.t3 },
             ].map((s, i) => (
               <div key={i} style={{ padding: '28px 24px', borderRight: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
                 <div style={{ fontFamily: font.sans, fontSize: 28, fontWeight: 700, color: s.accent, marginBottom: 6 }}>{s.value}</div>
@@ -108,7 +91,9 @@ export default function EnterpriseUseCasePage() {
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>The problem</h2>
           <p style={styles.body}>
-            Enterprise systems authenticate users, assign roles, and log activity. What they lack is a control layer that enforces trust at the exact moment a privileged action is about to execute. Role-based access control determines what a user can do. It does not enforce accountability for the specific action they are about to perform.
+            Enterprise systems authenticate users, assign roles, and log activity. A buyer may still
+            need an exact-action boundary immediately before a selected privileged change reaches its
+            system of record. EMILIA supplements rather than replaces IAM, PAM, or RBAC.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -128,7 +113,9 @@ export default function EnterpriseUseCasePage() {
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>How EMILIA helps</h2>
             <p style={styles.body}>
-              EMILIA operates as a trust-control layer between enterprise authentication and privileged action execution. It does not replace IAM or RBAC. It adds action-level trust enforcement where existing access control stops.
+              EMILIA can operate between enterprise authentication and one configured privileged
+              executor. Prevention applies only after a separate implementation completely mediates
+              every covered path; alternate administrative paths remain outside the claim.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
@@ -146,14 +133,14 @@ export default function EnterpriseUseCasePage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 32 }}>
           <h2 style={styles.h2}>What changes with EMILIA</h2>
-          <p style={styles.body}>Before EMILIA, a configuration change inside an authenticated admin session is invisible until post-incident review. After EMILIA:</p>
+          <p style={styles.body}>On a completely mediated protected path, a buyer-pinned profile can add:</p>
         </div>
         {[
-          'Every privileged action requires a handshake binding the exact action parameters to the authorizing principal and authority chain',
-          'Deployment approvals are bound to exact artifact hashes, target environments, and configuration states',
-          'Every mediated configuration change can produce a tamper-evident signoff record with named accountability',
+          'Exact-action evidence requirements bound to the configured principal, authority chain, and material parameters',
+          'Deployment approvals that can bind exact artifact hashes, target environments, and configuration states',
+          'Each mediated configuration change can preserve a tamper-evident decision record when the pinned policy requires signoff',
           'Replay resistance ensures captured approvals cannot authorize different actions',
-          'Security teams receive action-level evidence that can support SOC 2, ISO 27001, and internal control testing',
+          'Scoped evidence that can support buyer-authorized SOC 2, ISO 27001, or internal control-testing procedures without establishing compliance',
         ].map((item, i) => (
           <div key={i} className={`ep-list-item ep-reveal ep-stagger-${i + 1}`}>
             <span className="ep-list-bullet">+</span>
@@ -167,7 +154,7 @@ export default function EnterpriseUseCasePage() {
         <div style={styles.section}>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>Where the control gap hurts most</h2>
-            <p style={styles.body}>These are the four action surfaces where enterprises have zero action-level trust enforcement today. Each one is a breach vector that existing IAM and RBAC do not cover.</p>
+            <p style={styles.body}>These are candidate solution profiles where a buyer may test whether an exact-action boundary closes a material gap alongside existing IAM, PAM, and RBAC.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
             {RISK_SCENARIOS.map((r, i) => (
@@ -184,12 +171,12 @@ export default function EnterpriseUseCasePage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>Why now</h2>
-          <p style={styles.body}>Three forces are converging to make action-level trust enforcement an urgent requirement for enterprise security teams.</p>
+          <p style={styles.body}>Three review questions can help a buyer decide whether an exact-action boundary is warranted.</p>
         </div>
         {[
-          { title: 'Identity compromise is the new perimeter breach', body: 'Attackers do not break through firewalls. They log in with compromised credentials and operate inside authenticated sessions. Session-level controls cannot distinguish a legitimate admin from a threat actor using the same valid session.' },
-          { title: 'Supply chain attacks target the deployment pipeline', body: 'Build systems, CI/CD pipelines, and package registries are attack surfaces. Without action-level binding on deployment approvals, a compromised pipeline can push arbitrary artifacts to production under a valid approval.' },
-          { title: 'Compliance frameworks are moving to action-level evidence', body: 'SOC 2 Type II, ISO 27001:2022, and NIST CSF 2.0 increasingly require evidence of who authorized specific actions, not just who had access. Session-level audit logs are no longer sufficient for examination.' },
+          { title: 'What can a valid session change?', body: 'Review whether broad administrative access can reach a consequential effect without an independent exact-action check.' },
+          { title: 'What did the approval actually bind?', body: 'Review whether the approval covers the exact artifact, target environment, configuration, policy, and operation identifier used at provider entry.' },
+          { title: 'What evidence does the reviewer need?', body: 'Define the evidence required for the buyer\'s authorized control-testing procedure. EMILIA does not decide whether a framework is satisfied.' },
         ].map((w, i) => (
           <div key={i} className={`ep-problem-row ep-reveal ep-stagger-${i + 1}`} style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: font.sans, fontSize: 15, fontWeight: 700, color: color.t1, marginBottom: 6 }}>{w.title}</div>
@@ -207,53 +194,19 @@ export default function EnterpriseUseCasePage() {
             Trust before high-risk action in enterprise operations
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', maxWidth: 520, lineHeight: 1.7, marginBottom: 32 }}>
-            EMILIA is selectively working with enterprise security teams, platform engineering organizations, and infrastructure providers to pilot action-level trust enforcement for privileged operations.
+            The one public offer is {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} for {PROTECTED_WORKFLOW_PILOT.durationLabel} to assess one
+            buyer-selected consequence boundary. Finance operations remains the initial offered
+            profile; enterprise workflows are an eligible solution profile for fit review. Validation is synthetic, read-only, sandbox, or
+            shadow only, with no production provider credentials or actuation. Production requires a separate
+            Gate Implementation after the buyer accepts the boundary.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="#pilot" className="ep-cta" style={cta.primary}>Request Pilot</a>
+            <a href="/pilot" className="ep-cta" style={cta.primary}>Scope the protected-workflow pilot</a>
           </div>
         </div>
       </section>
 
-      {/* Pilot form */}
-      <section id="pilot" style={styles.section}>
-        <div className="ep-reveal" style={{ marginBottom: 32 }}>
-          <h2 style={styles.h2}>Request a pilot</h2>
-        </div>
-        {submitted ? (
-          <div style={{ border: `1px solid ${color.border}`, borderTop: `2px solid ${color.gold}`, borderRadius: radius.base, padding: 40, textAlign: 'center' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: color.green, marginBottom: 8 }}>Thank you</div>
-            <p style={{ color: color.t2, fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
-          </div>
-        ) : (
-          <div style={styles.card}>
-            <div style={grid.cols2}>
-              {[['name','Name'],['org','Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
-                <div key={k}>
-                  <label style={styles.label}>{label}</label>
-                  <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
-                </div>
-              ))}
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Trust surface of interest</label>
-                <input className="ep-input" style={styles.input} placeholder="e.g. deployment approvals, infrastructure config, privileged access management" value={form.surface} onChange={e => update('surface', e.target.value)} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Problem description</label>
-                <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Notes</label>
-                <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
-              </div>
-            </div>
-            {error && <p style={{ color: '#DC2626', fontSize: 13, marginTop: 12 }}>{error}</p>}
-            <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...(!form.name || !form.email ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
-              {submitting ? 'Submitting...' : 'Request Pilot'}
-            </button>
-          </div>
-        )}
-      </section>
+      </main>
 
       <SiteFooter />
     </div>

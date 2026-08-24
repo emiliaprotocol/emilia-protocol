@@ -17,13 +17,13 @@ export default function CompareFraudPage() {
   }, []);
 
   const ROWS = [
-    { dim: 'Where the check runs', det: 'After the action executes', ep: 'Before the action executes — gates execution' },
-    { dim: 'Signal source', det: 'Behavioral patterns, statistical models', ep: 'Cryptographic handshake + named human signoff' },
-    { dim: 'False-positive cost', det: 'Legitimate transactions blocked or delayed', ep: 'Adds a signoff step on Tier-2 actions only' },
-    { dim: 'False-negative cost', det: 'Funds gone; recovery rare', ep: 'Action does not execute without valid handshake' },
-    { dim: 'Effectiveness on AI-voice / deepfake', det: 'Degrades — model-driven attacks evade behavior baselines', ep: 'Independent of attack channel — binds the action, not the actor channel' },
-    { dim: 'Effectiveness on insider misuse', det: 'Limited — insider patterns look normal', ep: 'Handshake binds authority chain at request time' },
-    { dim: 'Audit evidence', det: 'Alert + post-hoc investigation', ep: 'Self-verifying trust receipt issued at the gate' },
+    { dim: 'Where the check runs', det: 'Before, during, or after a transaction, depending on the detection and payment stack', ep: 'Before provider entry on a configured, completely mediated protected path' },
+    { dim: 'Signal source', det: 'Behavioral patterns, statistical models', ep: 'Cryptographic handshake + finite customer authority and policy evidence' },
+    { dim: 'False-positive cost', det: 'Legitimate transactions blocked or delayed', ep: 'Adds a gate on configured Tier-2 actions; human signoff only when policy requires it' },
+    { dim: 'False-negative cost', det: 'Varies by action, detection timing, and recovery path', ep: 'Covered provider entry is refused when required authority evidence is missing or invalid' },
+    { dim: 'AI-voice / deepfake role', det: 'May detect channel, identity, behavior, or transaction anomalies', ep: 'Does not detect the attack; evaluates authority bound to the proposed action' },
+    { dim: 'Insider-misuse role', det: 'May identify anomalous insider behavior or policy violations', ep: 'Checks the presented finite authority and evidence at the protected boundary' },
+    { dim: 'Audit evidence', det: 'Alerts, scores, decisions, and investigation records', ep: 'Action-bound receipt recording the authority evidence admitted at the gate' },
     { dim: 'Composes with', det: 'EP, MFA, audit logs', ep: 'Detection (defense in depth)' },
   ];
 
@@ -33,26 +33,41 @@ export default function CompareFraudPage() {
 
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56 }}>
         <div className="ep-tag ep-hero-badge" style={{ color: color.red }}>Comparison / Fraud Detection</div>
-        <h1 className="ep-hero-text" style={styles.h1}>Pre-action authorization vs post-action fraud detection</h1>
+        <h1 className="ep-hero-text" style={styles.h1}>Exact-action authority and fraud detection</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          Detection finds bad actions after they execute. Pre-action authorization stops them before they execute. For irreversible actions — wire transfers, benefit redirects, AI-voice-cloned approvals — detection alone is the wrong primitive.
+          Fraud controls may score, hold, or reject activity before, during, or after a transaction. On a completely mediated protected path,
+          pre-action authorization can refuse an action before provider entry when required authority
+          evidence is missing. EMILIA is not a fraud detector and does not replace transaction monitoring;
+          it adds a separate exact-action authority condition where the executor can enforce it.
         </p>
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 72 }}>
         <h2 className="ep-reveal" style={styles.h2}>The shape of detection</h2>
         <p className="ep-reveal" style={styles.body}>
-          Modern fraud detection — behavioral analytics, statistical anomaly models, BEC scoring, transaction monitoring — runs <em>after</em> the action submits. The signals are real: unusual destination, unusual time, unusual amount, atypical user agent. The downside is structural: by the time the alert fires, the wire has cleared.
+          Modern fraud stacks combine pre-transaction rules, real-time scoring, payment holds,
+          transaction monitoring, behavioral analytics, and post-event investigation. Their signals
+          can include destination, timing, amount, device, identity, and network context. Exact timing
+          and intervention power depend on the institution and payment rail.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          That tradeoff worked when most fraud cleared slowly and recovery was possible. It does not work when the action is an instant ACH or a same-day wire to a beneficiary that goes silent within minutes.
+          Even strong detection does not answer the separate authority question: what finite mandate
+          and evidence authorized this exact destination, amount, and operation at the executor? That
+          distinction matters most when recovery is difficult or the instruction arrives through a
+          legitimate authenticated channel.
         </p>
         <h2 className="ep-reveal" style={{ ...styles.h2, marginTop: 32 }}>Where detection breaks for AI-era fraud</h2>
         <p className="ep-reveal" style={styles.body}>
-          Behavioral models assume the legitimate user is a stable signal — same IP ranges, same device, same approval cadence. AI-voice-cloned phone calls reproduce the legitimate user's signal exactly. Prompt-injected agent runtimes operate from the same authenticated session, the same scope, the same device. The "anomaly" the detection model is looking for is no longer there.
+          Deepfakes, business-email compromise, insiders, and prompt-injected agents may reuse
+          legitimate sessions or persuasive identity signals. Detection can still help, but a normal-looking
+          channel or transaction is not proof that the exact action carries finite customer authority.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          EP changes the question. The system doesn't ask "does this transaction look anomalous?" — it asks "did a named human authorize this exact destination, this exact amount, with a valid handshake?" The answer is binary, cryptographic, and resistant to the channel the attack arrived on.
+          EP changes the question. The system does not ask only &ldquo;does this transaction look
+          anomalous?&rdquo; It asks whether this exact destination and amount carry admissible finite
+          customer authority and policy evidence. When policy requires a fresh human decision, that
+          evidence includes the named signoff. The gate evaluates the evidence independently of the
+          channel the instruction arrived on.
         </p>
       </section>
 

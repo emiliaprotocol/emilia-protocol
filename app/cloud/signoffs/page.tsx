@@ -460,7 +460,7 @@ export default function SignoffsPage(): React.ReactElement {
   async function loadApprovals(key = apiKey) {
     const inMemoryKey = key.trim();
     if (!inMemoryKey) {
-      setError('Enter a Cloud API key before connecting.');
+      setError('Enter a local or sandbox test key before connecting.');
       return;
     }
 
@@ -482,7 +482,7 @@ export default function SignoffsPage(): React.ReactElement {
         : (Array.isArray(payload.requests) ? payload.requests : []);
       setApprovals(queue);
       setConnected(true);
-      setNotice(`Connected. Loaded ${queue.length} approval request${queue.length === 1 ? '' : 's'}.`);
+      setNotice(`Test backend connected. Loaded ${queue.length} approval request${queue.length === 1 ? '' : 's'}.`);
     } catch (err) {
       setApprovals([]);
       setConnected(false);
@@ -511,7 +511,7 @@ export default function SignoffsPage(): React.ReactElement {
   async function createApproval(event) {
     event.preventDefault();
     if (!apiKey.trim()) {
-      setError('Enter a Cloud API key before creating an approval.');
+      setError('Enter a local or sandbox test key before creating an approval.');
       return;
     }
 
@@ -558,7 +558,7 @@ export default function SignoffsPage(): React.ReactElement {
         approver_id: current.approver_id,
         currency: current.currency,
       }));
-      setNotice('Approval requested. Send the WebAuthn/WYSIWYS review link to the named approver.');
+      setNotice('Test approval requested. The review link exercises the reference signoff path only.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create the approval request.');
     } finally {
@@ -570,7 +570,7 @@ export default function SignoffsPage(): React.ReactElement {
   async function consumeApproval(approval) {
     if (approval.status !== 'approved') return;
     const confirmed = window.confirm(
-      `Consume ${approval.receipt_id} once and authorize the exact approved payment release?`,
+      `Consume test receipt ${approval.receipt_id} once? This records receipt use only and does not call a payment provider.`,
     );
     if (!confirmed) return;
 
@@ -595,7 +595,7 @@ export default function SignoffsPage(): React.ReactElement {
           ? { ...item, status: 'consumed', consumed_at: new Date().toISOString() }
           : item
       )));
-      setNotice(`Receipt ${approval.receipt_id} was consumed once.`);
+      setNotice(`Test receipt ${approval.receipt_id} was consumed once. No provider entry or payment effect is established.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to consume the approved receipt.');
     } finally {
@@ -658,15 +658,16 @@ export default function SignoffsPage(): React.ReactElement {
   return (
     <main style={s.page}>
       <div style={s.container}>
-        <div style={s.eyebrow}>Cloud / Approval endpoint</div>
+        <div style={s.eyebrow}>Prototype / Reference approval endpoint</div>
         <div style={s.titleRow}>
-          <h1 style={s.h1}>High-risk payment release</h1>
+          <h1 style={s.h1}>Nonproduction payment-release signoff</h1>
           <span style={s.prototypeBadge}>Implementation prototype</span>
         </div>
         <p style={s.subtitle}>
-          Request one exact payment approval, route it through a Class-A
-          WebAuthn/WYSIWYS review, and consume the approved authorization once.
-          This console calls the real Cloud approval API.
+          Exercise one exact payment-approval shape, route it through a Class-A
+          WebAuthn/WYSIWYS review, and consume the test authorization once. When configured,
+          this console calls repository reference API handlers in a local or sandbox test
+          environment. It has no provider credentials and cannot release a payment.
         </p>
 
         {error && <div role="alert" style={s.error}>{error}</div>}
@@ -675,7 +676,7 @@ export default function SignoffsPage(): React.ReactElement {
         <section style={s.card} aria-labelledby="connection-title">
           <div style={s.cardHeader}>
             <div>
-              <h2 id="connection-title" style={s.cardTitle}>Cloud connection</h2>
+              <h2 id="connection-title" style={s.cardTitle}>Local or sandbox test connection</h2>
               <p style={s.cardHint}>
                 The key needs the <code>approval_request</code> permission.
               </p>
@@ -692,7 +693,7 @@ export default function SignoffsPage(): React.ReactElement {
           <form onSubmit={connect}>
             <div style={s.keyRow}>
               <div style={s.field}>
-                <label htmlFor="cloud-api-key" style={s.label}>Cloud API key</label>
+                <label htmlFor="cloud-api-key" style={s.label}>Test API key</label>
                 <input
                   id="cloud-api-key"
                   type="password"
@@ -706,7 +707,7 @@ export default function SignoffsPage(): React.ReactElement {
                   }}
                   autoComplete="off"
                   spellCheck={false}
-                  placeholder="ept_live_…"
+                  placeholder="ept_test_…"
                   style={s.input}
                   aria-describedby="key-memory-note"
                 />
@@ -720,7 +721,8 @@ export default function SignoffsPage(): React.ReactElement {
               </button>
             </div>
             <p id="key-memory-note" style={s.securityNote}>
-              Cloud API key stays in React memory only. It is cleared when you reload or leave this page.
+              The test key stays in React memory only and is cleared when you reload or leave.
+              Never enter production or provider credentials in this prototype.
             </p>
           </form>
         </section>
@@ -728,7 +730,7 @@ export default function SignoffsPage(): React.ReactElement {
         <section style={s.card} aria-labelledby="request-title">
           <div style={s.cardHeader}>
             <div>
-              <h2 id="request-title" style={s.cardTitle}>Request payment approval</h2>
+              <h2 id="request-title" style={s.cardTitle}>Create a test approval request</h2>
               <p style={s.cardHint}>
                 Amount, currency, counterparty, reference, beneficiary digest, and the
                 server-computed CAID are bound into the action hash.
@@ -829,14 +831,14 @@ export default function SignoffsPage(): React.ReactElement {
             </div>
             <div style={s.formFooter}>
               <span style={s.securityNote}>
-                One workflow only: <code>large_payment_release</code> · one-hour approval window.
+                One synthetic workflow: <code>large_payment_release</code> · one-hour test window · no provider call.
               </span>
               <button
                 type="submit"
                 style={s.primaryButton}
                 disabled={busy === 'create'}
               >
-                {busy === 'create' ? 'Requesting…' : 'Request approval'}
+                {busy === 'create' ? 'Requesting…' : 'Create test approval'}
               </button>
             </div>
           </form>
@@ -890,7 +892,7 @@ export default function SignoffsPage(): React.ReactElement {
             <div style={s.empty}>
               {connected
                 ? 'No approval requests match this status.'
-                : 'Connect with a Cloud API key to load the tenant approval queue.'}
+                : 'Connect a local or sandbox test backend to load its approval queue.'}
             </div>
           ) : (
             <div style={s.queue}>
@@ -995,7 +997,7 @@ export default function SignoffsPage(): React.ReactElement {
                           onClick={() => consumeApproval(approval)}
                           disabled={consuming || !approval.action_hash}
                           title={approval.action_hash
-                            ? 'Authorize the exact approved payment release once'
+                            ? 'Consume the exact test authorization once; no provider call'
                             : 'Action hash unavailable'}
                         >
                           {consuming ? 'Consuming…' : 'Consume once'}

@@ -59,6 +59,7 @@ export * from './fips-mode.js';
 export * from './status.js';
 export * from './gate-qualification.js';
 export * from './gate-qualification-promptfoo.js';
+export * from './claim-assurance.js';
 export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_RESULT_VERSION, OUTCOME_OBSERVATION_VERSION, OUTCOME_OBSERVATION_DOMAIN, OUTCOME_BINDING_SET_VERSION, OUTCOME_BINDING_SET_RESULT_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, buildOutcomeObservation, verifyOutcomeAttestation, verifyOutcomeObservation, verifyOutcomeObservationSet, observedEffectsDigest, outcomeBindingResultCore, outcomeBindingResultDigest, outcomeBindingSetResultDigest, trustReceiptDigest, verifyOutcomeBindingResultDigest, } from './outcome-binding.js';
 // EP-SD-v1: selective-disclosure presentation of disclosure-ready receipts
 // (salted path-bound commitments inside the signed body; SD-JWT-style, no new

@@ -1,113 +1,86 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import Link from 'next/link';
-import {
-  Activity,
-  ArrowRight,
-  FileCheck2,
-  RefreshCw,
-  ShieldCheck,
-} from 'lucide-react';
+import { ArrowRight, CheckCircle2, CircleDashed, FileCheck2 } from 'lucide-react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import {
+  ASSURANCE_BOUNDARY_LINE,
+  ASSURANCE_CATALOGUE,
+  ASSURANCE_COMMERCIAL_ENTRY,
+  type AssuranceCatalogueStatus,
+} from '@/lib/assurance-catalog';
 import { cta, color, font, radius, styles } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'Assurance Plane — Re-performance for AI Controls',
+  title: 'Claim-to-Consequence Assurance Catalogue | EMILIA Protocol',
   description:
-    'Managed re-performance, conformance records, continuous evidence, and audit or '
-    + 'underwriter packages for EMILIA Gate deployments. Verification remains open and reproducible.',
+    'See what EMILIA Claim-to-Consequence Assurance implements today, what is available only as a scoped engagement, and what is not operating.',
   alternates: { canonical: '/assurance' },
   openGraph: {
-    title: 'EMILIA Assurance Plane',
+    title: 'EMILIA Claim-to-Consequence Assurance',
     description:
-      'Re-perform Gate evidence under pinned inputs, record drift, and hand reproducible workpapers to auditors and underwriters.',
+      'Package claims, re-perform evidence, carry a portable record, and keep authority separate at the Gate.',
     url: 'https://www.emiliaprotocol.ai/assurance',
     type: 'website',
   },
 };
 
-const SERVICES = [
+const LIFECYCLE = [
   {
-    Icon: RefreshCw,
-    title: 'Managed re-performance',
-    body:
-      'We re-run the open verifier over the supplied population using explicitly pinned keys, profiles, clocks, and input digests. Runtime claims are compared, never trusted.',
+    step: '01',
+    name: 'Claim',
+    body: 'Name the assertion, subject, scope, predicate, and policy version. A claim begins as an assertion, not a fact.',
   },
   {
-    Icon: FileCheck2,
-    title: 'Versioned conformance records',
-    body:
-      'A signed record binds the implementation, source revision, vector bundle, procedure, and result. Divergence remains visible instead of being rounded into a pass.',
+    step: '02',
+    name: 'Evidence',
+    body: 'Pin the supplied sources, trust roots, profiles, clocks, and digests needed to test that assertion.',
   },
   {
-    Icon: Activity,
-    title: 'Continuous evidence',
-    body:
-      'Scheduled evidence-head capture, repeatable checks, and drift reporting turn a point-in-time control test into a traceable operating record.',
+    step: '03',
+    name: 'Assurance record',
+    body: 'Preserve the procedure, result, divergence, exclusions, and derivation so another party can inspect it offline.',
   },
   {
-    Icon: ShieldCheck,
-    title: 'Audit and underwriter packages',
-    body:
-      'Portable workpapers summarize the population, refusals, exceptions, integrity warnings, and control operation. The auditor or underwriter keeps the conclusion.',
+    step: '04',
+    name: 'Gate',
+    body: 'Evaluate the exact proposed action against separate customer acceptance rules and finite customer authority.',
   },
-];
+  {
+    step: '05',
+    name: 'Outcome',
+    body: 'Keep provider admission, observed effect, uncertainty, and reconciliation distinct from the original claim.',
+  },
+] as const;
 
-const ARTIFACTS = [
-  {
-    name: 'ep-assure',
-    role: 'CLI for building and independently re-performing an assurance package.',
-    href: 'https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/ep-assure.mjs',
-  },
-  {
-    name: 'EP-ASSURANCE-PACKAGE-v1',
-    role: 'Content-addressed bundle of decisions, evidence, pinned profile, and stated runtime verdicts.',
-    href: 'https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/reports/assurance-package.js',
-  },
-  {
-    name: 'EP-GATE-REPERFORMANCE-v1',
-    role: 'Independent hash-chain, receipt, signoff, quorum, and reported-count recomputation.',
-    href: 'https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/reports/reperform.js',
-  },
-  {
-    name: 'EP-EXTERNAL-VERIFICATION-STATEMENT-v1',
-    role: 'Signed, input-pinned statement of what an outside verifier ran and where it diverged.',
-    href: 'https://github.com/emiliaprotocol/emilia-protocol/tree/main/examples/external-verification',
-  },
-  {
-    name: 'Auditor workpaper',
-    role: 'Reproducible technical procedure and evidence fields for a control test.',
-    href: '/auditors',
-  },
-  {
-    name: 'EP-GATE-UNDERWRITER-ATTESTATION-v1',
-    role: 'Deterministic operating-control package with explicit exclusions and integrity warnings.',
-    href: 'https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/reports/underwriter.js',
-  },
-];
+const STATUS_STYLE: Record<AssuranceCatalogueStatus, { color: string; border: string; background: string }> = {
+  Implemented: { color: color.greenDark, border: color.greenDark, background: color.card },
+  'Scoped engagement': { color: color.goldDark, border: color.goldDark, background: color.card },
+  'Not operating': { color: color.t2, border: color.borderHover, background: color.cardHover },
+};
 
-const SERVICE_JSONLD = {
+const PAGE_JSONLD = {
   '@context': 'https://schema.org',
-  '@type': 'Service',
-  '@id': 'https://www.emiliaprotocol.ai/assurance#service',
-  name: 'EMILIA Assurance Plane',
-  serviceType: 'Technical assurance and conformance re-performance',
+  '@type': 'CollectionPage',
+  '@id': 'https://www.emiliaprotocol.ai/assurance#catalogue',
+  name: 'EMILIA Claim-to-Consequence Assurance Catalogue',
   url: 'https://www.emiliaprotocol.ai/assurance',
-  provider: {
-    '@type': 'Organization',
-    name: 'EMILIA Protocol, Inc.',
-    url: 'https://www.emiliaprotocol.ai',
-  },
   description:
-    'Managed re-performance, conformance records, continuous evidence, and technical packages '
-    + 'for a customer-appointed auditor or underwriter. The service does not issue audit opinions '
-    + 'or accredited certifications.',
-  areaServed: 'Worldwide',
+    'A status-labelled catalogue of implemented open verification artifacts, scoped assurance engagements, and assurance capabilities that are not operating.',
+  mainEntity: {
+    '@type': 'ItemList',
+    itemListElement: ASSURANCE_CATALOGUE.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      description: `${item.status}: ${item.summary}`,
+    })),
+  },
 };
 
 const C = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-  <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
+  <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 clamp(20px, 6vw, 32px)', ...style }}>{children}</div>
 );
 
 export default async function AssurancePage() {
@@ -118,197 +91,222 @@ export default async function AssurancePage() {
       <script
         type="application/ld+json"
         suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(SERVICE_JSONLD) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(PAGE_JSONLD) }}
         nonce={nonce}
       />
       <SiteNav activePage="Assurance" />
 
       <main>
-        <section style={{ padding: '112px 0 88px', borderBottom: `1px solid ${color.border}` }}>
+        <section style={{ padding: '112px 0 84px', borderBottom: `1px solid ${color.border}` }}>
           <C>
-            <div style={styles.eyebrow}>EMILIA ASSURANCE PLANE</div>
-            <h1 style={{ ...styles.h1Large, maxWidth: 920, marginTop: 18 }}>
-              Re-perform the evidence. Do not trust the dashboard.
+            <div style={styles.eyebrow}>EMILIA CLAIM-TO-CONSEQUENCE ASSURANCE</div>
+            <h1 style={{ ...styles.h1Large, maxWidth: 980, marginTop: 18 }}>
+              Package the claim. Verify the evidence. Control the consequence.
             </h1>
-            <p style={{ ...styles.body, maxWidth: 760, marginTop: 24, fontSize: 18 }}>
-              Gate produces the operating evidence. The Assurance Plane independently re-runs
-              the open checks under pinned inputs, records any drift, and assembles work a
-              customer&rsquo;s auditor, regulator, or underwriter can reproduce.
+            <p style={{ ...styles.body, maxWidth: 790, marginTop: 24, fontSize: 18 }}>
+              The catalogue spans the trust lifecycle between what an agent, model, vendor, or
+              system says and what a protected executor may do. Each surface below says whether
+              it is implemented, available only as a scoped engagement, or not operating. The
+              record stays portable. The customer keeps the authority. Gate remains the
+              consequence boundary.
             </p>
-            <p style={{ fontFamily: font.mono, color: color.gold, fontSize: 14, fontWeight: 600, marginTop: 24 }}>
-              Protocol proves. Gate prevents. Assurance re-performs.
+            <p style={{
+              maxWidth: 820,
+              margin: '28px 0 0',
+              padding: '16px 18px',
+              borderLeft: `3px solid ${color.gold}`,
+              background: color.cardHover,
+              color: color.t1,
+              fontFamily: font.mono,
+              fontSize: 14,
+              fontWeight: 600,
+              lineHeight: 1.65,
+            }}>
+              {ASSURANCE_BOUNDARY_LINE}
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 34 }}>
-              <Link href="/partners" className="ep-cta" style={cta.primary}>
-                Scope an assurance engagement <ArrowRight size={15} aria-hidden="true" />
-              </Link>
-              <a href="#open-verification" className="ep-cta-secondary" style={cta.secondary}>
-                Run the open procedure
+              <a href="#catalogue" className="ep-cta" style={cta.primary}>
+                See the catalogue <ArrowRight size={15} aria-hidden="true" />
               </a>
+              <Link href="/trust" className="ep-cta-secondary" style={cta.secondary}>
+                Open Trust Center
+              </Link>
             </div>
           </C>
         </section>
 
-        <section style={{ padding: '88px 0', borderBottom: `1px solid ${color.border}` }}>
+        <section style={{ padding: '78px 0', borderBottom: `1px solid ${color.border}` }}>
           <C>
-            <div style={{ maxWidth: 720, marginBottom: 46 }}>
-              <div style={styles.eyebrow}>WHAT THE PAID PLANE DOES</div>
-              <h2 style={{ ...styles.h2, marginTop: 14 }}>
-                Evidence operations above the open verifier.
-              </h2>
+            <div style={{ maxWidth: 720, marginBottom: 36 }}>
+              <div style={styles.eyebrow}>ONE CONTINUOUS CONTROL SURFACE</div>
+              <h2 style={{ ...styles.h2, marginTop: 14 }}>From assertion to independently inspectable consequence.</h2>
+            </div>
+            <ol style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 190px), 1fr))',
+              gap: 12,
+            }}>
+              {LIFECYCLE.map((item) => (
+                <li key={item.step} style={{
+                  border: `1px solid ${color.border}`,
+                  borderRadius: radius.base,
+                  padding: 22,
+                  background: color.card,
+                }}>
+                  <div style={{ fontFamily: font.mono, color: color.goldDark, fontSize: 11, fontWeight: 600 }}>{item.step}</div>
+                  <h3 style={{ ...styles.h3, marginTop: 16 }}>{item.name}</h3>
+                  <p style={{ ...styles.cardBody, margin: 0 }}>{item.body}</p>
+                </li>
+              ))}
+            </ol>
+            <p style={{ ...styles.body, fontSize: 14, margin: '24px 0 0', maxWidth: 820 }}>
+              Synthetic or read-only evaluation is not production deployment, independent certification, or permission to act.
+            </p>
+          </C>
+        </section>
+
+        <section id="catalogue" style={{ padding: '88px 0', background: color.cardHover, borderBottom: `1px solid ${color.border}` }}>
+          <C>
+            <div style={{ maxWidth: 800, marginBottom: 42 }}>
+              <div style={styles.eyebrow}>ASSURANCE CATALOGUE</div>
+              <h2 style={{ ...styles.h2, marginTop: 14 }}>A product surface with visible status.</h2>
               <p style={{ ...styles.body, marginTop: 16 }}>
-                Verification stays free and reproducible. Customers pay for disciplined execution:
-                pinning the inputs, re-performing the population, preserving the record, monitoring
-                drift, and preparing the handoff.
+                Implemented means the public artifact and procedure exist now. Scoped engagement
+                means delivery depends on a buyer-approved boundary and contract. Not operating
+                means EMILIA is defining the category surface without representing it as live.
               </p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-              {SERVICES.map(({ Icon, title, body }) => (
-                <article
-                  key={title}
-                  style={{
-                    border: `1px solid ${color.border}`,
-                    borderTop: `3px solid ${color.gold}`,
-                    borderRadius: radius.base,
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 16 }}>
+              {ASSURANCE_CATALOGUE.map((item) => {
+                const status = STATUS_STYLE[item.status];
+                const StatusIcon = item.status === 'Implemented'
+                  ? CheckCircle2
+                  : item.status === 'Scoped engagement'
+                    ? FileCheck2
+                    : CircleDashed;
+                return (
+                  <article key={item.id} style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    minHeight: 270,
                     padding: 26,
+                    border: `1px solid ${color.border}`,
+                    borderRadius: radius.base,
                     background: color.card,
-                  }}
-                >
-                  <Icon size={20} color={color.gold} aria-hidden="true" />
-                  <h3 style={{ fontFamily: font.sans, fontSize: 17, color: color.t1, margin: '18px 0 10px' }}>
-                    {title}
-                  </h3>
-                  <p style={{ fontSize: 14, lineHeight: 1.68, color: color.t2, margin: 0 }}>{body}</p>
+                  }}>
+                    <div style={{
+                      alignSelf: 'flex-start',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      padding: '6px 9px',
+                      border: `1px solid ${status.border}`,
+                      borderRadius: radius.sm,
+                      background: status.background,
+                      color: status.color,
+                      fontFamily: font.mono,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: 0.8,
+                      textTransform: 'uppercase',
+                    }}>
+                      <StatusIcon size={13} aria-hidden="true" /> {item.status}
+                    </div>
+                    <h3 style={{ ...styles.h3, marginTop: 20 }}>{item.name}</h3>
+                    <p style={{ ...styles.cardBody, margin: '0 0 22px' }}>{item.summary}</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 'auto' }}>
+                      {item.evidence.map((evidence) => (
+                        <a
+                          key={evidence.label}
+                          href={evidence.href}
+                          target={evidence.href.startsWith('http') ? '_blank' : undefined}
+                          rel={evidence.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                          style={{ color: color.goldDark, fontFamily: font.mono, fontSize: 11 }}
+                        >
+                          {evidence.label} <span aria-hidden="true">↗</span>
+                        </a>
+                      ))}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </C>
+        </section>
+
+        <section id="operating-model" style={{ padding: '88px 0', borderBottom: `1px solid ${color.border}` }}>
+          <C>
+            <div style={{ maxWidth: 800, marginBottom: 42 }}>
+              <div style={styles.eyebrow}>OPERATING MODEL</div>
+              <h2 style={{ ...styles.h2, marginTop: 14 }}>EMILIA owns the rails. Conclusions stay independent.</h2>
+              <p style={{ ...styles.body, marginTop: 16 }}>
+                EMILIA stewards the public criteria, record formats, registry and resolver
+                contracts, status, supersession, and revocation workflow, plus any future mark
+                policy. EMILIA also owns the hosted evidence-operations product surface when it is
+                delivered under a scoped engagement. Independent assessors retain their own
+                evaluation and certification conclusions.
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: 16 }}>
+              {[
+                {
+                  title: 'EMILIA',
+                  body: 'Builds and stewards the open criteria, record rails, lifecycle contracts, hosted product operations, and Gate integration.',
+                },
+                {
+                  title: 'Customer',
+                  body: 'Pins trust roots and acceptance policy, grants finite authority, appoints relying parties, and controls each protected path.',
+                },
+                {
+                  title: 'Independent assessor',
+                  body: 'Chooses its procedures within the scheme, examines the evidence, and owns the conclusion it is qualified to issue.',
+                },
+              ].map((owner) => (
+                <article key={owner.title} style={{ ...styles.card, padding: 26 }}>
+                  <h3 style={styles.h3}>{owner.title}</h3>
+                  <p style={{ ...styles.cardBody, margin: 0 }}>{owner.body}</p>
                 </article>
               ))}
             </div>
-          </C>
-        </section>
-
-        <section style={{ padding: '88px 0', background: 'rgba(245,244,240,0.45)', borderBottom: `1px solid ${color.border}` }}>
-          <C>
-            <div style={{ maxWidth: 760, marginBottom: 40 }}>
-              <div style={styles.eyebrow}>RUNNING ARTIFACTS</div>
-              <h2 style={{ ...styles.h2, marginTop: 14 }}>
-                The service is grounded in code a third party can inspect.
-              </h2>
-            </div>
-            <div style={{ borderTop: `1px solid ${color.border}` }}>
-              {ARTIFACTS.map((artifact) => (
-                <a
-                  key={artifact.name}
-                  href={artifact.href}
-                  className="ep-assurance-artifact-row"
-                  target={artifact.href.startsWith('http') ? '_blank' : undefined}
-                  rel={artifact.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(240px, 0.75fr) minmax(280px, 1.25fr) 24px',
-                    gap: 24,
-                    alignItems: 'center',
-                    padding: '22px 0',
-                    borderBottom: `1px solid ${color.border}`,
-                    textDecoration: 'none',
-                  }}
-                >
-                  <code style={{ fontFamily: font.mono, fontSize: 13, color: color.t1 }}>{artifact.name}</code>
-                  <span style={{ fontSize: 14, lineHeight: 1.6, color: color.t2 }}>{artifact.role}</span>
-                  <ArrowRight size={16} color={color.gold} aria-hidden="true" />
-                </a>
-              ))}
-            </div>
-          </C>
-        </section>
-
-        <section id="open-verification" style={{ padding: '88px 0', background: '#1C1917', color: '#FAFAF9' }}>
-          <C>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 64, alignItems: 'center' }}>
-              <div>
-                <div style={{ ...styles.eyebrow, color: color.gold }}>OPEN VERIFICATION</div>
-                <h2 style={{ ...styles.h2, color: '#FAFAF9', marginTop: 14 }}>
-                  The customer never has to trust an EMILIA-only verdict.
-                </h2>
-                <p style={{ fontSize: 16, lineHeight: 1.72, color: 'rgba(250,250,249,0.7)', marginTop: 18 }}>
-                  The package, verifier, vectors, and procedure are public. A customer, audit firm,
-                  insurer, regulator, or competitor can rerun the same inputs without an EMILIA
-                  account or server in the verification path.
-                </p>
-                <Link href="/protocol" style={{ color: color.gold, fontFamily: font.mono, fontSize: 12 }}>
-                  Inspect the open Protocol <ArrowRight size={13} style={{ verticalAlign: 'middle' }} aria-hidden="true" />
-                </Link>
-              </div>
-              <pre style={{
-                fontFamily: font.mono,
-                fontSize: 13,
-                lineHeight: 1.75,
-                color: '#D6D3D1',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.13)',
-                borderRadius: radius.base,
-                padding: 26,
-                margin: 0,
-                overflowX: 'auto',
-              }}>{`# Build or re-perform a package locally
-npx -p @emilia-protocol/gate \\
-  ep-assure evidence.json --strict
-
-# Machine-readable workpaper
-npx -p @emilia-protocol/gate \\
-  ep-assure evidence.json --json`}</pre>
-            </div>
-          </C>
-        </section>
-
-        <section style={{ padding: '88px 0', borderBottom: `1px solid ${color.border}` }}>
-          <C>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 56 }}>
-              <div>
-                <div style={styles.eyebrow}>WHAT IT CAN ESTABLISH</div>
-                <h2 style={{ ...styles.h2, marginTop: 14 }}>A reproducible technical record.</h2>
-                <ul style={{ ...styles.list, marginTop: 22 }}>
-                  <li>The supplied package digest matches its contents.</li>
-                  <li>Evidence verifies under the explicitly pinned keys and profiles.</li>
-                  <li>Recomputed results agree or drift from the runtime&rsquo;s stated results.</li>
-                  <li>The named conformance procedure produced the recorded result on the pinned inputs.</li>
-                  <li>Exceptions and integrity warnings remain visible in the handoff.</li>
-                </ul>
-              </div>
-              <div>
-                <div style={styles.eyebrow}>WHAT IT DOES NOT ESTABLISH</div>
-                <h2 style={{ ...styles.h2, marginTop: 14 }}>No borrowed authority.</h2>
-                <ul style={{ ...styles.list, marginTop: 22 }}>
-                  <li>No accredited certification or public certification mark is currently issued.</li>
-                  <li>No audit opinion, legal-compliance conclusion, insurance coverage decision, or regulatory approval.</li>
-                  <li>No proof that withheld events were included unless the population is bound to an external checkpoint.</li>
-                  <li>No judgment that an authorized action was wise, lawful, safe, or successful.</li>
-                  <li>No guarantee beyond the system boundaries and evidence actually examined.</li>
-                </ul>
-              </div>
-            </div>
-          </C>
-        </section>
-
-        <section style={{ padding: '88px 0' }}>
-          <C>
-            <div style={{ maxWidth: 780 }}>
-              <div style={styles.eyebrow}>INDEPENDENT CERTIFICATION</div>
-              <h2 style={{ ...styles.h2, marginTop: 14 }}>A partner path, not a claim we make today.</h2>
-              <p style={{ ...styles.body, marginTop: 18 }}>
-                Independent certification belongs with qualified third parties and future
-                multi-stakeholder governance. Any future EMILIA conformance program must use the
-                same public vectors, published procedures, and uniform criteria available to every
-                implementer. EMILIA can prepare and re-perform the technical record; the independent
-                partner decides what conclusion, if any, it supports.
+            <div style={{ marginTop: 34, padding: 24, border: `1px solid ${color.border}`, borderRadius: radius.base, background: color.cardHover }}>
+              <h3 style={{ ...styles.h3, marginBottom: 8 }}>Public certification nonclaim</h3>
+              <p style={{ ...styles.cardBody, margin: 0 }}>
+                No public certification program or mark is operating today. No general-availability hosted assurance service is represented as deployed.
               </p>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 30 }}>
-                <Link href="/partners" className="ep-cta" style={cta.primary}>
-                  Discuss an assurance engagement <ArrowRight size={15} aria-hidden="true" />
-                </Link>
-                <Link href="/auditors" className="ep-cta-secondary" style={cta.secondary}>
-                  Auditor procedure
-                </Link>
-                <Link href="/security" className="ep-cta-secondary" style={cta.secondary}>
-                  Security boundaries
+            </div>
+          </C>
+        </section>
+
+        <section style={{ padding: '88px 0', background: color.t1, color: color.bg }}>
+          <C>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))', gap: 56, alignItems: 'center' }}>
+              <div>
+                <div style={{ ...styles.eyebrow, color: color.gold }}>ONE COMMERCIAL ENTRY</div>
+                <h2 style={{ ...styles.h2, color: color.bg, marginTop: 14 }}>
+                  Start at one consequence boundary.
+                </h2>
+                <p style={{ color: color.borderHover, fontSize: 16, lineHeight: 1.72, margin: '18px 0 0' }}>
+                  Assurance does not create a second public pilot or a second price sheet. The
+                  canonical entry remains the protected-workflow pilot, limited to synthetic,
+                  read-only, sandbox, or shadow validation. Any production activation requires
+                  a separately scoped Gate Implementation after buyer acceptance.
+                </p>
+              </div>
+              <div style={{ border: `1px solid ${color.t3}`, borderRadius: radius.base, padding: 28, background: color.t2 }}>
+                <div style={{ color: color.gold, fontFamily: font.mono, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                  {ASSURANCE_COMMERCIAL_ENTRY.name}
+                </div>
+                <div style={{ marginTop: 14, color: color.bg, fontFamily: font.sans, fontSize: 34, fontWeight: 700 }}>
+                  {ASSURANCE_COMMERCIAL_ENTRY.price}
+                </div>
+                <p style={{ color: color.borderHover, fontSize: 14, lineHeight: 1.65, margin: '12px 0 22px' }}>
+                  {ASSURANCE_COMMERCIAL_ENTRY.duration} · {ASSURANCE_COMMERCIAL_ENTRY.scope}
+                </p>
+                <Link href={ASSURANCE_COMMERCIAL_ENTRY.href} className="ep-cta" style={{ ...cta.primary, background: color.bg, color: color.t1 }}>
+                  Review the canonical offer <ArrowRight size={15} aria-hidden="true" />
                 </Link>
               </div>
             </div>

@@ -286,7 +286,7 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
   </div>
   <div style="display:flex;align-items:center;gap:14px">
     <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" rel="noopener noreferrer" class="gh-link"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Star</a>
-    <a href="/partners" class="nav-cta">Request Pilot</a>
+    <a href="/pilot" class="nav-cta">Review 90-day pilot</a>
   </div>
 </div>
 </nav>
@@ -300,7 +300,7 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
       <p class="hero-sub">Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed — by this actor, under this policy, right now.</p>
       <div class="hero-ctas">
         <a href="/protocol" class="btn-primary">Read the Protocol</a>
-        <a href="/partners" class="btn-secondary">Request Pilot</a>
+        <a href="/pilot" class="btn-secondary">Review the 90-day pilot</a>
         <a href="/use-cases" class="btn-ghost">Use Cases &rarr;</a>
       </div>
     </div>
@@ -422,15 +422,15 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
 <section>
   <div class="container reveal">
     <div class="eyebrow">Protocol Discipline</div>
-    <h2 class="section-title">What EP proves before action</h2>
+    <h2 class="section-title">What a valid EP artifact binds</h2>
     <div class="bindings-grid reveal-stagger">
-      <div class="binding-item"><span class="binding-num">01</span><h3>Actor identity</h3><p>Cryptographically verified entity requesting the action.</p></div>
-      <div class="binding-item"><span class="binding-num">02</span><h3>Authority chain</h3><p>Complete delegation path from root authority to acting principal.</p></div>
+      <div class="binding-item"><span class="binding-num">01</span><h3>Actor identifier</h3><p>Pinned cryptographic identifier and verification input; not civil identity.</p></div>
+      <div class="binding-item"><span class="binding-num">02</span><h3>Authority chain</h3><p>Delegation evidence evaluated under pinned relying-party inputs.</p></div>
       <div class="binding-item"><span class="binding-num">03</span><h3>Exact action context</h3><p>Precise operation, target, parameters, environment.</p></div>
-      <div class="binding-item"><span class="binding-num">04</span><h3>Policy version</h3><p>Immutable reference to the exact policy that authorized this.</p></div>
+      <div class="binding-item"><span class="binding-num">04</span><h3>Policy version</h3><p>Content-addressed reference to the exact policy evaluated for this action.</p></div>
       <div class="binding-item"><span class="binding-num">05</span><h3>Nonce and expiry</h3><p>One-time nonce and strict temporal bounds.</p></div>
-      <div class="binding-item"><span class="binding-num">06</span><h3>One-time consumption</h3><p>Each token consumed on use. No replay, no reuse.</p></div>
-      <div class="binding-item"><span class="binding-num">07</span><h3>Event traceability</h3><p>Append-only trail linking authorization to outcome.</p></div>
+      <div class="binding-item"><span class="binding-num">06</span><h3>One-time consumption</h3><p>On a configured shared durable path, accepted authority is consumed once and replay is refused.</p></div>
+      <div class="binding-item"><span class="binding-num">07</span><h3>Event integrity</h3><p>Linked evidence whose integrity can be checked; completeness and external effect remain separate.</p></div>
       <div class="binding-item"><span class="binding-num">08</span><h3>Accountable signoff</h3><p>Named human responsibility, bound to the ceremony.</p></div>
     </div>
   </div>
@@ -449,7 +449,7 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
       </div>
       <div class="signoff-side highlighted">
         <div class="signoff-side-label">Accountable Signoff</div>
-        <p style="font-size:14px;color:var(--ink);line-height:1.6">Proves action-specific responsibility.<br>Bound to the exact operation.</p>
+        <p style="font-size:14px;color:var(--ink);line-height:1.6">Binds a named action-specific decision.<br>It does not prove wisdom or legal responsibility.</p>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
@@ -465,19 +465,19 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
 <section>
   <div class="container reveal">
     <div class="eyebrow">Three Layers</div>
-    <h2 class="section-title">Eye warns. EP verifies. Signoff owns.</h2>
+    <h2 class="section-title">Reference components for warning, verification, and signoff</h2>
     <div class="deploy-cols reveal-stagger">
       <div class="deploy-col">
         <div class="deploy-col-label">Eye</div>
-        <p>Warning-only escalation. Flag when stricter controls should apply. No enforcement, no friction.</p>
+        <p>Models warning-only escalation over supplied or developer-configured events. The public surface is not a live monitor.</p>
       </div>
       <div class="deploy-col">
         <div class="deploy-col-label">Handshake</div>
-        <p>Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption.</p>
+        <p>Reference evaluation for canonical binding, replay resistance, and one-time consumption. Production prevention requires complete mediation.</p>
       </div>
       <div class="deploy-col">
         <div class="deploy-col-label">Signoff</div>
-        <p>Named human ownership. Cryptographically bound, action-specific accountability.</p>
+        <p>Captures a named human decision when the mandate or local policy requires it.</p>
       </div>
     </div>
   </div>
@@ -487,13 +487,13 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
 <section style="background:var(--bg-alt)">
   <div class="container reveal">
     <div class="eyebrow">From Protocol to Product</div>
-    <h2 class="section-title">Deployment options at every layer</h2>
+    <h2 class="section-title">Implementation states at every layer</h2>
     <div class="layers-list reveal-stagger">
       <div class="layer-item"><span class="layer-badge">OPEN</span><span class="layer-name">Open Protocol</span><span class="layer-desc">Apache 2.0 licensed specification. Read, implement, extend.</span></div>
-      <div class="layer-item"><span class="layer-badge">OPEN</span><span class="layer-name">Open Runtime</span><span class="layer-desc">Self-hosted reference implementation for on-premise deployment.</span></div>
-      <div class="layer-item"><span class="layer-badge">MANAGED</span><span class="layer-name">EMILIA Gate Cloud</span><span class="layer-desc">Managed policy, approval orchestration, evidence operations, and monitoring around the enforcement boundary.</span></div>
-      <div class="layer-item"><span class="layer-badge">PRIVATE</span><span class="layer-name">EMILIA Gate Enterprise</span><span class="layer-desc">Private Gate deployment with dedicated infrastructure, support, and scoped assurance operations.</span></div>
-      <div class="layer-item"><span class="layer-badge">VERTICAL</span><span class="layer-name">Vertical Packs</span><span class="layer-desc">Pre-built policy templates for government, financial, and agent governance.</span></div>
+      <div class="layer-item"><span class="layer-badge">OPEN</span><span class="layer-name">Open Runtime</span><span class="layer-desc">Inspectable self-hosted reference implementation; integrated production deployment is separately scoped.</span></div>
+      <div class="layer-item"><span class="layer-badge">PROTOTYPE</span><span class="layer-name">Gate operations UI</span><span class="layer-desc">Non-operating interface prototype for synthetic or developer-configured test data.</span></div>
+      <div class="layer-item"><span class="layer-badge">SCOPED</span><span class="layer-name">Gate Implementation</span><span class="layer-desc">A separately scoped production implementation after buyer acceptance; no generally available service or SLA is claimed.</span></div>
+      <div class="layer-item"><span class="layer-badge">REFERENCE</span><span class="layer-name">Solution profiles</span><span class="layer-desc">Inspectable finance, government, and agent examples, not simultaneous offers or deployments.</span></div>
     </div>
   </div>
 </section>
@@ -502,13 +502,13 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
 <section>
   <div class="container reveal">
     <div class="eyebrow">Evidence, Not Assertions</div>
-    <h2 class="section-title">What buyers get</h2>
+    <h2 class="section-title">What an engagement can deliver</h2>
     <div class="evidence-list reveal-stagger">
       <div class="evidence-row"><span class="evidence-key">DECISION</span><span class="evidence-val">Who decided, under what policy, for what exact action</span></div>
-      <div class="evidence-row"><span class="evidence-key">EVENTS</span><span class="evidence-val">Every state transition logged, immutable, append-only</span></div>
+      <div class="evidence-row"><span class="evidence-key">EVENTS</span><span class="evidence-val">Linked supplied events with integrity checks; completeness requires an independent population anchor</span></div>
       <div class="evidence-row"><span class="evidence-key">POLICY</span><span class="evidence-val">Exact version and hash at time of authorization</span></div>
       <div class="evidence-row"><span class="evidence-key">SIGNOFF</span><span class="evidence-val">Named human ownership when policy requires it</span></div>
-      <div class="evidence-row"><span class="evidence-key">EXPORT</span><span class="evidence-val">Reconstruction-ready for audit, compliance, legal</span></div>
+      <div class="evidence-row"><span class="evidence-key">EXPORT</span><span class="evidence-val">Material for a buyer, auditor, or counsel to evaluate under their own criteria</span></div>
     </div>
   </div>
 </section>
@@ -517,7 +517,7 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
 <section style="background:var(--bg-alt)">
   <div class="container reveal">
     <div class="eyebrow">Why Now</div>
-    <h2 class="section-title">Why banks and agencies buy now</h2>
+    <h2 class="section-title">Why banks and agencies evaluate this boundary</h2>
     <div class="why-list reveal-stagger">
       <div class="why-item">
         <span class="why-num">01</span>
@@ -529,7 +529,7 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
       </div>
       <div class="why-item">
         <span class="why-num">03</span>
-        <p style="font-size:15px;color:var(--ink-2);line-height:1.7">EP proves what happened, who owned the decision, and why — reconstructable evidence for audit and legal defensibility.</p>
+        <p style="font-size:15px;color:var(--ink-2);line-height:1.7">EP binds supplied decision evidence for re-performance; it does not prove source truth, population completeness, external effect, or a legal conclusion.</p>
       </div>
     </div>
   </div>
@@ -539,8 +539,8 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
 <section>
   <div class="container reveal">
     <div class="eyebrow">Start Lighter</div>
-    <h2 class="section-title">Start lighter with Emilia Eye</h2>
-    <p class="section-desc" style="margin-bottom:24px">For teams not ready to redesign high-risk workflows immediately, Emilia Eye provides a lightweight warning layer that flags when stricter EP controls should apply.</p>
+    <h2 class="section-title">Inspect the Emilia Eye reference profile</h2>
+    <p class="section-desc" style="margin-bottom:24px">Eye models a lightweight warning layer over supplied or developer-configured events. The public surface is not a hosted monitoring service or production deployment.</p>
     <div style="display:flex;gap:12px;flex-wrap:wrap">
       <a href="/eye" class="btn-secondary">See Emilia Eye</a>
       <a href="/docs" class="btn-ghost">Read Eye Spec &rarr;</a>
@@ -551,10 +551,10 @@ footer{padding:40px 0;border-top:1px solid var(--brd)}
 <!-- CTA STRIP -->
 <div class="cta-strip">
   <div class="container">
-    <h2>Enforce trust before high-risk action</h2>
+    <h2>Evaluate authority before a high-risk action</h2>
     <div style="display:flex;gap:12px;flex-wrap:wrap">
       <a href="/protocol" class="btn-primary">Read the Protocol</a>
-      <a href="/partners" class="btn-secondary">Request Pilot</a>
+      <a href="/pilot" class="btn-secondary">Review the 90-day pilot</a>
       <a href="/use-cases" class="btn-ghost">Use Cases &rarr;</a>
     </div>
   </div>

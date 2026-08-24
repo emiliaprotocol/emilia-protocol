@@ -1,167 +1,154 @@
-'use client';
+// SPDX-License-Identifier: Apache-2.0
 
-import { useState } from 'react';
-import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, cta, color, grid, font, radius } from '@/lib/tokens';
+import SiteNav from '@/components/SiteNav';
+import { GATE_IMPLEMENTATION, PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
+import { color, cta, grid, styles } from '@/lib/tokens';
 
-export default function GovernmentPackPage() {
-  const [form, setForm] = useState({ name:'', org:'', title:'', email:'', surface:'', problem:'', notes:'' });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState(null);
+const IMPLEMENTED_ARTIFACTS = [
+  {
+    title: 'GovGuard reference adapters',
+    body: 'Reference precheck routes cover named government action shapes such as payment-destination changes, releases, provider enrollment, eligibility overrides, and caseworker overrides.',
+  },
+  {
+    title: 'Exact-action policy and signoff inputs',
+    body: 'The reference paths bind organization, target, before and after state, policy, and configured signoff requirements. The agency remains responsible for authority, policy, identity, and legal sufficiency.',
+  },
+  {
+    title: 'GG-1 reference conformance',
+    body: 'Public tests and evidence exercise wrong-organization, wrong-approver, self-approval, replay, tamper, and execution-mismatch cases. This is reference conformance evidence, not deployment assurance.',
+  },
+  {
+    title: 'Portable evidence fields',
+    body: 'Reference outputs carry action, policy, execution-binding, and evidence status fields that can support later review. They do not issue an Inspector General, auditor, or regulator conclusion.',
+  },
+] as const;
 
-  const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
+const DESIGNED_NOT_IMPLEMENTED = [
+  {
+    title: 'PIV, CAC, and Login.gov integration',
+    body: 'Designed as possible identity inputs for a future scoped implementation. No public artifact on this route establishes a completed integration.',
+  },
+  {
+    title: 'FISMA, FedRAMP, and NIST 800-53 mappings',
+    body: 'No published control mapping or authorization package is claimed here. EMILIA does not claim that the reference profile satisfies a framework or agency requirement.',
+  },
+  {
+    title: 'Agency production operation',
+    body: 'No integrated agency deployment, production provider boundary, operational authorization, managed availability, or customer adoption is evidenced.',
+  },
+] as const;
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setSubmitting(true); setError(null);
-    try {
-      const res = await fetch('/api/inquiries', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'pilot-government-pack', ...form }),
-      });
-      if (!res.ok) throw new Error('Submission failed');
-      setSubmitted(true);
-    } catch (err) { setError(err.message); }
-    setSubmitting(false);
-  }
+const PRODUCTION_REQUIREMENTS = [
+  'A named mutating system and every covered route into it',
+  'Agency-owned credentials, authority rules, trust roots, and approver directory',
+  'Explicit bypass, emergency, retention, reconciliation, and operating procedures',
+  'Buyer acceptance followed by a separately scoped Gate Implementation',
+] as const;
 
-  // Honest feature list — only items backed by code in lib/, tests in
-  // tests/, or documented in docs/. PIV/CAC, Login.gov, FISMA/FedRAMP
-  // claims removed: zero implementation, zero mapping documents. Marked
-  // as "roadmap" below where pilots have asked for them.
-  const FEATURES = [
-    { title: 'Payment destination controls', body: 'GovGuard adapters cover vendor payment destinations, benefit direct deposit, and payment-address changes. The receipt binds the exact new destination, program, amount, and named approver before the change can be treated as authorized.' },
-    { title: 'Disbursement and grant release controls', body: 'Government disbursement and grant releases require Class-A accountable signoff before funds move; million-dollar releases escalate to dual authorization.' },
-    { title: 'Provider and eligibility controls', body: 'Provider enrollment changes, eligibility overrides, and caseworker overrides produce named signoff records bound to exact case, provider, decision, and policy fields.' },
-    { title: 'GG-1 evidence packet', body: 'The fire drill exports high-risk actions, policy hashes, action hashes, execution-binding hashes, offline verifier instructions, and GG-1 controls. Action-level traceability, not session-level logs.' },
-  ];
-
-  // Items pilots have asked for that are NOT yet implemented. Keep the
-  // marketing surface honest by labeling them as roadmap, not shipped.
-  const ROADMAP = [
-    { title: 'Government identity integration (PIV / CAC / Login.gov)', body: 'Pilot-track work; not yet implemented. Pilots needing PIV/CAC integration today should contact us — we will scope the work as part of the pilot.' },
-    { title: 'FISMA / FedRAMP mapping', body: 'Control-family mapping documents are not yet published. EP trust enforcement satisfies action-level accountability requirements that map onto multiple NIST 800-53 controls; the formal mapping document is on the roadmap.' },
-  ];
-
+export default function GovernmentPackPage(): React.ReactElement {
   return (
     <div style={styles.page}>
       <SiteNav activePage="" />
 
-      {/* Hero */}
-      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 60 }}>
-        <div style={styles.eyebrowBlue}>Product / Government Control Pack</div>
-        <h1 style={styles.h1}>Government Control Pack</h1>
-        <p style={{ ...styles.body, maxWidth: 640 }}>
-          Pre-configured GovGuard deployment for government fraud-control fire drills and observe-mode pilots.
-        </p>
-        <a href="/pilot/sandbox?v=gov" className="ep-cta" style={cta.primary}>Run GovGuard Fire Drill</a>
-      </section>
-
-      {/* Features */}
-      <section style={styles.sectionAlt}>
-        <div style={styles.section}>
-          <h2 style={styles.h2}>Included controls</h2>
-          <p style={styles.body}>
-            The Government Control Pack includes pre-configured policies, GovGuard adapter endpoints, signoff workflows, and evidence formats designed for government fraud prevention. Start with a fire drill, then deploy against a single trust surface in weeks, not months.
+      <main>
+        <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 64 }}>
+          <div style={styles.eyebrowBlue}>Reference solution profile / Government authority</div>
+          <h1 style={styles.h1}>A reference authority boundary for consequential government actions.</h1>
+          <p style={{ ...styles.body, maxWidth: 720 }}>
+            GovGuard reference adapters and conformance artifacts show how exact-action authority
+            can be represented and tested. This page does not sell a Government Pack, claim an
+            agency deployment, prevent fraud, or establish compliance.
           </p>
-          <div style={grid.stack}>
-            {FEATURES.map((f, i) => (
-              <div key={i} className="ep-card-hover" style={styles.card}>
-                <div style={styles.cardTitle}>{f.title}</div>
-                <div style={styles.cardBody}>{f.body}</div>
-              </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 28 }}>
+            <a href="/pilot" className="ep-cta" style={cta.primary}>
+              Review the protected-workflow pilot
+            </a>
+            <a
+              href="mailto:team@emiliaprotocol.ai?subject=Government%20Gate%20Implementation%20inquiry"
+              className="ep-cta"
+              style={cta.secondary}
+            >
+              Discuss a future implementation
+            </a>
+          </div>
+        </section>
+
+        <section style={styles.sectionAlt}>
+          <div style={styles.section}>
+            <div style={styles.eyebrowBlue}>Commercial boundary</div>
+            <h2 style={styles.h2}>There is one public pilot, not a Government Pack offer.</h2>
+            <p style={{ ...styles.body, maxWidth: 780 }}>
+              The canonical {PROTECTED_WORKFLOW_PILOT.name} is{' '}
+              {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} for {PROTECTED_WORKFLOW_PILOT.durationLabel}{' '}
+              and {PROTECTED_WORKFLOW_PILOT.workflowLabel}. Finance operations is the first profile.
+              Other consequential workflows may be evaluated through the same intake, but the pilot
+              remains synthetic, sandbox, read-only, or shadow only.
+            </p>
+            <div style={{ ...styles.card, border: `1px solid ${color.border}` }}>
+              <h3 style={styles.cardTitle}>During the pilot</h3>
+              <p style={styles.cardBody}>
+                EMILIA receives no production actuation authority or provider credentials. A buyer
+                can inspect the proposed rule, evidence, refusal behavior, and uncovered paths before
+                deciding whether to proceed.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section style={styles.section}>
+          <div style={styles.eyebrowBlue}>Implemented in the repository</div>
+          <h2 style={styles.h2}>Inspect the reference artifacts without inflating their status.</h2>
+          <div style={grid.auto(280)}>
+            {IMPLEMENTED_ARTIFACTS.map((artifact) => (
+              <article key={artifact.title} className="ep-card-hover" style={styles.card}>
+                <h3 style={styles.cardTitle}>{artifact.title}</h3>
+                <p style={styles.cardBody}>{artifact.body}</p>
+              </article>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Roadmap (not yet shipped — explicit so federal procurement teams
-          do not mistake aspirational features for delivered ones) */}
-      <section style={styles.section}>
-        <div style={styles.eyebrowBlue}>Roadmap (pilot-track)</div>
-        <h2 style={styles.h2}>On the way, not yet shipped.</h2>
-        <p style={styles.body}>
-          The following capabilities are pilot-track work that we will scope as
-          part of an active engagement. They are listed here because pilots
-          frequently ask about them — not because they are deliverable today.
-        </p>
-        <div style={grid.stack}>
-          {ROADMAP.map((f, i) => (
-            <div key={i} className="ep-card-hover" style={{ ...styles.card, opacity: 0.85 }}>
-              <div style={styles.cardTitle}>{f.title}</div>
-              <div style={styles.cardBody}>{f.body}</div>
+        <section style={styles.sectionAlt}>
+          <div style={styles.section}>
+            <div style={styles.eyebrowBlue}>Designed or future scope</div>
+            <h2 style={styles.h2}>Named plainly because it is not shipped.</h2>
+            <div style={grid.stack}>
+              {DESIGNED_NOT_IMPLEMENTED.map((item) => (
+                <article key={item.title} style={{ ...styles.card, opacity: 0.88 }}>
+                  <h3 style={styles.cardTitle}>{item.title}</h3>
+                  <p style={styles.cardBody}>{item.body}</p>
+                </article>
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Best first workflow */}
-      <section style={styles.section}>
-        <h2 style={styles.h2}>Best first workflow</h2>
-        <p style={styles.body}>Start with the highest-impact trust surface. For most government deployments, that is one payment-destination or release workflow.</p>
-        <div className="ep-card-accent" style={{ ...styles.card, border: `1px solid ${color.border}` }}>
-          <div style={{ ...styles.cardTitle, color: color.green, fontSize: 18, marginBottom: 10 }}>GovGuard Fire Drill</div>
-          <div style={styles.cardBody}>
-            A vendor, benefits recipient, provider, or disbursement target changes a payment route or release state. GovGuard evaluates the action in observe mode, shows what would have required named signoff, and exports a procurement evidence packet before any enforcement decision.
           </div>
-          <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
-            {[
-              'Adapters cover vendor destination, disbursement, grant, benefit routing, provider enrollment, eligibility override, and caseworker override workflows',
-              'Class-A signoff required for high-risk government actions',
-              'Receipts are one-time consumable and replay-resistant',
-              'Evidence packet includes policy hash, action hash, execution-binding hash, and verifier command',
-              'GG-1 conformance covers wrong org, wrong approver, self-approval, Class-C approval, replay, tamper, and execution mismatch',
-            ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ color: color.green, fontSize: 14, flexShrink: 0, marginTop: 1 }}>+</span>
-                <span style={{ fontSize: 14, color: color.t2, lineHeight: 1.6 }}>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Pilot form */}
-      <section id="pilot" style={styles.sectionAlt}>
-        <div style={styles.section}>
-          <h2 style={styles.h2}>Request Government Pilot</h2>
-          {submitted ? (
-            <div style={{ ...styles.card, textAlign: 'center', padding: 40 }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: color.green, marginBottom: 8 }}>Thank you</div>
-              <p style={{ color: color.t2, fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
-            </div>
-          ) : (
-            <div style={styles.card}>
-              <div style={grid.cols2}>
-                {[['name','Name'],['org','Agency / Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
-                  <div key={k}>
-                    <label style={styles.label}>{label}</label>
-                    <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
-                  </div>
-                ))}
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.label}>Trust surface of interest</label>
-                  <input className="ep-input" style={styles.input} placeholder="e.g. benefits disbursement, payment routing, operator approvals" value={form.surface} onChange={e => update('surface', e.target.value)} />
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.label}>Problem description</label>
-                  <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.label}>Notes</label>
-                  <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
-                </div>
-              </div>
-              {error && <p style={{ color: color.red, fontSize: 13, marginTop: 12 }}>{error}</p>}
-              <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...(!form.name || !form.email ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
-                {submitting ? 'Submitting...' : 'Request Government Pilot'}
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
+        <section style={styles.section}>
+          <div style={styles.eyebrowBlue}>Production boundary</div>
+          <h2 style={styles.h2}>{GATE_IMPLEMENTATION.name} starts after buyer acceptance.</h2>
+          <p style={{ ...styles.body, maxWidth: 760 }}>
+            A production claim would require complete mediation at the agency&apos;s actual executor or
+            system of record. Reference code and a nonproduction pilot do not establish that boundary.
+          </p>
+          <div style={{ ...styles.card, border: `1px solid ${color.border}` }}>
+            <ul style={{ margin: 0, paddingLeft: 20, color: color.t2, lineHeight: 1.8 }}>
+              {PRODUCTION_REQUIREMENTS.map((requirement) => <li key={requirement}>{requirement}</li>)}
+            </ul>
+          </div>
+        </section>
+
+        <section style={{ ...styles.section, textAlign: 'center' }}>
+          <h2 style={styles.h2}>Start with the same evidence-bound intake.</h2>
+          <p style={{ ...styles.body, maxWidth: 680, margin: '0 auto 24px' }}>
+            Describe one consequential boundary and its current approval path. The first conversation
+            determines whether it fits the canonical pilot or belongs in future implementation scope.
+          </p>
+          <a href="/pilot" className="ep-cta" style={cta.primary}>
+            Review the canonical pilot
+          </a>
+        </section>
+      </main>
 
       <SiteFooter />
     </div>

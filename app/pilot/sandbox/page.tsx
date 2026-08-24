@@ -290,7 +290,7 @@ export default function SandboxPage(): React.ReactElement {
         {error && <ErrorNote text={error} />}
 
         <div style={{ marginTop: 36, paddingTop: 22, borderTop: `1px solid ${color.border}`, fontSize: 13, color: color.t3, lineHeight: 1.7 }}>
-          Ready for a guided pilot with enforcement and signed receipts? <a href="/pilot" style={lnk}>Request a pilot →</a>{' '}
+          Ready for a guided nonproduction boundary assessment and signed test receipts? <a href="/pilot" style={lnk}>Request a pilot →</a>{' '}
           For your assurance team: <a href="/auditors" style={lnk}>/auditors</a> · <a href="/rfp" style={lnk}>RFP language</a>.
           This sandbox is observe-only and provisions a scoped, throwaway key.
         </div>

@@ -9,12 +9,14 @@ describe('mobile public-site experience contract', () => {
   it('keeps the mobile navigation below the sticky header and exposes accessible controls', () => {
     const nav = read('components/SiteNav.tsx');
     const layout = read('app/layout.tsx');
+    const skipLink = read('components/SkipToMain.tsx');
     const css = read('app/ep.css');
 
     expect(nav).toContain('className="ep-site-header"');
     expect(nav).toContain('aria-controls="ep-mobile-navigation"');
     expect(nav).toContain("event.key === 'Escape'");
-    expect(layout).toContain('className="ep-skip-link"');
+    expect(layout).toContain('<SkipToMain />');
+    expect(skipLink).toContain('className="ep-skip-link"');
     expect(css).toContain('min-height: 44px');
     expect(css).toContain('min-height: calc(100dvh - 60px)');
   });

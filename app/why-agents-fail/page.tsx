@@ -8,7 +8,7 @@ import { cta, color, font, radius } from '@/lib/tokens';
 export const metadata: Metadata = {
   title: 'Why Agents Fail — and the missing step that stops it',
   description:
-    'AI agents can reason about anything. They cannot tell when they should not act. Four ways autonomous agents cause irreversible damage — and the verified-human-sign-off step that prevents all four.',
+    'AI agents can reason about anything. They cannot establish their own authority to act. Four ways autonomous agents can cause irreversible damage, and a finite customer-authority boundary that can refuse out-of-scope actions on configured protected paths.',
   alternates: { canonical: '/why-agents-fail' },
   openGraph: {
     title: 'Why agents fail',
@@ -23,7 +23,7 @@ const PAGE_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'Article',
   headline: 'Why Agents Fail',
-  description: 'Four failure modes of autonomous AI agents taking irreversible actions, and the verified-sign-off step that prevents them.',
+  description: 'Four failure modes of autonomous AI agents taking irreversible actions, and a finite customer-authority boundary for configured protected paths.',
   author: { '@type': 'Organization', name: 'EMILIA Protocol' },
   publisher: { '@type': 'Organization', name: 'EMILIA Protocol', url: 'https://www.emiliaprotocol.ai' },
   mainEntityOfPage: 'https://www.emiliaprotocol.ai/why-agents-fail',
@@ -108,7 +108,7 @@ export default async function WhyAgentsFailPage() {
           <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 14 }}>The common thread</div>
           <p style={{ fontSize: 'clamp(20px, 2.6vw, 26px)', fontWeight: 600, color: color.t1, letterSpacing: -0.6, lineHeight: 1.35, maxWidth: 720, margin: 0 }}>
             None of these are intelligence failures. The model did its job. What&rsquo;s missing is the step in between
-            &mdash; the one that asks <em style={{ fontStyle: 'normal', color: color.gold }}>&ldquo;should this happen?&rdquo;</em> and gets a named human&rsquo;s answer before the irreversible part.
+            &mdash; the one that asks <em style={{ fontStyle: 'normal', color: color.gold }}>&ldquo;is this exact action within finite customer authority?&rdquo;</em> before the irreversible part.
           </p>
         </C>
       </section>
@@ -121,9 +121,10 @@ export default async function WhyAgentsFailPage() {
             EMILIA is that step.
           </h2>
           <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.7, maxWidth: 660, margin: '0 0 24px' }}>
-            Before money moves, records change, code deploys, or data leaves, EMILIA requires a named human&rsquo;s verified
-            sign-off &mdash; and mints a receipt anyone can verify offline. Not because it&rsquo;s smarter than the agent.
-            Because it checks trust <em>before</em> action, deterministically, every time.
+            On configured protected paths, EMILIA requires admissible finite customer authority and policy evidence
+            before provider entry, then mints a receipt that can be verified offline. When the mandate or local policy
+            requires a fresh human decision, that evidence includes the named person&rsquo;s verified signoff. It is not
+            smarter than the agent; it checks the authority boundary <em>before</em> action.
           </p>
           <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.7, maxWidth: 660, margin: '0 0 28px' }}>
             We crash-tested it with a 12-case public harness &mdash; six high-stakes treasury actions and six safe controls.

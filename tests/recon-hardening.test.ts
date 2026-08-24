@@ -179,8 +179,9 @@ describe('anonymous recon hardening', () => {
     expect(middleware).toContain("pathname === '/cloud'");
     expect(middleware).toContain("pathname.startsWith('/cloud/')");
     expect(middleware).toContain("X-Robots-Tag', 'noindex, nofollow'");
-    expect(cloudLayout).toContain('Synthetic dashboard preview');
-    expect(cloudLayout).toContain('demo data');
+    expect(cloudLayout).toContain('robots: { index: false, follow: false }');
+    expect(cloudLayout).toContain('non-operating implementation prototype');
+    expect(cloudLayout).toContain('synthetic or developer-configured test data');
     expect(cloudMocks).not.toMatch(/Acme|Globex|Initech|Umbrella|Wayne|@acme|@globex|@initech|OFAC|Sanctions Screening/);
   });
 

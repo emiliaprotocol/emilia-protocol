@@ -1,0 +1,75 @@
+{
+  "@type": "EP-ASSURANCE-RECORD-v1",
+  "profile_id": "emilia.reference.synthetic-vendor-destination.v1",
+  "profile_hash": "sha256:46d2933aaf4972ff89243d8551d60d2672b240ed1fc53a32fefe18ae7436999a",
+  "claim_case_digest": "sha256:02d6eb9c357a3774d7ea45bdfc272191e730f3adacfdfb77e90a75ba1bea9354",
+  "subject_digest": "sha256:276950adcb77a4dc6f84dcd1c36e6d26d244040f3df9543fc3e916b05a6b5b30",
+  "scope_digest": "sha256:970dfc561944db40b219b05959f07aaa6ca40904200021759970e40980fec008",
+  "claim": {
+    "claim_id": "claim:synthetic:vendor-destination:aurora",
+    "claim_type": "finance.vendor-payment-destination",
+    "predicate": "proposed-destination-is-approved",
+    "value": {
+      "destination_digest": "sha256:dd24c7dc535354bd7198f1ea9fc35843ae71ba70c90c7008ecc54e257d8365e1",
+      "synthetic_reference_only": true
+    }
+  },
+  "action_digest": "sha256:bd51d6154810a8b404536d5d5fe67692911731eaafb347f1adc94558ac3768d7",
+  "as_of": "2026-08-23T12:00:00Z",
+  "evaluated_at": "2026-08-23T12:00:01Z",
+  "verdict": "VERIFIED",
+  "profile_satisfied": true,
+  "authorizes_action": false,
+  "requirement_results": [
+    {
+      "requirement_id": "two-synthetic-destination-observations",
+      "evidence_role": "DESTINATION_OBSERVATION",
+      "minimum_distinct_sources": 2,
+      "accepted_supporting_sources": 2,
+      "accepted_contradicting_sources": 0,
+      "accepted_neutral_sources": 0,
+      "disposition": "SATISFIED",
+      "satisfied": true,
+      "reasons": []
+    }
+  ],
+  "evidence_results": [
+    {
+      "evidence_id": "evidence:synthetic:1",
+      "role": "DESTINATION_OBSERVATION",
+      "verifier": {
+        "implementation_digest": "sha256:791e600e7fbd458b3848e6ff373ed4ab500f287ba1c6d031de14988d21bc1372",
+        "verifier_id": "emilia.reference.synthetic-destination",
+        "verifier_version": "1.0.0"
+      },
+      "artifact_digest": "sha256:12b4105503c30b523b18c266b31938c6002131f132613d887192860ee53d0ab1",
+      "disposition": "ACCEPTED",
+      "verifier_verdict": "VERIFIED",
+      "relationship": "SUPPORTS",
+      "source_id": "synthetic:erp-vendor-master",
+      "observed_at": "2026-08-23T11:50:00Z",
+      "expires_at": "2026-08-24T11:50:00Z",
+      "reasons": []
+    },
+    {
+      "evidence_id": "evidence:synthetic:2",
+      "role": "DESTINATION_OBSERVATION",
+      "verifier": {
+        "implementation_digest": "sha256:791e600e7fbd458b3848e6ff373ed4ab500f287ba1c6d031de14988d21bc1372",
+        "verifier_id": "emilia.reference.synthetic-destination",
+        "verifier_version": "1.0.0"
+      },
+      "artifact_digest": "sha256:967d5a90da57ebcc0cf62ffa9a03878bea9c40c757ae72ef46f9025681063a04",
+      "disposition": "ACCEPTED",
+      "verifier_verdict": "VERIFIED",
+      "relationship": "SUPPORTS",
+      "source_id": "synthetic:out-of-band-callback-log",
+      "observed_at": "2026-08-23T11:55:00Z",
+      "expires_at": "2026-08-24T11:55:00Z",
+      "reasons": []
+    }
+  ],
+  "reasons": [],
+  "replay_digest": "sha256:64f51f7750f1185dcaa74ed6c7f4cd185969f862291a93840af09cf27aa70ed1",
+  "record_digest": "sha256:dbf1f303f1b6e58aec00b3fec1f782e2853fd9ab9601d9325c7e7014091f2985"
+}

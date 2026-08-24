@@ -22,28 +22,28 @@ const COMPARISONS = [
   },
   {
     title: 'MCP authorization is necessary but not sufficient',
-    desc: 'MCP authorization gates which tools an agent can call. EP gates whether the specific call about to execute was approved by a named human.',
+    desc: 'MCP authorization gates which tools an agent can call. EP evaluates the specific call against finite customer authority and requires named-human signoff when the mandate or local policy calls for it.',
     href: '/compare/mcp-auth-alone',
     accent: color.gold,
     tag: 'MCP Authorization',
   },
   {
     title: 'Trust receipts vs audit logs',
-    desc: 'Audit logs detect after the breach. EP trust receipts prove authorization before the action executes — cryptographic, offline-verifiable.',
+    desc: 'Audit logs record system events. EP authorization receipts record the authority evidence admitted before provider entry on a protected path and can be verified offline against pinned keys.',
     href: '/compare/audit-logs',
     accent: color.green,
     tag: 'Audit Logs',
   },
   {
     title: 'Pre-action authorization vs post-action fraud detection',
-    desc: 'Detection finds bad actions after they execute. Pre-action authorization stops them before. Why detection alone is the wrong primitive for irreversible actions.',
+    desc: 'Fraud controls may detect, score, hold, or reject activity. EP adds a separate exact-action authority condition at a completely mediated executor boundary.',
     href: '/compare/fraud-detection',
     accent: color.red,
     tag: 'Fraud Detection',
   },
   {
     title: 'EMILIA Protocol vs Permit.io',
-    desc: 'Permit.io authorizes what an agent may do (RBAC/ABAC/ReBAC). EP adds a named human signoff before the irreversible action, plus an offline-verifiable receipt. Complementary, not competing.',
+    desc: 'Permit.io authorizes what an agent may do (RBAC/ABAC/ReBAC). EP adds action-bound finite customer authority and portable evidence, with named-human signoff when policy requires it. Complementary, not competing.',
     href: '/compare/permit-io',
     accent: color.blue,
     tag: 'Permit.io',
@@ -83,9 +83,9 @@ export default function ComparePage() {
         <div className="ep-tag ep-hero-badge">Comparisons</div>
         <h1 className="ep-hero-text" style={styles.h1}>How EMILIA Protocol compares</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620, marginBottom: 48 }}>
-          Procurement teams evaluating pre-action authorization controls ask the same handful of questions. Direct comparisons against the controls EP layers on top of, or replaces.
+          Procurement teams evaluating pre-action authorization controls ask the same handful of questions. These comparisons show where EMILIA composes with adjacent controls and where a completely mediated exact-action boundary adds a different property. They are not broad replacement claims.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: 12 }}>
           {COMPARISONS.map((c, i) => (
             <a key={c.href} href={c.href}
               className={`ep-card-lift ep-reveal ep-stagger-${i + 1}`}

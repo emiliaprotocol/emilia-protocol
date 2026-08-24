@@ -1,135 +1,103 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { Metadata } from 'next';
+import {
+  GATE_IMPLEMENTATION,
+  PRODUCTION_GATE,
+  PROTECTED_WORKFLOW_PILOT,
+} from '@/lib/commercial-offer';
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/cloud' },
+};
 
 const s = {
   page: { minHeight: '100vh', background: '#020617', color: '#F8FAFC', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
-  container: { maxWidth: 800, margin: '0 auto', padding: '80px 24px' },
-  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#22C55E', marginBottom: 12 },
-  h1: { fontSize: 36, fontWeight: 700, letterSpacing: -0.5, lineHeight: 1.2, marginBottom: 16 },
-  sub: { fontSize: 16, color: '#94A3B8', lineHeight: 1.6, marginBottom: 40 },
+  container: { maxWidth: 920, margin: '0 auto', padding: '64px 24px 80px' },
+  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#F59E0B', marginBottom: 12 },
+  h1: { fontSize: 38, fontWeight: 700, letterSpacing: -0.7, lineHeight: 1.16, marginBottom: 16 },
+  sub: { fontSize: 16, color: '#94A3B8', lineHeight: 1.7, marginBottom: 36, maxWidth: 760 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 48 },
-  card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 24 },
-  cardTitle: { fontSize: 15, fontWeight: 600, color: '#F8FAFC', marginBottom: 8 },
-  cardBody: { fontSize: 13, color: '#94A3B8', lineHeight: 1.6 },
-  label: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: '#22C55E', marginBottom: 8 },
+  card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: 24 },
+  cardTitle: { fontSize: 16, fontWeight: 650, color: '#F8FAFC', marginBottom: 8 },
+  cardBody: { fontSize: 13, color: '#94A3B8', lineHeight: 1.65, margin: 0 },
+  label: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.7, textTransform: 'uppercase', color: '#60A5FA', marginBottom: 8 },
   section: { marginBottom: 48 },
-  h2: { fontSize: 24, fontWeight: 700, marginBottom: 12 },
-  body: { fontSize: 15, color: '#94A3B8', lineHeight: 1.7 },
-  cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none', marginTop: 24 },
-  divider: { height: 1, background: 'rgba(255,255,255,0.06)', margin: '48px 0' },
-};
+  h2: { fontSize: 25, fontWeight: 700, marginBottom: 12 },
+  body: { fontSize: 15, color: '#94A3B8', lineHeight: 1.72, maxWidth: 760 },
+  cta: { display: 'inline-block', padding: '12px 22px', borderRadius: 8, fontSize: 14, fontWeight: 650, textDecoration: 'none' },
+  divider: { height: 1, background: 'rgba(255,255,255,0.07)', margin: '48px 0' },
+} satisfies Record<string, React.CSSProperties>;
 
-export const metadata: Metadata = {
-  title: 'EMILIA Gate Cloud — Managed Control Plane',
-  description: 'Managed policy, approval orchestration, evidence operations, and tenant management for EMILIA Gate deployments.',
-};
+const SURFACES = [
+  ['Implemented reference UI', 'Policy, signoff, event, evidence, tenant-isolation, alert, and settings screens are present in the repository.'],
+  ['Developer-configured test paths', 'Some screens can call repository API handlers when a developer supplies local or sandbox test configuration. That is not hosted-service availability.'],
+  ['Evidence-bound status', 'The interfaces keep requests, decisions, consumption, provider entry, outcome, and reconciliation distinct when the backing evidence supports them.'],
+  ['Designed operating shape', 'Production identity, customer-held credentials, trust roots, retention, isolation, and service levels must be scoped and accepted for a specific deployment.'],
+] as const;
 
 export default function CloudPage(): React.ReactElement {
   return (
-    <div style={s.page}>
+    <main style={s.page}>
       <div style={s.container}>
-
-        <div style={s.eyebrow}>EMILIA Gate Cloud</div>
-        <h1 style={s.h1}>Managed operations<br />around the consequence boundary</h1>
+        <div style={s.eyebrow}>Deindexed implementation prototype</div>
+        <h1 style={s.h1}>A reference view of the operations a Gate deployment would need.</h1>
         <p style={s.sub}>
-          EMILIA Protocol stays open. Gate Cloud operates policy, approval orchestration,
-          monitoring, evidence tooling, and tenant management around the customer&rsquo;s
-          enforcement adapter.
+          These screens make the intended operating surface inspectable. EMILIA does not
+          currently offer this route as a managed Cloud product, and this prototype is not
+          evidence of a customer deployment, production coverage, availability, or adoption.
         </p>
 
         <div style={s.grid}>
-          <div style={s.card}>
-            <div style={s.label}>Policy</div>
-            <div style={s.cardTitle}>Managed policy registry</div>
-            <div style={s.cardBody}>Version-controlled policies with hash snapshots. Rollout, rollback, and diff between versions. Policy simulation before deployment.</div>
-          </div>
-          <div style={s.card}>
-            <div style={s.label}>Signoff</div>
-            <div style={s.cardTitle}>Signoff orchestration</div>
-            <div style={s.cardBody}>Challenge routing, notification delivery, approval queues, manual escalation, and webhook delivery with retry for accountable signoff workflows.</div>
-          </div>
-          <div style={s.card}>
-            <div style={s.label}>Authority Inbox</div>
-            <div style={s.cardTitle}>Evidence-derived action operations</div>
-            <div style={s.cardBody}>Track exact actions from receipt request through human decision, one-time use, provider entry, outcome, and reconciliation without inferring states the evidence does not establish.</div>
-          </div>
-          <div style={s.card}>
-            <div style={s.label}>Events</div>
-            <div style={s.cardTitle}>Event explorer</div>
-            <div style={s.cardBody}>Search, filter, and timeline every protocol event. Full-text search across handshakes, signoffs, and decisions .</div>
-          </div>
-          <div style={s.card}>
-            <div style={s.label}>Audit</div>
-            <div style={s.cardTitle}>Audit exports</div>
-            <div style={s.cardBody}>Scoped evidence packages with per-action decision records, policy snapshots, signoff traces, and reconstruction-ready exports.</div>
-          </div>
-          <div style={s.card}>
-            <div style={s.label}>Tenants</div>
-            <div style={s.cardTitle}>Tenant management</div>
-            <div style={s.cardBody}>Multi-tenant isolation with per-tenant policies, keys, quotas, and audit trails. Operator-level access controls.</div>
-          </div>
-          <div style={s.card}>
-            <div style={s.label}>Alerts</div>
-            <div style={s.cardTitle}>Alerting and webhooks</div>
-            <div style={s.cardBody}>Configurable alerts on policy violations, signoff timeouts, consumption anomalies, and overload conditions. Webhook delivery with retry.</div>
-          </div>
+          {SURFACES.map(([title, body]) => (
+            <article key={title} style={s.card}>
+              <div style={s.cardTitle}>{title}</div>
+              <p style={s.cardBody}>{body}</p>
+            </article>
+          ))}
         </div>
 
         <div style={s.divider} />
 
-        <div style={s.section}>
-          <h2 style={s.h2}>Open protocol. Commercial control plane.</h2>
+        <section style={s.section}>
+          <div style={s.label}>Commercial boundary</div>
+          <h2 style={s.h2}>One public pilot. Production is separate.</h2>
           <p style={s.body}>
-            The Protocol is open and forkable. Gate can be self-hosted. Gate Cloud is the managed
-            operations layer customers pay for when they do not want to run the control plane.
+            The public offer is the {PROTECTED_WORKFLOW_PILOT.priceLabel}, {' '}
+            {PROTECTED_WORKFLOW_PILOT.durationLabel} Protected-workflow pilot for {' '}
+            {PROTECTED_WORKFLOW_PILOT.workflowLabel}. It uses synthetic, read-only, sandbox,
+            or shadow inputs only. It receives no provider credentials and cannot actuate a
+            production system.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 20 }}>
-            <div style={{ padding: 16, border: '1px solid rgba(34,197,94,0.15)', borderRadius: 8, textAlign: 'center' }}>
-              <div style={{ ...s.label, color: '#3B82F6' }}>Open</div>
-              <div style={{ fontSize: 14, color: '#F8FAFC', fontWeight: 600 }}>Protocol + Runtime</div>
-              <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>Apache 2.0</div>
-            </div>
-            <div style={{ padding: 16, border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, textAlign: 'center', background: 'rgba(34,197,94,0.04)' }}>
-              <div style={s.label}>Cloud</div>
-              <div style={{ fontSize: 14, color: '#F8FAFC', fontWeight: 600 }}>Managed Control Plane</div>
-              <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>Per-tenant pricing</div>
-            </div>
-            <div style={{ padding: 16, border: '1px solid rgba(34,197,94,0.15)', borderRadius: 8, textAlign: 'center' }}>
-              <div style={{ ...s.label, color: '#3B82F6' }}>Enterprise</div>
-              <div style={{ fontSize: 14, color: '#F8FAFC', fontWeight: 600 }}>VPC + SSO + Residency</div>
-              <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>Custom deployment</div>
-            </div>
-          </div>
-        </div>
-
-        <div style={s.divider} />
-
-        <div style={s.section}>
-          <h2 style={s.h2}>Vertical packs</h2>
           <p style={s.body}>
-            Sector-specific policy templates, compliance mappings, and audit formats for regulated industries.
+            After buyer acceptance, {GATE_IMPLEMENTATION.name} is separately scoped for one real
+            executor boundary. {PRODUCTION_GATE.availabilityLabel}.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 16 }}>
-            <div style={{ padding: 12, border: '1px solid rgba(34,197,94,0.1)', borderRadius: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#F8FAFC' }}>Government</div>
-              <div style={{ fontSize: 12, color: '#94A3B8' }}>Payment integrity, benefit controls, GovGuard pre-execution gate</div>
-            </div>
-            <div style={{ padding: 12, border: '1px solid rgba(34,197,94,0.1)', borderRadius: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#F8FAFC' }}>Financial</div>
-              <div style={{ fontSize: 12, color: '#94A3B8' }}>Treasury controls, SOX evidence, wire fraud prevention</div>
-            </div>
-            <div style={{ padding: 12, border: '1px solid rgba(34,197,94,0.1)', borderRadius: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#F8FAFC' }}>Agent Governance</div>
-              <div style={{ fontSize: 12, color: '#94A3B8' }}>AI delegation authority, autonomous action control</div>
-            </div>
-          </div>
-        </div>
+        </section>
 
-        <div style={{ textAlign: 'center', marginTop: 48 }}>
-          <a href="/partners" style={{ ...s.cta, background: '#22C55E', color: '#020617' }}>Request Cloud Access</a>
-          <a href="/protocol" style={{ ...s.cta, background: 'transparent', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)', marginLeft: 12 }}>Read the Protocol</a>
-        </div>
+        <section style={s.section}>
+          <div style={s.label}>Not established here</div>
+          <h2 style={s.h2}>Interface coverage is not deployment assurance.</h2>
+          <ul style={{ ...s.body, paddingLeft: 20 }}>
+            <li>No currently operated or generally available hosted Gate Cloud service</li>
+            <li>No customer, integration, production-isolation, residency, SSO, VPC, or SLA claim</li>
+            <li>No certificate, audit conclusion, compliance determination, or successful-effect proof</li>
+            <li>No production provider credentials, actuation authority, or complete-mediation claim</li>
+          </ul>
+        </section>
 
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          <a href="/pilot" style={{ ...s.cta, background: '#22C55E', color: '#020617' }}>
+            Review the protected-workflow pilot
+          </a>
+          <a
+            href="mailto:team@emiliaprotocol.ai?subject=Gate%20Implementation%20inquiry"
+            style={{ ...s.cta, background: 'transparent', color: '#60A5FA', border: '1px solid rgba(96,165,250,0.32)' }}
+          >
+            Ask about Gate Implementation
+          </a>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

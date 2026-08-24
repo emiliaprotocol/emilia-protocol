@@ -1,29 +1,30 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Approver Apps — Exact-Action Human Decisions',
+  title: 'Approver Reference Apps for Exact-Action Signoff | EMILIA',
   description:
-    'Open iOS, Android, Swift, and Kotlin reference clients for CAID-locked exact-action '
-    + 'decisions, quorum progress, safe indeterminate outcomes, and portable decision passports.',
+    'Open iOS, Android, Swift, and Kotlin reference artifacts for exact-action '
+    + 'human decisions when a customer-owned Gate policy requires fresh signoff.',
   alternates: { canonical: '/product/accountable-signoff' },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: 'EMILIA Approver Apps',
+    title: 'EMILIA Approver Reference Apps',
     description:
-      'Gate creates a CAID-locked exact-action challenge. The Approver app captures '
-      + 'the device-bound decision and follows its consequence without blind replay.',
+      'Reference clients capture a device-bound decision over exact action bytes. '
+      + 'They are a Gate capture surface, not a standalone production control.',
     url: 'https://www.emiliaprotocol.ai/product/accountable-signoff',
-    type: 'article',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'EMILIA Approver Reference Apps',
+    description: 'Exact-action signoff reference clients for buyer-controlled Gate deployments.',
   },
   keywords: [
-    'accountable signoff',
-    'named human approval',
-    'AI action signoff',
-    'cryptographic signoff',
-    'segregation of duties AI',
-    'AI approval app',
-    'mobile human authorization',
+    'exact action human approval',
+    'AI agent accountable signoff',
+    'device bound action approval',
     'CAID action fingerprint',
-    'indeterminate action reconciliation',
   ],
 };
 

@@ -44,8 +44,8 @@ const DOC_SECTIONS = [
   },
   {
     eyebrow: 'Re-performance',
-    title: 'Assurance Plane',
-    desc: 'Run open verification, preserve conformance records, and prepare bounded audit or underwriter packages.',
+    title: 'Claim-to-Consequence Assurance',
+    desc: 'Use the open claim and record rails, then the Assurance Plane service layer for bounded re-performance and review packages.',
     href: '/assurance',
   },
   {
@@ -63,7 +63,7 @@ const DOC_SECTIONS = [
   {
     eyebrow: 'Verify',
     title: 'Open verifier',
-    desc: 'Check an artifact under explicit relying-party inputs without depending on EMILIA’s hosted service.',
+    desc: 'Check an artifact under explicit relying-party inputs without requiring an EMILIA callback.',
     href: '/verify',
   },
 ];

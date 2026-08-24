@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.emiliaprotocol.ai/schemas/ep-assurance-record.schema.json",
+  "title": "EP-ASSURANCE-RECORD-v1",
+  "description": "A deterministic result of re-performing an EP-CLAIM-CASE-v1 under caller-pinned profile bytes and verifier implementations. The record is evidence only and always carries authorizes_action false.",
+  "type": "object",
+  "required": [
+    "@type",
+    "profile_id",
+    "profile_hash",
+    "claim_case_digest",
+    "subject_digest",
+    "scope_digest",
+    "claim",
+    "action_digest",
+    "as_of",
+    "evaluated_at",
+    "verdict",
+    "profile_satisfied",
+    "authorizes_action",
+    "requirement_results",
+    "evidence_results",
+    "reasons",
+    "replay_digest",
+    "record_digest"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "@type": { "const": "EP-ASSURANCE-RECORD-v1" },
+    "profile_id": { "$ref": "#/$defs/identifier" },
+    "profile_hash": { "$ref": "#/$defs/digest" },
+    "claim_case_digest": { "$ref": "#/$defs/digest" },
+    "subject_digest": { "$ref": "#/$defs/digest" },
+    "scope_digest": { "$ref": "#/$defs/digest" },
+    "claim": { "$ref": "#/$defs/claim" },
+    "action_digest": {
+      "oneOf": [
+        { "$ref": "#/$defs/digest" },
+        { "type": "null" }
+      ]
+    },
+    "as_of": { "$ref": "#/$defs/instant" },
+    "evaluated_at": { "$ref": "#/$defs/instant" },
+    "verdict": {
+      "enum": ["VERIFIED", "UNVERIFIED", "DIVERGED", "INDETERMINATE"]
+    },
+    "profile_satisfied": { "type": "boolean" },
+    "authorizes_action": { "const": false },
+    "requirement_results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/requirement_result" }
+    },
+    "evidence_results": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/evidence_result" }
+    },
+    "reasons": { "$ref": "#/$defs/reasons" },
+    "replay_digest": { "$ref": "#/$defs/digest" },
+    "record_digest": { "$ref": "#/$defs/digest" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "verdict": { "const": "VERIFIED" } } },
+      "then": { "properties": { "profile_satisfied": { "const": true } } },
+      "else": { "properties": { "profile_satisfied": { "const": false } } }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "instant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "nullable_instant": {
+      "oneOf": [
+        { "$ref": "#/$defs/instant" },
+        { "type": "null" }
+      ]
+    },
+    "nullable_identifier": {
+      "oneOf": [
+        { "$ref": "#/$defs/identifier" },
+        { "type": "null" }
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256,
+        "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+      }
+    },
+    "verifier": {
+      "type": "object",
+      "required": ["verifier_id", "verifier_version", "implementation_digest"],
+      "additionalProperties": false,
+      "properties": {
+        "verifier_id": { "$ref": "#/$defs/identifier" },
+        "verifier_version": { "$ref": "#/$defs/identifier" },
+        "implementation_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "required": ["claim_id", "claim_type", "predicate", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": { "$ref": "#/$defs/identifier" },
+        "claim_type": { "$ref": "#/$defs/label" },
+        "predicate": { "$ref": "#/$defs/label" },
+        "value": {}
+      }
+    },
+    "requirement_result": {
+      "type": "object",
+      "required": [
+        "requirement_id",
+        "evidence_role",
+        "minimum_distinct_sources",
+        "accepted_supporting_sources",
+        "accepted_contradicting_sources",
+        "accepted_neutral_sources",
+        "disposition",
+        "satisfied",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "requirement_id": { "$ref": "#/$defs/identifier" },
+        "evidence_role": { "$ref": "#/$defs/identifier" },
+        "minimum_distinct_sources": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "accepted_supporting_sources": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "accepted_contradicting_sources": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "accepted_neutral_sources": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "disposition": {
+          "enum": ["SATISFIED", "UNVERIFIED", "DIVERGED", "INDETERMINATE"]
+        },
+        "satisfied": { "type": "boolean" },
+        "reasons": { "$ref": "#/$defs/reasons" }
+      }
+    },
+    "evidence_result": {
+      "type": "object",
+      "required": [
+        "evidence_id",
+        "role",
+        "verifier",
+        "artifact_digest",
+        "disposition",
+        "verifier_verdict",
+        "relationship",
+        "source_id",
+        "observed_at",
+        "expires_at",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "evidence_id": { "$ref": "#/$defs/identifier" },
+        "role": { "$ref": "#/$defs/identifier" },
+        "verifier": { "$ref": "#/$defs/verifier" },
+        "artifact_digest": { "$ref": "#/$defs/digest" },
+        "disposition": { "enum": ["ACCEPTED", "REJECTED", "INDETERMINATE"] },
+        "verifier_verdict": {
+          "oneOf": [
+            { "enum": ["VERIFIED", "UNVERIFIED", "INDETERMINATE"] },
+            { "type": "null" }
+          ]
+        },
+        "relationship": {
+          "oneOf": [
+            { "enum": ["SUPPORTS", "CONTRADICTS", "NEUTRAL"] },
+            { "type": "null" }
+          ]
+        },
+        "source_id": { "$ref": "#/$defs/nullable_identifier" },
+        "observed_at": { "$ref": "#/$defs/nullable_instant" },
+        "expires_at": { "$ref": "#/$defs/nullable_instant" },
+        "reasons": { "$ref": "#/$defs/reasons" }
+      }
+    }
+  }
+}

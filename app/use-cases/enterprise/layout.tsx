@@ -1,18 +1,15 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Enterprise — Privileged Actions for Zero Trust',
+  title: 'Enterprise — Privileged-Action Solution Profile',
   description:
-    'Bound authorization for infrastructure changes, data exports, ' +
-    'permission escalations, production deployments, and other privileged ' +
-    'enterprise actions. PAM-layer extension with cryptographic ' +
-    'action-binding and named accountable signoff.',
+    'A bounded EMILIA solution profile for exact-action checks around infrastructure changes, ' +
+    'data exports, permission escalations, and deployment approvals.',
   alternates: { canonical: '/use-cases/enterprise' },
   openGraph: {
     title: 'EMILIA Protocol for Enterprise Privileged Actions',
     description:
-      'Action-bound authorization layered on top of PAM. Cryptographic ' +
-      'evidence for every consequential change.',
+      'Action-bound evidence and admission checks for buyer-selected privileged operations.',
     url: 'https://www.emiliaprotocol.ai/use-cases/enterprise',
     type: 'article',
   },

@@ -4,15 +4,17 @@
  * ep-assure — re-perform an EMILIA reliance assurance package and emit an auditor
  * workpaper. The independent-assurer CLI: point it at a package (or raw decisions
  * + a pinned profile) and auditor-supplied keys, and it recomputes every reliance
- * verdict offline, detects drift against the runtime's stated verdicts, maps each
- * to a control objective, and prints the workpaper. Exit code is non-zero when it
- * finds a decision that RELIED ON INADMISSIBLE evidence (claimed rely, recomputes
- * to a refusal), so it drops into CI/audit pipelines.
+ * verdict offline, validates package/profile integrity, detects drift against the runtime's stated verdicts, maps each
+ * to a control objective, and prints the workpaper. Exit code is non-zero when
+ * package/profile integrity fails or when it finds a
+ * decision that RELIED ON INADMISSIBLE evidence (claimed rely, recomputes to a
+ * refusal), so it drops into CI/audit pipelines.
  *
  *   node packages/gate/ep-assure.mjs <input.json> [--json] [--strict]
  *
  * input.json is one of:
- *   { "package": <EP-ASSURANCE-PACKAGE-v1>, "keys": {...}, "now": <iso|ms> }
+ *   { "package": <EP-ASSURANCE-PACKAGE-v1>, "keys": {...}, "now": <iso|ms>,
+ *     "expected_package_digest"?: <out-of-band digest>, "expected_profile_hash"?: <out-of-band digest> }
  *   { "decisions": [...], "profile": <EP-RELIANCE-PROFILE-v1>, "keys": {...}, "now": <iso|ms> }
  *
  * keys (auditor-pinned, out of band): { approverKeys, logPublicKey, rpId, allowedOrigins, revokerKeys }
@@ -48,6 +50,8 @@ try {
     approverKeys: keys.approverKeys || {}, logPublicKey: keys.logPublicKey || null,
     rpId: keys.rpId || null, allowedOrigins: keys.allowedOrigins || [],
     revokerKeys: keys.revokerKeys || {}, now,
+    expectedPackageDigest: input.expected_package_digest ?? null,
+    expectedProfileHash: input.expected_profile_hash ?? null,
   });
 } catch (e) { fail(e.message); }
 
@@ -59,6 +63,15 @@ if (flags.has('--json')) {
 
 const inadmissibleReliance = doc.population.relied_on_inadmissible_evidence;
 const anyDrift = doc.population.drift;
+if (doc.integrity_verified !== true) {
+  const failures = [];
+  if (doc.package_digest_verified !== true) failures.push('package digest mismatch');
+  if (doc.profile_hash_verified !== true) failures.push('profile hash mismatch');
+  if (doc.expected_package_digest_matches === false) failures.push('out-of-band package pin mismatch');
+  if (doc.expected_profile_hash_matches === false) failures.push('out-of-band profile pin mismatch');
+  process.stderr.write(`ep-assure: integrity failed — ${failures.join('; ')}\n`);
+  process.exit(1);
+}
 const bad = flags.has('--strict') ? anyDrift : inadmissibleReliance;
 if (bad > 0) {
   process.stderr.write(`ep-assure: ${bad} finding(s) — ${flags.has('--strict') ? 'drift' : 'reliance on inadmissible evidence'} detected\n`);

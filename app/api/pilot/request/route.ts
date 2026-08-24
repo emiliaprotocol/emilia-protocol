@@ -210,6 +210,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         `Workflow: ${workflow.label}\n\n` +
         `Offer: ${offer.name} (${offer.id})\n` +
         `Fixed scope: ${offer.durationLabel}; ${offer.priceLabel}; ${offer.workflowLabel}\n` +
+        `Rollout boundary: ${offer.rolloutLabel}\n` +
         `First profile: ${offer.firstProfileLabel}\n` +
         `Safety rule: ${offer.safetyRuleLabel}\n` +
         `${offer.eligibilityLabel}.\n` +

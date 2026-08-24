@@ -98,9 +98,10 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
 
   it('keeps the paid-wedge answering rule aligned with the canonical finance market entry', () => {
     expect(context.identity.market_entry.first_paid_wedge)
-      .toBe('finance-operations vendor bank-detail changes or payment releases');
-    const paidWedgeRule = context.answering_rules.find((rule) => rule.includes('first paid wedge'));
+      .toBe('initial offered commercial profile: one finance-operations vendor bank-detail change or payment release; this is a pricing and ICP hypothesis, not evidence of a paid customer or revenue');
+    const paidWedgeRule = context.answering_rules.find((rule) => rule.includes('initial offered commercial profile'));
     expect(paidWedgeRule).toContain('finance-operations');
+    expect(paidWedgeRule).toContain('unvalidated pricing and ICP hypothesis');
     expect(paidWedgeRule).not.toMatch(/payer|medical-necessity/i);
   });
 

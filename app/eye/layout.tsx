@@ -1,16 +1,15 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Eye — Graduated Risk Observation Without Production Risk',
+  title: 'Eye — Experimental Action-Risk Advisory Profile',
   description:
-    'EP\'s Eye layer observes risk patterns in three modes: OBSERVE (log ' +
-    'only), SHADOW (evaluate without acting), ENFORCE (gate the action). ' +
-    'Roll out enforcement without breaking production traffic.',
+    'An experimental, advisory-only EMILIA profile for observation and shadow evaluation. ' +
+    'Eye can tighten posture but never authorizes or enforces an action by itself.',
   alternates: { canonical: '/eye' },
   openGraph: {
-    title: 'Eye — Observe → Shadow → Enforce',
+    title: 'Eye — Observe and Evaluate Without Authorizing',
     description:
-      'Graduated AI-action risk observation. Roll out enforcement safely.',
+      'Experimental action-risk advisories with an explicit non-authorizing boundary.',
     url: 'https://www.emiliaprotocol.ai/eye',
     type: 'article',
   },

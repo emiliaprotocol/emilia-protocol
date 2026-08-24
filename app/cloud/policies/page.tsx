@@ -27,12 +27,12 @@ const s: Record<string, any> = {
 };
 
 const MOCK_POLICIES = [
-  { id: 'pol_aml_kyc_v3', name: 'AML/KYC Verification', version: 'v3.2.1', status: 'active', enforcement: 'strict', handshakes: 4821, lastUpdated: '2026-03-20T10:30:00Z' },
-  { id: 'pol_sox_404', name: 'SOX 404 Controls', version: 'v2.1.0', status: 'active', enforcement: 'strict', handshakes: 2104, lastUpdated: '2026-03-18T14:15:00Z' },
-  { id: 'pol_gdpr_consent', name: 'GDPR Consent Management', version: 'v4.0.0', status: 'active', enforcement: 'advisory', handshakes: 3567, lastUpdated: '2026-03-19T09:45:00Z' },
-  { id: 'pol_ai_act', name: 'AI Act Compliance Trail', version: 'v1.3.0', status: 'active', enforcement: 'strict', handshakes: 1289, lastUpdated: '2026-03-17T16:20:00Z' },
+  { id: 'pol_identity_inputs', name: 'Sample identity-input requirement', version: 'v3.2.1', status: 'active', enforcement: 'strict', handshakes: 4821, lastUpdated: '2026-03-20T10:30:00Z' },
+  { id: 'pol_control_mapping', name: 'Reference control-mapping inputs', version: 'v2.1.0', status: 'active', enforcement: 'strict', handshakes: 2104, lastUpdated: '2026-03-18T14:15:00Z' },
+  { id: 'pol_consent_input', name: 'Sample consent-record requirement', version: 'v4.0.0', status: 'active', enforcement: 'advisory', handshakes: 3567, lastUpdated: '2026-03-19T09:45:00Z' },
+  { id: 'pol_agent_trace', name: 'Reference agent-action trace', version: 'v1.3.0', status: 'active', enforcement: 'strict', handshakes: 1289, lastUpdated: '2026-03-17T16:20:00Z' },
   { id: 'pol_screening_demo', name: 'Screening Demo', version: 'v2.0.0', status: 'active', enforcement: 'strict', handshakes: 890, lastUpdated: '2026-03-16T11:00:00Z' },
-  { id: 'pol_data_residency', name: 'Data Residency Rules', version: 'v1.1.0', status: 'draft', enforcement: 'strict', handshakes: 0, lastUpdated: '2026-03-21T08:00:00Z' },
+  { id: 'pol_region_constraint', name: 'Sample region constraint', version: 'v1.1.0', status: 'draft', enforcement: 'strict', handshakes: 0, lastUpdated: '2026-03-21T08:00:00Z' },
   { id: 'pol_vendor_risk', name: 'Vendor Risk Assessment', version: 'v1.0.0', status: 'inactive', enforcement: 'advisory', handshakes: 412, lastUpdated: '2026-03-10T13:30:00Z' },
 ];
 
@@ -79,20 +79,20 @@ export default function PoliciesPage(): React.ReactElement {
   return (
     <div style={s.page}>
       <div style={s.container}>
-        <div style={s.eyebrow}>Cloud / Policies</div>
-        <h1 style={s.h1}>Policy Management</h1>
-        <p style={s.subtitle}>Configure and manage compliance policies enforced across handshakes.</p>
+        <div style={s.eyebrow}>Prototype / Policy samples</div>
+        <h1 style={s.h1}>Policy registry interaction sample</h1>
+        <p style={s.subtitle}>Explore synthetic policy records and counts. They establish neither production enforcement nor compliance.</p>
 
         {error && <div style={s.error}>{error}</div>}
 
         <div style={s.topBar}>
           <input
             style={s.searchInput}
-            placeholder="Search policies..."
+            placeholder="Search sample policies..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <button style={s.btn}>+ New Policy</button>
+          <button style={s.btn}>+ Add sample policy</button>
         </div>
 
         <div style={s.card}>

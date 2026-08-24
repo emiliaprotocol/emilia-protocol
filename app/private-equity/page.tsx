@@ -11,8 +11,8 @@ import css from './private-equity.module.css';
 const PAGE_URL = 'https://www.emiliaprotocol.ai/private-equity';
 const PAGE_TITLE = 'Agentic AI Risk Controls for Private Equity Portfolios';
 const PAGE_DESCRIPTION =
-  'Protect one portfolio-company finance workflow with customer-owned exact-action authority. '
-  + 'Start with a 90-day, $25K EMILIA Gate pilot for vendor bank-detail changes or payment releases.';
+  'Design a customer-owned exact-action authority boundary for one portfolio-company finance workflow. '
+  + 'Start with a nonproduction 90-day, $25K EMILIA Gate pilot for a vendor bank-detail change or payment release.';
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: PAGE_URL,
-    title: 'Protect the capital behind agentic action',
+    title: 'Put a hard authority boundary around one capital-exposing agent action',
     description: PAGE_DESCRIPTION,
     images: [
       {
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Protect the capital behind agentic action',
+    title: 'Put a hard authority boundary around one capital-exposing agent action',
     description: PAGE_DESCRIPTION,
     images: ['/private-equity/opengraph-image'],
   },
@@ -74,7 +74,7 @@ const FAQ = [
   {
     question: 'What is included in the first pilot?',
     answer:
-      'One buyer-selected vendor bank-detail change or payment-release workflow, 90 days, and a fixed $25K scope. Work begins with synthetic and read-only validation. A production path changes only after the buyer accepts the boundary, trust inputs, operating procedure, and complete-mediation design.',
+      'One buyer-selected vendor bank-detail change or payment-release workflow, 90 days, and a fixed $25K scope. The pilot is synthetic, read-only, sandbox, or shadow only. It ends with a production decision packet and draft implementation SOW. Any production activation is a separately scoped Gate Implementation after the buyer accepts the boundary, trust inputs, operating procedure, and complete-mediation design.',
   },
 ] as const;
 
@@ -126,8 +126,8 @@ const PILOT_PHASES = [
   {
     number: '03',
     window: 'Days 61-90',
-    title: 'Make a buyer-owned decision',
-    body: 'Deliver the boundary design, acceptance evidence, limitations, and operating procedure. Production enforcement begins only after explicit buyer acceptance.',
+    title: 'Make a buyer-owned production decision',
+    body: 'Deliver the boundary design, acceptance evidence, limitations, operating procedure, and draft implementation SOW. The pilot does not activate production; any production enforcement is a separately scoped Gate Implementation after explicit buyer acceptance.',
   },
 ] as const;
 
@@ -165,7 +165,7 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
         <section className={css.hero} aria-labelledby="pe-hero-title">
           <div className={css.heroCopy}>
             <p className={css.eyebrow}>For private equity operating partners and portfolio finance leaders</p>
-            <h1 id="pe-hero-title">Protect the capital behind agentic action.</h1>
+            <h1 id="pe-hero-title">Put a hard authority boundary around one capital-exposing agent action.</h1>
             <p className={css.heroLead}>
               Agents are moving from advice to action. EMILIA Gate puts a customer-owned authority
               tollgate at the systems where they change vendor bank details or release payments.
@@ -355,7 +355,7 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
 
         <section className={css.finalCta} aria-labelledby="final-cta-heading">
           <p className={css.sectionKicker}>Start with a real boundary</p>
-          <h2 id="final-cta-heading">Protect one portfolio-company finance workflow.</h2>
+          <h2 id="final-cta-heading">Assess and design one portfolio-company finance boundary.</h2>
           <p>
             Bring the workflow, owner, executor path, current approval rule, and known bypasses. We will
             scope the smallest pilot that can produce a defensible yes or no.

@@ -18,11 +18,11 @@ export const PROTECTED_WORKFLOW_PILOT = Object.freeze({
   durationDays: 90,
   durationLabel: '90 days',
   workflowCount: 1,
-  workflowLabel: '1 protected workflow',
+  workflowLabel: '1 assessed consequence boundary',
   firstProfileLabel: 'Finance operations vendor bank-detail change or payment release',
   safetyRuleLabel: 'No accepted exact-action authority and required evidence, no provider entry',
   eligibilityLabel: 'Other consequential workflows remain eligible',
-  rolloutLabel: 'Synthetic and read-only validation first; production only through a buyer-approved Gate boundary',
+  rolloutLabel: 'Synthetic, read-only, sandbox, or shadow validation only; any production activation is a separately scoped Gate Implementation',
 });
 
 export const GATE_QUALIFICATION = Object.freeze({
@@ -39,7 +39,7 @@ export const GATE_IMPLEMENTATION = Object.freeze({
   priceLabel: '$150K-$250K',
   scopeLabel: 'one prospective consequence boundary',
   valueMetric: 'protected workflow',
-  outcomeLabel: 'production-ready Gate binding and evidence operations',
+  outcomeLabel: 'customer acceptance packet for one separately scoped production Gate binding and evidence operation',
 });
 
 export const PRODUCTION_GATE = Object.freeze({

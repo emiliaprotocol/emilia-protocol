@@ -49,9 +49,6 @@ export default function ArenaExperience() {
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [leadOpen, setLeadOpen] = useState(false);
-  const [leadState, setLeadState] = useState<'idle' | 'sending' | 'sent'>('idle');
-  const [leadError, setLeadError] = useState('');
   const [copied, setCopied] = useState('');
 
   const remaining = attempts.length
@@ -59,6 +56,12 @@ export default function ArenaExperience() {
     : session?.allowance.total_amount ?? 0;
   const used = session ? session.allowance.total_amount - remaining : 0;
   const ratio = session ? Math.max(0, Math.min(100, used / session.allowance.total_amount * 100)) : 0;
+  const pilotArtifactId = publicArtifactId(
+    [...attempts].reverse().find((attempt) => attempt.share_url)?.share_url,
+  );
+  const pilotHref = pilotArtifactId
+    ? `/pilot?artifact_id=${encodeURIComponent(pilotArtifactId)}`
+    : '/pilot';
 
   const provision = async () => {
     setBusy('claim'); setError(''); setAttempts([]);
@@ -127,31 +130,6 @@ export default function ArenaExperience() {
     await navigator.clipboard.writeText(new URL(url, window.location.origin).toString());
     setCopied(url);
     window.setTimeout(() => setCopied((current) => current === url ? '' : current), 1800);
-  };
-
-  const submitLead = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLeadState('sending'); setLeadError('');
-    const form = new FormData(event.currentTarget);
-    try {
-      const response = await fetch('/api/pilot/request', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          offer_id: PROTECTED_WORKFLOW_PILOT.id,
-          name: form.get('name'), org: form.get('org'), email: form.get('email'),
-          workflow: 'other',
-          artifact_id: publicArtifactId([...attempts].reverse().find((attempt) => attempt.share_url)?.share_url),
-          message: `Workflow to protect: ${form.get('workflow')}. Current system of record: ${form.get('system') || 'not specified'}.`,
-          website: '',
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Could not send your request.');
-      setLeadState('sent');
-    } catch (cause) {
-      setLeadState('idle');
-      setLeadError(cause instanceof Error ? cause.message : 'Could not send your request.');
-    }
   };
 
   const stages = useMemo(() => [
@@ -269,28 +247,18 @@ export default function ArenaExperience() {
         <div><span>01</span><h3>Bound</h3><p>One agent, one time window, named targets, aggregate and per-action limits.</p></div>
         <div><span>02</span><h3>Refuse</h3><p>The decision is made before an out-of-envelope action can enter an executor.</p></div>
         <div><span>03</span><h3>Record</h3><p>A signed refusal binds the exact synthetic action under the included session key. It does not establish identity, authority, or correctness.</p></div>
-        <div><span>04</span><h3>Pilot</h3><p>A separately scoped engagement protects one buyer-selected workflow at its real executor boundary.</p></div>
+        <div><span>04</span><h3>Pilot</h3><p>The canonical engagement assesses one buyer-selected consequence boundary without production actuation.</p></div>
       </section>
 
       <section className={styles.conversion}>
         <div>
-          <p className={styles.eyebrow}>FROM SYNTHETIC TO ONE LIVE WORKFLOW</p>
-          <h2>Protect the action that can actually cost you.</h2>
-          <p>{PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · {PROTECTED_WORKFLOW_PILOT.workflowLabel}. First profile: {PROTECTED_WORKFLOW_PILOT.firstProfileLabel}. {PROTECTED_WORKFLOW_PILOT.eligibilityLabel}. Sandbox and read-only validation come first; production waits for a buyer-approved executor boundary. EMILIA does not verify identity, certify a deployment, take custody, settle funds, or judge the underlying decision.</p>
+          <p className={styles.eyebrow}>FROM SYNTHETIC DEMO TO NONPRODUCTION ASSESSMENT</p>
+          <h2>Assess the action that can actually cost you.</h2>
+          <p>{PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · {PROTECTED_WORKFLOW_PILOT.workflowLabel}. First profile: {PROTECTED_WORKFLOW_PILOT.firstProfileLabel}. {PROTECTED_WORKFLOW_PILOT.eligibilityLabel}. Synthetic, read-only, sandbox, or shadow validation only. The pilot receives no production provider credentials and performs no production actuation. Production requires a separate Gate Implementation after the buyer accepts the proposed boundary. EMILIA does not verify identity, certify a deployment, take custody, settle funds, or judge the underlying decision.</p>
         </div>
-        {!leadOpen ? <button onClick={() => setLeadOpen(true)}>Scope the design-partner pilot →</button> : leadState === 'sent' ? (
-          <div className={styles.sent}>Request received. Iman will reply personally within one business day.</div>
-        ) : (
-          <form onSubmit={submitLead} className={styles.leadForm}>
-            <label><span>Your name</span><input name="name" autoComplete="name" required maxLength={120} /></label>
-            <label><span>Work email</span><input name="email" type="email" autoComplete="email" required maxLength={160} /></label>
-            <label><span>Organization</span><input name="org" autoComplete="organization" required maxLength={160} /></label>
-            <label><span>Workflow to protect</span><input name="workflow" required maxLength={180} /></label>
-            <label><span>Current system of record <small>optional</small></span><input name="system" maxLength={180} /></label>
-            {leadError && <div className={styles.leadError} role="alert" tabIndex={-1}>{leadError}</div>}
-            <button disabled={leadState === 'sending'}>{leadState === 'sending' ? 'Sending…' : 'Request scope →'}</button>
-          </form>
-        )}
+        <button onClick={() => window.location.assign(pilotHref)}>
+          Scope the {PROTECTED_WORKFLOW_PILOT.shortPriceLabel}, {PROTECTED_WORKFLOW_PILOT.durationLabel} pilot →
+        </button>
       </section>
     </main>
   );

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import EuAiActBanner from '@/components/EuAiActBanner';
+import SkipToMain from '@/components/SkipToMain';
 import proofStats from '@/lib/proof-stats.json';
 import './ep.css';
 
@@ -163,9 +164,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body style={{ margin: 0, padding: 0, background: '#FAFAF9', overflowX: 'hidden' }}>
-        <a className="ep-skip-link" href="#main-content">Skip to main content</a>
+        <SkipToMain />
         <EuAiActBanner />
-        <div id="main-content" tabIndex={-1}>{children}</div>
+        <div>{children}</div>
       </body>
     </html>
   );

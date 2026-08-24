@@ -1,166 +1,175 @@
-'use client';
+// SPDX-License-Identifier: Apache-2.0
 
-import { useState } from 'react';
-import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, cta, color, grid, font, radius } from '@/lib/tokens';
+import SiteNav from '@/components/SiteNav';
+import { GATE_IMPLEMENTATION, PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
+import { color, cta, grid, styles } from '@/lib/tokens';
 
-export default function AgentGovernancePackPage() {
-  const [form, setForm] = useState({ name:'', org:'', title:'', email:'', surface:'', problem:'', notes:'' });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState(null);
+const IMPLEMENTED_ARTIFACTS = [
+  {
+    title: 'Exact-action binding',
+    body: 'Reference Guard and Gate paths canonicalize material action fields, bind policy and authority evidence to those bytes, and return machine-readable decisions and refusal reasons.',
+  },
+  {
+    title: 'Action-type policies and hard refusals',
+    body: 'The shipped reference engine evaluates named action types, signoff thresholds, evidence conditions, and hard-deny flags. It does not automatically classify every tool or business consequence.',
+  },
+  {
+    title: 'Accountable signoff and quorum',
+    body: 'Reference signoff paths support enrolled approvers, distinct-human quorum, initiator exclusion, expiry, revocation, and one-time consumption under explicit profiles.',
+  },
+  {
+    title: 'Portable verification',
+    body: 'Protocol formats, verifiers, conformance vectors, and action-bound evidence support independent re-performance. They do not prove source truth, wisdom, provider outcome, or complete mediation.',
+  },
+] as const;
 
-  const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
+const DESIGNED_PROFILES = [
+  {
+    title: 'Risk-class taxonomy',
+    body: 'Low, medium, high, and critical labels can be designed with a buyer, but no universal classifier or default business taxonomy is claimed. The buyer owns consequence classification and thresholds.',
+  },
+  {
+    title: 'Tool and framework integration',
+    body: 'MCP or HTTP calls can be mapped to a named Gate boundary only when the actual mutating route is known. An SDK call or gateway log alone does not establish prevention.',
+  },
+  {
+    title: 'Regulatory mapping',
+    body: 'EU AI Act, NIST AI RMF, and other framework mappings may inform future scoped work. This profile does not claim compliance, legal sufficiency, audit approval, or a certified control.',
+  },
+] as const;
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setSubmitting(true); setError(null);
-    try {
-      const res = await fetch('/api/inquiries', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'pilot-agent-governance-pack', ...form }),
-      });
-      if (!res.ok) throw new Error('Submission failed');
-      setSubmitted(true);
-    } catch (err) { setError(err.message); }
-    setSubmitting(false);
-  }
+const BOUNDARY_STEPS = [
+  {
+    step: '01',
+    title: 'Name the consequential action',
+    body: 'Choose one exact action and identify the system where its consequence becomes real.',
+  },
+  {
+    step: '02',
+    title: 'Define customer authority',
+    body: 'Specify the accepted mandate, evidence, trust roots, expiry, and exception path without granting EMILIA production credentials during the pilot.',
+  },
+  {
+    step: '03',
+    title: 'Find every bypass',
+    body: 'Map alternate credentials, direct APIs, administrative paths, and workflows that could avoid the proposed Gate.',
+  },
+  {
+    step: '04',
+    title: 'Decide whether to implement',
+    body: `Validate in synthetic, sandbox, read-only, or shadow mode, then accept, continue observing, or stop before a separate ${GATE_IMPLEMENTATION.name}.`,
+  },
+] as const;
 
-  const RISK_CLASSES = [
-    { level: 'Low', color: color.green, actions: 'Read-only queries, status checks, data retrieval', signoff: 'No signoff required. Policy logged, action proceeds.' },
-    { level: 'Medium', color: color.green, actions: 'Data modifications, configuration changes, non-financial writes', signoff: 'Single named human signoff. Agent pauses, presents action context, waits for attestation.' },
-    { level: 'High', color: color.green, actions: 'Financial transactions, access grants, external communications', signoff: 'Named human signoff with action-bound attestation. Signoff is cryptographically bound to exact action parameters.' },
-    { level: 'Critical', color: '#ef4444', actions: 'Irreversible actions, bulk operations, privilege escalation', signoff: 'Dual named human signoff. Two independent principals must attest to the exact action before the agent can proceed.' },
-  ];
-
-  const FEATURES = [
-    { title: 'Action risk classes', body: 'A pilot-configured taxonomy: agent actions are classified low / medium / high / critical, customized per agent, tool, or action type during the engagement (the shipped engine enforces action-type policies and hard-deny flags today).' },
-    { title: 'Signoff thresholds per risk class', body: 'Configured during the pilot: each risk class maps to a signoff requirement — low-risk proceeds, higher classes require named-human attestation (dual control and Class-A device signoff ship today).' },
-    { title: 'Tool-use control', body: 'Policy defines which tools an agent can invoke, under what conditions, and with what signoff requirements. Tool invocations outside policy are blocked before execution, not logged after the fact.' },
-    { title: 'Principal-to-agent attribution', body: 'Every agent action is attributed to the human principal who authorized it. The attribution chain is cryptographically bound: principal authorized agent, agent requested action, named human signed off on exact parameters.' },
-    { title: 'EU AI Act / NIST AI RMF mapping', body: 'Pre-mapped controls for EU AI Act high-risk system requirements and NIST AI Risk Management Framework. EP trust enforcement satisfies human oversight, transparency, and accountability requirements across both frameworks.' },
-  ];
-
+export default function AgentGovernancePackPage(): React.ReactElement {
   return (
     <div style={styles.page}>
       <SiteNav activePage="" />
 
-      {/* Hero */}
-      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 60 }}>
-        <div style={styles.eyebrowBlue}>Product / Agent Governance Pack</div>
-        <h1 style={styles.h1}>Agent Governance Pack</h1>
-        <p style={{ ...styles.body, maxWidth: 640 }}>
-          Pre-configured EP deployment for AI agent execution control.
-        </p>
-        <a href="#pilot" className="ep-cta" style={cta.primary}>Request Agent Governance Pilot</a>
-      </section>
+      <main>
+        <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 64 }}>
+          <div style={styles.eyebrowBlue}>Reference solution profile / Agent action authority</div>
+          <h1 style={styles.h1}>Give the agent a mandate. Gate the consequential action.</h1>
+          <p style={{ ...styles.body, maxWidth: 720 }}>
+            This reference profile composes implemented exact-action, signoff, consumption, and
+            evidence artifacts. It is not a standalone governance product, a universal risk
+            classifier, or evidence of a production customer deployment.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 28 }}>
+            <a href="/pilot" className="ep-cta" style={cta.primary}>
+              Scope the protected-workflow pilot
+            </a>
+            <a
+              href="mailto:team@emiliaprotocol.ai?subject=Agent%20Gate%20Implementation%20inquiry"
+              className="ep-cta"
+              style={cta.secondary}
+            >
+              Ask about Gate Implementation
+            </a>
+          </div>
+        </section>
 
-      {/* Risk classes */}
-      <section style={styles.sectionAlt}>
-        <div style={styles.section}>
-          <h2 style={styles.h2}>Action risk classes</h2>
-          <p style={styles.body}>Every agent action is classified by risk. Policy defines signoff requirements per class.</p>
-          <div style={grid.stack}>
-            {RISK_CLASSES.map((r, i) => (
-              <div key={i} className="ep-card-hover" style={styles.card}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
-                  <span style={{ ...styles.cardTitle, marginBottom: 0, fontSize: 17 }}>{r.level}</span>
-                </div>
-                <div style={{ fontSize: 13, color: color.t2, marginBottom: 6 }}>
-                  <span style={styles.mono}>Actions: </span>{r.actions}
-                </div>
-                <div style={{ fontSize: 13, color: color.t2 }}>
-                  <span style={styles.mono}>Signoff: </span>{r.signoff}
-                </div>
-              </div>
+        <section style={styles.sectionAlt}>
+          <div style={styles.section}>
+            <div style={styles.eyebrowBlue}>Commercial boundary</div>
+            <h2 style={styles.h2}>One public pilot, regardless of the proposing agent.</h2>
+            <p style={{ ...styles.body, maxWidth: 780 }}>
+              The only public offer is the {PROTECTED_WORKFLOW_PILOT.name}: {' '}
+              {PROTECTED_WORKFLOW_PILOT.workflowLabel}, {PROTECTED_WORKFLOW_PILOT.durationLabel},{' '}
+              {PROTECTED_WORKFLOW_PILOT.shortPriceLabel}. Finance operations is the first profile.
+              Other consequential workflows use the same intake, not a second Agent Governance pilot.
+            </p>
+            <div style={{ ...styles.card, border: `1px solid ${color.border}` }}>
+              <h3 style={styles.cardTitle}>Nonproduction only</h3>
+              <p style={styles.cardBody}>
+                The pilot uses synthetic, sandbox, buyer-approved read-only, or shadow inputs. It
+                receives no provider credentials, production actuation authority, or permission to
+                mutate the buyer&apos;s systems.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section style={styles.section}>
+          <div style={styles.eyebrowBlue}>Implemented in the repository</div>
+          <h2 style={styles.h2}>Building blocks with inspectable boundaries.</h2>
+          <div style={grid.auto(280)}>
+            {IMPLEMENTED_ARTIFACTS.map((artifact) => (
+              <article key={artifact.title} className="ep-card-hover" style={styles.card}>
+                <h3 style={styles.cardTitle}>{artifact.title}</h3>
+                <p style={styles.cardBody}>{artifact.body}</p>
+              </article>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Features */}
-      <section style={styles.section}>
-        <h2 style={styles.h2}>Included controls</h2>
-        <p style={styles.body}>
-          The Agent Governance Pack includes pre-configured policies, signoff workflows, and evidence formats designed for AI agent execution control.
-        </p>
-        <div style={grid.stack}>
-          {FEATURES.map((f, i) => (
-            <div key={i} className="ep-card-hover" style={styles.card}>
-              <div style={styles.cardTitle}>{f.title}</div>
-              <div style={styles.cardBody}>{f.body}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Best first workflow */}
-      <section style={styles.sectionAlt}>
-        <div style={styles.section}>
-          <h2 style={styles.h2}>Best first workflow</h2>
-          <p style={styles.body}>Start with the highest-impact agent trust surface. For most deployments, that is agent-initiated high-value transactions.</p>
-          <div className="ep-card-accent" style={{ ...styles.card, border: `1px solid ${color.border}` }}>
-            <div style={{ ...styles.cardTitle, color: color.green, fontSize: 18, marginBottom: 10 }}>Agent-initiated high-value transaction</div>
-            <div style={styles.cardBody}>
-              An AI agent determines that a financial transaction, access grant, or irreversible operation should be executed. EP classifies the action by risk, pauses the agent, and presents the exact action context to a named human principal. The principal reviews the parameters and explicitly assumes responsibility through accountable signoff. The signoff is cryptographically bound to the exact action. Only then does the agent proceed. The full attribution chain is preserved: which human authorized the agent, what the agent requested, and who signed off on the exact execution.
-            </div>
-            <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
-              {[
-                'Agent pauses at policy-defined risk threshold',
-                'Exact action context presented to named human principal',
-                'Named human signoff bound to exact action parameters',
-                'Full attribution chain: principal, agent, signoff, execution',
-                'Immutable evidence record for regulatory and audit requirements',
-              ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <span style={{ color: color.green, fontSize: 14, flexShrink: 0, marginTop: 1 }}>+</span>
-                  <span style={{ fontSize: 14, color: color.t2, lineHeight: 1.6 }}>{item}</span>
-                </div>
+        <section style={styles.sectionAlt}>
+          <div style={styles.section}>
+            <div style={styles.eyebrowBlue}>Designed profiles, not shipped defaults</div>
+            <h2 style={styles.h2}>Configuration begins with the buyer&apos;s real boundary.</h2>
+            <div style={grid.stack}>
+              {DESIGNED_PROFILES.map((profile) => (
+                <article key={profile.title} style={{ ...styles.card, opacity: 0.9 }}>
+                  <h3 style={styles.cardTitle}>{profile.title}</h3>
+                  <p style={styles.cardBody}>{profile.body}</p>
+                </article>
               ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Pilot form */}
-      <section id="pilot" style={styles.section}>
-        <h2 style={styles.h2}>Request Agent Governance Pilot</h2>
-        {submitted ? (
-          <div style={{ ...styles.card, textAlign: 'center', padding: 40 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: color.green, marginBottom: 8 }}>Thank you</div>
-            <p style={{ color: color.t2, fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
+        <section style={styles.section}>
+          <div style={styles.eyebrowBlue}>Protected-path method</div>
+          <h2 style={styles.h2}>From agent proposal to a buyer-owned implementation decision.</h2>
+          <div style={grid.stack}>
+            {BOUNDARY_STEPS.map((item) => (
+              <article key={item.step} style={styles.card}>
+                <div style={styles.eyebrowBlue}>{item.step}</div>
+                <h3 style={{ ...styles.cardTitle, fontSize: 18, marginTop: 8 }}>{item.title}</h3>
+                <p style={styles.cardBody}>{item.body}</p>
+              </article>
+            ))}
           </div>
-        ) : (
-          <div style={styles.card}>
-            <div style={grid.cols2}>
-              {[['name','Name'],['org','Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
-                <div key={k}>
-                  <label style={styles.label}>{label}</label>
-                  <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
-                </div>
-              ))}
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Trust surface of interest</label>
-                <input className="ep-input" style={styles.input} placeholder="e.g. agent transactions, tool-use control, autonomous operations" value={form.surface} onChange={e => update('surface', e.target.value)} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Problem description</label>
-                <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Notes</label>
-                <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
-              </div>
-            </div>
-            {error && <p style={{ color: color.red, fontSize: 13, marginTop: 12 }}>{error}</p>}
-            <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...(!form.name || !form.email ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
-              {submitting ? 'Submitting...' : 'Request Agent Governance Pilot'}
-            </button>
+          <p style={{ ...styles.body, marginTop: 24 }}>
+            Only a completely mediated, buyer-accepted production boundary can support the rule:
+            no accepted exact-action authority and required evidence, no provider entry.
+          </p>
+        </section>
+
+        <section style={{ ...styles.sectionAlt, textAlign: 'center' }}>
+          <div style={styles.section}>
+            <h2 style={styles.h2}>Bring one action, not an entire agent platform.</h2>
+            <p style={{ ...styles.body, maxWidth: 680, margin: '0 auto 24px' }}>
+              The first task is to identify one leverage-bearing executor boundary and determine
+              whether the proposed authority rule can be tested honestly without production access.
+            </p>
+            <a href="/pilot" className="ep-cta" style={cta.primary}>
+              Review the canonical pilot
+            </a>
           </div>
-        )}
-      </section>
+        </section>
+      </main>
 
       <SiteFooter />
     </div>

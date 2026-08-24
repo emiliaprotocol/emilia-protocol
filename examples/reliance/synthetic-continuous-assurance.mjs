@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
-// Generated from ey-continuous-assurance.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+// Generated from synthetic-continuous-assurance.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
 //
 // EP-ASSURANCE-PACKAGE-v1 — continuous assurance over agentic prior authorization.
 //
-//   node examples/reliance/ey-continuous-assurance.mjs
+//   node examples/reliance/synthetic-continuous-assurance.mjs
 //
 // The independent-assurer story, run offline. A payer operates automated specialty
 // prior auth. Its runtime records, for each PA, the reliance verdict it acted on.
 // An independent assurer takes the packaged evidence and RE-PERFORMS every verdict
-// from scratch, trusting nothing the runtime claimed. It reports which PAs were
+// from scratch, recomputing the presented package, profile, and verdicts. It reports which PAs were
 // admissible, which failed and why, and (the material finding) which the runtime
 // CLAIMED it could rely on while the evidence does not support reliance.
 //
 // PUBLIC-SAFE: fully synthetic. No PHI. Rides beside NCPDP transactions (digest
 // only). "Upload N automated actions. Reperform every reliance verdict. Show which
 // were admissible, which failed, why, and whether management's control claim is
-// supportable." — that is audit evidence (PCAOB AS 1105: cryptographic source,
-// immutable trail, reproducible rule, direct re-performance).
+// supportable." This unaffiliated synthetic example may support audit-evidence
+// evaluation under an authorized procedure. Its bytes are tamper-evident relative
+// to independently obtained pins; it is not an audit opinion, complete population,
+// immutable trail, or claim of operating effectiveness.
 import crypto from 'node:crypto';
 import { buildAssurancePackage, reperformAssurancePackage, renderAssuranceWorkpaper } from '../../packages/gate/reports/assurance-package.js';
 import { signAuthorityProof } from '../../lib/authority/proof.js';

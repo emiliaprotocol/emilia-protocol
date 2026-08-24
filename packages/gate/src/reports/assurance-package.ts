@@ -3,10 +3,9 @@
  * EP-ASSURANCE-PACKAGE-v1 — the reliance assurance layer.
  *
  * The layer above the reliance kernel. The kernel answers "may this party rely on
- * this action?" The assurance package answers the question an INDEPENDENT assurer
- * (an audit firm, a regulator, an insurer) asks: "can I reproduce, test, and
- * attest that an organization's automated actions were governed by admissible
- * evidence under the organization's OWN pinned rule?"
+ * this action?" The assurance package helps an INDEPENDENT assurer (an audit
+ * firm, a regulator, an insurer) ask: "what does offline re-performance find in
+ * this supplied decision set under the expected rule and trust inputs?"
  *
  * Two halves, mirroring the re-performance discipline of reperform.js:
  *   buildAssurancePackage(decisions, ...)      the organization bundles its
@@ -14,16 +13,18 @@
  *      content-addressed package (action, receipt, profile, authority proof,
  *      revocation check, consumption, denial/exception history, policy hash).
  *   reperformAssurancePackage(pkg, ...)         the assurer RE-PERFORMS every
- *      reliance verdict offline from that evidence, TRUSTING NOTHING the package
- *      asserts: it recomputes each verdict with evaluateReliance, compares to the
- *      verdict the org's runtime CLAIMED (drift = a control failure the assurer
- *      caught), maps every verdict to a control objective, and emits an
+ *      reliance verdict offline from that evidence. It recomputes and checks the
+ *      package and profile digests, evaluates each verdict with evaluateReliance,
+ *      compares to the
+ *      verdict the org's runtime CLAIMED (drift = a discrepancy for the assurer
+ *      to investigate), maps every verdict to a control objective, and emits an
  *      auditor-style workpaper. It does not conclude; the assurer concludes.
  *
- * PCAOB AS 1105 alignment (why this is audit evidence): the source is
- * cryptographic, the decision trail is immutable and content-addressed, the rule
- * is a pinned profile, and the verdict is re-performable directly. This module
- * SUPPORTS a re-performance procedure; it never issues an opinion.
+ * This module is designed to SUPPORT a possible re-performance procedure; it
+ * never issues an opinion. Content addressing makes later changes detectable
+ * relative to an independent pin. The package alone does not establish source
+ * authenticity, population completeness, an immutable trail, profile
+ * authorization, or live operating effectiveness.
  */
 import { hashCanonical } from '../execution-binding.js';
 import { evaluateReliance, RELIANCE_VERDICTS } from '@emilia-protocol/verify/reliance';
@@ -35,9 +36,10 @@ export { RELIANCE_VERDICTS };
 
 /**
  * The reliance control catalog: every reliance verdict maps to the control
- * objective it exercises. A `rely` shows the control PASSING; every do_not_rely_*
- * shows the control OPERATING (it refused a non-admissible action). Denials are
- * the control working, not the control failing.
+ * objective it exercises. A `rely` means the presented evidence satisfied the
+ * presented rule during offline re-performance; every do_not_rely_* identifies
+ * the objective that caused the offline refusal. Neither proves how the live
+ * runtime behaved.
  */
 export const RELIANCE_CONTROL_CATALOG = Object.freeze({
   'RC-1': { objective: 'Only a human with valid organization-bound, scoped authority for THIS exact action may authorize it', verdicts: ['do_not_rely_authority_missing', 'do_not_rely_authority_subject_mismatch', 'do_not_rely_authority_organization_mismatch', 'do_not_rely_authority_revoked', 'do_not_rely_authority_expired', 'do_not_rely_scope_mismatch', 'do_not_rely_amount_exceeded', 'do_not_rely_registry_unavailable'] },
@@ -55,7 +57,7 @@ const VERDICT_TO_CONTROL = Object.freeze(
   }, {}),
 );
 
-/** Which control objective a verdict exercises (rely passes ALL, so returns null). */
+/** Which objective is associated with an offline refusal (`rely` returns null). */
 function controlForVerdict(verdict) {
   if (verdict === 'rely') return null;
   return VERDICT_TO_CONTROL[verdict] || null;
@@ -161,10 +163,14 @@ export function buildAssurancePackage(decisions: any[] = [], {
 
 /**
  * INDEPENDENT re-performance. Recompute every reliance verdict offline from the
- * packaged evidence under the package's pinned profile and AUDITOR-supplied keys,
- * trusting nothing the package asserts. Detect drift (recomputed ≠ stated), map
- * to control objectives, and emit an auditor-style workpaper. Conclusion fields
- * are ALWAYS null: the assurer concludes, not this tool.
+ * packaged evidence under the presented profile and AUDITOR-supplied keys.
+ * Recompute the internal package/profile digests and, when supplied, compare
+ * them with auditor-pinned digests received out of band. Detect drift
+ * (recomputed ≠ stated), map to control objectives, and emit an auditor-style
+ * workpaper. Conclusion fields are ALWAYS null: the assurer concludes, not this
+ * tool. The presented profile is not a trust root; an assurer that needs to
+ * establish which rule was authorized MUST supply expectedProfileHash out of
+ * band.
  *
  * @param {object} pkg  an EP-ASSURANCE-PACKAGE-v1
  * @param {object} opts
@@ -175,10 +181,13 @@ export function buildAssurancePackage(decisions: any[] = [], {
  * @param {object} [opts.revokerKeys]
  * @param {(key:object)=>boolean} [opts.isConsumed] auditor-owned consumption lookup
  * @param {number|string|Date|Function} [opts.now]  reliance-evaluation clock (pin for determinism)
+ * @param {string|null} [opts.expectedPackageDigest] auditor-pinned package digest
+ * @param {string|null} [opts.expectedProfileHash] auditor-pinned profile digest
  * @returns {object} EP-ASSURANCE-REPERFORMANCE-v1
  */
 export function reperformAssurancePackage(pkg, {
   approverKeys = {}, logPublicKey = null, rpId = null, allowedOrigins = [], revokerKeys = {}, isConsumed, now = 0,
+  expectedPackageDigest = null, expectedProfileHash = null,
 }: {
   approverKeys?: Record<string, any>;
   logPublicKey?: string | null;
@@ -187,6 +196,8 @@ export function reperformAssurancePackage(pkg, {
   revokerKeys?: Record<string, any>;
   isConsumed?: (key: any) => boolean;
   now?: number | (() => number);
+  expectedPackageDigest?: string | null;
+  expectedProfileHash?: string | null;
 } = {}) {
   if (!pkg || pkg['@version'] !== ASSURANCE_PACKAGE_VERSION) throw new Error('assurance-reperform: not an EP-ASSURANCE-PACKAGE-v1');
   const profile = pkg.reliance_profile;
@@ -243,15 +254,27 @@ export function reperformAssurancePackage(pkg, {
     if (r.control_id) byControl[r.control_id] = (byControl[r.control_id] || 0) + 1;
   }
 
-  // Recompute the package digest from the package's OWN contents rather than
-  // trusting pkg.package_digest. "No value the package asserts is trusted" has to
-  // include the digest: copying the stated one verbatim would let a tampered
-  // package carry a lying content-address through re-performance unchecked. Mirror
-  // buildAssurancePackage's digestScope exactly (body minus assembled_at and the
-  // digest field itself), then compare.
+  // Recompute the package digest from the presented contents rather than copying
+  // pkg.package_digest. This detects internal inconsistency. Authenticating the
+  // intended package still requires expectedPackageDigest from an independent
+  // source. Mirror buildAssurancePackage's digestScope exactly (body minus
+  // assembled_at and the digest field itself), then compare.
   const { assembled_at: _statedAt, package_digest: _statedDigest, ...digestScope } = pkg;
   const recomputedPackageDigest = hashCanonical(digestScope);
   const packageDigestVerified = pkg.package_digest != null && recomputedPackageDigest === pkg.package_digest;
+  const statedProfileHash = pkg.profile_hash ?? null;
+  const recomputedProfileHash = profile == null ? null : hashCanonical(profile);
+  const profileHashVerified = statedProfileHash === recomputedProfileHash;
+  const expectedPackageDigestMatches = expectedPackageDigest === null
+    ? null
+    : recomputedPackageDigest === expectedPackageDigest;
+  const expectedProfileHashMatches = expectedProfileHash === null
+    ? null
+    : recomputedProfileHash === expectedProfileHash;
+  const integrityVerified = packageDigestVerified
+    && profileHashVerified
+    && expectedPackageDigestMatches !== false
+    && expectedProfileHashMatches !== false;
 
   const doc = {
     '@version': ASSURANCE_REPERFORMANCE_VERSION,
@@ -259,17 +282,26 @@ export function reperformAssurancePackage(pkg, {
     package_digest: recomputedPackageDigest,
     stated_package_digest: pkg.package_digest ?? null,
     package_digest_verified: packageDigestVerified,
-    profile_hash: pkg.profile_hash ?? null,
+    expected_package_digest: expectedPackageDigest,
+    expected_package_digest_matches: expectedPackageDigestMatches,
+    profile_hash: recomputedProfileHash,
+    stated_profile_hash: statedProfileHash,
+    profile_hash_verified: profileHashVerified,
+    expected_profile_hash: expectedProfileHash,
+    expected_profile_hash_matches: expectedProfileHashMatches,
+    integrity_verified: integrityVerified,
     generated_at: toIso(now),
     honesty: {
       reperforms:
-        'Independent recomputation of every reliance verdict from the packaged evidence, under the package\'s pinned '
-        + 'EP-RELIANCE-PROFILE-v1 and auditor-supplied keys, using the offline reliance kernel. No value the package '
-        + 'asserts (including the stated verdict) is trusted; the stated verdict is compared, never relied on.',
+        'Independent recomputation of every reliance verdict from the packaged evidence, under the presented '
+        + 'EP-RELIANCE-PROFILE-v1 and auditor-supplied keys, using the offline reliance kernel. The package and '
+        + 'profile digests are recomputed; the stated verdict is compared, never relied on. The presented profile '
+        + 'becomes an independently pinned rule only when expected_profile_hash is supplied out of band and matches.',
       does_not_establish: [
         'Completeness of the decision population: decisions withheld before packaging are not detectable from the package alone. Bind the population to an externally anchored count to close this.',
         'Runtime freshness or one-time consumption AT THE MOMENT OF DECISION: those were live properties; re-performance checks the evidence as packaged, not the runtime state that existed then.',
         'Issuer, approver, and registrar key custody, enrollment, or identity proofing, which remain external trust roots the auditor supplies out of band.',
+        'Authorization of the presented reliance profile unless expected_profile_hash is supplied from an independent source and matches the recomputed profile hash.',
         'The business correctness or wisdom of any authorized action.',
       ],
       status: 'Support for an audit re-performance procedure. This document does not conclude, opine, or certify; any conclusion is the auditor\'s.',
@@ -293,7 +325,15 @@ export function reperformAssurancePackage(pkg, {
   };
   // Deterministic re-performance digest over the recomputed results + population
   // (excludes timestamps), so a second assurer reproduces it byte-for-byte.
-  doc.reperformance_digest = hashCanonical({ package_digest: doc.package_digest, population: doc.population, results });
+  doc.reperformance_digest = hashCanonical({
+    package_digest: doc.package_digest,
+    profile_hash: doc.profile_hash,
+    expected_package_digest: doc.expected_package_digest,
+    expected_profile_hash: doc.expected_profile_hash,
+    integrity_verified: doc.integrity_verified,
+    population: doc.population,
+    results,
+  });
   return doc;
 }
 
@@ -308,6 +348,9 @@ export function renderAssuranceWorkpaper(doc) {
   lines.push(`EMILIA Reliance Assurance — re-performance workpaper (${doc['@version']})`);
   lines.push(`package_digest:       ${doc.package_digest} (recomputed)`);
   lines.push(`package_digest match: ${doc.package_digest_verified ? 'YES — recomputed digest equals the package\'s stated digest' : 'NO — stated digest does NOT match recomputed contents (tamper or drift)'}`);
+  lines.push(`profile_hash:         ${doc.profile_hash ?? 'null'} (recomputed)`);
+  lines.push(`profile_hash match:   ${doc.profile_hash_verified ? 'YES — recomputed hash equals the package\'s stated profile hash' : 'NO — stated profile hash does NOT match the presented profile'}`);
+  lines.push(`integrity:            ${doc.integrity_verified ? 'VERIFIED' : 'FAILED'}`);
   lines.push(`reperformance_digest: ${doc.reperformance_digest}`);
   lines.push('');
   lines.push(`Population: ${p.decisions} decisions | admissible(rely): ${p.admissible} | refused: ${p.refused} | drift: ${p.drift}`);
@@ -316,7 +359,7 @@ export function renderAssuranceWorkpaper(doc) {
   lines.push('By recomputed verdict:');
   for (const [v, n] of Object.entries(p.by_recomputed_verdict)) lines.push(`  ${v}: ${n}`);
   lines.push('');
-  lines.push('Control objectives exercised (denials are the control operating):');
+  lines.push('Control objectives associated with offline refusals:');
   for (const [cid, n] of Object.entries(p.by_control)) lines.push(`  ${cid} (${RELIANCE_CONTROL_CATALOG[cid].objective}): ${n}`);
   lines.push('');
   const drifts = doc.results.filter((r) => r.drift);

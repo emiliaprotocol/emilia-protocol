@@ -28,13 +28,14 @@ function admissibilityBlock({ profileHash, verdict = 'admissible' } = {}) {
 }
 const PINNED_HASH = 'sha256:' + 'a'.repeat(64);
 const OTHER_HASH = 'sha256:' + 'b'.repeat(64);
-function gateTrustingHarness(harness, { verifyAdmissibilityPacket = async ({ presented }) => presented } = {}) {
+function gateTrustingHarness(harness, { verifyAdmissibilityPacket = async ({ presented }) => presented, requiredAdmissibilityProfile = null, } = {}) {
     return createTrustedActionFirewall({
         trustedKeys: [harness.publicKey],
         approverKeys: harness.approverKeys,
         rpId: harness.rpId,
         allowedOrigins: harness.allowedOrigins,
         verifyAdmissibilityPacket,
+        requiredAdmissibilityProfile,
         allowEphemeralStore: true,
     });
 }
@@ -113,6 +114,79 @@ test('pinned profile + NON-ADMISSIBLE verdict => refused (verdict named)', async
         assert.equal(out.authorization.reason, `admissibility_not_admissible:${verdict}`);
     }
 });
+test('gate-level admissibility pin cannot be weakened by a per-call profile', async () => {
+    const harness = createEg1Harness();
+    const required = { id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH };
+    const gate = gateTrustingHarness(harness, { requiredAdmissibilityProfile: required });
+    const receipt = harness.mint();
+    const bypass = await gate.run({
+        selector: EG1_DEFAULT_SELECTOR,
+        receipt,
+        observedAction: harness.action,
+        admissibilityProfile: { id: 'ep:profile:weaker', profile_hash: OTHER_HASH },
+        admissibility: admissibilityBlock({ profileHash: OTHER_HASH, verdict: 'admissible' }),
+    }, async () => ({ ran: true }));
+    assert.equal(bypass.ok, false);
+    assert.equal(bypass.authorization.reason, 'admissibility_profile_override_mismatch');
+    // The mismatch is detected before reservation, so corrected evidence can use
+    // the same receipt against the configured profile.
+    const corrected = await gate.run({
+        selector: EG1_DEFAULT_SELECTOR,
+        receipt,
+        observedAction: harness.action,
+        admissibility: admissibilityBlock({ profileHash: PINNED_HASH, verdict: 'admissible' }),
+    }, async () => ({ ran: true }));
+    assert.equal(corrected.ok, true, 'a profile override attempt must not consume the receipt');
+});
+test('gate-level admissibility pin is an immutable construction-time snapshot', async () => {
+    const harness = createEg1Harness();
+    const required = { id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH };
+    const gate = gateTrustingHarness(harness, { requiredAdmissibilityProfile: required });
+    // Hostile configuration-owner mutation after construction must not retarget
+    // the authority boundary inside an already-created gate.
+    required.id = 'ep:profile:attacker-retarget';
+    required.profile_hash = OTHER_HASH;
+    const out = await gate.run({
+        selector: EG1_DEFAULT_SELECTOR,
+        receipt: harness.mint(),
+        observedAction: harness.action,
+        admissibilityProfile: { id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH },
+        admissibility: admissibilityBlock({ profileHash: PINNED_HASH, verdict: 'admissible' }),
+    }, async () => ({ ran: true }));
+    assert.equal(out.ok, true, 'post-construction caller mutation must not change the configured pin');
+});
+test('gate-level admissibility pin is strict and validated at construction', () => {
+    const harness = createEg1Harness();
+    assert.throws(() => gateTrustingHarness(harness, {
+        requiredAdmissibilityProfile: {
+            id: 'ep:profile:reliance-test',
+            profile_hash: PINNED_HASH,
+            attacker_extension: true,
+        },
+    }), /requiredAdmissibilityProfile must contain exactly id and profile_hash/);
+    assert.throws(() => gateTrustingHarness(harness, {
+        requiredAdmissibilityProfile: {
+            id: 'ep:profile:reliance-test',
+            profile_hash: 'sha256:not-a-digest',
+        },
+    }), /requiredAdmissibilityProfile\.profile_hash must be a sha256 digest/);
+});
+test('gate-level admissibility pin also rejects a conflicting selector profile', async () => {
+    const harness = createEg1Harness();
+    const required = { id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH };
+    const gate = gateTrustingHarness(harness, { requiredAdmissibilityProfile: required });
+    const out = await gate.run({
+        selector: {
+            ...EG1_DEFAULT_SELECTOR,
+            admissibilityProfile: { id: 'ep:profile:weaker', profile_hash: OTHER_HASH },
+        },
+        receipt: harness.mint(),
+        observedAction: harness.action,
+        admissibility: admissibilityBlock({ profileHash: OTHER_HASH, verdict: 'admissible' }),
+    }, async () => ({ ran: true }));
+    assert.equal(out.ok, false);
+    assert.equal(out.authorization.reason, 'admissibility_profile_override_mismatch');
+});
 test('NO profile pinned => behavior byte-for-byte unchanged (allowed, no admissibility gating)', async () => {
     const harness = createEg1Harness();
     // Same receipt, same selector, run through two independent gates: one with a
@@ -140,15 +214,20 @@ test('NO profile pinned => behavior byte-for-byte unchanged (allowed, no admissi
 });
 // ── Pure verifier unit coverage (the gate's only admissibility primitive). ──
 test('verifyAdmissibilityAgainstPinnedProfile: matching hash + admissible => ok', () => {
-    const r = verifyAdmissibilityAgainstPinnedProfile({ id: 'p', profile_hash: PINNED_HASH }, { admissibility: admissibilityBlock({ profileHash: PINNED_HASH }) });
+    const r = verifyAdmissibilityAgainstPinnedProfile({ id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH }, { admissibility: admissibilityBlock({ profileHash: PINNED_HASH }) });
     assert.equal(r.ok, true);
     assert.equal(r.reason, null);
     assert.equal(r.verdict, 'admissible');
 });
 test('verifyAdmissibilityAgainstPinnedProfile: fail-closed refusals are distinct and named', () => {
-    const pin = { id: 'p', profile_hash: PINNED_HASH };
+    const pin = { id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH };
     // mismatched hash
     assert.equal(verifyAdmissibilityAgainstPinnedProfile(pin, admissibilityBlock({ profileHash: OTHER_HASH })).reason, 'profile_hash_mismatch');
+    // matching bytes cannot be relabelled as a different selected profile
+    assert.equal(verifyAdmissibilityAgainstPinnedProfile(pin, {
+        ...admissibilityBlock({ profileHash: PINNED_HASH }),
+        admissibility_profile: { id: 'ep:profile:other', version: '1' },
+    }).reason, 'profile_id_mismatch');
     // non-admissible verdict names the verdict
     assert.equal(verifyAdmissibilityAgainstPinnedProfile(pin, admissibilityBlock({ profileHash: PINNED_HASH, verdict: 'stale' })).reason, 'admissibility_not_admissible:stale');
     // unrecognized verdict (outside the closed set) refuses, never passes
@@ -156,7 +235,7 @@ test('verifyAdmissibilityAgainstPinnedProfile: fail-closed refusals are distinct
     // pin present but NOTHING presented => refuse
     assert.equal(verifyAdmissibilityAgainstPinnedProfile(pin, null).reason, 'admissibility_profile_pinned_but_absent');
     // a pin with no hash is a misconfiguration => refuse, never silently pass
-    assert.equal(verifyAdmissibilityAgainstPinnedProfile({ id: 'p' }, admissibilityBlock({ profileHash: PINNED_HASH })).reason, 'pinned_profile_missing_hash');
+    assert.equal(verifyAdmissibilityAgainstPinnedProfile({ id: 'ep:profile:reliance-test' }, admissibilityBlock({ profileHash: PINNED_HASH })).reason, 'pinned_profile_missing_hash');
 });
 test('closed verdict set is exactly the five admissibility verdicts', () => {
     assert.deepEqual([...ADMISSIBILITY_VERDICTS].sort(), ['admissible', 'conflicted', 'missing_evidence', 'stale', 'unverifiable'].sort());

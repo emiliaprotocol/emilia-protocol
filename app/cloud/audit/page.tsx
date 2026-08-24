@@ -2,15 +2,15 @@
 
 import { useState } from 'react';
 
-const REPORT_TYPES = ['Evidence Package', 'IG/GAO Report', 'SOX Evidence', 'AI Act Trail'];
+const REPORT_TYPES = ['Evidence Package', 'Control Mapping Packet', 'Decision Trace', 'Lifecycle Trace'];
 const SCOPE_OPTIONS = ['All', 'Specific Handshake IDs', 'Specific Policy'];
 
 const MOCK_REPORTS = [
   { id: 'rpt_01HXK9', type: 'Evidence Package', scope: 'All', generated: '2026-03-19T14:22:00Z', status: 'complete', size: '4.2 MB', integrity: 'verified' },
-  { id: 'rpt_01HXK8', type: 'SOX Evidence', scope: 'policy:sox-404', generated: '2026-03-18T09:15:00Z', status: 'complete', size: '12.8 MB', integrity: 'verified' },
-  { id: 'rpt_01HXK7', type: 'AI Act Trail', scope: 'hs_7f3a9b2c', generated: '2026-03-17T16:40:00Z', status: 'complete', size: '1.1 MB', integrity: 'verified' },
-  { id: 'rpt_01HXK6', type: 'IG/GAO Report', scope: 'All', generated: '2026-03-15T11:05:00Z', status: 'complete', size: '8.6 MB', integrity: 'mismatch' },
-  { id: 'rpt_01HXK5', type: 'Evidence Package', scope: 'policy:aml-kyc', generated: '2026-03-14T08:30:00Z', status: 'generating', size: '—', integrity: 'pending' },
+  { id: 'rpt_01HXK8', type: 'Control Mapping Packet', scope: 'policy:control-mapping', generated: '2026-03-18T09:15:00Z', status: 'complete', size: '12.8 MB', integrity: 'verified' },
+  { id: 'rpt_01HXK7', type: 'Decision Trace', scope: 'hs_7f3a9b2c', generated: '2026-03-17T16:40:00Z', status: 'complete', size: '1.1 MB', integrity: 'verified' },
+  { id: 'rpt_01HXK6', type: 'Lifecycle Trace', scope: 'All', generated: '2026-03-15T11:05:00Z', status: 'complete', size: '8.6 MB', integrity: 'mismatch' },
+  { id: 'rpt_01HXK5', type: 'Evidence Package', scope: 'policy:identity-inputs', generated: '2026-03-14T08:30:00Z', status: 'generating', size: '—', integrity: 'pending' },
 ];
 
 export default function AuditExportPage(): React.ReactElement {
@@ -70,9 +70,9 @@ export default function AuditExportPage(): React.ReactElement {
   return (
     <div style={s.page}>
       <div style={s.container}>
-        <div style={s.eyebrow}>Cloud / Audit</div>
-        <h1 style={s.h1}>Audit Export</h1>
-        <p style={s.subtitle}>Generate compliance evidence packages, regulatory reports, and audit trails.</p>
+        <div style={s.eyebrow}>Prototype / Evidence exports</div>
+        <h1 style={s.h1}>Evidence export interaction sample</h1>
+        <p style={s.subtitle}>Generate synthetic export rows. Integrity checks cover artifact bytes only, not compliance, admission, provider entry, or successful effect.</p>
 
         <div style={s.card}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -99,13 +99,13 @@ export default function AuditExportPage(): React.ReactElement {
             {scope !== 'All' && (
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={s.label}>{scope === 'Specific Handshake IDs' ? 'Handshake IDs (comma-separated)' : 'Policy Identifier'}</label>
-                <input style={s.input} placeholder={scope === 'Specific Handshake IDs' ? 'hs_7f3a9b2c, hs_2e8d1f4a' : 'policy:sox-404'} value={scopeValue} onChange={e => setScopeValue(e.target.value)} />
+                <input style={s.input} placeholder={scope === 'Specific Handshake IDs' ? 'hs_7f3a9b2c, hs_2e8d1f4a' : 'policy:control-mapping'} value={scopeValue} onChange={e => setScopeValue(e.target.value)} />
               </div>
             )}
           </div>
           {error && <p style={{ color: '#f87171', fontSize: 13, marginTop: 12 }}>{error}</p>}
           <button onClick={handleGenerate} disabled={generating} style={{ ...s.btn, background: generating ? '#1a1e30' : '#22C55E', color: generating ? '#4a4f6a' : '#020617', marginTop: 20 }}>
-            {generating ? 'Generating...' : 'Generate Report'}
+            {generating ? 'Generating...' : 'Generate synthetic export'}
           </button>
         </div>
 

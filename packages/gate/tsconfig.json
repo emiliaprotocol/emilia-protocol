@@ -119,6 +119,8 @@
     "src/fido-ap2-bridge.ts",
     "src/a2a-ap2-gate.ts",
     "src/field-origin-evidence.ts",
+    "src/claim-assurance.ts",
+    "src/claim-assurance-result.ts",
     "src/referee.ts",
     "src/referee-runner.ts",
     "src/reliance-risk-crypto.ts",

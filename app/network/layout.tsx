@@ -1,19 +1,19 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'The EMILIA Trust Network — verify any entity, any receipt',
+  title: 'Experimental Public Registry and Receipt Exploration',
   description:
-    'A public, cryptographically verifiable network of entities and authorization receipts. '
-    + 'Verify any receipt offline, embed a live trust badge, and join the network that '
-    + 'turns "we say we are safe" into "here is the proof".',
+    'A nonproduction surface for exploring reference registry records and supported '
+    + 'authorization-receipt verification. It is not a verified-entity or adoption claim.',
   alternates: { canonical: '/network' },
+  robots: { index: false, follow: false, nocache: true },
   openGraph: {
-    title: 'The EMILIA Trust Network',
-    description: 'Public verification for the AI-agent economy. Verify any receipt. Embed a live badge. Join the network.',
+    title: 'Experimental EMILIA Registry and Receipt Exploration',
+    description: 'Inspect nonproduction reference records and the precise verification boundary of supported receipt artifacts.',
     url: 'https://www.emiliaprotocol.ai/network',
     type: 'website',
   },
-  keywords: ['trust network', 'verifiable receipts', 'AI agent trust registry', 'public verification'],
+  keywords: ['experimental agent registry', 'authorization receipt verification', 'EMILIA sandbox'],
 };
 
 export default function NetworkLayout({ children }: { children: React.ReactNode }) {

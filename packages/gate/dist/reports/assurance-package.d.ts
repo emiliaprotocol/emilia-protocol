@@ -4,9 +4,10 @@ export declare const ASSURANCE_REPERFORMANCE_VERSION = "EP-ASSURANCE-REPERFORMAN
 export { RELIANCE_VERDICTS };
 /**
  * The reliance control catalog: every reliance verdict maps to the control
- * objective it exercises. A `rely` shows the control PASSING; every do_not_rely_*
- * shows the control OPERATING (it refused a non-admissible action). Denials are
- * the control working, not the control failing.
+ * objective it exercises. A `rely` means the presented evidence satisfied the
+ * presented rule during offline re-performance; every do_not_rely_* identifies
+ * the objective that caused the offline refusal. Neither proves how the live
+ * runtime behaved.
  */
 export declare const RELIANCE_CONTROL_CATALOG: Readonly<{
     'RC-1': {
@@ -112,10 +113,14 @@ export declare function buildAssurancePackage(decisions?: any[], { profile, orga
 };
 /**
  * INDEPENDENT re-performance. Recompute every reliance verdict offline from the
- * packaged evidence under the package's pinned profile and AUDITOR-supplied keys,
- * trusting nothing the package asserts. Detect drift (recomputed ≠ stated), map
- * to control objectives, and emit an auditor-style workpaper. Conclusion fields
- * are ALWAYS null: the assurer concludes, not this tool.
+ * packaged evidence under the presented profile and AUDITOR-supplied keys.
+ * Recompute the internal package/profile digests and, when supplied, compare
+ * them with auditor-pinned digests received out of band. Detect drift
+ * (recomputed ≠ stated), map to control objectives, and emit an auditor-style
+ * workpaper. Conclusion fields are ALWAYS null: the assurer concludes, not this
+ * tool. The presented profile is not a trust root; an assurer that needs to
+ * establish which rule was authorized MUST supply expectedProfileHash out of
+ * band.
  *
  * @param {object} pkg  an EP-ASSURANCE-PACKAGE-v1
  * @param {object} opts
@@ -126,9 +131,11 @@ export declare function buildAssurancePackage(decisions?: any[], { profile, orga
  * @param {object} [opts.revokerKeys]
  * @param {(key:object)=>boolean} [opts.isConsumed] auditor-owned consumption lookup
  * @param {number|string|Date|Function} [opts.now]  reliance-evaluation clock (pin for determinism)
+ * @param {string|null} [opts.expectedPackageDigest] auditor-pinned package digest
+ * @param {string|null} [opts.expectedProfileHash] auditor-pinned profile digest
  * @returns {object} EP-ASSURANCE-REPERFORMANCE-v1
  */
-export declare function reperformAssurancePackage(pkg: any, { approverKeys, logPublicKey, rpId, allowedOrigins, revokerKeys, isConsumed, now, }?: {
+export declare function reperformAssurancePackage(pkg: any, { approverKeys, logPublicKey, rpId, allowedOrigins, revokerKeys, isConsumed, now, expectedPackageDigest, expectedProfileHash, }?: {
     approverKeys?: Record<string, any>;
     logPublicKey?: string | null;
     rpId?: string | null;
@@ -136,13 +143,22 @@ export declare function reperformAssurancePackage(pkg: any, { approverKeys, logP
     revokerKeys?: Record<string, any>;
     isConsumed?: (key: any) => boolean;
     now?: number | (() => number);
+    expectedPackageDigest?: string | null;
+    expectedProfileHash?: string | null;
 }): {
     '@version': string;
     product: string;
     package_digest: string;
     stated_package_digest: any;
     package_digest_verified: boolean;
-    profile_hash: any;
+    expected_package_digest: string | null;
+    expected_package_digest_matches: boolean | null;
+    profile_hash: string | null;
+    stated_profile_hash: any;
+    profile_hash_verified: boolean;
+    expected_profile_hash: string | null;
+    expected_profile_hash_matches: boolean | null;
+    integrity_verified: boolean;
     generated_at: string;
     honesty: {
         reperforms: string;

@@ -1,18 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, cta, color, font, radius, grid } from '@/lib/tokens';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
+import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 export default function EmiliaEyePage() {
-  const [form, setForm] = useState({ name:'', org:'', title:'', email:'', surface:'', problem:'', notes:'' });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState(null);
-
-  const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
   useEffect(() => {
     const els = document.querySelectorAll('.ep-reveal');
     const obs = new IntersectionObserver(
@@ -23,25 +17,11 @@ export default function EmiliaEyePage() {
     return () => obs.disconnect();
   }, []);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setSubmitting(true); setError(null);
-    try {
-      const res = await fetch('/api/inquiries', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'pilot-eye', ...form }),
-      });
-      if (!res.ok) throw new Error('Submission failed');
-      setSubmitted(true);
-    } catch (err) { setError(err.message); }
-    setSubmitting(false);
-  }
-
   const STACK = [
-    { label: 'Eye', verb: 'Observes', accent: color.green, detail: 'Moves through OBSERVE → SHADOW → ENFORCE lifecycle. Flags when a high-risk action pattern appears and routes it to the appropriate enforcement layer. No enforcement in OBSERVE mode. Full enforcement in ENFORCE mode.' },
-    { label: 'EP Handshake', verb: 'Verifies', accent: color.blue, detail: 'Pre-action trust enforcement. Binds actor identity, authority chain, policy version, and exact action context into a replay-resistant verification envelope before execution.' },
-    { label: 'Accountable Signoff', verb: 'Owns', accent: '#F59E0B', detail: 'When policy requires named human ownership, a specific principal must explicitly assume responsibility for the exact action. Cryptographically bound, one-time consumable.' },
-    { label: 'EP Commit', verb: 'Seals', accent: '#78716C', detail: 'Atomically closes the action. Immutable, hash-linked, blockchain-anchored. Once sealed, the record cannot be partially reversed through protocol means. No partial states.' },
+    { label: 'Eye', verb: 'Advises', accent: color.green, detail: 'Observes or evaluates in shadow mode and emits an action-scoped advisory. The advisory can tighten posture but never authorizes or enforces an action by itself.' },
+    { label: 'Protocol', verb: 'Verifies', accent: color.blue, detail: 'Native artifacts verify under their own rules and relying-party-pinned trust anchors. Verification remains separate from authorization.' },
+    { label: 'Approver', verb: 'Captures', accent: '#F59E0B', detail: 'When the buyer-pinned policy requires a fresh human decision, an enrolled credential can approve, decline, amend, or reject the exact action.' },
+    { label: 'Gate', verb: 'Controls admission', accent: '#78716C', detail: 'At a completely mediated executor boundary, Gate reserves accepted authority before provider entry and preserves executed or indeterminate outcomes without blind replay.' },
   ];
 
   const WHAT_EYE_IS = [
@@ -77,16 +57,19 @@ export default function EmiliaEyePage() {
   return (
     <div style={styles.page}>
       <SiteNav activePage="" />
+      <main>
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
         <div className="ep-tag ep-hero-badge" style={{ color: color.green }}>Product / Emilia Eye</div>
         <h1 className="ep-hero-text" style={styles.h1}>Start lighter with Emilia Eye</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 640 }}>
-          A warning protocol that flags when stricter EP trust controls should apply. Eye does not enforce. It does not block. It raises a signal so the right system can respond.
+          An experimental advisory profile that flags when stricter EMILIA controls may apply.
+          Eye never authorizes, blocks, or executes an action by itself; a relying party decides how
+          to use the signal under its own pinned policy.
         </p>
         <div className="ep-hero-text" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <a href="#pilot" className="ep-cta" style={cta.primary}>Pilot Emilia Eye</a>
+          <a href="/pilot" className="ep-cta" style={cta.primary}>Scope the protected-workflow pilot</a>
           <a href="/docs" className="ep-cta-secondary" style={cta.secondary}>Read the Spec</a>
         </div>
       </section>
@@ -115,7 +98,7 @@ export default function EmiliaEyePage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>The stack</h2>
-          <p style={styles.body}>Four layers. Each does one thing. Together they cover the full lifecycle from observation to enforcement to ownership to sealing.</p>
+          <p style={styles.body}>Four distinct layers keep advisory, verification, human decision evidence, and consequence admission from collapsing into one verdict.</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
           {STACK.map((item, i) => (
@@ -127,7 +110,7 @@ export default function EmiliaEyePage() {
           ))}
         </div>
         <div className="ep-reveal" style={{ textAlign: 'center', fontFamily: font.mono, fontSize: 14, color: color.t1, letterSpacing: 0.5, padding: '16px 0' }}>
-          Eye observes. Handshake verifies. Signoff owns. Commit seals.
+          Eye advises. Protocol verifies. Approver captures. Gate controls admission.
         </div>
         <div className="ep-reveal" style={{
           marginTop: 24,
@@ -141,12 +124,10 @@ export default function EmiliaEyePage() {
             Experimental · continuous-eval loop
           </div>
           <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, margin: 0 }}>
-            An additive, advisory-only extension is in draft. Eye can emit its advisory as a signed
-            Security Event Token (EP-EYE-SET-v1, RFC 8417) so a relying party can re-evaluate posture
-            continuously — but the advisory is <strong>never the sole gate</strong> on an action; it can
-            only tighten posture. Paired with it, an instant-revocation statement (EP-REVOCATION-v1) lets
-            a relying party cut off a long-lived authorization. Both are additive over the frozen core,
-            advisory-only, and governed by PIP-011 (Draft). Not yet production-ready.
+            Eye is an experimental, advisory-only profile. A relying party may use an action-scoped
+            advisory as one input that tightens posture, but the advisory is <strong>never authority</strong>
+            and never the sole action gate. The public draft and repository implementation are not a
+            production deployment, certification, standards adoption, or IETF endorsement.
           </p>
         </div>
       </section>
@@ -214,7 +195,7 @@ export default function EmiliaEyePage() {
         <div style={styles.section}>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>Example flows</h2>
-            <p style={styles.body}>How Eye works in practice across two high-risk verticals.</p>
+            <p style={styles.body}>Two bounded solution profiles showing how a buyer could compose Eye with a separate Gate boundary.</p>
           </div>
           <div style={{ display: 'grid', gap: 12 }}>
             {[
@@ -224,9 +205,9 @@ export default function EmiliaEyePage() {
                 title: 'Payment destination change',
                 steps: [
                   'Operator initiates a payment destination change for a benefits disbursement.',
-                  'Eye detects the action pattern and raises a GOV signal: beneficiary redirect, destination mismatch with enrollment record.',
-                  'The system routes the flagged action into EP Handshake for pre-action verification.',
-                  'If policy requires it, Accountable Signoff binds a named supervisor to the exact change before execution.',
+                  'A buyer-pinned profile evaluates the action pattern and may raise a GOV advisory.',
+                  'The relying party may route the flagged action to separate native verification and evidence checks.',
+                  'If policy requires it, an enrolled supervisor credential decides over the exact change before a completely mediated Gate admits provider entry.',
                 ],
               },
               {
@@ -235,9 +216,9 @@ export default function EmiliaEyePage() {
                 title: 'Beneficiary change on wire transfer',
                 steps: [
                   'An operator or automated system requests a beneficiary change on an outbound wire.',
-                  'Eye raises a FIN signal: payout destination change, new beneficiary not in approved counterparty registry.',
-                  'The flagged transaction is routed to EP Handshake, which binds the actor, authority chain, and exact transaction parameters.',
-                  'Treasury policy triggers Accountable Signoff. A named treasury officer signs off on the exact beneficiary change before the wire executes.',
+                  'A buyer-pinned profile may raise a FIN advisory for a payout-destination change.',
+                  'The relying party can route the flagged transaction to separate authority and evidence checks bound to the exact parameters.',
+                  'If treasury policy requires it, an enrolled officer decides over the exact change before a completely mediated Gate admits one provider attempt.',
                 ],
               },
             ].map((flow, fi) => (
@@ -261,19 +242,19 @@ export default function EmiliaEyePage() {
       {/* Packaging */}
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
-          <h2 style={styles.h2}>Packaging</h2>
-          <p style={styles.body}>Eye is in pilot as open-source and managed cloud (PIP-005, accepted spec).</p>
+          <h2 style={styles.h2}>Evaluation posture</h2>
+          <p style={styles.body}>Evaluate the open advisory profile without implying a live managed service or production enforcement.</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
           <div className="ep-card-lift ep-reveal ep-stagger-1" style={cardStyle(color.green)}>
-            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: color.green, marginBottom: 8 }}>Open Source</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: color.t1, marginBottom: 8 }}>Self-hosted Eye</div>
-            <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.65 }}>Apache 2.0 licensed. Run Eye on your own infrastructure. Full control over signal routing, storage, and integration with your existing trust stack.</div>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: color.green, marginBottom: 8 }}>Open profile</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: color.t1, marginBottom: 8 }}>Inspect and reproduce</div>
+            <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.65 }}>Review the public draft, code, and exact evidence boundary under Apache 2.0. A local evaluation is not deployment evidence.</div>
           </div>
           <div className="ep-card-lift ep-reveal ep-stagger-2" style={cardStyle(color.blue)}>
-            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: color.blue, marginBottom: 8 }}>Managed</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: color.t1, marginBottom: 8 }}>Gate Cloud with Eye</div>
-            <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.65 }}>Hosted signal processing, pre-built signal class libraries, dashboard for warning triage, and direct escalation into EP Handshake and Accountable Signoff.</div>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: color.blue, marginBottom: 8 }}>Canonical offer</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: color.t1, marginBottom: 8 }}>{PROTECTED_WORKFLOW_PILOT.name}</div>
+            <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.65 }}>{PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · synthetic, read-only, sandbox, or shadow validation only. First offered profile: {PROTECTED_WORKFLOW_PILOT.firstProfileLabel}. Eye remains an eligible solution profile for fit review. No production provider credentials or actuation.</div>
           </div>
         </div>
       </section>
@@ -287,53 +268,17 @@ export default function EmiliaEyePage() {
             Start with observation. Build toward enforcement.
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', maxWidth: 520, lineHeight: 1.7, marginBottom: 32 }}>
-            Deploy Eye in OBSERVE mode first. Understand your high-risk action patterns before adding enforcement. No disruption to existing workflows.
+            Assess one buyer-selected workflow in synthetic, read-only, sandbox, or shadow mode.
+            Production enforcement is outside the pilot and requires a separate Gate Implementation
+            after the buyer accepts the proposed consequence boundary.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="#pilot" className="ep-cta" style={cta.primary}>Pilot Emilia Eye</a>
+            <a href="/pilot" className="ep-cta" style={cta.primary}>Scope the {PROTECTED_WORKFLOW_PILOT.shortPriceLabel}, {PROTECTED_WORKFLOW_PILOT.durationLabel} pilot</a>
           </div>
         </div>
       </section>
 
-      {/* Pilot form */}
-      <section id="pilot" style={styles.section}>
-        <div className="ep-reveal" style={{ marginBottom: 32 }}>
-          <h2 style={styles.h2}>Pilot Emilia Eye</h2>
-        </div>
-        {submitted ? (
-          <div style={{ border: `1px solid ${color.border}`, borderTop: `2px solid ${color.green}`, borderRadius: radius.base, padding: 40, textAlign: 'center' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: color.green, marginBottom: 8 }}>Thank you</div>
-            <p style={{ color: color.t2, fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
-          </div>
-        ) : (
-          <div style={styles.card}>
-            <div style={grid.cols2}>
-              {[['name','Name'],['org','Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
-                <div key={k}>
-                  <label style={styles.label}>{label}</label>
-                  <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
-                </div>
-              ))}
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Trust surface of interest</label>
-                <input className="ep-input" style={styles.input} placeholder="e.g. payment destination changes, beneficiary updates, agent actions" value={form.surface} onChange={e => update('surface', e.target.value)} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Problem description</label>
-                <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Notes</label>
-                <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
-              </div>
-            </div>
-            {error && <p style={{ color: '#DC2626', fontSize: 13, marginTop: 12 }}>{error}</p>}
-            <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...((!form.name || !form.email) ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
-              {submitting ? 'Submitting...' : 'Pilot Emilia Eye'}
-            </button>
-          </div>
-        )}
-      </section>
+      </main>
 
       <SiteFooter />
     </div>

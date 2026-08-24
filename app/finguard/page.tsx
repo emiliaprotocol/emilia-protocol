@@ -19,9 +19,9 @@ const STAGES = [
   { n: '1', title: 'Precheck', body: 'Treasury system POSTs the proposed change to FinGuard with before/after state and risk flags.' },
   { n: '2', title: 'Policy decision', body: 'Money-destination changes, large amounts, AI-initiated actions — deterministic rules plus AML screening: a sanctions or embargo match fails closed; structuring and velocity patterns escalate to signoff, detected from EP\'s own per-counterparty history (not the caller\'s self-report).' },
   { n: '3', title: 'Accountable signoff', body: 'Treasury approver must be different from initiator. Approval binds to exact action hash.' },
-  { n: '4', title: 'Trust receipt', body: 'One-time receipt with action hash, policy hash, nonce, expiry. SOX-ready.' },
+  { n: '4', title: 'Trust receipt', body: 'One-time receipt with action hash, policy hash, nonce, and expiry. It can support buyer-defined control testing; it is not a SOX conclusion.' },
   { n: '5', title: 'One-time consume', body: 'SWIFT/ACH/Fedwire connector consumes the receipt at release. Reuse fails.' },
-  { n: '6', title: 'Evidence packet', body: 'Complete event timeline ready for audit, regulator review, and incident reconstruction.' },
+  { n: '6', title: 'Evidence packet', body: 'Bounded supplied events and verification material for buyer or auditor re-performance. Population completeness and regulatory sufficiency are not claimed.' },
 ];
 
 const SCENARIOS = [
@@ -61,10 +61,14 @@ export default function FinGuardPage() {
               transfers — where dual control is required — escalate to a multi-party quorum with{' '}
               <a href="/quorum" style={{ color: color.t1, textDecoration: 'underline' }}>EMILIA Quorum</a>.
             </p>
+            <p style={{ ...styles.body, maxWidth: 720, marginTop: 12, fontSize: 14, color: color.t3 }}>
+              This page describes an inspectable solution profile and target production behavior.
+              The current public offer is one nonproduction protected-workflow pilot; production
+              activation requires a separately scoped Gate Implementation.
+            </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
-              <a href="/pricing" style={cta.primary}>Get protected — see pricing</a>
+              <a href="/pilot?v=fin" style={cta.primary}>Review the 90-day pilot</a>
               <a href="#how-it-works" style={cta.secondary}>How it works</a>
-              <a href="/pilot?v=fin" style={cta.secondary}>Or scope a pilot</a>
             </div>
           </div>
         </section>
@@ -125,7 +129,7 @@ export default function FinGuardPage() {
         <section style={styles.section}>
           <div style={styles.container}>
             <div style={styles.eyebrow}>SCENARIOS</div>
-            <h2 style={{ ...styles.h2, marginTop: 12 }}>What FinGuard catches.</h2>
+            <h2 style={{ ...styles.h2, marginTop: 12 }}>What the reference profile models.</h2>
             <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
               {SCENARIOS.map((s) => (
                 <div key={s.title} style={{ ...styles.card, padding: 24 }}>
@@ -167,11 +171,12 @@ export default function FinGuardPage() {
               </h2>
               <p style={{ ...styles.body, maxWidth: 540, margin: '16px auto 24px' }}>
                 Pick one vendor bank-detail change or payment-release boundary. Start with synthetic
-                and read-only validation, then observe mode without blocking production. Enforcement
-                begins only after the buyer accepts the Gate boundary and complete-mediation design.
+                and read-only validation, then optional shadow observation without blocking production.
+                The pilot does not activate enforcement. Any production use requires a separately scoped
+                Gate Implementation after the buyer accepts the boundary and complete-mediation design.
               </p>
-              <a href="/pricing" style={cta.primary}>Get protected — see pricing</a>
-              {' '}<a href="/pilot?v=fin" style={cta.secondary}>Scope the 90-day pilot</a>
+              <a href="/pilot?v=fin" style={cta.primary}>Scope the 90-day pilot</a>
+              {' '}<a href="/pricing" style={cta.secondary}>Review offer and expansion terms</a>
               <p style={{ fontSize: 13, color: color.t3, marginTop: 18 }}>
                 For your compliance file: <a href="/compliance/emilia-eu-ai-act-financial-services.pdf" style={{ color: color.blue, textDecoration: 'none' }}>EU AI Act mapping — financial services (PDF)</a>
                 {' '}· <a href="/rfp" style={{ color: color.blue, textDecoration: 'none' }}>RFP language</a>

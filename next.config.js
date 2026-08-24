@@ -99,7 +99,20 @@ const nextConfig = {
         headers: securityHeaders,
       },
       {
-        source: '/api/:path*',
+        // The exact content-addressed resolver deliberately discloses no
+        // referrer. This later, route-specific value overrides the site's
+        // broader same-origin policy in integrated Next serving.
+        source: '/api/v1/assurance/records/:recordId',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+        ],
+      },
+      {
+        // Public content-addressed assurance records set their own status-aware
+        // cache contract in the handler: immutable for an exact hit and
+        // no-store for a miss. Keep the blanket API policy off that resolver so
+        // it cannot overwrite either response.
+        source: '/api/((?!v1/assurance/records(?:/|$)).*)',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
         ],

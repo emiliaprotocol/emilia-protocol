@@ -84,6 +84,7 @@ const PUBLIC_BY_DESIGN = new Set([
   'app/api/arena/refusals/[shareId]/route.ts',        // explicit opt-in, privacy-minimized integrity record behind 160-bit share id
   'app/api/adopt/shares/[shareId]/route.ts',          // opt-in Operating Bond projection behind a 160-bit capability id; no session, credential, or identity fields
   'app/api/agent-records/[recordId]/route.ts',         // unlisted factual projection behind a 160-bit opaque id; exact lookup only, no list/search surface
+  'app/api/v1/assurance/records/[recordId]/route.ts',  // one immutable synthetic reference record by exact content digest; no list, database, customer, or private-data surface
   'app/api/works/authority-records/[recordId]/badge/route.ts', // public badge derived only from the owner-approved public projection
   'app/api/works/authority-records/[recordId]/requests/route.ts', // public verified-interest ceremony for an already public record; no raw requester identity returned
   'app/api/score/[entityId]/route.ts',                // RETIRED — returns HTTP 410 Gone (score surface removed)

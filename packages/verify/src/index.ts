@@ -94,6 +94,7 @@ export * from './fips-mode.js';
 export * from './status.js';
 export * from './gate-qualification.js';
 export * from './gate-qualification-promptfoo.js';
+export * from './claim-assurance.js';
 export {
   OUTCOME_ATTESTATION_VERSION,
   OUTCOME_ATTESTATION_DOMAIN,

@@ -75,7 +75,8 @@ export default function PilotPage(): React.ReactElement {
     [selectedOffer.durationLabel, 'time-boxed engagement'],
     [selectedOffer.shortPriceLabel, 'fixed scope and price'],
     [selectedOffer.workflowLabel, 'one buyer-selected consequence boundary'],
-    ['Synthetic + read-only first', 'production waits for explicit buyer acceptance'],
+    ['Nonproduction only', 'synthetic, read-only, sandbox, or shadow validation'],
+    ['Separate implementation', 'production activation is not included in the pilot'],
     ['Server-validated records only', 'public record IDs are resolved before intake'],
   ];
 
@@ -106,20 +107,22 @@ export default function PilotPage(): React.ReactElement {
     <div style={styles.page}>
       <SiteNav />
       <main style={{ maxWidth: 660, margin: '0 auto', padding: '56px 24px 96px' }}>
-        <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.gold, marginBottom: 18 }}>
+        <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.goldDark, marginBottom: 18 }}>
           Pilot request
         </div>
         <h1 style={{ ...styles.h1, maxWidth: 600 }}>
-          Protect one consequential workflow.{' '}
+          Design one consequence boundary.{' '}
           {selectedOffer.durationLabel}. {selectedOffer.shortPriceLabel}.
         </h1>
         <p style={{ ...styles.body, maxWidth: 580 }}>
           Start with {selectedOffer.firstProfileLabel.toLowerCase()}. The safety rule is simple:{' '}
-          {selectedOffer.safetyRuleLabel.toLowerCase()}. On a completely mediated covered path, missing,
-          stale, exhausted, invalid, or mismatched authority does not admit provider entry. Other
-          consequential workflows remain eligible under the same
-          fixed offer. EMILIA does not prove bank-detail correctness, payee identity, fraud absence,
-          provider success, legality, or business wisdom, and it does not take custody or move money.
+          {selectedOffer.safetyRuleLabel.toLowerCase()}. The pilot tests that proposed boundary with
+          synthetic, read-only, sandbox, or shadow evidence only. It does not actuate production,
+          hold provider credentials, or move money. Missing, stale, exhausted, invalid, or mismatched
+          authority would refuse provider entry only after a separately scoped Gate Implementation
+          completely mediates the covered path. EMILIA does not prove bank-detail correctness, payee
+          identity, fraud absence, provider success, legality, or business wisdom.
+          Other consequential workflows remain eligible under the same fixed nonproduction offer.
         </p>
 
         {/* terms strip */}
@@ -195,6 +198,6 @@ export default function PilotPage(): React.ReactElement {
   );
 }
 
-const lnk = { color: color.blue, textDecoration: 'none' };
+const lnk = { color: color.blueDark, textDecoration: 'none' };
 const lbl = { display: 'block', fontSize: 12, fontWeight: 600, color: color.t2, margin: '16px 0 6px', fontFamily: font.mono, letterSpacing: 0.5 };
 const input: React.CSSProperties = { width: '100%', padding: '12px 14px', borderRadius: radius.base, border: `1px solid ${color.inputBorder}`, background: color.card, color: color.t1, fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box' };

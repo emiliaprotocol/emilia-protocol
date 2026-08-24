@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { REPRESENTATIVE_CORPUS } from '../packages/fire-drill/corpus.js';
+import { CLAIM_ASSURANCE_REFERENCE_PAGE_PATH } from '../lib/assurance-reference';
 
 // Auto-generated XML sitemap. Next.js's app/sitemap.ts convention serves
 // this file at /sitemap.xml automatically. Regenerated on each request
@@ -24,6 +25,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/gate',                  priority: 0.98, changeFrequency: 'weekly' },
     { path: '/protect',               priority: 0.98, changeFrequency: 'weekly' },
     { path: '/assurance',             priority: 0.92, changeFrequency: 'weekly' },
+    { path: CLAIM_ASSURANCE_REFERENCE_PAGE_PATH, priority: 0.72, changeFrequency: 'yearly' },
+    { path: '/trust',                 priority: 0.9, changeFrequency: 'monthly' },
     { path: '/model-to-matter',       priority: 0.9, changeFrequency: 'monthly' },
     { path: '/scan',                  priority: 0.95, changeFrequency: 'weekly' },
     { path: '/agent-guard',           priority: 0.85, changeFrequency: 'monthly' },
@@ -115,10 +118,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/signup',      priority: 0.85, changeFrequency: 'monthly' },
     { path: '/break-the-ceremony', priority: 0.8, changeFrequency: 'weekly' },
     { path: '/playground',  priority: 0.6, changeFrequency: 'weekly' },
-    { path: '/network',     priority: 0.75, changeFrequency: 'weekly' },
     { path: '/explorer',    priority: 0.6, changeFrequency: 'daily' },
     { path: '/eye',         priority: 0.7, changeFrequency: 'monthly' },
-    { path: '/trust-desk',  priority: 0.9, changeFrequency: 'weekly' },
     { path: '/governance',  priority: 0.7, changeFrequency: 'monthly' },
   ];
 

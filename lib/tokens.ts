@@ -18,8 +18,11 @@ export const color = {
   t3:         '#78716C',   // tertiary text / captions
 
   gold:       '#B08D35',   // accent
+  goldDark:   '#765A0B',   // accessible compact text / links on light backgrounds
   green:      '#16A34A',   // kept for specific UI states (success, active nav)
+  greenDark:  '#166534',   // accessible success text / compact badge background
   blue:       '#3B82F6',   // kept for specific UI states (protocol endpoints)
+  blueDark:   '#1D4ED8',   // accessible compact text / links on light backgrounds
   red:        '#DC2626',   // destructive / error
 
   border:     '#E7E5E4',
@@ -137,6 +140,7 @@ export const styles: Record<string, CSSProperties> = {
     lineHeight: 1.65,
   },
   input: {
+    boxSizing: 'border-box',
     width: '100%',
     padding: '12px 16px',
     borderRadius: radius.base,
@@ -197,6 +201,7 @@ export const styles: Record<string, CSSProperties> = {
 // Three tiers only: primary (solid), secondary (outline), ghost.
 
 const ctaBase: CSSProperties = {
+  boxSizing: 'border-box',
   display: 'inline-flex',
   alignItems: 'center',
   gap: 8,

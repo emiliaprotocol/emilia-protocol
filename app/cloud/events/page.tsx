@@ -31,14 +31,14 @@ const s = {
 const EVENT_TYPES = ['All Types', 'handshake.completed', 'handshake.initiated', 'policy.violation', 'signoff.requested', 'alert.triggered', 'audit.export'];
 
 const MOCK_EVENTS = [
-  { id: 'evt_f1a2b3', type: 'handshake.completed', handshake: 'hs_9f2a1b3c', tenant: 'acme-corp', details: 'AML/KYC verification passed all checks', timestamp: '2026-03-22T14:32:18Z' },
-  { id: 'evt_c4d5e6', type: 'signoff.requested', handshake: 'hs_7e4d2a8f', tenant: 'globex-fin', details: 'SOX 404 controls require manual attestation', timestamp: '2026-03-22T12:15:44Z' },
-  { id: 'evt_g7h8i9', type: 'policy.violation', handshake: 'hs_3c1b9e7d', tenant: 'initech-eu', details: 'GDPR consent record missing for data subject', timestamp: '2026-03-22T11:48:02Z' },
-  { id: 'evt_j1k2l3', type: 'handshake.initiated', handshake: 'hs_8b4e2f1a', tenant: 'acme-corp', details: 'New handshake initiated for vendor onboarding', timestamp: '2026-03-22T10:22:30Z' },
-  { id: 'evt_m4n5o6', type: 'alert.triggered', handshake: 'hs_1d6e4b9a', tenant: 'globex-fin', details: 'Sanctions screening match flagged for review', timestamp: '2026-03-22T09:55:11Z' },
-  { id: 'evt_p7q8r9', type: 'audit.export', handshake: null, tenant: 'acme-corp', details: 'Evidence package generated for Q1 2026 audit', timestamp: '2026-03-22T08:30:00Z' },
-  { id: 'evt_s1t2u3', type: 'handshake.completed', handshake: 'hs_6c9a3d7e', tenant: 'initech-eu', details: 'AI Act compliance trail verified', timestamp: '2026-03-21T17:45:22Z' },
-  { id: 'evt_v4w5x6', type: 'policy.violation', handshake: 'hs_2e8d1f4a', tenant: 'globex-fin', details: 'Data residency constraint violated - APAC region', timestamp: '2026-03-21T15:12:09Z' },
+  { id: 'evt_f1a2b3', type: 'handshake.completed', handshake: 'hs_9f2a1b3c', tenant: 'demo-finance-alpha', details: 'Synthetic identity inputs matched the sample rule set', timestamp: '2026-03-22T14:32:18Z' },
+  { id: 'evt_c4d5e6', type: 'signoff.requested', handshake: 'hs_7e4d2a8f', tenant: 'demo-finance-beta', details: 'Reference control mapping requested a sample attestation', timestamp: '2026-03-22T12:15:44Z' },
+  { id: 'evt_g7h8i9', type: 'policy.violation', handshake: 'hs_3c1b9e7d', tenant: 'demo-health-gamma', details: 'Synthetic consent field missing before the modeled action', timestamp: '2026-03-22T11:48:02Z' },
+  { id: 'evt_j1k2l3', type: 'handshake.initiated', handshake: 'hs_8b4e2f1a', tenant: 'demo-finance-alpha', details: 'Sample handshake initiated for vendor-master review', timestamp: '2026-03-22T10:22:30Z' },
+  { id: 'evt_m4n5o6', type: 'alert.triggered', handshake: 'hs_1d6e4b9a', tenant: 'demo-finance-beta', details: 'Synthetic screening input flagged for human review', timestamp: '2026-03-22T09:55:11Z' },
+  { id: 'evt_p7q8r9', type: 'audit.export', handshake: null, tenant: 'demo-finance-alpha', details: 'Sample evidence packet generated from synthetic events', timestamp: '2026-03-22T08:30:00Z' },
+  { id: 'evt_s1t2u3', type: 'handshake.completed', handshake: 'hs_6c9a3d7e', tenant: 'demo-health-gamma', details: 'Reference mapping fields recorded; no compliance conclusion', timestamp: '2026-03-21T17:45:22Z' },
+  { id: 'evt_v4w5x6', type: 'policy.violation', handshake: 'hs_2e8d1f4a', tenant: 'demo-finance-beta', details: 'Synthetic region constraint mismatch recorded', timestamp: '2026-03-21T15:12:09Z' },
 ];
 
 export default function EventsPage(): React.ReactElement {
@@ -76,9 +76,9 @@ export default function EventsPage(): React.ReactElement {
   return (
     <div style={s.page}>
       <div style={s.container}>
-        <div style={s.eyebrow}>Cloud / Events</div>
-        <h1 style={s.h1}>Event Explorer</h1>
-        <p style={s.subtitle}>Search and filter protocol events across all tenants and handshakes.</p>
+        <div style={s.eyebrow}>Prototype / Synthetic events</div>
+        <h1 style={s.h1}>Event explorer sample</h1>
+        <p style={s.subtitle}>Search synthetic protocol events. These rows do not represent customers, production traffic, or provider effects.</p>
 
         {error && <div style={s.error}>{error}</div>}
 
@@ -103,7 +103,7 @@ export default function EventsPage(): React.ReactElement {
                   <th style={s.th}>Event ID</th>
                   <th style={s.th}>Type</th>
                   <th style={s.th}>Handshake</th>
-                  <th style={s.th}>Tenant</th>
+                  <th style={s.th}>Demo scope</th>
                   <th style={s.th}>Details</th>
                   <th style={s.th}>Timestamp</th>
                 </tr>

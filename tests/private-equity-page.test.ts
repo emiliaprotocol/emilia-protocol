@@ -16,7 +16,7 @@ describe('private-equity portfolio customer page', () => {
   it('is an indexable, finance-first customer route with dedicated share metadata', () => {
     expect(page).toContain("alternates: { canonical: '/private-equity' }");
     expect(page).toContain('Agentic AI Risk Controls for Private Equity Portfolios');
-    expect(page).toContain('Protect the capital behind agentic action.');
+    expect(page).toContain('Put a hard authority boundary around one capital-exposing agent action.');
     expect(page).toContain("url: '/private-equity/opengraph-image'");
     expect(page).toContain('robots: { index: true, follow: true }');
     expect(openGraphImage).toContain('export const size = { width: 1200, height: 630 }');

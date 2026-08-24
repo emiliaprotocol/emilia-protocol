@@ -1,18 +1,18 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Start Free — Get a Sandbox API Key',
+  title: 'Experimental Registry Sandbox — Create a Test API Key',
   description:
-    'Register an entity and get a real EMILIA Protocol API key in 30 seconds — no credit card, '
-    + 'no sales call. Free sandbox tier to issue authorization receipts (formerly Trust Receipts), run handshakes, and guard agent actions.',
+    'Create a reference credential for the experimental public EMILIA registry sandbox. '
+    + 'This rate-limited nonproduction surface carries no service-level or global-network claim.',
   alternates: { canonical: '/signup' },
   openGraph: {
-    title: 'Start free with EMILIA Protocol — instant sandbox API key',
-    description: 'Get a real API key in 30 seconds. Free sandbox tier. Issue receipts, run handshakes, guard agents.',
+    title: 'Experimental EMILIA Registry Sandbox',
+    description: 'Create a nonproduction reference credential and exercise experimental registry, receipt, handshake, and Gate paths.',
     url: 'https://www.emiliaprotocol.ai/signup',
     type: 'website',
   },
-  keywords: ['EMILIA Protocol API key', 'free AI agent authorization', 'authorization receipt sandbox', 'get started'],
+  keywords: ['EMILIA Protocol sandbox', 'experimental agent registry', 'authorization receipt sandbox', 'reference API credential'],
 };
 
 export default function SignupLayout({ children }: { children: React.ReactNode }) {

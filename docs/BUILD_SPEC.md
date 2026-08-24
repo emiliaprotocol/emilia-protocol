@@ -1,6 +1,6 @@
 # Emilia Protocol — Build Specification
 **Version:** 1.0  
-**Status:** Production-ready for regulated-industry deployment  
+**Status:** Historical build specification; not evidence of production deployment or readiness
 **Last Updated:** 2026-07-19
 
 ---

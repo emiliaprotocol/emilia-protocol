@@ -5,7 +5,7 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, color, font, radius } from '@/lib/tokens';
 import { ENTITY, SUB_PROCESSORS } from '@/lib/site-config';
 
-const EFFECTIVE = '2026-05-05';
+const EFFECTIVE = '2026-08-23';
 
 export default function SubProcessorsPage() {
   return (
@@ -19,10 +19,10 @@ export default function SubProcessorsPage() {
           Effective {EFFECTIVE} · Updated whenever a data flow changes
         </div>
         <p style={{ ...styles.body, marginBottom: 0, fontSize: 13, color: color.t3, fontStyle: 'italic' }}>
-          Customers can subscribe to change notifications and receive at least 30 days&apos; advance notice of any new sub-processor handling customer data.
+          No generally available hosted Gate or assurance service is operating today. This is a public vendor inventory, not a live customer DPA schedule.
         </p>
         <p style={styles.body}>
-          The vendors below process customer data on behalf of {ENTITY.legalName} for the purposes described. Each vendor is contractually bound to data-protection terms equivalent to those we provide our customers. Customers can subscribe to change notifications by emailing <a href={`mailto:${ENTITY.privacyEmail}`} style={{ color: color.blue }}>{ENTITY.privacyEmail}</a>; we provide at least 30 days' advance notice of new sub-processors that handle customer data.
+          The table records vendors referenced by the current website, public repository, or designed commercial components and the maximum data category associated with each stated role. An entry does not mean that vendor currently processes customer data or that the designed service is operating. Any future contracted service must include a verified sub-processor schedule and notice terms in its executed DPA.
         </p>
       </section>
 
@@ -31,8 +31,8 @@ export default function SubProcessorsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.sans }}>
             <thead>
               <tr>
-                <th style={styles.tableHead as React.CSSProperties}>Sub-processor</th>
-                <th style={styles.tableHead as React.CSSProperties}>Purpose</th>
+                <th style={styles.tableHead as React.CSSProperties}>Vendor</th>
+                <th style={styles.tableHead as React.CSSProperties}>Declared or designed purpose</th>
                 <th style={styles.tableHead as React.CSSProperties}>Region</th>
                 <th style={styles.tableHead as React.CSSProperties}>Data category</th>
               </tr>
@@ -53,24 +53,24 @@ export default function SubProcessorsPage() {
 
       <article style={{ ...styles.section, paddingTop: 0, paddingBottom: 72 }}>
 
-        <h2 style={styles.h2}>How we choose sub-processors</h2>
+        <h2 style={styles.h2}>Contract gate</h2>
         <p style={styles.body}>
-          Each sub-processor passes a vendor-due-diligence review covering data security, business continuity, sub-processor practices of their own, and contractual data-protection commitments equivalent to GDPR Article 28 standards. Vendors handling customer personal data are required to maintain SOC 2 Type II or ISO/IEC 27001 certification.
+          Before a vendor processes personal data for a contracted service, EMILIA must verify the actual data flow, security posture, retention, transfer mechanism, contractual terms, and customer notice obligations. This page does not claim that every listed vendor has completed that review or holds a named certification.
         </p>
 
         <h2 style={styles.h2}>What is not on this list</h2>
         <p style={styles.body}>
-          We deliberately keep the data-flow surface small. The hosted service does not use third-party advertising, behavioral analytics, marketing automation, or session-replay tools. We do not share customer data with third parties for their marketing or AI-training purposes. If we ever add a vendor in those categories we will list it here and notify customers in advance per the change-notification process above.
+          The current website is designed without third-party advertising, behavioural analytics, marketing automation, or session-replay tools. We do not sell personal information. Data-use restrictions for any future contracted service must appear in its agreement and DPA.
         </p>
 
         <h2 style={styles.h2}>International transfers</h2>
         <p style={styles.body}>
-          Where a sub-processor processes personal data outside the customer's region (typically EU/EEA/UK/Swiss data transferred to the United States), we rely on EU Standard Contractual Clauses and the UK addendum where applicable. Region-pinned processing is available by arrangement on EMILIA Gate Enterprise engagements — contact <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.blue }}>{ENTITY.legalEmail}</a> for the data-residency configuration.
+          The actual processing region and transfer mechanism must be verified for each future contracted data flow. Where required, the applicable DPA must identify Standard Contractual Clauses, a UK addendum, or another lawful mechanism before processing begins. No generally available region-pinned hosted Gate service is offered today. Contact <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.blue }}>{ENTITY.legalEmail}</a> for diligence questions.
         </p>
 
         <h2 style={styles.h2}>Contact</h2>
         <p style={styles.body}>
-          Questions about a specific sub-processor or to subscribe to change notifications: <a href={`mailto:${ENTITY.privacyEmail}`} style={{ color: color.blue }}>{ENTITY.privacyEmail}</a>.
+          Questions about a vendor, current data flow, or future contract schedule: <a href={`mailto:${ENTITY.privacyEmail}`} style={{ color: color.blue }}>{ENTITY.privacyEmail}</a>.
         </p>
 
       </article>

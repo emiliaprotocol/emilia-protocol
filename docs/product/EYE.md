@@ -2,7 +2,7 @@
 
 ## Overview
 
-Emilia Eye is delivered in three layers: Open, Managed, and Enterprise. Each layer builds on the one below it. The Open layer is sufficient for implementation. The Managed and Enterprise layers reduce operational burden and add capabilities that require hosted infrastructure.
+Emilia Eye has one implemented public reference layer and two target product layers. The Open layer is inspectable and sufficient for an organization to build and operate its own implementation. Managed and Enterprise describe future, separately scoped service designs. No generally available Eye hosted service, SLA, or customer deployment is operating today.
 
 ---
 
@@ -29,11 +29,11 @@ Same open-source license as the EP protocol specification and reference implemen
 
 ---
 
-## Managed
+## Managed target
 
-The Managed layer is a hosted service operated by Emilia that provides the infrastructure, signal registry, and operational tooling around the Open specification.
+No Managed Eye service operates today. This target layer would provide hosted infrastructure, a signal registry, and operational tooling around the Open specification under a separate contract and verified deployment boundary.
 
-### What Is Included
+### Target capabilities
 
 | Component | Description |
 |---|---|
@@ -43,7 +43,7 @@ The Managed layer is a hosted service operated by Emilia that provides the infra
 | Suppression controls | UI and API for managing suppressions with approval workflows. Supports multi-level suppression approval for critical-severity observations. Audit log export for SIEM integration. |
 | Eye-to-EP orchestration | Managed integration between Eye advisories and EP policy resolution. Advisory status is automatically available as a policy input during handshake verification. No custom integration code required. |
 | Source management | Registration, authentication, rate limiting, and monitoring for observation sources. Token rotation, source suspension, and per-source analytics. |
-| Hosted API | The four Eye API endpoints operated as a managed service with tenant isolation, availability SLA, and geographic deployment options. |
+| Hosted API | Target operation of the four Eye API endpoints with tenant isolation, a contracted availability objective, and verified regional placement. |
 
 ### What Is Not Included
 
@@ -51,11 +51,11 @@ Private deployment infrastructure. Custom signal definitions authored by the ope
 
 ---
 
-## Enterprise
+## Enterprise target
 
-The Enterprise layer extends Managed with capabilities required by organizations that need private infrastructure, custom signal sources, or governance integration.
+No Enterprise Eye deployment package is generally available today. This target layer would extend a separately scoped implementation for organizations that need private infrastructure, custom signal sources, or governance integration.
 
-### What Is Included
+### Target capabilities
 
 | Component | Description |
 |---|---|
@@ -70,17 +70,17 @@ The Enterprise layer extends Managed with capabilities required by organizations
 
 ## Layer Boundaries
 
-| Capability | Open | Managed | Enterprise |
+| Capability | Open reference | Managed target | Enterprise target |
 |---|---|---|---|
 | Specification and conformance tests | Yes | Yes | Yes |
 | OSS runtime | Yes | Yes | Yes |
 | SDKs | Yes | Yes | Yes |
-| Hosted API with SLA | No | Yes | Yes |
-| Signal registry | Starter set only | Curated, versioned | Curated + custom |
-| Dashboards and analytics | No | Yes | Yes |
-| Suppression controls with workflows | Basic (API only) | Yes | Yes + GRC integration |
-| Eye-to-EP orchestration | Manual integration | Managed | Managed + custom |
-| Source management | Self-managed | Managed | Managed + custom integrations |
-| Private deployment | Self-hosted | No | Yes |
-| Custom signal packs | Self-authored | No | Yes |
-| Governance integration | No | No | Yes |
+| Hosted API with SLA | No | Target | Target |
+| Signal registry | Starter set only | Target: curated, versioned | Target: curated + custom |
+| Dashboards and analytics | No | Target | Target |
+| Suppression controls with workflows | Basic (API only) | Target | Target + GRC integration |
+| Eye-to-EP orchestration | Manual integration | Target | Target + custom |
+| Source management | Self-managed | Target | Target + custom integrations |
+| Private deployment | Self-hosted reference | No | Target |
+| Custom signal packs | Self-authored | No | Target |
+| Governance integration | No | No | Target |

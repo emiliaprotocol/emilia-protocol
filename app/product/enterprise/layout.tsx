@@ -1,17 +1,14 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'EMILIA Gate Enterprise — Private Consequence Firewall',
+  title: 'Enterprise Gate Implementation Pathways | EMILIA Protocol',
   description:
-    'Bound authorization for infrastructure changes, data exports, ' +
-    'permission escalations, and production deployments. PAM-layer ' +
-    'extension with cryptographic action-binding and named signoff.',
+    'Inspect reference components and separately scoped implementation paths for customer-controlled Gate deployments. No generally available managed service or production deployment is claimed.',
   alternates: { canonical: '/product/enterprise' },
   openGraph: {
-    title: 'EMILIA Gate Enterprise',
+    title: 'Enterprise Gate Implementation Pathways',
     description:
-      'Action-bound authorization layered on top of PAM. Cryptographic ' +
-      'evidence for every consequential enterprise change.',
+      'Reference components, explicit limitations, and buyer-specific implementation work after a nonproduction boundary assessment.',
     url: 'https://www.emiliaprotocol.ai/product/enterprise',
     type: 'article',
   },
@@ -20,7 +17,7 @@ export const metadata: Metadata = {
     'privileged access management',
     'PAM AI integration',
     'zero trust action',
-    'production deployment authorization',
+    'consequence boundary implementation',
   ],
 };
 

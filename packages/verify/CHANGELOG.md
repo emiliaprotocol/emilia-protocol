@@ -5,6 +5,18 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Add the zero-dependency Claim Assurance kernel: strict, content-addressed
+  Claim Cases are evaluated by caller-pinned verifier implementations under a
+  pinned profile and produce deterministic, offline-checkable Assurance
+  Records. `VERIFIED`, `UNVERIFIED`, `DIVERGED`, and `INDETERMINATE` remain
+  evidence states; every record explicitly carries `authorizes_action: false`.
+  Evidence outside the profile is rejected before callback dispatch, divergence
+  is detected across requirements, verifier reasons are bounded and unique,
+  expiry uses a half-open interval, and record integrity inspection now checks
+  strict semantics plus both digests while explicitly reporting that it did not
+  re-perform the Claim Case. Registered callbacks remain live trust inputs that
+  production callers must isolate and deadline.
+
 - Added `EP-AEB-CROSSING-RECORD-v1`, a carrier-neutral, hybrid-signed record
   that binds one exact action, native authority instance, replay unit, mapping
   profile, admission reference, consumption evidence, relying-party boundary,

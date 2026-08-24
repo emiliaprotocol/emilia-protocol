@@ -21,7 +21,7 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(homepage).toContain('href="/scan"');
     expect(homepage).toContain('Run the local Authority Map');
     expect(homepage).toContain("href: '/authority-brain'");
-    expect(homepage).toContain('Protect one workflow');
+    expect(homepage).toContain('Design one boundary');
   });
 
   it('routes a scan result into Agent Guard and then the MCP integration', () => {

@@ -17,14 +17,14 @@ export default function ComparePermitPage(): React.JSX.Element {
   }, []);
 
   const ROWS = [
-    { dim: 'Primary job', them: 'Real-time fine-grained authorization — is this agent allowed to do X?', ep: 'Accountable human signoff before an irreversible action — did a named human approve THIS action?' },
-    { dim: 'Authorization models', them: 'RBAC, ABAC, ReBAC; policy-as-code — broad and mature', ep: 'Action risk classes + signoff thresholds, focused on the gate' },
-    { dim: 'Human in the loop', them: 'Consent collection, just-in-time access requests', ep: 'Named signoff bound to the exact action parameters, one-time consumable' },
-    { dim: 'Evidence', them: 'Audit logs and decision traces, inside the platform', ep: 'Authorization receipt — Ed25519 + Merkle, verifiable offline with no account or network' },
+    { dim: 'Primary job', them: 'Real-time fine-grained authorization — is this agent allowed to do X?', ep: 'Action-bound admission — is this exact action within finite customer authority?' },
+    { dim: 'Authorization models', them: 'RBAC, ABAC, ReBAC; policy-as-code — broad and mature', ep: 'Action risk classes + finite mandates and evidence profiles, focused on the gate' },
+    { dim: 'Human in the loop', them: 'Consent collection, just-in-time access requests', ep: 'Named signoff bound to the exact action when the mandate or local policy requires it' },
+    { dim: 'Evidence', them: 'Audit logs and decision traces, inside the platform', ep: 'Authorization receipt — Ed25519 + Merkle, verifiable offline against independently pinned key material' },
     { dim: 'Assurance', them: 'Open-source policy engine (OPA / OPAL)', ep: 'Formally analyzed models — 26 TLA+ invariants checked by TLC + 35 Alloy facts in CI' },
     { dim: 'Replay resistance', them: 'Per-request policy decisions', ep: 'One-time consumable handshake bound to the exact action' },
     { dim: 'MCP', them: 'MCP Gateway — authenticate humans, identify agents, gate tokens, collect consent', ep: 'MCP server that gates the action and mints the receipt' },
-    { dim: 'Deployment', them: 'SaaS + self-hosted', ep: 'Open protocol (Apache-2.0), self-host or cloud' },
+    { dim: 'Deployment', them: 'SaaS + self-hosted', ep: 'Apache-2.0 protocol and reference runtime; any managed or private production implementation is separately scoped' },
   ];
 
   return (
@@ -35,7 +35,10 @@ export default function ComparePermitPage(): React.JSX.Element {
         <div className="ep-tag ep-hero-badge" style={{ color: color.blue }}>Comparison / Permit.io</div>
         <h1 className="ep-hero-text" style={styles.h1}>EMILIA Protocol vs Permit.io</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 640 }}>
-          Permit.io decides what an AI agent is allowed to do. EMILIA’s receipt proves a named human approved the specific irreversible action — and mints a receipt anyone can verify offline. They solve different problems, and they are strongest together.
+          Permit.io decides what an AI agent is allowed to do. EMILIA binds the specific action to
+          finite customer authority and produces portable evidence. When the mandate or local policy
+          requires a fresh human decision, that evidence includes the named signoff. They solve
+          different problems, and they can be used together.
         </p>
       </section>
 
@@ -49,10 +52,16 @@ export default function ComparePermitPage(): React.JSX.Element {
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 72 }}>
         <h2 className="ep-reveal" style={styles.h2}>The problem authorization alone does not solve</h2>
         <p className="ep-reveal" style={styles.body}>
-          Authorization answers &ldquo;is this allowed?&rdquo; It does not answer &ldquo;did a specific, named human approve <em>this exact</em> irreversible action — and can a third party prove it later without trusting either system?&rdquo;
+          Authorization answers &ldquo;is this allowed?&rdquo; It does not necessarily bind that decision to
+          <em> this exact</em> action, a finite mandate, and portable evidence a third party can verify
+          later. If the mandate requires fresh human approval, the same evidence must bind that named decision.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          A policy can legitimately allow an agent to release payments. A prompt-injected agent acting within that policy is still authorized — the wire it just sent was permitted. For actions that are expensive or impossible to undo, you need a signoff bound to the exact parameters (amount, destination, beneficiary) and an evidence artifact that verifies on its own, without trusting the platform that produced it. That is the layer EMILIA adds.
+          A broad policy can legitimately allow an agent to release payments. A prompt-injected agent
+          acting within that policy may still be authorized. For actions that are expensive or impossible
+          to undo, EMILIA can require admissible authority and policy evidence bound to the exact parameters
+          (amount, destination, beneficiary). A named signoff is one evidence profile, used when the customer
+          mandate or local policy requires it.
         </p>
       </section>
 
@@ -83,12 +92,16 @@ export default function ComparePermitPage(): React.JSX.Element {
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 72 }}>
         <h2 className="ep-reveal" style={styles.h2}>Use them together</h2>
         <p className="ep-reveal" style={styles.body}>
-          The clean division of labor: let Permit.io decide whether an agent may attempt an action, and let EMILIA secure the irreversible ones. Permit evaluates the policy; EMILIA captures a named human&rsquo;s signoff bound to the exact parameters and returns an authorization receipt (formerly Trust Receipt) your auditor, your insurer, or a counterparty can verify offline. Fine-grained authorization and accountable signoff are complementary controls, not substitutes.
+          The clean division of labor: let Permit.io decide whether an agent may attempt an action, and
+          use EMILIA on configured protected paths to require finite customer authority bound to the exact
+          parameters. EMILIA returns an authorization receipt (formerly Trust Receipt) that can be verified
+          offline against independently pinned issuer or operator key material. When the mandate or local policy requires a fresh human decision, the receipt also binds
+          that named signoff. Fine-grained authorization and action-bound evidence are complementary controls.
         </p>
         <ul className="ep-reveal" style={styles.list}>
           <li>Authorize the agent and the resource with Permit.io (RBAC/ABAC/ReBAC, policy-as-code).</li>
-          <li>Gate the irreversible action with EMILIA — named signoff bound to the exact parameters, one-time consumable.</li>
-          <li>Keep the authorization receipt as offline-verifiable evidence that this exact action was approved by this named human under this policy.</li>
+          <li>Gate the configured protected action with EMILIA using finite customer authority and policy evidence bound to the exact parameters.</li>
+          <li>Keep the authorization receipt as offline-verifiable evidence of the authority admitted for that action; include a named signoff when policy requires one.</li>
         </ul>
       </section>
 

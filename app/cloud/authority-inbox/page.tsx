@@ -123,12 +123,12 @@ export default function AuthorityInboxPage(): React.ReactElement {
     <main className={styles.page}>
       <section className={styles.hero}>
         <div>
-          <p className={styles.eyebrow}>Operational authority</p>
-          <h1>Authority Inbox</h1>
+          <p className={styles.eyebrow}>Non-operating implementation prototype</p>
+          <h1>Authority Inbox reference view</h1>
           <p className={styles.lede}>
             One operational view of exact actions, human decisions, one-time authority,
             consequence entry, and unresolved outcomes. The interface reports only states
-            established by the connected evidence.
+            established by configured test evidence. It does not establish a customer deployment.
           </p>
         </div>
         <div className={styles.scopeNote}>
@@ -140,12 +140,12 @@ export default function AuthorityInboxPage(): React.ReactElement {
 
       <section className={styles.connection} aria-labelledby="connection-heading">
         <div>
-          <p className={styles.sectionLabel}>Connected prototype</p>
-          <h2 id="connection-heading">Load your tenant timeline</h2>
-          <p>The Cloud key stays in this browser tab and is sent only to the authenticated tenant endpoint.</p>
+          <p className={styles.sectionLabel}>Developer-configured test path</p>
+          <h2 id="connection-heading">Load a local or sandbox timeline</h2>
+          <p>The test key stays in this browser tab and is sent only to the configured reference endpoint. Never enter production or provider credentials.</p>
         </div>
         <div className={styles.keyControl}>
-          <label htmlFor="authority-inbox-key">Cloud API key</label>
+          <label htmlFor="authority-inbox-key">Local or sandbox test key</label>
           <div className={styles.keyRow}>
             <input
               id="authority-inbox-key"
@@ -153,7 +153,7 @@ export default function AuthorityInboxPage(): React.ReactElement {
               autoComplete="off"
               value={apiKey}
               onChange={(event) => setApiKey(event.target.value)}
-              placeholder="ep_live_…"
+              placeholder="ep_test_…"
             />
             <button type="button" onClick={loadInbox} disabled={loading || apiKey.trim().length === 0}>
               {loading ? 'Loading' : data ? 'Refresh' : 'Connect'}
@@ -225,7 +225,7 @@ export default function AuthorityInboxPage(): React.ReactElement {
               <div className={styles.queue}>
                 {visible.length === 0 ? (
                   <div className={styles.empty}>
-                    No tenant-owned actions are established for this filter.
+                    No test-scope actions are established for this filter.
                   </div>
                 ) : visible.map((item) => (
                   <button

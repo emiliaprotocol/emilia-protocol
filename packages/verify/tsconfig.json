@@ -80,6 +80,7 @@
     "src/status.ts",
     "src/gate-qualification.ts",
     "src/gate-qualification-promptfoo.ts",
+    "src/claim-assurance.ts",
     "src/index.ts",
     "src/cli.ts"
   ]

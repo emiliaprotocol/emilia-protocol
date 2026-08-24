@@ -19,7 +19,7 @@ export default function CompareAuditLogsPage(): React.ReactElement {
   const ROWS = [
     { dim: 'When evidence is created', logs: 'After the action', ep: 'Before — gates execution' },
     { dim: 'Tamper resistance', logs: 'Depends on log store integrity', ep: 'Cryptographic; verifiable offline' },
-    { dim: 'Who approved', logs: 'Inferred from session ID', ep: 'Named principal, signature-bound' },
+    { dim: 'Authority source', logs: 'Inferred from session ID', ep: 'Finite customer authority, signature-bound' },
     { dim: 'What was approved', logs: 'API call shape', ep: 'Exact action parameters, policy version, authority chain' },
     { dim: 'Replay protection', logs: 'None inherent', ep: 'One-time consumable per action' },
     { dim: 'Verifies without DB access', logs: 'No', ep: 'Yes — receipt is self-contained' },
@@ -44,7 +44,10 @@ export default function CompareAuditLogsPage(): React.ReactElement {
           A wire transfer fired by a compromised AI agent shows up in your audit log seconds after it executes. By then the funds have left, the API call has succeeded, and the only remaining job is investigation. Logs are necessary — they are not sufficient when the cost of an unauthorized action is unrecoverable.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          EP shifts the boundary: every high-risk action requires a valid handshake and named human signoff <em>before</em> execution. The trust receipt that emerges is itself the audit record — but issued at the gate, not after the breach.
+          EP shifts the boundary: each configured high-risk action requires admissible finite customer
+          authority and policy evidence <em>before</em> execution. When the customer mandate or local
+          policy requires a fresh human decision, the evidence must bind that named signoff. The trust
+          receipt that emerges is itself the audit record — but issued at the gate, not after the breach.
         </p>
       </section>
 

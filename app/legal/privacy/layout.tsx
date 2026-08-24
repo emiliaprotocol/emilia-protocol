@@ -4,9 +4,8 @@ export const metadata: Metadata = {
   title: 'Privacy Policy — EMILIA Protocol',
   description:
     'How EMILIA Protocol collects, uses, and protects personal data. ' +
-    'Aligned with GDPR, UK GDPR, and CCPA. Functions as the working ' +
-    'data processing addendum until an executed customer-specific DPA ' +
-    'supersedes it.',
+    'Covers the current website, public prototypes, documentation, and inquiry flows. ' +
+    'This public policy is not a customer data-processing addendum.',
   alternates: { canonical: '/legal/privacy' },
   openGraph: {
     title: 'EMILIA Protocol Privacy Policy',

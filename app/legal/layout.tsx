@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Legal — EMILIA Protocol',
   description:
-    'Privacy policy, terms of service, acceptable-use policy, sub-processor ' +
-    'list, and data-processing addendum for EMILIA Protocol. Working ' +
+    'Privacy policy, terms of service, acceptable-use policy, and vendor ' +
+    'inventory for EMILIA Protocol. Working ' +
     'documents pending counsel finalization.',
   alternates: { canonical: '/legal' },
   openGraph: {
@@ -18,7 +18,6 @@ export const metadata: Metadata = {
     'EMILIA Protocol legal',
     'EMILIA Protocol privacy policy',
     'EMILIA Protocol terms',
-    'EMILIA Protocol DPA',
     'EMILIA Protocol sub-processors',
   ],
 };

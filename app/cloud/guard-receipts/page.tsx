@@ -21,8 +21,8 @@ import { logger } from '@/lib/logger.js';
 import { loadTenantGuardReceipts, RECENT_EVENT_LIMIT } from '@/lib/cloud/guard-receipts.js';
 
 export const metadata: Metadata = {
-  title: 'Guard Receipts — EMILIA Cloud',
-  description: 'Recent GovGuard + FinGuard trust receipts and their lifecycle state.',
+  title: 'Guard Receipt Prototype | EMILIA',
+  description: 'A reference view for test GovGuard and FinGuard receipt lifecycle evidence.',
 };
 
 function statusBadge(status) {
@@ -60,20 +60,19 @@ function SignInRequired() {
         </div>
         <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 }}>Guard Receipts</h1>
         <p style={{ fontSize: 14, color: '#7a809a', maxWidth: 480, margin: '0 auto 32px', lineHeight: 1.7 }}>
-          This dashboard exposes pre-action trust receipts including organization,
-          action-type, and amount metadata. Provide an EP operator API key to view
-          recent activity:
+          This reference view can expose sensitive test receipt fields. In a developer-configured
+          local or sandbox environment, provide a test operator key to inspect reference rows.
+          This public route does not provide a hosted Cloud service:
         </p>
         <div style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '16px 20px', textAlign: 'left', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#7a809a', maxWidth: 540, margin: '0 auto' }}>
           <div style={{ color: '#B08D35', marginBottom: 6 }}># Programmatic (curl):</div>
-          <div>curl -H &quot;Authorization: Bearer ep_live_...&quot; \</div>
-          <div style={{ marginLeft: 12 }}>https://emiliaprotocol.ai/cloud/guard-receipts</div>
+          <div>curl -H &quot;Authorization: Bearer ep_test_...&quot; \</div>
+          <div style={{ marginLeft: 12 }}>http://localhost:3000/cloud/guard-receipts</div>
           <div style={{ color: '#B08D35', marginTop: 16, marginBottom: 6 }}># Or query the API directly:</div>
           <div>GET /api/v1/trust-receipts/&#123;id&#125;/evidence</div>
         </div>
         <p style={{ fontSize: 12, color: '#4a4f6a', marginTop: 32, fontFamily: "'IBM Plex Mono', monospace" }}>
-          Browser-cookie authentication for /cloud/* lands in v1.1. Until then,
-          this dashboard is API-key gated.
+          Use synthetic or sandbox data only. Never enter a production key or provider credential.
         </p>
       </div>
     </div>
@@ -125,9 +124,9 @@ export default async function GuardReceiptsPage(): Promise<React.ReactElement> {
         </div>
         <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 8 }}>Guard Receipts</h1>
         <p style={{ fontSize: 14, color: '#7a809a', marginBottom: 32, maxWidth: 640 }}>
-          Recent v1 trust receipts created via <code style={{ fontFamily: "'IBM Plex Mono', monospace", color: '#B08D35' }}>/api/v1/trust-receipts</code> or
-          a domain adapter. Status replays the audit-event stream — every transition
-          is durably recorded in <code style={{ fontFamily: "'IBM Plex Mono', monospace" }}>audit_events</code>.
+          Reference v1 receipt rows loaded from a developer-configured test datastore. Status
+          replays available <code style={{ fontFamily: "'IBM Plex Mono', monospace" }}>audit_events</code> evidence;
+          it does not prove provider entry, execution, or a successful effect.
         </p>
 
         {error && (
@@ -167,7 +166,7 @@ export default async function GuardReceiptsPage(): Promise<React.ReactElement> {
               {receipts.length === 0 && !error && (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', padding: 60, color: '#4a4f6a', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
-                    No guard receipts in the last {RECENT_EVENT_LIMIT} audit events. Create one with{' '}
+                    No test guard receipts in the last {RECENT_EVENT_LIMIT} audit events. Create one locally with{' '}
                     <code style={{ color: '#B08D35' }}>POST /api/v1/trust-receipts</code> or via an adapter.
                   </td>
                 </tr>
@@ -204,8 +203,8 @@ export default async function GuardReceiptsPage(): Promise<React.ReactElement> {
         </div>
 
         <p style={{ fontSize: 12, color: '#4a4f6a', marginTop: 24, fontFamily: "'IBM Plex Mono', monospace" }}>
-          Showing the most recent {RECENT_EVENT_LIMIT} guard.* audit events grouped by receipt_id.
-          For a deeper query window, hit <code>/api/v1/trust-receipts/&#123;id&#125;/evidence</code> directly.
+          Showing up to {RECENT_EVENT_LIMIT} configured test guard.* events grouped by receipt_id.
+          This evidence view is not an audit conclusion, certificate, or hosted-service claim.
         </p>
       </div>
     </div>

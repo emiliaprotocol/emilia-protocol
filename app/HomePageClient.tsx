@@ -67,8 +67,8 @@ const PRODUCTS = [
   },
   {
     label: 'Operate',
-    title: 'Assurance Plane',
-    body: 'Re-performance, evidence operations, integrations, support, and service levels. EMILIA supports the procedure; it does not issue the audit opinion.',
+    title: 'Claim-to-Consequence Assurance',
+    body: 'The product family connects claims to portable evidence and Gate. Its Assurance Plane is the service layer. EMILIA supports the procedure; it does not issue the audit opinion.',
     href: '/assurance',
     accent: color.t2,
   },
@@ -345,7 +345,7 @@ export default function HomePage(): React.ReactElement {
           <C>
             <div className="ep-home-grid-2" style={{ display: 'grid', gridTemplateColumns: '1.05fr 0.95fr', gap: 72, alignItems: 'start' }}>
               <motion.div {...reveal()}>
-                <div style={{ ...eyebrow, color: color.gold }}>First paid workflow</div>
+                <div style={{ ...eyebrow, color: color.gold }}>Initial offered commercial workflow</div>
                 <h2 style={{ ...styles.h2, color: '#FAFAF9', maxWidth: 590 }}>
                   Start where an agent can redirect or release money.
                 </h2>
@@ -365,12 +365,13 @@ export default function HomePage(): React.ReactElement {
               </motion.div>
               <motion.div {...reveal(0.08)} style={{ borderTop: `3px solid ${color.gold}`, paddingTop: 26 }}>
                 <div style={{ fontFamily: font.mono, color: color.gold, fontSize: 13, marginBottom: 8 }}>{PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel.toUpperCase()}</div>
-                <h3 style={{ fontFamily: font.sans, fontSize: 24, color: '#FAFAF9', margin: '0 0 18px' }}>Protect one consequential workflow.</h3>
+                <h3 style={{ fontFamily: font.sans, fontSize: 24, color: '#FAFAF9', margin: '0 0 18px' }}>Assess and design one consequence boundary.</h3>
                 {[
-                  'Synthetic and read-only validation first',
+                  'Synthetic, read-only, sandbox, or shadow pilot only',
                   'One buyer-selected consequence boundary',
                   'Exact action, authority rule, and evidence bar',
-                  'Production only through a buyer-approved Gate path',
+                  'Production decision packet and draft implementation SOW',
+                  'No production actuation or provider credential custody',
                 ].map((line) => (
                   <div key={line} style={{ padding: '13px 0', borderBottom: '1px solid rgba(255,255,255,0.14)', fontSize: 14.5, color: 'rgba(250,250,249,0.72)' }}>{line}</div>
                 ))}
@@ -421,7 +422,7 @@ export default function HomePage(): React.ReactElement {
             <motion.div className="ep-home-grid-cta" {...reveal(0.08)} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 42 }}>
               {[
                 ['Free', 'Run the local Authority Map', 'See supported declared surfaces and explicit blind spots.', '/scan'],
-                ['Pilot', 'Protect one workflow', `${PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · ${PROTECTED_WORKFLOW_PILOT.durationLabel}`, '/pilot'],
+                ['Pilot', 'Design one boundary', `${PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · ${PROTECTED_WORKFLOW_PILOT.durationLabel} · nonproduction`, '/pilot'],
                 ['Diligence', 'Inspect every claim', 'Open code, conformance, threat models, and bounded proof.', '/security'],
               ].map(([kind, title, body, href]) => (
                 <div key={kind} style={{ display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.13)', borderTop: `3px solid ${kind === 'Pilot' ? color.gold : color.green}`, borderRadius: radius.base, padding: '26px 24px' }}>

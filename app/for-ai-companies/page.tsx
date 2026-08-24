@@ -9,11 +9,11 @@ export const metadata: Metadata = {
   title: 'For AI Companies — Accountability for Agent Actions',
   description:
     'OAuth solved login. EMILIA solves accountability for AI agents. How OpenAI, Anthropic, Google, '
-    + 'and xAI can prove who approved every irreversible agent action — Accountable Signoff, authorization receipt, Policy Hash, Authority Chain.',
+    + 'and xAI can prove what finite customer authority governed an irreversible agent action — authorization receipt, Policy Hash, Authority Chain, and conditional Accountable Signoff.',
   alternates: { canonical: '/for-ai-companies' },
   openGraph: {
     title: 'OAuth solved login. EMILIA solves accountability for AI agents.',
-    description: 'A cryptographic answer to the question every lab hits: who approved this exact action?',
+    description: 'A cryptographic answer to the question every lab hits: what authority governed this exact action?',
     url: 'https://www.emiliaprotocol.ai/for-ai-companies',
     type: 'website',
   },
@@ -24,7 +24,7 @@ const PAGE_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
   name: 'EMILIA for AI Companies',
-  description: 'Accountability infrastructure for AI agent actions — a cryptographic answer to "who approved this exact action?"',
+  description: 'Accountability infrastructure for AI agent actions — a cryptographic answer to "what authority governed this exact action?"',
   url: 'https://www.emiliaprotocol.ai/for-ai-companies',
 };
 
@@ -35,8 +35,8 @@ const C: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> = 
 const LABS = ['OpenAI Operators', 'Anthropic Computer Use', 'Google Agents', 'Microsoft Copilot Actions', 'xAI', 'Visa Agent Commerce'];
 
 const CONCEPTS = [
-  ['Accountable Signoff', 'A named human cryptographically assumes responsibility for the exact action — not a role, not a token, a person. This is the answer to "who owns this decision?"'],
-  ['Authorization receipt', 'A signed, offline-verifiable record of the decision (formerly Trust Receipt): action, policy, approver, outcome. Anyone verifies it with no account and no call home (Ed25519 + Merkle).'],
+  ['Accountable Signoff', 'When a customer mandate or local policy requires a fresh human decision, a named person cryptographically assumes responsibility for the exact action — not a role, not a token. Finite mandates may also authorize unattended work within their explicit bounds.'],
+  ['Authorization receipt', 'A signed, offline-verifiable record of the decision (formerly Trust Receipt): action, policy, approver, outcome. A relying party can verify it with no account or callback when it independently pins the correct issuer or operator key material (Ed25519 + Merkle).'],
   ['Policy Hash', 'The exact policy version that authorized the action, pinned into the receipt. The rules that applied are provable after the fact, not reconstructed.'],
   ['Authority Chain', 'The delegation path — who was allowed to authorize whom — bound to the action. Permission isn’t assumed; it’s carried and checked.'],
 ];
@@ -59,7 +59,7 @@ export default async function ForAiCompaniesPage() {
             every team hits the same wall — and it&rsquo;s not a capability problem:
           </p>
           <p style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 700, color: color.t1, letterSpacing: -0.8, margin: '28px 0 0', maxWidth: 660 }}>
-            &ldquo;Who approved this <em style={{ fontStyle: 'normal', color: color.gold }}>exact</em> action?&rdquo;
+            &ldquo;What authority governed this <em style={{ fontStyle: 'normal', color: color.gold }}>exact</em> action?&rdquo;
           </p>
         </C>
       </section>
@@ -78,7 +78,7 @@ export default async function ForAiCompaniesPage() {
               <span key={l} style={{ fontFamily: font.mono, fontSize: 12, color: color.t2, border: `1px solid ${color.border}`, borderRadius: 20, padding: '6px 14px' }}>{l}</span>
             ))}
           </div>
-          <p style={{ fontSize: 14, color: color.t3, marginTop: 14 }}>All shipping autonomous action. All hitting the same wall.</p>
+          <p style={{ fontSize: 14, color: color.t3, marginTop: 14 }}>Representative platforms and ecosystems where the exact-action authority boundary can arise.</p>
         </C>
       </section>
 
@@ -87,9 +87,9 @@ export default async function ForAiCompaniesPage() {
         <C>
           <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 14 }}>The answer — four concepts</div>
           <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(24px, 2.8vw, 34px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, maxWidth: 620, marginBottom: 36 }}>
-            A cryptographically provable record of who owns each decision.
+            A cryptographically provable record of the finite authority behind each decision.
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 14 }}>
             {CONCEPTS.map(([k, v]) => (
               <div key={k} style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>
                 <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 17, color: color.t1, marginBottom: 8 }}>{k}</div>
@@ -115,7 +115,7 @@ export default async function ForAiCompaniesPage() {
           </p>
           <pre style={{ fontFamily: font.mono, fontSize: 13, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '16px 20px', margin: '0 0 14px', overflowX: 'auto' }}>npm install @emilia-protocol/openai-guard</pre>
           <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.7, maxWidth: 640, margin: '0 0 14px' }}>
-            For production: a <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/examples/async-signoff.mjs" style={{ color: color.gold, textDecoration: 'none' }}>high-volume async signoff example</a> (the gate is selective &mdash; the agent loop never blocks on a human), and an <a href="https://github.com/xai-org/xai-cookbook/pull/42" style={{ color: color.gold, textDecoration: 'none' }}>open recipe PR</a> on xAI&rsquo;s cookbook.
+            For implementation evaluation: a <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/examples/async-signoff.mjs" style={{ color: color.gold, textDecoration: 'none' }}>high-volume async signoff example</a> (the gate is selective &mdash; the agent loop need not block on a human when finite authority is already admissible), and an <a href="https://github.com/xai-org/xai-cookbook/pull/42" style={{ color: color.gold, textDecoration: 'none' }}>open recipe PR</a> on xAI&rsquo;s cookbook. These are reference artifacts, not production deployment evidence.
           </p>
           <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.7, maxWidth: 640, margin: '0 0 28px' }}>
             The <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/examples/executor_approval_gate.py" style={{ color: color.gold, textDecoration: 'none' }}>vendor-neutral Python executor gate</a> verifies the authorization receipt in-process against a <strong>pinned</strong> operator key, binds it to the exact requested action, applies a local freshness window, and enforces single-use, so a server merely saying &ldquo;approved&rdquo; is never enough. It ships with a <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/examples/tests/test_executor_approval_gate_redteam.py" style={{ color: color.gold, textDecoration: 'none' }}>red-team regression suite</a> that runs 21 checks across seven attack classes plus genuine controls.

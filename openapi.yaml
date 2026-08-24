@@ -70,6 +70,8 @@ tags:
     description: Bounded grid-curtailment authorization and reference evidence composition
   - name: EMILIA Gate
     description: Consequence Firewall enforcement and public reference scenarios
+  - name: Claim Assurance
+    description: Experimental deterministic claim-evidence records and exact-address reference resolution
   - name: Arena
     description: Public synthetic allowance demonstration; no money, provider credentials, or production execution
   - name: Agent Adoption
@@ -97,6 +99,65 @@ tags:
       These routes are not part of the public API and require privileged authentication.
 
 paths:
+  # ===========================================================================
+  # Claim Assurance
+  # ===========================================================================
+
+  /api/v1/assurance/records/{recordId}:
+    get:
+      tags: [Claim Assurance]
+      operationId: getReferenceAssuranceRecord
+      summary: Resolve the synthetic reference Assurance Record by exact digest
+      description: |
+        Returns the one published, synthetic EP-ASSURANCE-RECORD-v1 fixture only
+        when the path contains its exact content address. This endpoint has no
+        listing or search operation and exposes no customer records. The record
+        is content-addressed, not signed, and always carries
+        `authorizes_action: false`; resolving it is not certification, provenance,
+        action authority, or evidence that a hosted assurance service is operating.
+      security: []
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          description: Exact lowercase SHA-256 content address, including the sha256 prefix.
+          schema:
+            type: string
+            pattern: '^sha256:[0-9a-f]{64}$'
+      responses:
+        '200':
+          description: Exact synthetic reference Assurance Record.
+          headers:
+            ETag:
+              description: Quoted record digest.
+              schema:
+                type: string
+            X-EMILIA-Reference-Only:
+              description: Always true for this synthetic reference resolver.
+              schema:
+                type: string
+                enum: ['true']
+          content:
+            application/json:
+              schema:
+                type: object
+                description: EP-ASSURANCE-RECORD-v1 as defined by the public JSON Schema.
+        '404':
+          description: No published synthetic reference record has that digest.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                required: [type, title, status]
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                    enum: [404]
+
   # ===========================================================================
   # Trust
   # ===========================================================================

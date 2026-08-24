@@ -1,31 +1,29 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Government — Pre-Payment Fraud Control',
+  title: 'Government — Bounded Action-Control Profile',
   description:
-    'GovGuard pre-execution control for vendor payment destinations, disbursement ' +
-    'releases, benefit routing, provider enrollment, and eligibility overrides. ' +
-    'Start with an observe-mode fire drill.',
+    'A bounded EMILIA solution profile for vendor payment destinations, disbursement ' +
+    'releases, benefit routing, provider enrollment, and administrative overrides.',
   alternates: { canonical: '/use-cases/government' },
   openGraph: {
-    title: 'EMILIA GovGuard for Government Fraud Control',
+    title: 'EMILIA Government Action-Control Profile',
     description:
-      'Run a government fraud-control fire drill before money or regulated state moves. '
-      + 'Evidence packets for controllers, Inspectors General, and auditors.',
+      'Assess one public-sector consequence boundary with nonproduction evidence before any separate implementation decision.',
     url: 'https://www.emiliaprotocol.ai/use-cases/government',
     type: 'article',
   },
   keywords: [
     'benefit redirection fraud',
-    'SNAP fraud prevention',
-    'Medicaid fraud prevention',
+    'benefit routing action control',
+    'public program payment control',
     'caseworker override control',
-    'government fraud control fire drill',
+    'government action-control assessment',
     'provider enrollment fraud control',
     'grant disbursement approval',
     'government AI controls',
-    'NIST AI RMF compliance',
-    'federal AI executive order',
+    'NIST AI RMF evidence support',
+    'government AI oversight evidence',
   ],
 };
 

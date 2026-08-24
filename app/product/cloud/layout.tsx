@@ -1,24 +1,30 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'EMILIA Gate Cloud — Managed Consequence Firewall',
+  title: 'Gate Cloud Operations Profile | EMILIA',
   description:
-    'Managed policy, exact-action approval orchestration, durable consumption, '
-    + 'evidence operations, and monitoring for EMILIA Gate deployments.',
+    'Review the implemented Gate operations surfaces, the fixed nonproduction pilot, '
+    + 'and the separate path to a buyer-accepted production implementation.',
   alternates: { canonical: '/product/cloud' },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: 'EMILIA Gate Cloud',
+    title: 'EMILIA Gate Cloud Operations Profile',
     description:
-      'Managed consequence-firewall operations with customer-pinned trust and '
-      + 'open, independently reproducible evidence.',
+      'Implemented reference operations surfaces, an evidence-bound pilot, and an honest '
+      + 'production boundary. Not a generally available managed service.',
     url: 'https://www.emiliaprotocol.ai/product/cloud',
-    type: 'article',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'EMILIA Gate Cloud Operations Profile',
+    description: 'Reference operations surfaces and the path from nonproduction pilot to Gate Implementation.',
   },
   keywords: [
-    'EMILIA Gate Cloud',
-    'hosted AI authorization',
-    'managed authorization receipts',
-    'signoff workflow as a service',
+    'AI agent authority control plane',
+    'Gate operations reference profile',
+    'customer-owned AI authorization',
+    'exact-action evidence operations',
   ],
 };
 

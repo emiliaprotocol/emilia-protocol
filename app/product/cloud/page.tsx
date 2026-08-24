@@ -1,138 +1,153 @@
-'use client';
+// SPDX-License-Identifier: Apache-2.0
 
-import { useState } from 'react';
-import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, cta, color, font, radius, grid } from '@/lib/tokens';
+import SiteNav from '@/components/SiteNav';
+import {
+  GATE_IMPLEMENTATION,
+  PRODUCTION_GATE,
+  PROTECTED_WORKFLOW_PILOT,
+} from '@/lib/commercial-offer';
+import { color, cta, grid, styles } from '@/lib/tokens';
 
-export default function CloudPage() {
-  const [form, setForm] = useState({ name:'', org:'', title:'', email:'', surface:'', problem:'', notes:'' });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState(null);
+const REFERENCE_SURFACES = [
+  {
+    title: 'Policy operations',
+    body: 'The repository includes tenant-scoped policy version, diff, simulation, and rollout surfaces. These are implemented reference artifacts, not evidence of an operated customer control plane.',
+  },
+  {
+    title: 'Signoff operations',
+    body: 'Reference APIs and dashboards cover challenge queues, decisions, quorum state, consumption, and escalation. Production use still requires buyer-pinned approvers, credentials, and authority rules.',
+  },
+  {
+    title: 'Event and evidence operations',
+    body: 'Reference event search, integrity checks, reports, exports, and evidence-readiness runs show the intended operating surface. A deployment must separately prove retention, access, and source coverage.',
+  },
+  {
+    title: 'Tenant administration',
+    body: 'Reference tenant, API-key, webhook, emergency-stop, and settings surfaces are implemented and tested. Their presence does not establish production isolation, availability, or customer adoption.',
+  },
+] as const;
 
-  const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
+const STATUS_LADDER = [
+  {
+    label: 'Implemented now',
+    title: 'Reference operations surfaces',
+    body: 'Runnable UI, API, and test artifacts exist in the public repository. They can be inspected without treating the hosted surface as a generally available managed service.',
+  },
+  {
+    label: 'Current public offer',
+    title: `${PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · ${PROTECTED_WORKFLOW_PILOT.durationLabel} · ${PROTECTED_WORKFLOW_PILOT.workflowLabel}`,
+    body: 'The pilot maps one boundary and validates with synthetic, sandbox, read-only, or shadow inputs. It receives no production actuation authority or provider credentials.',
+  },
+  {
+    label: 'Separate after acceptance',
+    title: GATE_IMPLEMENTATION.name,
+    body: 'A buyer-approved implementation can integrate one real executor boundary, customer-held credentials, trust roots, retention, and operating procedures. It is not included in the pilot.',
+  },
+] as const;
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setSubmitting(true); setError(null);
-    try {
-      const res = await fetch('/api/inquiries', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'pilot-cloud', ...form }),
-      });
-      if (!res.ok) throw new Error('Submission failed');
-      setSubmitted(true);
-    } catch (err) { setError(err.message); }
-    setSubmitting(false);
-  }
+const NOT_CLAIMED = [
+  'No generally available EMILIA-operated Gate or Cloud service',
+  'No evidenced integrated customer deployment or production coverage',
+  'No pilot access to production provider credentials or actuation',
+  'No SLA, availability, compliance, audit, or customer-adoption claim',
+] as const;
 
-  const FEATURES = [
-    { title: 'Managed policy registry', body: 'Define, version, and deploy trust policies from a central control plane. Policy changes are audited and diffed before activation.' },
-    { title: 'Policy simulation & diff', body: 'Test policy changes against historical action data before deploying. See exactly which actions would be affected, approved, or blocked by a proposed policy change.' },
-    { title: 'Hosted signoff orchestration', body: 'Accountable signoff flows managed as a service. Challenge delivery, attestation collection, and consumption tracking without running signoff infrastructure.' },
-    { title: 'Event explorer', body: 'Search, filter, and inspect every handshake, signoff, and execution event. Full action-level traceability across all trust surfaces.' },
-    { title: 'Audit exports', body: 'Export evidence packages in formats consumable by auditors, compliance teams, and regulators. Structured data, not log files.' },
-    { title: 'Tenant controls', body: 'Multi-tenant isolation with per-tenant policy configuration, signoff routing, and event boundaries. Each tenant operates as an independent trust domain.' },
-    { title: 'Observability', body: 'Real-time metrics on policy evaluations, signoff latency, approval rates, and anomaly detection. Integrate with existing monitoring infrastructure via standard protocols.' },
-  ];
-
+export default function CloudPage(): React.ReactElement {
   return (
     <div style={styles.page}>
       <SiteNav activePage="" />
 
-      {/* Hero */}
-      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 60 }}>
-        <div style={styles.eyebrowBlue}>EMILIA Gate / Managed Cloud</div>
-        <h1 style={styles.h1}>EMILIA Gate Cloud</h1>
-        <p style={{ ...styles.body, maxWidth: 640 }}>
-          Managed policy, approval orchestration, durable consumption, and evidence operations
-          around the enforcement adapter at your consequential execution boundary.
-        </p>
-        <a href="#pilot" className="ep-cta" style={cta.primary}>Request Cloud Access</a>
-      </section>
+      <main>
+        <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 64 }}>
+          <div style={styles.eyebrowBlue}>Reference solution profile / Gate operations</div>
+          <h1 style={styles.h1}>The operating surface a production Gate would need.</h1>
+          <p style={{ ...styles.body, maxWidth: 720 }}>
+            EMILIA has implemented reference policy, signoff, tenant, event, and evidence surfaces.
+            Gate Cloud is not generally available as an operated service, and the repository does
+            not evidence an integrated customer deployment.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 28 }}>
+            <a href="/pilot" className="ep-cta" style={cta.primary}>
+              Scope the protected-workflow pilot
+            </a>
+            <a
+              href="mailto:team@emiliaprotocol.ai?subject=Gate%20Implementation%20inquiry"
+              className="ep-cta"
+              style={cta.secondary}
+            >
+              Ask about Gate Implementation
+            </a>
+          </div>
+        </section>
 
-      {/* Features grid */}
-      <section style={styles.sectionAlt}>
-        <div style={styles.section}>
-          <h2 style={styles.h2}>Capabilities</h2>
-          <p style={styles.body}>
-            Gate Cloud operates the coordination plane as a managed service. You keep control of
-            the protected executor, accepted keys, profiles, and trust sources; we operate the
-            policy, ceremony, evidence, and monitoring services.
+        <section style={styles.sectionAlt}>
+          <div style={styles.section}>
+            <div style={styles.eyebrowBlue}>Commercial status</div>
+            <h2 style={styles.h2}>Pilot first. Production is a separate decision.</h2>
+            <p style={{ ...styles.body, maxWidth: 760 }}>
+              The only public pilot is the fixed Protected-workflow pilot. It stays nonproduction.
+              A real executor integration begins only after the buyer accepts the boundary and
+              separately scopes {GATE_IMPLEMENTATION.name}.
+            </p>
+            <div style={grid.stack}>
+              {STATUS_LADDER.map((item) => (
+                <article key={item.label} style={styles.card}>
+                  <div style={styles.eyebrowBlue}>{item.label}</div>
+                  <h3 style={{ ...styles.cardTitle, fontSize: 18, marginTop: 8 }}>{item.title}</h3>
+                  <p style={styles.cardBody}>{item.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section style={styles.section}>
+          <div style={styles.eyebrowBlue}>Implemented artifacts</div>
+          <h2 style={styles.h2}>Reference operations surfaces, not availability promises.</h2>
+          <p style={{ ...styles.body, maxWidth: 760 }}>
+            These surfaces show how an operator could administer an accepted Gate boundary. Each
+            production claim still depends on the deployed topology, credentials, trust inputs,
+            failure behavior, and complete-mediation review.
           </p>
           <div style={grid.auto(280)}>
-            {FEATURES.map((f, i) => (
-              <div key={i} style={styles.card}>
-                <div style={styles.cardTitle}>{f.title}</div>
-                <div style={styles.cardBody}>{f.body}</div>
-              </div>
+            {REFERENCE_SURFACES.map((surface) => (
+              <article key={surface.title} className="ep-card-hover" style={styles.card}>
+                <h3 style={styles.cardTitle}>{surface.title}</h3>
+                <p style={styles.cardBody}>{surface.body}</p>
+              </article>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* How it fits */}
-      <section style={styles.section}>
-        <h2 style={styles.h2}>How Gate Cloud fits your stack</h2>
-        <p style={styles.body}>
-          The enforcement adapter remains immediately before your mutating system. It calls the
-          managed control plane for policy, challenge, approval, and evidence operations, then
-          refuses locally unless the required authorization can be consumed for that exact action.
-        </p>
-        <div style={grid.stack}>
-          {[
-            { title: 'Executor integration', body: 'Place the Gate adapter at each supported mutating path. Coverage is limited to the paths you fully mediate, and every uncovered path remains explicitly outside the guarantee.' },
-            { title: 'Control plane', body: 'Policy registry, signoff orchestration, and event storage run as a managed service. You configure policies and consume evidence. We handle availability, scaling, and key management.' },
-            { title: 'Evidence handoff', body: 'Export portable evidence and re-performance packages through the dashboard and API. Your auditor, underwriter, or internal assurer keeps the conclusion.' },
-          ].map((item, i) => (
-            <div key={i} style={styles.card}>
-              <div style={styles.cardTitle}>{item.title}</div>
-              <div style={styles.cardBody}>{item.body}</div>
+        <section style={styles.sectionAlt}>
+          <div style={styles.section}>
+            <div style={styles.eyebrowBlue}>Truth boundary</div>
+            <h2 style={styles.h2}>What this page does not claim.</h2>
+            <div style={{ ...styles.card, border: `1px solid ${color.border}` }}>
+              <ul style={{ margin: 0, paddingLeft: 20, color: color.t2, lineHeight: 1.8 }}>
+                {NOT_CLAIMED.map((claim) => <li key={claim}>{claim}</li>)}
+              </ul>
+              <p style={{ ...styles.cardBody, marginTop: 18 }}>
+                {PRODUCTION_GATE.availabilityLabel}. Customer authority, policies, trust roots,
+                provider credentials, acceptance rules, and portable evidence remain customer-owned.
+              </p>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* Pilot form */}
-      <section id="pilot" style={styles.sectionAlt}>
-        <div style={styles.section}>
-          <h2 style={styles.h2}>Request Cloud Access</h2>
-          {submitted ? (
-            <div style={{ ...styles.card, textAlign: 'center', padding: 40 }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: color.green, marginBottom: 8 }}>Thank you</div>
-              <p style={{ color: color.t2, fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
-            </div>
-          ) : (
-            <div style={styles.card}>
-              <div style={grid.cols2}>
-                {[['name','Name'],['org','Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
-                  <div key={k}>
-                    <label style={styles.label}>{label}</label>
-                    <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
-                  </div>
-                ))}
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.label}>Trust surface of interest</label>
-                  <input className="ep-input" style={styles.input} placeholder="e.g. payment authorization, agent governance, API access control" value={form.surface} onChange={e => update('surface', e.target.value)} />
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.label}>Problem description</label>
-                  <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={styles.label}>Notes</label>
-                  <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
-                </div>
-              </div>
-              {error && <p style={{ color: color.red, fontSize: 13, marginTop: 12 }}>{error}</p>}
-              <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...((!form.name || !form.email) ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
-                {submitting ? 'Submitting...' : 'Request Cloud Access'}
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
+        <section style={{ ...styles.section, textAlign: 'center' }}>
+          <h2 style={styles.h2}>Start with one nonproduction boundary.</h2>
+          <p style={{ ...styles.body, maxWidth: 680, margin: '0 auto 24px' }}>
+            Bring one consequential workflow, its current approval path, and its known bypasses.
+            The pilot produces a buyer-owned decision about whether a separate Gate Implementation
+            is justified.
+          </p>
+          <a href="/pilot" className="ep-cta" style={cta.primary}>
+            Review the {PROTECTED_WORKFLOW_PILOT.durationLabel} pilot
+          </a>
+        </section>
+      </main>
 
       <SiteFooter />
     </div>

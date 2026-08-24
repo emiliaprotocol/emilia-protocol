@@ -3,6 +3,26 @@
 
 ## Unreleased
 
+### Security
+
+- Make a deployment-level `requiredAdmissibilityProfile` authoritative. A
+  request or selector may repeat the configured id and digest, but cannot
+  replace either with a weaker profile before the trusted verifier runs or a
+  receipt is reserved.
+- Add the experimental Claim Assurance bridge as non-authorizing, exact-action
+  evidence. Gate computes the profile commitment locally and requires the
+  reviewed Claim Assurance evaluator and pinned evidence-verifier callbacks as
+  explicit deployment trust inputs, avoiding a runtime or type import from a
+  Verify subpath that the pinned published dependency does not expose.
+- Preserve a schema-valid typed Claim Assurance block byte for byte in reliance
+  packets while keeping Gate's separate admissibility interpretation outside the
+  typed record. Invalid typed inputs are not re-emitted under the typed field.
+- Align admissibility profile identifiers with the public schema and preserve
+  conflict and unverifiable failure precedence when bridging legacy evidence.
+- Recompute package and profile digests during assurance re-performance and
+  support independently supplied package and profile pins. Internal consistency
+  is not treated as proof that the presented package or rule was authorized.
+
 ## 0.23.20 (2026-08-21)
 
 - Add provider-neutral memory projection records for SHEESH/SOMA and Zep,

@@ -1,26 +1,30 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Agent Governance Pack — AI Agent Action Authorization Bundle',
+  title: 'Agent Action Authority Reference Profile | EMILIA',
   description:
-    'Packaged controls for AI agent platforms: pre-action authorization, ' +
-    'named human signoff, and self-verifying receipts for every ' +
-    'consequential agent action. Three-line SDK integration; Apache 2.0.',
+    'A reference solution profile for binding consequential agent actions to '
+    + 'customer-owned authority at a completely mediated executor boundary.',
   alternates: { canonical: '/product/agent-governance-pack' },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: 'EMILIA Agent Governance Pack',
+    title: 'EMILIA Agent Action Authority Reference Profile',
     description:
-      'Pre-action authorization + named signoff + verifiable receipts ' +
-      'for AI agent platforms.',
+      'Implemented exact-action building blocks, designed policy profiles, and the '
+      + 'boundary between a nonproduction pilot and production Gate Implementation.',
     url: 'https://www.emiliaprotocol.ai/product/agent-governance-pack',
-    type: 'article',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'EMILIA Agent Action Authority Reference Profile',
+    description: 'Exact-action authority building blocks for consequential agent work.',
   },
   keywords: [
-    'AI agent governance',
-    'agent action authorization',
-    'MCP authorization',
-    'autonomous agent safety',
-    'AI agent compliance pack',
+    'AI agent action authorization',
+    'agent authority control plane',
+    'MCP exact action authorization',
+    'autonomous agent executor control',
   ],
 };
 

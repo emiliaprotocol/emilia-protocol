@@ -1,28 +1,25 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Financial — Wire Fraud + AI-Voice Defense',
+  title: 'Financial — Protected-Workflow Solution Profile',
   description:
-    'Pre-execution authorization for wire transfers, vendor-bank-change, ' +
-    'beneficiary updates, and high-value payment release. Stops social ' +
-    'engineering and AI-voice-cloned fraud before the action executes. ' +
-    'SOX-ready, BEC-prevention.',
+    'A bounded EMILIA solution profile for vendor bank-detail changes, beneficiary updates, ' +
+    'and payment releases on completely mediated covered paths.',
   alternates: { canonical: '/use-cases/financial' },
   openGraph: {
-    title: 'EMILIA FinGuard — AI-Era Fraud Defense',
+    title: 'EMILIA Financial Protected-Workflow Profile',
     description:
-      'Vendor-bank-change, beneficiary-swap, and AI-voice fraud — blocked ' +
-      'before the action executes. Action-bound authorization for treasury ops.',
+      'Exact-action authority and evidence checks for one completely mediated treasury workflow.',
     url: 'https://www.emiliaprotocol.ai/use-cases/financial',
     type: 'article',
   },
   keywords: [
-    'wire transfer fraud prevention',
+    'wire transfer action control',
     'vendor bank change fraud',
     'beneficiary swap fraud',
     'AI voice fraud defense',
-    'BEC prevention',
-    'SOX AI controls',
+    'BEC control evidence',
+    'SOX control-testing evidence',
     'community bank fraud defense',
     'treasury action authorization',
   ],

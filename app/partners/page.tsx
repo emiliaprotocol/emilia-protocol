@@ -38,7 +38,7 @@ export default function PartnersPage(): React.ReactElement {
   }
 
   const AUDIENCE = [
-    { title: 'Pilot deployments', body: 'Test EMILIA in a real workflow — payment approvals, agent execution, operator overrides, or delegated authority. Prove control value in 90 days with one protected workflow.' },
+    { title: 'Pilot design partners', body: 'Assess one real workflow using synthetic, read-only, sandbox, or shadow evidence. The 90-day pilot designs and tests a boundary; it does not deploy production enforcement.' },
     { title: 'Regulated workflow design partners', body: 'Government agencies, banks, and enterprises that need policy-bound, auditable control over high-risk actions before they execute. Shape the compliance patterns that become defaults.' },
     { title: 'Control architecture partnerships', body: 'Integrate the EMILIA Protocol into existing infrastructure — identity providers, CI/CD pipelines, SIEM platforms, or agent orchestration layers. Make EP the enforcement point inside what you already run.' },
   ];
@@ -46,11 +46,11 @@ export default function PartnersPage(): React.ReactElement {
   const PILOT_STEPS = [
     'Select one high-risk workflow such as a beneficiary change, payment destination change, operator override, privileged production action, or destructive agent tool use',
     'Define one or two policies relevant to your workflow',
-    'Bind the exact action so the request that executes is the request that was approved',
-    'Acquire the named approval from the accountable owner',
-    'Verify evidence under the owner\'s pinned trust inputs',
-    'Consume one-time authority before provider entry',
-    'Reconcile the outcome against the approved action',
+    'Specify how the exact action would be bound so the admitted request matches the accepted request',
+    'Define the named approval or mandate required from the accountable owner',
+    'Verify synthetic or read-only evidence under proposed owner-pinned trust inputs',
+    'Exercise one-time authority consumption in an isolated test path, never against production',
+    'Reconcile simulated or shadow outcome evidence against the proposed action',
     'Test dispute and appeal paths where relevant',
     'Produce a final trust review with lessons, metrics, and implementation recommendations',
   ];
@@ -82,20 +82,21 @@ export default function PartnersPage(): React.ReactElement {
   return (
     <div style={styles.page}>
       <SiteNav activePage="Partners" />
+      <main>
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
         <div className="ep-tag ep-hero-badge" style={{ color: color.blue }}>Partners</div>
-        <h1 className="ep-hero-text" style={styles.h1}>Pilot EMILIA in a real high-risk workflow</h1>
+        <h1 className="ep-hero-text" style={styles.h1}>Design a boundary for one real high-risk workflow</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          Start with one action class — payment changes, delegated approvals, operator overrides, or agent execution — and prove the control value fast.
+          Start with one action class and evaluate a proposed Gate boundary in nonproduction. Production activation is a separate implementation decision.
         </p>
         <div className="ep-hero-text" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="#inquiry" className="ep-cta" style={cta.primary}>Apply for a Pilot</a>
           <a href="mailto:team@emiliaprotocol.ai" className="ep-cta-secondary" style={cta.secondary}>Talk to the Team</a>
         </div>
         <p className="ep-hero-text" style={{ fontSize: 13, color: color.t3 }}>
-          We are looking for pilot deployment partners, regulated workflow design partners, and control architecture integrators.
+          We are looking for protected-workflow pilot design partners, regulated workflow design partners, and control architecture integrators.
         </p>
       </section>
 
@@ -108,7 +109,7 @@ export default function PartnersPage(): React.ReactElement {
               High-risk actions are already executing inside authenticated, approved-looking workflows. Agents approve payments. Operators override limits. Delegated authority chains span multiple systems. The question is no longer who is acting — it is whether this exact action should proceed under this exact authority and this exact policy.
             </p>
             <p style={styles.body}>
-              EMILIA gives you the enforcement point. Partners deploy it inside a real workflow and prove the control value.
+              EMILIA provides the proposed enforcement point. Pilot partners test the design against a real workflow without production actuation; an accepted design may proceed to a separate Gate Implementation.
             </p>
           </div>
         </div>
@@ -135,7 +136,7 @@ export default function PartnersPage(): React.ReactElement {
         <div style={styles.section}>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>What a pilot looks like</h2>
-            <p style={styles.body}>The public pilot is $25K for 90 days and protects one workflow.</p>
+            <p style={styles.body}>The public pilot is $25K for 90 days and assesses one consequence boundary in nonproduction. It ends with a production decision packet and draft implementation SOW; production activation is separate.</p>
           </div>
           <div className="ep-reveal" style={{
             borderTop: `1px solid ${color.border}`,
@@ -234,13 +235,13 @@ export default function PartnersPage(): React.ReactElement {
         <div style={{ ...styles.section, position: 'relative', zIndex: 1 }}>
           <div style={{ fontFamily: font.mono, fontSize: 10, color: color.blue, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 }}>Partner Program</div>
           <h2 style={{ fontFamily: font.sans, fontSize: 32, fontWeight: 700, color: '#FAFAF9', marginBottom: 16, lineHeight: 1.2, maxWidth: 560 }}>
-            Deploy control before action in a real workflow
+            Assess one real workflow before any production decision
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', maxWidth: 520, lineHeight: 1.7, marginBottom: 32 }}>
-            We are looking for a small number of deployment partners who want to prove policy-bound, auditable action control in production — not in theory.
+            The protected-workflow pilot uses synthetic, read-only, sandbox, or shadow evidence. It does not actuate production. A separately scoped Gate Implementation is required after buyer acceptance.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="#inquiry" className="ep-cta" style={cta.primary}>Apply for a Pilot</a>
+            <a href="#inquiry" className="ep-cta" style={cta.primary}>Request the Nonproduction Pilot</a>
             <a href="mailto:team@emiliaprotocol.ai" className="ep-cta-secondary" style={{ ...cta.secondary, borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(250,250,249,0.7)' }}>Request a Conversation →</a>
           </div>
         </div>
@@ -261,20 +262,20 @@ export default function PartnersPage(): React.ReactElement {
             <div style={grid.cols2}>
               {[['name','Name'],['org','Company / Organization'],['title','Title'],['email','Work email'],['website','Website']].map(([k,label]) => (
                 <div key={k} style={k === 'website' ? { gridColumn: '1 / -1' } : {}}>
-                  <label style={styles.label}>{label}</label>
-                  <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
+                  <label htmlFor={`partner-${k}`} style={styles.label}>{label}</label>
+                  <input id={`partner-${k}`} type={k === 'email' ? 'email' : 'text'} className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
                 </div>
               ))}
               <div>
-                <label style={styles.label}>Partner type</label>
-                <select className="ep-input" style={{ ...styles.input, cursor: 'pointer' }} value={form.partnerType} onChange={e => update('partnerType', e.target.value)}>
+                <label htmlFor="partner-type" style={styles.label}>Partner type</label>
+                <select id="partner-type" className="ep-input" style={{ ...styles.input, cursor: 'pointer' }} value={form.partnerType} onChange={e => update('partnerType', e.target.value)}>
                   <option value="">Select...</option>
-                  {['Pilot deployment partner','Regulated workflow design partner','Control architecture integration partner','Technical reviewer','Other'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {['Protected-workflow pilot design partner','Regulated workflow design partner','Control architecture integration partner','Technical reviewer','Other'].map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
               <div>
-                <label style={styles.label}>Workflow to control</label>
-                <select className="ep-input" style={{ ...styles.input, cursor: 'pointer' }} value={form.trustSurface} onChange={e => update('trustSurface', e.target.value)}>
+                <label htmlFor="partner-workflow" style={styles.label}>Workflow to assess</label>
+                <select id="partner-workflow" className="ep-input" style={{ ...styles.input, cursor: 'pointer' }} value={form.trustSurface} onChange={e => update('trustSurface', e.target.value)}>
                   <option value="">Select...</option>
                   {[
                     'Vendor bank-account change',
@@ -289,16 +290,16 @@ export default function PartnersPage(): React.ReactElement {
                 </select>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>What are you trying to solve?</label>
-                <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
+                <label htmlFor="partner-problem" style={styles.label}>What are you trying to solve?</label>
+                <textarea id="partner-problem" className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
               </div>
               <div>
-                <label style={styles.label}>Timeline</label>
-                <input className="ep-input" style={styles.input} value={form.timeline} onChange={e => update('timeline', e.target.value)} placeholder="e.g. Q2 2026" />
+                <label htmlFor="partner-timeline" style={styles.label}>Timeline</label>
+                <input id="partner-timeline" className="ep-input" style={styles.input} value={form.timeline} onChange={e => update('timeline', e.target.value)} placeholder="e.g. Q2 2026" />
               </div>
               <div>
-                <label style={styles.label}>Optional notes</label>
-                <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
+                <label htmlFor="partner-notes" style={styles.label}>Optional notes</label>
+                <input id="partner-notes" className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
               </div>
             </div>
             {error && <p style={{ color: '#DC2626', fontSize: 13, marginTop: 12 }}>{error}</p>}
@@ -309,6 +310,7 @@ export default function PartnersPage(): React.ReactElement {
         )}
       </section>
 
+      </main>
       <SiteFooter />
     </div>
   );
