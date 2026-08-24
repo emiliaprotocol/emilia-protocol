@@ -532,7 +532,7 @@ export default async function PrivateEquityPage(): Promise<React.ReactElement> {
         <section className={css.assuranceSection} aria-labelledby="assurance-ladder-heading">
           <div className={css.assuranceIntro}>
             <p className={css.sectionKicker}>Control plus assurance</p>
-            <h2 id="assurance-ladder-heading">Every evidence surface, without a black-box certificate.</h2>
+            <h2 id="assurance-ladder-heading">Evidence for each layer, without a black-box certificate.</h2>
             <p>
               Gate controls the crossing. The Assurance Plane can verify, assess, re-perform, and package
               the resulting evidence. A customer-appointed auditor, underwriter, regulator, or other
