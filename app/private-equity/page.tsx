@@ -79,6 +79,11 @@ const FAQ = [
       'A reviewer can re-run supplied evidence packages under independently pinned keys, profiles, clocks, and input digests, then compare the result with the runtime claim. Re-performance can expose missing or inadmissible evidence and drift; it cannot recover live state that was never recorded or establish source truth.',
   },
   {
+    question: 'How does EMILIA Scan reduce implementation work?',
+    answer:
+      'Scan can prepare a customer-reviewable action inventory and draft control package for the named action surface, with unresolved blockers made explicit. It does not authorize an action, activate Gate, certify a deployment, or prove that every effect path is mediated. Buyer acceptance and a separately scoped Gate implementation are still required.',
+  },
+  {
     question: 'What does complete mediation mean?',
     answer:
       'Every path capable of producing the covered effect must cross Gate at the executor or system-of-record boundary. A sidecar, prompt filter, or voluntary agent call cannot constrain an alternate path that bypasses the deployed control.',
@@ -174,8 +179,8 @@ const PILOT_PHASES = [
   {
     number: '02',
     window: 'Days 31-60',
-    title: 'Observe before enforcing',
-    body: 'Run synthetic and buyer-approved read-only validation. Measure what the configured authority rule would hold, refuse, or allow without changing production behavior.',
+    title: 'Prepare, then observe',
+    body: 'Use Scan to prepare the customer-reviewable draft package, then run synthetic and buyer-approved read-only validation without changing production behavior.',
   },
   {
     number: '03',
@@ -220,8 +225,8 @@ const ENTRY_PATHS = [
     status: `${PROTECTED_WORKFLOW_PILOT.durationLabel} · ${PROTECTED_WORKFLOW_PILOT.shortPriceLabel} fixed scope`,
     name: 'Portfolio Authority Pilot',
     audience: 'For one sponsor and one consenting portfolio company',
-    body: 'Map one vendor bank-detail change or payment-release path, validate it in synthetic and buyer-approved read-only modes, and design the completely mediated customer-owned Gate boundary.',
-    output: 'A path map, authority and evidence rule, acceptance plan, limitations, and buyer-owned go or no-go decision.',
+    body: 'Map one vendor bank-detail change or payment-release path, use Scan to prepare a reviewable control package, validate it in synthetic and buyer-approved read-only modes, and design the completely mediated customer-owned Gate boundary.',
+    output: 'A path map, draft control package, authority and evidence rule, acceptance plan, limitations, and buyer-owned go or no-go decision.',
     href: '/pilot?v=fin',
     cta: 'Scope the fixed pilot',
     eventDetail: {

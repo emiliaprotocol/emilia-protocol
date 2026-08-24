@@ -149,7 +149,14 @@ describe('private-equity portfolio customer page', () => {
   });
 
   it('keeps competitor strategy and private capital asks out of the public page', () => {
-    expect(page).not.toMatch(/certisyn|hillier|target list|limited partner list|fundraising|invest in emilia/i);
+    expect(page).not.toMatch(/competitive battlecard|target list|limited partner list|fundraising|invest in emilia/i);
     expect(boundaryExample).not.toHaveProperty('pricing');
+  });
+
+  it('makes Scan-assisted preparation useful without turning it into authority', () => {
+    expect(page).toContain('How does EMILIA Scan reduce implementation work?');
+    expect(page).toContain('customer-reviewable action inventory and draft control package');
+    expect(page).toContain('It does not authorize an action, activate Gate, certify a deployment');
+    expect(page).toContain('Buyer acceptance and a separately scoped Gate implementation are still required');
   });
 });
