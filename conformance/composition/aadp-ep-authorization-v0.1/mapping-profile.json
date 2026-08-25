@@ -1,0 +1,35 @@
+{
+  "profile": "AADP-ACTION-MAPPING-CONFIG-v1",
+  "mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
+  "source_action_type": "payment.release.1",
+  "mapped_action_type": "payment.release.1",
+  "implementation": {
+    "id": "pkg:npm/%40emilia-protocol/verify/aadp-authorization-artifact",
+    "version": "3.20.3",
+    "digest": "sha256:90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9"
+  },
+  "resolver": {
+    "id": "urn:emilia:mapping-resolver:closed-json-v1",
+    "version": "1.0.0",
+    "digest": "sha256:90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9"
+  },
+  "material_field_map": [
+    {
+      "source_param": "initiator",
+      "mapped_path": "initiator"
+    },
+    {
+      "source_param": "amount_minor",
+      "mapped_path": "parameters.amount_minor"
+    },
+    {
+      "source_param": "currency",
+      "mapped_path": "parameters.currency"
+    },
+    {
+      "source_param": "payee",
+      "mapped_path": "parameters.payee"
+    }
+  ],
+  "no_material_field_loss": true
+}
