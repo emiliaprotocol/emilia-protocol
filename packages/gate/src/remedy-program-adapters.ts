@@ -983,32 +983,16 @@ async function verifiedSignedEvidenceV2(
 }
 
 // ---------------------------------------------------------------------------
-// EP-REVOCATION-v2 router resolution, and the boundary it currently has.
+// EP-REVOCATION-v2 router resolution.
 //
-// The v2 router is NOT reachable by a static import from this package: the
-// @emilia-protocol/verify package root re-exports only v1's
-// verifyRevocation/isRevoked/REVOCATION_VERSION, and its exports map has no
-// "./revocation" subpath. So this mirrors the dynamic-import-with-fallback
-// idiom trust-program-revocation.ts uses for the identical reason: try the
-// package subpath first (which picks up a future exports-map addition with no
-// code change here), then the workspace-relative built file.
-//
-// MEASURED, NOT ASSUMED: under this repository's Vite-backed test runner
-// BOTH candidates fail to resolve today, because module resolution happens in
-// the bundler's graph rather than at Node runtime and the exports map refuses
-// the subpath. That is why the v2 adapter seam routes on the statement's own
-// version marker BELOW rather than sending everything through this resolver:
-// a v1 revocation statement goes to the package-root verifier, which is
-// exported and always resolvable, so the additive v1 consumption keeps working
-// exactly as it does under the v1 adapters. Only a v2-MARKED statement needs
-// this resolver, and while it is unavailable that statement is a fail-closed
-// REFUSAL -- never a silent fallback to the v1-only verifier, and never a pass.
-// Adding "./revocation" to the verify package's exports map is what lights the
-// v2 leg up; nothing in this file changes when it does.
+// @emilia-protocol/verify publishes the revocation router at the literal
+// "./revocation.js" subpath. Keep the workspace-relative compatibility path
+// as a literal too, so Webpack can include both candidates in its dependency
+// graph. Only v2-marked statements use this async router; v1 statements keep
+// the package-root v1 path. If neither router candidate resolves, the v2 leg
+// remains a fail-closed refusal, never a downgrade to v1 and never a pass.
 // ---------------------------------------------------------------------------
 const REVOCATION_V2_VERSION = 'EP-REVOCATION-v2';
-const REVOCATION_ROUTER_PACKAGE = '@emilia-protocol/verify/revocation.js';
-const LOCAL_REVOCATION_ROUTER_PACKAGE = '../../verify/revocation.js';
 
 type RevocationStatementVerifier = (
   target: unknown, statement: unknown, opts: unknown,
@@ -1020,12 +1004,12 @@ async function resolveRevocationStatementVerifier(): Promise<RevocationStatement
   if (_remedyRevocationStatementVerifier) return _remedyRevocationStatementVerifier;
   let mod: any;
   try {
-    mod = await import(REVOCATION_ROUTER_PACKAGE);
+    mod = await import('@emilia-protocol/verify/revocation.js');
   } catch {
-    // Resolution-failure shape for an unlisted package subpath is not uniform
-    // across runtimes, so ANY primary-resolution failure falls back to the
-    // workspace-relative path; only a failure of THAT is surfaced.
-    mod = await import(LOCAL_REVOCATION_ROUTER_PACKAGE);
+    // Resolution-failure shapes are not uniform across runtimes, so any
+    // primary-resolution failure falls back to the workspace-relative path;
+    // only a failure of that path is surfaced.
+    mod = await import('../../verify/revocation.js');
   }
   if (typeof mod?.verifyRevocationStatement !== 'function') {
     throw new Error('EP-REVOCATION-v2 router (verifyRevocationStatement) unavailable');

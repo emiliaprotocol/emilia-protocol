@@ -15,6 +15,7 @@
 // file fails to even load if that exports-map entry regresses.
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { describe, it } from 'node:test';
 import { deriveTrustProgramRevocationTarget, verifyTrustProgramRevocation, verifyTrustProgramRevocationStatement, applyTrustProgramRevocationStatement, } from './trust-program-revocation.js';
 import { canonicalize } from '@emilia-protocol/verify';
@@ -126,12 +127,17 @@ function revokerFixture() {
     };
 }
 describe('EP-REVOCATION-v2 router adoption in the Trust Program revocation target', () => {
-    it('the published ./revocation subpath resolves and exposes the v2 router', async () => {
-        // trust-program-revocation.ts resolves the router by dynamic import of
-        // '@emilia-protocol/verify/revocation.js' with a workspace-relative
-        // fallback, and turns a resolution failure into a fail-closed refusal.
-        // Pin the PACKAGE path itself so a refusal below can never be silently
-        // caused by an unresolvable router.
+    it('the v2 loader uses bundle-analyzable imports and resolves the published router', async () => {
+        const source = await readFile(new URL('./src/trust-program-revocation.ts', import.meta.url), 'utf8');
+        const importSpecifiers = [...source.matchAll(/\bimport\(([^)]+)\)/g)]
+            .map((match) => match[1].trim());
+        assert.deepEqual(importSpecifiers, [
+            "'@emilia-protocol/verify/revocation.js'",
+            "'../../verify/revocation.js'",
+        ]);
+        // Pin the package path itself so a refusal below can never be silently
+        // caused by an unresolvable router. Both loader candidates are literal
+        // specifiers so Webpack can include them in its dependency graph.
         const router = await import('@emilia-protocol/verify/revocation.js');
         assert.equal(typeof router.verifyRevocationStatement, 'function');
         assert.equal(REVOCATION_V2_VERSION, 'EP-REVOCATION-v2');

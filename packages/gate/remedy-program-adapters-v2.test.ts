@@ -7,6 +7,7 @@
 // convention; the v1 adapter suites are untouched.
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { describe, it } from 'node:test';
 
 import {
@@ -372,6 +373,22 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
     })).ok, false);
   });
 
+  it('the revocation loader uses bundle-analyzable imports and resolves the published v2 router', async () => {
+    const source = await readFile(
+      new URL('./src/remedy-program-adapters.ts', import.meta.url),
+      'utf8',
+    );
+    const importSpecifiers = [...source.matchAll(/\bimport\(([^)]+)\)/g)]
+      .map((match) => match[1].trim());
+    assert.deepEqual(importSpecifiers, [
+      "'@emilia-protocol/verify/revocation.js'",
+      "'../../verify/revocation.js'",
+    ]);
+
+    const router = await import('@emilia-protocol/verify/revocation.js');
+    assert.equal(typeof router.verifyRevocationStatement, 'function');
+  });
+
   it('a v2-marked revocation statement with an empty proof is fail-closed even though the EP-REVOCATION-v2 router now resolves', async () => {
     const { authority } = await hybridFixture();
     // @emilia-protocol/verify now exports the "./revocation" subpath, so the v2
@@ -379,7 +396,7 @@ describe('EP-GATE-REMEDY-EVIDENCE-v2 hybrid evidence envelope', () => {
     // below cannot be silently attributed to an unresolvable router. The seam
     // must then REFUSE this malformed v2 statement on its own merits, never
     // downgrade to the v1-only verifier and never pass.
-    const router = await import('@emilia-protocol/verify/revocation');
+    const router = await import('@emilia-protocol/verify/revocation.js');
     assert.equal(typeof (router as any).verifyRevocationStatement, 'function');
     const statement = {
       '@version': 'EP-REVOCATION-v2',
