@@ -219,12 +219,13 @@ evidence role and therefore cannot unlock execution.
 
 ## Commercial packaging
 
-This is a control inside the existing protected-workflow offer, not a new
-memory-object SKU: the 60-day Amelia I Diagnostic identifies and attacks one
-memory-to-action workflow; Gate Implementation installs the provider verifier,
-policy, exact-action binding, and reconciliation; Operated Gate runs the
-deployment-specific control. Pricing remains governed by
-`lib/commercial-offer.ts`.
+This is a control inside the single public protected-workflow pilot, not a new
+memory-object SKU. The pilot costs $25K, runs for 90 days, and identifies and
+adversarially tests one buyer-selected protected workflow under synthetic and
+read-only conditions.
+Any production Gate Implementation is separately scoped after buyer acceptance;
+an Operated Gate is then scoped for the deployment-specific control boundary.
+Pricing remains governed by `lib/commercial-offer.ts`.
 
 ## Remaining deployment evidence
 
