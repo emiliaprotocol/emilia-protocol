@@ -30,11 +30,11 @@
     },
     {
       "path": "packages/verify/src/strict-json.ts",
-      "sha256": "3697adba911cb19759e047db42dafadcf2a41bfee8f75a0df4088d1116d0b068"
+      "sha256": "1b0566ff4e870f2b335f9046caa4de08f175fdbfaaabf58d766646692cc24339"
     },
     {
       "path": "packages/verify/dist/strict-json.js",
-      "sha256": "333e0dfcce807d97727f1a349258c7241295001389273f4010a5c88c42636d29"
+      "sha256": "405d62fdf68a10f3feab0ce4644605863b65b5d96100beff7f532789933c3e32"
     },
     {
       "path": "conformance/composition/noa-policy-replay-v0.1/run.mjs",

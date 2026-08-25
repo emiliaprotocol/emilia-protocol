@@ -3,6 +3,8 @@
 // WebAuthn clientDataJSON. JSON.parse remains the syntax gate.
 
 export const MAX_JSON_DEPTH = 64;
+export const DEFAULT_MAX_JSON_NODES = 100_000;
+export const DEFAULT_MAX_JSON_STRING_BYTES = 1024 * 1024;
 
 export interface StrictCanonicalJsonLimits {
   maxDepth?: number;
@@ -264,8 +266,8 @@ function canonicalizeJsonDomain(
   safeIntegersOnly: boolean,
 ): string {
   const maxDepth = limits.maxDepth ?? MAX_JSON_DEPTH;
-  const maxNodes = limits.maxNodes ?? Number.MAX_SAFE_INTEGER;
-  const maxStringBytes = limits.maxStringBytes ?? Number.MAX_SAFE_INTEGER;
+  const maxNodes = limits.maxNodes ?? DEFAULT_MAX_JSON_NODES;
+  const maxStringBytes = limits.maxStringBytes ?? DEFAULT_MAX_JSON_STRING_BYTES;
   if (!Number.isSafeInteger(maxDepth) || maxDepth < 0
       || !Number.isSafeInteger(maxNodes) || maxNodes < 1
       || !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 0) {
@@ -297,6 +299,8 @@ const strictJson = {
   canonicalizeFiniteJson,
   isStrictCanonicalJson,
   MAX_JSON_DEPTH,
+  DEFAULT_MAX_JSON_NODES,
+  DEFAULT_MAX_JSON_STRING_BYTES,
 };
 
 export default strictJson;

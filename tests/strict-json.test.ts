@@ -166,4 +166,11 @@ describe('strict canonical JSON domain', () => {
     expect(() => canonicalizeStrictJson({}, { maxStringBytes: -1 }))
       .toThrow('strict canonical JSON limits');
   });
+
+  it('enforces safe resource limits even when the caller omits options', () => {
+    expect(() => canonicalizeStrictJson('a'.repeat(1024 * 1024 + 1)))
+      .toThrow('string bytes exceed 1048576');
+    expect(() => canonicalizeStrictJson(Array.from({ length: 100_001 }, () => null)))
+      .toThrow('node count exceeds 100000');
+  });
 });
