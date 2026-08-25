@@ -15,6 +15,7 @@ const govGuard = readFileSync(resolve(ROOT, 'app/govguard/page.tsx'), 'utf8');
 const finGuard = readFileSync(resolve(ROOT, 'app/finguard/page.tsx'), 'utf8');
 const home = readFileSync(resolve(ROOT, 'app/HomePageClient.tsx'), 'utf8');
 const assuranceBrief = readFileSync(resolve(ROOT, 'docs/EMILIA-ASSURANCE-PRODUCT-BRIEF.md'), 'utf8');
+const trustedContextPack = readFileSync(resolve(ROOT, 'docs/protocol/trusted-context-pack-v1.md'), 'utf8');
 const programIntegrity = readFileSync(
   resolve(ROOT, 'app/health/program-integrity/_components/ProgramIntegrityGate.tsx'),
   'utf8',
@@ -53,6 +54,14 @@ describe('commercial offer contract', () => {
     expect(conversionSurfaces).toContain('90-day protected-workflow pilot');
     expect(conversionSurfaces).toContain('$25K');
     expect(programIntegrity).toContain('href="/pilot?v=health"');
+  });
+
+  it('keeps protocol feature packaging inside the one canonical pilot', () => {
+    expect(trustedContextPack).not.toMatch(/60[- ]day|60 days|Amelia I/i);
+    expect(trustedContextPack).toContain('$25K');
+    expect(trustedContextPack).toContain('90 days');
+    expect(trustedContextPack).toMatch(/one\s+buyer-selected protected workflow/);
+    expect(trustedContextPack).toContain('separately scoped');
   });
 
   it('accepts and returns to every server-supported public record id', () => {
