@@ -247,6 +247,38 @@ test('an unpinned issuer confers nothing (no allowUntrustedIssuer)', async () =>
   assert.equal(res.reason, 'capability_issuer_not_trusted');
 });
 
+test('allowUntrustedIssuer cannot turn a self-signed v2 envelope into authority', async () => {
+  const { capabilityReceipt } = await buildV2();
+  const res = await verifyCapabilityReceiptV2(capabilityReceipt, {
+    trustedIssuerKeys: [],
+    allowUntrustedIssuer: true,
+  });
+  assert.equal(res.ok, false);
+  assert.equal(res.reason, 'capability_issuer_not_trusted');
+});
+
+test('allowUntrustedIssuer cannot turn a self-signed v1 envelope into authority', () => {
+  const { capabilityReceipt } = mintCapabilityReceipt(baseReceipt(), {
+    issuerPrivateKey: ed.privateKey,
+    budget: { amount: 100, currency: 'USD' },
+    expiry: NOW + 60_000,
+    revocationMode: 'direct',
+    capabilityId: 'cap-self-asserted-v1',
+    secret: Buffer.alloc(32, 7),
+    scope: {
+      profile: CAPABILITY_SCOPE_PROFILE,
+      operation_id_field: 'operation_id',
+      action_digests: [capabilityActionDigest(SCOPED_ACTION)],
+    },
+  });
+  const res = verifyCapabilityReceipt(capabilityReceipt, {
+    trustedIssuerKeys: [],
+    allowUntrustedIssuer: true,
+  });
+  assert.equal(res.ok, false);
+  assert.equal(res.reason, 'capability_issuer_not_trusted');
+});
+
 test('pinning the Ed25519 half but a wrong ML-DSA half refuses (both halves must match)', async () => {
   const other = ml_dsa65.keygen(crypto.randomBytes(32));
   const { capabilityReceipt } = await buildV2();
