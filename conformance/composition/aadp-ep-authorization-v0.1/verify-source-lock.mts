@@ -55,33 +55,6 @@ export async function verifySourceLock(
     });
   }
 
-  const revisionResults: Array<{
-    path: string;
-    url: string;
-    sha256: string;
-    bytes: number;
-    verified: true;
-  }> = [];
-  for (const entry of SOURCE_LOCK.emilia.runtime_files) {
-    if (!entry.url.includes(SOURCE_LOCK.emilia.base_revision)) {
-      throw new Error(`EMILIA revision URL does not pin ${SOURCE_LOCK.emilia.base_revision}: ${entry.path}`);
-    }
-    const bytes = await fetchBytes(entry.url);
-    const actual = sha256(bytes);
-    if (actual !== entry.sha256) {
-      throw new Error(
-        `repository revision mismatch for ${entry.path}: expected ${entry.sha256}, got ${actual}`,
-      );
-    }
-    revisionResults.push({
-      path: entry.path,
-      url: entry.url,
-      sha256: actual,
-      bytes: bytes.byteLength,
-      verified: true,
-    });
-  }
-
   const localResults = SOURCE_LOCK.emilia.runtime_files.map((entry: any) => {
     const bytes = readFileSync(new URL(`../../../${entry.path}`, import.meta.url));
     const actual = sha256(bytes);
@@ -102,10 +75,9 @@ export async function verifySourceLock(
     profile: 'AADP-EP-SOURCE-LOCK-VERIFICATION-v1',
     source_lock_file_sha256: `sha256:${sha256(readFileSync(new URL('./source-lock.json', import.meta.url)))}`,
     upstream: upstreamResults,
-    repository_revision: {
+    repository_source: {
       repository: SOURCE_LOCK.emilia.repository,
-      revision: SOURCE_LOCK.emilia.base_revision,
-      files: revisionResults,
+      binding: SOURCE_LOCK.emilia.binding,
     },
     local: localResults,
     passed: true,

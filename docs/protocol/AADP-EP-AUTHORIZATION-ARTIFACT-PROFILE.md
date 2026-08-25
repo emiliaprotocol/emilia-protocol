@@ -63,6 +63,10 @@ version. A future package release must use a new package version and separately
 verify the exact registry tarball before a `pkg:npm` identifier replaces this
 repository-source identifier.
 
+The repository source lock binds each checked-in runtime path to its exact
+SHA-256 bytes. It intentionally makes no immutable revision claim from inside
+the same change that introduces those files.
+
 - `artifact_digest` binds the exact canonical native artifact.
 - `native_verification` records whether the native verifier returned
   `VERIFIED`, `REFUSED`, or `UNAVAILABLE`.

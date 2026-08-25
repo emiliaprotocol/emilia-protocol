@@ -29,9 +29,8 @@ test('source lock pins exact AADP -01, onedoor, and exercised EP bytes', () => {
         assert.match(file.url, new RegExp(lock.onedoor.revision));
         assert.match(file.sha256, /^[0-9a-f]{64}$/);
     }
-    assert.match(lock.emilia.base_revision, /^[0-9a-f]{40}$/);
+    assert.equal(lock.emilia.binding, 'repository-relative-path-and-sha256');
     for (const file of lock.emilia.runtime_files) {
-        assert.match(file.url, new RegExp(lock.emilia.base_revision));
         const bytes = readFileSync(new URL(`../../../${file.path}`, import.meta.url));
         assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), file.sha256, file.path);
     }

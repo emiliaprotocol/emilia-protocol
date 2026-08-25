@@ -48,38 +48,33 @@
       },
       "emilia": {
         "repository": "https://github.com/emiliaprotocol/emilia-protocol",
-        "base_revision": "99cce9bd735b89e60891063037843ca522d82953",
+        "binding": "repository-relative-path-and-sha256",
         "runtime_files": [
           {
             "path": "conformance/vectors/authorization-bundle.v1.json",
-            "url": "https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/99cce9bd735b89e60891063037843ca522d82953/conformance/vectors/authorization-bundle.v1.json",
             "sha256": "c0c01956b5ce064e2d7b868c7d84813425e69ce819efb4e374fce986937c76f4"
           },
           {
             "path": "packages/verify/src/authorization-bundle.ts",
-            "url": "https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/99cce9bd735b89e60891063037843ca522d82953/packages/verify/src/authorization-bundle.ts",
             "sha256": "36b8bbb56579bb0db1f5f5d60a5532b0ff3f5d508273c84a905c379dd8d5da20"
           },
           {
             "path": "packages/verify/package.json",
-            "url": "https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/99cce9bd735b89e60891063037843ca522d82953/packages/verify/package.json",
             "sha256": "f42720245d42a3304890409817b9fa0b4b183719e7aa870466dbf7a0373e57a2"
           },
           {
             "path": "packages/verify/src/aadp-authorization-artifact.ts",
-            "url": "https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/99cce9bd735b89e60891063037843ca522d82953/packages/verify/src/aadp-authorization-artifact.ts",
             "sha256": "90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9"
           },
           {
             "path": "conformance/composition/aadp-ep-authorization-v0.1/mapping-profile.json",
-            "url": "https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/99cce9bd735b89e60891063037843ca522d82953/conformance/composition/aadp-ep-authorization-v0.1/mapping-profile.json",
             "sha256": "6360e1e8b6ef01765b467c5ff35c18998de8458c21370f33987242ea5e8a0062"
           }
         ]
       }
     },
-    "source_lock_file_sha256": "sha256:18de09ffe9d85418bba582ecb8937126eda20b92e328f8b2f2e206389703da39",
-    "source_lock_canonical_digest": "sha256:2e087a4629346fa0d82a1ab6aadfe8ca1cd2319395498385d562cb724ff03965",
+    "source_lock_file_sha256": "sha256:7a4660094c5b810c6d38d72424e2922fc813313c004a5358b4e12da7500311e9",
+    "source_lock_canonical_digest": "sha256:016a6cac12edd173dd55dda76bf7d8b11c641d8bdeb51acb27db2b2aa863a02a",
     "aadp": {
       "draft": "draft-saha-aadp-01",
       "implementation_kind": "draft-derived-bounded-lifecycle-model",
@@ -443,8 +438,8 @@
       "claim": "the deterministic report binds every source-locked hash",
       "passed": true,
       "actual": {
-        "source_lock_file_sha256": "sha256:18de09ffe9d85418bba582ecb8937126eda20b92e328f8b2f2e206389703da39",
-        "source_lock_canonical_digest": "sha256:2e087a4629346fa0d82a1ab6aadfe8ca1cd2319395498385d562cb724ff03965",
+        "source_lock_file_sha256": "sha256:7a4660094c5b810c6d38d72424e2922fc813313c004a5358b4e12da7500311e9",
+        "source_lock_canonical_digest": "sha256:016a6cac12edd173dd55dda76bf7d8b11c641d8bdeb51acb27db2b2aa863a02a",
         "hashes": [
           "ba6d9db982b23f642227b5a8f9f68589d0f3692c2e97adbfa2ac8a18792d8db8",
           "72b90df3c5e45386442e548eaf565c7049b6260842711db3354ce90271dac081",
@@ -460,5 +455,5 @@
       }
     }
   ],
-  "report_digest": "sha256:17bd231d641466a9c34ddfbedc91da275672a5ca89076e3f76fcc1065d46e901"
+  "report_digest": "sha256:5c36e506ff02ab492744b5c36ca62d449367c19e9f30cae5372ca643fb132fc3"
 }
