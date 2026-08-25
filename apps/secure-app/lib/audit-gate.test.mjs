@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -338,6 +338,23 @@ test('the committed exception file satisfies the enforced schema', () => {
   for (const exception of exceptions) {
     assert.ok(exception.expiresOn > exception.acceptedOn);
     assert.ok(exception.affectedPackages.size > 0);
+  }
+});
+
+test('the committed image-size acceptance expires on the first UTC date after the supported Metro repair clears quarantine', () => {
+  const document = JSON.parse(readFileSync(join(SECURE_APP, 'audit-exceptions.json'), 'utf8'));
+  assert.equal(document.exceptions.length, 2);
+
+  for (const exception of document.exceptions) {
+    assert.equal(exception.accepted_on, '2026-08-25');
+    assert.equal(exception.expires_on, '2026-08-29');
+    assert.deepEqual(exception.upstream_fix, {
+      package: '@expo/metro',
+      fixed_version: '56.0.2',
+      fixed_metro_version: '0.84.5',
+      published_at: '2026-08-21T13:24:45.109Z',
+      eligible_at: '2026-08-28T13:24:45.109Z',
+    });
   }
 });
 

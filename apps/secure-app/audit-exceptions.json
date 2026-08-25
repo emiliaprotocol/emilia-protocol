@@ -1,78 +1,82 @@
 {
   "version": 1,
-  "description": "Advisories accepted for apps/secure-app, each with an expiry date. Read ../../scripts/audit-with-exceptions.mjs for the enforced schema and README.md for the model. An entry here is a dated decision, not a permanent silence.",
+  "description": "Temporary, expiring acceptance for the two image-size build-only denial-of-service advisories in the Expo/Metro toolchain. A supported parent-graph repair exists but remains inside this app's seven-day release quarantine until 2026-08-28T13:24:45.109Z. These entries expire on the first UTC date after eligibility and must be removed with the dependency upgrade.",
   "exceptions": [
     {
       "advisory": "https://github.com/advisories/GHSA-w3rx-r6r6-pgpr",
-      "advisory_ids": [1138808],
+      "advisory_ids": [
+        1138808
+      ],
       "package": "image-size",
       "severity": "high",
       "title": "image-size: ICNS parser allows denial of service through an infinite loop",
       "affected_packages": [
-        "@expo/cli",
         "@expo/metro",
-        "@expo/metro-config",
-        "@react-native/community-cli-plugin",
-        "@react-native/virtualized-lists",
-        "expo",
         "image-size",
         "metro",
         "metro-config",
-        "metro-transform-worker",
-        "react-native"
+        "metro-transform-worker"
       ],
-      "reachability": "Build-machine only, not device-reachable. image-size is declared by exactly one package in apps/secure-app/package-lock.json: node_modules/metro requires image-size ^1.0.2 (resolved 1.2.1). metro is the React Native bundler; it runs on the build machine to produce the JS bundle and is not part of the bundle it emits. The other ten flagged packages are transitive effects of that single edge, not independent introductions. No app source file reaches the parser: the imports across index.ts, App.tsx, lib/ep-client.ts, lib/ep-signoff.ts, lib/secure-key.ts and lib/session.ts are expo, expo-screen-capture, expo-status-bar, expo-secure-store, expo-local-authentication, @noble/curves, @noble/hashes, react and react-native only, with no import of image-size or metro. The app also ships no image assets, so the ICNS/JXL/HEIF decode path has no input at build time either. The advisory is CWE-835, an infinite loop reached by parsing a hostile image file, and its CVSS vector is availability-only (CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H): worst case is a hung or slow CI bundler job on attacker-supplied image input, with no confidentiality or integrity impact and no exposure on a paired device. Scope limit: metro's internal call site for image-size was not read, so this justification rests on the dependency edge and the absence of any app-side image input, not on an audit of metro's parser usage.",
+      "reachability": "Build-machine availability exposure only, not device-reachable application code. The installed path is expo 57.0.13 -> @expo/metro 56.0.0 -> metro 0.84.4 -> image-size 1.2.1. Metro is the React Native bundler and does not ship in the bundle it emits. The application imports Expo runtime modules, noble cryptography, React, and React Native, but no source imports image-size or Metro, and this app has no image assets. A hostile ICNS file could hang a build job only if an attacker first introduced that file into the trusted source/build input boundary; it cannot be supplied through the paired mobile inbox or approval flow.",
       "no_upstream_fix": {
-        "checked_on": "2026-08-07",
+        "checked_on": "2026-08-25",
         "advisory_range": "<=2.0.2",
         "npm_vulnerability_range": "*",
         "installed_version": "1.2.1",
         "latest_published_version": "2.0.2",
-        "how_checked": "`npm view image-size version` returned 2.0.2 and `npm view image-size versions --json` returned 71 versions ending 2.0.2; the advisory range <=2.0.2 in `npm audit --json` therefore covers every published version, and npm reports the vulnerability range for the installed node as `*`. There is no fixed version to upgrade to.",
-        "npm_suggested_fix": "expo@53.0.27, reported by npm audit with isSemVerMajor: true",
-        "why_suggested_fix_rejected": "apps/secure-app/package.json pins expo ~56.0.19. npm's suggestion is a three-major downgrade to expo 53, not a fix: it would revert the app's Expo SDK rather than remove the advisory, and image-size has no unaffected version to land on regardless.",
-        "why_omit_dev_does_not_help": "`npm audit --omit=dev` still reports all 11 findings, because expo and react-native are production dependencies and pull the bundler chain transitively. npm's dependency graph cannot express `ships to the device` versus `runs on the build machine`, which is the distinction that makes this advisory unreachable here."
+        "npm_suggested_fix": "supported parent-graph upgrade to @expo/metro@56.0.2 and metro@0.84.5",
+        "how_checked": "Registry metadata still shows image-size 2.0.2 as the latest direct release and every direct release remains inside the advisory range. The supported Expo graph repair is @expo/metro 56.0.2, which pins Metro 0.84.5; Metro 0.84.5 removes its image-size dependency and falls outside npm's vulnerable Metro ranges.",
+        "why_suggested_fix_rejected": "Not rejected permanently. @expo/metro 56.0.2 was published at 2026-08-21T13:24:45.109Z and is ineligible under apps/secure-app/.npmrc min-release-age=7 until 2026-08-28T13:24:45.109Z. Resolving it on 2026-08-25 would bypass the mobile boundary's supply-chain quarantine. This acceptance expires immediately after that quarantine clears."
+      },
+      "upstream_fix": {
+        "package": "@expo/metro",
+        "fixed_version": "56.0.2",
+        "fixed_metro_version": "0.84.5",
+        "published_at": "2026-08-21T13:24:45.109Z",
+        "eligible_at": "2026-08-28T13:24:45.109Z"
       },
       "accepted_by": "EMILIA Protocol maintainers",
-      "accepted_on": "2026-08-07",
-      "expires_on": "2026-11-05",
-      "revisit_trigger": "Remove this entry as soon as any of the following holds: image-size publishes a version outside the advisory range and metro or expo picks it up; expo ships an SDK 56-or-later release whose bundler chain drops image-size; the advisory is amended to describe a runtime-reachable or non-availability impact; or any package outside the reviewed affected_packages list starts pulling image-size, which the gate fails on automatically. Otherwise re-verify every field above before the expiry date and accept a new dated decision or fix it."
+      "accepted_on": "2026-08-25",
+      "expires_on": "2026-08-29",
+      "revisit_trigger": "On or after 2026-08-28T13:24:45.109Z, update to the supported @expo/metro 56.0.2 graph, verify Metro 0.84.5 removed image-size, require a zero-high npm audit, and delete both exceptions. Revisit sooner if reachability, severity, affected packages, or package integrity changes."
     },
     {
       "advisory": "https://github.com/advisories/GHSA-5p2g-fcmc-qvqq",
-      "advisory_ids": [1138809],
+      "advisory_ids": [
+        1138809
+      ],
       "package": "image-size",
       "severity": "high",
       "title": "image-size: JXL and HEIF parsers allow denial of service through infinite loops",
       "affected_packages": [
-        "@expo/cli",
         "@expo/metro",
-        "@expo/metro-config",
-        "@react-native/community-cli-plugin",
-        "@react-native/virtualized-lists",
-        "expo",
         "image-size",
         "metro",
         "metro-config",
-        "metro-transform-worker",
-        "react-native"
+        "metro-transform-worker"
       ],
-      "reachability": "Build-machine only, not device-reachable. Same single dependency edge as GHSA-w3rx-r6r6-pgpr: node_modules/metro is the only package in apps/secure-app/package-lock.json declaring image-size (^1.0.2, resolved 1.2.1), and metro is the build-time bundler rather than shipped device code. The ten other flagged packages are transitive effects of that one edge. No app source file imports image-size or metro, and the app ships no image assets, so neither the JXL nor the HEIF parser has reachable input from this project. The advisory is CWE-835 with an availability-only CVSS vector (CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H): worst case is a hung CI bundler job on a hostile image, with no confidentiality or integrity impact and no exposure on a paired device. Scope limit: metro's internal call site for image-size was not read, so this rests on the dependency edge and the absence of app-side image input, not on an audit of metro's parser usage.",
+      "reachability": "Build-machine availability exposure only, not device-reachable application code. The installed path is expo 57.0.13 -> @expo/metro 56.0.0 -> metro 0.84.4 -> image-size 1.2.1. Metro is the React Native bundler and does not ship in the bundle it emits. The application imports Expo runtime modules, noble cryptography, React, and React Native, but no source imports image-size or Metro, and this app has no image assets. A hostile JXL or HEIF file could hang a build job only if an attacker first introduced that file into the trusted source/build input boundary; it cannot be supplied through the paired mobile inbox or approval flow.",
       "no_upstream_fix": {
-        "checked_on": "2026-08-07",
+        "checked_on": "2026-08-25",
         "advisory_range": "<=2.0.2",
         "npm_vulnerability_range": "*",
         "installed_version": "1.2.1",
         "latest_published_version": "2.0.2",
-        "how_checked": "`npm view image-size version` returned 2.0.2 and `npm view image-size versions --json` returned 71 versions ending 2.0.2; the advisory range <=2.0.2 in `npm audit --json` therefore covers every published version, and npm reports the vulnerability range for the installed node as `*`. There is no fixed version to upgrade to.",
-        "npm_suggested_fix": "expo@53.0.27, reported by npm audit with isSemVerMajor: true",
-        "why_suggested_fix_rejected": "apps/secure-app/package.json pins expo ~56.0.19. npm's suggestion is a three-major downgrade to expo 53, not a fix: it would revert the app's Expo SDK rather than remove the advisory, and image-size has no unaffected version to land on regardless.",
-        "why_omit_dev_does_not_help": "`npm audit --omit=dev` still reports all 11 findings, because expo and react-native are production dependencies and pull the bundler chain transitively. npm's dependency graph cannot express `ships to the device` versus `runs on the build machine`, which is the distinction that makes this advisory unreachable here."
+        "npm_suggested_fix": "supported parent-graph upgrade to @expo/metro@56.0.2 and metro@0.84.5",
+        "how_checked": "Registry metadata still shows image-size 2.0.2 as the latest direct release and every direct release remains inside the advisory range. The supported Expo graph repair is @expo/metro 56.0.2, which pins Metro 0.84.5; Metro 0.84.5 removes its image-size dependency and falls outside npm's vulnerable Metro ranges.",
+        "why_suggested_fix_rejected": "Not rejected permanently. @expo/metro 56.0.2 was published at 2026-08-21T13:24:45.109Z and is ineligible under apps/secure-app/.npmrc min-release-age=7 until 2026-08-28T13:24:45.109Z. Resolving it on 2026-08-25 would bypass the mobile boundary's supply-chain quarantine. This acceptance expires immediately after that quarantine clears."
+      },
+      "upstream_fix": {
+        "package": "@expo/metro",
+        "fixed_version": "56.0.2",
+        "fixed_metro_version": "0.84.5",
+        "published_at": "2026-08-21T13:24:45.109Z",
+        "eligible_at": "2026-08-28T13:24:45.109Z"
       },
       "accepted_by": "EMILIA Protocol maintainers",
-      "accepted_on": "2026-08-07",
-      "expires_on": "2026-11-05",
-      "revisit_trigger": "Remove this entry as soon as any of the following holds: image-size publishes a version outside the advisory range and metro or expo picks it up; expo ships an SDK 56-or-later release whose bundler chain drops image-size; the advisory is amended to describe a runtime-reachable or non-availability impact; or any package outside the reviewed affected_packages list starts pulling image-size, which the gate fails on automatically. Otherwise re-verify every field above before the expiry date and accept a new dated decision or fix it."
+      "accepted_on": "2026-08-25",
+      "expires_on": "2026-08-29",
+      "revisit_trigger": "On or after 2026-08-28T13:24:45.109Z, update to the supported @expo/metro 56.0.2 graph, verify Metro 0.84.5 removed image-size, require a zero-high npm audit, and delete both exceptions. Revisit sooner if reachability, severity, affected packages, or package integrity changes."
     }
   ]
 }
