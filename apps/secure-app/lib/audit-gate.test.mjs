@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import {
   AuditGateError,
   FAILURE,
+  SECURE_APP_IMAGE_SIZE_HOLD,
   collectLiveAdvisories,
   evaluate,
   loadExceptions,
@@ -39,7 +40,8 @@ const REACHABILITY =
   + 'so the parser has no reachable input on a device.';
 const TRIGGER = 'Remove this entry when the bundler chain drops the vulnerable package or a fixed version ships.';
 const HOW_CHECKED = 'Queried the registry for every published version; the advisory range covers all of them.';
-const WHY_REJECTED = 'The suggested remediation is a three-major downgrade of the framework, which is not a fix.';
+const WHY_REJECTED =
+  'The synthetic suggested remediation is incompatible with the supported fixture graph and does not repair the advisory path.';
 
 /** Build an npm-audit-shaped report whose metadata reconciles. */
 function auditReport(vulnerabilities) {
@@ -344,17 +346,12 @@ test('the committed exception file satisfies the enforced schema', () => {
 test('the committed image-size acceptance expires on the first UTC date after the supported Metro repair clears quarantine', () => {
   const document = JSON.parse(readFileSync(join(SECURE_APP, 'audit-exceptions.json'), 'utf8'));
   assert.equal(document.exceptions.length, 2);
+  const { exception_expires_on: expiresOn, ...upstreamFix } = SECURE_APP_IMAGE_SIZE_HOLD;
 
   for (const exception of document.exceptions) {
     assert.equal(exception.accepted_on, '2026-08-25');
-    assert.equal(exception.expires_on, '2026-08-29');
-    assert.deepEqual(exception.upstream_fix, {
-      package: '@expo/metro',
-      fixed_version: '56.0.2',
-      fixed_metro_version: '0.84.5',
-      published_at: '2026-08-21T13:24:45.109Z',
-      eligible_at: '2026-08-28T13:24:45.109Z',
-    });
+    assert.equal(exception.expires_on, expiresOn);
+    assert.deepEqual(exception.upstream_fix, upstreamFix);
   }
 });
 
