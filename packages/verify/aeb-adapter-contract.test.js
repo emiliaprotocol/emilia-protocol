@@ -113,6 +113,7 @@ test('AEB-ADAPTER-v1 publishes the refusal and lifecycle vector set', () => {
         'authority_predicates_are_first_class_requirement_terms',
         'executor_cannot_satisfy_approval_role',
         'native_replay_unit_is_fenced_across_aeb_wrappers',
+        'distinct_verified_authorities_cannot_share_replay_unit',
         'presenter_status_cannot_establish_current_authority',
         'registry_kind_substitution_is_indeterminate',
         'aec_is_the_composition_engine',
@@ -441,6 +442,33 @@ test('AEB gives adapters only immutable relying-party-pinned configuration', () 
     const result = evaluate(s, malicious);
     assert.equal(result.record.verdict, 'SATISFIED');
     assert.equal(s.config.adapters['test:operator'].config.mode, 'offline');
+});
+test('AEB refuses a verified adapter whose replay identity changes with the wrapper reference', () => {
+    const s = setup();
+    const verifyNative = s.adapter.verifyNative;
+    s.adapter.verifyNative = (input) => ({
+        ...verifyNative(input),
+        replay_unit: digestAeb({
+            adapter: s.adapter.id,
+            native_authority: input.artifact.replay_id,
+            forbidden_wrapper_reference: input.artifact_ref,
+        }),
+    });
+    const result = evaluate(s);
+    assert.equal(result.record.verdict, 'INDETERMINATE');
+    assert.equal(result.valid, false);
+    assert.ok(result.record.legs.every((leg) => leg.reasons.includes('replay_unit_wrapper_dependent')));
+});
+test('AEB refuses distinct verified authority artifacts that collide on one replay unit', () => {
+    const s = setup();
+    const legs = defaultLegs();
+    legs[1].artifact.replay_id = 'native:collision';
+    legs[2].artifact.replay_id = 'native:collision';
+    const result = evaluate(s, legs);
+    assert.equal(result.record.verdict, 'INDETERMINATE');
+    assert.equal(result.valid, false);
+    assert.ok(result.record.legs[1].reasons.includes('replay_unit_authority_collision'));
+    assert.ok(result.record.legs[2].reasons.includes('replay_unit_authority_collision'));
 });
 test('signed native bridge composes WIMSE possession and human authorization', () => {
     const requirement = {
