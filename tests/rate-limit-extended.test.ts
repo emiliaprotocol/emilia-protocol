@@ -318,7 +318,10 @@ describe('addRateLimitHeaders — edge cases (in-memory module)', () => {
     RATE_LIMITS = mod.RATE_LIMITS;
   });
 
-  afterEach(() => vi.resetModules());
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
 
   function makeResponse() {
     const store = {};
@@ -397,7 +400,7 @@ describe('getClientIP — edge cases (line 164 branch)', () => {
 
   afterEach(() => vi.resetModules());
 
-  it('returns x-real-ip when x-forwarded-for is empty string', () => {
+  it('ignores untrusted forwarding headers when no trusted platform is present', () => {
     const req = {
       headers: {
         get: (h) => {
@@ -407,9 +410,8 @@ describe('getClientIP — edge cases (line 164 branch)', () => {
         },
       },
     };
-    // xff.split(',').pop().trim() on '' → '' → falsy → falls through to x-real-ip
     const ip = getClientIP(req);
-    expect(ip).toBe('10.0.0.5');
+    expect(ip).toBe('unknown');
   });
 
   it('returns "unknown" when all headers missing', () => {
@@ -417,10 +419,14 @@ describe('getClientIP — edge cases (line 164 branch)', () => {
     expect(getClientIP(req)).toBe('unknown');
   });
 
-  it('handles three-hop forwarded-for chain', () => {
+  it('handles a three-hop Vercel-overwritten forwarding chain', () => {
+    vi.stubEnv('VERCEL', '1');
     const req = {
       headers: {
-        get: (h) => h === 'x-forwarded-for' ? '1.1.1.1, 2.2.2.2, 3.3.3.3' : null,
+        get: (h) => {
+          if (h === 'x-vercel-forwarded-for') return '1.1.1.1, 2.2.2.2, 3.3.3.3';
+          return null;
+        },
       },
     };
     expect(getClientIP(req)).toBe('3.3.3.3');

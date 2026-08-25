@@ -440,7 +440,9 @@ export function getAuditRetentionConfig(): { hotDays: number; coldDays: number; 
  * Rate limiter deployment posture. High-assurance deployments must use a
  * durable/shared backend, not per-instance memory.
  */
-export function getRateLimitConfig(): { durableRequired: boolean } {
+export function getRateLimitConfig(): { durableRequired: boolean; trustedClientIpHeader: string | null } {
+  const configuredHeader = process.env.EP_TRUSTED_CLIENT_IP_HEADER?.trim().toLowerCase() || null;
+  const allowedHeaders = new Set(['x-forwarded-for', 'x-real-ip', 'cf-connecting-ip', 'fly-client-ip']);
   return {
     // Production has no safe cross-instance memory fallback for sensitive
     // categories. lib/rate-limit.js uses this flag to refuse those requests
@@ -449,6 +451,9 @@ export function getRateLimitConfig(): { durableRequired: boolean } {
     durableRequired: isProduction()
       || process.env.EP_GOV_STRICT === 'true'
       || process.env.EP_REQUIRE_DURABLE_RATE_LIMIT === 'true',
+    trustedClientIpHeader: configuredHeader && allowedHeaders.has(configuredHeader)
+      ? configuredHeader
+      : null,
   };
 }
 
