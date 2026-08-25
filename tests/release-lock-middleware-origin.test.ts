@@ -37,6 +37,7 @@ describe('Release Lock middleware origin boundary', () => {
   beforeEach(() => {
     checkRateLimit.mockReset();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 19, reset: 60 });
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://www.emiliaprotocol.ai');
   });
 
   it('refuses sibling-origin challenge and pairing mutations before rate limiting', async () => {
@@ -72,5 +73,25 @@ describe('Release Lock middleware origin boundary', () => {
     ));
     expect(allowed.status).not.toBe(403);
     expect(checkRateLimit).toHaveBeenCalledOnce();
+  });
+
+  it('does not trust a poisoned request URL as the application origin', async () => {
+    const poisoned = request(
+      '/api/v1/release-locks/invitations/exchange',
+      {
+        origin: 'https://attacker.example',
+        fetchSite: 'same-origin',
+      },
+    );
+    poisoned.nextUrl = new URL(
+      'https://attacker.example/api/v1/release-locks/invitations/exchange',
+    );
+
+    const response = await middleware(poisoned);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      code: 'release_lock_origin_denied',
+    });
   });
 });

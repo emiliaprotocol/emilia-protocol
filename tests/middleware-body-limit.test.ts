@@ -12,6 +12,7 @@ vi.mock('@/lib/rate-limit', () => ({
     submit: { max: 60, window: 60 },
     read: { max: 120, window: 60 },
     register: { max: 10, window: 60 },
+    cloud_read: { max: 120, window: 60 },
   },
 }));
 
@@ -126,6 +127,60 @@ describe('middleware API body-size tripwire', () => {
 
     expect(res.status).toBe(413);
     expect(mockCheckRateLimit).toHaveBeenCalledWith('203.0.113.9', 'submit');
+  });
+
+  it('fails closed when a request body cannot be cloned for byte counting', async () => {
+    const request = req('/api/receipt', {
+      headers: { 'content-type': 'application/json' },
+      bodyBytes: 32,
+    });
+    request.clone = () => { throw new Error('clone unavailable'); };
+
+    const res = await middleware(request);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: 'invalid_body' });
+  });
+
+  it('does not let a forged Host header make an attacker Origin same-origin', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('ALLOWED_ORIGINS', '');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://www.emiliaprotocol.ai');
+    const res = await middleware(req('/api/cloud/approvals', {
+      method: 'GET',
+      headers: { origin: 'https://attacker.example', host: 'attacker.example' },
+    }));
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: 'cors_denied' });
+  });
+
+  it('does not trust a poisoned request URL as the application origin', async () => {
+    vi.stubEnv('ALLOWED_ORIGINS', '');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://www.emiliaprotocol.ai');
+    const request = req('/api/cloud/approvals', {
+      method: 'GET',
+      headers: { origin: 'https://attacker.example', host: 'attacker.example' },
+    });
+    request.nextUrl = new URL('https://attacker.example/api/cloud/approvals');
+
+    const res = await middleware(request);
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: 'cors_denied' });
+  });
+
+  it('denies cross-origin cloud requests with no allowlist in development too', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('ALLOWED_ORIGINS', '');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://www.emiliaprotocol.ai');
+    const res = await middleware(req('/api/cloud/approvals', {
+      method: 'GET',
+      headers: { origin: 'https://attacker.example' },
+    }));
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: 'cors_denied' });
   });
 
   it('pins API matcher and mutating-method body-cap coverage', () => {
