@@ -78,7 +78,7 @@ export function checkInvariants({ store, capabilityId, budget, acc }) {
     invariant(s.consumed_amount === acc.committed, 'consumed==sum-of-committed-amounts', `store consumed=${s.consumed_amount} tracked=${acc.committed}`);
     invariant(s.consumed_amount + s.reserved_amount <= budget, 'consumed+reserved<=budget', `consumed=${s.consumed_amount} reserved=${s.reserved_amount} budget=${budget}`);
 }
-export default {
+const concurrentRaceTarget = {
     name: 'concurrent-race',
     invariants: [
         'total-committed<=budget', 'consumed==sum-of-committed-amounts', 'consumed+reserved<=budget',
@@ -103,3 +103,4 @@ export default {
         return { ops: opCount };
     },
 };
+export default concurrentRaceTarget;
