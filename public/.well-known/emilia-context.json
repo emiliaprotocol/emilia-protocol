@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-24T15:57:00.110Z",
+  "evidence_snapshot_at": "2026-08-25T07:45:07.492Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "4ede3b81ada9febe2a0a47406d729f7d1a0d9d79ddfa43f567fef290a35ac6cc",
+    "input_digest_sha256": "366170fc505cd217b41d6c6b42d9ad1885174bb1f37ded58efa8c5a790521f17",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "d1170f1eee9411df2911db08e00668d9e9fbfdded0c589f8adeaf9ee3cba4c07",
+        "sha256": "bfc06c4b6d3db1391f4f0c1288a21f84300bbbcbeb4c2670d2008fd7a7ea5ed0",
         "bytes": 4299
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "ef492d6d90fb4075a092c0261039a1958e1da363ed247f35bf7a23e63c22941f",
+        "sha256": "a707455d219c51c8ac11a7840d8980d1cf5e0535b00647542e4aed5238465eb6",
         "bytes": 385871
       },
       {
@@ -330,7 +330,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "d48f63a88d2e4dfb0e9fd86a18654b2ba3f649c96fc0d606b230ab0f2fa8c9d3",
+        "evidenceSha256": "cdaf56c98a1c81db942babe307a793696d7d66588571ff2920515fa3974586ad",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -400,7 +400,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+      "evidence_bundle_sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
     },
     "caid": {
       "core_vectors": 48,
