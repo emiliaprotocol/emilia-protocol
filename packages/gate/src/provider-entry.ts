@@ -24,9 +24,37 @@ export type ProviderEntryGuardResult = Readonly<{
   reservation?: 'release' | 'burn' | 'hold';
 }>;
 
-export type ProviderEntryGuard = (
+export type ProviderEntryGuard = ((
   context: ProviderEntryContext,
-) => ProviderEntryGuardResult | Promise<ProviderEntryGuardResult>;
+) => ProviderEntryGuardResult | Promise<ProviderEntryGuardResult>) & Readonly<{
+  /**
+   * An authenticated observation is advisory. When set, provider entry must
+   * also serialize against this exact state domain in the owning store.
+   */
+  required_control_domain_id?: string;
+}>;
+
+function attachRequiredControlDomain(
+  guard: ProviderEntryGuard,
+  controlDomainId: string | null,
+): ProviderEntryGuard {
+  if (controlDomainId === null) return guard;
+  Object.defineProperty(guard, 'required_control_domain_id', {
+    value: controlDomainId,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+  return guard;
+}
+
+/** Return the state domain that must serialize the final provider-entry step. */
+export function requiredProviderEntryControlDomain(
+  guard: ProviderEntryGuard | null | undefined,
+): string | null {
+  const value = guard?.required_control_domain_id;
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
 
 function cloneFreeze<T>(value: T): T {
   if (value === null || value === undefined) return value;
@@ -88,16 +116,20 @@ export async function evaluateProviderEntryGuard(
       return Object.freeze({ ok: false, reason: 'provider_entry_guard_malformed', status: 503 });
     }
     if (result.ok !== true) {
+      const dispositionValid = result.reservation === undefined
+        || result.reservation === 'release'
+        || result.reservation === 'burn'
+        || result.reservation === 'hold';
       return Object.freeze({
         ok: false,
-        reason: boundedReason(result.reason, 'provider_entry_refused'),
+        reason: dispositionValid
+          ? boundedReason(result.reason, 'provider_entry_refused')
+          : 'provider_entry_guard_disposition_invalid',
         status: Number.isSafeInteger(result.status) && Number(result.status) >= 400
           ? Number(result.status)
           : 409,
         evidence: cloneFreeze(result.evidence ?? null),
-        reservation: result.reservation === 'release'
-          || result.reservation === 'burn'
-          || result.reservation === 'hold'
+        reservation: dispositionValid && result.reservation !== undefined
           ? result.reservation
           : 'hold',
       });
@@ -118,7 +150,13 @@ export function composeProviderEntryGuards(
   ...guards: Array<ProviderEntryGuard | null | undefined>
 ): ProviderEntryGuard {
   const active = guards.filter((guard): guard is ProviderEntryGuard => typeof guard === 'function');
-  return async (context) => {
+  const controlDomains = [...new Set(active
+    .map((guard) => requiredProviderEntryControlDomain(guard))
+    .filter((value): value is string => value !== null))];
+  if (controlDomains.length > 1) {
+    throw new TypeError('provider-entry guards must share a single serialized control domain');
+  }
+  const composed: ProviderEntryGuard = async (context) => {
     const evidence: Record<string, any>[] = [];
     for (const guard of active) {
       const result = await evaluateProviderEntryGuard(guard, context);
@@ -127,6 +165,7 @@ export function composeProviderEntryGuards(
     }
     return { ok: true, evidence: { guards: evidence } };
   };
+  return attachRequiredControlDomain(composed, controlDomains[0] ?? null);
 }
 
 export type OrganizationStatusObservation = Readonly<{
@@ -147,12 +186,15 @@ export function createOrganizationStatusProviderEntryGuard({
   resolveStatus,
   maxAgeMs = 5_000,
   now = Date.now,
+  controlDomainId = organizationId,
 }: {
   organizationId: string;
   resolveStatus: (input: Readonly<{ organization_id: string; context: ProviderEntryContext }>) =>
     OrganizationStatusObservation | Promise<OrganizationStatusObservation>;
   maxAgeMs?: number;
   now?: number | (() => number);
+  /** Owning state domain that must serialize freeze and provider entry. */
+  controlDomainId?: string;
 }): ProviderEntryGuard {
   if (typeof organizationId !== 'string' || organizationId.length === 0 || organizationId.length > 512) {
     throw new TypeError('organizationId must be a bounded non-empty string');
@@ -161,7 +203,11 @@ export function createOrganizationStatusProviderEntryGuard({
   if (!Number.isSafeInteger(maxAgeMs) || maxAgeMs < 0 || maxAgeMs > 60_000) {
     throw new TypeError('maxAgeMs must be a safe integer from 0 through 60000');
   }
-  return async (context) => {
+  if (typeof controlDomainId !== 'string' || controlDomainId.length === 0
+      || controlDomainId.length > 512) {
+    throw new TypeError('controlDomainId must be a bounded non-empty string');
+  }
+  const guard: ProviderEntryGuard = async (context) => {
     let status: OrganizationStatusObservation;
     try {
       status = await resolveStatus(Object.freeze({ organization_id: organizationId, context }));
@@ -209,6 +255,7 @@ export function createOrganizationStatusProviderEntryGuard({
       },
     };
   };
+  return attachRequiredControlDomain(guard, controlDomainId);
 }
 
 export default {
@@ -217,4 +264,5 @@ export default {
   evaluateProviderEntryGuard,
   composeProviderEntryGuards,
   createOrganizationStatusProviderEntryGuard,
+  requiredProviderEntryControlDomain,
 };
