@@ -21,7 +21,7 @@ test('signed agent mailbox round trip persists context and gates the exact GRACE
     },
     after_admission: {
       ready_for_executor: true,
-      authority_source: 'external_emilia_admission',
+      authority_source: 'emilia_gate',
       exact_action_bound: true,
     },
   });

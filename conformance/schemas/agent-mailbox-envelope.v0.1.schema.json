@@ -59,7 +59,7 @@
       "required": ["algorithm", "value"],
       "properties": {
         "algorithm": { "const": "Ed25519" },
-        "value": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9_-]+$" }
+        "value": { "type": "string", "minLength": 86, "maxLength": 86, "pattern": "^[A-Za-z0-9_-]+$" }
       }
     }
   }

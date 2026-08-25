@@ -9,9 +9,12 @@ interoperability boundary:
    digest, closed envelope shape, and thread sequence before storing it.
 3. The mailbox emits a metadata-only chime and a signed delivery receipt.
 4. A restart reads the same durable record. An identical delivery is
-   idempotent. An envelope-ID or thread-sequence equivocation is refused.
-5. The proposal remains non-authorizing. It becomes executor-ready only after
-   a separately verified EMILIA admission binds the exact GRACE action digest.
+   reported as `DUPLICATE` without another store write or chime. An envelope-ID
+   or thread-sequence equivocation is refused.
+5. The proposal remains non-authorizing. The adapter reports executor readiness
+   only after a separate caller-supplied EMILIA Gate authorization result binds
+   the exact action digest and explicitly distinguishes authorization from
+   verification and acceptance.
 
 Run the complete round trip from the repository root:
 
@@ -25,13 +28,16 @@ Run the executable and hostile contracts:
 npm run test:agent-mailbox
 ```
 
-## What this proves
+The demo uses a deterministic stand-in for that Gate adapter contract. It does
+not execute a provider action or prove a deployed Gate integration.
 
-The reference proves deterministic envelope signing and verification,
+## What this demonstrates
+
+The executable reference demonstrates deterministic envelope signing and verification,
 recipient and expiry binding, payload tamper refusal, metadata-only
 notification, body-bound idempotency, same-sequence equivocation refusal,
-signed delivery receipts, local filesystem persistence across a restart, and
-exact-action composition with a separately verified admission.
+signed delivery receipts, local filesystem persistence across a process
+restart, and exact-action composition through a separate authorization adapter.
 
 ## What it does not prove
 
@@ -40,7 +46,21 @@ delivery receipt proves what this mailbox accepted under its pinned keys. It
 does not prove that the message is true, that the outside world changed, or
 that an action was authorized or executed.
 
-The reference uses a single-process filesystem store. It does not claim
+`action_digest` is a strict-canonical-JSON content digest used to bind the
+mailbox proposal to one action value. It is not a Canonical Action Identifier
+(CAID), does not establish profile validity or cross-format equivalence, and
+does not grant authority. A Gate adapter must independently validate the action
+profile, apply any relying-party-pinned CAID or mapping rules, and authorize the
+covered executor path under the normal Gate contract.
+
+Envelope verification and delivery-receipt verification return different
+verification-profile discriminators. Action extraction accepts only the
+in-process result of the envelope verifier, so a delivery receipt cannot be
+substituted for sender-envelope verification. A `DUPLICATE` receipt is valid
+replay evidence but is not reported as a fresh accepted delivery.
+
+The reference uses a single-process filesystem store. Its tests cover process
+restart persistence, not power-loss durability, and it does not claim
 linearizable delivery across multiple mailbox processes. A production service
 needs a shared durable store with an atomic uniqueness constraint over both
 the envelope ID and `(recipient, sender, thread, sequence)`, service-held keys,

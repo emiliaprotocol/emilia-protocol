@@ -119,12 +119,30 @@ describe('EP agent mailbox envelope', () => {
       expectedRecipientId: 'agent:iman',
       asOf: NOW,
     })).toMatchObject({
+      verification_profile: 'EP-AGENT-MAILBOX-ENVELOPE-VERIFICATION-v0.1',
       verified: true,
       accepted: true,
       reason: null,
       envelope_digest: agentMailboxDigest(envelope),
       authorizes: false,
     });
+  });
+
+  it('refuses non-profile instants and non-canonical Ed25519 signature encodings', () => {
+    const extendedYear: any = structuredClone(noteEnvelope());
+    extendedYear.created_at = '+010000-01-01T00:00:00.000Z';
+    extendedYear.expires_at = '+010000-01-01T01:00:00.000Z';
+    expect(verifyAgentMailboxEnvelope(extendedYear, {
+      senderDirectory: senderDirectory(),
+      expectedRecipientId: 'agent:iman',
+      asOf: '+010000-01-01T00:30:00.000Z',
+    })).toMatchObject({ accepted: false, reason: 'envelope_time_invalid' });
+
+    const shortSignature: any = structuredClone(noteEnvelope());
+    shortSignature.signature.value = 'A';
+    expect(verifyAgentMailboxEnvelope(shortSignature, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    })).toMatchObject({ accepted: false, reason: 'envelope_shape_invalid' });
   });
 
   it('refuses payload tampering even if the attacker recomputes the unsigned payload digest', () => {
@@ -222,7 +240,7 @@ describe('EP agent mailbox envelope', () => {
     malformedSignature.signature.value = '*';
     expect(verifyAgentMailboxEnvelope(malformedSignature, {
       senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
-    }).reason).toBe('signature_invalid');
+    }).reason).toBe('envelope_shape_invalid');
   });
 });
 
@@ -266,8 +284,15 @@ describe('durable mailbox and delivery receipts', () => {
       mailboxId: 'mailbox:nomadic-demo',
       publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
       keyId: mailboxService.keyId,
+      expectedRecipientId: 'agent:iman',
       expectedEnvelopeDigest: agentMailboxDigest(envelope),
-    })).toMatchObject({ verified: true, accepted: true, reason: null, authorizes: false });
+    })).toMatchObject({
+      verification_profile: 'EP-AGENT-MAILBOX-DELIVERY-VERIFICATION-v0.1',
+      verified: true,
+      accepted: true,
+      reason: null,
+      authorizes: false,
+    });
 
     const listed = await service.list('agent:iman');
     expect(listed).toHaveLength(1);
@@ -407,6 +432,7 @@ describe('durable mailbox and delivery receipts', () => {
       mailboxId: 'mailbox:nomadic-demo',
       publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
       keyId: mailboxService.keyId,
+      expectedRecipientId: 'agent:iman',
       expectedEnvelopeDigest: agentMailboxDigest(envelope),
     };
 
@@ -447,6 +473,7 @@ describe('durable mailbox and delivery receipts', () => {
       mailboxId: 'mailbox:nomadic-demo',
       publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
       keyId: mailboxService.keyId,
+      expectedRecipientId: 'agent:iman',
     })).toMatchObject({
       verified: true,
       accepted: false,
@@ -467,8 +494,121 @@ describe('durable mailbox and delivery receipts', () => {
         mailboxId: 'mailbox:nomadic-demo',
         publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
         keyId: mailboxService.keyId,
+        expectedRecipientId: 'agent:iman',
       }).reason).toBe('delivery_receipt_shape_invalid');
     }
+  });
+
+  it('binds receipt verification to the relying recipient and treats a duplicate as replay evidence', async () => {
+    const service = mailbox();
+    const envelope = noteEnvelope();
+    await service.deliver(envelope, { recipientId: 'agent:iman' });
+    const duplicate = await service.deliver(envelope, { recipientId: 'agent:iman' });
+    const options = {
+      mailboxId: 'mailbox:nomadic-demo',
+      publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
+      keyId: mailboxService.keyId,
+      expectedEnvelopeDigest: agentMailboxDigest(envelope),
+    };
+
+    expect(verifyAgentMailboxDeliveryReceipt(duplicate, {
+      ...options,
+      expectedRecipientId: 'agent:mallory',
+    })).toMatchObject({
+      verified: false,
+      accepted: false,
+      reason: 'delivery_receipt_recipient_mismatch',
+      authorizes: false,
+    });
+    expect(verifyAgentMailboxDeliveryReceipt(duplicate, {
+      ...options,
+      expectedRecipientId: 'agent:iman',
+    })).toMatchObject({
+      verified: true,
+      accepted: false,
+      delivery_status: 'DUPLICATE',
+      authorizes: false,
+    });
+    expect(verifyAgentMailboxDeliveryReceipt(duplicate, options as any))
+      .toMatchObject({ verified: false, reason: 'delivery_receipt_recipient_required' });
+
+    const missingAcceptedBinding: any = structuredClone(duplicate);
+    missingAcceptedBinding.envelope_id = null;
+    missingAcceptedBinding.envelope_digest = null;
+    expect(verifyAgentMailboxDeliveryReceipt(missingAcceptedBinding, {
+      ...options,
+      expectedRecipientId: 'agent:iman',
+      expectedEnvelopeDigest: undefined,
+    })).toMatchObject({ verified: false, reason: 'delivery_receipt_shape_invalid' });
+  });
+
+  it('refuses malformed store outcomes and cross-recipient records', async () => {
+    const envelope = noteEnvelope();
+    const stored = {
+      recipient_id: 'agent:iman',
+      envelope_id: envelope.envelope_id,
+      envelope_digest: agentMailboxDigest(envelope),
+      envelope,
+      received_at: NOW,
+      read_at: null,
+    };
+    const malformedOutcomeStore: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async () => ({ outcome: 'unknown', record: stored }),
+      list: async () => [],
+      acknowledge: async () => false,
+    };
+    expect(await mailbox(malformedOutcomeStore).deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'mailbox_store_result_invalid' });
+
+    const crossRecipientStore: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async () => ({ outcome: 'stored', record: stored }),
+      list: async () => [{ ...stored, recipient_id: 'agent:mallory' }],
+      acknowledge: async () => 'yes',
+    };
+    const service = mailbox(crossRecipientStore);
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_result_invalid/);
+    await expect(service.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id }))
+      .rejects.toThrow(/mailbox_store_result_invalid/);
+  });
+
+  it('binds receipts and notifications to the verified envelope snapshot across storage', async () => {
+    const envelope: any = structuredClone(noteEnvelope());
+    const originalEnvelopeId = envelope.envelope_id;
+    const originalMessageType = envelope.message_type;
+    const mutatingStore: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async (record: unknown) => {
+        envelope.envelope_id = 'message:mutated-after-verification';
+        envelope.message_type = 'result';
+        return { outcome: 'stored', record };
+      },
+      list: async () => [],
+      acknowledge: async () => false,
+    };
+    const service = mailbox(mutatingStore);
+    const notifications: any[] = [];
+    service.subscribe('agent:iman', (notification) => notifications.push(notification));
+
+    const receipt = await service.deliver(envelope, { recipientId: 'agent:iman' });
+
+    expect(receipt).toMatchObject({
+      delivery_status: 'ACCEPTED',
+      envelope_id: originalEnvelopeId,
+      envelope_digest: agentMailboxDigest(noteEnvelope()),
+      authorizes: false,
+    });
+    expect(notifications).toEqual([expect.objectContaining({
+      envelope_id: originalEnvelopeId,
+      message_type: originalMessageType,
+    })]);
   });
 
   it('does not let a throwing chime listener suppress an accepted receipt', async () => {
@@ -561,6 +701,42 @@ describe('GRACE action proposal composition', () => {
     });
   });
 
+  it('does not confuse a delivery verification or a mismatched action profile with verified action context', async () => {
+    const { action, envelope } = graceProposalEnvelope();
+    const receipt = await mailbox().deliver(envelope, { recipientId: 'agent:iman' });
+    const deliveryVerification = verifyAgentMailboxDeliveryReceipt(receipt, {
+      mailboxId: 'mailbox:nomadic-demo',
+      publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
+      keyId: mailboxService.keyId,
+      expectedRecipientId: 'agent:iman',
+      expectedEnvelopeDigest: agentMailboxDigest(envelope),
+    });
+    expect(extractMailboxActionProposal(envelope, { verifiedEnvelope: deliveryVerification }))
+      .toMatchObject({ valid: false, reason: 'verified_envelope_required', authorizes: false });
+
+    const mismatchedProfileEnvelope = createAgentMailboxEnvelope({
+      senderId: 'agent:smith',
+      recipientId: 'agent:iman',
+      threadId: 'thread:grace-profile-substitution',
+      sequence: 1,
+      messageType: 'action_proposal',
+      payload: {
+        action_profile: 'EP-UNRELATED-ACTION-v1',
+        action_digest: graceDigest(action),
+        action,
+      },
+      createdAt: NOW,
+      expiresAt: LATER,
+      privateKey: smith.privateKey,
+      keyId: smith.keyId,
+    });
+    const verified = verifyAgentMailboxEnvelope(mismatchedProfileEnvelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    });
+    expect(extractMailboxActionProposal(mismatchedProfileEnvelope, { verifiedEnvelope: verified }))
+      .toMatchObject({ valid: false, reason: 'action_profile_mismatch', authorizes: false });
+  });
+
   it('requires a separately verified exact-action EMILIA admission before executor readiness', async () => {
     const { action, envelope } = graceProposalEnvelope();
     const verified = verifyAgentMailboxEnvelope(envelope, {
@@ -576,8 +752,10 @@ describe('GRACE action proposal composition', () => {
       verifyAdmission: async () => ({
         verified: true,
         accepted: true,
+        authorized: true,
         action_digest: agentMailboxDigest({ substituted: true }),
         admission_digest: `sha256:${'b'.repeat(64)}`,
+        authority_source: 'emilia_gate',
       }),
     })).toMatchObject({ admitted: false, reason: 'admission_action_mismatch' });
     expect(await admitMailboxActionProposal({
@@ -590,8 +768,10 @@ describe('GRACE action proposal composition', () => {
       verifyAdmission: async () => ({
         verified: true,
         accepted: true,
+        authorized: true,
         action_digest: graceDigest(action),
         admission_digest: `sha256:${'c'.repeat(64)}`,
+        authority_source: 'emilia_gate',
       }),
     })).toEqual({
       admitted: true,
@@ -602,7 +782,7 @@ describe('GRACE action proposal composition', () => {
       action_digest: graceDigest(action),
       envelope_digest: agentMailboxDigest(envelope),
       admission_digest: `sha256:${'c'.repeat(64)}`,
-      authority_source: 'external_emilia_admission',
+      authority_source: 'emilia_gate',
       mailbox_authorizes: false,
     });
   });
@@ -613,21 +793,39 @@ describe('GRACE action proposal composition', () => {
       verifiedEnvelope: { accepted: true, envelope_digest: agentMailboxDigest(note) },
     })).toMatchObject({ valid: false, reason: 'not_an_action_proposal', authorizes: false });
 
-    const { envelope } = graceProposalEnvelope();
+    const { action, envelope } = graceProposalEnvelope();
     expect(extractMailboxActionProposal(envelope, {
       verifiedEnvelope: { accepted: false, envelope_digest: agentMailboxDigest(envelope) },
     })).toMatchObject({ valid: false, reason: 'verified_envelope_required' });
 
-    const malformed: any = structuredClone(envelope);
-    delete malformed.payload.action_profile;
+    const signPayload = (payload: unknown, threadId: string) => createAgentMailboxEnvelope({
+      senderId: 'agent:smith',
+      recipientId: 'agent:iman',
+      threadId,
+      sequence: 1,
+      messageType: 'action_proposal',
+      payload,
+      createdAt: NOW,
+      expiresAt: LATER,
+      privateKey: smith.privateKey,
+      keyId: smith.keyId,
+    });
+    const verifyEnvelope = (candidate: unknown) => verifyAgentMailboxEnvelope(candidate, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    });
+
+    const malformed = signPayload({ action_digest: graceDigest(action), action }, 'thread:malformed-proposal');
     expect(extractMailboxActionProposal(malformed, {
-      verifiedEnvelope: { accepted: true, envelope_digest: agentMailboxDigest(malformed) },
+      verifiedEnvelope: verifyEnvelope(malformed),
     })).toMatchObject({ valid: false, reason: 'action_proposal_shape_invalid' });
 
-    const substituted: any = structuredClone(envelope);
-    substituted.payload.action_digest = `sha256:${'0'.repeat(64)}`;
+    const substituted = signPayload({
+      action_profile: action['@version'],
+      action_digest: `sha256:${'0'.repeat(64)}`,
+      action,
+    }, 'thread:digest-substituted-proposal');
     expect(extractMailboxActionProposal(substituted, {
-      verifiedEnvelope: { accepted: true, envelope_digest: agentMailboxDigest(substituted) },
+      verifiedEnvelope: verifyEnvelope(substituted),
     })).toMatchObject({ valid: false, reason: 'action_digest_mismatch' });
 
     const cyclic: any = { message_type: 'action_proposal' };
@@ -681,8 +879,10 @@ describe('GRACE action proposal composition', () => {
         return {
           verified: true,
           accepted: true,
+          authorized: true,
           action_digest: extracted.action_digest,
           admission_digest: `sha256:${'d'.repeat(64)}`,
+          authority_source: 'emilia_gate',
         };
       },
     });
@@ -694,6 +894,28 @@ describe('GRACE action proposal composition', () => {
     });
     expect(admitted.action.action_id).toBe(action.action_id);
     expect(Object.isFrozen(admitted.action)).toBe(true);
+
+    const mutableProposal: any = structuredClone(extracted);
+    const originalEnvelopeDigest = mutableProposal.envelope_digest;
+    const rebound = await admitMailboxActionProposal({
+      proposal: mutableProposal,
+      verifyAdmission: async (detachedProposal) => {
+        mutableProposal.envelope_digest = `sha256:${'f'.repeat(64)}`;
+        return {
+          verified: true,
+          accepted: true,
+          authorized: true,
+          action_digest: detachedProposal.action_digest,
+          admission_digest: `sha256:${'1'.repeat(64)}`,
+          authority_source: 'emilia_gate',
+        };
+      },
+    });
+    expect(rebound).toMatchObject({
+      admitted: true,
+      action_digest: graceDigest(action),
+      envelope_digest: originalEnvelopeDigest,
+    });
   });
 
   it('refuses every incomplete external admission state', async () => {
@@ -719,7 +941,23 @@ describe('GRACE action proposal composition', () => {
         verified: true,
         accepted: true,
         action_digest: proposal.action_digest,
+        admission_digest: `sha256:${'e'.repeat(64)}`,
+      }),
+    })).toMatchObject({
+      admitted: false,
+      ready_for_executor: false,
+      reason: 'admission_not_authorized',
+      mailbox_authorizes: false,
+    });
+    expect(await admitMailboxActionProposal({
+      proposal,
+      verifyAdmission: async () => ({
+        verified: true,
+        accepted: true,
+        authorized: true,
+        action_digest: proposal.action_digest,
         admission_digest: 'not-a-digest',
+        authority_source: 'emilia_gate',
       }),
     })).toMatchObject({ admitted: false, reason: 'admission_digest_invalid' });
   });

@@ -77,6 +77,8 @@ export async function runDemo({ directory } = {}) {
             mailboxId: serviceOptions.mailboxId,
             publicKeySpkiB64u: mailboxSigner.publicKeySpkiB64u,
             keyId: mailboxSigner.keyId,
+            expectedRecipientId: 'agent:iman',
+            expectedEnvelopeId: envelope.envelope_id,
             expectedEnvelopeDigest: agentMailboxDigest(envelope),
         });
         const envelopeVerification = verifyAgentMailboxEnvelope(envelope, {
@@ -91,8 +93,10 @@ export async function runDemo({ directory } = {}) {
             verifyAdmission: async () => ({
                 verified: true,
                 accepted: true,
+                authorized: true,
                 action_digest: graceDigest(action),
                 admission_digest: `sha256:${'c'.repeat(64)}`,
+                authority_source: 'emilia_gate',
             }),
         });
         if (!afterAdmission.admitted) {

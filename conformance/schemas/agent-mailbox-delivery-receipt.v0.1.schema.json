@@ -36,7 +36,13 @@
     {
       "if": { "properties": { "delivery_status": { "const": "REFUSED" } }, "required": ["delivery_status"] },
       "then": { "properties": { "reason": { "type": "string", "minLength": 1, "maxLength": 256 } } },
-      "else": { "properties": { "reason": { "type": "null" } } }
+      "else": {
+        "properties": {
+          "envelope_id": { "$ref": "#/$defs/identifier" },
+          "envelope_digest": { "$ref": "#/$defs/digest" },
+          "reason": { "type": "null" }
+        }
+      }
     }
   ],
   "$defs": {
@@ -57,7 +63,7 @@
       "required": ["algorithm", "value"],
       "properties": {
         "algorithm": { "const": "Ed25519" },
-        "value": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9_-]+$" }
+        "value": { "type": "string", "minLength": 86, "maxLength": 86, "pattern": "^[A-Za-z0-9_-]+$" }
       }
     }
   }
