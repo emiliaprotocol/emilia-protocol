@@ -339,11 +339,11 @@
     },
     {
       "path": "lib/authority/document-proof-join.js",
-      "sha256": "190123f9f4d9b38da2e5cf9c4cd7a9be2f2ab7027f090ff83d37f4aef45e245d"
+      "sha256": "46b734d69357941dc1f26c5fa4158cab7ba5680f07d2c4591e43a45ac0eecfe8"
     },
     {
       "path": "lib/authority/document-proof-join.ts",
-      "sha256": "4943db0c74bcb53358a0c46eb560723fe1ea45af39c2fecbc26572422ae09063"
+      "sha256": "17af612ddd5b5ac95d112abbb2f262d0806f07c93c1c5d3a4752773f010c6299"
     },
     {
       "path": "lib/authority/proof.js",
