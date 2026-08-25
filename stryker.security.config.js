@@ -17,7 +17,7 @@ function mutationRange(file, startMarker, endMarker) {
 }
 
 /** @type {import('@stryker-mutator/core').PartialStrykerOptions} */
-export default {
+const config = {
   testRunner: 'vitest',
   vitest: { configFile: 'vitest.config.js', related: false },
   ignorePatterns: [
@@ -121,3 +121,5 @@ export default {
     excludedMutations: ['StringLiteral'],
   },
 };
+
+export default config;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Full decision-surface mutation campaign for Model-to-Matter.
 /** @type {import('@stryker-mutator/core').PartialStrykerOptions} */
-export default {
+const config = {
   testRunner: 'vitest',
   vitest: { configFile: 'vitest.config.js', related: false },
   ignorePatterns: [
@@ -46,3 +46,5 @@ export default {
   coverageAnalysis: 'all',
   mutator: { excludedMutations: ['StringLiteral'] },
 };
+
+export default config;

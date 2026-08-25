@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Focused mutation campaign for AEC acceptance, execution, and fleet logging.
 /** @type {import('@stryker-mutator/core').PartialStrykerOptions} */
-export default {
+const config = {
   testRunner: 'vitest',
   vitest: { configFile: 'vitest.config.js', related: false },
   ignorePatterns: [
@@ -48,3 +48,5 @@ export default {
   coverageAnalysis: 'all',
   mutator: { excludedMutations: ['StringLiteral'] },
 };
+
+export default config;

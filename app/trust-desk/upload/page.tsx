@@ -28,6 +28,24 @@ const STRIPE_EMERGENCY_URL = process.env.NEXT_PUBLIC_STRIPE_EMERGENCY || SALES_M
 // Intake posts to our own /api/trust-desk/intake (awaited), which persists the
 // engagement and runs the automation pipeline server-side.
 
+function buildCheckoutUrl(rawUrl: string, contactEmail: string): string {
+  let checkout: URL;
+  try {
+    checkout = new URL(rawUrl);
+  } catch {
+    checkout = new URL(SALES_MAILTO);
+  }
+
+  if (checkout.protocol === 'https:') {
+    checkout.searchParams.set('prefilled_email', contactEmail);
+    return checkout.toString();
+  }
+
+  const fallback = checkout.protocol === 'mailto:' ? checkout : new URL(SALES_MAILTO);
+  fallback.searchParams.set('body', `Contact email: ${contactEmail}`);
+  return fallback.toString();
+}
+
 interface FormState {
   company: string;
   website: string;
@@ -109,7 +127,8 @@ export default function UploadPage() {
       if (form.active_deal_blocked === 'yes') {
         const stripe = form.tier_preference === 'emergency' ? STRIPE_EMERGENCY_URL : STRIPE_PACKET_URL;
         setTimeout(() => {
-          window.location.href = `${stripe}?prefilled_email=${encodeURIComponent(form.contact_email)}`;
+          // Checkout is an external HTTPS URL or a mailto fallback, never a Next.js route.
+          window.location.assign(buildCheckoutUrl(stripe, form.contact_email));
         }, 1200);
       }
     } catch (err) {
