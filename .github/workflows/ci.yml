@@ -837,6 +837,10 @@ jobs:
         run: node conformance/run.mjs
       - name: Conformance docs count guard
         run: npm run check:conformance-docs
+      - name: SCITT statement identity and Capsule seam profile conformance
+        run: |
+          npm run conformance:composition:scitt-statement-identity
+          npm run conformance:composition:scitt-capsule-seam
       - name: Class-A signoff conformance (EP-SIGNOFF-v1, Node + Web Crypto)
         run: node conformance/run-signoffs.mjs
       - name: TLA+-invariant conformance (JS lane drives the real store + guards)

@@ -1,0 +1,188 @@
+{
+  "vector": "EP<->Capsule seam vector v2",
+  "profile": "EP-CAPSULE-SEAM-v2",
+  "spec": "docs/EP-CAPSULE-SEAM.md",
+  "compatibility": {
+    "predecessor": "examples/scitt/capsule-seam-vector.json",
+    "rule": "v1 remains immutable; v2 is a new profile-valid artifact and does not rewrite v1 bytes"
+  },
+  "canonicalization": "RFC 8785 JCS over the EP I-JSON subset; SHA-256 digests use the sha256:hex form",
+  "issuer": {
+    "statement_issuer": "ep:issuer:capsule-seam-v2-statement",
+    "statement_kid": "ep:key:capsule-seam-v2-statement#1",
+    "statement_public_key_spki_base64url": "MCowBQYDK2VwAyEA_DHlyOi29ITQwsmzsOgq2cJcue9ksRnTsQozGOtlRIc",
+    "receipt_issuer": "ep:issuer:capsule-seam-v2-receipt",
+    "receipt_issuer_public_key_spki_base64url": "MCowBQYDK2VwAyEAgsnTCEyVY0EQBWYgiTP1Map20KRAw_oKgdaET2jxfok",
+    "note": "fixed conformance keys only; never production issuer keys"
+  },
+  "action": {
+    "action_type": "payment.release.1",
+    "payment_instruction_id": "wire:vendor-acme-250000",
+    "target": "wire:vendor-acme-250000",
+    "amount": "250000.00",
+    "currency": "USD",
+    "beneficiary_account": "sha256:12f641b8c481e23c00148de1bb73989601dfa6a5562f72b5e358fcda6e8eb674"
+  },
+  "action_caid": "caid:1:payment.release.1:jcs-sha256:3tOl8nL4vWnfYE-E9xQV4joxfrEi8p7hdRetPmpggQ4",
+  "subject_digest": "sha256:ded3a5f272f8bd69df604f84f71415e23a317eb122f29ee17517ad3e6a60810e",
+  "authority_reference": {
+    "field": "authorization_payload_digest",
+    "rule": "Resolve the statement, run the complete pinned EP verifier, and only then compare SHA-256(JCS(receipt.payload)); statement-entry and signing-input digests cannot substitute",
+    "approved": "sha256:8a5c262781d85d4603b0332f6793e7ba7611a41add1ae4a781c8af99cb54fb53",
+    "denied": "sha256:5d711b88f809293599c3ee855230532415160f62ee5d878014f47c72f160b5b9"
+  },
+  "approved": {
+    "receipt": {
+      "@version": "EP-RECEIPT-v1",
+      "payload": {
+        "receipt_id": "ep:receipt:capsule-seam-v2-approved-0001",
+        "issuer": "ep:issuer:capsule-seam-v2-receipt",
+        "issued_at": "2026-08-25T00:00:00Z",
+        "quorum_threshold": 1,
+        "action": {
+          "action_type": "payment.release.1",
+          "payment_instruction_id": "wire:vendor-acme-250000",
+          "target": "wire:vendor-acme-250000",
+          "amount": "250000.00",
+          "currency": "USD",
+          "beneficiary_account": "sha256:12f641b8c481e23c00148de1bb73989601dfa6a5562f72b5e358fcda6e8eb674"
+        },
+        "context": {
+          "organization": "capsule_seam_conformance",
+          "subject": "agent:autonomous:treasury-bot",
+          "subject_digest": "sha256:ded3a5f272f8bd69df604f84f71415e23a317eb122f29ee17517ad3e6a60810e",
+          "authority_decision": {
+            "outcome": "allow_with_signoff",
+            "approver": "jane.doe@yourco.example",
+            "assurance": "class_a"
+          }
+        }
+      },
+      "signature": {
+        "algorithm": "Ed25519",
+        "value": "Ts0F8DZrEyRYQM_EfIYJqlGqHMfz644gvOMqXQteDEw635Vf3dOkQMY8afCM15kfdPEco6zkYJLkpVfc8mb_Cw"
+      }
+    },
+    "receipt_document_canonical": "{\"@version\":\"EP-RECEIPT-v1\",\"payload\":{\"action\":{\"action_type\":\"payment.release.1\",\"amount\":\"250000.00\",\"beneficiary_account\":\"sha256:12f641b8c481e23c00148de1bb73989601dfa6a5562f72b5e358fcda6e8eb674\",\"currency\":\"USD\",\"payment_instruction_id\":\"wire:vendor-acme-250000\",\"target\":\"wire:vendor-acme-250000\"},\"context\":{\"authority_decision\":{\"approver\":\"jane.doe@yourco.example\",\"assurance\":\"class_a\",\"outcome\":\"allow_with_signoff\"},\"organization\":\"capsule_seam_conformance\",\"subject\":\"agent:autonomous:treasury-bot\",\"subject_digest\":\"sha256:ded3a5f272f8bd69df604f84f71415e23a317eb122f29ee17517ad3e6a60810e\"},\"issued_at\":\"2026-08-25T00:00:00Z\",\"issuer\":\"ep:issuer:capsule-seam-v2-receipt\",\"quorum_threshold\":1,\"receipt_id\":\"ep:receipt:capsule-seam-v2-approved-0001\"},\"signature\":{\"algorithm\":\"Ed25519\",\"value\":\"Ts0F8DZrEyRYQM_EfIYJqlGqHMfz644gvOMqXQteDEw635Vf3dOkQMY8afCM15kfdPEco6zkYJLkpVfc8mb_Cw\"}}",
+    "statement_cose_sign1_b64": "0oRYxKQBJwN4H2FwcGxpY2F0aW9uL2VtaWxpYS1yZWNlaXB0K2pzb24EWCJlcDprZXk6Y2Fwc3VsZS1zZWFtLXYyLXN0YXRlbWVudCMxD6IBeCNlcDppc3N1ZXI6Y2Fwc3VsZS1zZWFtLXYyLXN0YXRlbWVudAJ4T2NhaWQ6MTpwYXltZW50LnJlbGVhc2UuMTpqY3Mtc2hhMjU2OjN0T2w4bkw0dlduZllFLUU5eFFWNGpveGZyRWk4cDdoZFJldFBtcGdnUTSgWQN/eyJAdmVyc2lvbiI6IkVQLVJFQ0VJUFQtdjEiLCJwYXlsb2FkIjp7ImFjdGlvbiI6eyJhY3Rpb25fdHlwZSI6InBheW1lbnQucmVsZWFzZS4xIiwiYW1vdW50IjoiMjUwMDAwLjAwIiwiYmVuZWZpY2lhcnlfYWNjb3VudCI6InNoYTI1NjoxMmY2NDFiOGM0ODFlMjNjMDAxNDhkZTFiYjczOTg5NjAxZGZhNmE1NTYyZjcyYjVlMzU4ZmNkYTZlOGViNjc0IiwiY3VycmVuY3kiOiJVU0QiLCJwYXltZW50X2luc3RydWN0aW9uX2lkIjoid2lyZTp2ZW5kb3ItYWNtZS0yNTAwMDAiLCJ0YXJnZXQiOiJ3aXJlOnZlbmRvci1hY21lLTI1MDAwMCJ9LCJjb250ZXh0Ijp7ImF1dGhvcml0eV9kZWNpc2lvbiI6eyJhcHByb3ZlciI6ImphbmUuZG9lQHlvdXJjby5leGFtcGxlIiwiYXNzdXJhbmNlIjoiY2xhc3NfYSIsIm91dGNvbWUiOiJhbGxvd193aXRoX3NpZ25vZmYifSwib3JnYW5pemF0aW9uIjoiY2Fwc3VsZV9zZWFtX2NvbmZvcm1hbmNlIiwic3ViamVjdCI6ImFnZW50OmF1dG9ub21vdXM6dHJlYXN1cnktYm90Iiwic3ViamVjdF9kaWdlc3QiOiJzaGEyNTY6ZGVkM2E1ZjI3MmY4YmQ2OWRmNjA0Zjg0ZjcxNDE1ZTIzYTMxN2ViMTIyZjI5ZWUxNzUxN2FkM2U2YTYwODEwZSJ9LCJpc3N1ZWRfYXQiOiIyMDI2LTA4LTI1VDAwOjAwOjAwWiIsImlzc3VlciI6ImVwOmlzc3VlcjpjYXBzdWxlLXNlYW0tdjItcmVjZWlwdCIsInF1b3J1bV90aHJlc2hvbGQiOjEsInJlY2VpcHRfaWQiOiJlcDpyZWNlaXB0OmNhcHN1bGUtc2VhbS12Mi1hcHByb3ZlZC0wMDAxIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJFZDI1NTE5IiwidmFsdWUiOiJUczBGOERackV5UllRTV9FZklZSnFsR3FITWZ6NjQ0Z3ZPTXFYUXRlREV3NjM1VmYzZE9rUU1ZOGFmQ00xNWtmZFBFY282emtZSkxrcFZmYzhtYl9DdyJ9fVhA6VMSwoUoPNZ5WgjmIZeM0Ap9EXKYu0oEn+yE5HIKyOY6QPXwVirQZhbfouPyx2c/FjqmkL31DTQJxylOncN9BA==",
+    "authorization_payload_digest": "sha256:8a5c262781d85d4603b0332f6793e7ba7611a41add1ae4a781c8af99cb54fb53",
+    "signing_input_digest": "sha256:e2e8c8a40bc49fef8d528e200d37a368b207ae943e2ef3c818d0bda684c038dc",
+    "statement_entry_digest": "sha256:d7cf20d8d38002ff2853b7c3e3a0ed41dd963e6512662635eb2a6cda6c791b08",
+    "statement_payload_digest": "sha256:717f55750ead718ff72bde899f34445c03601f9790ec8b40f72818531b5c288b",
+    "authority_reference_digest": "sha256:8a5c262781d85d4603b0332f6793e7ba7611a41add1ae4a781c8af99cb54fb53",
+    "iss": "ep:issuer:capsule-seam-v2-statement",
+    "sub": "caid:1:payment.release.1:jcs-sha256:3tOl8nL4vWnfYE-E9xQV4joxfrEi8p7hdRetPmpggQ4",
+    "kid": "ep:key:capsule-seam-v2-statement#1",
+    "verification": {
+      "valid": true,
+      "registered": false,
+      "checks": {
+        "deterministic_encoding": true,
+        "cose_structure": true,
+        "cwt_claims": true,
+        "statement_signature": true,
+        "payload_canonical": true,
+        "receipt_signature": true,
+        "sub_binding": true
+      }
+    }
+  },
+  "denied": {
+    "receipt": {
+      "@version": "EP-RECEIPT-v1",
+      "payload": {
+        "receipt_id": "ep:receipt:capsule-seam-v2-denied-0001",
+        "issuer": "ep:issuer:capsule-seam-v2-receipt",
+        "issued_at": "2026-08-25T00:00:00Z",
+        "quorum_threshold": 1,
+        "action": {
+          "action_type": "payment.release.1",
+          "payment_instruction_id": "wire:vendor-acme-250000",
+          "target": "wire:vendor-acme-250000",
+          "amount": "250000.00",
+          "currency": "USD",
+          "beneficiary_account": "sha256:12f641b8c481e23c00148de1bb73989601dfa6a5562f72b5e358fcda6e8eb674"
+        },
+        "context": {
+          "organization": "capsule_seam_conformance",
+          "subject": "agent:autonomous:treasury-bot",
+          "subject_digest": "sha256:ded3a5f272f8bd69df604f84f71415e23a317eb122f29ee17517ad3e6a60810e",
+          "authority_decision": {
+            "outcome": "deny",
+            "approver": null,
+            "reason": "no_human_authorizer"
+          }
+        }
+      },
+      "signature": {
+        "algorithm": "Ed25519",
+        "value": "AOn0K-81HtXK_Ef3Relez41fg9E5bCiAd6LuCPwNgXO2uZY_x7CmSTkozPgpbYNy00rhr2Zz_qcSC9_fqDJNDQ"
+      }
+    },
+    "receipt_document_canonical": "{\"@version\":\"EP-RECEIPT-v1\",\"payload\":{\"action\":{\"action_type\":\"payment.release.1\",\"amount\":\"250000.00\",\"beneficiary_account\":\"sha256:12f641b8c481e23c00148de1bb73989601dfa6a5562f72b5e358fcda6e8eb674\",\"currency\":\"USD\",\"payment_instruction_id\":\"wire:vendor-acme-250000\",\"target\":\"wire:vendor-acme-250000\"},\"context\":{\"authority_decision\":{\"approver\":null,\"outcome\":\"deny\",\"reason\":\"no_human_authorizer\"},\"organization\":\"capsule_seam_conformance\",\"subject\":\"agent:autonomous:treasury-bot\",\"subject_digest\":\"sha256:ded3a5f272f8bd69df604f84f71415e23a317eb122f29ee17517ad3e6a60810e\"},\"issued_at\":\"2026-08-25T00:00:00Z\",\"issuer\":\"ep:issuer:capsule-seam-v2-receipt\",\"quorum_threshold\":1,\"receipt_id\":\"ep:receipt:capsule-seam-v2-denied-0001\"},\"signature\":{\"algorithm\":\"Ed25519\",\"value\":\"AOn0K-81HtXK_Ef3Relez41fg9E5bCiAd6LuCPwNgXO2uZY_x7CmSTkozPgpbYNy00rhr2Zz_qcSC9_fqDJNDQ\"}}",
+    "statement_cose_sign1_b64": "0oRYxKQBJwN4H2FwcGxpY2F0aW9uL2VtaWxpYS1yZWNlaXB0K2pzb24EWCJlcDprZXk6Y2Fwc3VsZS1zZWFtLXYyLXN0YXRlbWVudCMxD6IBeCNlcDppc3N1ZXI6Y2Fwc3VsZS1zZWFtLXYyLXN0YXRlbWVudAJ4T2NhaWQ6MTpwYXltZW50LnJlbGVhc2UuMTpqY3Mtc2hhMjU2OjN0T2w4bkw0dlduZllFLUU5eFFWNGpveGZyRWk4cDdoZFJldFBtcGdnUTSgWQNjeyJAdmVyc2lvbiI6IkVQLVJFQ0VJUFQtdjEiLCJwYXlsb2FkIjp7ImFjdGlvbiI6eyJhY3Rpb25fdHlwZSI6InBheW1lbnQucmVsZWFzZS4xIiwiYW1vdW50IjoiMjUwMDAwLjAwIiwiYmVuZWZpY2lhcnlfYWNjb3VudCI6InNoYTI1NjoxMmY2NDFiOGM0ODFlMjNjMDAxNDhkZTFiYjczOTg5NjAxZGZhNmE1NTYyZjcyYjVlMzU4ZmNkYTZlOGViNjc0IiwiY3VycmVuY3kiOiJVU0QiLCJwYXltZW50X2luc3RydWN0aW9uX2lkIjoid2lyZTp2ZW5kb3ItYWNtZS0yNTAwMDAiLCJ0YXJnZXQiOiJ3aXJlOnZlbmRvci1hY21lLTI1MDAwMCJ9LCJjb250ZXh0Ijp7ImF1dGhvcml0eV9kZWNpc2lvbiI6eyJhcHByb3ZlciI6bnVsbCwib3V0Y29tZSI6ImRlbnkiLCJyZWFzb24iOiJub19odW1hbl9hdXRob3JpemVyIn0sIm9yZ2FuaXphdGlvbiI6ImNhcHN1bGVfc2VhbV9jb25mb3JtYW5jZSIsInN1YmplY3QiOiJhZ2VudDphdXRvbm9tb3VzOnRyZWFzdXJ5LWJvdCIsInN1YmplY3RfZGlnZXN0Ijoic2hhMjU2OmRlZDNhNWYyNzJmOGJkNjlkZjYwNGY4NGY3MTQxNWUyM2EzMTdlYjEyMmYyOWVlMTc1MTdhZDNlNmE2MDgxMGUifSwiaXNzdWVkX2F0IjoiMjAyNi0wOC0yNVQwMDowMDowMFoiLCJpc3N1ZXIiOiJlcDppc3N1ZXI6Y2Fwc3VsZS1zZWFtLXYyLXJlY2VpcHQiLCJxdW9ydW1fdGhyZXNob2xkIjoxLCJyZWNlaXB0X2lkIjoiZXA6cmVjZWlwdDpjYXBzdWxlLXNlYW0tdjItZGVuaWVkLTAwMDEifSwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6IkVkMjU1MTkiLCJ2YWx1ZSI6IkFPbjBLLTgxSHRYS19FZjNSZWxlejQxZmc5RTViQ2lBZDZMdUNQd05nWE8ydVpZX3g3Q21TVGtvelBncGJZTnkwMHJocjJael9xY1NDOV9mcURKTkRRIn19WEBGiSQkIujsw+m6UotLPiOi4u6RRIp/XP68ozsguvKNAdS1u++FMn0lHdVqS1qe6GChBd0GfRnTXx9h6GcbnQ0L",
+    "authorization_payload_digest": "sha256:5d711b88f809293599c3ee855230532415160f62ee5d878014f47c72f160b5b9",
+    "signing_input_digest": "sha256:661b242acd08e9efa638d8534ee08dc1c2b36eb7a3b0ab9ec3c3062e750b0a92",
+    "statement_entry_digest": "sha256:1651b71189189a72fff852cf2418a7792c8175db930235223a257473b84c95ea",
+    "statement_payload_digest": "sha256:1a8f0d5321ffbe7de8986115aaa9aedbd8f42bb9e78f6def7642c227a13f5b72",
+    "authority_reference_digest": "sha256:5d711b88f809293599c3ee855230532415160f62ee5d878014f47c72f160b5b9",
+    "iss": "ep:issuer:capsule-seam-v2-statement",
+    "sub": "caid:1:payment.release.1:jcs-sha256:3tOl8nL4vWnfYE-E9xQV4joxfrEi8p7hdRetPmpggQ4",
+    "kid": "ep:key:capsule-seam-v2-statement#1",
+    "verification": {
+      "valid": true,
+      "registered": false,
+      "checks": {
+        "deterministic_encoding": true,
+        "cose_structure": true,
+        "cwt_claims": true,
+        "statement_signature": true,
+        "payload_canonical": true,
+        "receipt_signature": true,
+        "sub_binding": true
+      }
+    }
+  },
+  "must_reject": [
+    {
+      "id": "wrong_action",
+      "must": "reject",
+      "expected_reason": "who_subject_mismatch",
+      "observed_reason": "who_subject_mismatch",
+      "enforced": true
+    },
+    {
+      "id": "approval_contradiction",
+      "must": "reject",
+      "expected_reason": "disposition_contradicts_receipt",
+      "observed_reason": "disposition_contradicts_receipt",
+      "enforced": true
+    },
+    {
+      "id": "untrusted_receipt_issuer",
+      "must": "reject",
+      "expected_reason": "receipt_invalid",
+      "observed_reason": "receipt_invalid",
+      "enforced": true
+    },
+    {
+      "id": "replay_across_subject",
+      "must": "reject",
+      "expected_reason": "receipt_action_bound",
+      "observed_reason": "receipt_action_bound",
+      "enforced": true
+    },
+    {
+      "id": "missing_who_when_required",
+      "must": "policy_reject",
+      "expected_reason": "who_required_but_absent",
+      "observed_reason": "who_required_but_absent",
+      "enforced": true
+    }
+  ],
+  "claim_boundary": [
+    "A locally verified Signed Statement is not a registered or transparent statement.",
+    "A digest binds bytes or canonical content; it does not independently establish authorization.",
+    "The decision field is signed application evidence. Gate and relying-party policy still decide whether an action may execute."
+  ]
+}

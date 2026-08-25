@@ -25,16 +25,42 @@ A SCITT Signed Statement is a `COSE_Sign1` (RFC 9052) over an Issuer's assertion
 
 | COSE_Sign1 element | EP-RECEIPT-SCITT-PROFILE-v1 value |
 |---|---|
-| **payload** | the EMILIA receipt's RFC 8785 (JCS) canonical bytes — the exact bytes the native EP signature already covers (the `payload` object of `EP-RECEIPT-v1`) |
-| protected `alg` (label 1) | `EdDSA` (-8); Ed25519 per RFC 8037 / RFC 8032 — the same key EP already uses |
-| protected `content type` (label 3) | `application/ep-receipt+json` |
-| protected `kid` (label 4) | the issuer key id (SHA-256/16 of the issuer SPKI; same derivation as the JWS profile) |
-| protected `CWT Claims` (label 15) | `iss` (claim 1) = the authorizing authority; `sub` (claim 2) = `urn:emilia:action:sha256:<JCS-action-digest>` — so statements about one exact canonical action collate |
+| **payload** | RFC 8785 (JCS) canonical bytes of the complete EMILIA receipt document. The inner receipt signature separately covers its `payload` object. |
+| protected `alg` (label 1) | `EdDSA` (-8); Ed25519 per RFC 8037 / RFC 8032 |
+| protected `content type` (label 3) | `application/emilia-receipt+json` |
+| protected `kid` (label 4) | the SCITT statement issuer key id |
+| protected `CWT Claims` (label 15) | `iss` (claim 1) = the SCITT statement issuer; `sub` (claim 2) = the receipt action's CAID, recomputed from the carried receipt |
 | signature | Ed25519 over the COSE `Sig_structure` (`["Signature1", protected, ext_aad="", payload]`, RFC 9052 §4.4) |
 
-The signer is the **same human/authority key** as the native receipt. A verifier therefore gets the
-identical authorization claim whether it checks the native `EP-RECEIPT-v1`, the JWS profile, or this
-COSE Signed Statement — three serializations, one canonical claim.
+The SCITT statement signer and the EP receipt issuer are separate trust legs.
+The statement signature proves which pinned SCITT issuer emitted the envelope.
+The inner receipt signature supplies the authorization evidence. Trust in the
+first key does not imply trust in the second.
+
+### Identity layers
+
+This profile exposes three digests and does not permit substitution between
+them:
+
+| Digest | Meaning |
+| --- | --- |
+| `statement_entry_digest = SHA-256(exact COSE_Sign1 bytes)` | one exact envelope or registration entry |
+| `signing_input_digest = SHA-256(Sig_structure)` | the protected header and payload presented to the signature algorithm |
+| `authorization_payload_digest = SHA-256(JCS(receipt.payload))` | the EP authorization claim, evaluated with separately pinned issuer and profile checks |
+
+Two valid signatures over the same signing input can have different exact
+envelope digests. The authorization reference therefore uses
+`authorization_payload_digest`. A transparency reference may carry
+`statement_entry_digest` separately to locate the logged envelope. The
+runnable
+[`EP-SCITT-STATEMENT-IDENTITY-v0.1`](../conformance/composition/scitt-statement-identity-v0.1/README.md)
+profile proves the separation with two deliberately distinct fixtures: an RFC
+9943-shaped ES256 high-S/low-S ECDSA pair verified at the algorithm layer, and
+an Ed25519 EP statement accepted by the local EP verifier. The EP verifier
+correctly refuses the generic ES256 pair as outside this profile. Enforcing
+canonical low-S at an ingress rejects the high-S form there; it does not
+collapse exact-envelope, signing-input, and application-claim identity into one
+protocol concept.
 
 ## 2. Registration (SCRAPI)
 
@@ -42,7 +68,7 @@ Register the Signed Statement with any conforming Transparency Service:
 
 ```
 POST /entries                       (draft-ietf-scitt-scrapi)
-Content-Type: application/cose
+Content-Type: application/scitt-statement+cose
 <COSE_Sign1 bytes>
 ```
 
@@ -72,18 +98,21 @@ narrow profiles on accepted work.
 
 ## 4. Verification
 
-1. Verify the `COSE_Sign1` signature against the issuer key (offline; no Transparency Service needed
-   for the *authorization* check).
-2. Parse the payload; confirm it is byte-identical EP-RECEIPT-v1 canonical (JCS) form, and that the
-   bound action matches the action about to execute (action-binding).
-3. If a SCITT Receipt is present, read protected header `vds` (label 395) and dispatch only to the
+1. Verify the `COSE_Sign1` signature against the pinned SCITT statement issuer
+   key. This verifies the envelope, not the authorization.
+2. Parse the canonical `EP-RECEIPT-v1` document and independently verify its
+   inner signature against the pinned receipt issuer key. Recompute the action
+   CAID and authorization payload digest from the carried receipt.
+3. Confirm that the bound action matches the action about to execute.
+4. If a SCITT Receipt is present, read protected header `vds` (label 395) and dispatch only to the
    relying-party-pinned native verifier for that Verifiable Data Structure. The current identifiers
    are RFC9162_SHA256 = 1, CCF = 2, and MMR = 3. Unknown `vds` is `INDETERMINATE`; a malformed or
    missing protected `vds` fails.
-4. Accept the transparency leg only if that native verifier validates both the VDS proof and the
+5. Accept the transparency leg only if that native verifier validates both the VDS proof and the
    Transparency Service signature against pinned service parameters.
 
-Steps 1–2 are the EMILIA authorization check and need no network. Steps 3–4 are the SCITT
+Steps 1 to 3 are the local envelope and EMILIA authorization checks and need no
+network. Steps 4 and 5 are the SCITT
 transparency check. A verified transparency leg is evidence; it is not AEB satisfaction, Gate
 authorization, execution, or outcome. Keep those decisions separate.
 

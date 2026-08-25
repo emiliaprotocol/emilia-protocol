@@ -3,7 +3,7 @@
 
 **Status:** engagement document · 2026-07-01
 **Audience:** SCITT WG participants and authors of the agent-action evidence drafts
-**Runnable companions:** [`examples/scitt/ep-receipt-scitt-end-to-end.mjs`](../../examples/scitt/ep-receipt-scitt-end-to-end.mjs) · [`examples/scitt/capsule-seam-vector.mjs`](../../examples/scitt/capsule-seam-vector.mjs) · [`docs/EP-RECEIPT-SCITT-PROFILE.md`](../EP-RECEIPT-SCITT-PROFILE.md)
+**Runnable companions:** [`examples/scitt/ep-receipt-scitt-end-to-end.mjs`](../../examples/scitt/ep-receipt-scitt-end-to-end.mjs) · [`examples/scitt/capsule-seam-vector-v2.mjs`](../../examples/scitt/capsule-seam-vector-v2.mjs) · [`docs/EP-RECEIPT-SCITT-PROFILE.md`](../EP-RECEIPT-SCITT-PROFILE.md)
 
 ## The one-sentence position
 
@@ -62,11 +62,15 @@ profile below gains a slot for it without changing its own scope.
 | HDP / IPP | delegated human intent provenance | intent explains *why*; the EP receipt proves *who said yes to exactly this* at the edge |
 
 **Composition rule (uniform across all rows):** compose **by digest, not
-containment**. A host profile embeds either `receipt_payload_digest =
-SHA-256(JCS(receipt.payload))` (offline composition) or `statement_digest =
-SHA-256(COSE_Sign1 bytes)` (when the receipt is registered in a transparency
-service). Both are byte-reproducible in any language; the host record never
-restates the approval, it commits to it.
+containment**. The authorization reference is always `receipt_payload_digest =
+SHA-256(JCS(receipt.payload))`, followed by the normal issuer, signature,
+mapping, freshness, and policy checks. When the receipt is registered in a
+transparency service, a separate `statement_entry_digest =
+SHA-256(COSE_Sign1 bytes)` can locate the exact logged envelope. The entry
+digest never substitutes for the authorization digest. The distinction is
+executable in the
+[`EP-SCITT-STATEMENT-IDENTITY-v0.1`](../../conformance/composition/scitt-statement-identity-v0.1/README.md)
+profile.
 
 ## Verified sockets in adjacent receipt drafts
 
@@ -120,7 +124,7 @@ node examples/scitt/ep-receipt-scitt-end-to-end.mjs
 
 # The who→what seam with an Agent Action Capsule, by shared digest,
 # including five MUST-reject negative vectors:
-node examples/scitt/capsule-seam-vector.mjs
+npm run conformance:composition:scitt-capsule-seam
 
 # Cross-language conformance (JS / Python / Go agree on every vector):
 npm run conformance

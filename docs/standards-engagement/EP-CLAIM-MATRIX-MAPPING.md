@@ -329,8 +329,8 @@ remain at their stated lower evidence types.
   merged into one accepted result, even when both verify over the same
   action digest.
 - **Evidence type**: local-harness.
-- **Evidence reference**: `examples/scitt/capsule-seam-vector.mjs` +
-  `capsule-seam-vector.json` must-reject cases — `wrong_action`
+- **Evidence reference**: `examples/scitt/capsule-seam-vector-v2.mjs` +
+  `capsule-seam-vector-v2.json` must-reject cases — `wrong_action`
   (`who_subject_mismatch`) and `replay_across_subject` (cross-leg digest
   mismatch and reuse across subjects), `approval_contradiction`
   (`disposition_contradicts_receipt`), `missing_who_when_required`

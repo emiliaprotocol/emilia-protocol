@@ -235,6 +235,72 @@ function sigStructureBytes(
   return encodeDeterministicCbor8949(['Signature1', protectedBytes, new Uint8Array(0), payload]);
 }
 
+function sha256Digest(bytes: Uint8Array | string): string {
+  return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
+}
+
+/**
+ * Three identities that MUST NOT be substituted for one another.
+ *
+ * `statement_entry_digest` names the exact COSE_Sign1 envelope bytes. A
+ * signature normalization or a second valid randomized signature changes it.
+ * `signing_input_digest` names the RFC 9052 Sig_structure and is unchanged
+ * when only the signature bytes change. `authorization_payload_digest` is an
+ * EP-specific logical identity over a canonical receipt payload. The generic
+ * analyzer intentionally leaves it absent: JSON shape alone cannot establish
+ * that bytes are an EP receipt. `verifyEpScittSignedStatement` adds it only
+ * after the complete profile and both signature legs verify.
+ */
+export interface ScittStatementIdentityLayers {
+  statement_entry_digest: string;
+  signing_input_digest: string;
+  statement_payload_digest: string;
+  authorization_payload_digest?: string;
+}
+
+/**
+ * Derive identity layers from a deterministically encoded COSE_Sign1 object.
+ *
+ * This function verifies neither the COSE signature nor authorization. It is
+ * deliberately an identity analyzer. Callers still MUST verify the relevant
+ * signature, issuer, profile, and relying-party policy before relying on any
+ * layer.
+ */
+export function deriveScittStatementIdentityLayers(
+  statementBytes: Uint8Array,
+): CborResult<ScittStatementIdentityLayers> {
+  if (!(statementBytes instanceof Uint8Array) || statementBytes.length < 2) {
+    return { ok: false, reason: 'malformed_cbor' };
+  }
+  if (statementBytes[0] !== COSE_SIGN1_TAG_BYTE) {
+    return { ok: false, reason: 'cose_structure_invalid' };
+  }
+  const decoded = decodeDeterministicCbor8949(statementBytes.subarray(1), {
+    textKeysOnly: false,
+  });
+  if (!decoded.ok) return decoded;
+  if (!Array.isArray(decoded.value) || decoded.value.length !== 4) {
+    return { ok: false, reason: 'cose_structure_invalid' };
+  }
+  const [protectedBytes, unprotected, payload, signature] = decoded.value as unknown[];
+  if (!(protectedBytes instanceof Uint8Array)
+      || !(unprotected instanceof Map)
+      || !(payload instanceof Uint8Array)
+      || !(signature instanceof Uint8Array)) {
+    return { ok: false, reason: 'cose_structure_invalid' };
+  }
+  const sigStruct = sigStructureBytes(protectedBytes, payload);
+  if (!sigStruct.ok) return sigStruct;
+
+  const value: ScittStatementIdentityLayers = {
+    statement_entry_digest: sha256Digest(statementBytes),
+    signing_input_digest: sha256Digest(sigStruct.value),
+    statement_payload_digest: sha256Digest(payload),
+  };
+
+  return { ok: true, value };
+}
+
 // ---------------------------------------------------------------------------
 // Build
 // ---------------------------------------------------------------------------
@@ -409,6 +475,8 @@ export interface VerifyScittStatementResult {
   sub?: string;
   kid?: string;
   payloadSha256?: string;
+  /** Identity layers, kept separate so entry identity cannot mint authority. */
+  identity?: ScittStatementIdentityLayers & { authorization_payload_digest: string };
 }
 
 /**
@@ -592,6 +660,21 @@ export function verifyEpScittSignedStatement(
   if (recomputed.value.caid !== sub) return fail('sub_not_bound_to_payload');
   checks.sub_binding = true;
 
+  const identity = deriveScittStatementIdentityLayers(statementBytes);
+  if (!identity.ok) return fail('receipt_invalid');
+  let authorizationPayloadDigest: string;
+  try {
+    const receiptPayload = (receipt as Record<string, unknown>)?.payload;
+    if (!isPlainObject(receiptPayload)) return fail('receipt_invalid');
+    authorizationPayloadDigest = sha256Digest(canonicalize(receiptPayload));
+  } catch {
+    return fail('receipt_invalid');
+  }
+  const verifiedIdentity = {
+    ...identity.value,
+    authorization_payload_digest: authorizationPayloadDigest,
+  };
+
   return {
     valid: true,
     checks,
@@ -601,6 +684,7 @@ export function verifyEpScittSignedStatement(
     sub,
     kid: kidText,
     payloadSha256: crypto.createHash('sha256').update(payload).digest('hex'),
+    identity: verifiedIdentity,
   };
 }
 
