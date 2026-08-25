@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import crypto from 'node:crypto';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import Ajv2020 from 'ajv/dist/2020.js';
@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   AGENT_MAILBOX_DELIVERY_RECEIPT_VERSION,
   AGENT_MAILBOX_ENVELOPE_VERSION,
+  AGENT_MAILBOX_READ_ACKNOWLEDGEMENT_VERSION,
   AGENT_MAILBOX_STORED_DELIVERY_VERSION,
   admitMailboxActionProposal,
   agentMailboxDigest,
@@ -24,6 +25,7 @@ import {
 import { createCurtailmentAction, graceDigest } from '../lib/grace/mobile-grid.js';
 
 const NOW = '2026-08-22T20:00:00.000Z';
+const MIDDLE = '2026-08-22T20:30:00.000Z';
 const LATER = '2026-08-22T21:00:00.000Z';
 
 function keyPair(keyId: string) {
@@ -297,10 +299,13 @@ describe('durable mailbox and delivery receipts', () => {
 
     const listed = await service.list('agent:iman');
     expect(listed).toHaveLength(1);
-    expect(listed[0]).toMatchObject({ read_at: null, envelope });
+    expect(listed[0]).toMatchObject({ read_acknowledgement: null, envelope });
     expect(await service.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id }))
-      .toMatchObject({ acknowledged: true, authorizes: false });
-    expect((await service.list('agent:iman'))[0].read_at).toBe(NOW);
+      .toMatchObject({
+        acknowledgement: { read_at: NOW, authorizes: false },
+        authorizes: false,
+      });
+    expect((await service.list('agent:iman'))[0].read_acknowledgement?.read_at).toBe(NOW);
   });
 
   it('refuses same envelope ID with different signed bytes instead of overwriting the first message', async () => {
@@ -574,6 +579,296 @@ describe('durable mailbox and delivery receipts', () => {
     await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_result_invalid/);
   });
 
+  it('rejects an old bound record relabeled as newly stored while allowing a verified duplicate', async () => {
+    let persisted: any = null;
+    let repeatedOutcome: 'stored' | 'duplicate' = 'stored';
+    let now = NOW;
+    const store: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async (record: unknown) => {
+        if (persisted === null) {
+          persisted = structuredClone(record);
+          return { outcome: 'stored', record };
+        }
+        return { outcome: repeatedOutcome, record: structuredClone(persisted) };
+      },
+      list: async () => persisted === null ? [] : [structuredClone(persisted)],
+      acknowledge: async () => false,
+    };
+    const service = createAgentMailbox(mailboxOptions({ store, now: () => now }));
+    const envelope = noteEnvelope();
+    expect((await service.deliver(envelope, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+
+    now = MIDDLE;
+    expect(await service.deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'mailbox_store_result_invalid', authorizes: false });
+
+    repeatedOutcome = 'duplicate';
+    expect(await service.deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'DUPLICATE', authorizes: false });
+
+    const storedSignature = persisted.delivery_binding.signature.value;
+    persisted.delivery_binding.signature.value = (storedSignature[0] === 'A' ? 'B' : 'A')
+      + storedSignature.slice(1);
+    expect(await service.deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'mailbox_store_result_invalid', authorizes: false });
+  });
+
+  it('deduplicates byte-identical valid records returned more than once', async () => {
+    let persisted: any = null;
+    const store: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async (record: unknown) => {
+        persisted = structuredClone(record);
+        return { outcome: 'stored', record };
+      },
+      list: async () => [structuredClone(persisted), structuredClone(persisted)],
+      acknowledge: async () => false,
+    };
+    const service = createAgentMailbox(mailboxOptions({ store }));
+    expect((await service.deliver(noteEnvelope(), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    await expect(service.list('agent:iman')).resolves.toHaveLength(1);
+  });
+
+  it('rejects conflicting envelope IDs and sender-thread sequences in a listing', async () => {
+    const permissiveStore = () => {
+      const records: any[] = [];
+      return {
+        records,
+        store: {
+          durable: true,
+          deliveryAtomicity: 'shared_durable',
+          bodyBound: true,
+          put: async (record: unknown) => {
+            records.push(structuredClone(record));
+            return { outcome: 'stored', record };
+          },
+          list: async () => structuredClone(records),
+          acknowledge: async () => false,
+        } as any,
+      };
+    };
+
+    const duplicateId = permissiveStore();
+    const duplicateIdService = createAgentMailbox(mailboxOptions({ store: duplicateId.store }));
+    expect((await duplicateIdService.deliver(noteEnvelope({
+      envelopeId: 'message:listing-duplicate-id',
+    }), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect((await duplicateIdService.deliver(noteEnvelope({
+      envelopeId: 'message:listing-duplicate-id',
+      sequence: 2,
+      payload: { text: 'Conflicting body under the same ID.' },
+    }), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    await expect(duplicateIdService.list('agent:iman')).rejects
+      .toThrow(/mailbox_store_result_invalid/);
+
+    const duplicateSequence = permissiveStore();
+    const duplicateSequenceService = createAgentMailbox(mailboxOptions({ store: duplicateSequence.store }));
+    expect((await duplicateSequenceService.deliver(noteEnvelope({
+      envelopeId: 'message:listing-sequence-first',
+    }), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect((await duplicateSequenceService.deliver(noteEnvelope({
+      envelopeId: 'message:listing-sequence-second',
+      payload: { text: 'Equivocation at sequence one.' },
+    }), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    await expect(duplicateSequenceService.list('agent:iman')).rejects
+      .toThrow(/mailbox_store_result_invalid/);
+  });
+
+  it('binds every durable record to its content-derived filename', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const service = mailbox(createFileAgentMailboxStore({ directory }));
+    expect((await service.deliver(noteEnvelope(), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    const recordsDirectory = path.join(directory, 'records');
+    const [recordName] = await readdir(recordsDirectory);
+    const source = path.join(recordsDirectory, recordName);
+    const copied = path.join(recordsDirectory, 'copied-valid-record.json');
+    await writeFile(copied, await readFile(source, 'utf8'), 'utf8');
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_record_corrupt/);
+
+    await rm(copied);
+    const renamed = path.join(recordsDirectory, 'renamed-valid-record.json');
+    await rename(source, renamed);
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_record_corrupt/);
+  });
+
+  it('returns a signed non-authorizing read acknowledgement and preserves its historical signer', async () => {
+    const rotatedMailboxService = keyPair('nomadic-mailbox-signing-2');
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const original = mailbox(createFileAgentMailboxStore({ directory }));
+    const first = noteEnvelope();
+    expect((await original.deliver(first, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    const [deliveredRecord] = await original.list('agent:iman');
+    const firstAcknowledgement: any = await original.acknowledge({
+      recipientId: 'agent:iman', envelopeId: first.envelope_id,
+    });
+    expect(firstAcknowledgement).toMatchObject({
+      acknowledgement: {
+        '@version': AGENT_MAILBOX_READ_ACKNOWLEDGEMENT_VERSION,
+        mailbox_id: 'mailbox:nomadic-demo',
+        recipient_id: 'agent:iman',
+        envelope_id: first.envelope_id,
+        envelope_digest: agentMailboxDigest(first),
+        delivery_binding_digest: agentMailboxDigest(deliveredRecord.delivery_binding),
+        read_at: NOW,
+        authorizes: false,
+        signer_key_id: mailboxService.keyId,
+        signature: expect.objectContaining({ algorithm: 'Ed25519' }),
+      },
+      authorizes: false,
+    });
+    expect(firstAcknowledgement).not.toHaveProperty('acknowledged');
+
+    const rotated = createAgentMailbox(mailboxOptions({
+      store: createFileAgentMailboxStore({ directory }),
+      privateKey: rotatedMailboxService.privateKey,
+      keyId: rotatedMailboxService.keyId,
+      mailboxVerificationKeys: {
+        [mailboxService.keyId]: mailboxService.publicKeySpkiB64u,
+      },
+    }));
+    const idempotent: any = await rotated.acknowledge({
+      recipientId: 'agent:iman', envelopeId: first.envelope_id,
+    });
+    expect(idempotent.acknowledgement).toEqual(firstAcknowledgement.acknowledgement);
+
+    const second = noteEnvelope({ sequence: 2 });
+    expect((await rotated.deliver(second, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    const secondAcknowledgement: any = await rotated.acknowledge({
+      recipientId: 'agent:iman', envelopeId: second.envelope_id,
+    });
+    expect(secondAcknowledgement).toMatchObject({
+      acknowledgement: { signer_key_id: rotatedMailboxService.keyId, authorizes: false },
+      authorizes: false,
+    });
+    expect(await rotated.acknowledge({
+      recipientId: 'agent:iman', envelopeId: 'message:missing-record',
+    })).toEqual({ acknowledgement: null, authorizes: false });
+  });
+
+  it('rejects read-acknowledgement mutation and cross-record substitution', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const service = mailbox(createFileAgentMailboxStore({ directory }));
+    const first = noteEnvelope();
+    const second = noteEnvelope({ sequence: 2 });
+    expect((await service.deliver(first, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect((await service.deliver(second, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    await service.acknowledge({ recipientId: 'agent:iman', envelopeId: first.envelope_id });
+
+    const recordsDirectory = path.join(directory, 'records');
+    const files = await readdir(recordsDirectory);
+    const stored = await Promise.all(files.map(async (name) => ({
+      name,
+      record: JSON.parse(await readFile(path.join(recordsDirectory, name), 'utf8')),
+    })));
+    const firstStored = stored.find(({ record }) => record.envelope_id === first.envelope_id)!;
+    const secondStored = stored.find(({ record }) => record.envelope_id === second.envelope_id)!;
+    const authenticAcknowledgement = structuredClone(firstStored.record.read_acknowledgement);
+
+    firstStored.record.read_acknowledgement.read_at = MIDDLE;
+    await writeFile(
+      path.join(recordsDirectory, firstStored.name),
+      JSON.stringify(firstStored.record),
+      'utf8',
+    );
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_result_invalid/);
+
+    firstStored.record.read_acknowledgement = authenticAcknowledgement;
+    await writeFile(
+      path.join(recordsDirectory, firstStored.name),
+      JSON.stringify(firstStored.record),
+      'utf8',
+    );
+    secondStored.record.read_acknowledgement = authenticAcknowledgement;
+    await writeFile(
+      path.join(recordsDirectory, secondStored.name),
+      JSON.stringify(secondStored.record),
+      'utf8',
+    );
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_record_corrupt/);
+  });
+
+  it('does not report acknowledgement success when the store rolls signed state back', async () => {
+    let persisted: any = null;
+    const store: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async (record: unknown) => {
+        persisted = structuredClone(record);
+        return { outcome: 'stored', record };
+      },
+      list: async () => persisted === null ? [] : [structuredClone(persisted)],
+      acknowledge: async (_recipientId: string, _envelopeId: string, acknowledgement: any) => {
+        if (typeof acknowledgement === 'string') return true;
+        return {
+          ...structuredClone(persisted),
+          read_acknowledgement: structuredClone(acknowledgement),
+        };
+      },
+    };
+    const service = createAgentMailbox(mailboxOptions({ store }));
+    const envelope = noteEnvelope();
+    expect((await service.deliver(envelope, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    await expect(service.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id }))
+      .rejects.toThrow(/mailbox_store_result_invalid/);
+  });
+
+  it('rejects a validly signed read acknowledgement after trusted time rolls back behind it', async () => {
+    let now = NOW;
+    const service = createAgentMailbox(mailboxOptions({ now: () => now }));
+    const envelope = noteEnvelope();
+    expect((await service.deliver(envelope, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    now = MIDDLE;
+    await service.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id });
+    now = NOW;
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_result_invalid/);
+  });
+
+  it('persists the first valid acknowledgement under concurrent current service keys', async () => {
+    const rotatedMailboxService = keyPair('nomadic-mailbox-signing-2');
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    let firstNow = NOW;
+    const firstService = createAgentMailbox(mailboxOptions({
+      store: createFileAgentMailboxStore({ directory }),
+      now: () => firstNow,
+      mailboxVerificationKeys: {
+        [rotatedMailboxService.keyId]: rotatedMailboxService.publicKeySpkiB64u,
+      },
+    }));
+    const secondService = createAgentMailbox(mailboxOptions({
+      store: createFileAgentMailboxStore({ directory }),
+      privateKey: rotatedMailboxService.privateKey,
+      keyId: rotatedMailboxService.keyId,
+      now: () => MIDDLE,
+      mailboxVerificationKeys: {
+        [mailboxService.keyId]: mailboxService.publicKeySpkiB64u,
+      },
+    }));
+    const envelope = noteEnvelope();
+    expect((await firstService.deliver(envelope, { recipientId: 'agent:iman' })).delivery_status)
+      .toBe('ACCEPTED');
+    firstNow = MIDDLE;
+
+    const results: any[] = await Promise.all([
+      firstService.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id }),
+      secondService.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id }),
+    ]);
+    const [persisted] = await firstService.list('agent:iman');
+    expect(persisted.read_acknowledgement).not.toBeNull();
+    expect(results.map((result) => result.acknowledgement))
+      .toEqual([persisted.read_acknowledgement, persisted.read_acknowledgement]);
+    expect(persisted.read_acknowledgement.authorizes).toBe(false);
+  });
+
   it('durably sorts, acknowledges once, and refuses same-ID replacement', async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
     tempDirectories.push(directory);
@@ -585,11 +880,11 @@ describe('durable mailbox and delivery receipts', () => {
     expect((await service.list('agent:iman')).map((record) => record.envelope.sequence)).toEqual([1, 2]);
 
     expect(await service.acknowledge({ recipientId: 'agent:iman', envelopeId: first.envelope_id }))
-      .toEqual({ acknowledged: true, authorizes: false });
+      .toMatchObject({ acknowledgement: { envelope_id: first.envelope_id }, authorizes: false });
     expect(await service.acknowledge({ recipientId: 'agent:iman', envelopeId: first.envelope_id }))
-      .toEqual({ acknowledged: true, authorizes: false });
+      .toMatchObject({ acknowledgement: { envelope_id: first.envelope_id }, authorizes: false });
     expect(await service.acknowledge({ recipientId: 'agent:iman', envelopeId: 'message:missing-record' }))
-      .toEqual({ acknowledged: false, authorizes: false });
+      .toEqual({ acknowledgement: null, authorizes: false });
 
     const sameId = noteEnvelope({
       envelopeId: second.envelope_id,

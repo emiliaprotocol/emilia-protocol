@@ -54,6 +54,22 @@ current private key is pinned automatically, and a contradictory current-key
 pin is refused. Keys carried only by the store are never trusted. Every stored
 binding remains explicitly non-authorizing.
 
+Read state is never a bare mutable timestamp. A first-write-wins
+`read_acknowledgement` binds the recipient, envelope identity and digest, exact
+delivery-binding digest, mailbox, read time, and service key under a distinct
+mailbox signature domain with `authorizes: false`. New acknowledgements use
+only the current service key; historical service-key pins verify an existing
+acknowledgement after rotation. The service verifies the returned record and
+rereads the persisted state before returning the authenticated acknowledgement.
+`read_acknowledgement: null` means only **no authenticated read evidence**; it
+is never proof that the message was unread, so deleting or rolling back the
+signed acknowledgement cannot create an authenticated contrary state.
+
+This stored-record shape intentionally does not accept the earlier experimental
+bare `read_at` field. The mailbox profile was not merged or published with that
+shape, and treating an unsigned timestamp as historical evidence would preserve
+the defect this binding closes.
+
 `action_digest` is a strict-canonical-JSON content digest used to bind the
 mailbox proposal to one action value. It is not a Canonical Action Identifier
 (CAID), does not establish profile validity or cross-format equivalence, and

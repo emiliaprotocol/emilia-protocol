@@ -26,10 +26,12 @@ export const AGENT_MAILBOX_DELIVERY_RECEIPT_VERSION = 'EP-AGENT-MAILBOX-DELIVERY
 export const AGENT_MAILBOX_ENVELOPE_VERIFICATION_PROFILE = 'EP-AGENT-MAILBOX-ENVELOPE-VERIFICATION-v0.1';
 export const AGENT_MAILBOX_DELIVERY_VERIFICATION_PROFILE = 'EP-AGENT-MAILBOX-DELIVERY-VERIFICATION-v0.1';
 export const AGENT_MAILBOX_STORED_DELIVERY_VERSION = 'EP-AGENT-MAILBOX-STORED-DELIVERY-v0.1';
+export const AGENT_MAILBOX_READ_ACKNOWLEDGEMENT_VERSION = 'EP-AGENT-MAILBOX-READ-ACKNOWLEDGEMENT-v0.1';
 
 const ENVELOPE_DOMAIN = Buffer.from(`${AGENT_MAILBOX_ENVELOPE_VERSION}\0`, 'utf8');
 const RECEIPT_DOMAIN = Buffer.from(`${AGENT_MAILBOX_DELIVERY_RECEIPT_VERSION}\0`, 'utf8');
 const STORED_DELIVERY_DOMAIN = Buffer.from(`${AGENT_MAILBOX_STORED_DELIVERY_VERSION}\0`, 'utf8');
+const READ_ACKNOWLEDGEMENT_DOMAIN = Buffer.from(`${AGENT_MAILBOX_READ_ACKNOWLEDGEMENT_VERSION}\0`, 'utf8');
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/;
@@ -93,13 +95,25 @@ const DELIVERY_BINDING_KEYS = new Set([
   'authorizes',
   'signature',
 ]);
+const READ_ACKNOWLEDGEMENT_KEYS = new Set([
+  '@version',
+  'mailbox_id',
+  'recipient_id',
+  'envelope_id',
+  'envelope_digest',
+  'delivery_binding_digest',
+  'read_at',
+  'authorizes',
+  'signer_key_id',
+  'signature',
+]);
 const STORED_ENVELOPE_KEYS = new Set([
   'recipient_id',
   'envelope_id',
   'envelope_digest',
   'envelope',
   'received_at',
-  'read_at',
+  'read_acknowledgement',
   'sender_verification',
   'delivery_binding',
 ]);
@@ -135,6 +149,22 @@ type DeliveryBinding = {
   };
 };
 
+type ReadAcknowledgement = {
+  '@version': typeof AGENT_MAILBOX_READ_ACKNOWLEDGEMENT_VERSION;
+  mailbox_id: string;
+  recipient_id: string;
+  envelope_id: string;
+  envelope_digest: string;
+  delivery_binding_digest: string;
+  read_at: string;
+  authorizes: false;
+  signer_key_id: string;
+  signature: {
+    algorithm: 'Ed25519';
+    value: string;
+  };
+};
+
 const VERIFIED_ENVELOPE_RESULTS = new WeakMap<object, SenderVerification>();
 
 type JsonRecord = Record<string, any>;
@@ -145,7 +175,7 @@ type StoredEnvelope = {
   envelope_digest: string;
   envelope: JsonRecord;
   received_at: string;
-  read_at: string | null;
+  read_acknowledgement: ReadAcknowledgement | null;
   sender_verification: SenderVerification;
   delivery_binding: DeliveryBinding;
 };
@@ -159,7 +189,11 @@ type AgentMailboxStore = {
     record: StoredEnvelope;
   }>;
   list(recipientId: string): Promise<StoredEnvelope[]>;
-  acknowledge(recipientId: string, envelopeId: string, readAt: string): Promise<boolean>;
+  acknowledge(
+    recipientId: string,
+    envelopeId: string,
+    acknowledgement: ReadAcknowledgement,
+  ): Promise<StoredEnvelope | null>;
 };
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -431,15 +465,20 @@ function copyRecord(record: StoredEnvelope): StoredEnvelope {
   return structuredClone(record);
 }
 
+function sameStoredDelivery(left: StoredEnvelope, right: StoredEnvelope): boolean {
+  return canonical({ ...left, read_acknowledgement: null })
+    === canonical({ ...right, read_acknowledgement: null });
+}
+
 function storedDeliverySigningValue(
   record: Pick<StoredEnvelope,
     'recipient_id' | 'envelope_id' | 'envelope_digest' | 'envelope'
     | 'received_at' | 'sender_verification'>,
   binding: Omit<DeliveryBinding, 'signature'>,
 ): JsonRecord {
-  // read_at is mutable acknowledgement metadata. The delivery binding covers
-  // every immutable field, including the exact delivery-time sender key, and
-  // remains non-authorizing as both the envelope and bindings declare.
+  // Read acknowledgement is a separate signed first-write-wins record. The
+  // delivery binding covers every immutable delivery field, including the
+  // exact delivery-time sender key, and remains non-authorizing.
   return {
     ...binding,
     stored_delivery: {
@@ -451,6 +490,32 @@ function storedDeliverySigningValue(
       sender_verification: record.sender_verification,
     },
   };
+}
+
+function createReadAcknowledgement(record: StoredEnvelope, input: {
+  mailboxId: string;
+  keyId: string;
+  readAt: string;
+  privateKey: crypto.KeyObject;
+}): ReadAcknowledgement {
+  const unsigned: Omit<ReadAcknowledgement, 'signature'> = {
+    '@version': AGENT_MAILBOX_READ_ACKNOWLEDGEMENT_VERSION,
+    mailbox_id: input.mailboxId,
+    recipient_id: record.recipient_id,
+    envelope_id: record.envelope_id,
+    envelope_digest: record.envelope_digest,
+    delivery_binding_digest: agentMailboxDigest(record.delivery_binding),
+    read_at: input.readAt,
+    authorizes: false,
+    signer_key_id: input.keyId,
+  };
+  return deepFreeze({
+    ...unsigned,
+    signature: {
+      algorithm: 'Ed25519',
+      value: sign(READ_ACKNOWLEDGEMENT_DOMAIN, unsigned, input.privateKey),
+    },
+  });
 }
 
 export function createMemoryAgentMailboxStore(): AgentMailboxStore {
@@ -490,17 +555,41 @@ export function createMemoryAgentMailboxStore(): AgentMailboxStore {
         .sort((left, right) => left.envelope.sequence - right.envelope.sequence)
         .map(copyRecord);
     },
-    async acknowledge(recipientId, envelopeId, readAt) {
+    async acknowledge(recipientId, envelopeId, acknowledgement) {
       const record = records.get(key(recipientId, envelopeId));
-      if (!record) return false;
-      record.read_at = record.read_at ?? readAt;
-      return true;
+      if (!record) return null;
+      if (record.read_acknowledgement === null) {
+        const updated = checkedStoredEnvelope({
+          ...record,
+          read_acknowledgement: acknowledgement,
+        });
+        if (!updated) throw new Error('mailbox_store_acknowledgement_invalid');
+        records.set(key(recipientId, envelopeId), updated);
+        return copyRecord(updated);
+      }
+      return copyRecord(record);
     },
   });
 }
 
 function storageKey(recipientId: string, envelopeId: string): string {
   return crypto.createHash('sha256').update(`${recipientId}\0${envelopeId}`, 'utf8').digest('hex');
+}
+
+function shapedReadAcknowledgement(value: unknown): value is ReadAcknowledgement {
+  return exactKeys(value, READ_ACKNOWLEDGEMENT_KEYS)
+    && value['@version'] === AGENT_MAILBOX_READ_ACKNOWLEDGEMENT_VERSION
+    && identifier(value.mailbox_id)
+    && identifier(value.recipient_id)
+    && identifier(value.envelope_id)
+    && DIGEST.test(value.envelope_digest)
+    && DIGEST.test(value.delivery_binding_digest)
+    && canonicalInstant(value.read_at) !== null
+    && value.authorizes === false
+    && identifier(value.signer_key_id)
+    && exactKeys(value.signature, SIGNATURE_KEYS)
+    && value.signature.algorithm === 'Ed25519'
+    && ed25519Signature(value.signature.value);
 }
 
 function checkedStoredEnvelope(value: unknown): StoredEnvelope | null {
@@ -515,8 +604,8 @@ function checkedStoredEnvelope(value: unknown): StoredEnvelope | null {
       || !identifier(record.envelope_id)
       || !DIGEST.test(record.envelope_digest)
       || !canonicalInstant(record.received_at)
-      || (record.read_at !== null && !canonicalInstant(record.read_at))
-      || (record.read_at !== null && Date.parse(record.read_at) < Date.parse(record.received_at))
+      || (record.read_acknowledgement !== null
+        && !shapedReadAcknowledgement(record.read_acknowledgement))
       || !exactKeys(record.sender_verification, SENDER_VERIFICATION_KEYS)
       || record.sender_verification.verification_profile !== AGENT_MAILBOX_ENVELOPE_VERIFICATION_PROFILE
       || !identifier(record.sender_verification.sender_id)
@@ -554,6 +643,15 @@ function checkedStoredEnvelope(value: unknown): StoredEnvelope | null {
   try {
     if (agentMailboxDigest(record.envelope.payload) !== record.envelope.payload_digest
         || agentMailboxDigest(record.envelope) !== record.envelope_digest) return null;
+    const acknowledgement = record.read_acknowledgement;
+    if (acknowledgement !== null && (
+      acknowledgement.mailbox_id !== record.delivery_binding.mailbox_id
+      || acknowledgement.recipient_id !== record.recipient_id
+      || acknowledgement.envelope_id !== record.envelope_id
+      || acknowledgement.envelope_digest !== record.envelope_digest
+      || acknowledgement.delivery_binding_digest !== agentMailboxDigest(record.delivery_binding)
+      || Date.parse(acknowledgement.read_at) < Date.parse(record.received_at)
+    )) return null;
   } catch {
     return null;
   }
@@ -563,6 +661,7 @@ function checkedStoredEnvelope(value: unknown): StoredEnvelope | null {
 function verifyStoredEnvelope(record: StoredEnvelope, options: {
   mailboxId: string;
   verificationKeys: ReadonlyMap<string, crypto.KeyObject>;
+  asOf: string;
 }): boolean {
   if (record.delivery_binding.mailbox_id !== options.mailboxId) return false;
   const publicKey = options.verificationKeys.get(record.delivery_binding.signer_key_id);
@@ -586,9 +685,23 @@ function verifyStoredEnvelope(record: StoredEnvelope, options: {
     expectedRecipientId: record.recipient_id,
     asOf: record.sender_verification.verified_at,
   });
-  return verification.accepted === true
-    && verification.envelope_digest === record.envelope_digest
-    && verification.authorizes === false;
+  if (verification.accepted !== true
+      || verification.envelope_digest !== record.envelope_digest
+      || verification.authorizes !== false) return false;
+
+  const acknowledgement = record.read_acknowledgement;
+  if (acknowledgement === null) return true;
+  if (Date.parse(acknowledgement.read_at) > Date.parse(options.asOf)) return false;
+  const acknowledgementKey = options.verificationKeys.get(acknowledgement.signer_key_id);
+  if (!acknowledgementKey) return false;
+  const { signature: acknowledgementSignature, ...unsignedAcknowledgement } = acknowledgement;
+  return verify(
+    READ_ACKNOWLEDGEMENT_DOMAIN,
+    unsignedAcknowledgement,
+    acknowledgementSignature.value,
+    acknowledgementKey,
+  )
+    && acknowledgement.authorizes === false;
 }
 
 function parseStoredEnvelope(raw: string): StoredEnvelope {
@@ -606,9 +719,12 @@ function checkedStorePutResult(value: unknown, pending: StoredEnvelope) {
   }
   const record = checkedStoredEnvelope(value.record);
   if (!record || record.recipient_id !== pending.recipient_id) return null;
-  if (value.outcome === 'stored' || value.outcome === 'duplicate') {
+  if (value.outcome === 'stored') {
+    if (canonical(record) !== canonical(pending)) return null;
+  } else if (value.outcome === 'duplicate') {
     if (record.envelope_id !== pending.envelope_id
-        || record.envelope_digest !== pending.envelope_digest) return null;
+        || record.envelope_digest !== pending.envelope_digest
+        || canonical(record.envelope) !== canonical(pending.envelope)) return null;
   } else if (value.outcome === 'envelope_id_conflict') {
     if (record.envelope_id !== pending.envelope_id
         || record.envelope_digest === pending.envelope_digest) return null;
@@ -636,6 +752,14 @@ async function writeNewRecord(filename: string, record: StoredEnvelope): Promise
   }
 }
 
+async function readStoredEnvelopeFile(recordsDirectory: string, name: string): Promise<StoredEnvelope> {
+  const record = parseStoredEnvelope(await readFile(path.join(recordsDirectory, name), 'utf8'));
+  if (name !== `${storageKey(record.recipient_id, record.envelope_id)}.json`) {
+    throw new Error('mailbox_store_record_corrupt');
+  }
+  return record;
+}
+
 export function createFileAgentMailboxStore({ directory }: { directory: string }): AgentMailboxStore {
   if (typeof directory !== 'string' || !path.isAbsolute(directory)) {
     throw new TypeError('mailbox_store_directory_must_be_absolute');
@@ -651,9 +775,9 @@ export function createFileAgentMailboxStore({ directory }: { directory: string }
       return serializeFileStore(recordsDirectory, async () => {
         await ready;
         const target = filename(record.recipient_id, record.envelope_id);
-        let names = (await readdir(recordsDirectory)).filter((name) => name.endsWith('.json'));
-        const existingRecords = await Promise.all(names.map(async (name) => parseStoredEnvelope(
-          await readFile(path.join(recordsDirectory, name), 'utf8'),
+        const names = (await readdir(recordsDirectory)).filter((name) => name.endsWith('.json'));
+        const existingRecords = await Promise.all(names.map((name) => (
+          readStoredEnvelopeFile(recordsDirectory, name)
         )));
         const sameSequence = existingRecords.find((candidate) => (
           candidate.recipient_id === record.recipient_id
@@ -669,7 +793,7 @@ export function createFileAgentMailboxStore({ directory }: { directory: string }
         }
         const outcome = await writeNewRecord(target, record);
         if (outcome === 'stored') return { outcome, record: copyRecord(record) };
-        const existing = parseStoredEnvelope(await readFile(target, 'utf8'));
+        const existing = await readStoredEnvelopeFile(recordsDirectory, path.basename(target));
         return {
           outcome: existing.envelope_digest === record.envelope_digest ? 'duplicate' as const : 'envelope_id_conflict' as const,
           record: copyRecord(existing),
@@ -680,8 +804,8 @@ export function createFileAgentMailboxStore({ directory }: { directory: string }
       return serializeFileStore(recordsDirectory, async () => {
         await ready;
         const names = (await readdir(recordsDirectory)).filter((name) => name.endsWith('.json'));
-        const records = await Promise.all(names.map(async (name) => parseStoredEnvelope(
-          await readFile(path.join(recordsDirectory, name), 'utf8'),
+        const records = await Promise.all(names.map((name) => (
+          readStoredEnvelopeFile(recordsDirectory, name)
         )));
         return records
           .filter((record) => record.recipient_id === recipientId)
@@ -689,30 +813,34 @@ export function createFileAgentMailboxStore({ directory }: { directory: string }
           .map(copyRecord);
       });
     },
-    async acknowledge(recipientId, envelopeId, readAt) {
+    async acknowledge(recipientId, envelopeId, acknowledgement) {
       return serializeFileStore(recordsDirectory, async () => {
         await ready;
         const target = filename(recipientId, envelopeId);
         let record: StoredEnvelope;
         try {
-          record = parseStoredEnvelope(await readFile(target, 'utf8'));
+          record = await readStoredEnvelopeFile(recordsDirectory, path.basename(target));
         } catch (error: any) {
-          if (error?.code === 'ENOENT') return false;
+          if (error?.code === 'ENOENT') return null;
           throw error;
         }
-        if (record.read_at !== null) return true;
-        record.read_at = readAt;
+        if (record.read_acknowledgement !== null) return copyRecord(record);
+        const updated = checkedStoredEnvelope({
+          ...record,
+          read_acknowledgement: acknowledgement,
+        });
+        if (!updated) throw new Error('mailbox_store_acknowledgement_invalid');
         const temporary = path.join(recordsDirectory, `.${storageKey(recipientId, envelopeId)}.${crypto.randomUUID()}.tmp`);
         let handle;
         try {
           handle = await open(temporary, 'wx', 0o600);
-          await handle.writeFile(canonical(record), 'utf8');
+          await handle.writeFile(canonical(updated), 'utf8');
           await handle.sync();
         } finally {
           await handle?.close();
         }
         await rename(temporary, target);
-        return true;
+        return copyRecord(await readStoredEnvelopeFile(recordsDirectory, path.basename(target)));
       });
     },
   });
@@ -887,6 +1015,40 @@ export function createAgentMailbox(options: {
     privateKey,
     ...input,
   });
+  const verifiedList = async (recipientId: string, asOf: string): Promise<StoredEnvelope[]> => {
+    const listed = await options.store.list(recipientId);
+    if (!Array.isArray(listed)) throw new Error('mailbox_store_result_invalid');
+    const records: StoredEnvelope[] = [];
+    const byEnvelopeId = new Map<string, string>();
+    const byThreadSequence = new Map<string, string>();
+    for (const candidate of listed) {
+      const record = checkedStoredEnvelope(candidate);
+      if (!record || record.recipient_id !== recipientId || !verifyStoredEnvelope(record, {
+        mailboxId: options.mailboxId,
+        verificationKeys: mailboxVerificationKeys,
+        asOf,
+      })) throw new Error('mailbox_store_result_invalid');
+
+      const recordBytes = canonical(record);
+      const envelopeKey = `${record.recipient_id}\0${record.envelope_id}`;
+      const sequenceKey = [
+        record.recipient_id,
+        record.envelope.sender_id,
+        record.envelope.thread_id,
+        record.envelope.sequence,
+      ].join('\0');
+      const envelopeMatch = byEnvelopeId.get(envelopeKey);
+      const sequenceMatch = byThreadSequence.get(sequenceKey);
+      if (envelopeMatch !== undefined || sequenceMatch !== undefined) {
+        if (envelopeMatch === recordBytes && sequenceMatch === recordBytes) continue;
+        throw new Error('mailbox_store_result_invalid');
+      }
+      byEnvelopeId.set(envelopeKey, recordBytes);
+      byThreadSequence.set(sequenceKey, recordBytes);
+      records.push(copyRecord(record));
+    }
+    return records;
+  };
   return Object.freeze({
     mailbox_id: options.mailboxId,
     durable: options.store.durable,
@@ -935,7 +1097,7 @@ export function createAgentMailbox(options: {
         envelope_digest: verification.envelope_digest,
         envelope: canonicalCopy(candidate),
         received_at: receivedAt,
-        read_at: null,
+        read_acknowledgement: null,
         sender_verification: canonicalCopy(senderVerification),
       };
       const deliveryBinding: Omit<DeliveryBinding, 'signature'> = {
@@ -962,6 +1124,7 @@ export function createAgentMailbox(options: {
       if (!result || !verifyStoredEnvelope(result.record, {
         mailboxId: options.mailboxId,
         verificationKeys: mailboxVerificationKeys,
+        asOf: receivedAt,
       })) {
         return receipt({
           envelopeId: candidate.envelope_id,
@@ -1010,31 +1173,64 @@ export function createAgentMailbox(options: {
     },
     async list(recipientId: string) {
       if (!identifier(recipientId)) throw new TypeError('mailbox_recipient_invalid');
-      const listed = await options.store.list(recipientId);
-      if (!Array.isArray(listed)) throw new Error('mailbox_store_result_invalid');
-      const records: StoredEnvelope[] = [];
-      for (const candidate of listed) {
-        const record = checkedStoredEnvelope(candidate);
-        if (!record || record.recipient_id !== recipientId) {
-          throw new Error('mailbox_store_result_invalid');
-        }
-        if (!verifyStoredEnvelope(record, {
-          mailboxId: options.mailboxId,
-          verificationKeys: mailboxVerificationKeys,
-        })) {
-          throw new Error('mailbox_store_result_invalid');
-        }
-        records.push(copyRecord(record));
-      }
-      return records;
+      return verifiedList(recipientId, timestamp());
     },
     async acknowledge({ recipientId, envelopeId }: { recipientId: string; envelopeId: string }) {
       if (!identifier(recipientId) || !identifier(envelopeId)) {
         throw new TypeError('mailbox_acknowledgement_invalid');
       }
-      const acknowledged = await options.store.acknowledge(recipientId, envelopeId, timestamp());
-      if (typeof acknowledged !== 'boolean') throw new Error('mailbox_store_result_invalid');
-      return Object.freeze({ acknowledged, authorizes: false as const });
+      const readAt = timestamp();
+      const before = await verifiedList(recipientId, readAt);
+      const existing = before.find((record) => record.envelope_id === envelopeId);
+      if (!existing) return Object.freeze({ acknowledgement: null, authorizes: false as const });
+      if (existing.read_acknowledgement !== null) {
+        return deepFreeze({
+          acknowledgement: canonicalCopy(existing.read_acknowledgement),
+          authorizes: false as const,
+        });
+      }
+
+      const pendingAcknowledgement = createReadAcknowledgement(existing, {
+        mailboxId: options.mailboxId,
+        keyId: options.keyId,
+        readAt,
+        privateKey,
+      });
+      const returnedValue = await options.store.acknowledge(
+        recipientId,
+        envelopeId,
+        pendingAcknowledgement,
+      );
+      if (returnedValue === null) {
+        const afterMissing = await verifiedList(recipientId, readAt);
+        if (afterMissing.some((record) => record.envelope_id === envelopeId)) {
+          throw new Error('mailbox_store_result_invalid');
+        }
+        return Object.freeze({ acknowledgement: null, authorizes: false as const });
+      }
+      const returned = checkedStoredEnvelope(returnedValue);
+      if (!returned
+          || returned.recipient_id !== recipientId
+          || returned.envelope_id !== envelopeId
+          || returned.read_acknowledgement === null
+          || !sameStoredDelivery(returned, existing)
+          || !verifyStoredEnvelope(returned, {
+            mailboxId: options.mailboxId,
+            verificationKeys: mailboxVerificationKeys,
+            asOf: readAt,
+          })) throw new Error('mailbox_store_result_invalid');
+
+      const after = await verifiedList(recipientId, readAt);
+      const persisted = after.find((record) => record.envelope_id === envelopeId);
+      if (!persisted
+          || persisted.read_acknowledgement === null
+          || canonical(persisted.read_acknowledgement) !== canonical(returned.read_acknowledgement)) {
+        throw new Error('mailbox_store_result_invalid');
+      }
+      return deepFreeze({
+        acknowledgement: canonicalCopy(persisted.read_acknowledgement),
+        authorizes: false as const,
+      });
     },
   });
 }
