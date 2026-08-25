@@ -38,8 +38,8 @@ capitals.
     "profile": "AADP-ACTION-MAPPING-RECORD-v1",
     "mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
     "implementation": {
-      "id": "pkg:npm/%40emilia-protocol/verify/aadp-authorization-artifact",
-      "version": "3.20.3",
+      "id": "urn:emilia:repository-source:aadp-authorization-artifact",
+      "version": "source-lock-v1",
       "digest": "sha256:..."
     },
     "resolver": {
@@ -56,6 +56,12 @@ capitals.
 ```
 
 The object is closed. Unknown or missing members are malformed.
+
+The reference profile identifies the checked-in, source-locked implementation.
+It does not assert that the AADP subpath exists in any already-published npm
+version. A future package release must use a new package version and separately
+verify the exact registry tarball before a `pkg:npm` identifier replaces this
+repository-source identifier.
 
 - `artifact_digest` binds the exact canonical native artifact.
 - `native_verification` records whether the native verifier returned

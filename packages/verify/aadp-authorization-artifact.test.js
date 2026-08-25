@@ -22,8 +22,8 @@ const mappingConfiguration = {
     source_action_type: fixture.expected_action.action_type,
     mapped_action_type: fixture.expected_action.action_type,
     implementation: {
-        id: 'pkg:npm/%40emilia-protocol/verify/aadp-authorization-artifact',
-        version: '3.20.3',
+        id: 'urn:emilia:repository-source:aadp-authorization-artifact',
+        version: 'source-lock-v1',
         digest: `sha256:${'1'.repeat(64)}`,
     },
     resolver: {

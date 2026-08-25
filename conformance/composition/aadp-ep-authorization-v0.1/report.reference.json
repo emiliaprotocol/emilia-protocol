@@ -68,13 +68,13 @@
           },
           {
             "path": "conformance/composition/aadp-ep-authorization-v0.1/mapping-profile.json",
-            "sha256": "375bf2688a7b35dfa533dc5ee215bb441c54e770a768e5b02c7a7c9f07d671dc"
+            "sha256": "6360e1e8b6ef01765b467c5ff35c18998de8458c21370f33987242ea5e8a0062"
           }
         ]
       }
     },
-    "source_lock_file_sha256": "sha256:f28ad35e81c3ab3f7157ef81f21a65b5af6216462de4bc6bdc21eddfa2f48a07",
-    "source_lock_canonical_digest": "sha256:6a2f9cf0297c75e4cb3441e9531c688e246f47f1e0f29efcc12ea44db7559396",
+    "source_lock_file_sha256": "sha256:086bb58188735d465452f8b9eb322c99fa79518a802859f7a53f25d227ec20b7",
+    "source_lock_canonical_digest": "sha256:469d7ccf9286e5dba04128bb4124e640cdf5e334174a09057d7c686db82ee71d",
     "aadp": {
       "draft": "draft-saha-aadp-01",
       "implementation_kind": "draft-derived-bounded-lifecycle-model",
@@ -301,15 +301,15 @@
             "profile": "AADP-ACTION-MAPPING-RECORD-v1",
             "mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
             "implementation": {
-              "id": "pkg:npm/%40emilia-protocol/verify/aadp-authorization-artifact",
-              "version": "3.20.3",
+              "id": "urn:emilia:repository-source:aadp-authorization-artifact",
+              "version": "source-lock-v1",
               "digest": "sha256:90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9"
             },
             "resolver": {
               "id": "urn:emilia:mapping-resolver:closed-json-v1",
               "version": "1.0.0",
               "digest": "sha256:90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9",
-              "configuration_digest": "sha256:6142f4b2494f0c993ce0883f83ebb591314159a689a78e0730fadfe21c8fb1db"
+              "configuration_digest": "sha256:91e9e7c341b9678b8304449f7f3431a46b60112721d201465ae10d77f064c93a"
             },
             "source_action_digest": "sha256:c40d3cf498d31653c4ef3139a1e271b21c699f83a908a7070513155c03bcfbc0",
             "mapped_action_digest": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
@@ -327,15 +327,15 @@
             "profile": "AADP-ACTION-MAPPING-RECORD-v1",
             "mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
             "implementation": {
-              "id": "pkg:npm/%40emilia-protocol/verify/aadp-authorization-artifact",
-              "version": "3.20.3",
+              "id": "urn:emilia:repository-source:aadp-authorization-artifact",
+              "version": "source-lock-v1",
               "digest": "sha256:90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9"
             },
             "resolver": {
               "id": "urn:emilia:mapping-resolver:closed-json-v1",
               "version": "1.0.0",
               "digest": "sha256:90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9",
-              "configuration_digest": "sha256:6142f4b2494f0c993ce0883f83ebb591314159a689a78e0730fadfe21c8fb1db"
+              "configuration_digest": "sha256:91e9e7c341b9678b8304449f7f3431a46b60112721d201465ae10d77f064c93a"
             },
             "source_action_digest": "sha256:c40d3cf498d31653c4ef3139a1e271b21c699f83a908a7070513155c03bcfbc0",
             "mapped_action_digest": "sha256:a84820a5cd672208628c7917ca50b7819a0d2654d8102a15d471850af09e74a3",
@@ -438,8 +438,8 @@
       "claim": "the deterministic report binds every source-locked hash",
       "passed": true,
       "actual": {
-        "source_lock_file_sha256": "sha256:f28ad35e81c3ab3f7157ef81f21a65b5af6216462de4bc6bdc21eddfa2f48a07",
-        "source_lock_canonical_digest": "sha256:6a2f9cf0297c75e4cb3441e9531c688e246f47f1e0f29efcc12ea44db7559396",
+        "source_lock_file_sha256": "sha256:086bb58188735d465452f8b9eb322c99fa79518a802859f7a53f25d227ec20b7",
+        "source_lock_canonical_digest": "sha256:469d7ccf9286e5dba04128bb4124e640cdf5e334174a09057d7c686db82ee71d",
         "hashes": [
           "ba6d9db982b23f642227b5a8f9f68589d0f3692c2e97adbfa2ac8a18792d8db8",
           "72b90df3c5e45386442e548eaf565c7049b6260842711db3354ce90271dac081",
@@ -449,11 +449,11 @@
           "36b8bbb56579bb0db1f5f5d60a5532b0ff3f5d508273c84a905c379dd8d5da20",
           "f42720245d42a3304890409817b9fa0b4b183719e7aa870466dbf7a0373e57a2",
           "90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9",
-          "375bf2688a7b35dfa533dc5ee215bb441c54e770a768e5b02c7a7c9f07d671dc"
+          "6360e1e8b6ef01765b467c5ff35c18998de8458c21370f33987242ea5e8a0062"
         ],
         "all_hashes_bound": true
       }
     }
   ],
-  "report_digest": "sha256:416ffd58f0b32fa443e86a21bfab82b8e0e764e68453ed74d952d0a279bfd17c"
+  "report_digest": "sha256:9374a51322c69d2d2e8339999e71c3ef5336c6528925f19f6f43f2d0ead4ad6a"
 }

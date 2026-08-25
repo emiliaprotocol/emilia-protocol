@@ -63,10 +63,10 @@
         "path": "packages/verify/src/aadp-authorization-artifact.ts",
         "sha256": "90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9"
       },
-      {
-        "path": "conformance/composition/aadp-ep-authorization-v0.1/mapping-profile.json",
-        "sha256": "375bf2688a7b35dfa533dc5ee215bb441c54e770a768e5b02c7a7c9f07d671dc"
-      }
+    {
+      "path": "conformance/composition/aadp-ep-authorization-v0.1/mapping-profile.json",
+      "sha256": "6360e1e8b6ef01765b467c5ff35c18998de8458c21370f33987242ea5e8a0062"
+    }
     ]
   }
 }
