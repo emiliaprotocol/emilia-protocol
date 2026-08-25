@@ -19,6 +19,7 @@ import {
 
 const corpus = JSON.parse(readFileSync(new URL('./vectors.json', import.meta.url), 'utf8'));
 const sourceLock = JSON.parse(readFileSync(new URL('./source-lock.json', import.meta.url), 'utf8'));
+const contribution = readFileSync(new URL('./AUTHZEN-CONTRIBUTION.md', import.meta.url), 'utf8');
 const token = corpus.fixtures.token_claims;
 
 test('the complete corpus passes and reports self-reproduction, not independent implementation', () => {
@@ -156,4 +157,33 @@ test('the source lock pins the exact fetched spec bytes and every local load-bea
     const actual = crypto.createHash('sha256').update(bytes).digest('hex');
     assert.equal(actual, file.sha256, file.path);
   }
+});
+
+test('the proposed AuthZEN contribution is source-pinned and does not claim WG acceptance', () => {
+  assert.equal(
+    sourceLock.upstream_repository.commit,
+    'e287920eed842b227e38531c1735b712337ca44d',
+  );
+  assert.deepEqual(
+    sourceLock.upstream_repository.files.map(({ path, sha256 }) => ({ path, sha256 })),
+    [
+      {
+        path: 'profiles/authzen-coaz-framework-1_0.md',
+        sha256: 'cfea78ebdc9dfb5bf44ffb88faf64ed9da9252e696625ce729692fbf54ea2f7d',
+      },
+      {
+        path: 'profiles/authzen-coaz-mcp-binding-1_0.md',
+        sha256: '7ebd9dd513aed920f6b0020e2542a58cc9e9d6c562b240f22f4bc361dac2b9c1',
+      },
+    ],
+  );
+  assert.equal(sourceLock.upstream_issue.number, 603);
+  assert.equal(sourceLock.upstream_issue.state_at_fetch, 'open');
+  assert.match(contribution, /Status: proposed locally; not submitted to or accepted by OpenID AuthZEN\./);
+  assert.match(contribution, /MUST NOT reuse the earlier permit/);
+  assert.match(contribution, /was not evaluated by the PDP/);
+  assert.doesNotMatch(
+    contribution,
+    /requested by (?:OpenID|the WG)|WG-approved|Status: accepted/iu,
+  );
 });

@@ -1,29 +1,57 @@
 {
   "@version": "COAZ-TRANSLATION-SOURCE-LOCK-v0.1",
-  "fetched": "2026-08-16",
-  "fetch_note": "Raw HTML bytes fetched with curl on the date above and read in full before any claim was written. The former single profile document at authzen-mcp-profile-1_0.html states verbatim: 'This draft has been superseded and is retained only as a pointer to its replacements.' Its content is split into the two drafts pinned first.",
+  "fetched": "2026-08-25",
+  "fetch_note": "The official repository head, load-bearing Markdown source, rendered HTML, Authorization API 1.0, and open issue 603 were refreshed from OpenID sources on the date above. The former single profile document at authzen-mcp-profile-1_0.html states verbatim: 'This draft has been superseded and is retained only as a pointer to its replacements.' Its content is split into the two drafts pinned first.",
+  "upstream_repository": {
+    "url": "https://github.com/openid/authzen",
+    "commit": "e287920eed842b227e38531c1735b712337ca44d",
+    "files": [
+      {
+        "path": "profiles/authzen-coaz-framework-1_0.md",
+        "sha256": "cfea78ebdc9dfb5bf44ffb88faf64ed9da9252e696625ce729692fbf54ea2f7d"
+      },
+      {
+        "path": "profiles/authzen-coaz-mcp-binding-1_0.md",
+        "sha256": "7ebd9dd513aed920f6b0020e2542a58cc9e9d6c562b240f22f4bc361dac2b9c1"
+      }
+    ]
+  },
+  "upstream_issue": {
+    "number": 603,
+    "url": "https://github.com/openid/authzen/issues/603",
+    "title": "[COAZ-MCP] Bind a permit to the MCP operation actually forwarded",
+    "state_at_fetch": "open",
+    "updated_at": "2026-08-13T19:03:08Z",
+    "body_text_sha256": "23e502e38eca90687d4dbeeb54bfdc1e412f99dee37e3c4c23b98b29d707a9c3",
+    "body_hash_note": "SHA-256 over the UTF-8 issue body followed by LF, as emitted by jq -r .body."
+  },
   "specs": [
     {
       "name": "COAZ: A Framework for Mapping Information Models to AuthZEN Authorization Requests - Draft 1 (OpenID AuthZEN WG, published 13 February 2026)",
       "url": "https://openid.github.io/authzen/authzen-coaz-framework-1_0.html",
-      "sha256": "b963604d1e1b2b4108ff45133b0a32a6acb04b3fd5963705295670ce9716fa93"
+      "sha256": "e52b719a414f9935b1f0abb4bfa1e903133d3452752fb0eb6f0d23a17dc84bdf"
     },
     {
       "name": "COAZ-MCP: COAZ Binding for the Model Context Protocol - Draft 1 (OpenID AuthZEN WG, published 13 February 2026)",
       "url": "https://openid.github.io/authzen/authzen-coaz-mcp-binding-1_0.html",
-      "sha256": "e3c8777ce7c81190df953eab1ea6b7bbe68985e02008144eac311a289d8c2dcb"
+      "sha256": "b8b2a8506bb8cec89977a25877e204fe807b7b7dadd69d0eda9acc237132a79d"
     },
     {
       "name": "authzen-mcp-profile-1_0 (superseded pointer document)",
       "url": "https://openid.github.io/authzen/authzen-mcp-profile-1_0.html",
-      "sha256": "71d9c2fbcc851b66fe4269202f0a91d9c399e8662bd161cdc6cf81202c5edea0"
+      "sha256": "809fb7a684d0f92e0ccc6de8f69cc5c9896117f93742c8e4419b602e1f15a6ad"
     }
   ],
   "authzen_base": {
-    "note": "AuthZEN Authorization API 1.0 Final quotes (Sections 5.3, 5.4, 5.5, 6.1) are reused verbatim from the fetch record of caid/bindings/authzen-acta.md, whose sources were read in full on 2026-07-08 and refreshed on 2026-07-14.",
-    "url": "https://openid.net/specs/authorization-api-1_0.html"
+    "note": "AuthZEN Authorization API 1.0 Final was refreshed from the official rendered specification on 2026-08-25.",
+    "url": "https://openid.net/specs/authorization-api-1_0.html",
+    "sha256": "f0ee89cc4a688f9f409dc323c8342579d74c45dc776a6b04a622ba9738de82bc"
   },
   "local_files": [
+    {
+      "path": "conformance/composition/coaz-translation-v0.1/AUTHZEN-CONTRIBUTION.md",
+      "sha256": "c4d7b437f1fbb28bf6d35c2e836e05acd1acae69038d0f87bf30446e80443e39"
+    },
     {
       "path": "caid/impl/js/caid.mjs",
       "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"

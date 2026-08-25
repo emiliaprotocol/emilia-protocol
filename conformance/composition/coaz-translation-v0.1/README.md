@@ -31,12 +31,15 @@ OpenID AuthZEN Working Group, both fetched and read here:
 - COAZ Framework (`authzen-coaz-framework-1_0.html`)
 - COAZ-MCP binding (`authzen-coaz-mcp-binding-1_0.html`)
 
-The exact fetched bytes, their SHA-256, and the fetch date are pinned in
-[`source-lock.json`](./source-lock.json). AuthZEN Authorization API 1.0 Final
-quotes are reused verbatim from the fetch record of
-`caid/bindings/authzen-acta.md` (sources read in full 2026-07-08, refreshed
-2026-07-14), not re-fetched here; that provenance is recorded in the source
-lock.
+The exact fetched bytes, their SHA-256, the OpenID AuthZEN repository head, and
+the refresh date are pinned in [`source-lock.json`](./source-lock.json).
+AuthZEN Authorization API 1.0 Final was refreshed with the COAZ sources on
+2026-08-25.
+
+The bounded upstream change proposed from this reproduction is recorded in
+[`AUTHZEN-CONTRIBUTION.md`](./AUTHZEN-CONTRIBUTION.md). It remains a local
+proposal. It has not been submitted to, reviewed by, or accepted by OpenID
+AuthZEN.
 
 ## The translation surface, anchored to the pinned text
 
@@ -195,6 +198,7 @@ at the relying boundary, not inside the PDP.
 ## Files
 
 - `README.md` (this file)
+- `AUTHZEN-CONTRIBUTION.md` bounded candidate text and claim boundary
 - `run.mjs` runnable demonstration and corpus runner (exit 0 on all-pass)
 - `run.test.mjs` vitest suite
 - `vectors.json` the pinned case set and computed CAIDs
