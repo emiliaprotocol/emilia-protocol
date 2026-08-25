@@ -54,9 +54,6 @@ describe('commercial offer contract', () => {
     expect(conversionSurfaces).toContain('90-day protected-workflow pilot');
     expect(conversionSurfaces).toContain('$25K');
     expect(programIntegrity).toContain('href="/pilot?v=health"');
-  });
-
-  it('keeps protocol feature packaging inside the one canonical pilot', () => {
     expect(trustedContextPack).not.toMatch(/60[- ]day|60 days|Amelia I/i);
     expect(trustedContextPack).toContain('$25K');
     expect(trustedContextPack).toContain('90 days');
