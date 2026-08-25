@@ -18,7 +18,15 @@ export type ProviderEntryGuardResult = Readonly<{
     evidence?: Record<string, any> | null;
     reservation?: 'release' | 'burn' | 'hold';
 }>;
-export type ProviderEntryGuard = (context: ProviderEntryContext) => ProviderEntryGuardResult | Promise<ProviderEntryGuardResult>;
+export type ProviderEntryGuard = ((context: ProviderEntryContext) => ProviderEntryGuardResult | Promise<ProviderEntryGuardResult>) & Readonly<{
+    /**
+     * An authenticated observation is advisory. When set, provider entry must
+     * also serialize against this exact state domain in the owning store.
+     */
+    required_control_domain_id?: string;
+}>;
+/** Return the state domain that must serialize the final provider-entry step. */
+export declare function requiredProviderEntryControlDomain(guard: ProviderEntryGuard | null | undefined): string | null;
 /** Build an immutable context so a buggy policy hook cannot rewrite the effect. */
 export declare function providerEntryContext({ authorization, selector, observedAction, capability, now, }?: {
     authorization?: Record<string, any> | null;
@@ -46,7 +54,7 @@ export type OrganizationStatusObservation = Readonly<{
  * Organization-wide panic check. The deployment pins its organization and its
  * authenticated status resolver; presenter-supplied status is never accepted.
  */
-export declare function createOrganizationStatusProviderEntryGuard({ organizationId, resolveStatus, maxAgeMs, now, }: {
+export declare function createOrganizationStatusProviderEntryGuard({ organizationId, resolveStatus, maxAgeMs, now, controlDomainId, }: {
     organizationId: string;
     resolveStatus: (input: Readonly<{
         organization_id: string;
@@ -54,6 +62,8 @@ export declare function createOrganizationStatusProviderEntryGuard({ organizatio
     }>) => OrganizationStatusObservation | Promise<OrganizationStatusObservation>;
     maxAgeMs?: number;
     now?: number | (() => number);
+    /** Owning state domain that must serialize freeze and provider entry. */
+    controlDomainId?: string;
 }): ProviderEntryGuard;
 declare const _default: {
     PROVIDER_ENTRY_GUARD_VERSION: string;
@@ -61,6 +71,7 @@ declare const _default: {
     evaluateProviderEntryGuard: typeof evaluateProviderEntryGuard;
     composeProviderEntryGuards: typeof composeProviderEntryGuards;
     createOrganizationStatusProviderEntryGuard: typeof createOrganizationStatusProviderEntryGuard;
+    requiredProviderEntryControlDomain: typeof requiredProviderEntryControlDomain;
 };
 export default _default;
 //# sourceMappingURL=provider-entry.d.ts.map

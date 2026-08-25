@@ -6,6 +6,22 @@
  * boundary answers whether it is still safe to release the actuator now.
  */
 export const PROVIDER_ENTRY_GUARD_VERSION = 'EP-GATE-PROVIDER-ENTRY-GUARD-v1';
+function attachRequiredControlDomain(guard, controlDomainId) {
+    if (controlDomainId === null)
+        return guard;
+    Object.defineProperty(guard, 'required_control_domain_id', {
+        value: controlDomainId,
+        enumerable: false,
+        configurable: false,
+        writable: false,
+    });
+    return guard;
+}
+/** Return the state domain that must serialize the final provider-entry step. */
+export function requiredProviderEntryControlDomain(guard) {
+    const value = guard?.required_control_domain_id;
+    return typeof value === 'string' && value.length > 0 ? value : null;
+}
 function cloneFreeze(value) {
     if (value === null || value === undefined)
         return value;
@@ -53,16 +69,20 @@ export async function evaluateProviderEntryGuard(guard, context) {
             return Object.freeze({ ok: false, reason: 'provider_entry_guard_malformed', status: 503 });
         }
         if (result.ok !== true) {
+            const dispositionValid = result.reservation === undefined
+                || result.reservation === 'release'
+                || result.reservation === 'burn'
+                || result.reservation === 'hold';
             return Object.freeze({
                 ok: false,
-                reason: boundedReason(result.reason, 'provider_entry_refused'),
+                reason: dispositionValid
+                    ? boundedReason(result.reason, 'provider_entry_refused')
+                    : 'provider_entry_guard_disposition_invalid',
                 status: Number.isSafeInteger(result.status) && Number(result.status) >= 400
                     ? Number(result.status)
                     : 409,
                 evidence: cloneFreeze(result.evidence ?? null),
-                reservation: result.reservation === 'release'
-                    || result.reservation === 'burn'
-                    || result.reservation === 'hold'
+                reservation: dispositionValid && result.reservation !== undefined
                     ? result.reservation
                     : 'hold',
             });
@@ -81,7 +101,13 @@ export async function evaluateProviderEntryGuard(guard, context) {
 /** Compose independent guards without collapsing their evidence or semantics. */
 export function composeProviderEntryGuards(...guards) {
     const active = guards.filter((guard) => typeof guard === 'function');
-    return async (context) => {
+    const controlDomains = [...new Set(active
+            .map((guard) => requiredProviderEntryControlDomain(guard))
+            .filter((value) => value !== null))];
+    if (controlDomains.length > 1) {
+        throw new TypeError('provider-entry guards must share a single serialized control domain');
+    }
+    const composed = async (context) => {
         const evidence = [];
         for (const guard of active) {
             const result = await evaluateProviderEntryGuard(guard, context);
@@ -92,12 +118,13 @@ export function composeProviderEntryGuards(...guards) {
         }
         return { ok: true, evidence: { guards: evidence } };
     };
+    return attachRequiredControlDomain(composed, controlDomains[0] ?? null);
 }
 /**
  * Organization-wide panic check. The deployment pins its organization and its
  * authenticated status resolver; presenter-supplied status is never accepted.
  */
-export function createOrganizationStatusProviderEntryGuard({ organizationId, resolveStatus, maxAgeMs = 5_000, now = Date.now, }) {
+export function createOrganizationStatusProviderEntryGuard({ organizationId, resolveStatus, maxAgeMs = 5_000, now = Date.now, controlDomainId = organizationId, }) {
     if (typeof organizationId !== 'string' || organizationId.length === 0 || organizationId.length > 512) {
         throw new TypeError('organizationId must be a bounded non-empty string');
     }
@@ -106,7 +133,11 @@ export function createOrganizationStatusProviderEntryGuard({ organizationId, res
     if (!Number.isSafeInteger(maxAgeMs) || maxAgeMs < 0 || maxAgeMs > 60_000) {
         throw new TypeError('maxAgeMs must be a safe integer from 0 through 60000');
     }
-    return async (context) => {
+    if (typeof controlDomainId !== 'string' || controlDomainId.length === 0
+        || controlDomainId.length > 512) {
+        throw new TypeError('controlDomainId must be a bounded non-empty string');
+    }
+    const guard = async (context) => {
         let status;
         try {
             status = await resolveStatus(Object.freeze({ organization_id: organizationId, context }));
@@ -155,6 +186,7 @@ export function createOrganizationStatusProviderEntryGuard({ organizationId, res
             },
         };
     };
+    return attachRequiredControlDomain(guard, controlDomainId);
 }
 export default {
     PROVIDER_ENTRY_GUARD_VERSION,
@@ -162,5 +194,6 @@ export default {
     evaluateProviderEntryGuard,
     composeProviderEntryGuards,
     createOrganizationStatusProviderEntryGuard,
+    requiredProviderEntryControlDomain,
 };
 //# sourceMappingURL=provider-entry.js.map
