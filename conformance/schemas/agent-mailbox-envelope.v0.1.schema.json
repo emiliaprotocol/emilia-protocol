@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.emiliaprotocol.ai/schema/agent-mailbox-envelope.v0.1.schema.json",
+  "title": "EP Agent Mailbox Envelope v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "envelope_id",
+    "sender_id",
+    "recipient_id",
+    "thread_id",
+    "sequence",
+    "message_type",
+    "payload",
+    "payload_digest",
+    "created_at",
+    "expires_at",
+    "authority",
+    "signer_key_id",
+    "signature"
+  ],
+  "properties": {
+    "@version": { "const": "EP-AGENT-MAILBOX-ENVELOPE-v0.1" },
+    "envelope_id": { "$ref": "#/$defs/identifier" },
+    "sender_id": { "$ref": "#/$defs/identifier" },
+    "recipient_id": { "$ref": "#/$defs/identifier" },
+    "thread_id": { "$ref": "#/$defs/identifier" },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "message_type": { "enum": ["note", "context_handoff", "action_proposal", "result"] },
+    "payload": true,
+    "payload_digest": { "$ref": "#/$defs/digest" },
+    "created_at": { "$ref": "#/$defs/canonicalTime" },
+    "expires_at": { "$ref": "#/$defs/canonicalTime" },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authorizes"],
+      "properties": { "authorizes": { "const": false } }
+    },
+    "signer_key_id": { "$ref": "#/$defs/identifier" },
+    "signature": { "$ref": "#/$defs/signature" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$"
+    },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "canonicalTime": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": { "const": "Ed25519" },
+        "value": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9_-]+$" }
+      }
+    }
+  }
+}
