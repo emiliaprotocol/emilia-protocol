@@ -2,8 +2,11 @@
 /**
  * Revision-pinned OASNT adapter for AEB-ADAPTER-v1.
  *
- * Source lock: draft-thallapelly-oasnt-02, archived text SHA-256
+ * Native-token source lock: draft-thallapelly-oasnt-02, archived text SHA-256
  * 3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603.
+ * The optional OASNT-local CAID derivation is separately source-locked to
+ * draft-thallapelly-oasnt-caid-01, archived text SHA-256
+ * 75dfecb65e56accc5b55aa66a570e6fae52d3fe417631482eb8172d50e771963.
  *
  * OASNT proves a native, single-use human authorization token. This adapter
  * verifies that token under relying-party-pinned enrolled keys, recomputes its
@@ -42,6 +45,8 @@ type Obj = Record<string, unknown>;
 
 export const OASNT_DRAFT_REVISION = 'draft-thallapelly-oasnt-02';
 export const OASNT_DRAFT_TXT_SHA256 = 'sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603';
+export const OASNT_CAID_DRAFT_REVISION = 'draft-thallapelly-oasnt-caid-01';
+export const OASNT_CAID_DRAFT_TXT_SHA256 = 'sha256:75dfecb65e56accc5b55aa66a570e6fae52d3fe417631482eb8172d50e771963';
 export const OASNT_AEB_ADAPTER_ID = 'native:oasnt';
 export const OASNT_AEB_ADAPTER_VERSION = '2';
 export const OASNT_AEB_CONFIG_VERSION = 'AEB-OASNT-CONFIG-v2';
@@ -342,6 +347,14 @@ export function computeOasntActionDigest(type: string, parameters: Record<string
   const pairs = Object.keys(parameters).sort(utf8Compare)
     .map((key) => `${actionEscape(key)}=${actionEscape(parameters[key])}`);
   return sha256Base64url(`${actionEscape(type)}|${pairs.join('&')}`);
+}
+
+/**
+ * OASNT-CAID-01 Section 3.2 identifier. This identifier is confined to the
+ * OASNT namespace and is never a direct join key for an EMILIA CAID.
+ */
+export function computeOasntCaid(type: string, parameters: Record<string, string>): string {
+  return `oasnt:caid:1:${computeOasntActionDigest(type, parameters)}`;
 }
 
 export function computeOasntDisplayDigest(type: string, parameters: Record<string, string>): string {

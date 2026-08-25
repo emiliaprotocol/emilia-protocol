@@ -1,0 +1,64 @@
+{
+  "@version": "OASNT-CAID-AEB-VECTORS-v1",
+  "description": "Local executable application of OASNT-CAID-01 Sections 4.1 and 6.4 to native tokens verified against the exact OASNT-02 source lock.",
+  "source_locks": {
+    "oasnt": {
+      "revision": "draft-thallapelly-oasnt-02",
+      "txt_sha256": "sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603",
+      "scope": "native token verification and canonical-action bytes"
+    },
+    "oasnt_caid": {
+      "revision": "draft-thallapelly-oasnt-caid-01",
+      "txt_sha256": "sha256:75dfecb65e56accc5b55aa66a570e6fae52d3fe417631482eb8172d50e771963",
+      "sections": ["4.1", "6.4"],
+      "scope": "single-use matching boundary and namespace separation"
+    }
+  },
+  "claim_limits": [
+    "The OASNT-CAID companion remains revision -01 and normatively references OASNT-01; these local vectors do not claim that a revised OASNT-CAID profile has been published for OASNT-02.",
+    "The corpus is same-repository implementation evidence, not external interoperability, adoption, or endorsement.",
+    "The dual-profile join is executor-owned local mapping over one material action; neither profile-specific identifier is accepted as a direct cross-profile join key."
+  ],
+  "vectors": [
+    {
+      "id": "near_miss_refusal_preserves_authority",
+      "section": "4.1",
+      "expect": "a refused near-miss action does not reserve or consume the valid OASNT replay unit"
+    },
+    {
+      "id": "not_committed_release_allows_retry",
+      "section": "4.1",
+      "expect": "a reserved attempt reconciled NOT_COMMITTED releases the authority for retry"
+    },
+    {
+      "id": "committed_admission_consumes_and_replay_refuses",
+      "section": "4.1",
+      "expect": "a committed admission consumes the authority and a replay is refused"
+    },
+    {
+      "id": "profile_specific_identifiers_are_not_direct_join_keys",
+      "section": "6.4",
+      "expect": "the OASNT CAID and EMILIA CAID for one action remain unequal profile-specific identifiers"
+    },
+    {
+      "id": "executor_owned_mapping_joins_one_material_action",
+      "section": "6.4",
+      "expect": "independent profile derivations join only through the executor-owned material action"
+    },
+    {
+      "id": "namespace_collision_refuses",
+      "section": "6.4",
+      "expect": "substituting an EMILIA identifier into the OASNT namespace fails closed"
+    },
+    {
+      "id": "profile_identifier_mismatch_refuses",
+      "section": "6.4",
+      "expect": "a changed identifier in either profile fails closed"
+    },
+    {
+      "id": "changed_material_action_refuses",
+      "section": "6.4",
+      "expect": "identifiers derived for the original action cannot join a changed material action"
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/aadp-authorization-artifact.v1.schema.json",
+  "title": "AADP Authorization Artifact Hook v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "artifact_profile",
+    "artifact_digest",
+    "native_verification",
+    "evidence_satisfaction",
+    "verification_record_digest",
+    "action_mapping"
+  ],
+  "properties": {
+    "profile": {
+      "const": "AADP-AUTHORIZATION-ARTIFACT-v1"
+    },
+    "artifact_profile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifact_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "native_verification": {
+      "enum": ["VERIFIED", "REFUSED", "UNAVAILABLE"]
+    },
+    "evidence_satisfaction": {
+      "enum": ["SATISFIED", "REFUSE", "INDETERMINATE"]
+    },
+    "verification_record_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "action_mapping": {
+      "$ref": "#/$defs/actionMapping"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "digest"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "resolver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "digest", "configuration_digest"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "configuration_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "actionMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "mapping_profile",
+        "implementation",
+        "resolver",
+        "source_action_digest",
+        "mapped_action_digest",
+        "no_material_field_loss"
+      ],
+      "properties": {
+        "profile": {
+          "const": "AADP-ACTION-MAPPING-RECORD-v1"
+        },
+        "mapping_profile": {
+          "type": "string",
+          "format": "uri"
+        },
+        "implementation": {
+          "$ref": "#/$defs/implementation"
+        },
+        "resolver": {
+          "$ref": "#/$defs/resolver"
+        },
+        "source_action_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "mapped_action_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "no_material_field_loss": {
+          "const": true
+        }
+      }
+    }
+  }
+}

@@ -122,10 +122,18 @@ uncertainty routes to reconciliation required before authority is reserved.
 
 Four revision-pinned foreign-proof adapters are available:
 
-- `aeb-oasnt-adapter` verifies the OASNT-01 compact authorization token against
+- `aeb-oasnt-adapter` verifies the source-locked OASNT-02 compact authorization token against
   an enrolled hardware-attested P-256 key and recomputes its action, display,
   and protected-request commitments. OASNT's native CAID namespace remains
-  distinct from the EMILIA CAID projection.
+  distinct from the EMILIA CAID projection. A local vector corpus exercises
+  the OASNT-CAID-01 single-use boundary and executor-owned dual-profile join:
+  pre-reservation refusal leaves authority available, `NOT_COMMITTED` releases
+  an open reservation, committed admission consumes it, and the two
+  profile-specific identifiers are never compared as direct join keys. This is
+  same-repository implementation evidence, not a claim that an OASNT-CAID
+  revision for OASNT-02 has been published. See
+  `docs/standards-engagement/OASNT-CAID-AEB-COMPOSITION.md` in the repository
+  for the exact two-source compatibility boundary.
 - `aeb-aps-adapter` verifies the APS-03 signed ActionIntent and PolicyDecision
   chain, preserves the complete `aps-action-ref-v2` material, recomputes the
   decision reference, and delegates authority-chain semantics to a separately

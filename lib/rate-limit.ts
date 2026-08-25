@@ -89,7 +89,9 @@ const _upstash = getUpstashConfig();
 const UPSTASH_URL = _upstash?.url;
 const UPSTASH_TOKEN = _upstash?.token;
 const useRedis = !!_upstash;
-const durableRequired = getRateLimitConfig().durableRequired;
+const rateLimitConfig = getRateLimitConfig();
+const durableRequired = rateLimitConfig.durableRequired;
+const trustedClientIpHeader = rateLimitConfig.trustedClientIpHeader || null;
 
 const REDIS_TIMEOUT_MS = 3000; // 3s hard timeout — never block API responses waiting for Redis
 const FAIL_CLOSED_CATEGORIES = new Set([
@@ -270,15 +272,12 @@ export async function checkRateLimit(
  * Get the client IP from a Next.js request.
  */
 export function getClientIP(request: Request): string {
-  // Use the LAST value in x-forwarded-for (rightmost is closest to the server
-  // and hardest to spoof without a trusted proxy chain).
-  const xff = request.headers.get('x-forwarded-for');
-  const ip = xff ? xff.split(',').pop()!.trim() : null;
-  return (
-    ip ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
-  );
+  const trustedHeader = process.env.VERCEL === '1'
+    ? 'x-vercel-forwarded-for'
+    : trustedClientIpHeader;
+  if (!trustedHeader) return 'unknown';
+  const forwarded = request.headers.get(trustedHeader);
+  return forwarded?.split(',').pop()?.trim() || 'unknown';
 }
 
 /**

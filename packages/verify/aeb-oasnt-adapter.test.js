@@ -3,9 +3,11 @@
 /* eslint-disable */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import test from 'node:test';
 import { digestAeb, } from './aeb-adapter-contract.js';
-import { OASNT_AEB_ADAPTER_ID, OASNT_AEB_ADAPTER_VERSION, OASNT_AEB_CONFIG_VERSION, OASNT_CAID_MAPPER_ID, OASNT_CAID_MAPPING_VERSION, OASNT_DRAFT_REVISION, OASNT_DRAFT_TXT_SHA256, OASNT_TRUST_ROOT_VERSION, computeOasntActionDigest, computeOasntDisplayDigest, computeOasntRequestFingerprint, createOasntActionDefinition, createOasntAebAdapter, } from './aeb-oasnt-adapter.js';
+import { OASNT_AEB_ADAPTER_ID, OASNT_AEB_ADAPTER_VERSION, OASNT_AEB_CONFIG_VERSION, OASNT_CAID_DRAFT_REVISION, OASNT_CAID_DRAFT_TXT_SHA256, OASNT_CAID_MAPPER_ID, OASNT_CAID_MAPPING_VERSION, OASNT_DRAFT_REVISION, OASNT_DRAFT_TXT_SHA256, OASNT_TRUST_ROOT_VERSION, computeOasntActionDigest, computeOasntCaid, computeOasntDisplayDigest, computeOasntRequestFingerprint, createOasntActionDefinition, createOasntAebAdapter, } from './aeb-oasnt-adapter.js';
+const oasntCaidVectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/oasnt-caid-aeb.v1.json', import.meta.url), 'utf8'));
 const NOW = new Date(1_800_000_000 * 1000).toISOString();
 const ACTION_TYPE = 'payment.transfer.1';
 const OASNT_ACTION_TYPE = 'payment.transfer';
@@ -100,6 +102,29 @@ function input(overrides = {}) {
         ...overrides,
     };
 }
+function mappedIdentifiers(action) {
+    const adapter = createOasntAebAdapter({ config, trust_roots: [trustRoot] });
+    const nativeInput = input({ expected_action: action });
+    const native = adapter.verifyNative(nativeInput);
+    if (native.native_verification !== 'VERIFIED' || native.acceptance !== 'ACCEPTED')
+        return null;
+    const mapped = adapter.mapAction({ ...nativeInput, profile: profile(), native });
+    if (mapped.mapping !== 'MATCH' || mapped.caid === null || mapped.action_digest === null)
+        return null;
+    return {
+        oasnt_caid: computeOasntCaid(action.native_action.type, action.native_action.parameters),
+        emilia_caid: mapped.caid,
+        local_action_digest: mapped.action_digest,
+    };
+}
+function joinProfilesOnExecutorAction(action, presented) {
+    const derived = mappedIdentifiers(action);
+    if (derived === null
+        || presented.oasnt_caid !== derived.oasnt_caid
+        || presented.emilia_caid !== derived.emilia_caid)
+        return null;
+    return derived;
+}
 test('OASNT -02 published canonicalization vectors match byte-for-byte (unchanged from -01)', () => {
     assert.equal(computeOasntActionDigest(OASNT_ACTION_TYPE, expectedAction.native_action.parameters), 'YlHp3M4JIWFPPZIVAwAmYOBOMfUyb2bjE6ve3AD2iaQ');
     assert.equal(computeOasntDisplayDigest(OASNT_ACTION_TYPE, expectedAction.native_action.parameters), 'uSEgOG9UC1IWGxzBalJv5cIbfxE8kxmoKF25yrRl1fs');
@@ -156,7 +181,71 @@ test('OASNT constructor pins cannot be replaced by presenter-selected roots', ()
 test('OASNT source lock is the current reviewed draft', () => {
     assert.equal(OASNT_DRAFT_REVISION, 'draft-thallapelly-oasnt-02');
     assert.equal(OASNT_DRAFT_TXT_SHA256, 'sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603');
+    assert.equal(OASNT_CAID_DRAFT_REVISION, 'draft-thallapelly-oasnt-caid-01');
+    assert.equal(OASNT_CAID_DRAFT_TXT_SHA256, 'sha256:75dfecb65e56accc5b55aa66a570e6fae52d3fe417631482eb8172d50e771963');
+    assert.equal(oasntCaidVectors.source_locks.oasnt.revision, OASNT_DRAFT_REVISION);
+    assert.equal(oasntCaidVectors.source_locks.oasnt.txt_sha256, OASNT_DRAFT_TXT_SHA256);
+    assert.equal(oasntCaidVectors.source_locks.oasnt_caid.revision, OASNT_CAID_DRAFT_REVISION);
+    assert.equal(oasntCaidVectors.source_locks.oasnt_caid.txt_sha256, OASNT_CAID_DRAFT_TXT_SHA256);
+    assert.deepEqual(oasntCaidVectors.source_locks.oasnt_caid.sections, ['4.1', '6.4']);
+    assert.equal(oasntCaidVectors.claim_limits.length, 3);
+    assert.ok(oasntCaidVectors.claim_limits.some((claim) => claim.includes('do not claim that a revised OASNT-CAID profile has been published for OASNT-02')));
+    assert.ok(oasntCaidVectors.claim_limits.some((claim) => claim.includes('not external interoperability, adoption, or endorsement')));
+    assert.ok(oasntCaidVectors.claim_limits.some((claim) => claim.includes('direct cross-profile join key')));
 });
+const joinVectorHandlers = {
+    profile_specific_identifiers_are_not_direct_join_keys() {
+        const derived = mappedIdentifiers(expectedAction);
+        assert.ok(derived);
+        assert.match(derived.oasnt_caid, /^oasnt:caid:1:[A-Za-z0-9_-]{43}$/);
+        assert.match(derived.emilia_caid, /^caid:1:/);
+        assert.notEqual(derived.oasnt_caid, derived.emilia_caid);
+    },
+    executor_owned_mapping_joins_one_material_action() {
+        const derived = mappedIdentifiers(expectedAction);
+        assert.ok(derived);
+        const joined = joinProfilesOnExecutorAction(expectedAction, derived);
+        assert.ok(joined);
+        assert.equal(joined.local_action_digest, digestAeb(expectedAction));
+    },
+    namespace_collision_refuses() {
+        const derived = mappedIdentifiers(expectedAction);
+        assert.ok(derived);
+        assert.equal(joinProfilesOnExecutorAction(expectedAction, {
+            oasnt_caid: derived.emilia_caid,
+            emilia_caid: derived.emilia_caid,
+        }), null);
+    },
+    profile_identifier_mismatch_refuses() {
+        const derived = mappedIdentifiers(expectedAction);
+        assert.ok(derived);
+        const changedEmilia = `${derived.emilia_caid.slice(0, -1)}${derived.emilia_caid.endsWith('A') ? 'B' : 'A'}`;
+        const changedOasnt = `${derived.oasnt_caid.slice(0, -1)}${derived.oasnt_caid.endsWith('A') ? 'B' : 'A'}`;
+        assert.equal(joinProfilesOnExecutorAction(expectedAction, {
+            oasnt_caid: derived.oasnt_caid,
+            emilia_caid: changedEmilia,
+        }), null);
+        assert.equal(joinProfilesOnExecutorAction(expectedAction, {
+            oasnt_caid: changedOasnt,
+            emilia_caid: derived.emilia_caid,
+        }), null);
+    },
+    changed_material_action_refuses() {
+        const derived = mappedIdentifiers(expectedAction);
+        assert.ok(derived);
+        const changed = structuredClone(expectedAction);
+        changed.native_action.parameters.amount = '1000.00';
+        assert.equal(joinProfilesOnExecutorAction(changed, derived), null);
+    },
+};
+for (const vector of oasntCaidVectors.vectors.filter((candidate) => candidate.section === '6.4')) {
+    test(`OASNT-CAID-01 section 6.4 under OASNT-02 source lock: ${vector.id}`, () => {
+        assert.equal(oasntCaidVectors['@version'], 'OASNT-CAID-AEB-VECTORS-v1');
+        const run = joinVectorHandlers[vector.id];
+        assert.equal(typeof run, 'function', `missing executable handler for ${vector.id}`);
+        run();
+    });
+}
 // ---------------------------------------------------------------------------
 // -02 sec 5.4 assurance. Tokens below are minted locally with the draft's
 // published Appendix A.1 key (its private component is published exactly so

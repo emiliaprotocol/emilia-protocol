@@ -1,0 +1,72 @@
+{
+  "@version": "AADP-EP-SOURCE-LOCK-v0.1",
+  "aadp": {
+    "name": "Agent Action Decision Protocol",
+    "draft": "draft-saha-aadp-01",
+    "published_at": "2026-08-20",
+    "text": {
+      "url": "https://www.ietf.org/archive/id/draft-saha-aadp-01.txt",
+      "sha256": "ba6d9db982b23f642227b5a8f9f68589d0f3692c2e97adbfa2ac8a18792d8db8"
+    },
+    "bounded_sections": [
+      "3.2 Verdicts",
+      "4 The Two-Phase Exchange",
+      "5.1 Decide Request",
+      "5.2 Decide Response",
+      "5.3 Report Request and Response",
+      "7 Idempotency, Replay, and Exactly-Once Semantics",
+      "8 Approvals",
+      "10 Evidence",
+      "11 Failure Semantics",
+      "14 Versioning"
+    ]
+  },
+  "onedoor": {
+    "repository": "https://github.com/shamiksaharcciit-oss/onedoor",
+    "revision": "5a1970f072c77b59463bcb26b48942a0c2ecb42c",
+    "executed": false,
+    "inspected_files": [
+      {
+        "path": "onedoor/guardrail/approval_ref.py",
+        "url": "https://raw.githubusercontent.com/shamiksaharcciit-oss/onedoor/5a1970f072c77b59463bcb26b48942a0c2ecb42c/onedoor/guardrail/approval_ref.py",
+        "sha256": "72b90df3c5e45386442e548eaf565c7049b6260842711db3354ce90271dac081"
+      },
+      {
+        "path": "onedoor/guardrail/decision.py",
+        "url": "https://raw.githubusercontent.com/shamiksaharcciit-oss/onedoor/5a1970f072c77b59463bcb26b48942a0c2ecb42c/onedoor/guardrail/decision.py",
+        "sha256": "83992810b7ac088d813de3e363fb21c944c29a07651773ec0ab01371a0116c43"
+      },
+      {
+        "path": "onedoor/guardrail/receipt.py",
+        "url": "https://raw.githubusercontent.com/shamiksaharcciit-oss/onedoor/5a1970f072c77b59463bcb26b48942a0c2ecb42c/onedoor/guardrail/receipt.py",
+        "sha256": "25c03b4e90b63cc5eb074b317d502dcd5b6bc3b218cd55eee9657b76ae21e20b"
+      }
+    ]
+  },
+  "emilia": {
+    "repository": "https://github.com/emiliaprotocol/emilia-protocol",
+    "binding": "repository-relative-path-and-sha256",
+    "runtime_files": [
+      {
+        "path": "conformance/vectors/authorization-bundle.v1.json",
+        "sha256": "c0c01956b5ce064e2d7b868c7d84813425e69ce819efb4e374fce986937c76f4"
+      },
+      {
+        "path": "packages/verify/src/authorization-bundle.ts",
+        "sha256": "36b8bbb56579bb0db1f5f5d60a5532b0ff3f5d508273c84a905c379dd8d5da20"
+      },
+      {
+        "path": "packages/verify/package.json",
+        "sha256": "f42720245d42a3304890409817b9fa0b4b183719e7aa870466dbf7a0373e57a2"
+      },
+      {
+        "path": "packages/verify/src/aadp-authorization-artifact.ts",
+        "sha256": "90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9"
+      },
+      {
+        "path": "conformance/composition/aadp-ep-authorization-v0.1/mapping-profile.json",
+        "sha256": "6360e1e8b6ef01765b467c5ff35c18998de8458c21370f33987242ea5e8a0062"
+      }
+    ]
+  }
+}

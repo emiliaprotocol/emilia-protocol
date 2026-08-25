@@ -170,6 +170,14 @@ CRON_SECRET=                  # DEPRECATED — legacy shared secret, still accep
 NEXT_PUBLIC_APP_URL=
 ```
 
+Operator request tokens use the `ep_op3_` format and bind the exact deployment
+origin as their audience in addition to method, target, and body digest. Token
+minting must pass the configured application origin to `generateOperatorToken`.
+Roll out token minting and verification together: `ep_op2_` tokens are refused
+because they have no deployment audience. Drain their five-minute lifetime
+before cutover if a scheduler may already have minted them; operator keys do
+not otherwise need to rotate.
+
 ### Rotation Policy
 - `SUPABASE_SERVICE_ROLE_KEY`: Rotate on any suspected compromise. Rotates in Supabase dashboard → API settings.
 - `EP_WALLET_PRIVATE_KEY`: Rotate by generating new keypair, funding new address, updating env. Old key should be zeroed.

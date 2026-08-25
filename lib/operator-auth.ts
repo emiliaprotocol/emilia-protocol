@@ -5,8 +5,8 @@
  * Each operator gets its own signing key. Tokens are short-lived (5 min).
  *
  * Request-bound token format:
- *   ep_op2_<operator_id_b64u>.<timestamp_hex>.<nonce_b64u>.<method>
- *     .<target_b64u>.<body_sha256_hex>.<hmac_hex>
+ *   ep_op3_<operator_id_b64u>.<timestamp_hex>.<nonce_b64u>.<audience_b64u>
+ *     .<method>.<target_b64u>.<body_sha256_hex>.<hmac_hex>
  *
  * Scheduler compatibility: explicitly opted-in cron routes still accept the
  * legacy CRON_SECRET. Unbound ep_op_ tokens are refused on HTTP requests.
@@ -29,15 +29,18 @@ import { consumeOperatorToken } from './operator-token-replay.js';
 const TOKEN_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const TOKEN_PREFIX = 'ep_op_';
 const TOKEN_V2_PREFIX = 'ep_op2_';
+const TOKEN_V3_PREFIX = 'ep_op3_';
 const MAX_OPERATOR_REQUEST_BYTES = 1024 * 1024;
 
 export interface OperatorTokenBinding {
+  audience: string;
   method: string;
   target: string;
   body?: string | Uint8Array;
 }
 
 interface NormalizedOperatorRequestBinding {
+  audience: string;
   method: string;
   target: string;
   bodyDigest: string;
@@ -93,9 +96,21 @@ function normalizeTarget(target: string): string {
   return `${parsed.pathname}${parsed.search}`;
 }
 
+function normalizeAudience(audience: string): string {
+  if (typeof audience !== 'string') throw new TypeError('operator token audience is required');
+  const parsed = new URL(audience);
+  if (!['https:', 'http:'].includes(parsed.protocol)
+      || parsed.username || parsed.password
+      || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+    throw new TypeError('operator token audience must be an HTTP origin');
+  }
+  return parsed.origin;
+}
+
 function normalizeBinding(binding: OperatorTokenBinding): NormalizedOperatorRequestBinding {
   if (!binding || typeof binding !== 'object') throw new TypeError('operator token request binding is required');
   return {
+    audience: normalizeAudience(binding.audience),
     method: normalizeMethod(binding.method),
     target: normalizeTarget(binding.target),
     bodyDigest: bodyDigest(binding.body),
@@ -111,11 +126,13 @@ export function generateOperatorToken(
   const normalized = normalizeBinding(binding);
   const operatorIdEncoded = Buffer.from(operatorId, 'utf8').toString('base64url');
   const targetEncoded = Buffer.from(normalized.target, 'utf8').toString('base64url');
+  const audienceEncoded = Buffer.from(normalized.audience, 'utf8').toString('base64url');
   const nonce = crypto.randomBytes(16).toString('base64url');
   const message = [
     operatorIdEncoded,
     timestamp,
     nonce,
+    audienceEncoded,
     normalized.method,
     targetEncoded,
     normalized.bodyDigest,
@@ -123,7 +140,7 @@ export function generateOperatorToken(
   const hmac = crypto.createHmac('sha256', Buffer.from(secretHex, 'hex'))
     .update(message)
     .digest('hex');
-  return `${TOKEN_V2_PREFIX}${message}.${hmac}`;
+  return `${TOKEN_V3_PREFIX}${message}.${hmac}`;
 }
 
 /**
@@ -141,14 +158,15 @@ export async function verifyOperatorAuth(token: string | null | undefined, opts:
   }
 
   // === Path 1: Request-bound per-operator token ===
-  if (token.startsWith(TOKEN_V2_PREFIX)) {
-    const body = token.slice(TOKEN_V2_PREFIX.length);
+  if (token.startsWith(TOKEN_V3_PREFIX)) {
+    const body = token.slice(TOKEN_V3_PREFIX.length);
     const parts = body.split('.');
-    if (parts.length !== 7) return { valid: false, error: 'Malformed operator token' };
-    const [operatorIdEncoded, timestampHex, nonce, method, targetEncoded, boundBodyDigest, providedHmac] = parts;
+    if (parts.length !== 8) return { valid: false, error: 'Malformed operator token' };
+    const [operatorIdEncoded, timestampHex, nonce, audienceEncoded, method, targetEncoded, boundBodyDigest, providedHmac] = parts;
     if (!/^[A-Za-z0-9_-]{1,171}$/.test(operatorIdEncoded)
         || !/^[0-9a-f]{11,16}$/.test(timestampHex)
         || !/^[A-Za-z0-9_-]{20,32}$/.test(nonce)
+        || !/^[A-Za-z0-9_-]+$/.test(audienceEncoded)
         || !/^[A-Z]{3,16}$/.test(method)
         || !/^[A-Za-z0-9_-]+$/.test(targetEncoded)
         || !/^[0-9a-f]{64}$/.test(boundBodyDigest)
@@ -157,12 +175,16 @@ export async function verifyOperatorAuth(token: string | null | undefined, opts:
     }
 
     let operatorId: string;
+    let audience: string;
     let target: string;
     try {
       operatorId = Buffer.from(operatorIdEncoded, 'base64url').toString('utf8');
+      audience = Buffer.from(audienceEncoded, 'base64url').toString('utf8');
       target = Buffer.from(targetEncoded, 'base64url').toString('utf8');
       if (!operatorId || Buffer.from(operatorId, 'utf8').toString('base64url') !== operatorIdEncoded
+          || Buffer.from(audience, 'utf8').toString('base64url') !== audienceEncoded
           || Buffer.from(target, 'utf8').toString('base64url') !== targetEncoded
+          || normalizeAudience(audience) !== audience
           || normalizeTarget(target) !== target) {
         return { valid: false, error: 'Malformed operator token' };
       }
@@ -188,6 +210,7 @@ export async function verifyOperatorAuth(token: string | null | undefined, opts:
 
     const requestBinding = opts.requestBinding;
     if (!requestBinding
+        || requestBinding.audience !== audience
         || requestBinding.method !== method
         || requestBinding.target !== target
         || requestBinding.bodyDigest !== boundBodyDigest) {
@@ -208,6 +231,10 @@ export async function verifyOperatorAuth(token: string | null | undefined, opts:
       operator_id: operatorId,
       role: getOperatorRoles().get(operatorId) || null,
     };
+  }
+
+  if (token.startsWith(TOKEN_V2_PREFIX)) {
+    return { valid: false, error: 'Legacy operator token has no deployment audience binding' };
   }
 
   // === Path 1b: Legacy unbound per-operator token (verification-only) ===
@@ -319,7 +346,7 @@ export async function authenticateOperator(request: Request, opts: OperatorAuthO
   const auth = request.headers.get('authorization') || '';
   const bearer = auth.replace(/^Bearer\s+/i, '').trim();
   if (bearer) {
-    if (bearer.startsWith(TOKEN_V2_PREFIX)) {
+    if (bearer.startsWith(TOKEN_V3_PREFIX)) {
       let bytes: Uint8Array;
       try {
         const raw = new Uint8Array(await request.clone().arrayBuffer());
@@ -335,6 +362,7 @@ export async function authenticateOperator(request: Request, opts: OperatorAuthO
         ...opts,
         requireRequestBinding: true,
         requestBinding: {
+          audience: url.origin,
           method: normalizeMethod(request.method),
           target: `${url.pathname}${url.search}`,
           bodyDigest: bodyDigest(bytes),

@@ -293,9 +293,10 @@ export declare function mintCapabilityReceipt(baseReceipt: any, { issuerPrivateK
  * @param {object} capabilityReceipt
  * @param {object} [options]
  * @param {string[]} [options.trustedIssuerKeys]
- * @param {boolean} [options.allowUntrustedIssuer]
+ * @param {boolean} [options.allowUntrustedIssuer] Deprecated and ignored. A
+ * caller must pin at least one issuer key; self-signed authority is refused.
  */
-export declare function verifyCapabilityReceipt(capabilityReceipt: any, { trustedIssuerKeys, allowUntrustedIssuer, }?: {
+export declare function verifyCapabilityReceipt(capabilityReceipt: any, { trustedIssuerKeys, allowUntrustedIssuer: _allowUntrustedIssuer, }?: {
     trustedIssuerKeys?: string[];
     allowUntrustedIssuer?: boolean;
 }): {
@@ -899,11 +900,11 @@ export declare function mintCapabilityReceiptV2(baseReceipt: any, options?: {
 /**
  * FAIL-CLOSED hybrid verifier for one EP-CAPABILITY-RECEIPT-v2 envelope. Never
  * throws on caller input; a v2 envelope NEVER verifies on one leg alone. Trust
- * follows the same model as v1: a pinned issuer PAIR is required unless
- * allowUntrustedIssuer is set, in which case the presented (self-asserted) pair is
- * used and is explicitly untrusted.
+ * follows the same model as v1: a pinned issuer PAIR is required. The legacy
+ * allowUntrustedIssuer option is ignored so a self-signed envelope can never
+ * become authority through this public verifier.
  */
-export declare function verifyCapabilityReceiptV2(capabilityReceipt: any, { trustedIssuerKeys, allowUntrustedIssuer, mldsaBackend, mldsaBackendLoader, }?: {
+export declare function verifyCapabilityReceiptV2(capabilityReceipt: any, { trustedIssuerKeys, allowUntrustedIssuer: _allowUntrustedIssuer, mldsaBackend, mldsaBackendLoader, }?: {
     trustedIssuerKeys?: CapabilityV2IssuerPin[];
     allowUntrustedIssuer?: boolean;
     mldsaBackend?: AgilityOptions['mldsaBackend'];

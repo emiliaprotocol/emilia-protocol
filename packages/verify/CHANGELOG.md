@@ -5,6 +5,14 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Added source-locked local OASNT-CAID-01 lifecycle and namespace-separation
+  vectors over the OASNT-02 native verifier. The cases cover refusal without
+  replay-unit consumption, release after `NOT_COMMITTED`, permanent
+  consumption after `COMMITTED`, and executor-owned dual-profile joins without
+  treating an OASNT CAID as wire-compatible with an EMILIA CAID. The companion
+  draft remains revision -01, so this is same-repository implementation
+  evidence rather than a claim of a revised profile or external interop.
+
 - Add the zero-dependency Claim Assurance kernel. Strict, content-addressed
   Claim Cases are evaluated by caller-pinned verifier implementations under a
   pinned profile and produce deterministic, offline-checkable Assurance

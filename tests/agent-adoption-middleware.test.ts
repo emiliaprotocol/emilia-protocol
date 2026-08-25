@@ -31,10 +31,12 @@ function request(
     method = 'GET',
     headers = {},
     onClone = () => {},
+    body = method === 'GET' ? null : new ReadableStream(),
   }: {
     method?: string;
     headers?: Record<string, string>;
     onClone?: () => void;
+    body?: ReadableStream | null;
   } = {},
 ) {
   const url = new URL(`https://www.emiliaprotocol.ai${path}`);
@@ -42,7 +44,7 @@ function request(
     method,
     nextUrl: url,
     headers: new Headers(headers),
-    body: method === 'GET' ? null : new ReadableStream(),
+    body,
     clone() {
       onClone();
       throw new Error('middleware must not clone this authenticated body');
@@ -189,7 +191,7 @@ describe('Agent Adoption middleware security boundaries', () => {
       `/api/agent-records/${recordId}/revoke`,
     ]) {
       mocks.checkRateLimit.mockClear();
-      const response = await middleware(request(path, { method: 'POST' }) as never);
+      const response = await middleware(request(path, { method: 'POST', body: null }) as never);
       expect(mocks.checkRateLimit).toHaveBeenCalledWith('203.0.113.44', 'submit');
       expect(response.headers.get('x-ratelimit-limit')).toBe('30');
     }

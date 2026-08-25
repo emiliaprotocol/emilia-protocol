@@ -493,22 +493,14 @@ function snapshotRevokerKeysAnyVersion(value: unknown): Record<string, TrustProg
 }
 
 // ---------------------------------------------------------------------------
-// EP-REVOCATION-v2 router resolution. Not re-exported from the
-// @emilia-protocol/verify package root today (only v1's
-// verifyRevocation/isRevoked/REVOCATION_VERSION are, and there is no
-// "./revocation" subpath in the package's exports map), so this mirrors the
-// dynamic-import-with-workspace-fallback idiom this same package already uses
-// for the identical reason (trust-program-adapters.ts's
-// verifyQuorumDefault/verifyAuthorizationChainDefault): try the package
-// subpath first (picks up a future exports-map addition with no code change
-// here), fall back to the workspace-relative built file, which is exactly how
-// lib/revocation/revocation.ts composes the same router today. Resolution
-// failure is a THROW, never a silent fallback to the v1-only verifier -- the
-// caller turns it into a named fail-closed refusal.
+// EP-REVOCATION-v2 router resolution.
+//
+// @emilia-protocol/verify publishes the revocation router at the literal
+// "./revocation.js" subpath. Keep the workspace-relative compatibility path
+// as a literal too, so Webpack can include both candidates in its dependency
+// graph. Resolution failure is a THROW, never a silent fallback to the
+// v1-only verifier; the caller turns it into a named fail-closed refusal.
 // ---------------------------------------------------------------------------
-const REVOCATION_ROUTER_PACKAGE = '@emilia-protocol/verify/revocation.js';
-const LOCAL_REVOCATION_ROUTER_PACKAGE = '../../verify/revocation.js';
-
 type RevocationStatementVerdict = { valid: boolean; checks: Record<string, boolean>; errors: string[] };
 type RevocationStatementVerifier = (
   target: unknown, statement: unknown, opts: unknown,
@@ -520,15 +512,13 @@ async function resolveRevocationStatementVerifier(): Promise<RevocationStatement
   if (_revocationStatementVerifier) return _revocationStatementVerifier;
   let mod: any;
   try {
-    mod = await import(REVOCATION_ROUTER_PACKAGE);
+    mod = await import('@emilia-protocol/verify/revocation.js');
   } catch {
-    // Resolution-failure shape for an unlisted package subpath is NOT uniform
-    // across runtimes: plain Node throws ERR_PACKAGE_PATH_NOT_EXPORTED, but a
-    // bundler-backed loader (as used by this repo's own test runner) can throw
-    // a plain Error with no .code at all. Rather than pattern-match brittle
-    // error shapes, ANY primary-resolution failure falls back to the
-    // workspace-relative path; only a failure of THAT is surfaced.
-    mod = await import(LOCAL_REVOCATION_ROUTER_PACKAGE);
+    // Resolution-failure shapes are not uniform across runtimes. Rather than
+    // pattern-match brittle error details, any primary-resolution failure
+    // falls back to the workspace-relative path; only a failure of that path
+    // is surfaced.
+    mod = await import('../../verify/revocation.js');
   }
   if (typeof mod?.verifyRevocationStatement !== 'function') {
     throw new Error('EP-REVOCATION-v2 router (verifyRevocationStatement) unavailable');

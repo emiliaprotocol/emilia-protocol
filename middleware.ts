@@ -486,6 +486,13 @@ function payloadTooLarge(limit) {
   );
 }
 
+function invalidRequestBody() {
+  return NextResponse.json(
+    { error: 'Request body could not be safely inspected', code: 'invalid_body' },
+    { status: 400 },
+  );
+}
+
 /**
  * @param {string} method
  * @param {string} pathname
@@ -494,6 +501,16 @@ function payloadTooLarge(limit) {
 function isReleaseLockBrowserMutation(method, pathname) {
   return method.toUpperCase() === 'POST'
     && RELEASE_LOCK_BROWSER_MUTATIONS.some((pattern) => pattern.test(pathname));
+}
+
+function configuredApplicationOrigin() {
+  const configured = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
+  if (!configured) return null;
+  try {
+    return new URL(configured).origin;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -507,7 +524,8 @@ function releaseLockOriginAllowed(request) {
     return false;
   }
   try {
-    return new URL(origin).origin === request.nextUrl.origin;
+    const expectedOrigin = configuredApplicationOrigin();
+    return expectedOrigin !== null && new URL(origin).origin === expectedOrigin;
   } catch {
     return false;
   }
@@ -560,12 +578,10 @@ async function rejectOversizedApiBody(request, { declaredOnly = false } = {}) {
   let reader;
   try {
     const clonedBody = request.clone().body;
-    if (!clonedBody) return null;
+    if (!clonedBody) return invalidRequestBody();
     reader = clonedBody.getReader();
   } catch {
-    // If the body can't be cloned we cannot safely enforce the stream cap here;
-    // in-route readLimitedJson() remains the backstop. Do not fail the request.
-    return null;
+    return invalidRequestBody();
   }
   let total = 0;
   try {
@@ -579,10 +595,7 @@ async function rejectOversizedApiBody(request, { declaredOnly = false } = {}) {
       }
     }
   } catch {
-    // A read error on the clone must not open the cap: fail closed only if we
-    // already saw an over-limit count (handled above). A transient stream error
-    // before the limit is reached falls through to the handler's own guard.
-    return null;
+    return invalidRequestBody();
   }
   return null;
 }
@@ -785,7 +798,8 @@ export async function middleware(request) {
       // same-origin and must never be blocked.
       let sameOrigin = false;
       try {
-        sameOrigin = new URL(origin).host === request.headers.get('host');
+        const expectedOrigin = configuredApplicationOrigin();
+        sameOrigin = expectedOrigin !== null && new URL(origin).origin === expectedOrigin;
       } catch {
         sameOrigin = false;
       }
@@ -799,18 +813,15 @@ export async function middleware(request) {
               { status: 403 }
             );
           }
-        } else if (process.env.NODE_ENV === 'production') {
-          // FAIL CLOSED: in production with no ALLOWED_ORIGINS configured, a
-          // cross-origin request to the tenant cloud API is denied. Previously
-          // this fell open (allow-all), letting any website read cloud data
-          // whenever the operator forgot to set the allowlist. Dev keeps the
-          // permissive path below so local tooling isn't blocked.
+        } else {
+          // An absent allowlist is not permission. Local tooling stays available
+          // through a genuinely same-origin request or an explicit development
+          // origin in ALLOWED_ORIGINS.
           return NextResponse.json(
             { error: 'Cross-origin requests are not permitted', code: 'cors_denied' },
             { status: 403 }
           );
         }
-        // Development with no allowlist: fall through (permissive for local dev).
       }
     }
   }

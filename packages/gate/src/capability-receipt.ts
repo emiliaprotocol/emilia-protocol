@@ -1048,11 +1048,10 @@ function assertCapabilityShape(capability) {
   return true;
 }
 
-function verifyTrustedIssuer(publicKey, trustedIssuerKeys, allowUntrustedIssuer) {
-  if (!Array.isArray(trustedIssuerKeys) || trustedIssuerKeys.length === 0) {
-    return allowUntrustedIssuer === true;
-  }
-  return trustedIssuerKeys.includes(publicKey);
+function verifyTrustedIssuer(publicKey, trustedIssuerKeys) {
+  return Array.isArray(trustedIssuerKeys)
+    && trustedIssuerKeys.length > 0
+    && trustedIssuerKeys.includes(publicKey);
 }
 
 /**
@@ -1136,18 +1135,19 @@ export function mintCapabilityReceipt(baseReceipt, {
  * @param {object} capabilityReceipt
  * @param {object} [options]
  * @param {string[]} [options.trustedIssuerKeys]
- * @param {boolean} [options.allowUntrustedIssuer]
+ * @param {boolean} [options.allowUntrustedIssuer] Deprecated and ignored. A
+ * caller must pin at least one issuer key; self-signed authority is refused.
  */
 export function verifyCapabilityReceipt(capabilityReceipt, {
   trustedIssuerKeys = [],
-  allowUntrustedIssuer = false,
+  allowUntrustedIssuer: _allowUntrustedIssuer = false,
 }: { trustedIssuerKeys?: string[]; allowUntrustedIssuer?: boolean } = {}) {
   try {
     if (!isRecord(capabilityReceipt) || capabilityReceipt['@version'] !== CAPABILITY_RECEIPT_VERSION) return { ok: false, reason: 'malformed_capability_receipt' };
     const receipt = validateBaseReceipt(capabilityReceipt.receipt);
     assertCapabilityShape(capabilityReceipt.capability);
     const signature = capabilitySignature(capabilityReceipt);
-    if (!signature || !verifyTrustedIssuer(signature.public_key, trustedIssuerKeys, allowUntrustedIssuer)) {
+    if (!signature || !verifyTrustedIssuer(signature.public_key, trustedIssuerKeys)) {
       return { ok: false, reason: 'capability_issuer_not_trusted' };
     }
     const ok = verify(
@@ -1160,6 +1160,20 @@ export function verifyCapabilityReceipt(capabilityReceipt, {
   } catch (error) {
     return { ok: false, reason: 'capability_malformed', detail: (error as Error)?.message || 'invalid capability' };
   }
+}
+
+/**
+ * Internal integrity-only check used while a store registers an envelope that
+ * has already crossed the caller's trust boundary. Deriving this temporary pin
+ * from the envelope proves only self-consistency. It must never be exported or
+ * treated as issuer authority.
+ */
+function verifyCapabilityReceiptIntegrity(capabilityReceipt) {
+  const signature = capabilitySignature(capabilityReceipt);
+  if (!signature) return { ok: false, reason: 'malformed_capability_receipt' };
+  return verifyCapabilityReceipt(capabilityReceipt, {
+    trustedIssuerKeys: [signature.public_key],
+  });
 }
 
 function fieldToBytes(value) {
@@ -1519,7 +1533,7 @@ export function createMemoryCapabilityStore({
       return transitionMemoryControlDomain('restore', options);
     },
     registerCapability(capabilityReceipt) {
-      const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
+      const verified = verifyCapabilityReceiptIntegrity(capabilityReceipt);
       if (!verified.ok) return false;
       const state = capabilityStateFromEnvelope(capabilityReceipt);
       const existing = states.get(state.capability_id);
@@ -2696,7 +2710,7 @@ export function createPostgresCapabilityStore({
       return transitionPostgresControlDomain('restore', options);
     },
     async registerCapability(capabilityReceipt) {
-      const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
+      const verified = verifyCapabilityReceiptIntegrity(capabilityReceipt);
       if (!verified.ok) return false;
       const state = capabilityStateFromEnvelope(capabilityReceipt);
       return transaction(async (query) => {
@@ -4229,13 +4243,13 @@ function capabilitySignatureV2(capabilityReceipt): any | null {
 /**
  * FAIL-CLOSED hybrid verifier for one EP-CAPABILITY-RECEIPT-v2 envelope. Never
  * throws on caller input; a v2 envelope NEVER verifies on one leg alone. Trust
- * follows the same model as v1: a pinned issuer PAIR is required unless
- * allowUntrustedIssuer is set, in which case the presented (self-asserted) pair is
- * used and is explicitly untrusted.
+ * follows the same model as v1: a pinned issuer PAIR is required. The legacy
+ * allowUntrustedIssuer option is ignored so a self-signed envelope can never
+ * become authority through this public verifier.
  */
 export async function verifyCapabilityReceiptV2(capabilityReceipt, {
   trustedIssuerKeys = [],
-  allowUntrustedIssuer = false,
+  allowUntrustedIssuer: _allowUntrustedIssuer = false,
   mldsaBackend,
   mldsaBackendLoader,
 }: {
@@ -4259,10 +4273,7 @@ export async function verifyCapabilityReceiptV2(capabilityReceipt, {
       ? trustedIssuerKeys.some((pin) => isRecord(pin)
         && pin.public_key === presentedEdKey && pin.pq_public_key === presentedPqKey)
       : false;
-    const trusted = (Array.isArray(trustedIssuerKeys) && trustedIssuerKeys.length > 0)
-      ? pinnedPair
-      : allowUntrustedIssuer === true;
-    if (!trusted) return { ok: false, reason: 'capability_issuer_not_trusted' };
+    if (!pinnedPair) return { ok: false, reason: 'capability_issuer_not_trusted' };
 
     const derivedEdKeyId = capabilityEdKeyId(presentedEdKey);
     const derivedPqKeyId = capabilityPqKeyId(presentedPqKey);
@@ -4320,7 +4331,7 @@ export async function verifyCapabilityReceiptV2(capabilityReceipt, {
       capability: capabilityReceipt.capability,
       issuer_public_key: presentedEdKey,
       issuer_pq_public_key: presentedPqKey,
-      issuer_trusted: (Array.isArray(trustedIssuerKeys) && trustedIssuerKeys.length > 0),
+      issuer_trusted: true,
     };
   } catch (error) {
     return { ok: false, reason: 'capability_malformed', detail: (error as Error)?.message || 'invalid capability' };

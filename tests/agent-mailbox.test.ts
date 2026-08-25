@@ -1,0 +1,1490 @@
+// SPDX-License-Identifier: Apache-2.0
+
+import crypto from 'node:crypto';
+import { mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import Ajv2020 from 'ajv/dist/2020.js';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import {
+  AGENT_MAILBOX_DELIVERY_RECEIPT_VERSION,
+  AGENT_MAILBOX_ENVELOPE_VERSION,
+  AGENT_MAILBOX_READ_ACKNOWLEDGEMENT_VERSION,
+  AGENT_MAILBOX_STORED_DELIVERY_VERSION,
+  admitMailboxActionProposal,
+  agentMailboxDigest,
+  createAgentMailbox,
+  createAgentMailboxEnvelope,
+  createFileAgentMailboxStore,
+  createMemoryAgentMailboxStore,
+  extractMailboxActionProposal,
+  verifyAgentMailboxDeliveryReceipt,
+  verifyAgentMailboxEnvelope,
+} from '../lib/agent-mailbox.js';
+import { createCurtailmentAction, graceDigest } from '../lib/grace/mobile-grid.js';
+
+const NOW = '2026-08-22T20:00:00.000Z';
+const MIDDLE = '2026-08-22T20:30:00.000Z';
+const LATER = '2026-08-22T21:00:00.000Z';
+
+function keyPair(keyId: string) {
+  const pair = crypto.generateKeyPairSync('ed25519');
+  return {
+    keyId,
+    privateKey: pair.privateKey,
+    publicKeySpkiB64u: pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+  };
+}
+
+const smith = keyPair('agent-smith-signing-1');
+const iman = keyPair('agent-iman-signing-1');
+const mailboxService = keyPair('nomadic-mailbox-signing-1');
+
+function senderDirectory(overrides: Record<string, unknown> = {}) {
+  return {
+    'agent:smith': {
+      key_id: smith.keyId,
+      public_key_spki_b64u: smith.publicKeySpkiB64u,
+      status: 'active',
+    },
+    'agent:iman': {
+      key_id: iman.keyId,
+      public_key_spki_b64u: iman.publicKeySpkiB64u,
+      status: 'active',
+    },
+    ...overrides,
+  };
+}
+
+function noteEnvelope(input: Record<string, unknown> = {}) {
+  return createAgentMailboxEnvelope({
+    senderId: 'agent:smith',
+    recipientId: 'agent:iman',
+    threadId: 'thread:smith-iman-demo',
+    sequence: 1,
+    messageType: 'note',
+    payload: { text: 'The GRACE test proposal is ready.' },
+    createdAt: NOW,
+    expiresAt: LATER,
+    privateKey: smith.privateKey,
+    keyId: smith.keyId,
+    ...input,
+  });
+}
+
+function mailbox(store = createMemoryAgentMailboxStore()) {
+  return createAgentMailbox({
+    mailboxId: 'mailbox:nomadic-demo',
+    store,
+    senderDirectory: senderDirectory(),
+    privateKey: mailboxService.privateKey,
+    keyId: mailboxService.keyId,
+    now: () => NOW,
+  });
+}
+
+function mailboxOptions(overrides: Record<string, unknown> = {}) {
+  return {
+    mailboxId: 'mailbox:nomadic-demo',
+    store: createMemoryAgentMailboxStore(),
+    senderDirectory: senderDirectory(),
+    privateKey: mailboxService.privateKey,
+    keyId: mailboxService.keyId,
+    now: () => NOW,
+    ...overrides,
+  } as any;
+}
+
+const tempDirectories: string[] = [];
+afterEach(async () => {
+  await Promise.all(tempDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
+});
+
+describe('EP agent mailbox envelope', () => {
+  it('matches the closed interoperability schema', async () => {
+    const schema = JSON.parse(await readFile(
+      new URL('../conformance/schemas/agent-mailbox-envelope.v0.1.schema.json', import.meta.url),
+      'utf8',
+    ));
+    const validate = new Ajv2020({ allErrors: true, strict: true }).compile(schema);
+    expect(validate(noteEnvelope()), JSON.stringify(validate.errors)).toBe(true);
+  });
+
+  it('signs and verifies one recipient-bound envelope under a pinned sender key', () => {
+    const envelope = noteEnvelope();
+    expect(envelope['@version']).toBe(AGENT_MAILBOX_ENVELOPE_VERSION);
+    expect(envelope.authority).toEqual({ authorizes: false });
+    expect(envelope.payload_digest).toBe(agentMailboxDigest(envelope.payload));
+
+    expect(verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory(),
+      expectedRecipientId: 'agent:iman',
+      asOf: NOW,
+    })).toMatchObject({
+      verification_profile: 'EP-AGENT-MAILBOX-ENVELOPE-VERIFICATION-v0.1',
+      verified: true,
+      accepted: true,
+      reason: null,
+      envelope_digest: agentMailboxDigest(envelope),
+      authorizes: false,
+    });
+  });
+
+  it('refuses non-profile instants and non-canonical Ed25519 signature encodings', () => {
+    const extendedYear: any = structuredClone(noteEnvelope());
+    extendedYear.created_at = '+010000-01-01T00:00:00.000Z';
+    extendedYear.expires_at = '+010000-01-01T01:00:00.000Z';
+    expect(verifyAgentMailboxEnvelope(extendedYear, {
+      senderDirectory: senderDirectory(),
+      expectedRecipientId: 'agent:iman',
+      asOf: '+010000-01-01T00:30:00.000Z',
+    })).toMatchObject({ accepted: false, reason: 'envelope_time_invalid' });
+
+    const shortSignature: any = structuredClone(noteEnvelope());
+    shortSignature.signature.value = 'A';
+    expect(verifyAgentMailboxEnvelope(shortSignature, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    })).toMatchObject({ accepted: false, reason: 'envelope_shape_invalid' });
+  });
+
+  it('refuses payload tampering even if the attacker recomputes the unsigned payload digest', () => {
+    const envelope: any = structuredClone(noteEnvelope());
+    envelope.payload.text = 'Dispatch immediately.';
+    envelope.payload_digest = agentMailboxDigest(envelope.payload);
+    expect(verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    })).toMatchObject({ accepted: false, reason: 'signature_invalid' });
+  });
+
+  it('refuses an unpinned sender, wrong recipient, expired message, unknown member, and symbol member', () => {
+    const envelope: any = noteEnvelope();
+    expect(verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: {}, expectedRecipientId: 'agent:iman', asOf: NOW,
+    }).reason).toBe('sender_key_not_pinned');
+    expect(verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:mallory', asOf: NOW,
+    }).reason).toBe('recipient_mismatch');
+    expect(verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: '2026-08-22T21:00:00.001Z',
+    }).reason).toBe('envelope_expired');
+    expect(verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: '2026-08-22T19:59:59.999Z',
+    }).reason).toBe('envelope_not_yet_valid');
+
+    const widened: any = structuredClone(envelope);
+    widened.hidden_authority = true;
+    expect(verifyAgentMailboxEnvelope(widened, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    }).reason).toBe('envelope_shape_invalid');
+
+    const symbolized: any = structuredClone(envelope);
+    symbolized.payload[Symbol('hidden')] = 'dispatch';
+    expect(verifyAgentMailboxEnvelope(symbolized, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    }).reason).toBe('envelope_not_canonical');
+  });
+
+  it('refuses oversized inline content before signature work', () => {
+    expect(() => noteEnvelope({ payload: { text: 'x'.repeat(262_145) } })).toThrow(/payload_too_large/);
+  });
+
+  it('refuses malformed envelope construction inputs before signing', () => {
+    expect(() => noteEnvelope({ senderId: 'x' })).toThrow(/mailbox_identifier_invalid/);
+    expect(() => noteEnvelope({ sequence: 0 })).toThrow(/mailbox_sequence_invalid/);
+    expect(() => noteEnvelope({ messageType: 'dispatch' })).toThrow(/mailbox_message_type_invalid/);
+    expect(() => noteEnvelope({ createdAt: 'not-an-instant' })).toThrow(/mailbox_time_window_invalid/);
+    expect(() => noteEnvelope({ expiresAt: NOW })).toThrow(/mailbox_time_window_invalid/);
+    expect(() => noteEnvelope({ payload: { count: 1n } })).toThrow(/payload_not_canonical/);
+    expect(() => noteEnvelope({ privateKey: 'not-a-private-key' })).toThrow(/mailbox_ed25519_private_key_required/);
+    expect(() => noteEnvelope({ envelopeId: 'x' })).toThrow(/mailbox_envelope_id_invalid/);
+  });
+
+  it('fails closed on malformed times, payloads, sender state, keys, and signatures', () => {
+    const envelope: any = structuredClone(noteEnvelope());
+
+    const invalidTime = structuredClone(envelope);
+    invalidTime.created_at = 'not-an-instant';
+    expect(verifyAgentMailboxEnvelope(invalidTime, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    }).reason).toBe('envelope_time_invalid');
+
+    const payloadMismatch = structuredClone(envelope);
+    payloadMismatch.payload.text = 'Different unsigned bytes.';
+    expect(verifyAgentMailboxEnvelope(payloadMismatch, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    }).reason).toBe('payload_digest_mismatch');
+
+    expect(verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory({
+        'agent:smith': {
+          key_id: smith.keyId,
+          public_key_spki_b64u: smith.publicKeySpkiB64u,
+          status: 'revoked',
+        },
+      }),
+      expectedRecipientId: 'agent:iman',
+      asOf: NOW,
+    }).reason).toBe('sender_key_not_active');
+
+    expect(verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory({
+        'agent:smith': {
+          key_id: smith.keyId,
+          public_key_spki_b64u: 'not-a-der-key',
+          status: 'active',
+        },
+      }),
+      expectedRecipientId: 'agent:iman',
+      asOf: NOW,
+    }).reason).toBe('sender_key_invalid');
+
+    const malformedSignature = structuredClone(envelope);
+    malformedSignature.signature.value = '*';
+    expect(verifyAgentMailboxEnvelope(malformedSignature, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    }).reason).toBe('envelope_shape_invalid');
+  });
+});
+
+describe('durable mailbox and delivery receipts', () => {
+  it('emits a delivery receipt matching the closed interoperability schema', async () => {
+    const schema = JSON.parse(await readFile(
+      new URL('../conformance/schemas/agent-mailbox-delivery-receipt.v0.1.schema.json', import.meta.url),
+      'utf8',
+    ));
+    const validate = new Ajv2020({ allErrors: true, strict: true }).compile(schema);
+    const receipt = await mailbox().deliver(noteEnvelope(), { recipientId: 'agent:iman' });
+    expect(validate(receipt), JSON.stringify(validate.errors)).toBe(true);
+  });
+
+  it('stores a new envelope once, emits one metadata-only chime, and signs a non-authorizing delivery receipt', async () => {
+    const service = mailbox();
+    const chimes: any[] = [];
+    service.subscribe('agent:iman', (notification) => chimes.push(notification));
+
+    const envelope = noteEnvelope();
+    const first = await service.deliver(envelope, { recipientId: 'agent:iman' });
+    const duplicate = await service.deliver(envelope, { recipientId: 'agent:iman' });
+
+    expect(first).toMatchObject({
+      '@version': AGENT_MAILBOX_DELIVERY_RECEIPT_VERSION,
+      delivery_status: 'ACCEPTED',
+      authorizes: false,
+    });
+    expect(duplicate).toMatchObject({ delivery_status: 'DUPLICATE', authorizes: false });
+    expect(chimes).toEqual([{
+      mailbox_id: 'mailbox:nomadic-demo',
+      recipient_id: 'agent:iman',
+      envelope_id: envelope.envelope_id,
+      envelope_digest: agentMailboxDigest(envelope),
+      message_type: 'note',
+      received_at: NOW,
+    }]);
+    expect(JSON.stringify(chimes)).not.toContain('GRACE test proposal');
+
+    expect(verifyAgentMailboxDeliveryReceipt(first, {
+      mailboxId: 'mailbox:nomadic-demo',
+      publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
+      keyId: mailboxService.keyId,
+      expectedRecipientId: 'agent:iman',
+      expectedEnvelopeDigest: agentMailboxDigest(envelope),
+    })).toMatchObject({
+      verification_profile: 'EP-AGENT-MAILBOX-DELIVERY-VERIFICATION-v0.1',
+      verified: true,
+      accepted: true,
+      reason: null,
+      authorizes: false,
+    });
+
+    const listed = await service.list('agent:iman');
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({ read_acknowledgement: null, envelope });
+    expect(await service.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id }))
+      .toMatchObject({
+        acknowledgement: { read_at: NOW, authorizes: false },
+        authorizes: false,
+      });
+    expect((await service.list('agent:iman'))[0].read_acknowledgement?.read_at).toBe(NOW);
+  });
+
+  it('refuses same envelope ID with different signed bytes instead of overwriting the first message', async () => {
+    const service = mailbox();
+    const first = noteEnvelope({ envelopeId: 'message:fixed-conflict-id' });
+    const conflicting = noteEnvelope({
+      envelopeId: 'message:fixed-conflict-id',
+      sequence: 2,
+      payload: { text: 'Different signed content.' },
+    });
+    expect((await service.deliver(first, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect(await service.deliver(conflicting, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'envelope_id_conflict' });
+    expect(await service.list('agent:iman')).toHaveLength(1);
+  });
+
+  it('refuses sender equivocation at the same recipient, thread, and sequence even under different IDs', async () => {
+    const service = mailbox();
+    const first = noteEnvelope({ envelopeId: 'message:first-sequence-body' });
+    const conflicting = noteEnvelope({
+      envelopeId: 'message:second-sequence-body',
+      payload: { text: 'A different statement at sequence one.' },
+    });
+    expect((await service.deliver(first, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect(await service.deliver(conflicting, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'thread_sequence_conflict' });
+    expect(await service.list('agent:iman')).toHaveLength(1);
+  });
+
+  it('persists accepted envelopes across a new filesystem store instance', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const envelope = noteEnvelope();
+    const firstService = mailbox(createFileAgentMailboxStore({ directory }));
+    expect((await firstService.deliver(envelope, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+
+    const restarted = mailbox(createFileAgentMailboxStore({ directory }));
+    const listed = await restarted.list('agent:iman');
+    expect(listed).toHaveLength(1);
+    expect(listed[0].envelope_digest).toBe(agentMailboxDigest(envelope));
+    expect((await restarted.deliver(envelope, { recipientId: 'agent:iman' })).delivery_status).toBe('DUPLICATE');
+  });
+
+  it('keeps accepted history readable after sender-key rotation while requiring the current key for delivery', async () => {
+    const rotatedSmith = keyPair('agent-smith-signing-2');
+    const directory: any = senderDirectory();
+    const storageDirectory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(storageDirectory);
+    const service = createAgentMailbox(mailboxOptions({
+      senderDirectory: directory,
+      store: createFileAgentMailboxStore({ directory: storageDirectory }),
+    }));
+    const historical = noteEnvelope();
+
+    expect(await service.deliver(historical, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'ACCEPTED', authorizes: false });
+
+    directory['agent:smith'] = {
+      key_id: rotatedSmith.keyId,
+      public_key_spki_b64u: rotatedSmith.publicKeySpkiB64u,
+      status: 'active',
+    };
+    const rotatedService = createAgentMailbox(mailboxOptions({
+      senderDirectory: directory,
+      store: createFileAgentMailboxStore({ directory: storageDirectory }),
+    }));
+
+    await expect(rotatedService.list('agent:iman')).resolves.toEqual([
+      expect.objectContaining({
+        envelope_digest: agentMailboxDigest(historical),
+        sender_verification: expect.objectContaining({
+          signer_key_id: smith.keyId,
+          public_key_spki_b64u: smith.publicKeySpkiB64u,
+          verified_at: NOW,
+          authorizes: false,
+        }),
+      }),
+    ]);
+
+    const retiredKeyEnvelope = noteEnvelope({ sequence: 2 });
+    expect(await rotatedService.deliver(retiredKeyEnvelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'sender_key_not_pinned', authorizes: false });
+
+    const currentEnvelope = noteEnvelope({
+      sequence: 2,
+      privateKey: rotatedSmith.privateKey,
+      keyId: rotatedSmith.keyId,
+    });
+    expect(await rotatedService.deliver(currentEnvelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'ACCEPTED', authorizes: false });
+    expect(await rotatedService.list('agent:iman')).toHaveLength(2);
+  });
+
+  it('keeps accepted history readable after sender removal or revocation but rejects new delivery', async () => {
+    const directory: any = senderDirectory();
+    const service = createAgentMailbox(mailboxOptions({
+      senderDirectory: directory,
+      store: createMemoryAgentMailboxStore(),
+    }));
+    const historical = noteEnvelope();
+    expect((await service.deliver(historical, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+
+    delete directory['agent:smith'];
+    await expect(service.list('agent:iman')).resolves.toHaveLength(1);
+    expect(await service.deliver(noteEnvelope({ sequence: 2 }), { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'sender_key_not_pinned', authorizes: false });
+
+    directory['agent:smith'] = {
+      key_id: smith.keyId,
+      public_key_spki_b64u: smith.publicKeySpkiB64u,
+      status: 'revoked',
+    };
+    await expect(service.list('agent:iman')).resolves.toHaveLength(1);
+    expect(await service.deliver(noteEnvelope({ sequence: 2 }), { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'sender_key_not_active', authorizes: false });
+  });
+
+  it('keeps accepted history readable across mailbox-service key rotation with explicit historical pins', async () => {
+    const rotatedMailboxService = keyPair('nomadic-mailbox-signing-2');
+    const storageDirectory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(storageDirectory);
+    const historical = noteEnvelope();
+    const originalService = mailbox(createFileAgentMailboxStore({ directory: storageDirectory }));
+    expect((await originalService.deliver(historical, { recipientId: 'agent:iman' })).delivery_status)
+      .toBe('ACCEPTED');
+
+    const rotatedService = createAgentMailbox(mailboxOptions({
+      store: createFileAgentMailboxStore({ directory: storageDirectory }),
+      privateKey: rotatedMailboxService.privateKey,
+      keyId: rotatedMailboxService.keyId,
+      mailboxVerificationKeys: {
+        [mailboxService.keyId]: mailboxService.publicKeySpkiB64u,
+      },
+    }));
+    await expect(rotatedService.list('agent:iman')).resolves.toEqual([
+      expect.objectContaining({
+        envelope_digest: agentMailboxDigest(historical),
+        delivery_binding: expect.objectContaining({
+          signer_key_id: mailboxService.keyId,
+          authorizes: false,
+        }),
+      }),
+    ]);
+
+    const current = noteEnvelope({ sequence: 2 });
+    const currentReceipt = await rotatedService.deliver(current, { recipientId: 'agent:iman' });
+    expect(currentReceipt).toMatchObject({
+      delivery_status: 'ACCEPTED',
+      signer_key_id: rotatedMailboxService.keyId,
+      authorizes: false,
+    });
+    expect(verifyAgentMailboxDeliveryReceipt(currentReceipt, {
+      mailboxId: 'mailbox:nomadic-demo',
+      publicKeySpkiB64u: rotatedMailboxService.publicKeySpkiB64u,
+      keyId: rotatedMailboxService.keyId,
+      expectedRecipientId: 'agent:iman',
+      expectedEnvelopeDigest: agentMailboxDigest(current),
+    })).toMatchObject({ verified: true, accepted: true, authorizes: false });
+    expect((await rotatedService.list('agent:iman')).map((record) => record.delivery_binding.signer_key_id))
+      .toEqual([mailboxService.keyId, rotatedMailboxService.keyId]);
+  });
+
+  it('fails closed on missing or wrong historical mailbox pins and inconsistent current-key pins', async () => {
+    const rotatedMailboxService = keyPair('nomadic-mailbox-signing-2');
+    const storageDirectory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(storageDirectory);
+    const originalService = mailbox(createFileAgentMailboxStore({ directory: storageDirectory }));
+    expect((await originalService.deliver(noteEnvelope(), { recipientId: 'agent:iman' })).delivery_status)
+      .toBe('ACCEPTED');
+
+    const restartedStore = () => createFileAgentMailboxStore({ directory: storageDirectory });
+    const missingHistoricalPin = createAgentMailbox(mailboxOptions({
+      store: restartedStore(),
+      privateKey: rotatedMailboxService.privateKey,
+      keyId: rotatedMailboxService.keyId,
+    }));
+    await expect(missingHistoricalPin.list('agent:iman')).rejects
+      .toThrow(/mailbox_store_result_invalid/);
+
+    const wrongHistoricalPin = createAgentMailbox(mailboxOptions({
+      store: restartedStore(),
+      privateKey: rotatedMailboxService.privateKey,
+      keyId: rotatedMailboxService.keyId,
+      mailboxVerificationKeys: {
+        [mailboxService.keyId]: iman.publicKeySpkiB64u,
+      },
+    }));
+    await expect(wrongHistoricalPin.list('agent:iman')).rejects
+      .toThrow(/mailbox_store_result_invalid/);
+
+    expect(() => createAgentMailbox(mailboxOptions({
+      mailboxVerificationKeys: {
+        [mailboxService.keyId]: iman.publicKeySpkiB64u,
+      },
+    }))).toThrow(/mailbox_service_verification_key_mismatch/);
+
+    expect(() => createAgentMailbox(mailboxOptions({
+      mailboxVerificationKeys: { 'invalid key id': mailboxService.publicKeySpkiB64u },
+    }))).toThrow(/mailbox_service_verification_keys_invalid/);
+  });
+
+  it('fails closed when the immutable delivery-time sender binding is tampered', async () => {
+    const persisted: any[] = [];
+    const store: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async (record: unknown) => {
+        persisted.push(structuredClone(record));
+        return { outcome: 'stored', record };
+      },
+      list: async () => structuredClone(persisted),
+      acknowledge: async () => false,
+    };
+    const service = createAgentMailbox(mailboxOptions({ store }));
+    expect((await service.deliver(noteEnvelope(), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect(persisted[0]).toMatchObject({
+      sender_verification: {
+        verification_profile: 'EP-AGENT-MAILBOX-ENVELOPE-VERIFICATION-v0.1',
+        sender_id: 'agent:smith',
+        signer_key_id: smith.keyId,
+        public_key_spki_b64u: smith.publicKeySpkiB64u,
+        verified_at: NOW,
+        authorizes: false,
+      },
+      delivery_binding: {
+        '@version': AGENT_MAILBOX_STORED_DELIVERY_VERSION,
+        mailbox_id: 'mailbox:nomadic-demo',
+        signer_key_id: mailboxService.keyId,
+        authorizes: false,
+        signature: expect.objectContaining({ algorithm: 'Ed25519' }),
+      },
+    });
+
+    persisted[0].sender_verification.public_key_spki_b64u = iman.publicKeySpkiB64u;
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_result_invalid/);
+  });
+
+  it('rejects a mixed listing containing a valid delivery and a forged bound record', async () => {
+    const persisted: any[] = [];
+    const store: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async (record: unknown) => {
+        persisted.push(structuredClone(record));
+        return { outcome: 'stored', record };
+      },
+      list: async () => structuredClone(persisted),
+      acknowledge: async () => false,
+    };
+    const service = createAgentMailbox(mailboxOptions({ store }));
+    expect((await service.deliver(noteEnvelope(), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect((await service.deliver(noteEnvelope({ sequence: 2 }), { recipientId: 'agent:iman' })).delivery_status)
+      .toBe('ACCEPTED');
+
+    const attacker = keyPair('agent-smith-attacker-key');
+    const forged = noteEnvelope({
+      envelopeId: 'message:forged-stored-replacement',
+      sequence: 2,
+      payload: { text: 'Forged stored replacement.' },
+      privateKey: attacker.privateKey,
+      keyId: attacker.keyId,
+    });
+    persisted[1].envelope_id = forged.envelope_id;
+    persisted[1].envelope_digest = agentMailboxDigest(forged);
+    persisted[1].envelope = forged;
+    persisted[1].sender_verification.signer_key_id = attacker.keyId;
+    persisted[1].sender_verification.public_key_spki_b64u = attacker.publicKeySpkiB64u;
+
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_result_invalid/);
+  });
+
+  it('rejects an old bound record relabeled as newly stored while allowing a verified duplicate', async () => {
+    let persisted: any = null;
+    let repeatedOutcome: 'stored' | 'duplicate' = 'stored';
+    let now = NOW;
+    const store: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async (record: unknown) => {
+        if (persisted === null) {
+          persisted = structuredClone(record);
+          return { outcome: 'stored', record };
+        }
+        return { outcome: repeatedOutcome, record: structuredClone(persisted) };
+      },
+      list: async () => persisted === null ? [] : [structuredClone(persisted)],
+      acknowledge: async () => false,
+    };
+    const service = createAgentMailbox(mailboxOptions({ store, now: () => now }));
+    const envelope = noteEnvelope();
+    expect((await service.deliver(envelope, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+
+    now = MIDDLE;
+    expect(await service.deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'mailbox_store_result_invalid', authorizes: false });
+
+    repeatedOutcome = 'duplicate';
+    expect(await service.deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'DUPLICATE', authorizes: false });
+
+    const storedSignature = persisted.delivery_binding.signature.value;
+    persisted.delivery_binding.signature.value = (storedSignature[0] === 'A' ? 'B' : 'A')
+      + storedSignature.slice(1);
+    expect(await service.deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'mailbox_store_result_invalid', authorizes: false });
+  });
+
+  it('deduplicates byte-identical valid records returned more than once', async () => {
+    let persisted: any = null;
+    const store: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async (record: unknown) => {
+        persisted = structuredClone(record);
+        return { outcome: 'stored', record };
+      },
+      list: async () => [structuredClone(persisted), structuredClone(persisted)],
+      acknowledge: async () => false,
+    };
+    const service = createAgentMailbox(mailboxOptions({ store }));
+    expect((await service.deliver(noteEnvelope(), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    await expect(service.list('agent:iman')).resolves.toHaveLength(1);
+  });
+
+  it('rejects conflicting envelope IDs and sender-thread sequences in a listing', async () => {
+    const permissiveStore = () => {
+      const records: any[] = [];
+      return {
+        records,
+        store: {
+          durable: true,
+          deliveryAtomicity: 'shared_durable',
+          bodyBound: true,
+          put: async (record: unknown) => {
+            records.push(structuredClone(record));
+            return { outcome: 'stored', record };
+          },
+          list: async () => structuredClone(records),
+          acknowledge: async () => false,
+        } as any,
+      };
+    };
+
+    const duplicateId = permissiveStore();
+    const duplicateIdService = createAgentMailbox(mailboxOptions({ store: duplicateId.store }));
+    expect((await duplicateIdService.deliver(noteEnvelope({
+      envelopeId: 'message:listing-duplicate-id',
+    }), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect((await duplicateIdService.deliver(noteEnvelope({
+      envelopeId: 'message:listing-duplicate-id',
+      sequence: 2,
+      payload: { text: 'Conflicting body under the same ID.' },
+    }), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    await expect(duplicateIdService.list('agent:iman')).rejects
+      .toThrow(/mailbox_store_result_invalid/);
+
+    const duplicateSequence = permissiveStore();
+    const duplicateSequenceService = createAgentMailbox(mailboxOptions({ store: duplicateSequence.store }));
+    expect((await duplicateSequenceService.deliver(noteEnvelope({
+      envelopeId: 'message:listing-sequence-first',
+    }), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect((await duplicateSequenceService.deliver(noteEnvelope({
+      envelopeId: 'message:listing-sequence-second',
+      payload: { text: 'Equivocation at sequence one.' },
+    }), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    await expect(duplicateSequenceService.list('agent:iman')).rejects
+      .toThrow(/mailbox_store_result_invalid/);
+  });
+
+  it('binds every durable record to its content-derived filename', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const service = mailbox(createFileAgentMailboxStore({ directory }));
+    expect((await service.deliver(noteEnvelope(), { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    const recordsDirectory = path.join(directory, 'records');
+    const [recordName] = await readdir(recordsDirectory);
+    const source = path.join(recordsDirectory, recordName);
+    const copied = path.join(recordsDirectory, 'copied-valid-record.json');
+    await writeFile(copied, await readFile(source, 'utf8'), 'utf8');
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_record_corrupt/);
+
+    await rm(copied);
+    const renamed = path.join(recordsDirectory, 'renamed-valid-record.json');
+    await rename(source, renamed);
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_record_corrupt/);
+  });
+
+  it('returns a signed non-authorizing read acknowledgement and preserves its historical signer', async () => {
+    const rotatedMailboxService = keyPair('nomadic-mailbox-signing-2');
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const original = mailbox(createFileAgentMailboxStore({ directory }));
+    const first = noteEnvelope();
+    expect((await original.deliver(first, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    const [deliveredRecord] = await original.list('agent:iman');
+    const firstAcknowledgement: any = await original.acknowledge({
+      recipientId: 'agent:iman', envelopeId: first.envelope_id,
+    });
+    expect(firstAcknowledgement).toMatchObject({
+      acknowledgement: {
+        '@version': AGENT_MAILBOX_READ_ACKNOWLEDGEMENT_VERSION,
+        mailbox_id: 'mailbox:nomadic-demo',
+        recipient_id: 'agent:iman',
+        envelope_id: first.envelope_id,
+        envelope_digest: agentMailboxDigest(first),
+        delivery_binding_digest: agentMailboxDigest(deliveredRecord.delivery_binding),
+        read_at: NOW,
+        authorizes: false,
+        signer_key_id: mailboxService.keyId,
+        signature: expect.objectContaining({ algorithm: 'Ed25519' }),
+      },
+      authorizes: false,
+    });
+    expect(firstAcknowledgement).not.toHaveProperty('acknowledged');
+
+    const rotated = createAgentMailbox(mailboxOptions({
+      store: createFileAgentMailboxStore({ directory }),
+      privateKey: rotatedMailboxService.privateKey,
+      keyId: rotatedMailboxService.keyId,
+      mailboxVerificationKeys: {
+        [mailboxService.keyId]: mailboxService.publicKeySpkiB64u,
+      },
+    }));
+    const idempotent: any = await rotated.acknowledge({
+      recipientId: 'agent:iman', envelopeId: first.envelope_id,
+    });
+    expect(idempotent.acknowledgement).toEqual(firstAcknowledgement.acknowledgement);
+
+    const second = noteEnvelope({ sequence: 2 });
+    expect((await rotated.deliver(second, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    const secondAcknowledgement: any = await rotated.acknowledge({
+      recipientId: 'agent:iman', envelopeId: second.envelope_id,
+    });
+    expect(secondAcknowledgement).toMatchObject({
+      acknowledgement: { signer_key_id: rotatedMailboxService.keyId, authorizes: false },
+      authorizes: false,
+    });
+    expect(await rotated.acknowledge({
+      recipientId: 'agent:iman', envelopeId: 'message:missing-record',
+    })).toEqual({ acknowledgement: null, authorizes: false });
+  });
+
+  it('rejects read-acknowledgement mutation and cross-record substitution', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const service = mailbox(createFileAgentMailboxStore({ directory }));
+    const first = noteEnvelope();
+    const second = noteEnvelope({ sequence: 2 });
+    expect((await service.deliver(first, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect((await service.deliver(second, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    await service.acknowledge({ recipientId: 'agent:iman', envelopeId: first.envelope_id });
+
+    const recordsDirectory = path.join(directory, 'records');
+    const files = await readdir(recordsDirectory);
+    const stored = await Promise.all(files.map(async (name) => ({
+      name,
+      record: JSON.parse(await readFile(path.join(recordsDirectory, name), 'utf8')),
+    })));
+    const firstStored = stored.find(({ record }) => record.envelope_id === first.envelope_id)!;
+    const secondStored = stored.find(({ record }) => record.envelope_id === second.envelope_id)!;
+    const authenticAcknowledgement = structuredClone(firstStored.record.read_acknowledgement);
+
+    firstStored.record.read_acknowledgement.read_at = MIDDLE;
+    await writeFile(
+      path.join(recordsDirectory, firstStored.name),
+      JSON.stringify(firstStored.record),
+      'utf8',
+    );
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_result_invalid/);
+
+    firstStored.record.read_acknowledgement = authenticAcknowledgement;
+    await writeFile(
+      path.join(recordsDirectory, firstStored.name),
+      JSON.stringify(firstStored.record),
+      'utf8',
+    );
+    secondStored.record.read_acknowledgement = authenticAcknowledgement;
+    await writeFile(
+      path.join(recordsDirectory, secondStored.name),
+      JSON.stringify(secondStored.record),
+      'utf8',
+    );
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_record_corrupt/);
+  });
+
+  it('does not report acknowledgement success when the store rolls signed state back', async () => {
+    let persisted: any = null;
+    const store: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async (record: unknown) => {
+        persisted = structuredClone(record);
+        return { outcome: 'stored', record };
+      },
+      list: async () => persisted === null ? [] : [structuredClone(persisted)],
+      acknowledge: async (_recipientId: string, _envelopeId: string, acknowledgement: any) => {
+        if (typeof acknowledgement === 'string') return true;
+        return {
+          ...structuredClone(persisted),
+          read_acknowledgement: structuredClone(acknowledgement),
+        };
+      },
+    };
+    const service = createAgentMailbox(mailboxOptions({ store }));
+    const envelope = noteEnvelope();
+    expect((await service.deliver(envelope, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    await expect(service.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id }))
+      .rejects.toThrow(/mailbox_store_result_invalid/);
+  });
+
+  it('rejects a validly signed read acknowledgement after trusted time rolls back behind it', async () => {
+    let now = NOW;
+    const service = createAgentMailbox(mailboxOptions({ now: () => now }));
+    const envelope = noteEnvelope();
+    expect((await service.deliver(envelope, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    now = MIDDLE;
+    await service.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id });
+    now = NOW;
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_result_invalid/);
+  });
+
+  it('persists the first valid acknowledgement under concurrent current service keys', async () => {
+    const rotatedMailboxService = keyPair('nomadic-mailbox-signing-2');
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    let firstNow = NOW;
+    const firstService = createAgentMailbox(mailboxOptions({
+      store: createFileAgentMailboxStore({ directory }),
+      now: () => firstNow,
+      mailboxVerificationKeys: {
+        [rotatedMailboxService.keyId]: rotatedMailboxService.publicKeySpkiB64u,
+      },
+    }));
+    const secondService = createAgentMailbox(mailboxOptions({
+      store: createFileAgentMailboxStore({ directory }),
+      privateKey: rotatedMailboxService.privateKey,
+      keyId: rotatedMailboxService.keyId,
+      now: () => MIDDLE,
+      mailboxVerificationKeys: {
+        [mailboxService.keyId]: mailboxService.publicKeySpkiB64u,
+      },
+    }));
+    const envelope = noteEnvelope();
+    expect((await firstService.deliver(envelope, { recipientId: 'agent:iman' })).delivery_status)
+      .toBe('ACCEPTED');
+    firstNow = MIDDLE;
+
+    const results: any[] = await Promise.all([
+      firstService.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id }),
+      secondService.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id }),
+    ]);
+    const [persisted] = await firstService.list('agent:iman');
+    expect(persisted.read_acknowledgement).not.toBeNull();
+    expect(results.map((result) => result.acknowledgement))
+      .toEqual([persisted.read_acknowledgement, persisted.read_acknowledgement]);
+    expect(persisted.read_acknowledgement.authorizes).toBe(false);
+  });
+
+  it('durably sorts, acknowledges once, and refuses same-ID replacement', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const service = mailbox(createFileAgentMailboxStore({ directory }));
+    const second = noteEnvelope({ sequence: 2 });
+    const first = noteEnvelope();
+    expect((await service.deliver(second, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect((await service.deliver(first, { recipientId: 'agent:iman' })).delivery_status).toBe('ACCEPTED');
+    expect((await service.list('agent:iman')).map((record) => record.envelope.sequence)).toEqual([1, 2]);
+
+    expect(await service.acknowledge({ recipientId: 'agent:iman', envelopeId: first.envelope_id }))
+      .toMatchObject({ acknowledgement: { envelope_id: first.envelope_id }, authorizes: false });
+    expect(await service.acknowledge({ recipientId: 'agent:iman', envelopeId: first.envelope_id }))
+      .toMatchObject({ acknowledgement: { envelope_id: first.envelope_id }, authorizes: false });
+    expect(await service.acknowledge({ recipientId: 'agent:iman', envelopeId: 'message:missing-record' }))
+      .toEqual({ acknowledgement: null, authorizes: false });
+
+    const sameId = noteEnvelope({
+      envelopeId: second.envelope_id,
+      sequence: 3,
+      payload: { text: 'Replacement bytes must not overwrite.' },
+    });
+    expect(await service.deliver(sameId, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'envelope_id_conflict' });
+  });
+
+  it('serializes same-sequence equivocation across filesystem store instances', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const firstService = mailbox(createFileAgentMailboxStore({ directory }));
+    const secondService = mailbox(createFileAgentMailboxStore({ directory }));
+    const first = noteEnvelope({
+      envelopeId: 'message:concurrent-sequence-first',
+      payload: { text: 'First statement at sequence one.' },
+    });
+    const conflicting = noteEnvelope({
+      envelopeId: 'message:concurrent-sequence-second',
+      payload: { text: 'Conflicting statement at sequence one.' },
+    });
+
+    const receipts = await Promise.all([
+      firstService.deliver(first, { recipientId: 'agent:iman' }),
+      secondService.deliver(conflicting, { recipientId: 'agent:iman' }),
+    ]);
+    expect(receipts.map((receipt) => receipt.delivery_status).sort()).toEqual(['ACCEPTED', 'REFUSED']);
+    expect(receipts.find((receipt) => receipt.delivery_status === 'REFUSED')).toMatchObject({
+      reason: 'thread_sequence_conflict',
+      authorizes: false,
+    });
+    expect(await firstService.list('agent:iman')).toHaveLength(1);
+  });
+
+  it('serializes identical concurrent deliveries across filesystem store instances', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const firstService = mailbox(createFileAgentMailboxStore({ directory }));
+    const secondService = mailbox(createFileAgentMailboxStore({ directory }));
+    const envelope = noteEnvelope();
+
+    const receipts = await Promise.all([
+      firstService.deliver(envelope, { recipientId: 'agent:iman' }),
+      secondService.deliver(envelope, { recipientId: 'agent:iman' }),
+    ]);
+    expect(receipts.map((receipt) => receipt.delivery_status).sort()).toEqual(['ACCEPTED', 'DUPLICATE']);
+    expect(await secondService.list('agent:iman')).toHaveLength(1);
+  });
+
+  it('refuses relative storage paths and surfaces corrupted durable records', async () => {
+    expect(() => createFileAgentMailboxStore({ directory: 'relative/mailbox' }))
+      .toThrow(/mailbox_store_directory_must_be_absolute/);
+
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(directory);
+    const service = mailbox(createFileAgentMailboxStore({ directory }));
+    await service.deliver(noteEnvelope(), { recipientId: 'agent:iman' });
+    const recordsDirectory = path.join(directory, 'records');
+    const [recordName] = await readdir(recordsDirectory);
+    await writeFile(path.join(recordsDirectory, recordName), '{"truncated":', 'utf8');
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_record_corrupt/);
+  });
+
+  it('verifies receipt refusals without treating delivery as authority', async () => {
+    const service = mailbox();
+    const envelope = noteEnvelope();
+    const accepted: any = await service.deliver(envelope, { recipientId: 'agent:iman' });
+    const verificationOptions = {
+      mailboxId: 'mailbox:nomadic-demo',
+      publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
+      keyId: mailboxService.keyId,
+      expectedRecipientId: 'agent:iman',
+      expectedEnvelopeDigest: agentMailboxDigest(envelope),
+    };
+
+    expect(verifyAgentMailboxDeliveryReceipt(null, verificationOptions).reason)
+      .toBe('delivery_receipt_shape_invalid');
+
+    const nonCanonical = structuredClone(accepted);
+    nonCanonical.reason = '\ud800';
+    expect(verifyAgentMailboxDeliveryReceipt(nonCanonical, verificationOptions).reason)
+      .toBe('delivery_receipt_not_canonical');
+
+    const wrongMailbox = structuredClone(accepted);
+    wrongMailbox.mailbox_id = 'mailbox:other-service';
+    expect(verifyAgentMailboxDeliveryReceipt(wrongMailbox, verificationOptions).reason)
+      .toBe('delivery_receipt_shape_invalid');
+
+    expect(verifyAgentMailboxDeliveryReceipt(accepted, {
+      ...verificationOptions,
+      expectedEnvelopeDigest: `sha256:${'f'.repeat(64)}`,
+    }).reason).toBe('delivery_receipt_envelope_mismatch');
+    expect(verifyAgentMailboxDeliveryReceipt(accepted, {
+      ...verificationOptions,
+      publicKeySpkiB64u: 'not-a-der-key',
+    }).reason).toBe('delivery_receipt_key_invalid');
+
+    const badSignature = structuredClone(accepted);
+    badSignature.signature.value = `${badSignature.signature.value[0] === 'A' ? 'B' : 'A'}${badSignature.signature.value.slice(1)}`;
+    expect(verifyAgentMailboxDeliveryReceipt(badSignature, verificationOptions).reason)
+      .toBe('delivery_receipt_signature_invalid');
+
+    const wrongReceiptId = structuredClone(accepted);
+    wrongReceiptId.receipt_id = 'delivery:content-derived-id-mismatch';
+    expect(verifyAgentMailboxDeliveryReceipt(wrongReceiptId, verificationOptions).reason)
+      .toBe('delivery_receipt_id_mismatch');
+
+    const refused = await service.deliver({}, { recipientId: 'agent:iman' });
+    expect(verifyAgentMailboxDeliveryReceipt(refused, {
+      mailboxId: 'mailbox:nomadic-demo',
+      publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
+      keyId: mailboxService.keyId,
+      expectedRecipientId: 'agent:iman',
+    })).toMatchObject({
+      verified: true,
+      accepted: false,
+      delivery_status: 'REFUSED',
+      reason: 'envelope_shape_invalid',
+      authorizes: false,
+    });
+
+    const acceptedWithReason = structuredClone(accepted);
+    acceptedWithReason.reason = 'accepted receipts cannot carry refusal reasons';
+    expect(verifyAgentMailboxDeliveryReceipt(acceptedWithReason, verificationOptions).reason)
+      .toBe('delivery_receipt_shape_invalid');
+
+    for (const invalidReason of [null, '', 'x'.repeat(257)]) {
+      const malformedRefusal = structuredClone(refused);
+      malformedRefusal.reason = invalidReason;
+      expect(verifyAgentMailboxDeliveryReceipt(malformedRefusal, {
+        mailboxId: 'mailbox:nomadic-demo',
+        publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
+        keyId: mailboxService.keyId,
+        expectedRecipientId: 'agent:iman',
+      }).reason).toBe('delivery_receipt_shape_invalid');
+    }
+  });
+
+  it('binds receipt verification to the relying recipient and treats a duplicate as replay evidence', async () => {
+    const service = mailbox();
+    const envelope = noteEnvelope();
+    await service.deliver(envelope, { recipientId: 'agent:iman' });
+    const duplicate = await service.deliver(envelope, { recipientId: 'agent:iman' });
+    const options = {
+      mailboxId: 'mailbox:nomadic-demo',
+      publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
+      keyId: mailboxService.keyId,
+      expectedEnvelopeDigest: agentMailboxDigest(envelope),
+    };
+
+    expect(verifyAgentMailboxDeliveryReceipt(duplicate, {
+      ...options,
+      expectedRecipientId: 'agent:mallory',
+    })).toMatchObject({
+      verified: false,
+      accepted: false,
+      reason: 'delivery_receipt_recipient_mismatch',
+      authorizes: false,
+    });
+    expect(verifyAgentMailboxDeliveryReceipt(duplicate, {
+      ...options,
+      expectedRecipientId: 'agent:iman',
+    })).toMatchObject({
+      verified: true,
+      accepted: false,
+      delivery_status: 'DUPLICATE',
+      authorizes: false,
+    });
+    expect(verifyAgentMailboxDeliveryReceipt(duplicate, options as any))
+      .toMatchObject({ verified: false, reason: 'delivery_receipt_recipient_required' });
+
+    const missingAcceptedBinding: any = structuredClone(duplicate);
+    missingAcceptedBinding.envelope_id = null;
+    missingAcceptedBinding.envelope_digest = null;
+    expect(verifyAgentMailboxDeliveryReceipt(missingAcceptedBinding, {
+      ...options,
+      expectedRecipientId: 'agent:iman',
+      expectedEnvelopeDigest: undefined,
+    })).toMatchObject({ verified: false, reason: 'delivery_receipt_shape_invalid' });
+  });
+
+  it('refuses malformed store outcomes and cross-recipient records', async () => {
+    const envelope = noteEnvelope();
+    const stored = {
+      recipient_id: 'agent:iman',
+      envelope_id: envelope.envelope_id,
+      envelope_digest: agentMailboxDigest(envelope),
+      envelope,
+      received_at: NOW,
+      read_at: null,
+    };
+    const malformedOutcomeStore: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async () => ({ outcome: 'unknown', record: stored }),
+      list: async () => [],
+      acknowledge: async () => false,
+    };
+    expect(await mailbox(malformedOutcomeStore).deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'REFUSED', reason: 'mailbox_store_result_invalid' });
+
+    const crossRecipientStore: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async () => ({ outcome: 'stored', record: stored }),
+      list: async () => [{ ...stored, recipient_id: 'agent:mallory' }],
+      acknowledge: async () => 'yes',
+    };
+    const service = mailbox(crossRecipientStore);
+    await expect(service.list('agent:iman')).rejects.toThrow(/mailbox_store_result_invalid/);
+    await expect(service.acknowledge({ recipientId: 'agent:iman', envelopeId: envelope.envelope_id }))
+      .rejects.toThrow(/mailbox_store_result_invalid/);
+  });
+
+  it('binds receipts and notifications to the verified envelope snapshot across storage', async () => {
+    const envelope: any = structuredClone(noteEnvelope());
+    const originalEnvelopeId = envelope.envelope_id;
+    const originalMessageType = envelope.message_type;
+    const mutatingStore: any = {
+      durable: true,
+      deliveryAtomicity: 'shared_durable',
+      bodyBound: true,
+      put: async (record: unknown) => {
+        envelope.envelope_id = 'message:mutated-after-verification';
+        envelope.message_type = 'result';
+        return { outcome: 'stored', record };
+      },
+      list: async () => [],
+      acknowledge: async () => false,
+    };
+    const service = mailbox(mutatingStore);
+    const notifications: any[] = [];
+    service.subscribe('agent:iman', (notification) => notifications.push(notification));
+
+    const receipt = await service.deliver(envelope, { recipientId: 'agent:iman' });
+
+    expect(receipt).toMatchObject({
+      delivery_status: 'ACCEPTED',
+      envelope_id: originalEnvelopeId,
+      envelope_digest: agentMailboxDigest(noteEnvelope()),
+      authorizes: false,
+    });
+    expect(notifications).toEqual([expect.objectContaining({
+      envelope_id: originalEnvelopeId,
+      message_type: originalMessageType,
+    })]);
+  });
+
+  it('does not let a throwing chime listener suppress an accepted receipt', async () => {
+    const service = mailbox();
+    service.subscribe('agent:iman', () => { throw new Error('subscriber failed'); });
+    const envelope = noteEnvelope();
+
+    expect(await service.deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'ACCEPTED', authorizes: false });
+    expect(await service.list('agent:iman')).toHaveLength(1);
+    expect(await service.deliver(envelope, { recipientId: 'agent:iman' }))
+      .toMatchObject({ delivery_status: 'DUPLICATE', authorizes: false });
+  });
+
+  it('validates service configuration and recipient-facing method inputs', async () => {
+    expect(() => createAgentMailbox(mailboxOptions({ mailboxId: 'x' })))
+      .toThrow(/mailbox_service_identifier_invalid/);
+    expect(() => createAgentMailbox(mailboxOptions({ store: {} })))
+      .toThrow(/mailbox_store_contract_invalid/);
+    expect(() => createAgentMailbox(mailboxOptions({ privateKey: 'not-a-private-key' })))
+      .toThrow(/mailbox_service_ed25519_key_required/);
+    expect(() => createAgentMailbox(mailboxOptions({ senderDirectory: [] })))
+      .toThrow(/mailbox_service_configuration_invalid/);
+
+    const service = mailbox();
+    expect(() => service.subscribe('x', () => {})).toThrow(/mailbox_subscription_invalid/);
+    await expect(service.deliver(noteEnvelope(), { recipientId: 'x' })).rejects
+      .toThrow(/mailbox_recipient_invalid/);
+    await expect(service.list('x')).rejects.toThrow(/mailbox_recipient_invalid/);
+    await expect(service.acknowledge({ recipientId: 'agent:iman', envelopeId: 'x' })).rejects
+      .toThrow(/mailbox_acknowledgement_invalid/);
+
+    const notifications: unknown[] = [];
+    const unsubscribe = service.subscribe('agent:iman', (notification) => notifications.push(notification));
+    unsubscribe();
+    await service.deliver(noteEnvelope(), { recipientId: 'agent:iman' });
+    expect(notifications).toEqual([]);
+
+    const noTime = createAgentMailbox(mailboxOptions({ now: () => 'not-an-instant' }));
+    await expect(noTime.deliver(noteEnvelope(), { recipientId: 'agent:iman' })).rejects
+      .toThrow(/mailbox_trusted_time_unavailable/);
+  });
+});
+
+describe('GRACE action proposal composition', () => {
+  function graceProposalEnvelope() {
+    const action = createCurtailmentAction({
+      actionId: 'curtailment:region1:20260822:01',
+      facility: 'datacenter:vs-m32q:selab',
+      targetDeltaKw: '5000',
+      notBefore: '2026-08-22T20:10:00.000Z',
+      notAfter: '2026-08-22T21:10:00.000Z',
+      issuedAt: NOW,
+      baselineMethodHash: `sha256:${'a'.repeat(64)}`,
+      controlMode: 'human_in_the_loop',
+      envelopeId: 'grid-envelope:region1:01',
+      requestedBy: 'agent:smith',
+    });
+    const envelope = createAgentMailboxEnvelope({
+      senderId: 'agent:smith',
+      recipientId: 'agent:iman',
+      threadId: 'thread:grace-curtailment-01',
+      sequence: 1,
+      messageType: 'action_proposal',
+      payload: {
+        action_profile: action['@version'],
+        action_digest: graceDigest(action),
+        action,
+      },
+      createdAt: NOW,
+      expiresAt: LATER,
+      privateKey: smith.privateKey,
+      keyId: smith.keyId,
+    });
+    return { action, envelope };
+  }
+
+  it('extracts a signed GRACE proposal as context that explicitly authorizes nothing', () => {
+    const { action, envelope } = graceProposalEnvelope();
+    const verified = verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    });
+    const proposal = extractMailboxActionProposal(envelope, { verifiedEnvelope: verified });
+    expect(proposal).toMatchObject({
+      valid: true,
+      authorizes: false,
+      action_profile: action['@version'],
+      action_digest: graceDigest(action),
+      envelope_digest: agentMailboxDigest(envelope),
+    });
+  });
+
+  it('does not confuse a delivery verification or a mismatched action profile with verified action context', async () => {
+    const { action, envelope } = graceProposalEnvelope();
+    const receipt = await mailbox().deliver(envelope, { recipientId: 'agent:iman' });
+    const deliveryVerification = verifyAgentMailboxDeliveryReceipt(receipt, {
+      mailboxId: 'mailbox:nomadic-demo',
+      publicKeySpkiB64u: mailboxService.publicKeySpkiB64u,
+      keyId: mailboxService.keyId,
+      expectedRecipientId: 'agent:iman',
+      expectedEnvelopeDigest: agentMailboxDigest(envelope),
+    });
+    expect(extractMailboxActionProposal(envelope, { verifiedEnvelope: deliveryVerification }))
+      .toMatchObject({ valid: false, reason: 'verified_envelope_required', authorizes: false });
+
+    const mismatchedProfileEnvelope = createAgentMailboxEnvelope({
+      senderId: 'agent:smith',
+      recipientId: 'agent:iman',
+      threadId: 'thread:grace-profile-substitution',
+      sequence: 1,
+      messageType: 'action_proposal',
+      payload: {
+        action_profile: 'EP-UNRELATED-ACTION-v1',
+        action_digest: graceDigest(action),
+        action,
+      },
+      createdAt: NOW,
+      expiresAt: LATER,
+      privateKey: smith.privateKey,
+      keyId: smith.keyId,
+    });
+    const verified = verifyAgentMailboxEnvelope(mismatchedProfileEnvelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    });
+    expect(extractMailboxActionProposal(mismatchedProfileEnvelope, { verifiedEnvelope: verified }))
+      .toMatchObject({ valid: false, reason: 'action_profile_mismatch', authorizes: false });
+  });
+
+  it('requires a separately verified exact-action EMILIA admission before executor readiness', async () => {
+    const { action, envelope } = graceProposalEnvelope();
+    const verified = verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    });
+    const proposal = extractMailboxActionProposal(envelope, { verifiedEnvelope: verified });
+
+    expect(await admitMailboxActionProposal({ proposal })).toMatchObject({
+      admitted: false, ready_for_executor: false, reason: 'admission_verifier_required', mailbox_authorizes: false,
+    });
+    expect(await admitMailboxActionProposal({
+      proposal,
+      verifyAdmission: async () => ({
+        verified: true,
+        accepted: true,
+        authorized: true,
+        action_digest: agentMailboxDigest({ substituted: true }),
+        admission_digest: `sha256:${'b'.repeat(64)}`,
+        authority_source: 'emilia_gate',
+      }),
+    })).toMatchObject({ admitted: false, reason: 'admission_action_mismatch' });
+    expect(await admitMailboxActionProposal({
+      proposal,
+      verifyAdmission: async () => { throw new Error('registry unavailable'); },
+    })).toMatchObject({ admitted: false, state: 'INDETERMINATE', reason: 'admission_verification_indeterminate' });
+
+    expect(await admitMailboxActionProposal({
+      proposal,
+      verifyAdmission: async () => ({
+        verified: true,
+        accepted: true,
+        authorized: true,
+        action_digest: graceDigest(action),
+        admission_digest: `sha256:${'c'.repeat(64)}`,
+        authority_source: 'emilia_gate',
+      }),
+    })).toEqual({
+      admitted: true,
+      state: 'ADMITTED',
+      ready_for_executor: true,
+      reason: null,
+      action,
+      action_digest: graceDigest(action),
+      envelope_digest: agentMailboxDigest(envelope),
+      admission_digest: `sha256:${'c'.repeat(64)}`,
+      authority_source: 'emilia_gate',
+      mailbox_authorizes: false,
+    });
+  });
+
+  it('refuses unverified, malformed, and digest-substituted action proposals', () => {
+    const note = noteEnvelope();
+    expect(extractMailboxActionProposal(note, {
+      verifiedEnvelope: { accepted: true, envelope_digest: agentMailboxDigest(note) },
+    })).toMatchObject({ valid: false, reason: 'not_an_action_proposal', authorizes: false });
+
+    const { action, envelope } = graceProposalEnvelope();
+    expect(extractMailboxActionProposal(envelope, {
+      verifiedEnvelope: { accepted: false, envelope_digest: agentMailboxDigest(envelope) },
+    })).toMatchObject({ valid: false, reason: 'verified_envelope_required' });
+
+    const signPayload = (payload: unknown, threadId: string) => createAgentMailboxEnvelope({
+      senderId: 'agent:smith',
+      recipientId: 'agent:iman',
+      threadId,
+      sequence: 1,
+      messageType: 'action_proposal',
+      payload,
+      createdAt: NOW,
+      expiresAt: LATER,
+      privateKey: smith.privateKey,
+      keyId: smith.keyId,
+    });
+    const verifyEnvelope = (candidate: unknown) => verifyAgentMailboxEnvelope(candidate, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    });
+
+    const malformed = signPayload({ action_digest: graceDigest(action), action }, 'thread:malformed-proposal');
+    expect(extractMailboxActionProposal(malformed, {
+      verifiedEnvelope: verifyEnvelope(malformed),
+    })).toMatchObject({ valid: false, reason: 'action_proposal_shape_invalid' });
+
+    const substituted = signPayload({
+      action_profile: action['@version'],
+      action_digest: `sha256:${'0'.repeat(64)}`,
+      action,
+    }, 'thread:digest-substituted-proposal');
+    expect(extractMailboxActionProposal(substituted, {
+      verifiedEnvelope: verifyEnvelope(substituted),
+    })).toMatchObject({ valid: false, reason: 'action_digest_mismatch' });
+
+    const cyclic: any = { message_type: 'action_proposal' };
+    cyclic.payload = cyclic;
+    expect(() => extractMailboxActionProposal(cyclic, {
+      verifiedEnvelope: { accepted: true, envelope_digest: `sha256:${'0'.repeat(64)}` },
+    })).not.toThrow();
+    expect(extractMailboxActionProposal(cyclic, {
+      verifiedEnvelope: { accepted: true, envelope_digest: `sha256:${'0'.repeat(64)}` },
+    })).toMatchObject({ valid: false, reason: 'verified_envelope_required' });
+
+    const symbolBearing: any = structuredClone(envelope);
+    symbolBearing.payload.action[Symbol('hidden')] = 'dispatch';
+    expect(extractMailboxActionProposal(symbolBearing, {
+      verifiedEnvelope: { accepted: true, envelope_digest: `sha256:${'0'.repeat(64)}` },
+    })).toMatchObject({ valid: false, reason: 'verified_envelope_required' });
+
+    const oversized: any = structuredClone(envelope);
+    oversized.payload.action.oversized = 'x'.repeat(262_145);
+    expect(extractMailboxActionProposal(oversized, {
+      verifiedEnvelope: { accepted: true, envelope_digest: `sha256:${'0'.repeat(64)}` },
+    })).toMatchObject({ valid: false, reason: 'verified_envelope_required' });
+  });
+
+  it('snapshots the exact action across the asynchronous admission boundary', async () => {
+    const { action, envelope } = graceProposalEnvelope();
+    const verified = verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    });
+    const extracted = extractMailboxActionProposal(envelope, { verifiedEnvelope: verified });
+    const tampered: any = structuredClone(extracted);
+    tampered.action.action_id = 'curtailment:attacker-substitution';
+    let verifierCalled = false;
+    expect(await admitMailboxActionProposal({
+      proposal: tampered,
+      verifyAdmission: async () => {
+        verifierCalled = true;
+        throw new Error('must not be called');
+      },
+    })).toMatchObject({
+      admitted: false,
+      ready_for_executor: false,
+      reason: 'proposal_action_digest_mismatch',
+    });
+    expect(verifierCalled).toBe(false);
+
+    const admitted = await admitMailboxActionProposal({
+      proposal: extracted,
+      verifyAdmission: async (detachedProposal) => {
+        detachedProposal.action.action_id = 'curtailment:mutated-inside-verifier';
+        return {
+          verified: true,
+          accepted: true,
+          authorized: true,
+          action_digest: extracted.action_digest,
+          admission_digest: `sha256:${'d'.repeat(64)}`,
+          authority_source: 'emilia_gate',
+        };
+      },
+    });
+    expect(admitted).toMatchObject({
+      admitted: true,
+      ready_for_executor: true,
+      action,
+      action_digest: graceDigest(action),
+    });
+    expect(admitted.action.action_id).toBe(action.action_id);
+    expect(Object.isFrozen(admitted.action)).toBe(true);
+
+    const mutableProposal: any = structuredClone(extracted);
+    const originalEnvelopeDigest = mutableProposal.envelope_digest;
+    const rebound = await admitMailboxActionProposal({
+      proposal: mutableProposal,
+      verifyAdmission: async (detachedProposal) => {
+        mutableProposal.envelope_digest = `sha256:${'f'.repeat(64)}`;
+        return {
+          verified: true,
+          accepted: true,
+          authorized: true,
+          action_digest: detachedProposal.action_digest,
+          admission_digest: `sha256:${'1'.repeat(64)}`,
+          authority_source: 'emilia_gate',
+        };
+      },
+    });
+    expect(rebound).toMatchObject({
+      admitted: true,
+      action_digest: graceDigest(action),
+      envelope_digest: originalEnvelopeDigest,
+    });
+  });
+
+  it('refuses every incomplete external admission state', async () => {
+    const { envelope } = graceProposalEnvelope();
+    const verified = verifyAgentMailboxEnvelope(envelope, {
+      senderDirectory: senderDirectory(), expectedRecipientId: 'agent:iman', asOf: NOW,
+    });
+    const proposal = extractMailboxActionProposal(envelope, { verifiedEnvelope: verified });
+
+    expect(await admitMailboxActionProposal({ proposal: null }))
+      .toMatchObject({ admitted: false, reason: 'valid_action_proposal_required' });
+    expect(await admitMailboxActionProposal({
+      proposal,
+      verifyAdmission: async () => ({ verified: false, accepted: true }),
+    })).toMatchObject({ admitted: false, reason: 'admission_not_verified' });
+    expect(await admitMailboxActionProposal({
+      proposal,
+      verifyAdmission: async () => ({ verified: true, accepted: false }),
+    })).toMatchObject({ admitted: false, reason: 'admission_not_accepted' });
+    expect(await admitMailboxActionProposal({
+      proposal,
+      verifyAdmission: async () => ({
+        verified: true,
+        accepted: true,
+        action_digest: proposal.action_digest,
+        admission_digest: `sha256:${'e'.repeat(64)}`,
+      }),
+    })).toMatchObject({
+      admitted: false,
+      ready_for_executor: false,
+      reason: 'admission_not_authorized',
+      mailbox_authorizes: false,
+    });
+    expect(await admitMailboxActionProposal({
+      proposal,
+      verifyAdmission: async () => ({
+        verified: true,
+        accepted: true,
+        authorized: true,
+        action_digest: proposal.action_digest,
+        admission_digest: 'not-a-digest',
+        authority_source: 'emilia_gate',
+      }),
+    })).toMatchObject({ admitted: false, reason: 'admission_digest_invalid' });
+  });
+});

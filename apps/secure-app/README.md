@@ -98,20 +98,29 @@ npm run audit:dependencies
 Detection stays at `--audit-level=low`. Nothing is downgraded and nothing is
 blanket-ignored.
 
-Some advisories have no upstream fix. The current example is `image-size`,
-which reaches this app only through the Expo/metro bundler: every published
-version of it is inside the advisory range, and npm's suggested remediation is
-a three-major downgrade of Expo. `npm audit --omit=dev` does not help either,
-because `expo` and `react-native` are production dependencies and npm's
-dependency graph cannot express "ships to the device" versus "runs on the build
-machine".
+The current lock reports five high-severity package entries, but they resolve
+to two `image-size` denial-of-service advisories on one build-only path:
+`expo 57.0.13 -> @expo/metro 56.0.0 -> metro 0.84.4 -> image-size 1.2.1`.
+Metro is the build-time React Native bundler and is not shipped in the device
+bundle. No app source imports Metro or `image-size`, the app has no image
+assets, and paired-inbox input cannot reach the affected ICNS, JXL, or HEIF
+parsers. The bounded exposure is a hung build job if an attacker first lands a
+hostile image in the trusted source/build input boundary.
 
-The gate in `../../scripts/audit-with-exceptions.mjs` handles that case without
-going quiet. Every advisory it lets through must be named in
+A supported graph repair now exists. `@expo/metro 56.0.2` pins `metro 0.84.5`,
+which removes the `image-size` edge. That Expo wrapper was published at
+2026-08-21T13:24:45.109Z, so this app's `.npmrc` supply-chain policy
+(`min-release-age=7`) does not permit it until 2026-08-28T13:24:45.109Z. The two
+temporary exceptions expire on 2026-08-29, the first UTC date after the repair
+becomes eligible. At that point the supported graph must be installed, the
+lock must contain Metro 0.84.5 with no `image-size`, both exceptions must be
+deleted, and raw `npm audit --json` must report zero high or critical findings.
+
+The gate in `../../scripts/audit-with-exceptions.mjs` handles a bounded hold
+without going quiet. Every advisory it lets through must be named in
 `audit-exceptions.json` with a written reachability justification, evidence
-that no upstream fix exists and what was checked to establish that, who
-accepted it, and two dates: when it was accepted and when the acceptance
-expires.
+about the direct package and any parent-graph repair, who accepted it, and two
+dates: when it was accepted and when the acceptance expires.
 
 **An exception expires.** On its `expires_on` date the build starts failing on
 that advisory until someone re-verifies it and accepts a new dated decision or

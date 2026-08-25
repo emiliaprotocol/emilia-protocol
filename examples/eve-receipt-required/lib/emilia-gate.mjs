@@ -34,13 +34,15 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.8.0  ·  content-sha256:eae832b0ecda685e
+//   source: @emilia-protocol/require-receipt@0.8.0  ·  content-sha256:beb87de1d96f492a
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
 // Duplicate-name and Unicode-scalar gate for signed nested JSON such as
 // WebAuthn clientDataJSON. JSON.parse remains the syntax gate.
 const MAX_JSON_DEPTH = 64;
+const DEFAULT_MAX_JSON_NODES = 100_000;
+const DEFAULT_MAX_JSON_STRING_BYTES = 1024 * 1024;
 function hasUnpairedUtf16Surrogate(value) {
     for (let index = 0; index < value.length; index += 1) {
         const code = value.charCodeAt(index);
@@ -284,8 +286,8 @@ function canonicalizeFiniteJson(value, limits = {}) {
 }
 function canonicalizeJsonDomain(value, limits, safeIntegersOnly) {
     const maxDepth = limits.maxDepth ?? MAX_JSON_DEPTH;
-    const maxNodes = limits.maxNodes ?? Number.MAX_SAFE_INTEGER;
-    const maxStringBytes = limits.maxStringBytes ?? Number.MAX_SAFE_INTEGER;
+    const maxNodes = limits.maxNodes ?? DEFAULT_MAX_JSON_NODES;
+    const maxStringBytes = limits.maxStringBytes ?? DEFAULT_MAX_JSON_STRING_BYTES;
     if (!Number.isSafeInteger(maxDepth) || maxDepth < 0
         || !Number.isSafeInteger(maxNodes) || maxNodes < 1
         || !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 0) {
@@ -316,6 +318,8 @@ const strictJson = {
     canonicalizeFiniteJson,
     isStrictCanonicalJson,
     MAX_JSON_DEPTH,
+    DEFAULT_MAX_JSON_NODES,
+    DEFAULT_MAX_JSON_STRING_BYTES,
 };
 
 // ── inlined from acquisition.js ────────────────────────────────────────────

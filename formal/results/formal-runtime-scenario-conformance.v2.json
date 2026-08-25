@@ -499,15 +499,15 @@
     },
     {
       "path": "lib/strict-json.js",
-      "sha256": "333e0dfcce807d97727f1a349258c7241295001389273f4010a5c88c42636d29"
+      "sha256": "405d62fdf68a10f3feab0ce4644605863b65b5d96100beff7f532789933c3e32"
     },
     {
       "path": "package-lock.json",
-      "sha256": "363ea74b8727ba6befa5646f006c43abafda9592df340a50bc0e170367cab6bd"
+      "sha256": "48e69ee8434a751730c108bbad7b77a53b043c45646c26fe8a7943ecc9d07292"
     },
     {
       "path": "package.json",
-      "sha256": "72c3f85583b2cb01836148fdcf3124fa788811342fe8784df04f5c2c95720fc5"
+      "sha256": "5930ad7923d60fd68ef03f606ece5b9279985d15e2c5d28e58c0996f43c40c18"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -547,7 +547,7 @@
     },
     {
       "path": "packages/gate/dist/action-escrow.js",
-      "sha256": "887357e0a27b40cb985ecdad433ceabbf645c0ef39d63d5c335ab1cd5deafd85"
+      "sha256": "f109f68329f8ff6fe82a86127ea657dac945f6b0d19871a345a6ca706ecc7e5c"
     },
     {
       "path": "packages/gate/dist/action-packs.js",
@@ -615,7 +615,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "64b13fe224677ef5271ab5e1c03caee307a789fde9d870ca5d3080cc8985cc6c"
+      "sha256": "81a4461fe761ec960b4c1028792bcadcc375ca86bc1e3a98f7824a33049ff6b8"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -791,7 +791,7 @@
     },
     {
       "path": "packages/gate/dist/remedy-program-adapters.js",
-      "sha256": "aacaff5b94e34182247537d29906826b7428a6d69f7b876e67de81ee3643bfe1"
+      "sha256": "81869b736d47cd22e318ea7578f7d7fa290801edcc38b3ae23cf5c43a205eb5e"
     },
     {
       "path": "packages/gate/dist/remedy-program-postgres.js",
@@ -831,11 +831,11 @@
     },
     {
       "path": "packages/gate/dist/strict-json.js",
-      "sha256": "952f0dc36a04c5a70a163a37b2cbdeba26088f802b72db67a6df4dd8c180a58a"
+      "sha256": "5b3d3bdd892681b6d11106be153442836498c31e57ebdde2f3d3c7b25cb4bd3f"
     },
     {
       "path": "packages/gate/dist/trust-program-revocation.js",
-      "sha256": "60a2e42fcf0c344400f4e26f805eda51d69adebcb5b57f1698886f26016e3dcf"
+      "sha256": "1ebd24b98916a8cf8b33d3b9e87cfbfc436ebed52c249d6eaf3dc287e57064c6"
     },
     {
       "path": "packages/gate/dist/trust-program.js",
@@ -855,7 +855,7 @@
     },
     {
       "path": "packages/gate/src/action-escrow.ts",
-      "sha256": "acee368af3db92c8acaa72a21b67795c04df3913e17f79be859af7b2423014df"
+      "sha256": "eda961054e155bd9df0478258d4970c5b6b0cb94ce8696005c4d5b0299328b86"
     },
     {
       "path": "packages/gate/src/aeb-consumption-store.ts",
@@ -871,7 +871,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "6c01560353a0ae9eeaa7d05f1dd09b01e6886f10abebb685bad9072d5286c26d"
+      "sha256": "b4d04f1887ec645b544ea84e07aab352e49f64cff60e86fc7e42f8085a7a30ef"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -971,7 +971,7 @@
     },
     {
       "path": "packages/mobile/dist/strict-json.js",
-      "sha256": "f90b238282b5b5b833ddc02ff991cb0cd8f206f1dd538000672c7a14ac686ecd"
+      "sha256": "164d66dce859210501d53bfe01687f321a4c6c930c02abd374385d92fa9f6473"
     },
     {
       "path": "packages/mobile/enrollment.js",
@@ -1007,7 +1007,7 @@
     },
     {
       "path": "packages/require-receipt/dist/strict-json.js",
-      "sha256": "f90b238282b5b5b833ddc02ff991cb0cd8f206f1dd538000672c7a14ac686ecd"
+      "sha256": "164d66dce859210501d53bfe01687f321a4c6c930c02abd374385d92fa9f6473"
     },
     {
       "path": "packages/require-receipt/index.js",
@@ -1042,12 +1042,16 @@
       "sha256": "5f9b0309165ff33cb1cb39ea50a91d06ba81c9b82c7f98b636803eb22f4e27ad"
     },
     {
+      "path": "packages/verify/dist/aadp-authorization-artifact.js",
+      "sha256": "e520f58fbc1887de4da2490fe2b24fb54a7e7833b5630327e434a3949660e76e"
+    },
+    {
       "path": "packages/verify/dist/aeb-acceptance-profile.js",
       "sha256": "6a3f5d52205e336896cba828a8844c05dda521e6c4c93b971800f5596fc04fea"
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "113b453abf7cc4ff8e4e6d74732dd5da80c48b91e1c3ec10bbab5e7bbc258811"
+      "sha256": "19f4ad5c4cad003f7955cebdd1f8675d85941f75ac6ffc168f6a296897704668"
     },
     {
       "path": "packages/verify/dist/aeb-aps-adapter.js",
@@ -1083,7 +1087,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-oasnt-adapter.js",
-      "sha256": "6a633cd298096d4ba0b7d7a2d7344616ee7b9cdc6d39ea460c6b9a6bd3370390"
+      "sha256": "aa7564f727ffe207249a1d336bcbec002cc449b2f6cff243020ea27f4d344703"
     },
     {
       "path": "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js",
@@ -1187,7 +1191,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "b11416f71dc14e7f9f3ee4f277c96b5f41fcf6a703311648e2efcd3a0f1313a1"
+      "sha256": "24a38bfeb2eb98bf2f6d4f47000265efc9c97ab71a50bd0a92e5e03ccf805a86"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1267,7 +1271,7 @@
     },
     {
       "path": "packages/verify/dist/strict-json.js",
-      "sha256": "333e0dfcce807d97727f1a349258c7241295001389273f4010a5c88c42636d29"
+      "sha256": "405d62fdf68a10f3feab0ce4644605863b65b5d96100beff7f532789933c3e32"
     },
     {
       "path": "packages/verify/dist/surface-binding.js",
@@ -1323,7 +1327,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "261f4429044c5a7c434aea63751852606cbed2ca3f9c96830dd24868800f43f3"
+      "sha256": "8b69f50cc4708dc42fec576d66b23f8a05645a2afa094e36463bbd282deabe10"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
@@ -1335,7 +1339,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "4421936b15a8eaa890bbb8dea0b04c87df75cc38eb6cf287204410dd960def5b"
+      "sha256": "b98f02b992726287f0a692845991035ec203693e8dbd2e8a53009164ae21705d"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
@@ -1375,7 +1379,7 @@
     },
     {
       "path": "scripts/standalone-runtime-targets.mjs",
-      "sha256": "0f1386807f389bda0b5f3953204912703c09851027f7fd4334dd8aa812294cff"
+      "sha256": "2d0451ab9bbffd30ada97844a06039562724eeae0d93c9e2550106c075e09437"
     }
   ],
   "limitations": [

@@ -70,6 +70,11 @@
       "expect": { "second_reservation": "REFUSED", "reason": "native_replay_conflict", "invoke_allowed": false }
     },
     {
+      "id": "distinct_verified_authorities_cannot_share_replay_unit",
+      "input": "two distinct verified native authority artifacts from one adapter collapse onto the same replay unit",
+      "expect": { "verdict": "INDETERMINATE", "reason": "replay_unit_authority_collision", "invoke_allowed": false }
+    },
+    {
       "id": "presenter_status_cannot_establish_current_authority",
       "input": "the presenter supplies non-revoked status but the relying party cannot authenticate a fresh current head",
       "expect": { "verification": false, "execution": "REFUSED", "invoke_allowed": false }

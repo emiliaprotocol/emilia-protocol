@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.emiliaprotocol.ai/schema/agent-mailbox-delivery-receipt.v0.1.schema.json",
+  "title": "EP Agent Mailbox Delivery Receipt v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "receipt_id",
+    "mailbox_id",
+    "envelope_id",
+    "envelope_digest",
+    "recipient_id",
+    "received_at",
+    "delivery_status",
+    "reason",
+    "authorizes",
+    "signer_key_id",
+    "signature"
+  ],
+  "properties": {
+    "@version": { "const": "EP-AGENT-MAILBOX-DELIVERY-RECEIPT-v0.1" },
+    "receipt_id": { "$ref": "#/$defs/identifier" },
+    "mailbox_id": { "$ref": "#/$defs/identifier" },
+    "envelope_id": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/identifier" }] },
+    "envelope_digest": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }] },
+    "recipient_id": { "$ref": "#/$defs/identifier" },
+    "received_at": { "$ref": "#/$defs/canonicalTime" },
+    "delivery_status": { "enum": ["ACCEPTED", "DUPLICATE", "REFUSED"] },
+    "reason": { "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1, "maxLength": 256 }] },
+    "authorizes": { "const": false },
+    "signer_key_id": { "$ref": "#/$defs/identifier" },
+    "signature": { "$ref": "#/$defs/signature" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "delivery_status": { "const": "REFUSED" } }, "required": ["delivery_status"] },
+      "then": { "properties": { "reason": { "type": "string", "minLength": 1, "maxLength": 256 } } },
+      "else": {
+        "properties": {
+          "envelope_id": { "$ref": "#/$defs/identifier" },
+          "envelope_digest": { "$ref": "#/$defs/digest" },
+          "reason": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$"
+    },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "canonicalTime": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": { "const": "Ed25519" },
+        "value": { "type": "string", "minLength": 86, "maxLength": 86, "pattern": "^[A-Za-z0-9_-]+$" }
+      }
+    }
+  }
+}
