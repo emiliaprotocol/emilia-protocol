@@ -38,7 +38,7 @@ const CURRENCY = 'usd';
 const NOW = 1_700_000_000_000;
 const clock = () => NOW;
 const EXPIRY = new Date(NOW + 86_400_000).toISOString();
-export default {
+const capabilityRaceTarget = {
     name: 'capability-race',
     invariants: [
         'total-committed<=budget',
@@ -194,3 +194,4 @@ export default {
         return { ops: opCount };
     },
 };
+export default capabilityRaceTarget;

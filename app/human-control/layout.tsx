@@ -1,9 +1,8 @@
 /**
  * Human-Control vertical landing page (SEO + program/prime/oversight surface).
  *
- * Positions EMILIA as the verifiable "meaningful human control" evidence layer
- * for autonomous systems — mapping the receipt primitive to DoD Directive 3000.09,
- * EU AI Act Article 14, NIST AI RMF, and the CCW/LAWS human-control requirement.
+ * Positions EMILIA as an action-bound approval-evidence layer for autonomous
+ * systems, with customer-authored mappings to selected oversight references.
  * See PIP-013 (Human-Oversight Profile) and docs/briefs/HUMAN_CONTROL_BRIEF.md.
  *
  * @license Apache-2.0
@@ -11,18 +10,17 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Verifiable Meaningful Human Control for Autonomous Systems — EMILIA',
+  title: 'Action-Bound Approval Evidence for Autonomous Systems — EMILIA',
   description:
-    'Everyone requires a human in the loop; no one can prove it. EMILIA produces an '
-    + 'offline-verifiable receipt that a named human authorized the exact autonomous action — '
-    + 'the evidence layer for DoD Directive 3000.09, EU AI Act Article 14, and NIST AI RMF.',
+    'Verify that an accepted enrolled credential signed an exact autonomous action or finite '
+    + 'mandate. Customer-authored evidence mappings can support an authorized oversight review; '
+    + 'a receipt does not establish civil identity or legal compliance.',
   alternates: { canonical: '/human-control' },
   openGraph: {
-    title: 'Verifiable Meaningful Human Control for Autonomous Systems',
+    title: 'Make Required Approval Evidence Checkable',
     description:
-      'Turn "meaningful human control" from doctrine into a cryptographic artifact: an '
-      + 'offline-verifiable receipt proving a named human authorized the exact action. '
-      + 'Two-person quorum, rules-of-engagement scoping, fail-closed, air-gap ready. Apache-2.0.',
+      'Action-bound evidence for an accepted enrolled approver credential, with finite mandates, '
+      + 'optional quorum, offline verification, and explicit limits. Apache-2.0.',
     url: 'https://www.emiliaprotocol.ai/human-control',
     type: 'website',
   },
@@ -31,7 +29,7 @@ export const metadata: Metadata = {
     'verifiable human oversight',
     'human in the loop AI',
     'human on the loop',
-    'DoD Directive 3000.09 compliance',
+    'DoD Directive 3000.09 evidence mapping',
     'autonomy in weapon systems human judgment',
     'EU AI Act Article 14 human oversight',
     'autonomous weapons accountability',

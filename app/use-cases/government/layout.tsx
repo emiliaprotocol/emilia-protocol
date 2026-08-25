@@ -11,8 +11,8 @@ export const metadata: Metadata = {
     images: ['/opengraph-image'],
     title: 'EMILIA GovGuard for Government Fraud Control',
     description:
-      'Run a government fraud-control fire drill before money or regulated state moves. '
-      + 'Evidence packets for controllers, Inspectors General, and auditors.',
+      'Run a synthetic, read-only government action-control fire drill. '
+      + 'Re-performable evidence packets for authorized controllers, Inspectors General, and auditors.',
     url: 'https://www.emiliaprotocol.ai/use-cases/government',
     type: 'article',
   },
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     'provider enrollment fraud control',
     'grant disbursement approval',
     'government AI controls',
-    'NIST AI RMF compliance',
+    'NIST AI RMF evidence mapping',
     'federal AI executive order',
   ],
 };

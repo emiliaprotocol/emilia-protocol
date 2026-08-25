@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 
 import SiteFooter from '@/components/SiteFooter';
@@ -127,8 +128,14 @@ export default async function AuthorityRecordPage({ params }: {
 
         <div style={{ marginTop: 28 }}>
           {/* Text equivalent: Mapped by EMILIA on a date against a commit. */}
-          <img src={`/api/works/authority-records/${record.record_id}/badge`}
-            alt={`Mapped by EMILIA on ${observedDate} against commit ${commit.slice(0, 12)}`} />
+          <Image
+            src={`/api/works/authority-records/${record.record_id}/badge`}
+            alt={`Mapped by EMILIA on ${observedDate} against commit ${commit.slice(0, 12)}`}
+            width={620}
+            height={34}
+            unoptimized
+            style={{ width: 'auto', maxWidth: '100%', height: 34 }}
+          />
         </div>
       </main>
       <SiteFooter />

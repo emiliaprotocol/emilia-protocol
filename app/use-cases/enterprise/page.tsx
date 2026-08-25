@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius, grid } from '@/lib/tokens';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 
 export default function EnterpriseUseCasePage() {
   const [form, setForm] = useState({ name:'', org:'', title:'', email:'', surface:'', problem:'', notes:'' });
@@ -27,9 +28,16 @@ export default function EnterpriseUseCasePage() {
     e.preventDefault();
     setSubmitting(true); setError(null);
     try {
-      const res = await fetch('/api/inquiries', {
+      const res = await fetch('/api/pilot/request', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'pilot-enterprise', ...form }),
+        body: JSON.stringify({
+          name: form.name,
+          org: form.org,
+          email: form.email,
+          workflow: 'other',
+          offer_id: PROTECTED_WORKFLOW_PILOT.id,
+          message: [form.title, form.surface, form.problem, form.notes].filter(Boolean).join('\n'),
+        }),
       });
       if (!res.ok) throw new Error('Submission failed');
       setSubmitted(true);
@@ -38,23 +46,23 @@ export default function EnterpriseUseCasePage() {
   }
 
   const PROBLEMS = [
-    { title: 'Privileged access escalation inside approved sessions', body: 'Administrators and operators escalate privileges within authenticated sessions. The session is valid. The escalation is uncontrolled. No action-level enforcement exists to bind the exact privileged action to the exact authority chain.' },
-    { title: 'Configuration changes without action-level accountability', body: 'Infrastructure configuration changes, security policy modifications, and access control updates happen inside legitimate admin sessions. Post-incident logs show who was logged in, not who authorized the specific change.' },
-    { title: 'Deployment approvals without parameter binding', body: 'Production deployments proceed through approval workflows that authorize the deployment action but do not bind the exact deployment parameters: which artifact, which environment, which configuration, which principal approved.' },
+    { title: 'Privileged escalation inside an approved session', body: 'Authentication establishes a session, but a broad session or role grant may not bind the exact privilege change to current delegated authority.' },
+    { title: 'Configuration changes without exact-action evidence', body: 'Infrastructure, security-policy, and access-control changes can be reconstructed only from several logs. The accepted authority for one exact mutation may remain implicit.' },
+    { title: 'Deployment approval without parameter binding', body: 'A deployment workflow may record approval without cryptographically binding the artifact, target environment, configuration, and operation identifier that ultimately reach production.' },
   ];
 
   const HOW_EP_HELPS = [
-    { title: 'Authority chain verification', body: 'Every privileged action requires verification of the complete authority chain: which principal requested, under what role, with what delegated authority, approved by whom. The chain is cryptographically bound to the exact action.' },
-    { title: 'Exact action binding', body: 'A deployment approval binds the exact artifact hash, target environment, configuration parameters, and authorizing principal. An approval for staging cannot be replayed against production.' },
+    { title: 'Authority evidence at the action boundary', body: 'For each protected action, the relying party chooses accepted issuers, roles, delegation evidence, and policy. Gate binds the accepted evidence to the exact action rather than trusting declarations in the request body.' },
+    { title: 'Exact action binding', body: 'A deployment approval can bind the exact artifact hash, target environment, configuration parameters, and accepted authority evidence. An approval for staging cannot verify for production parameters.' },
     { title: 'Accountable signoff for protected actions', body: 'Where the pinned profile requires it, Gate refuses the configured privileged action without a named signoff bound to the exact parameters. The resulting record is tamper-evident under its signed and content-addressed inputs.' },
-    { title: 'Replay-resistant authorization', body: 'Each privileged action authorization is one-time consumable. Captured approvals cannot be replayed for different parameters, different environments, or different time windows.' },
+    { title: 'Replay-resistant authorization', body: 'A one-time authorization for one action cannot verify for different parameters, environments, or validity windows. Gate consumes accepted authority through the configured durable admission store.' },
   ];
 
   const RISK_SCENARIOS = [
     { title: 'Privileged access changes', body: 'An admin adds a user to a high-privilege group, escalates a role, or grants emergency access. The session is valid. The specific access change has no action-level signoff, no parameter binding, and no replay resistance.' },
-    { title: 'Deployment approvals', body: 'A production deployment proceeds through a CI/CD pipeline. The approval authorizes "a deployment" but does not bind the exact artifact hash, target environment, or configuration snapshot. A staging approval can be replayed against production.' },
-    { title: 'Secrets and credential rotation', body: 'API keys, service account credentials, and database passwords are rotated inside authenticated admin sessions. No existing control binds the rotation action to the exact credential, the exact new value scope, and the exact authorizing principal.' },
-    { title: 'Security policy modifications', body: 'Firewall rules, network ACLs, WAF policies, and endpoint security configurations change inside approved sessions. Post-incident logs show who was logged in. They do not show who authorized the specific policy change or what the exact parameters were.' },
+    { title: 'Deployment approvals', body: 'A CI/CD approval can authorize "a deployment" without binding the exact artifact hash, target environment, or configuration snapshot. Gate makes those material fields part of the decision.' },
+    { title: 'Secrets and credential rotation', body: 'API keys, service-account credentials, and database passwords are often rotated inside authenticated admin sessions. A Gate profile can bind the rotation to the affected credential reference, new scope, and accepted authority without placing the secret itself in the receipt.' },
+    { title: 'Security policy modifications', body: 'Firewall rules, network ACLs, WAF policies, and endpoint configurations change inside approved sessions. Gate adds a pre-action record of the exact parameters and accepted authority on the paths it covers.' },
   ];
 
   const cardStyle = (accent) => ({
@@ -68,6 +76,8 @@ export default function EnterpriseUseCasePage() {
   return (
     <div style={styles.page}>
       <SiteNav activePage="" />
+
+      <main>
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
@@ -90,9 +100,9 @@ export default function EnterpriseUseCasePage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '80%', label: 'Of breaches involve privileged credential abuse (Verizon DBIR)', accent: color.gold },
-              { value: '56d', label: 'Average dwell time before detection in enterprises', accent: color.gold },
-              { value: '0',   label: 'Action-level binding on most deployment pipelines today', accent: color.t3 },
+              { value: 'Session', label: 'Authentication establishes who or what connected', accent: color.gold },
+              { value: 'Action', label: 'Gate evaluates the exact proposed mutation', accent: color.gold },
+              { value: 'Evidence', label: 'Decision, admission, and outcome remain distinguishable', accent: color.t3 },
             ].map((s, i) => (
               <div key={i} style={{ padding: '28px 24px', borderRight: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
                 <div style={{ fontFamily: font.sans, fontSize: 28, fontWeight: 700, color: s.accent, marginBottom: 6 }}>{s.value}</div>
@@ -108,7 +118,7 @@ export default function EnterpriseUseCasePage() {
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>The problem</h2>
           <p style={styles.body}>
-            Enterprise systems authenticate users, assign roles, and log activity. What they lack is a control layer that enforces trust at the exact moment a privileged action is about to execute. Role-based access control determines what a user can do. It does not enforce accountability for the specific action they are about to perform.
+            Enterprise systems authenticate users, assign roles, and log activity. Those controls answer different questions from exact-action admission. Gate adds the missing decision where a configured privileged operation is about to cross into the consequence owner.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -128,7 +138,7 @@ export default function EnterpriseUseCasePage() {
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>How EMILIA helps</h2>
             <p style={styles.body}>
-              EMILIA operates as a trust-control layer between enterprise authentication and privileged action execution. It does not replace IAM or RBAC. It adds action-level trust enforcement where existing access control stops.
+              EMILIA sits between enterprise authentication and selected privileged actions. It does not replace IAM or RBAC. On a completely mediated covered path, Gate checks accepted authority and evidence for the exact action before provider entry.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
@@ -146,13 +156,13 @@ export default function EnterpriseUseCasePage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 32 }}>
           <h2 style={styles.h2}>What changes with EMILIA</h2>
-          <p style={styles.body}>Before EMILIA, a configuration change inside an authenticated admin session is invisible until post-incident review. After EMILIA:</p>
+          <p style={styles.body}>For a configured, completely mediated privileged path, Gate adds a pre-action authority decision and a portable record:</p>
         </div>
         {[
-          'Every privileged action requires a handshake binding the exact action parameters to the authorizing principal and authority chain',
-          'Deployment approvals are bound to exact artifact hashes, target environments, and configuration states',
-          'Every mediated configuration change can produce a tamper-evident signoff record with named accountability',
-          'Replay resistance ensures captured approvals cannot authorize different actions',
+          'Each protected action binds its exact parameters to accepted authority evidence and the current policy',
+          'Protected deployment approvals bind exact artifact hashes, target environments, and configuration states',
+          'Each mediated configuration change can produce a tamper-evident record of the accepted authority evidence',
+          'Action binding and one-time consumption refuse approval reuse for a different action',
           'Security teams receive action-level evidence that can support SOC 2, ISO 27001, and internal control testing',
         ].map((item, i) => (
           <div key={i} className={`ep-list-item ep-reveal ep-stagger-${i + 1}`}>
@@ -167,7 +177,7 @@ export default function EnterpriseUseCasePage() {
         <div style={styles.section}>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>Where the control gap hurts most</h2>
-            <p style={styles.body}>These are the four action surfaces where enterprises have zero action-level trust enforcement today. Each one is a breach vector that existing IAM and RBAC do not cover.</p>
+            <p style={styles.body}>These are four action surfaces where a session-level permission can be wider than the exact mutation the operator intends to authorize.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
             {RISK_SCENARIOS.map((r, i) => (
@@ -184,12 +194,12 @@ export default function EnterpriseUseCasePage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>Why now</h2>
-          <p style={styles.body}>Three forces are converging to make action-level trust enforcement an urgent requirement for enterprise security teams.</p>
+          <p style={styles.body}>Three operating pressures make exact-action evidence worth evaluating alongside existing enterprise controls.</p>
         </div>
         {[
-          { title: 'Identity compromise is the new perimeter breach', body: 'Attackers do not break through firewalls. They log in with compromised credentials and operate inside authenticated sessions. Session-level controls cannot distinguish a legitimate admin from a threat actor using the same valid session.' },
+          { title: 'A valid session can still carry the wrong action', body: 'Compromised credentials and malicious insiders can operate inside authenticated sessions. Exact-action authority gives the executor a decision point beyond the login event.' },
           { title: 'Supply chain attacks target the deployment pipeline', body: 'Build systems, CI/CD pipelines, and package registries are attack surfaces. Without action-level binding on deployment approvals, a compromised pipeline can push arbitrary artifacts to production under a valid approval.' },
-          { title: 'Compliance frameworks are moving to action-level evidence', body: 'SOC 2 Type II, ISO 27001:2022, and NIST CSF 2.0 increasingly require evidence of who authorized specific actions, not just who had access. Session-level audit logs are no longer sufficient for examination.' },
+          { title: 'Control reviewers need reconstructable evidence', body: 'Action-bound records can support SOC 2, ISO 27001, NIST CSF, and internal-control testing. The authorized reviewer still determines whether the complete control design and operation meet the applicable criteria.' },
         ].map((w, i) => (
           <div key={i} className={`ep-problem-row ep-reveal ep-stagger-${i + 1}`} style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: font.sans, fontSize: 15, fontWeight: 700, color: color.t1, marginBottom: 6 }}>{w.title}</div>
@@ -207,7 +217,7 @@ export default function EnterpriseUseCasePage() {
             Trust before high-risk action in enterprise operations
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', maxWidth: 520, lineHeight: 1.7, marginBottom: 32 }}>
-            EMILIA is selectively working with enterprise security teams, platform engineering organizations, and infrastructure providers to pilot action-level trust enforcement for privileged operations.
+            The protected-workflow pilot is available to enterprise security teams, platform engineering organizations, and infrastructure providers that can name one privileged executor boundary.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="#pilot" className="ep-cta" style={cta.primary}>Request Pilot</a>
@@ -219,6 +229,9 @@ export default function EnterpriseUseCasePage() {
       <section id="pilot" style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 32 }}>
           <h2 style={styles.h2}>Request a pilot</h2>
+          <p style={styles.body}>
+            {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · {PROTECTED_WORKFLOW_PILOT.workflowLabel}. {PROTECTED_WORKFLOW_PILOT.rolloutLabel}.
+          </p>
         </div>
         {submitted ? (
           <div style={{ border: `1px solid ${color.border}`, borderTop: `2px solid ${color.gold}`, borderRadius: radius.base, padding: 40, textAlign: 'center' }}>
@@ -226,12 +239,22 @@ export default function EnterpriseUseCasePage() {
             <p style={{ color: color.t2, fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
           </div>
         ) : (
-          <div style={styles.card}>
+          <form style={styles.card} onSubmit={handleSubmit}>
             <div style={grid.cols2}>
               {[['name','Name'],['org','Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
                 <div key={k}>
-                  <label style={styles.label}>{label}</label>
-                  <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
+                  <label htmlFor={`pilot-${k}`} style={styles.label}>{label}</label>
+                  <input
+                    id={`pilot-${k}`}
+                    name={k}
+                    type={k === 'email' ? 'email' : 'text'}
+                    required={k === 'name' || k === 'org' || k === 'email'}
+                    autoComplete={k === 'name' ? 'name' : k === 'org' ? 'organization' : k === 'email' ? 'email' : 'organization-title'}
+                    className="ep-input"
+                    style={styles.input}
+                    value={form[k]}
+                    onChange={e => update(k, e.target.value)}
+                  />
                 </div>
               ))}
               <div style={{ gridColumn: '1 / -1' }}>
@@ -247,13 +270,15 @@ export default function EnterpriseUseCasePage() {
                 <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
               </div>
             </div>
-            {error && <p style={{ color: '#DC2626', fontSize: 13, marginTop: 12 }}>{error}</p>}
-            <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...(!form.name || !form.email ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
+            {error && <p role="alert" aria-live="polite" style={{ color: '#DC2626', fontSize: 13, marginTop: 12 }}>{error}</p>}
+            <button type="submit" className="ep-cta" disabled={submitting || !form.name || !form.org || !form.email} style={{ ...(!form.name || !form.org || !form.email ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
               {submitting ? 'Submitting...' : 'Request Pilot'}
             </button>
-          </div>
+          </form>
         )}
       </section>
+
+      </main>
 
       <SiteFooter />
     </div>

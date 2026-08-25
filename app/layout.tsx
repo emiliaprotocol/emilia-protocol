@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://www.emiliaprotocol.ai'),
   title: {
     default: 'EMILIA | Authority Toll Booth for Autonomous Work',
-    template: '%s | EMILIA',
+    template: '%s',
   },
   description:
     'At protected boundaries, every consequential agent action enters with customer authority and exits '
@@ -38,8 +38,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: '/emilia-authority-tollbooth-v1.png',
-        width: 1200,
-        height: 630,
+        width: 1717,
+        height: 916,
         alt: 'Agent-intent paths cross a customer-owned authority checkpoint and leave with action-bound receipts',
       },
     ],
@@ -129,8 +129,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
-        <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
         <link rel="alternate" href="/llms.txt" type="text/plain" title="EMILIA LLM context index" />
         <link
           rel="alternate"

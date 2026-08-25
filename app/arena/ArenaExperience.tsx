@@ -267,14 +267,14 @@ export default function ArenaExperience() {
 
       <section className={styles.howItWorks}>
         <div><span>01</span><h3>Bound</h3><p>One agent, one time window, named targets, aggregate and per-action limits.</p></div>
-        <div><span>02</span><h3>Refuse</h3><p>The decision is made before an out-of-envelope action can enter an executor.</p></div>
+        <div><span>02</span><h3>Refuse</h3><p>The decision is made before an out-of-envelope action can enter the Arena&apos;s synthetic executor.</p></div>
         <div><span>03</span><h3>Record</h3><p>A signed refusal binds the exact synthetic action under the included session key. It does not establish identity, authority, or correctness.</p></div>
-        <div><span>04</span><h3>Pilot</h3><p>A separately scoped engagement protects one buyer-selected workflow at its real executor boundary.</p></div>
+        <div><span>04</span><h3>Pilot</h3><p>The pilot maps one buyer-selected workflow and validates a proposed Gate boundary with synthetic and read-only evidence.</p></div>
       </section>
 
       <section className={styles.conversion}>
         <div>
-          <p className={styles.eyebrow}>FROM SYNTHETIC TO ONE LIVE WORKFLOW</p>
+          <p className={styles.eyebrow}>FROM SYNTHETIC TO ONE PROTECTED-WORKFLOW PILOT</p>
           <h2>Protect the action that can actually cost you.</h2>
           <p>{PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · {PROTECTED_WORKFLOW_PILOT.workflowLabel}. First profile: {PROTECTED_WORKFLOW_PILOT.firstProfileLabel}. {PROTECTED_WORKFLOW_PILOT.eligibilityLabel}. Sandbox and read-only validation come first; production waits for a buyer-approved executor boundary. EMILIA does not verify identity, certify a deployment, take custody, settle funds, or judge the underlying decision.</p>
         </div>

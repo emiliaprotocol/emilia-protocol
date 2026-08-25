@@ -27,7 +27,7 @@ import {
 } from '../../packages/gate/store.js';
 import { invariant, interleave } from '../harness.mjs';
 
-export default {
+const handshakeConsumeTarget = {
   name: 'handshake-consume',
   invariants: [
     'consume-once (exactly one concurrent consumer succeeds)',
@@ -122,3 +122,5 @@ export default {
     }
   },
 };
+
+export default handshakeConsumeTarget;

@@ -89,8 +89,10 @@ function isCrawlableLink(url) {
   if (url.origin !== CANONICAL_ORIGIN.origin) return false;
   if (/\.(?:avif|css|csv|gif|ico|jpe?g|json|map|md|mjs|mp3|mp4|pdf|png|svg|txt|webm|webp|xml|zip)$/i.test(url.pathname)) return false;
   return ![
-    '/_next/', '/api/', '/r/', '/entity/', '/cloud/', '/adopt/r/',
-    '/agent-record/r/', '/arena/r/', '/trust-desk/c/',
+    '/_next/', '/api/', '/r/', '/entity/', '/cloud', '/adopt/r/',
+    '/agent-record/r/', '/arena/r/', '/trust-desk/c/', '/internal/',
+    '/approvers/', '/mobile/', '/release-lock/', '/signoff/',
+    '/evidence-readiness', '/trust-desk/upload',
   ].some((prefix) => url.pathname.startsWith(prefix));
 }
 
@@ -100,6 +102,7 @@ if (!sitemapResponse.ok) errors.push(`/sitemap.xml returned ${sitemapResponse.st
 if (/<lastmod>/i.test(sitemapXml)) warnings.push('sitemap emits <lastmod>; verify every date comes from source data');
 
 const sitemapUrls = [...sitemapXml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeHtml(match[1]));
+const sitemapCanonicalUrls = new Set(sitemapUrls.map(canonicalUrl));
 if (!sitemapUrls.length) errors.push('sitemap contains no URLs');
 if (new Set(sitemapUrls).size !== sitemapUrls.length) errors.push('sitemap contains duplicate URLs');
 for (const url of sitemapUrls) {
@@ -195,13 +198,27 @@ for (const row of pageRows.filter(Boolean)) {
 }
 
 await pool([...internalTargets], async ([url, source]) => {
+  if (sitemapCanonicalUrls.has(url)) return;
   try {
-    const response = await fetch(requestUrl(url), {
-      redirect: 'follow',
-      headers: { 'user-agent': 'EMILIA-SEO-Audit/1.0' },
-    });
-    await response.body?.cancel();
-    if (!response.ok) errors.push(`${source}: internal link ${new URL(url).pathname} returned ${response.status}`);
+    const { response, text: html } = await fetchText(requestUrl(url));
+    const path = new URL(url).pathname;
+    if (!response.ok) {
+      errors.push(`${source}: internal link ${path} returned ${response.status}`);
+      return;
+    }
+    if (!/^text\/html(?:;|$)/i.test(response.headers.get('content-type') || '')) return;
+
+    const robots = `${meta(html, 'robots')} ${meta(html, 'googlebot')} ${response.headers.get('x-robots-tag') || ''}`;
+    if (/\bnoindex\b/i.test(robots)) return;
+
+    const canonicalTags = links(html, 'canonical');
+    const canonical = canonicalTags.length === 1 ? attribute(canonicalTags[0], 'href') : '';
+    const resolvedPath = new URL(response.url).pathname;
+    if (canonicalTags.length !== 1) {
+      errors.push(`${path}: linked indexable page expected one canonical, found ${canonicalTags.length}`);
+    } else if (canonicalUrl(canonical) !== canonicalUrl(resolvedPath)) {
+      errors.push(`${path}: linked indexable page canonical ${canonical} does not match ${resolvedPath}`);
+    }
   } catch (error) {
     errors.push(`${source}: internal link ${new URL(url).pathname} failed (${error.message})`);
   }

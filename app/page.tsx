@@ -12,7 +12,14 @@ export const metadata: Metadata = {
       'Humans define authority. Agents exercise it. EMILIA ensures the agent cannot quietly widen it.',
     url: 'https://www.emiliaprotocol.ai/',
     type: 'website',
-    images: ['/emilia-authority-tollbooth-v1.png'],
+    images: [
+      {
+        url: '/emilia-authority-tollbooth-v1.png',
+        width: 1717,
+        height: 916,
+        alt: 'Agent-intent paths cross a customer-owned authority checkpoint and leave with action-bound receipts',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',

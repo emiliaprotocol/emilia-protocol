@@ -4,6 +4,7 @@ import { useState } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius, grid } from '@/lib/tokens';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 
 export default function CloudPage() {
   const [form, setForm] = useState({ name:'', org:'', title:'', email:'', surface:'', problem:'', notes:'' });
@@ -17,9 +18,16 @@ export default function CloudPage() {
     e.preventDefault();
     setSubmitting(true); setError(null);
     try {
-      const res = await fetch('/api/inquiries', {
+      const res = await fetch('/api/pilot/request', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'pilot-cloud', ...form }),
+        body: JSON.stringify({
+          name: form.name,
+          org: form.org,
+          email: form.email,
+          workflow: 'other',
+          offer_id: PROTECTED_WORKFLOW_PILOT.id,
+          message: [form.title, form.surface, form.problem, form.notes].filter(Boolean).join('\n'),
+        }),
       });
       if (!res.ok) throw new Error('Submission failed');
       setSubmitted(true);
@@ -104,12 +112,22 @@ export default function CloudPage() {
               <p style={{ color: color.t2, fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
             </div>
           ) : (
-            <div style={styles.card}>
+            <form style={styles.card} onSubmit={handleSubmit}>
               <div style={grid.cols2}>
                 {[['name','Name'],['org','Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
                   <div key={k}>
-                    <label style={styles.label}>{label}</label>
-                    <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
+                  <label htmlFor={`pilot-${k}`} style={styles.label}>{label}</label>
+                  <input
+                    id={`pilot-${k}`}
+                    name={k}
+                    type={k === 'email' ? 'email' : 'text'}
+                    required={k === 'name' || k === 'org' || k === 'email'}
+                    autoComplete={k === 'name' ? 'name' : k === 'org' ? 'organization' : k === 'email' ? 'email' : 'organization-title'}
+                    className="ep-input"
+                    style={styles.input}
+                    value={form[k]}
+                    onChange={e => update(k, e.target.value)}
+                  />
                   </div>
                 ))}
                 <div style={{ gridColumn: '1 / -1' }}>
@@ -125,11 +143,11 @@ export default function CloudPage() {
                   <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
                 </div>
               </div>
-              {error && <p style={{ color: color.red, fontSize: 13, marginTop: 12 }}>{error}</p>}
-              <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...((!form.name || !form.email) ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
+              {error && <p role="alert" aria-live="polite" style={{ color: color.red, fontSize: 13, marginTop: 12 }}>{error}</p>}
+              <button type="submit" className="ep-cta" disabled={submitting || !form.name || !form.org || !form.email} style={{ ...((!form.name || !form.org || !form.email) ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
                 {submitting ? 'Submitting...' : 'Request Cloud Access'}
               </button>
-            </div>
+            </form>
           )}
         </div>
       </section>

@@ -267,4 +267,6 @@ export function verifyAuthorityProofViaDocument(proof, docs, opts: VerifyAuthori
   };
 }
 
-export default { verifyAuthorityProofViaDocument };
+const documentProofJoin = { verifyAuthorityProofViaDocument };
+
+export default documentProofJoin;

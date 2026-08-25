@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     title: 'EMILIA Protocol for Enterprise Privileged Actions',
     description:
       'Action-bound authorization layered on top of PAM. Cryptographic ' +
-      'evidence for every consequential change.',
+      'evidence for each configured, completely mediated consequential change.',
     url: 'https://www.emiliaprotocol.ai/use-cases/enterprise',
     type: 'article',
   },
