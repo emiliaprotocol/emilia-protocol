@@ -185,7 +185,7 @@
     "@noble/curves": "2.3.0",
     "@noble/post-quantum": "^0.7.0",
     "@node-saml/node-saml": "^5.1.0",
-    "@remotion/player": "^4.0.509",
+    "@remotion/player": "^4.0.512",
     "@sentry/nextjs": "10.70.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.2",
@@ -204,7 +204,7 @@
     "react-dom": "^19.2.7",
     "remotion": "^4.0.509",
     "stripe": "^22.5.0",
-    "viem": "^2.55.16",
+    "viem": "^2.55.18",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.4.3"
   },
