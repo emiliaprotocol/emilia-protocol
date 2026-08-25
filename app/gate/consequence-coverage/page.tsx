@@ -7,6 +7,7 @@ import CoverageConsole from './CoverageConsole';
 export const metadata: Metadata = {
   title: 'Consequence Coverage | EMILIA Gate',
   description: 'Reconcile an independently signed system-of-record population against Gate receipts and surface effects that bypassed the consequence boundary.',
+  alternates: { canonical: '/gate/consequence-coverage' },
 };
 
 export default function ConsequenceCoveragePage() {

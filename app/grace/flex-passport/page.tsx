@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: 'GRACE Flex Passport — verifiable flexible-load evidence for AI datacenters | EMILIA',
   description:
     'Prove your AI facility can curtail on command. Signed curtailment orders, named-human authorization, attested meter telemetry, and an offline-verifiable settlement packet — the evidence layer that turns AI compute into a bankable flexible grid resource.',
+  alternates: { canonical: '/grace/flex-passport' },
 };
 
 const PASSPORT_CONTENTS = [

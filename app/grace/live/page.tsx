@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: 'GRACE Live Control Room | EMILIA Protocol',
   description:
     'Run the GRACE reference circuit: mobile Class-A quorum, bounded COSA dispatch, independently signed meter evidence, Action State, and one-time settlement.',
+  alternates: { canonical: '/grace/live' },
 };
 
 export default function GraceLivePage() {

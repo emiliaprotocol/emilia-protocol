@@ -28,6 +28,7 @@ export const metadata = {
   title: 'EMILIA Works (Private Beta) — Inspectable Autonomous Work',
   description:
     'A directory of accountable builders and their work, with evidence status on capability statements.',
+  alternates: { canonical: '/works' },
 };
 
 type SearchParams = Record<string, string | string[] | undefined>;

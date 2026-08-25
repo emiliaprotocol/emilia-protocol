@@ -7,6 +7,7 @@ import GateLiveConsole from './GateLiveConsole';
 export const metadata: Metadata = {
   title: 'EMILIA Gate Live | Consequence Firewall',
   description: 'Run the real EMILIA Gate enforcement sequence: receipt challenge, mobile human authorization, pinned verification, one-time execution, and portable evidence.',
+  alternates: { canonical: '/gate/live' },
 };
 
 export default function GateLivePage() {

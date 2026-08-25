@@ -7,6 +7,7 @@ import GateControlPlane from './GateControlPlane';
 export const metadata: Metadata = {
   title: 'EMILIA Gate Control Plane | Enforcement, Witness, Settlement',
   description: 'Run the reference three-plane proof: executor enforcement, independent network observation, coverage, metering, and fail-closed settlement eligibility.',
+  alternates: { canonical: '/gate/control-plane' },
 };
 
 export default function GateControlPlanePage() {
