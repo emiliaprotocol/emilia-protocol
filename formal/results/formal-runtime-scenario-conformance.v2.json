@@ -615,7 +615,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "a0d0ded274778b7d11c31bced9583a587d96efe94ebdca3d24bfe40caf8ff8d5"
+      "sha256": "64b13fe224677ef5271ab5e1c03caee307a789fde9d870ca5d3080cc8985cc6c"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -683,7 +683,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "71bd72d24b86ede94d838f27f8054f3f2e98f5eafebaf15959067351cb7925b7"
+      "sha256": "9564a2d1a447d06967ec0ae7b3cbab8baf1c32bb38abf3147c747ff3913e298b"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -739,7 +739,7 @@
     },
     {
       "path": "packages/gate/dist/provider-entry.js",
-      "sha256": "6ce34d4fe67739776965bc845d322e80eb3192137880f6fb38f26ff408ffbc25"
+      "sha256": "5628cfba74e4a7b97a26f97f359d29cc72b16ccd3a139b009b43e4b6ba6c3471"
     },
     {
       "path": "packages/gate/dist/receipt-census.js",
@@ -871,7 +871,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "9085451ce4b48f89d29926230950b28152242e9610287c0a8e861ddc2972cbd1"
+      "sha256": "6c01560353a0ae9eeaa7d05f1dd09b01e6886f10abebb685bad9072d5286c26d"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -891,7 +891,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "a8f3b61207712d2d019e6beee203e4bf91fcaf0f7ec3f3ee479c2a5245ac2be4"
+      "sha256": "01acb5a60240bd9350179ce4cb54870655f71d2c54565396cdcdaaa9ae79359d"
     },
     {
       "path": "packages/gate/src/network-witness.ts",

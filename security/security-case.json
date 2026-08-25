@@ -1,7 +1,7 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05",
+  "evidence_bundle_sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460",
   "claim_count": 35,
   "evidence_file_count": 259,
   "execution": {
@@ -1078,7 +1078,7 @@
       "package": "@emilia-protocol/gate",
       "version": "0.23.20",
       "filename": "emilia-protocol-gate-0.23.20.tgz",
-      "sha256": "c247e3623429e3eca9fc5c179d4959a189b2384537b1cdf7aa1c71f6f460ca90",
+      "sha256": "e8cb0e397c794a81800e09fcebee9a17588776a1bdc3d3898e5b1243fe05a384",
       "file_count": 823
     },
     "mobile-sdk": {
@@ -1092,7 +1092,7 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05",
+      "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460",
       "file_count": 259
     },
     "verify-sdk": {
@@ -1256,7 +1256,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -1519,7 +1519,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -1628,7 +1628,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -1794,7 +1794,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -1918,7 +1918,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -2113,7 +2113,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -2470,11 +2470,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c247e3623429e3eca9fc5c179d4959a189b2384537b1cdf7aa1c71f6f460ca90"
+          "sha256": "e8cb0e397c794a81800e09fcebee9a17588776a1bdc3d3898e5b1243fe05a384"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -2675,7 +2675,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -2858,7 +2858,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -3078,7 +3078,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -3312,7 +3312,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -3537,7 +3537,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -3646,7 +3646,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -3856,11 +3856,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c247e3623429e3eca9fc5c179d4959a189b2384537b1cdf7aa1c71f6f460ca90"
+          "sha256": "e8cb0e397c794a81800e09fcebee9a17588776a1bdc3d3898e5b1243fe05a384"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -3998,11 +3998,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c247e3623429e3eca9fc5c179d4959a189b2384537b1cdf7aa1c71f6f460ca90"
+          "sha256": "e8cb0e397c794a81800e09fcebee9a17588776a1bdc3d3898e5b1243fe05a384"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -4415,11 +4415,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c247e3623429e3eca9fc5c179d4959a189b2384537b1cdf7aa1c71f6f460ca90"
+          "sha256": "e8cb0e397c794a81800e09fcebee9a17588776a1bdc3d3898e5b1243fe05a384"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -4576,11 +4576,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c247e3623429e3eca9fc5c179d4959a189b2384537b1cdf7aa1c71f6f460ca90"
+          "sha256": "e8cb0e397c794a81800e09fcebee9a17588776a1bdc3d3898e5b1243fe05a384"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -4823,11 +4823,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c247e3623429e3eca9fc5c179d4959a189b2384537b1cdf7aa1c71f6f460ca90"
+          "sha256": "e8cb0e397c794a81800e09fcebee9a17588776a1bdc3d3898e5b1243fe05a384"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -4961,7 +4961,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -5084,7 +5084,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -5220,7 +5220,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -5451,7 +5451,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -5665,7 +5665,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -5881,7 +5881,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -6185,7 +6185,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -6397,7 +6397,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -6563,7 +6563,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -6742,7 +6742,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -6917,7 +6917,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -7067,7 +7067,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -7208,7 +7208,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -7407,7 +7407,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -7817,11 +7817,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c247e3623429e3eca9fc5c179d4959a189b2384537b1cdf7aa1c71f6f460ca90"
+          "sha256": "e8cb0e397c794a81800e09fcebee9a17588776a1bdc3d3898e5b1243fe05a384"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -8198,11 +8198,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c247e3623429e3eca9fc5c179d4959a189b2384537b1cdf7aa1c71f6f460ca90"
+          "sha256": "e8cb0e397c794a81800e09fcebee9a17588776a1bdc3d3898e5b1243fe05a384"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     },
@@ -8401,11 +8401,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "c247e3623429e3eca9fc5c179d4959a189b2384537b1cdf7aa1c71f6f460ca90"
+          "sha256": "e8cb0e397c794a81800e09fcebee9a17588776a1bdc3d3898e5b1243fe05a384"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "e4180cd5a0642da2cf54d96e035637d2ca79e8d03fa48b4c4d71c54a8b5fcf05"
+          "sha256": "e19e854ffcb080d625c9ae1b1b6744fe81f8e14fa76c134c0f0d6bb48b8a6460"
         }
       ]
     }
@@ -8769,7 +8769,7 @@
     },
     {
       "path": "formal/results/formal-runtime-scenario-conformance.v2.json",
-      "sha256": "d48f63a88d2e4dfb0e9fd86a18654b2ba3f649c96fc0d606b230ab0f2fa8c9d3"
+      "sha256": "cdaf56c98a1c81db942babe307a793696d7d66588571ff2920515fa3974586ad"
     },
     {
       "path": "formal/results/outcome-authority-join.summary.txt",
@@ -8913,7 +8913,7 @@
     },
     {
       "path": "packages/gate/capability-receipt.test.js",
-      "sha256": "d62b1320cc6900caf3f6bea0d206edb75b06667f33760f3e56b5d3bc641726be"
+      "sha256": "8e0ba743a56a570d26354cbc292b32d5d0f4e2e088b808a98d6bd60a60f874a1"
     },
     {
       "path": "packages/gate/consequence-actuator.test.js",
@@ -9001,7 +9001,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "9085451ce4b48f89d29926230950b28152242e9610287c0a8e861ddc2972cbd1"
+      "sha256": "6c01560353a0ae9eeaa7d05f1dd09b01e6886f10abebb685bad9072d5286c26d"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -9021,7 +9021,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "a8f3b61207712d2d019e6beee203e4bf91fcaf0f7ec3f3ee479c2a5245ac2be4"
+      "sha256": "01acb5a60240bd9350179ce4cb54870655f71d2c54565396cdcdaaa9ae79359d"
     },
     {
       "path": "packages/gate/src/loss-allocation-schedule.ts",

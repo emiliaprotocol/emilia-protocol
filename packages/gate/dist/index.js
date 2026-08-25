@@ -41,7 +41,7 @@ import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
 import { ACTION_CONTROL_MANIFEST_VERSION, createDefaultActionControlManifest, findActionControl, resolveActionControl, validateActionControlManifest, } from './action-control-manifest.js';
 import { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS, } from './runtime-monitor.js';
-import { evaluateProviderEntryGuard, providerEntryContext, } from './provider-entry.js';
+import { evaluateProviderEntryGuard, providerEntryContext, requiredProviderEntryControlDomain, } from './provider-entry.js';
 import { fieldOriginProfileDigest, pinFieldOriginProfile, pinFieldOriginTrustedKeys, verifyFieldOriginEvidence, } from './field-origin-evidence.js';
 import { verifyBoundedExecutionProgram, } from './bounded-execution-program.js';
 import { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
@@ -862,6 +862,16 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     }
     const evidence = log || createEvidenceLog({ strict: strictEvidence });
     async function providerEntryVerdict({ authorization, selector = {}, observedAction = null, capability = null, }) {
+        const requiredControlDomainId = requiredProviderEntryControlDomain(providerEntryGuard);
+        if (requiredControlDomainId !== null && capability === null) {
+            return Object.freeze({
+                ok: false,
+                reason: 'provider_entry_serialized_control_domain_required',
+                status: 503,
+                evidence: null,
+                reservation: 'hold',
+            });
+        }
         return evaluateProviderEntryGuard(providerEntryGuard, providerEntryContext({ authorization, selector, observedAction, capability, now }));
     }
     function resolveRequirement(selector) {
@@ -1612,14 +1622,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             operationId,
             now,
             executeAction,
-            providerEntryGuard: providerEntryGuard
-                ? (input) => providerEntryVerdict({
-                    authorization: input.authorization,
-                    selector: input.selector,
-                    observedAction: input.observed_action,
-                    capability: input.capability,
-                })
-                : null,
+            providerEntryGuard,
         };
         const capabilityResult = Array.isArray(context.shares)
             ? await executeWithThreshold(/** @type {any} */ ({ ...executorInput, shares: context.shares }))

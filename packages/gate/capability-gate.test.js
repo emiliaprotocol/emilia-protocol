@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
-import { createDefaultActionRiskManifest, createEg1Harness, createGate, createMemoryCapabilityStore, createRuntimeMonitor, mintCapabilityReceipt, CAPABILITY_SCOPE_PROFILE, capabilityActionDigest, } from './index.js';
+import { createDefaultActionRiskManifest, createEg1Harness, createGate, createMemoryCapabilityStore, createOrganizationStatusProviderEntryGuard, createRuntimeMonitor, mintCapabilityReceipt, CAPABILITY_SCOPE_PROFILE, capabilityActionDigest, } from './index.js';
 const NOW = Date.now();
 const SELECTOR = { protocol: 'mcp', tool: 'release_payment' };
 const ACTION = {
@@ -170,6 +170,31 @@ test('gate capability path reserves and commits budget around the effect', async
     assert.equal(f.capabilityStore.getOperation(ACTION.payment_instruction_id).outcome, 'executed');
     assert.equal(first.authorization.evidence.consumption_mode, 'none');
     assert.equal(f.gate.evidence.verify().ok, true);
+});
+test('gate capability path derives the organization control domain from the guard', async () => {
+    const controlDomainId = 'org:capability-gate';
+    const f = fixture({
+        providerEntryGuard: createOrganizationStatusProviderEntryGuard({
+            organizationId: controlDomainId,
+            resolveStatus: async () => ({
+                organization_id: controlDomainId,
+                status: 'active',
+                epoch: 1,
+                observed_at: new Date(NOW).toISOString(),
+                authenticated: true,
+            }),
+            now: NOW,
+        }),
+    });
+    assert.equal((await f.capabilityStore.registerControlDomain({
+        controlDomainId,
+        now: NOW,
+    })).ok, true);
+    let effects = 0;
+    const result = await f.gate.run(request(f, { operationId: ACTION.payment_instruction_id }), async () => { effects += 1; return 'settled'; });
+    assert.equal(result.ok, true, result.capability?.reason || result.authorization?.reason);
+    assert.equal(effects, 1);
+    assert.equal(f.capabilityStore.getOperation(ACTION.payment_instruction_id).control_domain_id, controlDomainId);
 });
 test('gate capability path refuses overspend before the effect', async () => {
     const f = fixture({ budget: 30 });
