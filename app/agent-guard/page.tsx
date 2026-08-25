@@ -10,6 +10,7 @@ export const metadata: Metadata = {
     'An EMILIA Gate solution profile for consequential agent and MCP tool calls, using action-bound evidence and explicit enforcement at the integrated executor.',
   alternates: { canonical: '/agent-guard' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'Agent Guard — EMILIA Gate for Tool Calls',
     description:
       'Protect configured consequential tool calls with policy, human approval, and portable authorization evidence.',

@@ -7,7 +7,8 @@
  * Replaces the mailto: CTA (a dead button on machines with no mail handler —
  * i.e. most government workstations). Four fields, honeypot spam guard,
  * graceful fallback to the team@ address if the API is unreachable.
- * ?v=gov|fin|health preselects the workflow.
+ * ?v=gov|fin|health preselects the workflow. A closed source parameter carries
+ * first-party campaign attribution into the durable intake record.
  */
 
 import { useEffect, useState } from 'react';
@@ -45,7 +46,7 @@ function publicRecordReturn(artifactId: string): { href: string; label: string }
 export default function PilotPage(): React.ReactElement {
   const [form, setForm] = useState({
     name: '', org: '', email: '', workflow: 'beneficiary_change', message: '', website: '',
-    offer_id: PROTECTED_WORKFLOW_PILOT.id, artifact_id: '',
+    offer_id: PROTECTED_WORKFLOW_PILOT.id, artifact_id: '', source: 'direct',
   });
   const [state, setState] = useState('idle'); // idle | busy | done | error
   const [error, setError] = useState('');
@@ -58,11 +59,13 @@ export default function PilotPage(): React.ReactElement {
       if (cancelled) return;
       const params = new URLSearchParams(window.location.search);
       const v = params.get('v');
+      const source = params.get('source') === 'private_equity' ? 'private_equity' : 'direct';
       const artifactId = params.get('artifact_id')?.trim().slice(0, 80) ?? '';
       setForm((f) => ({
         ...f,
         ...(v && PRESELECT[v] ? { workflow: PRESELECT[v] } : {}),
         ...(artifactId ? { artifact_id: artifactId } : {}),
+        source,
       }));
     });
     return () => { cancelled = true; };
@@ -75,7 +78,7 @@ export default function PilotPage(): React.ReactElement {
     [selectedOffer.durationLabel, 'time-boxed engagement'],
     [selectedOffer.shortPriceLabel, 'fixed scope and price'],
     [selectedOffer.workflowLabel, 'one buyer-selected consequence boundary'],
-    ['Synthetic + read-only first', 'production waits for explicit buyer acceptance'],
+    ['Synthetic + read-only', 'production implementation is separately scoped'],
     ['Server-validated records only', 'public record IDs are resolved before intake'],
   ];
 

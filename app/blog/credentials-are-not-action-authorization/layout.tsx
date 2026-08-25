@@ -6,6 +6,7 @@ export const metadata: Metadata = {
     'What the OpenAI–Hugging Face incident and Anthropic cyber-evaluation review reveal about agent reachability, bearer credentials, and exact-action authorization.',
   alternates: { canonical: '/blog/credentials-are-not-action-authorization' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'A credential was all the authority it needed',
     description:
       'Agent containment failed first. At the external boundary, possession of a credential was enough to act. Those are different security problems.',

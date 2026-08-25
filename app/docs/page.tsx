@@ -10,6 +10,7 @@ export const metadata: Metadata = {
     'Deploy the EMILIA consequence firewall, connect an Approver app, verify open Protocol evidence, and re-perform it through the Assurance Plane.',
   alternates: { canonical: '/docs' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'Deploy EMILIA Gate',
     description: 'Start at the enforcement boundary, then inspect the open Protocol and Assurance tooling underneath it.',
     url: 'https://www.emiliaprotocol.ai/docs',

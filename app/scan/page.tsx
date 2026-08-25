@@ -5,11 +5,12 @@ import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'Free AI Agent Authority Scanner — EMILIA',
+  title: 'Free AI Agent Authority Scanner',
   description:
     'Run a passive local inventory of configured agent runtimes, MCP servers, credential-shaped configuration, ambient credential files, and permission rules.',
   alternates: { canonical: '/scan' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'See what your agents can reach',
     description:
       'A passive local authority inventory. Scanner code performs no network I/O or configured-server launch. No security guarantee.',

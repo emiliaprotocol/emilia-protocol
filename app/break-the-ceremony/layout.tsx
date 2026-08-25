@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Break the Ceremony — Red-Team Challenge & Attack Matrix — EMILIA Protocol',
+  title: 'Break the Ceremony — Red-Team Challenge & Attack Matrix',
   description:
     'The authorization-receipt layer for irreversible AI-agent actions: no receipt, no execution. What a receipt proves and what it does not, the attack matrix we reject (replay, forged receipt, tampered action, wrong approver, missing receipt, wrong quorum), a real authority-binding bug we caught and fixed, and an open invitation to break the model. Every confirmed break and its fix is published, with credit.',
   alternates: { canonical: '/break-the-ceremony' },

@@ -23,6 +23,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "demo:authority-loop": "node examples/authority-loop-v1/demo.mjs",
+    "demo:grace-timesfm": "node examples/grace/timesfm-forecast-evidence.mjs",
     "demo:ai-operations-authority": "node examples/ai-operations-authority-interface/demo.mjs",
     "demo:receipt-program": "node examples/receipt-program/demo.mjs",
     "demo:recovery-admission": "node examples/recovery-admission/demo.mjs",

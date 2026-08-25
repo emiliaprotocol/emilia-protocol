@@ -50,6 +50,10 @@ import {
 import { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest } from './action-packs.js';
 import { canonicalize as canonicalizeExecutionBinding, hashCanonical, verifyExecutionBinding } from './execution-binding.js';
 import { buildReliancePacket, ADMISSIBILITY_VERDICTS } from './reliance-packet.js';
+import {
+  claimAssuranceResultCandidate,
+  validateClaimAssuranceAdmissibilityResult,
+} from './claim-assurance-result.js';
 import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR, mintDeviceSignoff, mintQuorumEvidence } from './eg1-conformance.js';
 import { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
@@ -70,6 +74,7 @@ import {
 import {
   evaluateProviderEntryGuard,
   providerEntryContext,
+  requiredProviderEntryControlDomain,
   type ProviderEntryGuard,
 } from './provider-entry.js';
 import {
@@ -209,6 +214,7 @@ export {
 } from './action-control-manifest.js';
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
 export { RELIANCE_PACKET_VERSION, ADMISSIBILITY_VERDICTS, buildReliancePacket } from './reliance-packet.js';
+export * from './claim-assurance-result.js';
 export {
   EXTERNAL_VERIFICATION_STATEMENT_VERSION,
   EXTERNAL_VERIFICATION_DOMAIN,
@@ -436,6 +442,7 @@ export * from './field-origin-evidence.js';
 export * from './recovery-admission.js';
 export * from './recovery-admission-postgres.js';
 export * from './recovery-admission-remedy.js';
+export * from './claim-assurance.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;
@@ -571,7 +578,7 @@ function bindExecutionProof({ authorization, observedAction, binding }) {
 }
 
 /**
- * Structurally compare a PRE-COMPUTED admissibility block with a profile hash.
+ * Structurally compare a PRE-COMPUTED admissibility block with a profile pin.
  * This helper does NOT authenticate the block or establish evaluator provenance.
  * An execution gate must first verify a signature over the packet or recompute
  * the verdict from trusted evidence. createGate enforces that boundary through
@@ -585,6 +592,9 @@ function bindExecutionProof({ authorization, observedAction, binding }) {
  *   verdict is exactly 'admissible'. Every other case fails closed with a distinct reason.
  */
 export function verifyAdmissibilityAgainstPinnedProfile(pinned, presented) {
+  const pinnedId = pinned && typeof pinned.id === 'string' && pinned.id.length > 0
+    ? pinned.id
+    : null;
   const pinnedHash = pinned && typeof pinned.profile_hash === 'string' ? pinned.profile_hash : null;
   // A pin with no hash is a misconfiguration: refuse, do not silently pass.
   if (!pinnedHash) {
@@ -599,11 +609,23 @@ export function verifyAdmissibilityAgainstPinnedProfile(pinned, presented) {
   }
   const presentedHash = typeof adm.profile_hash === 'string' ? adm.profile_hash : null;
   const verdict = typeof adm.verdict === 'string' ? adm.verdict : null;
+  const presentedId = adm.admissibility_profile
+    && typeof adm.admissibility_profile === 'object'
+    && typeof adm.admissibility_profile.id === 'string'
+    ? adm.admissibility_profile.id
+    : null;
   // Constant-work equality is unnecessary (hashes are public), but the mismatch
   // MUST be a distinct, named refusal: a presented verdict for a DIFFERENT bar is
   // not evidence about the pinned bar.
   if (presentedHash === null || presentedHash !== pinnedHash) {
     return { ok: false, reason: 'profile_hash_mismatch', pinned_hash: pinnedHash, presented_hash: presentedHash, verdict };
+  }
+  // The digest is the content commitment, while the identifier selects the
+  // relying-party profile namespace. When the deployment pins both, a trusted
+  // evaluator must return both. A correct digest under a different identifier
+  // is not allowed to relabel the configured bar.
+  if (pinnedId !== null && presentedId !== pinnedId) {
+    return { ok: false, reason: 'profile_id_mismatch', pinned_hash: pinnedHash, presented_hash: presentedHash, verdict };
   }
   // Verdict must be recognized AND exactly 'admissible'. Any other closed-set
   // member (missing_evidence/stale/conflicted/unverifiable), an unrecognized
@@ -615,6 +637,59 @@ export function verifyAdmissibilityAgainstPinnedProfile(pinned, presented) {
     return { ok: false, reason: `admissibility_not_admissible:${verdict}`, pinned_hash: pinnedHash, presented_hash: presentedHash, verdict };
   }
   return { ok: true, reason: null, pinned_hash: pinnedHash, presented_hash: presentedHash, verdict };
+}
+
+/**
+ * A request may repeat the configured admissibility pin for transport
+ * convenience, but it may never replace it. Both the content hash and the
+ * profile identifier are part of the relying party's selection.
+ */
+function sameAdmissibilityProfilePin(required, presented) {
+  if (!required || !presented || typeof required !== 'object' || typeof presented !== 'object') {
+    return false;
+  }
+  if (typeof required.profile_hash !== 'string'
+      || typeof presented.profile_hash !== 'string'
+      || required.profile_hash !== presented.profile_hash) {
+    return false;
+  }
+  return typeof required.id !== 'string' || required.id.length === 0
+    ? true
+    : presented.id === required.id;
+}
+
+/**
+ * Deployment configuration is an authority input. Snapshot it as strict JSON,
+ * validate the closed pin shape, and freeze it before any request can observe
+ * the gate. A caller retaining and mutating its original object must not be able
+ * to retarget an already-created gate.
+ */
+function pinRequiredAdmissibilityProfile(value: unknown): Readonly<{ id: string; profile_hash: string }> | null {
+  if (value === null || value === undefined) return null;
+  let clone: unknown;
+  try {
+    clone = JSON.parse(canonicalizeExecutionBinding(value));
+  } catch {
+    throw new TypeError('EMILIA Gate: requiredAdmissibilityProfile must be strict canonical JSON');
+  }
+  if (!clone || typeof clone !== 'object' || Array.isArray(clone)) {
+    throw new TypeError('EMILIA Gate: requiredAdmissibilityProfile must be an object');
+  }
+  const pin = clone as Record<string, unknown>;
+  const keys = Object.keys(pin).sort();
+  if (keys.length !== 2 || keys[0] !== 'id' || keys[1] !== 'profile_hash') {
+    throw new TypeError('EMILIA Gate: requiredAdmissibilityProfile must contain exactly id and profile_hash');
+  }
+  if (typeof pin.id !== 'string'
+      || pin.id.length < 1
+      || pin.id.length > 128
+      || !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(pin.id)) {
+    throw new TypeError('EMILIA Gate: requiredAdmissibilityProfile.id must match the Claim Assurance identifier grammar and be at most 128 characters');
+  }
+  if (typeof pin.profile_hash !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(pin.profile_hash)) {
+    throw new TypeError('EMILIA Gate: requiredAdmissibilityProfile.profile_hash must be a sha256 digest');
+  }
+  return Object.freeze({ id: pin.id, profile_hash: pin.profile_hash });
 }
 
 /**
@@ -1129,6 +1204,9 @@ interface CreateGateOptions {
   providerEntryGuard?: ProviderEntryGuard | null;
 }
 export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], capabilityCaidResolver = null, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, requiredFieldOriginProfile = null, fieldOriginTrustedKeys = {}, fieldOriginExecutionProgram = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }), providerEntryGuard = null }: CreateGateOptions = {}) {
+  const configuredRequiredAdmissibilityProfile = pinRequiredAdmissibilityProfile(
+    requiredAdmissibilityProfile,
+  );
   // Production key custody: a registry (rotation + revocation) supersedes a flat
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
@@ -1273,6 +1351,16 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     observedAction?: Record<string, any> | null;
     capability?: Record<string, any> | null;
   }) {
+    const requiredControlDomainId = requiredProviderEntryControlDomain(providerEntryGuard);
+    if (requiredControlDomainId !== null && capability === null) {
+      return Object.freeze({
+        ok: false,
+        reason: 'provider_entry_serialized_control_domain_required',
+        status: 503,
+        evidence: null,
+        reservation: 'hold' as const,
+      });
+    }
     return evaluateProviderEntryGuard(
       providerEntryGuard,
       providerEntryContext({ authorization, selector, observedAction, capability, now }),
@@ -1633,8 +1721,31 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     // profile. Checked BEFORE consumption so a mismatch never burns the receipt.
     // When no profile is pinned, this whole block is inert — behavior is
     // byte-for-byte unchanged from the pre-admissibility gate.
-    const pinnedProfile = admissibilityProfile || selector.admissibilityProfile || requiredAdmissibilityProfile;
-    let trustedAdmissibility = null;
+    // A gate-level pin is configuration, not a request default. Request and
+    // selector values may repeat it but can never weaken or replace it. Reject
+    // a conflict before the trusted verifier and before receipt reservation.
+    if (configuredRequiredAdmissibilityProfile) {
+      for (const presentedPin of [admissibilityProfile, selector.admissibilityProfile]) {
+        if (presentedPin && !sameAdmissibilityProfilePin(configuredRequiredAdmissibilityProfile, presentedPin)) {
+          return decide(false, RECEIPT_REQUIRED_STATUS, 'admissibility_profile_override_mismatch', {
+            pinned_profile: {
+              id: configuredRequiredAdmissibilityProfile.id,
+              profile_hash: configuredRequiredAdmissibilityProfile.profile_hash,
+            },
+            presented_profile: {
+              id: presentedPin.id ?? null,
+              profile_hash: presentedPin.profile_hash ?? null,
+            },
+            have_tier: have,
+            assurance_tier_source: 'cryptographic_verification',
+          });
+        }
+      }
+    }
+    const pinnedProfile = configuredRequiredAdmissibilityProfile
+      || admissibilityProfile
+      || selector.admissibilityProfile;
+    let trustedAdmissibility: any = null;
     if (pinnedProfile) {
       const presentedAdmissibility = admissibility ?? presentedPacket ?? selector.reliancePacket ?? selector.admissibility ?? null;
       if (typeof verifyAdmissibilityPacket !== 'function') {
@@ -1658,6 +1769,38 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
           have_tier: have,
           assurance_tier_source: 'cryptographic_verification',
         });
+      }
+      const claimAssuranceCandidate = claimAssuranceResultCandidate(trustedAdmissibility);
+      if (claimAssuranceCandidate !== null) {
+        const expectedActionDigest = observed === null
+          ? null
+          : `sha256:${hashCanonical(observed)}`;
+        const claimAssuranceResult = expectedActionDigest === null
+          ? { ok: false as const, reason: 'executor_observed_action_required', block: null }
+          : validateClaimAssuranceAdmissibilityResult(claimAssuranceCandidate, {
+            expectedProfile: {
+              id: pinnedProfile.id,
+              profile_hash: pinnedProfile.profile_hash,
+            },
+            expectedActionDigest,
+            requireAdmissible: true,
+          });
+        if (!claimAssuranceResult.ok) {
+          return decide(
+            false,
+            RECEIPT_REQUIRED_STATUS,
+            `claim_assurance_result_invalid:${claimAssuranceResult.reason}`,
+            {
+              pinned_profile: {
+                id: pinnedProfile.id ?? null,
+                profile_hash: pinnedProfile.profile_hash ?? null,
+              },
+              have_tier: have,
+              assurance_tier_source: 'cryptographic_verification',
+            },
+          );
+        }
+        trustedAdmissibility = claimAssuranceResult.block;
       }
       const adm = verifyAdmissibilityAgainstPinnedProfile(pinnedProfile, trustedAdmissibility);
       if (!adm.ok) {
@@ -1999,14 +2142,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       operationId,
       now,
       executeAction,
-      providerEntryGuard: providerEntryGuard
-        ? (input: Record<string, any>) => providerEntryVerdict({
-            authorization: input.authorization,
-            selector: input.selector,
-            observedAction: input.observed_action,
-            capability: input.capability,
-          })
-        : null,
+      providerEntryGuard,
     };
     const capabilityResult = Array.isArray(context.shares)
       ? await executeWithThreshold(/** @type {any} */ ({ ...executorInput, shares: context.shares }))

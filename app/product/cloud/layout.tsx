@@ -7,6 +7,7 @@ export const metadata: Metadata = {
     + 'evidence operations, and monitoring for EMILIA Gate deployments.',
   alternates: { canonical: '/product/cloud' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Gate Cloud',
     description:
       'Managed consequence-firewall operations with customer-pinned trust and '

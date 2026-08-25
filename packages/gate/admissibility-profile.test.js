@@ -140,15 +140,20 @@ test('NO profile pinned => behavior byte-for-byte unchanged (allowed, no admissi
 });
 // ── Pure verifier unit coverage (the gate's only admissibility primitive). ──
 test('verifyAdmissibilityAgainstPinnedProfile: matching hash + admissible => ok', () => {
-    const r = verifyAdmissibilityAgainstPinnedProfile({ id: 'p', profile_hash: PINNED_HASH }, { admissibility: admissibilityBlock({ profileHash: PINNED_HASH }) });
+    const r = verifyAdmissibilityAgainstPinnedProfile({ id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH }, { admissibility: admissibilityBlock({ profileHash: PINNED_HASH }) });
     assert.equal(r.ok, true);
     assert.equal(r.reason, null);
     assert.equal(r.verdict, 'admissible');
 });
 test('verifyAdmissibilityAgainstPinnedProfile: fail-closed refusals are distinct and named', () => {
-    const pin = { id: 'p', profile_hash: PINNED_HASH };
+    const pin = { id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH };
     // mismatched hash
     assert.equal(verifyAdmissibilityAgainstPinnedProfile(pin, admissibilityBlock({ profileHash: OTHER_HASH })).reason, 'profile_hash_mismatch');
+    // a matching digest cannot relabel a different profile identifier
+    assert.equal(verifyAdmissibilityAgainstPinnedProfile(pin, {
+        ...admissibilityBlock({ profileHash: PINNED_HASH }),
+        admissibility_profile: { id: 'ep:profile:substituted', version: '1' },
+    }).reason, 'profile_id_mismatch');
     // non-admissible verdict names the verdict
     assert.equal(verifyAdmissibilityAgainstPinnedProfile(pin, admissibilityBlock({ profileHash: PINNED_HASH, verdict: 'stale' })).reason, 'admissibility_not_admissible:stale');
     // unrecognized verdict (outside the closed set) refuses, never passes

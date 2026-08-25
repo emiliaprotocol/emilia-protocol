@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'commit, and what that does (and does not) guarantee.',
   alternates: { canonical: '/blog/how-formal-verification-works-for-protocols' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'We Formally Verified an AI-Safety Protocol — Here\'s the Proof',
     description:
       'Most AI governance is policy PDFs. EMILIA\'s core safety guarantee is ' +

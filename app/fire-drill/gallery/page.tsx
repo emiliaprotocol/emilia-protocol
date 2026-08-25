@@ -11,8 +11,9 @@ import { scan } from '../../../packages/fire-drill/index.js';
 import { REPRESENTATIVE_CORPUS } from '../../../packages/fire-drill/corpus.js';
 
 export const metadata: Metadata = {
-  title: 'Receipt Declaration Index — EMILIA',
+  title: 'Receipt Declaration Index',
   description: 'Static MCP schema coverage: which detected high-risk tools declare a required receipt input?',
+  alternates: { canonical: '/fire-drill/gallery' },
 };
 
 // Score every server in the corpus; worst first (most urgent / most useful).

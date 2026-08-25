@@ -10,7 +10,7 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'CF-1 — Consequence Firewall conformance for AI agents | EMILIA',
+  title: 'CF-1 — Consequence Firewall conformance for AI agents',
   description:
     'CF-1 is the earned conformance badge for a consequence firewall: missing receipt refused, wrong authority refused, weak assurance refused, execution mismatch refused, replay and tamper refused, evidence verifiable offline.',
   alternates: { canonical: '/fire-drill/cf-1' },

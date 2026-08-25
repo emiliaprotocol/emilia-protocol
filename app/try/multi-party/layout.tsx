@@ -5,11 +5,12 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'The two-person rule for AI actions — multi-party approval demo — EMILIA Protocol',
+  title: 'The two-person rule for AI actions — multi-party approval demo',
   description:
     'A $40M release that needs an ordered quorum of three named humans — Program Officer, Authorizing Official, Inspector General — each binding to the exact action. Verify the quorum live in your browser; watch separation-of-duties reject a duplicate signer. Nothing uploaded.',
   alternates: { canonical: '/try/multi-party' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'The two-person rule, cryptographically enforced — multi-party approval',
     description:
       'An ordered quorum of named humans, each bound to the exact action, verified offline in your browser with EP-QUORUM-v1.',
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
+    images: ['/twitter-image'],
     title: 'The two-person rule, cryptographically enforced',
     description: 'An ordered quorum of named humans, each bound to the exact action — verified live in your browser.',
   },

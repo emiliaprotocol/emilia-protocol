@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'for community banks, credit unions, and fintech treasury teams.',
   alternates: { canonical: '/blog/ai-voice-cloning-fraud-defense' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'AI Voice Cloning Fraud — Defense by Action Binding',
     description:
       'Voice authentication is broken. Action binding is the next layer. ' +

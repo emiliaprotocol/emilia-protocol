@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetGuardedClient = vi.fn();
+const mockInsert = vi.fn();
 const publicArtifactMocks = vi.hoisted(() => ({
   loadArena: vi.fn(),
   loadAdoption: vi.fn(),
@@ -55,11 +56,13 @@ function sentEmails(): Array<{ to: string; subject: string; text: string }> {
 describe('pilot request commercial offer routing', () => {
   beforeEach(() => {
     mockGetGuardedClient.mockClear();
+    mockInsert.mockReset();
+    mockInsert.mockResolvedValue({ error: null });
     vi.stubEnv('RESEND_API_KEY', 'test-resend-key');
     vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 202 })));
     mockGetGuardedClient.mockReturnValue({
       from: () => ({
-        insert: vi.fn(async () => ({ error: null })),
+        insert: mockInsert,
       }),
     });
     publicArtifactMocks.loadArena.mockReset();
@@ -76,6 +79,7 @@ describe('pilot request commercial offer routing', () => {
   it('routes the canonical protected-workflow pilot to the internal team only', async () => {
     const response = await POST(request({
       offer_id: 'protected_workflow_pilot_v1',
+      source: 'private_equity',
     }) as never);
 
     expect(response.status).toBe(200);
@@ -88,6 +92,10 @@ describe('pilot request commercial offer routing', () => {
     expect(emails[0].text).toContain('1 protected workflow');
     expect(emails[0].text).toContain('Finance operations vendor bank-detail change or payment release');
     expect(emails[0].text).toContain('No accepted exact-action authority and required evidence, no provider entry');
+    expect(emails[0].text).toContain('Source: Private equity portfolio page (private_equity)');
+    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
+      after_state: expect.objectContaining({ source: 'private_equity' }),
+    }));
   });
 
   it('keeps non-payer workflows eligible under the same offer', async () => {
@@ -183,6 +191,11 @@ describe('pilot request commercial offer routing', () => {
       expect(fetch).not.toHaveBeenCalled();
       expect(mockGetGuardedClient).not.toHaveBeenCalled();
     }
+
+    const invalidSource = await POST(request({ source: 'caller_defined_campaign' }) as never);
+    expect(invalidSource.status).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
 
     for (const body of [
       { artifact_id: 'receipt:caller-claimed' },

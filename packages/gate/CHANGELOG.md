@@ -3,6 +3,20 @@
 
 ## Unreleased
 
+### Security
+
+- Make a deployment-level `requiredAdmissibilityProfile` authoritative. A
+  request or selector may repeat its configured identifier and digest, but
+  cannot replace either before the trusted verifier runs or a receipt is
+  reserved.
+- Add the experimental Claim Assurance bridge as non-authorizing,
+  exact-action evidence. Gate recomputes the Claim Case under the operator's
+  pinned profile and verifier callbacks, validates the closed result against
+  the executor-observed action, and preserves the typed block separately from
+  Gate's reliance interpretation.
+- Invalid or authority-claiming Claim Assurance results fail closed and are not
+  re-emitted as valid typed evidence in reliance packets.
+
 ## 0.23.20 (2026-08-21)
 
 - Add provider-neutral memory projection records for SHEESH/SOMA and Zep,

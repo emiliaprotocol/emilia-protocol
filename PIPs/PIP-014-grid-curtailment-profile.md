@@ -168,6 +168,30 @@ The optional hybrid path is implemented and tested. It is not the default refere
 and the repository does not claim hardware custody, FIPS validation, or production deployment for
 its test keys.
 
+## 10.1 Optional forecast evidence
+
+`EP-FORECAST-EVIDENCE-v0.1` is an optional, tighten-only GRACE input. It records a
+digest of the source series, the model and exact checkpoint, the adapter and exact
+configuration, the forecast horizon and quantile band, a rolling-origin backtest
+receipt, and the digest of the exact `grid.curtailment` action. The current reference
+adapter profile is `emilia.timesfm.v2.5`.
+
+When a relying party requires forecast evidence, Gate verifies the pinned artifact
+signature and refuses before actuator entry when the evidence is missing, stale, from
+the wrong checkpoint or adapter, wider than the allowed uncertainty, outside the exact
+action window, or conservatively insufficient for the requested target. The verified
+forecast digest is bound into the dispatch request and Action State. After separately
+authenticated meter evidence arrives, GRACE emits a forecast reconciliation result
+without rewriting the original forecast.
+
+Forecast evidence carries explicit nonclaims: it is advisory only, provides no
+authority, does not establish physical truth, is never the sole gate, and is not a
+settlement input. The reference fixture does not execute or benchmark TimesFM and is
+not evidence of forecast quality, a production model service, or a physical deployment.
+The adapter contract is based on the open-source
+[Google Research TimesFM repository](https://github.com/google-research/timesfm). Naming the
+model identifies the adapter contract and does not imply Google support or endorsement.
+
 ## 11. Current implementation status
 
 | Piece | Current status |
@@ -181,17 +205,19 @@ its test keys.
 | Outcome Binding and Action State v2 Signed Statement | Implemented and tested |
 | One-time settlement admission | Implemented and tested against the store contract |
 | Ed25519 plus ML-DSA-65 hybrid artifact envelope | Optional path implemented and tested |
+| TimesFM forecast-evidence adapter contract and hostile checks | Optional path implemented with deterministic fixture; model execution not supplied |
 | Physical actuator, revenue meter, production store, and payment rail | Not supplied or claimed |
 | Utility, ISO, tariff, or external implementer validation | Not established |
 
-The targeted current receipt is 80 passing tests across:
+The targeted current receipt is 101 passing tests across:
 
 ```bash
 npx vitest run \
   tests/grace-curtailment.test.ts \
   tests/grace-mobile-grid.test.ts \
   lib/grace/mobile-grid-v2.test.ts \
-  tests/mobile-production-routes.test.ts
+  tests/mobile-production-routes.test.ts \
+  tests/grace-forecast-evidence.test.ts
 ```
 
 ## 12. Publication status

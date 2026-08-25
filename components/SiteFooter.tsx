@@ -34,6 +34,8 @@ const COL_DEVELOPERS: FooterLink[] = [
   ['/guides/require-receipt', 'Receipt Required Guide'],
   ['/verify', 'Open Verifier'],
   ['/mcp', 'MCP Integration'],
+  ['/llms.txt', 'LLM Context'],
+  ['/.well-known/emilia-context.json', 'Machine Context'],
   ['https://github.com/emiliaprotocol/emilia-protocol', 'GitHub'],
 ];
 
@@ -41,6 +43,7 @@ const COL_PROTOCOL: FooterLink[] = [
   ['/protocol', 'Open Protocol'],
   ['/spec', 'Specifications'],
   ['/proof', 'Engineering Evidence'],
+  ['/diligence', 'Public Diligence'],
   ['/observatory', 'Standards Observatory'],
   ['/standards', 'Standards Map'],
   ['/governance', 'Governance'],
@@ -97,7 +100,7 @@ export default function SiteFooter({}: SiteFooterProps) {
               independently reproducible proof. Assurance re-performs the record.
             </div>
           </div>
-          <a href="/gate" className="ep-footer-link" style={{ fontFamily: font.mono, fontSize: 12, color: color.gold }}>
+          <a href="/gate" className="ep-footer-link" style={{ fontFamily: font.mono, fontSize: 12, color: '#765A13' }}>
             Explore EMILIA Gate &rarr;
           </a>
         </div>

@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   description: 'A revision-aware, source-locked map of authorization, identity, evidence, and agent-protocol standards.',
   alternates: { canonical: '/observatory' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Standards Observatory',
     description: 'See what the standards actually say, what is moving, and which interoperability layers remain open.',
     url: '/observatory',

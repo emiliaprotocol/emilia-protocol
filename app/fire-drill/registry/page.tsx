@@ -13,8 +13,9 @@ import registryIndex from '../../../packages/fire-drill/registry-index.json';
 import reports from '../../../packages/fire-drill/reports.json';
 
 export const metadata: Metadata = {
-  title: 'Agent Action Firewall — MCP registry index (43,800 servers) | EMILIA',
+  title: 'Agent Action Firewall — MCP registry index (43,800 servers)',
   description: `Scanned the full public MCP registry: ${registryIndex.servers_scanned.toLocaleString()} servers, ${registryIndex.pct_advertise_high_risk}% advertise a high-risk capability. Registry-level signal (name + description), not a tool-level scan.`,
+  alternates: { canonical: '/fire-drill/registry' },
 };
 
 const FAMILY_LABEL = {

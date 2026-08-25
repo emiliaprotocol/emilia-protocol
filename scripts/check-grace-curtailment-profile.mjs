@@ -22,6 +22,7 @@ const pip = readFileSync(new URL('../PIPs/PIP-014-grid-curtailment-profile.md', 
 const exampleReadme = readFileSync(new URL('../examples/grace/README.md', import.meta.url), 'utf8');
 const runtime = readFileSync(new URL('../lib/grace/mobile-grid.ts', import.meta.url), 'utf8');
 const curtailment = readFileSync(new URL('../lib/grace/curtailment.ts', import.meta.url), 'utf8');
+const forecastRuntime = readFileSync(new URL('../lib/grace/forecast-evidence.ts', import.meta.url), 'utf8');
 const vectors = JSON.parse(readFileSync(new URL('../conformance/vectors/grace-mobile-grid.v1.json', import.meta.url), 'utf8'));
 
 invariant(xml.includes('docName="draft-schrock-kintzele-grid-curtailment-00"'), 'draft docName mismatch');
@@ -54,6 +55,13 @@ invariant(/not exactly-once physical payment/.test(xml), 'draft missing settleme
 invariant(xml.includes('unregistered_signed_statement'), 'draft missing Action State anchoring limit');
 invariant(xml.includes('80 targeted tests pass across four files'), 'draft test receipt is stale');
 invariant(Array.isArray(vectors.vectors) && vectors.vectors.length === 6, 'GRACE vector count must remain six');
+invariant(forecastRuntime.includes("FORECAST_EVIDENCE_VERSION = 'EP-FORECAST-EVIDENCE-v0.1'"),
+  'forecast runtime missing EP-FORECAST-EVIDENCE-v0.1');
+invariant(pip.includes('101 passing tests across'), 'PIP forecast test receipt is stale');
+invariant(pip.includes('does not imply Google support or endorsement'),
+  'PIP must preserve the TimesFM endorsement boundary');
+invariant(runtime.includes('forecast_evidence_digest') && runtime.includes('refuse_forecast_evidence'),
+  'GRACE runtime missing forecast evidence binding or refusal');
 
 const readme = readFileSync(new URL('README.md', packet), 'utf8');
 const validation = readFileSync(new URL('VALIDATION.md', packet), 'utf8');

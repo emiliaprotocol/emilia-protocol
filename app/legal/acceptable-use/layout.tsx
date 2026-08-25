@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Acceptable Use Policy — EMILIA Protocol',
+  title: 'Acceptable Use Policy',
   description:
     'Prohibited and restricted uses of EMILIA Protocol services and SDKs. ' +
     'Aligned with standard prohibited-use policies for security ' +
     'infrastructure and AI authorization tooling.',
   alternates: { canonical: '/legal/acceptable-use' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Protocol Acceptable Use Policy',
     description: 'Prohibited and restricted uses of the protocol and services.',
     url: 'https://www.emiliaprotocol.ai/legal/acceptable-use',

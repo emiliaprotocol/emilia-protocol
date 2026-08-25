@@ -13,6 +13,7 @@ export const metadata: Metadata = {
     + 'it with cryptographic proof. How EMILIA complements Okta, CyberArk, Veza, and manual review.',
   alternates: { canonical: '/why-emilia' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'Why EMILIA vs. legacy controls',
     description: 'Identity checks who. EMILIA checks whether this exact action should happen — and proves it.',
     url: 'https://www.emiliaprotocol.ai/why-emilia',

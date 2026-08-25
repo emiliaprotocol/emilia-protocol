@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'SOX-ready, BEC-prevention.',
   alternates: { canonical: '/use-cases/financial' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA FinGuard — AI-Era Fraud Defense',
     description:
       'Vendor-bank-change, beneficiary-swap, and AI-voice fraud — blocked ' +

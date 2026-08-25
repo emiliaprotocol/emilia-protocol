@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   alternates: { canonical: `/essays/${SLUG}` },
   openGraph: {
+    images: ['/opengraph-image'],
     title: TITLE,
     description: DESCRIPTION,
     url: URL,

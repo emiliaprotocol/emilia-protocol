@@ -4,7 +4,7 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, color, font, radius } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'Contact | EMILIA Protocol',
+  title: 'Contact',
   description: 'Get in touch with the EMILIA Protocol team.',
 };
 

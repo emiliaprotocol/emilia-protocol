@@ -12,9 +12,10 @@ import standardsStatus from '@/standards/STATUS.json';
 const goldText = '#765A13';
 
 export const metadata = {
-  title: 'Let agents act within limits you approve in advance | EMILIA',
+  title: 'Let agents act within limits you approve in advance',
   description:
     'EMILIA Gate is designed to control configured action paths when a deployment provides complete mediation. Four individual Internet-Drafts define the portable evidence path beneath that product boundary.',
+  alternates: { canonical: '/standards' },
 };
 
 const ADOPTION_ROLES: Record<string, string> = {

@@ -20,9 +20,11 @@ controls enabled or that a customer pilot exists.
    cannot revive a pre-freeze reservation.
 3. **Observation guards.** `providerEntryGuard` still supports external
    last-moment observations after reservation. Throws and malformed, stale,
-   unauthenticated, or negative observations fail closed, but an observation
-   guard is not the authoritative freeze mechanism and cannot claim immediate
-   revocation from a freshness window.
+   unauthenticated, or negative observations fail closed. Generic observation
+   guards are not authoritative freeze mechanisms. The built-in organization
+   status guard is admitted only when capability reservation and provider entry
+   serialize against its exact Gate control domain; an unserialized path is
+   refused rather than treating a freshness window as immediate revocation.
 4. **Runtime value limits.** Base-currency limits use the exact observed action.
    Non-USD actions require a fresh Ed25519-signed value attestation pinned by
    source, key, exact action digest, asset, validity window, and value ceiling.

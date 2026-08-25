@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'transfers and benefit redirects.',
   alternates: { canonical: '/compare/fraud-detection' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'Pre-Action Authorization vs Post-Action Fraud Detection',
     description:
       'Detection finds the breach. Authorization stops it. Why both ' +

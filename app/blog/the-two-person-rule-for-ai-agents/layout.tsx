@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'an AI agent executes. A primer for defense, treasury, and benefits.',
   alternates: { canonical: '/blog/the-two-person-rule-for-ai-agents' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'The Two-Person Rule for AI Agents',
     description:
       'Multi-party approval for high-stakes agent actions: M-of-N / ordered, ' +

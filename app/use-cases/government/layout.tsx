@@ -8,6 +8,7 @@ export const metadata: Metadata = {
     'Start with an observe-mode fire drill.',
   alternates: { canonical: '/use-cases/government' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA GovGuard for Government Fraud Control',
     description:
       'Run a government fraud-control fire drill before money or regulated state moves. '

@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'OAuth-style scopes.',
   alternates: { canonical: '/compare/mcp-auth-alone' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'MCP Authorization vs EMILIA Protocol Pre-Action Authorization',
     description:
       'Scope-level MCP auth lets the agent call a tool. EP authorizes the ' +

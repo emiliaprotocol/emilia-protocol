@@ -8,6 +8,7 @@ export const metadata: Metadata = {
     'consequential agent action. Three-line SDK integration; Apache 2.0.',
   alternates: { canonical: '/product/agent-governance-pack' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'EMILIA Agent Governance Pack',
     description:
       'Pre-action authorization + named signoff + verifiable receipts ' +

@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'workflows.',
   alternates: { canonical: '/blog/what-is-pre-action-authorization' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'What Is Pre-Action Authorization?',
     description:
       'A category primer: why session and scope authorization stop short ' +

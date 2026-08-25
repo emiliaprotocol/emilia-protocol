@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     'AI agent actions need pre-action evidence, not post-action logs.',
   alternates: { canonical: '/compare/audit-logs' },
   openGraph: {
+    images: ['/opengraph-image'],
     title: 'Authorization Receipts vs Audit Logs — Pre-Action Evidence for AI Agents',
     description:
       'Audit logs detect after the breach. EP authorization receipts prove ' +
