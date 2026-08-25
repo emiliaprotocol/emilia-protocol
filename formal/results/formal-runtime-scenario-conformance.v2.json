@@ -791,7 +791,7 @@
     },
     {
       "path": "packages/gate/dist/remedy-program-adapters.js",
-      "sha256": "aacaff5b94e34182247537d29906826b7428a6d69f7b876e67de81ee3643bfe1"
+      "sha256": "81869b736d47cd22e318ea7578f7d7fa290801edcc38b3ae23cf5c43a205eb5e"
     },
     {
       "path": "packages/gate/dist/remedy-program-postgres.js",
@@ -835,7 +835,7 @@
     },
     {
       "path": "packages/gate/dist/trust-program-revocation.js",
-      "sha256": "60a2e42fcf0c344400f4e26f805eda51d69adebcb5b57f1698886f26016e3dcf"
+      "sha256": "1ebd24b98916a8cf8b33d3b9e87cfbfc436ebed52c249d6eaf3dc287e57064c6"
     },
     {
       "path": "packages/gate/dist/trust-program.js",
