@@ -562,17 +562,17 @@ function checkedStoredEnvelope(value: unknown): StoredEnvelope | null {
 
 function verifyStoredEnvelope(record: StoredEnvelope, options: {
   mailboxId: string;
-  keyId: string;
-  publicKey: crypto.KeyObject;
+  verificationKeys: ReadonlyMap<string, crypto.KeyObject>;
 }): boolean {
-  if (record.delivery_binding.mailbox_id !== options.mailboxId
-      || record.delivery_binding.signer_key_id !== options.keyId) return false;
+  if (record.delivery_binding.mailbox_id !== options.mailboxId) return false;
+  const publicKey = options.verificationKeys.get(record.delivery_binding.signer_key_id);
+  if (!publicKey) return false;
   const { signature, ...binding } = record.delivery_binding;
   if (!verify(
     STORED_DELIVERY_DOMAIN,
     storedDeliverySigningValue(record, binding),
     signature.value,
-    options.publicKey,
+    publicKey,
   )) return false;
 
   const senderDirectory: JsonRecord = Object.create(null);
@@ -829,6 +829,7 @@ export function createAgentMailbox(options: {
   privateKey: unknown;
   keyId: string;
   now: () => string;
+  mailboxVerificationKeys?: Record<string, unknown>;
 }) {
   if (!identifier(options?.mailboxId) || !identifier(options?.keyId)) {
     throw new TypeError('mailbox_service_identifier_invalid');
@@ -843,6 +844,27 @@ export function createAgentMailbox(options: {
   const privateKey = privateEd25519(options.privateKey);
   if (!privateKey) throw new TypeError('mailbox_service_ed25519_key_required');
   const publicKey = crypto.createPublicKey(privateKey);
+  const publicKeySpkiB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const configuredVerificationKeys = options.mailboxVerificationKeys === undefined
+    ? {}
+    : options.mailboxVerificationKeys;
+  if (!isRecord(configuredVerificationKeys)) {
+    throw new TypeError('mailbox_service_verification_keys_invalid');
+  }
+  const mailboxVerificationKeys = new Map<string, crypto.KeyObject>();
+  for (const keyId of Reflect.ownKeys(configuredVerificationKeys)) {
+    if (typeof keyId !== 'string' || !identifier(keyId)) {
+      throw new TypeError('mailbox_service_verification_keys_invalid');
+    }
+    const encodedKey = configuredVerificationKeys[keyId];
+    if (keyId === options.keyId && encodedKey !== publicKeySpkiB64u) {
+      throw new TypeError('mailbox_service_verification_key_mismatch');
+    }
+    const verificationKey = publicEd25519(encodedKey);
+    if (!verificationKey) throw new TypeError('mailbox_service_verification_keys_invalid');
+    mailboxVerificationKeys.set(keyId, keyId === options.keyId ? publicKey : verificationKey);
+  }
+  mailboxVerificationKeys.set(options.keyId, publicKey);
   if (typeof options.now !== 'function' || !isRecord(options.senderDirectory)) {
     throw new TypeError('mailbox_service_configuration_invalid');
   }
@@ -939,8 +961,7 @@ export function createAgentMailbox(options: {
       const result = checkedStorePutResult(await options.store.put(stored), stored);
       if (!result || !verifyStoredEnvelope(result.record, {
         mailboxId: options.mailboxId,
-        keyId: options.keyId,
-        publicKey,
+        verificationKeys: mailboxVerificationKeys,
       })) {
         return receipt({
           envelopeId: candidate.envelope_id,
@@ -999,8 +1020,7 @@ export function createAgentMailbox(options: {
         }
         if (!verifyStoredEnvelope(record, {
           mailboxId: options.mailboxId,
-          keyId: options.keyId,
-          publicKey,
+          verificationKeys: mailboxVerificationKeys,
         })) {
           throw new Error('mailbox_store_result_invalid');
         }

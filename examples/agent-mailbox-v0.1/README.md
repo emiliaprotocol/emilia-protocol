@@ -46,6 +46,14 @@ delivery receipt proves what this mailbox accepted under its pinned keys. It
 does not prove that the message is true, that the outside world changed, or
 that an action was authorized or executed.
 
+Accepted store records bind the exact sender key verified at delivery and are
+authenticated by the mailbox service key that wrote the record. When rotating
+that service key, pass retired public keys through `mailboxVerificationKeys`,
+keyed by their original key IDs, so historical records remain verifiable. The
+current private key is pinned automatically, and a contradictory current-key
+pin is refused. Keys carried only by the store are never trusted. Every stored
+binding remains explicitly non-authorizing.
+
 `action_digest` is a strict-canonical-JSON content digest used to bind the
 mailbox proposal to one action value. It is not a Canonical Action Identifier
 (CAID), does not establish profile validity or cross-format equivalence, and

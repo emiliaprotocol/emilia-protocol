@@ -418,6 +418,90 @@ describe('durable mailbox and delivery receipts', () => {
       .toMatchObject({ delivery_status: 'REFUSED', reason: 'sender_key_not_active', authorizes: false });
   });
 
+  it('keeps accepted history readable across mailbox-service key rotation with explicit historical pins', async () => {
+    const rotatedMailboxService = keyPair('nomadic-mailbox-signing-2');
+    const storageDirectory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(storageDirectory);
+    const historical = noteEnvelope();
+    const originalService = mailbox(createFileAgentMailboxStore({ directory: storageDirectory }));
+    expect((await originalService.deliver(historical, { recipientId: 'agent:iman' })).delivery_status)
+      .toBe('ACCEPTED');
+
+    const rotatedService = createAgentMailbox(mailboxOptions({
+      store: createFileAgentMailboxStore({ directory: storageDirectory }),
+      privateKey: rotatedMailboxService.privateKey,
+      keyId: rotatedMailboxService.keyId,
+      mailboxVerificationKeys: {
+        [mailboxService.keyId]: mailboxService.publicKeySpkiB64u,
+      },
+    }));
+    await expect(rotatedService.list('agent:iman')).resolves.toEqual([
+      expect.objectContaining({
+        envelope_digest: agentMailboxDigest(historical),
+        delivery_binding: expect.objectContaining({
+          signer_key_id: mailboxService.keyId,
+          authorizes: false,
+        }),
+      }),
+    ]);
+
+    const current = noteEnvelope({ sequence: 2 });
+    const currentReceipt = await rotatedService.deliver(current, { recipientId: 'agent:iman' });
+    expect(currentReceipt).toMatchObject({
+      delivery_status: 'ACCEPTED',
+      signer_key_id: rotatedMailboxService.keyId,
+      authorizes: false,
+    });
+    expect(verifyAgentMailboxDeliveryReceipt(currentReceipt, {
+      mailboxId: 'mailbox:nomadic-demo',
+      publicKeySpkiB64u: rotatedMailboxService.publicKeySpkiB64u,
+      keyId: rotatedMailboxService.keyId,
+      expectedRecipientId: 'agent:iman',
+      expectedEnvelopeDigest: agentMailboxDigest(current),
+    })).toMatchObject({ verified: true, accepted: true, authorizes: false });
+    expect((await rotatedService.list('agent:iman')).map((record) => record.delivery_binding.signer_key_id))
+      .toEqual([mailboxService.keyId, rotatedMailboxService.keyId]);
+  });
+
+  it('fails closed on missing or wrong historical mailbox pins and inconsistent current-key pins', async () => {
+    const rotatedMailboxService = keyPair('nomadic-mailbox-signing-2');
+    const storageDirectory = await mkdtemp(path.join(os.tmpdir(), 'ep-agent-mailbox-'));
+    tempDirectories.push(storageDirectory);
+    const originalService = mailbox(createFileAgentMailboxStore({ directory: storageDirectory }));
+    expect((await originalService.deliver(noteEnvelope(), { recipientId: 'agent:iman' })).delivery_status)
+      .toBe('ACCEPTED');
+
+    const restartedStore = () => createFileAgentMailboxStore({ directory: storageDirectory });
+    const missingHistoricalPin = createAgentMailbox(mailboxOptions({
+      store: restartedStore(),
+      privateKey: rotatedMailboxService.privateKey,
+      keyId: rotatedMailboxService.keyId,
+    }));
+    await expect(missingHistoricalPin.list('agent:iman')).rejects
+      .toThrow(/mailbox_store_result_invalid/);
+
+    const wrongHistoricalPin = createAgentMailbox(mailboxOptions({
+      store: restartedStore(),
+      privateKey: rotatedMailboxService.privateKey,
+      keyId: rotatedMailboxService.keyId,
+      mailboxVerificationKeys: {
+        [mailboxService.keyId]: iman.publicKeySpkiB64u,
+      },
+    }));
+    await expect(wrongHistoricalPin.list('agent:iman')).rejects
+      .toThrow(/mailbox_store_result_invalid/);
+
+    expect(() => createAgentMailbox(mailboxOptions({
+      mailboxVerificationKeys: {
+        [mailboxService.keyId]: iman.publicKeySpkiB64u,
+      },
+    }))).toThrow(/mailbox_service_verification_key_mismatch/);
+
+    expect(() => createAgentMailbox(mailboxOptions({
+      mailboxVerificationKeys: { 'invalid key id': mailboxService.publicKeySpkiB64u },
+    }))).toThrow(/mailbox_service_verification_keys_invalid/);
+  });
+
   it('fails closed when the immutable delivery-time sender binding is tampered', async () => {
     const persisted: any[] = [];
     const store: any = {
