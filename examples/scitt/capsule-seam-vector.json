@@ -1,5 +1,5 @@
 {
-  "vector": "EP<->Capsule seam vector v2",
+  "vector": "EP<->Capsule seam vector v1",
   "spec": "docs/EP-CAPSULE-SEAM.md",
   "canonicalization": "RFC 8785 (JCS) over the EP I-JSON value subset; SHA-256 for all digests",
   "issuer": {
@@ -16,19 +16,19 @@
   },
   "subject_digest": "fd7887f2f7b0ec9c9ed06ef42f62e21b3b119bdfb13728b9eaea6e5ef28273b3",
   "authority_reference": {
-    "rule": "authority_reference_digest is SHA-256(JCS(receipt.payload)). A transparency profile carries statement_entry_digest separately to locate the exact logged envelope. signing_input_digest identifies the RFC 9052 Sig_structure. Neither SCITT digest substitutes for authorization verification.",
-    "authorization_identity": "receipt_payload_digest",
-    "transparency_entry_locator": "statement_entry_digest",
-    "signed_input_identity": "signing_input_digest",
+    "rule": "authority_reference_digest is pinned per deployment profile and MUST be labelled. transparency: SHA-256(COSE_Sign1) (statement_digest) — the registered statement object. offline: SHA-256(JCS(receipt.payload)) (receipt_payload_digest). A profile pins exactly one; both MUST NOT be accepted under one profile. receipt_payload_digest is always present as the inner payload check after the statement is dereferenced.",
+    "binding_by_profile": {
+      "transparency": "statement_digest",
+      "offline": "receipt_payload_digest"
+    },
+    "cose_determinism": "statement_digest is reproducible only under deterministic COSE: canonical CBOR + fixed protected header (alg=EdDSA(-8), cty=application/ep-receipt+json, kid), per EP-RECEIPT-SCITT-PROFILE.md. This generator emits exactly that canonical CBOR.",
     "approved": {
       "receipt_payload_digest": "e37000ae3366ce7d9ccddcce1e2fe8cc658339ef7e1a0e9d9f6aac86281580d7",
-      "signing_input_digest": "67b0a19b589f86d38674f6f2a8e888fb374844cfac008ac748e31516d79ebea5",
-      "statement_entry_digest": "141ea80006127f57d10c0b5104cfae1bfce52d851d8c9c8faae4fcf38b4e988f"
+      "statement_digest": "141ea80006127f57d10c0b5104cfae1bfce52d851d8c9c8faae4fcf38b4e988f"
     },
     "denied": {
       "receipt_payload_digest": "3ec7b1742fa887d9fff06b06142298aaace5481d01b623bd3fa27c1a7f641020",
-      "signing_input_digest": "3fb2a59f39e6d3f132ad6d2042b6befa18a897075cd7f3c5bfadfcc64ad3eec3",
-      "statement_entry_digest": "5cd060174152a5e86a50184b431c976e52c9e2f67175d8bf8a61ba6c7466aa7e"
+      "statement_digest": "5cd060174152a5e86a50184b431c976e52c9e2f67175d8bf8a61ba6c7466aa7e"
     }
   },
   "approved": {
@@ -49,8 +49,7 @@
     "native_signature_b64": "KaXQX6CVuwY/A6zedpKKNj1F6pMljHO53+SSHTRcRqZyPAkoJdeGiERdLeVv8doPWWHqpDCV2PyZDdaYGQ1mAQ==",
     "cose_sign1_b64": "0oRYM6MBJwN4G2FwcGxpY2F0aW9uL2VwLXJlY2VpcHQranNvbgRQ/HWiVeePW0NxN2t2zoE82KBZAX57ImNsYWltIjp7ImFjdGlvbl90eXBlIjoicGF5bWVudC5yZWxlYXNlIiwiYXBwcm92ZXIiOiJqYW5lLmRvZUB5b3VyY28uZXhhbXBsZSIsImFzc3VyYW5jZSI6ImNsYXNzX2EiLCJvdXRjb21lIjoiYWxsb3dfd2l0aF9zaWdub2ZmIiwic3ViamVjdF9kaWdlc3QiOiJmZDc4ODdmMmY3YjBlYzljOWVkMDZlZjQyZjYyZTIxYjNiMTE5YmRmYjEzNzI4YjllYWVhNmU1ZWYyODI3M2IzIiwidGFyZ2V0Ijoid2lyZTp2ZW5kb3ItYWNtZS0yNTAwMDAifSwiY3JlYXRlZF9hdCI6IjIwMjYtMDctMDJUMDA6MDA6MDBaIiwicmVjZWlwdF9pZCI6ImVwOnJlY2VpcHQ6c2VhbS12ZWN0b3ItYXBwcm92ZWQtMDAwMSIsInN1YmplY3QiOiJhZ2VudDphdXRvbm9tb3VzOnRyZWFzdXJ5LWJvdCJ9WEBfph7f5DLXLDlAOh9oqa/jMsT0VYiM+LRAvZ7c4/2KOS1GviGECGKC+7g5DN0GH0OYFl7ZMw2MSLfBdn/7JjYO",
     "receipt_payload_digest": "e37000ae3366ce7d9ccddcce1e2fe8cc658339ef7e1a0e9d9f6aac86281580d7",
-    "signing_input_digest": "67b0a19b589f86d38674f6f2a8e888fb374844cfac008ac748e31516d79ebea5",
-    "statement_entry_digest": "141ea80006127f57d10c0b5104cfae1bfce52d851d8c9c8faae4fcf38b4e988f"
+    "statement_digest": "141ea80006127f57d10c0b5104cfae1bfce52d851d8c9c8faae4fcf38b4e988f"
   },
   "denied": {
     "payload": {
@@ -70,8 +69,7 @@
     "native_signature_b64": "NNsbkI9k3C4EqHlncIkIbIAnB6D4WB15+ZQWAFA1K5b59PAf3e2NaoWc3GX8FvZI3JXg7lML3hzIfu11TlahAw==",
     "cose_sign1_b64": "0oRYM6MBJwN4G2FwcGxpY2F0aW9uL2VwLXJlY2VpcHQranNvbgRQ/HWiVeePW0NxN2t2zoE82KBZAWJ7ImNsYWltIjp7ImFjdGlvbl90eXBlIjoicGF5bWVudC5yZWxlYXNlIiwiYXBwcm92ZXIiOm51bGwsIm91dGNvbWUiOiJkZW55IiwicmVhc29uIjoibm9faHVtYW5fYXV0aG9yaXplciIsInN1YmplY3RfZGlnZXN0IjoiZmQ3ODg3ZjJmN2IwZWM5YzllZDA2ZWY0MmY2MmUyMWIzYjExOWJkZmIxMzcyOGI5ZWFlYTZlNWVmMjgyNzNiMyIsInRhcmdldCI6IndpcmU6dmVuZG9yLWFjbWUtMjUwMDAwIn0sImNyZWF0ZWRfYXQiOiIyMDI2LTA3LTAyVDAwOjAwOjAwWiIsInJlY2VpcHRfaWQiOiJlcDpyZWNlaXB0OnNlYW0tdmVjdG9yLWRlbmllZC0wMDAxIiwic3ViamVjdCI6ImFnZW50OmF1dG9ub21vdXM6dHJlYXN1cnktYm90In1YQIPUa+9dacUbhBlHuju9TSjcL6FGoUW1vp8BRbIRkZa3iuMCUp8JFOwm6RSs5EuBnPGbPd2wEFQjoASy4J3dhAY=",
     "receipt_payload_digest": "3ec7b1742fa887d9fff06b06142298aaace5481d01b623bd3fa27c1a7f641020",
-    "signing_input_digest": "3fb2a59f39e6d3f132ad6d2042b6befa18a897075cd7f3c5bfadfcc64ad3eec3",
-    "statement_entry_digest": "5cd060174152a5e86a50184b431c976e52c9e2f67175d8bf8a61ba6c7466aa7e"
+    "statement_digest": "5cd060174152a5e86a50184b431c976e52c9e2f67175d8bf8a61ba6c7466aa7e"
   },
   "action_b": {
     "action_type": "payment.release",

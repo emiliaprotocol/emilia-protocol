@@ -2,9 +2,11 @@
 /**
  * SCITT Signed Statement identity separation.
  *
- * Reproduces one P-256 signing input with two mathematically equivalent,
- * independently valid ECDSA signatures. The profile keeps three identities
- * separate: exact envelope entry, signed input, and EP authorization payload.
+ * Reproduces one RFC 9943-shaped P-256 signing input with two mathematically
+ * equivalent, independently valid ECDSA signatures, then separately verifies
+ * an EP-SCITT-STATEMENT-v1 fixture with the shipped fail-closed verifier. The
+ * profile keeps exact envelope, signed input, and EP authorization identity
+ * separate without treating generic ES256 evidence as EP profile evidence.
  */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -31,16 +33,16 @@ const UTF8 = new TextEncoder();
 
 const P256_PUBLIC_JWK = Object.freeze({
   kty: 'EC',
-  x: 'ukQY2N41rXeZh4X86CJQMrUuJulujnV2SY7Gr6dtvuM',
-  y: 'MegNL7yc2_EHydyOVuNIwJoYX4Fva686EseQr475p0E',
+  x: 'axfR8uEsQkf4vOblY6RA8ncDfYEt6zOg9KE5RdiYwpY',
+  y: 'T-NC4v4af5uO5-tKfA-eFivOM1drMV7Oy7ZAaDe_UfU',
   crv: 'P-256',
 });
 const P256_SIGNATURE_A = Buffer.from(
-  'YtBJi0iCj0mpfA7XdmW1viyF3F2efFAVIphq9ZLEGBzuXTcgQSSYPHKBCfHUQvgBXzGQ0AdO2kLhgtSNnr1hYA',
+  '8bROu_-rarrAsfzFu5oDi-LzZJYbr2gnTUCH-yqhUAr1cRohP2Vb3J1RFYwwELP7rq2grUIsASfBeVlhNelD2Q',
   'base64url',
 );
 const P256_SIGNATURE_B = Buffer.from(
-  'YtBJi0iCj0mpfA7XdmW1viyF3F2efFAVIphq9ZLEGBwRosjevttnxI1-9g4rvQf-XbVp3Z_IxEISNvY1XaXD8Q',
+  '8bROu_-rarrAsfzFu5oDi-LzZJYbr2gnTUCH-yqhUAoKjuXdwJqkJGKu6nPP70wEDjlaAGTrnV0yQHFhxnnheA',
   'base64url',
 );
 
@@ -145,15 +147,30 @@ function buildEpFixture() {
     statementPublicKeyBase64url: statementIssuer.publicKeyBase64url,
     receiptIssuerPublicKeyBase64url: receiptIssuer.publicKeyBase64url,
   });
-  return { payload, built, verified };
+  return {
+    payload,
+    built,
+    verified,
+    pins: {
+      statementPublicKeyBase64url: statementIssuer.publicKeyBase64url,
+      receiptIssuerPublicKeyBase64url: receiptIssuer.publicKeyBase64url,
+    },
+  };
 }
 
 export function runProfile() {
-  const protectedBytes = must<Uint8Array>(encodeDeterministicCbor8949(new Map<unknown, unknown>([
+  const p256CwtClaims = new Map<unknown, unknown>([
+    [1, 'https://issuer.example/scitt'],
+    [2, 'urn:example:scitt-identity-p256:1'],
+  ]);
+  const p256Protected = new Map<unknown, unknown>([
     [1, -7],
     [3, 'application/example+json'],
     [4, UTF8.encode('scitt-identity-p256-1')],
-  ])), 'P-256 protected header');
+    [15, p256CwtClaims],
+  ]);
+  const protectedBytes = must<Uint8Array>(encodeDeterministicCbor8949(p256Protected),
+    'P-256 protected header');
   const payload = UTF8.encode('{"claim":"one signing input, two valid envelopes","sequence":1}');
   const signingInput = sigStructure(protectedBytes, payload);
   const publicKey = crypto.createPublicKey({ key: P256_PUBLIC_JWK, format: 'jwk' });
@@ -178,6 +195,11 @@ export function runProfile() {
   const protectedTwin = taggedCoseSign1(changedProtected, payload, P256_SIGNATURE_A);
   const malformed = deriveScittStatementIdentityLayers(new Uint8Array([0xd2, 0x01]));
   const ep = buildEpFixture();
+  const p256EpProfileAttempt = verifyEpScittSignedStatement(statementA, {
+    statementPublicKeyBase64url:
+      publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    receiptIssuerPublicKeyBase64url: ep.pins.receiptIssuerPublicKeyBase64url,
+  });
 
   const cases: CaseResult[] = [
     {
@@ -189,6 +211,28 @@ export function runProfile() {
       id: 'P256-SIGNATURE-B-VERIFIES', category: 'positive', passed: verifiesB,
       expected: 'the mathematically equivalent P-256 signature verifies over the same Sig_structure',
       observed: { verified: verifiesB },
+    },
+    {
+      id: 'P256-RFC9943-CWT-CLAIMS-PRESENT', category: 'positive',
+      passed: p256Protected.has(15)
+        && p256CwtClaims.has(1)
+        && p256CwtClaims.has(2),
+      expected: 'the generic ES256 Signed Statement carries protected CWT iss and sub claims',
+      observed: {
+        cwt_header_label: 15,
+        iss: String(p256CwtClaims.get(1)),
+        sub: String(p256CwtClaims.get(2)),
+      },
+    },
+    {
+      id: 'P256-PAIR-IS-NOT-EP-PROFILE', category: 'boundary',
+      passed: p256EpProfileAttempt.valid === false
+        && p256EpProfileAttempt.reason === 'unsupported_statement_alg',
+      expected: 'the shipped EP verifier refuses generic ES256 rather than laundering it into EP profile evidence',
+      observed: {
+        ep_profile_valid: p256EpProfileAttempt.valid,
+        refusal: p256EpProfileAttempt.reason ?? 'missing',
+      },
     },
     {
       id: 'EXACT-ENTRY-IDENTITY-SEPARATES-ENVELOPES', category: 'boundary',
@@ -270,6 +314,7 @@ export function runProfile() {
     cases,
     summary: { total: cases.length, passed: cases.filter((entry) => entry.passed).length },
     claim_boundary: [
+      'The P-256 pair is a generic RFC 9943 Signed Statement fixture, not an EP-SCITT-STATEMENT-v1 fixture; its algorithm-level verification cannot establish EP authorization.',
       'The exact COSE_Sign1 envelope digest identifies one envelope or registration entry.',
       'The Sig_structure digest identifies the bytes presented to the signature algorithm.',
       'The EP authorization payload digest identifies the canonical authorization claim under separately pinned issuer and profile checks.',

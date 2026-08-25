@@ -18,6 +18,7 @@ test('one P-256 signing input can have two valid exact envelopes', () => {
   assert.equal(byId['P256-SIGNATURE-B-VERIFIES'].passed, true);
   assert.equal(byId['EXACT-ENTRY-IDENTITY-SEPARATES-ENVELOPES'].passed, true);
   assert.equal(byId['SIGNING-INPUT-IDENTITY-IS-STABLE'].passed, true);
+  assert.equal(byId['P256-RFC9943-CWT-CLAIMS-PRESENT'].passed, true);
 });
 
 test('substitutions fail while a valid re-encoding gets the correct reason', () => {
@@ -36,4 +37,10 @@ test('EP authorization identity remains separate and the report is pinned', () =
   assert.equal(byId['ENTRY-DIGEST-CANNOT-SUBSTITUTE-FOR-AUTHORIZATION'].passed, true);
   const reference = JSON.parse(readFileSync(resolve(HERE, 'report.reference.json'), 'utf8'));
   assert.deepEqual(buildReferenceReport(), reference);
+});
+
+test('the SCITT identity composition runner is mandatory in CI', () => {
+  const workflow = readFileSync(resolve(HERE, '../../../.github/workflows/ci.yml'), 'utf8');
+  assert.match(workflow, /npm run conformance:composition:scitt-statement-identity/);
+  assert.match(workflow, /npm run conformance:composition:scitt-capsule-seam/);
 });

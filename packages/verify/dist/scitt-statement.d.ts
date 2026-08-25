@@ -89,8 +89,10 @@ export type EpScittRefusal = (typeof EP_SCITT_REFUSALS)[number];
  * signature normalization or a second valid randomized signature changes it.
  * `signing_input_digest` names the RFC 9052 Sig_structure and is unchanged
  * when only the signature bytes change. `authorization_payload_digest` is an
- * EP-specific logical identity over the canonical receipt payload. It is
- * present only when the COSE payload is a canonical EP-style receipt document.
+ * EP-specific logical identity over a canonical receipt payload. The generic
+ * analyzer intentionally leaves it absent: JSON shape alone cannot establish
+ * that bytes are an EP receipt. `verifyEpScittSignedStatement` adds it only
+ * after the complete profile and both signature legs verify.
  */
 export interface ScittStatementIdentityLayers {
     statement_entry_digest: string;

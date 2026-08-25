@@ -22,13 +22,34 @@
       }
     },
     {
+      "id": "P256-RFC9943-CWT-CLAIMS-PRESENT",
+      "category": "positive",
+      "passed": true,
+      "expected": "the generic ES256 Signed Statement carries protected CWT iss and sub claims",
+      "observed": {
+        "cwt_header_label": 15,
+        "iss": "https://issuer.example/scitt",
+        "sub": "urn:example:scitt-identity-p256:1"
+      }
+    },
+    {
+      "id": "P256-PAIR-IS-NOT-EP-PROFILE",
+      "category": "boundary",
+      "passed": true,
+      "expected": "the shipped EP verifier refuses generic ES256 rather than laundering it into EP profile evidence",
+      "observed": {
+        "ep_profile_valid": false,
+        "refusal": "unsupported_statement_alg"
+      }
+    },
+    {
       "id": "EXACT-ENTRY-IDENTITY-SEPARATES-ENVELOPES",
       "category": "boundary",
       "passed": true,
       "expected": "two valid envelope encodings produce different exact entry digests",
       "observed": {
-        "entry_a": "sha256:2ea1289ccd31068b3d668434d893d94399a99bea00d6ad6394a92e83859ce1af",
-        "entry_b": "sha256:1cf9bf3ea8762a4840da956cbedddb936085c3bd757f6f68e2ea8c3430744cc1"
+        "entry_a": "sha256:ba36963493c183eea6c8f71e492121d49d14c1f0338574a6171b1312c763b4e1",
+        "entry_b": "sha256:be2becd5536416c02adec625fff8aca3b75beb691543d458935bfce7ea857ef0"
       }
     },
     {
@@ -37,7 +58,7 @@
       "passed": true,
       "expected": "signature-only re-encoding preserves the signing-input digest",
       "observed": {
-        "signing_input_digest": "sha256:dbbbeeca69319fffc170d9ab24d979d1a756910655eb81009f2fc0f9373b0c7c"
+        "signing_input_digest": "sha256:c4b229193fd4f871f431daf6f6bc7c5cab5f13896c42b7fc3a7397a3ff67dd86"
       }
     },
     {
@@ -98,14 +119,15 @@
     }
   ],
   "summary": {
-    "total": 10,
-    "passed": 10
+    "total": 12,
+    "passed": 12
   },
   "claim_boundary": [
+    "The P-256 pair is a generic RFC 9943 Signed Statement fixture, not an EP-SCITT-STATEMENT-v1 fixture; its algorithm-level verification cannot establish EP authorization.",
     "The exact COSE_Sign1 envelope digest identifies one envelope or registration entry.",
     "The Sig_structure digest identifies the bytes presented to the signature algorithm.",
     "The EP authorization payload digest identifies the canonical authorization claim under separately pinned issuer and profile checks.",
     "None of these digests alone proves authorization, transparency registration, or source-population completeness."
   ],
-  "results_digest": "sha256:84af77b081ae27d4f650a80430210efbb5980b987f8f4ddc2687b674115a2481"
+  "results_digest": "sha256:ffcc95a7adc7111b09e068e400cdf4a57afe6df691ec982cd171d593510db635"
 }

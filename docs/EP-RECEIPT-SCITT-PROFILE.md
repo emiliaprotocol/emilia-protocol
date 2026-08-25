@@ -27,7 +27,7 @@ A SCITT Signed Statement is a `COSE_Sign1` (RFC 9052) over an Issuer's assertion
 |---|---|
 | **payload** | RFC 8785 (JCS) canonical bytes of the complete EMILIA receipt document. The inner receipt signature separately covers its `payload` object. |
 | protected `alg` (label 1) | `EdDSA` (-8); Ed25519 per RFC 8037 / RFC 8032 |
-| protected `content type` (label 3) | `application/ep-receipt+json` |
+| protected `content type` (label 3) | `application/emilia-receipt+json` |
 | protected `kid` (label 4) | the SCITT statement issuer key id |
 | protected `CWT Claims` (label 15) | `iss` (claim 1) = the SCITT statement issuer; `sub` (claim 2) = the receipt action's CAID, recomputed from the carried receipt |
 | signature | Ed25519 over the COSE `Sig_structure` (`["Signature1", protected, ext_aad="", payload]`, RFC 9052 §4.4) |
@@ -54,10 +54,13 @@ envelope digests. The authorization reference therefore uses
 `statement_entry_digest` separately to locate the logged envelope. The
 runnable
 [`EP-SCITT-STATEMENT-IDENTITY-v0.1`](../conformance/composition/scitt-statement-identity-v0.1/README.md)
-profile proves the separation with a deliberate P-256 high-S/low-S ECDSA
-malleability pair and the local EP verifier. Enforcing canonical low-S at an
-ingress rejects the high-S form there; it does not collapse exact-envelope,
-signing-input, and application-claim identity into one protocol concept.
+profile proves the separation with two deliberately distinct fixtures: an RFC
+9943-shaped ES256 high-S/low-S ECDSA pair verified at the algorithm layer, and
+an Ed25519 EP statement accepted by the local EP verifier. The EP verifier
+correctly refuses the generic ES256 pair as outside this profile. Enforcing
+canonical low-S at an ingress rejects the high-S form there; it does not
+collapse exact-envelope, signing-input, and application-claim identity into one
+protocol concept.
 
 ## 2. Registration (SCRAPI)
 

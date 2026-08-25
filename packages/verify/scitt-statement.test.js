@@ -187,14 +187,29 @@ test('a conforming statement verifies with every check green', () => {
 test('statement entry, signing input, and authorization payload are separate identities', () => {
     const built = build();
     const identity = deriveScittStatementIdentityLayers(built.statement);
+    const verified = verifyEpScittSignedStatement(built.statement, PINS);
     assert.equal(identity.ok, true, identity.reason);
+    assert.equal(verified.valid, true, verified.reason);
     if (!identity.ok)
         return;
     assert.equal(identity.value.statement_entry_digest, `sha256:${crypto.createHash('sha256').update(built.statement).digest('hex')}`);
     assert.equal(identity.value.statement_payload_digest, `sha256:${crypto.createHash('sha256').update(built.payload).digest('hex')}`);
     assert.match(identity.value.signing_input_digest, /^sha256:[0-9a-f]{64}$/);
     assert.notEqual(identity.value.statement_entry_digest, identity.value.signing_input_digest);
-    assert.equal(identity.value.authorization_payload_digest, `sha256:${crypto.createHash('sha256').update(canonicalize(RECEIPT.payload)).digest('hex')}`);
+    assert.equal(identity.value.authorization_payload_digest, undefined);
+    assert.equal(verified.identity?.authorization_payload_digest, `sha256:${crypto.createHash('sha256').update(canonicalize(RECEIPT.payload)).digest('hex')}`);
+});
+test('generic canonical JSON cannot mint an EP authorization payload identity', () => {
+    const genericPayload = UTF8.encode('{"payload":{}}');
+    const genericStatement = forge(new Map(), genericPayload);
+    const identity = deriveScittStatementIdentityLayers(genericStatement);
+    assert.equal(identity.ok, true, identity.reason);
+    if (!identity.ok)
+        return;
+    assert.match(identity.value.statement_entry_digest, /^sha256:[0-9a-f]{64}$/);
+    assert.match(identity.value.signing_input_digest, /^sha256:[0-9a-f]{64}$/);
+    assert.match(identity.value.statement_payload_digest, /^sha256:[0-9a-f]{64}$/);
+    assert.equal(identity.value.authorization_payload_digest, undefined);
 });
 test('changing only signature bytes changes entry identity but not signing-input identity', () => {
     const built = build();
@@ -213,7 +228,7 @@ test('changing only signature bytes changes entry identity but not signing-input
         return;
     assert.notEqual(originalIdentity.value.statement_entry_digest, twinIdentity.value.statement_entry_digest);
     assert.equal(originalIdentity.value.signing_input_digest, twinIdentity.value.signing_input_digest);
-    assert.equal(originalIdentity.value.authorization_payload_digest, twinIdentity.value.authorization_payload_digest);
+    assert.equal(originalIdentity.value.statement_payload_digest, twinIdentity.value.statement_payload_digest);
 });
 test('VERIFIED is never REGISTERED: the result always reports registered false', () => {
     const built = build();

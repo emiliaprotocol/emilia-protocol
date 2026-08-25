@@ -243,19 +243,6 @@ export function deriveScittStatementIdentityLayers(statementBytes) {
         signing_input_digest: sha256Digest(sigStruct.value),
         statement_payload_digest: sha256Digest(payload),
     };
-    try {
-        const payloadText = FATAL_UTF8.decode(payload);
-        const document = JSON.parse(payloadText);
-        if (isPlainObject(document) && isPlainObject(document.payload)
-            && canonicalize(document) === payloadText) {
-            value.authorization_payload_digest = sha256Digest(canonicalize(document.payload));
-        }
-    }
-    catch {
-        // Generic SCITT statements need not carry JSON or EP receipts. The three
-        // generic identity layers above remain valid without an EP authorization
-        // payload identity.
-    }
     return { ok: true, value };
 }
 /**
@@ -539,9 +526,22 @@ export function verifyEpScittSignedStatement(statementBytes, opts) {
         return fail('sub_not_bound_to_payload');
     checks.sub_binding = true;
     const identity = deriveScittStatementIdentityLayers(statementBytes);
-    if (!identity.ok || typeof identity.value.authorization_payload_digest !== 'string') {
+    if (!identity.ok)
+        return fail('receipt_invalid');
+    let authorizationPayloadDigest;
+    try {
+        const receiptPayload = receipt?.payload;
+        if (!isPlainObject(receiptPayload))
+            return fail('receipt_invalid');
+        authorizationPayloadDigest = sha256Digest(canonicalize(receiptPayload));
+    }
+    catch {
         return fail('receipt_invalid');
     }
+    const verifiedIdentity = {
+        ...identity.value,
+        authorization_payload_digest: authorizationPayloadDigest,
+    };
     return {
         valid: true,
         checks,
@@ -551,7 +551,7 @@ export function verifyEpScittSignedStatement(statementBytes, opts) {
         sub,
         kid: kidText,
         payloadSha256: crypto.createHash('sha256').update(payload).digest('hex'),
-        identity: identity.value,
+        identity: verifiedIdentity,
     };
 }
 /**
