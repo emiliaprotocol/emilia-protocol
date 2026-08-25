@@ -5,6 +5,12 @@
 
 ### Security
 
+- Restrict the Action Escrow human-facing milestone, amount, currency, payee,
+  and destination fields to printable ASCII before building the exact approval
+  envelope, preventing Unicode-confusable substitutions in authority text.
+  Compatibility note: existing templates containing non-ASCII values now
+  refuse instead of being normalized. Deployments must map those values to
+  stable ASCII identifiers and issue a fresh binding and approvals.
 - Make a deployment-level `requiredAdmissibilityProfile` authoritative. A
   request or selector may repeat its configured identifier and digest, but
   cannot replace either before the trusted verifier runs or a receipt is
