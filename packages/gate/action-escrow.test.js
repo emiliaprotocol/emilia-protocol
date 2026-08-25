@@ -3,7 +3,7 @@
 /* eslint-disable */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ACTION_ESCROW_PROFILE_VERSION, ACTION_ESCROW_STATES, computeActionEscrowReleaseBindingMomentDigest, computeActionEscrowResolutionNonce, createActionEscrowKernel, } from './action-escrow.js';
+import { ACTION_ESCROW_PROFILE_VERSION, ACTION_ESCROW_STATES, computeActionEscrowReleaseBindingMomentDigest, computeActionEscrowResolutionNonce, createActionEscrowReleaseBindingMoment, createActionEscrowKernel, } from './action-escrow.js';
 import { canonicalize, hashCanonical } from './execution-binding.js';
 const digest = (character) => `sha256:${character.repeat(64)}`;
 const AGREEMENT_DIGEST = digest('a');
@@ -53,6 +53,18 @@ function resolutionBindingInput() {
         release_action_template: RELEASE_ACTION_TEMPLATE,
     };
 }
+test('human binding refuses confusable non-ASCII authority identifiers', () => {
+    const cyrillicA = '\u0410';
+    for (const hostile of [
+        { milestone_id: `${cyrillicA}dmin-milestone` },
+        { release_action_template: { ...RELEASE_ACTION_TEMPLATE, amount: `1${cyrillicA}00` } },
+        { release_action_template: { ...RELEASE_ACTION_TEMPLATE, currency: `${cyrillicA}SD` } },
+        { release_action_template: { ...RELEASE_ACTION_TEMPLATE, payee_id: `${cyrillicA}dmin` } },
+        { release_action_template: { ...RELEASE_ACTION_TEMPLATE, destination_id: `${cyrillicA}cct-123` } },
+    ]) {
+        assert.equal(createActionEscrowReleaseBindingMoment({ ...resolutionBindingInput(), ...hostile }), null);
+    }
+});
 function durableCasStore() {
     const values = new Map();
     return {
