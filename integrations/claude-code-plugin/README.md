@@ -1,6 +1,6 @@
 # EMILIA Guard — a Claude Code plugin
 
-**A named human's signed "yes" before Claude does anything irreversible.**
+**A human confirmation safety net for common high-risk Claude Code actions.**
 
 Anthropic's own data on ~1M production tool calls found that **0.8% of agent
 actions are irreversible** — moving money, deleting data, modifying production,
@@ -8,10 +8,16 @@ communicating externally — and that those are exactly the actions that should
 "require mandatory human approval before execution"
 ([Measuring agent autonomy](https://www.anthropic.com/news/measuring-agent-autonomy)).
 
-Claude Code already lets you *prompt* for those. EMILIA Guard makes the approval
-**accountable**: a named human approves on their own device (Face ID / passkey),
-and the action proceeds only with an **offline-verifiable Trust Receipt** that
-neither a compromised agent nor EMILIA itself can forge.
+Claude Code already lets you prompt for those. EMILIA Guard adds a conservative
+classifier and can collect a named-human, offline-verifiable receipt for the
+classifier's projected action. The hook is not the exact authorization boundary.
+Encoded, split, or novel command shapes can evade a substring classifier, and
+the hook does not independently bind every native provider argument.
+
+The hook therefore never emits `allow`. A matched action returns `ask` or
+`deny`, even after a remote approval. Exact command mapping, one-time admission,
+and receipt enforcement belong in the credential-owning shell, MCP server, or
+provider integration.
 
 ## Install
 
@@ -42,10 +48,11 @@ payments or email server) tries to move money or send something, the hook:
 
 1. **mints** a pre-action Trust Receipt (server-side policy engine decides),
 2. **opens a signoff** for a named human,
-3. **blocks** while they approve on their device (up to `EP_SIGNOFF_TIMEOUT_S`,
-   default 280s),
-4. returns `allow` **only** on a real signature — with a receipt you can verify
-   offline: `npx @emilia-protocol/verify`.
+3. **blocks briefly** while they approve on their device (up to
+   `EP_SIGNOFF_TIMEOUT_S`, default 30s and capped at 60s),
+4. returns `ask` with the receipt reference so the operator reviews the exact
+   native command before proceeding. Verify the receipt offline with
+   `npx @emilia-protocol/verify`.
 
 ## Proven against production
 
@@ -71,11 +78,13 @@ The approved screenshot's context hash (`b68e427d…`) is the same hash the
 offline verifier reproduces from the receipt — screenshot, receipt, and math
 agree on one event.
 
-## Fail-closed, always
+## Boundary and failure behavior
 
-On any error, timeout, denial, or ambiguity the decision is `ask` or `deny` —
-**never** `allow`. A trust gate that fails open is not a gate. If EMILIA is
-unreachable, you get a normal human prompt, not a silent pass.
+For every call the heuristic classifies, an error, timeout, denial, ambiguity,
+or approval returns `ask` or `deny`, never `allow`. Unmatched calls pass back to
+Claude Code's normal permission flow. That pass-through is not a security
+verdict. Deployments needing exact enforcement must integrate EMILIA at the
+credential-owning execution boundary.
 
 ## Tuning what counts as high-risk
 
