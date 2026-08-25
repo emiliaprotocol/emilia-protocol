@@ -3,17 +3,16 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'AI Agents — Pre-Execution Trust Gate for Autonomy',
   description:
-    'Gate every consequential AI agent action behind a cryptographic trust ' +
-    'ceremony before execution. Works with OpenAI Agents, Claude Computer ' +
-    'Use, MCP servers, Devin, Sierra, Lindy, custom agent frameworks. ' +
-    'Three-line SDK integration.',
+    'Put a customer-owned Gate on one configured agent action path. Verify ' +
+    'accepted exact-action authority and required evidence before provider entry, ' +
+    'with open adapters and reference integrations for common agent stacks.',
   alternates: { canonical: '/use-cases/ai-agent' },
   openGraph: {
     images: ['/opengraph-image'],
     title: 'EMILIA Protocol for AI Agent Action Authorization',
     description:
-      'The trust gate enterprise customers are asking your agent platform ' +
-      'for. Three-line SDK integration. Apache 2.0.',
+      'Customer-owned exact-action admission for consequential agent tools. ' +
+      'Finite mandates, optional fresh approval, and portable evidence. Apache 2.0.',
     url: 'https://www.emiliaprotocol.ai/use-cases/ai-agent',
     type: 'article',
   },

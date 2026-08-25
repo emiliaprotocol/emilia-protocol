@@ -46,28 +46,28 @@ export default function AIAgentUseCasePage(): React.ReactElement {
   }
 
   const PROBLEMS = [
-    { title: 'Agents moving from recommendation to action', body: 'AI agents increasingly execute actions, not just suggest them. Tool calls, API requests, and workflow steps happen with broad permissions and no action-level control.' },
-    { title: 'Broad tool access without action-level enforcement', body: 'Agent frameworks grant tool access at the connection level. An agent with access to a payment API can execute any payment, not just the one the principal intended.' },
-    { title: 'No principal-to-agent attribution chain', body: 'When an agent executes a high-risk action, there is no structured record binding the delegating principal, the agent identity, the exact action, and the authority under which it was performed.' },
+    { title: 'Agents moving from recommendation to action', body: 'Agents can now call tools, mutate data, and trigger workflows. A broad tool grant does not answer whether this exact consequential call is within the customer\'s current mandate.' },
+    { title: 'Connection permission is wider than action authority', body: 'A framework may authorize access to a payment tool while leaving amount, destination, purpose, and one-time use to application code. That is the action boundary Gate is designed to protect.' },
+    { title: 'Attribution can stop at the session', body: 'Many workflows can name the service or credential that connected without preserving the accepted authority, exact action, and outcome evidence for one consequential call.' },
   ];
 
   const HOW_EP_HELPS = [
-    { title: 'Action risk classes', body: 'Every agent action is classified by risk level. Read-only operations proceed without friction. High-risk actions (payments, data modifications, external API calls) require explicit trust enforcement before execution.' },
-    { title: 'Signoff thresholds by risk class', body: 'High-risk agent actions require signoff from the delegating principal or a designated authority. The signoff is bound to the exact action parameters, not a blanket tool permission.' },
-    { title: 'Principal-to-agent attribution', body: 'Every agent action produces a structured evidence chain: which principal delegated, which agent executed, what exact action, under what policy, with what authority. The delegation chain is traceable and auditable.' },
-    { title: 'EU AI Act alignment', body: 'EMILIA produces the structured evidence records that high-risk AI system requirements demand: human oversight records, action-level traceability, and authority chain documentation.' },
+    { title: 'Buyer-defined action classes', body: 'The buyer selects which tool calls are covered and which evidence each class needs. Read-only traffic can remain outside the protected boundary; consequential calls can require stronger authority.' },
+    { title: 'Fresh approval only when policy requires it', body: 'A finite mandate can let agents work unattended. When current authority is missing, stale, exhausted, or wider than the request, Gate refuses or returns to the configured authority source.' },
+    { title: 'Action-bound attribution evidence', body: 'Each protected action can preserve the presenting agent credential, accepted delegation evidence, exact action, policy, admission, and outcome as distinct records.' },
+    { title: 'Control mapping, not automatic compliance', body: 'EMILIA evidence can support an organization\'s EU AI Act, NIST AI RMF, or internal-control assessment. The organization and its authorized reviewer decide whether the complete system meets a requirement.' },
   ];
 
   const ENFORCEMENT = [
-    { title: 'Delegated principal attribution', body: 'When an agent acts on behalf of a human, EMILIA records the full delegation chain: which principal delegated authority, to which agent identity, under what scope, with what constraints. The chain is cryptographically bound and auditable. No agent action executes without traceable human accountability.' },
+    { title: 'Delegated authority evidence', body: 'EMILIA can verify a pinned agent credential and delegation chain under the relying party\'s rules, then bind that evidence to one exact action. A machine credential is not proof of a human\'s civil identity, and human approval is required only when local policy says so.' },
     { title: 'Exact tool-use binding', body: 'An agent with access to a payment API can call any endpoint. EMILIA binds authorization to the exact tool call parameters: the specific API endpoint, the specific payload, the specific amount and destination. An approval to call transferFunds with $500 to Account A cannot be replayed for $5,000 to Account B.' },
-    { title: 'Accountable signoff thresholds by risk class', body: 'Agent actions are classified into risk tiers. Read-only operations proceed without friction. Medium-risk actions require async principal notification. High-risk actions (payments, data deletion, external API calls with side effects) require explicit principal signoff before execution. The thresholds are policy-driven and configurable per deployment.' },
+    { title: 'Customer-owned admission policy', body: 'The buyer defines the protected action classes, accepted issuers, evidence requirements, limits, and exception path. On a completely mediated covered path, no accepted exact-action authority and required evidence means no provider entry.' },
   ];
 
   const GATE_PATTERN = `const d = await guardAction({ action: 'payment.release', context });
 if (d.deny)            throw new Error(d.reason);   // blocked outright
-if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
-// ...otherwise proceed. Every approval mints an authorization receipt.`;
+if (d.signoffRequired) await waitForApprover(d);    // enrolled credential signs
+// ...otherwise proceed under the configured mandate and record the decision.`;
 
   const SNIPPETS = [
     { k: 'MCP server', sub: 'Claude Desktop, Cursor, Cline', code: '{ "command": "npx",\n  "args": ["-y", "@emilia-protocol/mcp-server"] }' },
@@ -93,16 +93,18 @@ if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
     <div style={styles.page}>
       <SiteNav activePage="" />
 
+      <main>
+
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
         <div className="ep-tag ep-hero-badge" style={{ color: color.blue }}>Use Case / AI and Agent Control</div>
         <h1 className="ep-hero-text" style={styles.h1}>Trust-control layer between AI intent and execution</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          AI agents are moving from recommendations to actions. Tool calls execute payments, modify data, and trigger workflows with broad permissions and no action-level control. EMILIA is the trust substrate that enforces accountability before high-risk agent actions proceed.
+          Agents can move money, modify data, and operate infrastructure through tools that were granted at connection time. EMILIA Gate adds a customer-owned decision at the exact-action boundary. On a completely mediated covered path, the action reaches the provider only with accepted authority and required evidence.
         </p>
         <div className="ep-hero-text" style={{ border: `1px solid ${color.border}`, borderLeft: `3px solid ${color.blue}`, borderRadius: 4, padding: '14px 20px', maxWidth: 560, marginBottom: 24 }}>
           <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.65 }}>
-            <span style={{ color: color.t1, fontWeight: 700 }}>AI is one wedge.</span> The broader category is high-risk action enforcement. EMILIA is not an AI company. It is control infrastructure for any workflow where a high-risk action executes without action-level trust. AI agents are one vertical where this gap is acute and growing.
+            <span style={{ color: color.t1, fontWeight: 700 }}>AI is one wedge.</span> The broader category is exact-action authority control. EMILIA is infrastructure for buyer-selected workflows where a consequential action needs a decision at the executor boundary.
           </div>
         </div>
         <div className="ep-hero-text">
@@ -119,11 +121,9 @@ if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              // Stat removed: prior "82% Gartner" claim could not be sourced
-              // to a specific Gartner report ID and date. Restore once cited.
-              { value: 'Most',  label: 'Major agent platforms ship without action-level trust enforcement', accent: color.blue },
-              { value: '0',     label: 'Agent frameworks with native action-level trust enforcement', accent: color.t3 },
-              { value: '∞',     label: 'Blast radius of an agent with broad tool access and no controls', accent: '#DC2626' },
+              { value: 'Intent', label: 'The agent proposes one typed tool call', accent: color.blue },
+              { value: 'Gate', label: 'The customer policy admits or refuses provider entry', accent: color.blue },
+              { value: 'Receipt', label: 'Authorization, admission, and outcome remain distinct', accent: color.t3 },
             ].map((s, i) => (
               <div key={i} style={{ padding: '28px 24px', borderRight: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
                 <div style={{ fontFamily: font.sans, fontSize: 28, fontWeight: 700, color: s.accent, marginBottom: 6 }}>{s.value}</div>
@@ -139,7 +139,7 @@ if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>The problem</h2>
           <p style={styles.body}>
-            Agent frameworks handle connection and tool discovery. What they do not handle is action-level trust enforcement. An agent with tool access can execute any action that tool permits. There is no structured control layer between the agent deciding to act and the action executing.
+            Agent frameworks handle connection and tool discovery. A connection grant alone does not establish authority for every possible parameter set. Gate sits at a selected executor boundary and checks one exact call against the customer&apos;s current mandate and evidence policy.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -159,7 +159,7 @@ if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>How EMILIA helps</h2>
             <p style={styles.body}>
-              EMILIA is not an agent framework. It is infrastructure. It operates as the control layer between agent intent and action execution, enforcing trust, accountability, and policy compliance at the action level across any agent system.
+              EMILIA is not an agent framework. It is an authority-control layer that can be integrated at a selected tool or system-of-record boundary. Protocol proves. Gate prevents on the completely mediated paths the customer configures.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
@@ -200,11 +200,11 @@ if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
             </p>
           </div>
           {[
-            'Action-level trust enforcement that works across agent frameworks, not inside one',
-            'Protocol-grade primitives: handshake, signoff, receipt, dispute, appeal',
-            'Risk classification that separates read-only operations from high-risk actions requiring human oversight',
-            'Structured evidence production for regulatory compliance (EU AI Act, SOX, IG audit)',
-            'Principal-to-agent delegation chains that make human accountability traceable',
+            'Open adapters and reference integrations for multiple agent frameworks',
+            'Protocol primitives for exact-action challenges, approval evidence, receipts, and remedies',
+            'Buyer-authored action classes that separate uncovered read-only traffic from protected consequential operations',
+            'Structured evidence and published mappings that can support regulatory and internal-control review',
+            'Pinned agent and delegation evidence that makes accepted authority traceable without treating a credential as civil identity',
           ].map((item, i) => (
             <div key={i} className={`ep-list-item ep-reveal ep-stagger-${i + 1}`}>
               <span className="ep-list-bullet">+</span>
@@ -219,7 +219,7 @@ if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
         <div className="ep-reveal" style={{ marginBottom: 28 }}>
           <h2 style={styles.h2}>What it looks like in code</h2>
           <p style={styles.body}>
-            The gate does one job in every framework: hold an irreversible agent action until it is allowed, denied, or signed off by a named human. Read-only calls pass straight through, so low-risk agent work stays fast.
+            At a configured tool boundary, Gate evaluates one exact action. A current finite mandate can authorize unattended work; fresh approver evidence is an exception path when the buyer&apos;s policy requires it.
           </p>
         </div>
         <div className="ep-reveal" style={{ marginBottom: 16 }}>
@@ -252,7 +252,7 @@ if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
             Trust before high-risk action in AI and agent workflows
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', maxWidth: 520, lineHeight: 1.7, marginBottom: 32 }}>
-            EMILIA is selectively working with agent framework teams, AI infrastructure providers, and enterprise AI teams to pilot action-level trust enforcement for agent-driven workflows.
+            The protected-workflow pilot is available to agent framework teams, AI infrastructure providers, and enterprise AI teams that can name one consequential tool or executor boundary.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="#pilot" className="ep-cta" style={cta.primary}>Request Pilot</a>
@@ -264,6 +264,9 @@ if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
       <section id="pilot" style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 32 }}>
           <h2 style={styles.h2}>Request a pilot</h2>
+          <p style={styles.body}>
+            {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · {PROTECTED_WORKFLOW_PILOT.workflowLabel}. {PROTECTED_WORKFLOW_PILOT.rolloutLabel}.
+          </p>
         </div>
         {submitted ? (
           <div style={{ border: `1px solid ${color.border}`, borderTop: `2px solid ${color.blue}`, borderRadius: radius.base, padding: 40, textAlign: 'center' }}>
@@ -309,6 +312,8 @@ if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
           </form>
         )}
       </section>
+
+      </main>
 
       <SiteFooter />
     </div>

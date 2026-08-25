@@ -46,22 +46,22 @@ export default function FinancialUseCasePage() {
   }
 
   const PROBLEMS = [
-    { title: 'Beneficiary changes inside approved sessions', body: 'Wire transfer destinations, ACH routing, and payment beneficiaries change inside authenticated workflows. The session is valid. The action is unauthorized.' },
-    { title: 'Treasury approvals without action-level binding', body: 'Treasury management systems approve transactions at the session or role level. No existing control binds the exact transaction parameters to the exact authorizing principal at the moment of execution.' },
-    { title: 'Wire transfer fraud in legitimate channels', body: 'Business email compromise and insider manipulation route funds through approved payment channels. Post-facto detection catches losses, not the action itself.' },
+    { title: 'Beneficiary changes inside approved sessions', body: 'Wire destinations, ACH routing, and payment beneficiaries can change inside authenticated workflows. A valid session does not by itself establish authority for the exact new destination.' },
+    { title: 'Treasury approval without exact-action binding', body: 'Some approval flows preserve a role or session decision without cryptographically binding every material field that reaches the payment partner.' },
+    { title: 'Fraud through legitimate channels', body: 'Business email compromise and insider manipulation can use approved payment channels. Detection and reconciliation remain important, but they occur after a request has already reached or crossed the rail.' },
   ];
 
   const HOW_EP_HELPS = [
-    { title: 'Dual signoff with exact transaction binding', body: 'High-value transactions require two named principals to sign off on the exact amount, destination, and routing parameters. The signoff is cryptographically bound to those exact values.' },
+    { title: 'Quorum when the buyer requires it', body: 'A relying-party profile can require two distinct enrolled approver credentials over the same amount, destination, and routing parameters. Quorum is a policy choice, not a universal requirement.' },
     { title: 'Action-level control evidence', body: 'Each protected financial action can produce a tamper-evident record of who requested it, who authorized it, the exact parameters, the policy, and the time. Auditors still decide what conclusion the record supports.' },
     { title: 'Replay-resistant authorization', body: 'Each authorization is one-time consumable. A captured wire approval cannot be replayed for a different amount, a different beneficiary, or a different routing instruction.' },
-    { title: 'Policy-bound evaluation', body: 'Trust decisions are evaluated against explicit policies: transaction thresholds, counterparty risk classes, velocity limits, and dual-approval requirements. No black-box scoring.' },
+    { title: 'Policy-bound evaluation', body: 'The buyer pins the authority, evidence, thresholds, counterparty classes, velocity limits, and quorum rules that Gate evaluates. An external risk score may be an input, but it is never authority by itself.' },
   ];
 
   const DEPLOYMENTS = [
     { title: 'Beneficiary change', body: 'A counterparty or internal operator modifies wire beneficiary details inside an authenticated treasury session. EMILIA generates a handshake binding the exact new beneficiary, routing instruction, and authorizing principal. The change does not commit until the handshake is satisfied and a named signoff is recorded.' },
-    { title: 'Payout destination change', body: 'An ACH or real-time payment destination is updated in a payment platform. EMILIA requires dual signoff bound to the exact new destination, amount ceiling, and effective date. Each signoff is one-time consumable and replay-resistant.' },
-    { title: 'Treasury release approval', body: 'A treasury management system releases funds above a policy threshold. EMILIA enforces dual-principal signoff with exact parameter binding: amount, currency, counterparty, settlement date, and GL account. The approval cannot be reused for different parameters.' },
+    { title: 'Payout destination change', body: 'An ACH or real-time payment destination is updated in a payment platform. Gate can require the buyer-selected evidence over the exact destination, amount ceiling, and effective date before the connector is entered.' },
+    { title: 'Treasury release approval', body: 'For a release above a buyer-defined threshold, Gate can require a distinct-approver quorum over amount, currency, counterparty, settlement date, and GL account. That evidence cannot verify for different parameters.' },
   ];
 
   const cardStyle = (accent) => ({
@@ -75,6 +75,8 @@ export default function FinancialUseCasePage() {
   return (
     <div style={styles.page}>
       <SiteNav activePage="" />
+
+      <main>
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
@@ -97,9 +99,9 @@ export default function FinancialUseCasePage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '$2.9B',  label: 'BEC losses reported to FBI IC3 in 2023', accent: color.blue },
-              { value: '74%',    label: 'Of orgs targeted by payment fraud (AFP 2023)', accent: color.blue },
-              { value: '0',      label: 'Action-level controls in most treasury workflows', accent: color.t3 },
+              { value: 'Session', label: 'Authentication opens the workflow', accent: color.blue },
+              { value: 'Action', label: 'Gate checks the exact payment instruction', accent: color.blue },
+              { value: 'Rail', label: 'Provider entry follows accepted authority and evidence', accent: color.t3 },
             ].map((s, i) => (
               <div key={i} style={{ padding: '28px 24px', borderRight: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
                 <div style={{ fontFamily: font.sans, fontSize: 28, fontWeight: 700, color: s.accent, marginBottom: 6 }}>{s.value}</div>
@@ -115,7 +117,7 @@ export default function FinancialUseCasePage() {
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>The problem</h2>
           <p style={styles.body}>
-            Financial systems authenticate users, authorize sessions, and log events after execution. What they lack is a trust-control layer that enforces named accountability and exact parameter binding before the high-risk action proceeds.
+            Financial systems authenticate users, authorize sessions, and log events. Those controls do not always bind the complete payment instruction to current exact-action authority at provider entry. Gate adds that decision on the paths the buyer selects.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -135,7 +137,7 @@ export default function FinancialUseCasePage() {
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>How EMILIA helps</h2>
             <p style={styles.body}>
-              EMILIA operates as a control layer between authentication and financial action execution. It binds identity, authority, policy, and exact transaction parameters into a cryptographic handshake that must be satisfied before the action proceeds.
+              EMILIA Gate sits between authentication and a configured financial connector. On a completely mediated covered path, it checks the presenting credential, accepted authority, policy, and exact transaction before provider entry. A credential reference is not proof of civil identity.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
@@ -153,14 +155,14 @@ export default function FinancialUseCasePage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 32 }}>
           <h2 style={styles.h2}>What changes with EMILIA</h2>
-          <p style={styles.body}>Before EMILIA, a beneficiary change inside an authenticated treasury session is invisible until reconciliation. After EMILIA:</p>
+          <p style={styles.body}>For a configured, completely mediated beneficiary-change or payment-release path, Gate adds:</p>
         </div>
         {[
-          'Every wire transfer and beneficiary change requires a handshake binding the exact destination, amount, and authorizing principals',
-          'Dual signoff is enforced at the action level, not the role or session level',
-          'Every protected financial action can preserve control-testing evidence: principal, authority chain, policy, exact parameters, and timestamp',
-          'Replay resistance ensures a captured approval cannot be reused for a different transaction',
-          'Compliance teams receive action-level audit trails that satisfy regulatory examination requirements',
+          'Accepted authority and required evidence bound to the exact destination, amount, and operation',
+          'Distinct-approver quorum at the action level when the buyer policy requires it',
+          'Each protected financial action can preserve control-testing evidence: presenting credential, accepted authority, policy, exact parameters, and timestamp',
+          'Action binding and one-time consumption refuse approval reuse for a different transaction',
+          'Action-level evidence that can support, but does not decide, control testing or regulatory examination',
         ].map((item, i) => (
           <div key={i} className={`ep-list-item ep-reveal ep-stagger-${i + 1}`}>
             <span className="ep-list-bullet">+</span>
@@ -174,7 +176,7 @@ export default function FinancialUseCasePage() {
         <div style={styles.section}>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>Best first deployment</h2>
-            <p style={styles.body}>Start with one high-risk action surface. These are the three workflows where banks and payment operators deploy EMILIA first.</p>
+            <p style={styles.body}>Start with one high-risk action surface. These three workflows make the material fields and consequence owner concrete.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {DEPLOYMENTS.map((d, i) => (
@@ -192,12 +194,12 @@ export default function FinancialUseCasePage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 32 }}>
           <h2 style={styles.h2}>Built for banks and payment operators</h2>
-          <p style={styles.body}>EMILIA is control infrastructure designed for the exact constraints of regulated financial environments.</p>
+          <p style={styles.body}>EMILIA is control infrastructure for a buyer-selected financial boundary. Production still requires the buyer to accept the connector, policy, durable store, keys, monitoring, and operating procedure.</p>
         </div>
         {[
           'One-time wire approval semantics: each authorization is cryptographically bound to a single transaction and consumed on use. A captured approval cannot authorize a second wire.',
           'Exact transaction binding: the handshake locks amount, currency, beneficiary, routing instruction, and settlement date. Any parameter change invalidates the authorization.',
-          'Dual signoff support: high-value and high-risk transactions require two named principals to independently sign off on the exact same bound parameters before execution proceeds.',
+          'Quorum support: a buyer profile can require two distinct enrolled approver credentials over the exact same bound parameters before provider entry.',
           'Tamper-evident event chain: each protected handshake, signoff, and execution statement can be reconstructed as action-level control evidence rather than only a session access log.',
         ].map((item, i) => (
           <div key={i} className={`ep-list-item ep-reveal ep-stagger-${i + 1}`}>
@@ -216,7 +218,7 @@ export default function FinancialUseCasePage() {
             Trust before high-risk action in financial infrastructure
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', maxWidth: 520, lineHeight: 1.7, marginBottom: 32 }}>
-            EMILIA is selectively working with financial institutions, treasury teams, and payment infrastructure providers to pilot action-level trust enforcement for high-risk financial operations.
+            The protected-workflow pilot is available to financial institutions, treasury teams, and payment infrastructure providers that can name one vendor-change or payment-release boundary.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="#pilot" className="ep-cta" style={cta.primary}>Request Pilot</a>
@@ -228,6 +230,9 @@ export default function FinancialUseCasePage() {
       <section id="pilot" style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 32 }}>
           <h2 style={styles.h2}>Request a pilot</h2>
+          <p style={styles.body}>
+            {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · {PROTECTED_WORKFLOW_PILOT.workflowLabel}. {PROTECTED_WORKFLOW_PILOT.rolloutLabel}.
+          </p>
         </div>
         {submitted ? (
           <div style={{ border: `1px solid ${color.border}`, borderTop: `2px solid ${color.blue}`, borderRadius: radius.base, padding: 40, textAlign: 'center' }}>
@@ -273,6 +278,8 @@ export default function FinancialUseCasePage() {
           </form>
         )}
       </section>
+
+      </main>
 
       <SiteFooter />
     </div>

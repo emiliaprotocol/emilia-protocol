@@ -46,21 +46,21 @@ export default function GovernmentUseCasePage() {
   }
 
   const PROBLEMS = [
-    { title: 'Benefits redirect inside authorized sessions', body: 'Threat actors change payment destinations, mailing/contact routes, or identity evidence within legitimate authenticated workflows. The session looks valid. The action is not.' },
-    { title: 'Operator overrides without action-level accountability', body: 'Caseworkers and system operators can modify records, approve exceptions, and redirect funds. Current audit trails capture who logged in, not who authorized the exact action.' },
-    { title: 'Payment destination changes in approved workflows', body: 'Wire destinations, direct deposit targets, and disbursement accounts change inside sessions that pass every existing authentication check.' },
+    { title: 'Benefits redirect inside an authorized session', body: 'Payment destinations, mailing routes, or evidence references can change inside a legitimate authenticated workflow. A valid session does not establish authority for the exact redirect.' },
+    { title: 'Operator override without exact-action evidence', body: 'Caseworkers and system operators can modify records and approve exceptions. Existing logs may identify the session without preserving the accepted authority and material parameters for one override.' },
+    { title: 'Payment destination change in an approved workflow', body: 'Wire destinations, direct-deposit targets, and disbursement accounts can change after authentication has succeeded. The executor still needs an exact-action decision.' },
   ];
 
   const HOW_EP_HELPS = [
-    { title: 'Receipt binds exact action', body: 'Every high-risk action generates an authorization receipt that binds the actor, policy, action parameters, nonce, and execution-binding fields before execution proceeds.' },
-    { title: 'Signoff ensures named human accountability', body: 'No high-risk action executes without a named principal signing off. The signoff is bound to the exact action context, not a blanket session approval.' },
-    { title: 'Evidence packet for IG and controller review', body: 'Every receipt, signoff, and execution produces a packet showing which actions would have required approval, which policy fired, and how to verify representative receipts offline.' },
+    { title: 'Receipt binds the exact action', body: 'Each protected action can return a receipt binding the presenting credential, accepted authority evidence, policy, material parameters, nonce, and admission result.' },
+    { title: 'Fresh signoff when policy requires it', body: 'A relying party can require an enrolled approver credential over the exact action. A finite mandate can authorize unattended work inside its scope; the receipt does not establish civil identity by itself.' },
+    { title: 'Evidence packet for authorized review', body: 'A packet can preserve the receipt, required approver evidence, admission, and outcome so an Inspector General, controller, or auditor can re-perform the stated checks under their own procedure.' },
     { title: 'Replay-resistant authorization', body: 'Each authorization is one-time consumable. A captured handshake cannot be replayed to authorize a different payment, amount, or destination.' },
   ];
 
   const WORKFLOWS = [
     { title: 'Vendor payment destination change', body: 'A supplier payment destination changes before the next disbursement run. GovGuard binds the exact new destination, vendor, policy, and named approver before the change can be treated as authorized.' },
-    { title: 'Disbursement or grant release', body: 'A treasury or program payment is ready to leave. GovGuard requires Class-A accountable signoff, and escalates million-dollar releases to dual authorization.' },
+    { title: 'Disbursement or grant release', body: 'A treasury or program payment is ready to leave. GovGuard applies the buyer\'s evidence policy, including a distinct-approver quorum when the configured threshold requires it.' },
     { title: 'Provider enrollment or eligibility override', body: 'A provider record, payment address, eligibility result, or caseworker override changes inside a valid session. GovGuard binds the exact exception to policy and named ownership.' },
   ];
 
@@ -76,12 +76,14 @@ export default function GovernmentUseCasePage() {
     <div style={styles.page}>
       <SiteNav activePage="" />
 
+      <main>
+
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
         <div className="ep-tag ep-hero-badge" style={{ color: color.green }}>Use Case / Government</div>
         <h1 className="ep-hero-text" style={styles.h1}>Pre-payment control for government fraud</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          The hardest fraud to stop is the fraud that happens inside legitimate sessions. Vendor payment destinations, disbursements, benefit routing, provider enrollment, and operator overrides can all pass existing authentication. GovGuard enforces trust before the high-risk action, not after the loss.
+          Authentication can be valid while a vendor destination, benefit route, provider record, or override is wrong. GovGuard adds a customer-owned exact-action decision before a configured government workflow reaches its consequence owner.
         </p>
         <div className="ep-hero-text">
           <a href="/pilot/sandbox?v=gov" className="ep-cta" style={cta.primary}>Run GovGuard Fire Drill</a>
@@ -97,9 +99,9 @@ export default function GovernmentUseCasePage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '$233B-$521B', label: 'GAO annual federal fraud loss estimate, 2018-2022 data (GAO-24-105833)', accent: color.green },
-              { value: 'GG-1', label: 'GovGuard conformance: missing receipt, wrong org, wrong approver, replay, tamper, and execution mismatch refused', accent: color.green },
-              { value: '0',     label: 'Action-level authorization receipts in most government workflows today', accent: color.t3 },
+              { value: 'Session', label: 'Authentication establishes the operator context', accent: color.green },
+              { value: 'Action', label: 'Gate checks the exact requested state change', accent: color.green },
+              { value: 'Packet', label: 'Authorized reviewers can re-perform the stated checks', accent: color.t3 },
             ].map((s, i) => (
               <div key={i} style={{ padding: '28px 24px', borderRight: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
                 <div style={{ fontFamily: font.sans, fontSize: 28, fontWeight: 700, color: s.accent, marginBottom: 6 }}>{s.value}</div>
@@ -115,7 +117,7 @@ export default function GovernmentUseCasePage() {
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>The problem</h2>
           <p style={styles.body}>
-            Government systems authenticate users. They authorize sessions. They log activity after the fact. What they do not do is enforce trust at the exact moment a high-risk action is about to execute.
+            Government systems authenticate users, authorize sessions, and log activity. Those controls do not always bind one material state change to accepted current authority. Gate adds that decision at the selected executor or system-of-record boundary.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -135,7 +137,7 @@ export default function GovernmentUseCasePage() {
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>How EMILIA helps</h2>
             <p style={styles.body}>
-              EMILIA inserts a control layer between authentication and action execution. It does not replace identity management or session controls. It adds action-level trust enforcement where none exists today.
+              EMILIA sits between authentication and a selected government action. It does not replace identity management or session controls. On a completely mediated covered path, Gate refuses provider entry without accepted exact-action authority and required evidence.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
@@ -153,13 +155,13 @@ export default function GovernmentUseCasePage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 32 }}>
           <h2 style={styles.h2}>What changes with EMILIA</h2>
-          <p style={styles.body}>Before EMILIA, a benefits redirect inside an authenticated session is invisible until post-incident review. After EMILIA:</p>
+          <p style={styles.body}>For a configured, completely mediated benefit-change or payment path, Gate adds:</p>
         </div>
         {[
-          'Every payment destination change requires a cryptographic handshake binding the exact new destination, amount, and authorizing principal',
-          'Every operator override produces a named signoff record tied to the specific action, not a session log entry',
-          'Every high-risk action is replay-resistant and one-time consumable',
-          'Inspector General and GAO auditors receive action-level evidence chains, not session-level access logs',
+          'Exact destination, amount, operation, policy, and accepted authority evidence bound together before admission',
+          'A fresh approver record tied to the action when the buyer policy requires one',
+          'One-time consumption and replay refusal for accepted authority',
+          'Action-level evidence for an authorized reviewer to inspect alongside native system logs',
         ].map((item, i) => (
           <div key={i} className={`ep-list-item ep-reveal ep-stagger-${i + 1}`}>
             <span className="ep-list-bullet">+</span>
@@ -173,7 +175,7 @@ export default function GovernmentUseCasePage() {
         <div style={styles.section}>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>Best first workflow</h2>
-            <p style={styles.body}>Pick one high-risk action surface and start with an observe-mode fire drill. These are the three most common starting points in government environments.</p>
+            <p style={styles.body}>Pick one high-risk action surface and start with a synthetic, read-only fire drill. These three examples make the authority source, material fields, and consequence owner concrete.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {WORKFLOWS.map((w, i) => (
@@ -196,7 +198,7 @@ export default function GovernmentUseCasePage() {
             Trust before high-risk action in government workflows
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', maxWidth: 520, lineHeight: 1.7, marginBottom: 32 }}>
-            EMILIA is selectively working with government agencies, system integrators, and public-sector technology teams to pilot action-level trust enforcement.
+            The protected-workflow pilot is available to government agencies, system integrators, and public-sector technology teams that can name one consequence owner and one exact action schema.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="/pilot/sandbox?v=gov" className="ep-cta" style={cta.primary}>Run GovGuard Fire Drill</a>
@@ -209,6 +211,9 @@ export default function GovernmentUseCasePage() {
       <section id="pilot" style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 32 }}>
           <h2 style={styles.h2}>Request a pilot</h2>
+          <p style={styles.body}>
+            {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · {PROTECTED_WORKFLOW_PILOT.workflowLabel}. {PROTECTED_WORKFLOW_PILOT.rolloutLabel}.
+          </p>
         </div>
         {submitted ? (
           <div style={{ border: `1px solid ${color.border}`, borderTop: `2px solid ${color.green}`, borderRadius: radius.base, padding: 40, textAlign: 'center' }}>
@@ -254,6 +259,8 @@ export default function GovernmentUseCasePage() {
           </form>
         )}
       </section>
+
+      </main>
 
       <SiteFooter />
     </div>

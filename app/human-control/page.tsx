@@ -10,6 +10,7 @@ import { motion } from 'motion/react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -24,52 +25,52 @@ const reveal = (delay = 0) => ({
 const MODES = [
   {
     tag: 'Human-in-the-loop',
-    line: 'One receipt per action.',
-    body: 'A human authorizes each consequential action before it executes. No valid '
-      + 'receipt bound to the exact action — the system fails closed. For the highest-'
-      + 'consequence decisions where machine tempo allows a human gate.',
+    line: 'Fresh approval for the selected action.',
+    body: 'When local policy requires a fresh decision, Gate checks an accepted enrolled '
+      + 'approver credential bound to the exact action. On a completely mediated covered '
+      + 'path, missing or invalid required evidence means no provider entry.',
   },
   {
     tag: 'Human-on-the-loop',
-    line: 'One receipt per envelope.',
-    body: 'A human authorizes a bounded engagement envelope — effect class, target set, '
-      + 'geofence, time window — and retains a halt authority. Autonomy operates only '
-      + 'inside the envelope, only while unrevoked and unexpired.',
+    line: 'Finite authority for unattended work.',
+    body: 'An accepted authority source can define a bounded envelope — effect class, target '
+      + 'set, geofence, time window, limits, and exception rules. Gate admits only matching '
+      + 'actions while that authority remains current and unexhausted.',
   },
 ];
 
 // Mission requirement -> shipped EMILIA mechanism.
 const MAP = [
-  ['A named, accountable human — not a shared console login', 'Device-bound signoff (WebAuthn + user verification)'],
-  ['Two-person rule / launch authority', 'Quorum — m-of-n distinct humans, ordered chain'],
+  ['An accountable approver credential, not a shared session', 'Device-bound signoff plus a relying-party-pinned approver directory and role policy'],
+  ['Two-person rule / launch authority', 'Quorum over distinct enrolled approver credentials with ordered-chain support'],
   ['Authority bounded by rules of engagement', 'Monotonic delegation constraints + signed ROE / policy reference'],
   ['The order was current, not a stale standing authorization', 'Validity window + observed-evidence freshness (fail-closed)'],
   ['Revoke or halt an autonomous envelope', 'Revocation + continuous evaluation'],
-  ['Contested, disconnected, classified operations', 'Fully offline verification; air-gap deployment'],
-  ['No verified human authorization → no effect', 'Fail-closed enforcement — "no receipt, no execution"'],
+  ['Contested, disconnected, classified operations', 'Offline verification and an air-gap-capable deployment pattern'],
+  ['No accepted fresh approval when policy requires it', 'No provider entry on a completely mediated covered path'],
 ];
 
-// Governing instruments that require human control but can't currently prove it.
-const DOCTRINE = [
+// Reference points for customer-authored mappings, not legal-compliance claims.
+const REFERENCE_POINTS = [
   {
     ref: 'DoD Directive 3000.09',
-    burden: '"Appropriate levels of human judgment over the use of force" — plus auditable, traceable, governable AI.',
-    ep: 'A receipt proves a named human — or two-person quorum — authorized the exact engagement, within a defined envelope, verifiable offline by an inspector general or coalition partner without trusting the operator. (The primary U.S. defense hook.)',
+    burden: 'Programs define their own human-judgment, authorization, review, and system-safety procedures under the controlling directive and implementation guidance.',
+    ep: 'EMILIA can preserve exact-action or bounded-envelope approval evidence for a program-authored procedure. It does not determine whether that procedure satisfies the directive.',
   },
   {
     ref: 'EU AI Act · Article 14',
-    burden: 'Civilian high-risk AI must be "effectively overseen by natural persons" who can decide not to use it and intervene.',
-    ep: 'The receipt proves a natural person authorized the action; fail-closed enforcement is the "decide not to use it"; revocation is the stop button. (Civilian tailwind — the Act excludes exclusively military/defense systems; there, DoD 3000.09 governs.)',
+    burden: 'Organizations assessing Article 14 need to document how their complete high-risk AI system enables the applicable human-oversight measures.',
+    ep: 'An action-bound approval or refusal can support that evidence file. A receipt alone does not establish natural-person identity, effective oversight, system classification, or legal compliance.',
   },
   {
     ref: 'NIST AI RMF',
-    burden: 'Documented, auditable human oversight across GOVERN / MAP / MEASURE / MANAGE.',
-    ep: 'Receipts are the auditable record of who authorized what, under which policy — verifiable, not asserted.',
+    burden: 'The framework gives organizations a vocabulary for governing, mapping, measuring, and managing AI risk.',
+    ep: 'EMILIA publishes a control-to-evidence mapping and can preserve action-level inputs for an organization\'s own assessment. The mapping is not certification or a compliance verdict.',
   },
   {
     ref: 'UN CCW · LAWS',
-    burden: 'The entire debate turns on demonstrating "meaningful human control."',
-    ep: 'EMILIA turns meaningful human control from doctrine into a cryptographic artifact a third party can check.',
+    burden: 'Discussions about autonomous weapons include contested questions about human judgment, responsibility, predictability, and control.',
+    ep: 'A signed action or envelope record can answer one evidentiary question: what a pinned credential signed. It does not resolve the policy or legal debate.',
   },
 ];
 
@@ -77,6 +78,8 @@ export default function HumanControlPage() {
   return (
     <div style={styles.page}>
       <SiteNav activePage="Human Control" />
+
+      <main>
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56 }}>
@@ -89,17 +92,14 @@ export default function HumanControlPage() {
             Verifiable human-authorization evidence · for autonomous action
           </div>
           <h1 style={styles.h1Large}>
-            Everyone requires a human<br />in the loop.<br />No one can prove it.
+            Make the approval boundary<br />checkable after the fact.
           </h1>
           <p style={{ ...styles.body, maxWidth: 600, fontSize: 18, color: color.t2 }}>
-            Doctrine and law — DoD Directive 3000.09, EU AI Act Article 14, NIST AI RMF —
-            all mandate meaningful human control over autonomous action. None of them
-            provides an artifact that <strong>proves it</strong>. Today that proof is a log
-            the operator controls: forgeable, backfillable, rubber-stampable. EMILIA Protocol
-            produces an <strong>offline-verifiable receipt</strong> that a named human
-            authorized the exact action — checkable by a third party without trusting the
-            operator. EP turns human oversight from a policy promise into a cryptographic
-            artifact — no irreversible autonomous action without a verifiable human receipt.
+            Oversight rules differ by system, jurisdiction, and consequence. EMILIA does not
+            decide when a human must act. It gives the relying party a way to require an
+            enrolled approver credential over the exact action or a finite operating mandate,
+            then verify that artifact offline under pinned keys and rules. On a completely
+            mediated covered path, Gate refuses provider entry when the required evidence is missing.
           </p>
         </motion.div>
 
@@ -109,7 +109,7 @@ export default function HumanControlPage() {
           transition={{ duration: 0.6, delay: 0.18, ease: EASE }}
           style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}
         >
-          <a href="/contact" className="ep-cta" style={cta.primary}>Request a lighthouse pilot</a>
+          <a href="/pilot?v=human-control" className="ep-cta" style={cta.primary}>Scope the protected-workflow pilot</a>
           <a href="/demo" className="ep-cta" style={cta.secondary}>See the receipt verify offline</a>
         </motion.div>
       </section>
@@ -118,13 +118,13 @@ export default function HumanControlPage() {
       <section style={{ ...styles.section, paddingTop: 8, paddingBottom: 48 }}>
         <motion.div {...reveal()}>
           <div style={styles.eyebrow}>The evidence gap</div>
-          <h2 style={styles.h2}>The hard problem isn&apos;t the policy. It&apos;s the proof.</h2>
+          <h2 style={styles.h2}>The hard problem isn&apos;t the policy. It&apos;s the evidence.</h2>
           <p style={{ ...styles.body, maxWidth: 640, color: color.t2 }}>
-            When an autonomous system acts, the record that a named, accountable human
-            authorized <em>that exact</em> engagement — at the right scope, currently, under
-            the right authority — is an operator-owned log. After an incident, no inspector
-            general, court, coalition partner, or treaty-verification regime can confirm it
-            without trusting the very operator under review. EMILIA closes exactly that gap.
+            A session log can show who was logged in without preserving the exact action,
+            accepted authority, approver credential, policy, and validity window as one
+            portable record. EMILIA makes those stated inputs independently re-performable.
+            The relying party still owns the approver directory, role assignment, policy,
+            and conclusion drawn from that evidence.
           </p>
         </motion.div>
       </section>
@@ -135,8 +135,8 @@ export default function HumanControlPage() {
           <div style={styles.eyebrow}>At the authorization boundary</div>
           <h2 style={styles.h2}>Not every cycle. The moments that matter.</h2>
           <p style={{ ...styles.body, maxWidth: 620, color: color.t2, marginBottom: 32 }}>
-            Per-cycle human approval is incompatible with machine tempo. EMILIA issues
-            receipts at the points where a human grants, scopes, or renews autonomous authority.
+            A finite operating mandate can let an agent work unattended inside clear limits.
+            Fresh approval is reserved for the actions or exceptions the buyer&apos;s policy selects.
           </p>
         </motion.div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
@@ -156,8 +156,8 @@ export default function HumanControlPage() {
       {/* Mission requirement -> EMILIA mechanism */}
       <section style={{ ...styles.section, paddingTop: 56, paddingBottom: 56 }}>
         <motion.div {...reveal()}>
-          <div style={styles.eyebrow}>It already does what the mission needs</div>
-          <h2 style={styles.h2}>Shipped mechanisms, mapped to the requirement.</h2>
+          <div style={styles.eyebrow}>Evidence mechanisms</div>
+          <h2 style={styles.h2}>Map each local requirement to a checkable artifact.</h2>
         </motion.div>
         <div style={{ marginTop: 24, border: `1px solid ${color.border}`, borderRadius: radius.base, overflow: 'hidden' }}>
           {MAP.map(([req, mech], i) => (
@@ -178,11 +178,11 @@ export default function HumanControlPage() {
       {/* Doctrine */}
       <section style={{ ...styles.section, ...styles.sectionAlt, paddingTop: 56, paddingBottom: 56 }}>
         <motion.div {...reveal()}>
-          <div style={styles.eyebrow}>The requirement is already written</div>
-          <h2 style={styles.h2}>Four instruments mandate it. None can prove it.</h2>
+          <div style={styles.eyebrow}>Reference points</div>
+          <h2 style={styles.h2}>Use the evidence in an authorized review, not as a shortcut.</h2>
         </motion.div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 24 }}>
-          {DOCTRINE.map((d, i) => (
+          {REFERENCE_POINTS.map((d, i) => (
             <motion.div key={d.ref} {...reveal(i * 0.06)} style={{ ...styles.card, padding: 24 }}>
               <div style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 700, color: color.gold, letterSpacing: 0.5 }}>{d.ref}</div>
               <p style={{ ...styles.body, color: color.t2, fontStyle: 'italic', margin: '12px 0' }}>{d.burden}</p>
@@ -192,34 +192,32 @@ export default function HumanControlPage() {
         </div>
       </section>
 
-      {/* What it proves / does not */}
+      {/* What it verifies / does not establish */}
       <section style={{ ...styles.section, paddingTop: 56, paddingBottom: 56 }}>
         <motion.div {...reveal()}>
           <div style={styles.eyebrow}>Stated plainly</div>
-          <h2 style={styles.h2}>It proves authorization. Not wisdom.</h2>
+          <h2 style={styles.h2}>It verifies a signed authorization artifact. Not wisdom.</h2>
           <p style={{ ...styles.body, maxWidth: 620, color: color.t2, marginBottom: 28 }}>
             Serious programs will ask exactly where the line is. So we draw it.
           </p>
         </motion.div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
           <motion.div {...reveal()} style={{ ...styles.card, padding: 26, borderTop: `2px solid ${color.green}` }}>
-            <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: color.green, marginBottom: 12 }}>Proves</div>
+            <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: color.green, marginBottom: 12 }}>Verifies</div>
             <p style={{ ...styles.body, color: color.t2, margin: 0 }}>
-              A specific, pinned human — or quorum of distinct humans — authorized this exact
-              action or bounded envelope, at a stated scope, within a validity window, under a
-              referenced authority. Given signature soundness and uncompromised signing keys,
-              the record&apos;s signature verifies only under the pinned key, so forging it
-              requires possession of that key, and any replay or re-targeting to a different
-              action or scope invalidates the signature. Anyone can verify it offline.
+              A specific enrolled credential — or quorum of distinct enrolled credentials —
+              signed this exact action or bounded envelope, at a stated scope and within a
+              validity window. Under the verifier&apos;s assumptions and the relying party&apos;s
+              pinned keys, the signature and action binding can be checked offline. The relying
+              party separately decides whether that credential was accepted for the required role.
             </p>
           </motion.div>
           <motion.div {...reveal(0.08)} style={{ ...styles.card, padding: 26, borderTop: `2px solid ${color.t3}` }}>
             <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: color.t3, marginBottom: 12 }}>Does not prove</div>
             <p style={{ ...styles.body, color: color.t2, margin: 0 }}>
-              That the human <em>understood</em> the action (a display / WYSIWYS concern), that
-              they were uncoerced, or that the action was lawful or wise. EMILIA is the evidence
-              of authorization — a necessary, not sufficient, condition for meaningful human
-              control. Over-claiming is how accountability tech loses trust.
+              The artifact does not establish the approver&apos;s civil identity, understanding,
+              freedom from coercion, legal authority, or the wisdom or lawfulness of the action.
+              It is one verifiable input to the relying party&apos;s broader control and review procedure.
             </p>
           </motion.div>
         </div>
@@ -229,19 +227,19 @@ export default function HumanControlPage() {
       <section style={{ ...styles.section, ...styles.sectionAlt, paddingTop: 64, paddingBottom: 72, textAlign: 'center' }}>
         <motion.div {...reveal()}>
           <h2 style={{ ...styles.h2, maxWidth: 720, margin: '0 auto 16px' }}>
-            Make meaningful human control checkable.
+            Make required approval evidence checkable.
           </h2>
           <p style={{ ...styles.body, maxWidth: 560, margin: '0 auto 28px', color: color.t2 }}>
-            A lighthouse pilot: deploy EMILIA in observe-mode on one human-control boundary,
-            produce the verifiable evidence trail, and demonstrate the compliance artifact in a
-            tabletop review. No production change. Offline and air-gap ready. Apache-2.0.
+            {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · {PROTECTED_WORKFLOW_PILOT.workflowLabel}. Map the authority source, produce synthetic and read-only evidence, and run a tabletop re-performance. Production is separately scoped after buyer acceptance.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/contact" className="ep-cta" style={cta.primary}>Start a pilot conversation</a>
+            <a href="/pilot?v=human-control" className="ep-cta" style={cta.primary}>Scope the protected-workflow pilot</a>
             <a href="/docs" className="ep-cta" style={cta.secondary}>Read PIP-013 &amp; the crosswalk</a>
           </div>
         </motion.div>
       </section>
+
+      </main>
 
       <SiteFooter />
     </div>

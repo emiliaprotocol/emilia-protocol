@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, grid, font, radius } from '@/lib/tokens';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 
 export const metadata: Metadata = {
   title: 'Cross-Rail Authority for Agentic Commerce',
-  description: 'Payment partners move money. EMILIA determines whether an exact agent transaction is authorized to reach them.',
+  description: 'Payment partners move money. EMILIA Gate checks accepted exact-action authority and required evidence before a covered transaction reaches a configured connector.',
   alternates: { canonical: '/financial' },
 };
 
@@ -20,21 +21,25 @@ export default function FinancialPage() {
   return (
     <div style={styles.page}>
       <SiteNav activePage="Financial" />
+      <main>
       <section style={{ ...styles.sectionWide, paddingTop: 96 }}>
         <div style={styles.eyebrowBlue}>Cross-Rail Authority</div>
         <h1 style={styles.h1Large}>Let agents transact without giving them the keys</h1>
         <p style={{ ...styles.body, maxWidth: 760 }}>
-          Payment partners move the money. EMILIA determines whether the exact transaction is authorized to reach them—under a current allowance, within a durable budget, and with accountable human approval when policy requires it.
+          Payment partners move the money. On a completely mediated covered path, EMILIA Gate checks whether the exact transaction has accepted authority and required evidence before provider entry. Human approval is one optional evidence source when the buyer&apos;s policy requires it.
+        </p>
+        <p style={{ ...styles.body, maxWidth: 760 }}>
+          {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · {PROTECTED_WORKFLOW_PILOT.workflowLabel}. {PROTECTED_WORKFLOW_PILOT.rolloutLabel}.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
-          <a href="mailto:team@emiliaprotocol.ai?subject=Financial%20pilot%20request" className="ep-cta" style={cta.primaryBlue}>Request Financial Pilot</a>
+          <a href="/pilot?v=fin" className="ep-cta" style={cta.primaryBlue}>Scope the protected-workflow pilot</a>
           <a href="/spec" className="ep-cta-secondary" style={cta.secondaryBlue}>Read the Protocol</a>
         </div>
       </section>
 
       <section style={styles.sectionAlt}>
         <div style={styles.sectionWide}>
-          <h2 style={styles.h2}>One authority layer across payment partners</h2>
+          <h2 style={styles.h2}>One authority contract across configured payment partners</h2>
           <div style={grid.auto(240)}>
             {cards.map(([title, body]) => (
               <div key={title} className="ep-card-hover" style={styles.card}>
@@ -47,7 +52,7 @@ export default function FinancialPage() {
       </section>
 
       <section style={styles.sectionWide}>
-        <h2 style={styles.h2}>What Gate establishes before a transaction reaches a partner</h2>
+        <h2 style={styles.h2}>What Gate evaluates and records before a transaction reaches a partner</h2>
         <ul style={styles.list}>
           <li>Who or what is acting, under which bounded authority</li>
           <li>The exact amount, currency, counterparty, instrument, operation, and provider request</li>
@@ -75,7 +80,7 @@ export default function FinancialPage() {
       <section style={styles.sectionAlt}>
         <div style={styles.sectionWide}>
           <h2 style={styles.h2}>Best first pilot</h2>
-          <p style={styles.body}>Put one customer-owned Gate in front of one typed partner action.</p>
+          <p style={styles.body}>Map and validate one customer-owned Gate around one typed partner action. The public pilot remains synthetic and read-only; production is separately scoped after buyer acceptance.</p>
           <ul style={{ ...styles.list, marginTop: 16 }}>
             <li>Define one bounded operating allowance</li>
             <li>Pin one external policy or risk decision source</li>
@@ -83,10 +88,12 @@ export default function FinancialPage() {
             <li>Measure refused, admitted, and indeterminate transactions without exposing payment details</li>
           </ul>
           <div style={{ marginTop: 24 }}>
-            <a href="mailto:team@emiliaprotocol.ai?subject=Financial%20pilot%20request" className="ep-cta" style={cta.primaryBlue}>Request Financial Pilot</a>
+            <a href="/pilot?v=fin" className="ep-cta" style={cta.primaryBlue}>Scope the protected-workflow pilot</a>
           </div>
         </div>
       </section>
+
+      </main>
 
       <SiteFooter />
     </div>
