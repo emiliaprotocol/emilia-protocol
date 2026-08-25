@@ -25,9 +25,11 @@ export const AGENT_MAILBOX_ENVELOPE_VERSION = 'EP-AGENT-MAILBOX-ENVELOPE-v0.1';
 export const AGENT_MAILBOX_DELIVERY_RECEIPT_VERSION = 'EP-AGENT-MAILBOX-DELIVERY-RECEIPT-v0.1';
 export const AGENT_MAILBOX_ENVELOPE_VERIFICATION_PROFILE = 'EP-AGENT-MAILBOX-ENVELOPE-VERIFICATION-v0.1';
 export const AGENT_MAILBOX_DELIVERY_VERIFICATION_PROFILE = 'EP-AGENT-MAILBOX-DELIVERY-VERIFICATION-v0.1';
+export const AGENT_MAILBOX_STORED_DELIVERY_VERSION = 'EP-AGENT-MAILBOX-STORED-DELIVERY-v0.1';
 
 const ENVELOPE_DOMAIN = Buffer.from(`${AGENT_MAILBOX_ENVELOPE_VERSION}\0`, 'utf8');
 const RECEIPT_DOMAIN = Buffer.from(`${AGENT_MAILBOX_DELIVERY_RECEIPT_VERSION}\0`, 'utf8');
+const STORED_DELIVERY_DOMAIN = Buffer.from(`${AGENT_MAILBOX_STORED_DELIVERY_VERSION}\0`, 'utf8');
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/;
@@ -76,6 +78,21 @@ const RECEIPT_KEYS = new Set([
   'signer_key_id',
   'signature',
 ]);
+const SENDER_VERIFICATION_KEYS = new Set([
+  'verification_profile',
+  'sender_id',
+  'signer_key_id',
+  'public_key_spki_b64u',
+  'verified_at',
+  'authorizes',
+]);
+const DELIVERY_BINDING_KEYS = new Set([
+  '@version',
+  'mailbox_id',
+  'signer_key_id',
+  'authorizes',
+  'signature',
+]);
 const STORED_ENVELOPE_KEYS = new Set([
   'recipient_id',
   'envelope_id',
@@ -83,6 +100,8 @@ const STORED_ENVELOPE_KEYS = new Set([
   'envelope',
   'received_at',
   'read_at',
+  'sender_verification',
+  'delivery_binding',
 ]);
 const STORE_PUT_RESULT_KEYS = new Set(['outcome', 'record']);
 const ADMISSION_RESULT_KEYS = new Set([
@@ -96,7 +115,27 @@ const ADMISSION_RESULT_KEYS = new Set([
 const MAX_CANONICAL_NODES = 10_000;
 const MAX_CANONICAL_STRING_BYTES = 262_144;
 const FILE_STORE_QUEUES = new Map<string, Promise<void>>();
-const VERIFIED_ENVELOPE_RESULTS = new WeakSet<object>();
+type SenderVerification = {
+  verification_profile: typeof AGENT_MAILBOX_ENVELOPE_VERIFICATION_PROFILE;
+  sender_id: string;
+  signer_key_id: string;
+  public_key_spki_b64u: string;
+  verified_at: string;
+  authorizes: false;
+};
+
+type DeliveryBinding = {
+  '@version': typeof AGENT_MAILBOX_STORED_DELIVERY_VERSION;
+  mailbox_id: string;
+  signer_key_id: string;
+  authorizes: false;
+  signature: {
+    algorithm: 'Ed25519';
+    value: string;
+  };
+};
+
+const VERIFIED_ENVELOPE_RESULTS = new WeakMap<object, SenderVerification>();
 
 type JsonRecord = Record<string, any>;
 
@@ -107,6 +146,8 @@ type StoredEnvelope = {
   envelope: JsonRecord;
   received_at: string;
   read_at: string | null;
+  sender_verification: SenderVerification;
+  delivery_binding: DeliveryBinding;
 };
 
 type AgentMailboxStore = {
@@ -360,7 +401,8 @@ export function verifyAgentMailboxEnvelope(envelope: unknown, options: {
     return envelopeRefusal('sender_key_not_pinned', envelopeDigest);
   }
   if (sender.status !== 'active') return envelopeRefusal('sender_key_not_active', envelopeDigest);
-  const publicKey = publicEd25519(sender.public_key_spki_b64u);
+  const publicKeySpkiB64u = sender.public_key_spki_b64u;
+  const publicKey = publicEd25519(publicKeySpkiB64u);
   if (!publicKey) return envelopeRefusal('sender_key_invalid', envelopeDigest);
   const { signature, ...unsigned } = envelope;
   if (!verify(ENVELOPE_DOMAIN, unsigned, signature.value, publicKey)) {
@@ -374,12 +416,41 @@ export function verifyAgentMailboxEnvelope(envelope: unknown, options: {
     envelope_digest: envelopeDigest,
     authorizes: false as const,
   });
-  VERIFIED_ENVELOPE_RESULTS.add(result);
+  VERIFIED_ENVELOPE_RESULTS.set(result, deepFreeze({
+    verification_profile: AGENT_MAILBOX_ENVELOPE_VERIFICATION_PROFILE,
+    sender_id: envelope.sender_id,
+    signer_key_id: envelope.signer_key_id,
+    public_key_spki_b64u: publicKeySpkiB64u,
+    verified_at: asOf,
+    authorizes: false as const,
+  }));
   return result;
 }
 
 function copyRecord(record: StoredEnvelope): StoredEnvelope {
   return structuredClone(record);
+}
+
+function storedDeliverySigningValue(
+  record: Pick<StoredEnvelope,
+    'recipient_id' | 'envelope_id' | 'envelope_digest' | 'envelope'
+    | 'received_at' | 'sender_verification'>,
+  binding: Omit<DeliveryBinding, 'signature'>,
+): JsonRecord {
+  // read_at is mutable acknowledgement metadata. The delivery binding covers
+  // every immutable field, including the exact delivery-time sender key, and
+  // remains non-authorizing as both the envelope and bindings declare.
+  return {
+    ...binding,
+    stored_delivery: {
+      recipient_id: record.recipient_id,
+      envelope_id: record.envelope_id,
+      envelope_digest: record.envelope_digest,
+      envelope: record.envelope,
+      received_at: record.received_at,
+      sender_verification: record.sender_verification,
+    },
+  };
 }
 
 export function createMemoryAgentMailboxStore(): AgentMailboxStore {
@@ -446,6 +517,21 @@ function checkedStoredEnvelope(value: unknown): StoredEnvelope | null {
       || !canonicalInstant(record.received_at)
       || (record.read_at !== null && !canonicalInstant(record.read_at))
       || (record.read_at !== null && Date.parse(record.read_at) < Date.parse(record.received_at))
+      || !exactKeys(record.sender_verification, SENDER_VERIFICATION_KEYS)
+      || record.sender_verification.verification_profile !== AGENT_MAILBOX_ENVELOPE_VERIFICATION_PROFILE
+      || !identifier(record.sender_verification.sender_id)
+      || !identifier(record.sender_verification.signer_key_id)
+      || !publicEd25519(record.sender_verification.public_key_spki_b64u)
+      || record.sender_verification.verified_at !== record.received_at
+      || record.sender_verification.authorizes !== false
+      || !exactKeys(record.delivery_binding, DELIVERY_BINDING_KEYS)
+      || record.delivery_binding['@version'] !== AGENT_MAILBOX_STORED_DELIVERY_VERSION
+      || !identifier(record.delivery_binding.mailbox_id)
+      || !identifier(record.delivery_binding.signer_key_id)
+      || record.delivery_binding.authorizes !== false
+      || !exactKeys(record.delivery_binding.signature, SIGNATURE_KEYS)
+      || record.delivery_binding.signature.algorithm !== 'Ed25519'
+      || !ed25519Signature(record.delivery_binding.signature.value)
       || !exactKeys(record.envelope, ENVELOPE_KEYS)
       || record.envelope.envelope_id !== record.envelope_id
       || record.envelope.recipient_id !== record.recipient_id
@@ -458,6 +544,8 @@ function checkedStoredEnvelope(value: unknown): StoredEnvelope | null {
       || !exactKeys(record.envelope.authority, AUTHORITY_KEYS)
       || record.envelope.authority.authorizes !== false
       || !identifier(record.envelope.signer_key_id)
+      || record.sender_verification.sender_id !== record.envelope.sender_id
+      || record.sender_verification.signer_key_id !== record.envelope.signer_key_id
       || !exactKeys(record.envelope.signature, SIGNATURE_KEYS)
       || record.envelope.signature.algorithm !== 'Ed25519'
       || !ed25519Signature(record.envelope.signature.value)) {
@@ -470,6 +558,37 @@ function checkedStoredEnvelope(value: unknown): StoredEnvelope | null {
     return null;
   }
   return canonicalCopy(record) as StoredEnvelope;
+}
+
+function verifyStoredEnvelope(record: StoredEnvelope, options: {
+  mailboxId: string;
+  keyId: string;
+  publicKey: crypto.KeyObject;
+}): boolean {
+  if (record.delivery_binding.mailbox_id !== options.mailboxId
+      || record.delivery_binding.signer_key_id !== options.keyId) return false;
+  const { signature, ...binding } = record.delivery_binding;
+  if (!verify(
+    STORED_DELIVERY_DOMAIN,
+    storedDeliverySigningValue(record, binding),
+    signature.value,
+    options.publicKey,
+  )) return false;
+
+  const senderDirectory: JsonRecord = Object.create(null);
+  senderDirectory[record.sender_verification.sender_id] = {
+    key_id: record.sender_verification.signer_key_id,
+    public_key_spki_b64u: record.sender_verification.public_key_spki_b64u,
+    status: 'active',
+  };
+  const verification = verifyAgentMailboxEnvelope(record.envelope, {
+    senderDirectory,
+    expectedRecipientId: record.recipient_id,
+    asOf: record.sender_verification.verified_at,
+  });
+  return verification.accepted === true
+    && verification.envelope_digest === record.envelope_digest
+    && verification.authorizes === false;
 }
 
 function parseStoredEnvelope(raw: string): StoredEnvelope {
@@ -723,6 +842,7 @@ export function createAgentMailbox(options: {
   }
   const privateKey = privateEd25519(options.privateKey);
   if (!privateKey) throw new TypeError('mailbox_service_ed25519_key_required');
+  const publicKey = crypto.createPublicKey(privateKey);
   if (typeof options.now !== 'function' || !isRecord(options.senderDirectory)) {
     throw new TypeError('mailbox_service_configuration_invalid');
   }
@@ -776,16 +896,52 @@ export function createAgentMailbox(options: {
           reason: verification.reason,
         });
       }
-      const stored: StoredEnvelope = {
+      const senderVerification = VERIFIED_ENVELOPE_RESULTS.get(verification);
+      if (!senderVerification) {
+        return receipt({
+          envelopeId: candidate.envelope_id,
+          envelopeDigest: verification.envelope_digest,
+          recipientId,
+          receivedAt,
+          deliveryStatus: 'REFUSED',
+          reason: 'mailbox_sender_verification_unavailable',
+        });
+      }
+      const storedDelivery = {
         recipient_id: recipientId,
         envelope_id: candidate.envelope_id,
         envelope_digest: verification.envelope_digest,
         envelope: canonicalCopy(candidate),
         received_at: receivedAt,
         read_at: null,
+        sender_verification: canonicalCopy(senderVerification),
+      };
+      const deliveryBinding: Omit<DeliveryBinding, 'signature'> = {
+        '@version': AGENT_MAILBOX_STORED_DELIVERY_VERSION,
+        mailbox_id: options.mailboxId,
+        signer_key_id: options.keyId,
+        authorizes: false as const,
+      };
+      const stored: StoredEnvelope = {
+        ...storedDelivery,
+        delivery_binding: {
+          ...deliveryBinding,
+          signature: {
+            algorithm: 'Ed25519',
+            value: sign(
+              STORED_DELIVERY_DOMAIN,
+              storedDeliverySigningValue(storedDelivery, deliveryBinding),
+              privateKey,
+            ),
+          },
+        },
       };
       const result = checkedStorePutResult(await options.store.put(stored), stored);
-      if (!result) {
+      if (!result || !verifyStoredEnvelope(result.record, {
+        mailboxId: options.mailboxId,
+        keyId: options.keyId,
+        publicKey,
+      })) {
         return receipt({
           envelopeId: candidate.envelope_id,
           envelopeDigest: verification.envelope_digest,
@@ -841,12 +997,11 @@ export function createAgentMailbox(options: {
         if (!record || record.recipient_id !== recipientId) {
           throw new Error('mailbox_store_result_invalid');
         }
-        const verification = verifyAgentMailboxEnvelope(record.envelope, {
-          senderDirectory: options.senderDirectory,
-          expectedRecipientId: recipientId,
-          asOf: record.received_at,
-        });
-        if (!verification.accepted || verification.envelope_digest !== record.envelope_digest) {
+        if (!verifyStoredEnvelope(record, {
+          mailboxId: options.mailboxId,
+          keyId: options.keyId,
+          publicKey,
+        })) {
           throw new Error('mailbox_store_result_invalid');
         }
         records.push(copyRecord(record));
