@@ -507,7 +507,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "f25ce97a684bf3d15801d7cfcb54ee4d474990987ef52fed565f3f6816e685a2"
+      "sha256": "72c3f85583b2cb01836148fdcf3124fa788811342fe8784df04f5c2c95720fc5"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1255,7 +1255,7 @@
     },
     {
       "path": "packages/verify/dist/scitt-statement.js",
-      "sha256": "22cf4983fe58b82e1c68b302587844c0036d3b0078a888d417c8356d791d4222"
+      "sha256": "65bb36c16e2511081b73276c64cb087ce165ee1b27fa0cd12a013d2c7426ac1e"
     },
     {
       "path": "packages/verify/dist/soma-cogobj-profile.js",
