@@ -54,8 +54,10 @@ envelope digests. The authorization reference therefore uses
 `statement_entry_digest` separately to locate the logged envelope. The
 runnable
 [`EP-SCITT-STATEMENT-IDENTITY-v0.1`](../conformance/composition/scitt-statement-identity-v0.1/README.md)
-profile proves the separation with a P-256 signature pair and the local EP
-verifier.
+profile proves the separation with a deliberate P-256 high-S/low-S ECDSA
+malleability pair and the local EP verifier. Enforcing canonical low-S at an
+ingress rejects the high-S form there; it does not collapse exact-envelope,
+signing-input, and application-claim identity into one protocol concept.
 
 ## 2. Registration (SCRAPI)
 

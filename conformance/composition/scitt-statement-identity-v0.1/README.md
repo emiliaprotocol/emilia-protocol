@@ -6,6 +6,15 @@ A fixed P-256 signing input has two mathematically equivalent signatures. Both
 verify, both envelopes are deterministically encoded, and the exact envelope
 digests differ.
 
+The fixture is the classic ECDSA `s`-malleability pair: both signatures have
+the same `r`, and `s_B = n - s_A`; signature A is high-S and signature B is
+the canonical low-S form. They are not two separate signing executions.
+Rejecting high-S signatures at an ingress can prevent that verifier from
+accepting the non-canonical form. It does not, by itself, decide whether a
+Transparency Service entry, a signing input, and an application claim should
+share one identifier, especially when an envelope was registered or transformed
+before that check.
+
 The profile keeps three identities separate:
 
 | Identity | Computation | Meaning |
