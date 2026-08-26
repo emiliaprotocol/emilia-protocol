@@ -6,11 +6,11 @@
     "draft_sha256": "c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9",
     "source_lock": "draft-correctover-ccs-05-v1.3-c91f0fa31b1b9e5",
     "reference_codeberg_commit": "a5cddf5093724ab149059ce1f2d507b5d0aeb36d",
-    "reference_pypi_version": "1.1.14",
+    "reference_pypi_version": "1.1.19",
     "adapter_id": "native:ccs-05-v1.3-ed25519",
     "adapter_version": "1",
     "mapping_profile_digest": "sha256:0cc7a31b09bbb13d8d4c0a53f53c17c7911668795d2820b9837c029594eeffe8",
-    "sample_set_digest": "sha256:025e2fced6512318e211931f62a75b0388a17bc2e12f09c005b5c080ffeed7cc"
+    "sample_set_digest": "sha256:c97cfed77bc958710d54e3261d953b14b75178bf9279f06d109a83a03d15d833"
   },
   "checks": [
     {
@@ -29,7 +29,7 @@
       "description": "The v1.3 draft shape is not relabeled as the published package v1.1 receipt.",
       "passed": true,
       "observed": {
-        "package_version": "1.1.14",
+        "package_version": "1.1.19",
         "receipt_fields": 22
       }
     },
@@ -264,11 +264,11 @@
   ],
   "passed": true,
   "known_limits": [
-    "This is an independent implementation of the CCS-05 v1.3 receipt profile, not a claim that ccs-verifier 1.1.14 emits the same shape.",
+    "This is an independent implementation of the CCS-05 v1.3 receipt profile, not a claim that ccs-verifier 1.1.19 emits the same shape.",
     "The public test keys are not production trust anchors.",
     "A CCS allow is machine-policy-decision evidence. It is not human authorization, AEB admission, provider entry, or effect proof.",
     "The adapter verifies the Ed25519 signature. The legacy HMAC receipt field is retained as signed issuer data, not a cross-domain trust root.",
     "A passing report is a self-attested reproduction package until an external operator independently runs it."
   ],
-  "report_digest": "sha256:de00938d556a48a9aa83ad95994b4d6dcc7d926f618ba4c32950bde31087a603"
+  "report_digest": "sha256:71312fcfaeb17321cc4d01375adb8c78fbf87b4bbda8ba9d3254880b8e9e4d98"
 }

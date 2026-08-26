@@ -343,7 +343,7 @@ export function runSuite() {
       CCS_V13_DRAFT_SHA256 === 'c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9',
       { source: CCS_V13_SOURCE_LOCK, draft_sha256: CCS_V13_DRAFT_SHA256 }),
     check('CCS-V13-SHAPE-SEPARATION', 'CCS', 'The v1.3 draft shape is not relabeled as the published package v1.1 receipt.',
-      CCS_V13_REFERENCE_PYPI_VERSION === '1.1.14' && !('receipt_version' in f.allowReceipt),
+      CCS_V13_REFERENCE_PYPI_VERSION === '1.1.19' && !('receipt_version' in f.allowReceipt),
       { package_version: CCS_V13_REFERENCE_PYPI_VERSION, receipt_fields: Object.keys(f.allowReceipt).length }),
     check('LIVE-SUM-EXECUTED', 'LIVE-RUN', 'The protected local operation executed and returned the response bound by the receipt.',
       f.response.result === 42 && f.allowReceipt.response_hash === prefixedJsonDigest(f.response),
@@ -390,7 +390,7 @@ export function runSuite() {
     checks,
     passed: checks.every((entry) => entry.passed),
     known_limits: [
-      'This is an independent implementation of the CCS-05 v1.3 receipt profile, not a claim that ccs-verifier 1.1.14 emits the same shape.',
+      'This is an independent implementation of the CCS-05 v1.3 receipt profile, not a claim that ccs-verifier 1.1.19 emits the same shape.',
       'The public test keys are not production trust anchors.',
       'A CCS allow is machine-policy-decision evidence. It is not human authorization, AEB admission, provider entry, or effect proof.',
       'The adapter verifies the Ed25519 signature. The legacy HMAC receipt field is retained as signed issuer data, not a cross-domain trust root.',

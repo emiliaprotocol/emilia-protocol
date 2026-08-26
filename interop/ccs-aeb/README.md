@@ -9,12 +9,28 @@ The separate
 package implements the 22-field receipt shape described by
 `draft-correctover-ccs-05`, runs a local protected operation, emits a signed
 sample set, and maps the full parameter digest to an executor-constructed CAID.
-It remains separate because the latest public `ccs-verifier==1.1.14` package
-and Codeberg head still emit the distinct receipt-version 1.1 contract.
+It remains separate because the latest public `ccs-verifier==1.1.19` package
+still emits the distinct receipt-version 1.1 contract.
 
-This directory contains a runnable, source-locked composition between the
-artifact actually emitted by the `ccs-verifier` PyPI distribution and the
-EMILIA Action Evidence Boundary (AEB).
+## CCS 1.1.19 public-key profile
+
+The current public-key runner is source-locked to the upstream `v1.1.19` tag,
+its exact tag object and commit, both PyPI artifacts, the exact stale vector
+shipped in the source distribution, and a separately labeled deterministic
+EMILIA-derived fixture. It verifies the derived fixture's L1 Ed25519 signature
+and relying-party issuer pin, then joins the signed full argument digest to the
+executor-owned action before deriving a CAID.
+
+The 1.1.19 source archive still bundles a stale reference vector labeled and
+signed as 1.1.14. EMILIA does not relabel those bytes. The
+[1.1.19 release audit](./CCS-1.1.19-L1-AUDIT.md) records that upstream issue,
+the exact source coordinates, both fixture hashes, and the deterministic
+generator/reproduction boundary.
+
+This directory contains runnable, source-locked compositions between CCS
+artifacts and the EMILIA Action Evidence Boundary (AEB). The public-key profile
+above uses the EMILIA-derived 1.1.19 fixture; the historical local-HMAC profile
+below uses the artifact actually emitted by `ccs-verifier==1.1.0`.
 
 The composition keeps four claims separate:
 

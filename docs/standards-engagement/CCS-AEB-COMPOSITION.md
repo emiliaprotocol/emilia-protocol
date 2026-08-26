@@ -18,10 +18,20 @@ entry.
 ## Current runnable profiles
 
 The current public-key profile is source-locked to
-`ccs-verifier==1.1.14`. It verifies the published Ed25519 L1 reference receipt
-under a relying-party-pinned issuer key and checks its audience, expiry, rule
-version, action, and tool. AEB reconstructs the exact imminent action at the
-executor and compares the signed full `args_digest` before deriving the CAID.
+`ccs-verifier==1.1.19`, upstream tag object
+`bdd79fa8257b764cffa5bceb458330ce01bc41ce`, and commit
+`4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6`. It verifies an explicitly labeled
+EMILIA-derived Ed25519 L1 receipt regenerated from that exact source lock and
+the upstream public deterministic seed under a
+relying-party-pinned issuer key and checks its audience, expiry, rule version,
+action, and tool. AEB reconstructs the exact imminent action at the executor
+and compares the signed full `args_digest` before deriving the CAID.
+
+The 1.1.19 source archive still bundles a stale vector whose package and rule
+versions are 1.1.14. The profile preserves and hash-checks the exact upstream
+bytes without relabeling them; the EMILIA-derived fixture and stale-upstream
+boundary are separately hash-pinned and reproducible from a checked-in
+generator.
 
 Run its eight pinned and hostile cases with:
 
@@ -31,7 +41,7 @@ npm run conformance:composition:ccs-l1-aeb
 
 The older local-HMAC profile below remains source-locked for historical
 reproduction and for the existing CCS + OASNT two-leg runner. It is not
-silently relabeled as 1.1.14.
+silently relabeled as 1.1.19.
 
 The legacy runnable adapter is source-locked to the PyPI distribution labeled
 `ccs-verifier==1.1.0` whose installed runtime reports version `0.4.1`. It

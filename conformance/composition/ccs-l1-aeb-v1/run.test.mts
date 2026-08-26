@@ -9,7 +9,7 @@ import { runSuite } from './run.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-test('CCS 1.1.14 to AEB profile passes every pinned and hostile case', () => {
+test('CCS 1.1.19 to AEB profile passes every pinned and hostile case', () => {
   const report = runSuite() as any;
   assert.equal(report.passed, true, JSON.stringify(report, null, 2));
   assert.equal(report.checks.length, 8);

@@ -48,7 +48,12 @@ import {
   CCS_L1_PYPI_SDIST_SHA256,
   CCS_L1_PYPI_SOURCE_LOCK,
   CCS_L1_PYPI_WHEEL_SHA256,
-  CCS_L1_REFERENCE_VECTOR_SHA256,
+  CCS_L1_EMILIA_DERIVED_REFERENCE_VECTOR_SHA256,
+  CCS_L1_UPSTREAM_STALE_REFERENCE_VECTOR_SHA256,
+  CCS_L1_UPSTREAM_COMMIT_SHA,
+  CCS_L1_UPSTREAM_REPOSITORY,
+  CCS_L1_UPSTREAM_TAG,
+  CCS_L1_UPSTREAM_TAG_OBJECT_SHA,
   CCS_V13_AEB_ADAPTER_ID,
   CCS_V13_AEB_CONFIG_VERSION,
   CCS_V13_AEB_TRUST_ROOT_VERSION,
@@ -85,12 +90,30 @@ const PACKAGE_FIXTURE = JSON.parse(readFileSync(
   'utf8',
 )) as CcsPyPiArtifact;
 const L1_VECTOR = JSON.parse(readFileSync(
-  new URL('../../interop/ccs-aeb/fixtures/ccs-verifier-pypi-1.1.14-reference-signed-001.json', import.meta.url),
+  new URL('../../interop/ccs-aeb/fixtures/ccs-verifier-pypi-1.1.19-emilia-derived-reference-signed-001.json', import.meta.url),
   'utf8',
 )) as {
+  provenance: string;
   package_version: string;
   public_key_fingerprint_sha256_16: string;
   public_key_raw_b64: string;
+  receipt: CcsL1Receipt;
+  source: {
+    repository: string;
+    tag: string;
+    tag_object_sha: string;
+    commit_sha: string;
+    pypi_sdist_sha256: string;
+    pypi_wheel_sha256: string;
+    upstream_stale_vector_sha256: string;
+    generator: string;
+  };
+};
+const L1_UPSTREAM_STALE_VECTOR = JSON.parse(readFileSync(
+  new URL('../../interop/ccs-aeb/fixtures/ccs-verifier-pypi-1.1.19-upstream-stale-1.1.14-reference-signed-001.json', import.meta.url),
+  'utf8',
+)) as {
+  package_version: string;
   receipt: CcsL1Receipt;
 };
 
@@ -312,7 +335,7 @@ function l1Fixture() {
     action_type: ACTION_TYPE,
     allowed_actions: ['shell.execute'],
     allowed_tools: ['shell'],
-    required_rule_version: '1.1.14',
+    required_rule_version: '1.1.19',
     max_receipt_age_seconds: 300,
     max_clock_skew_seconds: 5,
     deployment_scope: 'pinned-ed25519-issuer',
@@ -352,16 +375,36 @@ function l1Fixture() {
   return { config, root, action, adapter, input };
 }
 
-test('CCS 1.1.14 source lock pins the exact published PyPI artifacts', () => {
-  assert.equal(CCS_L1_PYPI_DISTRIBUTION_VERSION, '1.1.14');
-  assert.equal(CCS_L1_PYPI_SDIST_SHA256, '9f75676e5b3d6ace8e91742d8b78b6d15b2d4250414326c17cc9e1aa361ec318');
-  assert.equal(CCS_L1_PYPI_WHEEL_SHA256, '04a7857253bac2fca25611d17280cebf92fd0a7a2987a4d7ece973d492b17c83');
-  assert.equal(CCS_L1_REFERENCE_VECTOR_SHA256, '5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f');
-  assert.match(CCS_L1_PYPI_SOURCE_LOCK, /1\.1\.14/);
+test('CCS 1.1.19 source lock distinguishes exact upstream-stale bytes from the EMILIA-derived vector', () => {
+  assert.equal(CCS_L1_PYPI_DISTRIBUTION_VERSION, '1.1.19');
+  assert.equal(CCS_L1_PYPI_SDIST_SHA256, 'b540635098ccea4b9e5ccdfc016ad144a4efe4a7d21a0f351fca5b48c00b08c7');
+  assert.equal(CCS_L1_PYPI_WHEEL_SHA256, '762b99b3968be8c138da037ef6db15473cf6911616088d42d7b9997f16a2c3e4');
+  assert.equal(CCS_L1_UPSTREAM_REPOSITORY, 'https://github.com/DSHCorrectover/ccs-verifier');
+  assert.equal(CCS_L1_UPSTREAM_TAG, 'v1.1.19');
+  assert.equal(CCS_L1_UPSTREAM_TAG_OBJECT_SHA, 'bdd79fa8257b764cffa5bceb458330ce01bc41ce');
+  assert.equal(CCS_L1_UPSTREAM_COMMIT_SHA, '4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6');
+  assert.equal(CCS_L1_UPSTREAM_STALE_REFERENCE_VECTOR_SHA256, '5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f');
+  assert.equal(CCS_L1_EMILIA_DERIVED_REFERENCE_VECTOR_SHA256, 'ce2594c18b6ccbfed0fb09b64fd0fb1d2534b13ae7ccd024367f3d86ff0f6a12');
+  assert.match(CCS_L1_PYPI_SOURCE_LOCK, /1\.1\.19/);
+  assert.match(CCS_L1_PYPI_SOURCE_LOCK, /4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6/);
+  assert.equal(L1_UPSTREAM_STALE_VECTOR.package_version, '1.1.14');
+  assert.equal(L1_UPSTREAM_STALE_VECTOR.receipt.rule_version, '1.1.14');
+  assert.equal(L1_VECTOR.provenance, 'EMILIA-derived');
   assert.equal(L1_VECTOR.package_version, CCS_L1_PYPI_DISTRIBUTION_VERSION);
+  assert.equal(L1_VECTOR.receipt.rule_version, CCS_L1_PYPI_DISTRIBUTION_VERSION);
+  assert.deepEqual(L1_VECTOR.source, {
+    repository: CCS_L1_UPSTREAM_REPOSITORY,
+    tag: CCS_L1_UPSTREAM_TAG,
+    tag_object_sha: CCS_L1_UPSTREAM_TAG_OBJECT_SHA,
+    commit_sha: CCS_L1_UPSTREAM_COMMIT_SHA,
+    pypi_sdist_sha256: CCS_L1_PYPI_SDIST_SHA256,
+    pypi_wheel_sha256: CCS_L1_PYPI_WHEEL_SHA256,
+    upstream_stale_vector_sha256: CCS_L1_UPSTREAM_STALE_REFERENCE_VECTOR_SHA256,
+    generator: 'interop/ccs-aeb/generate_l1_119_emilia_derived_fixture.mjs',
+  });
 });
 
-test('CCS 1.1.14 Ed25519 receipt verifies, is accepted under the pinned issuer, and maps one exact action', () => {
+test('CCS 1.1.19 Ed25519 receipt verifies, is accepted under the pinned issuer, and maps one exact action', () => {
   const f = l1Fixture();
   assert.equal(f.adapter.id, CCS_L1_AEB_ADAPTER_ID);
   assert.equal(f.adapter.version, CCS_L1_AEB_ADAPTER_VERSION);
@@ -375,7 +418,7 @@ test('CCS 1.1.14 Ed25519 receipt verifies, is accepted under the pinned issuer, 
   assert.match(mapped.caid ?? '', /^caid:1:agent\.tool-invocation\.1:jcs-sha256:/);
 });
 
-test('CCS 1.1.14 signature, issuer pin, expiry, exact arguments, action, and tool fail independently', () => {
+test('CCS 1.1.19 signature, issuer pin, expiry, exact arguments, action, and tool fail independently', () => {
   const f = l1Fixture();
 
   const signatureTamper = structuredClone(f.input.artifact) as CcsL1Receipt;
@@ -420,7 +463,7 @@ test('CCS 1.1.14 signature, issuer pin, expiry, exact arguments, action, and too
   }
 });
 
-test('CCS 1.1.14 status uncertainty and presenter pin replacement never become accepted evidence', () => {
+test('CCS 1.1.19 status uncertainty and presenter pin replacement never become accepted evidence', () => {
   const f = l1Fixture();
   const unavailable = f.adapter.verifyNative({
     ...f.input,
@@ -585,7 +628,7 @@ function v13Fixture() {
   return { config, root, action, adapter, input };
 }
 
-test('CCS-05 v1.3 source lock is distinct from the published 1.1.14 package profile', () => {
+test('CCS-05 v1.3 source lock is distinct from the published 1.1.19 package profile', () => {
   assert.equal(CCS_V13_DRAFT_SHA256, 'c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9');
   assert.match(CCS_V13_SOURCE_LOCK, /draft-correctover-ccs-05/);
   assert.notEqual(CCS_V13_SOURCE_LOCK, CCS_L1_PYPI_SOURCE_LOCK);

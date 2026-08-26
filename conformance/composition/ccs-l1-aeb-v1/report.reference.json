@@ -2,29 +2,42 @@
   "@version": "CCS-L1-AEB-COMPOSITION-REPORT-v1",
   "profile": "ccs-l1-aeb-v1",
   "pins": {
-    "ccs_distribution": "1.1.14",
-    "ccs_sdist_sha256": "9f75676e5b3d6ace8e91742d8b78b6d15b2d4250414326c17cc9e1aa361ec318",
-    "ccs_wheel_sha256": "04a7857253bac2fca25611d17280cebf92fd0a7a2987a4d7ece973d492b17c83",
-    "ccs_reference_vector_sha256": "5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f",
-    "ccs_source_lock": "ccs-verifier-pypi-1.1.14-ed25519-l1",
-    "adapter_id": "native:ccs-pypi-ed25519-l1-1.1.14",
+    "ccs_distribution": "1.1.19",
+    "ccs_sdist_sha256": "b540635098ccea4b9e5ccdfc016ad144a4efe4a7d21a0f351fca5b48c00b08c7",
+    "ccs_wheel_sha256": "762b99b3968be8c138da037ef6db15473cf6911616088d42d7b9997f16a2c3e4",
+    "ccs_upstream_stale_reference_vector_sha256": "5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f",
+    "ccs_emilia_derived_reference_vector_sha256": "ce2594c18b6ccbfed0fb09b64fd0fb1d2534b13ae7ccd024367f3d86ff0f6a12",
+    "ccs_source_lock": "ccs-verifier-pypi-1.1.19-github-v1.1.19@4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6-ed25519-l1",
+    "ccs_upstream_repository": "https://github.com/DSHCorrectover/ccs-verifier",
+    "ccs_upstream_tag": "v1.1.19",
+    "ccs_upstream_tag_object_sha": "bdd79fa8257b764cffa5bceb458330ce01bc41ce",
+    "ccs_upstream_commit_sha": "4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6",
+    "adapter_id": "native:ccs-pypi-ed25519-l1-1.1.19",
     "adapter_version": "1",
-    "mapping_profile_digest": "sha256:e1d09ff530e5ac14d4e1ed59d5543aa127d68bc1bc392ea5451a1887d258faf2"
+    "mapping_profile_digest": "sha256:478d783d4f03f87b5d06b9c025b22a00d88e9f0c4155f514216298da3e2c557c"
   },
   "checks": [
     {
-      "id": "CCS-1.1.14-SOURCE-PIN",
+      "id": "CCS-1.1.19-SOURCE-PIN",
       "layer": "CCS",
-      "description": "The exact published PyPI 1.1.14 release and reference vector are pinned.",
+      "description": "The exact upstream tag, commit, PyPI 1.1.19 artifacts, upstream-stale 1.1.14 vector, and EMILIA-derived 1.1.19 vector are pinned without relabeling provenance.",
       "passed": true,
       "observed": {
-        "distribution": "1.1.14",
-        "source_lock": "ccs-verifier-pypi-1.1.14-ed25519-l1",
-        "vector_sha256": "5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f"
+        "distribution": "1.1.19",
+        "derived_provenance": "EMILIA-derived",
+        "source_lock": "ccs-verifier-pypi-1.1.19-github-v1.1.19@4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6-ed25519-l1",
+        "upstream_repository": "https://github.com/DSHCorrectover/ccs-verifier",
+        "upstream_tag": "v1.1.19",
+        "upstream_tag_object_sha": "bdd79fa8257b764cffa5bceb458330ce01bc41ce",
+        "upstream_commit_sha": "4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6",
+        "upstream_stale_package_version": "1.1.14",
+        "upstream_stale_rule_version": "1.1.14",
+        "upstream_stale_vector_sha256": "5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f",
+        "emilia_derived_vector_sha256": "ce2594c18b6ccbfed0fb09b64fd0fb1d2534b13ae7ccd024367f3d86ff0f6a12"
       }
     },
     {
-      "id": "CCS-1.1.14-ED25519-ACCEPT",
+      "id": "CCS-1.1.19-ED25519-ACCEPT",
       "layer": "CCS",
       "description": "The reference L1 signature verifies and its issuer key is accepted only under the relying-party pin.",
       "passed": true,
@@ -34,63 +47,63 @@
       }
     },
     {
-      "id": "CCS-1.1.14-SIGNATURE-TAMPER",
+      "id": "CCS-1.1.19-SIGNATURE-TAMPER",
       "layer": "CCS",
       "description": "A signature mutation is refused before semantic mapping.",
       "passed": true,
       "observed": {
         "native_verification": "FAILED",
         "acceptance": "REJECTED",
-        "evidence_digest": "sha256:9bb36cf3d7aecc99ee14aa1b9a7f22bb278a75d7ddb84873612b95b21a9f8331",
+        "evidence_digest": "sha256:908f1e6837fc96a5d40b289be63e40994356427cc16a14f9a7de9da80a285107",
         "status_digest": "sha256:dfa31cf8d333771d05f1e0a94727299039f238668613b351ae4b008a3e9f8e5f",
         "evidence_role": "machine-policy-decision",
         "subject": {
           "id": "system:ccs-reference-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:9bb36cf3d7aecc99ee14aa1b9a7f22bb278a75d7ddb84873612b95b21a9f8331",
+        "replay_unit": "sha256:908f1e6837fc96a5d40b289be63e40994356427cc16a14f9a7de9da80a285107",
         "reasons": [
           "ccs:l1_signature_invalid"
         ]
       }
     },
     {
-      "id": "CCS-1.1.14-UNTRUSTED-ISSUER",
+      "id": "CCS-1.1.19-UNTRUSTED-ISSUER",
       "layer": "CCS",
       "description": "A self-consistent receipt not matching the relying-party key pin is rejected.",
       "passed": true,
       "observed": {
         "native_verification": "VERIFIED",
         "acceptance": "REJECTED",
-        "evidence_digest": "sha256:4a4d3d2eac1f8402d4e50be864ed6831989533352f7ff714e624ad330df8b2a5",
+        "evidence_digest": "sha256:5befd56d4baf2f16bf1d2c5869b91b572f2511f176f8ab518405854e8d86db8e",
         "status_digest": "sha256:dfa31cf8d333771d05f1e0a94727299039f238668613b351ae4b008a3e9f8e5f",
         "evidence_role": "machine-policy-decision",
         "subject": {
           "id": "system:ccs-reference-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:4a4d3d2eac1f8402d4e50be864ed6831989533352f7ff714e624ad330df8b2a5",
+        "replay_unit": "sha256:5befd56d4baf2f16bf1d2c5869b91b572f2511f176f8ab518405854e8d86db8e",
         "reasons": [
           "ccs:l1_untrusted_signing_key"
         ]
       }
     },
     {
-      "id": "CCS-1.1.14-EXPIRY",
+      "id": "CCS-1.1.19-EXPIRY",
       "layer": "CCS",
       "description": "A correctly signed receipt past expires_at is rejected.",
       "passed": true,
       "observed": {
         "native_verification": "VERIFIED",
         "acceptance": "REJECTED",
-        "evidence_digest": "sha256:4a4d3d2eac1f8402d4e50be864ed6831989533352f7ff714e624ad330df8b2a5",
+        "evidence_digest": "sha256:5befd56d4baf2f16bf1d2c5869b91b572f2511f176f8ab518405854e8d86db8e",
         "status_digest": "sha256:dfa31cf8d333771d05f1e0a94727299039f238668613b351ae4b008a3e9f8e5f",
         "evidence_role": "machine-policy-decision",
         "subject": {
           "id": "system:ccs-reference-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:4a4d3d2eac1f8402d4e50be864ed6831989533352f7ff714e624ad330df8b2a5",
+        "replay_unit": "sha256:5befd56d4baf2f16bf1d2c5869b91b572f2511f176f8ab518405854e8d86db8e",
         "reasons": [
           "ccs:l1_receipt_expired"
         ]
@@ -130,14 +143,14 @@
       "observed": {
         "native_verification": "VERIFIED",
         "acceptance": "INDETERMINATE",
-        "evidence_digest": "sha256:4a4d3d2eac1f8402d4e50be864ed6831989533352f7ff714e624ad330df8b2a5",
+        "evidence_digest": "sha256:5befd56d4baf2f16bf1d2c5869b91b572f2511f176f8ab518405854e8d86db8e",
         "status_digest": "sha256:25edd534f3b9f9d779802deaa0a0af2c05074c0cd45b3a2a2dcbba44e308262f",
         "evidence_role": "machine-policy-decision",
         "subject": {
           "id": "system:ccs-reference-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:011c544eafdd83ce04993d2ccda672a4e7e70b2c944975abb6e7d90bbb65cd94",
+        "replay_unit": "sha256:c03caa8b5dc9f5e81c7fd95ec2a50f6f5fd777a665355c43389c5572bf7ff649",
         "reasons": [
           "status_unavailable"
         ]
@@ -147,10 +160,11 @@
   "passed": true,
   "known_limits": [
     "The reference signing seed and key are public test material and are not a production trust anchor.",
+    "The 1.1.19 source distribution bundles a stale 1.1.14 reference vector. Its exact bytes remain separately pinned; the adapter input is an explicitly labeled EMILIA-derived 1.1.19 fixture regenerated from the public seed, not an upstream vector.",
     "CCS supplies machine-policy-decision evidence, not human authorization, provider admission, or effect proof.",
     "AEB reconstructs the exact action from the executor and checks the signed action, tool, and args_digest; it does not trust an action string as a CAID.",
     "A passing report reproduces the EMILIA reference adapter and is not independent implementation, deployment, certification, IETF adoption, or endorsement."
   ],
-  "implementation_status_markdown": "The runner reproduced 8/8 source-locked CCS 1.1.14 to AEB checks. It verified the pinned Ed25519 L1 receipt and mapped its signed action, tool, and full argument digest to one executor-constructed CAID. This is a reproduction of the EMILIA reference adapter, not an independent implementation or IETF endorsement.",
-  "report_digest": "sha256:90dd23e1112a791fd04d3655c2f71b68d763a3b082187543873ec616bad10945"
+  "implementation_status_markdown": "The runner reproduced 8/8 source-locked CCS 1.1.19 to AEB checks. It verified the pinned Ed25519 L1 receipt and mapped its signed action, tool, and full argument digest to one executor-constructed CAID. This is a reproduction of the EMILIA reference adapter, not an independent implementation or IETF endorsement.",
+  "report_digest": "sha256:24aae47b96854fe5f02d4d30cf67f724a0bfc663af338cb394409fdde40f3980"
 }
