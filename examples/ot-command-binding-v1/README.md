@@ -36,6 +36,9 @@ the observed action from those bytes plus the link facts it owns because it
 terminates the connection (site and device, the required Modbus unit-to-device
 mapping, and for DNP3 the outstation address, a data-link field). A missing or
 inconsistent Modbus unit mapping is refused before evidence lookup. The
+profile admits unit ids 1 through 247. Unit id 0 is the Modbus broadcast
+address and is refused for both FC 0x06 and FC 0x10 because a broadcast cannot
+identify the single device whose exact action is being authorized. The
 observed action, never the requester's description of it,
 is what the gate binds. `commands.mjs` exposes that as `commandDigest()`, which
 is `hashCanonical` from `@emilia-protocol/gate` — the same function the gate
@@ -60,16 +63,33 @@ exactly as an out-of-band lookup for a different digest would be
 The Modbus and DNP3 authorities are explicitly scoped to their pinned native
 encoding profiles. Modbus FC 0x06 and FC 0x10 with quantity one are different
 authorities even when they can have the same register effect. FC 0x10 quantity
-one has its own native encode/decode vector, and malformed quantity or byte
-count is refused. The Modbus action binds the zero-based protocol address; the
-familiar 4xxxxx register label is display metadata. DNP3 v1 admits only
+one has its own native encode/decode vector, and a wide FC 0x10 vector binds the
+ordered register pair `0x1234, 0xabcd` in both bytes and digest. Reversing the
+pair changes the digest. This proves register-order binding only. The profile
+does not infer a device's 32-bit or 64-bit word order, byte swapping, scalar
+type, scale, units, or physical meaning. A site profile must resolve those facts
+before constructing the action. Malformed quantity or byte count is refused.
+The Modbus action binds the zero-based protocol address; the familiar 4xxxxx
+register label is display metadata. DNP3 v1 admits only
 qualifier `0x17`, object count one, and a one-octet object index from 0 through
 255. The DNP3 action binds the application function, complete CROB control
 octet, operation count, on-time, and off-time. Requests also require FIR and
 FIN set, CON and UNS clear, and status zero. DIRECT_OPERATE_NR is modeled as
 `INDETERMINATE` after dispatch because it has no protocol acknowledgement.
 SELECT/OPERATE is outside this first profile; adding it requires one state
-machine for both phases and the arm timer.
+machine for both phases and the arm timer. Within the CROB control octet, v1
+rejects the obsolete QUEUE bit, reserved trip-close code, and undefined
+operation types. CLEAR remains current and material: setting it produces a
+different canonical action and digest instead of being normalized away.
+
+## Source pins
+
+The companion transport-binding baseline is repository merge commit
+`0b74b025533bc563e99ee39c5dce8513ad7d789f` (PR #573). The DNP3 control-octet
+bit layout and semantics are source-pinned to the maintained Step Function DNP3
+implementation at commit `562071e42b2ce1408e0930414f14afa181f444af`, files
+`dnp3/src/app/control_types.rs` and `dnp3/src/app/control_enums.rs`. The
+deterministic vector file carries the same pins.
 
 Scene 4 is the one the Command Authority Envelope does not currently cover. The
 repository mechanism is `gate.run()` in `packages/gate/src/index.ts`. Once the

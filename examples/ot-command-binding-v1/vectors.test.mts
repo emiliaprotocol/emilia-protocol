@@ -78,6 +78,34 @@ test('the pinned Modbus FC 0x10 quantity-one command decodes under its native en
   assert.notEqual(fc16.action_digest, vector.action_digest);
 });
 
+test('the pinned wide FC 0x10 vector binds register order without claiming scalar meaning', () => {
+  const vector = pinned.vectors.find((candidate: any) => candidate.id === 'modbus-write-single-register-v1');
+  const ordered = vector.encoding_scope.fc16_ordered_pair;
+  assert.deepEqual(ordered.action.values, [0x1234, 0xabcd]);
+  assert.equal(ordered.native_command.hex, '00090000000b031000100002041234abcd');
+  assert.equal(ordered.scalar_semantics, 'not-inferred');
+  assert.equal(ordered.device_word_order, 'site-profile-required');
+  assert.notEqual(ordered.action_digest, ordered.reversed_values_action_digest);
+  const observed = decodeModbusWriteMultipleRegisters(ordered.native_command.hex, {
+    site: ordered.action.site,
+    device: ordered.action.device,
+    unit_id: ordered.action.unit_id,
+  });
+  assert.deepEqual(observed, ordered.action);
+  assert.equal(commandDigest(observed), ordered.action_digest);
+});
+
+test('the profile pins its companion merge and DNP3 control-octet source', () => {
+  assert.equal(
+    pinned.source.companion_merge_commit,
+    '0b74b025533bc563e99ee39c5dce8513ad7d789f',
+  );
+  assert.equal(
+    pinned.source.dnp3_control_octet_source.commit,
+    '562071e42b2ce1408e0930414f14afa181f444af',
+  );
+});
+
 test('DNP3 application sequence changes native bytes without changing the action', () => {
   const vector = pinned.vectors.find((candidate: any) => candidate.id === 'dnp3-direct-operate-crob-v1');
   assert.notEqual(vector.native_command.hex, vector.correlation_variant.native_command.hex);

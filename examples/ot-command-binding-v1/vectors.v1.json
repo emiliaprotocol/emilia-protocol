@@ -3,6 +3,15 @@
   "profile_status": "experimental",
   "source": {
     "example": "examples/ot-command-binding-v1",
+    "companion_merge_commit": "0b74b025533bc563e99ee39c5dce8513ad7d789f",
+    "dnp3_control_octet_source": {
+      "repository": "https://github.com/stepfunc/dnp3",
+      "commit": "562071e42b2ce1408e0930414f14afa181f444af",
+      "files": [
+        "dnp3/src/app/control_types.rs",
+        "dnp3/src/app/control_enums.rs"
+      ]
+    },
     "note": "Synthetic protocol models; no live PLC, RTU, DCS, or certified stack."
   },
   "invariants": [
@@ -129,6 +138,38 @@
             "carries_authorization": false
           }
         },
+        "fc16_ordered_pair": {
+          "action": {
+            "action_type": "ot.modbus.write_multiple_registers",
+            "transport": "modbus-tcp",
+            "site": "ep:site:demo-lift-station",
+            "device": "ep:device:plc-3",
+            "unit_id": 3,
+            "function_code": 16,
+            "protocol_address": 16,
+            "quantity": 2,
+            "byte_count": 4,
+            "values": [
+              4660,
+              43981
+            ]
+          },
+          "action_digest": "sha256:006e005f2c4d15f1d33e35798a1f44ba8fa7b8bcb2603ae9ed515ce148342bca",
+          "native_command": {
+            "transport": "modbus-tcp",
+            "hex": "00090000000b031000100002041234abcd",
+            "octets": 17,
+            "protocol_address": 16,
+            "quantity": 2,
+            "byte_count": 4,
+            "metadata_octets_available": 0,
+            "carries_authorization": false
+          },
+          "reversed_values_action_digest": "sha256:3a431b4542e13e30aa64af0794cf9e468991e51a4ac67ee11b06a03d6d33160b",
+          "scalar_semantics": "not-inferred",
+          "device_word_order": "site-profile-required",
+          "note": "Bytes and digest bind register order exactly; device word order and scalar meaning remain site-profile facts."
+        },
         "note": "The profile binds native encoding and does not normalize FC 0x06 into FC 0x10 quantity one."
       },
       "negative_cases": [
@@ -171,6 +212,14 @@
             "FIN": 1,
             "CON": 0,
             "UNS": 0
+          },
+          "control_octet": {
+            "operation_type_mask": 15,
+            "queue_obsolete_mask": 16,
+            "clear_mask": 32,
+            "trip_close_mask": 192,
+            "queue_rule": "reject",
+            "clear_rule": "preserve-as-material-command-semantics"
           },
           "request_status": 0
         },

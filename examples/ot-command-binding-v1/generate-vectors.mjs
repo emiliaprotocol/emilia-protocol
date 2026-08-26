@@ -35,6 +35,20 @@ export function buildOtCommandBindingVectors() {
         protocolAddress: modbus.protocol_address,
         values: [modbus.value],
     });
+    const modbusFc16OrderedPair = modbusWriteMultipleRegistersAction({
+        site: modbus.site,
+        device: modbus.device,
+        unitId: modbus.unit_id,
+        protocolAddress: 0x0010,
+        values: [0x1234, 0xabcd],
+    });
+    const modbusFc16ReversedPair = modbusWriteMultipleRegistersAction({
+        site: modbus.site,
+        device: modbus.device,
+        unitId: modbus.unit_id,
+        protocolAddress: 0x0010,
+        values: [0xabcd, 0x1234],
+    });
     const dnp3NoAck = dnp3ControlRelayAction({
         site: dnp3.site,
         device: dnp3.device,
@@ -49,12 +63,22 @@ export function buildOtCommandBindingVectors() {
     const dnp3Sequence0 = encodeDnp3ControlRelay(dnp3, { sequence: 0 });
     const dnp3Sequence9 = encodeDnp3ControlRelay(dnp3, { sequence: 9 });
     const modbusFc16QuantityOneWire = encodeModbusWriteMultipleRegisters(modbusFc16QuantityOne, { transactionId: 1 });
+    const modbusFc16OrderedPairWire = encodeModbusWriteMultipleRegisters(modbusFc16OrderedPair, { transactionId: 9 });
     const encodedOpcua = encodeOpcuaCall(opcua, { receipt: INLINE_REFERENCE });
     return {
         '@type': OT_COMMAND_BINDING_VECTOR_PROFILE,
         profile_status: 'experimental',
         source: {
             example: 'examples/ot-command-binding-v1',
+            companion_merge_commit: '0b74b025533bc563e99ee39c5dce8513ad7d789f',
+            dnp3_control_octet_source: {
+                repository: 'https://github.com/stepfunc/dnp3',
+                commit: '562071e42b2ce1408e0930414f14afa181f444af',
+                files: [
+                    'dnp3/src/app/control_types.rs',
+                    'dnp3/src/app/control_enums.rs',
+                ],
+            },
             note: 'Synthetic protocol models; no live PLC, RTU, DCS, or certified stack.',
         },
         invariants: [
@@ -105,6 +129,15 @@ export function buildOtCommandBindingVectors() {
                         action: modbusFc16QuantityOne,
                         action_digest: commandDigest(modbusFc16QuantityOne),
                         native_command: modbusFc16QuantityOneWire,
+                    },
+                    fc16_ordered_pair: {
+                        action: modbusFc16OrderedPair,
+                        action_digest: commandDigest(modbusFc16OrderedPair),
+                        native_command: modbusFc16OrderedPairWire,
+                        reversed_values_action_digest: commandDigest(modbusFc16ReversedPair),
+                        scalar_semantics: 'not-inferred',
+                        device_word_order: 'site-profile-required',
+                        note: 'Bytes and digest bind register order exactly; device word order and scalar meaning remain site-profile facts.',
                     },
                     note: 'The profile binds native encoding and does not normalize FC 0x06 into FC 0x10 quantity one.',
                 },
