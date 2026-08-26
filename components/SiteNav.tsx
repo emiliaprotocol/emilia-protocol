@@ -8,7 +8,7 @@ import { color, font, radius, cta } from '@/lib/tokens';
 type NavLink = [string, string];
 
 const NAV_LINKS: NavLink[] = [
-  ['/authority-brain', '/map'],
+  ['/authority-brain', '/brain'],
   ['/protect', '/protect'],
   ['/gate', '/gate'],
   ...(process.env.NEXT_PUBLIC_WORKS_V0 === '1' ? [['/works', '/works'] as NavLink] : []),
