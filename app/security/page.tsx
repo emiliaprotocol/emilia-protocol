@@ -195,6 +195,23 @@ export default function SecurityPage() {
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
+        <h2 className="ep-reveal" style={styles.h2}>Hybrid receipt migration</h2>
+        <p className="ep-reveal" style={styles.body}>
+          <code style={{ fontFamily: font.mono, fontSize: 13, color: color.blue }}>EP-RECEIPT-HYBRID-v1</code>
+          {' '}signs the same canonical receipt bytes with Ed25519 and ML-DSA-65. The ordered set of
+          required algorithms is committed inside the signed input, so stripping a signature leg or
+          changing the required set is refused rather than accepted as a weaker receipt.
+        </p>
+        <p className="ep-reveal" style={styles.body}>
+          This is implemented migration machinery, not a deployment claim. The public repository
+          shows no production ML-DSA-65 key, boot registration, live issuance, or external
+          relying-party acceptance. The current ML-DSA-65 implementation is not a FIPS-validated
+          module. This profile does not establish blanket post-quantum security or a deployed
+          post-quantum Gate.
+        </p>
+      </section>
+
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
         <h2 className="ep-reveal" style={styles.h2}>What the proofs do &mdash; and don&rsquo;t &mdash; cover</h2>
         <p className="ep-reveal" style={styles.body}>
           A guarantee you have to overstate isn&rsquo;t one. So, precisely:
