@@ -202,7 +202,7 @@ test.describe('Agent Adoption committed-response recovery', () => {
     expect(await page.evaluate((key) => window.localStorage.getItem(key), pending.key)).toBeNull();
     expect(recoveryReads).toHaveLength(1);
     expect(recoveryReads[0]).toEqual({
-      url: `http://localhost:3000/api/agent-records/${committedRecord!.record_id}`,
+      url: `${new URL(page.url()).origin}/api/agent-records/${committedRecord!.record_id}`,
       authorization: undefined,
       cookie: undefined,
       body: null,

@@ -15,7 +15,7 @@ test.describe('Homepage', () => {
     await expect(h1).toBeVisible();
 
     // Navigation bar is present
-    const nav = page.locator('nav');
+    const nav = page.getByRole('navigation', { name: 'Primary' });
     await expect(nav).toBeVisible();
 
     // Protocol link in nav. Use .first() — the homepage has multiple
@@ -36,10 +36,10 @@ test.describe('Homepage', () => {
   test('technical foundation and enforcement invariant are visible', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: 'Every consequential agent action enters with authority and exits with a receipt.' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'Protected crossings require authority before action, then preserve what happened.' })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByText('Required evidence verifies—or the mutation stays locked.', { exact: true })).toBeVisible({
+    await expect(page.getByText('Required evidence verifies, or the mutation stays locked.', { exact: true })).toBeVisible({
       timeout: 10_000,
     });
   });
