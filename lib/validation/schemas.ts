@@ -118,6 +118,24 @@ export function validatePresent(body: any) {
     try { validate(body.issuer_ref, 'issuer_ref').string().result; }
     catch (e: any) { errors.push(...e.errors); }
   }
+  if (body.issuer_proof !== undefined && body.issuer_proof !== null) {
+    const proof = body.issuer_proof;
+    const members = new Set(['profile', 'algorithm', 'key_id', 'signature']);
+    if (!proof || typeof proof !== 'object' || Array.isArray(proof)
+        || !Object.keys(proof).every((key) => members.has(key))
+        || Object.keys(proof).length !== members.size) {
+      errors.push('issuer_proof must contain exactly profile, algorithm, key_id, and signature');
+    } else {
+      if (proof.profile !== 'EP-HANDSHAKE-ISSUER-PROOF-v1') errors.push('issuer_proof.profile is invalid');
+      if (proof.algorithm !== 'Ed25519') errors.push('issuer_proof.algorithm must be Ed25519');
+      if (typeof proof.key_id !== 'string' || !proof.key_id) errors.push('issuer_proof.key_id is required');
+      if (typeof proof.signature !== 'string' || !/^[A-Za-z0-9_-]{86}$/.test(proof.signature)) {
+        errors.push('issuer_proof.signature must be a canonical Ed25519 signature');
+      }
+      if (typeof body.issuer_ref !== 'string' || !body.issuer_ref) errors.push('issuer_proof requires issuer_ref');
+      else if (proof.key_id !== body.issuer_ref) errors.push('issuer_proof.key_id must match issuer_ref');
+    }
+  }
 
   if (errors.length > 0) {
     return { valid: false, errors };
@@ -131,6 +149,7 @@ export function validatePresent(body: any) {
       claims: data.claims,
       issuer_ref: body.issuer_ref || null,
       disclosure_mode: body.disclosure_mode || null,
+      issuer_proof: body.issuer_proof || null,
     },
   };
 }

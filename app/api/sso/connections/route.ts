@@ -65,7 +65,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     if (!issuer.valid) {
       return epProblem(400, 'unsafe_sso_url', issuer.error);
     }
-    const redirectUri = validateOidcRedirectUri(body.oidc_redirect_uri, spOrigin(request));
+    const redirectUri = validateOidcRedirectUri(body.oidc_redirect_uri, spOrigin());
     if (!redirectUri.valid) {
       return epProblem(400, 'unsafe_oidc_redirect_uri', redirectUri.error);
     }

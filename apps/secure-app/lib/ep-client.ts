@@ -55,21 +55,32 @@ export async function exchangeMobilePairing({
   pairingCode,
   platform,
   appId,
+  identityAssertion,
   fetchImpl = fetch,
 }: {
   pairingCode: string;
   platform: 'ios' | 'android';
   appId: string;
+  identityAssertion: Record<string, unknown>;
   fetchImpl?: FetchImpl;
 }): Promise<PairedSession> {
   const normalizedCode = pairingCode.trim().toUpperCase();
   if (!PAIRING_CODE.test(normalizedCode) || !['ios', 'android'].includes(platform) || !APP_ID.test(appId)) {
     throw new Error('invalid_pairing_input');
   }
+  if (!identityAssertion || typeof identityAssertion !== 'object' || Array.isArray(identityAssertion)
+      || typeof identityAssertion.id !== 'string' || !identityAssertion.id) {
+    throw new Error('pairing_identity_assertion_required');
+  }
   const response = await fetchImpl(endpoint('/api/v1/mobile/pairings/exchange'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({ pairing_code: normalizedCode, platform, app_id: appId }),
+    body: JSON.stringify({
+      pairing_code: normalizedCode,
+      platform,
+      app_id: appId,
+      identity_assertion: identityAssertion,
+    }),
     redirect: 'error',
     credentials: 'omit',
   });

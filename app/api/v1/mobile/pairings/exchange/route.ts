@@ -1,17 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuthenticationResponse } from '@simplewebauthn/server';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 import { getGuardedClient } from '@/lib/write-guard.js';
 import { readLimitedJson } from '@/lib/http/body-limit.js';
-import { exchangePairing } from '@/lib/mobile/store.js';
+import {
+  exchangePairingVerified,
+  loadMobilePairingIdentityContext,
+  mobilePairingIdentityChallenge,
+} from '@/lib/mobile/store.js';
+import { getRpConfig } from '@/lib/webauthn.js';
 import { mobileJson, mobileProblem } from '@/lib/mobile/response.js';
 import { logger } from '@/lib/logger.js';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit.js';
 
 const CODE = /^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/;
 const APP_ID = /^[A-Za-z0-9:_.@-]{3,256}$/;
-const MAX_BODY_BYTES = 8 * 1024;
-const MEMBERS: Set<string> = new Set(['pairing_code', 'platform', 'app_id']);
+const MAX_BODY_BYTES = 128 * 1024;
+const MEMBERS: Set<string> = new Set(['pairing_code', 'platform', 'app_id', 'identity_assertion']);
+const SUPPORTED_TRANSPORTS = new Set<AuthenticatorTransportFuture>([
+  'ble', 'cable', 'hybrid', 'internal', 'nfc', 'smart-card', 'usb',
+]);
+
+function supportedTransports(value: string[] | null | undefined): AuthenticatorTransportFuture[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const result = value.filter((item): item is AuthenticatorTransportFuture =>
+    SUPPORTED_TRANSPORTS.has(item as AuthenticatorTransportFuture));
+  return result.length > 0 ? result : undefined;
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -37,11 +54,56 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       : '';
     const platform = parsed.value.platform;
     const appId = parsed.value.app_id;
-    if (!CODE.test(code) || !['ios', 'android'].includes(platform) || !APP_ID.test(appId || '')) {
-      return mobileProblem(400, 'invalid_pairing', 'Pairing code, platform, or app identity is malformed');
+    const assertion = parsed.value.identity_assertion;
+    if (!CODE.test(code) || !['ios', 'android'].includes(platform) || !APP_ID.test(appId || '')
+        || !assertion || typeof assertion !== 'object' || Array.isArray(assertion)
+        || typeof assertion.id !== 'string' || !assertion.id) {
+      return mobileProblem(400, 'invalid_pairing', 'Pairing code, platform, app identity, and identity assertion are required');
+    }
+    const supabase = getGuardedClient();
+    const identity = await loadMobilePairingIdentityContext(supabase, {
+      code,
+      credentialId: assertion.id,
+    });
+    if (!identity) {
+      return mobileProblem(403, 'pairing_identity_refused', 'Pairing identity is not an active directory-backed approver credential');
+    }
+    const { rpID, origin } = getRpConfig();
+    let verification;
+    try {
+      verification = await verifyAuthenticationResponse({
+        response: assertion,
+        expectedChallenge: mobilePairingIdentityChallenge(code),
+        expectedOrigin: origin,
+        expectedRPID: rpID,
+        credential: {
+          id: identity.credential.credential_id,
+          publicKey: Buffer.from(identity.credential.public_key_cose, 'base64url'),
+          counter: identity.credential.sign_count,
+          transports: supportedTransports(identity.credential.transports),
+        },
+        requireUserVerification: true,
+      });
+    } catch {
+      return mobileProblem(400, 'pairing_identity_invalid', 'Pairing identity assertion did not verify');
+    }
+    if (!verification.verified) {
+      return mobileProblem(400, 'pairing_identity_invalid', 'Pairing identity assertion did not verify');
     }
     const token = `ep_mobile_${crypto.randomBytes(32).toString('base64url')}`;
-    const result = await exchangePairing(getGuardedClient(), { code, token, platform, appId });
+    const identityProofDigest = `sha256:${crypto.createHash('sha256')
+      .update(JSON.stringify(assertion), 'utf8')
+      .digest('hex')}`;
+    const result = await exchangePairingVerified(supabase, {
+      code,
+      token,
+      platform,
+      appId,
+      credentialId: identity.credential.credential_id,
+      approverId: identity.approverId,
+      newSignCount: Number(verification.authenticationInfo.newCounter) || 0,
+      identityProofDigest,
+    });
     if (result.ok !== true) return mobileProblem(401, 'pairing_refused', 'Pairing code is invalid, expired, consumed, or not valid for this app');
     return mobileJson({
       access_token: token,

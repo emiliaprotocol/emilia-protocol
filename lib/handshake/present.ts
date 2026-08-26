@@ -22,15 +22,23 @@ import { HandshakeError } from './errors.js';
 import {
   VALID_PARTY_ROLES,
   VALID_DISCLOSURE_MODES,
-  sha256,
 } from './invariants.js';
 import { normalizeClaims, claimsToCanonicalHash } from './normalize.js';
+import {
+  type HandshakeIssuerProof,
+  handshakeAuthorityKeyDigest,
+  handshakeIssuerProofDigest,
+  handshakeIssuerProofStatement,
+  handshakePresentationHash,
+  verifyHandshakeIssuerProof,
+} from './issuer-proof.js';
 
 interface Presentation {
   type: string;
   data: unknown;
   issuer_ref?: string;
   disclosure_mode?: string;
+  issuer_proof?: HandshakeIssuerProof;
 }
 
 /**
@@ -65,11 +73,7 @@ export async function addPresentation(
     );
   }
 
-  const presentation_hash = sha256(
-    typeof presentation.data === 'string'
-      ? presentation.data
-      : JSON.stringify(presentation.data),
-  );
+  const presentation_hash = handshakePresentationHash(presentation.data);
 
   const result = await protocolWrite({
     type: COMMAND_TYPES.ADD_PRESENTATION,
@@ -82,6 +86,7 @@ export async function addPresentation(
       presentation_hash,
       disclosure_mode: presentation.disclosure_mode || 'full',
       raw_claims: presentation.data,
+      issuer_proof: presentation.issuer_proof || null,
     },
   });
 
@@ -98,6 +103,7 @@ interface AddPresentationCommand {
     presentation_hash: string;
     disclosure_mode: string;
     raw_claims: unknown;
+    issuer_proof: HandshakeIssuerProof | null;
   };
 }
 
@@ -171,12 +177,23 @@ export async function _handleAddPresentation(command: AddPresentationCommand): P
   const rawClaims = (command.input.raw_claims || null) as Record<string, unknown> | null;
   const normalizedClaims = rawClaims ? normalizeClaims(rawClaims) : null;
   const canonicalClaimsHash = normalizedClaims ? claimsToCanonicalHash(normalizedClaims) : null;
+  const issuerProofStatement = issuer_ref ? {
+    handshakeId: handshake_id,
+    partyRole: party_role,
+    presentationType: presentation_type,
+    issuerRef: issuer_ref,
+    actorEntityRef: String(authenticatedEntity),
+    disclosureMode: disclosure_mode || 'full',
+    presentationHash: presentation_hash,
+    canonicalClaimsHash,
+  } : null;
 
   // Default: unknown issuers are UNTRUSTED (fail-closed).
   // Every decision is recorded with an explicit trust_reason for auditability.
   let issuerTrusted = false;
   let issuerTrustReason: string = 'unknown';
   let resolvedAuthorityId: any = null;
+  let resolvedAuthorityKeyDigest: string | null = null;
 
   if (!issuer_ref) {
     // Audit-fix (H4): a self-asserted presentation (no issuer_ref) is
@@ -196,7 +213,7 @@ export async function _handleAddPresentation(command: AddPresentationCommand): P
   } else {
     const { data: authority, error: authError } = await supabase
       .from('authorities')
-      .select('authority_id, status, valid_from, valid_to')
+      .select('authority_id, key_id, public_key, algorithm, status, valid_from, valid_to, revoked_at')
       .eq('key_id', issuer_ref)
       .maybeSingle();
 
@@ -229,7 +246,7 @@ export async function _handleAddPresentation(command: AddPresentationCommand): P
     } else {
       resolvedAuthorityId = authority.authority_id;
       const now = new Date();
-      if (authority.status === 'revoked') {
+      if (authority.status !== 'active' || authority.revoked_at) {
         issuerTrusted = false;
         issuerTrustReason = 'authority_revoked';
       } else if (authority.valid_to && new Date(authority.valid_to) < now) {
@@ -238,9 +255,18 @@ export async function _handleAddPresentation(command: AddPresentationCommand): P
       } else if (authority.valid_from && new Date(authority.valid_from) > now) {
         issuerTrusted = false;
         issuerTrustReason = 'authority_not_yet_valid';
+      } else if (!command.input.issuer_proof) {
+        issuerTrusted = false;
+        issuerTrustReason = 'issuer_proof_missing';
       } else {
-        issuerTrusted = true;
-        issuerTrustReason = 'authority_valid';
+        resolvedAuthorityKeyDigest = handshakeAuthorityKeyDigest(authority.public_key);
+        const proofValid = verifyHandshakeIssuerProof({
+          proof: command.input.issuer_proof,
+          authority,
+          statement: issuerProofStatement!,
+        });
+        issuerTrusted = proofValid;
+        issuerTrustReason = proofValid ? 'authority_signature_valid' : 'issuer_proof_invalid';
       }
     }
   }
@@ -250,7 +276,9 @@ export async function _handleAddPresentation(command: AddPresentationCommand): P
   // (Finding 12: never conflate "unknown" with "revoked")
   const ISSUER_STATUS_MAP: Record<string, string> = {
     self_asserted: 'not_applicable',
-    authority_valid: 'good',
+    authority_signature_valid: 'good',
+    issuer_proof_missing: 'unproven',
+    issuer_proof_invalid: 'invalid_proof',
     authority_revoked: 'revoked',
     authority_expired: 'expired',
     authority_not_yet_valid: 'not_yet_valid',
@@ -261,7 +289,24 @@ export async function _handleAddPresentation(command: AddPresentationCommand): P
   const revocation_status = ISSUER_STATUS_MAP[issuerTrustReason] || 'unknown';
 
   const actorRef = resolveActorRef(command.actor);
-  const eventDetail = { party_role, presentation_type, issuer_trusted: issuerTrusted, issuer_status: issuerTrustReason };
+  const eventDetail = {
+    party_role,
+    presentation_type,
+    issuer_trusted: issuerTrusted,
+    issuer_status: issuerTrustReason,
+    authority_key_digest: resolvedAuthorityKeyDigest,
+    issuer_proof_profile: command.input.issuer_proof?.profile || null,
+    issuer_proof_digest: command.input.issuer_proof
+      ? handshakeIssuerProofDigest(command.input.issuer_proof)
+      : null,
+    // Proofs are public verification material, not bearer secrets. Retain both
+    // the proof and exact canonical statement projection so an auditor can
+    // independently reperform verification from the durable event.
+    issuer_proof: command.input.issuer_proof || null,
+    issuer_proof_statement: issuerProofStatement
+      ? handshakeIssuerProofStatement(issuerProofStatement)
+      : null,
+  };
 
   // Single RPC: presentation + events + status update + protocol event in one transaction.
   // Replaces 3-4 serial writes with 1 roundtrip.
@@ -277,11 +322,11 @@ export async function _handleAddPresentation(command: AddPresentationCommand): P
     p_canonical_claims_hash: canonicalClaimsHash,
     p_actor_entity_ref: authenticatedEntity,
     p_authority_id: resolvedAuthorityId,
+    p_authority_key_digest: resolvedAuthorityKeyDigest,
     p_issuer_status: issuerTrustReason,
     p_verified: issuerTrusted,
     p_revocation_checked: revocation_checked,
     p_revocation_status: revocation_status,
-    p_current_hs_status: handshake.status,
     p_actor_id: actorRef,
     p_issuer_trusted: issuerTrusted,
     p_event_detail: eventDetail,
@@ -289,6 +334,12 @@ export async function _handleAddPresentation(command: AddPresentationCommand): P
 
   if (rpcError) {
     throw new HandshakeError(`Failed to write presentation: ${rpcError.message}`, 500, 'DB_ERROR');
+  }
+  if (rpcResult?.error === 'invalid_state') {
+    throw new HandshakeError('Handshake no longer accepts presentations', 409, 'INVALID_STATE');
+  }
+  if (rpcResult?.error === 'party_binding_invalid') {
+    throw new HandshakeError('Handshake party binding changed before presentation write', 403, 'ROLE_SPOOFING');
   }
 
   return {

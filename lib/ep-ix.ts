@@ -596,58 +596,50 @@ export async function unfreezeResolvedContinuity(disputeId: string): Promise<{
 }
 
 /**
- * Withdraw a continuity claim — principal-initiated cancellation.
- * Only the filing principal may withdraw; only terminal from pending or under_challenge.
+ * Withdraw a continuity claim — authenticated-principal cancellation.
+ * The database locks the claim, proves the actor is currently bound to the
+ * filing principal, changes state, and appends the audit event atomically.
  * Transitions: pending | under_challenge → withdrawn.
  */
 export async function withdrawContinuityClaim(
   continuityId: string,
-  principalId: string,
+  actorEntityId: string,
   reason?: string | null,
 ): Promise<WithdrawContinuityResult> {
   const supabase = getServiceClient();
-  const now = new Date().toISOString();
-
-  const { data: claim } = await supabase
-    .from('continuity_claims')
-    .select('continuity_id, status, principal_id')
-    .eq('continuity_id', continuityId)
-    .single();
-
-  if (!claim) return { error: 'Continuity claim not found', status: 404 };
-
-  // Only the filing principal may withdraw their own claim.
-  if (claim.principal_id?.toString() !== principalId) {
-    return { error: 'Only the filing principal may withdraw this claim', status: 403 };
+  if (typeof continuityId !== 'string' || continuityId.trim() === '') {
+    return { error: 'continuity_id is required', status: 400 };
+  }
+  if (typeof actorEntityId !== 'string' || actorEntityId.trim() === '') {
+    return { error: 'Authenticated withdrawing actor identity is required', status: 400 };
   }
 
-  if (!['pending', 'under_challenge'].includes(claim.status)) {
-    return { error: `Cannot withdraw claim in status '${claim.status}'`, status: 409 };
-  }
-
-  const { error } = await supabase
-    .from('continuity_claims')
-    .update({
-      status: CONTINUITY_STATUS.WITHDRAWN,
-      withdrawn_at: now,
-      withdrawn_by: principalId,
-      withdrawn_reason: reason || null,
-      updated_at: now,
-    })
-    .eq('continuity_id', continuityId);
-
+  const { data, error } = await supabase.rpc('withdraw_continuity_claim_atomic', {
+    p_continuity_id: continuityId,
+    p_actor_entity_id: actorEntityId,
+    p_reason: reason || null,
+  });
   if (error) return { error: error.message, status: 500 };
-
-  await emitAudit(
-    'continuity.withdrawn',
-    principalId, 'principal',
-    'continuity', continuityId,
-    'withdraw',
-    { status: claim.status },
-    { status: CONTINUITY_STATUS.WITHDRAWN, reason },
-  );
-
-  return { continuity_id: continuityId, status: CONTINUITY_STATUS.WITHDRAWN, withdrawn_at: now };
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result || typeof result !== 'object') {
+    return { error: 'Continuity withdrawal transaction returned an invalid result', status: 500 };
+  }
+  if (typeof result.error === 'string') {
+    return {
+      error: result.error,
+      status: typeof result.status === 'number' ? result.status : 500,
+    };
+  }
+  if (typeof result.continuity_id !== 'string'
+      || result.status !== CONTINUITY_STATUS.WITHDRAWN
+      || typeof result.withdrawn_at !== 'string') {
+    return { error: 'Continuity withdrawal transaction returned no withdrawal', status: 500 };
+  }
+  return {
+    continuity_id: result.continuity_id,
+    status: result.status,
+    withdrawn_at: result.withdrawn_at,
+  };
 }
 
 /**

@@ -22,7 +22,10 @@ import {
 export interface MobileSession {
   session_id: string;
   entity_ref: string;
+  organization_id: string;
   approver_id: string;
+  directory_user_id: string;
+  identity_credential_id: string;
   profile_id: string;
   platform: 'ios' | 'android';
   app_id: string;
@@ -64,6 +67,152 @@ const MOBILE_WEBAUTHN_MEMBERS = new Set([
 
 export function sha256Hex(value: string): string {
   return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+const MOBILE_PAIRING_IDENTITY_PROFILE = 'EP-MOBILE-PAIRING-IDENTITY-v1';
+
+/**
+ * WebAuthn challenge used to prove that the human named by a pairing code is
+ * present. It is derived exclusively from the server-generated, single-use
+ * code, so the client cannot substitute a different ceremony context.
+ */
+export function mobilePairingIdentityChallenge(code: string): string {
+  return crypto.createHash('sha256')
+    .update(`${MOBILE_PAIRING_IDENTITY_PROFILE}\0${code.trim().toUpperCase()}`, 'utf8')
+    .digest('base64url');
+}
+
+export interface MobilePairingIdentityContext {
+  entityRef: string;
+  organizationId: string;
+  approverId: string;
+  credential: {
+    credential_id: string;
+    public_key_cose: string;
+    sign_count: number;
+    transports?: string[] | null;
+  };
+}
+
+export async function listMobilePairingIdentityCredentials(
+  supabase: SupabaseClient,
+  {
+    organizationId,
+    approverId,
+    directoryUserId,
+    now = new Date().toISOString(),
+  }: { organizationId: string; approverId: string; directoryUserId: string; now?: string },
+): Promise<Array<{ id: string; type: 'public-key'; transports?: string[] }>> {
+  const { data, error } = await supabase
+    .from('approver_credentials')
+    .select('credential_id, transports, key_class, enrollment_basis, directory_user_id, valid_from, valid_to, revoked_at')
+    .eq('organization_id', organizationId)
+    .eq('approver_id', approverId)
+    .eq('directory_user_id', directoryUserId)
+    .eq('key_class', 'A')
+    .eq('enrollment_basis', 'directory')
+    .is('revoked_at', null);
+  if (error) throw databaseError('mobile pairing credential directory failed', error);
+  const instant = Date.parse(now);
+  return (data || [])
+    .filter((credential) => {
+      const validFrom = credential.valid_from ? Date.parse(credential.valid_from) : Number.NEGATIVE_INFINITY;
+      const validTo = credential.valid_to ? Date.parse(credential.valid_to) : Number.POSITIVE_INFINITY;
+      return credential.directory_user_id
+        && Number.isFinite(instant)
+        && validFrom <= instant
+        && validTo > instant;
+    })
+    .map((credential) => ({
+      id: credential.credential_id,
+      type: 'public-key' as const,
+      ...(Array.isArray(credential.transports) && credential.transports.length > 0
+        ? { transports: credential.transports }
+        : {}),
+    }));
+}
+
+/**
+ * Load the exact directory-backed Class-A credential that must authorize a
+ * mobile pairing. The later exchange RPC repeats these binding checks while
+ * holding the pairing row lock; this read exists only to verify WebAuthn.
+ */
+export async function loadMobilePairingIdentityContext(
+  supabase: SupabaseClient,
+  { code, credentialId, now = new Date().toISOString() }:
+  { code: string; credentialId: string; now?: string },
+): Promise<MobilePairingIdentityContext | null> {
+  const { data: pairing, error: pairingError } = await supabase
+    .from('mobile_pairings')
+    .select('entity_ref, organization_id, approver_id, directory_user_id, expires_at, consumed_at')
+    .eq('code_hash', sha256Hex(code))
+    .maybeSingle();
+  if (pairingError) throw databaseError('mobile pairing identity lookup failed', pairingError);
+  if (!pairing || pairing.consumed_at || !pairing.organization_id || !pairing.directory_user_id
+      || Date.parse(pairing.expires_at) <= Date.parse(now)) return null;
+
+  const { data: entity, error: entityError } = await supabase
+    .from('entities')
+    .select('entity_id, organization_id, status')
+    .eq('entity_id', pairing.entity_ref)
+    .maybeSingle();
+  if (entityError) throw databaseError('mobile pairing tenant lookup failed', entityError);
+  if (!entity || entity.status !== 'active' || entity.organization_id !== pairing.organization_id) {
+    return null;
+  }
+
+  const { data: directoryUser, error: directoryUserError } = await supabase
+    .from('scim_users')
+    .select('id, tenant_id, user_name, active')
+    .eq('id', pairing.directory_user_id)
+    .maybeSingle();
+  if (directoryUserError) throw databaseError('mobile pairing directory-user lookup failed', directoryUserError);
+  if (!directoryUser || directoryUser.active !== true || directoryUser.user_name !== pairing.approver_id) return null;
+
+  const { data: directoryToken, error: directoryTokenError } = await supabase
+    .from('scim_provisioning_tokens')
+    .select('id')
+    .eq('tenant_id', directoryUser.tenant_id)
+    .eq('organization_id', pairing.organization_id)
+    .is('revoked_at', null)
+    .limit(1)
+    .maybeSingle();
+  if (directoryTokenError) throw databaseError('mobile pairing directory-token lookup failed', directoryTokenError);
+  if (!directoryToken) return null;
+
+  const { data: credential, error: credentialError } = await supabase
+    .from('approver_credentials')
+    .select('credential_id, public_key_cose, sign_count, transports, approver_id, organization_id, key_class, enrollment_basis, directory_user_id, valid_from, valid_to, revoked_at')
+    .eq('credential_id', credentialId)
+    .maybeSingle();
+  if (credentialError) throw databaseError('mobile pairing credential lookup failed', credentialError);
+  const instant = Date.parse(now);
+  const validFrom = credential?.valid_from ? Date.parse(credential.valid_from) : Number.NEGATIVE_INFINITY;
+  const validTo = credential?.valid_to ? Date.parse(credential.valid_to) : Number.POSITIVE_INFINITY;
+  if (!credential
+      || credential.revoked_at
+      || credential.organization_id !== entity.organization_id
+      || credential.approver_id !== pairing.approver_id
+      || credential.key_class !== 'A'
+      || credential.enrollment_basis !== 'directory'
+      || credential.directory_user_id !== pairing.directory_user_id
+      || !Number.isFinite(instant)
+      || validFrom > instant
+      || validTo <= instant) {
+    return null;
+  }
+
+  return {
+    entityRef: pairing.entity_ref,
+    organizationId: entity.organization_id,
+    approverId: pairing.approver_id,
+    credential: {
+      credential_id: credential.credential_id,
+      public_key_cose: credential.public_key_cose,
+      sign_count: Number(credential.sign_count) || 0,
+      transports: credential.transports || undefined,
+    },
+  };
 }
 
 function databaseError(label: string, error: { message?: string; code?: string } | null | undefined): Error {
@@ -235,7 +384,9 @@ export function createMobileEnrollmentDirectory(supabase: SupabaseClient, entity
 export async function createPairing(supabase: SupabaseClient, {
   code,
   entityRef,
+  organizationId,
   approverId,
+  directoryUserId,
   profileId,
   allowedApps,
   expiresAt,
@@ -243,21 +394,24 @@ export async function createPairing(supabase: SupabaseClient, {
 }: {
   code: string;
   entityRef: string;
+  organizationId: string;
   approverId: string;
+  directoryUserId: string;
   profileId: string;
-  allowedApps: string[];
+  allowedApps: { ios: string[]; android: string[] };
   expiresAt: string;
   sessionExpiresAt: string;
 }): Promise<true> {
-  const { data, error } = await supabase.rpc('create_mobile_pairing', {
+  const { data, error } = await supabase.rpc('create_mobile_pairing_verified', {
     p_code_hash: sha256Hex(code),
     p_entity_ref: entityRef,
+    p_organization_id: organizationId,
     p_approver_id: approverId,
+    p_directory_user_id: directoryUserId,
     p_profile_id: profileId,
     p_allowed_apps: allowedApps,
     p_expires_at: expiresAt,
     p_session_expires_at: sessionExpiresAt,
-    p_now: new Date().toISOString(),
   });
   if (error) throw databaseError('mobile pairing creation failed', error);
   if (data !== true) throw new Error('mobile pairing creation refused');
@@ -265,17 +419,45 @@ export async function createPairing(supabase: SupabaseClient, {
 }
 
 export async function exchangePairing(
-  supabase: SupabaseClient,
-  { code, token, platform, appId }: { code: string; token: string; platform: string; appId: string },
+  _supabase: SupabaseClient,
+  _input: { code: string; token: string; platform: string; appId: string },
 ): Promise<Json> {
-  const { data, error } = await supabase.rpc('exchange_mobile_pairing', {
+  throw new Error('unverified_mobile_pairing_exchange_disabled');
+}
+
+export async function exchangePairingVerified(
+  supabase: SupabaseClient,
+  {
+    code,
+    token,
+    platform,
+    appId,
+    credentialId,
+    approverId,
+    newSignCount,
+    identityProofDigest,
+  }: {
+    code: string;
+    token: string;
+    platform: string;
+    appId: string;
+    credentialId: string;
+    approverId: string;
+    newSignCount: number;
+    identityProofDigest: string;
+  },
+): Promise<Json> {
+  const { data, error } = await supabase.rpc('exchange_mobile_pairing_verified', {
     p_code_hash: sha256Hex(code),
     p_token_hash: sha256Hex(token),
     p_platform: platform,
     p_app_id: appId,
-    p_now: new Date().toISOString(),
+    p_credential_id: credentialId,
+    p_expected_approver_id: approverId,
+    p_new_sign_count: newSignCount,
+    p_identity_proof_digest: identityProofDigest,
   });
-  if (error) throw databaseError('mobile pairing exchange failed', error);
+  if (error) throw databaseError('verified mobile pairing exchange failed', error);
   return data || { ok: false, reason: 'invalid_or_expired' };
 }
 
@@ -286,20 +468,17 @@ export async function authenticateMobileToken(
   const match = /^Bearer\s+(.+)$/i.exec(authorization || '');
   if (!match || !MOBILE_TOKEN.test(match[1])) return null;
   const tokenHash = sha256Hex(match[1]);
-  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('mobile_sessions')
-    .select('session_id, entity_ref, approver_id, profile_id, platform, app_id, device_key_id, expires_at')
+    .select('session_id, entity_ref, organization_id, approver_id, directory_user_id, identity_credential_id, profile_id, platform, app_id, device_key_id, expires_at')
     .eq('token_hash', tokenHash)
     .is('revoked_at', null)
-    .gt('expires_at', now)
     .maybeSingle();
   if (error) throw databaseError('mobile session lookup failed', error);
   if (!data) return null;
-  const { data: touched, error: touchError } = await supabase.rpc('touch_mobile_session', {
+  const { data: touched, error: touchError } = await supabase.rpc('touch_mobile_session_verified', {
     p_session_id: data.session_id,
     p_token_hash: tokenHash,
-    p_now: now,
   });
   if (touchError) throw databaseError('mobile session update failed', touchError);
   if (touched !== true) return null;

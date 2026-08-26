@@ -113,20 +113,33 @@ describe('tenant-scoped Guard receipt dashboard', () => {
   });
 
   it('does not let a same-target foreign lifecycle event alter an owned snapshot', () => {
-    const receipts = replayGuardReceipts([
-      {
-        event_type: 'guard.trust_receipt.created',
-        target_id: 'collision',
-        tenant_id: 'tenant_a',
-        environment: 'production',
-        after_state: { organization_id: 'tenant_a', receipt_status: 'issued' },
-        created_at: '2026-07-16T12:00:00Z',
+    const ownedCreated = {
+      event_type: 'guard.trust_receipt.created',
+      target_id: 'collision',
+      tenant_id: 'tenant_a',
+      environment: 'production',
+      actor_id: 'ep:cloud-key:owned',
+      after_state: {
+        organization_id: 'tenant_a',
+        receipt_status: 'issued',
+        expires_at: '2099-07-16T12:00:00Z',
       },
+      created_at: '2026-07-16T12:00:00Z',
+    };
+    const ownedOnly = replayGuardReceipts(
+      [ownedCreated],
+      ['collision'],
+      'tenant_a',
+      'production',
+    );
+    const receipts = replayGuardReceipts([
+      ownedCreated,
       {
         event_type: 'guard.trust_receipt.consumed',
         target_id: 'collision',
         tenant_id: 'tenant_b',
         environment: 'production',
+        actor_id: 'ep:cloud-key:foreign-tenant',
         after_state: {},
         created_at: '2026-07-16T12:01:00Z',
       },
@@ -135,6 +148,7 @@ describe('tenant-scoped Guard receipt dashboard', () => {
         target_id: 'collision',
         tenant_id: 'tenant_a',
         environment: 'staging',
+        actor_id: 'ep:cloud-key:foreign-environment',
         after_state: {},
         created_at: '2026-07-16T12:02:00Z',
       },
@@ -142,6 +156,7 @@ describe('tenant-scoped Guard receipt dashboard', () => {
 
     expect(receipts).toHaveLength(1);
     expect(receipts[0].status).toBe('issued');
+    expect(receipts).toEqual(ownedOnly);
   });
 
   it('never replays a historical observe receipt as consumed authority', () => {

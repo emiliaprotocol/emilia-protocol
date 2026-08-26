@@ -33,6 +33,7 @@ const NAMED_POST_CAPABILITIES = new Map<string, string>([
   ['/api/scim/v2/provisioning-token', 'scim.manage'],
   ['/api/v1/approvers/webauthn/register-options', 'approver.enroll'],
   ['/api/v1/approvers/webauthn/register-verify', 'approver.enroll'],
+  ['/api/v1/mobile/pairings', 'approver.enroll'],
   ['/api/identity/continuity/resolve', 'dispute.review'],
 ]);
 

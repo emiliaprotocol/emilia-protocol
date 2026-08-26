@@ -3,11 +3,11 @@
   "inputs": [
     {
       "path": "apps/secure-app/App.tsx",
-      "sha256": "71fcfe2b9c26f4659c84016ab2d43508f75d0cb1beb0ce49b1296552589be50d"
+      "sha256": "17263ae0a9dee5f43290799ece7295b448314d45ef1d581ad1918dbfde41d585"
     },
     {
       "path": "apps/secure-app/lib/ep-client.ts",
-      "sha256": "df6a8b76a6ff7caf6f532ee13f5612b1b852f4cf41571a397ca2e4b5d7a4e1e6"
+      "sha256": "a682718def2594697e4a3d6499debc6bbb0dc601621d358a5f2915202d663748"
     },
     {
       "path": "apps/secure-app/lib/secure-key.ts",
@@ -483,11 +483,11 @@
     },
     {
       "path": "lib/mobile/store.js",
-      "sha256": "6b39ba0d9a1df071c79cf3b0e63f5b7a40f5b91d5558c45f7a059bad5ae5efd8"
+      "sha256": "fade4c1fabb43339146433cff8c5fda8788b3d4128ecd8cfb967f0fb4f918af4"
     },
     {
       "path": "lib/mobile/store.ts",
-      "sha256": "6102c5d67470ff3ad336440edd87900b47670f7398f1aa71630e4722cd55b465"
+      "sha256": "25ead3c4f6f1bb02d4a8fc4fa8cd706bee13ddf158047d101dc2fbf9abfcbd0b"
     },
     {
       "path": "lib/negotiate/evidence-challenge.js",
@@ -503,11 +503,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "48e69ee8434a751730c108bbad7b77a53b043c45646c26fe8a7943ecc9d07292"
+      "sha256": "efbffbf1bb588558b00e2bf31e00f95475780b70ebc05241d7974c087317a16b"
     },
     {
       "path": "package.json",
-      "sha256": "7756792215b5c88eb909ad193397a9acd2b85fcc710b4cc3be04ba738cba8505"
+      "sha256": "500422b126504bf756a0d9ae4a87547dfcc5869b862fbbe9f1eff518fbca2bc8"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -999,7 +999,7 @@
     },
     {
       "path": "packages/require-receipt/dist/index.js",
-      "sha256": "32ee46de41a213ed74cb851af704c1b2cbde64096b79d66703218c9f4ee42c21"
+      "sha256": "0c2fca8daf4b89a373c835f2e5be6b50e6d2de9d648814d38a8c32ff3c99c77a"
     },
     {
       "path": "packages/require-receipt/dist/jws.js",

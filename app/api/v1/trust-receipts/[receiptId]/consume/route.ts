@@ -583,6 +583,9 @@ export async function POST(
       if (String(insertErr.message || '').includes('trust_receipt_expired')) {
         return epProblem(410, 'receipt_expired', 'Receipt has expired');
       }
+      if (String(insertErr.message || '').includes('trust_receipt_signoff_rejected')) {
+        return epProblem(403, 'signoff_rejected', 'Receipt signoff was rejected');
+      }
       if (String(insertErr.message || '').includes('trust_receipt_registry_facts_invalid')) {
         return epProblem(
           403,

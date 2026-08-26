@@ -74,7 +74,7 @@ All protocol safety properties were expressed as formal invariants in `formal/ep
 
 ### Phase 2: Adversarial Code Review (116 Red Team Cases)
 
-All 85 red team cases in `docs/conformance/RED_TEAM_CASES.md` were reviewed against the implementation. Each case specifies:
+All 86 red team cases in `docs/conformance/RED_TEAM_CASES.md` were reviewed against the implementation. Each case specifies:
 - Attack vector and threat model
 - Expected system behavior (must reject / must accept / must rate-limit)
 - Code location that enforces the defense

@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // ── In-memory Supabase mock ──────────────────────────────────────────────────
-const store = { scim_provisioning_tokens: [], scim_users: [], scim_groups: [], approver_credentials: [], audit_events: [] };
+const store = { entities: [], scim_provisioning_tokens: [], scim_users: [], scim_groups: [], approver_credentials: [], audit_events: [] };
 let idSeq = 0;
 const newId = () => `00000000-0000-0000-0000-${String(++idSeq).padStart(12, '0')}`;
 
@@ -83,9 +83,56 @@ class Query {
 const mockClient = {
   from: (table) => new Query(table),
   async rpc(name, args) {
+    const token = store.scim_provisioning_tokens.find((row) => row.id === args.p_token_id);
+    const tokenAuthorized = Boolean(token
+      && token.revoked_at === null
+      && token.tenant_id === args.p_tenant_id
+      && token.organization_id === args.p_organization_id);
+    if (name === 'create_scim_user_authorized') {
+      if (!tokenAuthorized) return { data: { error: 'token_authority_invalid' }, error: null };
+      const inserted = new Query('scim_users').insert({
+        ...args.p_fields,
+        tenant_id: args.p_tenant_id,
+      })._applyInsert();
+      if (inserted.error) return inserted;
+      return { data: { status: 'created', user: inserted.data }, error: null };
+    }
+    if (name === 'apply_scim_group_authorized') {
+      if (!tokenAuthorized) return { data: { error: 'token_authority_invalid' }, error: null };
+      if (!args.p_group_id) {
+        const inserted = new Query('scim_groups').insert({
+          display_name: args.p_fields.display_name,
+          external_id: args.p_fields.external_id,
+          members: args.p_fields.members,
+          tenant_id: args.p_tenant_id,
+        })._applyInsert();
+        if (inserted.error) return inserted;
+        return { data: { status: 'created', group: inserted.data }, error: null };
+      }
+      const group = store.scim_groups.find(
+        (row) => row.tenant_id === args.p_tenant_id && row.id === args.p_group_id,
+      );
+      if (!group) return { data: { error: 'group_not_found' }, error: null };
+      if ((group.version ?? 1) !== args.p_expected_version) {
+        return { data: { error: 'version_conflict' }, error: null };
+      }
+      if (args.p_delete) {
+        store.scim_groups = store.scim_groups.filter((row) => row !== group);
+        return { data: { status: 'deleted' }, error: null };
+      }
+      Object.assign(group, {
+        display_name: args.p_fields.display_name,
+        external_id: args.p_fields.external_id,
+        members: args.p_fields.members,
+        version: (group.version ?? 1) + 1,
+        updated_at: '2026-06-11T00:01:00Z',
+      });
+      return { data: { status: 'updated', group }, error: null };
+    }
     if (name !== 'apply_scim_user_and_authority_atomic') {
       return { data: null, error: { message: `unknown rpc ${name}` } };
     }
+    if (!tokenAuthorized) return { data: { error: 'token_authority_invalid' }, error: null };
     const user = store.scim_users.find(
       (row) => row.tenant_id === args.p_tenant_id && row.id === args.p_user_id,
     );
@@ -143,6 +190,7 @@ const { SCIM, SCIM_LIMITS } = await import('../lib/scim/core.js');
 const Users = await import('../app/api/scim/v2/Users/route.ts');
 const UserById = await import('../app/api/scim/v2/Users/[id]/route.ts');
 const Groups = await import('../app/api/scim/v2/Groups/route.ts');
+const GroupById = await import('../app/api/scim/v2/Groups/[id]/route.ts');
 
 // A request helper.
 function req(method, url, { token, body } = {}) {
@@ -153,10 +201,12 @@ function req(method, url, { token, body } = {}) {
 }
 
 const TENANT = 'ep_entity_acme';
+const ORGANIZATION = '@org:93b24223-2468-4fe3-aa99-c23132566cd6';
 const TOKEN = 'ep_scim_testtoken0000000000000000000000000000000000000000000000000000';
 
 beforeEach(() => {
-  store.scim_provisioning_tokens = [{ id: 't1', tenant_id: TENANT, token_hash: hashScimToken(TOKEN), revoked_at: null }];
+  store.entities = [{ entity_id: TENANT, organization_id: ORGANIZATION, status: 'active' }];
+  store.scim_provisioning_tokens = [{ id: 't1', tenant_id: TENANT, organization_id: ORGANIZATION, token_hash: hashScimToken(TOKEN), revoked_at: null }];
   store.scim_users = [];
   store.scim_groups = [];
   store.approver_credentials = [];
@@ -176,6 +226,33 @@ describe('SCIM auth gate', () => {
   it('resolves a valid SCIM token to its tenant', async () => {
     const r = await authenticateScim(req('GET', 'https://x/api/scim/v2/Users', { token: TOKEN }));
     expect(r.tenantId).toBe(TENANT);
+    expect(r.organizationId).toBe(ORGANIZATION);
+  });
+  it('rejects a token whose live tenant was disabled or rebound to another organization', async () => {
+    store.entities[0].organization_id = '@org:attacker';
+    const rebound = await authenticateScim(req('GET', 'https://x/api/scim/v2/Users', { token: TOKEN }));
+    expect(rebound.status).toBe(403);
+    store.entities[0].organization_id = ORGANIZATION;
+    store.entities[0].status = 'disabled';
+    const disabled = await authenticateScim(req('GET', 'https://x/api/scim/v2/Users', { token: TOKEN }));
+    expect(disabled.status).toBe(403);
+  });
+  it('does not promote a legacy NULL token organization from its tenant slug', async () => {
+    store.entities[0].organization_id = TENANT;
+    store.scim_provisioning_tokens[0].organization_id = null;
+    const legacy = await authenticateScim(req('GET', 'https://x/api/scim/v2/Users', { token: TOKEN }));
+    expect(legacy.status).toBe(403);
+  });
+  it('rejects a legacy self-org token even when the live row still has that shape', async () => {
+    store.entities[0].organization_id = TENANT;
+    store.scim_provisioning_tokens[0].organization_id = TENANT;
+    const squatted = await authenticateScim(req('GET', 'https://x/api/scim/v2/Users', { token: TOKEN }));
+    expect(squatted.status).toBe(403);
+  });
+  it('rejects a token whose stored organization differs from its live entity binding', async () => {
+    store.scim_provisioning_tokens[0].organization_id = '@org:attacker';
+    const mismatched = await authenticateScim(req('GET', 'https://x/api/scim/v2/Users', { token: TOKEN }));
+    expect(mismatched.status).toBe(403);
   });
   it('rejects a revoked token', async () => {
     store.scim_provisioning_tokens[0].revoked_at = '2026-06-11T00:00:00Z';
@@ -338,6 +415,61 @@ describe('SCIM hostile payload rejection', () => {
   });
 });
 
+describe('SCIM exact-bearer mutation RPCs', () => {
+  it('passes the authenticated token id into user creation and every group mutation', async () => {
+    const rpc = vi.spyOn(mockClient, 'rpc');
+    const user = await Users.POST(req('POST', 'https://x/api/scim/v2/Users', {
+      token: TOKEN,
+      body: { userName: 'rpc-bound@example.com', active: true },
+    }));
+    expect(user.status).toBe(201);
+    expect(rpc).toHaveBeenCalledWith('create_scim_user_authorized', expect.objectContaining({
+      p_token_id: 't1',
+      p_tenant_id: TENANT,
+      p_organization_id: ORGANIZATION,
+    }));
+
+    const createdResponse = await Groups.POST(req('POST', 'https://x/api/scim/v2/Groups', {
+      token: TOKEN,
+      body: { displayName: 'Reviewers', members: [] },
+    }));
+    expect(createdResponse.status).toBe(201);
+    const created = await createdResponse.json();
+    const params = { params: Promise.resolve({ id: created.id }) };
+    const replaced = await GroupById.PUT(req('PUT', `https://x/api/scim/v2/Groups/${created.id}`, {
+      token: TOKEN,
+      body: { displayName: 'Senior Reviewers', members: [] },
+    }), params);
+    expect(replaced.status).toBe(200);
+    const deleted = await GroupById.DELETE(
+      req('DELETE', `https://x/api/scim/v2/Groups/${created.id}`, { token: TOKEN }),
+      params,
+    );
+    expect(deleted.status).toBe(204);
+    const groupCalls = rpc.mock.calls.filter(([name]) => name === 'apply_scim_group_authorized');
+    expect(groupCalls).toHaveLength(3);
+    expect(groupCalls.every(([, args]) => args.p_token_id === 't1')).toBe(true);
+    rpc.mockRestore();
+  });
+
+  it('returns 401 when the exact bearer loses authority before the RPC commit', async () => {
+    const original = mockClient.rpc;
+    mockClient.rpc = vi.fn(async (name, args) => {
+      if (name === 'create_scim_user_authorized') {
+        return { data: { error: 'token_authority_invalid' }, error: null };
+      }
+      return original.call(mockClient, name, args);
+    });
+    const response = await Users.POST(req('POST', 'https://x/api/scim/v2/Users', {
+      token: TOKEN,
+      body: { userName: 'revoked-during-write@example.com' },
+    }));
+    expect(response.status).toBe(401);
+    expect(store.scim_users).toHaveLength(0);
+    mockClient.rpc = original;
+  });
+});
+
 describe('SCIM → approver linkage', () => {
   // The SCIM→approver linkage is opt-in (T3): a compromised SCIM token must not
   // auto-mint approvers. These tests exercise the feature with it explicitly on.
@@ -351,7 +483,7 @@ describe('SCIM → approver linkage', () => {
   };
   const enrollCredential = (userName) => {
     store.approver_credentials.push({
-      id: `cred_${userName}`, organization_id: TENANT, approver_id: userName, credential_id: `cid_${userName}`,
+      id: `cred_${userName}`, organization_id: ORGANIZATION, approver_id: userName, credential_id: `cid_${userName}`,
       public_key_spki: 'spki', key_class: 'A', revoked_at: null,
     });
   };

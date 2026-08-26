@@ -701,6 +701,30 @@ export function receiptChallenge(action: string | null, reason: string, opts: nu
   };
 }
 
+const LEGACY_MANIFEST_MATCH_FIELDS = Object.freeze(['protocol', 'tool', 'method', 'path']);
+
+function normalizedLegacyManifestMatch(action: AnyRecord): AnyRecord | null {
+  if (!isObject(action?.match)) return null;
+  const normalized: AnyRecord = {};
+  for (const key of LEGACY_MANIFEST_MATCH_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(action.match, key)) continue;
+    const value = action.match[key];
+    if (typeof value === 'string' && value.length > 0) normalized[key] = value;
+  }
+  return normalized;
+}
+
+function legacyManifestSelectorsOverlap(left: AnyRecord, right: AnyRecord): boolean {
+  const a = normalizedLegacyManifestMatch(left);
+  const b = normalizedLegacyManifestMatch(right);
+  if (!a || !b) return false;
+  const shared = Object.keys(a).filter((key) => Object.prototype.hasOwnProperty.call(b, key));
+  // A selector is a conjunction of its fields. With no conflicting shared
+  // field, one incoming action can satisfy both entries (including subset and
+  // disjoint selector shapes), so the manifest does not name one policy.
+  return shared.every((key) => a[key] === b[key]);
+}
+
 /** Validate a .well-known/agent-actions.json Action Risk Manifest. */
 export function validateActionRiskManifest(manifest: AnyRecord) {
   const errors = [];
@@ -714,8 +738,9 @@ export function validateActionRiskManifest(manifest: AnyRecord) {
     errors.push('actions must be an array');
   }
 
+  const actions = Array.isArray(manifest.actions) ? manifest.actions : [];
   const seen = new Set();
-  for (const [i, action] of (manifest.actions || []).entries()) {
+  for (const [i, action] of actions.entries()) {
     const p = `actions[${i}]`;
     if (!isObject(action)) {
       errors.push(`${p} must be an object`);
@@ -724,9 +749,30 @@ export function validateActionRiskManifest(manifest: AnyRecord) {
     if (!action.id || typeof action.id !== 'string') errors.push(`${p}.id must be a string`);
     if (seen.has(action.id)) errors.push(`${p}.id must be unique`);
     seen.add(action.id);
-    if (!isObject(action.match)) errors.push(`${p}.match must be an object`);
+    if (!isObject(action.match)) {
+      errors.push(`${p}.match must be an object`);
+    } else {
+      const supportedFields = LEGACY_MANIFEST_MATCH_FIELDS.filter(
+        (key) => Object.prototype.hasOwnProperty.call(action.match, key),
+      );
+      if (supportedFields.length === 0) {
+        errors.push(`${p}.match must include at least one supported selector field (protocol, tool, method, or path)`);
+      }
+      for (const key of supportedFields) {
+        if (typeof action.match[key] !== 'string' || action.match[key].length === 0) {
+          errors.push(`${p}.match.${key} must be a non-empty string`);
+        }
+      }
+    }
     if (typeof action.receipt_required !== 'boolean') errors.push(`${p}.receipt_required must be boolean`);
-    if (action.receipt_required && !action.action_type) errors.push(`${p}.action_type is required when receipt_required is true`);
+    if (action.action_type !== undefined
+        && (typeof action.action_type !== 'string' || action.action_type.length === 0)) {
+      errors.push(`${p}.action_type must be a non-empty string when present`);
+    }
+    if (action.receipt_required
+        && (typeof action.action_type !== 'string' || action.action_type.length === 0)) {
+      errors.push(`${p}.action_type is required when receipt_required is true`);
+    }
     if (action.receipt_required && !['medium', 'high', 'critical'].includes(action.risk)) {
       errors.push(`${p}.risk must be medium, high, or critical when receipt_required is true`);
     }
@@ -746,6 +792,14 @@ export function validateActionRiskManifest(manifest: AnyRecord) {
       // consequence action. This is the author-time key-class floor; the gate
       // separately fails closed on any receipt weaker than the declared tier.
       errors.push(`${p}.assurance_class must be class_a or quorum when risk is critical (software is not sufficient for a critical action)`);
+    }
+  }
+
+  for (let left = 0; left < actions.length; left += 1) {
+    for (let right = left + 1; right < actions.length; right += 1) {
+      if (legacyManifestSelectorsOverlap(actions[left], actions[right])) {
+        errors.push(`actions[${left}].match overlaps actions[${right}].match`);
+      }
     }
   }
 

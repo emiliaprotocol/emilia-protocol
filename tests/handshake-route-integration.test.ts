@@ -323,7 +323,41 @@ describe('POST /api/handshake/:id/present', () => {
       data: { name: 'Alice', age: 30 },
       issuer_ref: 'iss_abc',
       disclosure_mode: 'selective',
+      issuer_proof: undefined,
     });
+  });
+
+  it('passes a well-formed issuer proof through without trusting client verification claims', async () => {
+    const proof = {
+      profile: 'EP-HANDSHAKE-ISSUER-PROOF-v1',
+      algorithm: 'Ed25519',
+      key_id: 'iss_abc',
+      signature: 'A'.repeat(86),
+    };
+    const req = createMockRequest('POST', `http://localhost/api/handshake/${handshakeId}/present`, {
+      ...validBody,
+      issuer_proof: proof,
+    });
+    const res = await presentPost(req, mockParams);
+    expect(res.status).toBe(201);
+    expect(mockAddPresentation.mock.calls[0][2]).toEqual(expect.objectContaining({ issuer_proof: proof }));
+  });
+
+  it('rejects issuer proof key substitution and unknown proof members before writing', async () => {
+    const proof = {
+      profile: 'EP-HANDSHAKE-ISSUER-PROOF-v1',
+      algorithm: 'Ed25519',
+      key_id: 'attacker-key',
+      signature: 'A'.repeat(86),
+      verified: true,
+    };
+    const req = createMockRequest('POST', `http://localhost/api/handshake/${handshakeId}/present`, {
+      ...validBody,
+      issuer_proof: proof,
+    });
+    const res = await presentPost(req, mockParams);
+    expect(res.status).toBe(400);
+    expect(mockAddPresentation).not.toHaveBeenCalled();
   });
 
   it('10. passes actor as fourth argument', async () => {

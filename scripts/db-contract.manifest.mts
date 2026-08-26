@@ -159,6 +159,73 @@ const CONSEQUENCE_CONTROL_SECURITY_ASSERTIONS: string[] = [
   'contract:index:public.idx_receipts_single_child_per_parent:exact-unique-btree',
 ];
 
+// Every table created in the public schema must be enrolled in the RLS
+// contract. Keep this list derived-by-test from CREATE TABLE statements so a
+// future migration cannot silently add an ungoverned Data API surface.
+const PUBLIC_RLS_TABLES: string[] = [
+  'alert_events', 'alert_rules', 'aml_history', 'anchor_batches', 'api_keys',
+  'approval_acquisition_requests', 'approver_credentials', 'arena_attempts',
+  'arena_sessions', 'arena_shares', 'audit_events', 'authorities',
+  'authority_registry_epoch', 'commits', 'consequence_actuator_envelopes',
+  'consumed_gate_refs', 'continuity_challenges', 'continuity_claims',
+  'continuity_decisions', 'delegations', 'disputes', 'entities',
+  'entity_signing_key_history', 'ep_aeb_consumption_operations',
+  'ep_aeb_consumption_replay_fences', 'ep_aeb_status_heads',
+  'ep_capability_operations', 'ep_capability_state', 'ep_gate_allowance_status',
+  'ep_gate_control_domain_events', 'ep_gate_control_domains',
+  'ep_remedy_case_set_events', 'ep_remedy_case_sets', 'eye_advisories',
+  'eye_observations', 'eye_suppressions', 'fraud_flags',
+  'guard_receipt_event_bindings', 'guard_receipt_streams',
+  'guarded_receipt_consumptions', 'handshake_bindings',
+  'handshake_consumptions', 'handshake_events', 'handshake_parties',
+  'handshake_policies', 'handshake_presentations', 'handshake_results',
+  'handshakes', 'identity_bindings', 'investor_inquiries', 'merkle_batches',
+  'mobile_action_alignments', 'mobile_action_challenges', 'mobile_action_events',
+  'mobile_action_groups', 'mobile_action_operations', 'mobile_action_revisions',
+  'mobile_actions', 'mobile_audit_records', 'mobile_counters',
+  'mobile_enrollments', 'mobile_evidence_records', 'mobile_executor_keys',
+  'mobile_kv_state', 'mobile_pairings', 'mobile_sessions', 'needs',
+  'operator_applications', 'org_quorum_policies', 'partner_inquiries',
+  'policy_rollouts', 'principal_delegation_signals', 'principals',
+  'protocol_events', 'receipts', 'release_lock_action_challenges',
+  'release_lock_contact_bindings', 'release_lock_credentials',
+  'release_lock_decision_invalidations', 'release_lock_decisions',
+  'release_lock_draw_actions', 'release_lock_effects', 'release_lock_invitations',
+  'release_lock_pairings', 'release_lock_registration_challenges',
+  'release_lock_round_acceptances', 'release_lock_sessions',
+  'release_lock_versions', 'release_locks', 'revoked_commit_keys',
+  'revoked_sessions', 'saml_consumed_assertions', 'scim_groups',
+  'scim_provisioning_tokens', 'scim_users', 'score_history', 'security_events',
+  'session_cutoffs', 'signoff_approval_velocity', 'signoff_attestations',
+  'signoff_ceremony_evidence', 'signoff_challenges', 'signoff_consumptions',
+  'signoff_events', 'signoff_metrics', 'sso_connections', 'tenant_api_keys',
+  'tenant_control_events', 'tenant_environments', 'tenant_members', 'tenants',
+  'trust_desk_bootstrap_consumptions', 'trust_desk_engagements',
+  'trust_desk_pages', 'trust_reports', 'waitlist', 'webauthn_challenges',
+  'webhook_deliveries', 'webhook_endpoints', 'works_authority_demand_requests',
+  'works_authority_entitlements', 'works_authority_events',
+  'works_authority_invitations', 'works_authority_record_versions',
+  'works_authority_records', 'works_authority_stripe_events', 'works_records',
+  'zk_proofs',
+];
+
+// STRIX found these trust-bearing/service-path tables had policies but RLS had
+// never actually been enabled. They are service-only and the forward closure
+// also forces RLS so table-owner execution cannot accidentally become a bypass.
+const STRIX_RLS_CLOSURE_TABLES: string[] = [
+  'alert_events', 'alert_rules', 'continuity_challenges', 'continuity_claims',
+  'continuity_decisions', 'delegations', 'ep_gate_control_domain_events',
+  'ep_gate_control_domains', 'eye_advisories', 'eye_observations',
+  'eye_suppressions', 'guarded_receipt_consumptions', 'handshake_bindings',
+  'handshake_consumptions', 'handshake_events', 'handshake_parties',
+  'handshake_policies', 'handshake_presentations', 'handshake_results',
+  'identity_bindings', 'merkle_batches', 'principal_delegation_signals',
+  'principals', 'protocol_events', 'signoff_approval_velocity',
+  'signoff_consumptions', 'signoff_events', 'tenant_control_events',
+  'tenant_environments', 'tenant_members', 'trust_reports',
+  'webhook_deliveries', 'zk_proofs',
+];
+
 // These tables are reached through server-side/service-role paths only. RLS is
 // necessary but not sufficient: a table ACL is a separate Data API gate, so
 // the live contract checks both controls.
@@ -199,6 +266,7 @@ const SERVICE_ONLY_TABLES: string[] = [
   'approval_acquisition_requests',
   'guard_receipt_streams',
   'guard_receipt_event_bindings',
+  ...STRIX_RLS_CLOSURE_TABLES,
   ...CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES,
 ];
 
@@ -211,6 +279,7 @@ interface DbContract {
   requiredColumns: Record<string, string[]>;
   requiredIndexes: Record<string, string[]>;
   rlsRequired: string[];
+  forceRlsRequired: string[];
   noAnonRead: string[];
   tableGrantsNoPublic: string[];
   tableGrantsNoServiceRoleDirect: string[];
@@ -316,7 +385,18 @@ export const contract: DbContract = {
     release_lock_effects: ['effect_id', 'lock_id', 'version', 'effect_reference',
       'status', 'reservation_expires_at', 'reservation_attempts', 'claim_attempts',
       'effect_contract_digest', 'retryable', 'provider_result'],
-    scim_provisioning_tokens: ['tenant_id', 'token_hash', 'token_prefix', 'revoked_at'],
+    scim_provisioning_tokens: ['tenant_id', 'organization_id', 'token_hash', 'token_prefix', 'revoked_at'],
+    scim_groups: ['raw'],
+    mobile_pairings: ['organization_id', 'directory_user_id', 'consumed_at'],
+    mobile_sessions: [
+      'organization_id', 'directory_user_id', 'identity_credential_id',
+      'identity_proof_digest', 'identity_verified_at', 'last_used_at', 'revoked_at',
+    ],
+    handshake_presentations: [
+      'authority_key_digest', 'issuer_proof_digest', 'issuer_proof',
+      'issuer_proof_statement', 'verified', 'issuer_status', 'revocation_status',
+    ],
+    handshake_results: ['prior_outcome', 'invalidated_at', 'invalidation_reason'],
     ep_capability_state: ['capability_id', 'capability_fingerprint', 'budget_amount',
       'currency', 'consumed_amount', 'reserved_amount', 'expires_at',
       'allowance_profile_id', 'allowance_digest'],
@@ -371,15 +451,11 @@ export const contract: DbContract = {
   },
 
   // Tables that MUST have RLS enabled. RLS off => hard FAIL.
-  rlsRequired: [
-    'entities', 'receipts', 'score_history', 'needs', 'waitlist',
-    'anchor_batches', 'disputes', 'handshakes', 'signoff_challenges', 'signoff_attestations',
-    'tenants', 'operator_applications', 'policy_rollouts',
-    'authorities', 'commits',
-    'consumed_gate_refs',
-    ...SERVICE_ONLY_TABLES,
-    ...RELEASE_LOCK_TABLES,
-  ],
+  rlsRequired: PUBLIC_RLS_TABLES,
+
+  // Existing FORCE-RLS tables remain source-governed by their dedicated
+  // migration contracts; this set pins the newly closed STRIX surface.
+  forceRlsRequired: STRIX_RLS_CLOSURE_TABLES,
 
   // No anon/authenticated/PUBLIC may have a SELECT (or ALL) policy on these.
   // (mig 113: api_keys + waitlist were anon-readable.) authorities = permission root.
@@ -464,6 +540,7 @@ export const contract: DbContract = {
     'revoke_handshake_atomic', 'expire_challenge_atomic', 'expire_attestation_atomic',
     'file_continuity_claim_atomic', 'challenge_continuity_atomic',
     'resolve_continuity_atomic', 'reconcile_continuity_dispute_atomic',
+    'withdraw_continuity_claim_atomic',
     'present_handshake_writes', 'verify_handshake_writes', 'resolve_authenticated_actor',
     'bulk_update_receipt_anchors', 'create_test_fixtures',
     'admin_begin_key_rotation', 'admin_complete_key_rotation',
@@ -486,6 +563,16 @@ export const contract: DbContract = {
     'consume_trust_desk_bootstrap_atomic',
     'compare_and_set_trust_desk_status_atomic',
     'apply_scim_user_and_authority_atomic',
+    'create_scim_user_authorized',
+    'apply_scim_group_authorized',
+    'scim_mutation_token_is_active',
+    'create_mobile_pairing_verified',
+    'exchange_mobile_pairing_verified',
+    'touch_mobile_session_verified',
+    'mobile_session_identity_is_active',
+    'enroll_mobile_device',
+    'register_mobile_action_challenge',
+    'commit_mobile_action_decision',
     ...RELEASE_LOCK_SERVICE_RPCS,
   ],
 
@@ -497,7 +584,17 @@ export const contract: DbContract = {
     'public.consume_gate_ref_atomic(text,text,text,text,text)',
     'public.revoke_commit_key_atomic(text,text,text)',
     'public.compare_and_set_trust_desk_status_atomic(text,text,text,jsonb)',
-    'public.apply_scim_user_and_authority_atomic(text,text,uuid,integer,jsonb,boolean,text)',
+    'public.withdraw_continuity_claim_atomic(text,text,text)',
+    'public.apply_scim_user_and_authority_atomic(uuid,text,text,uuid,integer,jsonb,boolean,text)',
+    'public.create_scim_user_authorized(uuid,text,text,jsonb)',
+    'public.apply_scim_group_authorized(uuid,text,text,uuid,integer,jsonb,boolean)',
+    'public.create_mobile_pairing_verified(text,text,text,text,uuid,text,jsonb,timestamp with time zone,timestamp with time zone)',
+    'public.exchange_mobile_pairing_verified(text,text,text,text,text,text,bigint,text)',
+    'public.touch_mobile_session_verified(uuid,text)',
+    'public.enroll_mobile_device(text,uuid,jsonb,jsonb)',
+    'public.register_mobile_action_challenge(text,uuid,text,text,text,text,text,timestamp with time zone,timestamp with time zone)',
+    'public.commit_mobile_action_decision(text,uuid,text,text,text,text,jsonb,text,jsonb,text,timestamp with time zone)',
+    'public.present_handshake_writes(uuid,text,text,text,text,text,jsonb,jsonb,text,text,text,text,text,boolean,boolean,text,text,boolean,jsonb)',
   ],
 
   // Functions that MUST exist (existence only). Includes the append-only

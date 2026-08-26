@@ -53,7 +53,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
   if (!current) return scimErrorResponse(404, `Group ${id} not found`);
 
   const fields = fromScimGroup(body);
-  return writeGroup(supabase, auth.tenantId, id, current, fields, request);
+  return writeGroup(supabase, auth.tokenId, auth.tenantId, auth.organizationId, id, current, fields, request);
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
@@ -79,7 +79,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     return scimErrorResponse(status, detail, scimType);
   }
   const fields = fromScimGroup(patched.resource);
-  return writeGroup(supabase, auth.tenantId, id, current, fields, request);
+  return writeGroup(supabase, auth.tokenId, auth.tenantId, auth.organizationId, id, current, fields, request);
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteParams): Promise<Response> {
@@ -91,14 +91,28 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
   if (loadErr) return scimErrorResponse(503, 'Directory unavailable');
   if (!current) return scimErrorResponse(404, `Group ${id} not found`);
 
-  const { error } = await supabase.from('scim_groups').delete().eq('tenant_id', auth.tenantId).eq('id', id);
+  const { data: result, error } = await supabase.rpc('apply_scim_group_authorized', {
+    p_token_id: auth.tokenId,
+    p_tenant_id: auth.tenantId,
+    p_organization_id: auth.organizationId,
+    p_group_id: id,
+    p_expected_version: current.version ?? 1,
+    p_fields: {},
+    p_delete: true,
+  });
   if (error) return scimErrorResponse(503, 'Directory unavailable');
+  if (result?.error === 'token_authority_invalid') return scimErrorResponse(401, 'SCIM token is no longer authorized');
+  if (result?.error === 'group_not_found') return scimErrorResponse(404, `Group ${id} not found`);
+  if (result?.error === 'version_conflict') return scimErrorResponse(409, 'Group changed during delete', 'mutability');
+  if (result?.status !== 'deleted') return scimErrorResponse(503, 'Directory unavailable');
   return new Response(null, { status: 204 });
 }
 
 async function writeGroup(
   supabase: any,
+  tokenId: string,
   tenantId: string | undefined,
+  organizationId: string | undefined,
   id: string,
   current: any,
   fields: any,
@@ -106,15 +120,25 @@ async function writeGroup(
 ): Promise<NextResponse> {
   const nextVersion = (current.version ?? 1) + 1;
   try {
-    const { data, error } = await supabase
-      .from('scim_groups')
-      .update({ ...fields, version: nextVersion, updated_at: new Date().toISOString() })
-      .eq('tenant_id', tenantId).eq('id', id).select('*').single();
+    const { data: result, error } = await supabase.rpc('apply_scim_group_authorized', {
+      p_token_id: tokenId,
+      p_tenant_id: tenantId,
+      p_organization_id: organizationId,
+      p_group_id: id,
+      p_expected_version: current.version ?? 1,
+      p_fields: fields,
+      p_delete: false,
+    });
     if (error) {
       if (error.code === '23505') return scimErrorResponse(409, `displayName ${fields.display_name} already in use`, 'uniqueness');
       logger.error('[scim/Groups/:id] write failed:', error);
       return scimErrorResponse(503, 'Directory unavailable');
     }
+    if (result?.error === 'token_authority_invalid') return scimErrorResponse(401, 'SCIM token is no longer authorized');
+    if (result?.error === 'group_not_found') return scimErrorResponse(404, `Group ${id} not found`);
+    if (result?.error === 'version_conflict') return scimErrorResponse(409, 'Group changed during update', 'mutability');
+    const data = result?.group;
+    if (result?.status !== 'updated' || !data) return scimErrorResponse(503, 'Directory unavailable');
     return scimJson(toScimGroup(data, scimBaseUrl(request)), { etag: etag(data.version ?? nextVersion) });
   } catch (err) {
     logger.error('[scim/Groups/:id] write error:', err);

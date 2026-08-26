@@ -2,8 +2,31 @@
 
 import { describe, expect, it } from 'vitest';
 import { auditMigrationBundle, readMigrationBundle } from '../scripts/schema-security-audit.mjs';
+import { contract } from '../scripts/db-contract.manifest.mjs';
 
 describe('static schema-security migration audit', () => {
+  it('enrolls every checked-in public table in the RLS contract', () => {
+    const source = readMigrationBundle()
+      .map((migration) => migration.sql)
+      .join('\n')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/--[^\n]*/g, '');
+    const createdPublicTables = new Set<string>();
+    const createTable = /^\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(?:"?public"?)\.)?"?([a-z_][a-z0-9_]*)"?\s*\(/gim;
+    for (const match of source.matchAll(createTable)) {
+      createdPublicTables.add(match[1].toLowerCase());
+    }
+
+    const enrolled = new Set(contract.rlsRequired);
+    const missing = [...createdPublicTables]
+      .filter((table) => !enrolled.has(table))
+      .sort();
+
+    expect(createdPublicTables.size).toBeGreaterThan(100);
+    expect(missing).toEqual([]);
+    expect(enrolled.size).toBe(contract.rlsRequired.length);
+  });
+
   it('passes the checked-in migration bundle and emits bounded source evidence', () => {
     const result = auditMigrationBundle(readMigrationBundle());
 

@@ -146,10 +146,26 @@ Add an identity presentation to a handshake.
 | `party_role` | string | Yes | `initiator`, `responder`, `verifier`, `delegate` |
 | `presentation_type` | string | Yes | `self_asserted`, `verifiable_credential`, `certificate`, `attestation`, `delegation_proof` |
 | `claims` | object | Yes | Identity claims (non-array object) |
-| `issuer_ref` | string | No | Issuing authority's `key_id` |
+| `issuer_ref` | string | No | Issuing authority's registered `key_id`; a reference is not proof by itself |
+| `issuer_proof` | object | No | Exact `{profile, algorithm, key_id, signature}` proof; required for issuer-backed verification and described below |
 | `disclosure_mode` | string | No | `full`, `selective`, `commitment` (default: `full`) |
 
 **Response** (201): Presentation record with `presentation_hash`, `issuer_status`, `verified`, and `normalized_claims`.
+
+For issuer-backed verification, `issuer_proof.profile` must be
+`EP-HANDSHAKE-ISSUER-PROOF-v1`, `algorithm` must be `Ed25519`, and `key_id`
+must exactly equal `issuer_ref`. The unpadded base64url signature covers:
+
+```
+EP-HANDSHAKE-ISSUER-PROOF-v1 || 0x00 || JCS(statement)
+```
+
+The statement contains exactly `@version`, `handshake_id`, `party_role`,
+`presentation_type`, `issuer_ref`, `actor_entity_ref`, `disclosure_mode`,
+`presentation_hash`, and `canonical_claims_hash`. The server derives this
+statement from the authenticated actor and canonicalized request data. An
+issuer reference without a valid proof is retained for audit but is stored as
+unverified.
 
 **Error codes**: `bad_request` (400), `unauthorized` (401), `presentation_failed` (500)
 

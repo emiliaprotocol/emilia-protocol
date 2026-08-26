@@ -18,11 +18,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = parsed.value;
     if (!body.principal_id) return EP_ERRORS.BAD_REQUEST('principal_id is required');
     if (!body.old_entity_id) return EP_ERRORS.BAD_REQUEST('old_entity_id is required');
-    if (!body.new_entity_id) return EP_ERRORS.BAD_REQUEST('new_entity_id is required');
+    if (typeof body.new_entity_id !== 'string' || body.new_entity_id.trim() === '') {
+      return EP_ERRORS.BAD_REQUEST('new_entity_id is required');
+    }
     if (!body.reason) return EP_ERRORS.BAD_REQUEST('reason is required');
     const actorEntityId = authEntityId(auth).trim();
     if (!actorEntityId) {
       return epProblem(403, 'not_authorized', 'Identity continuity filing requires an authenticated entity identity');
+    }
+    if (actorEntityId !== body.new_entity_id.trim()) {
+      return epProblem(
+        403,
+        'successor_control_required',
+        'The successor continuity endpoint must authenticate this filing',
+      );
     }
 
     const result = await fileContinuityClaim({

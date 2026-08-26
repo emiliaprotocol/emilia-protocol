@@ -54,6 +54,7 @@ describe('protocol request authorization floor', () => {
     ['/api/scim/v2/provisioning-token', 'scim.manage'],
     ['/api/v1/approvers/webauthn/register-options', 'approver.enroll'],
     ['/api/v1/approvers/webauthn/register-verify', 'approver.enroll'],
+    ['/api/v1/mobile/pairings', 'approver.enroll'],
     ['/api/identity/continuity/resolve', 'dispute.review'],
     ['/api/v1/trust-receipts/tr_123/consume', 'receipt.consume'],
     ['/api/v1/trust-receipts/tr_123/execution', 'receipt.execute'],

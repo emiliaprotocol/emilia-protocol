@@ -64,9 +64,23 @@ describe('POST /api/identity/continuity actor binding', () => {
     expect(mocks.fileContinuityClaim).not.toHaveBeenCalled();
   });
 
-  it('passes actor and subject separately and never forwards a body actor', async () => {
+  it('refuses a filing authenticated by an entity other than the successor', async () => {
     mocks.authenticateRequest.mockResolvedValue({
       entity: { entity_id: 'authenticated-delegate' },
+    });
+
+    const response = await POST(request(filing) as any);
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      type: expect.stringContaining('successor_control_required'),
+    });
+    expect(mocks.fileContinuityClaim).not.toHaveBeenCalled();
+  });
+
+  it('passes the authenticated successor and never forwards a body actor', async () => {
+    mocks.authenticateRequest.mockResolvedValue({
+      entity: { entity_id: 'new-endpoint' },
     });
 
     const response = await POST(request({
@@ -81,6 +95,6 @@ describe('POST /api/identity/continuity actor binding', () => {
       continuity_mode: undefined,
       proofs: undefined,
       transfer_budget: 0.5,
-    }, 'authenticated-delegate');
+    }, 'new-endpoint');
   });
 });

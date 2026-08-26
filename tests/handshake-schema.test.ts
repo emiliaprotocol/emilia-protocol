@@ -156,6 +156,18 @@ describe('validatePresentBody', () => {
     expect(result.sanitized.issuer_ref).toBe('key-abc');
   });
 
+  it('requires an exact issuer proof whose key matches issuer_ref', () => {
+    const proof = {
+      profile: 'EP-HANDSHAKE-ISSUER-PROOF-v1',
+      algorithm: 'Ed25519',
+      key_id: 'key-abc',
+      signature: 'A'.repeat(86),
+    };
+    expect(validatePresentBody({ ...validBody, issuer_ref: 'key-abc', issuer_proof: proof }).valid).toBe(true);
+    expect(validatePresentBody({ ...validBody, issuer_ref: 'other', issuer_proof: proof }).valid).toBe(false);
+    expect(validatePresentBody({ ...validBody, issuer_ref: 'key-abc', issuer_proof: { ...proof, verified: true } }).valid).toBe(false);
+  });
+
   it('passes when disclosure_mode is valid', () => {
     const result = validatePresentBody({ ...validBody, disclosure_mode: 'full' });
     expect(result.valid).toBe(true);

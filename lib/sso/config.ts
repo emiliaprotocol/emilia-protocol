@@ -6,6 +6,7 @@
 
 import { getGuardedClient } from '@/lib/write-guard';
 import { open as openSecret } from '@/lib/crypto/secret-box';
+import { getSsoOriginConfig } from '@/lib/env';
 
 export async function loadConnection(tenantId: string, protocol: string): Promise<{ connection?: any; error?: any }> {
   const supabase = getGuardedClient();
@@ -48,12 +49,51 @@ export async function listConnections(tenantId: string): Promise<{ connections?:
   return { connections: data || [] };
 }
 
-/** The SP entityID / OIDC redirect base for this deployment. */
-export function spOrigin(request: Request): string {
-  try {
-    const u = new URL(request.url);
-    return `${u.protocol}//${u.host}`;
-  } catch {
-    return 'https://www.emiliaprotocol.ai';
+const DEVELOPMENT_SSO_ORIGIN = 'http://localhost:3000';
+
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === 'localhost'
+    || hostname === '127.0.0.1'
+    || hostname === '[::1]';
+}
+
+/**
+ * The canonical SP entityID / OIDC redirect base for this deployment.
+ *
+ * This is deliberately server-configured. Request Host/Forwarded headers are
+ * untrusted routing metadata and must never choose an identity-provider return
+ * target. Production refuses to construct SSO URLs when the deployment origin
+ * is absent or unsafe; development and tests use one stable loopback origin so
+ * their behavior is deterministic without trusting the request.
+ */
+export function spOrigin(_request?: Request): string {
+  const { origin: configured, isProduction } = getSsoOriginConfig();
+
+  if (!configured) {
+    if (isProduction) {
+      throw new Error('SSO service origin is not configured');
+    }
+    return DEVELOPMENT_SSO_ORIGIN;
   }
+
+  let url: URL;
+  try {
+    url = new URL(configured);
+  } catch {
+    throw new Error('SSO service origin must be an absolute URL');
+  }
+
+  const originOnly = url.pathname === '/'
+    && !url.username
+    && !url.password
+    && !url.search
+    && !url.hash;
+  const developmentLoopback = !isProduction
+    && url.protocol === 'http:'
+    && isLoopbackHostname(url.hostname);
+  if (!originOnly || (url.protocol !== 'https:' && !developmentLoopback)) {
+    throw new Error('SSO service origin must be an HTTPS origin (HTTP loopback is allowed outside production)');
+  }
+
+  return url.origin;
 }

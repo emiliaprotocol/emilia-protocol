@@ -80,14 +80,15 @@ A presentation is an identity proof submitted by a party. Stored in `handshake_p
 | `party_role` | string | Which party role this presentation belongs to |
 | `presentation_type` | string | Type of proof (e.g., credential type) |
 | `issuer_ref` | string | Reference to the issuing authority's `key_id` |
+| `issuer_proof` | object | Ed25519 proof by `issuer_ref` over the exact server-defined handshake statement; retained in the append-only event detail |
 | `presentation_hash` | string | SHA-256 of the raw presentation data |
 | `disclosure_mode` | enum | `full`, `selective`, or `commitment` |
 | `normalized_claims` | JSON | Canonicalized claims extracted from the presentation |
 | `canonical_claims_hash` | string | Hash of normalized claims |
 | `actor_entity_ref` | string | Authenticated entity that submitted this presentation |
 | `authority_id` | string | Resolved authority ID from registry lookup |
-| `issuer_status` | string | Trust determination: `authority_valid`, `authority_revoked`, `authority_not_found`, etc. |
-| `verified` | boolean | Whether the issuer is trusted |
+| `issuer_status` | string | Trust determination: `authority_signature_valid`, `issuer_proof_missing`, `issuer_proof_invalid`, `authority_revoked`, `authority_not_found`, etc. |
+| `verified` | boolean | Whether the exact presentation was signed by a currently valid registered issuer |
 | `revocation_status` | string | `good`, `revoked`, `expired`, `not_yet_valid`, `unknown`, `not_applicable`, `registry_unavailable` |
 
 ### Actor-Party Binding
@@ -96,17 +97,26 @@ When a presentation is added, the authenticated entity must match the party's `e
 
 ### Issuer Trust Resolution
 
-Issuer trust is resolved at presentation time against the `authorities` table:
+Issuer trust is resolved at presentation time against the `authorities` table
+and an exact-presentation proof:
 
-1. If no `issuer_ref`: self-asserted, trust deferred to policy.
+1. If no `issuer_ref`: self-asserted, `verified = false`; a policy may opt in to
+   accepting that unverified class explicitly.
 2. If `issuer_ref` provided: look up `authorities` table by `key_id`.
    - Not found: `authority_not_found`, `verified = false`.
    - Found but `status = 'revoked'`: `authority_revoked`, `verified = false`.
    - Found but `valid_to < now`: `authority_expired`, `verified = false`.
    - Found but `valid_from > now`: `authority_not_yet_valid`, `verified = false`.
-   - Found and valid: `authority_valid`, `verified = true`.
+   - Found and valid but proof missing or invalid: `issuer_proof_missing` or
+     `issuer_proof_invalid`, `verified = false`.
+   - Found, valid, and the Ed25519 proof verifies over the exact handshake,
+     party, authenticated actor, disclosure mode, presentation hash, and
+     canonical claims hash: `authority_signature_valid`, `verified = true`.
+3. The write transaction rechecks the same authority UUID and `key_id`, status,
+   algorithm, revocation state, and validity window under lock before persisting
+   `verified = true`.
 
-This is fail-closed: unknown issuers are never trusted.
+This is fail-closed: a key reference or application boolean is never sufficient.
 
 ## Verification
 

@@ -64,6 +64,21 @@ Threat classes reference GOD FILE section 9.1 taxonomy.
 - **Test coverage**: `handshake-attack.test.js` line 785 -- "presentation from revoked authority is rejected"; line 835 -- "authority revoked before presentation is added"
 - **Code mitigation**: `lib/handshake/invariants.js` `checkAuthorityNotRevoked()`; `lib/handshake/verify.js` revocation_status check
 
+### RT-007A: Registered key reference without issuer proof
+
+- **Threat class**: Issuer identity laundering
+- **Attack description**: A caller names an active authority `key_id` but does
+  not prove that the issuer signed this exact handshake presentation.
+- **Expected result**: Presentation stored with `verified = false` and
+  `issuer_status = 'issuer_proof_missing'`; handshake verification cannot treat
+  the reference as issuer participation.
+- **Test coverage**: `handshake-present-extended.test.ts` issuer-proof cases;
+  `identity-proof-mobile-pairing-migration.test.ts`; real PostgreSQL regressions
+  in `postgres-integration.test.ts`.
+- **Code mitigation**: `lib/handshake/issuer-proof.ts` exact-statement Ed25519
+  verification; `present_handshake_writes` authority UUID and key-id recheck
+  under lock.
+
 ### RT-008: Expired authority used for presentation
 
 - **Threat class**: Stale authority root
@@ -750,7 +765,7 @@ Threat classes reference GOD FILE section 9.1 taxonomy.
 
 | Category | Cases | Coverage Status |
 |----------|-------|-----------------|
-| Identity & Authority Attacks | RT-001 through RT-012 | Tested |
+| Identity & Authority Attacks | RT-001 through RT-012, including RT-007A | Tested |
 | Replay & Reuse Attacks | RT-013 through RT-026 | Tested |
 | Policy Attacks | RT-027 through RT-031 | Tested |
 | State Machine Attacks | RT-032 through RT-037 | Tested |
@@ -766,8 +781,8 @@ Threat classes reference GOD FILE section 9.1 taxonomy.
 | Issuer Status Vocabulary | RT-082 through RT-083 | Tested |
 | Delegation Attacks | RT-084 through RT-085 | Tested |
 
-**Total red team cases**: 85
-**Tested**: 80
+**Total red team cases**: 86
+**Tested**: 81
 **Planned**: 5
 
 ---
@@ -779,6 +794,7 @@ Threat classes reference GOD FILE section 9.1 taxonomy.
 | `tests/adversarial-benchmarks.test.ts` | RT-013, RT-014, RT-055, RT-056, RT-061 through RT-066 |
 | `tests/adversarial-breakage.test.ts` | RT-001, RT-010, RT-011, RT-013, RT-025, RT-048, RT-058 through RT-060, RT-074 through RT-076 |
 | `tests/handshake-attack.test.ts` | RT-002, RT-003, RT-005 through RT-009, RT-012, RT-015 through RT-018, RT-030, RT-031, RT-032, RT-033, RT-035, RT-036, RT-051 through RT-054, RT-067 through RT-073, RT-082, RT-083 |
+| `tests/handshake-present-extended.test.ts` | RT-007A |
 | `tests/handshake-adversarial.test.ts` | RT-019, RT-020, RT-021, RT-022, RT-024, RT-026, RT-040, RT-041, RT-044, RT-050, RT-057 |
 | `tests/concurrency-warfare.test.ts` | RT-019, RT-023, RT-034, RT-042 through RT-050 |
 | `tests/handshake-invariants.test.ts` | RT-002, RT-006, RT-007, RT-017, RT-027, RT-030, RT-037 |

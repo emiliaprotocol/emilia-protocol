@@ -14,6 +14,7 @@ const {
   freezeContinuityOnDispute,
   resolveContinuity,
   unfreezeResolvedContinuity,
+  withdrawContinuityClaim,
 } = await import('../lib/ep-ix.js');
 
 describe('fileContinuityClaim atomic boundary', () => {
@@ -277,6 +278,65 @@ describe('resolveContinuity atomic boundary', () => {
     const result = await resolveContinuity(continuityId, decision, reasoning, operatorId);
     expect(result).toMatchObject({ status: 400 });
     expect(result.error).toContain(expected);
+  });
+});
+
+describe('withdrawContinuityClaim atomic boundary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('withdraws and audits through one actor-bound transaction RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        continuity_id: 'ep_ix_claim',
+        status: 'withdrawn',
+        withdrawn_at: '2026-08-26T12:00:00.000Z',
+      },
+      error: null,
+    });
+    const from = vi.fn(() => {
+      throw new Error('withdrawContinuityClaim must not split state and audit writes');
+    });
+    mockGetServiceClient.mockReturnValue({ rpc, from });
+
+    const result = await withdrawContinuityClaim(
+      'ep_ix_claim',
+      'authenticated-successor',
+      'replacement abandoned',
+    );
+
+    expect(result).toEqual({
+      continuity_id: 'ep_ix_claim',
+      status: 'withdrawn',
+      withdrawn_at: '2026-08-26T12:00:00.000Z',
+    });
+    expect(rpc).toHaveBeenCalledWith('withdraw_continuity_claim_atomic', {
+      p_continuity_id: 'ep_ix_claim',
+      p_actor_entity_id: 'authenticated-successor',
+      p_reason: 'replacement abandoned',
+    });
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['', 'authenticated-successor', 'continuity_id'],
+    ['ep_ix_claim', '', 'actor identity'],
+  ])('rejects malformed withdrawal before database access', async (
+    continuityId,
+    actorEntityId,
+    expected,
+  ) => {
+    const rpc = vi.fn(() => {
+      throw new Error('invalid withdrawal must not reach the database');
+    });
+    mockGetServiceClient.mockReturnValue({ rpc });
+
+    const result = await withdrawContinuityClaim(continuityId, actorEntityId);
+
+    expect(result).toMatchObject({ status: 400 });
+    expect(result.error).toMatch(new RegExp(expected, 'i'));
+    expect(rpc).not.toHaveBeenCalled();
   });
 });
 
