@@ -70,7 +70,7 @@ describe('Trust Desk passive triage route', () => {
 
     expect(response.status).toBe(429);
     expect(response.headers.get('retry-after')).toBe('17');
-    expect(mocks.rateLimit).toHaveBeenCalledWith('ip:203.0.113.25', 'submit');
+    expect(mocks.rateLimit).toHaveBeenCalledWith('ip:203.0.113.25', 'trust_desk_triage');
     expect(mocks.extract).not.toHaveBeenCalled();
     expect(mocks.classify).not.toHaveBeenCalled();
   });
@@ -104,5 +104,32 @@ describe('Trust Desk passive triage route', () => {
     });
     expect(mocks.extract).toHaveBeenCalledOnce();
     expect(mocks.classify).toHaveBeenCalledOnce();
+    const budget = mocks.classify.mock.calls[0][2].llmBudget;
+    expect(budget.snapshot()).toMatchObject({
+      maxCalls: 6,
+      maxEstimatedTokens: 12_000,
+    });
+    expect(budget.snapshot().remainingMs).toBeLessThanOrEqual(20_000);
+  });
+
+  it('refuses an over-limit questionnaire before classification can invoke a model', async () => {
+    const questions = Array.from({ length: 201 }, (_, index) => ({
+      id: `q${index}`,
+      text: `Do you govern AI system ${index}?`,
+    }));
+    mocks.extract.mockResolvedValue({
+      total_questions: questions.length,
+      source_format: 'text',
+      warnings: [],
+      questions,
+    });
+
+    const response = await POST(jsonRequest({ text: 'bounded envelope, too many questions' }) as any);
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toMatchObject({
+      type: 'https://emiliaprotocol.ai/errors/questionnaire_budget_exceeded',
+    });
+    expect(mocks.classify).not.toHaveBeenCalled();
   });
 });

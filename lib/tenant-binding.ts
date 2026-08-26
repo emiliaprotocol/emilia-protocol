@@ -98,12 +98,42 @@ export interface ReceiptScope {
   creatorActorId?: string;
 }
 
+function callerOrganizationId(auth: AuthLike | null | undefined): string {
+  const entity = auth?.entity;
+  return (entity && typeof entity === 'object') ? (entity.organization_id || '') : '';
+}
+
+function hasReceiptCapability(
+  auth: AuthLike | null | undefined,
+  permission: string,
+): boolean {
+  const permissions = auth?.permissions;
+  return Array.isArray(permissions)
+    && (permissions.includes(permission) || permissions.includes('admin'));
+}
+
+function isReceiptCreator(
+  auth: AuthLike | null | undefined,
+  { creatorActorId }: ReceiptScope,
+): boolean {
+  const callerId = callerEntityId(auth);
+  return Boolean(callerId && creatorActorId && callerId === creatorActorId);
+}
+
+function isSameOrganization(
+  auth: AuthLike | null | undefined,
+  { organizationId }: ReceiptScope,
+): boolean {
+  const callerOrg = callerOrganizationId(auth);
+  return Boolean(callerOrg && organizationId && callerOrg === organizationId);
+}
+
 /**
- * Read-side tenant scoping. The write path binds receipts to the authenticated
- * entity's org (resolveAuthorizedOrg + requireBound); the read paths must scope
- * the same way or they leak cross-tenant (IDOR). Fail-closed:
- *   - an org-bound caller may read ONLY receipts in its own organization;
- *   - an unbound caller (transitional) may read ONLY receipts it created.
+ * Read-side actor and tenant scoping. Organization membership is a necessary
+ * tenant boundary, not receipt-level authorization. Fail-closed:
+ *   - the creating actor may read its own receipt;
+ *   - a same-organization peer needs the named receipt capability (or admin);
+ *   - cross-organization callers are refused even if they hold admin.
  * Callers should map a false result to 404 (don't reveal the receipt exists).
  *
  * @param auth   authenticateRequest() result
@@ -112,33 +142,23 @@ export interface ReceiptScope {
 export function canReadReceipt(
   auth: AuthLike | null | undefined,
   { organizationId, creatorActorId }: ReceiptScope = {},
+  permission = 'receipt.read',
 ): boolean {
-  const callerId = callerEntityId(auth);
-  // The creator may always read its own receipt (it can't be another tenant's).
-  if (callerId && creatorActorId && callerId === creatorActorId) return true;
-  // Otherwise an org-bound caller may read only receipts in its own organization.
-  const entity = auth?.entity;
-  const callerOrg = (entity && typeof entity === 'object') ? (entity.organization_id || null) : null;
-  if (callerOrg && organizationId) return callerOrg === organizationId;
-  // Unbound non-creator, or a receipt with no org to scope against: fail closed.
-  return false;
+  const receipt = { organizationId, creatorActorId };
+  if (isReceiptCreator(auth, receipt)) return true;
+  return isSameOrganization(auth, receipt) && hasReceiptCapability(auth, permission);
 }
 
 /**
- * Mutation-side receipt authorization. Organization membership is sufficient
- * to inspect a receipt, but it must not also grant consume or execution
- * authority. The creator remains compatible with the existing receipt flow;
- * peer services need an explicit capability.
+ * Mutation-side receipt authorization. The creator remains compatible with
+ * the existing receipt flow. A peer service must be in the same organization
+ * and hold the exact operation capability (or admin).
  */
 export function canMutateReceipt(
   auth: AuthLike | null | undefined,
   receipt: ReceiptScope,
   permission: string,
 ): boolean {
-  if (!canReadReceipt(auth, receipt)) return false;
-  const callerId = callerEntityId(auth);
-  if (callerId && receipt?.creatorActorId && callerId === receipt.creatorActorId) return true;
-  const permissions = auth?.permissions;
-  return Array.isArray(permissions)
-    && (permissions.includes(permission) || permissions.includes('admin'));
+  if (isReceiptCreator(auth, receipt)) return true;
+  return isSameOrganization(auth, receipt) && hasReceiptCapability(auth, permission);
 }

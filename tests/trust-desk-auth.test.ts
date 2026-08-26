@@ -10,8 +10,9 @@ import {
 describe('Trust Desk bootstrap/session boundary', () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it('exchanges the URL bootstrap token for a distinct session envelope', () => {
+  it('issues a session envelope distinct from the POST bootstrap secret', () => {
     vi.stubEnv('TRUST_DESK_INTERNAL_TOKEN', 'bootstrap-secret-that-never-enters-cookies');
+    vi.stubEnv('TRUST_DESK_SESSION_SECRET', 'independent-session-signing-secret');
     vi.stubEnv('TRUST_DESK_REVIEWER_ID', 'Iman Schrock <team@emiliaprotocol.ai>');
     const session = issueTrustDeskSession();
     expect(session).toBeTruthy();
@@ -22,6 +23,7 @@ describe('Trust Desk bootstrap/session boundary', () => {
 
   it('rejects tampered, malformed, and old sessions', () => {
     vi.stubEnv('TRUST_DESK_INTERNAL_TOKEN', 'bootstrap-secret');
+    vi.stubEnv('TRUST_DESK_SESSION_SECRET', 'independent-session-signing-secret');
     vi.stubEnv('TRUST_DESK_REVIEWER_ID', 'Iman Schrock <team@emiliaprotocol.ai>');
     const session = issueTrustDeskSession();
     expect(verifyTrustDeskSession(`${session}x`)).toBe(false);
@@ -38,7 +40,16 @@ describe('Trust Desk bootstrap/session boundary', () => {
 
   it('refuses to issue an anonymous reviewer session', () => {
     vi.stubEnv('TRUST_DESK_INTERNAL_TOKEN', 'bootstrap-secret');
+    vi.stubEnv('TRUST_DESK_SESSION_SECRET', 'independent-session-signing-secret');
     vi.stubEnv('TRUST_DESK_REVIEWER_ID', '   ');
     expect(issueTrustDeskSession()).toBeNull();
+  });
+
+  it('never reuses the historically exposed bootstrap token as the session signing key', () => {
+    vi.stubEnv('TRUST_DESK_INTERNAL_TOKEN', 'historically-url-exposed-bootstrap');
+    vi.stubEnv('TRUST_DESK_REVIEWER_ID', 'Iman Schrock <team@emiliaprotocol.ai>');
+
+    expect(issueTrustDeskSession()).toBeNull();
+    expect(verifyTrustDeskSession('tds1.attacker-controlled.invalid')).toBe(false);
   });
 });

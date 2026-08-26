@@ -25,7 +25,7 @@ export async function GET(
     const { data: challenge, error } = await supabase
       .from('signoff_challenges')
       .select('*')
-      .eq('id', challengeId)
+      .eq('challenge_id', challengeId)
       .maybeSingle();
 
     if (error) {

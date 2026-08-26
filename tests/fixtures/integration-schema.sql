@@ -1,4 +1,7 @@
 -- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 -- EMILIA Protocol — Integration Test Schema
 -- Minimal self-contained schema for critical DB constraint tests.
 -- Uses plain Postgres (no pgvector, no Supabase auth).
@@ -52,6 +55,14 @@ CREATE TABLE handshakes (
   nonce        TEXT NOT NULL UNIQUE,
   status       TEXT NOT NULL DEFAULT 'initiated'
                  CHECK (status IN ('initiated', 'presented', 'verified', 'consumed', 'revoked', 'expired')),
+  expires_at   TIMESTAMPTZ,
+  verified_at  TIMESTAMPTZ,
+  policy_id    UUID,
+  policy_hash  TEXT,
+  policy_version_number INTEGER,
+  action_type  TEXT,
+  decision_ref TEXT,
+  revoked_by   TEXT,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -59,10 +70,42 @@ CREATE TABLE handshake_bindings (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   handshake_id  UUID NOT NULL REFERENCES handshakes(handshake_id) UNIQUE,
   payload_hash  TEXT NOT NULL,
+  binding_hash  TEXT,
+  policy_hash   TEXT,
   nonce         TEXT NOT NULL,
   expires_at    TIMESTAMPTZ NOT NULL,
   consumed_at   TIMESTAMPTZ,
+  consumed_by   TEXT,
+  consumed_for  TEXT,
   bound_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE handshake_parties (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  handshake_id  UUID NOT NULL REFERENCES handshakes(handshake_id),
+  entity_ref    TEXT NOT NULL,
+  party_role    TEXT NOT NULL DEFAULT 'initiator',
+  verified_status TEXT NOT NULL DEFAULT 'pending'
+);
+
+CREATE TABLE handshake_events (
+  event_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  handshake_id     UUID NOT NULL REFERENCES handshakes(handshake_id),
+  event_type       TEXT NOT NULL CHECK (event_type IN ('revoked')),
+  actor_entity_ref TEXT,
+  detail           JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE handshake_consumptions (
+  id                 BIGSERIAL PRIMARY KEY,
+  handshake_id       UUID NOT NULL UNIQUE REFERENCES handshakes(handshake_id),
+  binding_hash       TEXT NOT NULL UNIQUE,
+  consumed_by_type   TEXT NOT NULL,
+  consumed_by_id     TEXT NOT NULL,
+  consumed_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  actor_entity_ref   TEXT,
+  consumed_by_action TEXT
 );
 
 -- Hard gate: once consumed_at is set it can never be cleared.
@@ -84,16 +127,22 @@ CREATE TRIGGER enforce_consumption_irreversible
 -- ── Accountable Signoff ───────────────────────────────────────────────────────
 
 CREATE TABLE signoff_challenges (
-  challenge_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  handshake_id UUID NOT NULL REFERENCES handshake_bindings(id),
-  binding_hash TEXT NOT NULL,
-  status       TEXT NOT NULL DEFAULT 'challenge_issued'
+  challenge_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  handshake_id          UUID NOT NULL REFERENCES handshake_bindings(id),
+  binding_hash          TEXT NOT NULL,
+  accountable_actor_ref TEXT NOT NULL DEFAULT 'entity-alice',
+  signoff_policy_id     TEXT,
+  signoff_policy_hash   TEXT,
+  required_assurance    TEXT NOT NULL DEFAULT 'substantial',
+  allowed_methods       TEXT[] NOT NULL DEFAULT '{passkey,secure_app,platform_authenticator}',
+  status                TEXT NOT NULL DEFAULT 'challenge_issued'
                  CHECK (status IN (
                    'challenge_issued', 'challenge_viewed', 'approved',
                    'denied', 'expired', 'revoked', 'consumed'
                  )),
-  expires_at   TIMESTAMPTZ NOT NULL,
-  issued_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  expires_at            TIMESTAMPTZ NOT NULL,
+  metadata              JSONB DEFAULT '{}'::jsonb,
+  issued_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Forward-only status transitions. Mirrors migration 049_accountable_signoff.sql.
@@ -136,15 +185,36 @@ CREATE TRIGGER enforce_signoff_challenge_forward_only
   FOR EACH ROW EXECUTE FUNCTION prevent_signoff_challenge_backward_status();
 
 CREATE TABLE signoff_attestations (
-  signoff_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  challenge_id  UUID NOT NULL REFERENCES signoff_challenges(challenge_id),
-  handshake_id  UUID NOT NULL REFERENCES handshake_bindings(id),
-  binding_hash  TEXT NOT NULL,
-  auth_method   TEXT NOT NULL,
-  status        TEXT NOT NULL DEFAULT 'approved'
+  signoff_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  challenge_id     UUID NOT NULL REFERENCES signoff_challenges(challenge_id),
+  handshake_id     UUID NOT NULL REFERENCES handshake_bindings(id),
+  binding_hash     TEXT NOT NULL,
+  human_entity_ref TEXT NOT NULL DEFAULT 'entity-alice',
+  auth_method      TEXT NOT NULL,
+  assurance_level  TEXT NOT NULL DEFAULT 'substantial',
+  channel          TEXT NOT NULL DEFAULT 'web',
+  attestation_hash TEXT NOT NULL DEFAULT 'fixture-attestation-hash',
+  status           TEXT NOT NULL DEFAULT 'approved'
                   CHECK (status IN ('approved', 'expired', 'revoked', 'consumed')),
-  approved_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  expires_at    TIMESTAMPTZ NOT NULL DEFAULT now() + interval '1 hour'
+  approved_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at       TIMESTAMPTZ NOT NULL DEFAULT now() + interval '1 hour',
+  metadata         JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE TABLE signoff_events (
+  event_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  handshake_id     UUID NOT NULL REFERENCES handshake_bindings(id),
+  event_type       TEXT NOT NULL CHECK (event_type IN (
+    'challenge_issued', 'challenge_viewed', 'challenge_expired', 'challenge_revoked',
+    'signoff_approved', 'signoff_denied', 'signoff_expired', 'signoff_revoked',
+    'signoff_consumed'
+  )),
+  challenge_id     UUID REFERENCES signoff_challenges(challenge_id),
+  signoff_id       UUID REFERENCES signoff_attestations(signoff_id),
+  actor_entity_ref TEXT,
+  binding_hash     TEXT,
+  detail           JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- One-time consumption proof: UNIQUE on signoff_id enforces insert-or-fail.
@@ -258,6 +328,7 @@ CREATE TABLE authorities (
   subject_ref TEXT,
   assurance_class TEXT,
   action_scopes TEXT[],
+  policy_hash TEXT,
   metadata_json JSONB DEFAULT '{}'::jsonb
 );
 

@@ -27,7 +27,7 @@
  * enforcement, replay defense, and the evidence log. Fails closed.
  */
 import crypto from 'node:crypto';
-import { verifyEmiliaReceipt, receiptChallenge, receiptRequiredHeader, validateActionRiskManifest, findActionRequirement, evaluateReceiptAssurance, validatePinnedQuorumPolicy, receiptAssuranceTier as receiptAssuranceTierFromProof, parseReceiptCarrier, RECEIPT_REQUIRED_STATUS, RECEIPT_REQUIRED_HEADER, } from '@emilia-protocol/require-receipt';
+import { verifyEmiliaReceipt, receiptChallenge, receiptRequiredHeader, validateActionRiskManifest, findActionRequirement, resolveActionRequirement, evaluateReceiptAssurance, validatePinnedQuorumPolicy, receiptAssuranceTier as receiptAssuranceTierFromProof, parseReceiptCarrier, RECEIPT_REQUIRED_STATUS, RECEIPT_REQUIRED_HEADER, } from '@emilia-protocol/require-receipt';
 import { verifyWebAuthnSignoff, verifyQuorum } from '@emilia-protocol/verify';
 import { MemoryConsumptionStore, isSecureConsumptionStore } from './store.js';
 import { canonicalEvidenceJson, createAtomicEvidenceLog, createEvidenceLog, createMemoryAtomicEvidenceBackend, } from './evidence.js';
@@ -880,19 +880,36 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         const controlResolution = usesActionControlManifest
             ? resolveActionControl(manifest, selector)
             : null;
+        const legacyResolution = usesActionControlManifest
+            ? null
+            : resolveActionRequirement(manifest, selector);
         const raw = usesActionControlManifest
             ? (controlResolution?.status === 'one'
                 ? controlResolution.action
-                : (controlResolution?.status === 'ambiguous'
+                : (controlResolution?.status === 'ambiguous' || controlResolution?.status === 'conflict'
                     ? {
-                        action_type: selector.action_type || selector.action || 'ambiguous.action',
+                        action_type: 'manifest.selector_resolution',
                         receipt_required: true,
                         assurance_class: 'quorum',
-                        __resolution_ambiguous: true,
+                        __resolution_failure_reason: controlResolution.status === 'conflict'
+                            ? 'manifest_selector_conflict'
+                            : 'manifest_selector_ambiguous',
                         ambiguous_action_ids: controlResolution.action_ids,
                     }
                     : null))
-            : findActionRequirement(manifest, selector);
+            : (legacyResolution?.status === 'one'
+                ? legacyResolution.action
+                : (legacyResolution?.status === 'ambiguous' || legacyResolution?.status === 'conflict'
+                    ? {
+                        action_type: 'manifest.selector_resolution',
+                        receipt_required: true,
+                        assurance_class: 'quorum',
+                        __resolution_failure_reason: legacyResolution.status === 'conflict'
+                            ? 'manifest_selector_conflict'
+                            : 'manifest_selector_ambiguous',
+                        ambiguous_action_ids: legacyResolution.action_ids,
+                    }
+                    : null));
         if (!raw || !usesActionControlManifest)
             return raw;
         // Action Control v0.2 keeps enforcement details under `control`; the Gate's
@@ -951,7 +968,10 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         const pinnedQuorumPolicy = requirement?.quorum_policy
             || (quorumPolicies && typeof quorumPolicies === 'object' ? quorumPolicies[action] : null)
             || quorumPolicy;
-        const observed = observedAction || selector.observedAction || selector.actionDetails || null;
+        // Executor-observed action facts are a separate trusted input. A selector
+        // only chooses the policy entry; caller-controlled selector metadata must
+        // never stand in for the exact action that will cross the effect boundary.
+        const observed = observedAction ?? null;
         const businessExpected = businessAuthorizationRequirement(requirement);
         let businessEvaluation = {
             required: businessExpected.configured,
@@ -1038,6 +1058,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         }
         if (requirement?.__resolution_ambiguous === true) {
             return decide(false, RECEIPT_REQUIRED_STATUS, 'manifest_selector_ambiguous', {
+                ambiguous_action_ids: requirement.ambiguous_action_ids,
+            });
+        }
+        if (requirement?.__resolution_failure_reason) {
+            return decide(false, RECEIPT_REQUIRED_STATUS, requirement.__resolution_failure_reason, {
                 ambiguous_action_ids: requirement.ambiguous_action_ids,
             });
         }
@@ -1949,7 +1974,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                 : (opts.receipt ?? null);
             const observedAction = typeof opts.observedAction === 'function'
                 ? await opts.observedAction(...args)
-                : (opts.observedAction || selector.observedAction || null);
+                : (opts.observedAction ?? null);
             const fieldOriginEvidence = typeof opts.fieldOriginEvidence === 'function'
                 ? await opts.fieldOriginEvidence(...args)
                 : (opts.fieldOriginEvidence ?? null);
@@ -2068,7 +2093,7 @@ export async function cf1Conformance({ gate, wrongGate, harness, manifest = null
     const invoke = makeGateInvoke(gate, { selector, action: act });
     const wrongInvoke = (wrongGate && typeof wrongGate.run === 'function')
         ? makeGateInvoke(wrongGate, { selector, action: act }) : undefined;
-    const requirement = manifest ? findActionRequirement(manifest, selector) : null;
+    const requirement = manifest ? (findActionRequirement(manifest, selector) ?? undefined) : undefined;
     return runCf1({ invoke, wrongInvoke, harness, action: act, requirement });
 }
 /**

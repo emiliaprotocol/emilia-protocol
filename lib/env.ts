@@ -109,6 +109,24 @@ export function getSsoConfig(): { stateSecret: string | null; sessionSecret: str
 }
 
 /**
+ * Trust Desk reviewer authentication uses separate credentials for the
+ * one-time bootstrap exchange and the browser-session MAC. The bootstrap
+ * value may be handled by an operator; it must never double as a reusable
+ * session-signing key.
+ */
+export function getTrustDeskAuthConfig(): {
+  bootstrapToken: string | null;
+  sessionSecret: string | null;
+  reviewerId: string | null;
+} {
+  return {
+    bootstrapToken: process.env.TRUST_DESK_INTERNAL_TOKEN || null,
+    sessionSecret: process.env.TRUST_DESK_SESSION_SECRET || null,
+    reviewerId: process.env.TRUST_DESK_REVIEWER_ID || null,
+  };
+}
+
+/**
  * Deployment-held signing seed for the synthetic public demo surfaces.
  *
  * The public /r/example fixture is signed offline and does not need this

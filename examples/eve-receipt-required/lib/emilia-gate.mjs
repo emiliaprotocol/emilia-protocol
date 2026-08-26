@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.8.0  ·  content-sha256:beb87de1d96f492a
+//   source: @emilia-protocol/require-receipt@0.8.0  ·  content-sha256:f26040b97b097dd9
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -1424,28 +1424,67 @@ export function validateActionRiskManifest(manifest) {
     }
     return { ok: errors.length === 0, errors };
 }
-function selectorMatches(match = {}, selector = {}) {
-    for (const key of ['protocol', 'tool', 'method', 'path']) {
-        if (match[key] && selector[key] && match[key] !== selector[key])
-            return false;
-    }
-    if (match.tool && selector.tool)
-        return match.tool === selector.tool;
-    if (match.method && selector.method && match.path && selector.path)
-        return match.method === selector.method && match.path === selector.path;
-    return false;
+function hasOwnSelectorField(selector, key) {
+    return selector !== null
+        && typeof selector === 'object'
+        && !Array.isArray(selector)
+        && Object.prototype.hasOwnProperty.call(selector, key);
 }
 /**
- * Find the first manifest entry matching an action selector.
+ * Resolve every identity carried by a selector conjunctively. Independent
+ * selector forms are redundant assertions about one action, never alternatives
+ * where the first manifest entry wins. This makes a selector such as
+ * `{ action_type: 'read.balance', tool: 'release_payment' }` an explicit
+ * conflict instead of a pass-through downgrade.
+ */
+export function resolveActionRequirement(manifest, selector = {}) {
+    const actions = Array.isArray(manifest?.actions) ? manifest.actions : [];
+    if (!selector || typeof selector !== 'object' || Array.isArray(selector)) {
+        return { status: 'none', action: null };
+    }
+    const candidateGroups = [];
+    if (hasOwnSelectorField(selector, 'id')) {
+        candidateGroups.push(actions.filter((entry) => entry?.id === selector.id));
+    }
+    if (hasOwnSelectorField(selector, 'action_type')) {
+        candidateGroups.push(actions.filter((entry) => entry?.action_type === selector.action_type));
+    }
+    if (hasOwnSelectorField(selector, 'action')) {
+        candidateGroups.push(actions.filter((entry) => entry?.action_type === selector.action));
+    }
+    // Each supplied transport field is independently load-bearing. Treating
+    // `{ protocol, tool }` or `{ method, path }` as one OR-style hint would
+    // recreate the same selector-confusion class inside a transport family.
+    for (const key of ['protocol', 'tool', 'method', 'path']) {
+        if (!hasOwnSelectorField(selector, key))
+            continue;
+        candidateGroups.push(actions.filter((entry) => (hasOwnSelectorField(entry?.match, key) && entry.match[key] === selector[key])));
+    }
+    if (candidateGroups.length === 0)
+        return { status: 'none', action: null };
+    const intersection = actions.filter((entry) => candidateGroups.every((group) => group.includes(entry)));
+    if (intersection.length === 1)
+        return { status: 'one', action: intersection[0] };
+    const actionIds = [...new Set(candidateGroups.flat()
+            .map((entry) => String(entry?.id || ''))
+            .filter(Boolean))].sort();
+    if (intersection.length > 1) {
+        return { status: 'ambiguous', action: null, action_ids: actionIds };
+    }
+    if (candidateGroups.some((group) => group.length > 0)) {
+        return { status: 'conflict', action: null, action_ids: actionIds };
+    }
+    return { status: 'none', action: null };
+}
+/**
+ * Find the single manifest entry consistently named by an action selector.
  * Selectors may use { id }, { action_type } / { action }, or protocol fields
- * such as { protocol: 'mcp', tool: 'release_payment' }.
+ * such as { protocol: 'mcp', tool: 'release_payment' }. When more than one
+ * identity form is present they must all resolve to the same entry.
  */
 export function findActionRequirement(manifest, selector = {}) {
-    const actions = Array.isArray(manifest?.actions) ? manifest.actions : [];
-    return actions.find((entry) => ((selector.id && entry.id === selector.id) ||
-        (selector.action_type && entry.action_type === selector.action_type) ||
-        (selector.action && entry.action_type === selector.action) ||
-        selectorMatches(entry.match, selector))) || null;
+    const resolved = resolveActionRequirement(manifest, selector);
+    return resolved.status === 'one' ? resolved.action : null;
 }
 /**
  * Express/Connect middleware: demand a valid EMILIA receipt for the route.
@@ -1553,6 +1592,7 @@ const requireReceiptExports = {
     receiptRequiredHeader,
     validateActionRiskManifest,
     findActionRequirement,
+    resolveActionRequirement,
     receiptRequiredConformance,
     bindExecutorAction,
     bindToolAction,

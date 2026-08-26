@@ -442,12 +442,9 @@ describe('validatePresent', () => {
 describe('validateSignoffChallenge', () => {
   const validBody = {
     handshakeId: 'hs_abc',
-    accountableActorRef: 'entity_human',
-    signoffPolicyId: 'pol_signoff',
     bindingHash: 'sha256:abc123',
-    requiredAssurance: 'high',
-    allowedMethods: ['password', 'totp'],
     expiresAt: '2025-12-31T23:59:59Z',
+    metadata: { source: 'dashboard' },
   };
 
   it('accepts valid challenge body', () => {
@@ -463,6 +460,23 @@ describe('validateSignoffChallenge', () => {
 
   it('rejects invalid expiresAt format', () => {
     const result = validateSignoffChallenge({ ...validBody, expiresAt: 'tomorrow' });
+    expect(result.valid).toBe(false);
+  });
+
+  it.each([
+    ['accountableActorRef', 'entity_attacker'],
+    ['signoffPolicyId', 'policy_attacker'],
+    ['signoffPolicyHash', 'sha256:attacker'],
+    ['requiredAssurance', 'low'],
+    ['allowedMethods', ['out_of_band']],
+  ])('rejects client-supplied trust-bearing field %s', (field, value) => {
+    const result = validateSignoffChallenge({ ...validBody, [field]: value });
+    expect(result.valid).toBe(false);
+    expect(result.errors.join(' ')).toContain(field);
+  });
+
+  it('rejects non-object metadata', () => {
+    const result = validateSignoffChallenge({ ...validBody, metadata: 'attacker' });
     expect(result.valid).toBe(false);
   });
 });

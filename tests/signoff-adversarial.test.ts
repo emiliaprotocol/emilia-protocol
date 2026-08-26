@@ -692,7 +692,7 @@ describe('Adversarial: Event integrity under contention', () => {
 
     const challengeId = crypto.randomUUID();
     const handshakeId = crypto.randomUUID();
-    const validTypes = ['challenge_issued', 'challenge_viewed', 'approved', 'denied'];
+    const validTypes = ['challenge_issued', 'challenge_viewed', 'signoff_approved', 'signoff_denied'];
 
     await Promise.all(
       validTypes.map((eventType) =>

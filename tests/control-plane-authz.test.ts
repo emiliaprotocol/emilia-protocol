@@ -13,6 +13,9 @@ const mockGetGuardedClient = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: (...args) => mockAuthenticateRequest(...args),
+}));
+
+vi.mock('@/lib/auth-projections.js', () => ({
   authEntityId: (auth) => {
     const e = auth?.entity;
     if (typeof e === 'string') return e;
@@ -93,7 +96,12 @@ describe('control-plane object authorization', () => {
     expect(mockCreateBinding).not.toHaveBeenCalled();
   });
 
-  it('denies continuity claims under a foreign principal id', async () => {
+  it('binds continuity filing to the authenticated actor and preserves the service denial', async () => {
+    mockFileContinuityClaim.mockResolvedValueOnce({
+      error: 'Authenticated actor does not control the continuity subject principal',
+      status: 403,
+    });
+
     const res = await identityContinuityPOST(jsonRequest('https://example.test/api/identity/continuity', {
       principal_id: 'entity-victim',
       old_entity_id: 'entity-old',
@@ -102,7 +110,15 @@ describe('control-plane object authorization', () => {
     }));
 
     expect(res.status).toBe(403);
-    expect(mockFileContinuityClaim).not.toHaveBeenCalled();
+    expect(mockFileContinuityClaim).toHaveBeenCalledWith({
+      principal_id: 'entity-victim',
+      old_entity_id: 'entity-old',
+      new_entity_id: 'entity-new',
+      reason: 'entity_rename',
+      continuity_mode: undefined,
+      proofs: undefined,
+      transfer_budget: undefined,
+    }, 'entity-owner');
   });
 
   it('requires dispute.resolve permission for dispute resolution', async () => {
@@ -139,7 +155,7 @@ describe('control-plane object authorization', () => {
 
   it('allows the accountable actor to read their own signoff challenge', async () => {
     const challenge = {
-      id: 'ch-1',
+      challenge_id: 'ch-1',
       accountable_actor_ref: 'entity-owner',
       status: 'pending',
     };
@@ -160,5 +176,6 @@ describe('control-plane object authorization', () => {
 
     expect(res.status).toBe(200);
     expect(body.accountable_actor_ref).toBe('entity-owner');
+    expect(chain.eq).toHaveBeenCalledWith('challenge_id', 'ch-1');
   });
 });

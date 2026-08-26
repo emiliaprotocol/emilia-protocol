@@ -7,7 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { createGate as createGateCore, createTrustedActionFirewall as createTrustedActionFirewallCore, createEg1Harness, DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, receiptAssuranceTier, mintDeviceSignoff, mintQuorumEvidence, } from './index.js';
+import { createGate as createGateCore, createTrustedActionFirewall as createTrustedActionFirewallCore, createDefaultActionControlManifest, createEg1Harness, DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, receiptAssuranceTier, mintDeviceSignoff, mintQuorumEvidence, } from './index.js';
 const createGate = (opts = {}) => createGateCore({ allowEphemeralStore: true, ...opts });
 const createTrustedActionFirewall = (opts = {}) => createTrustedActionFirewallCore({
     allowEphemeralStore: true,
@@ -106,6 +106,44 @@ test('passes through non-guarded actions', async () => {
     const out = await g.check({ selector: { protocol: 'mcp', tool: 'read_balance' } });
     assert.equal(out.allow, true);
     assert.equal(out.reason, 'not_guarded');
+});
+test('STRIX-11: contradictory selector identities fail closed instead of choosing pass-through', async () => {
+    const { pub } = makeKey();
+    const passThroughFirst = { ...MANIFEST, actions: [MANIFEST.actions[1], MANIFEST.actions[0]] };
+    const g = createGate(gateOpts({ manifest: passThroughFirst, trustedKeys: [pub] }));
+    let executions = 0;
+    const out = await g.run({
+        selector: {
+            action_type: 'read.balance',
+            protocol: 'mcp',
+            tool: 'release_payment',
+        },
+    }, async () => {
+        executions++;
+    });
+    assert.equal(out.ok, false);
+    assert.equal(out.authorization.reason, 'manifest_selector_conflict');
+    assert.equal(executions, 0);
+});
+test('STRIX-11: Action Control v0.2 also refuses contradictory pass-through and protected identities', async () => {
+    const { pub } = makeKey();
+    const g = createGate(gateOpts({
+        manifest: createDefaultActionControlManifest({ includePassThrough: true }),
+        trustedKeys: [pub],
+    }));
+    let executions = 0;
+    const out = await g.run({
+        selector: {
+            action_type: 'read.status',
+            protocol: 'mcp',
+            tool: 'release_payment',
+        },
+    }, async () => {
+        executions++;
+    });
+    assert.equal(out.ok, false);
+    assert.equal(out.authorization.reason, 'manifest_selector_conflict');
+    assert.equal(executions, 0);
 });
 test('missing receipt -> 428 challenge', async () => {
     const { pub } = makeKey();
@@ -230,6 +268,32 @@ test('guard() fails closed when an async selector resolves to a guarded action w
     await assert.rejects(() => release(100), /EMILIA Gate refused \(receipt_required\)/);
     assert.equal(executions, 0);
     assert.equal(g.evidence.all().at(-1).reason, 'receipt_required');
+});
+test('STRIX-14: guard() never accepts selector-sourced observedAction for unrelated effect arguments', async () => {
+    const harness = createEg1Harness();
+    const g = createTrustedActionFirewall({
+        trustedKeys: [harness.publicKey],
+        approverKeys: harness.approverKeys,
+        rpId: harness.rpId,
+        allowedOrigins: harness.allowedOrigins,
+    });
+    const approvedAction = harness.action;
+    const changedAction = { ...approvedAction, amount_usd: 999999 };
+    const receiptDoc = harness.mint({ outcome: 'allow_with_signoff' });
+    let executions = 0;
+    const release = g.guard(async (action) => {
+        executions++;
+        return action.amount_usd;
+    }, {
+        selector: () => ({
+            protocol: 'mcp',
+            tool: 'release_payment',
+            observedAction: approvedAction,
+        }),
+        receipt: () => receiptDoc,
+    });
+    await assert.rejects(() => release(changedAction), /execution_binding_failed/);
+    assert.equal(executions, 0);
 });
 test('evidence log is hash-chained and tamper-evident', async () => {
     const { pub, privateKey } = makeKey();

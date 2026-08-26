@@ -1,80 +1,78 @@
-# Strix / Hostile Audit Remediation — 2026-07-18
+# Strix remediation register - 2026-07-18 report
 
-> **Status: active retest — not a closure memo.** The latest full-stack Strix report records
-> **14 issues: 1 critical, 6 high, 5 medium, and 2 low**. Strix is currently running against the
-> target surface and has reported additional findings. The branch evidence below describes
-> changes and tests observed in this integration tree; it does not establish production
-> deployment, live schema application, or closure of the active Strix report. Update this
-> document only after each finding is independently triaged, fixed, and retested.
+> **Status: source-remediated; external retest pending. This is not a closure memo.**
+> This register covers the 18 reported findings: 1 critical, 9 high, 5 medium,
+> and 3 low. The controls and regressions below are present in the current
+> integration tree. They do not establish deployment, production configuration,
+> migration application, or independent closure. A finding may be marked closed
+> only after Strix retests the exact deployed revision and confirms the result.
 
-## Scope and evidence boundary
+## Evidence boundary
 
-The earlier Strix completion email reported 10 findings: 7 high, 1 medium, and 2 low. The latest full-stack report supplied for this review supersedes that summary with 14 findings: 1 critical, 6 high, 5 medium, and 2 low. The report says repository-level fixes were applied and targeted tests/builds passed, but production still requires deployment and live retesting. This document records branch evidence, not a claim that every report item is closed.
+In this document, **source-remediated** means the reported source path has a
+specific fail-closed control and regression artifact in the integration tree.
+**External retest pending** means the finding remains open from an independent
+assurance perspective. Branch tests are not a substitute for a retest against
+the target deployment.
 
-The hostile-code audit v3 was available as a source report and was checked against the integration tree.
+The table is limited to STRIX-1, STRIX-2, STRIX-4, STRIX-6, and STRIX-11 through
+STRIX-24. It does not silently merge these findings with an older Strix summary
+or with the separate hostile-code audit.
 
-## Remediations present on the integration branch
+## Finding-by-finding disposition
 
-| Area | Change | Evidence |
-| --- | --- | --- |
-| Action Escrow approval tampering | Release replays the persisted binding, funding statement, milestone evidence, and each release approval before invoking a provider. | `4937ae5`; 128 focused Node/Vitest escrow and release-lock tests passed, including tampered approval and recomputed-summary regressions. |
-| Release Lock participant evidence | Unscoped invitation sessions fail closed. Scoped evidence is a redacted projection without contacts, credentials, counterparty decisions, Action Check internals, or effect/transaction identifiers. | `7cd3a5d`; 158 release-lock tests and 78 targeted tests passed in the worker lane. |
-| Route authorization/write boundary | Audited handshake, webhook, dispute, and key-rotation routes use the guarded client and explicit actor projections; no API route may import the raw service client or inspect `auth.entity`. | `49f4466` plus the current `check:write-discipline` gate; 379 route-family tests passed in this pass. |
-| SSO secrets | Production requires explicit `SSO_STATE_SECRET` and `SSO_SESSION_SECRET`; no service-role-derived or source-predictable fallback remains. | `ea61dea`; 23 focused SSO/env/canonical tests passed. |
-| Canonicalization | WebAuthn now uses the shared canonicalizer and rejects out-of-profile values; parity vectors cover the portable verifier. | `8948eb2`; 39 WebAuthn/canonical tests passed. |
-| Mobile signer dependencies | Patched transitive dependencies are pinned; the secure-app audit is clean and Expo checks pass. | `118aceb`; production dependency audit reported 0 high vulnerabilities, secure-app tests passed, Expo Doctor 18/18. |
-| Database Fortress controls | RLS, public table/column ACL, Release Lock RPC-only access, and live catalog contract checks were added. | `484f99e`; static migration audit reported 162 invariants passed; PostgreSQL 17.9 replay passed. |
-| Logger and runtime configuration | Logger bootstrap settings now come only from `lib/env.js`; environment access is no longer duplicated in `lib/logger.js`. | Current `rg process.env lib/logger.js` is empty; logger and auth regression tests pass. |
-| Service-client isolation | `getServiceClient()` creates a non-persistent client per call with session persistence disabled; no process-scoped singleton remains. | `tests/service-client-isolation.test.ts`; 91 focused security tests passed. |
-| Durable rate-limit posture | Sensitive routes use named durable-required categories; unknown `write` categories were removed, and `protocol_read` is explicit instead of silently falling back to generic reads. | `lib/rate-limit.js`; production without Upstash fails closed for sensitive categories. |
-| Async Gate provider resolution | `guard()` awaits selector, receipt, observed-action, admissibility, and reliance-packet providers; an async selector without a receipt now produces `receipt_required` and never invokes the effect. | `packages/gate/index.js`; async-provider and fail-closed regressions in `packages/gate/gate.test.js` pass. |
-| Approver enrollment authorization | WebAuthn registration issuance and completion require the explicit `approver.enroll` capability or the documented `admin` super-capability; tenant binding remains mandatory. | `lib/approver-enrollment-auth.js`; both registration routes and the non-admin regression tests pass. |
-| Public Action Escrow surface | Website content now explains the action-bound approval flow, exact outcomes, refusal codes, and simulated-provider/custody boundary. | `4d22394`; focused copy tests and Next build passed in the worker lane. |
+| ID | Severity | Source disposition | Control now enforced | Regression evidence |
+| --- | --- | --- | --- | --- |
+| STRIX-1 | High | Source-remediated; external retest pending | `gate.guard()` awaits selector, receipt, observed-action, admissibility, and reliance providers. If an async selector resolves to a protected action without a receipt, the Gate returns `receipt_required` and never invokes the effect. | `packages/gate/gate.test.ts`, especially the async-provider and missing-receipt regressions. |
+| STRIX-2 | High | Source-remediated; external retest pending | WebAuthn registration completion uses `complete_webauthn_registration_atomic`, which locks and validates the one-time challenge, inserts the credential, and consumes the challenge in one database operation. A consumed challenge is rejected as replay. | `app/api/v1/approvers/webauthn/register-verify/route.ts`; `supabase/migrations/20260718205655_webauthn_registration_atomic.sql`; `tests/webauthn-registration-route.test.ts`; `tests/agent-adoption-postgres.integration.test.ts`. |
+| STRIX-4 | High | Source-remediated; external retest pending | Both WebAuthn enrollment phases require the explicit `approver.enroll` capability or the documented `admin` super-capability, and the approver remains bound to the authenticated organization. Organization membership alone is not enrollment authority. | `lib/approver-enrollment-auth.ts`; `tests/webauthn-registration-route.test.ts`. |
+| STRIX-6 | Low | Source-remediated; external retest pending | The `/spec` markdown boundary escapes raw HTML and attribute-breaking content, rejects executable URL schemes, escapes code bytes, and allowlists fenced-code language tokens before rendering. | `lib/spec-markdown.ts`; `tests/spec-markdown-security.test.ts`; `tests/site-spec-route.test.ts`. |
+| STRIX-11 | Critical | Source-remediated; external retest pending | Independent selector identities are resolved conjunctively in both the legacy EP-ACTION-RISK resolver and the Action Control v0.2 resolver. Contradictory `id`, action alias, protocol, and complete transport fields cannot fall through a first-match path; the Gate synthesizes a protected conflict result and refuses with `manifest_selector_conflict`. | `packages/require-receipt/src/index.ts`; `packages/require-receipt/selector-confusion.test.ts`; `packages/gate/src/action-control-manifest.ts`; `packages/gate/gate.test.ts`; `tests/action-control-manifest.test.ts`; `tests/mutation-security-kernel.test.ts`. |
+| STRIX-12 | High | Source-remediated; external retest pending | SSO configuration writes require `sso.manage` or `admin`; reads require `sso.read`, `sso.manage`, or `admin`. Ordinary tenant keys and observe-scope pilot keys cannot administer SSO. | `app/api/sso/connections/route.ts`; `tests/control-plane-permissions.test.ts`; `tests/pilot-sandbox-controlplane-scope.test.ts`. |
+| STRIX-13 | High | Source-remediated; external retest pending | Receipt creation ownership is authoritative. A same-organization peer no longer gains access from membership alone and needs the exact `receipt.read`, `receipt.evidence`, `receipt.consume`, or `receipt.execute` capability for the requested operation; same-org `admin` remains the explicit super-capability, while cross-org access is denied. | `lib/tenant-binding.ts`; `tests/strix-13-receipt-authorization.test.ts`; `tests/tenant-binding.test.ts`; route regressions in `tests/v1-api.test.ts` for read, evidence, consume, and execution. |
+| STRIX-14 | Medium | Source-remediated; external retest pending | `check()` and `guard()` do not accept selector metadata as execution input. In particular, selector-sourced `observedAction` and `actionDetails` cannot authorize raw function arguments for a different action. Explicit deployer-owned action mappings remain trusted integration code and therefore remain a documented trust boundary; sealed adapters and registered operations provide the strongest binding. | `packages/gate/src/index.ts`; the `STRIX-14` regression in `packages/gate/gate.test.ts`; execution-binding regressions in the same suite. |
+| STRIX-15 | High | Source-remediated; external retest pending | The attest route and `createAttestation()` both require `humanEntityRef` to equal the authenticated accountable actor. A caller cannot place another identity into the signed approval trail. | `app/api/signoff/[challengeId]/attest/route.ts`; `lib/signoff/attest.ts`; `tests/signoff-attest.test.ts`. |
+| STRIX-16 | High | Source-remediated; external retest pending | One Trust Desk request has a shared budget across classification and answering. Public intake and triage are each capped at 6 provider calls, 12,000 estimated input/output token units, and 20 seconds of aggregate LLM wall-clock time; the separately authenticated internal workflow retains the documented 48-call, 100,000-unit, 50-second ceiling. Every path also enforces at most 200 questions, 8,000 characters per question, and 200,000 aggregate question characters. Provider reservation occurs before network invocation, and one abort deadline spans connection establishment, response headers, error-body reads, and JSON-body parsing. The durable, fail-closed public throttle admits at most 10 scans per source IP per hour. An exhausted, expired, missing, or unavailable budget/throttle refuses rather than invoking another model call. | `lib/trust-desk/resource-budget.ts`; `lib/trust-desk/pipeline.ts`; `lib/trust-desk/llm.ts`; `lib/rate-limit.ts`; `app/api/trust-desk/intake/route.ts`; `app/api/trust-desk/triage/route.ts`; `tests/trust-desk-resource-budget.test.ts`; `tests/trust-desk-intake-resource-profile.test.ts`; `tests/trust-desk-triage-route.test.ts`; `tests/rate-limit.test.ts`. |
+| STRIX-17 | High | Source-remediated; external retest pending; production fail-closed until secrets are configured | SAML RelayState is HMAC-bound to the tenant and a nonce, matched to a short-lived `HttpOnly; Secure; SameSite=None` browser cookie, and verified before tenant configuration is selected. The assertion is verified under that tenant's IdP key, replay-consumed, and accepted only for an active directory identity. Production SSO intentionally fails closed until separate `SSO_STATE_SECRET` and `SSO_SESSION_SECRET` values are configured. | `app/api/sso/saml/login/route.ts`; `app/api/sso/saml/acs/route.ts`; `lib/sso/state.ts`; `lib/sso/session.ts`; `supabase/migrations/20260628151330_103_saml_consumed_assertions.sql`; `tests/sso-state.test.ts`; `tests/sso-saml.test.ts`. |
+| STRIX-18 | Medium | Source-remediated; external retest pending; production rotation/configuration required | A query-string bootstrap value never authenticates and is scrubbed by a `303` redirect to the clean URL without setting a cookie or consuming the token. The clean page uses a no-store form; only a bounded, same-origin `POST` may exchange the bootstrap secret. Reviewer sessions are signed with a separate `TRUST_DESK_SESSION_SECRET`, never with the historically exposed bootstrap token. Production must rotate `TRUST_DESK_INTERNAL_TOKEN` and configure an independent, random `TRUST_DESK_SESSION_SECRET` plus `TRUST_DESK_REVIEWER_ID` before enabling the reviewer surface. | `app/internal/trust-desk/auth/route.ts`; `lib/trust-desk/auth.ts`; `lib/env.ts`; `tests/trust-desk-bootstrap-route.test.ts`; `tests/trust-desk-auth.test.ts`; `tests/trust-desk-review-route.test.ts`. |
+| STRIX-19 | Medium | Source-remediated; external retest pending | Public pilot sandbox API keys are created with the single `observe` permission and a durable server-written observe marker. A centralized authorization floor admits those credentials only to the exact reviewed GovGuard and FinGuard precheck routes plus their actor-scoped sandbox report. The floor evaluates pilot scope before the normal read-method path, so current and legacy pilot identities are denied on every other authenticated read or mutation even if a stale key also carries `read`, `write`, or `admin`. Anonymous provisioning is independently limited to five identities per hour per source IP by the fail-closed durable `pilot_sandbox_provision` middleware category. | `app/api/pilot/sandbox/provision/route.ts`; `lib/auth/observe-scope.ts`; `lib/auth/protocol-request-authorization.ts`; `middleware.ts`; `lib/rate-limit.ts`; `supabase/migrations/20260826010000_pilot_observe_permission.sql`; `tests/protocol-request-authorization.test.ts`; `tests/pilot-sandbox-controlplane-scope.test.ts`; `tests/private-equity-page.test.ts`. |
+| STRIX-20 | Medium | Source-remediated; external retest pending | `POST /api/identity/continuity/challenge` derives `challenger_id` exclusively from the authenticated entity. A body-supplied challenger cannot override it or manufacture a self-challenge bypass. | `app/api/identity/continuity/challenge/route.ts`; exact route-level regression in `tests/identity-continuity-challenge-route-security.test.ts`. |
+| STRIX-21 | Medium | Source-remediated; external retest pending | Cross-entity Gate commit issuance requires a verified delegation whose agent is the authenticated caller and whose principal is the requested entity. Agent mismatch and principal mismatch both refuse before an allow commit can be issued. | `app/api/trust/gate/route.ts`; exact route-level mismatch regressions in `tests/trust-gate-security.test.ts`. |
+| STRIX-22 | Low | Source-remediated; external retest pending | WebAuthn signoff credential loading includes `valid_from` and `valid_to` and rejects credentials that are not yet valid or are expired before signature verification or state mutation. | `lib/webauthn-signoff.ts`; `app/api/v1/signoffs/[signoffId]/approve-webauthn/route.ts`; `tests/webauthn-approve-route.test.ts`. |
+| STRIX-23 | High | Source-remediated; external retest pending | SCIM provisioning-token mint and list operations require `scim.manage` or `admin`; generic read/write principals and observe-scope pilot keys are refused. | `app/api/scim/v2/provisioning-token/route.ts`; `tests/control-plane-permissions.test.ts`; `tests/pilot-sandbox-controlplane-scope.test.ts`. |
+| STRIX-24 | Low | Source-remediated; external retest pending | DOCX intake parses a strict single-disk ZIP layout, rejects encryption, data descriptors, ZIP64, unsupported flags/methods, aliased or overlapping local entries, central/local-header disagreement, and trailing compressed payload bytes, then independently inflates every deflated entry under hard output limits before Mammoth sees the document. The parser verifies actual compressed bytes consumed and actual expanded sizes, with 16 MiB per-entry and 64 MiB aggregate ceilings; it does not trust attacker-declared central-directory sizes. | `lib/trust-desk/extractor.ts`; exact mismatch, overlap, trailing-byte, per-entry, ratio, and aggregate-limit regressions in `tests/trust-desk-extractor-budget.test.ts`. |
 
-## Latest full-stack Strix findings — branch disposition
+## Deployment and independent-validation requirements
 
-The following controls are now present in this branch for the 14-finding report. The
-deployment and live retest boundary above still applies.
+The source register is complete, but independent closure still requires all of
+the following against the exact candidate revision:
 
-| Strix area | Branch control now enforced | Regression evidence |
-| --- | --- | --- |
-| Public pilot/control-plane credential overreach | Pilot keys are inserted with `permissions: []`; SSO and SCIM routes require explicit capabilities; key rotation requires `keys.rotate`/`admin` and preserves the old key's permission scope in the replacement. | Control-plane permission, pilot, and key-rotation tests. |
-| SAML tenant confusion / callback state | RelayState is HMAC-bound to the tenant and a nonce, matched to an HttpOnly state cookie, and ACS requires an active directory identity; the cross-site IdP POST uses `SameSite=None; Secure`. | SSO/SAML focused tests and state helpers. |
-| Cross-entity gate commit issuance | Cross-entity requests require a verified delegation whose agent is the authenticated caller and whose principal is the requested entity; the delegation id is carried into the issued commit. | Trust-gate security tests plus commit authorization tests. |
-| Signoff identity laundering | Both the route and `createAttestation()` require `humanEntityRef` to equal the authenticated accountable actor. | Signoff route/core mismatch regression. |
-| WebAuthn enrollment race and lifecycle | Registration completion uses an atomic challenge-lock/credential-insert/consume RPC; credential validity now enforces both `valid_from` and `valid_to`. | WebAuthn registration and signoff-loader tests; migration contract. |
-| Same-organization receipt mutation | Same-org membership remains read-only; consume and execution attestation require the creator or an explicit `receipt.consume` / `receipt.execute` capability. | Tenant-binding and v1 receipt route tests. |
-| Trust Desk DOCX resource exhaustion | ZIP central-directory preflight caps entries, per-entry expansion, aggregate expansion, and compression ratio before Mammoth. | Oversized DOCX budget regression. |
-| Trust Desk bearer replay | The URL bearer is never placed in a cookie; sessions are fresh HMAC envelopes, and bootstrap hashes are atomically single-use in the database. | Trust Desk session tests; bootstrap migration. |
-| Gate selector/execution binding | The Gate rechecks material observed fields when recording execution and reliance prefers the execution proof's binding, so changed execution parameters produce `do_not_rely`. | Gate mismatch/reliance regression and 49 node tests. |
-| Identity-continuity self-challenge | Authenticated challenger identity is authoritative and ownership-query errors now fail closed instead of allowing the challenge. | EP-IX ownership-failure regression. |
-| Dependency and configuration observations | Existing dependency audit remains clean; new database RPCs are service-role-only and the static schema contract tracks them. | `npm audit`, schema-security suite, and migration audit. |
+1. Apply the relevant forward migrations, including
+   `20260718205655_webauthn_registration_atomic.sql` and
+   `20260718205657_trust_desk_bootstrap_once.sql` to the target database.
+   Confirm the SAML
+   replay-consumption table is present.
+2. Configure separate, randomly generated production values for
+   `SSO_STATE_SECRET` and `SSO_SESSION_SECRET`. Until then, the SSO paths remain
+   deliberately unavailable rather than falling back to a predictable secret.
+3. Rotate `TRUST_DESK_INTERNAL_TOKEN` because it historically traveled in a
+   URL, configure a different `TRUST_DESK_SESSION_SECRET` of at least 32 UTF-8
+   bytes, and configure `TRUST_DESK_REVIEWER_ID`. Do not reuse one value for
+   both bootstrap and session signing.
+4. Verify the durable, fail-closed Trust Desk intake/IP throttle in the
+   production topology and confirm both public entry points use the 6-call,
+   12,000-unit, 20-second resource profile. The request-scoped resource budget
+   is deterministic, but it is not a distributed portfolio-wide cost ledger.
+5. Deploy a candidate, record its exact commit and migration state, and have
+   Strix retest every finding. Source-remediated, deployed, and externally
+   retested are separate states; none of the rows above currently claims the
+   last state.
 
-The earlier confirmed non-Gate Sentrix remediations remain in `c0a3db8` on the mainline ancestry: identity-verify authorization, receipt rebind first-write-wins, webhook secret disclosure, rollout mismatch handling, bounded spreadsheet parsing, and IPv4-mapped SSRF handling.
+## Residual trust boundary for action binding
 
-## Hostile audit v3 branch disposition
-
-The following are branch-level dispositions against the audit-v3 items. They are not a claim
-that the current Strix run is clean or that the corresponding production paths are deployed.
-
-1. The historical RLS incident remains fixed by migration 113 and is now reasserted by the Fortress migration and source/live contract checks.
-2. Direct route write-guard bypasses are closed for the audited routes.
-3. Direct `auth.entity` use is closed at the route boundary. Routes use `authEntityId`, `authEntityDbId`, `authEntityActor`, or another named allowlisted projection, and CI rejects raw access.
-4. SSO service-role-derived and predictable fallback secrets are removed.
-5. The audited direct environment reads in logger, SIEM, SSO, and WebAuthn code are centralized through `lib/env.js`; logger now consumes `getLoggerConfig()` and has no direct `process.env` reads.
-6. WebAuthn uses the shared canonicalizer, and cross-implementation vectors are tested. The published portable verifier retains its compatible implementation for package independence; valid EP I-JSON vectors are asserted byte-for-byte.
-7. The Supabase service client is now created per call with session persistence and auto-refresh disabled; the process-scoped singleton is removed.
-8. Sensitive rate-limit categories require durable Redis in production (or fail closed); sensitive routes no longer use an undefined category that falls back to the generic read limiter.
-9. The public key-revocation route no longer exposes the operational rotation procedure in source comments.
-10. Gate function wrappers await all async input providers; a missing receipt cannot be reclassified as an unguarded action through a Promise-valued selector.
-11. Approver enrollment is capability-gated at both WebAuthn registration phases; organization binding alone is not treated as enrollment authorization.
-
-## Release blockers and external validation
-
-These remain open until verified against the target deployment and the active Strix report:
-
-- Apply `supabase/migrations/20260718205652_fortress_db_security_invariants.sql` to the target Supabase project, then run the live schema contract. No production database credentials were available during this pass.
-- Apply the forward migrations `20260718205653_api_key_rotation_scope.sql`, `20260718205655_webauthn_registration_atomic.sql`, and `20260718205657_trust_desk_bootstrap_once.sql` before exercising the hardened production routes.
-- Configure and verify production `SSO_STATE_SECRET`, `SSO_SESSION_SECRET`, and Upstash credentials before enabling the corresponding production paths.
-- Deploy a Vercel preview and run the release/build/security gates against that deployment. Production deployment should follow only after the preview and live migration checks pass.
-- External provider custody, licensing, and transaction settlement remain outside EMILIA’s control plane; the website and Action Escrow contract deliberately do not claim otherwise.
+The STRIX-14 change removes selector metadata as an execution-data source. It
+does not make an arbitrary deployer callback self-describing. If an integration
+provides an explicit `observedAction` mapper, that mapper is trusted integration
+code and must derive the canonical action from the same function inputs that
+reach the effect. Where feasible, use the sealed adapter or registered-operation
+path so authorization and execution share one mapping boundary.

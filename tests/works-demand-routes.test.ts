@@ -32,6 +32,8 @@ const context = { params: Promise.resolve({ recordId: RECORD_ID }) };
 beforeEach(() => {
   process.env.WORKS_V0 = '1';
   process.env.WORKS_DEMAND_HMAC_KEY = 'd'.repeat(64);
+  delete process.env.NEXT_PUBLIC_APP_URL;
+  delete process.env.NEXT_PUBLIC_SITE_URL;
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.create.mockResolvedValue({ accepted: true, verification_sent: true });
   mocks.verify.mockResolvedValue({
@@ -61,7 +63,21 @@ describe('Authority Record verified-request routes', () => {
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({
       input: { record_id: RECORD_ID, email: 'person@one.example' },
       hmacKey: 'd'.repeat(64),
+      siteOrigin: 'https://www.emiliaprotocol.ai',
       sendEmail: mocks.email,
+    }));
+  });
+
+  it('pins emailed verification links to configured origin instead of the request host', async () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://trust.emiliaprotocol.ai';
+    const response = await requestRoute.POST(new Request('https://attacker.example/x', {
+      method: 'POST', body: JSON.stringify({ email: 'person@one.example' }),
+      headers: { 'content-type': 'application/json', host: 'attacker.example' },
+    }) as any, context);
+
+    expect(response.status).toBe(202);
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({
+      siteOrigin: 'https://trust.emiliaprotocol.ai',
     }));
   });
 

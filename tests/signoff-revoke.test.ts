@@ -43,8 +43,9 @@ function makeChallengeMock({ challenge = null, challengeError = null, updatedCha
     }),
     update: updateFn,
   }));
+  const rpc = vi.fn().mockResolvedValue({ data: updatedChallenge, error: updateError });
 
-  return { from };
+  return { from, rpc };
 }
 
 function makeAttestationMock({ attestation = null, attestationError = null, updatedAttestation = null, updateError = null } = {}) {
@@ -61,8 +62,9 @@ function makeAttestationMock({ attestation = null, attestationError = null, upda
     }),
     update: updateFn,
   }));
+  const rpc = vi.fn().mockResolvedValue({ data: updatedAttestation, error: updateError });
 
-  return { from };
+  return { from, rpc };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -208,11 +210,7 @@ describe('revokeChallenge — happy path', () => {
     expect(result.status).toBe('revoked');
   });
 
-  it('emits revoked event attributed to the accountable actor who revoked', async () => {
-    // The revocation authorization check (revoke.js) has already proven the
-    // caller IS the accountable actor, so the audit event must record WHO
-    // revoked (entity-alice), not a generic 'system' — otherwise the trail
-    // cannot say which accountable party pulled the challenge.
+  it('passes the accountable actor to the atomic revocation RPC', async () => {
     const challenge = validChallenge({ status: 'challenge_issued' });
     const revoked = { ...challenge, status: 'revoked' };
     const supabase = makeChallengeMock({ challenge, updatedChallenge: revoked });
@@ -220,20 +218,36 @@ describe('revokeChallenge — happy path', () => {
 
     await revokeChallenge({ challengeId: 'ch-1', reason: 'test', actor: ACTOR });
 
-    expect(mockRequireSignoffEvent).toHaveBeenCalledWith(expect.objectContaining({
-      eventType: 'revoked',
-      actorEntityRef: 'entity-alice',
-      detail: { reason: 'test' },
-    }));
+    expect(supabase.rpc).toHaveBeenCalledWith('revoke_challenge_atomic', {
+      p_challenge_id: 'ch-1',
+      p_actor_entity_ref: 'entity-alice',
+      p_reason: 'test',
+    });
+    expect(mockRequireSignoffEvent).not.toHaveBeenCalled();
   });
 
-  it('throws DB_ERROR when update fails', async () => {
+  it('throws DB_ERROR when the atomic RPC fails', async () => {
     const challenge = validChallenge({ status: 'challenge_issued' });
     const supabase = makeChallengeMock({ challenge, updateError: { message: 'write failed' } });
     mockGetServiceClient.mockReturnValue(supabase);
 
     await expect(revokeChallenge({ challengeId: 'ch-1', reason: 'test', actor: ACTOR }))
       .rejects.toMatchObject({ code: 'DB_ERROR', status: 500 });
+  });
+
+  it.each([
+    ['SIGNOFF_CHALLENGE_NOT_FOUND', 'CHALLENGE_NOT_FOUND', 404],
+    ['SIGNOFF_CHALLENGE_ACTOR_MISMATCH', 'FORBIDDEN', 403],
+    ['SIGNOFF_CHALLENGE_NOT_REVOCABLE', 'INVALID_STATE_FOR_REVOCATION', 409],
+    ['SIGNOFF_CHALLENGE_EXPIRED', 'SIGNOFF_CHALLENGE_EXPIRED', 410],
+    ['SIGNOFF_REVOCATION_REASON_REQUIRED', 'MISSING_REASON', 400],
+  ])('maps atomic challenge RPC error %s to %s/%s', async (message, code, status) => {
+    const challenge = validChallenge({ status: 'challenge_issued' });
+    const supabase = makeChallengeMock({ challenge, updateError: { message } });
+    mockGetServiceClient.mockReturnValue(supabase);
+
+    await expect(revokeChallenge({ challengeId: 'ch-1', reason: 'test', actor: ACTOR }))
+      .rejects.toMatchObject({ code, status });
   });
 });
 
@@ -339,7 +353,7 @@ describe('revokeAttestation — happy path', () => {
     expect(result.status).toBe('revoked');
   });
 
-  it('emits attestation_revoked event', async () => {
+  it('passes the exact attestation and actor to the atomic revocation RPC', async () => {
     const attestation = validAttestation({ status: 'approved' });
     const revoked = { ...attestation, status: 'revoked' };
     const supabase = makeAttestationMock({ attestation, updatedAttestation: revoked });
@@ -347,19 +361,38 @@ describe('revokeAttestation — happy path', () => {
 
     await revokeAttestation({ signoffId: 'sig-1', reason: 'test', actor: ACTOR });
 
-    expect(mockRequireSignoffEvent).toHaveBeenCalledWith(expect.objectContaining({
-      eventType: 'attestation_revoked',
-      signoffId: 'sig-1',
-      actorEntityRef: 'entity-alice',
-    }));
+    expect(supabase.rpc).toHaveBeenCalledWith('revoke_attestation_atomic', {
+      p_signoff_id: 'sig-1',
+      p_challenge_id: 'ch-1',
+      p_actor_entity_ref: 'entity-alice',
+      p_reason: 'test',
+    });
+    expect(mockRequireSignoffEvent).not.toHaveBeenCalled();
   });
 
-  it('throws DB_ERROR when attestation update fails', async () => {
+  it('throws DB_ERROR when the atomic attestation RPC fails', async () => {
     const attestation = validAttestation({ status: 'approved' });
     const supabase = makeAttestationMock({ attestation, updateError: { message: 'write error' } });
     mockGetServiceClient.mockReturnValue(supabase);
 
     await expect(revokeAttestation({ signoffId: 'sig-1', reason: 'test', actor: ACTOR }))
       .rejects.toMatchObject({ code: 'DB_ERROR', status: 500 });
+  });
+
+  it.each([
+    ['SIGNOFF_CHALLENGE_NOT_FOUND', 'ATTESTATION_NOT_FOUND', 404],
+    ['SIGNOFF_ATTESTATION_NOT_FOUND', 'ATTESTATION_NOT_FOUND', 404],
+    ['SIGNOFF_ATTESTATION_BINDING_MISMATCH', 'BINDING_HASH_MISMATCH', 409],
+    ['SIGNOFF_ATTESTATION_ACTOR_MISMATCH', 'FORBIDDEN', 403],
+    ['SIGNOFF_ATTESTATION_NOT_REVOCABLE', 'INVALID_STATE_FOR_REVOCATION', 409],
+    ['SIGNOFF_ATTESTATION_EXPIRED', 'SIGNOFF_ATTESTATION_EXPIRED', 410],
+    ['SIGNOFF_REVOCATION_REASON_REQUIRED', 'MISSING_REASON', 400],
+  ])('maps atomic attestation RPC error %s to %s/%s', async (message, code, status) => {
+    const attestation = validAttestation({ status: 'approved' });
+    const supabase = makeAttestationMock({ attestation, updateError: { message } });
+    mockGetServiceClient.mockReturnValue(supabase);
+
+    await expect(revokeAttestation({ signoffId: 'sig-1', reason: 'test', actor: ACTOR }))
+      .rejects.toMatchObject({ code, status });
   });
 });

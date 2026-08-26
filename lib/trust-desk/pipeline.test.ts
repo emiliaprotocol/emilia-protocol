@@ -18,10 +18,12 @@ import { describe, it, expect, afterAll, vi } from 'vitest';
 // stub answers from the policy text it is handed and quotes it verbatim, so the
 // grounding check is exercised against real template content rather than bypassed.
 let stubMode: 'grounded' | 'fabricated' = 'grounded';
+let llmCallCount = 0;
 vi.mock('./llm.js', () => ({
   llmAvailable: () => true,
   activeProvider: () => 'stub',
   llmJSON: async ({ user }: { user: string }) => {
+    llmCallCount += 1;
     const policy = user.split('Policy text (the ONLY permitted source):\n')[1] || '';
     const real = policy.replace(/\s+/g, ' ').trim().slice(0, 120);
     return {
@@ -133,6 +135,26 @@ describe('trust-desk pipeline (composed answers, stubbed provider)', () => {
     const result = await runPipeline({ engagement, persist: false });
     expect(result.outcome).toBe('escalated');
     expect(result.reason).toBe('no_questions_extracted');
+  });
+
+  it('escalates an over-limit questionnaire before any model call', async () => {
+    llmCallCount = 0;
+    const questionnaire = Array.from(
+      { length: 201 },
+      (_, index) => `- Do you govern AI system ${index}?`,
+    ).join('\n');
+    const engagement = {
+      engagement_id: `eng_${'budget'}${Date.now().toString(16)}`,
+      intake,
+      questionnaire_content: questionnaire,
+      questionnaire_filename: 'too-many.md',
+    };
+
+    const result = await runPipeline({ engagement, persist: false });
+
+    expect(result.outcome).toBe('escalated');
+    expect(result.reason).toBe('questionnaire_question_limit');
+    expect(llmCallCount).toBe(0);
   });
 });
 

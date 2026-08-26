@@ -4,9 +4,8 @@
  * revokeChallenge() revokes a pending challenge.
  * revokeAttestation() revokes an approved attestation.
  *
- * Both verify current status allows revocation, use getServiceClient()
- * for writes (lib-only), and emit required signoff events.
- * Event-first ordering: log event BEFORE state change.
+ * Both verify current status allows revocation, then use state-locking RPCs
+ * to commit the required event and state change in one transaction.
  *
  * @license Apache-2.0
  */
@@ -14,7 +13,6 @@
 import { getServiceClient } from '@/lib/supabase';
 import { SignoffError } from './errors.js';
 import { VALID_TERMINAL_STATES } from './invariants.js';
-import { requireSignoffEvent } from './events.js';
 
 interface RevokeChallengeParams {
   challengeId: string;
@@ -90,34 +88,35 @@ export async function revokeChallenge({ challengeId, reason, actor }: RevokeChal
     );
   }
 
-  const now = new Date().toISOString();
-
-  // ── Event-first ordering: log event BEFORE state change ──
-  await requireSignoffEvent({
-    handshakeId: challenge.handshake_id,
-    challengeId,
-    eventType: 'revoked',
-    detail: { reason },
-    actorEntityRef: actor.entity_id,
+  const { data: revoked, error: rpcError } = await supabase.rpc('revoke_challenge_atomic', {
+    p_challenge_id: challengeId,
+    p_actor_entity_ref: actor.entity_id,
+    p_reason: reason,
   });
 
-  // ── Update challenge status to 'revoked' (AFTER event is durably recorded) ──
-  const { data: updated, error: updateError } = await supabase
-    .from('signoff_challenges')
-    .update({
-      status: 'revoked',
-      revoked_at: now,
-      revocation_reason: reason,
-    })
-    .eq('challenge_id', challengeId)
-    .select()
-    .single();
-
-  if (updateError) {
-    throw new SignoffError(`Failed to revoke challenge: ${updateError.message}`, 500, 'DB_ERROR');
+  if (rpcError) {
+    const rpcMessage = [rpcError.message, rpcError.details, rpcError.hint, rpcError.code]
+      .filter((value) => typeof value === 'string')
+      .join(' ');
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_NOT_FOUND')) {
+      throw new SignoffError('Challenge not found', 404, 'CHALLENGE_NOT_FOUND');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_ACTOR_MISMATCH')) {
+      throw new SignoffError('Only the accountable actor may revoke this challenge', 403, 'FORBIDDEN');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_NOT_REVOCABLE')) {
+      throw new SignoffError('Challenge is no longer revocable', 409, 'INVALID_STATE_FOR_REVOCATION');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_EXPIRED')) {
+      throw new SignoffError('Challenge has expired', 410, 'SIGNOFF_CHALLENGE_EXPIRED');
+    }
+    if (rpcMessage.includes('SIGNOFF_REVOCATION_REASON_REQUIRED')) {
+      throw new SignoffError('reason is required', 400, 'MISSING_REASON');
+    }
+    throw new SignoffError(`Failed to revoke challenge: ${rpcError.message}`, 500, 'DB_ERROR');
   }
 
-  return updated;
+  return revoked;
 }
 
 /**
@@ -250,33 +249,38 @@ export async function revokeAttestation({ signoffId, challengeId, reason, actor 
     );
   }
 
-  const now = new Date().toISOString();
-
-  // ── Event-first ordering: log event BEFORE state change ──
-  await requireSignoffEvent({
-    handshakeId: attestation.handshake_id,
-    challengeId: attestation.challenge_id,
-    signoffId: resolvedSignoffId,
-    eventType: 'attestation_revoked',
-    detail: { reason },
-    actorEntityRef: attestation.human_entity_ref,
+  const { data: revoked, error: rpcError } = await supabase.rpc('revoke_attestation_atomic', {
+    p_signoff_id: resolvedSignoffId,
+    p_challenge_id: attestation.challenge_id,
+    p_actor_entity_ref: actor.entity_id,
+    p_reason: reason,
   });
 
-  // ── Update attestation status to 'revoked' (AFTER event is durably recorded) ──
-  const { data: updated, error: updateError } = await supabase
-    .from('signoff_attestations')
-    .update({
-      status: 'revoked',
-      revoked_at: now,
-      revocation_reason: reason,
-    })
-    .eq('signoff_id', resolvedSignoffId)
-    .select()
-    .single();
-
-  if (updateError) {
-    throw new SignoffError(`Failed to revoke attestation: ${updateError.message}`, 500, 'DB_ERROR');
+  if (rpcError) {
+    const rpcMessage = [rpcError.message, rpcError.details, rpcError.hint, rpcError.code]
+      .filter((value) => typeof value === 'string')
+      .join(' ');
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_NOT_FOUND')
+        || rpcMessage.includes('SIGNOFF_ATTESTATION_NOT_FOUND')) {
+      throw new SignoffError('Attestation not found', 404, 'ATTESTATION_NOT_FOUND');
+    }
+    if (rpcMessage.includes('SIGNOFF_ATTESTATION_BINDING_MISMATCH')) {
+      throw new SignoffError('Attestation authorization binding changed', 409, 'BINDING_HASH_MISMATCH');
+    }
+    if (rpcMessage.includes('SIGNOFF_ATTESTATION_ACTOR_MISMATCH')) {
+      throw new SignoffError('Only the accountable actor may revoke this attestation', 403, 'FORBIDDEN');
+    }
+    if (rpcMessage.includes('SIGNOFF_ATTESTATION_NOT_REVOCABLE')) {
+      throw new SignoffError('Attestation is no longer revocable', 409, 'INVALID_STATE_FOR_REVOCATION');
+    }
+    if (rpcMessage.includes('SIGNOFF_ATTESTATION_EXPIRED')) {
+      throw new SignoffError('Attestation has expired', 410, 'SIGNOFF_ATTESTATION_EXPIRED');
+    }
+    if (rpcMessage.includes('SIGNOFF_REVOCATION_REASON_REQUIRED')) {
+      throw new SignoffError('reason is required', 400, 'MISSING_REASON');
+    }
+    throw new SignoffError(`Failed to revoke attestation: ${rpcError.message}`, 500, 'DB_ERROR');
   }
 
-  return updated;
+  return revoked;
 }

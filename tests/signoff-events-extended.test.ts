@@ -110,7 +110,7 @@ describe('requireSignoffEvent — DB error path', () => {
     await expect(
       requireSignoffEvent({
         challengeId: 'ch-req-1',
-        eventType: 'approved',
+        eventType: 'signoff_approved',
         detail: { method: 'biometric' },
       })
     ).rejects.toThrow('SIGNOFF_EVENT_WRITE_REQUIRED');

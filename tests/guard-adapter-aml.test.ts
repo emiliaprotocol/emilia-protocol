@@ -149,6 +149,8 @@ describe('guard adapter + AML', () => {
     const json = await res.json();
     expect(json.decision).toBe(GUARD_DECISIONS.OBSERVE);
     expect(json.observed_decision).toBe(GUARD_DECISIONS.DENY);
+    expect(json.receipt_status).toBe('denied');
+    expect(json.next_step).toMatch(/no authorization/i);
   });
 
   it('derives organization_id from the authenticated entity when the body omits it', async () => {
@@ -333,6 +335,8 @@ describe('guard adapter + PIP-007 initiator attestation', () => {
     const json = await res.json();
     expect(json.decision).toBe(GUARD_DECISIONS.OBSERVE);
     expect(json.observed_decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(json.receipt_status).toBe('observed');
+    expect(json.next_step).toMatch(/no authorization/i);
     // The attestation is built from the base decision, so observe mode keeps it.
     expect(json.initiator_attestation).toBeTruthy();
     expect(json.initiator_attestation.escalation_trigger).toBe('magnitude');

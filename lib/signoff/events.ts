@@ -19,12 +19,12 @@ export const SIGNOFF_EVENT_TYPES: readonly string[] = [
   'challenge_issued',
   'challenge_viewed',
   'challenge_expired',
-  'approved',
-  'denied',
-  'revoked',
-  'consumed',
-  'attestation_expired',
-  'attestation_revoked',
+  'challenge_revoked',
+  'signoff_approved',
+  'signoff_denied',
+  'signoff_expired',
+  'signoff_revoked',
+  'signoff_consumed',
 ];
 
 const VALID_EVENT_TYPES: Set<string> = new Set(SIGNOFF_EVENT_TYPES);

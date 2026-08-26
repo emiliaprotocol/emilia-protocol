@@ -45,6 +45,10 @@ export declare function resolveActionControl(manifest: Obj, selector?: Obj): {
     status: 'ambiguous';
     action: null;
     action_ids: string[];
+} | {
+    status: 'conflict';
+    action: null;
+    action_ids: string[];
 };
 export declare function validateActionControlManifest(manifest: Obj, { requireAcquisition }?: {
     requireAcquisition?: boolean;

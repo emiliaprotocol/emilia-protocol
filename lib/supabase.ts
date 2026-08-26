@@ -5,6 +5,7 @@ import { getSupabaseConfig } from '@/lib/env';
 import { sha256 } from '@/lib/crypto';
 import { siemEvent } from './siem.js';
 import { logger } from './logger.js';
+import { authorizeProtocolRequest } from './auth/protocol-request-authorization.js';
 export {
   authEntityId,
   authEntityDbId,
@@ -23,6 +24,9 @@ export {
  */
 export interface AuthenticatableRequest {
   headers: { get(name: string): string | null };
+  method?: string;
+  url?: string;
+  nextUrl?: { pathname?: string };
 }
 
 /**
@@ -43,7 +47,7 @@ export interface AuthResult {
    * legacy callers) from resolve_authenticated_actor — genuinely dynamic,
    * external (RPC) data. */
   entity?: Record<string, any> | string;
-  permissions?: string[];
+  permissions?: string[] | null;
   auth_strength?: string | null;
 }
 
@@ -133,12 +137,20 @@ export async function authenticateRequest(request: AuthenticatableRequest): Prom
     return { error: 'Authentication failed', code, status: 401 };
   }
 
-  // auth_strength is emitted by the SECURITY DEFINER auth RPC from the
-  // server-controlled api_keys record. It is deliberately top-level and is
-  // never accepted from the request body or the entity projection.
-  return {
+  const authenticated: AuthResult = {
     entity: authResult.entity,
     permissions: authResult.permissions,
     auth_strength: authResult.auth_strength || null,
   };
+
+  // Authentication alone never admits a protocol mutation. Apply one shared
+  // floor here so a route cannot accidentally turn an empty/read-only API key
+  // into write authority by omitting its own permission check.
+  const authorization = authorizeProtocolRequest(authenticated, request);
+  if (!authorization.allowed) return authorization;
+
+  // auth_strength is emitted by the SECURITY DEFINER auth RPC from the
+  // server-controlled api_keys record. It is deliberately top-level and is
+  // never accepted from the request body or the entity projection.
+  return authenticated;
 }

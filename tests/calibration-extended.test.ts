@@ -75,24 +75,19 @@ describe('collectCalibrationData', () => {
   });
 
   it('returns empty data when no disputes found', async () => {
-    const chain = {
-      from: vi.fn().mockReturnThis(),
+    const scopeChain = {
       select: vi.fn().mockReturnThis(),
-      in: vi.fn().mockReturnThis(),
-      gte: vi.fn().mockReturnThis(),
-      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      eq: vi.fn().mockResolvedValue({ data: [{ id: 'e1' }], error: null }),
     };
-    const mockSupa = {
-      from: vi.fn(() => chain),
-    };
-    // disputes query must resolve to empty
     const disputeChain = {
       select: vi.fn().mockReturnThis(),
       in: vi.fn().mockReturnThis(),
       gte: vi.fn().mockReturnThis(),
       order: vi.fn().mockResolvedValue({ data: [], error: null }),
     };
-    mockSupa.from.mockReturnValue(disputeChain);
+    const mockSupa = {
+      from: vi.fn((table) => table === 'entities' ? scopeChain : disputeChain),
+    };
     mockGetServiceClient.mockReturnValue(mockSupa);
 
     const result = await collectCalibrationData('tenant-1', 90);
@@ -102,13 +97,17 @@ describe('collectCalibrationData', () => {
   });
 
   it('throws when dispute fetch fails', async () => {
+    const scopeChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockResolvedValue({ data: [{ id: 'e1' }], error: null }),
+    };
     const disputeChain = {
       select: vi.fn().mockReturnThis(),
       in: vi.fn().mockReturnThis(),
       gte: vi.fn().mockReturnThis(),
       order: vi.fn().mockResolvedValue({ data: null, error: { message: 'db failure' } }),
     };
-    const mockSupa = { from: vi.fn(() => disputeChain) };
+    const mockSupa = { from: vi.fn((table) => table === 'entities' ? scopeChain : disputeChain) };
     mockGetServiceClient.mockReturnValue(mockSupa);
 
     await expect(collectCalibrationData('tenant-1')).rejects.toThrow('Calibration data fetch failed');
@@ -126,24 +125,35 @@ describe('collectCalibrationData', () => {
       { id: 'e1', entity_id: 'e1', trust_snapshot: {}, emilia_score: 75 },
     ];
 
-    let callCount = 0;
+    let entityCallCount = 0;
+    const disputeIn = vi.fn().mockReturnThis();
+    const receiptIn = vi.fn().mockReturnThis();
     const mockSupa = {
       from: vi.fn((table) => {
         if (table === 'disputes') {
           return {
             select: vi.fn().mockReturnThis(),
-            in: vi.fn().mockReturnThis(),
+            in: disputeIn,
             gte: vi.fn().mockReturnThis(),
             order: vi.fn().mockResolvedValue({ data: disputes, error: null }),
           };
         }
         if (table === 'receipts') {
-          return {
+          const chain = {
             select: vi.fn().mockReturnThis(),
-            in: vi.fn().mockResolvedValue({ data: receipts, error: null }),
+            in: receiptIn,
+            then: (resolve) => Promise.resolve({ data: receipts, error: null }).then(resolve),
           };
+          return chain;
         }
         if (table === 'entities') {
+          entityCallCount++;
+          if (entityCallCount === 1) {
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockResolvedValue({ data: [{ id: 'e1' }, { id: 'e2' }], error: null }),
+            };
+          }
           return {
             select: vi.fn().mockReturnThis(),
             in: vi.fn().mockResolvedValue({ data: entities, error: null }),
@@ -159,6 +169,34 @@ describe('collectCalibrationData', () => {
     expect(result.stats.dismissed).toBe(1);
     expect(result.stats.windowDays).toBe(60);
     expect(result.data).toHaveLength(2);
+    expect(disputeIn).toHaveBeenCalledWith('entity_id', ['e1', 'e2']);
+    expect(receiptIn).toHaveBeenCalledWith('entity_id', ['e1', 'e2']);
+  });
+
+  it('returns no platform data when the authenticated tenant owns no entities', async () => {
+    const scopeChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const mockSupa = { from: vi.fn(() => scopeChain) };
+    mockGetServiceClient.mockReturnValue(mockSupa);
+
+    const result = await collectCalibrationData('tenant-empty', 90);
+
+    expect(result.data).toEqual([]);
+    expect(result.stats).toMatchObject({ resolved: 0, uniqueEntities: 0 });
+    expect(mockSupa.from).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed when tenant entity scope cannot be established', async () => {
+    const scopeChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'scope unavailable' } }),
+    };
+    mockGetServiceClient.mockReturnValue({ from: vi.fn(() => scopeChain) });
+
+    await expect(collectCalibrationData('tenant-1', 90))
+      .rejects.toThrow('Calibration tenant scope failed');
   });
 });
 

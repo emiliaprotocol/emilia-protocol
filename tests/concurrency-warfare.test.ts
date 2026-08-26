@@ -394,6 +394,29 @@ function createTableSim() {
       });
       return Promise.resolve({ data: presentation, error: null });
     }
+    if (fnName === 'revoke_handshake_atomic') {
+      const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
+      if (!hs) return Promise.resolve({ data: null, error: { code: 'P0002', message: 'HANDSHAKE_NOT_FOUND' } });
+      const consumption = getTable('handshake_consumptions').find((c) => c.handshake_id === params.p_handshake_id);
+      if (consumption) return Promise.resolve({ data: null, error: { code: 'P0001', message: 'HANDSHAKE_ALREADY_CONSUMED' } });
+      if (['rejected', 'revoked', 'expired', 'consumed'].includes(hs.status)) return Promise.resolve({ data: null, error: { code: 'P0001', message: 'HANDSHAKE_NOT_REVOCABLE' } });
+      const actor = params.p_actor_entity_ref;
+      if (actor !== 'system' && !getTable('handshake_parties').some((p) => p.handshake_id === params.p_handshake_id && p.entity_ref === actor)) {
+        return Promise.resolve({ data: null, error: { code: 'P0001', message: 'HANDSHAKE_REVOCATION_ACTOR_UNAUTHORIZED' } });
+      }
+      const previousStatus = hs.status;
+      hs.status = 'revoked';
+      hs.decision_ref = params.p_reason;
+      hs.revoked_by = actor;
+      getTable('handshake_events').push({
+        event_id: crypto.randomBytes(12).toString('hex'), handshake_id: params.p_handshake_id,
+        event_type: 'revoked', actor_entity_ref: actor,
+        detail: { reason: params.p_reason, previous_status: previousStatus },
+        created_at: new Date().toISOString(), sequence_number: getTable('handshake_events').length + 1,
+      });
+      return Promise.resolve({ data: { ...hs }, error: null });
+    }
+
     // Audit-fix C1 + 080 + 085: consume_handshake_atomic RPC handler.
     // Critical for the 12 concurrency-warfare tests that exercise consume races.
     if (fnName === 'consume_handshake_atomic') {

@@ -15,7 +15,7 @@
 // proves what executed, and a verifier can detect any gap.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateGuardRequest, isCloudGuardPrincipal } from '@/lib/guard-auth.js';
 import { authEntityId } from '@/lib/auth-projections.js';
 import { canMutateReceipt } from '@/lib/tenant-binding';
 import { getGuardedClient } from '@/lib/write-guard';
@@ -32,8 +32,8 @@ export async function POST(
   { params }: { params: Promise<{ receiptId: string }> }
 ): Promise<NextResponse> {
   try {
-    const auth = await authenticateRequest(request);
-    if (auth.error) return epProblem(401, 'unauthorized', auth.error);
+    const auth = await authenticateGuardRequest(request);
+    if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
 
     const { receiptId } = await params;
     if (!/^tr_[a-f0-9]{32}$/.test(receiptId || '')) {
@@ -72,11 +72,24 @@ export async function POST(
 
     const created = events.find((e) => e.event_type === 'guard.trust_receipt.created');
     if (!created) return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
+    if (isCloudGuardPrincipal(auth)) {
+      const permissions = Array.isArray(auth.permissions) ? auth.permissions : [];
+      if (!permissions.includes('admin') && !permissions.includes('receipt.execute')) {
+        return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
+      }
+    }
     if (!canMutateReceipt(auth, {
       organizationId: created.after_state?.organization_id,
       creatorActorId: created.actor_id,
     }, 'receipt.execute')) {
       return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
+    }
+    if (created.after_state?.enforcement_mode === 'observe') {
+      return epProblem(
+        409,
+        'observe_receipt_not_authority',
+        'Observe-mode receipts are telemetry and cannot support an execution attestation',
+      );
     }
 
     // Half 1 of the contract: you cannot attest execution of an action that was

@@ -605,7 +605,7 @@ describe('Signoff Event Recording', () => {
     // Seed events directly
     sim.getTable('signoff_events').push(
       { event_id: 'e1', challenge_id: 'ch-1', event_type: 'challenge_issued', created_at: '2025-01-01T00:00:00Z' },
-      { event_id: 'e2', challenge_id: 'ch-1', event_type: 'approved', created_at: '2025-01-01T00:01:00Z' },
+      { event_id: 'e2', challenge_id: 'ch-1', event_type: 'signoff_approved', created_at: '2025-01-01T00:01:00Z' },
       { event_id: 'e3', challenge_id: 'ch-2', event_type: 'challenge_issued', created_at: '2025-01-01T00:00:00Z' },
     );
 
@@ -712,7 +712,7 @@ describe('Signoff Full Lifecycle Happy Path', () => {
       handshakeId: challenge.handshake_id,
       challengeId: challenge.challenge_id,
       signoffId: attestation.signoff_id,
-      eventType: 'approved',
+      eventType: 'signoff_approved',
       actorEntityRef: 'entity-alice',
     });
 
@@ -724,7 +724,7 @@ describe('Signoff Full Lifecycle Happy Path', () => {
       handshakeId: challenge.handshake_id,
       challengeId: challenge.challenge_id,
       signoffId: attestation.signoff_id,
-      eventType: 'consumed',
+      eventType: 'signoff_consumed',
       actorEntityRef: 'system',
     });
 
@@ -739,8 +739,8 @@ describe('Signoff Full Lifecycle Happy Path', () => {
     expect(events.map((e) => e.event_type)).toEqual([
       'challenge_issued',
       'challenge_viewed',
-      'approved',
-      'consumed',
+      'signoff_approved',
+      'signoff_consumed',
     ]);
   });
 
@@ -751,7 +751,7 @@ describe('Signoff Full Lifecycle Happy Path', () => {
     await requireSignoffEvent({
       handshakeId: challenge.handshake_id,
       challengeId: challenge.challenge_id,
-      eventType: 'denied',
+      eventType: 'signoff_denied',
       actorEntityRef: 'entity-alice',
     });
 

@@ -547,9 +547,12 @@ owner or admin of `{tenantId}`.
 ```
 
 `environment` is `development`, `staging`, or `production`. Permissions are
-deduplicated members of `read`, `write`, `admin`, and `policy_rollout`; omitted
-permissions default to `["policy_rollout"]`. `admin` is a super-capability, but
-the named permission is the least-privilege rollout grant.
+deduplicated members of `read`, `write`, `admin`, `policy_rollout`,
+`approval_request`, `receipt.read`, `receipt.evidence`, `receipt.consume`, and
+`receipt.execute`; omitted permissions default to `["policy_rollout"]`. `admin`
+is a super-capability. The four `receipt.*` permissions let an integration mint
+an exact grant for reading the receipt envelope, reading its evidence,
+consuming it, or recording execution without granting unrelated tenant access.
 
 **Response** (201): The one-time `api_key`, `tenant_id`, and storage warning.
 

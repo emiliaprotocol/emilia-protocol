@@ -37,7 +37,9 @@ export async function POST(request: NextRequest, { params }: Context) {
       input: { record_id: recordId, email: body.email },
       store: createSupabaseAuthorityDemandStore(),
       hmacKey: process.env.WORKS_DEMAND_HMAC_KEY || '',
-      siteOrigin: new URL(request.url).origin,
+      siteOrigin: process.env.NEXT_PUBLIC_APP_URL
+        || process.env.NEXT_PUBLIC_SITE_URL
+        || 'https://www.emiliaprotocol.ai',
       sendEmail: sendAuthorityDemandVerificationEmail,
     });
     return Response.json({ accepted: true }, { status: 202, headers: HEADERS });

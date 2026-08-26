@@ -88,31 +88,44 @@ export async function _handleRevokeHandshake(command) {
     );
   }
 
-  // Record handshake event — REQUIRED (event immutability guarantee).
-  // Event is written BEFORE state change: if event fails, state stays unchanged (safe).
-  // If event succeeds but state change fails, we have a logged but uncommitted transition (safe — retry).
-  const { requireHandshakeEvent } = await import('./events.js');
-  await requireHandshakeEvent({
-    handshake_id,
-    event_type: 'revoked',
-    actor: command.actor,
-    detail: { reason, previous_status: handshake.status },
+  // The preflight above provides fast errors. The RPC repeats actor and state
+  // authorization while holding handshake -> binding locks, then records the
+  // canonical event and state transition in one transaction. A verified
+  // binding's consumed_at is only its verification-finalization marker;
+  // revocation is blocked by a downstream handshake_consumptions row.
+  const { data: revoked, error: rpcError } = await supabase.rpc('revoke_handshake_atomic', {
+    p_handshake_id: handshake_id,
+    p_reason: reason,
+    p_actor_entity_ref: String(authenticatedEntity),
   });
 
-  // Perform state change AFTER event is durably recorded
-  const { error: updateError } = await supabase
-    .from('handshakes')
-    .update({ status: 'revoked', decision_ref: reason, revoked_by: authenticatedEntity })
-    .eq('handshake_id', handshake_id);
-
-  if (updateError) {
-    throw new HandshakeError(`Failed to revoke handshake: ${updateError.message}`, 500, 'DB_ERROR');
+  if (rpcError) {
+    const rpcMessage = [rpcError.message, rpcError.details, rpcError.hint, rpcError.code]
+      .filter((value) => typeof value === 'string')
+      .join(' ');
+    if (rpcMessage.includes('HANDSHAKE_NOT_FOUND')) {
+      throw new HandshakeError('Handshake not found', 404, 'NOT_FOUND');
+    }
+    if (rpcMessage.includes('HANDSHAKE_REVOCATION_ACTOR_UNAUTHORIZED')) {
+      throw new HandshakeError('Only handshake parties may revoke', 403, 'UNAUTHORIZED_REVOCATION');
+    }
+    if (rpcMessage.includes('HANDSHAKE_NOT_REVOCABLE')
+        || rpcMessage.includes('HANDSHAKE_ALREADY_CONSUMED')) {
+      throw new HandshakeError('Handshake is no longer revocable', 409, 'INVALID_STATE');
+    }
+    if (rpcMessage.includes('HANDSHAKE_REVOCATION_REASON_REQUIRED')) {
+      throw new HandshakeError('reason is required for revocation', 400, 'MISSING_REASON');
+    }
+    if (rpcMessage.includes('HANDSHAKE_REVOCATION_ACTOR_REQUIRED')) {
+      throw new HandshakeError('actor is required for revocation', 400, 'MISSING_ACTOR');
+    }
+    throw new HandshakeError(`Failed to revoke handshake: ${rpcError.message}`, 500, 'DB_ERROR');
   }
 
   return {
     result: {
       handshake_id,
-      status: 'revoked',
+      status: revoked?.status || 'revoked',
       reason,
     },
     aggregateId: handshake_id,

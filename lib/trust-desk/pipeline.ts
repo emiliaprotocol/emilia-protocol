@@ -38,6 +38,12 @@ import { emitTrustPageReceipt } from './ep-receipt.js';
 import { deriveSlug } from './ids.js';
 import { compareAndSetStatus, setStatus, getEngagement, STATUS } from './store.js';
 import { logger } from '../logger.js';
+import {
+  assertQuestionnaireWithinBudget,
+  createTrustDeskLlmBudget,
+  type TrustDeskLlmBudgetOptions,
+  TrustDeskResourceLimitError,
+} from './resource-budget.js';
 
 /**
  * Pipeline orchestrator.
@@ -45,8 +51,14 @@ import { logger } from '../logger.js';
 export async function runPipeline({
   engagement,
   persist = true,
+  llmBudgetOptions,
 }: any): Promise<any> {
   const t0 = Date.now();
+  // Start the model deadline before extraction so parser time cannot be added
+  // on top of the route's fixed execution contract.
+  const llmBudget = createTrustDeskLlmBudget(
+    (llmBudgetOptions || {}) as TrustDeskLlmBudgetOptions,
+  );
   const id = engagement.engagement_id;
   const intake = engagement.intake || {};
   const slug = engagement.slug || deriveSlug(intake.company, id);
@@ -88,14 +100,35 @@ export async function runPipeline({
       });
     }
 
+    try {
+      assertQuestionnaireWithinBudget(extraction.questions);
+    } catch (err) {
+      if (err instanceof TrustDeskResourceLimitError) {
+        return await finishEscalated({
+          id,
+          slug,
+          persist,
+          reason: err.code === 'question_count_exceeded'
+            ? 'questionnaire_question_limit'
+            : 'questionnaire_text_limit',
+          detail: err.message,
+          engagement,
+          t0,
+        });
+      }
+      throw err;
+    }
+
+    // One engagement-scoped budget is shared across classification and
+    // answering so two individually bounded phases cannot multiply the bill.
     // ── 2. CLASSIFY ──
     await persistStatus(STATUS.CLASSIFYING);
-    const classified = await classifyQuestions(extraction.questions, intake);
+    const classified = await classifyQuestions(extraction.questions, intake, { llmBudget });
 
     // ── 3. ANSWER ──
     await persistStatus(STATUS.ANSWERING);
     const policyVars = buildPolicyVars(intake, { slug });
-    const answers = await answerAll(classified, { intake, policyVars });
+    const answers = await answerAll(classified, { intake, policyVars, llmBudget });
 
     // ── 4. VERIFY ──
     await persistStatus(STATUS.VERIFYING);

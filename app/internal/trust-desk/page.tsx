@@ -8,16 +8,17 @@
  * engagement store.
  *
  * GATING: this surfaces customer company names and escalation reasons. Access
- * requires a valid `td_internal` HMAC session cookie issued by the bootstrap
- * exchange at /internal/trust-desk/auth?token=... (timing-safe, httpOnly, 8h).
- * The URL bearer is never reused as session state. Disabled entirely when the
- * env token is unset. noindex always.
+ * requires a valid `td_internal` HMAC session cookie issued by the bounded
+ * same-origin POST exchange at /internal/trust-desk/auth (timing-safe,
+ * httpOnly, 8h). The bootstrap bearer is never accepted from a URL. Disabled
+ * entirely when the env token is unset. noindex always.
  */
 
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { listEngagements } from '@/lib/trust-desk/store';
 import { TRUST_DESK_SESSION_COOKIE, verifyTrustDeskSession } from '@/lib/trust-desk/auth';
+import { getTrustDeskAuthConfig } from '@/lib/env';
 import { color, font, radius } from '@/lib/tokens';
 
 export const dynamic = 'force-dynamic';
@@ -47,14 +48,16 @@ export default async function ReviewerDashboard() {
           {gate === 'disabled' ? (
             <>
               Set <code style={code}>TRUST_DESK_INTERNAL_TOKEN</code> and{' '}
+              <code style={code}>TRUST_DESK_SESSION_SECRET</code>, plus{' '}
               <code style={code}>TRUST_DESK_REVIEWER_ID</code> on the server to enable this
               dashboard. It exposes customer engagement details, so it stays off until a token is set.
             </>
           ) : (
             <>
-              Authenticate by visiting{' '}
-              <code style={code}>/internal/trust-desk/auth?token=YOUR_TOKEN</code> with the value of{' '}
-              <code style={code}>TRUST_DESK_INTERNAL_TOKEN</code>. A distinct reviewer session is issued for 8 hours.
+              Open the secure reviewer sign-in and enter{' '}
+              <code style={code}>TRUST_DESK_INTERNAL_TOKEN</code>. The secret is sent only in a
+              bounded request body, then exchanged for a distinct 8-hour reviewer session.{' '}
+              <a href="/internal/trust-desk/auth" style={linkBtn}>Reviewer sign-in →</a>
             </>
           )}
         </p>
@@ -95,8 +98,8 @@ export default async function ReviewerDashboard() {
  * valid cookie; 'ok' = authenticated.
  */
 async function checkAccess() {
-  const expected = process.env.TRUST_DESK_INTERNAL_TOKEN;
-  if (!expected) return 'disabled';
+  const config = getTrustDeskAuthConfig();
+  if (!config.bootstrapToken || !config.sessionSecret || !config.reviewerId) return 'disabled';
   const jar = await cookies();
   const session = jar.get(TRUST_DESK_SESSION_COOKIE)?.value || '';
   return verifyTrustDeskSession(session) ? 'ok' : 'unauthorized';

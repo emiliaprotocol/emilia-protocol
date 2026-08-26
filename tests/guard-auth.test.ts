@@ -28,7 +28,15 @@ describe('Guard authentication bridge', () => {
     expect(isCloudGuardPrincipal(auth)).toBe(false);
   });
 
-  it.each([['admin'], ['policy_rollout'], ['approval_request']])(
+  it.each([
+    ['admin'],
+    ['policy_rollout'],
+    ['approval_request'],
+    ['receipt.read'],
+    ['receipt.evidence'],
+    ['receipt.consume'],
+    ['receipt.execute'],
+  ])(
     'projects a %s tenant key into an org-bound, attributable principal',
     async (permission) => {
     const protocol = vi.fn();

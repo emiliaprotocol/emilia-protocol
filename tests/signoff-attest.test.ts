@@ -45,6 +45,7 @@ function makeMockSupabase({ challenge = null, challengeError = null, rpcData = n
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const VALID_ACTOR = { entity_id: 'entity-alice' };
+const CEREMONY_EVIDENCE_ID = '99999999-9999-4999-8999-999999999999';
 
 function validChallenge(overrides = {}) {
   return {
@@ -68,6 +69,7 @@ function validParams(overrides = {}) {
     humanEntityRef: 'entity-alice',
     authMethod: 'passkey',
     assuranceLevel: 'substantial',
+    ceremonyEvidenceId: CEREMONY_EVIDENCE_ID,
     actor: VALID_ACTOR,
     ...overrides,
   };
@@ -104,6 +106,14 @@ describe('createAttestation — input validation', () => {
   it('throws INVALID_ASSURANCE_LEVEL when assuranceLevel is null', async () => {
     await expect(createAttestation({ challengeId: 'ch-1', humanEntityRef: 'x', authMethod: 'passkey', assuranceLevel: null }))
       .rejects.toMatchObject({ code: 'INVALID_ASSURANCE_LEVEL', status: 400 });
+  });
+
+  it('fails closed without server-verified ceremony evidence', async () => {
+    await expect(createAttestation(validParams({ ceremonyEvidenceId: null })))
+      .rejects.toMatchObject({
+        code: 'SIGNOFF_CEREMONY_EVIDENCE_REQUIRED',
+        status: 409,
+      });
   });
 });
 
@@ -218,6 +228,41 @@ describe('createAttestation — RPC errors and happy path', () => {
       .rejects.toMatchObject({ code: 'DB_ERROR', status: 500 });
   });
 
+  it.each([
+    ['SIGNOFF_CHALLENGE_NOT_FOUND', 'CHALLENGE_NOT_FOUND', 404],
+    ['SIGNOFF_HANDSHAKE_NOT_FOUND', 'HANDSHAKE_NOT_FOUND', 404],
+    ['SIGNOFF_HANDSHAKE_NOT_VERIFIED', 'INVALID_HANDSHAKE_STATE', 409],
+    ['SIGNOFF_HANDSHAKE_NOT_VERIFICATION_FINALIZED', 'HANDSHAKE_NOT_VERIFICATION_FINALIZED', 409],
+    ['SIGNOFF_HANDSHAKE_EXPIRED', 'SIGNOFF_HANDSHAKE_EXPIRED', 410],
+    ['SIGNOFF_CHALLENGE_NOT_ATTESTABLE', 'INVALID_CHALLENGE_STATE', 409],
+    ['SIGNOFF_CHALLENGE_EXPIRED', 'SIGNOFF_CHALLENGE_EXPIRED', 410],
+    ['SIGNOFF_BINDING_NOT_FOUND', 'BINDING_NOT_FOUND', 404],
+    ['SIGNOFF_BINDING_EXPIRED', 'BINDING_EXPIRED', 410],
+    ['SIGNOFF_BINDING_NOT_VERIFICATION_FINALIZED', 'BINDING_NOT_VERIFICATION_FINALIZED', 409],
+    ['SIGNOFF_AUTHORITY_ALREADY_CONSUMED', 'AUTHORITY_ALREADY_CONSUMED', 409],
+    ['SIGNOFF_CHALLENGE_OUTLIVES_BINDING', 'CHALLENGE_OUTLIVES_BINDING', 409],
+    ['SIGNOFF_CHALLENGE_BINDING_MISMATCH', 'BINDING_HASH_MISMATCH', 409],
+    ['SIGNOFF_CHALLENGE_ACTOR_MISMATCH', 'SIGNOFF_ACTOR_MISMATCH', 403],
+    ['SIGNOFF_PINNED_POLICY_UNAVAILABLE', 'SIGNOFF_PINNED_POLICY_UNAVAILABLE', 409],
+    ['SIGNOFF_POLICY_HASH_UNVERIFIABLE', 'SIGNOFF_POLICY_HASH_UNVERIFIABLE', 409],
+    ['SIGNOFF_POLICY_HASH_MISMATCH', 'SIGNOFF_POLICY_HASH_MISMATCH', 409],
+    ['SIGNOFF_AUTHORITY_INVALID_OR_REVOKED', 'SIGNOFF_AUTHORITY_INVALID_OR_REVOKED', 403],
+    ['SIGNOFF_CEREMONY_EVIDENCE_REQUIRED', 'SIGNOFF_CEREMONY_EVIDENCE_REQUIRED', 409],
+    ['SIGNOFF_CEREMONY_EVIDENCE_INVALID', 'SIGNOFF_CEREMONY_EVIDENCE_INVALID', 409],
+    ['SIGNOFF_CHALLENGE_METHOD_NOT_ALLOWED', 'METHOD_NOT_ALLOWED', 403],
+    ['SIGNOFF_CHALLENGE_ASSURANCE_INSUFFICIENT', 'ASSURANCE_BELOW_MINIMUM', 403],
+    ['SIGNOFF_ATTESTATION_EXPIRY_INVALID', 'SIGNOFF_CHALLENGE_EXPIRED', 410],
+  ])('maps atomic RPC error %s to %s/%s', async (message, code, status) => {
+    const supabase = makeMockSupabase({
+      challenge: validChallenge(),
+      rpcError: { message },
+    });
+    mockGetServiceClient.mockReturnValue(supabase);
+
+    await expect(createAttestation(validParams()))
+      .rejects.toMatchObject({ code, status });
+  });
+
   it('returns attestation record with _protocolEventWritten flag on success', async () => {
     const challenge = validChallenge();
     const rpcData = { signoff_id: 'sig-001', status: 'approved', challenge_id: 'ch-1' };
@@ -244,6 +289,9 @@ describe('createAttestation — RPC errors and happy path', () => {
       p_assurance_level: 'substantial',
       p_channel: 'web',
       p_expires_at: '2099-01-01T00:00:00Z',
+      p_metadata_json: expect.objectContaining({
+        ceremony_evidence_id: CEREMONY_EVIDENCE_ID,
+      }),
     }));
   });
 

@@ -531,7 +531,7 @@
     },
     {
       "path": "packages/gate/dist/action-control-manifest.js",
-      "sha256": "753af5004cca801f32070a6f0077b7d094c99a5c84b174441000ee5f3c114538"
+      "sha256": "b68d497a270dc4987ce2b0fd23252faaee7d5fd25d6961fa24be1760086e0ea3"
     },
     {
       "path": "packages/gate/dist/action-escrow-evidence.js",
@@ -683,7 +683,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "9564a2d1a447d06967ec0ae7b3cbab8baf1c32bb38abf3147c747ff3913e298b"
+      "sha256": "b181759ff2731e39bf7b9df17517aea842438c4d5879efa823f7596484579dde"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -891,7 +891,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "01acb5a60240bd9350179ce4cb54870655f71d2c54565396cdcdaaa9ae79359d"
+      "sha256": "daf6a8a70e800aa91d6fbea187f9ecff67fde5517c89d2e3e35d85c1164d63f9"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -999,7 +999,7 @@
     },
     {
       "path": "packages/require-receipt/dist/index.js",
-      "sha256": "af4c7968409f969a890e3f1cdb712fd65293c96f649696b6edbf749022373cd0"
+      "sha256": "32ee46de41a213ed74cb851af704c1b2cbde64096b79d66703218c9f4ee42c21"
     },
     {
       "path": "packages/require-receipt/dist/jws.js",
@@ -1379,7 +1379,7 @@
     },
     {
       "path": "scripts/standalone-runtime-targets.mjs",
-      "sha256": "2d0451ab9bbffd30ada97844a06039562724eeae0d93c9e2550106c075e09437"
+      "sha256": "bb20a6cdce39ab518a5b0e967c49bec5d3ba59c9d40cba62610cfa33e6623c99"
     }
   ],
   "limitations": [

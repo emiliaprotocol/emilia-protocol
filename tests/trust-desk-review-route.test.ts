@@ -21,6 +21,7 @@ afterEach(() => {
 describe('Trust Desk review API identity binding', () => {
   it('records the reviewer signed into the session, never a body-supplied name', async () => {
     vi.stubEnv('TRUST_DESK_INTERNAL_TOKEN', 'bootstrap-secret');
+    vi.stubEnv('TRUST_DESK_SESSION_SECRET', 'independent-session-signing-secret');
     vi.stubEnv('TRUST_DESK_REVIEWER_ID', 'Iman Schrock <team@emiliaprotocol.ai>');
     const session = issueTrustDeskSession();
     expect(session).toBeTruthy();

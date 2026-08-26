@@ -50,6 +50,30 @@ export async function collectCalibrationData(tenantId, windowDays = 90) {
   const supabase = getServiceClient();
   const cutoff = new Date(Date.now() - windowDays * 86400000).toISOString();
 
+  if (typeof tenantId !== 'string' || tenantId.trim() === '') {
+    throw new Error('Calibration tenant scope is required');
+  }
+
+  // Establish the tenant boundary before touching global protocol tables. The
+  // service-role client bypasses RLS, and disputes carry an entity FK rather
+  // than a tenant id, so every downstream read must be rooted in this set.
+  const { data: tenantEntities, error: tenantScopeError } = await supabase
+    .from('entities')
+    .select('id')
+    .eq('organization_id', tenantId);
+
+  if (tenantScopeError) {
+    throw new Error(`Calibration tenant scope failed: ${tenantScopeError.message}`);
+  }
+
+  const tenantEntityIds = [...new Set((tenantEntities || []).map(entity => entity.id).filter(Boolean))];
+  if (tenantEntityIds.length === 0) {
+    return {
+      data: [],
+      stats: { resolved: 0, upheld: 0, dismissed: 0, reversed: 0, uniqueEntities: 0, windowDays },
+    };
+  }
+
   // Fetch resolved disputes with their receipts
   const { data: disputes, error } = await supabase
     .from('disputes')
@@ -64,6 +88,7 @@ export async function collectCalibrationData(tenantId, windowDays = 90) {
       resolved_at,
       created_at
     `)
+    .in('entity_id', tenantEntityIds)
     .in('status', ['upheld', 'dismissed', 'reversed'])
     .gte('resolved_at', cutoff)
     .order('resolved_at', { ascending: false });
@@ -99,7 +124,8 @@ export async function collectCalibrationData(tenantId, windowDays = 90) {
       graph_weight,
       provenance_tier
     `)
-    .in('receipt_id', receiptIds);
+    .in('receipt_id', receiptIds)
+    .in('entity_id', tenantEntityIds);
 
   const receiptMap = new Map((receipts || []).map(r => [r.receipt_id, r]));
 

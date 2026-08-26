@@ -7,11 +7,12 @@
 // current receipt status.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateGuardRequest } from '@/lib/guard-auth.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
+import { resolveReceiptStatus } from '@/lib/guard-evidence-receipt.js';
 import { canReadReceipt } from '@/lib/tenant-binding';
 
 const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
@@ -21,8 +22,8 @@ export async function GET(
   { params }: { params: Promise<{ receiptId: string }> }
 ): Promise<NextResponse> {
   try {
-    const auth = await authenticateRequest(request);
-    if (auth.error) return epProblem(401, 'unauthorized', auth.error);
+    const auth = await authenticateGuardRequest(request);
+    if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
 
     const { receiptId } = await params;
 
@@ -58,10 +59,14 @@ export async function GET(
 
     const base = created.after_state;
 
-    // Tenant scoping (IDOR): only the receipt's own org (or, transitionally,
-    // its creator) may read it. Mismatch => 404, not 403, so a cross-tenant
-    // caller cannot even confirm the receipt exists.
-    if (!canReadReceipt(auth, { organizationId: base.organization_id, creatorActorId: created.actor_id })) {
+    // Receipt confidentiality: organization membership alone is not read
+    // authority. The creator, or a same-org caller with receipt.read/admin,
+    // may inspect it. Mismatch => 404 to prevent receipt enumeration.
+    if (!canReadReceipt(
+      auth,
+      { organizationId: base.organization_id, creatorActorId: created.actor_id },
+      'receipt.read',
+    )) {
       return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
     }
 
@@ -69,10 +74,11 @@ export async function GET(
     const signoffApproved = findBoundSignoffDecision(events, created, 'guard.signoff.approved');
     const signoffRejected = findBoundSignoffDecision(events, created, 'guard.signoff.rejected');
 
-    let receipt_status = base.receipt_status;
-    if (consumed) receipt_status = 'consumed';
-    else if (signoffRejected) receipt_status = 'rejected';
-    else if (signoffApproved) receipt_status = 'approved_pending_consume';
+    const receipt_status = resolveReceiptStatus(base, {
+      approved: signoffApproved,
+      rejected: signoffRejected,
+      consumed,
+    });
 
     const decisiveSignoff = signoffApproved || signoffRejected;
 

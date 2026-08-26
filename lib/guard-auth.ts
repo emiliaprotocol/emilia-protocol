@@ -3,7 +3,7 @@
 // Narrow authentication bridge for Guard control-plane flows. Normal EP
 // entity keys retain the existing authenticateRequest path. Tenant
 // control-plane keys are admitted only when they are the generated ept_* form
-// and hold admin, policy_rollout, or approval_request permission. The full
+// and hold a named Guard or receipt-lifecycle permission. The full
 // permission grant is preserved so each route can enforce its own capability.
 
 import { authenticateRequest } from './supabase.js';
@@ -13,6 +13,10 @@ const GUARD_CLOUD_PERMISSIONS = new Set([
   'admin',
   'policy_rollout',
   'approval_request',
+  'receipt.read',
+  'receipt.evidence',
+  'receipt.consume',
+  'receipt.execute',
 ]);
 
 export async function authenticateGuardRequest(
@@ -39,7 +43,7 @@ export async function authenticateGuardRequest(
   if (!Array.isArray(cloud.permissions)
       || !cloud.permissions.some((permission) => GUARD_CLOUD_PERMISSIONS.has(permission))) {
     return {
-      error: 'Cloud API key requires admin, policy_rollout, or approval_request permission for Guard authorization',
+      error: 'Cloud API key requires a named Guard or receipt-lifecycle permission',
       code: 'cloud_guard_permission_required',
       status: 403,
     };

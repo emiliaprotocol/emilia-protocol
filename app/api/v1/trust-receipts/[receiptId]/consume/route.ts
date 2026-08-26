@@ -84,11 +84,12 @@ export async function POST(
     const base = created.after_state;
     if (isCloudGuardPrincipal(auth)) {
       const permissions = Array.isArray(auth.permissions) ? auth.permissions : [];
-      const mayConsumeApproval = permissions.includes('admin')
-        || permissions.includes('approval_request');
-      if (!mayConsumeApproval
-          || base.action_type !== 'large_payment_release'
-          || created.actor_id !== authEntityId(auth)) {
+      const mayConsumeReceipts = permissions.includes('admin')
+        || permissions.includes('receipt.consume');
+      const mayConsumeOwnApproval = permissions.includes('approval_request')
+        && base.action_type === 'large_payment_release'
+        && created.actor_id === authEntityId(auth);
+      if (!mayConsumeReceipts && !mayConsumeOwnApproval) {
         return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
       }
     }
@@ -109,6 +110,18 @@ export async function POST(
       creatorActorId: created.actor_id,
     }, 'receipt.consume')) {
       return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
+    }
+
+    // Observe receipts are telemetry, not authority artifacts. The monitored
+    // action may proceed outside Gate during a rollout, but this endpoint must
+    // never turn an observed (possibly hard-denied) verdict into an authorized
+    // consume record.
+    if (base.enforcement_mode === 'observe') {
+      return epProblem(
+        409,
+        'observe_receipt_not_authority',
+        'Observe-mode receipts record policy telemetry and cannot be consumed as authorization',
+      );
     }
 
     // ── Invariant checks (per MD §12.2) ──────────────────────────────────
