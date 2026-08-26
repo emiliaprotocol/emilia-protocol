@@ -8,6 +8,7 @@ import {
   isSecureConsumptionStore,
 } from '../packages/gate/store.js';
 import { canonicalize, createGate, hashCanonical } from '../packages/gate/index.js';
+import { createDefaultActionControlManifest } from '../packages/gate/action-control-manifest.js';
 import {
   fieldOriginProfileDigest,
   signFieldOriginEvidence,
@@ -471,6 +472,123 @@ describe('mutation oracles for Gate admission inputs', () => {
         policy_hash: null,
         tenant_id: null,
         approvers: [],
+      },
+    });
+  });
+
+  it('normalizes Action Control requirements and advertises acquisition only for an observed action', async () => {
+    const actionControlManifest = createDefaultActionControlManifest({
+      includePassThrough: false,
+      service: {
+        manifest_url: 'https://controls.example.test/agent-action-control.json',
+      },
+    });
+    const gate = createGate({ manifest: actionControlManifest, allowEphemeralStore: true });
+    const selector = { protocol: 'mcp', tool: 'release_payment' };
+    const requiredFields = [
+      'action_type',
+      'amount_usd',
+      'currency',
+      'payment_instruction_id',
+      'beneficiary_account_hash',
+    ];
+    const caidSelector = { field: 'action_caid' };
+    const authorization = {
+      authorization_endpoint: 'https://www.emiliaprotocol.ai/api/v1/approvals',
+      flow: 'EP-APPROVAL-v1',
+    };
+
+    const typeOnly = await gate.check({ selector });
+    expect(typeOnly).toMatchObject({
+      allow: false,
+      status: 428,
+      reason: 'receipt_required',
+      action: 'payment.release',
+      requirement: {
+        action_type: 'payment.release',
+        execution_binding: { required_fields: requiredFields },
+        authorization,
+        caid_selector: caidSelector,
+      },
+    });
+    expect(typeOnly.challenge.required).toMatchObject({
+      action: 'payment.release',
+      action_hash: null,
+      manifest: 'https://controls.example.test/agent-action-control.json',
+      authorization: null,
+      required_fields: requiredFields,
+      caid_selector: caidSelector,
+    });
+
+    const observedAction = {
+      action_type: 'payment.release',
+      amount_usd: '25000.00',
+      currency: 'USD',
+      payment_instruction_id: 'instruction-01',
+      beneficiary_account_hash: `sha256:${'a'.repeat(64)}`,
+      action_caid: 'caid:payment:instruction-01',
+    };
+    const observed = await gate.check({
+      selector: {
+        ...selector,
+        manifestUrl: 'https://executor.example.test/pinned-action-controls.json',
+      },
+      observedAction,
+    });
+    expect(observed.evidence.observed_action_hash).toBe(hashCanonical(observedAction));
+    expect(observed.challenge.required).toMatchObject({
+      action_hash: `sha256:${hashCanonical(observedAction)}`,
+      manifest: 'https://executor.example.test/pinned-action-controls.json',
+      authorization,
+      required_fields: requiredFields,
+      caid_selector: caidSelector,
+    });
+  });
+
+  it('fails closed on contradictory Action Control identities with and without transport metadata', async () => {
+    const actionControlManifest = createDefaultActionControlManifest({ includePassThrough: false });
+    const gate = createGate({ manifest: actionControlManifest, allowEphemeralStore: true });
+
+    const transportConflict = await gate.check({
+      selector: {
+        protocol: 'mcp',
+        tool: 'release_payment',
+        action_type: 'deploy.production',
+      },
+    });
+    expect(transportConflict).toMatchObject({
+      allow: false,
+      status: 428,
+      reason: 'manifest_selector_conflict',
+      action: 'manifest.selector_resolution',
+      requirement: {
+        receipt_required: true,
+        assurance_class: 'quorum',
+        ambiguous_action_ids: ['money_movement.release', 'production.deploy'],
+      },
+      challenge: {
+        required: {
+          action: 'manifest.selector_resolution',
+          authorization: null,
+          required_fields: null,
+          caid_selector: null,
+        },
+      },
+    });
+
+    const aliasConflict = await gate.check({
+      selector: {
+        id: 'money_movement.release',
+        action: 'deploy.production',
+      },
+    });
+    expect(aliasConflict).toMatchObject({
+      allow: false,
+      status: 428,
+      reason: 'manifest_selector_conflict',
+      action: 'manifest.selector_resolution',
+      evidence: {
+        ambiguous_action_ids: ['money_movement.release', 'production.deploy'],
       },
     });
   });

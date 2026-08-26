@@ -6,13 +6,14 @@
 // unconsumed gate), then drives conformance/vectors/reliance.v1.json: each
 // vector names a `break` applied to the base packet, and we assert the closed
 // reliance verdict. Signatures are live (reproduced in-process), never embedded.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import {
+  __relianceSecurityInternals,
   evaluateReliance,
   RELIANCE_PROFILE_VERSION,
   RELIANCE_VERDICTS,
@@ -1428,6 +1429,109 @@ describe('EP-RELIANCE-KERNEL-v1 fail-closed oracles', () => {
     });
     return quorum;
   }
+
+  it('accepts only a complete SHA-256 action digest, with no prefix or suffix smuggling', () => {
+    const { digestHex } = __relianceSecurityInternals;
+    const hex = 'ab'.repeat(32);
+
+    expect(digestHex(hex)).toBe(hex);
+    expect(digestHex(`SHA256:${hex.toUpperCase()}`)).toBe(hex);
+    for (const malformed of [
+      `xsha256:${hex}`,
+      `sha256:${hex}x`,
+      'sha256:a',
+      `sha256:${'g'.repeat(64)}`,
+    ]) {
+      expect(digestHex(malformed)).toBeNull();
+    }
+  });
+
+  it('enforces RFC3339 offset bounds before consulting the host date parser', () => {
+    const { strictInstantMs } = __relianceSecurityInternals;
+    // The grammar owns these bounds. A future or alternate host parser being
+    // permissive must not turn an impossible offset into a trusted clock.
+    const hostParser = vi.spyOn(Date, 'parse').mockReturnValue(NOW);
+    try {
+      expect(Number.isNaN(strictInstantMs('2026-01-01T00:00:00+24:00'))).toBe(true);
+      expect(Number.isNaN(strictInstantMs('2026-01-01T00:00:00+00:60'))).toBe(true);
+    } finally {
+      hostParser.mockRestore();
+    }
+  });
+
+  it('rejects negative decimal material before any host string coercion', () => {
+    const { parseNonNegativeDecimal } = __relianceSecurityInternals;
+    const nativeString = globalThis.String;
+    vi.stubGlobal('String', ((value?: any) => (
+      typeof value === 'number' && value < 0 ? '1' : nativeString(value)
+    )) as StringConstructor);
+    let parsed: ReturnType<typeof parseNonNegativeDecimal>;
+    try {
+      parsed = parseNonNegativeDecimal(-1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(parsed).toBeNull();
+  });
+
+  it('rejects non-decimal value types before any regular-expression coercion', () => {
+    const { parseNonNegativeDecimal } = __relianceSecurityInternals;
+    const nativeTest = RegExp.prototype.test;
+    const regexTest = vi.spyOn(RegExp.prototype, 'test').mockImplementation(function (value: string) {
+      return (value as any) === null ? true : nativeTest.call(this, value);
+    });
+    let parsed: ReturnType<typeof parseNonNegativeDecimal>;
+    try {
+      parsed = parseNonNegativeDecimal({ value: '1' });
+    } finally {
+      regexTest.mockRestore();
+    }
+    expect(parsed).toBeNull();
+  });
+
+  it('rejects a non-string signed action type before a hostile scope can contain it', () => {
+    const { input, opts } = assemble('none');
+    const receipt = buildReceipt({ actionOverrides: { action_type: 7 } });
+    input.receipt = receipt;
+    input.action = { ...input.action, action_hash: receipt.action_hash };
+    delete input.action.action_type;
+    input.authority_proof = resignAuthorityProof(input.authority_proof, { scope: [7] });
+
+    const result = evaluateReliance(input, opts);
+    expect(result).toMatchObject({
+      verdict: 'do_not_rely_unsigned',
+      rely: false,
+      checks: { receipt: true, authority: null },
+    });
+    expect(result.reasons.at(-1)).toBe(
+      'receipt carries missing or internally inconsistent signed action material',
+    );
+  });
+
+  it('requires a signed revocation checked_at before freshness can be established', () => {
+    const { input, opts } = assemble('none');
+    input.authority_proof = resignAuthorityProof(input.authority_proof, {
+      revocation: { status: 'not_revoked' },
+    });
+
+    const result = evaluateReliance(input, opts);
+    expect(result).toMatchObject({
+      verdict: 'do_not_rely_stale_revocation',
+      rely: false,
+      checks: {
+        authority: {
+          accepted: true,
+          authority_id: 'auth_cfo',
+          subject: 'ep:approver:mrios-cfo',
+          bound_to: 'class_a',
+        },
+        revocation: 'stale',
+      },
+    });
+    expect(result.reasons.at(-1)).toBe(
+      'the revocation check is older than the pinned freshness bound',
+    );
+  });
 
   it('never reads pins off a non-plain-object packet, options, action, or profile', () => {
     const base = assemble('none');
