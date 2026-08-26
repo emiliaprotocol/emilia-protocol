@@ -41,7 +41,7 @@
     "conformance:composition:wag": "node --test packages/verify/aeb-wag-adapter.test.js conformance/composition/wag-aeb-v1/run.test.mjs && node conformance/composition/wag-aeb-v1/run.mjs",
     "conformance:composition:crossing-record": "npm --prefix packages/verify run build && node --test packages/verify/aeb-crossing-record.test.js conformance/composition/aeb-crossing-record-v1/run.node-test.mjs && node conformance/composition/aeb-crossing-record-v1/run.mjs",
     "conformance:composition:jesske-ai-enablement": "node --test conformance/composition/jesske-ai-enablement-v0.1/run.test.mjs && node conformance/composition/jesske-ai-enablement-v0.1/run.mjs",
-    "conformance:composition:ccs-l1-aeb": "node --test conformance/composition/ccs-l1-aeb-v1/run.test.mjs && node conformance/composition/ccs-l1-aeb-v1/run.mjs --check",
+    "conformance:composition:ccs-l1-aeb": "node interop/ccs-aeb/reproduce_l1_119_fixtures.mjs && node --test conformance/composition/ccs-l1-aeb-v1/run.test.mjs && node conformance/composition/ccs-l1-aeb-v1/run.mjs --check",
     "conformance:composition:ccs-v13-aeb": "node --test conformance/composition/ccs-v13-aeb-v1/run.test.mjs && node conformance/composition/ccs-v13-aeb-v1/run.mjs --check",
     "conformance:composition:noa-policy-replay": "vitest run conformance/composition/noa-policy-replay-v0.1/run.test.mjs && node conformance/composition/noa-policy-replay-v0.1/run.mjs",
     "conformance:composition:caplease-emilia": "node --test conformance/composition/caplease-emilia-v0.1/run.test.mjs && node conformance/composition/caplease-emilia-v0.1/run.mjs --check",

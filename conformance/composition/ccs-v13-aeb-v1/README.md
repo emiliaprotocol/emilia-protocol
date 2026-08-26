@@ -17,7 +17,7 @@ npm run conformance:composition:ccs-v13-aeb
 ```
 
 The fourteen checks cover the official draft source pin, separation from the
-published 1.1.14 package shape, live response binding, Ed25519 verification,
+published 1.1.19 package shape, live response binding, Ed25519 verification,
 exact-action CAID mapping, signature mutation, untrusted key, audience,
 freshness, parameter substitution, full-digest substitution preserving the
 draft's 16-hex `params_hash`, consumed status, unavailable status, and a native
