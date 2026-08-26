@@ -1,16 +1,22 @@
 # Strix remediation register - 2026-07-18 report
 
-> **Status: source-remediated; external retest pending. This is not a closure memo.**
+> **Status: source-remediated and deployed; external retest pending. This is not a closure memo.**
 > This register covers the 18 reported findings: 1 critical, 9 high, 5 medium,
 > and 3 low. The controls and regressions below are present in the current
-> integration tree. They do not establish deployment, production configuration,
-> migration application, or independent closure. A finding may be marked closed
-> only after Strix retests the exact deployed revision and confirms the result.
+> production tree. The production deployment, configuration presence, migration
+> state, and live Trust Desk bootstrap behavior were verified on 2026-08-26.
+> Those checks do not establish independent closure. A finding may be marked
+> closed only after Strix retests the exact deployed revision and confirms the
+> result.
 
 ## Evidence boundary
 
 In this document, **source-remediated** means the reported source path has a
-specific fail-closed control and regression artifact in the integration tree.
+specific fail-closed control and regression artifact in the production tree.
+**Deployed** means the exact source revision is served by the production alias,
+the governed migration ledger matches the live schema through
+`20260826130000`, and required production configuration names are present as
+encrypted values. It does not disclose or attest the secret values themselves.
 **External retest pending** means the finding remains open from an independent
 assurance perspective. Branch tests are not a substitute for a retest against
 the target deployment.
@@ -33,8 +39,8 @@ or with the separate hostile-code audit.
 | STRIX-14 | Medium | Source-remediated; external retest pending | `check()` and `guard()` do not accept selector metadata as execution input. In particular, selector-sourced `observedAction` and `actionDetails` cannot authorize raw function arguments for a different action. Explicit deployer-owned action mappings remain trusted integration code and therefore remain a documented trust boundary; sealed adapters and registered operations provide the strongest binding. | `packages/gate/src/index.ts`; the `STRIX-14` regression in `packages/gate/gate.test.ts`; execution-binding regressions in the same suite. |
 | STRIX-15 | High | Source-remediated; external retest pending | The attest route and `createAttestation()` both require `humanEntityRef` to equal the authenticated accountable actor. A caller cannot place another identity into the signed approval trail. | `app/api/signoff/[challengeId]/attest/route.ts`; `lib/signoff/attest.ts`; `tests/signoff-attest.test.ts`. |
 | STRIX-16 | High | Source-remediated; external retest pending | One Trust Desk request has a shared budget across classification and answering. Public intake and triage are each capped at 6 provider calls, 12,000 estimated input/output token units, and 20 seconds of aggregate LLM wall-clock time; the separately authenticated internal workflow retains the documented 48-call, 100,000-unit, 50-second ceiling. Every path also enforces at most 200 questions, 8,000 characters per question, and 200,000 aggregate question characters. Provider reservation occurs before network invocation, and one abort deadline spans connection establishment, response headers, error-body reads, and JSON-body parsing. The durable, fail-closed public throttle admits at most 10 scans per source IP per hour. An exhausted, expired, missing, or unavailable budget/throttle refuses rather than invoking another model call. | `lib/trust-desk/resource-budget.ts`; `lib/trust-desk/pipeline.ts`; `lib/trust-desk/llm.ts`; `lib/rate-limit.ts`; `app/api/trust-desk/intake/route.ts`; `app/api/trust-desk/triage/route.ts`; `tests/trust-desk-resource-budget.test.ts`; `tests/trust-desk-intake-resource-profile.test.ts`; `tests/trust-desk-triage-route.test.ts`; `tests/rate-limit.test.ts`. |
-| STRIX-17 | High | Source-remediated; external retest pending; production fail-closed until secrets are configured | SAML RelayState is HMAC-bound to the tenant and a nonce, matched to a short-lived `HttpOnly; Secure; SameSite=None` browser cookie, and verified before tenant configuration is selected. The assertion is verified under that tenant's IdP key, replay-consumed, and accepted only for an active directory identity. Production SSO intentionally fails closed until separate `SSO_STATE_SECRET` and `SSO_SESSION_SECRET` values are configured. | `app/api/sso/saml/login/route.ts`; `app/api/sso/saml/acs/route.ts`; `lib/sso/state.ts`; `lib/sso/session.ts`; `supabase/migrations/20260628151330_103_saml_consumed_assertions.sql`; `tests/sso-state.test.ts`; `tests/sso-saml.test.ts`. |
-| STRIX-18 | Medium | Source-remediated; external retest pending; production rotation/configuration required | A query-string bootstrap value never authenticates and is scrubbed by a `303` redirect to the clean URL without setting a cookie or consuming the token. The clean page uses a no-store form; only a bounded, same-origin `POST` may exchange the bootstrap secret. Reviewer sessions are signed with a separate `TRUST_DESK_SESSION_SECRET`, never with the historically exposed bootstrap token. Production must rotate `TRUST_DESK_INTERNAL_TOKEN` and configure an independent, random `TRUST_DESK_SESSION_SECRET` plus `TRUST_DESK_REVIEWER_ID` before enabling the reviewer surface. | `app/internal/trust-desk/auth/route.ts`; `lib/trust-desk/auth.ts`; `lib/env.ts`; `tests/trust-desk-bootstrap-route.test.ts`; `tests/trust-desk-auth.test.ts`; `tests/trust-desk-review-route.test.ts`. |
+| STRIX-17 | High | Source-remediated and deployed; external retest pending; required production configuration present | SAML RelayState is HMAC-bound to the tenant and a nonce, matched to a short-lived `HttpOnly; Secure; SameSite=None` browser cookie, and verified before tenant configuration is selected. The assertion is verified under that tenant's IdP key, replay-consumed, and accepted only for an active directory identity. Production has separate encrypted `SSO_STATE_SECRET` and `SSO_SESSION_SECRET` configuration and still fails closed if either value is absent or invalid. | `app/api/sso/saml/login/route.ts`; `app/api/sso/saml/acs/route.ts`; `lib/sso/state.ts`; `lib/sso/session.ts`; `supabase/migrations/20260628151330_103_saml_consumed_assertions.sql`; `tests/sso-state.test.ts`; `tests/sso-saml.test.ts`. |
+| STRIX-18 | Medium | Source-remediated and deployed; external retest pending; production bootstrap rotated and configuration present | A query-string bootstrap value never authenticates and is scrubbed by a `303` redirect to the clean URL without setting a cookie or consuming the token. The clean page uses a no-store form; only a bounded, same-origin `POST` may exchange the bootstrap secret. Reviewer sessions are signed with a separate `TRUST_DESK_SESSION_SECRET`, never with the historically exposed bootstrap token. Production now has a rotated encrypted `TRUST_DESK_INTERNAL_TOKEN`, an independent encrypted `TRUST_DESK_SESSION_SECRET`, and `TRUST_DESK_REVIEWER_ID`. | `app/internal/trust-desk/auth/route.ts`; `lib/trust-desk/auth.ts`; `lib/env.ts`; `tests/trust-desk-bootstrap-route.test.ts`; `tests/trust-desk-auth.test.ts`; `tests/trust-desk-review-route.test.ts`. |
 | STRIX-19 | Medium | Source-remediated; external retest pending | Public pilot sandbox API keys are created with the single `observe` permission and a durable server-written observe marker. A centralized authorization floor admits those credentials only to the exact reviewed GovGuard and FinGuard precheck routes plus their actor-scoped sandbox report. The floor evaluates pilot scope before the normal read-method path, so current and legacy pilot identities are denied on every other authenticated read or mutation even if a stale key also carries `read`, `write`, or `admin`. Anonymous provisioning is independently limited to five identities per hour per source IP by the fail-closed durable `pilot_sandbox_provision` middleware category. | `app/api/pilot/sandbox/provision/route.ts`; `lib/auth/observe-scope.ts`; `lib/auth/protocol-request-authorization.ts`; `middleware.ts`; `lib/rate-limit.ts`; `supabase/migrations/20260826010000_pilot_observe_permission.sql`; `tests/protocol-request-authorization.test.ts`; `tests/pilot-sandbox-controlplane-scope.test.ts`; `tests/private-equity-page.test.ts`. |
 | STRIX-20 | Medium | Source-remediated; external retest pending | `POST /api/identity/continuity/challenge` derives `challenger_id` exclusively from the authenticated entity. A body-supplied challenger cannot override it or manufacture a self-challenge bypass. | `app/api/identity/continuity/challenge/route.ts`; exact route-level regression in `tests/identity-continuity-challenge-route-security.test.ts`. |
 | STRIX-21 | Medium | Source-remediated; external retest pending | Cross-entity Gate commit issuance requires a verified delegation whose agent is the authenticated caller and whose principal is the requested entity. Agent mismatch and principal mismatch both refuse before an allow commit can be issued. | `app/api/trust/gate/route.ts`; exact route-level mismatch regressions in `tests/trust-gate-security.test.ts`. |
@@ -44,29 +50,28 @@ or with the separate hostile-code audit.
 
 ## Deployment and independent-validation requirements
 
-The source register is complete, but independent closure still requires all of
-the following against the exact candidate revision:
+The source and deployment requirements were completed against production on
+2026-08-26:
 
-1. Apply the relevant forward migrations, including
-   `20260718205655_webauthn_registration_atomic.sql` and
-   `20260718205657_trust_desk_bootstrap_once.sql` to the target database.
-   Confirm the SAML
-   replay-consumption table is present.
-2. Configure separate, randomly generated production values for
-   `SSO_STATE_SECRET` and `SSO_SESSION_SECRET`. Until then, the SSO paths remain
-   deliberately unavailable rather than falling back to a predictable secret.
-3. Rotate `TRUST_DESK_INTERNAL_TOKEN` because it historically traveled in a
-   URL, configure a different `TRUST_DESK_SESSION_SECRET` of at least 32 UTF-8
-   bytes, and configure `TRUST_DESK_REVIEWER_ID`. Do not reuse one value for
-   both bootstrap and session signing.
-4. Verify the durable, fail-closed Trust Desk intake/IP throttle in the
-   production topology and confirm both public entry points use the 6-call,
-   12,000-unit, 20-second resource profile. The request-scoped resource budget
-   is deterministic, but it is not a distributed portfolio-wide cost ledger.
-5. Deploy a candidate, record its exact commit and migration state, and have
-   Strix retest every finding. Source-remediated, deployed, and externally
-   retested are separate states; none of the rows above currently claims the
-   last state.
+1. The governed ledger and live schema contract agree through remote migration
+   `20260826130000`, with 204 remote versions, 1 private historical version,
+   and 0 pending migrations.
+2. Separate encrypted production entries are present for `SSO_STATE_SECRET`
+   and `SSO_SESSION_SECRET`. No value was printed or copied during verification.
+3. `TRUST_DESK_INTERNAL_TOKEN` was rotated. Separate encrypted production
+   entries are present for `TRUST_DESK_SESSION_SECRET` and
+   `TRUST_DESK_REVIEWER_ID`.
+4. The production `/proof` source revision matched the merged `main` head at
+   verification. A query-token probe returned a clean `303`, an invalid
+   same-origin form exchange returned `401`, and a cross-origin form exchange
+   returned `403`.
+   The deployed intake paths use the governed 6-call, 12,000-unit, 20-second
+   public resource profile. The request-scoped resource budget remains a
+   deterministic request control, not a distributed portfolio-wide cost ledger.
+
+Independent closure still requires Strix to retest every finding against this
+exact deployed revision. Source-remediated, deployed, and externally retested
+remain separate states; none of the rows above claims the final state yet.
 
 ## Residual trust boundary for action binding
 
