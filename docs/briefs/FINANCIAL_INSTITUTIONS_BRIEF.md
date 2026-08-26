@@ -32,7 +32,7 @@ Many of the most expensive failures in finance happen inside approved-looking wo
 | Formal verification | 26 TLA+ properties verified (TLC 2.19, 413,137 states, 0 errors); 35 Alloy facts + 32 assertions across four models (Alloy 6.2.0, 0 counterexamples) — both enforced in CI |
 | Mutation testing | ≥80% kill threshold on protocol core (Stryker.js) |
 | Red team cases | 85 cataloged cases |
-| Release security status | Repository security checks pass; live Strix retest and deployment validation remain open |
+| Release security status | Repository checks pass; Strix reports all 24 STRIX-25 through STRIX-48 targeted retests `Fixed`; production deployment and schema validation are separately recorded in the public finding register |
 | Signoff chain | Full 7-step Accountable Signoff proven end-to-end under load |
 | Load-test chains | 329 complete, zero correctness violations |
 | DB integrity | 11/11 post-load-test checks passing |

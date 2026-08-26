@@ -43,7 +43,7 @@ authorization verified. See the canonical [threat model](THREAT_MODEL.md).
 | Conformance | **21 suites and 332 vectors** across JavaScript, Python, and Go same-team ports. A separately authored Rust implementation remains pinned to 164 vectors and passes 359 hostile cases. | Same-team ports are not independent implementations. Strict clean-room construction acceptance remains false. |
 | Formal evidence | 26 principal TLC invariants; 78 selected model/runtime scenarios with 51 paired negative controls; 20 Tamarin obligations and 8 deliberately unsafe counterexamples; 35 Alloy facts and 32 assertions. | These are bounded or symbolic results under stated assumptions, not mechanized whole-program refinement. |
 | Red-team corpus | **86 catalogued cases** plus the separately pinned external Rust hostility corpus. | A catalog is not a penetration-test opinion or evidence that every production path is mediated. |
-| Security assessment | Strix reported a pass on the original 18 findings against its earlier tested deployment. The subsequent STRIX-25 through STRIX-48 remediation wave changed some execution paths; every affected original path and all 24 new findings remain pending exact-revision external retest. | Source remediation, deployment, and an external retest against the same revision are separate states. See the [finding register](docs/security/STRIX_REMEDIATION_2026-07-18.md). |
+| Security assessment | Strix reported `Fixed` for all 24 STRIX-25 through STRIX-48 targeted retests completed on 2026-08-26. The source fixes landed at `5d474fd2`; deployment and the production-schema contract were verified separately. | The Strix retests were white-box repository checks on `main`, not a live-production database test, and the result surface does not expose an exact commit SHA. Any original path without its own later recheck retains the status in the [finding register](docs/security/STRIX_REMEDIATION_2026-07-18.md). |
 | Dependencies and alerts | The root audit policy and the `mcp-server` production-dependency audit in the reviewed security workflow passed. Live GitHub review on 2026-08-26 found zero open Dependabot, CodeQL, and secret-scanning alerts. | The reviewed workflow does not establish a repository-wide audit of every nested package. Alert counts are time-sensitive and may change without a source commit. |
 | Repository controls | `main` has 16 strict required status contexts, conversation resolution, force-push disabled, and deletion disabled. The organization requires 2FA; immutable release-tag rules have no bypass actor. | No pull-request approval, Code Owner review, signed commit, or administrator enforcement is currently required. The organization domain is not GitHub-verified and governance remains single-maintainer. |
 | AI-assisted development | [Human accountability and attribution rules](docs/AI-ASSISTED-DEVELOPMENT.md) are public. | Counsel-led chain-of-title, invention-assignment, and conflict review belong in the private data room. |
@@ -70,17 +70,22 @@ artifact SHA-256.
 
 Strix reported a pass on the original 18 findings against its earlier tested
 deployment on 2026-08-26. That result carries forward only for an execution path
-that did not change in the later remediation wave. Any affected original path
-and all STRIX-25 through STRIX-48 findings remain pending exact-revision
-external retest.
+that did not change in the later remediation wave. The subsequent targeted
+retests now report `Fixed` for each of STRIX-25 through STRIX-48. This closes
+those 24 new findings under the register's three-leg source, deployment, and
+external-retest boundary; it does not silently upgrade an original path lacking
+its own recorded later recheck.
 
 The second report's 24 findings reached source-remediated and deployed state at
 baseline `5d474fd2`: the production proof surface served that exact source
 revision during this review, `/api/health` returned `ready`, and the protected
 schema run passed both the live-schema and EMILIA production-schema contracts.
-This establishes the observed source identity and schema contract, not every
-production secret value, third-party dependency, installed-path non-bypass
-claim, or external closure result.
+The Strix retest surface identifies `emiliaprotocol/emilia-protocol` on `main`
+but does not expose an exact tested commit SHA, and the STRIX-43 retest states
+that Strix did not access the production Supabase database. The separate
+deployment evidence establishes the observed source identity and schema
+contract, not every production secret value, third-party dependency, or
+installed-path non-bypass claim.
 
 GitHub's automated Vercel commit status for the baseline did not record the
 successful alias promotion even though the public proof surface served the
