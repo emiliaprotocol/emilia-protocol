@@ -50,6 +50,11 @@ export const styles: Record<string, CSSProperties> = {
     color: color.t1,
     fontFamily: font.sans,
   },
+  container: {
+    maxWidth: 1080,
+    margin: '0 auto',
+    padding: '0 24px',
+  },
   section: {
     maxWidth: 760,
     margin: '0 auto',
@@ -116,6 +121,12 @@ export const styles: Record<string, CSSProperties> = {
     fontSize: 16,
     color: color.t2,
     lineHeight: 1.75,
+    marginBottom: 24,
+  },
+  lead: {
+    fontSize: 18,
+    color: color.t2,
+    lineHeight: 1.72,
     marginBottom: 24,
   },
   card: {
@@ -197,8 +208,11 @@ export const styles: Record<string, CSSProperties> = {
 // Three tiers only: primary (solid), secondary (outline), ghost.
 
 const ctaBase: CSSProperties = {
+  minHeight: 44,
+  boxSizing: 'border-box',
   display: 'inline-flex',
   alignItems: 'center',
+  justifyContent: 'center',
   gap: 8,
   padding: '12px 24px',
   borderRadius: radius.sm,

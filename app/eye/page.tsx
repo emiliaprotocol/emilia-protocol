@@ -90,7 +90,7 @@ export default function EmiliaEyePage() {
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
-        <div className="ep-tag ep-hero-badge" style={{ color: color.green }}>Product / Emilia Eye</div>
+        <div className="ep-tag ep-hero-badge" style={{ color: color.green }}>Experimental advisory profile / Emilia Eye</div>
         <h1 className="ep-hero-text" style={styles.h1}>Start lighter with Emilia Eye</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 640 }}>
           A warning protocol that flags when stricter EP trust controls should apply. Eye does not enforce. It does not block. It raises a signal so the right system can respond.
@@ -292,7 +292,7 @@ export default function EmiliaEyePage() {
       <section style={{ borderTop: `4px solid ${color.gold}`, background: '#1C1917', padding: '80px 0', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.04) 0%, transparent 70%)' }} />
         <div style={{ ...styles.section, position: 'relative', zIndex: 1 }}>
-          <div style={{ fontFamily: font.mono, fontSize: 10, color: color.green, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 }}>Product / Emilia Eye</div>
+          <div style={{ fontFamily: font.mono, fontSize: 10, color: color.green, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 }}>Experimental advisory profile / Emilia Eye</div>
           <h2 style={{ fontFamily: font.sans, fontSize: 32, fontWeight: 700, color: '#FAFAF9', marginBottom: 16, lineHeight: 1.2, maxWidth: 560 }}>
             Start with observation. Build toward enforcement.
           </h2>

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   FileCheck2,
   Gauge,
+  Play,
   Radio,
   RefreshCw,
   Send,
@@ -21,16 +22,17 @@ import styles from './live.module.css';
 interface StageItem {
   id: string;
   label: string;
+  technical: string;
   Icon: React.ComponentType<Record<string, unknown>>;
 }
 
 const STAGES: StageItem[] = [
-  { id: 'authorize', label: 'Authorize', Icon: Smartphone },
-  { id: 'verify', label: 'Verify', Icon: ShieldCheck },
-  { id: 'dispatch', label: 'Dispatch', Icon: Send },
-  { id: 'measure', label: 'Measure', Icon: Gauge },
-  { id: 'record', label: 'Record', Icon: FileCheck2 },
-  { id: 'settle', label: 'Settle', Icon: BadgeDollarSign },
+  { id: 'authorize', label: 'Two roles approve', technical: 'Authorize', Icon: Smartphone },
+  { id: 'verify', label: 'Gate checks the order', technical: 'Verify', Icon: ShieldCheck },
+  { id: 'dispatch', label: 'Adapter acknowledges', technical: 'Dispatch', Icon: Send },
+  { id: 'measure', label: 'Meter reports', technical: 'Measure', Icon: Gauge },
+  { id: 'record', label: 'Receipt seals', technical: 'Record', Icon: FileCheck2 },
+  { id: 'settle', label: 'Settlement admission consumed', technical: 'Settle', Icon: BadgeDollarSign },
 ];
 
 const PHASE_DELAY_MS = 720;
@@ -91,12 +93,12 @@ function stageDetail(id: string, data: GraceReferenceScenario | null): string {
   if (!data) return 'Waiting for a reference run.';
   const members = data.authorization?.members || [];
   const details: Record<string, string> = {
-    authorize: `${members.length} distinct Class-A mobile handshakes signed the exact action.`,
-    verify: `All ${Object.values(data.authorization?.checks || {}).filter(Boolean).length} authorization checks passed under pinned inputs.`,
-    dispatch: `${data.acknowledgment?.adapter || 'adapter'} returned a signed, idempotent acknowledgment.`,
-    measure: `${data.compliance?.delivered_mw ?? 'not available'} MW independently measured; ${Math.round((data.compliance?.compliance_ratio || 0) * 1000) / 10}% delivered.`,
-    record: `Action State ${short(data.action_state?.capsule?.capsule_id, 10, 8)} binds authorization, dispatch, and meter evidence.`,
-    settle: data.settlement?.settled ? 'The measured entitlement was consumed exactly once.' : 'No settlement was issued.',
+    authorize: `${members.length} distinct reference approver roles signed the exact facility, reduction, and time window.`,
+    verify: `Gate passed ${Object.values(data.authorization?.checks || {}).filter(Boolean).length} checks under pinned rules.`,
+    dispatch: `${data.acknowledgment?.adapter || 'The reference adapter'} returned a signed, idempotent acknowledgment.`,
+    measure: `GRACE computed ${data.compliance?.delivered_mw ?? 'not available'} MW delivered from a separately keyed meter statement.`,
+    record: `Receipt ${short(data.action_state?.capsule?.capsule_id, 10, 8)} binds the order, acknowledgment, and meter evidence.`,
+    settle: data.settlement?.settled ? 'Settlement admission was consumed once in the reference state machine.' : 'No settlement admission was issued.',
   };
   return details[id] || '';
 }
@@ -155,40 +157,106 @@ export default function GraceLiveConsole(): React.ReactElement {
     }
   }, [clearTimers]);
 
-  useEffect(() => {
-    const initialRun = window.setTimeout(run, 0);
-    return () => {
-      window.clearTimeout(initialRun);
-      clearTimers();
-    };
-  }, [clearTimers, run]);
+  useEffect(() => clearTimers, [clearTimers]);
 
   const points = useMemo(() => powerPoints(data), [data]);
   const maxPower = Math.max(...points.map((point) => point.value), 1);
   const currentPower = phase >= 3 && points.length ? points.at(-1)!.value : points[0]?.value;
   const runComplete = status === 'complete';
+  const orderedMw = data ? Number(data.action.target_delta_kw) / 1000 : 18;
+  const baselineMw = data ? Number(data.meter_statement.baseline_mw) : 64;
+  const targetMw = baselineMw - orderedMw;
+  const announcedStageIndex = Math.max(phase, 0);
+  let liveStatus = `Step ${announcedStageIndex + 1} of ${STAGES.length}: ${STAGES[announcedStageIndex].label}.`;
+  if (status === 'idle') liveStatus = 'Ready to run the reference curtailment.';
+  if (status === 'loading') liveStatus = 'Loading the reference curtailment.';
+  if (status === 'error') liveStatus = 'The reference curtailment is unavailable.';
+  if (runComplete) liveStatus = `Reference curtailment complete. ${STAGES.length} of ${STAGES.length} stages complete.`;
 
   return (
     <main className={styles.page}>
       <section className={styles.header}>
-        <div>
-          <div className={styles.kicker}>GRACE GRID CONTROL LAB</div>
-          <h1>One bounded grid action. Two humans. One physical-effect record.</h1>
+        <div className={styles.headerCopy}>
+          <div className={styles.kicker}>LIVE GRID CURTAILMENT DEMO</div>
+          <h1>The grid needs {orderedMw.toFixed(0)} MW back. Which agent is allowed to act?</h1>
           <p>
-            This reference run exercises the production verification and one-time state machine
-            with synthetic COSA and meter adapters. Every cryptographic check is real. No physical
-            grid event is claimed.
+            When demand spikes, the grid may ask one facility to use less power for a fixed window.
+            If an agent changes the site, amount, or timing, the wrong equipment can move and the
+            settlement can be wrong.
           </p>
-        </div>
-        <div className={styles.runControls}>
-          <div className={styles.simulationFlag}>
-            <Radio aria-hidden="true" size={15} />
-            Reference simulation
+          <p className={styles.solutionLine}>
+            GRACE binds one reference request to one facility, a {orderedMw.toFixed(0)} MW
+            reduction, a 90-minute window, two distinct reference approver signatures, a separately
+            keyed meter statement, and one settlement admission.
+          </p>
+          <div className={styles.riskRow} aria-label="What can go wrong without a bounded order">
+            <span>Wrong site</span>
+            <span>Wrong amount</span>
+            <span>Blind retry</span>
           </div>
-          <button type="button" className={styles.runButton} onClick={run} disabled={status === 'loading' || status === 'running'}>
-            <RefreshCw aria-hidden="true" size={17} className={status === 'loading' ? styles.spin : undefined} />
-            Run again
-          </button>
+          <div className={styles.plainFlow} aria-label="Curtailment proof flow">
+            <span>Grid asks</span><i>→</i><span>Two roles approve</span><i>→</i><span>Gate admits once</span><i>→</i><span>Meter checks</span><i>→</i><span>Admit settlement once</span>
+          </div>
+          <div className={styles.runControls}>
+            <button type="button" className={styles.runButton} onClick={run} disabled={status === 'loading' || status === 'running'}>
+              {status === 'loading' || status === 'running' ? (
+                <RefreshCw aria-hidden="true" size={17} className={styles.spin} />
+              ) : (
+                <Play aria-hidden="true" size={16} fill="currentColor" />
+              )}
+              {status === 'loading' || status === 'running' ? 'Running the reference flow' : runComplete ? 'Run again' : 'Run the curtailment demo'}
+            </button>
+            <a href="#grace-attacks">See what gets blocked</a>
+          </div>
+          <div className={styles.heroBoundary}>
+            <Radio aria-hidden="true" size={15} />
+            Signed reference simulation. No physical grid event is claimed.
+          </div>
+        </div>
+
+        <div className={styles.curtailmentVisual}>
+          <div className={styles.curtailmentHeader}>
+            <span>REFERENCE CURTAILMENT</span>
+            <strong>90 MINUTES</strong>
+          </div>
+          <div className={styles.gridAlert}>
+            <span>GRID STRESS</span>
+            <strong>Reduce this facility now</strong>
+          </div>
+          <svg viewBox="0 0 640 270" role="img" aria-labelledby="grace-curve-title grace-curve-description">
+            <title id="grace-curve-title">Reference facility demand curtailment</title>
+            <desc id="grace-curve-description">
+              Facility load starts at {baselineMw.toFixed(0)} megawatts. A bounded order requests a {orderedMw.toFixed(0)} megawatt reduction for a target near {targetMw.toFixed(0)} megawatts.
+            </desc>
+            <defs>
+              <linearGradient id="grace-stress-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ffb45e" stopOpacity="0.42" />
+                <stop offset="100%" stopColor="#ffb45e" stopOpacity="0" />
+              </linearGradient>
+              <linearGradient id="grace-safe-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#6fd0a0" stopOpacity="0.34" />
+                <stop offset="100%" stopColor="#6fd0a0" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <g className={styles.curveGrid}>
+              <path d="M46 50H606M46 110H606M46 170H606M46 230H606" />
+              <path d="M46 30V230M186 30V230M326 30V230M466 30V230M606 30V230" />
+            </g>
+            <path className={styles.targetLine} d="M46 176H606" />
+            <text className={styles.targetLabel} x="50" y="168">{targetMw.toFixed(0)} MW TARGET</text>
+            <path className={styles.stressFill} d="M46 230V69C124 64 169 75 232 68C283 62 314 68 341 92L341 230Z" />
+            <path className={styles.safeFill} d="M341 230V92C376 131 402 165 449 174C502 184 544 177 606 179V230Z" />
+            <path className={styles.stressCurve} d="M46 69C124 64 169 75 232 68C283 62 314 68 341 92" />
+            <path className={styles.safeCurve} d="M341 92C376 131 402 165 449 174C502 184 544 177 606 179" />
+            <circle className={styles.orderPoint} cx="341" cy="92" r="7" />
+            <text className={styles.orderLabel} x="356" y="80">ORDER ADMITTED ONCE</text>
+          </svg>
+          <div className={styles.curtailmentMetrics}>
+            <div><span>Before</span><strong>{baselineMw.toFixed(0)} MW</strong></div>
+            <div data-tone="amber"><span>Requested</span><strong>−{orderedMw.toFixed(0)} MW</strong></div>
+            <div data-tone="green"><span>Target</span><strong>{targetMw.toFixed(0)} MW</strong></div>
+          </div>
+          <div className={styles.facilityLine}>facility:us-west-dc-17 · exact window · reference only</div>
         </div>
       </section>
 
@@ -202,15 +270,18 @@ export default function GraceLiveConsole(): React.ReactElement {
         </section>
       ) : null}
 
-      <section className={styles.stageRail} data-testid="grace-stage-rail" aria-label="Curtailment evidence sequence" aria-live="polite">
-        {STAGES.map(({ id, label, Icon }, index) => {
+      <p className={styles.srOnly} role="status">
+        {liveStatus}
+      </p>
+      <section className={styles.stageRail} data-testid="grace-stage-rail" aria-label="Curtailment evidence sequence">
+        {STAGES.map(({ id, label, technical, Icon }, index) => {
           const complete = phase >= index;
           const active = phase === index && !runComplete;
           return (
             <div className={`${styles.stage} ${complete ? styles.stageComplete : ''} ${active ? styles.stageActive : ''}`} key={id}>
               <div className={styles.stageIcon}><Icon aria-hidden="true" size={19} /></div>
               <div>
-                <span className={styles.stageNumber}>{String(index + 1).padStart(2, '0')}</span>
+                <span className={styles.stageNumber}>{String(index + 1).padStart(2, '0')} / {technical}</span>
                 <h2>{label}</h2>
                 <p>{complete ? stageDetail(id, data) : 'Pending'}</p>
               </div>
@@ -223,7 +294,7 @@ export default function GraceLiveConsole(): React.ReactElement {
         <div className={styles.powerPanel}>
           <div className={styles.panelHeading}>
             <div>
-              <span>Facility load</span>
+              <span>Reference load</span>
               <h2>{Number.isFinite(currentPower) ? currentPower!.toFixed(3) : '--.---'} MW</h2>
             </div>
             <Verdict pass={phase >= 3 && data?.compliance?.compliant === true}>
@@ -257,7 +328,7 @@ export default function GraceLiveConsole(): React.ReactElement {
           <div className={styles.panelHeading}>
             <div>
               <span>Evidence packet</span>
-              <h2>Trust transitions</h2>
+              <h2>What the customer can prove</h2>
             </div>
             <Verdict pass={runComplete}>{runComplete ? 'Closed' : 'Building'}</Verdict>
           </div>
@@ -272,18 +343,18 @@ export default function GraceLiveConsole(): React.ReactElement {
         </div>
       </section>
 
-      <section className={styles.attackSection} data-testid="grace-attacks">
+      <section id="grace-attacks" className={styles.attackSection} data-testid="grace-attacks">
         <div className={styles.sectionHeading}>
           <div>
             <span>Hostile replay</span>
-            <h2>The happy path is not the test. These are.</h2>
+            <h2>Now try to cheat it.</h2>
           </div>
           <p>Each refusal is generated by the same implementation that produced the positive proof.</p>
         </div>
         <div className={styles.attackGrid}>
           {([
             ['replay', 'Replay', 'The exact authorization is presented a second time.', data?.attacks?.replay],
-            ['substitution', 'Action substitution', '18 MW authorization is reused for a different target.', data?.attacks?.action_substitution],
+            ['substitution', 'Action substitution', `${orderedMw.toFixed(0)} MW authorization is reused for a different target.`, data?.attacks?.action_substitution],
             ['meter-rule', 'Meter rule smuggling', 'A meter tries to inject the settlement rule it is supposed to measure.', data?.attacks?.meter_rule_smuggling],
           ] as const).map(([id, title, body, result]) => (
             <article className={styles.attackItem} data-testid={`grace-attack-${id}`} key={id}>
@@ -303,7 +374,8 @@ export default function GraceLiveConsole(): React.ReactElement {
           <p>
             COSA and meter integrations on this page are signed reference adapters, not production
             grid connections. GRACE proves authorization, adapter acknowledgment, evidence integrity,
-            and one-time settlement. It does not prove sensor truth or that no bypass path exists.
+            and one-time settlement admission in the reference state machine. It does not prove
+            sensor truth, physical payment, or that no bypass path exists.
           </p>
         </div>
       </section>

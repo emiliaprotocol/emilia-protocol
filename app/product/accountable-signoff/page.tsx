@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import { ProductStoryHero } from '@/components/product-story/ProductStory';
 import { styles, cta, color, grid, font, radius } from '@/lib/tokens';
 import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 
@@ -59,20 +60,9 @@ export default function AccountableSignoffPage() {
 
   return (
     <div style={styles.page}>
-      <SiteNav activePage="" />
+      <SiteNav activePage="approver" />
 
-      {/* Hero */}
-      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 60 }}>
-        <div style={styles.eyebrowBlue}>EMILIA Approver Apps</div>
-        <h1 style={styles.h1}>The human decision edge of EMILIA Gate</h1>
-        <p style={{ ...styles.body, maxWidth: 640 }}>
-          Gate creates the exact-action challenge. The app shows the material fields and a
-          stable CAID fingerprint on a separate device, captures an approve or deny
-          decision, and follows that decision through quorum, consumption, uncertainty,
-          and authenticated outcome reconciliation.
-        </p>
-        <a href="#pilot" className="ep-cta" style={cta.primary}>Pilot the Approver apps</a>
-      </section>
+      <ProductStoryHero product="approver" />
 
       {/* Not MFA */}
       <section style={styles.sectionAlt}>
@@ -86,7 +76,7 @@ export default function AccountableSignoffPage() {
           <div style={grid.stack}>
             <div className="ep-card-hover" style={styles.card}>
               <div style={styles.cardTitle}>MFA</div>
-              <div style={styles.cardBody}>Proves you are who you claim to be. Does not prove you authorized <span style={styles.mono}>this specific action</span> with <span style={styles.mono}>these specific parameters</span>. A session authenticated with MFA can still execute unauthorized actions.</div>
+              <div style={styles.cardBody}>Establishes control of an enrolled factor. It does not prove you authorized <span style={styles.mono}>this specific action</span> with <span style={styles.mono}>these specific parameters</span>. A session authenticated with MFA can still execute unauthorized actions.</div>
             </div>
             <div className="ep-card-hover" style={styles.card}>
               <div style={styles.cardTitle}>Human-in-the-loop</div>
@@ -101,7 +91,7 @@ export default function AccountableSignoffPage() {
       </section>
 
       {/* How it works */}
-      <section style={styles.section}>
+      <section id="how-it-works" style={styles.section}>
         <h2 style={styles.h2}>How it works</h2>
         <p style={styles.body}>Four steps across the app and the enforcement boundary.</p>
         <div style={{ display: 'grid', gap: 20 }}>
@@ -226,16 +216,16 @@ export default function AccountableSignoffPage() {
                 </div>
               ))}
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Trust surface of interest</label>
-                <input className="ep-input" style={styles.input} placeholder="e.g. payment authorization, agent governance, privilege escalation" value={form.surface} onChange={e => update('surface', e.target.value)} />
+                <label htmlFor="pilot-surface" style={styles.label}>Trust surface of interest</label>
+                <input id="pilot-surface" name="surface" className="ep-input" style={styles.input} placeholder="e.g. payment authorization, agent governance, privilege escalation" value={form.surface} onChange={e => update('surface', e.target.value)} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Problem description</label>
-                <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
+                <label htmlFor="pilot-problem" style={styles.label}>Problem description</label>
+                <textarea id="pilot-problem" name="problem" className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Notes</label>
-                <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
+                <label htmlFor="pilot-notes" style={styles.label}>Notes</label>
+                <input id="pilot-notes" name="notes" className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
               </div>
             </div>
               {error && <p role="alert" aria-live="polite" style={{ color: color.red, fontSize: 13, marginTop: 12 }}>{error}</p>}

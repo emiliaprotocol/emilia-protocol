@@ -3,35 +3,29 @@ import { ENTITY } from '@/lib/site-config';
 
 type FooterLink = [string, string];
 
-const COL_PRODUCT: FooterLink[] = [
-  ['/authority-brain', 'Authority Map'],
-  ['/scan', 'Free Local Scan'],
+const COL_SYSTEM: FooterLink[] = [
+  ['/products', 'Product Story'],
+  ['/authority-brain', 'Authority Brain'],
   ['/gate', 'EMILIA Gate'],
-  ['/gate/live', 'Live Gate'],
-  ['/product/accountable-signoff', 'Approver Apps'],
-  ['/pricing', 'Pricing'],
+  ['/product/accountable-signoff', 'EMILIA Approver'],
+  ['/assurance', 'Assurance Plane'],
+  ['/protocol', 'EMILIA Protocol'],
 ];
 
 const COL_SOLUTIONS: FooterLink[] = [
   ['/use-cases', 'All Solutions'],
   ['/private-equity', 'Private Equity'],
-  ['/signal', 'Signal Discovery'],
-  ['/assurance', 'Assurance'],
-  ['/mcp', 'MCP Tool Calls'],
-  ['/agent-guard', 'Agent Guard Profile'],
-  ['/govguard', 'Government Profile'],
-  ['/finguard', 'Financial Profile'],
-  ['/grace', 'Energy Profile'],
-  ['/model-to-matter', 'Model-to-Matter'],
-  ['/gate/consequence-coverage', 'Coverage Lab'],
-  ['/quorum', 'Multi-party Approval'],
+  ['/financial', 'Finance Operations'],
+  ['/use-cases/enterprise', 'Code and Cloud'],
+  ['/government', 'Government'],
+  ['/health/program-integrity', 'Health Program Integrity'],
+  ['/grace', 'Energy and GRACE'],
 ];
 
 const COL_DEVELOPERS: FooterLink[] = [
   ['/docs', 'Docs'],
-  ['/authority-brain', 'Authority Map Demo'],
+  ['/scan', 'Local Scanner'],
   ['/quickstart', 'Gate Quickstart'],
-  ['/guides/require-receipt', 'Receipt Required Guide'],
   ['/verify', 'Open Verifier'],
   ['/mcp', 'MCP Integration'],
   ['/llms.txt', 'LLM Context'],
@@ -40,7 +34,6 @@ const COL_DEVELOPERS: FooterLink[] = [
 ];
 
 const COL_PROTOCOL: FooterLink[] = [
-  ['/protocol', 'Open Protocol'],
   ['/spec', 'Specifications'],
   ['/proof', 'Engineering Evidence'],
   ['/diligence', 'Public Diligence'],
@@ -54,6 +47,7 @@ const COL_COMPANY: FooterLink[] = [
   ['/partners', 'Partners'],
   ['/security', 'Security'],
   ['/auditors', 'For Auditors'],
+  ['/trust-desk', 'Trust Desk'],
   [`mailto:${ENTITY.email}`, 'Contact'],
   ['/legal/privacy', 'Privacy Policy'],
   ['/legal/terms', 'Terms of Service'],
@@ -62,7 +56,7 @@ const COL_COMPANY: FooterLink[] = [
 type Column = { title: string; links: FooterLink[] };
 
 const COLUMNS: Column[] = [
-  { title: 'Product',   links: COL_PRODUCT },
+  { title: 'System',   links: COL_SYSTEM },
   { title: 'Solutions', links: COL_SOLUTIONS },
   { title: 'Developers', links: COL_DEVELOPERS },
   { title: 'Protocol', links: COL_PROTOCOL },
@@ -96,12 +90,13 @@ export default function SiteFooter({}: SiteFooterProps) {
               Protocol proves. Gate prevents.
             </div>
             <div style={{ fontSize: 13, color: color.t2, marginTop: 8, lineHeight: 1.6, maxWidth: 560 }}>
-              Gate enforces. Approver apps capture the human decision. The open Protocol preserves
-              independently reproducible proof. Assurance re-performs the record.
+              Authority Brain maps supported declared actions and blind spots. Gate controls configured
+              crossings. Approver captures an exact-action decision when required. The Protocol keeps the record
+              portable. Assurance re-performs it.
             </div>
           </div>
-          <a href="/gate" className="ep-footer-link" style={{ fontFamily: font.mono, fontSize: 12, color: '#765A13' }}>
-            Explore EMILIA Gate &rarr;
+          <a href="/products" className="ep-footer-link" style={{ fontFamily: font.mono, fontSize: 12, color: '#765A13' }}>
+            Follow the product story &rarr;
           </a>
         </div>
         <div style={{

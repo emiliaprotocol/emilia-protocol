@@ -13,7 +13,10 @@ test.describe('Protocol Page', () => {
   test('leads with Gate and renders the canonical four-document path', async ({ page }) => {
     await page.goto('/protocol');
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Gate exact actions before consequences.' })).toBeVisible();
+    await expect(page.getByRole('heading', {
+      level: 1,
+      name: 'Make the record verifiable without asking EMILIA to vouch for itself.',
+    })).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Four documents. One evidence path.' })).toBeVisible();
 
     const expectedDocuments = standardsStatus.canonical_four_document_surface.documents.map((document) => [

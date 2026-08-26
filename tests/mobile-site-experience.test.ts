@@ -23,7 +23,7 @@ describe('mobile public-site experience contract', () => {
     const protocol = read('app/protocol/page.tsx');
     const css = read('app/ep.css');
 
-    expect(protocol.match(/repeat\(auto-fit, minmax\(260px, 1fr\)\)/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(protocol.match(/repeat\(auto-fit, minmax\(min\((?:260|280)px, 100%\), 1fr\)\)/g)?.length).toBeGreaterThanOrEqual(4);
     expect(protocol).toContain('ep-protocol-detail-row');
     expect(css).toContain('.ep-protocol-detail-row');
   });

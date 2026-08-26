@@ -19,6 +19,9 @@ const agentRecordE2eEnvironment = {
   UPSTASH_REDIS_REST_TOKEN: 'e2e-upstash-token',
 };
 
+const e2ePort = process.env.EP_E2E_PORT ?? '3000';
+const e2eBaseUrl = `http://localhost:${e2ePort}`;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -29,7 +32,7 @@ export default defineConfig({
   timeout: 30_000,
 
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: e2eBaseUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -56,15 +59,15 @@ export default defineConfig({
         },
         {
           command: 'npm run start',
-          url: 'http://localhost:3000',
+          url: e2eBaseUrl,
           reuseExistingServer: false,
           timeout: 120_000,
-          env: agentRecordE2eEnvironment,
+          env: { ...agentRecordE2eEnvironment, PORT: e2ePort },
         },
       ]
     : {
-        command: 'npm run dev',
-        url: 'http://localhost:3000',
+        command: `npm run dev -- --port ${e2ePort}`,
+        url: e2eBaseUrl,
         reuseExistingServer: true,
         timeout: 120_000,
       },

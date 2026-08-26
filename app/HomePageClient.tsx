@@ -6,6 +6,7 @@ import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import ProofBlock from '@/components/ProofBlock';
 import { GATE_QUALIFICATION, PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
+import { PRODUCT_STORIES } from '@/lib/product-stories';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 import proofStats from '@/lib/proof-stats.json';
 
@@ -43,37 +44,6 @@ const eyebrow: React.CSSProperties = {
   marginBottom: 16,
 };
 
-const PRODUCTS = [
-  {
-    label: 'Discover + map',
-    title: 'Authority Map',
-    body: 'Free, local discovery of supported declared action surfaces and blind spots. The scanner proposes; the owner reviews. A map is not protection.',
-    href: '/authority-brain',
-    accent: color.green,
-  },
-  {
-    label: 'Protect',
-    title: 'EMILIA Gate',
-    body: 'The customer-owned authority toll booth. Gate sits on a completely mediated, credential-owning executor path and permits one provider attempt for the authorized action, or refuses.',
-    href: '/gate',
-    accent: color.gold,
-  },
-  {
-    label: 'Prove',
-    title: 'Open Protocol + Approver',
-    body: 'Portable formats and offline verification, plus an exact-action human or quorum decision when the mandate requires fresh authority. Evidence remains attributable to its native source.',
-    href: '/protocol',
-    accent: color.blue,
-  },
-  {
-    label: 'Operate',
-    title: 'Assurance Plane',
-    body: 'Re-performance, evidence operations, integrations, support, and service levels. EMILIA supports the procedure; it does not issue the audit opinion.',
-    href: '/assurance',
-    accent: color.t2,
-  },
-];
-
 const LIFECYCLE = [
   ['01', 'Define the mandate', 'Set mission, limits, required evidence, expiry, delegation, and exception rules outside the agent process.'],
   ['02', 'Bind the unit of work', 'Freeze the canonical amount, target, record, tool call, material fields, and occurrence.'],
@@ -108,7 +78,7 @@ export default function HomePage(): React.ReactElement {
               <div className="ep-home-calm-kicker">
                 EMILIA <span>· The authority toll booth for autonomous work</span>
               </div>
-              <h1 id="home-trust-thesis">Every consequential agent action enters with authority and exits with a receipt.</h1>
+              <h1 id="home-trust-thesis">Protected crossings require authority before action, then preserve what happened.</h1>
               <p className="ep-home-calm-lede ep-home-lede-desktop">
                 Humans define authority. Agents exercise it. At protected boundaries, EMILIA Gate
                 ensures the agent cannot quietly widen it before intent changes money, code,
@@ -122,10 +92,8 @@ export default function HomePage(): React.ReactElement {
                 cross-stack; each Gate remains customer-owned and local to its configured boundary.
               </p>
               <div className="ep-home-calm-actions">
-                <Link href="/protect" className="ep-home-hero-primary">Choose what AI must not do</Link>
-                <Link href="/scan" className="ep-home-hero-secondary">Run the local Authority Map →</Link>
-                <Link href="/pilot" className="ep-home-hero-secondary">Scope one protected workflow →</Link>
-                <Link href="/gate/live" className="ep-home-hero-secondary">Open the Gate reference →</Link>
+                <Link href="/authority-brain" className="ep-home-hero-primary">Map my agent</Link>
+                <Link href="/pilot" className="ep-home-hero-secondary">Protect one workflow →</Link>
               </div>
             </motion.div>
           </C>
@@ -217,7 +185,7 @@ export default function HomePage(): React.ReactElement {
                 <div className="ep-home-auth-item"><span>04</span><strong>Mandate loaded</strong><em>Mission, limits, evidence, expiry</em></div>
                 <div className="ep-home-auth-item"><span>05</span><strong>Exact work verified</strong><em>Action joined to required evidence</em></div>
                 <div className="ep-home-auth-item"><span>06</span><strong>Provider entry serialized</strong><em>One admitted provider attempt or refusal</em></div>
-                <div className="ep-home-auth-result">Required evidence verifies—or the mutation stays locked.</div>
+                <div className="ep-home-auth-result">Required evidence verifies, or the mutation stays locked.</div>
               </div>
             </motion.div>
           </C>
@@ -226,17 +194,19 @@ export default function HomePage(): React.ReactElement {
         <section style={{ padding: '104px 0 0' }}>
           <C>
             <motion.div {...reveal()} style={{ maxWidth: 780, marginBottom: 42 }}>
-              <div style={eyebrow}>The EMILIA system</div>
-              <h2 style={{ ...styles.h2, maxWidth: 720 }}>Open discovery creates the paid boundary.</h2>
+              <div style={eyebrow}>One action, five chapters</div>
+              <h2 style={{ ...styles.h2, maxWidth: 720 }}>A vendor bank-detail change tells the whole product story.</h2>
               <p style={{ ...styles.body, maxWidth: 700, marginTop: 18 }}>
-                The free map earns trust. Gate sells preventive control. The open Protocol keeps
-                evidence portable. Assurance makes the deployed boundary operable.
+                The agent is identified and credentialed. Neither fact establishes that this exact
+                new destination is inside the customer&apos;s authority.
+                EMILIA gives each part of the product system one clear job before and after that consequence.
               </p>
+              <Link href="/products" style={{ fontFamily: font.mono, fontSize: 12, color: '#765A13' }}>Follow the complete story →</Link>
             </motion.div>
             <div style={{ borderTop: `1px solid ${color.border}` }}>
-              {PRODUCTS.map((product, index) => (
+              {PRODUCT_STORIES.map((product, index) => (
                 <motion.a
-                  key={product.title}
+                  key={product.key}
                   href={product.href}
                   className="ep-home-stack-row"
                   {...reveal(index * 0.05)}
@@ -250,9 +220,9 @@ export default function HomePage(): React.ReactElement {
                     textDecoration: 'none',
                   }}
                 >
-                  <span style={{ fontFamily: font.mono, fontSize: 10, color: product.accent, letterSpacing: 1.4, textTransform: 'uppercase' }}>{product.label}</span>
-                  <strong style={{ fontFamily: font.sans, fontSize: 17, color: color.t1 }}>{product.title}</strong>
-                  <span style={{ fontSize: 14.5, lineHeight: 1.65, color: color.t2 }}>{product.body}</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.4, textTransform: 'uppercase' }}>{product.chapter} / {product.verb}</span>
+                  <strong style={{ fontFamily: font.sans, fontSize: 17, color: color.t1 }}>{product.name}</strong>
+                  <span style={{ fontSize: 14.5, lineHeight: 1.65, color: color.t2 }}>{product.storyMoment}</span>
                   <span aria-hidden style={{ color: color.gold }}>→</span>
                 </motion.a>
               ))}
@@ -376,7 +346,7 @@ export default function HomePage(): React.ReactElement {
                 ))}
                 <p style={{ fontSize: 13.5, color: 'rgba(250,250,249,0.52)', lineHeight: 1.65, marginTop: 22 }}>
                   Agent and MCP vendors plus consultancies create distribution leverage. Healthcare,
-                  privileged infrastructure, energy, and government are expansion paths—not claimed traction.
+                  privileged infrastructure, energy, and government are expansion paths, not claimed traction.
                 </p>
               </motion.div>
             </div>
@@ -420,7 +390,7 @@ export default function HomePage(): React.ReactElement {
             </motion.div>
             <motion.div className="ep-home-grid-cta" {...reveal(0.08)} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 42 }}>
               {[
-                ['Free', 'Run the local Authority Map', 'See supported declared surfaces and explicit blind spots.', '/scan'],
+                ['Free', 'Run Authority Brain locally', 'See supported declared surfaces and explicit blind spots.', '/authority-brain'],
                 ['Pilot', 'Protect one workflow', `${PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · ${PROTECTED_WORKFLOW_PILOT.durationLabel}`, '/pilot'],
                 ['Diligence', 'Inspect every claim', 'Open code, conformance, threat models, and bounded proof.', '/security'],
               ].map(([kind, title, body, href]) => (

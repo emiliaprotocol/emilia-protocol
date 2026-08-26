@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
 import Link from 'next/link';
 import {
   Activity,
@@ -10,13 +9,14 @@ import {
 } from 'lucide-react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import { ProductStoryHero } from '@/components/product-story/ProductStory';
 import { cta, color, font, radius, styles } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'Assurance Plane — Re-performance for AI Controls',
+  title: 'Assurance Plane: Re-performance for AI Controls',
   description:
-    'Managed re-performance, conformance records, continuous evidence, and audit or '
-    + 'underwriter packages for EMILIA Gate deployments. Verification remains open and reproducible.',
+    'Implemented re-performance, conformance-report, and deployment-evidence procedures '
+    + 'for supplied EMILIA Gate inputs. Verification remains open and reproducible.',
   alternates: { canonical: '/assurance' },
   openGraph: {
     images: ['/opengraph-image'],
@@ -28,12 +28,12 @@ export const metadata: Metadata = {
   },
 };
 
-const SERVICES = [
+const PROCEDURES = [
   {
     Icon: RefreshCw,
-    title: 'Managed re-performance',
+    title: 'Independent re-performance',
     body:
-      'We re-run the open verifier over the supplied population using explicitly pinned keys, profiles, clocks, and input digests. Runtime claims are compared, never trusted.',
+      'The procedure reruns the open verifier over a supplied population using explicitly pinned keys, profiles, clocks, and input digests. Runtime claims are compared, never trusted.',
   },
   {
     Icon: FileCheck2,
@@ -43,9 +43,9 @@ const SERVICES = [
   },
   {
     Icon: Activity,
-    title: 'Continuous evidence',
+    title: 'Repeatable evidence checks',
     body:
-      'Scheduled evidence-head capture, repeatable checks, and drift reporting turn a point-in-time control test into a traceable operating record.',
+      'Repeated evidence-head capture, checks, and drift reporting can turn supplied point-in-time inputs into a traceable operating record.',
   },
   {
     Icon: ShieldCheck,
@@ -88,83 +88,34 @@ const ARTIFACTS = [
   },
 ];
 
-const SERVICE_JSONLD = {
-  '@context': 'https://schema.org',
-  '@type': 'Service',
-  '@id': 'https://www.emiliaprotocol.ai/assurance#service',
-  name: 'EMILIA Assurance Plane',
-  serviceType: 'Technical assurance and conformance re-performance',
-  url: 'https://www.emiliaprotocol.ai/assurance',
-  provider: {
-    '@type': 'Organization',
-    name: 'EMILIA Protocol, Inc.',
-    url: 'https://www.emiliaprotocol.ai',
-  },
-  description:
-    'Managed re-performance, conformance records, continuous evidence, and technical packages '
-    + 'for a customer-appointed auditor or underwriter. The service does not issue audit opinions '
-    + 'or accredited certifications.',
-  areaServed: 'Worldwide',
-};
-
 const C = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
   <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );
 
-export default async function AssurancePage() {
-  const nonce = (await headers()).get('x-nonce') ?? '';
-
+export default function AssurancePage() {
   return (
     <div style={styles.page}>
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(SERVICE_JSONLD) }}
-        nonce={nonce}
-      />
       <SiteNav activePage="Assurance" />
 
       <main>
-        <section style={{ padding: '112px 0 88px', borderBottom: `1px solid ${color.border}` }}>
-          <C>
-            <div style={styles.eyebrow}>EMILIA ASSURANCE PLANE</div>
-            <h1 style={{ ...styles.h1Large, maxWidth: 920, marginTop: 18 }}>
-              Re-perform the evidence. Do not trust the dashboard.
-            </h1>
-            <p style={{ ...styles.body, maxWidth: 760, marginTop: 24, fontSize: 18 }}>
-              Gate produces the operating evidence. The Assurance Plane independently re-runs
-              the open checks under pinned inputs, records any drift, and assembles work a
-              customer&rsquo;s auditor, regulator, or underwriter can reproduce.
-            </p>
-            <p style={{ fontFamily: font.mono, color: color.gold, fontSize: 14, fontWeight: 600, marginTop: 24 }}>
-              Protocol proves. Gate prevents. Assurance re-performs.
-            </p>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 34 }}>
-              <Link href="/partners" className="ep-cta" style={cta.primary}>
-                Scope an assurance engagement <ArrowRight size={15} aria-hidden="true" />
-              </Link>
-              <a href="#open-verification" className="ep-cta-secondary" style={cta.secondary}>
-                Run the open procedure
-              </a>
-            </div>
-          </C>
-        </section>
+        <ProductStoryHero product="assurance" />
 
         <section style={{ padding: '88px 0', borderBottom: `1px solid ${color.border}` }}>
           <C>
             <div style={{ maxWidth: 720, marginBottom: 46 }}>
-              <div style={styles.eyebrow}>WHAT THE PAID PLANE DOES</div>
+              <div style={styles.eyebrow}>IMPLEMENTED PROCEDURES</div>
               <h2 style={{ ...styles.h2, marginTop: 14 }}>
                 Evidence operations above the open verifier.
               </h2>
               <p style={{ ...styles.body, marginTop: 16 }}>
-                Verification stays free and reproducible. Customers pay for disciplined execution:
-                pinning the inputs, re-performing the population, preserving the record, monitoring
-                drift, and preparing the handoff.
+                Verification stays free and reproducible. The repository implements procedures for
+                pinning inputs, re-performing a supplied population, preserving the record, exposing
+                drift, and preparing a technical handoff. A pilot or service engagement must be
+                separately scoped.
               </p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-              {SERVICES.map(({ Icon, title, body }) => (
+              {PROCEDURES.map(({ Icon, title, body }) => (
                 <article
                   key={title}
                   style={{
@@ -191,7 +142,7 @@ export default async function AssurancePage() {
             <div style={{ maxWidth: 760, marginBottom: 40 }}>
               <div style={styles.eyebrow}>RUNNING ARTIFACTS</div>
               <h2 style={{ ...styles.h2, marginTop: 14 }}>
-                The service is grounded in code a third party can inspect.
+                The procedure is grounded in code a third party can inspect.
               </h2>
             </div>
             <div style={{ borderTop: `1px solid ${color.border}` }}>
@@ -303,7 +254,7 @@ npx -p @emilia-protocol/gate \\
               </p>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 30 }}>
                 <Link href="/partners" className="ep-cta" style={cta.primary}>
-                  Discuss an assurance engagement <ArrowRight size={15} aria-hidden="true" />
+                  Discuss a scoped assurance pilot <ArrowRight size={15} aria-hidden="true" />
                 </Link>
                 <Link href="/auditors" className="ep-cta-secondary" style={cta.secondary}>
                   Auditor procedure

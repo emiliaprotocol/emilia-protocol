@@ -160,6 +160,8 @@
 
 /* ─── Footer Links ───────────────────────────────────────── */
 .ep-footer-link {
+  display: inline-flex;
+  align-items: center;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   color: #78716C;
@@ -932,6 +934,10 @@
 
 /* ─── Assurance artifact index ───────────────────────────── */
 @media (max-width: 640px) {
+  .ep-footer-link {
+    min-height: 44px;
+  }
+
   .ep-protocol-binding-grid,
   .ep-protocol-rollout-grid,
   .ep-protocol-compliance-grid {

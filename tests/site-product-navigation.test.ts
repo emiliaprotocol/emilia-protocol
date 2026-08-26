@@ -10,11 +10,10 @@ describe('public product naming and navigation contract', () => {
   it('keeps every top-navigation destination with a slash-form label', () => {
     const navigation = read('components/SiteNav.tsx');
     const expectedLinks = [
-      ['/authority-brain', '/map'],
-      ['/protect', '/protect'],
-      ['/gate', '/gate'],
+      ['/products', '/products'],
       ['/use-cases', '/solutions'],
       ['/docs', '/developers'],
+      ['/proof', '/proof'],
       ['/protocol', '/protocol'],
       ['/pricing', '/pricing'],
     ];
@@ -26,14 +25,26 @@ describe('public product naming and navigation contract', () => {
     }
   });
 
+  it('groups the buyer-facing product system under the products navigation item', () => {
+    const navigation = read('components/SiteNav.tsx');
+
+    expect(navigation).toContain("'authority-brain'");
+    expect(navigation).toContain("'approver'");
+    expect(navigation).toContain("'assurance'");
+    expect(navigation).toContain("href === '/products'");
+    expect(read('app/product/accountable-signoff/page.tsx')).toContain('activePage="approver"');
+  });
+
   it('makes the self-service protection path discoverable and gives it an activation handoff', () => {
     const homepage = read('app/HomePageClient.tsx');
     const sitemap = read('app/sitemap.ts');
     const builder = read('app/protect/ProtectionBuilder.tsx');
     const activationCli = read('packages/gate/bin/ep-protect.mts');
 
-    expect(homepage).toContain('href="/protect"');
+    expect(homepage).toContain('href="/products"');
+    expect(read('app/products/page.tsx')).toContain('ProductStoryHub');
     expect(sitemap).toContain("{ path: '/protect'");
+    expect(sitemap).toContain("{ path: '/products'");
     expect(builder).toContain('ep-protect activate');
     expect(builder).toContain('customer-owned-mcp-gateway');
     expect(activationCli).toContain('activateProtectionPlan');

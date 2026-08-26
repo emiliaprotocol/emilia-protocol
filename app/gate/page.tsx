@@ -4,6 +4,7 @@
 
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import { ProductStoryHero } from '@/components/product-story/ProductStory';
 import { GATE_QUALIFICATION } from '@/lib/commercial-offer';
 import { styles, cta, color, font } from '@/lib/tokens';
 
@@ -137,37 +138,7 @@ export default function GatePage() {
     <>
       <SiteNav activePage="Gate" />
       <main style={styles.page}>
-        {/* Hero */}
-        <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 56 }}>
-          <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA GATE · AUTHORITY AT THE POINT OF CONSEQUENCE</div>
-            <h1 style={{ ...styles.h1, marginTop: 16 }}>Put customer authority where agent intent enters the protected system.</h1>
-            <p style={{ fontFamily: font.mono, color: color.gold, fontSize: 14, fontWeight: 600, marginTop: 18 }}>
-              Protocol proves. Gate prevents.
-            </p>
-            <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
-              On a configured, exclusively mediated path, EMILIA Gate sits immediately before protected execution. Before money moves,
-              infrastructure changes, regulated records update, or irreversible state changes, Gate
-              verifies the exact authority and evidence the resource owner requires, consumes
-              accepted authorization once, and records the result.
-            </p>
-            <p style={{ ...styles.body, maxWidth: 760, marginTop: 12, fontSize: 15, color: color.t2 }}>
-              On a fully mediated path, missing, stale, mismatched, or replayed evidence never
-              reaches mutation. The open Protocol lets the relying party reproduce why the exact
-              action passed or failed under its own pinned trust inputs.
-            </p>
-            <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
-              <a href="/gate/live" style={cta.primary}>Open Gate reference</a>
-              <a href="/gate/consequence-coverage" style={cta.secondary}>Find bypassed effects</a>
-              <a href="/gate/control-plane" style={cta.secondary}>Open reference control plane</a>
-              <a href="#loop" style={cta.secondary}>How it works</a>
-              <a href="#surfaces" style={cta.secondary}>Where it integrates</a>
-              <a href="/try/receipt-required" style={cta.secondary}>Try to break it</a>
-              <a href="/fire-drill/cf-1" style={cta.secondary}>CF-1 conformance</a>
-              <a href="/pilot?v=gate" style={cta.secondary}>Request pilot</a>
-            </div>
-          </div>
-        </section>
+        <ProductStoryHero product="gate" />
 
         {/* The one line */}
         <section style={styles.section}>
@@ -237,7 +208,7 @@ export default function GatePage() {
               lifecycle. Each artifact stays a separate evidence leg under the relying party&rsquo;s
               pinned program and authorities.
             </p>
-            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 16 }}>
               {RISK_PLANE.map(({ title, body }) => (
                 <div key={title} style={{ ...styles.card, padding: 24, borderTop: `3px solid ${color.gold}` }}>
                   <div style={{ ...styles.h3, fontSize: 17 }}>{title}</div>
@@ -276,8 +247,8 @@ export default function GatePage() {
               execution fields, consumed once, and turned into a reliance packet. The demo runs
               locally with generated keys; no EMILIA server is trusted.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 32, alignItems: 'start' }}>
-              <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.8, color: '#D6D3D1', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: 22, margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{RUN}</pre>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 24, marginTop: 32, alignItems: 'start' }}>
+              <pre style={{ maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.8, color: '#D6D3D1', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: 22, margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{RUN}</pre>
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.14)' }}>
                 {DEMO.map(([a, b]) => (
                   <div key={a} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, padding: '13px 0', borderBottom: '1px solid rgba(255,255,255,0.14)' }}>
@@ -299,12 +270,12 @@ export default function GatePage() {
               This is not just an amount threshold. EMILIA Gate treats entire action categories as
               high risk and binds the material system-of-record fields for each category.
             </p>
-            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 16 }}>
               {GATED.map((a) => (
                 <div key={a.type} style={{ ...styles.card, padding: 24 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
-                    <div style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1, textTransform: 'uppercase' }}>{a.type}</div>
-                    <div style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{a.tier}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                    <div style={{ minWidth: 0, flex: '1 1 150px', fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1, textTransform: 'uppercase', overflowWrap: 'anywhere' }}>{a.type}</div>
+                    <div style={{ flex: '0 0 auto', fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{a.tier}</div>
                   </div>
                   <div style={{ ...styles.h3, fontSize: 18, marginTop: 8 }}>{a.label}</div>
                   <div style={{ ...styles.body, fontSize: 14, marginTop: 12, color: color.t2 }}>{a.sample}</div>
@@ -380,7 +351,7 @@ export default function GatePage() {
               the exact authority and any required approver evidence under the relying party&rsquo;s
               pinned rules, then controls admission at covered consequence boundaries.
             </p>
-            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 }}>
+            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: 16 }}>
               {[
                 ['Evaluation qualification', 'Gate Qualification v2', 'Does accepted evaluation evidence still match this exact measured candidate, assignment, and protected request?'],
                 ['Call governance', 'AgentROA', 'Does the call remain inside the agent’s verified delegated scope?'],
@@ -427,7 +398,7 @@ export default function GatePage() {
               separately authorized action. Remote compensation is a reserved-capacity building
               block, not a guarantee that an external effect can be reversed.
             </p>
-            <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.75, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 22, margin: '28px 0 0', overflowX: 'auto', whiteSpace: 'pre' }}>{CODE}</pre>
+            <pre style={{ maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.75, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 22, margin: '28px 0 0', overflowX: 'auto', whiteSpace: 'pre' }}>{CODE}</pre>
             <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
               {[
                 ['428 challenge', 'Missing or bad receipt never reaches the mutation.'],
@@ -456,7 +427,7 @@ export default function GatePage() {
               The local engine checks each exact action against that program before the
               credential-owning adapter can act.
             </p>
-            <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 }}>
+            <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: 16 }}>
               {[
                 ['Finite by construction', 'Child authority transfers from the signed root; it is never copied into an unlimited fleet credential.'],
                 ['AI can only tighten', 'Risk signals may reduce budgets, require review, suspend, or refuse. They cannot widen human-granted authority.'],
@@ -500,8 +471,8 @@ export default function GatePage() {
               context, and a pinned result projection. Signing or logging failure preserves the
               Gate outcome without claiming complete proof.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 28, alignItems: 'start' }}>
-              <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.75, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 22, margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{RECEIPT_PROGRAM_RUN}</pre>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 24, marginTop: 28, alignItems: 'start' }}>
+              <pre style={{ maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.75, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 22, margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{RECEIPT_PROGRAM_RUN}</pre>
               <div style={{ ...styles.card, padding: 24 }}>
                 <div style={{ ...styles.h3, fontSize: 17 }}>What the certificate proves</div>
                 <p style={{ ...styles.body, fontSize: 14, color: color.t2, marginTop: 10 }}>
@@ -527,7 +498,7 @@ export default function GatePage() {
           <div style={styles.container}>
             <div style={styles.eyebrow}>WHERE IT INTEGRATES</div>
             <h2 style={{ ...styles.h2, marginTop: 12 }}>One Gate pattern, several integration boundaries.</h2>
-            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16 }}>
               {SURFACES.map((s) => (
                 <div key={s.type} style={{ ...styles.card, padding: 24 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -555,7 +526,7 @@ export default function GatePage() {
               checks, you have a reproducible conformance record instead of a claim. It makes an open PR crisp:
               <i>“this makes <code>delete_row</code> earn EG-1 / CF-1.”</i>
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 32, alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 24, marginTop: 32, alignItems: 'start' }}>
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.14)' }}>
                 {EG1.map((c, i) => (
                   <div key={c} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 14, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.14)' }}>
@@ -565,7 +536,7 @@ export default function GatePage() {
                 ))}
               </div>
               <div>
-                <pre style={{ fontFamily: font.mono, fontSize: 12, lineHeight: 1.7, color: '#D6D3D1', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: 22, margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{EG1_RUN}</pre>
+                <pre style={{ maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: font.mono, fontSize: 12, lineHeight: 1.7, color: '#D6D3D1', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: 22, margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{EG1_RUN}</pre>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: 20, padding: '10px 16px', border: `1px solid ${color.gold}`, borderRadius: 999 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 999, background: color.green, display: 'inline-block' }} />
                   <span style={{ fontFamily: font.mono, fontSize: 12, color: color.gold, letterSpacing: 1, textTransform: 'uppercase' }}>EG-1 Enforced</span>

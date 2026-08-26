@@ -5,9 +5,9 @@ import SiteNav from '@/components/SiteNav';
 import GraceLiveConsole from './GraceLiveConsole';
 
 export const metadata: Metadata = {
-  title: 'GRACE Live Control Room | EMILIA Protocol',
+  title: 'GRACE: A Safer Way for AI to Curtail Grid Load | EMILIA',
   description:
-    'Run the GRACE reference circuit: mobile Class-A quorum, bounded COSA dispatch, independently signed meter evidence, Action State, and one-time settlement.',
+    'Watch one 18 MW reference curtailment move from two distinct approver signatures through adapter acknowledgment, a separately keyed meter statement, Action State, and one-time settlement admission.',
   alternates: { canonical: '/grace/live' },
 };
 
