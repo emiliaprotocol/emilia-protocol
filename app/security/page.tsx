@@ -278,7 +278,7 @@ export default function SecurityPage() {
           <li>DPA template (also public at <a href="/legal/privacy" style={{ color: color.blue, textDecoration: 'none' }}>/legal/privacy</a> as the working version)</li>
           <li>Incident-response playbook</li>
           <li>Business-continuity / disaster-recovery summary</li>
-          <li>Penetration-test summary letter (once external review is complete)</li>
+          <li>Independent Strix assessment and targeted retest materials</li>
           <li>NIST 800-53 Rev. 5 control mapping</li>
           <li>FFIEC IT Examination Handbook alignment notes (FinGuard) and OMB Circular A-123 alignment notes (GovGuard)</li>
         </ul>
