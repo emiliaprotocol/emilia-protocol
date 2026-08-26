@@ -1,0 +1,34 @@
+{
+  "@version": "EP-AIC-AEB-CROSSING-MAPPING-v0.1",
+  "crossing_record": "EP-AEB-CROSSING-RECORD-v1",
+  "native_mappings": [
+    {
+      "id": "EP-AEB-CROSSING-AIC-JWT-JKT-v1",
+      "native_profile": "AIC-JWT-RFC7638-JKT",
+      "principal_binding": "RFC7638_JKT",
+      "hash_alg": "jkt"
+    },
+    {
+      "id": "EP-AEB-CROSSING-AIC-X509-SPKI-v1",
+      "native_profile": "AIC-X509-SPKI",
+      "principal_binding": "X509_SPKI",
+      "hash_algs": ["sha-256", "sha-384", "sha-512"]
+    }
+  ],
+  "jwt_svid_projection": {
+    "id": "EP-AIC-JWT-SVID-PROJECTION-v1",
+    "purpose": "WORKLOAD_IDENTITY_ONLY",
+    "source_typ": "aic+jwt",
+    "projected_typ": "JWT",
+    "audience_cardinality": 1,
+    "new_signature_required": true,
+    "authority_semantics_preserved": false
+  },
+  "rules": {
+    "native_verification_required": "VERIFIED",
+    "relying_party_trust_anchor_pin_required": true,
+    "principal_binding_exact_match_required": true,
+    "carrier_types_are_not_interchangeable": true,
+    "crossing_record_is_execution_authority": false
+  }
+}

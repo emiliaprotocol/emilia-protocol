@@ -1,0 +1,68 @@
+{
+  "@version": "AIC-AEB-CROSSING-SOURCE-LOCK-v0.1",
+  "drafts": [
+    {
+      "name": "draft-wei-aic-jwt-00",
+      "url": "https://www.ietf.org/archive/id/draft-wei-aic-jwt-00.txt",
+      "sha256": "c103cb5d4c541c7aa30ee49e0c36d56ad3ac76f50ce73a39fd0be1109781bd3c",
+      "bounded_sections": [
+        "5 AIC-JWT Token Format",
+        "9 Principal Key Binding",
+        "11 Validation Algorithm",
+        "16 Compatibility with the Varwof Unified JWT Profile"
+      ]
+    },
+    {
+      "name": "draft-wei-aic-identity-cert-00",
+      "url": "https://www.ietf.org/archive/id/draft-wei-aic-identity-cert-00.txt",
+      "sha256": "169d2f4ae37b3448e955d8a0e0fde04ef43855b93e7aa1e8e3021fb4eba73b2e",
+      "bounded_sections": [
+        "5 AI Agent Identity Certificate Extension",
+        "8 Agent Authentication and Authorization",
+        "9 Security Considerations"
+      ]
+    }
+  ],
+  "varwof": {
+    "repositories": [
+      {
+        "repository": "https://github.com/varwof/aic-jwt",
+        "revision": "5c17d408d413469d66c7917e838ff66a109792cb",
+        "inspected_files": [
+          {
+            "path": "ts/aicjwt.ts",
+            "url": "https://raw.githubusercontent.com/varwof/aic-jwt/5c17d408d413469d66c7917e838ff66a109792cb/ts/aicjwt.ts",
+            "sha256": "2e5c59b60ce86a309003be8f6e5df8aaeae96e81027b0c3a7cba9e561545c097"
+          }
+        ]
+      },
+      {
+        "repository": "https://github.com/varwof/types",
+        "revision": "21bb3f637564c2fae6c854fb21ce26d66a9190d5",
+        "inspected_files": [
+          {
+            "path": "aicjwt/validate.go",
+            "url": "https://raw.githubusercontent.com/varwof/types/21bb3f637564c2fae6c854fb21ce26d66a9190d5/aicjwt/validate.go",
+            "sha256": "9d85b2212d1ffbc4f76fc7d300d764f93845d6ced35636687619b476b742c9e3"
+          },
+          {
+            "path": "aicjwt/keyhash.go",
+            "url": "https://raw.githubusercontent.com/varwof/types/21bb3f637564c2fae6c854fb21ce26d66a9190d5/aicjwt/keyhash.go",
+            "sha256": "081a75b736e2236920dca5509325e3cb3873802d5bade70e549be56dc89cd94d"
+          }
+        ]
+      },
+      {
+        "repository": "https://github.com/varwof/gateway-core",
+        "revision": "93fbd426ca4349dbbfc195638408a763ad28778e",
+        "inspected_files": [
+          {
+            "path": "credential_bundle.go",
+            "url": "https://raw.githubusercontent.com/varwof/gateway-core/93fbd426ca4349dbbfc195638408a763ad28778e/credential_bundle.go",
+            "sha256": "4c69c00e4e3f8f9ad8c7082f61b6bcee4ddb68ec250cef3eafce49fbc1bd4edc"
+          }
+        ]
+      }
+    ]
+  }
+}
