@@ -18,11 +18,12 @@
  *
  * Two structural facts drive the query shape:
  *   1. One org can mint MANY tokens, each under its own tenant (the token's
- *      tenant_id is the minting entity id; its organization_id is that entity's
- *      org, which is NULL when the entity is not org-bound). So the org → tenant
- *      map is a SET, resolved from two arms: organization_id = org OR
- *      tenant_id = org (the second arm catches org-unbound tokens whose
- *      organization_id is NULL but which still provision a directory).
+ *      tenant_id is the minting entity id; its organization_id is the reviewed
+ *      protocol organization binding). The org → tenant map is therefore a SET,
+ *      but organization_id is its ONLY provenance. tenant_id is a registrable
+ *      entity label and must never be interpreted as an organization id: doing
+ *      so would let a public entity slug import its SCIM users into an unrelated
+ *      organization's directory boundary.
  *   2. Directory governance is STICKY. "Has a directory" is keyed on the
  *      EXISTENCE of a token row, revoked or not — never on token liveness.
  *      Revoking a SCIM bearer token is credential hygiene reachable by the very
@@ -74,22 +75,29 @@ const LOOKUP_FAILED = { status: 503, code: 'directory_lookup_failed', detail: 'D
  * @returns {Promise<EnrollmentBasisOk|EnrollmentBasisError>}
  */
 export async function resolveEnrollmentBasis(supabase, organizationId, approverId) {
-  // Step A — resolve the org's directory tenant SET. Two equality reads unioned
-  // in JS: org ids are attacker-influenced strings, so avoid interpolating them
-  // into a PostgREST .or() filter. Revoked tokens are INCLUDED (sticky
-  // governance), so no revoked_at filter here.
+  // Step A — resolve the org's directory tenant SET from the explicit
+  // organization binding only. Revoked tokens are INCLUDED (sticky governance),
+  // so no revoked_at filter appears here. In particular, never add a
+  // tenant_id=organizationId fallback: tenant_id is derived from a registrable
+  // entity slug and is not organization provenance.
   let tenantIds;
   try {
-    const [byOrg, byTenant] = await Promise.all([
-      supabase.from('scim_provisioning_tokens').select('tenant_id').eq('organization_id', organizationId),
-      supabase.from('scim_provisioning_tokens').select('tenant_id').eq('tenant_id', organizationId),
-    ]);
-    if (byOrg.error || byTenant.error) {
-      logger.error('[directory-anchor] provisioning-token lookup failed:', byOrg.error || byTenant.error);
+    const byOrg = await supabase
+      .from('scim_provisioning_tokens')
+      .select('tenant_id, organization_id')
+      .eq('organization_id', organizationId);
+    if (byOrg.error) {
+      logger.error('[directory-anchor] provisioning-token lookup failed:', byOrg.error);
       return { error: LOOKUP_FAILED };
     }
     tenantIds = [...new Set(
-      [...(byOrg.data || []), ...(byTenant.data || [])].map((r) => r.tenant_id).filter(Boolean),
+      (byOrg.data || [])
+        // Legacy self-org rows used the public entity slug as organization_id.
+        // They remain non-authoritative even when revoked because sticky
+        // directory governance intentionally retains legitimate revoked rows.
+        .filter((r) => r.organization_id !== r.tenant_id)
+        .map((r) => r.tenant_id)
+        .filter(Boolean),
     )];
   } catch (e) {
     logger.error('[directory-anchor] provisioning-token lookup threw:', e?.message);

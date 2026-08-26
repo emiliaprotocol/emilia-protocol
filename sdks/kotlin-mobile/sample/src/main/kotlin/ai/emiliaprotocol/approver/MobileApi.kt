@@ -10,11 +10,14 @@ import ai.emiliaprotocol.mobile.EmiliaMobileEnrollmentResponse
 import ai.emiliaprotocol.mobile.EmiliaMobileHistoryResponse
 import ai.emiliaprotocol.mobile.EmiliaMobileInboxResponse
 import ai.emiliaprotocol.mobile.EmiliaMobilePassportResponse
+import ai.emiliaprotocol.mobile.EmiliaPasskeyAssertion
 import ai.emiliaprotocol.mobile.EmiliaMobileWithdrawalResponse
 import java.io.ByteArrayOutputStream
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.util.Base64
 import javax.net.ssl.HttpsURLConnection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +38,14 @@ data class PairingResponse(
     @SerialName("approver_id") val approverId: String,
     @SerialName("profile_id") val profileId: String,
 )
+
+private const val PAIRING_IDENTITY_PROFILE = "EP-MOBILE-PAIRING-IDENTITY-v1"
+
+internal fun pairingIdentityChallenge(code: String): ByteArray = MessageDigest.getInstance("SHA-256")
+    .digest("$PAIRING_IDENTITY_PROFILE\u0000${code.trim().uppercase()}".toByteArray(StandardCharsets.UTF_8))
+
+private fun ByteArray.pairingBase64Url(): String =
+    Base64.getUrlEncoder().withoutPadding().encodeToString(this)
 
 @Serializable
 private data class ChallengeResponse(
@@ -105,12 +116,27 @@ class MobileApi internal constructor(
         }
     }
 
-    suspend fun exchangePairing(code: String, appId: String): PairingResponse = post(
+    suspend fun exchangePairing(
+        code: String,
+        appId: String,
+        identityAssertion: EmiliaPasskeyAssertion,
+    ): PairingResponse = post(
         "v1/mobile/pairings/exchange",
         buildJsonObject {
             put("pairing_code", code)
             put("platform", "android")
             put("app_id", appId)
+            put("identity_assertion", buildJsonObject {
+                val credentialId = identityAssertion.credentialId.pairingBase64Url()
+                put("id", credentialId)
+                put("rawId", credentialId)
+                put("type", "public-key")
+                put("response", buildJsonObject {
+                    put("clientDataJSON", identityAssertion.clientDataJson.pairingBase64Url())
+                    put("authenticatorData", identityAssertion.authenticatorData.pairingBase64Url())
+                    put("signature", identityAssertion.signature.pairingBase64Url())
+                })
+            })
         },
         authenticated = false,
     )

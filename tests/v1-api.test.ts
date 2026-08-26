@@ -1507,6 +1507,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
   it.each([
     ['23505', 'trust_receipt_already_consumed', 409, 'receipt_already_consumed'],
     ['28000', 'trust_receipt_expired', 410, 'receipt_expired'],
+    ['28000', 'trust_receipt_signoff_rejected', 403, 'signoff_rejected'],
     ['28000', 'trust_receipt_registry_facts_invalid', 403, 'registry_facts_changed'],
   ])('maps atomic consume RPC error %s/%s', async (code, message, status, type) => {
     authedAs('user_1');
@@ -1612,6 +1613,73 @@ describe('GET /api/v1/trust-receipts/:id/evidence', () => {
     expect(body.signed).toBe(false);
     expect(body.document).toBeNull();
     expect(body.policy).toMatchObject({ decision: 'observe', observed_decision: 'deny' });
+  });
+
+  it('does not mint portable authority evidence for an unused approval after receipt expiry', async () => {
+    authedAs('user_1');
+    const issuedAt = new Date(Date.now() - 60_000).toISOString();
+    const approvedAt = new Date(Date.now() - 30_000).toISOString();
+    const expiresAt = new Date(Date.now() - 10_000).toISOString();
+    const canonicalAction = {
+      organization_id: 'org_1',
+      actor_id: 'user_1',
+      action_type: 'deploy_production',
+      target_resource_id: 'prod',
+      nonce: 'expired-approval',
+      expires_at: expiresAt,
+      requested_at: issuedAt,
+    };
+    const events = [
+      {
+        event_type: 'guard.trust_receipt.created',
+        actor_id: 'user_1',
+        actor_type: 'principal',
+        action: 'create',
+        before_state: null,
+        created_at: issuedAt,
+        after_state: {
+          organization_id: 'org_1',
+          action_type: 'deploy_production',
+          decision: 'allow_with_signoff',
+          enforcement_mode: 'enforce',
+          policy_id: 'p1',
+          policy_hash: 'h1',
+          action_hash: 'a1',
+          signoff_required: true,
+          receipt_status: 'pending_signoff',
+          expires_at: expiresAt,
+          canonical_action: canonicalAction,
+        },
+      },
+      {
+        event_type: 'guard.signoff.requested',
+        actor_id: 'user_1',
+        after_state: { signoff_id: 'sig_expired' },
+        created_at: issuedAt,
+      },
+      {
+        event_type: 'guard.signoff.approved',
+        actor_id: 'user_2',
+        after_state: {
+          signoff_id: 'sig_expired',
+          approver_id: 'user_2',
+          decided_at: approvedAt,
+          key_class: 'C',
+        },
+        created_at: approvedAt,
+      },
+    ];
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: events, error: null } },
+    }));
+
+    const res = await readEvidence(req(), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.signed).toBe(false);
+    expect(body.document).toBeNull();
+    expect(body.public_key).toBeNull();
   });
 
   it('hides evidence from a same-organization peer without receipt.evidence', async () => {

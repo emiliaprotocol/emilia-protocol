@@ -18,7 +18,12 @@ import {
   createMobileStateBackend,
   createPairing,
   exchangePairing,
+  exchangePairingVerified,
+  listMobilePairingIdentityCredentials,
+  loadMobilePairingIdentityContext,
   listMobileActions,
+  lookupMobileCeremonyResult,
+  mobilePairingIdentityChallenge,
   registerMobileActionChallenge,
   resolveMobileAction,
   revokeMobileSession,
@@ -439,39 +444,36 @@ describe('durable mobile storage adapters', () => {
     });
     from.mockReturnValueOnce(sessionLookup);
     rpc.mockImplementation(async (name) => {
-      if (name === 'create_mobile_pairing') return { data: true, error: null };
-      if (name === 'exchange_mobile_pairing') {
-        return { data: { ok: true, approver_id: 'approver-1' }, error: null };
-      }
-      if (name === 'touch_mobile_session') return { data: true, error: null };
+      if (name === 'create_mobile_pairing_verified') return { data: true, error: null };
+      if (name === 'touch_mobile_session_verified') return { data: true, error: null };
       throw new Error(`unexpected RPC ${name}`);
     });
     const supabase = { from, rpc };
     await createPairing(supabase, {
       code: 'ABCD-EFGH-JKLM',
       entityRef: 'entity-1',
+      organizationId: '@org:entity-1',
       approverId: 'approver-1',
+      directoryUserId: '00000000-0000-0000-0000-000000000099',
       profileId: 'profile-1',
       allowedApps: { ios: ['ai.emiliaprotocol.approver'], android: [] },
       expiresAt: '2026-07-15T01:00:00.000Z',
       sessionExpiresAt: '2026-08-15T00:00:00.000Z',
     });
-    expect(rpc).toHaveBeenCalledWith('create_mobile_pairing', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('create_mobile_pairing_verified', expect.objectContaining({
       p_code_hash: sha256Hex('ABCD-EFGH-JKLM'),
+      p_organization_id: '@org:entity-1',
+      p_directory_user_id: '00000000-0000-0000-0000-000000000099',
       p_allowed_apps: { ios: ['ai.emiliaprotocol.approver'], android: [] },
     }));
-    const exchanged = await exchangePairing(supabase, {
+    await expect(exchangePairing(supabase, {
       code: 'ABCD-EFGH-JKLM',
       token: `ep_mobile_${'a'.repeat(43)}`,
       platform: 'ios',
       appId: 'ai.emiliaprotocol.approver',
-    });
-    expect(exchanged.ok).toBe(true);
-    expect(rpc).toHaveBeenCalledWith('exchange_mobile_pairing', expect.objectContaining({
-      p_token_hash: sha256Hex(`ep_mobile_${'a'.repeat(43)}`),
-    }));
+    })).rejects.toThrow('unverified_mobile_pairing_exchange_disabled');
     expect(await authenticateMobileToken(supabase, `Bearer ep_mobile_${'a'.repeat(43)}`)).toMatchObject({ entity_ref: 'entity-1' });
-    expect(rpc).toHaveBeenCalledWith('touch_mobile_session', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('touch_mobile_session_verified', expect.objectContaining({
       p_token_hash: sha256Hex(`ep_mobile_${'a'.repeat(43)}`),
     }));
     expect(await authenticateMobileToken(supabase, 'Bearer attacker-token')).toBeNull();
@@ -480,7 +482,9 @@ describe('durable mobile storage adapters', () => {
     const pairingInput = {
       code: 'ABCD-EFGH-JKLM',
       entityRef: 'entity-1',
+      organizationId: '@org:entity-1',
       approverId: 'approver-1',
+      directoryUserId: '00000000-0000-0000-0000-000000000099',
       profileId: 'profile-1',
       allowedApps: { ios: ['ai.emiliaprotocol.approver'], android: [] },
       expiresAt: '2026-07-15T01:00:00.000Z',
@@ -492,22 +496,12 @@ describe('durable mobile storage adapters', () => {
     await expect(createPairing({
       rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
     }, pairingInput)).rejects.toThrow(/pairing creation refused/);
-    await expect(exchangePairing({
-      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
-    }, {
+    await expect(exchangePairing({ rpc: vi.fn() }, {
       code: pairingInput.code,
       token: `ep_mobile_${'a'.repeat(43)}`,
       platform: 'ios',
       appId: 'ai.emiliaprotocol.approver',
-    })).rejects.toThrow(/pairing exchange failed/);
-    expect(await exchangePairing({
-      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
-    }, {
-      code: pairingInput.code,
-      token: `ep_mobile_${'a'.repeat(43)}`,
-      platform: 'ios',
-      appId: 'ai.emiliaprotocol.approver',
-    })).toEqual({ ok: false, reason: 'invalid_or_expired' });
+    })).rejects.toThrow('unverified_mobile_pairing_exchange_disabled');
 
     await expect(authenticateMobileToken({
       from: vi.fn(() => chain({ data: null, error: { code: '08006' } })),
@@ -527,6 +521,441 @@ describe('durable mobile storage adapters', () => {
       })),
       rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
     }, `Bearer ep_mobile_${'a'.repeat(43)}`)).rejects.toThrow(/session update failed/);
+  });
+
+  it('derives a canonical, code-bound mobile pairing identity challenge', () => {
+    const challenge = mobilePairingIdentityChallenge('  abcd-efgh-jklm  ');
+    expect(challenge).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(challenge).toBe(mobilePairingIdentityChallenge('ABCD-EFGH-JKLM'));
+    expect(challenge).not.toBe(mobilePairingIdentityChallenge('ABCD-EFGH-JKLN'));
+  });
+
+  it('lists only live directory-backed Class-A pairing credentials', async () => {
+    const credentials = chain({
+      data: [
+        {
+          credential_id: 'credential-live-1',
+          transports: ['internal', 'hybrid'],
+          directory_user_id: 'directory-user-1',
+          valid_from: '2026-08-01T00:00:00.000Z',
+          valid_to: '2026-09-01T00:00:00.000Z',
+        },
+        {
+          credential_id: 'credential-live-2',
+          transports: [],
+          directory_user_id: 'directory-user-1',
+          valid_from: null,
+          valid_to: null,
+        },
+        {
+          credential_id: 'credential-expired',
+          transports: ['internal'],
+          directory_user_id: 'directory-user-1',
+          valid_from: '2026-07-01T00:00:00.000Z',
+          valid_to: '2026-08-26T11:59:59.999Z',
+        },
+        {
+          credential_id: 'credential-future',
+          transports: null,
+          directory_user_id: 'directory-user-1',
+          valid_from: '2026-08-26T12:00:00.001Z',
+          valid_to: null,
+        },
+        {
+          credential_id: 'credential-unbound',
+          transports: null,
+          directory_user_id: null,
+          valid_from: null,
+          valid_to: null,
+        },
+      ],
+      error: null,
+    });
+    const supabase = { from: vi.fn(() => credentials) };
+
+    await expect(listMobilePairingIdentityCredentials(supabase, {
+      organizationId: '@org:entity-1',
+      approverId: 'approver-1',
+      directoryUserId: 'directory-user-1',
+      now: '2026-08-26T12:00:00.000Z',
+    })).resolves.toEqual([
+      { id: 'credential-live-1', type: 'public-key', transports: ['internal', 'hybrid'] },
+      { id: 'credential-live-2', type: 'public-key' },
+    ]);
+    expect(supabase.from).toHaveBeenCalledWith('approver_credentials');
+    expect(credentials.eq).toHaveBeenCalledWith('organization_id', '@org:entity-1');
+    expect(credentials.eq).toHaveBeenCalledWith('approver_id', 'approver-1');
+    expect(credentials.eq).toHaveBeenCalledWith('directory_user_id', 'directory-user-1');
+    expect(credentials.eq).toHaveBeenCalledWith('key_class', 'A');
+    expect(credentials.eq).toHaveBeenCalledWith('enrollment_basis', 'directory');
+    expect(credentials.is).toHaveBeenCalledWith('revoked_at', null);
+
+    const invalidNow = await listMobilePairingIdentityCredentials({
+      from: vi.fn(() => chain({
+        data: [{
+          credential_id: 'credential-live-1',
+          transports: ['internal'],
+          directory_user_id: 'directory-user-1',
+          valid_from: null,
+          valid_to: null,
+        }],
+        error: null,
+      })),
+    }, {
+      organizationId: '@org:entity-1',
+      approverId: 'approver-1',
+      directoryUserId: 'directory-user-1',
+      now: 'not-an-instant',
+    });
+    expect(invalidNow).toEqual([]);
+
+    await expect(listMobilePairingIdentityCredentials({
+      from: vi.fn(() => chain({ data: null, error: { message: 'directory offline' } })),
+    }, {
+      organizationId: '@org:entity-1',
+      approverId: 'approver-1',
+      directoryUserId: 'directory-user-1',
+    })).rejects.toThrow(/mobile pairing credential directory failed: directory offline/);
+  });
+
+  it('loads the exact live directory identity bound to a mobile pairing', async () => {
+    const pairing = {
+      entity_ref: 'entity-1',
+      organization_id: '@org:entity-1',
+      approver_id: 'approver-1',
+      directory_user_id: 'directory-user-1',
+      expires_at: '2026-08-26T12:05:00.000Z',
+      consumed_at: null,
+    };
+    const entity = {
+      entity_id: 'entity-1',
+      organization_id: '@org:entity-1',
+      status: 'active',
+    };
+    const directoryUser = {
+      id: 'directory-user-1',
+      tenant_id: 'tenant-1',
+      user_name: 'approver-1',
+      active: true,
+    };
+    const credential = {
+      credential_id: 'credential-1',
+      public_key_cose: 'cose-public-key',
+      sign_count: '7',
+      transports: ['internal'],
+      approver_id: 'approver-1',
+      organization_id: '@org:entity-1',
+      key_class: 'A',
+      enrollment_basis: 'directory',
+      directory_user_id: 'directory-user-1',
+      valid_from: '2026-08-01T00:00:00.000Z',
+      valid_to: '2026-09-01T00:00:00.000Z',
+      revoked_at: null,
+    };
+    const rows = {
+      mobile_pairings: { data: pairing, error: null },
+      entities: { data: entity, error: null },
+      scim_users: { data: directoryUser, error: null },
+      scim_provisioning_tokens: { data: { id: 'token-1' }, error: null },
+      approver_credentials: { data: credential, error: null },
+    };
+    const supabase = {
+      from: vi.fn((table) => chain(rows[table])),
+    };
+
+    await expect(loadMobilePairingIdentityContext(supabase, {
+      code: 'ABCD-EFGH-JKLM',
+      credentialId: 'credential-1',
+      now: '2026-08-26T12:00:00.000Z',
+    })).resolves.toEqual({
+      entityRef: 'entity-1',
+      organizationId: '@org:entity-1',
+      approverId: 'approver-1',
+      credential: {
+        credential_id: 'credential-1',
+        public_key_cose: 'cose-public-key',
+        sign_count: 7,
+        transports: ['internal'],
+      },
+    });
+    expect(supabase.from).toHaveBeenNthCalledWith(1, 'mobile_pairings');
+    expect(supabase.from).toHaveBeenNthCalledWith(2, 'entities');
+    expect(supabase.from).toHaveBeenNthCalledWith(3, 'scim_users');
+    expect(supabase.from).toHaveBeenNthCalledWith(4, 'scim_provisioning_tokens');
+    expect(supabase.from).toHaveBeenNthCalledWith(5, 'approver_credentials');
+  });
+
+  it('rejects stale or cross-directory mobile pairing identity contexts', async () => {
+    const valid = {
+      mobile_pairings: {
+        data: {
+          entity_ref: 'entity-1',
+          organization_id: '@org:entity-1',
+          approver_id: 'approver-1',
+          directory_user_id: 'directory-user-1',
+          expires_at: '2026-08-26T12:05:00.000Z',
+          consumed_at: null,
+        },
+        error: null,
+      },
+      entities: {
+        data: { entity_id: 'entity-1', organization_id: '@org:entity-1', status: 'active' },
+        error: null,
+      },
+      scim_users: {
+        data: {
+          id: 'directory-user-1', tenant_id: 'tenant-1', user_name: 'approver-1', active: true,
+        },
+        error: null,
+      },
+      scim_provisioning_tokens: { data: { id: 'token-1' }, error: null },
+      approver_credentials: {
+        data: {
+          credential_id: 'credential-1',
+          public_key_cose: 'cose-public-key',
+          sign_count: 0,
+          transports: null,
+          approver_id: 'approver-1',
+          organization_id: '@org:entity-1',
+          key_class: 'A',
+          enrollment_basis: 'directory',
+          directory_user_id: 'directory-user-1',
+          valid_from: null,
+          valid_to: null,
+          revoked_at: null,
+        },
+        error: null,
+      },
+    };
+    const load = async (overrides = {}, now = '2026-08-26T12:00:00.000Z') => {
+      const rows = { ...valid, ...overrides };
+      return loadMobilePairingIdentityContext({
+        from: vi.fn((table) => chain(rows[table])),
+      }, { code: 'ABCD-EFGH-JKLM', credentialId: 'credential-1', now });
+    };
+
+    await expect(load({
+      mobile_pairings: {
+        data: { ...valid.mobile_pairings.data, consumed_at: '2026-08-26T11:59:00.000Z' },
+        error: null,
+      },
+    })).resolves.toBeNull();
+    await expect(load({}, '2026-08-26T12:06:00.000Z')).resolves.toBeNull();
+    await expect(load({
+      entities: {
+        data: { ...valid.entities.data, organization_id: '@org:attacker' },
+        error: null,
+      },
+    })).resolves.toBeNull();
+    await expect(load({
+      scim_users: {
+        data: { ...valid.scim_users.data, user_name: 'different-approver' },
+        error: null,
+      },
+    })).resolves.toBeNull();
+    await expect(load({ scim_provisioning_tokens: { data: null, error: null } })).resolves.toBeNull();
+    await expect(load({
+      approver_credentials: {
+        data: { ...valid.approver_credentials.data, organization_id: '@org:attacker' },
+        error: null,
+      },
+    })).resolves.toBeNull();
+    await expect(load({}, 'not-an-instant')).resolves.toBeNull();
+  });
+
+  it('fails closed when any mobile pairing identity directory lookup fails', async () => {
+    const tableOrder = [
+      'mobile_pairings',
+      'entities',
+      'scim_users',
+      'scim_provisioning_tokens',
+      'approver_credentials',
+    ];
+    const successfulRows = {
+      mobile_pairings: {
+        entity_ref: 'entity-1',
+        organization_id: '@org:entity-1',
+        approver_id: 'approver-1',
+        directory_user_id: 'directory-user-1',
+        expires_at: '2026-08-26T12:05:00.000Z',
+        consumed_at: null,
+      },
+      entities: { entity_id: 'entity-1', organization_id: '@org:entity-1', status: 'active' },
+      scim_users: {
+        id: 'directory-user-1', tenant_id: 'tenant-1', user_name: 'approver-1', active: true,
+      },
+      scim_provisioning_tokens: { id: 'token-1' },
+      approver_credentials: {
+        credential_id: 'credential-1',
+        public_key_cose: 'cose-public-key',
+        sign_count: 1,
+        transports: null,
+        approver_id: 'approver-1',
+        organization_id: '@org:entity-1',
+        key_class: 'A',
+        enrollment_basis: 'directory',
+        directory_user_id: 'directory-user-1',
+        valid_from: null,
+        valid_to: null,
+        revoked_at: null,
+      },
+    };
+    for (const failedTable of tableOrder) {
+      const supabase = {
+        from: vi.fn((table) => chain(table === failedTable
+          ? { data: null, error: { message: `${table} unavailable` } }
+          : { data: successfulRows[table], error: null })),
+      };
+      await expect(loadMobilePairingIdentityContext(supabase, {
+        code: 'ABCD-EFGH-JKLM',
+        credentialId: 'credential-1',
+        now: '2026-08-26T12:00:00.000Z',
+      })).rejects.toThrow(/mobile pairing .* lookup failed/);
+    }
+  });
+
+  it('exchanges a pairing only through the proof-bound verified RPC', async () => {
+    const input = {
+      code: 'ABCD-EFGH-JKLM',
+      token: `ep_mobile_${'a'.repeat(43)}`,
+      platform: 'ios',
+      appId: 'ai.emiliaprotocol.approver',
+      credentialId: 'credential-1',
+      approverId: 'approver-1',
+      newSignCount: 8,
+      identityProofDigest: `sha256:${'b'.repeat(64)}`,
+    };
+    const rpc = vi.fn().mockResolvedValue({
+      data: { ok: true, session_id: 'session-1' },
+      error: null,
+    });
+    await expect(exchangePairingVerified({ rpc }, input)).resolves.toEqual({
+      ok: true,
+      session_id: 'session-1',
+    });
+    expect(rpc).toHaveBeenCalledWith('exchange_mobile_pairing_verified', {
+      p_code_hash: sha256Hex(input.code),
+      p_token_hash: sha256Hex(input.token),
+      p_platform: 'ios',
+      p_app_id: 'ai.emiliaprotocol.approver',
+      p_credential_id: 'credential-1',
+      p_expected_approver_id: 'approver-1',
+      p_new_sign_count: 8,
+      p_identity_proof_digest: input.identityProofDigest,
+    });
+    await expect(exchangePairingVerified({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+    }, input)).resolves.toEqual({ ok: false, reason: 'invalid_or_expired' });
+    await expect(exchangePairingVerified({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '40001' } }),
+    }, input)).rejects.toThrow(/verified mobile pairing exchange failed: 40001/);
+  });
+
+  it('rejects non-canonical identity evidence before a mobile decision can reach storage', async () => {
+    const base = signedDecisionEvidence();
+    const malformedInstant = structuredClone(base);
+    malformedInstant.context.issued_at = '2026-07-16T20:00:00Z';
+    await expect(commitMobileActionDecision({}, {
+      entityRef: 'entity-1',
+      sessionId: 'session-1',
+      challengeId: 'challenge-0001',
+      actionHash: base.context.action_hash,
+      decision: 'approved',
+      verdict: 'verified',
+      decisionEvidence: malformedInstant,
+      auditEntry: decisionAuditEntry(base),
+    })).rejects.toThrow(/stored approved mobile decision evidence is malformed/);
+
+    const oversizedCredential = structuredClone(base);
+    oversizedCredential.context.mobile_binding.credential_id = 'A'.repeat(3000);
+    oversizedCredential.signoff.context_hash = hashCanonical(oversizedCredential.context);
+    await expect(commitMobileActionDecision({}, {
+      entityRef: 'entity-1',
+      sessionId: 'session-1',
+      challengeId: 'challenge-0001',
+      actionHash: base.context.action_hash,
+      decision: 'approved',
+      verdict: 'verified',
+      decisionEvidence: oversizedCredential,
+      auditEntry: {
+        ...decisionAuditEntry(oversizedCredential),
+        context_hash: oversizedCredential.signoff.context_hash,
+      },
+    })).rejects.toThrow(/stored approved mobile decision evidence is malformed/);
+
+    const nonCanonicalContext = structuredClone(base);
+    nonCanonicalContext.context.policy_id = 1n;
+    await expect(commitMobileActionDecision({}, {
+      entityRef: 'entity-1',
+      sessionId: 'session-1',
+      challengeId: 'challenge-0001',
+      actionHash: base.context.action_hash,
+      decision: 'approved',
+      verdict: 'verified',
+      decisionEvidence: nonCanonicalContext,
+      auditEntry: decisionAuditEntry(base),
+    })).rejects.toThrow(/stored approved mobile decision evidence is malformed/);
+  });
+
+  it('surfaces a failed atomic challenge registration instead of treating it as denial', async () => {
+    await expect(registerMobileActionChallenge({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { message: 'database unavailable' } }),
+    }, {
+      entityRef: 'entity-1',
+      sessionId: 'session-1',
+      actionReference: 'action-0001',
+      approverId: 'approver-1',
+      challengeId: 'challenge-0001',
+      actionHash: `sha256:${'a'.repeat(64)}`,
+      decision: 'approved',
+      expiresAt: '2026-07-15T01:00:00.000Z',
+    })).rejects.toThrow(/mobile action challenge registration failed: database unavailable/);
+  });
+
+  it('refuses recovery rows that lack typed evidence or a terminal decision', async () => {
+    const session = {
+      entityRef: 'entity-1',
+      sessionId: 'session-1',
+      approverId: 'approver-1',
+      platform: 'ios',
+      appId: 'ai.emiliaprotocol.approver',
+      deviceKeyId: 'device-1',
+      challengeId: 'challenge-0001',
+    };
+    const challenge = {
+      challenge_id: session.challengeId,
+      session_id: session.sessionId,
+      action_reference: 'action-0001',
+      entity_ref: session.entityRef,
+      approver_id: session.approverId,
+      decision: 'approved',
+      action_hash: `sha256:${'a'.repeat(64)}`,
+      created_at: '2026-07-16T20:00:00.000Z',
+      consumed_at: '2026-07-16T20:01:00.000Z',
+      expires_at: '2026-07-16T20:05:00.000Z',
+    };
+    const action = {
+      action_reference: 'action-0001',
+      entity_ref: session.entityRef,
+      approver_id: session.approverId,
+      status: 'approved',
+      decision_challenge_id: session.challengeId,
+      decision_verdict: 'verified',
+      decision_evidence: null,
+      decided_at: challenge.consumed_at,
+    };
+    const lookup = (challengeRow, actionRow) => lookupMobileCeremonyResult({
+      from: vi.fn()
+        .mockReturnValueOnce(chain({ data: challengeRow, error: null }))
+        .mockReturnValueOnce(chain({ data: actionRow, error: null }))
+        .mockReturnValueOnce(chain({ data: { record: {} }, error: null })),
+    }, session);
+
+    await expect(lookup(challenge, action)).resolves.toBeNull();
+    await expect(lookup(
+      { ...challenge, decision: 'pending' },
+      { ...action, status: 'pending', decision_evidence: {} },
+    )).resolves.toBeNull();
   });
 
   it('refuses a token when its session is revoked between lookup and touch', async () => {

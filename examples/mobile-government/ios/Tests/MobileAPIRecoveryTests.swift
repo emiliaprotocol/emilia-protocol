@@ -13,6 +13,14 @@ final class MobileAPIRecoveryTests: XCTestCase {
         super.tearDown()
     }
 
+    func testPairingIdentityChallengeMatchesTheServerProfile() {
+        let challenge = MobileAPI.pairingIdentityChallenge(code: " abcd-efgh-jklm ")
+        XCTAssertEqual(
+            challenge.map { String(format: "%02x", $0) }.joined(),
+            "7d21cd2f2994670e25589b63efe7958a97dfed6b8dc6e86cb3a8af66fd104750"
+        )
+    }
+
     func testEveryServerErrorRecoversCommittedOutcomeWithAuthentication() async throws {
         let fixture = try makeFixture()
 

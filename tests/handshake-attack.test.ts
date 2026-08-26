@@ -15,6 +15,17 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import crypto from 'crypto';
+import {
+  HANDSHAKE_ISSUER_PROOF_PROFILE,
+  handshakeIssuerProofBytes,
+  handshakePresentationHash,
+} from '../lib/handshake/issuer-proof.js';
+import { normalizeClaims, claimsToCanonicalHash } from '../lib/handshake/normalize.js';
+
+const TEST_ISSUER_KEYS = crypto.generateKeyPairSync('ed25519');
+const TEST_ISSUER_PUBLIC_KEY = TEST_ISSUER_KEYS.publicKey
+  .export({ type: 'spki', format: 'der' })
+  .toString('base64url');
 
 // ============================================================================
 // Mock: Supabase
@@ -110,6 +121,8 @@ function createTableSim() {
       tables[name].push({
         authority_id: 'auth-trusted-ca',
         key_id: 'issuer-trusted-ca',
+        public_key: TEST_ISSUER_PUBLIC_KEY,
+        algorithm: 'Ed25519',
         status: 'active',
         valid_from: new Date(Date.now() - 365 * 86_400_000).toISOString(),
         valid_to: new Date(Date.now() + 365 * 86_400_000).toISOString(),
@@ -499,6 +512,30 @@ function validPresentation(overrides = {}) {
   };
 }
 
+function signedPresentation(handshakeId, partyRole = 'initiator', overrides = {}, actor = 'system') {
+  const presentation = validPresentation(overrides);
+  const normalized = normalizeClaims(presentation.data);
+  const statement = {
+    handshakeId,
+    partyRole,
+    presentationType: presentation.type,
+    issuerRef: presentation.issuer_ref,
+    actorEntityRef: String(actor),
+    disclosureMode: presentation.disclosure_mode || 'full',
+    presentationHash: handshakePresentationHash(presentation.data),
+    canonicalClaimsHash: claimsToCanonicalHash(normalized),
+  };
+  return {
+    ...presentation,
+    issuer_proof: {
+      profile: HANDSHAKE_ISSUER_PROOF_PROFILE,
+      algorithm: 'Ed25519',
+      key_id: presentation.issuer_ref,
+      signature: crypto.sign(null, handshakeIssuerProofBytes(statement), TEST_ISSUER_KEYS.privateKey).toString('base64url'),
+    },
+  };
+}
+
 /**
  * Helper: initiate a handshake and return its ID along with the sim instance.
  * Optionally accepts params overrides.
@@ -532,6 +569,8 @@ function seedAuthority(sim, keyId, { status = 'active', validFrom, validTo } = {
   sim.getTable('authorities').push({
     authority_id: 'auth_' + crypto.randomBytes(4).toString('hex'),
     key_id: keyId,
+    public_key: TEST_ISSUER_PUBLIC_KEY,
+    algorithm: 'Ed25519',
     status,
     valid_from: validFrom || new Date(Date.now() - 86400_000).toISOString(),
     valid_to: validTo || new Date(Date.now() + 86400_000).toISOString(),
@@ -613,7 +652,7 @@ describe('Replay Attacks', () => {
     binding.expires_at = new Date(Date.now() - 60_000).toISOString();
 
     // Add a presentation (this succeeds — presentation is stored)
-    await addPresentation(hsId, 'initiator', validPresentation());
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId));
 
     // But verification detects the expired binding
     const verifyResult = await verifyHandshake(hsId);
@@ -627,7 +666,7 @@ describe('Replay Attacks', () => {
     const hsId = result.handshake_id;
     seedAuthority(sim, 'issuer-trusted-ca');
 
-    await addPresentation(hsId, 'initiator', validPresentation());
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId));
 
     // Pass payload_hash, policy_hash, action_hash so binding/policy checks pass
     await verifyHandshake(hsId, verifyOptsFromSim(sim, hsId));
@@ -952,8 +991,8 @@ describe('Policy Evasion', () => {
     const hsId = result.handshake_id;
     seedAuthority(sim, 'issuer-trusted-ca');
 
-    await addPresentation(hsId, 'initiator', validPresentation());
-    await addPresentation(hsId, 'responder', validPresentation({
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId));
+    await addPresentation(hsId, 'responder', signedPresentation(hsId, 'responder', {
       data: JSON.stringify({ entity_id: 'entity-bob' }),
     }));
 
@@ -1106,7 +1145,7 @@ describe('State Machine Violations', () => {
     const hsId = result.handshake_id;
     seedAuthority(sim, 'issuer-trusted-ca');
 
-    await addPresentation(hsId, 'initiator', validPresentation());
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId));
 
     // Pass payload_hash, policy_hash, action_hash so binding/policy checks pass
     const verifyResult = await verifyHandshake(hsId, verifyOptsFromSim(sim, hsId));
@@ -1143,7 +1182,7 @@ describe('State Machine Violations', () => {
     const hsId = result.handshake_id;
     seedAuthority(sim, 'issuer-trusted-ca');
 
-    await addPresentation(hsId, 'initiator', validPresentation());
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId));
 
     // Force-expire the binding
     const bindings = sim.getTable('handshake_bindings');
@@ -1181,7 +1220,7 @@ describe('Concurrency / Race Conditions', () => {
     const hsId = result.handshake_id;
     seedAuthority(sim, 'issuer-trusted-ca');
 
-    await addPresentation(hsId, 'initiator', validPresentation());
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId));
 
     // Pass payload_hash, policy_hash, action_hash so binding/policy checks pass
     const verifyOpts = verifyOptsFromSim(sim, hsId);

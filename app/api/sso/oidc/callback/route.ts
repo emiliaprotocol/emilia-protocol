@@ -31,7 +31,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (stateData.state !== returnedState) return epProblem(400, 'state_mismatch', 'State does not match');
 
   const { tenant, nonce, codeVerifier, redirectUri } = stateData;
-  const redirect = validateOidcRedirectUri(redirectUri, spOrigin(request));
+  const redirect = validateOidcRedirectUri(redirectUri, spOrigin());
   if (!redirect.valid) return epProblem(400, 'unsafe_oidc_redirect_uri', 'Login state carried an unsafe redirect URI');
   const safeRedirectUri = redirect.url;
   const { connection, error } = await loadConnection(tenant, 'oidc');

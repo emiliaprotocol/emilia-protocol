@@ -97,6 +97,17 @@ import {
 import {
   getHandshakeEvents,
 } from '../lib/handshake/events.js';
+import {
+  HANDSHAKE_ISSUER_PROOF_PROFILE,
+  handshakeIssuerProofBytes,
+  handshakePresentationHash,
+} from '../lib/handshake/issuer-proof.js';
+import { normalizeClaims, claimsToCanonicalHash } from '../lib/handshake/normalize.js';
+
+const TEST_ISSUER_KEYS = crypto.generateKeyPairSync('ed25519');
+const TEST_ISSUER_PUBLIC_KEY = TEST_ISSUER_KEYS.publicKey
+  .export({ type: 'spki', format: 'der' })
+  .toString('base64url');
 
 // Wire handlers after import so they reference the real functions
 _handshakeHandlers = {
@@ -123,6 +134,8 @@ function createTableSim() {
       tables[name].push({
         authority_id: 'auth-trusted-ca',
         key_id: 'issuer-trusted-ca',
+        public_key: TEST_ISSUER_PUBLIC_KEY,
+        algorithm: 'Ed25519',
         status: 'active',
         valid_from: new Date(Date.now() - 365 * 86_400_000).toISOString(),
         valid_to: new Date(Date.now() + 365 * 86_400_000).toISOString(),
@@ -493,6 +506,30 @@ function validPresentation(overrides = {}) {
   };
 }
 
+function signedPresentation(handshakeId, partyRole = 'initiator', overrides = {}, actor = 'system') {
+  const presentation = validPresentation(overrides);
+  const normalized = normalizeClaims(presentation.data);
+  const statement = {
+    handshakeId,
+    partyRole,
+    presentationType: presentation.type,
+    issuerRef: presentation.issuer_ref,
+    actorEntityRef: String(actor),
+    disclosureMode: presentation.disclosure_mode || 'full',
+    presentationHash: handshakePresentationHash(presentation.data),
+    canonicalClaimsHash: claimsToCanonicalHash(normalized),
+  };
+  return {
+    ...presentation,
+    issuer_proof: {
+      profile: HANDSHAKE_ISSUER_PROOF_PROFILE,
+      algorithm: 'Ed25519',
+      key_id: presentation.issuer_ref,
+      signature: crypto.sign(null, handshakeIssuerProofBytes(statement), TEST_ISSUER_KEYS.privateKey).toString('base64url'),
+    },
+  };
+}
+
 function verifyOptsFromSim(sim, hsId) {
   const hs = sim.getTable('handshakes').find((h) => h.handshake_id === hsId);
   const binding = sim.getTable('handshake_bindings').find((b) => b.handshake_id === hsId);
@@ -517,7 +554,7 @@ async function createVerifiedHandshake(sim, params = {}) {
   const hsId = result.handshake_id;
 
   mockGetServiceClient.mockReturnValue(sim.mockClient());
-  await addPresentation(hsId, 'initiator', validPresentation(), 'entity-alice');
+  await addPresentation(hsId, 'initiator', signedPresentation(hsId, 'initiator', {}, 'entity-alice'), 'entity-alice');
 
   mockGetServiceClient.mockReturnValue(sim.mockClient());
   const verifyOpts = verifyOptsFromSim(sim, hsId);
@@ -618,7 +655,7 @@ describe('B.5 — Double consumption prevention', () => {
     const hsId = result.handshake_id;
 
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    await addPresentation(hsId, 'initiator', validPresentation(), 'entity-alice');
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId, 'initiator', {}, 'entity-alice'), 'entity-alice');
 
     // Manually expire the binding before verification
     const binding = sim.getTable('handshake_bindings').find((b) => b.handshake_id === hsId);
@@ -651,7 +688,7 @@ describe('B.5 — Double consumption prevention', () => {
 
     // Only add initiator presentation, missing responder
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    await addPresentation(hsId, 'initiator', validPresentation(), 'entity-alice');
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId, 'initiator', {}, 'entity-alice'), 'entity-alice');
 
     // Verify — should be rejected due to missing responder presentation
     mockGetServiceClient.mockReturnValue(sim.mockClient());
@@ -750,7 +787,7 @@ describe('B.5 — Concurrent race conditions', () => {
     const hsId = result.handshake_id;
 
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    await addPresentation(hsId, 'initiator', validPresentation(), 'entity-alice');
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId, 'initiator', {}, 'entity-alice'), 'entity-alice');
 
     const binding = sim.getTable('handshake_bindings').find((b) => b.handshake_id === hsId);
 
@@ -1043,7 +1080,7 @@ describe('D.4 — Event reconstruction', () => {
 
     // Step 2: Add presentation — events emitted
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    await addPresentation(hsId, 'initiator', validPresentation(), 'entity-alice');
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId, 'initiator', {}, 'entity-alice'), 'entity-alice');
 
     // Step 3: Verify — events emitted
     mockGetServiceClient.mockReturnValue(sim.mockClient());
@@ -1127,7 +1164,7 @@ describe('D.4 — Event reconstruction', () => {
     const hsId = result.handshake_id;
 
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    await addPresentation(hsId, 'initiator', validPresentation(), 'entity-alice');
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId, 'initiator', {}, 'entity-alice'), 'entity-alice');
 
     mockGetServiceClient.mockReturnValue(sim.mockClient());
     const verifyOpts = verifyOptsFromSim(sim, hsId);
@@ -1210,7 +1247,7 @@ describe('D.4 — Event reconstruction', () => {
     const hsId = result.handshake_id;
 
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    await addPresentation(hsId, 'initiator', validPresentation(), 'entity-alice');
+    await addPresentation(hsId, 'initiator', signedPresentation(hsId, 'initiator', {}, 'entity-alice'), 'entity-alice');
 
     mockGetServiceClient.mockReturnValue(sim.mockClient());
     const verifyOpts = verifyOptsFromSim(sim, hsId);

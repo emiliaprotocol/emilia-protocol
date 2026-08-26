@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Unit tests for the enrollment directory anchor predicate
-// (lib/scim/directory-anchor.js). Cases 6, 7, and 8 encode the corrections over
-// the first-cut draft: the org -> tenant map is a SET (not a single newest
-// token), the org-unbound (NULL organization_id) token arm is required, and
+// (lib/scim/directory-anchor.js). The org -> tenant map is a SET (not a single
+// newest token), organization_id is its only authority-bearing provenance, and
 // directory governance is sticky across token revocation.
 
 import { describe, it, expect, vi } from 'vitest';
@@ -109,16 +108,54 @@ describe('resolveEnrollmentBasis', () => {
     expect(r).toMatchObject({ basis: 'directory', directoryUserId: 'su_old' });
   });
 
-  it('7: nullable-org arm — a token with organization_id NULL still anchors via tenant_id = org', async () => {
+  it('7: a legacy NULL organization never gains authority from a matching tenant slug', async () => {
     const sb: any = makeSupabase({
       tokens: [{ organization_id: null, tenant_id: 'org_x', revoked_at: null }],
       users: [{ id: 'su_1', tenant_id: 'org_x', user_name: 'cfo@corp.com', active: true }],
     });
     const r: any = await resolveEnrollmentBasis(sb, 'org_x', 'cfo@corp.com');
-    expect(r).toMatchObject({ basis: 'directory', directoryUserId: 'su_1', hasDirectory: true });
+    expect(r).toMatchObject({
+      basis: 'operator_attested',
+      directoryUserId: null,
+      hasDirectory: false,
+    });
   });
 
-  it('8: sticky — a REVOKED token still anchors; active user => directory, absent user => 403', async () => {
+  it('8: an attacker tenant slug matching a victim org cannot import attacker SCIM users', async () => {
+    const sb: any = makeSupabase({
+      tokens: [{
+        organization_id: '@org:attacker',
+        tenant_id: 'victim-org',
+        revoked_at: null,
+      }],
+      users: [{
+        id: 'attacker-user',
+        tenant_id: 'victim-org',
+        user_name: 'cfo@victim.example',
+        active: true,
+      }],
+    });
+    const r: any = await resolveEnrollmentBasis(sb, 'victim-org', 'cfo@victim.example');
+    expect(r).toMatchObject({
+      basis: 'operator_attested',
+      directoryUserId: null,
+      hasDirectory: false,
+    });
+  });
+
+  it('9: a revoked legacy self-org token is not sticky authority for its squatted slug', async () => {
+    const sb: any = makeSupabase({
+      tokens: [{ organization_id: 'victim-org', tenant_id: 'victim-org', revoked_at: '2026-08-26T00:00:00Z' }],
+      users: [{ id: 'attacker-user', tenant_id: 'victim-org', user_name: 'cfo@victim.example', active: true }],
+    });
+    await expect(resolveEnrollmentBasis(sb, 'victim-org', 'cfo@victim.example')).resolves.toMatchObject({
+      basis: 'operator_attested',
+      directoryUserId: null,
+      hasDirectory: false,
+    });
+  });
+
+  it('10: sticky — a REVOKED explicitly org-bound token still anchors; active user => directory, absent user => 403', async () => {
     const revokedToken: any[] = [{ organization_id: 'org_x', tenant_id: 't_x', revoked_at: '2020-01-01T00:00:00Z' }];
 
     const active: any = makeSupabase({
@@ -133,14 +170,14 @@ describe('resolveEnrollmentBasis', () => {
       .toMatchObject({ status: 403, code: 'approver_not_provisioned' });
   });
 
-  it('9: token lookup error => 503 directory_lookup_failed (fail closed, never downgrade)', async () => {
+  it('11: token lookup error => 503 directory_lookup_failed (fail closed, never downgrade)', async () => {
     const sb: any = makeSupabase({ errors: { scim_provisioning_tokens: { message: 'db down' } } });
     const r: any = await resolveEnrollmentBasis(sb, 'org_x', 'cfo@corp.com');
     expect(r.error).toMatchObject({ status: 503, code: 'directory_lookup_failed' });
     expect(r.basis).toBeUndefined();
   });
 
-  it('10: scim_users lookup error => 503 directory_lookup_failed', async () => {
+  it('12: scim_users lookup error => 503 directory_lookup_failed', async () => {
     const sb: any = makeSupabase({
       tokens: [{ organization_id: 'org_x', tenant_id: 't_x', revoked_at: null }],
       errors: { scim_users: { message: 'db down' } },

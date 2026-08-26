@@ -116,6 +116,8 @@ function registerHybrid({ pqSigner }: { pqSigner?: any } = {}) {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime('2026-08-17T12:01:00.000Z');
   process.env.EP_COMMIT_SIGNING_KEY = ED_SEED;
   process.env.NODE_ENV = 'test';
   _resetForTesting();
@@ -123,6 +125,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   clearCustodySigner();
   _resetForTesting();
   if (ORIG_KEY === undefined) delete process.env.EP_COMMIT_SIGNING_KEY;

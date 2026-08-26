@@ -49,6 +49,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Generate entity ID and owner ID
     const suffix = crypto.randomBytes(12).toString('hex');
     const entityId = `ep_entity_${suffix}`;
+    // '@' is outside the self-service entity-id alphabet, so a registrant
+    // cannot choose an entity_id that collides with this tenant boundary.
+    const organizationId = `@org:${crypto.randomUUID()}`;
     const ownerId = `ep_owner_${crypto.randomBytes(16).toString('hex')}`;
 
     // Generate Ed25519 key pair
@@ -72,11 +75,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .from('entities')
       .insert({
         entity_id: entityId,
-        organization_id: entityId,
+        organization_id: organizationId,
         owner_id: ownerId,
         display_name: name,
         entity_type: 'agent',
         description: `Entity: ${name}`,
+        verified: false,
+        verified_at: null,
         api_key_hash: keyHash,
         public_key: publicKeyB64,
         private_key_encrypted: seal(privateKeyB64),
@@ -106,6 +111,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({
       entity_id: entityId,
+      organization_id: organizationId,
+      organization_verified: false,
       name,
       public_key: publicKeyB64,
       api_key: apiKey,

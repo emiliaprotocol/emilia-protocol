@@ -166,6 +166,26 @@ export function validatePresentBody(
   if (body.issuer_ref && typeof body.issuer_ref !== 'string') {
     return { valid: false, error: 'issuer_ref must be a string' };
   }
+  if (body.issuer_proof !== undefined && body.issuer_proof !== null) {
+    const proof = body.issuer_proof;
+    const members = new Set(['profile', 'algorithm', 'key_id', 'signature']);
+    if (!proof || typeof proof !== 'object' || Array.isArray(proof)
+        || Object.keys(proof).length !== members.size
+        || !Object.keys(proof).every((key) => members.has(key))) {
+      return { valid: false, error: 'issuer_proof must contain exactly profile, algorithm, key_id, and signature' };
+    }
+    if (proof.profile !== 'EP-HANDSHAKE-ISSUER-PROOF-v1'
+        || proof.algorithm !== 'Ed25519'
+        || typeof proof.key_id !== 'string'
+        || !proof.key_id
+        || typeof proof.signature !== 'string'
+        || !/^[A-Za-z0-9_-]{86}$/.test(proof.signature)) {
+      return { valid: false, error: 'issuer_proof is malformed' };
+    }
+    if (!body.issuer_ref || proof.key_id !== body.issuer_ref) {
+      return { valid: false, error: 'issuer_proof.key_id must match issuer_ref' };
+    }
+  }
 
   return {
     valid: true,
@@ -175,6 +195,7 @@ export function validatePresentBody(
       claims: body.claims,
       issuer_ref: body.issuer_ref || null,
       disclosure_mode: body.disclosure_mode || null,
+      issuer_proof: body.issuer_proof || null,
     },
   };
 }

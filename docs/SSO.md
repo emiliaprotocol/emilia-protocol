@@ -32,10 +32,14 @@ curl -s https://www.emiliaprotocol.ai/api/sso/connections \
 | `GET /api/sso/saml/login?tenant=<id>` | SP-initiated login → AuthnRequest redirect (tenant carried in RelayState) |
 | `POST /api/sso/saml/acs` | Assertion Consumer Service — validates the signed Response |
 
-The ACS enforces `wantAssertionsSigned`: an unsigned assertion, a wrong-key
-signature, a stale `Conditions` window, or a wrong audience is **rejected** (401).
-On success it resolves the asserted `NameID`/email against the SCIM directory and
-reports whether it is a known, active approver.
+The ACS requires both a signed SAML Response envelope and a signed Assertion. It
+also requires the signed Response `Destination` and the single bearer
+`SubjectConfirmationData Recipient` to equal the service's configured ACS URL.
+An unsigned message, assertion-only IdP mode, wrong-key signature, stale
+`Conditions` window, wrong audience, or wrong endpoint target is **rejected**
+(401). Configure the IdP to sign both the Response and Assertion. On success EP
+resolves the asserted `NameID`/email against the SCIM directory and reports
+whether it is a known, active approver.
 
 ## OIDC (EP is the Relying Party)
 
@@ -69,9 +73,10 @@ provider needed):
 - `tests/sso-oidc.test.ts` (12) — signs real ID tokens with a fixture key and
   proves accept-valid / reject wrong-aud / wrong-iss / expired / bad-nonce /
   key-not-in-JWKS, plus PKCE (RFC 7636 vector), discovery, token exchange.
-- `tests/sso-saml.test.ts` (8) — SP metadata + AuthnRequest structure, rejects
-  unsigned/garbage, and (where openssl is present) signs a real SAML assertion
-  and proves the ACS accepts it and rejects a different-key signature.
+- `tests/sso-saml.test.ts` — SP metadata + AuthnRequest structure, rejects
+  unsigned/garbage/wrong-target messages, and (where openssl is present) signs
+  a real Response and Assertion and proves the ACS accepts only the configured
+  endpoint and trusted signing key.
 - `tests/sso-state.test.ts` (5) — the HMAC state token: tamper + expiry + wrong-secret rejection.
 - `tests/sso-session.test.ts` (6) — EP session mint/verify, tamper + wrong-secret + cookie parsing.
 - `tests/secret-box.test.ts` (7) — AES-256-GCM round-trip, tamper rejection, plaintext-passthrough rollout.

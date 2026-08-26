@@ -25,6 +25,7 @@ vi.mock('../lib/logger.js', () => ({
 
 const ORIG_KEY = process.env.EP_COMMIT_SIGNING_KEY;
 const ORIG_NODE_ENV = process.env.NODE_ENV;
+const TEST_NOW = new Date('2026-04-26T00:03:00Z');
 
 function canonicalAction(overrides = {}) {
   return {
@@ -75,6 +76,8 @@ const consumedEvent = {
 };
 
 beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(TEST_NOW);
   _resetForTesting();
   // Stable, known seed so the round-trip is deterministic.
   process.env.EP_COMMIT_SIGNING_KEY = crypto.randomBytes(32).toString('base64');
@@ -82,6 +85,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   if (ORIG_KEY === undefined) delete process.env.EP_COMMIT_SIGNING_KEY;
   else process.env.EP_COMMIT_SIGNING_KEY = ORIG_KEY;
   process.env.NODE_ENV = ORIG_NODE_ENV;
@@ -170,6 +174,38 @@ describe('resolveReceiptStatus', () => {
   it('pending falls through to receipt_status', () => {
     expect(resolveReceiptStatus(createdState(), {})).toBe('pending_signoff');
   });
+  it('an unused approval expires at the receipt boundary', () => {
+    expect(resolveReceiptStatus(
+      createdState(),
+      { approved: approvedEvent },
+      { now: '2026-04-27T00:00:00Z' },
+    )).toBe('expired');
+  });
+  it('consumption completed before expiry remains historical evidence after expiry', () => {
+    expect(resolveReceiptStatus(
+      createdState(),
+      { approved: approvedEvent, consumed: consumedEvent },
+      { now: '2026-05-27T00:00:00Z' },
+    )).toBe('consumed');
+  });
+  it('a consume event at or after expiry is not a positive terminal state', () => {
+    const lateConsume = {
+      ...consumedEvent,
+      created_at: '2026-04-27T00:00:00Z',
+      after_state: { ...consumedEvent.after_state, consumed_at: '2026-04-27T00:00:00Z' },
+    };
+    expect(resolveReceiptStatus(
+      createdState(),
+      { approved: approvedEvent, consumed: lateConsume },
+      { now: '2026-05-27T00:00:00Z' },
+    )).toBe('expired');
+  });
+  it('malformed or absent expiry fails closed', () => {
+    expect(resolveReceiptStatus(createdState({ expires_at: 'not-a-time' }), { approved: approvedEvent }))
+      .toBe('expired');
+    expect(resolveReceiptStatus(createdState({ expires_at: null }), { approved: approvedEvent }))
+      .toBe('expired');
+  });
 });
 
 describe('signEvidenceReceipt — honesty gate (returns null, fabricates nothing)', () => {
@@ -212,6 +248,37 @@ describe('signEvidenceReceipt — honesty gate (returns null, fabricates nothing
     const base = createdState();
     delete base.canonical_action;
     expect(signEvidenceReceipt(args({ base, approved: approvedEvent }))).toBeNull();
+  });
+
+  it('approved but unused after expiry → null', () => {
+    vi.setSystemTime('2026-04-27T00:00:00Z');
+    expect(signEvidenceReceipt(args({
+      approved: approvedEvent,
+    }))).toBeNull();
+  });
+
+  it('consumed inside the window remains signable as historical evidence after expiry', () => {
+    vi.setSystemTime('2026-05-27T00:00:00Z');
+    const out = signEvidenceReceipt(args({
+      approved: approvedEvent,
+      consumed: consumedEvent,
+    }));
+    expect(out).not.toBeNull();
+    expect(out.document.payload.authorization.status).toBe('consumed');
+    expect(verifyReceipt(out.document, out.public_key).valid).toBe(true);
+  });
+
+  it('a consume event outside the receipt window is never signed', () => {
+    vi.setSystemTime('2026-05-27T00:00:00Z');
+    const lateConsume = {
+      ...consumedEvent,
+      created_at: '2026-04-27T00:00:00Z',
+      after_state: { ...consumedEvent.after_state, consumed_at: '2026-04-27T00:00:00Z' },
+    };
+    expect(signEvidenceReceipt(args({
+      approved: approvedEvent,
+      consumed: lateConsume,
+    }))).toBeNull();
   });
 
   it('approved but non-canonical action state → null without invoking accessors', () => {

@@ -7,6 +7,10 @@ const migrationUrl = new URL(
   '../supabase/migrations/20260826120000_signoff_atomic_state_locks.sql',
   import.meta.url,
 );
+const strictExpiryMigrationUrl = new URL(
+  '../supabase/migrations/20260826140000_strix_rls_and_lifecycle_fortress_db_security_invariants.sql',
+  import.meta.url,
+);
 
 function functionBody(sql: string, name: string): string {
   const start = sql.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
@@ -327,5 +331,38 @@ describe('signoff atomic state-lock migration', () => {
       expect(body).toMatch(/REVOKE ALL ON FUNCTION[\s\S]+FROM PUBLIC, anon, authenticated;/);
       expect(body).toMatch(/GRANT EXECUTE ON FUNCTION[\s\S]+TO service_role;/);
     }
+  });
+
+  it('rechecks every pinned signoff validity window with wall-clock time after locked consume', () => {
+    const sql = readFileSync(strictExpiryMigrationUrl, 'utf8');
+    const wrapper = functionBody(sql, 'consume_signoff_atomic');
+    const lockedConsume = wrapper.indexOf(
+      'public.consume_signoff_atomic_state_locked_v1(',
+    );
+    const validityRead = wrapper.indexOf('FROM public.signoff_attestations AS attestation');
+    const wallClock = wrapper.indexOf('pg_catalog.clock_timestamp()');
+
+    expect(sql).toContain(
+      'RENAME TO consume_signoff_atomic_state_locked_v1',
+    );
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.consume_signoff_atomic_state_locked_v1\([\s\S]+service_role;/,
+    );
+    expect(lockedConsume).toBeGreaterThanOrEqual(0);
+    expect(validityRead).toBeGreaterThan(lockedConsume);
+    expect(wallClock).toBeGreaterThan(validityRead);
+    for (const failure of [
+      'SIGNOFF_HANDSHAKE_EXPIRED',
+      'SIGNOFF_BINDING_EXPIRED',
+      'SIGNOFF_CHALLENGE_EXPIRED',
+      'SIGNOFF_AUTHORITY_INVALID_OR_REVOKED',
+      'SIGNOFF_ATTESTATION_EXPIRED',
+    ]) {
+      expect(wrapper).toContain(failure);
+    }
+    expect(wrapper).toMatch(/SECURITY DEFINER\s+SET search_path = ''/);
+    expect(wrapper).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.consume_signoff_atomic\([\s\S]+TO service_role;/,
+    );
   });
 });

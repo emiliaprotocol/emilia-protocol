@@ -71,16 +71,25 @@ export function mapHandshakeToTrustDecision(handshakeResult) {
     assurance_achieved,
     policy_version,
     commit_ref,
+    prior_outcome,
+    invalidated_at,
+    invalidation_reason,
   } = handshakeResult;
 
-  const decision = OUTCOME_TO_DECISION[outcome] || 'deny';
-  const confidenceScore = ASSURANCE_CONFIDENCE_SCORE[assurance_achieved || ''] || 0.50;
+  const effectiveOutcome = invalidated_at ? 'rejected' : outcome;
+  const decision = OUTCOME_TO_DECISION[effectiveOutcome] || 'deny';
+  const confidenceScore = invalidated_at
+    ? 0
+    : (ASSURANCE_CONFIDENCE_SCORE[assurance_achieved || ''] || 0.50);
   const confidenceLabel = scoreToLabel(confidenceScore);
 
   // Build structured reasons from reason_codes
   const reasons = reason_codes.length > 0
     ? reason_codes.map((code) => `handshake: ${code}`)
-    : [`handshake: ${outcome}`];
+    : [`handshake: ${effectiveOutcome}`];
+  if (invalidated_at && !reasons.includes(`handshake: ${invalidation_reason || 'invalidated'}`)) {
+    reasons.push(`handshake: ${invalidation_reason || 'invalidated'}`);
+  }
 
   // Build warnings for non-blocking outcomes
   const warnings: string[] = [];
@@ -90,6 +99,9 @@ export function mapHandshakeToTrustDecision(handshakeResult) {
   if (outcome === 'expired') {
     warnings.push('Handshake binding window has expired');
   }
+  if (invalidated_at) {
+    warnings.push('A previously finalized handshake was invalidated after its issuer evidence failed revalidation');
+  }
 
   // Build evidence extensions
   const evidence = {
@@ -98,7 +110,9 @@ export function mapHandshakeToTrustDecision(handshakeResult) {
     binding_hash: commit_ref || null,
     assurance_achieved: assurance_achieved || null,
     confidence_score: confidenceScore,
-    outcome,
+    outcome: effectiveOutcome,
+    prior_outcome: invalidated_at ? (prior_outcome || outcome) : null,
+    invalidated_at: invalidated_at || null,
   };
 
   return buildTrustDecision({
@@ -132,5 +146,6 @@ export function mapHandshakeToTrustDecision(handshakeResult) {
  */
 export function shouldTriggerDecision(handshakeResult) {
   if (!handshakeResult || !handshakeResult.outcome) return false;
+  if (handshakeResult.invalidated_at) return true;
   return handshakeResult.outcome === 'accepted' || handshakeResult.outcome === 'rejected';
 }

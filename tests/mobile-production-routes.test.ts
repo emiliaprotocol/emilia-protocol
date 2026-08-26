@@ -8,6 +8,12 @@ const mocks = vi.hoisted(() => ({
   checkRateLimit: vi.fn(),
   createPairing: vi.fn(),
   exchangePairing: vi.fn(),
+  exchangePairingVerified: vi.fn(),
+  loadMobilePairingIdentityContext: vi.fn(),
+  mobilePairingIdentityChallenge: vi.fn(),
+  listMobilePairingIdentityCredentials: vi.fn(),
+  resolveEnrollmentBasis: vi.fn(),
+  verifyAuthenticationResponse: vi.fn(),
   authenticateMobileToken: vi.fn(),
   listMobileActions: vi.fn(),
   revokeMobileSession: vi.fn(),
@@ -28,11 +34,21 @@ vi.mock('@/lib/rate-limit.js', () => ({
 vi.mock('@/lib/mobile/store.js', () => ({
   createPairing: (...args) => mocks.createPairing(...args),
   exchangePairing: (...args) => mocks.exchangePairing(...args),
+  exchangePairingVerified: (...args) => mocks.exchangePairingVerified(...args),
+  loadMobilePairingIdentityContext: (...args) => mocks.loadMobilePairingIdentityContext(...args),
+  mobilePairingIdentityChallenge: (...args) => mocks.mobilePairingIdentityChallenge(...args),
+  listMobilePairingIdentityCredentials: (...args) => mocks.listMobilePairingIdentityCredentials(...args),
   authenticateMobileToken: (...args) => mocks.authenticateMobileToken(...args),
   listMobileActions: (...args) => mocks.listMobileActions(...args),
   revokeMobileSession: (...args) => mocks.revokeMobileSession(...args),
   createDemoAction: (...args) => mocks.createDemoAction(...args),
   createGraceMobileActionGroup: (...args) => mocks.createGraceMobileActionGroup(...args),
+}));
+vi.mock('@/lib/scim/directory-anchor.js', () => ({
+  resolveEnrollmentBasis: (...args) => mocks.resolveEnrollmentBasis(...args),
+}));
+vi.mock('@simplewebauthn/server', () => ({
+  verifyAuthenticationResponse: (...args) => mocks.verifyAuthenticationResponse(...args),
 }));
 vi.mock('@/lib/logger.js', () => ({
   logger: { error: (...args) => mocks.loggerError(...args) },
@@ -108,9 +124,45 @@ describe('native pairing, inbox, and terminal session routes', () => {
     mocks.getServiceClient.mockReturnValue({ service: true });
     mocks.checkRateLimit.mockResolvedValue({ allowed: true });
     process.env.MOBILE_DEMO_ENABLED = 'true';
-    mocks.authenticateRequest.mockResolvedValue({ entity: { entity_id: 'entity-1' }, permissions: ['write'] });
+    mocks.authenticateRequest.mockResolvedValue({
+      entity: { entity_id: 'entity-1', organization_id: '@org:tenant-1' },
+      permissions: ['write', 'approver.enroll'],
+    });
     mocks.authEntityId.mockReturnValue('entity-1');
     mocks.createPairing.mockResolvedValue(true);
+    mocks.resolveEnrollmentBasis.mockResolvedValue({
+      basis: 'directory',
+      directoryUserId: 'directory-user-1',
+      storedApproverId: 'ep:approver:supervisor',
+      hasDirectory: true,
+    });
+    mocks.mobilePairingIdentityChallenge.mockReturnValue('pairing-identity-challenge');
+    mocks.listMobilePairingIdentityCredentials.mockResolvedValue([{
+      id: 'credential-1',
+      type: 'public-key',
+      transports: ['internal'],
+    }]);
+    mocks.loadMobilePairingIdentityContext.mockResolvedValue({
+      entityRef: 'entity-1',
+      organizationId: '@org:tenant-1',
+      approverId: 'ep:approver:supervisor',
+      credential: {
+        credential_id: 'credential-1',
+        public_key_cose: 'AQID',
+        sign_count: 0,
+        transports: ['internal', 'telepathy'],
+      },
+    });
+    mocks.verifyAuthenticationResponse.mockResolvedValue({
+      verified: true,
+      authenticationInfo: { newCounter: 1 },
+    });
+    mocks.exchangePairingVerified.mockResolvedValue({
+      ok: true,
+      expires_at: '2026-08-15T00:00:00.000Z',
+      approver_id: 'ep:approver:supervisor',
+      profile_id: 'emilia.high-assurance.mobile.v1',
+    });
     mocks.exchangePairing.mockResolvedValue({
       ok: true,
       expires_at: '2026-08-15T00:00:00.000Z',
@@ -141,8 +193,16 @@ describe('native pairing, inbox, and terminal session routes', () => {
     const body = await response.json();
     expect(body.pairing_code).toMatch(/^[2-9A-HJ-NP-Z]{4}(?:-[2-9A-HJ-NP-Z]{4}){2}$/);
     expect(body.enabled_platforms).toEqual(['ios']);
+    expect(body.identity_challenge).toBe('pairing-identity-challenge');
+    expect(body.identity_allow_credentials).toEqual([{
+      id: 'credential-1',
+      type: 'public-key',
+      transports: ['internal'],
+    }]);
     expect(mocks.createPairing).toHaveBeenCalledWith({ service: true }, expect.objectContaining({
       entityRef: 'entity-1',
+      organizationId: '@org:tenant-1',
+      directoryUserId: 'directory-user-1',
       allowedApps: { ios: ['ai.emiliaprotocol.approver'], android: [] },
     }));
 
@@ -152,11 +212,35 @@ describe('native pairing, inbox, and terminal session routes', () => {
     }));
     expect(injected.status).toBe(400);
 
-    mocks.authenticateRequest.mockResolvedValueOnce({ entity: { entity_id: 'entity-1' }, permissions: ['read'] });
+    mocks.authenticateRequest.mockResolvedValueOnce({
+      entity: { entity_id: 'entity-1', organization_id: '@org:tenant-1' },
+      permissions: ['write'],
+    });
     const readOnly = await pairingRoute.POST(post('/api/v1/mobile/pairings', {
       approver_id: 'ep:approver:supervisor',
     }));
     expect(readOnly.status).toBe(403);
+  });
+
+  it('refuses mobile pairing for an approver that is not active in the organization directory', async () => {
+    mocks.resolveEnrollmentBasis.mockResolvedValueOnce({
+      hasDirectory: true,
+      error: { status: 403, code: 'approver_not_provisioned', detail: 'not active' },
+    });
+    const response = await pairingRoute.POST(post('/api/v1/mobile/pairings', {
+      approver_id: 'cfo@example.com',
+    }));
+    expect(response.status).toBe(403);
+    expect(mocks.createPairing).not.toHaveBeenCalled();
+  });
+
+  it('does not mint a pairing code until the named directory user has an existing identity credential', async () => {
+    mocks.listMobilePairingIdentityCredentials.mockResolvedValueOnce([]);
+    const response = await pairingRoute.POST(post('/api/v1/mobile/pairings', {
+      approver_id: 'ep:approver:supervisor',
+    }));
+    expect(response.status).toBe(403);
+    expect(mocks.createPairing).not.toHaveBeenCalled();
   });
 
   it('rate limits the unauthenticated pairing exchange and returns one scoped token', async () => {
@@ -164,6 +248,7 @@ describe('native pairing, inbox, and terminal session routes', () => {
       pairing_code: '2345-6789-ABCD',
       platform: 'ios',
       app_id: 'ai.emiliaprotocol.approver',
+      identity_assertion: { id: 'credential-1', type: 'public-key', response: {} },
     }));
     expect(response.status).toBe(201);
     const body = await response.json();
@@ -171,14 +256,47 @@ describe('native pairing, inbox, and terminal session routes', () => {
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(response.headers.get('x-content-type-options')).toBe('nosniff');
     expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+    expect(mocks.verifyAuthenticationResponse).toHaveBeenCalledWith(expect.objectContaining({
+      expectedChallenge: 'pairing-identity-challenge',
+      requireUserVerification: true,
+      credential: expect.objectContaining({ id: 'credential-1', transports: ['internal'] }),
+    }));
+    expect(mocks.exchangePairingVerified).toHaveBeenCalledWith({ service: true }, expect.objectContaining({
+      credentialId: 'credential-1',
+      approverId: 'ep:approver:supervisor',
+      newSignCount: 1,
+      identityProofDigest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+    }));
 
     mocks.checkRateLimit.mockResolvedValueOnce({ allowed: false });
     const limited = await exchangeRoute.POST(post('/api/v1/mobile/pairings/exchange', {
       pairing_code: '2345-6789-ABCD',
       platform: 'ios',
       app_id: 'ai.emiliaprotocol.approver',
+      identity_assertion: { id: 'credential-1', type: 'public-key', response: {} },
     }));
     expect(limited.status).toBe(429);
+  });
+
+  it('does not exchange a code without the named human credential assertion', async () => {
+    const missing = await exchangeRoute.POST(post('/api/v1/mobile/pairings/exchange', {
+      pairing_code: '2345-6789-ABCD',
+      platform: 'ios',
+      app_id: 'ai.emiliaprotocol.approver',
+    }));
+    expect(missing.status).toBe(400);
+    expect(mocks.exchangePairingVerified).not.toHaveBeenCalled();
+
+    mocks.loadMobilePairingIdentityContext.mockResolvedValueOnce(null);
+    const wrongCredential = await exchangeRoute.POST(post('/api/v1/mobile/pairings/exchange', {
+      pairing_code: '2345-6789-ABCD',
+      platform: 'ios',
+      app_id: 'ai.emiliaprotocol.approver',
+      identity_assertion: { id: 'attacker-credential', type: 'public-key', response: {} },
+    }));
+    expect(wrongCredential.status).toBe(403);
+    expect(mocks.verifyAuthenticationResponse).not.toHaveBeenCalled();
+    expect(mocks.exchangePairingVerified).not.toHaveBeenCalled();
   });
 
   it('lists only the paired approver inbox and revokes the exact session', async () => {

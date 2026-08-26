@@ -76,16 +76,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const supabase = getGuardedClient();
   try {
-    const { data, error } = await supabase
-      .from('scim_groups')
-      .insert({ ...fields, tenant_id: auth.tenantId })
-      .select('*')
-      .single();
+    const { data: result, error } = await supabase.rpc('apply_scim_group_authorized', {
+      p_token_id: auth.tokenId,
+      p_tenant_id: auth.tenantId,
+      p_organization_id: auth.organizationId,
+      p_group_id: null,
+      p_expected_version: null,
+      p_fields: fields,
+      p_delete: false,
+    });
     if (error) {
       if (error.code === '23505') return scimErrorResponse(409, `Group ${fields.display_name} already exists`, 'uniqueness');
       logger.error('[scim/Groups] create failed:', error);
       return scimErrorResponse(503, 'Directory unavailable');
     }
+    if (result?.error === 'token_authority_invalid') return scimErrorResponse(401, 'SCIM token is no longer authorized');
+    const data = result?.group;
+    if (result?.status !== 'created' || !data) return scimErrorResponse(503, 'Directory unavailable');
     return scimJson(toScimGroup(data, scimBaseUrl(request)), { status: 201, etag: etag(data.version ?? 1) });
   } catch (err) {
     logger.error('[scim/Groups] create error:', err);

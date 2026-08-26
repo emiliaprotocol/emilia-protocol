@@ -198,7 +198,18 @@ final class ApprovalViewModel: ObservableObject {
         guard !code.isEmpty else { stage = .failed("Enter the pairing code."); return }
         stage = .loading("Pairing this device")
         do {
-            let response = try await MobileAPI(baseURL: try baseURL()).exchangePairing(code: code, appID: appID)
+            let identityAssertion = try await EmiliaApplePasskeyProvider {
+                Self.presentationWindow()
+            }.assertion(
+                rpID: "emiliaprotocol.ai",
+                challenge: MobileAPI.pairingIdentityChallenge(code: code),
+                allowedCredentialIDs: []
+            )
+            let response = try await MobileAPI(baseURL: try baseURL()).exchangePairing(
+                code: code,
+                appID: appID,
+                identityAssertion: identityAssertion
+            )
             accessToken = response.accessToken
             approverID = response.approverID
             profileID = response.profileID

@@ -96,12 +96,7 @@ describe('control-plane object authorization', () => {
     expect(mockCreateBinding).not.toHaveBeenCalled();
   });
 
-  it('binds continuity filing to the authenticated actor and preserves the service denial', async () => {
-    mockFileContinuityClaim.mockResolvedValueOnce({
-      error: 'Authenticated actor does not control the continuity subject principal',
-      status: 403,
-    });
-
+  it('refuses continuity filing unless the authenticated actor is the successor', async () => {
     const res = await identityContinuityPOST(jsonRequest('https://example.test/api/identity/continuity', {
       principal_id: 'entity-victim',
       old_entity_id: 'entity-old',
@@ -110,15 +105,7 @@ describe('control-plane object authorization', () => {
     }));
 
     expect(res.status).toBe(403);
-    expect(mockFileContinuityClaim).toHaveBeenCalledWith({
-      principal_id: 'entity-victim',
-      old_entity_id: 'entity-old',
-      new_entity_id: 'entity-new',
-      reason: 'entity_rename',
-      continuity_mode: undefined,
-      proofs: undefined,
-      transfer_budget: undefined,
-    }, 'entity-owner');
+    expect(mockFileContinuityClaim).not.toHaveBeenCalled();
   });
 
   it('requires dispute.resolve permission for dispute resolution', async () => {

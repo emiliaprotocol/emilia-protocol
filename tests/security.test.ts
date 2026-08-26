@@ -119,13 +119,15 @@ describe('TRUST_TABLES list', () => {
     expect(tableMatch).not.toBeNull();
   });
 
-  it('contains the expected number of trust tables (42)', () => {
-    // Bumped when adding trust-bearing tables (latest: Arena synthetic allowance).
+  it('contains the expected number of trust tables (44)', () => {
+    // Bumped when adding SCIM users and groups: directory membership can grant
+    // or revoke identity-backed authority and therefore belongs behind the
+    // same guarded write discipline as other trust-bearing state.
     // Update both the count and the in-source TRUST_TABLES list together
     // when a new trust-bearing table is introduced.
     const entries = tableMatch[1].match(/'[^']+'/g);
     expect(entries).not.toBeNull();
-    expect(entries.length).toBe(42);
+    expect(entries.length).toBe(44);
   });
 
   const expectedCoreTables = [
@@ -140,6 +142,8 @@ describe('TRUST_TABLES list', () => {
     'policy_rollouts',
     'signoff_challenges',
     'signoff_attestations',
+    'scim_users',
+    'scim_groups',
   ];
 
   for (const table of expectedCoreTables) {

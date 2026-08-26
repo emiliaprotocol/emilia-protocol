@@ -110,7 +110,7 @@ Response (201):
   "presentation_type": "self_asserted",
   "presentation_hash": "sha256:7c222fb2927d...",
   "issuer_status": "self_asserted",
-  "verified": true,
+  "verified": false,
   "normalized_claims": {
     "entity_id": "acme-tools",
     "action": "install",
@@ -233,11 +233,17 @@ POST /api/handshake/hs_m1m2m3m4/present
     "verified_since": "2023-06-01"
   },
   "issuer_ref": "authority_key_us_commerce",
+  "issuer_proof": {
+    "profile": "EP-HANDSHAKE-ISSUER-PROOF-v1",
+    "algorithm": "Ed25519",
+    "key_id": "authority_key_us_commerce",
+    "signature": "<unpadded-base64url-ed25519-signature>"
+  },
   "disclosure_mode": "full"
 }
 ```
 
-Response (201): Presentation with `issuer_status: "authority_valid"`, `verified: true`.
+Response (201): Presentation with `issuer_status: "authority_signature_valid"`, `verified: true`.
 
 **Event trail**: `handshake_events` -- `presentation_added`.
 
@@ -259,11 +265,17 @@ POST /api/handshake/hs_m1m2m3m4/present
     "department": "procurement"
   },
   "issuer_ref": "authority_key_buyer_org",
+  "issuer_proof": {
+    "profile": "EP-HANDSHAKE-ISSUER-PROOF-v1",
+    "algorithm": "Ed25519",
+    "key_id": "authority_key_buyer_org",
+    "signature": "<unpadded-base64url-ed25519-signature>"
+  },
   "disclosure_mode": "full"
 }
 ```
 
-Response (201): Presentation with `issuer_status: "authority_valid"`, `verified: true`.
+Response (201): Presentation with `issuer_status: "authority_signature_valid"`, `verified: true`.
 
 **Event trail**: `handshake_events` -- `presentation_added`.
 

@@ -108,6 +108,17 @@ export function getSsoConfig(): { stateSecret: string | null; sessionSecret: str
   };
 }
 
+/** Canonical deployment origin used for SAML/OIDC service-provider URLs. */
+export function getSsoOriginConfig(): { origin: string | null; isProduction: boolean } {
+  return {
+    origin: process.env.NEXT_PUBLIC_APP_URL
+      || process.env.NEXT_PUBLIC_SITE_URL
+      || process.env.EP_PUBLIC_BASE_URL
+      || null,
+    isProduction: isProduction(),
+  };
+}
+
 /**
  * Trust Desk reviewer authentication uses separate credentials for the
  * one-time bootstrap exchange and the browser-session MAC. The bootstrap

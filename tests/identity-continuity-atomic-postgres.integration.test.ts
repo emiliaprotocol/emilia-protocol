@@ -12,6 +12,13 @@ const migration = readFileSync(
   new URL('../supabase/migrations/20260826130000_continuity_challenge_atomic.sql', import.meta.url),
   'utf8',
 );
+const residualClosureMigration = readFileSync(
+  new URL(
+    '../supabase/migrations/20260826160000_continuity_and_pairing_residual_closure.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 
 const suite = process.env.INTEGRATION_POSTGRES === '1'
   ? describe.sequential
@@ -70,20 +77,37 @@ async function fileClaim(input: {
   newEntityId: string;
   reason?: string;
   actorEntityId?: string;
+  continuityMode?: 'linear' | 'fission' | 'merger';
+  transferBudget?: number;
 }): Promise<Record<string, any>> {
   return asRole('service_role', async (client) => {
     const result = await client.query<{ result: Record<string, any> }>(`
       SELECT public.file_continuity_claim_atomic(
-        $1, $2, $3, $4, $5, $6, 'linear', '[]'::jsonb, 1.0
+        $1, $2, $3, $4, $5, $6, $7, '[]'::jsonb, $8
       ) AS result
     `, [
       input.continuityId,
       input.principalId,
-      input.actorEntityId ?? input.oldEntityId,
+      input.actorEntityId ?? input.newEntityId,
       input.oldEntityId,
       input.newEntityId,
       input.reason ?? 'key_rotation',
+      input.continuityMode ?? 'linear',
+      input.transferBudget ?? 1.0,
     ]);
+    return result.rows[0].result;
+  });
+}
+
+async function withdrawClaim(input: {
+  continuityId: string;
+  actorEntityId: string;
+  reason?: string;
+}): Promise<Record<string, any>> {
+  return asRole('service_role', async (client) => {
+    const result = await client.query<{ result: Record<string, any> }>(`
+      SELECT public.withdraw_continuity_claim_atomic($1, $2, $3) AS result
+    `, [input.continuityId, input.actorEntityId, input.reason ?? null]);
     return result.rows[0].result;
   });
 }
@@ -155,6 +179,19 @@ async function seedClaim(label: string): Promise<{
     ) VALUES ($1, $2, $3, $4, 'pending', now() + interval '1 hour')
   `, [claimId, principalId, `old-${label}`, `new-${label}`]);
   await database.query(`
+    INSERT INTO public.audit_events (
+      event_type, actor_id, actor_type, target_type, target_id, action, after_state
+    ) VALUES (
+      'continuity.successor_control_verified', $2::text, 'entity', 'continuity', $1::text,
+      'verify_successor_control', jsonb_build_object(
+        'successor_control', 'verified',
+        'subject_principal', $3::text,
+        'old_entity', $4::text,
+        'new_entity', $2::text
+      )
+    )
+  `, [claimId, `new-${label}`, `principal-${label}`, `old-${label}`]);
+  await database.query(`
     INSERT INTO public.disputes (
       dispute_id, entity_id, filed_by, status
     ) VALUES ($1, $2, $3, 'upheld')
@@ -175,8 +212,58 @@ async function seedClaim(label: string): Promise<{
 async function seedFiling(label: string): Promise<Awaited<ReturnType<typeof seedClaim>>> {
   const fixture = await seedClaim(label);
   await database.query('DELETE FROM public.disputes WHERE dispute_id = $1', [`dispute-${label}`]);
+  await database.query('DELETE FROM public.audit_events WHERE target_id = $1', [fixture.claimId]);
   await database.query('DELETE FROM public.continuity_claims WHERE continuity_id = $1', [fixture.claimId]);
   return fixture;
+}
+
+async function seedFissionPair(
+  label: string,
+  budgets: readonly [number, number],
+): Promise<{
+  fixture: Awaited<ReturnType<typeof seedClaim>>;
+  firstClaimId: string;
+  secondClaimId: string;
+  secondEntityId: string;
+}> {
+  const fixture = await seedFiling(label);
+  const secondEntityId = `new-secondary-${label}`;
+  const secondClaimId = `ep_ix_${label}_secondary`;
+  await database.query(`
+    INSERT INTO public.entities (id, entity_id, principal_id, organization_id, status)
+    VALUES ($1, $2, $3, 'org-owner', 'active')
+  `, [
+    `60000000-0000-4000-8000-${label.padStart(12, '0')}`,
+    secondEntityId,
+    `00000000-0000-4000-8000-${label.padStart(12, '0')}`,
+  ]);
+
+  const filings = await Promise.all([
+    fileClaim({
+      continuityId: fixture.claimId,
+      principalId: fixture.principalId,
+      oldEntityId: fixture.oldEntityId,
+      newEntityId: fixture.newEntityId,
+      continuityMode: 'fission',
+      transferBudget: budgets[0],
+    }),
+    fileClaim({
+      continuityId: secondClaimId,
+      principalId: fixture.principalId,
+      oldEntityId: fixture.oldEntityId,
+      newEntityId: secondEntityId,
+      continuityMode: 'fission',
+      transferBudget: budgets[1],
+    }),
+  ]);
+  expect(filings.every((result) => result.continuity?.status === 'pending')).toBe(true);
+
+  return {
+    fixture,
+    firstClaimId: fixture.claimId,
+    secondClaimId,
+    secondEntityId,
+  };
 }
 
 suite('continuity challenge atomic RPC on PostgreSQL', () => {
@@ -227,6 +314,9 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
         transfer_policy TEXT,
         frozen_due_to TEXT,
         frozen_dispute_id TEXT,
+        withdrawn_at TIMESTAMPTZ,
+        withdrawn_by TEXT,
+        withdrawn_reason TEXT,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
       CREATE TABLE public.continuity_challenges (
@@ -311,6 +401,7 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
     await database.query(migration);
     // A second application proves the reconciliation backfill is idempotent.
     await database.query(migration);
+    await database.query(residualClosureMigration);
   });
 
   afterAll(async () => {
@@ -358,17 +449,14 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
       SELECT
         (SELECT status FROM public.continuity_claims WHERE continuity_id = $1) AS claim_status,
         (SELECT count(*)::int FROM public.continuity_challenges WHERE continuity_id = $1) AS challenges,
-        (SELECT count(*)::int FROM public.audit_events WHERE target_id = $1) AS audits
+        (SELECT count(*)::int FROM public.audit_events
+          WHERE target_id = $1 AND event_type = 'continuity.challenged') AS audits
     `, [fixture.claimId]);
     expect(state.rows[0]).toEqual({ claim_status: 'under_challenge', challenges: 1, audits: 1 });
   });
 
   it('files an owned continuity claim and its audit in one transaction', async () => {
     const fixture = await seedFiling('8');
-    await database.query(
-      'UPDATE public.entities SET principal_id = NULL WHERE entity_id = $1',
-      [fixture.newEntityId],
-    );
     const result = await fileClaim({
       continuityId: fixture.claimId,
       principalId: fixture.principalId,
@@ -394,8 +482,14 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
     expect(state.rows[0]).toEqual({
       claims: 1,
       audits: 1,
-      audit_actor: fixture.oldEntityId,
+      audit_actor: fixture.newEntityId,
     });
+    const successorProof = await database.query(
+      `SELECT count(*)::int AS count FROM public.audit_events
+        WHERE target_id = $1 AND event_type = 'continuity.successor_control_verified'`,
+      [fixture.claimId],
+    );
+    expect(successorProof.rows[0].count).toBe(1);
   });
 
   it('denies an unlinked filing actor that does not identify the subject principal', async () => {
@@ -421,7 +515,32 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
     expect(state.rows[0].count).toBe(0);
   });
 
-  it('allows legacy filing when actor entity_id equals the subject public principal id', async () => {
+  it('refuses a NULL-principal successor even when the old endpoint is owned', async () => {
+    const fixture = await seedFiling('30');
+    await database.query(
+      'UPDATE public.entities SET principal_id = NULL WHERE entity_id = $1',
+      [fixture.newEntityId],
+    );
+
+    const result = await fileClaim({
+      continuityId: fixture.claimId,
+      principalId: fixture.principalId,
+      oldEntityId: fixture.oldEntityId,
+      newEntityId: fixture.newEntityId,
+    });
+
+    expect(result).toMatchObject({ status: 403 });
+    expect(result.error).toMatch(/successor is not bound/i);
+    const state = await database.query(
+      `SELECT
+         (SELECT count(*)::int FROM public.continuity_claims WHERE continuity_id = $1) AS claims,
+         (SELECT count(*)::int FROM public.audit_events WHERE target_id = $1) AS audits`,
+      [fixture.claimId],
+    );
+    expect(state.rows[0]).toEqual({ claims: 0, audits: 0 });
+  });
+
+  it('rejects the legacy entity-id-equals-principal compatibility shortcut', async () => {
     const fixture = await seedFiling('21');
     await database.query(`
       INSERT INTO public.entities (id, entity_id, principal_id, organization_id, status)
@@ -436,21 +555,21 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
       newEntityId: fixture.newEntityId,
     });
 
-    expect(result.continuity).toMatchObject({ status: 'pending' });
-    const audit = await database.query(
-      'SELECT actor_id, actor_type FROM public.audit_events WHERE target_id = $1',
+    expect(result).toMatchObject({ status: 403 });
+    const count = await database.query(
+      'SELECT count(*)::int AS count FROM public.continuity_claims WHERE continuity_id = $1',
       [fixture.claimId],
     );
-    expect(audit.rows[0]).toEqual({ actor_id: fixture.principalId, actor_type: 'entity' });
+    expect(count.rows[0].count).toBe(0);
   });
 
-  it('serializes filing and resolution when the filing actor is the old endpoint', async () => {
+  it('serializes filing and resolution when the authenticated actor is the successor endpoint', async () => {
     const fixture = await seedClaim('26');
     const [filing, resolution] = await Promise.all([
       fileClaim({
         continuityId: 'ep_ix_26_parallel',
         principalId: fixture.principalId,
-        actorEntityId: fixture.oldEntityId,
+        actorEntityId: fixture.newEntityId,
         oldEntityId: fixture.oldEntityId,
         newEntityId: fixture.newEntityId,
       }),
@@ -561,10 +680,6 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
 
   it('atomically resolves the claim, records the decision, links the entity, and appends audit', async () => {
     const fixture = await seedClaim('12');
-    await database.query(
-      'UPDATE public.entities SET principal_id = NULL WHERE entity_id = $1',
-      [fixture.newEntityId],
-    );
 
     const result = await resolveClaim({ continuityId: fixture.claimId });
     expect(result).toMatchObject({
@@ -590,10 +705,6 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
 
   it('rolls resolution, decision, and entity link back when its audit append fails', async () => {
     const fixture = await seedClaim('13');
-    await database.query(
-      'UPDATE public.entities SET principal_id = NULL WHERE entity_id = $1',
-      [fixture.newEntityId],
-    );
     await database.query(`
       CREATE OR REPLACE FUNCTION public.reject_resolution_audit()
       RETURNS TRIGGER LANGUAGE plpgsql AS $rollback$
@@ -630,6 +741,168 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
     await database.query('DROP FUNCTION public.reject_resolution_audit()');
   });
 
+  it('refuses approval of a legacy claim without immutable successor-control proof', async () => {
+    const fixture = await seedClaim('31');
+    await database.query(
+      `DELETE FROM public.audit_events
+        WHERE target_id = $1 AND event_type = 'continuity.successor_control_verified'`,
+      [fixture.claimId],
+    );
+
+    const result = await resolveClaim({ continuityId: fixture.claimId });
+
+    expect(result).toMatchObject({ status: 409 });
+    expect(result.error).toMatch(/successor control was not proven/i);
+    const state = await database.query(`
+      SELECT
+        (SELECT status FROM public.continuity_claims WHERE continuity_id = $1) AS claim_status,
+        (SELECT count(*)::int FROM public.continuity_decisions WHERE continuity_id = $1) AS decisions
+    `, [fixture.claimId]);
+    expect(state.rows[0]).toEqual({ claim_status: 'pending', decisions: 0 });
+  });
+
+  it('serializes concurrent fission approvals and refuses cumulative budget above one', async () => {
+    const pair = await seedFissionPair('32', [0.6, 0.6]);
+
+    const results = await Promise.all([
+      resolveClaim({ continuityId: pair.firstClaimId, decision: 'approved_partial' }),
+      resolveClaim({ continuityId: pair.secondClaimId, decision: 'approved_partial' }),
+    ]);
+
+    expect(results.filter((result) => result.decision === 'approved_partial')).toHaveLength(1);
+    expect(results.filter((result) => result.status === 409)).toHaveLength(1);
+    expect(results.find((result) => result.status === 409)?.error).toMatch(/budget exhausted/i);
+    const state = await database.query(`
+      SELECT
+        count(*)::int AS decisions,
+        COALESCE(sum((decision.allocation_rule ->> 'budget')::numeric), 0)::float8 AS allocated,
+        (SELECT count(*)::int FROM public.continuity_claims AS claim
+          WHERE claim.continuity_id IN ($1, $2) AND claim.status = 'approved_partial') AS approved,
+        (SELECT count(*)::int FROM public.continuity_claims AS claim
+          WHERE claim.continuity_id IN ($1, $2) AND claim.status = 'pending') AS pending
+      FROM public.continuity_decisions AS decision
+      WHERE decision.continuity_id IN ($1, $2)
+    `, [pair.firstClaimId, pair.secondClaimId]);
+    expect(state.rows[0]).toEqual({ decisions: 1, allocated: 0.6, approved: 1, pending: 1 });
+  });
+
+  it('admits concurrent fission approvals whose conserved budgets total exactly one', async () => {
+    const pair = await seedFissionPair('33', [0.6, 0.4]);
+
+    const results = await Promise.all([
+      resolveClaim({ continuityId: pair.firstClaimId, decision: 'approved_partial' }),
+      resolveClaim({ continuityId: pair.secondClaimId, decision: 'approved_partial' }),
+    ]);
+
+    expect(results.every((result) => result.decision === 'approved_partial')).toBe(true);
+    const state = await database.query(`
+      SELECT
+        count(*)::int AS decisions,
+        COALESCE(sum((allocation_rule ->> 'budget')::numeric), 0)::float8 AS allocated
+      FROM public.continuity_decisions
+      WHERE continuity_id IN ($1, $2)
+    `, [pair.firstClaimId, pair.secondClaimId]);
+    expect(state.rows[0]).toEqual({ decisions: 2, allocated: 1 });
+
+    await expect(database.query(
+      `UPDATE public.continuity_decisions SET allocation_rule = '{}'::jsonb
+        WHERE continuity_id = $1`,
+      [pair.firstClaimId],
+    )).rejects.toThrow(/continuity decisions are append-only/i);
+  });
+
+  it('rolls withdrawal state back when its audit append fails, then withdraws atomically', async () => {
+    const fixture = await seedFiling('34');
+    const filed = await fileClaim({
+      continuityId: fixture.claimId,
+      principalId: fixture.principalId,
+      oldEntityId: fixture.oldEntityId,
+      newEntityId: fixture.newEntityId,
+    });
+    expect(filed.continuity).toMatchObject({ status: 'pending' });
+
+    await database.query(`
+      CREATE OR REPLACE FUNCTION public.reject_withdrawal_audit()
+      RETURNS TRIGGER LANGUAGE plpgsql AS $rollback$
+      BEGIN
+        IF NEW.target_id = '${fixture.claimId}' AND NEW.event_type = 'continuity.withdrawn' THEN
+          RAISE EXCEPTION 'forced withdrawal audit failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $rollback$;
+      CREATE TRIGGER reject_withdrawal_audit
+      BEFORE INSERT ON public.audit_events
+      FOR EACH ROW EXECUTE FUNCTION public.reject_withdrawal_audit();
+    `);
+    await expect(withdrawClaim({
+      continuityId: fixture.claimId,
+      actorEntityId: fixture.newEntityId,
+    })).rejects.toThrow(/forced withdrawal audit failure/);
+    let state = await database.query(`
+      SELECT status, withdrawn_at,
+        (SELECT count(*)::int FROM public.audit_events
+          WHERE target_id = $1 AND event_type = 'continuity.withdrawn') AS withdrawal_audits
+      FROM public.continuity_claims WHERE continuity_id = $1
+    `, [fixture.claimId]);
+    expect(state.rows[0]).toEqual({ status: 'pending', withdrawn_at: null, withdrawal_audits: 0 });
+    await database.query('DROP TRIGGER reject_withdrawal_audit ON public.audit_events');
+    await database.query('DROP FUNCTION public.reject_withdrawal_audit()');
+
+    const withdrawal = await withdrawClaim({
+      continuityId: fixture.claimId,
+      actorEntityId: fixture.newEntityId,
+      reason: 'successor abandoned',
+    });
+    expect(withdrawal).toMatchObject({
+      continuity_id: fixture.claimId,
+      status: 'withdrawn',
+    });
+    state = await database.query(`
+      SELECT status, withdrawn_by, withdrawn_reason,
+        (SELECT count(*)::int FROM public.audit_events
+          WHERE target_id = $1 AND event_type = 'continuity.withdrawn') AS withdrawal_audits
+      FROM public.continuity_claims WHERE continuity_id = $1
+    `, [fixture.claimId]);
+    expect(state.rows[0]).toEqual({
+      status: 'withdrawn',
+      withdrawn_by: fixture.newEntityId,
+      withdrawn_reason: 'successor abandoned',
+      withdrawal_audits: 1,
+    });
+  });
+
+  it('serializes withdrawal against approval so exactly one terminal transition commits', async () => {
+    const fixture = await seedFiling('35');
+    await fileClaim({
+      continuityId: fixture.claimId,
+      principalId: fixture.principalId,
+      oldEntityId: fixture.oldEntityId,
+      newEntityId: fixture.newEntityId,
+    });
+
+    const results = await Promise.all([
+      withdrawClaim({ continuityId: fixture.claimId, actorEntityId: fixture.newEntityId }),
+      resolveClaim({ continuityId: fixture.claimId }),
+    ]);
+    expect(results.filter((result) => result.status === 409)).toHaveLength(1);
+    expect(results.filter((result) => result.status === 'withdrawn'
+      || result.decision === 'approved_full')).toHaveLength(1);
+
+    const state = await database.query(`
+      SELECT status,
+        (SELECT count(*)::int FROM public.continuity_decisions WHERE continuity_id = $1) AS decisions,
+        (SELECT count(*)::int FROM public.audit_events
+          WHERE target_id = $1 AND event_type = 'continuity.withdrawn') AS withdrawals,
+        (SELECT count(*)::int FROM public.audit_events
+          WHERE target_id = $1 AND event_type = 'continuity.resolved') AS resolutions
+      FROM public.continuity_claims WHERE continuity_id = $1
+    `, [fixture.claimId]);
+    expect(['withdrawn', 'approved_full']).toContain(state.rows[0].status);
+    expect(state.rows[0].decisions + state.rows[0].withdrawals).toBe(1);
+    expect(state.rows[0].withdrawals + state.rows[0].resolutions).toBe(1);
+  });
+
   it('refuses resolution after the new endpoint is reassigned', async () => {
     const fixture = await seedClaim('24');
     await database.query(`
@@ -640,7 +913,7 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
 
     const result = await resolveClaim({ continuityId: fixture.claimId });
     expect(result).toMatchObject({ status: 409 });
-    expect(result.error).toMatch(/controlled by another principal/i);
+    expect(result.error).toMatch(/ownership is not currently proven/i);
     const state = await database.query(`
       SELECT
         (SELECT status FROM public.continuity_claims WHERE continuity_id = $1) AS claim_status,
@@ -669,7 +942,7 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
 
       const result = await resolution;
       expect(result).toMatchObject({ status: 409 });
-      expect(result.error).toMatch(/controlled by another principal/i);
+      expect(result.error).toMatch(/ownership is not currently proven/i);
     } finally {
       await reassignClient.query('ROLLBACK').catch(() => undefined);
       reassignClient.release();
@@ -843,7 +1116,8 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
       SELECT
         (SELECT status FROM public.continuity_claims WHERE continuity_id = $1) AS claim_status,
         (SELECT count(*)::int FROM public.continuity_challenges WHERE continuity_id = $1) AS challenges,
-        (SELECT count(*)::int FROM public.audit_events WHERE target_id = $1) AS audits
+        (SELECT count(*)::int FROM public.audit_events
+          WHERE target_id = $1 AND event_type = 'continuity.challenged') AS audits
     `, [fixture.claimId]);
     expect(state.rows[0]).toEqual({ claim_status: 'pending', challenges: 0, audits: 0 });
     await database.query('DROP TRIGGER reject_continuity_audit ON public.audit_events');
@@ -861,7 +1135,8 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
     const counts = await database.query(`
       SELECT
         (SELECT count(*)::int FROM public.continuity_challenges WHERE continuity_id = $1) AS challenges,
-        (SELECT count(*)::int FROM public.audit_events WHERE target_id = $1) AS audits
+        (SELECT count(*)::int FROM public.audit_events
+          WHERE target_id = $1 AND event_type = 'continuity.challenged') AS audits
     `, [fixture.claimId]);
     expect(counts.rows[0]).toEqual({ challenges: 2, audits: 2 });
   });
@@ -927,7 +1202,8 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
     });
     expect(result.challenge).toMatchObject({ challenger_type: 'operator' });
     const audit = await database.query(
-      'SELECT actor_type, after_state FROM public.audit_events WHERE target_id = $1',
+      `SELECT actor_type, after_state FROM public.audit_events
+        WHERE target_id = $1 AND event_type = 'continuity.challenged'`,
       [fixture.claimId],
     );
     expect(audit.rows[0]).toMatchObject({
@@ -963,9 +1239,24 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
         ) AS weak_filing,
         to_regprocedure(
           'public.file_continuity_claim_atomic(text,text,text,text,text,text,text,jsonb,numeric)'
-        ) IS NOT NULL AS actor_bound_filing
+        ) IS NOT NULL AS actor_bound_filing,
+        has_function_privilege(
+          'service_role',
+          'public.file_continuity_claim_atomic_pre_successor_proof(text,text,text,text,text,text,text,jsonb,numeric)',
+          'EXECUTE'
+        ) AS service_can_call_weak_filing_core,
+        has_function_privilege(
+          'service_role',
+          'public.resolve_continuity_atomic_pre_budget_conservation(text,text,jsonb,text)',
+          'EXECUTE'
+        ) AS service_can_call_unconserved_resolution_core
     `);
-    expect(overloads.rows[0]).toEqual({ weak_filing: null, actor_bound_filing: true });
+    expect(overloads.rows[0]).toEqual({
+      weak_filing: null,
+      actor_bound_filing: true,
+      service_can_call_weak_filing_core: false,
+      service_can_call_unconserved_resolution_core: false,
+    });
 
     for (const role of ['anon', 'authenticated'] as const) {
       const forbiddenCalls = [
@@ -977,6 +1268,9 @@ suite('continuity challenge atomic RPC on PostgreSQL', () => {
         )`,
         `SELECT public.resolve_continuity_atomic(
           'missing', 'rejected', '[]'::jsonb, 'operator'
+        )`,
+        `SELECT public.withdraw_continuity_claim_atomic(
+          'missing', 'entity', NULL
         )`,
         `SELECT public.reconcile_continuity_dispute_atomic(
           'missing', NULL

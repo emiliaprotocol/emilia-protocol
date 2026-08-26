@@ -27,7 +27,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const entryPoint = await validateSsoProviderUrl(connection.saml_idp_entry_point, 'saml_idp_entry_point');
   if (!entryPoint.valid) return epProblem(400, 'unsafe_sso_url', 'Configured SAML IdP URL is not allowed');
 
-  const origin = spOrigin(request);
+  const origin = spOrigin();
   const sp = buildSamlSp({
     // entryPoint.valid was checked above (line 28) and guarantees entryPoint.url
     // is a string; the compiler can't see that discriminated-union guarantee.

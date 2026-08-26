@@ -2,9 +2,8 @@
 //
 // EMILIA Secure Expo shell.
 //
-// This build can exchange an admin-created pairing code for a non-bundled,
-// server-minted mobile session and display that approver's inbox. Its only
-// signer is an exportable JavaScript key, so live approval submission is absent.
+// This diagnostic build can display an existing paired approver session. Its
+// exportable JavaScript key is never accepted for Class-A pairing or approval.
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -25,14 +24,12 @@ import { StatusBar } from 'expo-status-bar';
 import { challengeFromContext, buildAttestation } from './lib/ep-signoff';
 import { signChallengeWithSoftwareKey, type SigningPolicy } from './lib/secure-key';
 import {
-  exchangeMobilePairing,
   fetchMobileInbox,
   revokeMobileSession,
 } from './lib/ep-client';
 import {
   clearPairedSession,
   loadPairedSession,
-  savePairedSession,
   type PairedSession,
 } from './lib/session';
 
@@ -121,27 +118,14 @@ export default function App(): React.JSX.Element {
       Alert.alert('Pairing refused', 'Pairing is supported only in an iOS or Android native build.');
       return;
     }
-    setBusy('pair');
-    try {
-      const paired = await exchangeMobilePairing({
-        pairingCode,
-        platform: Platform.OS,
-        appId: APP_ID,
-      });
-      await savePairedSession(paired);
-      setSession(paired);
-      setPairingCode('');
-      await refreshInbox(paired);
-      Alert.alert(
-        'Session paired',
-        'The server session is active. Trusted platform-key enrollment is still required for live approvals.'
-      );
-    } catch (error) {
-      Alert.alert('Pairing refused', String((error as Error).message || error));
-    } finally {
-      setBusy(null);
-    }
-  }, [pairingCode, refreshInbox]);
+    // Expo currently exposes local biometric presence, not the registered
+    // WebAuthn assertion required to bind a directory-backed Class-A identity.
+    // Keep this shell fail-closed and direct operators to the native clients.
+    Alert.alert(
+      'Class-A passkey required',
+      'Use the native EMILIA Approver app to pair this identity.',
+    );
+  }, []);
 
   const disconnect = useCallback(async (): Promise<void> => {
     if (!session) return;
