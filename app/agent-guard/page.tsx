@@ -162,7 +162,7 @@ export default function AgentGuardPage() {
             Coming from Scan? Start with one flagged tool.
           </p>
           <p style={{ fontSize: 13, color: color.t3, maxWidth: 650, lineHeight: 1.65, margin: '-14px 0 28px' }}>
-            Scan&apos;s protect output is a reviewable protection scaffold—not a patch. Review the generated files,
+            Scan&apos;s protect output is a reviewable protection scaffold, not a patch. Review the generated files,
             bind the real executor path, configure durable consumption and provenance, then test the integration.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>

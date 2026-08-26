@@ -25,15 +25,16 @@ function compact(value) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with the authority toll booth, keeps Gate customer-owned, and keeps Authority Map as the free entry point', () => {
+  it('leads with the authority toll booth, keeps Gate customer-owned, and starts the five-product story', () => {
     const page = read('app/HomePageClient.js');
+    const productStories = read('lib/product-stories.ts');
     const route = read('app/page.js');
     const css = read('app/ep.css');
 
     expect(route).toContain('Authority Toll Booth for Autonomous Work | EMILIA');
-    expect(route).toContain('every consequential agent action enters with customer authority and exits with an action-bound receipt');
+    expect(route).toContain('At configured protected boundaries, consequential agent actions must present customer authority before provider entry');
     expect(page).toContain('EMILIA <span>· The authority toll booth for autonomous work</span>');
-    expect(page).toContain('Every consequential agent action enters with authority and exits with a receipt.');
+    expect(page).toContain('Protected crossings require authority before action, then preserve what happened.');
     expect(page).toContain('EMILIA is building the universal agentic authority toll booth.');
     expect(page).toContain('each Gate remains customer-owned and local to its configured boundary.');
     expect(page).toContain('Even if AI writes the binary, it cannot write its own authority.');
@@ -50,12 +51,15 @@ describe('homepage category contract', () => {
     expect(css).toContain('emilia-authority-tollbooth-v1.png');
     expect(page).toContain('Public evidence');
     expect(page).toContain('unsafe counterexamples');
-    expect(page).toContain("href: '/authority-brain'");
-    expect(page).toContain("title: 'Authority Map'");
-    expect(page).toContain('href="/scan"');
+    expect(page).toContain("{ PRODUCT_STORIES } from '@/lib/product-stories'");
+    expect(productStories).toContain("name: 'Authority Brain'");
+    expect(productStories).toContain("name: 'EMILIA Gate'");
+    expect(productStories).toContain("name: 'EMILIA Approver'");
+    expect(productStories).toContain("name: 'EMILIA Protocol'");
+    expect(productStories).toContain("name: 'Assurance Plane'");
+    expect(page).toContain('href="/authority-brain"');
     expect(page).toContain('href="/pilot"');
-    expect(page).toContain('href="/gate/live"');
-    expect(page).toContain("href: '/gate'");
+    expect(page).toContain('href="/products"');
     expect(page).toContain('href="/proof"');
     expect(page).not.toContain('<CrashTestDemo />');
     expect(page).not.toContain('emilia-sequence.mp4');
@@ -103,6 +107,7 @@ describe('homepage category contract', () => {
     const hierarchy =
       'AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA verifies the exact authority and any required approver evidence under the relying party’s pinned rules, then controls admission at covered consequence boundaries.';
     const homepage = compact(read('app/HomePageClient.js'));
+    const productStories = compact(read('lib/product-stories.ts'));
     const gate = compact(read('app/gate/page.js'));
     const investors = compact(read('app/investors/page.js'));
     const productBrief = compact(read('docs/EMILIA-GATE-PRODUCT-BRIEF.md'));
@@ -113,7 +118,7 @@ describe('homepage category contract', () => {
 
     expect(homepage).not.toContain('AgentROA governs calls.');
     expect(homepage).not.toContain('ORPRG proves policy permitted the effect.');
-    expect(homepage).toContain('EMILIA supports the procedure; it does not issue the audit opinion.');
+    expect(productStories).toContain('EMILIA supports the procedure. It does not issue an audit opinion');
     expect(gate).toContain('A match is not authorization');
     expect(gate).toContain('consumes the reservation as indeterminate: no blind retry or refund');
     expect(gate).toContain('RECEIPT PROGRAMS');

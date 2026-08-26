@@ -1,0 +1,592 @@
+.hero {
+  border-bottom: 1px solid #e7e5e4;
+  background:
+    radial-gradient(circle at 86% 12%, rgba(176, 141, 53, 0.13), transparent 27rem),
+    #fafaf9;
+  padding: 96px 32px 76px;
+}
+
+.shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+  gap: clamp(44px, 7vw, 88px);
+  align-items: center;
+}
+
+.chapter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: #765a13;
+  font: 600 10px/1.4 'IBM Plex Mono', monospace;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+}
+
+.chapter::before {
+  width: 30px;
+  height: 1px;
+  background: #b08d35;
+  content: '';
+}
+
+.hero h1 {
+  max-width: 760px;
+  margin: 0;
+  color: #0c0a09;
+  font: 700 clamp(42px, 6.4vw, 72px)/0.98 'IBM Plex Sans', sans-serif;
+  letter-spacing: -2.6px;
+}
+
+.lead {
+  max-width: 700px;
+  margin: 24px 0 0;
+  color: #44403c;
+  font-size: 18px;
+  line-height: 1.72;
+}
+
+.job {
+  max-width: 700px;
+  margin: 22px 0 0;
+  padding-left: 18px;
+  border-left: 3px solid #b08d35;
+  color: #0c0a09;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.65;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.primary,
+.secondary {
+  min-height: 44px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 12px 18px;
+  font: 600 13px/1.2 'IBM Plex Sans', sans-serif;
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.primary {
+  border: 1px solid #0c0a09;
+  background: #0c0a09;
+  color: #fafaf9;
+}
+
+.secondary {
+  border: 1px solid #d6d3d1;
+  background: #fff;
+  color: #0c0a09;
+}
+
+.primary:hover,
+.secondary:hover {
+  transform: translateY(-1px);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.journeyLink:focus-visible,
+.productCard:focus-visible {
+  outline: 3px solid #b08d35;
+  outline-offset: 3px;
+}
+
+.scene {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #d6d3d1;
+  border-top: 4px solid #b08d35;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(12, 10, 9, 0.1);
+}
+
+.sceneHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e7e5e4;
+  color: #78716c;
+  font: 600 9px/1.5 'IBM Plex Mono', monospace;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+.sceneBody {
+  padding: 26px 24px 24px;
+}
+
+.sceneBody h2,
+.sceneBody h3 {
+  margin: 0 0 14px;
+  color: #0c0a09;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sceneBody p {
+  margin: 0;
+  color: #57534e;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.actionCode {
+  display: block;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-radius: 4px;
+  background: #1c1917;
+  color: #f2d58a;
+  font: 600 12px/1.5 'IBM Plex Mono', monospace;
+  overflow-wrap: anywhere;
+}
+
+.materialChange {
+  margin-top: 10px;
+  color: #44403c;
+  font: 500 11px/1.6 'IBM Plex Mono', monospace;
+}
+
+.moment {
+  margin: 22px -24px -24px;
+  padding: 20px 24px;
+  border-top: 1px solid #e7e5e4;
+  background: #f5f5f4;
+}
+
+.moment span,
+.output span {
+  display: block;
+  margin-bottom: 7px;
+  color: #765a13;
+  font: 600 9px/1.4 'IBM Plex Mono', monospace;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.moment strong,
+.output strong {
+  display: block;
+  color: #0c0a09;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.boundary {
+  padding: 22px 32px;
+  border-bottom: 1px solid #e7e5e4;
+  background: #1c1917;
+  color: rgba(250, 250, 249, 0.74);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.boundary strong {
+  color: #f2d58a;
+}
+
+.journey {
+  border-bottom: 1px solid #e7e5e4;
+  background: #fff;
+  padding: 22px 32px;
+}
+
+.journeyList {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  list-style: none;
+}
+
+.journeyLink {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  border-left: 1px solid #e7e5e4;
+  color: #57534e;
+  text-decoration: none;
+}
+
+.journeyList li:last-child .journeyLink {
+  border-right: 1px solid #e7e5e4;
+}
+
+.journeyLink[data-active='true'] {
+  background: #f5f5f4;
+  box-shadow: inset 0 -3px 0 #b08d35;
+  color: #0c0a09;
+}
+
+.journeyNumber {
+  color: #765a13;
+  font: 600 10px/1.2 'IBM Plex Mono', monospace;
+}
+
+.journeyName {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hubHero {
+  padding: 100px 32px 72px;
+  border-bottom: 1px solid #e7e5e4;
+  background:
+    radial-gradient(circle at 75% 20%, rgba(59, 130, 246, 0.09), transparent 22rem),
+    radial-gradient(circle at 88% 45%, rgba(176, 141, 53, 0.13), transparent 26rem),
+    #fafaf9;
+}
+
+.hubHero h1 {
+  max-width: 900px;
+  margin: 0;
+  color: #0c0a09;
+  font: 700 clamp(46px, 7.4vw, 86px)/0.94 'IBM Plex Sans', sans-serif;
+  letter-spacing: -3.2px;
+}
+
+.hubHero p {
+  max-width: 720px;
+  margin: 26px 0 0;
+  color: #44403c;
+  font-size: 19px;
+  line-height: 1.7;
+}
+
+.hubScenario {
+  padding: 80px 32px;
+  border-bottom: 1px solid #e7e5e4;
+}
+
+.scenarioGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: 64px;
+  align-items: start;
+}
+
+.scenarioCopy h2 {
+  margin: 14px 0 18px;
+  color: #0c0a09;
+  font: 700 clamp(30px, 4vw, 48px)/1.06 'IBM Plex Sans', sans-serif;
+  letter-spacing: -1.4px;
+}
+
+.scenarioCopy p {
+  color: #57534e;
+  font-size: 16px;
+  line-height: 1.72;
+}
+
+.productStack {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #d6d3d1;
+  list-style: none;
+}
+
+.productCard {
+  display: grid;
+  grid-template-columns: 52px minmax(150px, 0.55fr) minmax(260px, 1.45fr) 24px;
+  gap: 20px;
+  align-items: center;
+  padding: 22px 8px;
+  border-bottom: 1px solid #d6d3d1;
+  color: #0c0a09;
+  text-decoration: none;
+  transition: background 160ms ease, padding 160ms ease;
+}
+
+.productCard:hover {
+  padding-right: 14px;
+  padding-left: 14px;
+  background: #f5f5f4;
+}
+
+.productCard span:first-child {
+  color: #765a13;
+  font: 600 10px/1.4 'IBM Plex Mono', monospace;
+  letter-spacing: 1.3px;
+}
+
+.productCard strong {
+  font-size: 15px;
+}
+
+.productCard em {
+  color: #57534e;
+  font-size: 14px;
+  font-style: normal;
+  line-height: 1.58;
+}
+
+.comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.comparison > div {
+  padding: 20px;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.comparison > div:last-child {
+  border-top: 3px solid #b08d35;
+}
+
+.comparison span {
+  display: block;
+  margin-bottom: 8px;
+  color: #765a13;
+  font: 600 9px/1.4 'IBM Plex Mono', monospace;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.comparison p {
+  margin: 0;
+  color: #57534e;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.serviceSection {
+  padding: 72px 32px;
+  border-bottom: 1px solid #e7e5e4;
+  background: #1c1917;
+}
+
+.serviceSection .chapter,
+.serviceSection .scenarioCopy h2 {
+  color: #f2d58a;
+}
+
+.serviceSection .scenarioCopy p {
+  color: rgba(250, 250, 249, 0.68);
+}
+
+.serviceGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: 64px;
+  align-items: center;
+}
+
+.serviceLinks {
+  display: grid;
+  gap: 12px;
+}
+
+.serviceLinks a {
+  min-height: 72px;
+  display: grid;
+  gap: 7px;
+  padding: 20px 22px;
+  border: 1px solid rgba(250, 250, 249, 0.17);
+  border-left: 3px solid #b08d35;
+  border-radius: 6px;
+  color: #fafaf9;
+  text-decoration: none;
+}
+
+.serviceLinks a:hover {
+  border-color: rgba(242, 213, 138, 0.62);
+}
+
+.serviceLinks a:focus-visible {
+  outline: 3px solid #f2d58a;
+  outline-offset: 3px;
+}
+
+.serviceLinks strong {
+  font-size: 15px;
+}
+
+.serviceLinks span {
+  color: rgba(250, 250, 249, 0.66);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.chapterCallout {
+  padding: 58px 32px;
+  border-bottom: 1px solid #e7e5e4;
+  background: #fff;
+}
+
+.calloutGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 56px;
+  align-items: center;
+}
+
+.chapterCallout h2 {
+  margin: 4px 0 14px;
+  color: #0c0a09;
+  font: 700 clamp(27px, 3.6vw, 42px)/1.06 'IBM Plex Sans', sans-serif;
+  letter-spacing: -1.2px;
+}
+
+.chapterCallout p {
+  margin: 0;
+  color: #57534e;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.calloutMoment {
+  padding: 22px;
+  border: 1px solid #d6d3d1;
+  border-top: 3px solid #b08d35;
+  border-radius: 8px;
+  background: #fafaf9;
+}
+
+.calloutMoment .actionCode {
+  margin-top: 0;
+}
+
+.calloutMoment strong,
+.calloutMoment span {
+  display: block;
+}
+
+.calloutMoment strong {
+  margin-top: 18px;
+  color: #0c0a09;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.calloutMoment span {
+  margin-top: 12px;
+  color: #78716c;
+  font: 500 10px/1.5 'IBM Plex Mono', monospace;
+}
+
+@media (max-width: 900px) {
+  .heroGrid,
+  .serviceGrid,
+  .calloutGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .journeyList {
+    grid-template-columns: 1fr;
+  }
+
+  .journeyLink,
+  .journeyList li:last-child .journeyLink {
+    border-right: 1px solid #e7e5e4;
+    border-bottom: 1px solid #e7e5e4;
+  }
+
+  .journeyLink[data-active='true'] {
+    box-shadow: inset 3px 0 0 #b08d35;
+  }
+}
+
+@media (max-width: 1080px) {
+  .scenarioGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .hero,
+  .hubHero,
+  .hubScenario,
+  .serviceSection,
+  .chapterCallout {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .hero {
+    padding-top: 64px;
+    padding-bottom: 56px;
+  }
+
+  .hubHero {
+    padding-top: 64px;
+    padding-bottom: 56px;
+  }
+
+  .hero h1,
+  .hubHero h1 {
+    letter-spacing: -1.7px;
+  }
+
+  .lead,
+  .hubHero p {
+    font-size: 17px;
+  }
+
+  .journey {
+    padding: 18px 20px;
+  }
+
+  .productCard {
+    grid-template-columns: 38px minmax(0, 1fr) 20px;
+    gap: 12px;
+  }
+
+  .productCard em {
+    grid-column: 2 / -1;
+  }
+
+  .comparison {
+    grid-template-columns: 1fr;
+  }
+
+  .sceneBody p,
+  .moment strong,
+  .output strong,
+  .productCard em,
+  .comparison p,
+  .serviceLinks span {
+    font-size: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary,
+  .secondary,
+  .productCard {
+    transition: none;
+  }
+}

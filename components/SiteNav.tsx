@@ -2,21 +2,29 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { color, font, radius, cta } from '@/lib/tokens';
 
 type NavLink = [string, string];
 
 const NAV_LINKS: NavLink[] = [
-  ['/authority-brain', '/brain'],
-  ['/protect', '/protect'],
-  ['/gate', '/gate'],
+  ['/products', '/products'],
   ...(process.env.NEXT_PUBLIC_WORKS_V0 === '1' ? [['/works', '/works'] as NavLink] : []),
   ['/use-cases', '/solutions'],
   ['/docs', '/developers'],
+  ['/proof', '/proof'],
   ['/protocol', '/protocol'],
   ['/pricing', '/pricing'],
 ];
+
+const PRODUCT_NAV_KEYS = new Set([
+  'products',
+  'brain',
+  'authority-brain',
+  'gate',
+  'approver',
+  'assurance',
+]);
 
 type SiteNavProps = {
   activePage?: string;
@@ -24,31 +32,53 @@ type SiteNavProps = {
 
 export default function SiteNav({ activePage }: SiteNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLElement>(null);
+  const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const activeKey = activePage?.replace(/^\/+/, '').toLowerCase();
   const linkIsActive = (href: string, label: string): boolean => (
-    href.slice(1) === activeKey || label.slice(1) === activeKey
+    (href === '/products' && Boolean(activeKey && PRODUCT_NAV_KEYS.has(activeKey)))
+    || href.slice(1) === activeKey
+    || label.slice(1) === activeKey
   );
 
   useEffect(() => {
     if (!mobileOpen) return undefined;
 
     const previousOverflow = document.body.style.overflow;
+    const mobileToggle = mobileToggleRef.current;
     document.body.style.overflow = 'hidden';
+
+    const focusable = Array.from(
+      mobileMenuRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [],
+    );
+    focusable[0]?.focus();
 
     const closeOnEscape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') setMobileOpen(false);
+      if (event.key !== 'Tab' || focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', closeOnEscape);
 
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', closeOnEscape);
+      mobileToggle?.focus();
     };
   }, [mobileOpen]);
 
   return (
     <header className="ep-site-header">
-      <nav style={{
+      <nav aria-label="Primary" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         height: 60,
         left: 0, right: 0, width: '100%', boxSizing: 'border-box',
@@ -96,6 +126,7 @@ export default function SiteNav({ activePage }: SiteNavProps) {
 
             {/* Mobile toggle */}
             <button
+              ref={mobileToggleRef}
               className="ep-mobile-toggle"
               onClick={() => setMobileOpen(v => !v)}
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
@@ -113,7 +144,14 @@ export default function SiteNav({ activePage }: SiteNavProps) {
       </nav>
 
       {/* Mobile menu */}
-      <div id="ep-mobile-navigation" className="ep-mobile-menu" data-open={mobileOpen ? 'true' : undefined}>
+      <nav
+        ref={mobileMenuRef}
+        id="ep-mobile-navigation"
+        className="ep-mobile-menu"
+        data-open={mobileOpen ? 'true' : undefined}
+        aria-label="Mobile primary"
+        aria-hidden={!mobileOpen}
+      >
         {NAV_LINKS.map(([href, label]) => (
           <a
             key={label}
@@ -127,7 +165,7 @@ export default function SiteNav({ activePage }: SiteNavProps) {
           onClick={() => setMobileOpen(false)}
           style={{ color: color.gold, borderBottomColor: 'transparent', marginTop: 8 }}
         >Request pilot</a>
-      </div>
+      </nav>
     </header>
   );
 }

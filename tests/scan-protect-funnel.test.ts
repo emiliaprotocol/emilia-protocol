@@ -18,9 +18,9 @@ describe('scan to protected MCP boundary funnel', () => {
   const sitemap = read('app/sitemap.ts');
 
   it('starts with a passive local scan and offers one bounded protection step', () => {
-    expect(homepage).toContain('href="/scan"');
-    expect(homepage).toContain('Run the local Authority Map');
-    expect(homepage).toContain("href: '/authority-brain'");
+    expect(homepage).toContain('href="/authority-brain"');
+    expect(homepage).toContain('Map my agent');
+    expect(homepage).toContain('PRODUCT_STORIES');
     expect(homepage).toContain('Protect one workflow');
   });
 
@@ -33,7 +33,7 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(scan).toContain('href="/mcp"');
 
     expect(guard).toContain('Coming from Scan? Start with one flagged tool.');
-    expect(guard).toContain('reviewable protection scaffold—not a patch');
+    expect(guard).toContain('reviewable protection scaffold, not a patch');
     expect(guard).toContain('href="/guides/require-receipt"');
     expect(guard).toContain('href="/mcp"');
     expect(guard).toContain('href="/scan"');

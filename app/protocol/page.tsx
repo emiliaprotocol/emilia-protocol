@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import { ProductStoryHero } from '@/components/product-story/ProductStory';
 import EmailCapture from '@/components/EmailCapture';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 import standardsStatus from '@/standards/STATUS.json';
@@ -120,28 +121,7 @@ export default function ProtocolPage() {
       <SiteNav activePage="Protocol" />
 
       <main>
-        <section style={{ ...styles.sectionWide, paddingTop: 104, paddingBottom: 72 }}>
-          <div className="ep-tag ep-hero-badge">Gate first · Open protocol</div>
-          <h1 className="ep-hero-text" style={{ ...styles.h1Large, maxWidth: 860 }}>
-            Gate exact actions before consequences.
-          </h1>
-          <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 740, marginTop: 24, fontSize: 18 }}>
-            EMILIA Gate sits on a configured executor or system-of-record path where an action can
-            still be refused. For one exact material action, it verifies the required evidence under
-            relying-party-pinned trust, applies local authorization policy, and reserves admission
-            before invocation.
-          </p>
-          <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 740 }}>
-            The four-document path below explains the evidence Gate can consume. It does not turn a
-            <strong> SATISFIED</strong> evidence result into an <strong>AUTHORIZED</strong> decision,
-            prove execution, or establish complete mediation across routes a deployment has not put
-            behind Gate.
-          </p>
-          <div className="ep-hero-text" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 28 }}>
-            <a href="#canonical-path" className="ep-cta" style={cta.primary}>Follow the four-document path</a>
-            <a href="/gate" className="ep-cta-secondary" style={cta.secondary}>See EMILIA Gate</a>
-          </div>
-        </section>
+        <ProductStoryHero product="protocol" />
 
         <section id="canonical-path" style={styles.sectionAlt}>
           <div style={styles.sectionWide}>
@@ -149,7 +129,9 @@ export default function ProtocolPage() {
               <div style={styles.eyebrow}>Canonical presentation path</div>
               <h2 style={{ ...styles.h2, fontSize: 30, maxWidth: 720 }}>Four documents. One evidence path.</h2>
               <p style={{ ...styles.body, maxWidth: 780 }}>
-                Start with the approval artifact, carry it into the host record, establish scoped
+                Gate exact actions before consequences. The Protocol makes the supporting record
+                independently checkable. Start with one exact material action and its approval artifact,
+                carry it into the host record, establish scoped
                 authority under the relying party&apos;s trust roots, then evaluate whether the verified,
                 action-matched bundle satisfies that party&apos;s evidence requirement.
               </p>
@@ -159,7 +141,7 @@ export default function ProtocolPage() {
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 16 }}>
               {CANONICAL_DOCUMENTS.map((document, index) => (
                 <article
                   key={document.draft}
@@ -247,7 +229,7 @@ export default function ProtocolPage() {
                 and one-time admission at the protected effect boundary.
               </p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 16 }}>
               {GATE_STEPS.map((step, index) => (
                 <article key={step.order} className={`ep-card-lift ep-reveal ep-stagger-${index + 1}`} style={{ ...styles.card, padding: 24 }}>
                   <div style={{ fontFamily: font.mono, fontSize: 10, color: goldText, letterSpacing: 1.5, marginBottom: 14 }}>
@@ -273,7 +255,7 @@ export default function ProtocolPage() {
                 configured effect-capable boundaries a deployment actually controls. A complete-mediation
                 claim needs current deployment evidence that every in-scope route is covered.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 12 }}>
                 {COVERAGE_CONTROLS.map((control, index) => (
                   <div key={control} style={{ display: 'flex', gap: 12, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: radius.base }}>
                     <span style={{ fontFamily: font.mono, fontSize: 10, color: goldText, paddingTop: 3 }}>{String(index + 1).padStart(2, '0')}</span>
@@ -290,7 +272,7 @@ export default function ProtocolPage() {
         </section>
 
         <section style={styles.sectionWide}>
-          <div className="ep-reveal" style={{ ...styles.card, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 28, alignItems: 'center', padding: '32px 36px' }}>
+          <div className="ep-reveal" style={{ ...styles.card, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 28, alignItems: 'center', padding: '32px min(36px, 8vw)', boxSizing: 'border-box', width: '100%' }}>
             <div>
               <div style={styles.eyebrow}>Start with document 01</div>
               <h2 style={{ ...styles.h2, marginBottom: 10 }}>Authorization Receipts -10</h2>
@@ -298,9 +280,9 @@ export default function ProtocolPage() {
                 Read the current posted receipt profile, then continue through binding, authority, and AEC.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <a href="/spec" className="ep-cta" style={cta.primary}>Read Receipts -10</a>
-              <a href="/standards" className="ep-cta-secondary" style={cta.secondary}>View the full portfolio</a>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0 }}>
+              <a href="/spec" className="ep-cta" style={{ ...cta.primary, maxWidth: '100%', boxSizing: 'border-box', whiteSpace: 'normal', textAlign: 'center' }}>Read Receipts -10</a>
+              <a href="/standards" className="ep-cta-secondary" style={{ ...cta.secondary, maxWidth: '100%', boxSizing: 'border-box', whiteSpace: 'normal', textAlign: 'center' }}>View the full portfolio</a>
             </div>
           </div>
         </section>

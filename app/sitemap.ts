@@ -18,6 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/adopt',                 priority: 0.99, changeFrequency: 'weekly' },
     { path: '/signal',                priority: 0.98, changeFrequency: 'weekly' },
     { path: '/gate',                  priority: 0.98, changeFrequency: 'weekly' },
+    { path: '/products',              priority: 0.98, changeFrequency: 'weekly' },
     { path: '/gate/consequence-coverage', priority: 0.85, changeFrequency: 'weekly' },
     { path: '/gate/control-plane',    priority: 0.85, changeFrequency: 'weekly' },
     { path: '/gate/live',             priority: 0.85, changeFrequency: 'weekly' },

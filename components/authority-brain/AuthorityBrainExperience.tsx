@@ -34,6 +34,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import SiteFooter from '@/components/SiteFooter';
 import SiteNav from '@/components/SiteNav';
+import { ProductJourney, ProductStoryCallout } from '@/components/product-story/ProductStory';
 import {
   AUTHORITY_ACTIONS,
   DEMO_STEPS,
@@ -374,6 +375,9 @@ export default function AuthorityBrainExperience(): React.ReactElement {
             <AuthorityBrainGraphic />
           </div>
         </section>
+
+        <ProductStoryCallout product="authority-brain" />
+        <ProductJourney active="authority-brain" />
 
         <section className={styles.loopSection} aria-labelledby="loop-heading">
           <div className={styles.sectionShell}>
