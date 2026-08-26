@@ -2385,6 +2385,18 @@ export {
   verifyAebCrossingRecord,
 } from './aeb-crossing-record.js';
 
+// Native AIC crossing mappings preserve the pure-JSON RFC 7638 JKT and
+// X.509 SPKI cases as separate authority systems. The JWT-SVID helper emits a
+// new-signature-required identity projection and never authorizes an action.
+export {
+  AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
+  AIC_JWT_SVID_PROJECTION_VERSION,
+  AIC_X509_SPKI_CROSSING_MAPPING_PROFILE,
+  mapAicJwtJktCrossingAuthority,
+  mapAicX509SpkiCrossingAuthority,
+  projectAicJwtToStrictJwtSvid,
+} from './aeb-aic-crossing-adapter.js';
+
 // EP-AEC-v1 is available through the explicit `./evidence-chain` package subpath.
 // It is not re-exported here because evidence-chain.js composes this module and a
 // main-entry re-export would create a circular initialization path.

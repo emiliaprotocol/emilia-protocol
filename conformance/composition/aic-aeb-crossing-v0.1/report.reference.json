@@ -1,0 +1,222 @@
+{
+  "@version": "AIC-AEB-CROSSING-REFERENCE-REPORT-v0.1",
+  "cases": [
+    {
+      "category": "positive",
+      "expected": "RFC7638 jkt maps, receipt verifies, and remains non-authorizing",
+      "id": "AIC-JWT-JKT-CROSSING",
+      "observed": {
+        "algorithms": [
+          "Ed25519",
+          "ML-DSA-65"
+        ],
+        "execution_authorizing": false,
+        "mapping_profile": "EP-AEB-CROSSING-AIC-JWT-JKT-v1",
+        "verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "positive",
+      "expected": "X.509 SPKI maps, receipt verifies, and remains non-authorizing",
+      "id": "AIC-X509-SPKI-CROSSING",
+      "observed": {
+        "algorithms": [
+          "Ed25519",
+          "ML-DSA-65"
+        ],
+        "execution_authorizing": false,
+        "mapping_profile": "EP-AEB-CROSSING-AIC-X509-SPKI-v1",
+        "verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "mapping",
+      "expected": "RFC7638 jkt and X.509 SPKI are separate native profiles and instances",
+      "id": "NATIVE-BINDINGS-REMAIN-DISTINCT",
+      "observed": {
+        "instances_differ": true,
+        "jkt_profile": "EP-AEB-CROSSING-AIC-JWT-JKT-v1",
+        "profiles_differ": true,
+        "x509_profile": "EP-AEB-CROSSING-AIC-X509-SPKI-v1"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_principal_binding_mismatch",
+      "id": "PRINCIPAL-BINDING-MISMATCH",
+      "observed": {
+        "ok": false,
+        "reason": "aic_principal_binding_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_issuer_untrusted",
+      "id": "UNTRUSTED-ISSUER",
+      "observed": {
+        "ok": false,
+        "reason": "aic_issuer_untrusted"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_native_type_confusion",
+      "id": "NATIVE-TYPE-CONFUSION",
+      "observed": {
+        "ok": false,
+        "reason": "aic_native_type_confusion"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "FAILED and INDETERMINATE both refuse",
+      "id": "NATIVE-VERIFICATION-REFUSAL",
+      "observed": {
+        "failed": "aic_native_verification_failed",
+        "indeterminate": "aic_native_verification_indeterminate"
+      },
+      "passed": true
+    },
+    {
+      "category": "positive",
+      "expected": "new typ=JWT TBS projection with one aud and no authority",
+      "id": "STRICT-JWT-SVID-PROJECTION",
+      "observed": {
+        "audience": "spiffe://example.org/workload-api",
+        "authorization_decision": false,
+        "compact_token": null,
+        "new_signature_required": true,
+        "omitted_source_members": [
+          "iss",
+          "aic.principal",
+          "aic.capabilities",
+          "aic.delegation_mode",
+          "aic.constraints",
+          "da",
+          "cnf"
+        ],
+        "typ": "JWT",
+        "version": "EP-AIC-JWT-SVID-PROJECTION-v1"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "jwt_svid_single_audience_required",
+      "id": "JWT-SVID-MULTIPLE-AUDIENCE-REFUSED",
+      "observed": {
+        "ok": false,
+        "reason": "jwt_svid_single_audience_required"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_jwt_svid_semantic_loss",
+      "id": "JWT-SVID-AUTHORITY-SEMANTIC-LOSS",
+      "observed": {
+        "ok": false,
+        "reason": "aic_jwt_svid_semantic_loss"
+      },
+      "passed": true
+    }
+  ],
+  "crossing_record_version": "EP-AEB-CROSSING-RECORD-v1",
+  "jwt_svid_projection": "EP-AIC-JWT-SVID-PROJECTION-v1",
+  "known_limits": [
+    "This run exercises the EMILIA reference adapter and crossing-record implementation; it is not an independent implementation of AIC-JWT, AIC-X509, or JWT-SVID.",
+    "The adapter consumes a native verifier result; it does not reimplement AIC signature, certificate-path, delegation, capability, constraint, or status validation.",
+    "RFC 7638 JWK thumbprints and X.509 SPKI hashes remain separate native mappings and are never treated as interchangeable proof.",
+    "The strict JWT-SVID output is an unsigned typ=JWT projection requiring a new JWT-SVID signature; changing a native aic+jwt header would invalidate its source signature.",
+    "The JWT-SVID projection preserves bounded workload identity fields only; it deliberately does not preserve AIC authority, delegation, constraint, confirmation-key, or full capability semantics.",
+    "A verified crossing record is evidence of one past relying-party boundary decision and never authorizes another action.",
+    "Passing these checks does not establish IETF adoption, certification, production deployment, independent interoperability, or employer endorsement."
+  ],
+  "mapping_profile_digest": "sha256:3ae3ad16d914131181b3669995326426b11fd0d715e98ac3dcb022a17ea75639",
+  "mappings": [
+    "EP-AEB-CROSSING-AIC-JWT-JKT-v1",
+    "EP-AEB-CROSSING-AIC-X509-SPKI-v1"
+  ],
+  "passed": true,
+  "profile": "EP-AIC-AEB-CROSSING-COMPOSITION-v0.1",
+  "required_algorithms": [
+    "Ed25519",
+    "ML-DSA-65"
+  ],
+  "results_digest": "sha256:dacf0009addd1665336cf3c4b61cf50949113fc4058003ee6c4936e165358b3f",
+  "source_lock": {
+    "@version": "AIC-AEB-CROSSING-SOURCE-LOCK-v0.1",
+    "drafts": [
+      {
+        "bounded_sections": [
+          "5 AIC-JWT Token Format",
+          "9 Principal Key Binding",
+          "11 Validation Algorithm",
+          "16 Compatibility with the Varwof Unified JWT Profile"
+        ],
+        "name": "draft-wei-aic-jwt-00",
+        "sha256": "c103cb5d4c541c7aa30ee49e0c36d56ad3ac76f50ce73a39fd0be1109781bd3c",
+        "url": "https://www.ietf.org/archive/id/draft-wei-aic-jwt-00.txt"
+      },
+      {
+        "bounded_sections": [
+          "5 AI Agent Identity Certificate Extension",
+          "8 Agent Authentication and Authorization",
+          "9 Security Considerations"
+        ],
+        "name": "draft-wei-aic-identity-cert-00",
+        "sha256": "169d2f4ae37b3448e955d8a0e0fde04ef43855b93e7aa1e8e3021fb4eba73b2e",
+        "url": "https://www.ietf.org/archive/id/draft-wei-aic-identity-cert-00.txt"
+      }
+    ],
+    "varwof": {
+      "repositories": [
+        {
+          "inspected_files": [
+            {
+              "path": "ts/aicjwt.ts",
+              "sha256": "2e5c59b60ce86a309003be8f6e5df8aaeae96e81027b0c3a7cba9e561545c097",
+              "url": "https://raw.githubusercontent.com/varwof/aic-jwt/5c17d408d413469d66c7917e838ff66a109792cb/ts/aicjwt.ts"
+            }
+          ],
+          "repository": "https://github.com/varwof/aic-jwt",
+          "revision": "5c17d408d413469d66c7917e838ff66a109792cb"
+        },
+        {
+          "inspected_files": [
+            {
+              "path": "aicjwt/validate.go",
+              "sha256": "9d85b2212d1ffbc4f76fc7d300d764f93845d6ced35636687619b476b742c9e3",
+              "url": "https://raw.githubusercontent.com/varwof/types/21bb3f637564c2fae6c854fb21ce26d66a9190d5/aicjwt/validate.go"
+            },
+            {
+              "path": "aicjwt/keyhash.go",
+              "sha256": "081a75b736e2236920dca5509325e3cb3873802d5bade70e549be56dc89cd94d",
+              "url": "https://raw.githubusercontent.com/varwof/types/21bb3f637564c2fae6c854fb21ce26d66a9190d5/aicjwt/keyhash.go"
+            }
+          ],
+          "repository": "https://github.com/varwof/types",
+          "revision": "21bb3f637564c2fae6c854fb21ce26d66a9190d5"
+        },
+        {
+          "inspected_files": [
+            {
+              "path": "credential_bundle.go",
+              "sha256": "4c69c00e4e3f8f9ad8c7082f61b6bcee4ddb68ec250cef3eafce49fbc1bd4edc",
+              "url": "https://raw.githubusercontent.com/varwof/gateway-core/93fbd426ca4349dbbfc195638408a763ad28778e/credential_bundle.go"
+            }
+          ],
+          "repository": "https://github.com/varwof/gateway-core",
+          "revision": "93fbd426ca4349dbbfc195638408a763ad28778e"
+        }
+      ]
+    }
+  },
+  "source_lock_digest": "sha256:045d5c4b8360051b1dbe3f4864e4b85292f1bdd905b18e5f47020ff6c7d41eff"
+}
