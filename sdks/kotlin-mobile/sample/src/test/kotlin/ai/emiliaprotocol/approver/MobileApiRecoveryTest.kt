@@ -23,6 +23,15 @@ import org.junit.Test
 
 class MobileApiRecoveryTest {
     @Test
+    fun pairingIdentityChallengeMatchesTheServerProfile() {
+        val challenge = pairingIdentityChallenge(" abcd-efgh-jklm ")
+        assertEquals(
+            "7d21cd2f2994670e25589b63efe7958a97dfed6b8dc6e86cb3a8af66fd104750",
+            challenge.joinToString("") { "%02x".format(it) },
+        )
+    }
+
+    @Test
     fun directSuccessRequiresTheFullVerifiedTuple() = runBlocking {
         val fixture = fixture()
         val connections = StubConnections(

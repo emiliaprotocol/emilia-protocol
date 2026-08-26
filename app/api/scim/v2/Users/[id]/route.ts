@@ -72,7 +72,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
 
   const fields = fromScimUser(body);
 
-  return writeUser(supabase, auth.tenantId, auth.organizationId, id, current, fields, request);
+  return writeUser(supabase, auth.tokenId, auth.tenantId, auth.organizationId, id, current, fields, request);
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
@@ -100,7 +100,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     return scimErrorResponse(status, detail, scimType);
   }
   const fields = fromScimUser(patched.resource);
-  return writeUser(supabase, auth.tenantId, auth.organizationId, id, current, fields, request);
+  return writeUser(supabase, auth.tokenId, auth.tenantId, auth.organizationId, id, current, fields, request);
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteParams): Promise<Response> {
@@ -114,6 +114,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
   if (!current) return scimErrorResponse(404, `User ${id} not found`);
 
   const { data, error } = await supabase.rpc('apply_scim_user_and_authority_atomic', {
+    p_token_id: auth.tokenId,
     p_tenant_id: auth.tenantId,
     p_organization_id: auth.organizationId ?? null,
     p_user_id: id,
@@ -125,6 +126,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
   if (error) { logger.error('[scim/Users/:id] atomic delete failed:', error); return scimErrorResponse(503, 'Directory unavailable'); }
   if (data?.error === 'user_not_found') return scimErrorResponse(404, `User ${id} not found`);
   if (data?.error === 'version_conflict') return scimErrorResponse(409, 'User changed during deprovision', 'mutability');
+  if (data?.error === 'token_authority_invalid') return scimErrorResponse(401, 'SCIM token is no longer authorized');
   if (data?.status !== 'deleted') return scimErrorResponse(503, 'Directory unavailable');
   return new Response(null, { status: 204 });
 }
@@ -132,6 +134,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
 // Shared write path for PUT/PATCH: bump version, persist, return the resource.
 async function writeUser(
   supabase: any,
+  tokenId: string | undefined,
   tenantId: string | undefined,
   organizationId: string | undefined,
   id: string,
@@ -144,6 +147,7 @@ async function writeUser(
   const wasActive = current.active !== false;
   try {
     const { data: result, error } = await supabase.rpc('apply_scim_user_and_authority_atomic', {
+      p_token_id: tokenId,
       p_tenant_id: tenantId,
       p_organization_id: organizationId ?? null,
       p_user_id: id,
@@ -160,6 +164,7 @@ async function writeUser(
     }
     if (result?.error === 'user_not_found') return scimErrorResponse(404, `User ${id} not found`);
     if (result?.error === 'version_conflict') return scimErrorResponse(409, 'User changed during update', 'mutability');
+    if (result?.error === 'token_authority_invalid') return scimErrorResponse(401, 'SCIM token is no longer authorized');
     const data = result?.user;
     if (result?.status !== 'updated' || !data) return scimErrorResponse(503, 'Directory unavailable');
 

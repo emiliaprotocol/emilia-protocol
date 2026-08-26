@@ -103,7 +103,9 @@ describe('government-launch red-team regressions', () => {
     const entityInsert = calls.inserts.find((c) => c.table === 'entities').payload;
 
     expect(res.status).toBe(201);
-    expect(entityInsert.organization_id).toBe(body.entity_id);
+    expect(entityInsert.organization_id).toBe(body.organization_id);
+    expect(entityInsert.organization_id).toMatch(/^@org:/);
+    expect(entityInsert.organization_id).not.toBe(body.entity_id);
     expect(entityInsert.private_key_encrypted).toMatch(/^epenc:v1:/);
   });
 

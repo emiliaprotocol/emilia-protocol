@@ -116,6 +116,29 @@ export function _resetForTesting() {
 
 const POSITIVE_STATES = new Set(['approved_pending_consume', 'consumed']);
 
+function timestampMs(value): number | null {
+  if (value instanceof Date) {
+    const ms = value.getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string' || !value) return null;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function eventEffectiveTime(event, stateField: string): number | null {
+  if (!event || typeof event !== 'object') return null;
+  const candidates = [event.created_at, event.after_state?.[stateField]]
+    .filter((value) => value !== undefined && value !== null && value !== '');
+  if (candidates.length === 0) return null;
+  const parsed = candidates.map(timestampMs);
+  if (parsed.some((value) => value === null)) return null;
+  // Both the event record and its embedded decision/effect time are evidence.
+  // The later instant is the conservative boundary for expiry and ordering.
+  return Math.max(...(parsed as number[]));
+}
+
 /**
  * Derive the receipt's resolved status from its events. Mirrors the read route's
  * terminal-state logic: a consume event ⇒ consumed; an approval with no rejection
@@ -123,9 +146,14 @@ const POSITIVE_STATES = new Set(['approved_pending_consume', 'consumed']);
  *
  * @param {object} base - the created event's after_state
  * @param {{approved?:object, rejected?:object, consumed?:object}} marks
+ * @param {{now?:number|string|Date}} options
  * @returns {string}
  */
-export function resolveReceiptStatus(base, { approved, rejected, consumed }) {
+export function resolveReceiptStatus(
+  base,
+  { approved, rejected, consumed }: { approved?: any; rejected?: any; consumed?: any } = {},
+  { now = Date.now() }: { now?: number | string | Date } = {},
+) {
   if (rejected) return 'rejected';
 
   // Observe receipts are telemetry, never authorization. Preserve enough
@@ -142,11 +170,29 @@ export function resolveReceiptStatus(base, { approved, rejected, consumed }) {
   }
   const policyDecision = base?.observed_decision || base?.decision;
   if (policyDecision === 'deny') return 'denied';
+
+  const expiresAt = timestampMs(base?.expires_at);
+  const nowMs = timestampMs(now);
+  if (expiresAt === null || nowMs === null) return 'expired';
+
+  const approvedAt = approved ? eventEffectiveTime(approved, 'decided_at') : null;
+  const consumedAt = consumed ? eventEffectiveTime(consumed, 'consumed_at') : null;
+  if (approved && (approvedAt === null || approvedAt >= expiresAt)) return 'expired';
+  if (consumed && (consumedAt === null || consumedAt >= expiresAt)) return 'expired';
+  if (consumed && base?.signoff_required !== false && !approved) return 'indeterminate';
+  if (approvedAt !== null && consumedAt !== null && consumedAt < approvedAt) return 'indeterminate';
+
   if (policyDecision === 'allow_with_signoff' && !approved) {
-    return base?.receipt_status === 'expired' ? 'expired' : 'pending_signoff';
+    return nowMs >= expiresAt || base?.receipt_status === 'expired'
+      ? 'expired'
+      : 'pending_signoff';
   }
 
+  // Consumption is a completed historical fact. Once both authorization and
+  // effect were recorded inside the validity window, later wall-clock expiry
+  // must not erase that evidence.
   if (consumed) return 'consumed';
+  if (nowMs >= expiresAt) return 'expired';
   if (approved) return 'approved_pending_consume';
   // No signoff was ever required and the real policy verdict allows the action.
   if (base?.signoff_required === false && policyDecision === 'allow') {
@@ -171,7 +217,15 @@ export function resolveReceiptStatus(base, { approved, rejected, consumed }) {
  * @returns {{ document: object, public_key: string } | null}
  */
 export function signEvidenceReceipt({ receiptId, base, approved, rejected, consumed, issuedAt }) {
-  const payload = evidenceReceiptPayload({ receiptId, base, approved, rejected, consumed, issuedAt });
+  const payload = evidenceReceiptPayload({
+    receiptId,
+    base,
+    approved,
+    rejected,
+    consumed,
+    issuedAt,
+    now: Date.now(),
+  });
   if (!payload) return null;
 
   const keypair = getEvidenceSigningKeypair();
@@ -222,10 +276,10 @@ export function signEvidenceReceipt({ receiptId, base, approved, rejected, consu
  * canonicalize(payload), the hybrid path signs the EP-RECEIPT-HYBRID-v1 signed
  * material which wraps that same payload alongside the required algorithm set.
  */
-function evidenceReceiptPayload({ receiptId, base, approved, rejected, consumed, issuedAt }) {
+function evidenceReceiptPayload({ receiptId, base, approved, rejected, consumed, issuedAt, now }) {
   if (!base || typeof base !== 'object') return null;
 
-  const status = resolveReceiptStatus(base, { approved, rejected, consumed });
+  const status = resolveReceiptStatus(base, { approved, rejected, consumed }, { now });
   // HONESTY GATE: only sign a receipt that is genuinely authorized. Never sign a
   // pending, denied, rejected, or expired receipt.
   if (!POSITIVE_STATES.has(status)) return null;
@@ -240,6 +294,14 @@ function evidenceReceiptPayload({ receiptId, base, approved, rejected, consumed,
   const approverId = approved?.actor_id || approved?.after_state?.approver_id || null;
   const approvedAt = approved?.created_at || approved?.after_state?.decided_at || null;
   const keyClass = approved?.after_state?.key_class || null;
+
+  const issuedAtMs = timestampMs(issuedAt);
+  const expiresAtMs = timestampMs(base.expires_at);
+  const approvedAtMs = approved ? eventEffectiveTime(approved, 'decided_at') : null;
+  const consumedAtMs = consumed ? eventEffectiveTime(consumed, 'consumed_at') : null;
+  if (issuedAtMs === null || expiresAtMs === null || issuedAtMs >= expiresAtMs) return null;
+  if (approved && (approvedAtMs === null || approvedAtMs < issuedAtMs)) return null;
+  if (consumed && (consumedAtMs === null || consumedAtMs < issuedAtMs)) return null;
 
   // The signed payload — the receipt's authoritative, operator-attested state.
   // Every field the verifier re-canonicalizes is bound by the signature.
@@ -347,7 +409,15 @@ export interface HybridEvidenceReceiptResult {
  * pass on the classical leg.
  */
 export async function signEvidenceReceiptHybrid({ receiptId, base, approved, rejected, consumed, issuedAt }): Promise<HybridEvidenceReceiptResult | null> {
-  const payload = evidenceReceiptPayload({ receiptId, base, approved, rejected, consumed, issuedAt });
+  const payload = evidenceReceiptPayload({
+    receiptId,
+    base,
+    approved,
+    rejected,
+    consumed,
+    issuedAt,
+    now: Date.now(),
+  });
   if (!payload) return null;
 
   const registered = getRegisteredCustodySigner();

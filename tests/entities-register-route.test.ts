@@ -95,7 +95,7 @@ describe('POST /api/entities/register hardening', () => {
     mockGenerateEmbedding.mockResolvedValue([0.1, 0.2]);
   });
 
-  it('creates org-bound entities so issued keys carry tenant scope', async () => {
+  it('creates entities in a server-owned tenant namespace that public entity ids cannot squat', async () => {
     const calls = {};
     mockGetGuardedClient.mockReturnValue(makeClient(calls));
 
@@ -110,7 +110,9 @@ describe('POST /api/entities/register hardening', () => {
 
     expect(res.status).toBe(201);
     expect(body.entity.entity_id).toBe('acme-agent-1');
-    expect(calls.entityInsert.organization_id).toBe('acme-agent-1');
+    expect(calls.entityInsert.organization_id).toMatch(/^@org:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(calls.entityInsert.organization_id).not.toBe('acme-agent-1');
+    expect(body.entity.organization_id).toBe(calls.entityInsert.organization_id);
     expect(calls.entityInsert.display_name_key).toBe('acmeagent');
     expect(calls.apiKeyInsert.entity_id).toBe('uuid-entity');
   });
@@ -142,6 +144,22 @@ describe('POST /api/entities/register hardening', () => {
       display_name: 'Bad Entity',
       entity_type: 'agent',
       description: 'Bad',
+    }));
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.type).toContain('invalid_entity_id');
+    expect(mockGenerateEmbedding).not.toHaveBeenCalled();
+  });
+
+  it('rejects an entity id in the server-owned organization namespace', async () => {
+    mockGetGuardedClient.mockReturnValue(makeClient({}));
+
+    const res = await POST(request({
+      entity_id: '@org:8e87cf58-38e0-49db-beb4-cc233057601a',
+      display_name: 'Squatted Organization',
+      entity_type: 'agent',
+      description: 'Must not enter the organization namespace',
     }));
     const body = await res.json();
 

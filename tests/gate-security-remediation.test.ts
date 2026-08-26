@@ -571,6 +571,60 @@ describe('Gate construction guards fail closed without a runtime monitor', () =>
     }],
   };
 
+  it('rejects legacy selector shapes the runtime cannot resolve', () => {
+    const invalidMatches = [
+      {},
+      { extension_only: 'release_payment' },
+      { protocol: 'mcp', tool: { name: 'release_payment' } },
+    ];
+
+    for (const match of invalidMatches) {
+      const manifest = {
+        '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
+        actions: [{ ...guardedManifest.actions[0], match }],
+      };
+      expect(() => createGate({ manifest, allowEphemeralStore: true }))
+        .toThrow(/supported selector field|non-empty string/);
+    }
+  });
+
+  it('rejects overlapping runtime selectors even when extension metadata differs', () => {
+    const manifest = {
+      '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
+      actions: [
+        { ...guardedManifest.actions[0], id: 'release-one', match: {
+          protocol: 'mcp', tool: 'release_payment', extension: 'one',
+        } },
+        { ...guardedManifest.actions[0], id: 'release-two', match: {
+          protocol: 'mcp', tool: 'release_payment', extension: 'two',
+        } },
+      ],
+    };
+
+    expect(() => createGate({ manifest, allowEphemeralStore: true }))
+      .toThrow(/actions\[0\]\.match overlaps actions\[1\]\.match/);
+  });
+
+  it('keeps multi-transport action types valid and refuses an under-specified runtime selector', async () => {
+    const manifest = {
+      '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
+      actions: [
+        { ...guardedManifest.actions[0], id: 'release-mcp' },
+        { ...guardedManifest.actions[0], id: 'release-http', match: {
+          protocol: 'http', method: 'POST', path: '/v1/payments/release',
+        } },
+      ],
+    };
+
+    const gate = createGate({ manifest, allowEphemeralStore: true });
+    await expect(gate.check({ selector: { action_type: 'payment.release' } }))
+      .resolves.toMatchObject({
+        allow: false,
+        status: 428,
+        reason: 'manifest_selector_ambiguous',
+      });
+  });
+
   it('checks cleanly with no runtime monitor at all', async () => {
     const gate = createGate({ allowEphemeralStore: true, runtimeMonitor: null });
     const out = await gate.check({ selector: { action_type: 'payment.release' } });

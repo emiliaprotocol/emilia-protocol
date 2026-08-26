@@ -158,6 +158,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Durable ownership should be established via POST /api/identity/bind.
     const ownerId = `ep_owner_${crypto.randomUUID()}`;
 
+    // The public entity slug is a label, never an organization authority
+    // boundary. Give every self-service registration an opaque tenant scope so
+    // claiming `acme`, `openai`, etc. cannot squat a real organization's SCIM,
+    // WebAuthn, mobile, or receipt namespace. A verified onboarding flow may
+    // later bind this entity to a reviewed organization.
+    // The leading '@' is deliberately outside ENTITY_ID_PATTERN. This makes
+    // the server-owned tenant namespace impossible to claim through the
+    // public entity_id field, even when public registration is enabled.
+    const organizationId = `@org:${crypto.randomUUID()}`;
+
     // Insert entity
     const { data: entity, error: insertError } = await supabase
       .from('entities')
@@ -167,8 +177,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         // from the authenticated entity; body.organization_id is only a
         // cross-check. A public registration path that omits this reopens the
         // tenant-binding hole for every key born here.
-        organization_id: entityId,
+        organization_id: organizationId,
         owner_id: ownerId,
+        verified: false,
+        verified_at: null,
         display_name: displayName,
         display_name_key: displayNameKey || null,
         entity_type: body.entity_type,
@@ -211,6 +223,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         entity_id: entity.entity_id,
         display_name: entity.display_name,
         entity_type: entity.entity_type,
+        organization_id: organizationId,
+        organization_verified: false,
         confidence: 'pending',
         status: entity.status,
         created_at: entity.created_at,

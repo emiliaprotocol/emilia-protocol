@@ -77,7 +77,7 @@ describe('homepage category contract', () => {
     expect(proofStats.conformance.vectors).toBeGreaterThan(150);
     expect(proofStats.externalImplementation.hostilityCases).toBeGreaterThan(350);
     expect(page).not.toContain('TESTS_PASSED');
-    expect(proofStats.redTeamCases).toBe(85);
+    expect(proofStats.redTeamCases).toBe(86);
 
     expect(page).toContain("proofStats from '@/lib/proof-stats.json'");
     expect(page).not.toContain('4,220');

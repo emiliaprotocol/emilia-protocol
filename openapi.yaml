@@ -2606,7 +2606,11 @@ paths:
       summary: Add identity presentation
       description: |
         Add an identity presentation (proof) to a handshake. Each party presents
-        their identity claims for evaluation against the handshake policy.
+        their identity claims for evaluation against the handshake policy. An
+        `issuer_ref` is only a registry key reference. A presentation is marked
+        issuer-verified only when `issuer_proof` is a valid Ed25519 signature by
+        that registered key over the exact server-defined handshake statement.
+        Omitting the proof stores the presentation as unverified.
       security:
         - BearerAuth: []
       parameters:
@@ -2632,13 +2636,39 @@ paths:
                   description: Type of identity presentation (e.g. "verifiable_credential", "ep_trust_profile", "attestation")
                 issuer_ref:
                   type: string
-                  description: Optional reference to the credential issuer
+                  description: Optional reference to the registered issuer's key_id. This is not proof by itself.
+                issuer_proof:
+                  type: object
+                  additionalProperties: false
+                  required: [profile, algorithm, key_id, signature]
+                  description: |
+                    Proof of control of `issuer_ref`. The signature is canonical
+                    base64url Ed25519 over `EP-HANDSHAKE-ISSUER-PROOF-v1`, a NUL
+                    byte, and the JCS encoding of the server-defined statement
+                    containing `@version`, `handshake_id`, `party_role`,
+                    `presentation_type`, `issuer_ref`, `actor_entity_ref`,
+                    `disclosure_mode`, `presentation_hash`, and
+                    `canonical_claims_hash`.
+                  properties:
+                    profile:
+                      type: string
+                      enum: [EP-HANDSHAKE-ISSUER-PROOF-v1]
+                    algorithm:
+                      type: string
+                      enum: [Ed25519]
+                    key_id:
+                      type: string
+                      description: Must exactly equal issuer_ref.
+                    signature:
+                      type: string
+                      pattern: '^[A-Za-z0-9_-]{86}$'
+                      description: Canonical unpadded base64url encoding of the 64-byte signature.
                 claims:
                   type: object
                   description: Identity claims being presented
                 disclosure_mode:
                   type: string
-                  enum: [full, selective, zk]
+                  enum: [full, selective, commitment]
                   description: How much of the presentation is disclosed
       responses:
         '201':
@@ -3178,57 +3208,20 @@ paths:
   /api/signoff/challenge:
     post:
       tags: [Signoff]
-      summary: Issue a signoff challenge
-      description: >
-        Issue a new Accountable Signoff challenge. A challenge represents a
-        request for a human entity to review and attest to an action before
-        it may proceed. The challenge is cryptographically bound to a specific
-        handshake binding via binding_hash.
+      summary: Legacy signoff challenge issuance (currently unavailable)
+      deprecated: true
+      description: |
+        This legacy bearer-authenticated surface is fail-closed. It does not
+        mint challenges while no production server-verified WebAuthn or secure
+        application ceremony producer is configured. Use the dedicated
+        WebAuthn/mobile approval surfaces for new integrations.
       security:
         - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [handshakeId, accountableActorRef, signoffPolicyId, expiresAt]
-              properties:
-                handshakeId:
-                  type: string
-                  format: uuid
-                  description: The handshake this signoff is bound to
-                accountableActorRef:
-                  type: string
-                  description: entity_ref of the accountable human actor
-                signoffPolicyId:
-                  type: string
-                  description: Policy governing this signoff ceremony
-                expiresAt:
-                  type: string
-                  format: date-time
-                  description: ISO 8601 expiration timestamp
       responses:
-        '201':
-          description: Challenge issued successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  challenge_id:
-                    type: string
-                    format: uuid
-                  status:
-                    type: string
-                    enum: [challenge_issued]
-                  expires_at:
-                    type: string
-                    format: date-time
-        '400':
-          description: Missing or invalid required fields
         '401':
-          description: Not authorized
+          description: Authentication required
+        '503':
+          description: verified_ceremony_unavailable; no challenge was minted
 
   /api/signoff/{challengeId}:
     get:
@@ -3279,12 +3272,13 @@ paths:
   /api/signoff/{challengeId}/attest:
     post:
       tags: [Signoff]
-      summary: Attest a signoff challenge
+      summary: Legacy bearer/JSON attestation (disabled)
+      deprecated: true
       description: |
-        Create a signoff attestation — the accountable human entity confirms
-        they have reviewed and approve the challenged action. The attestation
-        is cryptographically bound via attestationHash and is one-time: a
-        consumed attestation cannot be reused.
+        Bearer-authenticated JSON cannot prove a fresh human ceremony and never
+        creates an approval. Complete a server-verified WebAuthn or secure-app
+        flow instead. Client-asserted authentication method, assurance level,
+        channel, or attestation hash are not accepted as authority evidence.
       security:
         - BearerAuth: []
       parameters:
@@ -3294,44 +3288,13 @@ paths:
           schema:
             type: string
           description: Signoff challenge ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [humanEntityRef, authMethod, assuranceLevel, channel, attestationHash]
-              properties:
-                humanEntityRef:
-                  type: string
-                  description: Entity ref of the attesting human
-                authMethod:
-                  type: string
-                  description: Authentication method used (e.g. "api_key", "oauth")
-                assuranceLevel:
-                  type: string
-                  description: Level of identity assurance (e.g. "high", "medium")
-                channel:
-                  type: string
-                  description: Channel through which attestation was made
-                attestationHash:
-                  type: string
-                  description: Cryptographic hash binding the attestation
       responses:
-        '201':
-          description: Attestation created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          description: Missing or invalid required fields
         '401':
           description: Authentication required
         '403':
-          description: Not authorized to attest this challenge
-        '500':
-          description: Attestation creation failed
+          description: A named authenticated entity is required
+        '409':
+          description: verified_ceremony_required; no attestation was created
 
   /api/signoff/{challengeId}/deny:
     post:
@@ -5294,9 +5257,12 @@ paths:
       tags: [Mobile Approval]
       summary: Create a single-use native app pairing code
       description: |
-        Creates a short-lived pairing capability for one named approver. The
-        organization API key determines the tenant; approver identity is never
-        accepted as an authority claim from the mobile app.
+        Creates a short-lived pairing capability for one named approver. This is
+        an enrollment-class operation: the API key must carry `approver.enroll`
+        or `admin`, and the approver must resolve to an active directory-backed
+        identity in the authenticated organization. The response carries the
+        exact WebAuthn challenge that the existing approver credential must sign
+        during exchange.
       security:
         - BearerAuth: []
       requestBody:
@@ -5319,7 +5285,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MobilePairing'
         '401': { description: Missing or invalid organization API key }
-        '403': { description: Write permission required }
+        '403': { description: 'approver.enroll/admin missing, organization binding absent, or approver not actively directory-backed' }
         '429': { description: Pairing rate exceeded }
         '503': { description: Durable pairing service unavailable }
 
@@ -5330,7 +5296,11 @@ paths:
       description: |
         Consumes the pairing capability atomically and returns a time-bounded
         mobile bearer token. The platform and app identity must match the apps
-        pinned when the pairing was created.
+        pinned when the pairing was created. `identity_assertion` must be a
+        user-verified WebAuthn assertion by an existing, active,
+        directory-backed credential for the exact named approver. The database
+        repeats the organization, approver, credential, validity, and monotonic
+        counter checks while holding the single-use pairing lock.
       security: []
       requestBody:
         required: true
@@ -5339,7 +5309,7 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [pairing_code, platform, app_id]
+              required: [pairing_code, platform, app_id, identity_assertion]
               properties:
                 pairing_code:
                   type: string
@@ -5349,6 +5319,9 @@ paths:
                   enum: [ios, android]
                 app_id:
                   type: string
+                identity_assertion:
+                  type: object
+                  description: WebAuthn AuthenticationResponseJSON for the pairing's identity_challenge.
       responses:
         '201':
           description: Paired mobile session
@@ -5356,7 +5329,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MobileSession'
-        '401': { description: Pairing capability refused }
+        '400': { description: Malformed request or WebAuthn identity assertion invalid }
+        '401': { description: 'Pairing capability expired, consumed, or refused after the atomic identity recheck' }
+        '403': { description: Pairing is not backed by an active directory-owned approver credential }
         '429': { description: Pairing rate exceeded }
         '503': { description: Durable pairing service unavailable }
 
@@ -8280,9 +8255,11 @@ components:
 
     MobilePairing:
       type: object
-      required: [pairing_code, profile_id, expires_at, enabled_platforms]
+      required: [pairing_code, identity_challenge, identity_challenge_profile, profile_id, expires_at, enabled_platforms]
       properties:
         pairing_code: { type: string }
+        identity_challenge: { type: string, description: Base64url WebAuthn challenge bound to the single-use pairing code. }
+        identity_challenge_profile: { type: string, enum: [EP-MOBILE-PAIRING-IDENTITY-v1] }
         profile_id: { type: string }
         expires_at: { type: string, format: date-time }
         enabled_platforms:
@@ -9652,6 +9629,12 @@ components:
           type: string
         issuer_ref:
           type: string
+        issuer_status:
+          type: string
+          description: Explicit issuer validation result. `authority_signature_valid` is the only proof-backed success value.
+        verified:
+          type: boolean
+          description: True only after issuer-proof verification and the transactional authority recheck both succeed.
         claims:
           type: object
         disclosure_mode:

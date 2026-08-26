@@ -41,6 +41,8 @@ const TRUST_TABLES: readonly string[] = Object.freeze([
   'signoff_attestations',
   'signoff_consumptions',
   'signoff_events',
+  'scim_users',
+  'scim_groups',
   'eye_observations',
   'eye_advisories',
   'eye_suppressions',

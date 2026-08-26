@@ -26,7 +26,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const issuer = await validateSsoProviderUrl(connection.oidc_issuer, 'oidc_issuer');
   if (!issuer.valid) return epProblem(400, 'unsafe_sso_url', 'Configured OIDC issuer is not allowed');
 
-  const origin = spOrigin(request);
+  const origin = spOrigin();
   const redirect = validateOidcRedirectUri(connection.oidc_redirect_uri, origin);
   if (!redirect.valid) return epProblem(400, 'unsafe_oidc_redirect_uri', 'Configured OIDC redirect URI is not allowed');
   const redirectUri = redirect.url || `${origin}/api/sso/oidc/callback`;

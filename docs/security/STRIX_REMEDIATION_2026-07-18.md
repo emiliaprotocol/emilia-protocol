@@ -1,33 +1,36 @@
-# Strix remediation register - 2026-07-18 report
+# Strix remediation register - 2026-07-18 and 2026-08-26 reports
 
-> **Status: source-remediated and deployed; external retest pending. This is not a closure memo.**
-> This register covers the 18 reported findings: 1 critical, 9 high, 5 medium,
-> and 3 low. The controls and regressions below are present in the current
-> production tree. The production deployment, configuration presence, migration
-> state, and live Trust Desk bootstrap behavior were verified on 2026-08-26.
-> Those checks do not establish independent closure. A finding may be marked
-> closed only after Strix retests the exact deployed revision and confirms the
-> result.
+> **Status: the original 18 findings passed Strix's independent recheck on
+> 2026-08-26. The 24 newly reported findings, STRIX-25 through STRIX-48, are
+> source-remediated in the integration tree; deployment and external retest are
+> pending. This is not a closure memo for STRIX-25 through STRIX-48.**
 
 ## Evidence boundary
 
 In this document, **source-remediated** means the reported source path has a
-specific fail-closed control and regression artifact in the production tree.
+specific fail-closed control and regression artifact in the integration tree.
 **Deployed** means the exact source revision is served by the production alias,
-the governed migration ledger matches the live schema through
-`20260826130000`, and required production configuration names are present as
-encrypted values. It does not disclose or attest the secret values themselves.
+the governed migration ledger matches the live schema through the required
+revision, and required production configuration names are present as encrypted
+values. It does not disclose or attest the secret values themselves.
+**External retest passed** means Strix independently reproduced the reported
+attack against the deployed target and reported that its recheck passed.
 **External retest pending** means the finding remains open from an independent
-assurance perspective. Branch tests are not a substitute for a retest against
-the target deployment.
+assurance perspective. Branch tests are not a substitute for deployment or a
+retest against the target deployment.
 
-The table is limited to STRIX-1, STRIX-2, STRIX-4, STRIX-6, and STRIX-11 through
-STRIX-24. It does not silently merge these findings with an older Strix summary
-or with the separate hostile-code audit.
+The 2026-08-26 report contained 24 new findings: 1 critical, 5 high, 17 medium,
+and 1 low. Per-finding severity is omitted below except for STRIX-43, which the
+report explicitly identified as critical. The register does not merge either
+report with the separate hostile-code audit.
 
-## Finding-by-finding disposition
+## Original findings: external Strix retest passed 2026-08-26
 
-| ID | Severity | Source disposition | Control now enforced | Regression evidence |
+Strix independently rechecked and passed all 18 original findings. The
+historical source-disposition cells below record the state at first remediation
+and are superseded by that 2026-08-26 external result.
+
+| ID | Severity | Historical source state | Control now enforced | Regression evidence |
 | --- | --- | --- | --- | --- |
 | STRIX-1 | High | Source-remediated; external retest pending | `gate.guard()` awaits selector, receipt, observed-action, admissibility, and reliance providers. If an async selector resolves to a protected action without a receipt, the Gate returns `receipt_required` and never invokes the effect. | `packages/gate/gate.test.ts`, especially the async-provider and missing-receipt regressions. |
 | STRIX-2 | High | Source-remediated; external retest pending | WebAuthn registration completion uses `complete_webauthn_registration_atomic`, which locks and validates the one-time challenge, inserts the credential, and consumes the challenge in one database operation. A consumed challenge is rejected as replay. | `app/api/v1/approvers/webauthn/register-verify/route.ts`; `supabase/migrations/20260718205655_webauthn_registration_atomic.sql`; `tests/webauthn-registration-route.test.ts`; `tests/agent-adoption-postgres.integration.test.ts`. |
@@ -48,30 +51,65 @@ or with the separate hostile-code audit.
 | STRIX-23 | High | Source-remediated; external retest pending | SCIM provisioning-token mint and list operations require `scim.manage` or `admin`; generic read/write principals and observe-scope pilot keys are refused. | `app/api/scim/v2/provisioning-token/route.ts`; `tests/control-plane-permissions.test.ts`; `tests/pilot-sandbox-controlplane-scope.test.ts`. |
 | STRIX-24 | Low | Source-remediated; external retest pending | DOCX intake parses a strict single-disk ZIP layout, rejects encryption, data descriptors, ZIP64, unsupported flags/methods, aliased or overlapping local entries, central/local-header disagreement, and trailing compressed payload bytes, then independently inflates every deflated entry under hard output limits before Mammoth sees the document. The parser verifies actual compressed bytes consumed and actual expanded sizes, with 16 MiB per-entry and 64 MiB aggregate ceilings; it does not trust attacker-declared central-directory sizes. | `lib/trust-desk/extractor.ts`; exact mismatch, overlap, trailing-byte, per-entry, ratio, and aggregate-limit regressions in `tests/trust-desk-extractor-budget.test.ts`. |
 
+## New 2026-08-26 findings: source-remediated; deployment and retest pending
+
+| ID | Reported issue | Current source disposition | Control now enforced | Regression evidence |
+| --- | --- | --- | --- | --- |
+| STRIX-25 | Observe-only pilot key writes | Source-remediated; deployment and external retest pending | A server-marked pilot key is admitted only to the exact reviewed GovGuard/FinGuard precheck allowlist and its own sandbox report. Stale `read`, `write`, or `admin` bits do not widen that scope, and the adapter boundary independently requires `observe` mode. | `lib/auth/protocol-request-authorization.ts`; `lib/guard-adapter.ts`; `tests/protocol-request-authorization.test.ts`; `tests/authenticate-request-permission-floor.test.ts`; `tests/guard-adapter-observe-scope.test.ts`. |
+| STRIX-26 | Host-controlled Works email origin | Source-remediated; deployment and external retest pending | Works verification links are constructed from a canonical configured HTTPS site origin, never the request URL or `Host` header. | `app/api/works/authority-records/[recordId]/requests/route.ts`; `lib/works/demand-service.ts`; `tests/works-demand-routes.test.ts`. |
+| STRIX-27 | Observe-mode hard deny signed authorized | Source-remediated; deployment and external retest pending | An observed hard deny remains `denied`, cannot be consumed or executed as authority, and is excluded from portable signed authority evidence even if a legacy consume event exists. | `lib/guard-evidence-receipt.ts`; `app/api/v1/trust-receipts/[receiptId]/consume/route.ts`; `app/api/v1/trust-receipts/[receiptId]/execution/route.ts`; `tests/guard-evidence-receipt.test.ts`; `tests/v1-api.test.ts`. |
+| STRIX-28 | Continuity unowned predecessor/successor | Source-remediated; deployment and external retest pending | Filing requires the authenticated, active successor endpoint to be bound to the subject principal; the old endpoint must be bound to the same principal. Resolution locks and rechecks both endpoints and the durable successor-control proof. | `app/api/identity/continuity/route.ts`; `supabase/migrations/20260826160000_continuity_and_pairing_residual_closure.sql`; `tests/identity-continuity-filing-route-security.test.ts`; `tests/identity-continuity-atomic-postgres.integration.test.ts`. |
+| STRIX-29 | DOCX ZIP-bomb metadata bypass | Source-remediated; deployment and external retest pending | DOCX intake does not trust attacker-declared ZIP sizes. It cross-checks central and local metadata, rejects overlapping/aliased/trailing payloads and unsupported layouts, measures actual compressed consumption, and enforces per-entry and aggregate expanded-byte ceilings before Mammoth. | `lib/trust-desk/extractor.ts`; `tests/trust-desk-extractor-budget.test.ts`. |
+| STRIX-30 | Continuity audit events dropped | Source-remediated; deployment and external retest pending | Claim withdrawal, state transition, and `continuity.withdrawn` audit append now occur in one owner-bound transaction. An audit failure rolls the state change back rather than being swallowed after commit. | `lib/ep-ix.ts`; `supabase/migrations/20260826160000_continuity_and_pairing_residual_closure.sql`; `tests/identity-continuity-atomic.test.ts`; `tests/identity-continuity-atomic-postgres.integration.test.ts`. |
+| STRIX-31 | Double-attest race | Source-remediated; deployment and external retest pending | The database locks the one-time challenge and serializes terminal decisions inside the atomic attestation RPC; concurrent attestations commit at most one approval. | `supabase/migrations/20260826120000_signoff_atomic_state_locks.sql`; `tests/signoff-atomic-state-lock-migration-contract.test.ts`; the concurrent-attestation regression in `tests/postgres-integration.test.ts`. |
+| STRIX-32 | Unbounded Trust Desk LLM fan-out | Source-remediated; deployment and external retest pending | Each request has a shared question, provider-call, token-unit, character, and aggregate wall-clock budget reserved before network invocation. Public intake/triage is capped at 6 calls, 12,000 units, and 20 seconds and refuses when the budget or durable throttle is unavailable. | `lib/trust-desk/resource-budget.ts`; `lib/trust-desk/pipeline.ts`; `lib/trust-desk/llm.ts`; `tests/trust-desk-resource-budget.test.ts`; `tests/trust-desk-intake-resource-profile.test.ts`; `tests/trust-desk-triage-route.test.ts`. |
+| STRIX-33 | Read-only adapter precheck mints receipts | Source-remediated; deployment and external retest pending | The pilot may persist observe telemetry only. Those records are not positive authority, cannot be consumed or executed, and cannot become signed authorization evidence; enforce-mode prechecks require a non-pilot credential with the normal write boundary. | `lib/guard-adapter.ts`; `lib/guard-evidence-receipt.ts`; `lib/auth/protocol-request-authorization.ts`; `tests/guard-adapter-observe-scope.test.ts`; `tests/v1-api.test.ts`. |
+| STRIX-34 | Continuity `transfer_budget` is not conserved | Source-remediated; deployment and external retest pending | Approval serializes on the old identity and sums an immutable append-only decision ledger across sibling claims. Concurrent fission cannot allocate more than one cumulative budget. | `supabase/migrations/20260826160000_continuity_and_pairing_residual_closure.sql`; `tests/identity-continuity-residual-closure-migration.test.ts`; the concurrent budget regressions in `tests/identity-continuity-atomic-postgres.integration.test.ts`. |
+| STRIX-35 | Signoff consume revocation/expiry TOCTOU | Source-remediated; deployment and external retest pending | Signoff consumption executes the locked state machine and then rechecks the challenge, authority, credential, attestation, revocation, and expiry facts against a wall-clock instant obtained after lock acquisition. Failure rolls the transaction back. | `supabase/migrations/20260826140000_strix_rls_and_lifecycle_fortress_db_security_invariants.sql`; `tests/signoff-atomic-state-lock-migration-contract.test.ts`; the lock-wait expiry regression in `tests/postgres-integration.test.ts`. |
+| STRIX-36 | Scoring cross-tenant stats | Source-remediated; deployment and external retest pending | Calibration first resolves the authenticated tenant's entity set, scopes disputes and receipts to that set, and returns an empty tenant-local result when no owned entities exist. | `lib/cloud/calibration.ts`; `app/api/cloud/scoring/recommendations/route.ts`; `tests/calibration-extended.test.ts`. |
+| STRIX-37 | Expired evidence signed | Source-remediated; deployment and external retest pending | An unused approval stops being signable at receipt expiry. Only a consume event completed inside the receipt window remains signable later as historical evidence; malformed expiry and late consume fail closed. | `lib/guard-evidence-receipt.ts`; `app/api/v1/trust-receipts/[receiptId]/evidence/route.ts`; `tests/guard-evidence-receipt.test.ts`; `tests/v1-api.test.ts`. |
+| STRIX-38 | Ambiguous Action Risk manifest disables the guard | Source-remediated; deployment and external retest pending | Legacy selectors must use nonempty runtime-resolvable fields and must not overlap by equality, subset, or ignored extension metadata. Ambiguity and contradictory selector identities fail closed rather than classifying the action as unguarded. | `packages/require-receipt/src/index.ts`; `packages/gate/src/action-control-manifest.ts`; `packages/require-receipt/manifest-assurance.test.ts`; `tests/gate-security-remediation.test.ts`; `packages/require-receipt/selector-confusion.test.ts`. |
+| STRIX-39 | SAML `Destination`/`Recipient` | Source-remediated; deployment and external retest pending | The SP requires signed Response and Assertion material, pins the configured ACS URL, and requires exact signed `Destination` and bearer `Recipient` values with exactly one bearer confirmation. XML declarations capable of entity expansion are rejected before parsing. | `lib/sso/saml.ts`; `app/api/sso/saml/acs/route.ts`; `tests/sso-saml.test.ts`; `tests/sso-saml-acs.test.ts`; `supabase/migrations/20260826140000_strix_rls_and_lifecycle_fortress_db_security_invariants.sql`. |
+| STRIX-40 | Organization-ID squatting via directory anchor | Source-remediated; deployment and external retest pending | New organization IDs use a server-owned `@org:<uuid>` namespace that public entity IDs cannot occupy. SCIM authority uses only an explicit active token organization proven against the live tenant binding; tenant-slug or self-organization fallbacks are rejected. | `app/api/entities/register/route.ts`; `lib/scim/directory-anchor.ts`; `lib/scim/auth.ts`; `supabase/migrations/20260826150000_identity_proof_and_mobile_pairing_closure.sql`; `tests/entities-register-route.test.ts`; `tests/scim/directory-anchor.test.ts`; `tests/postgres-integration.test.ts`. |
+| STRIX-41 | Caller-asserted `authMethod` or `assuranceLevel` | Source-remediated; deployment and external retest pending | Signoff approval requires fresh, one-time server-verified ceremony evidence. The atomic RPC persists method and assurance from the locked evidence and rejects caller values that do not match it. | `lib/signoff/attest.ts`; `supabase/migrations/20260826120000_signoff_atomic_state_locks.sql`; `tests/signoff-attest.test.ts`; `tests/signoff-atomic-state-lock-migration-contract.test.ts`; `tests/postgres-integration.test.ts`. |
+| STRIX-42 | `issuer_ref` accepted without issuer signature | Source-remediated; deployment and external retest pending | An issuer reference alone never proves participation. The presentation must carry an Ed25519 proof over the exact handshake, party, presenter, issuer, disclosure mode, and claims; the database locks and rechecks the exact authority UUID, key ID, public-key digest, validity, and durable proof linkage. | `lib/handshake/issuer-proof.ts`; `lib/handshake/present.ts`; `supabase/migrations/20260826150000_identity_proof_and_mobile_pairing_closure.sql`; `supabase/migrations/20260826170000_identity_runtime_residual_closure.sql`; `tests/handshake-present-extended.test.ts`; `tests/identity-runtime-residual-migration.test.ts`. |
+| STRIX-43 | Critical: RLS absent on 33 trust tables | Source-remediated; deployment and external retest pending | All 33 reported tables enable and force RLS, revoke public/anonymous/authenticated ACLs, and replace policies with an explicit service-role-only policy. | `supabase/migrations/20260826140000_strix_rls_and_lifecycle_fortress_db_security_invariants.sql`; `tests/strix-rls-closure-migration.test.ts`; `tests/postgres-integration.test.ts`. |
+| STRIX-44 | Mobile pairing identity laundering | Source-remediated; deployment and external retest pending | Pairing creation and exchange bind the authenticated organization, exact active directory user, exact Class-A credential, pairing challenge, and monotonic WebAuthn counter. Every session operation rechecks that identity, and directory/credential/entity revocation invalidates the session. Legacy identity-unchecked RPCs are disabled. | `app/api/v1/mobile/pairings/route.ts`; `app/api/v1/mobile/pairings/exchange/route.ts`; `lib/mobile/store.ts`; `supabase/migrations/20260826170000_identity_runtime_residual_closure.sql`; `tests/mobile-production-routes.test.ts`; `tests/mobile-production-store.test.ts`; `tests/identity-runtime-residual-migration.test.ts`. |
+| STRIX-45 | Receipt rejection-after-read TOCTOU | Source-remediated; deployment and external retest pending | Receipt decision, rejection, and consume events serialize on the immutable creation row. The consume transaction rechecks a rejection bound to the same creator, request, approver, and exact action before committing. | `supabase/migrations/20260826140000_strix_rls_and_lifecycle_fortress_db_security_invariants.sql`; `app/api/v1/trust-receipts/[receiptId]/consume/route.ts`; `tests/trust-receipt-atomic-consume-migration.test.ts`; the rejection/consume race in `tests/postgres-integration.test.ts`. |
+| STRIX-46 | Request-derived SAML origin | Source-remediated; deployment and external retest pending | SAML metadata, login, and ACS use a validated deployment-configured HTTPS origin. Request URLs and `Host` headers cannot choose the SP entity ID or ACS target, and production fails closed without configuration. | `lib/sso/config.ts`; `app/api/sso/saml/login/route.ts`; `app/api/sso/saml/metadata/route.ts`; `app/api/sso/saml/acs/route.ts`; `tests/sso-service-origin.test.ts`; `tests/sso-saml-acs.test.ts`. |
+| STRIX-47 | Anonymous DB plus pilot chain | Source-remediated; deployment and external retest pending | Trust-table ACL/RLS closure removes anonymous database reach, while the protocol authorization floor confines a pilot key to exact observe prechecks and its actor-scoped report even if stale broad permissions remain. | `supabase/migrations/20260826140000_strix_rls_and_lifecycle_fortress_db_security_invariants.sql`; `lib/auth/protocol-request-authorization.ts`; `tests/strix-rls-closure-migration.test.ts`; `tests/protocol-request-authorization.test.ts`; `tests/pilot-sandbox-controlplane-scope.test.ts`. |
+| STRIX-48 | Organization squat plus issuer plus self-asserted passkey chain | Source-remediated; deployment and external retest pending | The chain is broken at every trust transition: server-owned organization IDs cannot be squatted, SCIM provenance is explicit and live, issuer participation requires exact cryptographic proof, and mobile pairing requires an active directory-bound Class-A credential plus a pairing-specific WebAuthn assertion that remains live throughout the session. | `lib/scim/directory-anchor.ts`; `lib/handshake/issuer-proof.ts`; `app/api/v1/mobile/pairings/exchange/route.ts`; `supabase/migrations/20260826150000_identity_proof_and_mobile_pairing_closure.sql`; `supabase/migrations/20260826170000_identity_runtime_residual_closure.sql`; `tests/identity-proof-mobile-pairing-migration.test.ts`; `tests/identity-runtime-residual-migration.test.ts`; `tests/postgres-integration.test.ts`. |
+
 ## Deployment and independent-validation requirements
 
-The source and deployment requirements were completed against production on
-2026-08-26:
+The original findings passed Strix's 2026-08-26 recheck after their source and
+deployment requirements were completed. At that point the governed ledger and
+live schema agreed through `20260826130000`, required SSO and Trust Desk
+configuration names were present as encrypted values, the Trust Desk bootstrap
+had been rotated, and the production behavior was probed without exposing any
+secret value.
 
-1. The governed ledger and live schema contract agree through remote migration
-   `20260826130000`, with 204 remote versions, 1 private historical version,
-   and 0 pending migrations.
-2. Separate encrypted production entries are present for `SSO_STATE_SECRET`
-   and `SSO_SESSION_SECRET`. No value was printed or copied during verification.
-3. `TRUST_DESK_INTERNAL_TOKEN` was rotated. Separate encrypted production
-   entries are present for `TRUST_DESK_SESSION_SECRET` and
-   `TRUST_DESK_REVIEWER_ID`.
-4. The production `/proof` source revision matched the merged `main` head at
-   verification. A query-token probe returned a clean `303`, an invalid
-   same-origin form exchange returned `401`, and a cross-origin form exchange
-   returned `403`.
-   The deployed intake paths use the governed 6-call, 12,000-unit, 20-second
-   public resource profile. The request-scoped resource budget remains a
-   deterministic request control, not a distributed portfolio-wide cost ledger.
+Independent
+closure of STRIX-25 through STRIX-48 still requires all of the following against
+one exact candidate revision:
 
-Independent closure still requires Strix to retest every finding against this
-exact deployed revision. Source-remediated, deployed, and externally retested
-remain separate states; none of the rows above claims the final state yet.
+1. Complete the focused, full, generated-runtime, migration-history, and real
+   PostgreSQL verification suites on that revision.
+2. Apply and record the forward migrations
+   `20260826140000_strix_rls_and_lifecycle_fortress_db_security_invariants.sql`,
+   `20260826150000_identity_proof_and_mobile_pairing_closure.sql`,
+   `20260826160000_continuity_and_pairing_residual_closure.sql`, and
+   `20260826170000_identity_runtime_residual_closure.sql`. Verify the exact RLS,
+   ACL, function-grant, trigger, and post-lock validity state in the target
+   database.
+3. Deploy the exact revision and verify that SAML and Works use the configured
+   canonical production origin, Trust Desk uses its bounded public resource
+   profile, and identity/mobile paths fail closed when their required trust
+   material is absent or revoked.
+4. Have Strix retest STRIX-25 through STRIX-48, plus any original finding whose
+   execution path changed in the candidate, against that deployment. Record the
+   exact revision, migration state, and Strix result. Until then, the new rows
+   remain source-remediated only.
 
 ## Residual trust boundary for action binding
 

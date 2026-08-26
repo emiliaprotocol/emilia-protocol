@@ -17,7 +17,11 @@ This document describes how EP establishes, manages, and enforces trust roots. A
 - `valid_from`: ISO 8601 timestamp. The authority is not trusted before this time.
 - `valid_to`: ISO 8601 timestamp. The authority is not trusted after this time.
 
-**Lookup**: Issuer trust is resolved by matching `presentation.issuer_ref` against `authorities.key_id`. The presentation payload itself is never used as a source of key material.
+**Lookup and proof**: `presentation.issuer_ref` is matched against
+`authorities.key_id`, but that lookup alone establishes no issuer participation.
+The registered public key must verify an Ed25519 `issuer_proof` over the exact
+server-defined handshake and presentation statement. The presentation payload
+itself is never used as a source of key material.
 
 **CI guard**: `scripts/check-protocol-discipline.js` scans for patterns like `presentation.publicKey`, `presentation.signingKey`, and `payload.key` to prevent embedded key trust.
 
@@ -59,18 +63,27 @@ When `_handleAddPresentation()` processes a presentation with an `issuer_ref`, i
 
 **Step 1 -- Registry lookup**: Query `authorities` by `key_id = issuer_ref`.
 
-**Step 2 -- Status classification**:
+**Step 2 -- Status and proof classification**:
 
 | Condition | `issuerTrusted` | `issuerTrustReason` | `revocation_status` |
 |---|---|---|---|
-| Authority found, status `active`, within validity window | `true` | `authority_valid` | `good` |
+| Authority active and in-window; exact issuer proof valid | `true` | `authority_signature_valid` | `good` |
+| Authority active and in-window; issuer proof missing | `false` | `issuer_proof_missing` | `unproven` |
+| Authority active and in-window; issuer proof invalid | `false` | `issuer_proof_invalid` | `invalid_proof` |
 | Authority found, status `revoked` | `false` | `authority_revoked` | `revoked` |
 | Authority found, `valid_to` in the past | `false` | `authority_expired` | `expired` |
 | Authority found, `valid_from` in the future | `false` | `authority_not_yet_valid` | `not_yet_valid` |
 | Authority not found in registry | `false` | `authority_not_found` | `unknown` |
 | Authority table missing or unreachable | `false` | `authority_table_missing` | `registry_unavailable` |
 
-**Step 3 -- Self-asserted presentations**: If `issuer_ref` is null, the presentation is self-asserted. `issuerTrusted` is set to `true` with reason `self_asserted`. Trust determination is deferred to policy rules at verification time.
+**Step 3 -- Self-asserted presentations**: If `issuer_ref` is null, the
+presentation is stored with `issuerTrusted = false` and reason `self_asserted`.
+Only an explicit per-role policy opt-in may accept this unverified class.
+
+**Step 4 -- Transactional recheck**: Before a proof-backed presentation is
+persisted as verified, the database rechecks the same authority UUID and
+`key_id`, algorithm, status, revocation state, and validity window under lock.
+Any mismatch downgrades the row to unverified.
 
 **Invariant enforcement**: `checkIssuerTrusted()` and `checkAuthorityNotRevoked()` in `lib/handshake/invariants.js` provide pure-function checks used by `runAllInvariants()` during verification.
 
@@ -108,9 +121,10 @@ Trust roots anchor the bottom of the policy binding chain:
 ```
 policy_hash (pinned at initiation)
   -> policy.rules.required_parties (defines who must present)
-    -> presentation.issuer_ref (claims issuer identity)
-      -> authorities.key_id (registry-rooted trust root)
-        -> validity window + revocation status (trust evaluation)
+    -> presentation.issuer_ref (names the claimed issuer key)
+      -> issuer_proof (signs the exact handshake and claims projection)
+        -> authorities.key_id + public_key (registry-rooted verification key)
+          -> validity window + revocation status (trust evaluation)
 ```
 
 If the trust root is invalid at verification time, the presentation fails trust evaluation, the required party condition is unmet, and the handshake is rejected. Policy hash pinning ensures that the trust requirements themselves cannot be weakened between initiation and verification.

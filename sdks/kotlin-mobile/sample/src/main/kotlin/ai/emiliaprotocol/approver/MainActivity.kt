@@ -412,7 +412,16 @@ class MainActivity : Activity() {
     }
 
     private fun connect(code: String) = runBusy("Pairing this device") {
-        val response = MobileApi(BuildConfig.API_BASE_URL).exchangePairing(code, packageName)
+        val identityAssertion = EmiliaAndroidPasskeyProvider(this@MainActivity).assertion(
+            rpId = "emiliaprotocol.ai",
+            challenge = pairingIdentityChallenge(code),
+            allowedCredentialIds = emptyList(),
+        )
+        val response = MobileApi(BuildConfig.API_BASE_URL).exchangePairing(
+            code,
+            packageName,
+            identityAssertion,
+        )
         val connected = MobileSession(
             accessToken = response.accessToken,
             approverId = response.approverId,

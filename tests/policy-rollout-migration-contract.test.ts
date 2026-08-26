@@ -8,6 +8,13 @@ const expandMigration = readFileSync(
   'utf8',
 );
 const migration = expandMigration;
+const postLockClosure = readFileSync(
+  new URL(
+    '../supabase/migrations/20260826140000_strix_rls_and_lifecycle_fortress_db_security_invariants.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 // Route is migrating from .js to .ts; resolve whichever extension exists.
 const routeTsUrl = new URL('../app/api/cloud/policies/[policyId]/rollout/route.ts', import.meta.url);
 const routeUrl = existsSync(routeTsUrl)
@@ -147,5 +154,37 @@ describe('policy rollout atomic Accountable Signoff migration contract', () => {
     expect(route).not.toContain("/consume'");
     expect(route).not.toContain(".from('policy_rollouts').insert");
     expect(route).not.toContain(".from('policy_rollouts').update");
+  });
+
+  it('rechecks every rollout authority and credential after the locked activation returns', () => {
+    const start = postLockClosure.indexOf(
+      'CREATE OR REPLACE FUNCTION public.activate_policy_rollout_authorized(',
+    );
+    const wrapper = postLockClosure.slice(start);
+    const lockedStateMachine = wrapper.indexOf(
+      'public.activate_policy_rollout_authorized_state_locked_v1(',
+    );
+    const wallClock = wrapper.indexOf('pg_catalog.clock_timestamp()');
+    const authorityRead = wrapper.indexOf('JOIN public.authorities AS authority');
+    const credentialRead = wrapper.indexOf(
+      'JOIN public.approver_credentials AS credential',
+    );
+
+    expect(postLockClosure).toContain(
+      'RENAME TO activate_policy_rollout_authorized_state_locked_v1',
+    );
+    expect(lockedStateMachine).toBeGreaterThanOrEqual(0);
+    expect(wallClock).toBeGreaterThan(lockedStateMachine);
+    expect(authorityRead).toBeGreaterThan(wallClock);
+    expect(credentialRead).toBeGreaterThan(authorityRead);
+    expect(wrapper).toContain('authority.valid_to > v_checked_at');
+    expect(wrapper).toContain('credential.valid_to > v_checked_at');
+    expect(wrapper).toContain("'guard.policy_rollout.validity_checked'");
+    expect(wrapper).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.activate_policy_rollout_authorized\([\s\S]+TO service_role;/,
+    );
+    expect(postLockClosure).toMatch(
+      /REVOKE ALL ON FUNCTION public\.activate_policy_rollout_authorized_state_locked_v1\([\s\S]+service_role;/,
+    );
   });
 });

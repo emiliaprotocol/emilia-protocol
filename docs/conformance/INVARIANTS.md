@@ -55,7 +55,10 @@ These are the 10 invariants that EP enforces. Each invariant is a property that 
 
 **Enforcement mechanism**:
 - **CI**: `checkEmbeddedIssuerKeys()` scans for `presentation.publicKey`, `presentation.signingKey`, `payload.key` patterns. Flagged as critical violation.
-- **Architectural**: The `_handleAddPresentation()` function only accepts `issuer_ref` (a reference to a registry entry), never a key value.
+- **Architectural**: The `_handleAddPresentation()` function accepts
+  `issuer_ref` only as a registry reference. It verifies an exact-presentation
+  signature with the registry-resolved public key and never accepts key material
+  from the request.
 
 **Test coverage**: CI script executes on every build. No runtime path exists to accept embedded keys.
 
@@ -69,7 +72,16 @@ These are the 10 invariants that EP enforces. Each invariant is a property that 
 
 **Enforcement mechanism**:
 - **Default fail-closed**: `_handleAddPresentation()` initializes `issuerTrusted = false` and `issuerTrustReason = 'unknown'` before any resolution. Trust is only granted after positive verification against the authority registry.
-- **Self-asserted handling**: Self-asserted presentations (`issuer_ref` is null) are marked `issuerTrusted = true` with `issuerTrustReason = 'self_asserted'`, but their trust value is determined by policy rules at verification time, not by the assertion itself.
+- **Issuer-proof handling**: A valid registry row alone does not set
+  `issuerTrusted = true`. The registered key must verify the
+  `EP-HANDSHAKE-ISSUER-PROOF-v1` signature over the exact server-derived
+  handshake, party, actor, disclosure, presentation, and normalized-claims
+  projection. The write transaction rechecks the same authority identity and
+  lifecycle under lock.
+- **Self-asserted handling**: Self-asserted presentations (`issuer_ref` is null)
+  are marked `issuerTrusted = false` with `issuerTrustReason = 'self_asserted'`.
+  An explicit per-role policy opt-in is required to accept that unverified
+  class.
 
 **Test coverage**: Invariant tests verify default untrusted state. Verification tests confirm that unverified presentations produce rejection reason codes.
 

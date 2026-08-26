@@ -9,8 +9,8 @@ import type { NextRequest } from 'next/server';
 import { buildSamlSp, spMetadata } from '@/lib/sso/saml';
 import { spOrigin } from '@/lib/sso/config';
 
-export async function GET(request: NextRequest): Promise<Response> {
-  const origin = spOrigin(request);
+export async function GET(_request: NextRequest): Promise<Response> {
+  const origin = spOrigin();
   const sp = buildSamlSp({
     idpEntryPoint: 'https://placeholder.invalid/sso', // not used for metadata
     idpCert: 'PLACEHOLDER', // metadata generation does not consume the IdP cert

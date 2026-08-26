@@ -252,6 +252,21 @@ describe('TrustDecision evidence fields', () => {
       'handshake: payload_hash_mismatch',
     ]);
   });
+
+  it('preserves the stored prior outcome when a finalized result was invalidated', () => {
+    const result = mapHandshakeToTrustDecision(makeHandshakeResult({
+      outcome: 'rejected',
+      prior_outcome: 'accepted',
+      invalidated_at: '2026-08-26T12:00:00.000Z',
+      invalidation_reason: 'legacy_issuer_unproven',
+    }));
+    expect(result.decision).toBe('deny');
+    expect(result.evidence).toMatchObject({
+      outcome: 'rejected',
+      prior_outcome: 'accepted',
+      confidence_score: 0,
+    });
+  });
 });
 
 // ============================================================================

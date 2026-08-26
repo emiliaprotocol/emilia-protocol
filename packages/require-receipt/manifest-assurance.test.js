@@ -46,3 +46,67 @@ test('an UNguarded action needs no assurance_class (no over-block)', () => {
     const r = validateActionRiskManifest(action({ receipt_required: false }));
     assert.equal(r.ok, true, `ungated action should validate, got: ${JSON.stringify(r.errors)}`);
 });
+const guarded = (id, actionType, match) => ({
+    id,
+    action_type: actionType,
+    match,
+    risk: 'high',
+    receipt_required: true,
+    assurance_class: 'class_a',
+});
+test('AMBIGUITY: equal, subset, and disjoint legacy match shapes are rejected', () => {
+    const cases = [
+        [{ protocol: 'mcp', tool: 'release' }, { protocol: 'mcp', tool: 'release' }],
+        [{ protocol: 'mcp', tool: 'release' }, { tool: 'release' }],
+        [{ protocol: 'mcp', tool: 'release' }, { method: 'POST', path: '/release' }],
+    ];
+    for (const [left, right] of cases) {
+        const r = validateActionRiskManifest({
+            '@version': V,
+            actions: [
+                guarded('one', 'payment.release.one', left),
+                guarded('two', 'payment.release.two', right),
+            ],
+        });
+        assert.equal(r.ok, false, `overlap must be rejected: ${JSON.stringify([left, right])}`);
+        assert.ok(r.errors.some((e) => e.includes('actions[0].match overlaps actions[1].match')));
+    }
+});
+test('SELECTOR SHAPE: empty, extension-only, and non-string matches are rejected', () => {
+    const invalidMatches = [
+        {},
+        { extension_only: 'release' },
+        { protocol: 'mcp', tool: { name: 'release' } },
+        { protocol: '' },
+    ];
+    for (const match of invalidMatches) {
+        const r = validateActionRiskManifest({
+            '@version': V,
+            actions: [guarded('one', 'payment.release', match)],
+        });
+        assert.equal(r.ok, false, `unsupported match must be rejected: ${JSON.stringify(match)}`);
+        assert.ok(r.errors.some((e) => e.includes('supported selector field') || e.includes('must be a non-empty string')));
+    }
+});
+test('AMBIGUITY: ignored extension fields cannot disguise an overlapping runtime selector', () => {
+    const r = validateActionRiskManifest({
+        '@version': V,
+        actions: [
+            guarded('one', 'payment.release.one', { protocol: 'mcp', tool: 'release', extension: 'one' }),
+            guarded('two', 'payment.release.two', { protocol: 'mcp', tool: 'release', extension: 'two' }),
+        ],
+    });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes('actions[0].match overlaps actions[1].match')));
+});
+test('distinct complete selectors remain valid', () => {
+    const r = validateActionRiskManifest({
+        '@version': V,
+        actions: [
+            guarded('one', 'payment.release.one', { protocol: 'mcp', tool: 'release_one' }),
+            guarded('two', 'payment.release.two', { protocol: 'mcp', tool: 'release_two' }),
+            guarded('three', 'payment.release.three', { protocol: 'http', method: 'POST', path: '/release' }),
+        ],
+    });
+    assert.equal(r.ok, true, `non-overlapping selectors should validate: ${JSON.stringify(r.errors)}`);
+});

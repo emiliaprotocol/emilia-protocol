@@ -65,6 +65,26 @@ const TRUST_RECEIPT_CONSUME_MIGRATION_FILE = path.join(
   __dirname,
   '../supabase/migrations/20260719125500_trust_receipt_atomic_consume.sql',
 );
+const MOBILE_PRODUCTION_MIGRATION_FILE = path.join(
+  __dirname,
+  '../supabase/migrations/20260717072053_mobile_production_platform.sql',
+);
+const MOBILE_PGCRYPTO_SCHEMA_PIN_MIGRATION_FILE = path.join(
+  __dirname,
+  '../supabase/migrations/20260720182147_mobile_pgcrypto_schema_pin.sql',
+);
+const STRIX_TRANSACTIONAL_CLOSURE_MIGRATION_FILE = path.join(
+  __dirname,
+  '../supabase/migrations/20260826140000_strix_rls_and_lifecycle_fortress_db_security_invariants.sql',
+);
+const IDENTITY_PROOF_MOBILE_PAIRING_MIGRATION_FILE = path.join(
+  __dirname,
+  '../supabase/migrations/20260826150000_identity_proof_and_mobile_pairing_closure.sql',
+);
+const IDENTITY_RUNTIME_RESIDUAL_MIGRATION_FILE = path.join(
+  __dirname,
+  '../supabase/migrations/20260826170000_identity_runtime_residual_closure.sql',
+);
 const SKIP = !process.env.INTEGRATION_POSTGRES;
 
 const SIGNOFF_POLICY_ID = '77777777-7777-4777-8777-777777777777';
@@ -139,6 +159,15 @@ async function waitForBlockedQuery(fragment, timeoutMs = 3_000) {
   throw new Error(`query did not reach a lock wait: ${fragment}`);
 }
 
+function migrationSection(sql, beginMarker, endMarker) {
+  const start = sql.indexOf(beginMarker);
+  const end = sql.indexOf(endMarker, start + beginMarker.length);
+  if (start < 0 || end < 0) {
+    throw new Error(`migration section missing: ${beginMarker} ... ${endMarker}`);
+  }
+  return sql.slice(start + beginMarker.length, end);
+}
+
 // ---------------------------------------------------------------------------
 // Test lifecycle
 // ---------------------------------------------------------------------------
@@ -204,6 +233,162 @@ beforeAll(async () => {
     'utf8',
   );
   await query(trustReceiptConsumeMigration);
+  const mobileProductionMigration = fs.readFileSync(
+    MOBILE_PRODUCTION_MIGRATION_FILE,
+    'utf8',
+  );
+  await query(mobileProductionMigration);
+  const mobilePgcryptoSchemaPinMigration = fs.readFileSync(
+    MOBILE_PGCRYPTO_SCHEMA_PIN_MIGRATION_FILE,
+    'utf8',
+  );
+  await query(mobilePgcryptoSchemaPinMigration);
+  const strixClosureMigration = fs.readFileSync(
+    STRIX_TRANSACTIONAL_CLOSURE_MIGRATION_FILE,
+    'utf8',
+  );
+  await query(migrationSection(
+    strixClosureMigration,
+    '-- BEGIN STRIX-TRANSACTIONAL-CLOSURE',
+    '-- END STRIX-TRANSACTIONAL-CLOSURE',
+  ));
+  // The main fixture intentionally carries only the minimal tables needed by
+  // the older invariant tests. Add the exact columns/tables consumed by the
+  // identity migration so the real SQL function bodies compile and execute in
+  // PostgreSQL rather than being tested as strings.
+  await query(`
+    ALTER TABLE public.entities ADD COLUMN organization_id text;
+    ALTER TABLE public.handshakes
+      DROP CONSTRAINT handshakes_status_check,
+      ADD COLUMN metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+      ADD CONSTRAINT handshakes_status_check CHECK (
+        status IN ('initiated', 'presented', 'pending_verification', 'verified',
+                   'rejected', 'consumed', 'revoked', 'expired')
+      );
+    ALTER TABLE public.approver_credentials
+      ADD COLUMN public_key_cose text NOT NULL DEFAULT 'AQID',
+      ADD COLUMN sign_count bigint NOT NULL DEFAULT 0,
+      ADD COLUMN transports text[],
+      ADD COLUMN enrollment_basis text,
+      ADD COLUMN directory_user_id uuid,
+      ADD COLUMN approver_name text,
+      ADD COLUMN attestation_fmt text,
+      ADD COLUMN attested_by text;
+    CREATE TABLE public.scim_provisioning_tokens (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      tenant_id text NOT NULL,
+      organization_id text,
+      token_hash text NOT NULL UNIQUE,
+      token_prefix text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      last_used_at timestamptz,
+      revoked_at timestamptz
+    );
+    CREATE TABLE public.scim_users (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      tenant_id text NOT NULL,
+      external_id text,
+      user_name text NOT NULL,
+      active boolean NOT NULL DEFAULT true,
+      formatted_name text,
+      given_name text,
+      family_name text,
+      display_name text,
+      emails jsonb NOT NULL DEFAULT '[]'::jsonb,
+      phone_numbers jsonb NOT NULL DEFAULT '[]'::jsonb,
+      title text,
+      raw jsonb NOT NULL DEFAULT '{}'::jsonb,
+      version integer NOT NULL DEFAULT 1,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (tenant_id, user_name)
+    );
+    CREATE TABLE public.scim_groups (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      tenant_id text NOT NULL,
+      external_id text,
+      display_name text NOT NULL,
+      members jsonb NOT NULL DEFAULT '[]'::jsonb,
+      version integer NOT NULL DEFAULT 1,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (tenant_id, display_name)
+    );
+    CREATE TABLE public.webauthn_challenges (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      kind text NOT NULL,
+      organization_id text NOT NULL,
+      approver_id text NOT NULL,
+      challenge text NOT NULL,
+      expires_at timestamptz NOT NULL,
+      consumed_at timestamptz
+    );
+    ALTER TABLE public.handshake_events
+      DROP CONSTRAINT handshake_events_event_type_check,
+      ADD COLUMN event_payload jsonb NOT NULL DEFAULT '{}'::jsonb;
+    CREATE TABLE public.handshake_presentations (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      handshake_id uuid NOT NULL REFERENCES public.handshakes(handshake_id),
+      party_role text NOT NULL,
+      presentation_type text NOT NULL,
+      issuer_ref text,
+      presentation_hash text NOT NULL,
+      disclosure_mode text NOT NULL,
+      raw_claims jsonb,
+      normalized_claims jsonb,
+      canonical_claims_hash text,
+      actor_entity_ref text,
+      authority_id text,
+      issuer_status text,
+      verified boolean NOT NULL DEFAULT false,
+      verified_at timestamptz,
+      revocation_checked boolean NOT NULL DEFAULT false,
+      revocation_status text
+    );
+    CREATE TABLE public.handshake_results (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      handshake_id uuid NOT NULL UNIQUE REFERENCES public.handshakes(handshake_id),
+      policy_version text NOT NULL,
+      outcome text NOT NULL CHECK (outcome IN ('accepted', 'rejected', 'partial', 'expired')),
+      reason_codes text[] DEFAULT '{}',
+      assurance_achieved text,
+      decision_ref text,
+      evaluated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE public.protocol_events (
+      event_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      aggregate_type text NOT NULL,
+      aggregate_id text NOT NULL,
+      command_type text NOT NULL,
+      payload_json jsonb NOT NULL,
+      payload_hash text NOT NULL,
+      actor_authority_id text,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    INSERT INTO public.entities (entity_id, organization_id, status) VALUES
+      ('scim-valid-tenant', '@org:scim-valid', 'active'),
+      ('legacy-squatter', 'legacy-squatter', 'active'),
+      ('victim-org', '@org:attacker', 'active');
+    INSERT INTO public.scim_provisioning_tokens (
+      tenant_id, organization_id, token_hash, token_prefix
+    ) VALUES
+      ('scim-valid-tenant', NULL, 'scim-valid-token-hash', 'scim_valid'),
+      ('legacy-squatter', 'legacy-squatter', 'legacy-squatter-token-hash', 'scim_legacy'),
+      ('victim-org', '@org:attacker', 'attacker-token-hash', 'scim_attack');
+    INSERT INTO public.scim_users (tenant_id, user_name, active) VALUES
+      ('scim-valid-tenant', 'valid@example.com', true),
+      ('victim-org', 'cfo@victim.example', true);
+  `);
+  const identityProofMigration = fs.readFileSync(
+    IDENTITY_PROOF_MOBILE_PAIRING_MIGRATION_FILE,
+    'utf8',
+  );
+  await query(identityProofMigration);
+  const identityRuntimeMigration = fs.readFileSync(
+    IDENTITY_RUNTIME_RESIDUAL_MIGRATION_FILE,
+    'utf8',
+  );
+  await query(identityRuntimeMigration);
 });
 
 afterAll(async () => {
@@ -500,6 +685,211 @@ async function consumeTrustReceiptAsServiceRole({
         'provider-operation-1',
         JSON.stringify(registryBindings),
         JSON.stringify({ source: 'integration-test' }),
+      ],
+    );
+  } finally {
+    await client.query('RESET ROLE').catch(() => {});
+    client.release();
+  }
+}
+
+async function insertMobileIdentityRuntimeFixture(suffix) {
+  const entityRef = `mobile-runtime-${suffix}`;
+  const organizationId = `@org:${crypto.randomUUID()}`;
+  const approverId = `mobile.runtime.${suffix}@example.com`;
+  const identityCredentialId = `identity-credential-${suffix}`;
+  const deviceKeyId = `ep:key:mobile-${crypto.randomBytes(20).toString('hex')}`;
+  const tokenHash = crypto.randomBytes(32).toString('hex');
+  const sessionId = crypto.randomUUID();
+  const appId = 'ai.emiliaprotocol.approver';
+
+  await query(
+    `INSERT INTO public.entities (entity_id, organization_id, status)
+     VALUES ($1, $2, 'active')`,
+    [entityRef, organizationId],
+  );
+  const directoryUser = await query(
+    `INSERT INTO public.scim_users (tenant_id, user_name, active)
+     VALUES ($1, $2, true) RETURNING id, version`,
+    [entityRef, approverId],
+  );
+  const token = await query(
+    `INSERT INTO public.scim_provisioning_tokens (
+       tenant_id, organization_id, token_hash, token_prefix
+     ) VALUES ($1, $2, $3, 'mobile_runtime') RETURNING id`,
+    [entityRef, organizationId, crypto.randomBytes(32).toString('hex')],
+  );
+  await query(
+    `INSERT INTO public.approver_credentials (
+       organization_id, approver_id, credential_id, public_key_spki,
+       public_key_cose, key_class, sign_count, enrollment_basis,
+       directory_user_id, valid_from
+     ) VALUES ($1, $2, $3, 'runtime-identity-spki', 'AQID', 'A', 0,
+       'directory', $4, clock_timestamp() - interval '1 minute')`,
+    [organizationId, approverId, identityCredentialId, directoryUser.rows[0].id],
+  );
+  await query(
+    `INSERT INTO public.mobile_enrollments (
+       device_key_id, entity_ref, credential_id, public_key_spki, approver_id,
+       platform, app_id, attestation_key_id, platform_public_key, status,
+       valid_from, valid_to, sign_count, attestation_format
+     ) VALUES (
+       $1, $2, $3, $4, $5, 'android', $6, $7, $8, 'active',
+       clock_timestamp() - interval '1 minute',
+       clock_timestamp() + interval '1 day', 0, 'play-integrity-standard'
+     )`,
+    [
+      deviceKeyId,
+      entityRef,
+      `device-credential-${suffix}`,
+      'A'.repeat(96),
+      approverId,
+      appId,
+      `android-keystore:sha256:${crypto.createHash('sha256').update(suffix).digest('base64url')}`,
+      'C'.repeat(120),
+    ],
+  );
+  await query(
+    `INSERT INTO public.mobile_sessions (
+       session_id, token_hash, entity_ref, organization_id, approver_id,
+       directory_user_id, identity_credential_id, identity_proof_digest,
+       identity_verified_at, profile_id, platform, app_id, device_key_id,
+       expires_at
+     ) VALUES (
+       $1, $2, $3, $4, $5, $6, $7, $8, clock_timestamp(),
+       'profile-runtime', 'android', $9, $10,
+       clock_timestamp() + interval '1 day'
+     )`,
+    [
+      sessionId,
+      tokenHash,
+      entityRef,
+      organizationId,
+      approverId,
+      directoryUser.rows[0].id,
+      identityCredentialId,
+      `sha256:${crypto.randomBytes(32).toString('hex')}`,
+      appId,
+      deviceKeyId,
+    ],
+  );
+  return {
+    entityRef,
+    organizationId,
+    approverId,
+    identityCredentialId,
+    deviceKeyId,
+    tokenHash,
+    sessionId,
+    appId,
+    directoryUserId: directoryUser.rows[0].id,
+    directoryUserVersion: directoryUser.rows[0].version,
+    scimTokenId: token.rows[0].id,
+  };
+}
+
+async function insertMobilePendingAction(fixture, suffix) {
+  const actionReference = `action-${suffix}`;
+  const challengeId = `challenge-${suffix}`;
+  const actionHash = `sha256:${crypto.randomBytes(32).toString('hex')}`;
+  await query(
+    `INSERT INTO public.mobile_actions (
+       action_reference, entity_ref, approver_id, initiator_id, action,
+       presentation, policy, policy_id, expires_at
+     ) VALUES ($1, $2, $3, 'integration-agent', $4::jsonb, $5::jsonb,
+       '{}'::jsonb, 'policy-runtime', clock_timestamp() + interval '1 day')`,
+    [
+      actionReference,
+      fixture.entityRef,
+      fixture.approverId,
+      JSON.stringify({ action_id: `runtime:${suffix}`, kind: 'release' }),
+      JSON.stringify({
+        '@version': 'EP-MOBILE-PRESENTATION-v1',
+        title: 'Release protected action',
+        summary: 'Release the pending protected action.',
+        risk: 'high',
+        consequence: 'The protected action will execute.',
+        material_fields: { item: actionReference },
+      }),
+    ],
+  );
+  return { actionReference, challengeId, actionHash };
+}
+
+function buildMobileDecisionCommit(fixture, action, {
+  previousHash = null,
+  sequence = 0,
+} = {}) {
+  const issuedAt = new Date().toISOString();
+  const profileHash = `sha256:${crypto.randomBytes(32).toString('hex')}`;
+  const contextHash = `sha256:${crypto.randomBytes(32).toString('hex')}`;
+  const decisionEvidence = {
+    context: {
+      action_hash: action.actionHash,
+      decision: 'approved',
+      approver: fixture.approverId,
+      issued_at: issuedAt,
+      mobile_binding: {
+        profile_hash: profileHash,
+        device_key_id: fixture.deviceKeyId,
+      },
+    },
+    signoff: {
+      key_class: 'A',
+      approver_key_id: fixture.deviceKeyId,
+      context_hash: contextHash,
+      signed_at: issuedAt,
+      webauthn: {
+        authenticator_data: 'YQ',
+        client_data_json: 'Yg',
+        signature: 'Yw',
+      },
+    },
+  };
+  const body = {
+    action_hash: action.actionHash,
+    approver_id: fixture.approverId,
+    challenge_id: action.challengeId,
+    context_hash: contextHash,
+    decision: 'approved',
+    decision_evidence: decisionEvidence,
+    device_key_id: fixture.deviceKeyId,
+    event_type: 'mobile.ceremony.decision',
+    prev_hash: previousHash ?? 'genesis',
+    profile_hash: profileHash,
+    record_id: `mar_${crypto.randomBytes(16).toString('hex')}`,
+    seq: sequence,
+    session_id: fixture.sessionId,
+    verdict: 'verified',
+  };
+  const canonicalBody = JSON.stringify(body);
+  const hash = crypto.createHash('sha256').update(canonicalBody, 'utf8').digest('hex');
+  return {
+    decisionEvidence,
+    canonicalBody,
+    record: { ...body, hash },
+    hash,
+  };
+}
+
+async function commitMobileDecisionAsServiceRole(fixture, action, commit) {
+  const client = await getPool().connect();
+  try {
+    await client.query('SET ROLE service_role');
+    return await client.query(
+      `SELECT public.commit_mobile_action_decision(
+         $1, $2::uuid, $3, $4, 'approved', 'verified', $5::jsonb,
+         $6, $7::jsonb, $8
+       ) AS result`,
+      [
+        fixture.entityRef,
+        fixture.sessionId,
+        action.challengeId,
+        action.actionHash,
+        JSON.stringify(commit.decisionEvidence),
+        commit.record.prev_hash === 'genesis' ? null : commit.record.prev_hash,
+        JSON.stringify(commit.record),
+        commit.canonicalBody,
       ],
     );
   } finally {
@@ -1007,26 +1397,32 @@ describe.skipIf(SKIP)('DB invariant: signoff lifecycle permits only exact state 
 // ---------------------------------------------------------------------------
 
 describe.skipIf(SKIP)('DB invariant: competing signoff transitions are atomic', () => {
-  async function pendingChallenge() {
+  async function pendingChallenge({
+    challengeExpiresAt = new Date(Date.now() + 10 * 60 * 1000),
+  } = {}) {
     const handshakeId = await insertHandshake();
     const bindingId = await insertBinding(handshakeId, { verificationFinalized: true });
-    const challengeId = await insertChallenge(bindingId);
+    const challengeId = await insertChallenge(bindingId, {
+      expiresAt: challengeExpiresAt,
+    });
     return { handshakeId, bindingId, challengeId };
   }
 
-  async function approvedAttestation() {
-    const ids = await pendingChallenge();
+  async function approvedAttestation({
+    expiresAt = new Date(Date.now() + 4 * 60 * 1000),
+  } = {}) {
+    const ids = await pendingChallenge({ challengeExpiresAt: expiresAt });
     const signoffId = crypto.randomUUID();
     const ceremonyEvidenceId = await insertCeremonyEvidence(ids.challengeId);
     const { rows } = await query(
       `SELECT public.approve_attestation_atomic(
          $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
-         'passkey', 'substantial', 'web', now() + interval '4 minutes',
+         'passkey', 'substantial', 'web', $5::timestamptz,
          'attestation-hash', pg_catalog.jsonb_build_object(
            'ceremony_evidence_id', $4::text
          )
        ) AS result`,
-      [signoffId, ids.challengeId, ids.bindingId, ceremonyEvidenceId],
+      [signoffId, ids.challengeId, ids.bindingId, ceremonyEvidenceId, expiresAt],
     );
     expect(rows[0].result.status).toBe('approved');
     return { ...ids, signoffId };
@@ -1883,6 +2279,63 @@ describe.skipIf(SKIP)('DB invariant: competing signoff transitions are atomic', 
     }
   });
 
+  it('serializes two concurrent attestations and commits exactly one approval', async () => {
+    const { bindingId, challengeId } = await pendingChallenge();
+    const ceremonyEvidenceId = await insertCeremonyEvidence(challengeId);
+    const winningSignoffId = crypto.randomUUID();
+    const losingSignoffId = crypto.randomUUID();
+    const winner = await getPool().connect();
+    const loser = await getPool().connect();
+    try {
+      await winner.query('BEGIN');
+      await winner.query(
+        `SELECT public.approve_attestation_atomic(
+           $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+           'passkey', 'substantial', 'web', now() + interval '4 minutes',
+           'attestation-hash-winner', pg_catalog.jsonb_build_object(
+             'ceremony_evidence_id', $4::text
+           )
+         )`,
+        [winningSignoffId, challengeId, bindingId, ceremonyEvidenceId],
+      );
+
+      const losingApproval = expect(loser.query(
+        `SELECT public.approve_attestation_atomic(
+           $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+           'passkey', 'substantial', 'web', now() + interval '4 minutes',
+           'attestation-hash-loser', pg_catalog.jsonb_build_object(
+             'ceremony_evidence_id', $4::text
+           )
+         )`,
+        [losingSignoffId, challengeId, bindingId, ceremonyEvidenceId],
+      )).rejects.toThrow('SIGNOFF_CHALLENGE_NOT_ATTESTABLE');
+      await waitForBlockedQuery('approve_attestation_atomic');
+      await winner.query('COMMIT');
+      await losingApproval;
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT status FROM signoff_challenges WHERE challenge_id = $1) AS status,
+           (SELECT count(*)::int FROM signoff_attestations WHERE challenge_id = $1) AS attestations,
+           (SELECT count(*)::int FROM signoff_events
+              WHERE challenge_id = $1 AND event_type = 'signoff_approved') AS approval_events,
+           (SELECT consumed_at IS NOT NULL FROM signoff_ceremony_evidence
+              WHERE evidence_id = $2) AS ceremony_consumed`,
+        [challengeId, ceremonyEvidenceId],
+      );
+      expect(rows[0]).toEqual({
+        status: 'approved',
+        attestations: 1,
+        approval_events: 1,
+        ceremony_consumed: true,
+      });
+    } finally {
+      await winner.query('ROLLBACK').catch(() => {});
+      winner.release();
+      loser.release();
+    }
+  });
+
   it('prevents approval after a concurrent challenge revocation commits', async () => {
     const { bindingId, challengeId } = await pendingChallenge();
     const revoker = await getPool().connect();
@@ -1961,6 +2414,66 @@ describe.skipIf(SKIP)('DB invariant: competing signoff transitions are atomic', 
     } finally {
       await revoker.query('ROLLBACK').catch(() => {});
       revoker.release();
+      consumer.release();
+    }
+  });
+
+  it('rolls signoff consumption back when validity expires while lock acquisition waits', async () => {
+    const expiresAt = new Date(Date.now() + 2_000);
+    const {
+      handshakeId,
+      bindingId,
+      challengeId,
+      signoffId,
+    } = await approvedAttestation({ expiresAt });
+    const blocker = await getPool().connect();
+    const consumer = await getPool().connect();
+    try {
+      await blocker.query('BEGIN');
+      await blocker.query(
+        'SELECT handshake_id FROM handshakes WHERE handshake_id = $1 FOR UPDATE',
+        [handshakeId],
+      );
+
+      const consumption = expect(consumer.query(
+        `SELECT public.consume_signoff_atomic(
+           $1::text, 'bhash-xyz', 'execution-expired-after-lock-wait',
+           $2::text, $3::text, 'entity-alice'
+         )`,
+        [signoffId, bindingId, challengeId],
+      )).rejects.toThrow('SIGNOFF_CHALLENGE_EXPIRED');
+      await waitForBlockedQuery('consume_signoff_atomic');
+      await new Promise((resolve) => setTimeout(
+        resolve,
+        Math.max(0, expiresAt.getTime() - Date.now() + 150),
+      ));
+      await blocker.query('COMMIT');
+      await consumption;
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT count(*)::int FROM handshake_consumptions
+              WHERE handshake_id = $1) AS handshake_consumptions,
+           (SELECT count(*)::int FROM signoff_consumptions
+              WHERE signoff_id = $2) AS signoff_consumptions,
+           (SELECT status FROM signoff_challenges
+              WHERE challenge_id = $3) AS challenge_status,
+           (SELECT status FROM signoff_attestations
+              WHERE signoff_id = $2) AS attestation_status,
+           (SELECT count(*)::int FROM signoff_events
+              WHERE signoff_id = $2 AND event_type = 'signoff_consumed') AS consumed_events`,
+        [handshakeId, signoffId, challengeId],
+      );
+      expect(rows[0]).toEqual({
+        handshake_consumptions: 0,
+        signoff_consumptions: 0,
+        challenge_status: 'approved',
+        attestation_status: 'approved',
+        consumed_events: 0,
+      });
+    } finally {
+      await blocker.query('ROLLBACK').catch(() => {});
+      blocker.release();
       consumer.release();
     }
   });
@@ -2227,7 +2740,7 @@ describe.skipIf(SKIP)('DB invariant: generic Trust Receipt consume is atomic', (
           action_hash: actionHash,
           signoff_required: true,
           required_assurance: 'A',
-          quorum_policy: null,
+          quorum_policy: { required: 1 },
           expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         }),
       ],
@@ -2289,6 +2802,247 @@ describe.skipIf(SKIP)('DB invariant: generic Trust Receipt consume is atomic', (
       organizationId,
       registryBindings,
     })).rejects.toThrow('trust_receipt_registry_facts_invalid');
+  });
+
+  it('uses post-lock wall clock when a bound Class-A credential expires while consume waits', async () => {
+    const suffix = crypto.randomBytes(8).toString('hex');
+    const expiringOrganizationId = `org-expiring-consume-${suffix}`;
+    const expiringApproverId = `approver-expiring-${suffix}`;
+    const expiringCredentialId = `credential-expiring-${suffix}`;
+    const expiringAuthorityId = crypto.randomUUID();
+    const expiringActionHash = crypto.randomBytes(32).toString('hex');
+    const receiptId = `tr_${crypto.randomBytes(16).toString('hex')}`;
+
+    await query(
+      `INSERT INTO approver_credentials
+         (organization_id, approver_id, credential_id, public_key_spki,
+          key_class, valid_from)
+       VALUES ($1, $2, $3, 'expiring-spki', 'A', clock_timestamp() - interval '1 day')`,
+      [expiringOrganizationId, expiringApproverId, expiringCredentialId],
+    );
+    await query(
+      `INSERT INTO authorities
+         (authority_id, key_id, public_key, role, status, valid_from,
+          organization_id, subject_type, subject_ref, assurance_class, action_scopes)
+       VALUES
+         ($1, $2, 'expiring-pk', 'controller', 'active',
+          clock_timestamp() - interval '1 day', $3, 'human_approver', $4, 'A',
+          ARRAY['deploy_production'])`,
+      [
+        expiringAuthorityId,
+        `expiring-authority-key-${suffix}`,
+        expiringOrganizationId,
+        expiringApproverId,
+      ],
+    );
+    await query(
+      `INSERT INTO audit_events
+         (event_type, actor_id, actor_type, target_type, target_id, action, after_state)
+       VALUES
+         ('guard.trust_receipt.created', 'expiry-race-creator', 'principal',
+          'trust_receipt', $1, 'create', $2::jsonb)`,
+      [
+        receiptId,
+        JSON.stringify({
+          organization_id: expiringOrganizationId,
+          action_type: 'deploy_production',
+          action_hash: expiringActionHash,
+          signoff_required: true,
+          required_assurance: 'A',
+          quorum_policy: null,
+          expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        }),
+      ],
+    );
+
+    const registryBindings = [{
+      authority_id: expiringAuthorityId,
+      approver_id: expiringApproverId,
+      role: 'controller',
+      credential_id: expiringCredentialId,
+      required_assurance: 'A',
+    }];
+    const blocker = await getPool().connect();
+    try {
+      await blocker.query('BEGIN');
+      const { rows: validityRows } = await blocker.query(
+        `UPDATE approver_credentials
+            SET valid_to = clock_timestamp() + interval '650 milliseconds'
+          WHERE credential_id = $1
+          RETURNING valid_to > clock_timestamp() AS still_valid`,
+        [expiringCredentialId],
+      );
+      expect(validityRows[0].still_valid).toBe(true);
+
+      const consumption = expect(consumeTrustReceiptAsServiceRole({
+        receiptId,
+        actionHash: expiringActionHash,
+        organizationId: expiringOrganizationId,
+        registryBindings,
+      })).rejects.toThrow('trust_receipt_registry_facts_invalid');
+      await waitForBlockedQuery('consume_trust_receipt_authorized');
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      const { rows: expiredRows } = await blocker.query(
+        `SELECT valid_to <= clock_timestamp() AS expired
+           FROM approver_credentials
+          WHERE credential_id = $1`,
+        [expiringCredentialId],
+      );
+      expect(expiredRows[0].expired).toBe(true);
+      await blocker.query('COMMIT');
+      await consumption;
+    } finally {
+      await blocker.query('ROLLBACK').catch(() => {});
+      blocker.release();
+    }
+
+    const { rows } = await query(
+      `SELECT
+         count(*) FILTER (
+           WHERE event_type = 'guard.trust_receipt.consumed'
+         )::int AS consumptions,
+         count(*) FILTER (
+           WHERE event_type = 'guard.trust_receipt.consume_validity_checked'
+         )::int AS validity_checks
+       FROM audit_events
+       WHERE target_type = 'trust_receipt' AND target_id = $1`,
+      [receiptId],
+    );
+    expect(rows[0]).toEqual({ consumptions: 0, validity_checks: 0 });
+  });
+
+  it('serializes a bound rejection against consume and commits no consume event', async () => {
+    const suffix = crypto.randomBytes(8).toString('hex');
+    const raceOrganizationId = `org-rejection-race-${suffix}`;
+    const raceApproverId = `approver-race-${suffix}`;
+    const rejectingApproverId = `rejecter-race-${suffix}`;
+    const raceCredentialId = `credential-race-${suffix}`;
+    const raceAuthorityId = crypto.randomUUID();
+    const raceActionHash = crypto.randomBytes(32).toString('hex');
+    const receiptId = `tr_${crypto.randomBytes(16).toString('hex')}`;
+    const approvedSignoffId = `sig-approved-${suffix}`;
+    const rejectedSignoffId = `sig-rejected-${suffix}`;
+
+    await query(
+      `INSERT INTO approver_credentials
+         (organization_id, approver_id, credential_id, public_key_spki,
+          key_class, valid_from)
+       VALUES ($1, $2, $3, 'race-spki', 'A', now() - interval '1 day')`,
+      [raceOrganizationId, raceApproverId, raceCredentialId],
+    );
+    await query(
+      `INSERT INTO authorities
+         (authority_id, key_id, public_key, role, status, valid_from,
+          organization_id, subject_type, subject_ref, assurance_class, action_scopes)
+       VALUES
+         ($1, $2, 'race-pk', 'controller', 'active', now() - interval '1 day',
+          $3, 'human_approver', $4, 'A', ARRAY['deploy_production'])`,
+      [raceAuthorityId, `race-authority-key-${suffix}`, raceOrganizationId, raceApproverId],
+    );
+    await query(
+      `INSERT INTO audit_events
+         (event_type, actor_id, actor_type, target_type, target_id, action, after_state)
+       VALUES
+         ('guard.trust_receipt.created', 'race-creator', 'principal',
+          'trust_receipt', $1, 'create', $2::jsonb)`,
+      [
+        receiptId,
+        JSON.stringify({
+          organization_id: raceOrganizationId,
+          action_type: 'deploy_production',
+          action_hash: raceActionHash,
+          signoff_required: true,
+          required_assurance: 'A',
+          quorum_policy: null,
+          expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        }),
+      ],
+    );
+    await query(
+      `INSERT INTO audit_events
+         (event_type, actor_id, actor_type, target_type, target_id, action, after_state)
+       VALUES
+         ('guard.signoff.requested', 'race-creator', 'principal',
+          'trust_receipt', $1, 'request_signoff', $2::jsonb),
+         ('guard.signoff.requested', 'race-creator', 'principal',
+          'trust_receipt', $1, 'request_signoff', $3::jsonb),
+         ('guard.signoff.approved', $4, 'principal',
+          'trust_receipt', $1, 'approved', $5::jsonb)`,
+      [
+        receiptId,
+        JSON.stringify({
+          signoff_id: approvedSignoffId,
+          approver_id: raceApproverId,
+          quorum: { approver_id: raceApproverId },
+        }),
+        JSON.stringify({
+          signoff_id: rejectedSignoffId,
+          approver_id: rejectingApproverId,
+          quorum: { approver_id: rejectingApproverId },
+        }),
+        raceApproverId,
+        JSON.stringify({
+          signoff_id: approvedSignoffId,
+          approver_id: raceApproverId,
+          approved_action_hash: raceActionHash,
+        }),
+      ],
+    );
+
+    const registryBindings = [{
+      authority_id: raceAuthorityId,
+      approver_id: raceApproverId,
+      role: 'controller',
+      credential_id: raceCredentialId,
+      required_assurance: 'A',
+    }];
+    const rejecter = await getPool().connect();
+    try {
+      await rejecter.query('BEGIN');
+      await rejecter.query(
+        `INSERT INTO audit_events
+           (event_type, actor_id, actor_type, target_type, target_id, action, after_state)
+         VALUES
+           ('guard.signoff.rejected', $2, 'principal',
+            'trust_receipt', $1, 'rejected', $3::jsonb)`,
+        [
+          receiptId,
+          rejectingApproverId,
+          JSON.stringify({
+            signoff_id: rejectedSignoffId,
+            approver_id: rejectingApproverId,
+            approved_action_hash: raceActionHash,
+          }),
+        ],
+      );
+
+      const consumption = expect(consumeTrustReceiptAsServiceRole({
+        receiptId,
+        actionHash: raceActionHash,
+        organizationId: raceOrganizationId,
+        registryBindings,
+      })).rejects.toThrow('trust_receipt_signoff_rejected');
+      await waitForBlockedQuery('consume_trust_receipt_authorized');
+      await rejecter.query('COMMIT');
+      await consumption;
+
+      const { rows } = await query(
+        `SELECT
+           count(*) FILTER (
+             WHERE event_type = 'guard.signoff.rejected'
+           )::int AS rejections,
+           count(*) FILTER (
+             WHERE event_type = 'guard.trust_receipt.consumed'
+           )::int AS consumptions
+         FROM audit_events
+         WHERE target_type = 'trust_receipt' AND target_id = $1`,
+        [receiptId],
+      );
+      expect(rows[0]).toEqual({ rejections: 1, consumptions: 0 });
+    } finally {
+      await rejecter.query('ROLLBACK').catch(() => {});
+      rejecter.release();
+    }
   });
 });
 
@@ -2438,6 +3192,95 @@ describe.skipIf(SKIP)('DB invariant: policy rollout Accountable Signoff is atomi
       [firstReceipt],
     );
     expect(consumeRows[0].count).toBe(1);
+  });
+
+  it('uses post-lock wall clock when a relied-on Class-A credential expires during rollout activation', async () => {
+    await query(
+      `INSERT INTO handshake_policies
+         (policy_id, policy_key, version, mode, status, rules, tenant_id)
+       VALUES ($1, 'strict', 2, 'mutual', 'active', $2::jsonb, $3)
+       ON CONFLICT (policy_id) DO UPDATE SET
+         status = 'active', rules = EXCLUDED.rules, tenant_id = EXCLUDED.tenant_id`,
+      [ROLLOUT_POLICY_ID, JSON.stringify(ROLLOUT_RULES), ROLLOUT_TENANT_ID],
+    );
+    await query(
+      `INSERT INTO authorities
+         (authority_id, key_id, public_key, role, status, valid_from,
+          organization_id, subject_type, subject_ref, assurance_class, action_scopes)
+       VALUES
+         ($1, 'authority-key', 'pk', 'policy_admin', 'active',
+          clock_timestamp() - interval '1 day', $2, 'human_approver',
+          'approver-1', 'A', ARRAY['policy_rollout'])
+       ON CONFLICT (authority_id) DO UPDATE SET
+         status = 'active', revoked_at = NULL, valid_to = NULL,
+         organization_id = EXCLUDED.organization_id,
+         subject_ref = EXCLUDED.subject_ref,
+         assurance_class = 'A', action_scopes = ARRAY['policy_rollout']`,
+      [ROLLOUT_AUTHORITY_ID, ROLLOUT_TENANT_ID],
+    );
+    await query(
+      `INSERT INTO approver_credentials
+         (organization_id, approver_id, credential_id, public_key_spki,
+          key_class, valid_from)
+       VALUES ($1, 'approver-1', 'credential-1', 'spki', 'A',
+               clock_timestamp() - interval '1 day')
+       ON CONFLICT (credential_id) DO UPDATE SET
+         organization_id = EXCLUDED.organization_id,
+         approver_id = EXCLUDED.approver_id,
+         key_class = 'A', revoked_at = NULL, valid_to = NULL`,
+      [ROLLOUT_TENANT_ID],
+    );
+
+    const environment = `post-lock-expiry-${crypto.randomBytes(6).toString('hex')}`;
+    const receiptId = `tr_${crypto.randomBytes(16).toString('hex')}`;
+    const signedState = await insertRolloutReceipt(receiptId, environment);
+    const blocker = await getPool().connect();
+    try {
+      await blocker.query('BEGIN');
+      const { rows: validityRows } = await blocker.query(
+        `UPDATE approver_credentials
+            SET valid_to = clock_timestamp() + interval '650 milliseconds'
+          WHERE credential_id = 'credential-1'
+          RETURNING valid_to > clock_timestamp() AS still_valid`,
+      );
+      expect(validityRows[0].still_valid).toBe(true);
+
+      const activation = expect(activateRolloutAsServiceRole({
+        receiptId,
+        environment,
+        ...signedState,
+      })).rejects.toThrow('policy_rollout_registry_validity_expired');
+      await waitForBlockedQuery('activate_policy_rollout_authorized');
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      const { rows: expiredRows } = await blocker.query(
+        `SELECT valid_to <= clock_timestamp() AS expired
+           FROM approver_credentials
+          WHERE credential_id = 'credential-1'`,
+      );
+      expect(expiredRows[0].expired).toBe(true);
+      await blocker.query('COMMIT');
+      await activation;
+    } finally {
+      await blocker.query('ROLLBACK').catch(() => {});
+      blocker.release();
+    }
+
+    const { rows } = await query(
+      `SELECT
+         (SELECT count(*)::int
+            FROM policy_rollouts
+           WHERE authorization_receipt_id = $1) AS rollouts,
+         count(*) FILTER (
+           WHERE event_type = 'guard.trust_receipt.consumed'
+         )::int AS consumptions,
+         count(*) FILTER (
+           WHERE event_type = 'guard.policy_rollout.validity_checked'
+         )::int AS validity_checks
+       FROM audit_events
+       WHERE target_type = 'trust_receipt' AND target_id = $1`,
+      [receiptId],
+    );
+    expect(rows[0]).toEqual({ rollouts: 0, consumptions: 0, validity_checks: 0 });
   });
 
   it('atomically locks and rechecks every member of an org-pinned quorum', async () => {
@@ -2698,5 +3541,539 @@ describe.skipIf(SKIP)('DB invariant: audit evidence is append-only', () => {
       `DELETE FROM audit_events WHERE id = $1`,
       [rows[0].id],
     )).rejects.toThrow('AUDIT_EVENT_IMMUTABILITY_VIOLATION');
+  });
+});
+
+describe.skipIf(SKIP)('DB invariant: SCIM tenant labels are never organization provenance', () => {
+  it('backfills only a proved live binding and detaches the legacy self-org shape', async () => {
+    const state = await query(
+      `SELECT token_hash, organization_id, revoked_at IS NOT NULL AS revoked
+         FROM public.scim_provisioning_tokens
+        WHERE token_hash IN (
+          'scim-valid-token-hash',
+          'legacy-squatter-token-hash',
+          'attacker-token-hash'
+        )
+        ORDER BY token_hash`,
+    );
+    expect(state.rows).toEqual([
+      { token_hash: 'attacker-token-hash', organization_id: '@org:attacker', revoked: false },
+      { token_hash: 'legacy-squatter-token-hash', organization_id: null, revoked: true },
+      { token_hash: 'scim-valid-token-hash', organization_id: '@org:scim-valid', revoked: false },
+    ]);
+  });
+
+  it('refuses active NULL, self-org, and live-binding-mismatched token provenance', async () => {
+    const suffix = crypto.randomBytes(6).toString('hex');
+    await expect(query(
+      `INSERT INTO public.scim_provisioning_tokens
+         (tenant_id, organization_id, token_hash, token_prefix)
+       VALUES ('victim-org', NULL, $1, 'null_org')`,
+      [`scim-null-${suffix}`],
+    )).rejects.toThrow(/organization provenance|scim_tokens_live_org_provenance/);
+    await expect(query(
+      `INSERT INTO public.scim_provisioning_tokens
+         (tenant_id, organization_id, token_hash, token_prefix)
+       VALUES ('victim-org', 'victim-org', $1, 'self_org')`,
+      [`scim-self-${suffix}`],
+    )).rejects.toThrow(/organization provenance|scim_tokens_live_org_provenance/);
+    await expect(query(
+      `INSERT INTO public.scim_provisioning_tokens
+         (tenant_id, organization_id, token_hash, token_prefix)
+       VALUES ('victim-org', '@org:other', $1, 'wrong_org')`,
+      [`scim-wrong-${suffix}`],
+    )).rejects.toThrow(/organization provenance|live tenant/);
+  });
+
+  it('does not let a colliding tenant slug authorize directory enrollment into the victim org', async () => {
+    const user = await query(
+      `SELECT id FROM public.scim_users
+        WHERE tenant_id = 'victim-org' AND user_name = 'cfo@victim.example'`,
+    );
+    const challenge = await query(
+      `INSERT INTO public.webauthn_challenges
+         (kind, organization_id, approver_id, challenge, expires_at)
+       VALUES ('registration', 'victim-org', 'cfo@victim.example', 'squatter-challenge',
+               clock_timestamp() + interval '5 minutes')
+       RETURNING id`,
+    );
+    const completion = await query(
+      `SELECT public.complete_webauthn_registration_atomic(
+         $1, 'victim-org', 'cfo@victim.example', $2::jsonb
+       ) AS result`,
+      [challenge.rows[0].id, JSON.stringify({
+        credential_id: `squatter-credential-${crypto.randomBytes(6).toString('hex')}`,
+        public_key_cose: 'AQID',
+        public_key_spki: 'BAUG',
+        key_class: 'A',
+        sign_count: 0,
+        transports: ['internal'],
+        enrollment_basis: 'directory',
+        directory_user_id: user.rows[0].id,
+      })],
+    );
+    expect(completion.rows[0].result).toEqual({ error: 'directory_user_inactive' });
+    const durable = await query(
+      `SELECT consumed_at IS NOT NULL AS consumed
+         FROM public.webauthn_challenges WHERE id = $1`,
+      [challenge.rows[0].id],
+    );
+    expect(durable.rows).toEqual([{ consumed: false }]);
+  });
+
+  it('rechecks the exact live tenant organization inside SCIM authority writes', async () => {
+    const user = await query(
+      `SELECT id, version FROM public.scim_users
+        WHERE tenant_id = 'victim-org' AND user_name = 'cfo@victim.example'`,
+    );
+    const result = await query(
+      `SELECT public.apply_scim_user_and_authority_atomic(
+         'victim-org', 'victim-org', $1, $2, '{}'::jsonb, false, 'test'
+       ) AS result`,
+      [user.rows[0].id, user.rows[0].version],
+    );
+    expect(result.rows[0].result).toEqual({ error: 'tenant_binding_invalid' });
+  });
+
+  it('records one exact deprovision and revokes directory credentials on active rename', async () => {
+    const suffix = crypto.randomBytes(8).toString('hex');
+    const tenantId = `scim-lifecycle-${suffix}`;
+    const organizationId = `@org:${crypto.randomUUID()}`;
+    await query(
+      `INSERT INTO public.entities (entity_id, organization_id, status)
+       VALUES ($1, $2, 'active')`,
+      [tenantId, organizationId],
+    );
+    const token = await query(
+      `INSERT INTO public.scim_provisioning_tokens (
+         tenant_id, organization_id, token_hash, token_prefix
+       ) VALUES ($1, $2, $3, 'lifecycle') RETURNING id`,
+      [tenantId, organizationId, crypto.randomBytes(32).toString('hex')],
+    );
+    const createDirectoryIdentity = async (approverId) => {
+      const user = await query(
+        `INSERT INTO public.scim_users (tenant_id, user_name, active)
+         VALUES ($1, $2, true) RETURNING id, version`,
+        [tenantId, approverId],
+      );
+      const credentialId = `credential-${crypto.randomBytes(8).toString('hex')}`;
+      await query(
+        `INSERT INTO public.approver_credentials (
+           organization_id, approver_id, credential_id, public_key_spki,
+           public_key_cose, key_class, sign_count, enrollment_basis,
+           directory_user_id, valid_from
+         ) VALUES ($1, $2, $3, 'lifecycle-spki', 'AQID', 'A', 0,
+           'directory', $4, clock_timestamp() - interval '1 minute')`,
+        [organizationId, approverId, credentialId, user.rows[0].id],
+      );
+      return { ...user.rows[0], approverId, credentialId };
+    };
+    const fields = (userName, active) => ({
+      user_name: userName,
+      external_id: '',
+      active,
+      formatted_name: '',
+      given_name: '',
+      family_name: '',
+      display_name: '',
+      title: '',
+      emails: [],
+      phone_numbers: [],
+      raw: {},
+    });
+
+    const deactivated = await createDirectoryIdentity(`deactivate-${suffix}@example.com`);
+    const deactivation = await query(
+      `SELECT public.apply_scim_user_and_authority_atomic(
+         $1::uuid, $2, $3, $4::uuid, $5, $6::jsonb, false, 'integration_deactivate'
+       ) AS result`,
+      [token.rows[0].id, tenantId, organizationId, deactivated.id,
+        deactivated.version, JSON.stringify(fields(deactivated.approverId, false))],
+    );
+    expect(deactivation.rows[0].result).toMatchObject({
+      status: 'updated',
+      credentials_revoked: 1,
+    });
+    const deactivationState = await query(
+      `SELECT
+         (SELECT revoked_at IS NOT NULL FROM public.approver_credentials
+           WHERE credential_id = $1) AS credential_revoked,
+         count(*)::int AS events
+       FROM public.audit_events
+       WHERE event_type = 'scim.approver.deprovisioned'
+         AND target_type = 'approver' AND target_id = $2`,
+      [deactivated.credentialId, deactivated.approverId],
+    );
+    expect(deactivationState.rows[0]).toEqual({ credential_revoked: true, events: 1 });
+
+    const renamed = await createDirectoryIdentity(`rename-${suffix}@example.com`);
+    const replacement = `renamed-${suffix}@example.com`;
+    const rename = await query(
+      `SELECT public.apply_scim_user_and_authority_atomic(
+         $1::uuid, $2, $3, $4::uuid, $5, $6::jsonb, false, 'integration_rename'
+       ) AS result`,
+      [token.rows[0].id, tenantId, organizationId, renamed.id,
+        renamed.version, JSON.stringify(fields(replacement, true))],
+    );
+    expect(rename.rows[0].result).toMatchObject({ status: 'updated' });
+    const renameState = await query(
+      `SELECT
+         (SELECT revoked_at IS NOT NULL FROM public.approver_credentials
+           WHERE credential_id = $1) AS credential_revoked,
+         count(*)::int AS events,
+         max(after_state ->> 'reason') AS reason
+       FROM public.audit_events
+       WHERE event_type = 'scim.approver.deprovisioned'
+         AND target_type = 'approver' AND target_id = $2`,
+      [renamed.credentialId, renamed.approverId],
+    );
+    expect(renameState.rows[0]).toEqual({
+      credential_revoked: true,
+      events: 1,
+      reason: 'scim_username_changed',
+    });
+  });
+});
+
+describe.skipIf(SKIP)('DB invariant: mobile pairing is bound to the named directory identity', () => {
+  it('refuses wrong org, wrong approver, and counter replay while exact proof succeeds once', async () => {
+    const suffix = crypto.randomBytes(8).toString('hex');
+    const entityRef = `mobile-entity-${suffix}`;
+    const organizationId = `@org:${crypto.randomUUID()}`;
+    const approverId = `mobile.approver.${suffix}@example.com`;
+    const credentialId = `credential-mobile-${suffix}`;
+    const appId = 'ai.emiliaprotocol.approver';
+    await query(
+      `INSERT INTO public.entities (entity_id, organization_id, status)
+       VALUES ($1, $2, 'active')`,
+      [entityRef, organizationId],
+    );
+    const directoryUser = await query(
+      `INSERT INTO public.scim_users (tenant_id, user_name, active)
+       VALUES ($1, $2, true) RETURNING id`,
+      [entityRef, approverId],
+    );
+    await query(
+      `INSERT INTO public.scim_provisioning_tokens (
+         tenant_id, organization_id, token_hash, token_prefix
+       ) VALUES ($1, $2, $3, 'mobile_test')`,
+      [entityRef, organizationId, crypto.randomBytes(32).toString('hex')],
+    );
+    await query(
+      `INSERT INTO public.approver_credentials (
+         organization_id, approver_id, credential_id, public_key_spki,
+         public_key_cose, key_class, sign_count, enrollment_basis,
+         directory_user_id, valid_from
+       ) VALUES ($1, $2, $3, 'test-spki', 'AQID', 'A', 0, 'directory', $4, now() - interval '1 minute')`,
+      [organizationId, approverId, credentialId, directoryUser.rows[0].id],
+    );
+    const codeHash = crypto.randomBytes(32).toString('hex');
+    await query(
+      `INSERT INTO public.mobile_pairings (
+         code_hash, entity_ref, organization_id, approver_id, directory_user_id,
+         profile_id, allowed_apps,
+         expires_at, session_expires_at
+       ) VALUES ($1, $2, $3, $4, $5, 'profile-1', $6::jsonb,
+         now() + interval '5 minutes', now() + interval '1 day')`,
+      [codeHash, entityRef, organizationId, approverId, directoryUser.rows[0].id,
+        JSON.stringify({ ios: [appId], android: [] })],
+    );
+    const exchange = (tokenHash, expectedApprover, candidateCredential, counter) => query(
+      `SELECT public.exchange_mobile_pairing_verified(
+         $1, $2, 'ios', $3, $4, $5, $6, $7
+       ) AS result`,
+      [codeHash, tokenHash, appId, candidateCredential, expectedApprover, counter,
+        `sha256:${'a'.repeat(64)}`],
+    );
+
+    const wrongApprover = await exchange(
+      crypto.randomBytes(32).toString('hex'),
+      'attacker@example.com',
+      credentialId,
+      5,
+    );
+    expect(wrongApprover.rows[0].result).toMatchObject({ ok: false, reason: 'approver_mismatch' });
+
+    const wrongOrgCredential = `credential-wrong-org-${suffix}`;
+    await query(
+      `INSERT INTO public.approver_credentials (
+         organization_id, approver_id, credential_id, public_key_spki,
+         public_key_cose, key_class, sign_count, enrollment_basis,
+         directory_user_id, valid_from
+       ) VALUES ('@org:wrong', $1, $2, 'test-spki', 'AQID', 'A', 0,
+         'directory', $3, now() - interval '1 minute')`,
+      [approverId, wrongOrgCredential, crypto.randomUUID()],
+    );
+    const wrongOrg = await exchange(
+      crypto.randomBytes(32).toString('hex'),
+      approverId,
+      wrongOrgCredential,
+      5,
+    );
+    expect(wrongOrg.rows[0].result).toMatchObject({ ok: false, reason: 'identity_not_active' });
+
+    const success = await exchange(
+      crypto.randomBytes(32).toString('hex'),
+      approverId,
+      credentialId,
+      5,
+    );
+    expect(success.rows[0].result).toMatchObject({ ok: true, approver_id: approverId });
+    const codeReplay = await exchange(
+      crypto.randomBytes(32).toString('hex'),
+      approverId,
+      credentialId,
+      6,
+    );
+    expect(codeReplay.rows[0].result).toMatchObject({ ok: false, reason: 'invalid_or_consumed' });
+
+    const secondCodeHash = crypto.randomBytes(32).toString('hex');
+    await query(
+      `INSERT INTO public.mobile_pairings (
+         code_hash, entity_ref, organization_id, approver_id, directory_user_id,
+         profile_id, allowed_apps,
+         expires_at, session_expires_at
+       ) VALUES ($1, $2, $3, $4, $5, 'profile-1', $6::jsonb,
+         now() + interval '5 minutes', now() + interval '1 day')`,
+      [secondCodeHash, entityRef, organizationId, approverId, directoryUser.rows[0].id,
+        JSON.stringify({ ios: [appId], android: [] })],
+    );
+    const counterReplay = await query(
+      `SELECT public.exchange_mobile_pairing_verified(
+         $1, $2, 'ios', $3, $4, $5, 5, $6
+       ) AS result`,
+      [secondCodeHash, crypto.randomBytes(32).toString('hex'), appId, credentialId,
+        approverId, `sha256:${'b'.repeat(64)}`],
+    );
+    expect(counterReplay.rows[0].result).toMatchObject({ ok: false, reason: 'credential_counter_replay' });
+    const state = await query(
+      `SELECT
+         (SELECT count(*)::int FROM public.mobile_sessions WHERE entity_ref = $1) AS sessions,
+         (SELECT consumed_at IS NULL FROM public.mobile_pairings WHERE code_hash = $2) AS replay_code_unconsumed,
+         (SELECT sign_count::int FROM public.approver_credentials WHERE credential_id = $3) AS sign_count`,
+      [entityRef, secondCodeHash, credentialId],
+    );
+    expect(state.rows[0]).toEqual({ sessions: 1, replay_code_unconsumed: true, sign_count: 5 });
+  });
+
+  it('rechecks deprovisioning after request-time touch inside the terminal action commit', async () => {
+    const suffix = crypto.randomBytes(8).toString('hex');
+    const fixture = await insertMobileIdentityRuntimeFixture(suffix);
+    const touch = await query(
+      `SELECT public.touch_mobile_session_verified($1::uuid, $2) AS active`,
+      [fixture.sessionId, fixture.tokenHash],
+    );
+    expect(touch.rows[0].active).toBe(true);
+
+    // Prove the wrapper admits the same fully-bound state machine while the
+    // exact directory identity is active.
+    const baseline = await insertMobilePendingAction(fixture, `${suffix}-baseline`);
+    const baselineChallenge = await query(
+      `SELECT public.register_mobile_action_challenge(
+         $1, $2::uuid, $3, $4, $5, $6, 'approved',
+         clock_timestamp() + interval '5 minutes'
+       ) AS registered`,
+      [fixture.entityRef, fixture.sessionId, baseline.actionReference,
+        fixture.approverId, baseline.challengeId, baseline.actionHash],
+    );
+    expect(baselineChallenge.rows[0].registered).toBe(true);
+    const baselineCommit = buildMobileDecisionCommit(fixture, baseline);
+    const baselineResult = await commitMobileDecisionAsServiceRole(
+      fixture,
+      baseline,
+      baselineCommit,
+    );
+    expect(baselineResult.rows[0].result).toEqual({ ok: true });
+
+    const pending = await insertMobilePendingAction(fixture, `${suffix}-pending`);
+    const requestTimeTouch = await query(
+      `SELECT public.touch_mobile_session_verified($1::uuid, $2) AS active`,
+      [fixture.sessionId, fixture.tokenHash],
+    );
+    expect(requestTimeTouch.rows[0].active).toBe(true);
+    const pendingChallenge = await query(
+      `SELECT public.register_mobile_action_challenge(
+         $1, $2::uuid, $3, $4, $5, $6, 'approved',
+         clock_timestamp() + interval '5 minutes'
+       ) AS registered`,
+      [fixture.entityRef, fixture.sessionId, pending.actionReference,
+        fixture.approverId, pending.challengeId, pending.actionHash],
+    );
+    expect(pendingChallenge.rows[0].registered).toBe(true);
+
+    const deprovisionFields = {
+      user_name: fixture.approverId,
+      external_id: '',
+      active: false,
+      formatted_name: '',
+      given_name: '',
+      family_name: '',
+      display_name: '',
+      title: '',
+      emails: [],
+      phone_numbers: [],
+      raw: {},
+    };
+    const deprovisioned = await query(
+      `SELECT public.apply_scim_user_and_authority_atomic(
+         $1::uuid, $2, $3, $4::uuid, $5, $6::jsonb, false,
+         'mobile_commit_deprovision'
+       ) AS result`,
+      [fixture.scimTokenId, fixture.entityRef, fixture.organizationId,
+        fixture.directoryUserId, fixture.directoryUserVersion,
+        JSON.stringify(deprovisionFields)],
+    );
+    expect(deprovisioned.rows[0].result).toMatchObject({
+      status: 'updated',
+      credentials_revoked: 1,
+    });
+
+    const refusedCommit = buildMobileDecisionCommit(fixture, pending, {
+      previousHash: baselineCommit.hash,
+      sequence: 1,
+    });
+    const refused = await commitMobileDecisionAsServiceRole(fixture, pending, refusedCommit);
+    expect(refused.rows[0].result).toEqual({ ok: false, reason: 'session_inactive' });
+    const state = await query(
+      `SELECT
+         (SELECT status FROM public.mobile_actions
+           WHERE entity_ref = $1 AND action_reference = $2) AS action_status,
+         (SELECT consumed_at IS NULL FROM public.mobile_action_challenges
+           WHERE challenge_id = $3) AS challenge_unconsumed,
+         (SELECT count(*)::int FROM public.mobile_evidence_records
+           WHERE record_id = $4) AS refused_records,
+         (SELECT revoked_at IS NOT NULL FROM public.mobile_sessions
+           WHERE session_id = $5::uuid) AS session_revoked`,
+      [fixture.entityRef, pending.actionReference, pending.challengeId,
+        refusedCommit.record.record_id, fixture.sessionId],
+    );
+    expect(state.rows[0]).toEqual({
+      action_status: 'pending',
+      challenge_unconsumed: true,
+      refused_records: 0,
+      session_revoked: true,
+    });
+  });
+
+  it('refuses terminal action commit after its exact Class-A credential expires', async () => {
+    const suffix = crypto.randomBytes(8).toString('hex');
+    const fixture = await insertMobileIdentityRuntimeFixture(suffix);
+    const action = await insertMobilePendingAction(fixture, `${suffix}-expiry`);
+    const requestTimeTouch = await query(
+      `SELECT public.touch_mobile_session_verified($1::uuid, $2) AS active`,
+      [fixture.sessionId, fixture.tokenHash],
+    );
+    expect(requestTimeTouch.rows[0].active).toBe(true);
+    const challenge = await query(
+      `SELECT public.register_mobile_action_challenge(
+         $1, $2::uuid, $3, $4, $5, $6, 'approved',
+         clock_timestamp() + interval '5 minutes'
+       ) AS registered`,
+      [fixture.entityRef, fixture.sessionId, action.actionReference,
+        fixture.approverId, action.challengeId, action.actionHash],
+    );
+    expect(challenge.rows[0].registered).toBe(true);
+
+    await query(
+      `UPDATE public.approver_credentials
+          SET valid_to = clock_timestamp() - interval '1 millisecond'
+        WHERE credential_id = $1`,
+      [fixture.identityCredentialId],
+    );
+    const decision = buildMobileDecisionCommit(fixture, action);
+    const refused = await commitMobileDecisionAsServiceRole(fixture, action, decision);
+    expect(refused.rows[0].result).toEqual({ ok: false, reason: 'session_inactive' });
+    const state = await query(
+      `SELECT
+         (SELECT status FROM public.mobile_actions
+           WHERE entity_ref = $1 AND action_reference = $2) AS action_status,
+         (SELECT consumed_at IS NULL FROM public.mobile_action_challenges
+           WHERE challenge_id = $3) AS challenge_unconsumed,
+         (SELECT count(*)::int FROM public.mobile_evidence_records
+           WHERE record_id = $4) AS refused_records,
+         (SELECT revoked_at IS NOT NULL FROM public.mobile_sessions
+           WHERE session_id = $5::uuid) AS session_revoked`,
+      [fixture.entityRef, action.actionReference, action.challengeId,
+        decision.record.record_id, fixture.sessionId],
+    );
+    expect(state.rows[0]).toEqual({
+      action_status: 'pending',
+      challenge_unconsumed: true,
+      refused_records: 0,
+      session_revoked: true,
+    });
+  });
+});
+
+describe.skipIf(SKIP)('DB invariant: issuer authority is rechecked under the presentation write', () => {
+  it('admits an exact active authority and downgrades UUID/key mismatch and stale authority', async () => {
+    const suffix = crypto.randomBytes(8).toString('hex');
+    const authorityId = crypto.randomUUID();
+    const keyId = `issuer-key-${suffix}`;
+    await query(
+      `INSERT INTO public.authorities (
+         authority_id, key_id, public_key, algorithm, role, status, valid_from
+       ) VALUES ($1, $2, 'issuer-public-key', 'Ed25519', 'issuer', 'active', now() - interval '1 minute')`,
+      [authorityId, keyId],
+    );
+    const keyDigest = `sha256:${crypto.createHash('sha256').update('issuer-public-key').digest('hex')}`;
+    const present = async (storedAuthorityId, hash) => {
+      const { rows: handshakeRows } = await query(
+        `INSERT INTO public.handshakes (nonce, status)
+         VALUES ($1, 'initiated') RETURNING handshake_id`,
+        [`issuer-proof-${suffix}-${crypto.randomBytes(4).toString('hex')}`],
+      );
+      const handshakeId = handshakeRows[0].handshake_id;
+      await query(
+        `INSERT INTO public.handshake_parties (handshake_id, entity_ref, party_role)
+         VALUES ($1, 'entity-issuer', 'initiator')`,
+        [handshakeId],
+      );
+      const result = await query(
+        `SELECT public.present_handshake_writes(
+         $1::uuid, 'initiator', 'verifiable_credential', $2, $3, 'full',
+         '{"name":"Alice"}'::jsonb, '{"name":"Alice"}'::jsonb, $4,
+         'entity-issuer', $5, $6, 'authority_signature_valid', true, true, 'good',
+         'entity-issuer', true,
+         $7::jsonb
+         ) AS result`,
+        [handshakeId, keyId, hash, crypto.randomBytes(32).toString('hex'),
+          storedAuthorityId, keyDigest, JSON.stringify({
+          issuer_proof_profile: 'EP-HANDSHAKE-ISSUER-PROOF-v1',
+          issuer_proof_digest: `sha256:${'c'.repeat(64)}`,
+          issuer_proof: { profile: 'EP-HANDSHAKE-ISSUER-PROOF-v1', signature: 'test' },
+          issuer_proof_statement: { handshake_id: handshakeId, presentation_hash: hash },
+          })],
+      );
+      return { handshakeId, result };
+    };
+
+    const exact = await present(authorityId, `presentation-exact-${suffix}`);
+    expect(exact.result.rows[0].result).toMatchObject({
+      verified: true,
+      issuer_status: 'authority_signature_valid',
+      revocation_status: 'good',
+    });
+    const mismatch = await present(crypto.randomUUID(), `presentation-mismatch-${suffix}`);
+    expect(mismatch.result.rows[0].result).toMatchObject({
+      verified: false,
+      issuer_status: 'authority_identity_mismatch_at_write',
+    });
+    await query(
+      `UPDATE public.authorities SET status = 'revoked', revoked_at = now()
+       WHERE authority_id = $1`,
+      [authorityId],
+    );
+    const stale = await present(authorityId, `presentation-stale-${suffix}`);
+    expect(stale.result.rows[0].result).toMatchObject({
+      verified: false,
+      issuer_status: 'authority_not_active_at_write',
+    });
+    const stored = await query(
+      `SELECT issuer_status, verified FROM public.handshake_presentations
+       WHERE handshake_id = ANY($1::uuid[]) ORDER BY id`,
+      [[exact.handshakeId, mismatch.handshakeId, stale.handshakeId]],
+    );
+    expect(stored.rows.filter((row) => row.verified)).toHaveLength(1);
   });
 });

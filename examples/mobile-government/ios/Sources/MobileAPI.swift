@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import EmiliaMobile
+import CryptoKit
 import Foundation
 
 private final class NoRedirectSessionDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
@@ -26,6 +27,49 @@ struct MobileAPI: Sendable {
             case expiresAt = "expires_at"
             case approverID = "approver_id"
             case profileID = "profile_id"
+        }
+    }
+
+    private struct PairingIdentityAssertion: Encodable, Sendable {
+        struct Response: Encodable, Sendable {
+            let clientDataJSON: String
+            let authenticatorData: String
+            let signature: String
+        }
+
+        let id: String
+        let rawID: String
+        let type = "public-key"
+        let response: Response
+
+        enum CodingKeys: String, CodingKey {
+            case id, type, response
+            case rawID = "rawId"
+        }
+
+        init(_ assertion: EmiliaPasskeyAssertion) {
+            let credentialID = assertion.credentialID.emiliaBase64URL
+            id = credentialID
+            rawID = credentialID
+            response = Response(
+                clientDataJSON: assertion.clientDataJSON.emiliaBase64URL,
+                authenticatorData: assertion.authenticatorData.emiliaBase64URL,
+                signature: assertion.signature.emiliaBase64URL
+            )
+        }
+    }
+
+    private struct PairingExchangeRequest: Encodable, Sendable {
+        let pairingCode: String
+        let platform = "ios"
+        let appID: String
+        let identityAssertion: PairingIdentityAssertion
+
+        enum CodingKeys: String, CodingKey {
+            case platform
+            case pairingCode = "pairing_code"
+            case appID = "app_id"
+            case identityAssertion = "identity_assertion"
         }
     }
 
@@ -104,12 +148,20 @@ struct MobileAPI: Sendable {
         }
     }
 
-    func exchangePairing(code: String, appID: String) async throws -> PairingResponse {
-        let body: [String: String] = [
-            "pairing_code": code,
-            "platform": "ios",
-            "app_id": appID,
-        ]
+    static func pairingIdentityChallenge(code: String) -> Data {
+        Data(SHA256.hash(data: Data("EP-MOBILE-PAIRING-IDENTITY-v1\0\(code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())".utf8)))
+    }
+
+    func exchangePairing(
+        code: String,
+        appID: String,
+        identityAssertion: EmiliaPasskeyAssertion
+    ) async throws -> PairingResponse {
+        let body = PairingExchangeRequest(
+            pairingCode: code,
+            appID: appID,
+            identityAssertion: PairingIdentityAssertion(identityAssertion)
+        )
         return try await post("v1/mobile/pairings/exchange", body, authenticated: false)
     }
 

@@ -95,11 +95,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const supabase = getGuardedClient();
 
   try {
-    const { data, error } = await supabase
-      .from('scim_users')
-      .insert({ ...fields, tenant_id: auth.tenantId })
-      .select('*')
-      .single();
+    const { data: result, error } = await supabase.rpc('create_scim_user_authorized', {
+      p_token_id: auth.tokenId,
+      p_tenant_id: auth.tenantId,
+      p_organization_id: auth.organizationId,
+      p_fields: fields,
+    });
 
     if (error) {
       // 23505 = unique_violation → SCIM uniqueness error (409).
@@ -109,6 +110,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       logger.error('[scim/Users] create failed:', error);
       return scimErrorResponse(503, 'Directory unavailable');
     }
+    if (result?.error === 'token_authority_invalid') {
+      return scimErrorResponse(401, 'SCIM token is no longer authorized');
+    }
+    const data = result?.user;
+    if (result?.status !== 'created' || !data) return scimErrorResponse(503, 'Directory unavailable');
 
     // SCIM → approver linkage. Approver eligibility is NOT granted automatically
     // from directory provisioning by default: a compromised SCIM token must not

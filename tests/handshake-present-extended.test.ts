@@ -7,6 +7,7 @@
  *   229      _handleAddPresentation: rpcError → throws HandshakeError DB_ERROR
  */
 
+import crypto from 'node:crypto';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockGetServiceClient = vi.fn();
@@ -37,6 +38,11 @@ vi.mock('./normalize.js', () => ({
 }));
 
 import { _handleAddPresentation } from '../lib/handshake/present.js';
+import {
+  HANDSHAKE_ISSUER_PROOF_PROFILE,
+  handshakeIssuerProofBytes,
+  verifyHandshakeIssuerProof,
+} from '../lib/handshake/issuer-proof.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -170,6 +176,287 @@ describe('_handleAddPresentation — authority DB error (line 155)', () => {
       'present_handshake_writes',
       expect.objectContaining({ p_issuer_trusted: false, p_issuer_status: 'authority_table_missing' })
     );
+  });
+});
+
+describe('_handleAddPresentation — issuer possession proof', () => {
+  function authority(keyId, publicKey) {
+    return {
+      data: {
+        authority_id: 'd57a4727-c7a9-4d97-a475-49be9b375f82',
+        key_id: keyId,
+        public_key: publicKey,
+        algorithm: 'Ed25519',
+        status: 'active',
+        valid_from: '2020-01-01T00:00:00.000Z',
+        valid_to: '2099-01-01T00:00:00.000Z',
+        revoked_at: null,
+      },
+      error: null,
+    };
+  }
+
+  it('does not mark an active registry key as issuer participation without a signature', async () => {
+    const keypair = crypto.generateKeyPairSync('ed25519');
+    const publicKey = keypair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+    const db = makeBaseSupabase({
+      handshake: validHandshake,
+      party: validParty,
+      authorityResult: authority('key-abc', publicKey),
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await _handleAddPresentation(makeCommand({ issuer_ref: 'key-abc', issuer_proof: null }));
+    expect(db.rpc).toHaveBeenCalledWith('present_handshake_writes', expect.objectContaining({
+      p_verified: false,
+      p_issuer_status: 'issuer_proof_missing',
+      p_revocation_status: 'unproven',
+    }));
+  });
+
+  it('verifies a signature over the exact handshake, party, actor, issuer, mode, and claims', async () => {
+    const keypair = crypto.generateKeyPairSync('ed25519');
+    const keyId = 'key-abc';
+    const publicKey = keypair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+    const statement = {
+      handshakeId: 'hs-1',
+      partyRole: 'initiator',
+      presentationType: 'self_asserted',
+      issuerRef: keyId,
+      actorEntityRef: 'system',
+      disclosureMode: 'full',
+      presentationHash: 'sha256:abc',
+      canonicalClaimsHash: '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a',
+    };
+    const proof = {
+      profile: HANDSHAKE_ISSUER_PROOF_PROFILE,
+      algorithm: 'Ed25519',
+      key_id: keyId,
+      signature: crypto.sign(null, handshakeIssuerProofBytes(statement), keypair.privateKey).toString('base64url'),
+    };
+    const db = makeBaseSupabase({
+      handshake: validHandshake,
+      party: validParty,
+      authorityResult: authority(keyId, publicKey),
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await _handleAddPresentation(makeCommand({ issuer_ref: keyId, issuer_proof: proof }));
+    expect(db.rpc).toHaveBeenCalledWith('present_handshake_writes', expect.objectContaining({
+      p_verified: true,
+      p_issuer_status: 'authority_signature_valid',
+      p_revocation_status: 'good',
+      p_event_detail: expect.objectContaining({
+        issuer_proof: proof,
+        issuer_proof_statement: expect.objectContaining({
+          handshake_id: 'hs-1',
+          party_role: 'initiator',
+          actor_entity_ref: 'system',
+          issuer_ref: keyId,
+          canonical_claims_hash: '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a',
+        }),
+      }),
+    }));
+  });
+
+  it('refuses a valid signature replayed after any signed field changes', async () => {
+    const keypair = crypto.generateKeyPairSync('ed25519');
+    const keyId = 'key-abc';
+    const publicKey = keypair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+    const proof = {
+      profile: HANDSHAKE_ISSUER_PROOF_PROFILE,
+      algorithm: 'Ed25519',
+      key_id: keyId,
+      signature: crypto.sign(null, handshakeIssuerProofBytes({
+        handshakeId: 'other-handshake',
+        partyRole: 'initiator',
+        presentationType: 'self_asserted',
+        issuerRef: keyId,
+        actorEntityRef: 'system',
+        disclosureMode: 'full',
+        presentationHash: 'sha256:abc',
+        canonicalClaimsHash: '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a',
+      }), keypair.privateKey).toString('base64url'),
+    };
+    const db = makeBaseSupabase({
+      handshake: validHandshake,
+      party: validParty,
+      authorityResult: authority(keyId, publicKey),
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await _handleAddPresentation(makeCommand({ issuer_ref: keyId, issuer_proof: proof }));
+    expect(db.rpc).toHaveBeenCalledWith('present_handshake_writes', expect.objectContaining({
+      p_verified: false,
+      p_issuer_status: 'issuer_proof_invalid',
+    }));
+  });
+
+  it.each([
+    ['wrong profile', { profile: 'EP-HANDSHAKE-ISSUER-PROOF-v0' }],
+    ['wrong algorithm', { algorithm: 'ES256' }],
+    ['wrong key id', { key_id: 'key-other' }],
+    ['padded signature', { signature: `${Buffer.alloc(64).toString('base64url')}=` }],
+    ['short signature', { signature: Buffer.alloc(63).toString('base64url') }],
+    ['non-base64url signature', { signature: '***not-base64url***' }],
+  ])('rejects invalid proof metadata or encoding: %s', (_label, mutation) => {
+    const keypair = crypto.generateKeyPairSync('ed25519');
+    const keyId = 'key-abc';
+    const statement = {
+      handshakeId: 'hs-1',
+      partyRole: 'initiator',
+      presentationType: 'self_asserted',
+      issuerRef: keyId,
+      actorEntityRef: 'system',
+      disclosureMode: 'full',
+      presentationHash: 'sha256:abc',
+      canonicalClaimsHash: 'claims-hash',
+    };
+    const validProof = {
+      profile: HANDSHAKE_ISSUER_PROOF_PROFILE,
+      algorithm: 'Ed25519',
+      key_id: keyId,
+      signature: crypto.sign(
+        null,
+        handshakeIssuerProofBytes(statement),
+        keypair.privateKey,
+      ).toString('base64url'),
+    };
+    expect(verifyHandshakeIssuerProof({
+      proof: { ...validProof, ...mutation },
+      authority: {
+        key_id: keyId,
+        algorithm: 'Ed25519',
+        public_key: keypair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+      },
+      statement,
+    })).toBe(false);
+  });
+
+  it.each([
+    ['malformed DER', Buffer.from('not-a-der-public-key').toString('base64url'), 'Ed25519'],
+    [
+      'wrong asymmetric key type',
+      crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+        .publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+      'Ed25519',
+    ],
+    [
+      'wrong authority algorithm metadata',
+      crypto.generateKeyPairSync('ed25519')
+        .publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+      'ES256',
+    ],
+  ])('rejects invalid registry key material: %s', (_label, publicKey, algorithm) => {
+    const signer = crypto.generateKeyPairSync('ed25519');
+    const keyId = 'key-abc';
+    const statement = {
+      handshakeId: 'hs-1',
+      partyRole: 'initiator',
+      presentationType: 'self_asserted',
+      issuerRef: keyId,
+      actorEntityRef: 'system',
+      disclosureMode: 'full',
+      presentationHash: 'sha256:abc',
+      canonicalClaimsHash: 'claims-hash',
+    };
+    const proof = {
+      profile: HANDSHAKE_ISSUER_PROOF_PROFILE,
+      algorithm: 'Ed25519',
+      key_id: keyId,
+      signature: crypto.sign(
+        null,
+        handshakeIssuerProofBytes(statement),
+        signer.privateKey,
+      ).toString('base64url'),
+    };
+    expect(verifyHandshakeIssuerProof({
+      proof,
+      authority: { key_id: keyId, public_key: publicKey, algorithm },
+      statement,
+    })).toBe(false);
+  });
+
+  it('persists malformed registry DER as an invalid proof instead of trusted participation', async () => {
+    const signer = crypto.generateKeyPairSync('ed25519');
+    const keyId = 'key-abc';
+    const statement = {
+      handshakeId: 'hs-1',
+      partyRole: 'initiator',
+      presentationType: 'self_asserted',
+      issuerRef: keyId,
+      actorEntityRef: 'system',
+      disclosureMode: 'full',
+      presentationHash: 'sha256:abc',
+      canonicalClaimsHash: '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a',
+    };
+    const proof = {
+      profile: HANDSHAKE_ISSUER_PROOF_PROFILE,
+      algorithm: 'Ed25519',
+      key_id: keyId,
+      signature: crypto.sign(
+        null,
+        handshakeIssuerProofBytes(statement),
+        signer.privateKey,
+      ).toString('base64url'),
+    };
+    const db = makeBaseSupabase({
+      handshake: validHandshake,
+      party: validParty,
+      authorityResult: authority(
+        keyId,
+        Buffer.from('malformed-der-key').toString('base64url'),
+      ),
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await _handleAddPresentation(makeCommand({ issuer_ref: keyId, issuer_proof: proof }));
+    expect(db.rpc).toHaveBeenCalledWith('present_handshake_writes', expect.objectContaining({
+      p_verified: false,
+      p_issuer_status: 'issuer_proof_invalid',
+      p_revocation_status: 'invalid_proof',
+      p_authority_key_digest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+    }));
+  });
+});
+
+describe('_handleAddPresentation — actor and transactional binding rejection', () => {
+  it('rejects an authenticated actor that does not own the selected party before writing', async () => {
+    const db = makeBaseSupabase({
+      handshake: validHandshake,
+      party: { ...validParty, entity_ref: 'entity-owner' },
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await expect(_handleAddPresentation({
+      ...makeCommand(),
+      actor: { entity_id: 'entity-attacker' },
+    })).rejects.toMatchObject({ code: 'ROLE_SPOOFING', status: 403 });
+    expect(db.rpc).not.toHaveBeenCalled();
+  });
+
+  it('maps a post-read handshake state change to INVALID_STATE', async () => {
+    const db = makeBaseSupabase({
+      handshake: validHandshake,
+      party: validParty,
+      rpcResult: { data: { error: 'invalid_state' }, error: null },
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await expect(_handleAddPresentation(makeCommand()))
+      .rejects.toMatchObject({ code: 'INVALID_STATE', status: 409 });
+  });
+
+  it('maps a post-read party rebind to ROLE_SPOOFING', async () => {
+    const db = makeBaseSupabase({
+      handshake: validHandshake,
+      party: validParty,
+      rpcResult: { data: { error: 'party_binding_invalid' }, error: null },
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await expect(_handleAddPresentation(makeCommand()))
+      .rejects.toMatchObject({ code: 'ROLE_SPOOFING', status: 403 });
   });
 });
 

@@ -143,7 +143,15 @@ function createTableSim() {
         policy_key: 'default',
         policy_version: '1.0.0',
         status: 'active',
-        rules: {},
+        // This suite exercises lifecycle races, not issuer cryptography. Keep
+        // its identity fixture honest by opting the initiator into the
+        // protocol's explicit self-asserted policy path. Production policy is
+        // fail-closed unless this per-role exception is present.
+        rules: {
+          required_parties: {
+            initiator: { allow_self_asserted: true },
+          },
+        },
       });
     }
     return tables[name];
@@ -531,7 +539,6 @@ function validPresentation(overrides = {}) {
       display_name: 'Alice Agent',
       assurance_level: 'substantial',
     }),
-    issuer_ref: 'issuer-trusted-ca',
     disclosure_mode: 'full',
     ...overrides,
   };

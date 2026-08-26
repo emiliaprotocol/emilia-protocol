@@ -53,11 +53,17 @@
           "type": "object",
           "description": "Selector matching incoming actions. Protocol fields such as {\"protocol\": \"mcp\", \"tool\": \"release_payment\"} or {\"method\": \"POST\", \"path\": \"/v1/payments\"}.",
           "properties": {
-            "protocol": { "type": "string", "description": "e.g. \"mcp\", \"http\"." },
-            "tool": { "type": "string", "description": "Tool name for tool-call protocols." },
-            "method": { "type": "string", "description": "HTTP method, used together with path." },
-            "path": { "type": "string", "description": "HTTP path, used together with method." }
+            "protocol": { "type": "string", "minLength": 1, "description": "e.g. \"mcp\", \"http\"." },
+            "tool": { "type": "string", "minLength": 1, "description": "Tool name for tool-call protocols." },
+            "method": { "type": "string", "minLength": 1, "description": "HTTP method, used together with path." },
+            "path": { "type": "string", "minLength": 1, "description": "HTTP path, used together with method." }
           },
+          "anyOf": [
+            { "required": ["protocol"] },
+            { "required": ["tool"] },
+            { "required": ["method"] },
+            { "required": ["path"] }
+          ],
           "additionalProperties": true
         },
         "why": {

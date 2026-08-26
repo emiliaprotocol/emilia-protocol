@@ -53,8 +53,8 @@ export async function POST(
     // validatePresent's valid branch always populates `data` with this exact
     // shape — the compiler widens it to `{} | undefined` across the union
     // return type, but the invariant holds whenever `valid` is true.
-    const { party_role, presentation_type, claims, issuer_ref, disclosure_mode } =
-      data as { party_role: string; presentation_type: string; claims: object; issuer_ref: string | null; disclosure_mode: string | null };
+    const { party_role, presentation_type, claims, issuer_ref, disclosure_mode, issuer_proof } =
+      data as { party_role: string; presentation_type: string; claims: object; issuer_ref: string | null; disclosure_mode: string | null; issuer_proof: any };
 
     // ── Authorization: caller must OWN the party_role they present as ─────
     // Without this, any authenticated entity could post a presentation to any
@@ -73,6 +73,7 @@ export async function POST(
         data: claims,
         issuer_ref: issuer_ref ?? undefined,
         disclosure_mode: disclosure_mode ?? undefined,
+        issuer_proof: issuer_proof ?? undefined,
       },
       actorId
     );

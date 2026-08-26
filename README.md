@@ -85,7 +85,7 @@ preserves **8 deliberately weakened variants that produce concrete
 attack traces when load-bearing checks are removed**. The live same-team conformance corpus contains **21 suites and
 332 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
 **16-suite/164-vector** bundle and a **359-case hostility campaign**. The broader suite contains
-**10,451 automated tests across 645 files**.
+**10,569 automated tests across 651 files**.
 
 Production JavaScript and JSDoc surfaces are compiler-checked with TypeScript
 `checkJs`; the secure app has its own compatibility compiler project, while
@@ -367,10 +367,10 @@ Three same-team reference ports (JS / Python / Go) agree across all 21 suites an
 
 | Metric | Value |
 |---|---|
-| Automated test cases | 10,451 across 645 files; all platform-applicable cases must pass |
+| Automated test cases | 10,569 across 651 files; all platform-applicable cases must pass |
 | TLA+ safety properties | 26 bounded invariants held in the configured state space; not an implementation-refinement or unbounded proof — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
 | Alloy relational assertions | 35 facts + 32 assertions across four models — verified in CI |
-| Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
+| Red-team cases cataloged | 86 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Release security status | Repository security checks pass; every Strix finding on the audited changes is remediated with regression coverage and its review thread resolved |
 | Conformance (7/7) | `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` |
 | Cross-language conformance | 332 vectors · 21 suites: receipts · device signoffs · four-outcome resolution · multi-party quorum · revocation · Outcome Binding (semantic + real-crypto) · Authority Document/Proof issuer join · time-attestation · trust-receipt (x2 profiles) · provenance · evidence-record · canonicalization · boundary · AEC acceptance · currency · initiator-attestation · consumption-proof · witness · timestamp-proof (RFC 3161). JS / Python / Go verifiers agree (`node conformance/run.mjs`). The external Rust baseline remains 164 vectors / 16 suites. See [CONFORMANCE.md](CONFORMANCE.md). |

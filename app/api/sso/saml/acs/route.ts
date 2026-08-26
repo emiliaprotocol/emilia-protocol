@@ -91,19 +91,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return epProblem(404, 'sso_not_configured', 'No SAML connection configured');
   }
 
-  const origin = spOrigin(request);
+  const origin = spOrigin();
+  const acsUrl = `${origin}/api/sso/saml/acs`;
   const sp = buildSamlSp({
     idpEntryPoint: connection.saml_idp_entry_point,
     idpCert: connection.saml_idp_cert,
     spEntityId: `${origin}/api/sso/saml/metadata`,
-    acsUrl: `${origin}/api/sso/saml/acs`,
+    acsUrl,
     audience: connection.saml_audience || `${origin}/api/sso/saml/metadata`,
-    // Require a signed Response envelope by default (closes assertion-wrapping);
-    // a tenant may opt out per-connection for unsigned IdP-initiated envelopes.
-    wantAuthnResponseSigned: connection.saml_want_response_signed !== false,
+    // Destination and Recipient are checked below only after this envelope has
+    // been authenticated. This is a service-wide safety invariant, not a
+    // tenant compatibility option.
+    wantAuthnResponseSigned: true,
   });
 
-  const result = await validateSamlResponse(sp, String(samlResponse));
+  const result = await validateSamlResponse(sp, String(samlResponse), {
+    expectedAcsUrl: acsUrl,
+  });
   if (!result.valid) {
     // A failed signature/conditions/audience check MUST NOT authenticate.
     logger.warn('[sso/saml/acs] rejected:', result.error);
