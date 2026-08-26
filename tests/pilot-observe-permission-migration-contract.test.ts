@@ -28,14 +28,16 @@ describe('pilot observe permission forward migration', () => {
     expect(migration).not.toMatch(/SET\s+revoked_at/i);
   });
 
-  it('pins the migration in the pending deployment history', () => {
+  it('pins the migration in the deployed remote history', () => {
     const migrationBytes = readFileSync(migrationUrl);
     const history = JSON.parse(readFileSync(historyUrl, 'utf8'));
     const hash = crypto.createHash('sha256').update(migrationBytes).digest('hex');
 
     expect(history.as_of).toBe('2026-08-26');
-    expect(history.forward_pending_versions).toContain('20260826010000');
-    expect(history.deployment_sequence).toContain('20260826010000');
+    expect(history.remote_head).toBe('20260826130000');
+    expect(history.remote_versions).toContain('20260826010000');
+    expect(history.forward_pending_versions).not.toContain('20260826010000');
+    expect(history.deployment_sequence).not.toContain('20260826010000');
     expect(history.public_files['20260826010000_pilot_observe_permission.sql']).toBe(hash);
   });
 });
