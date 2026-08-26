@@ -113,15 +113,13 @@ revision during the 2026-08-26 review; and the protected
 [schema-security run](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/32986434917)
 passed the live and EMILIA production schema contracts.
 
-The authenticated Strix result surface for
-[assessment `688d92c8-cddb-46ea-8697-6f296ff91f58`](https://app.strix.ai/tests/688d92c8-cddb-46ea-8697-6f296ff91f58)
-reports `Retests 24/24 complete` and `Fixed` for every STRIX-25 through
-STRIX-48 parent issue and individual retest.
+The authenticated Strix result surface for assessment
+`688d92c8-cddb-46ea-8697-6f296ff91f58` reports `Retests 24/24 complete` and
+`Fixed` for every STRIX-25 through STRIX-48 parent issue and individual retest.
 The retests identify `emiliaprotocol/emilia-protocol` on `main`; the result
-surface does not expose an exact commit SHA. The
-[STRIX-43 retest](https://app.strix.ai/tests/c5f83faa-e149-432b-ae61-1bcd19ea2579)
-also states that its dynamic database replay was local and that Strix did not
-reach the production Supabase database.
+surface does not expose an exact commit SHA. The STRIX-43 retest also states
+that its dynamic database replay was local and that Strix did not reach the
+production Supabase database.
 
 Closure therefore preserves three separately verified legs: source remediation
 at `5d474fd240bc764fa41951c05c39130e38afa7ff`; production deployment plus the
