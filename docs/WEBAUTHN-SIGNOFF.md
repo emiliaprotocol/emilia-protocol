@@ -1,12 +1,18 @@
-# Build ticket: Class A signoff — WebAuthn approver-held keys
+# Historical build record: Class A signoff with approver-held WebAuthn keys
 
-**Why this build.** Today EP signs receipts server-side — Class C in the
-draft's own taxonomy (`standards/draft-schrock-ep-authorization-receipts-03.md`
-§5.1), the tier the spec says new deployments shouldn't use. This ticket makes
-G2 true in production: the named human signs the action hash on their own
-device (Face ID / YubiKey), the server orchestrates but **cannot forge a
-signoff**. Closes THREAT_MODEL.md #1 and #2 simultaneously; prerequisite for
-the pilot.
+> **Status: completed historical implementation plan.** Class-A WebAuthn
+> signoff is shipped in the current capability map. This file preserves the
+> original build sequence and is not a statement that Class A remains unbuilt
+> or that every current receipt uses the same custody class.
+
+The current key-class taxonomy is in
+[Authorization Receipts revision -12, Section 5.1](https://datatracker.ietf.org/doc/html/draft-schrock-ep-authorization-receipts-12#section-5.1).
+Current threats are governed by the canonical sections on
+[credential and approval compromise](../THREAT_MODEL.md#46-credential-and-approval-compromise),
+[issuer, signing-key, and trust-root compromise](../THREAT_MODEL.md#47-issuer-signing-key-and-trust-root-compromise),
+and [presentation substitution and approver deception](../THREAT_MODEL.md#413-presentation-substitution-and-approver-deception).
+Shipped status is governed by
+[`docs/CAPABILITY-MAP.md`](CAPABILITY-MAP.md).
 
 **Library.** `@simplewebauthn/server` + `@simplewebauthn/browser` (v13+).
 Battle-tested; do not hand-roll WebAuthn verification.
@@ -14,12 +20,12 @@ Battle-tested; do not hand-roll WebAuthn verification.
 
 ---
 
-## 0. Honesty pre-step (ship first, ~30 min)
+## 0. Original honesty pre-step
 
-Add `key_class: "C"` to every receipt the current mint path produces
-(`lib/create-receipt.js` + receipt schema + verify package tolerance). Until
-Class A ships, receipts should say what they are. This is the draft's §5.1
-labeling MUST applied to ourselves.
+Before Class A shipped, the plan required every operator-custodied receipt to
+carry `key_class: "C"` in `lib/create-receipt.js`, the receipt schema, and the
+verifier. This implemented the draft's Section 5.1 labeling requirement without
+representing operator custody as approver-held custody.
 
 ## 1. Enrollment
 

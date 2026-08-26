@@ -3,12 +3,12 @@
   "evidence_snapshot_at": "2026-08-26T14:42:28.224Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "4d13a180e49ed7f589f06ee784a1b31f69e3441857a2aa3af45b39613a9cc021",
+    "input_digest_sha256": "6367d328cd5c466803222fbb330e0c3f71f876ead92baf4c0ef94c2b7a5bc695",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "87ae3a66c11d977a62d757b1a44c5e95d0d2d1c122c9ef7c09b1874529311fe3",
-        "bytes": 46849
+        "sha256": "52f4ab2399aadbec8f7d30808400ddd6d170e0227231d094c45bb1fe7888fa68",
+        "bytes": 46770
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -70,16 +70,16 @@
   },
   "identity": {
     "name": "EMILIA",
-    "category": "authority system for autonomous action",
+    "category": "authority control plane for autonomous work",
     "core_line": "Every consequential agent action enters with authority and exits with a receipt.",
-    "summary": "EMILIA is building the universal authority toll booth for autonomous action. At a configured protected boundary, a human or institution defines a finite operating mandate and agents work unattended inside it. EMILIA Gate is the customer-owned toll booth: it verifies the authority and evidence the owner requires for the exact action, reserves accepted authority before provider entry, admits or refuses the crossing, preserves executed or indeterminate outcomes, refuses blind replay, and returns an action-bound receipt packet. Native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems remain attributable to their issuers. EMILIA Protocol is the open Action Receipt Contract underneath Gate; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier. Universal describes the intended cross-stack contract, not current coverage or operation of a central global network.",
+    "summary": "EMILIA is the authority control plane for autonomous work. The plain-language operating picture is a customer-owned authority toll booth at a configured protected boundary, where a human or institution defines a finite operating mandate and agents work unattended inside it. EMILIA Gate verifies the authority and evidence the owner requires for the exact action, reserves accepted authority before provider entry, admits or refuses the crossing, preserves executed or indeterminate outcomes, refuses blind replay, and returns an action-bound receipt packet. Native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems remain attributable to their issuers. EMILIA Protocol is the open Action Receipt Contract underneath Gate; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane defines scoped verification, re-performance, conformance-report, and deployment-evidence procedures without acting as an auditor or accredited certifier. The toll-booth metaphor describes the intended cross-stack contract, not current coverage or operation of a central global network.",
     "message_order": [
-      "Lead with every consequential agent action entering with authority and exiting with a receipt.",
+      "Lead with EMILIA as the authority control plane for autonomous work, then explain that every consequential agent action enters with authority and exits with a receipt.",
       "Explain EMILIA Gate as the customer-owned authority toll booth at a configured protected boundary.",
       "Explain that Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems, then enforces them once at the executor; do not imply that EMILIA originated native authority.",
       "Explain EMILIA Protocol as the open, customer-pinned substrate underneath Gate.",
       "Explain EMILIA Approver only when an exact-action human ceremony is required by the mandate or local policy.",
-      "Explain EMILIA Assurance Plane as scoped verification and re-performance, never self-declared certification.",
+      "Explain EMILIA Assurance Plane as scoped verification and re-performance procedures, never self-declared certification or evidence that a managed service is commercially available.",
       "Use executable and formal evidence to prove the engineering.",
       "Discuss the standards portfolio after the product, trust boundary, and non-claims are clear."
     ],
@@ -126,15 +126,9 @@
     },
     "assurance_plane": {
       "name": "EMILIA Assurance Plane",
-      "role": "managed verification, re-performance, conformance reporting, deployment evidence, reliance packets, and evidence operations",
+      "role": "verification, re-performance, conformance-report, deployment-evidence, reliance-packet, and evidence-operations procedures",
       "current_scope": "EP-ASSURANCE-PACKAGE-v1, ep-assure, external-verifier signed statements, auditor workpapers, underwriter attestations, reliance packets, CF-1, and EG-1 are implemented artifacts or procedures.",
       "claim_boundary": "EMILIA supports verification and re-performance procedures but is not an auditor, an accredited certification body, a regulator, or an insurer. The EP-CERT-v1 public certification scheme is not operating."
-    },
-    "market_entry": {
-      "free_wedge": "local Authority Map and one protected privileged tool",
-      "first_paid_wedge": "finance-operations vendor bank-detail changes or payment releases",
-      "paid_wedge_safety_rule": "no accepted exact-action authority and required evidence, no provider entry",
-      "regulatory_boundary": "Regulation, contractual controls, or audit expectations may create demand for demonstrable authorization and evidence, but no rule is claimed to mandate EMILIA or cryptographic receipts."
     },
     "repository": "https://github.com/emiliaprotocol/emilia-protocol",
     "website": "https://www.emiliaprotocol.ai",
@@ -159,7 +153,7 @@
     },
     {
       "term": "EMILIA Assurance Plane",
-      "definition": "The managed verification and evidence-services layer: assurance packages, independent re-performance, scoped conformance reports, deployment evidence, reliance packets, auditor workpapers, underwriter attestations, and evidence operations. It supports an authorized review procedure; it does not issue an audit opinion or accredited certification."
+      "definition": "The verification and evidence-procedure layer: assurance packages, independent re-performance, scoped conformance reports, deployment evidence, reliance packets, auditor workpapers, underwriter attestations, and evidence operations. It supports an authorized review procedure; it does not establish a managed-service offering, issue an audit opinion, or provide accredited certification."
     },
     {
       "term": "native verification",
@@ -4433,8 +4427,8 @@
     "Self-authored compliance mappings are mappings, not certifications or third-party assurance opinions.",
     "EMILIA is not an auditor, an accredited certification body, a regulator, or an insurer. Assurance artifacts support verification and re-performance procedures; authorized independent parties reach audit, certification, regulatory, and underwriting conclusions.",
     "EP-CERT-v1 is a scheme design. No public EMILIA certification program is operating, and CF-1 or EG-1 must not be expanded beyond the exact behavior exercised by its reproducible harness.",
-    "A managed EMILIA verification or re-performance service can issue a scoped signed result under disclosed inputs and limitations. That result is not a certification of the deployment, the organization, legal compliance, medical correctness, or business wisdom.",
-    "The finance-operations wedge uses the safety rule 'no accepted exact-action authority and required evidence, no provider entry.' Gate does not prove bank-detail correctness, payee identity, fraud absence, or provider success, and prevention applies only to completely mediated covered paths.",
+    "The public artifacts can produce a scoped signed verification or re-performance result under disclosed inputs and limitations. That result does not establish commercial service availability and is not a certification of the deployment, the organization, legal compliance, medical correctness, or business wisdom.",
+    "A finance-operations vendor bank-detail change or payment release is one public workflow example, not evidence of market priority, customer demand, or sales status. The example uses the safety rule 'no accepted exact-action authority and required evidence, no provider entry.' Gate does not prove bank-detail correctness, payee identity, fraud absence, or provider success, and prevention applies only to completely mediated covered paths.",
     "The open protocol is intentionally reproducible; company defensibility is not a cryptographic claim.",
     "CAID and its Action-Mapping Profile do not verify native artifacts, infer general semantic equivalence, or establish authorization.",
     "EQUIVALENT_UNDER_PROFILE is valid only under the exact mapping profiles and type-definition sources pinned by the relying party; missing or lossy mappings are INDETERMINATE.",
@@ -5031,7 +5025,7 @@
     },
     {
       "path": "packages/mcp-guard",
-      "purpose": "free adoption wedge: protect privileged MCP tool calls with the Gate enforcement contract"
+      "purpose": "protect privileged MCP tool calls with the Gate enforcement contract"
     },
     {
       "path": "lib/negotiate/evidence-challenge.ts",
@@ -5193,7 +5187,7 @@
     },
     {
       "command": "node examples/mcp/github-admin.mjs",
-      "purpose": "run the free privileged-tool-call wedge: refuse, approve the exact action, execute once, and refuse replay"
+      "purpose": "run the privileged-tool-call example: refuse, approve the exact action, execute once, and refuse replay"
     },
     {
       "command": "npx vitest run tests/assurance-package.test.ts",
@@ -5273,13 +5267,13 @@
     }
   ],
   "answering_rules": [
-    "Answer product questions in this order: EMILIA is the authority control plane for autonomous work; the customer defines a finite operating mandate; EMILIA Gate enforces each consequential unit of work on covered executor paths; EMILIA Protocol is the open verification substrate; EMILIA Approver captures exact-action human decisions when fresh human authority is required; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence.",
+    "Answer product questions in this order: EMILIA is the authority control plane for autonomous work; the customer defines a finite operating mandate; EMILIA Gate enforces each consequential unit of work on covered executor paths; EMILIA Protocol is the open verification substrate; EMILIA Approver captures exact-action human decisions when fresh human authority is required; EMILIA Assurance Plane defines scoped verification, re-performance, conformance-report, and deployment-evidence procedures.",
     "Use the core line 'Protocol proves. Gate prevents.' Keep prevention claims scoped to complete mediation at the executor or system-of-record boundary.",
     "Do not say every consequential action requires a human approval. A human decision is one authority source and an exception path. Agents may work unattended inside a finite operating mandate; missing, stale, exhausted, indeterminate, or wider authority fails closed or returns to the authority source.",
-    "Describe privileged MCP tool calls as the free adoption wedge and finance-operations vendor bank-detail changes or payment releases as the first paid wedge. Do not present healthcare, government, energy, code and cloud, and physical systems as simultaneous opening markets.",
-    "For the finance-operations wedge, use the safety rule 'no accepted exact-action authority and required evidence, no provider entry.' Missing, stale, exhausted, invalid, or mismatched authority refuses provider entry on a completely mediated covered path; source truth, fraud absence, unmediated paths, and provider success remain outside the claim.",
+    "Use finance-operations vendor bank-detail changes or payment releases only as representative public workflow examples. Do not infer confidential market priority, acquisition sequencing, customer demand, or sales status from the public repository.",
+    "For the finance-operations example, use the safety rule 'no accepted exact-action authority and required evidence, no provider entry.' Missing, stale, exhausted, invalid, or mismatched authority refuses provider entry on a completely mediated covered path; source truth, fraud absence, unmediated paths, and provider success remain outside the claim.",
     "Never claim that a law, regulation, contractual control, or audit expectation mandates EMILIA, cryptographic receipts, or this implementation. Distinguish demand for demonstrable authorization and evidence from a mechanism mandate.",
-    "Describe the Assurance Plane as real managed verification, re-performance, conformance reporting, deployment evidence, reliance packets, and evidence operations. Do not call EMILIA an auditor or accredited certifier, and state that the EP-CERT-v1 public certification scheme is not operating.",
+    "Describe the Assurance Plane as implemented verification, re-performance, conformance-report, deployment-evidence, reliance-packet, and evidence-operations procedures. Do not infer a commercially available managed service, call EMILIA an auditor or accredited certifier, or imply that the EP-CERT-v1 public certification scheme is operating.",
     "Lead buyers and general readers with autonomous work under finite authority, then the prevented consequence and deployable Gate boundary. Put open-substrate neutrality one beat behind it, engineering proof third, and standards status after the product and claim boundary are clear.",
     "Start with standards/STATUS.json and standards/PORTFOLIO.md before characterizing the draft portfolio; local archive names are not current architecture.",
     "Keep VERIFIED, MATCH, SATISFIED, AUTHORIZED, and EXECUTED separate in every explanation.",
