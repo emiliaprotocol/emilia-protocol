@@ -2,13 +2,18 @@
 
 This document defines the authoritative vocabulary for EMILIA Protocol across docs, APIs, SDKs, product surfaces, proposals, investor materials, and website content.
 
+## Canonical company category
+
+> **EMILIA is the authority control plane for autonomous work.**
+
 ## Canonical company line
 
 > **Every consequential agent action enters with authority and exits with a receipt.**
 
-The plain-language operating picture is the **authority toll booth for autonomous work**. It is a
-customer-owned Gate at a configured protected boundary, not a claim that EMILIA currently operates
-a global central network or mediates every action.
+The plain-language operating picture behind that category is the **authority
+toll booth for autonomous work**. It is a customer-owned Gate at a configured
+protected boundary, not a claim that EMILIA currently operates a global central
+network or mediates every action.
 
 ## Canonical technical line
 

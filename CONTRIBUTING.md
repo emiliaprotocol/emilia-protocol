@@ -1,178 +1,191 @@
 # Contributing to EMILIA Protocol
 
-Thank you for your interest in contributing to EP. This document explains how to contribute to the spec, reference implementation, and conformance suite.
+EMILIA is an open authority and evidence substrate for consequential machine
+actions. This repository contains the protocol artifacts, reference verifiers,
+conformance suites, Gate enforcement code, SDKs, integrations, formal models,
+and the public web application.
 
-## What we need most right now
+## Before you change anything
 
-1. **External implementations** — Build an EP-compatible trust engine in any language. Use `conformance/fixtures.json` to verify hash compatibility.
-2. **Conformance test contributions** — Add edge case fixtures, cross-language verification vectors, policy replay tests.
-3. **Spec feedback** — Review `docs/EP-CORE-RFC.md` and file issues for ambiguities, gaps, or contradictions.
-4. **Integration examples** — Wire EP into your agent framework, commerce platform, or MCP client.
+Read these sources in order:
 
-## How to contribute
+1. [`AGENTS.md`](AGENTS.md) for repository boundaries and evidence rules.
+2. [`AI_CONTEXT.md`](AI_CONTEXT.md) and
+   [`public/.well-known/emilia-context.json`](public/.well-known/emilia-context.json)
+   for generated current context and source precedence.
+3. The implementation and negative tests for the behavior you intend to
+   change.
 
-### Bug fixes and improvements
+This is a public repository. Do not add private company strategy, fundraising,
+buyer lists, outreach, competitive research, credentials, customer data, or
+unpublished security material. The executable boundary check is:
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b fix/description`
-3. Make your changes
-4. Run tests: `npm run test:run`
-5. Run conformance suite: `npm run test:run -- conformance/`
-6. Sign off every commit: `git commit -s` — CI enforces the [Developer Certificate of Origin](https://developercertificate.org/) and a PR with unsigned commits fails the `DCO` check. The signer must be the natural person accountable for the contribution; an AI system cannot sign the DCO or be named as a co-author.
-7. Submit a pull request against `main`
+```bash
+npm run check:repository-boundary
+```
 
-Maintainer review is required on all paths (see `.github/CODEOWNERS`).
-AI-assisted contributions must also follow
-[`docs/AI-ASSISTED-DEVELOPMENT.md`](docs/AI-ASSISTED-DEVELOPMENT.md).
+## Useful contributions
 
-### Integration examples
+- Clean-room or independently maintained implementations evaluated against the
+  public conformance contract.
+- Adversarial, reject, and cross-language vectors that strengthen a named
+  protocol profile.
+- Precise specification issues, especially where prose, verifiers, and vectors
+  disagree.
+- Executor-boundary integrations that demonstrate both admission and refusal,
+  including replay and indeterminate-outcome handling where applicable.
+- Reproducible examples that keep verification, matching, evidence
+  satisfaction, authorization, provider entry, and observed effects distinct.
 
-Runnable integration demos live in `examples/<topic>/`. To contribute one:
+## Development environment
 
-1. One self-contained `.mjs` file (plus a README section) under the relevant
-   `examples/<topic>/` directory, runnable with `node examples/<topic>/your-demo.mjs`
-2. Start the file with an SPDX header: `// SPDX-License-Identifier: Apache-2.0`
-3. No new dependencies — import from `packages/` and `node:` built-ins only
-4. Demonstrate the refusal paths, not just the happy path: adversarial inputs
-   should be shown returning a distinct machine-readable reason
-5. Disclose demo shortcuts (ephemeral keys, fixed clocks) in comments; they must
-   not change the verification logic being demonstrated
-6. Sign off commits (`git commit -s`) and open a PR against `main`
-
-Examples are not wired into the conformance suites, so no fixtures or vectors are
-required. CI will run the full test suite, build, and language-governance checks
-against your PR; a new example file does not by itself trip any of them. If the
-integration graduates into a specified profile, conformance vectors come later,
-with maintainer support.
-
-### Spec changes
-
-Spec changes follow the governance process in `GOVERNANCE.md`:
-
-1. Open a GitHub issue describing the proposed change and motivation
-2. Include a reference implementation (or describe what it would require)
-3. Include conformance test updates
-4. Allow 14 days for community review
-5. Working group reviews and decides
-
-### Adding conformance fixtures
-
-1. Define the input in `conformance/fixtures.json`
-2. Generate the expected output using the reference implementation
-3. Add a test in `conformance/conformance.test.js`
-4. Submit a pull request
-
-## Development setup
-
-### Prerequisites
-- Node.js >= 18
-- npm >= 9
+The root package requires Node.js 20.19 or later; `.nvmrc` selects Node 20.
+GitHub Actions also exercises supported surfaces on Node 24. Use the committed
+npm lockfile rather than refreshing dependencies incidentally.
 
 ```bash
 git clone https://github.com/emiliaprotocol/emilia-protocol.git
 cd emilia-protocol
-npm install
-npm run test:run             # Run all tests (single pass, CI mode)
-npm test                     # Run all tests in watch mode
-npm run test:run conformance/  # Run conformance suite only
+nvm use
+npm ci
 ```
 
-Expected output: the full suite passes with zero failures (several thousand tests; CI runs the same command and is authoritative).
+The repository contains both TypeScript and JavaScript. Some `.js` files are
+generated standalone companions for TypeScript sources; do not edit a generated
+companion when its source file or generator is authoritative. Follow the module
+and build conventions of the package you are changing.
 
-### MCP Server (standalone)
+Most unit, verifier, and conformance tests are self-contained. Connected app,
+database, deployment, and live-interoperability tests require the environment
+documented beside that surface. Never substitute production credentials into a
+local test fixture.
+
+## Test the change
+
+Run the narrowest relevant test first. Common forms are:
+
 ```bash
-cd mcp-server
-npm install
-node index.js
+npm run test:run -- path/to/file.test.ts
+node --test path/to/file.test.mjs
+npm --prefix packages/gate test
 ```
 
-Or via npx (no install required):
+Then run the applicable repository checks. The baseline for a code change is:
+
 ```bash
-npx @emilia-protocol/mcp-server
+npm run lint
+npm run typecheck
+npm run test:run
+node scripts/run-package-suites.mjs
+npm run conformance
+npm run build
 ```
 
-### Environment Variables
-Copy `.env.example` to `.env.local` and fill in:
-- `NEXT_PUBLIC_SUPABASE_URL` — your Supabase project URL
-- `SUPABASE_SERVICE_ROLE_KEY` — service role key (server-only)
-- `SUPABASE_ANON_KEY` — anon key (public)
-- `EP_BASE_URL` — EP API base (default: https://emiliaprotocol.ai)
+Claim-bearing, protocol, evidence, or release changes also require the relevant
+checks below:
 
-Tests run without any environment variables — all external services are mocked.
-
-## Project structure
-
-```
-lib/
-  canonical-evaluator.js  — ONE read brain (all trust queries route here)
-  canonical-writer.js     — ONE write brain (all trust-changing writes route here)
-  scoring-v2.js           — behavioral-first trust profiles + policy evaluation
-  scoring.js              — v1 compatibility scoring + receipt hashing
-  procedural-justice.js   — roles, state machines, abuse detection, audit trail
-  ep-ix.js                — identity continuity operations
-  create-receipt.js       — canonical receipt pipeline
-  blockchain.js           — Merkle root anchoring (Base L2)
-  sybil.js                — fraud detection + graph analysis
-  rate-limit.js           — Upstash Redis + in-memory fallback
-  adapters/               — host adapters (GitHub, npm, MCP, Chrome)
-
-app/api/
-  trust/profile/          — GET canonical trust profile (primary read surface)
-  trust/evaluate/         — POST policy evaluation (primary decision surface)
-  trust/install-preflight/ — POST software pre-action enforcement (EP-SX, experimental)
-  score/                  — GET compatibility score (legacy)
-  receipts/submit/        — POST receipt submission
-  disputes/               — file, status, report
-  entities/               — register, search
-  policies/               — GET policy registry
-  leaderboard/            — GET ranked entities
-  cron/expire/            — deadline enforcement
-
-packages/                 — publishable protocol packages (issue, verify, gate,
-                            require-receipt, go-verify, python-verify, ...)
-examples/                 — runnable integration demos and interop/seam vectors
-                            (one directory per topic; see "Integration examples")
-standards/                — Internet-Draft sources (posted revisions in standards/posted/)
-
-conformance/
-  suites.mjs              — authoritative list of live conformance suites (JS/Py/Go)
-  fixtures.json           — canonical test vectors
-  conformance.test.js     — conformance test runner
-  verify_hashes.py        — cross-language hash verification
-  README.md               — how to use the conformance suite
-
-tests/
-  scoring.test.js         — v1 scoring tests
-  scoring-v2.test.js      — v2 trust profile + policy tests
-  protocol.test.js        — protocol surface + hash determinism tests
-  integration.test.js     — route-level integration tests
-  adversarial.test.js     — Sybil, reciprocal, cluster, trust farming tests
-  e2e-flows.test.js       — full lifecycle end-to-end tests
-
-docs/
-  EP-CORE-RFC.md          — canonical specification (v1.1)
-  EP-SX-SOFTWARE-TRUST.md — software trust extension
-  EP-IX-IDENTITY-CONTINUITY.md — identity continuity spec
-  docs/archive/grants-and-applications-2026-06-29/AAIF-PROPOSAL-v2.md — archived AAIF working group proposal
+```bash
+npm run check:protocol
+npm run conformance:manifest:check
+npm run check:security-case
+npm run check:proof-stats
+npm run check:public-conformance-claims
+npm run check:llm-context
+npm run check:standalone-runtimes
+npm run check:packed-package-exports
+npm run check:release-chain
+node scripts/check-language-governance.js
 ```
 
-## Style
+Some governed checks need pinned external runtimes installed by CI, including
+the formal-methods toolchain. The jobs in
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) are authoritative for
+the complete matrix; no single local command represents every CI lane.
 
-- No TypeScript in the reference implementation (maximizes portability)
-- ES modules (`import`/`export`)
-- Vitest for testing
-- Keep functions pure where possible — side effects in route handlers, not in libraries
+## Contribution workflow
 
-## What NOT to contribute (yet)
+1. Fork the repository and branch from current `main`.
+2. Keep the change focused and include regression coverage for behavior
+   changes. Security fixes should prove the former bypass now refuses.
+3. Run the narrow tests and applicable gates above.
+4. Commit with a Developer Certificate of Origin sign-off:
 
-- **Alternative scoring algorithms** — the weight model is published and versioned; changes go through the spec process
-- **UI/UX redesigns** — the landing page and entity explorer are product surfaces, not protocol surfaces
-- **Breaking schema changes** — receipt schema and trust profile format changes require a formal spec proposal
+   ```bash
+   git commit -s
+   ```
 
-## License
+   CI checks that each non-Dependabot pull-request commit contains a
+   `Signed-off-by` line matching its commit-author metadata. Repository policy
+   separately requires the accountable author and signer to be a natural person.
+   An AI system cannot provide the DCO sign-off or be a co-author. AI-assisted work must follow
+   [`docs/AI-ASSISTED-DEVELOPMENT.md`](docs/AI-ASSISTED-DEVELOPMENT.md).
+5. Open a pull request against `main`. Describe the trust boundary changed,
+   the refusal or negative controls exercised, and the commands you ran.
 
-By contributing, you agree that your contributions are licensed under Apache-2.0.
+The current [CODEOWNERS](.github/CODEOWNERS) file assigns review responsibility
+to the maintainer. A green check is evidence about that check, not independent
+review or deployment.
 
-## Questions?
+## Protocol and conformance changes
 
-Open a GitHub issue or email team@emiliaprotocol.ai.
+Follow [`GOVERNANCE.md`](GOVERNANCE.md):
+
+1. Open an issue or pull request explaining the proposed semantic change.
+2. Change normative text, reference verifiers, and conformance vectors
+   together, or not at all.
+3. Preserve released version semantics. A semantic change requires a new
+   explicit protocol or profile version string.
+4. Update the authoritative suite registry in `conformance/suites.mjs` and its
+   versioned vectors when the conformance surface changes.
+5. Regenerate governed manifests only through their source generators, then
+   run their `check` commands and review the resulting diff.
+
+The JavaScript, Python, and Go verifiers in this repository are same-team ports.
+Agreement among them is cross-language consistency, not independent
+implementation evidence. Internet-Drafts in `standards/` are individual
+submissions unless the live IETF Datatracker states otherwise.
+
+## Integration examples
+
+Place a runnable example under the relevant `examples/<topic>/` directory and:
+
+- include an SPDX Apache-2.0 header in new source files;
+- exercise refusal as well as the happy path;
+- bind the decision to the actual executor input, not caller-supplied labels;
+- disclose shortcuts such as fixed clocks, ephemeral keys, or mocked providers;
+- include a deterministic test and invocation instructions; and
+- avoid calling an example conformant unless a registered suite establishes it.
+
+## Repository map
+
+| Path | Role |
+| --- | --- |
+| `packages/gate/` | Executor-boundary admission, one-time consumption, provider-entry, outcome, and reconciliation controls |
+| `packages/verify/`, `packages/issue/`, `packages/require-receipt/` | Core public verification, issuance, and receipt-required libraries |
+| `conformance/` and `caid/` | Registered suites, versioned vectors, runners, and exact-action mapping tests |
+| `security/` and `formal/` | Governed executable claims, evidence bindings, and bounded formal models |
+| `sdks/`, `integrations/`, `mcp-server/` | Language, framework, and tool-protocol integrations |
+| `app/` and `apps/` | Reference web and service surfaces |
+| `standards/` | Internet-Draft sources and posted historical revisions |
+| `docs/` | Architecture, deployment boundaries, canonical language, and operator guidance |
+
+## Language and generated context
+
+Use [`docs/CANONICAL-LANGUAGE.md`](docs/CANONICAL-LANGUAGE.md) for public
+terminology. Keep `VERIFIED`, `MATCH`, `SATISFIED`, `AUTHORIZED`, provider
+entry, `EXECUTED`, and `INDETERMINATE` distinct.
+
+Do not edit `AI_CONTEXT.md`, `public/llms.txt`, `public/llms-full.txt`, or
+`public/.well-known/emilia-context.json` directly. Edit their declared source
+or underlying evidence, then run:
+
+```bash
+npm run sync:llm-context
+npm run check:llm-context
+```
+
+## License and contact
+
+Contributions are licensed under Apache-2.0. Questions and security reporting
+paths are listed in [`SECURITY.md`](SECURITY.md); general implementation
+questions may be opened as GitHub issues.

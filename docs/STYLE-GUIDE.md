@@ -1,43 +1,16 @@
-# EP Style Guide
+# EMILIA Protocol Style Guide
 
-## Use these everywhere
+This file is the stable entry point used by language-governance checks. The
+single source of truth for public terminology, claim boundaries, canonical
+lines, and retired wording is
+[`CANONICAL-LANGUAGE.md`](CANONICAL-LANGUAGE.md).
 
-- **EMILIA Protocol (EP)**
-- **Trust before high-risk action**
-- **Protocol-grade trust substrate**
-- **High-risk action enforcement**
-- **Control layer between authentication and execution**
-- **Policy-bound, replay-resistant, one-time authorization**
-- **Immutable event traceability**
-- **Accountable Signoff** — named human ownership when policy requires it
-- **Emilia Eye** — lightweight warning layer that flags when stricter EP controls should apply
+Do not maintain a second phrase list here. Before changing public copy:
 
-## Preferred phrases
-
-- actor identity
-- authority chain
-- exact action context
-- policy version and policy hash
-- replay resistance
-- one-time consumption
-- audit-grade event history
-- control-strengthening infrastructure
-
-## Retire from active docs
-
-| Retired phrase | Replace with |
-|---|---|
-| trust before high-risk action | trust before high-risk action |
-| actors and high-risk workflows | actors, issuers, workflows, and high-risk actions |
-| trust marketplace | trust substrate / control layer |
-| install preflight as the whole wedge | one entry point, not the category |
-| generic software trust | high-risk action enforcement |
-| MCP comparison as company definition | supporting line only |
-
-## Messaging rules
-
-1. Lead with **trust before high-risk action**.
-2. Explain EP as a **protocol-grade control layer**, not a broad trust idea.
-3. Always connect trust to actor, authority, policy, exact action, replay resistance, and one-time consumption.
-4. Use AI / MCP framing only when the audience is explicitly AI-native.
-5. Do not let analogies replace direct explanation.
+1. Apply `CANONICAL-LANGUAGE.md` and keep `VERIFIED`, `MATCH`, `SATISFIED`,
+   `AUTHORIZED`, provider entry, `EXECUTED`, and `INDETERMINATE` distinct.
+2. Preserve the complete-mediation and relying-party-pinned trust boundaries.
+3. Run `node scripts/check-language-governance.js`.
+4. If generated LLM surfaces are affected, edit their declared source and run
+   `npm run sync:llm-context` followed by `npm run check:llm-context`; do not
+   hand-edit generated context files.

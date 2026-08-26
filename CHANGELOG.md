@@ -2,9 +2,11 @@
 
 All notable changes to EMILIA Protocol are documented here.
 
-Versioning model: Protocol spec and reference repo share the root version (1.0.x). SDKs (0.1.x) and MCP server (0.2.x) version independently.
+Repository snapshots, protocol/profile versions, and independently published
+packages have separate identities. See [`RELEASE-PROCESS.md`](RELEASE-PROCESS.md).
+Historical entries below retain the labels used when they were written.
 
-## [Unreleased] — main as of 2026-06-11
+## [Unreleased] — source baseline 2026-08-26 (`5d474fd240bc764fa41951c05c39130e38afa7ff`)
 
 ### Authority operations
 
@@ -27,7 +29,8 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
   time. An unobserved status is signed as `null`; an observed status must carry
   its actual source-observation time, so re-signing cannot launder stale source
   data into a fresh authority claim.
-- **Authority Introduction -03 staged** — the revision distinguishes effective,
+- **Authority Introduction -03 published** — the active individual
+  Internet-Draft revision distinguishes effective,
   observation, issuance, and evaluation times and requires relying parties to
   refuse authority evidence whose source resolution or age cannot satisfy the
   local acceptance rule.
@@ -67,7 +70,7 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
   `verifyTrustReceipt` accepts 7/7 — the issuer half of the §6.3 verifier.
 
 ### Highlights — the enterprise/protocol build
-- **PIP-006 Federation, full** — Operator-B cross-operator client in `@emilia-protocol/verify` 1.3.0 (`verifyFederatedReceipt` / `verifyFederatedReceiptOffline`); `ep-keys.json` advertises `historical_keys` (rotation safety, migration 094), `cache_ttl_seconds`, `verify_url_template`; two-operator conformance harness (`conformance/federation.mjs`) passes against production; Federation Registry convention (`docs/FEDERATION-REGISTRY.md`); formal model `formal/ep_federation.als` — 7 safety assertions, 0 counterexamples, in CI. Remaining acceptance gate: an independent third-party operator.
+- **PIP-006 same-operator federation mechanism complete** — Operator-B cross-operator client in `@emilia-protocol/verify` 1.3.0 (`verifyFederatedReceipt` / `verifyFederatedReceiptOffline`); `ep-keys.json` advertises `historical_keys` (rotation safety, migration 094), `cache_ttl_seconds`, `verify_url_template`; two-operator conformance harness (`conformance/federation.mjs`) passes against production; Federation Registry convention (`docs/FEDERATION-REGISTRY.md`); formal model `formal/ep_federation.als` — 7 safety assertions, 0 counterexamples, in CI. Independent third-party operator acceptance remains pending.
 - **Enterprise SSO** — SAML 2.0 Service Provider + OIDC Relying Party (`app/api/sso/*`, `lib/sso/`, migration 096, `docs/SSO.md`); signature validation via `@node-saml/node-saml` (xml-crypto) and `jose`; fixture-tested including a real signed-SAML-assertion round-trip. Supports connecting a live IdP tenant (none connected; no production deployments).
 - **SCIM 2.0 provisioning** — RFC 7643/7644 server (`app/api/scim/v2/*`, `lib/scim/`, migration 095, `docs/SCIM.md`): Users, Groups, filtering, PATCH (both Azure deprovision shapes), per-tenant `ep_scim_` bearer tokens.
 - **AML screening** — sanctions/PEP/embargo fail-closed deny; structuring/velocity/near-threshold escalate to accountable signoff; `aml_signals` surfaced on decisions, responses, and audit records (`lib/aml/`, `docs/AML.md`). Supports live OFAC/EU/UN feeds (none connected; no production deployments).

@@ -159,7 +159,7 @@ cat docs/conformance/RED_TEAM_CASES.md
 - `formal/PROOF_STATUS.md` — TLA+ and Alloy verification results with exact state counts
 - `docs/conformance/RED_TEAM_CASES.md` — Complete red team case registry
 - `docs/security/PENTEST_REMEDIATION.md` — All findings and remediations
-- `docs/security/THREAT_MODEL.md` — Threat model defining the attack surface
+- [`../../THREAT_MODEL.md`](../../THREAT_MODEL.md) — canonical threat model defining the attack surface
 - `docs/operations/OBSERVABILITY.md` — Runtime monitoring for security events post-deployment
 - `docs/operations/MIGRATION_RUNBOOK_065_073.md` — Ordered deployment of all security migrations
 

@@ -1,19 +1,29 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # EMILIA Product Message Architecture
 
-*Status: canonical public-message doctrine*
+*Status: public message architecture; terminology inherits from
+[`docs/CANONICAL-LANGUAGE.md`](../CANONICAL-LANGUAGE.md)*
 
-*Last updated: 2026-08-09*
+*Last updated: 2026-08-26*
 
-This document keeps the product, protocol, apps, assurance services, standards, and vertical profiles in one coherent company story. It governs public repository narrative, machine-facing context, marketing architecture, decks, product documentation, and future copy reviews. Runtime and security claims remain governed by the higher-precedence evidence sources named in `docs/ai/context-source.v1.json`.
+This document applies the repository's canonical terminology to the product,
+protocol, apps, assurance services, standards, and public workflow examples.
+It does not contain confidential acquisition sequencing, buyer targeting,
+pricing, outreach, or other GTM strategy. Runtime and security claims remain
+governed by the higher-precedence evidence sources named in
+`docs/ai/context-source.v1.json`.
 
 ## The company in one line
+
+> **EMILIA is the authority control plane for autonomous work.**
+
+The operating shorthand is:
 
 > **Protocol proves. Gate prevents.**
 
 The buyer-facing sentence is:
 
-> **EMILIA Gate is the consequence firewall that prevents AI agents and other machine actors from taking consequential actions on protected executor paths without verifiable authority.**
+> **EMILIA Gate is the customer-owned consequence firewall that enforces a finite operating mandate when autonomous work reaches a protected executor.**
 
 The trust sentence immediately behind it is:
 
@@ -29,10 +39,12 @@ agent or automated workflow
           v
 EMILIA Gate holds the consequential action at the executor
           |
-          +-- challenges for exact evidence
+          +-- evaluates the standing mandate and exact evidence requirements
           |
-          v
-EMILIA Approver captures a device-bound human decision
+          +-- when mandate or policy requires fresh human authority
+          |       |
+          |       v
+          |   EMILIA Approver captures a device-bound human decision
           |
           v
 EMILIA Gate verifies, authorizes locally, reserves, invokes, and records
@@ -52,7 +64,7 @@ EMILIA Assurance Plane re-performs the deployment's claims
 
 **Role:** The commercial product and enforcement plane.
 
-Gate belongs immediately before the system that can mutate state: an MCP tool, API handler, payment rail, cloud control, clinical determination workflow, grid actuator, or physical controller. It checks the relying party's evidence requirements and local policy before calling the executor. Missing or insufficient evidence produces a closed refusal and an action-bound challenge. Accepted evidence authorizes only the exact action. Gate reserves bounded authority before provider entry, permits one admitted provider attempt for the covered authorization instance inside its shared durable authority domain, preserves uncertainty when the provider outcome cannot be established, refuses blind replay, and accepts reconciliation only from authenticated evidence bound to the same operation and material action. Disputes, returns, refunds, reversals, and other remedies remain append-only: they are new, separately authorized actions and never rewrite the original effect.
+Gate belongs immediately before the system that can mutate state: an MCP tool, API handler, payment rail, cloud control, clinical determination workflow, grid actuator, or physical controller. It checks the relying party's evidence requirements and local policy before calling the executor. Missing or insufficient evidence produces a closed refusal and an action-bound challenge. After the required evidence is satisfied, the consequence-owning executor applies its separate local authorization decision to the exact action. Gate reserves bounded authority before provider entry, permits one admitted provider attempt for the covered authorization instance inside its shared durable authority domain, preserves uncertainty when the provider outcome cannot be established, refuses blind replay, and accepts reconciliation only from authenticated evidence bound to the same operation and material action. Disputes, returns, refunds, reversals, and other remedies remain append-only: they are new, separately authorized actions and never rewrite the original effect.
 
 #### Emergency Authority Freeze
 
@@ -64,7 +76,12 @@ Inside a covered Gate control domain, a freeze advances the control epoch, block
 
 This is a local-domain guarantee under complete mediation and authoritative shared state. It does not stop computation, undo an entered effect, or instantly reach a disconnected leased edge. Any future edge profile must disclose the maximum period during which stale leased authority can still admit work. Emergency Authority Freeze is a Gate capability and protocol hardening, not a new company category.
 
-**What customers buy:** Managed or BYOC operation, policy compilation, trust and revocation configuration, approver-directory integrations, durable consumption, outcome reconciliation, dispute and remedy operations, evidence retention, deployment coverage, integrations, support, SLA, and a separately contracted warranty where offered.
+**Public deployment surface:** Managed or BYOC operation, policy compilation,
+trust and revocation configuration, approver-directory integrations, durable
+consumption, outcome reconciliation, dispute and remedy operations, evidence
+retention, coverage measurement, and integration interfaces. Availability,
+pricing, support terms, SLAs, and warranties are company matters and are not
+established by this repository.
 
 **Distribution and interoperability:** Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems, then enforces them once at the executor. Native evidence remains owned by its source protocol; EMILIA verifies and composes it under the relying party's pinned rules and does not reissue it as EMILIA-originated authority. The A2A/AP2 composition is experimental and same-team until an independent implementation reproduces the hostile cases.
 
@@ -78,7 +95,10 @@ Customer-operated and EMILIA-managed Gate are parallel deployment choices, not a
 - an EMILIA operations or support role cannot widen customer authority; and
 - the customer can export and independently verify its evidence without an EMILIA callback.
 
-An EMILIA-managed deployment means EMILIA operates the software, availability, upgrades, monitoring, and contracted evidence procedures. It does not make EMILIA the source of customer authority, a transaction principal, or the owner of the customer's portable evidence.
+An EMILIA-managed deployment means EMILIA operates the software, availability,
+upgrades, monitoring, and configured evidence procedures. It does not make
+EMILIA the source of customer authority, a transaction principal, or the owner
+of the customer's portable evidence.
 
 #### Execution evidence and remedy
 
@@ -94,9 +114,14 @@ An uncertain provider outcome remains `INDETERMINATE` and closed to blind retry.
 
 The Protocol supplies the portable formats, exact-action binding, verifier, conformance vectors, matching rules, evidence requirements, and interoperability surfaces used by Gate and other implementations. It remains Apache-2.0 and independently reproducible. The relying party selects its own trust anchors, policies, directories, profiles, and legal effect.
 
-**Why it belongs one beat behind Gate:** Gate gives a buyer a product that can be deployed now. The Protocol answers the buyer's next question: "Why should we trust a startup or accept its evidence?" The answer is that verification does not require an EMILIA callback or an EMILIA-controlled trust root.
+**Why it follows Gate in a public explanation:** Gate names the enforcement
+boundary. The Protocol then shows that verification does not require an EMILIA
+callback or an EMILIA-controlled trust root.
 
-**Neutrality requirement:** Gate must never become the only verifier, issuer, trust root, or implementation. External implementations, partner evidence rows, native-format verification, open conformance, and standards participation are commercial moat protection, not charity.
+**Neutrality requirement:** Gate must never become the only verifier, issuer,
+trust root, or implementation. External implementations, native-format
+verification, open conformance, and standards participation are interoperability
+and vendor-independence requirements.
 
 ### EMILIA Approver
 
@@ -104,7 +129,9 @@ The Protocol supplies the portable formats, exact-action binding, verifier, conf
 
 The native apps and embeddable SDKs display the material action and capture an approval, decline, amendment, or rejection through a device-bound platform ceremony. The app is a capture surface, not the trust authority. Gate separately evaluates the approver directory, role, license or authority scope, policy, audience, platform evidence, and action binding under the relying party's profile.
 
-**Distribution model:** Use the generic EMILIA Approver app for pilots and demonstrations. Let enterprises embed the open SDKs into the applications their clinicians, treasury staff, government operators, or control-room personnel already use. Do not make adoption of a standalone EMILIA app a prerequisite.
+**Integration model:** The generic EMILIA Approver app and the open embeddable
+SDKs are alternate capture surfaces. A deployment may embed the ceremony in an
+existing application; a standalone EMILIA app is not a protocol prerequisite.
 
 **Claim boundary:** A platform ceremony over exact bytes does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.
 
@@ -123,13 +150,15 @@ The Assurance Plane turns Gate's per-action evidence into something a customer, 
 - CF-1 and EG-1 executable conformance reports; and
 - deployment attestation, active refusal probes, coverage states, evidence export, and related control-plane artifacts.
 
-These support real paid services today:
+These artifacts support scoped verification and re-performance procedures.
+Repository evidence does not establish a managed-service offering, commercial
+availability, revenue, or a customer:
 
-1. **Verification service:** verify scoped artifacts or evidence populations under customer-pinned inputs.
-2. **Re-performance service:** recompute claimed reliance or control results and report drift.
-3. **Conformance report service:** run public CF-1, EG-1, protocol, or profile suites and issue a narrowly scoped signed result.
-4. **Deployment-evidence service:** assemble coverage, active-probe, evidence-log, reliance, and period packages for customer and third-party review.
-5. **Evidence operations:** retention, key and profile versioning, export, scheduled re-performance, drift alerts, and partner handoff.
+1. **Artifact verification:** verify scoped artifacts or evidence populations under relying-party-pinned inputs.
+2. **Re-performance:** recompute claimed reliance or control results and report drift.
+3. **Conformance reporting:** run public CF-1, EG-1, protocol, or profile suites and issue a narrowly scoped signed result.
+4. **Deployment evidence:** assemble coverage, active-probe, evidence-log, reliance, and period packages for authorized review.
+5. **Evidence operations:** retain, version, export, re-perform, and hand off evidence under an explicit profile.
 
 The line that cannot move:
 
@@ -137,35 +166,26 @@ The line that cannot move:
 
 EMILIA is not an auditor, an accredited certification body, a regulator, or an insurer. It does not conclude that a deployment is compliant, secure, medically correct, or legally authorized. `EP-CERT-v1` is a scheme design for a future governance-dependent certification ecosystem. The public certification program is not operating. Any future certification mark requires narrowly defined scope, independent assessors, transparent governance, identical access for competitors, and explicit separation between implementation conformance and deployment assurance.
 
-## The acquisition strategy
+## Public workflow example: finance operations
 
-### Free wedge: privileged MCP tool calls
+A vendor bank-detail change or payment release is one public example of a
+consequential workflow. It is not a claim about confidential market priority,
+buyer targeting, sales status, or customer demand.
 
-This is the adoption on-ramp:
+The safety rule for the example is:
 
-1. An agent calls a consequential MCP tool.
-2. The protected tool refuses with an evidence challenge.
-3. A human or authorized service supplies the required evidence.
-4. Gate permits one admitted provider attempt for the covered authorization instance.
-5. Replay, substitution, and tampering are refused.
+> **No accepted exact-action authority and required evidence, no provider entry.**
 
-The value is speed, developer visibility, integrations, and installed surface. It is not assumed to carry the first enterprise contract.
+Gate holds the covered provider entry until the customer's finite mandate and
+pinned evidence requirements are satisfied for the exact action. Missing,
+stale, exhausted, invalid, or mismatched authority refuses provider entry on a
+completely mediated path.
 
-### First paid wedge: payer adverse medical-necessity determinations
-
-The paid entry rule is:
-
-> **No valid licensed-review evidence, no adverse determination.**
-
-An AI-supported workflow may recommend a denial, delay, or modification. Gate holds the adverse determination until the relying party can verify that a qualified licensed reviewer evaluated the exact case, material facts, proposed outcome, and criteria version under the payer's own rule.
-
-Missing or invalid evidence must block the adverse determination and route to a lawful human-review or patient-protective fallback. "Fail closed" must never be used to mean "withhold medically necessary care."
-
-Regulatory requirements create urgency for demonstrable qualified review, but the marketing claim must remain exact: no statute should be described as mandating EMILIA, cryptographic receipts, or this particular mechanism.
-
-### Later expansion
-
-Payments, government disbursement, code and cloud administration, grid operations, Model-to-Matter, and physical autonomy remain important profiles. They establish that Gate is horizontal infrastructure. They should not be presented as simultaneous opening markets.
+Gate does not establish bank-detail correctness, payee identity, fraud absence,
+provider success, or protection for an unmediated path. Regulation, contractual
+controls, and audit expectations may create demand for demonstrable authority
+and evidence, but no rule is claimed to mandate EMILIA or cryptographic
+receipts.
 
 ## The story sequence
 
@@ -202,11 +222,13 @@ Quantitative claims must come from the generated machine context and its source 
 
 **Use:**
 
+- Authority control plane for the company category.
 - EMILIA Gate for the commercial product.
-- Consequence Firewall for the product category.
+- Consequence firewall for Gate's executor-bound operating role.
 - EMILIA Protocol for the open substrate.
 - EMILIA Approver for the mobile and embedded capture surface.
-- EMILIA Assurance Plane for managed verification, re-performance, conformance reporting, and evidence operations.
+- EMILIA Assurance Plane for verification, re-performance, conformance-report,
+  deployment-evidence, and evidence-operations procedures.
 - CF-1 or EG-1 only with the exact published scope and a reproducible report.
 
 **Do not use:**
@@ -226,19 +248,19 @@ Quantitative claims must come from the generated machine context and its source 
 
 When asked "What is EMILIA?", answer:
 
-> EMILIA Gate is the commercial consequence firewall for consequential machine actions. It blocks a protected executor until the action satisfies the relying party's evidence and policy requirements. EMILIA Protocol is the open verification substrate underneath it; EMILIA Approver captures device-bound human decisions; EMILIA Assurance Plane re-performs and packages scoped evidence without acting as an auditor or accredited certifier.
+> EMILIA is the authority control plane for autonomous work. A customer defines a finite operating mandate, and EMILIA Gate enforces it when a consequential unit of work reaches a protected executor. EMILIA Protocol is the open verification substrate underneath Gate; EMILIA Approver captures device-bound human decisions when fresh human authority is required; EMILIA Assurance Plane re-performs and packages scoped evidence without acting as an auditor or accredited certifier.
 
-When asked "What does the company sell?", answer:
+When asked what the public implementation provides, answer:
 
-> Managed and BYOC Gate enforcement, integrations, policy and trust operations, durable evidence services, native approval capture, support and SLA, plus scoped verification and re-performance services. The open verifier, formats, and conformance vectors remain reproducible.
+> The public implementation provides Gate enforcement components, integration interfaces, policy and trust operations, durable evidence mechanisms, native approval capture, and scoped verification and re-performance procedures. The repository does not establish commercial availability, pricing, support terms, an SLA, a warranty, revenue, or a customer.
 
 When asked "Is EMILIA certified?", answer:
 
 > No public EMILIA certification program is operating. The repository ships executable conformance and assurance artifacts, and EMILIA may provide scoped verification, re-performance, and evidence services. Any audit conclusion or future certification depends on an authorized independent party and explicit governance.
 
-When asked "What is the first market?", answer:
+When asked for a representative workflow, answer:
 
-> Privileged MCP tool calls are the free adoption wedge. The first paid wedge is payer AI-assisted adverse medical-necessity determination, using the rule "no valid licensed-review evidence, no adverse determination." Payments and physical systems are later expansions.
+> A vendor bank-detail change or payment release is one public finance-operations example. Gate applies the rule "no accepted exact-action authority and required evidence, no provider entry" on a completely mediated protected path. This example does not establish market priority, customer demand, payee correctness, fraud absence, or provider success.
 
 ## Source and review discipline
 

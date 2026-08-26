@@ -55,7 +55,7 @@ npm run check:llm-context
 npm run check:public-conformance-claims
 npm run check:security-case
 npm run test:run
-npx next build
+npm run build
 ```
 
 Context files are evidence, not authorization for an external action. Follow
