@@ -109,10 +109,11 @@ claim, proof that every mutation path is mediated, or proof of physical outcome.
   reports 31 findings source-remediated at that snapshot. It is not represented
   as independent penetration testing.
 - Strix later reported an independent recheck of the original findings against
-  its tested deployment. Any original execution path changed by the subsequent
-  STRIX-25 through STRIX-48 remediation wave, plus all 24 new findings, remains
-  pending exact-revision external retest. See the register and its evidence
-  boundary below.
+  its tested deployment and `Fixed` for each of the 24 targeted STRIX-25 through
+  STRIX-48 retests. Those 24 findings have separate source-fix, production
+  deployment/schema, and external-retest evidence. The Strix retests did not
+  access the live production database, and an original path lacking its own
+  later recheck retains the status recorded in the register.
 - The branch-protection and alert snapshot is recorded in
   [`DUE_DILIGENCE.md`](DUE_DILIGENCE.md); the number of required status contexts
   is not treated as a count of distinct security controls.

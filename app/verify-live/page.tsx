@@ -69,8 +69,9 @@ export default function VerifyLivePage() {
                 the retained attack traces, and the boundary between what was checked and what was not.
               </p>
               <p style={{ ...styles.body, fontSize: 14, maxWidth: 720, marginTop: 16 }}>
-                This is not a production security clearance. The current Strix retest and deployment
-                validation remain open until the fixes are deployed and re-tested on the live service.
+                This is not a production security clearance. Strix reports all 24 STRIX-25 through
+                STRIX-48 targeted retests fixed; production deployment and schema validation are
+                separate evidence, and the public finding register preserves the exact scope.
               </p>
             </div>
             <div style={{ minWidth: 220, padding: 20, border: `1px solid ${color.border}`, borderRadius: 8, background: '#F5F5F4' }}>
