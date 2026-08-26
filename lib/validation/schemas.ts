@@ -141,15 +141,46 @@ export function validatePresent(body: any) {
  * Validate POST /api/signoff/challenge — issue a signoff challenge.
  */
 export function validateSignoffChallenge(body: any) {
-  return validateBody(body, {
-    handshakeId:         (v: any) => validate(v, 'handshakeId').required().string().result,
-    accountableActorRef: (v: any) => validate(v, 'accountableActorRef').required().string().result,
-    bindingHash:         (v: any) => validate(v, 'bindingHash').required().string().result,
-    signoffPolicyId:     (v: any) => validate(v, 'signoffPolicyId').required().string().result,
-    requiredAssurance:   (v: any) => validate(v, 'requiredAssurance').required().string().result,
-    allowedMethods:      (v: any) => validate(v, 'allowedMethods').required().result,
-    expiresAt:           (v: any) => validate(v, 'expiresAt').required().string().matches(/^\d{4}-\d{2}-\d{2}T/).result,
+  const trustBearingFields = [
+    'accountableActorRef',
+    'signoffPolicyId',
+    'signoffPolicyHash',
+    'requiredAssurance',
+    'allowedMethods',
+  ];
+  if (body && typeof body === 'object') {
+    const supplied = trustBearingFields.filter((field) =>
+      Object.prototype.hasOwnProperty.call(body, field));
+    if (supplied.length > 0) {
+      return {
+        valid: false,
+        errors: [`${supplied.join(', ')} are server-derived from the pinned handshake policy`],
+      };
+    }
+  }
+
+  const result = validateBody(body, {
+    handshakeId: (v: any) => validate(v, 'handshakeId').required().string().result,
+    bindingHash: (v: any) => validate(v, 'bindingHash').required().string().result,
+    expiresAt: (v: any) => validate(v, 'expiresAt').required().string().matches(/^\d{4}-\d{2}-\d{2}T/).result,
   });
+  if (!result.valid) return result;
+
+  if (body.metadata !== undefined && body.metadata !== null) {
+    try {
+      validate(body.metadata, 'metadata').isObject().result;
+    } catch (error: any) {
+      return { valid: false, errors: error.errors || ['metadata must be an object'] };
+    }
+  }
+
+  return {
+    valid: true,
+    data: {
+      ...result.data,
+      metadata: body.metadata || {},
+    },
+  };
 }
 
 // ── Signoff: Attest ───────────────────────────────────────────────────────

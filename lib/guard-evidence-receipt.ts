@@ -126,14 +126,32 @@ const POSITIVE_STATES = new Set(['approved_pending_consume', 'consumed']);
  * @returns {string}
  */
 export function resolveReceiptStatus(base, { approved, rejected, consumed }) {
-  if (consumed) return 'consumed';
   if (rejected) return 'rejected';
+
+  // Observe receipts are telemetry, never authorization. Preserve enough
+  // status to distinguish a policy deny from an unknown legacy verdict, but do
+  // not let any observed allow or historical consume enter POSITIVE_STATES.
+  if (base?.enforcement_mode === 'observe') {
+    if (base?.decision === 'observe' && !base?.observed_decision) {
+      return 'indeterminate';
+    }
+    if ((base?.observed_decision || base?.decision) === 'deny') {
+      return 'denied';
+    }
+    return 'observed';
+  }
+  const policyDecision = base?.observed_decision || base?.decision;
+  if (policyDecision === 'deny') return 'denied';
+  if (policyDecision === 'allow_with_signoff' && !approved) {
+    return base?.receipt_status === 'expired' ? 'expired' : 'pending_signoff';
+  }
+
+  if (consumed) return 'consumed';
   if (approved) return 'approved_pending_consume';
-  // No signoff was ever required and a non-deny decision ⇒ already authorized.
-  if (base?.signoff_required === false && base?.decision && base.decision !== 'deny') {
+  // No signoff was ever required and the real policy verdict allows the action.
+  if (base?.signoff_required === false && policyDecision === 'allow') {
     return 'approved_pending_consume';
   }
-  if (base?.decision === 'deny') return 'denied';
   return base?.receipt_status || 'pending_signoff';
 }
 
@@ -232,6 +250,10 @@ function evidenceReceiptPayload({ receiptId, base, approved, rejected, consumed,
     claim: {
       action_type: base.action_type,
       outcome: base.decision,
+      // In observe mode, this is the policy engine's real verdict before mode
+      // flattening. Observe receipts are not signed by this authority-evidence
+      // schema; the field remains present in the unsigned evidence response.
+      observed_decision: base.observed_decision ?? null,
       enforcement_mode: base.enforcement_mode,
       // The exact canonical action that was hashed at creation (WYSIWYS).
       canonical_action: canonicalAction,

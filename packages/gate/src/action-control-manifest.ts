@@ -190,21 +190,23 @@ export function createDefaultActionControlManifest({
   };
 }
 
-function selectorMatches(action: Obj, selector: Obj = {}): boolean {
+function transportSelectorMatches(action: Obj, selector: Obj = {}): boolean {
   if (!action || typeof action !== 'object' || Array.isArray(action)
       || !selector || typeof selector !== 'object' || Array.isArray(selector)) return false;
   const match = action.match;
   if (!match || typeof match !== 'object' || Array.isArray(match)) return false;
   const matchEntries = Object.entries(match);
   if (matchEntries.length === 0) return false;
-  // action_type is an additional constraint; it may never bypass a conflicting
-  // transport selector. Other selector metadata (for example manifestUrl) is
-  // not part of the action's transport identity.
-  if (Object.prototype.hasOwnProperty.call(selector, 'action_type')
-      && selector.action_type !== action.action_type) return false;
   return matchEntries.every(([key, value]) => (
     Object.prototype.hasOwnProperty.call(selector, key) && selector[key] === value
   ));
+}
+
+function hasOwnSelectorField(selector: Obj, key: string): boolean {
+  return selector !== null
+    && typeof selector === 'object'
+    && !Array.isArray(selector)
+    && Object.prototype.hasOwnProperty.call(selector, key);
 }
 
 export function findActionControl(manifest: Obj, selector: Obj = {}): Obj | null {
@@ -215,10 +217,71 @@ export function findActionControl(manifest: Obj, selector: Obj = {}): Obj | null
 export function resolveActionControl(manifest: Obj, selector: Obj = {}):
   | { status: 'none'; action: null }
   | { status: 'one'; action: Obj }
-  | { status: 'ambiguous'; action: null; action_ids: string[] } {
-  if (!manifest || !Array.isArray(manifest.actions)) return { status: 'none', action: null };
-  const matches = manifest.actions.filter((action) => selectorMatches(action, selector));
-  if (matches.length === 0) return { status: 'none', action: null };
+  | { status: 'ambiguous'; action: null; action_ids: string[] }
+  | { status: 'conflict'; action: null; action_ids: string[] } {
+  if (!manifest || !Array.isArray(manifest.actions)
+      || !selector || typeof selector !== 'object' || Array.isArray(selector)) {
+    return { status: 'none', action: null };
+  }
+
+  const actions = manifest.actions;
+  const identityGroups: Obj[][] = [];
+  if (hasOwnSelectorField(selector, 'id')) {
+    identityGroups.push(actions.filter((action) => action?.id === selector.id));
+  }
+  if (hasOwnSelectorField(selector, 'action_type')) {
+    identityGroups.push(actions.filter((action) => action?.action_type === selector.action_type));
+  }
+  if (hasOwnSelectorField(selector, 'action')) {
+    identityGroups.push(actions.filter((action) => action?.action_type === selector.action));
+  }
+
+  // Action Control deliberately requires a complete transport selector; an
+  // action_type alone is not sufficient. Once a complete transport *shape* is
+  // supplied, however, every redundant identity becomes a load-bearing
+  // assertion. A protected transport plus a pass-through action_type is a
+  // conflict, never an unguarded miss.
+  const hasCompleteTransportShape = actions.some((action) => {
+    const match = action?.match;
+    if (!match || typeof match !== 'object' || Array.isArray(match)) return false;
+    const keys = Object.keys(match);
+    return keys.length > 0 && keys.every((key) => hasOwnSelectorField(selector, key));
+  });
+  const transportMatches = hasCompleteTransportShape
+    ? actions.filter((action) => transportSelectorMatches(action, selector))
+    : [];
+
+  // Multiple identity aliases can contradict each other even before a
+  // transport is complete. Preserve the manifest's complete-transport rule
+  // for a single alias, but refuse explicit disagreement between aliases.
+  if (!hasCompleteTransportShape) {
+    if (identityGroups.length < 2) return { status: 'none', action: null };
+    const identityIntersection = actions.filter((action) => (
+      identityGroups.every((group) => group.includes(action))
+    ));
+    if (identityIntersection.length === 0 && identityGroups.some((group) => group.length > 0)) {
+      return {
+        status: 'conflict',
+        action: null,
+        action_ids: [...new Set(identityGroups.flat()
+          .map((action) => String(action?.id || ''))
+          .filter(Boolean))].sort(),
+      };
+    }
+    return { status: 'none', action: null };
+  }
+
+  const candidateGroups = [...identityGroups, transportMatches];
+  const matches = actions.filter((action) => candidateGroups.every((group) => group.includes(action)));
+  const actionIds = [...new Set(candidateGroups.flat()
+    .map((action) => String(action?.id || ''))
+    .filter(Boolean))].sort();
+
+  if (matches.length === 0) {
+    return candidateGroups.some((group) => group.length > 0)
+      ? { status: 'conflict', action: null, action_ids: actionIds }
+      : { status: 'none', action: null };
+  }
   if (matches.length === 1) return { status: 'one', action: matches[0] };
   return {
     status: 'ambiguous',

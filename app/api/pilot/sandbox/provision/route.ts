@@ -86,7 +86,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // A public pilot credential is least-privilege at birth: it can
       // authenticate the observe-mode adapter/report loop, but cannot reach
       // SSO, SCIM, enrollment, or other control-plane capabilities.
-      permissions: [],
+      permissions: ['observe'],
     });
     if (keyError) {
       logger.error('[pilot/sandbox] api_keys insert failed:', keyError);

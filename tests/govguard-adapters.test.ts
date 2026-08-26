@@ -136,6 +136,7 @@ describe('GovGuard adapters', () => {
     const body = await res.json();
     expect(body.decision).toBe('observe');
     expect(body.evidence_status).toBe('degraded');
+    expect(body.next_step).toMatch(/no authorization/i);
   });
 
   it('binds hashed destination and government program fields into the receipt', async () => {
@@ -155,6 +156,8 @@ describe('GovGuard adapters', () => {
     const body = await res.json();
     expect(body.decision).toBe('observe');
     expect(body.observed_decision).toBe('allow_with_signoff');
+    expect(body.receipt_status).toBe('observed');
+    expect(body.next_step).toMatch(/no authorization/i);
     expect(body.canonical_action).toMatchObject({
       vendor_id: 'vendor_9',
       agency_id: 'agency_hhs',

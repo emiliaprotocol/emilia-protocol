@@ -32,6 +32,10 @@ All environment variables are accessed through `lib/env.js`. No other file reads
 | `EP_AGENT_RECORD_CREATION_CAPABILITY` | Application-only Agent Record creation authorization; must match the private database capability | `earc1_` + 64 lowercase hex |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis endpoint for distributed rate limiting | `https://xxxx.upstash.io` |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis auth token | `AXxx...` |
+| `NEXT_PUBLIC_APP_URL` | Canonical HTTPS origin used for redirects and emailed links; never derive these from request Host headers in production | `https://www.emiliaprotocol.ai` |
+| `SSO_STATE_SECRET` | Independent random secret for tenant-bound SAML RelayState envelopes | 32+ random bytes |
+| `SSO_SESSION_SECRET` | Independent random secret for authenticated SSO sessions | 32+ random bytes |
+| `TRUST_DESK_SESSION_SECRET` | Independent random secret for Trust Desk reviewer sessions | 32+ random bytes |
 
 ### Optional
 
@@ -144,6 +148,9 @@ Both endpoints are rate-limited to the `anchor` category (1 request per 6 hours)
 - [ ] `EP_COMMIT_SIGNING_KEY` is set (fatal error in production if missing)
 - [ ] `EP_COMMIT_SIGNING_KEYS` is valid JSON if set (fatal error in production if malformed)
 - [ ] `EP_AGENT_RECORD_CREATION_CAPABILITY` is configured in Vercel and matches the one-way private database capability
+- [ ] `NEXT_PUBLIC_APP_URL` is the canonical HTTPS production origin
+- [ ] `SSO_STATE_SECRET`, `SSO_SESSION_SECRET`, and `TRUST_DESK_SESSION_SECRET` are distinct random production values
+- [ ] `TRUST_DESK_INTERNAL_TOKEN` has been rotated if it ever appeared in a URL; store the current bootstrap outside repository and deployment logs
 - [ ] Upstash Redis is configured (rate limiting falls back to in-memory without it, which does not work across serverless instances)
 - [ ] Database schema is applied and append-only triggers are active on `protocol_events` and `handshake_events`
 - [ ] `npm run check:protocol` passes (write-discipline CI enforcement)

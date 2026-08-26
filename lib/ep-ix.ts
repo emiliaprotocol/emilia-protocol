@@ -16,10 +16,6 @@ import crypto from 'crypto';
 import { logger } from './logger.js';
 import { CONTINUITY_STATUS } from './constants.js';
 
-const CHALLENGE_WINDOW_DAYS = 7;
-const CONTINUITY_EXPIRY_DAYS = 30;
-const CONTINUITY_WARNING_DAYS = 21;
-
 /**
  * Every EP-IX helper below returns either an error shape or a success shape
  * from the same function. Callers narrow with a truthy check on `error` (or
@@ -129,10 +125,11 @@ export interface FileContinuityClaimParams {
 
 export interface ChallengeContinuityParams {
   continuity_id: string;
-  challenger_type: string;
-  challenger_id?: string | null;
+  challenger_id: string;
   reason: string;
   evidence?: Record<string, unknown>;
+  /** Server-derived from the authenticated API-key permission record. */
+  enterprise_admin_authorized?: boolean;
 }
 
 /**
@@ -234,71 +231,80 @@ export async function verifyBinding(bindingId: string, verifierId: string | unde
  * File a continuity claim.
  * Enforces: dispute freeze, challenge window, expiration.
  */
-export async function fileContinuityClaim(params: FileContinuityClaimParams): Promise<FileContinuityClaimResult> {
+export async function fileContinuityClaim(
+  params: FileContinuityClaimParams,
+  actorEntityId: string,
+): Promise<FileContinuityClaimResult> {
   const supabase = getServiceClient();
   const continuityId = `ep_ix_${crypto.randomBytes(8).toString('hex')}`;
-  const now = new Date();
 
-  // Verify principal exists
-  const { data: principal } = await supabase
-    .from('principals')
-    .select('id')
-    .eq('principal_id', params.principal_id)
-    .single();
-
-  if (!principal) return { error: 'Principal not found', status: 404 };
-
-  // Check for active disputes on old entity (dispute freeze)
-  if (params.reason !== 'recovery_after_compromise') {
-    const { count: activeDisputes } = await supabase
-      .from('disputes')
-      .select('id', { count: 'exact', head: true })
-      .eq('entity_id', params.old_entity_id)
-      .in('status', ['open', 'under_review']);
-
-    if ((activeDisputes || 0) > 0) {
-      return {
-        error: 'Continuity frozen: old entity has active disputes. Resolve disputes before claiming continuity.',
-        status: 409,
-        frozen: true,
-        active_disputes: activeDisputes,
-      };
-    }
+  if (typeof params.principal_id !== 'string' || params.principal_id.trim() === '') {
+    return { error: 'principal_id is required', status: 400 };
+  }
+  if (typeof params.old_entity_id !== 'string' || params.old_entity_id.trim() === '') {
+    return { error: 'old_entity_id is required', status: 400 };
+  }
+  if (typeof params.new_entity_id !== 'string' || params.new_entity_id.trim() === '') {
+    return { error: 'new_entity_id is required', status: 400 };
+  }
+  if (typeof params.reason !== 'string' || params.reason.trim() === '') {
+    return { error: 'reason is required', status: 400 };
   }
 
-  const challengeDeadline = new Date(now.getTime() + CHALLENGE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const expiresAt = new Date(now.getTime() + CONTINUITY_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+  if (params.old_entity_id === params.new_entity_id) {
+    return { error: 'Continuity endpoints must identify two distinct entities', status: 400 };
+  }
 
-  const { data, error } = await supabase
-    .from('continuity_claims')
-    .insert({
-      continuity_id: continuityId,
-      principal_id: principal.id,
-      old_entity_id: params.old_entity_id,
-      new_entity_id: params.new_entity_id,
-      reason: params.reason,
-      continuity_mode: params.continuity_mode || 'linear',
-      proofs: params.proofs || [],
-      status: 'pending',
-      challenge_deadline: challengeDeadline.toISOString(),
-      expires_at: expiresAt.toISOString(),
-      transfer_budget: params.transfer_budget || 1.0,
-    })
-    .select()
-    .single();
+  const transferBudget = params.transfer_budget === undefined
+    ? 1.0
+    : params.transfer_budget;
+  if (typeof transferBudget !== 'number'
+    || !Number.isFinite(transferBudget)
+    || transferBudget <= 0
+    || transferBudget > 1.0) {
+    return { error: 'transfer_budget must be a finite number greater than 0 and no greater than 1.0', status: 400 };
+  }
+  if (typeof actorEntityId !== 'string' || actorEntityId.trim() === '') {
+    return { error: 'Authenticated actor identity is required', status: 400 };
+  }
 
-  if (error) return { error: error.message, status: 500 };
-
-  await emitAudit('continuity.filed', params.principal_id, 'principal', 'continuity', continuityId, 'file', null, {
-    old_entity: params.old_entity_id,
-    new_entity: params.new_entity_id,
-    reason: params.reason,
+  // The filing RPC shares an entity-scoped advisory lock with the active-
+  // dispute trigger. Ownership, dispute freeze, claim insert, and audit append
+  // therefore form one transaction and cannot cross a concurrent dispute.
+  const { data, error } = await supabase.rpc('file_continuity_claim_atomic', {
+    p_continuity_id: continuityId,
+    p_principal_id: params.principal_id,
+    p_actor_entity_id: actorEntityId,
+    p_old_entity_id: params.old_entity_id,
+    p_new_entity_id: params.new_entity_id,
+    p_reason: params.reason,
+    p_continuity_mode: params.continuity_mode || 'linear',
+    p_proofs: params.proofs || [],
+    p_transfer_budget: transferBudget,
   });
 
+  if (error) return { error: error.message, status: 500 };
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result || typeof result !== 'object') {
+    return { error: 'Continuity filing transaction returned an invalid result', status: 500 };
+  }
+  if (typeof result.error === 'string') {
+    return {
+      error: result.error,
+      status: typeof result.status === 'number' ? result.status : 500,
+      frozen: result.frozen === true,
+      active_disputes: typeof result.active_disputes === 'number' ? result.active_disputes : null,
+    };
+  }
+  if (!result.continuity || typeof result.continuity !== 'object'
+    || typeof result.challenge_deadline !== 'string'
+    || typeof result.expires_at !== 'string') {
+    return { error: 'Continuity filing transaction returned no claim', status: 500 };
+  }
   return {
-    continuity: data,
-    challenge_deadline: challengeDeadline.toISOString(),
-    expires_at: expiresAt.toISOString(),
+    continuity: result.continuity,
+    challenge_deadline: result.challenge_deadline,
+    expires_at: result.expires_at,
   };
 }
 
@@ -309,101 +315,47 @@ export async function challengeContinuity(params: ChallengeContinuityParams): Pr
   const supabase = getServiceClient();
   const challengeId = `ep_ch_${crypto.randomBytes(8).toString('hex')}`;
 
-  // Verify claim exists and is challengeable
-  const { data: claim } = await supabase
-    .from('continuity_claims')
-    .select('*')
-    .eq('continuity_id', params.continuity_id)
-    .single();
-
-  if (!claim) return { error: 'Continuity claim not found', status: 404 };
-  if (!['pending'].includes(claim.status)) {
-    return { error: `Claim status is '${claim.status}', not challengeable`, status: 409 };
+  if (typeof params.continuity_id !== 'string' || params.continuity_id.trim() === '') {
+    return { error: 'continuity_id is required', status: 400 };
   }
-  if (claim.challenge_deadline && new Date(claim.challenge_deadline) < new Date()) {
-    return { error: 'Challenge window has expired', status: 410 };
+  if (typeof params.challenger_id !== 'string' || params.challenger_id.trim() === '') {
+    return { error: 'Authenticated challenger identity is required', status: 400 };
   }
-
-  // Rate-limit open challenges per claim: cap at 5 open challenges.
-  // Without this cap an adversary can perpetually file new challenges to keep
-  // the claim frozen (each challenge transitions the claim to under_challenge
-  // and freezes it via freezeContinuityOnDispute). The cap allows all 6
-  // legitimate challenger types to weigh in while preventing abuse.
-  const { count: openChallengeCount, error: countErr } = await supabase
-    .from('continuity_challenges')
-    .select('challenge_id', { count: 'exact', head: true })
-    .eq('continuity_id', params.continuity_id)
-    .in('status', ['open', 'reviewed']);
-
-  // Fail closed: if the count cannot be determined (query error, or a stripped
-  // Content-Range header leaving count null), refuse rather than wave the
-  // challenge through. `null >= 5` is false, so treating an unknown count as
-  // "under the cap" silently disables the very anti-abuse limit this enforces.
-  if (countErr || typeof openChallengeCount !== 'number') {
-    return { error: 'Unable to evaluate the open-challenge rate limit', status: 503 };
+  if (typeof params.reason !== 'string' || params.reason.trim() === '') {
+    return { error: 'reason is required', status: 400 };
   }
-  if (openChallengeCount >= 5) {
-    return { error: 'Maximum open challenges (5) already exist for this claim', status: 429 };
+  if (params.evidence !== undefined
+    && (params.evidence === null || Array.isArray(params.evidence) || typeof params.evidence !== 'object')) {
+    return { error: 'evidence must be an object', status: 400 };
   }
 
-  // Self-contest guard: the principal who filed the claim cannot challenge it,
-  // even through delegate entities they control. Without the ownership graph
-  // check, a principal creates delegate D (different entity_id), then D files
-  // a challenge — the simple ID comparison misses this.
-  //
-  // Defence layers:
-  //   1. Direct match: challenger_id === principal_id
-  //   2. Ownership graph: challenger_id is an entity controlled by the principal
-  if (params.challenger_id) {
-    const principalIdStr = claim.principal_id?.toString();
-
-    // Layer 1: direct principal match
-    if (params.challenger_id === principalIdStr) {
-      return { error: 'Principal cannot challenge their own continuity claim', status: 403 };
-    }
-
-    // Layer 2: entity ownership graph — all entities linked to this principal
-    const { data: ownedEntities, error: ownershipError } = await supabase
-      .from('entities')
-      .select('entity_id')
-      .eq('principal_id', claim.principal_id);
-
-    if (ownershipError) {
-      return {
-        error: 'Could not verify entity ownership for self-contest protection',
-        status: 503,
-      };
-    }
-
-    if (ownedEntities.some(e => e.entity_id === params.challenger_id)) {
-      return { error: 'Entity controlled by the filing principal cannot challenge their own continuity claim', status: 403 };
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('continuity_challenges')
-    .insert({
-      challenge_id: challengeId,
-      continuity_id: params.continuity_id,
-      challenger_type: params.challenger_type,
-      challenger_id: params.challenger_id || null,
-      reason: params.reason,
-      evidence: params.evidence || {},
-    })
-    .select()
-    .single();
+  // Claim lock, role derivation, self-contest guard, open-challenge count,
+  // challenge insert, claim transition, and audit append share one database
+  // transaction. No successful write can escape a later audit failure.
+  const { data, error } = await supabase.rpc('challenge_continuity_atomic', {
+    p_continuity_id: params.continuity_id,
+    p_challenge_id: challengeId,
+    p_challenger_id: params.challenger_id,
+    p_reason: params.reason,
+    p_evidence: params.evidence || {},
+    p_enterprise_admin_authorized: params.enterprise_admin_authorized === true,
+  });
 
   if (error) return { error: error.message, status: 500 };
-
-  // Move claim to under_challenge
-  await supabase
-    .from('continuity_claims')
-    .update({ status: 'under_challenge', updated_at: new Date().toISOString() })
-    .eq('continuity_id', params.continuity_id);
-
-  await emitAudit('continuity.challenged', params.challenger_id || 'anonymous', params.challenger_type, 'continuity', params.continuity_id, 'challenge', { status: 'pending' }, { status: 'under_challenge' });
-
-  return { challenge: data };
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result || typeof result !== 'object') {
+    return { error: 'Continuity challenge transaction returned an invalid result', status: 500 };
+  }
+  if (typeof result.error === 'string') {
+    return {
+      error: result.error,
+      status: typeof result.status === 'number' ? result.status : 500,
+    };
+  }
+  if (!result.challenge || typeof result.challenge !== 'object') {
+    return { error: 'Continuity challenge transaction returned no challenge', status: 500 };
+  }
+  return { challenge: result.challenge };
 }
 
 /**
@@ -416,49 +368,52 @@ export async function resolveContinuity(
   operatorId: string,
 ): Promise<ResolveContinuityResult> {
   const supabase = getServiceClient();
-  const now = new Date().toISOString();
-
-  const { data: claim } = await supabase
-    .from('continuity_claims')
-    .select('*')
-    .eq('continuity_id', continuityId)
-    .single();
-
-  if (!claim) return { error: 'Continuity claim not found', status: 404 };
-  if (['approved_full', 'approved_partial', 'rejected', 'expired', 'withdrawn'].includes(claim.status)) {
-    return { error: `Claim already resolved: ${claim.status}`, status: 409 };
+  if (typeof continuityId !== 'string' || continuityId.trim() === '') {
+    return { error: 'continuity_id is required', status: 400 };
   }
-  if (claim.status === CONTINUITY_STATUS.FROZEN_PENDING_DISPUTE) {
-    return { error: 'Claim is frozen pending dispute resolution; resolve the dispute first', status: 409 };
+  if (!['approved_full', 'approved_partial', 'rejected', 'rejected_laundering'].includes(decision)) {
+    return { error: 'decision is invalid', status: 400 };
+  }
+  if (reasoning !== undefined && reasoning !== null && !Array.isArray(reasoning)) {
+    return { error: 'reasoning must be an array', status: 400 };
+  }
+  if (typeof operatorId !== 'string' || operatorId.trim() === '') {
+    return { error: 'Authenticated operator identity is required', status: 400 };
   }
 
-  // Record decision
-  await supabase.from('continuity_decisions').insert({
-    continuity_id: continuityId,
-    decision: decision,
-    transfer_policy: decision.startsWith('approved') ? (decision === 'approved_full' ? 'full' : 'partial') : 'none',
-    allocation_rule: claim.continuity_mode === 'fission' ? { budget: claim.transfer_budget ?? 1.0 } : null,
-    reasoning: reasoning || [],
-    decided_by: operatorId,
+  // The database boundary acquires the same old-entity advisory lock as every
+  // active-dispute transition, then atomically writes decision, claim state,
+  // entity linkage, and audit. It cannot overwrite a concurrent freeze.
+  const { data, error } = await supabase.rpc('resolve_continuity_atomic', {
+    p_continuity_id: continuityId,
+    p_decision: decision,
+    p_reasoning: reasoning || [],
+    p_operator_id: operatorId,
   });
 
-  // Update claim status
-  await supabase
-    .from('continuity_claims')
-    .update({ status: decision, transfer_policy: decision.startsWith('approved') ? (decision === 'approved_full' ? 'full' : 'partial') : 'none', updated_at: now })
-    .eq('continuity_id', continuityId);
-
-  // If approved, link entities to principal
-  if (decision.startsWith('approved')) {
-    await supabase
-      .from('entities')
-      .update({ principal_id: claim.principal_id, principal_linked_at: now })
-      .eq('entity_id', claim.new_entity_id);
+  if (error) return { error: error.message, status: 500 };
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result || typeof result !== 'object') {
+    return { error: 'Continuity resolution transaction returned an invalid result', status: 500 };
   }
-
-  await emitAudit('continuity.resolved', operatorId, 'operator', 'continuity', continuityId, 'resolve', { status: claim.status }, { status: decision, decision });
-
-  return { continuity_id: continuityId, decision, resolved_at: now };
+  if (typeof result.error === 'string') {
+    return {
+      error: result.error,
+      status: typeof result.status === 'number' ? result.status : 500,
+      frozen: result.frozen === true,
+      active_disputes: typeof result.active_disputes === 'number' ? result.active_disputes : null,
+    };
+  }
+  if (typeof result.continuity_id !== 'string'
+      || typeof result.decision !== 'string'
+      || typeof result.resolved_at !== 'string') {
+    return { error: 'Continuity resolution transaction returned no decision', status: 500 };
+  }
+  return {
+    continuity_id: result.continuity_id,
+    decision: result.decision,
+    resolved_at: result.resolved_at,
+  };
 }
 
 /**
@@ -570,41 +525,37 @@ export async function expireContinuityClaims(): Promise<number> {
  */
 export async function freezeContinuityOnDispute(continuityId: string, disputeId: string): Promise<FreezeContinuityResult> {
   const supabase = getServiceClient();
-  const now = new Date().toISOString();
-
-  const { data: claim } = await supabase
-    .from('continuity_claims')
-    .select('continuity_id, status, principal_id')
-    .eq('continuity_id', continuityId)
-    .single();
-
-  if (!claim) return { error: 'Continuity claim not found', status: 404 };
-  if (!['pending', 'under_challenge'].includes(claim.status)) {
-    return { error: `Cannot freeze claim in status '${claim.status}'`, status: 409 };
+  if (typeof continuityId !== 'string' || continuityId.trim() === '') {
+    return { error: 'continuity_id is required', status: 400 };
+  }
+  if (typeof disputeId !== 'string' || disputeId.trim() === '') {
+    return { error: 'dispute_id is required', status: 400 };
   }
 
-  const { error } = await supabase
-    .from('continuity_claims')
-    .update({
-      status: CONTINUITY_STATUS.FROZEN_PENDING_DISPUTE,
-      frozen_due_to: disputeId,
-      frozen_dispute_id: disputeId,
-      updated_at: now,
-    })
-    .eq('continuity_id', continuityId);
+  const { data, error } = await supabase.rpc('reconcile_continuity_dispute_atomic', {
+    p_dispute_id: disputeId,
+    p_continuity_id: continuityId,
+  });
 
   if (error) return { error: error.message, status: 500 };
-
-  await emitAudit(
-    'continuity.frozen',
-    'system', 'system',
-    'continuity', continuityId,
-    'freeze',
-    { status: claim.status },
-    { status: CONTINUITY_STATUS.FROZEN_PENDING_DISPUTE, frozen_due_to: disputeId },
-  );
-
-  return { continuity_id: continuityId, status: CONTINUITY_STATUS.FROZEN_PENDING_DISPUTE, frozen_due_to: disputeId };
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result || typeof result !== 'object') {
+    return { error: 'Continuity dispute reconciliation returned an invalid result', status: 500 };
+  }
+  if (typeof result.error === 'string') {
+    return {
+      error: result.error,
+      status: typeof result.status === 'number' ? result.status : 500,
+    };
+  }
+  if (result.status !== CONTINUITY_STATUS.FROZEN_PENDING_DISPUTE) {
+    return { error: 'Dispute is not active; the continuity claim was not frozen', status: 409 };
+  }
+  return {
+    continuity_id: result.continuity_id,
+    status: result.status,
+    frozen_due_to: result.frozen_due_to,
+  };
 }
 
 /**
@@ -612,46 +563,36 @@ export async function freezeContinuityOnDispute(continuityId: string, disputeId:
  * If the claim's expires_at has passed, it is expired instead of restored.
  * Transitions: frozen_pending_dispute → under_challenge | expired.
  */
-export async function unfreezeResolvedContinuity(disputeId: string): Promise<{ unfrozen: number }> {
+export async function unfreezeResolvedContinuity(disputeId: string): Promise<{
+  unfrozen: number;
+  error?: string;
+  status?: number;
+}> {
   const supabase = getServiceClient();
-  const now = new Date().toISOString();
-
-  const { data: claims } = await supabase
-    .from('continuity_claims')
-    .select('continuity_id, expires_at, status')
-    .eq('frozen_dispute_id', disputeId)
-    .eq('status', CONTINUITY_STATUS.FROZEN_PENDING_DISPUTE);
-
-  if (!claims || claims.length === 0) return { unfrozen: 0 };
-
-  let unfrozen = 0;
-  for (const claim of claims) {
-    const isExpired = claim.expires_at && new Date(claim.expires_at) < new Date(now);
-    const newStatus = isExpired ? CONTINUITY_STATUS.EXPIRED : CONTINUITY_STATUS.UNDER_CHALLENGE;
-
-    await supabase
-      .from('continuity_claims')
-      .update({
-        status: newStatus,
-        frozen_due_to: null,
-        frozen_dispute_id: null,
-        updated_at: now,
-      })
-      .eq('continuity_id', claim.continuity_id);
-
-    await emitAudit(
-      'continuity.unfrozen',
-      'system', 'system',
-      'continuity', claim.continuity_id,
-      'unfreeze',
-      { status: CONTINUITY_STATUS.FROZEN_PENDING_DISPUTE },
-      { status: newStatus, dispute_resolved: disputeId },
-    );
-
-    unfrozen++;
+  if (typeof disputeId !== 'string' || disputeId.trim() === '') {
+    return { unfrozen: 0, error: 'dispute_id is required', status: 400 };
   }
 
-  return { unfrozen };
+  // Reconciliation re-selects the complete active-dispute set under the shared
+  // advisory lock. Resolving one blocker cannot unfreeze behind another.
+  const { data, error } = await supabase.rpc('reconcile_continuity_dispute_atomic', {
+    p_dispute_id: disputeId,
+    p_continuity_id: null,
+  });
+
+  if (error) return { unfrozen: 0, error: error.message, status: 500 };
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result || typeof result !== 'object') {
+    return { unfrozen: 0, error: 'Continuity dispute reconciliation returned an invalid result', status: 500 };
+  }
+  if (typeof result.error === 'string') {
+    return {
+      unfrozen: 0,
+      error: result.error,
+      status: typeof result.status === 'number' ? result.status : 500,
+    };
+  }
+  return { unfrozen: typeof result.unfrozen === 'number' ? result.unfrozen : 0 };
 }
 
 /**
@@ -724,7 +665,7 @@ async function emitAudit(
 ): Promise<void> {
   const supabase = getServiceClient();
   try {
-    await supabase.from('audit_events').insert({
+    const { error } = await supabase.from('audit_events').insert({
       event_type: eventType,
       actor_id: actorId,
       actor_type: actorType,
@@ -734,8 +675,13 @@ async function emitAudit(
       before_state: beforeState,
       after_state: afterState,
     });
+    if (error) throw error;
   } catch (e: any) {
-    logger.warn('Audit emit failed:', e.message);
+    // Older EP-IX transitions predate atomic state+audit RPCs. Do not turn an
+    // already-committed mutation into a false 500 that invites unsafe retries;
+    // the continuity challenge path uses its own atomic RPC. Keep the failure
+    // visible until the remaining legacy transitions are migrated likewise.
+    logger.error('Audit emit failed after state mutation:', e?.message || e);
   }
 }
 

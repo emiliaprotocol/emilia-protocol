@@ -326,356 +326,92 @@ describe('verifyBinding', () => {
 // ── fileContinuityClaim ───────────────────────────────────────────────────────
 
 describe('fileContinuityClaim', () => {
-  it('returns 404 when principal not found', async () => {
-    const chain = makeChain({ data: null, error: null });
-    chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
-    mockSupabase.from.mockReturnValue(chain);
-
-    const result = await fileContinuityClaim({
-      principal_id: 'nonexistent',
-      old_entity_id: 'old',
-      new_entity_id: 'new',
-      reason: 'rebrand',
-    });
-
-    expect(result.error).toBe('Principal not found');
-    expect(result.status).toBe(404);
+  it.each([
+    [{ principal_id: '', old_entity_id: 'old', new_entity_id: 'new', reason: 'key_rotation' }, 'principal_id'],
+    [{ principal_id: 'principal', old_entity_id: '', new_entity_id: 'new', reason: 'key_rotation' }, 'old_entity_id'],
+    [{ principal_id: 'principal', old_entity_id: 'old', new_entity_id: '', reason: 'key_rotation' }, 'new_entity_id'],
+    [{ principal_id: 'principal', old_entity_id: 'old', new_entity_id: 'new', reason: '' }, 'reason'],
+  ])('rejects malformed filing input before database access', async (params, expected) => {
+    const result = await fileContinuityClaim(params, 'filing-actor');
+    expect(result.status).toBe(400);
+    expect(result.error).toContain(expected);
+    expect(mockSupabase.from).not.toHaveBeenCalled();
   });
 
-  it('blocks claim when old entity has active disputes', async () => {
-    const principal = makePrincipal();
-    let callCount = 0;
-    mockSupabase.from.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        const chain = makeChain({ data: principal, error: null });
-        chain.single = vi.fn().mockResolvedValue({ data: principal, error: null });
-        return chain;
-      }
-      // active disputes count
-      const chain = makeChain({ count: 2, error: null });
-      chain.then = (r) => Promise.resolve({ count: 2, error: null }).then(r);
-      return chain;
-    });
-
+  it('rejects equal continuity endpoints before database access', async () => {
     const result = await fileContinuityClaim({
-      principal_id: 'ep_principal_aabbccdd',
-      old_entity_id: 'old',
-      new_entity_id: 'new',
-      reason: 'rebrand',
-    });
-
-    expect(result.error).toContain('active disputes');
-    expect(result.status).toBe(409);
-    expect(result.frozen).toBe(true);
+      principal_id: 'principal',
+      old_entity_id: 'same',
+      new_entity_id: 'same',
+      reason: 'key_rotation',
+    }, 'filing-actor');
+    expect(result.status).toBe(400);
+    expect(result.error).toContain('distinct');
+    expect(mockSupabase.from).not.toHaveBeenCalled();
   });
 
-  it('bypasses dispute freeze for recovery_after_compromise', async () => {
-    const principal = makePrincipal();
-    const claim = makeClaim();
-    const auditChain = makeChain({ data: null, error: null });
-    auditChain.insert = vi.fn().mockResolvedValue({ data: null, error: null });
-
-    let callCount = 0;
-    mockSupabase.from.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        const chain = makeChain({ data: principal, error: null });
-        chain.single = vi.fn().mockResolvedValue({ data: principal, error: null });
-        return chain;
-      }
-      if (callCount === 2) {
-        // Insert claim
-        const chain = makeChain({ data: claim, error: null });
-        chain.insert = vi.fn().mockReturnThis();
-        chain.select = vi.fn().mockReturnThis();
-        chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
-        return chain;
-      }
-      return auditChain;
-    });
-
-    const result = await fileContinuityClaim({
-      principal_id: 'ep_principal_aabbccdd',
-      old_entity_id: 'old',
-      new_entity_id: 'new',
-      reason: 'recovery_after_compromise',
-    });
-
-    expect(result.continuity).toEqual(claim);
-    expect(result.challenge_deadline).toBeDefined();
-    expect(result.expires_at).toBeDefined();
-  });
-
-  it('returns error when insert fails', async () => {
-    const principal = makePrincipal();
-    let callCount = 0;
-    mockSupabase.from.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        const chain = makeChain({ data: principal, error: null });
-        chain.single = vi.fn().mockResolvedValue({ data: principal, error: null });
-        return chain;
-      }
-      if (callCount === 2) {
-        // dispute check — 0 active disputes
-        const chain = makeChain({ count: 0, error: null });
-        chain.then = (r) => Promise.resolve({ count: 0, error: null }).then(r);
-        return chain;
-      }
-      // Insert fails
-      const chain = makeChain({ data: null, error: { message: 'FK violation' } });
-      chain.insert = vi.fn().mockReturnThis();
-      chain.select = vi.fn().mockReturnThis();
-      chain.single = vi.fn().mockResolvedValue({ data: null, error: { message: 'FK violation' } });
-      return chain;
-    });
-
-    const result = await fileContinuityClaim({
-      principal_id: 'ep_principal_aabbccdd',
-      old_entity_id: 'old',
-      new_entity_id: 'new',
-      reason: 'rebrand',
-    });
-
-    expect(result.error).toBe('FK violation');
-    expect(result.status).toBe(500);
+  it('rejects invalid transfer budgets before database access', async () => {
+    for (const transfer_budget of [0, -0.1, 1.01, Number.NaN, Number.POSITIVE_INFINITY, '0.5']) {
+      const result = await fileContinuityClaim({
+        principal_id: 'principal',
+        old_entity_id: 'old',
+        new_entity_id: 'new',
+        reason: 'key_rotation',
+        transfer_budget: transfer_budget as any,
+      }, 'filing-actor');
+      expect(result.status).toBe(400);
+      expect(result.error).toContain('transfer_budget');
+    }
+    expect(mockSupabase.from).not.toHaveBeenCalled();
   });
 });
 
 // ── challengeContinuity ───────────────────────────────────────────────────────
 
 describe('challengeContinuity', () => {
-  it('returns 404 when continuity claim not found', async () => {
-    const chain = makeChain({ data: null, error: null });
-    chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
-    mockSupabase.from.mockReturnValue(chain);
-
-    const result = await challengeContinuity({
-      continuity_id: 'nonexistent',
-      challenger_type: 'public',
-      reason: 'bad faith',
-    });
-
-    expect(result.error).toBe('Continuity claim not found');
-    expect(result.status).toBe(404);
+  it.each([
+    [{ continuity_id: '', challenger_id: 'entity-1', reason: 'reason' }, 'continuity_id'],
+    [{ continuity_id: 'ep_ix_1', challenger_id: '', reason: 'reason' }, 'challenger'],
+    [{ continuity_id: 'ep_ix_1', challenger_id: 'entity-1', reason: '' }, 'reason'],
+  ])('rejects malformed transaction input before database access', async (params, expected) => {
+    const result = await challengeContinuity(params);
+    expect(result.status).toBe(400);
+    expect(result.error).toContain(expected);
+    expect(mockSupabase.from).not.toHaveBeenCalled();
   });
 
-  it('returns 409 when claim is not challengeable', async () => {
-    const claim = makeClaim({ status: 'approved_full' });
-    const chain = makeChain({ data: claim, error: null });
-    chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
-    mockSupabase.from.mockReturnValue(chain);
-
+  it('rejects non-object evidence before database access', async () => {
     const result = await challengeContinuity({
-      continuity_id: 'ep_ix_aabbccdd',
-      challenger_type: 'public',
-      reason: 'bad faith',
+      continuity_id: 'ep_ix_1',
+      challenger_id: 'entity-1',
+      reason: 'reason',
+      evidence: [] as any,
     });
-
-    expect(result.error).toContain('not challengeable');
-    expect(result.status).toBe(409);
-  });
-
-  it('returns 410 when challenge window has expired', async () => {
-    const claim = makeClaim({ challenge_deadline: new Date(Date.now() - 1000).toISOString() });
-    const chain = makeChain({ data: claim, error: null });
-    chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
-    mockSupabase.from.mockReturnValue(chain);
-
-    const result = await challengeContinuity({
-      continuity_id: 'ep_ix_aabbccdd',
-      challenger_type: 'public',
-      reason: 'bad faith',
-    });
-
-    expect(result.error).toBe('Challenge window has expired');
-    expect(result.status).toBe(410);
-  });
-
-  it('creates challenge and updates claim status', async () => {
-    const claim = makeClaim();
-    const challenge = { challenge_id: 'ep_ch_xyz', status: 'open' };
-    const auditChain = makeChain({ data: null, error: null });
-    auditChain.insert = vi.fn().mockResolvedValue({ data: null, error: null });
-
-    let callCount = 0;
-    mockSupabase.from.mockImplementation((table) => {
-      callCount++;
-      if (callCount === 1) {
-        // claim lookup
-        const chain = makeChain({ data: claim, error: null });
-        chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
-        return chain;
-      }
-      if (callCount === 2) {
-        // rate limit: count open challenges
-        const chain = makeChain({ data: null, error: null, count: 0 });
-        chain.in = vi.fn().mockReturnThis();
-        return chain;
-      }
-      if (callCount === 3) {
-        // ownership graph: entities owned by principal
-        const chain = makeChain({ data: [], error: null });
-        return chain;
-      }
-      if (callCount === 4) {
-        // challenge insert
-        const chain = makeChain({ data: challenge, error: null });
-        chain.insert = vi.fn().mockReturnThis();
-        chain.select = vi.fn().mockReturnThis();
-        chain.single = vi.fn().mockResolvedValue({ data: challenge, error: null });
-        return chain;
-      }
-      if (callCount === 5) {
-        // update claim
-        const chain = makeChain({ data: null, error: null });
-        chain.update = vi.fn().mockReturnThis();
-        chain.eq = vi.fn().mockReturnThis();
-        return chain;
-      }
-      return auditChain;
-    });
-
-    const result = await challengeContinuity({
-      continuity_id: 'ep_ix_aabbccdd',
-      challenger_type: 'operator',
-      challenger_id: 'op_1',
-      reason: 'evidence of fraud',
-    });
-
-    expect(result.challenge).toEqual(challenge);
-  });
-
-  it('fails closed (503) when the open-challenge count is indeterminate', async () => {
-    // A stripped/mangled Content-Range leaves postgrest count = null. `null >= 5`
-    // is false, so the old code silently skipped the anti-abuse cap and let the
-    // challenge through. Now it must refuse rather than disable the limit.
-    const claim = makeClaim();
-    let callCount = 0;
-    mockSupabase.from.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        const chain = makeChain({ data: claim, error: null });
-        chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
-        return chain;
-      }
-      // rate-limit count query: successful response, but count is null
-      const chain = makeChain({ data: null, error: null, count: null });
-      chain.in = vi.fn().mockReturnThis();
-      return chain;
-    });
-
-    const result = await challengeContinuity({
-      continuity_id: 'ep_ix_aabbccdd',
-      challenger_type: 'operator',
-      challenger_id: 'op_1',
-      reason: 'evidence of fraud',
-    });
-
-    expect(result.status).toBe(503);
-    expect(callCount).toBe(2); // stopped before ownership lookup / insert
-  });
-
-  it('fails closed when ownership lookup is unavailable', async () => {
-    const claim = makeClaim();
-    let callCount = 0;
-    mockSupabase.from.mockImplementation((table) => {
-      callCount++;
-      if (callCount === 1) {
-        const chain = makeChain({ data: claim, error: null });
-        chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
-        return chain;
-      }
-      if (callCount === 2) {
-        const chain = makeChain({ data: null, error: null, count: 0 });
-        chain.in = vi.fn().mockReturnThis();
-        return chain;
-      }
-      const chain = makeChain({ data: null, error: { message: 'ownership lookup timeout' } });
-      return chain;
-    });
-
-    const result = await challengeContinuity({
-      continuity_id: claim.continuity_id,
-      challenger_type: 'operator',
-      challenger_id: 'owned-delegate',
-      reason: 'evidence of fraud',
-    });
-
-    expect(result.status).toBe(503);
-    expect(result.error).toContain('ownership');
+    expect(result.status).toBe(400);
+    expect(result.error).toContain('evidence');
+    expect(mockSupabase.from).not.toHaveBeenCalled();
   });
 });
 
 // ── resolveContinuity ─────────────────────────────────────────────────────────
 
 describe('resolveContinuity', () => {
-  it('returns 404 when claim not found', async () => {
-    const chain = makeChain({ data: null, error: null });
-    chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
-    mockSupabase.from.mockReturnValue(chain);
-
-    const result = await resolveContinuity('nonexistent', 'approved_full', [], 'op_1');
-    expect(result.error).toBe('Continuity claim not found');
-    expect(result.status).toBe(404);
-  });
-
-  it('returns 409 when claim already resolved', async () => {
-    const claim = makeClaim({ status: 'approved_full' });
-    const chain = makeChain({ data: claim, error: null });
-    chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
-    mockSupabase.from.mockReturnValue(chain);
-
-    const result = await resolveContinuity('ep_ix_aabbccdd', 'approved_full', [], 'op_1');
-    expect(result.error).toContain('already resolved');
-    expect(result.status).toBe(409);
-  });
-
-  it('records decision and returns resolved result', async () => {
-    const claim = makeClaim({ status: 'pending' });
-    const auditChain = makeChain({ data: null, error: null });
-    auditChain.insert = vi.fn().mockResolvedValue({ data: null, error: null });
-    auditChain.update = vi.fn().mockReturnThis();
-    auditChain.eq = vi.fn().mockReturnThis();
-
-    let callCount = 0;
-    mockSupabase.from.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        const chain = makeChain({ data: claim, error: null });
-        chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
-        return chain;
-      }
-      return auditChain;
-    });
-
-    const result = await resolveContinuity('ep_ix_aabbccdd', 'approved_full', ['verified identity'], 'op_1');
-    expect(result.continuity_id).toBe('ep_ix_aabbccdd');
-    expect(result.decision).toBe('approved_full');
-    expect(result.resolved_at).toBeDefined();
-  });
-
-  it('links entity to principal when decision starts with approved', async () => {
-    const claim = makeClaim({ status: 'under_challenge' });
-    const auditChain = makeChain({ data: null, error: null });
-    auditChain.insert = vi.fn().mockResolvedValue({ data: null, error: null });
-    auditChain.update = vi.fn().mockReturnThis();
-    auditChain.eq = vi.fn().mockReturnThis();
-
-    let callCount = 0;
-    mockSupabase.from.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        const chain = makeChain({ data: claim, error: null });
-        chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
-        return chain;
-      }
-      return auditChain;
-    });
-
-    const result = await resolveContinuity('ep_ix_aabbccdd', 'approved_partial', [], 'op_1');
-    expect(result.decision).toBe('approved_partial');
+  it.each([
+    ['', 'approved_full', [], 'operator', 'continuity_id'],
+    ['ep_ix_aabbccdd', 'unsupported', [], 'operator', 'decision'],
+    ['ep_ix_aabbccdd', 'approved_full', {} as any, 'operator', 'reasoning'],
+    ['ep_ix_aabbccdd', 'approved_full', [], '', 'operator'],
+  ])('rejects malformed resolution before database access', async (
+    continuityId,
+    decision,
+    reasoning,
+    operatorId,
+    expected,
+  ) => {
+    const result = await resolveContinuity(continuityId, decision, reasoning, operatorId);
+    expect(result.status).toBe(400);
+    expect(result.error).toContain(expected);
+    expect(mockSupabase.from).not.toHaveBeenCalled();
   });
 });
 
@@ -831,14 +567,23 @@ describe('emitAudit', () => {
     expect(mockSupabase.from).toHaveBeenCalledWith('audit_events');
   });
 
-  it('silently swallows errors (fire-and-forget)', async () => {
+  it('does not report a false mutation failure after a legacy state write committed', async () => {
     mockSupabase.from.mockImplementation(() => {
       throw new Error('DB down');
     });
 
-    // Should NOT throw — audit failures are silent
     await expect(
       emitAudit('test.event', 'actor', 'operator', 'target', 't_1', 'action', null, {})
-    ).resolves.not.toThrow();
+    ).resolves.toBeUndefined();
+  });
+
+  it('does not throw a retry-inducing error for a database-returned audit failure', async () => {
+    const insertChain = makeChain({ data: null, error: null });
+    insertChain.insert = vi.fn().mockResolvedValue({ data: null, error: { message: 'audit denied' } });
+    mockSupabase.from.mockReturnValue(insertChain);
+
+    await expect(
+      emitAudit('test.event', 'actor', 'operator', 'target', 't_1', 'action', null, {})
+    ).resolves.toBeUndefined();
   });
 });

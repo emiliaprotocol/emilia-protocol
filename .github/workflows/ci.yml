@@ -1313,6 +1313,7 @@ jobs:
           tests/rollout-attempt-role-graph-postgres.test.ts
           tests/history-reconciliation-forward-postgres.test.ts
           tests/capability-action-fence-migration-chain-postgres.test.ts
+          tests/identity-continuity-atomic-postgres.integration.test.ts
         env:
           INTEGRATION_POSTGRES: '1'
           PGHOST: localhost

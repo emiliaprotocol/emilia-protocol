@@ -18,6 +18,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import { authenticateRequest, authEntityId } from './supabase.js';
+import { isObserveScoped, isServerMarkedObserveScope } from './auth/observe-scope.js';
 import { resolveVerifiedAuthStrength } from './auth-strength.js';
 import { resolveAuthorizedOrg } from './tenant-binding.js';
 import { getGuardedClient } from './write-guard.js';
@@ -93,6 +94,27 @@ export async function runGuardPrecheck(request: Request, spec: GuardPrecheckSpec
     )) as ReadLimitedJsonResult;
     if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
     const body: any = parsed.value;
+
+    // Defense in depth for the public pilot: authenticateRequest owns the
+    // route-level allowlist, while the adapter owns the parsed action mode.
+    // Even a mocked/bypassed authenticator or a stale pilot row carrying
+    // write/admin cannot turn the observe credential into an enforce-mode
+    // receipt issuer.
+    if (isObserveScoped(auth)) {
+      const permissions = Array.isArray(auth.permissions) ? auth.permissions : [];
+      const pilotMode = resolveGuardEnforcementMode(body, ENFORCEMENT_MODES.ENFORCE);
+      if (
+        !isServerMarkedObserveScope(auth)
+        || !permissions.includes('observe')
+        || pilotMode !== ENFORCEMENT_MODES.OBSERVE
+      ) {
+        return epProblem(
+          403,
+          'insufficient_permissions',
+          'Observe-mode pilot keys may issue only observe-mode prechecks.',
+        );
+      }
+    }
 
     // ── Tenant binding: derive org from the AUTHENTICATED entity, not the body.
     // Prevents an authenticated caller from scoping receipts to another org by
@@ -231,7 +253,15 @@ export async function runGuardPrecheck(request: Request, spec: GuardPrecheckSpec
     });
 
     let receipt_status = 'issued';
-    if (decision.signoffRequired && decision.decision === GUARD_DECISIONS.ALLOW_WITH_SIGNOFF) {
+    if (mode === ENFORCEMENT_MODES.OBSERVE) {
+      const observedPolicyDecision = decision.observed_decision || decision.decision;
+      receipt_status = observedPolicyDecision === GUARD_DECISIONS.DENY
+        ? 'denied'
+        : (observedPolicyDecision === GUARD_DECISIONS.ALLOW
+            || observedPolicyDecision === GUARD_DECISIONS.ALLOW_WITH_SIGNOFF
+            ? 'observed'
+            : 'indeterminate');
+    } else if (decision.signoffRequired && decision.decision === GUARD_DECISIONS.ALLOW_WITH_SIGNOFF) {
       receipt_status = 'pending_signoff';
     } else if (decision.decision === GUARD_DECISIONS.DENY) {
       receipt_status = 'denied';
@@ -331,7 +361,9 @@ export async function runGuardPrecheck(request: Request, spec: GuardPrecheckSpec
       evidence_status: evidenceStatus,
       aml_history_status: amlHistoryStatus,
       reasons: decision.reasons,
-      next_step: receipt_status === 'pending_signoff'
+      next_step: mode === ENFORCEMENT_MODES.OBSERVE
+        ? 'Observation recorded. No authorization was issued and no consume step is available.'
+        : receipt_status === 'pending_signoff'
         ? 'POST /api/v1/signoffs/request with this receipt_id'
         : receipt_status === 'denied'
         ? 'Action denied. See reasons.'

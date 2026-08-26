@@ -195,6 +195,43 @@ describe('consumeSignoff — RPC and happy path', () => {
       .rejects.toMatchObject({ code: 'DB_ERROR', status: 500 });
   });
 
+  it.each([
+    ['SIGNOFF_ATTESTATION_NOT_FOUND', 'ATTESTATION_NOT_FOUND', 404],
+    ['SIGNOFF_CHALLENGE_NOT_FOUND', 'CHALLENGE_NOT_FOUND', 404],
+    ['SIGNOFF_HANDSHAKE_NOT_FOUND', 'HANDSHAKE_NOT_FOUND', 404],
+    ['SIGNOFF_HANDSHAKE_NOT_VERIFIED', 'INVALID_HANDSHAKE_STATE', 409],
+    ['SIGNOFF_HANDSHAKE_NOT_VERIFICATION_FINALIZED', 'HANDSHAKE_NOT_VERIFICATION_FINALIZED', 409],
+    ['SIGNOFF_HANDSHAKE_EXPIRED', 'SIGNOFF_HANDSHAKE_EXPIRED', 410],
+    ['SIGNOFF_CHALLENGE_NOT_CONSUMABLE', 'INVALID_CHALLENGE_STATE', 409],
+    ['SIGNOFF_CHALLENGE_EXPIRED', 'SIGNOFF_CHALLENGE_EXPIRED', 410],
+    ['SIGNOFF_BINDING_NOT_FOUND', 'BINDING_NOT_FOUND', 404],
+    ['SIGNOFF_BINDING_EXPIRED', 'BINDING_EXPIRED', 410],
+    ['SIGNOFF_BINDING_NOT_VERIFICATION_FINALIZED', 'BINDING_NOT_VERIFICATION_FINALIZED', 409],
+    ['SIGNOFF_AUTHORITY_ALREADY_CONSUMED', 'AUTHORITY_ALREADY_CONSUMED', 409],
+    ['SIGNOFF_CHALLENGE_OUTLIVES_BINDING', 'CHALLENGE_OUTLIVES_BINDING', 409],
+    ['SIGNOFF_CHALLENGE_POLICY_MISMATCH', 'SIGNOFF_CHALLENGE_POLICY_MISMATCH', 409],
+    ['SIGNOFF_PINNED_POLICY_UNAVAILABLE', 'SIGNOFF_PINNED_POLICY_UNAVAILABLE', 409],
+    ['SIGNOFF_POLICY_HASH_UNVERIFIABLE', 'SIGNOFF_POLICY_HASH_UNVERIFIABLE', 409],
+    ['SIGNOFF_POLICY_HASH_MISMATCH', 'SIGNOFF_POLICY_HASH_MISMATCH', 409],
+    ['SIGNOFF_AUTHORITY_INVALID_OR_REVOKED', 'SIGNOFF_AUTHORITY_INVALID_OR_REVOKED', 403],
+    ['SIGNOFF_CEREMONY_EVIDENCE_INVALID', 'SIGNOFF_CEREMONY_EVIDENCE_INVALID', 409],
+    ['SIGNOFF_ATTESTATION_NOT_CONSUMABLE', 'INVALID_ATTESTATION_STATE', 409],
+    ['SIGNOFF_ATTESTATION_EXPIRED', 'SIGNOFF_ATTESTATION_EXPIRED', 410],
+    ['SIGNOFF_ATTESTATION_OUTLIVES_BINDING', 'ATTESTATION_OUTLIVES_BINDING', 409],
+    ['SIGNOFF_ATTESTATION_BINDING_MISMATCH', 'BINDING_HASH_MISMATCH', 409],
+    ['SIGNOFF_ATTESTATION_ACTOR_MISMATCH', 'FORBIDDEN', 403],
+    ['SIGNOFF_EXECUTION_REF_REQUIRED', 'MISSING_EXECUTION_REF', 400],
+  ])('maps atomic RPC error %s to %s/%s', async (message, code, status) => {
+    const supabase = makeMockSupabase({
+      attestation: validAttestation(),
+      rpcError: { message },
+    });
+    mockGetServiceClient.mockReturnValue(supabase);
+
+    await expect(consumeSignoff(validParams()))
+      .rejects.toMatchObject({ code, status });
+  });
+
   it('throws ALREADY_CONSUMED when RPC returns unique constraint error (23505)', async () => {
     const attestation = validAttestation();
     const supabase = makeMockSupabase({
@@ -259,16 +296,17 @@ describe('consumeSignoff — RPC and happy path', () => {
     delete params.bindingHash;
     const result = await consumeSignoff(params);
     expect(result.signoff_id).toBe('sig-1');
+    expect(result.binding_hash).toBe('sha256-from-attestation');
   });
 
-  it('allows consumption when expires_at is null (no expiry)', async () => {
+  it('fails closed when expires_at is null', async () => {
     const attestation = validAttestation({ expires_at: null });
-    const rpcData = { consumed_at: new Date().toISOString(), consumption_id: 'cons-004' };
-    const supabase = makeMockSupabase({ attestation, rpcData });
+    const supabase = makeMockSupabase({ attestation });
     mockGetServiceClient.mockReturnValue(supabase);
 
-    const result = await consumeSignoff(validParams());
-    expect(result.signoff_id).toBe('sig-1');
+    await expect(consumeSignoff(validParams()))
+      .rejects.toMatchObject({ code: 'SIGNOFF_ATTESTATION_EXPIRED', status: 410 });
+    expect(supabase.rpc).not.toHaveBeenCalled();
   });
 });
 

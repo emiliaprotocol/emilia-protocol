@@ -416,6 +416,10 @@ export const contract = {
     definerRpcsServiceRoleOnly: [
         'rotate_api_key_atomic', 'create_handshake_atomic', 'consume_handshake_atomic',
         'consume_signoff_atomic', 'approve_attestation_atomic', 'issue_challenge_atomic',
+        'deny_challenge_atomic', 'revoke_challenge_atomic', 'revoke_attestation_atomic',
+        'revoke_handshake_atomic', 'expire_challenge_atomic', 'expire_attestation_atomic',
+        'file_continuity_claim_atomic', 'challenge_continuity_atomic',
+        'resolve_continuity_atomic', 'reconcile_continuity_dispute_atomic',
         'present_handshake_writes', 'verify_handshake_writes', 'resolve_authenticated_actor',
         'bulk_update_receipt_anchors', 'create_test_fixtures',
         'admin_begin_key_rotation', 'admin_complete_key_rotation',

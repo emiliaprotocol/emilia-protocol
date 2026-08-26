@@ -6,7 +6,8 @@
  * creates the attestation record, and updates the challenge status.
  *
  * All writes go through getServiceClient() (lib-only).
- * Event-first ordering: log event BEFORE state change.
+ * The database RPC locks and revalidates the challenge before committing the
+ * attestation, lifecycle event, and challenge state together.
  *
  * @license Apache-2.0
  */
@@ -35,6 +36,7 @@ interface CreateAttestationParams {
   channel?: string | null;
   expiresAt?: string | null;
   attestationHash?: string | null;
+  ceremonyEvidenceId?: string | null;
   metadata?: Record<string, unknown>;
   actor?: { entity_id?: string } | null;
 }
@@ -52,6 +54,9 @@ interface CreateAttestationParams {
  * @param params.channel - Channel through which attestation was made
  * @param params.expiresAt - ISO-8601 attestation expiry deadline
  * @param params.attestationHash - Hash of the attestation payload
+ * @param params.ceremonyEvidenceId - One-time evidence row written by a
+ * server-verified ceremony producer. It is never accepted from the legacy
+ * public JSON attest route.
  * @param params.metadata - Additional metadata
  * @param params.actor - Authenticated accountable actor
  * @returns The created attestation record
@@ -67,6 +72,7 @@ export async function createAttestation({
   channel = null,
   expiresAt = null,
   attestationHash = null,
+  ceremonyEvidenceId = null,
   metadata = {},
 }: CreateAttestationParams): Promise<any> {
   // ── Validate inputs ──
@@ -86,6 +92,14 @@ export async function createAttestation({
     throw new SignoffError(
       `assuranceLevel must be one of: ${SIGNOFF_ASSURANCE_LEVELS.join(', ')}`,
       400, 'INVALID_ASSURANCE_LEVEL',
+    );
+  }
+  if (!ceremonyEvidenceId
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ceremonyEvidenceId)) {
+    throw new SignoffError(
+      'A valid server-verified ceremonyEvidenceId is required',
+      409,
+      'SIGNOFF_CEREMONY_EVIDENCE_REQUIRED',
     );
   }
 
@@ -232,11 +246,92 @@ export async function createAttestation({
       p_channel: channel,
       p_expires_at: resolvedExpiresAt,
       p_attestation_hash: serverComputedAttestationHash,
-      p_metadata_json: metadata,
+      p_metadata_json: {
+        ...metadata,
+        ceremony_evidence_id: ceremonyEvidenceId,
+      },
     },
   );
 
   if (rpcError) {
+    const rpcMessage = [rpcError.message, rpcError.details, rpcError.hint, rpcError.code]
+      .filter((value) => typeof value === 'string')
+      .join(' ');
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_NOT_FOUND')) {
+      throw new SignoffError('Challenge not found', 404, 'CHALLENGE_NOT_FOUND');
+    }
+    if (rpcMessage.includes('SIGNOFF_HANDSHAKE_NOT_FOUND')) {
+      throw new SignoffError('Handshake not found', 404, 'HANDSHAKE_NOT_FOUND');
+    }
+    if (rpcMessage.includes('SIGNOFF_HANDSHAKE_NOT_VERIFIED')) {
+      throw new SignoffError('Handshake is no longer verified', 409, 'INVALID_HANDSHAKE_STATE');
+    }
+    if (rpcMessage.includes('SIGNOFF_HANDSHAKE_NOT_VERIFICATION_FINALIZED')) {
+      throw new SignoffError('Handshake verification was not finalized', 409, 'HANDSHAKE_NOT_VERIFICATION_FINALIZED');
+    }
+    if (rpcMessage.includes('SIGNOFF_HANDSHAKE_EXPIRED')) {
+      throw new SignoffError('Handshake has expired', 410, 'SIGNOFF_HANDSHAKE_EXPIRED');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_NOT_ATTESTABLE')) {
+      throw new SignoffError('Challenge is no longer attestable', 409, 'INVALID_CHALLENGE_STATE');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_EXPIRED')) {
+      throw new SignoffError('Challenge has expired', 410, 'SIGNOFF_CHALLENGE_EXPIRED');
+    }
+    if (rpcMessage.includes('SIGNOFF_BINDING_NOT_FOUND')) {
+      throw new SignoffError('Handshake binding not found', 404, 'BINDING_NOT_FOUND');
+    }
+    if (rpcMessage.includes('SIGNOFF_BINDING_EXPIRED')) {
+      throw new SignoffError('Handshake binding has expired', 410, 'BINDING_EXPIRED');
+    }
+    if (rpcMessage.includes('SIGNOFF_BINDING_NOT_VERIFICATION_FINALIZED')) {
+      throw new SignoffError('Handshake binding was not finalized by verification', 409, 'BINDING_NOT_VERIFICATION_FINALIZED');
+    }
+    if (rpcMessage.includes('SIGNOFF_AUTHORITY_ALREADY_CONSUMED')) {
+      throw new SignoffError('Handshake authority has already been consumed', 409, 'AUTHORITY_ALREADY_CONSUMED');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_OUTLIVES_BINDING')) {
+      throw new SignoffError('Challenge exceeds its authority binding window', 409, 'CHALLENGE_OUTLIVES_BINDING');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_BINDING_MISMATCH')) {
+      throw new SignoffError('Challenge authorization binding changed', 409, 'BINDING_HASH_MISMATCH');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_ACTOR_MISMATCH')) {
+      throw new SignoffError('Only the accountable actor can attest', 403, 'SIGNOFF_ACTOR_MISMATCH');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_POLICY_MISMATCH')) {
+      throw new SignoffError('Challenge no longer matches its pinned policy', 409, 'SIGNOFF_CHALLENGE_POLICY_MISMATCH');
+    }
+    if (rpcMessage.includes('SIGNOFF_PINNED_POLICY_UNAVAILABLE')) {
+      throw new SignoffError('Pinned signoff policy is unavailable', 409, 'SIGNOFF_PINNED_POLICY_UNAVAILABLE');
+    }
+    if (rpcMessage.includes('SIGNOFF_POLICY_HASH_UNVERIFIABLE')) {
+      throw new SignoffError('Pinned policy rules cannot be hashed in the protocol profile', 409, 'SIGNOFF_POLICY_HASH_UNVERIFIABLE');
+    }
+    if (rpcMessage.includes('SIGNOFF_POLICY_HASH_MISMATCH')) {
+      throw new SignoffError('Pinned policy rules changed after handshake verification', 409, 'SIGNOFF_POLICY_HASH_MISMATCH');
+    }
+    if (rpcMessage.includes('SIGNOFF_AUTHORITY_INVALID_OR_REVOKED')) {
+      throw new SignoffError('Accountable approver authority is invalid or revoked', 403, 'SIGNOFF_AUTHORITY_INVALID_OR_REVOKED');
+    }
+    if (rpcMessage.includes('SIGNOFF_CEREMONY_EVIDENCE_REQUIRED')) {
+      throw new SignoffError('Server-verified ceremony evidence is required', 409, 'SIGNOFF_CEREMONY_EVIDENCE_REQUIRED');
+    }
+    if (rpcMessage.includes('SIGNOFF_CEREMONY_EVIDENCE_INVALID')) {
+      throw new SignoffError('Ceremony evidence is invalid, expired, or already used', 409, 'SIGNOFF_CEREMONY_EVIDENCE_INVALID');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_METHOD_NOT_ALLOWED')) {
+      throw new SignoffError('Authentication method is no longer allowed', 403, 'METHOD_NOT_ALLOWED');
+    }
+    if (rpcMessage.includes('SIGNOFF_CHALLENGE_ASSURANCE_INSUFFICIENT')) {
+      throw new SignoffError('Assurance level no longer meets the challenge', 403, 'ASSURANCE_BELOW_MINIMUM');
+    }
+    if (rpcMessage.includes('SIGNOFF_ATTESTATION_EXPIRY_INVALID')) {
+      throw new SignoffError('Attestation expiry is outside the challenge window', 410, 'SIGNOFF_CHALLENGE_EXPIRED');
+    }
+    if (rpcMessage.includes('SIGNOFF_ATTESTATION_MATERIAL_INVALID')) {
+      throw new SignoffError('Attestation channel and hash are required', 400, 'INVALID_ATTESTATION_MATERIAL');
+    }
     throw new SignoffError(`Failed to create attestation: ${rpcError.message}`, 500, 'DB_ERROR');
   }
 

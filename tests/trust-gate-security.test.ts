@@ -114,6 +114,41 @@ beforeEach(() => {
 });
 
 describe('POST /api/trust/gate security boundary', () => {
+  it.each([
+    {
+      name: 'delegation agent is not the authenticated caller',
+      delegation: {
+        valid: true,
+        action_permitted: true,
+        agent_entity_id: 'different-agent',
+        principal_id: 'target-entity',
+      },
+    },
+    {
+      name: 'delegation principal is not the requested entity',
+      delegation: {
+        valid: true,
+        action_permitted: true,
+        agent_entity_id: 'caller-1',
+        principal_id: 'different-principal',
+      },
+    },
+  ])('STRIX-21: refuses cross-entity allow-commit issuance when $name', async ({ delegation }) => {
+    mocks.verifyDelegation.mockResolvedValue(delegation);
+
+    const response = await POST(request({
+      entity_id: 'target-entity',
+      action: 'transact',
+      delegation_id: 'delegation-for-someone-else',
+    }));
+    const body = await response.json();
+
+    expect(body.decision).toBe('deny');
+    expect(body.commit_ref).toBeUndefined();
+    expect(body.reasons.join(' ')).toMatch(/delegation principal\/agent does not match/i);
+    expect(mocks.protocolWrite).not.toHaveBeenCalled();
+  });
+
   it('refuses when commit issuance fails instead of returning an unbacked allow', async () => {
     mocks.protocolWrite.mockRejectedValue(new Error('database unavailable'));
 

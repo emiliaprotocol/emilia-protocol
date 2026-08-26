@@ -144,6 +144,26 @@ describe('tenant-scoped Guard receipt dashboard', () => {
     expect(receipts[0].status).toBe('issued');
   });
 
+  it('never replays a historical observe receipt as consumed authority', () => {
+    const receipts = replayGuardReceipts([
+      {
+        event_type: 'guard.trust_receipt.created', target_id: 'observed', tenant_id: 'tenant_a',
+        environment: 'production', created_at: '2026-08-26T00:00:00Z',
+        after_state: {
+          organization_id: 'tenant_a', decision: 'observe', observed_decision: 'deny',
+          enforcement_mode: 'observe', receipt_status: 'issued',
+        },
+      },
+      {
+        event_type: 'guard.trust_receipt.consumed', target_id: 'observed', tenant_id: 'tenant_a',
+        environment: 'production', after_state: {}, created_at: '2026-08-26T00:01:00Z',
+      },
+    ], ['observed'], 'tenant_a', 'production');
+
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0].status).toBe('denied');
+  });
+
   it('bounds and date-scopes the tenant-owned receipt prequery', async () => {
     const firstCalls = [];
     const supabase = {

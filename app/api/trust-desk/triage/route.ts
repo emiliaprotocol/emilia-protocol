@@ -21,13 +21,18 @@ import { extractQuestions, ExtractionUnsupportedError } from '@/lib/trust-desk/e
 import { classifyQuestions, BUCKET } from '@/lib/trust-desk/classifier';
 import { enforceBodyByteLimit } from '@/lib/http/body-limit';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import {
+  assertQuestionnaireWithinBudget,
+  createTrustDeskLlmBudget,
+  TRUST_DESK_PUBLIC_LLM_LIMITS,
+  TrustDeskResourceLimitError,
+} from '@/lib/trust-desk/resource-budget';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_ENVELOPE_BYTES = MAX_BYTES + 1024 * 1024;
-
 /** How each classifier bucket is presented. Wording is deliberately plain. */
 const PRESENTATION: Record<string, { group: string; label: string; note: string }> = {
   [BUCKET.SOC2_OVERLAP]: {
@@ -58,7 +63,10 @@ const PRESENTATION: Record<string, { group: string; label: string; note: string 
 };
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const limited = await checkRateLimit(`ip:${getClientIP(request)}`, 'submit');
+  // Includes rate limiting, body parsing, and extraction in the wall-clock
+  // envelope rather than granting the classifier a fresh 50 seconds afterward.
+  const llmBudget = createTrustDeskLlmBudget(TRUST_DESK_PUBLIC_LLM_LIMITS);
+  const limited = await checkRateLimit(`ip:${getClientIP(request)}`, 'trust_desk_triage');
   if (!limited.allowed) {
     const response = epProblem(429, 'rate_limited', 'Too many questionnaire triage requests');
     response.headers.set('retry-after', String(Math.max(1, Number(limited.reset) || 60)));
@@ -124,8 +132,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
   }
 
+  try {
+    assertQuestionnaireWithinBudget(extraction.questions);
+  } catch (err) {
+    if (err instanceof TrustDeskResourceLimitError) {
+      return epProblem(422, 'questionnaire_budget_exceeded', err.message);
+    }
+    throw err;
+  }
+
   // Classification only. Nothing is answered and nothing is stored.
-  const classified = await classifyQuestions(extraction.questions, {});
+  const classified = await classifyQuestions(extraction.questions, {}, {
+    llmBudget,
+  });
 
   const groups: Record<string, { label: string; note: string; count: number; examples: string[] }> = {};
   for (const q of classified) {

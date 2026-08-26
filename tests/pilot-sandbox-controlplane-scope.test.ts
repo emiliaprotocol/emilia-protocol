@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect } from 'vitest';
-import { isObserveScoped, refuseObserveScope } from '../lib/auth/observe-scope.js';
+import {
+  isObserveScoped,
+  isServerMarkedObserveScope,
+  refuseObserveScope,
+} from '../lib/auth/observe-scope.js';
 
 const epProblem = (status, code, detail) => ({ status, code, detail });
 
@@ -45,6 +49,8 @@ describe('observe-scope control-plane guard', () => {
   it('flags current and legacy pilot identities', () => {
     expect(isObserveScoped(pilotAuth)).toBe(true);
     expect(isObserveScoped(legacyPilotAuth)).toBe(true);
+    expect(isServerMarkedObserveScope(pilotAuth)).toBe(true);
+    expect(isServerMarkedObserveScope(legacyPilotAuth)).toBe(false);
   });
 
   it('does not flag a real tenant or an unrelated entity with a partial shape', () => {

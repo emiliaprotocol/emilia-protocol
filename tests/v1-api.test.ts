@@ -604,7 +604,14 @@ describe('POST /api/v1/trust-receipts', () => {
 
   it('downgrades to observe in observe mode', async () => {
     authedAs('user_1');
-    mockGetGuardedClient.mockReturnValue(makeSupabase({ audit_events: { resolve: { data: null, error: null } } }));
+    const auditInsert = vi.fn().mockResolvedValue({ data: null, error: null });
+    const client = makeSupabase({ audit_events: { resolve: { data: null, error: null } } });
+    client.from.mockImplementation((table) => {
+      const chain = makeChain({ data: null, error: null });
+      if (table === 'audit_events') chain.insert = auditInsert;
+      return chain;
+    });
+    mockGetGuardedClient.mockReturnValue(client);
     const res = await createReceipt(req({
       organization_id: 'org_1',
       action_type: 'benefit_bank_account_change',
@@ -616,6 +623,16 @@ describe('POST /api/v1/trust-receipts', () => {
     const body = await res.json();
     expect(body.decision).toBe('observe');
     expect(body.observed_decision).toBe('allow_with_signoff');
+    expect(body.receipt_status).toBe('observed');
+    const createdEvent = auditInsert.mock.calls
+      .map(([event]) => event)
+      .find((event) => event.event_type === 'guard.trust_receipt.created');
+    expect(createdEvent.after_state).toMatchObject({
+      decision: 'observe',
+      observed_decision: 'allow_with_signoff',
+      enforcement_mode: 'observe',
+      receipt_status: 'observed',
+    });
   });
 
   it('honors the documented mode alias for observe', async () => {
@@ -633,6 +650,25 @@ describe('POST /api/v1/trust-receipts', () => {
     expect(body.enforcement_mode).toBe('observe');
     expect(body.decision).toBe('observe');
     expect(body.observed_decision).toBe('allow_with_signoff');
+    expect(body.receipt_status).toBe('observed');
+  });
+
+  it('reports an observed hard deny as denied at creation time', async () => {
+    authedAs('user_1');
+    mockGetGuardedClient.mockReturnValue(makeSupabase({ audit_events: { resolve: { data: null, error: null } } }));
+    const res = await createReceipt(req({
+      organization_id: 'org_1',
+      action_type: 'benefit_bank_account_change',
+      target_resource_id: 'r',
+      target_changed_fields: ['bank_account'],
+      enforcement_mode: 'observe',
+      risk_flags: ['known_compromised_device'],
+    }));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.decision).toBe('observe');
+    expect(body.observed_decision).toBe('deny');
+    expect(body.receipt_status).toBe('denied');
   });
 
   it('rejects unknown enforcement_mode', async () => {
@@ -699,6 +735,109 @@ describe('GET /api/v1/trust-receipts/:id', () => {
     expect(body.receipt_status).toBe('approved_pending_consume');
     expect(body.timeline_event_count).toBe(3);
   });
+
+  it('hides a receipt from a same-organization peer without receipt.read', async () => {
+    authedAs('user_peer', { permissions: ['read', 'write'] });
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: {
+        resolve: {
+          data: [{
+            event_type: 'guard.trust_receipt.created',
+            actor_id: 'user_owner',
+            after_state: {
+              organization_id: 'org_1',
+              action_type: 'benefit_bank_account_change',
+              action_hash: 'a1',
+              expires_at: new Date(Date.now() + 100_000).toISOString(),
+              receipt_status: 'pending_signoff',
+            },
+            created_at: '2026-07-18T00:00:00Z',
+          }],
+          error: null,
+        },
+      },
+    }));
+
+    const res = await readReceipt(req(), {
+      params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }),
+    });
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).type).toContain('receipt_not_found');
+  });
+
+  it('allows a same-organization peer with receipt.read to read the receipt', async () => {
+    authedAs('user_reader', { permissions: ['receipt.read'] });
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: {
+        resolve: {
+          data: [{
+            event_type: 'guard.trust_receipt.created',
+            actor_id: 'user_owner',
+            after_state: {
+              organization_id: 'org_1',
+              action_type: 'benefit_bank_account_change',
+              action_hash: 'a1',
+              expires_at: new Date(Date.now() + 100_000).toISOString(),
+              receipt_status: 'pending_signoff',
+            },
+            created_at: '2026-07-18T00:00:00Z',
+          }],
+          error: null,
+        },
+      },
+    }));
+
+    const res = await readReceipt(req(), {
+      params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }),
+    });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('never replays a historical observe receipt as consumed authority', async () => {
+    authedAs('user_owner');
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: [
+        {
+          event_type: 'guard.trust_receipt.created', actor_id: 'user_owner',
+          after_state: {
+            organization_id: 'org_1', decision: 'observe', observed_decision: 'deny',
+            enforcement_mode: 'observe', receipt_status: 'issued',
+          },
+          created_at: '2026-08-26T00:00:00Z',
+        },
+        { event_type: 'guard.trust_receipt.consumed', after_state: {}, created_at: '2026-08-26T00:01:00Z' },
+      ], error: null } },
+    }));
+
+    const res = await readReceipt(req(), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
+    expect(res.status).toBe(200);
+    expect((await res.json()).receipt_status).toBe('denied');
+  });
+
+  it('lets a least-privilege Cloud receipt.read key read a same-tenant receipt', async () => {
+    mockAuthenticateCloudRequest.mockResolvedValue({
+      tenantId: 'org_1', environment: 'production', permissions: ['receipt.read'], keyId: 'key-reader',
+    });
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: [{
+        event_type: 'guard.trust_receipt.created',
+        actor_id: 'user_owner',
+        after_state: {
+          organization_id: 'org_1', action_type: 'deploy_production', action_hash: 'a1',
+          expires_at: new Date(Date.now() + 100_000).toISOString(), receipt_status: 'pending_signoff',
+        },
+        created_at: '2026-08-26T00:00:00Z',
+      }], error: null } },
+    }));
+
+    const res = await readReceipt(req({}, 'ept_live_reader'), {
+      params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }),
+    });
+
+    expect(res.status).toBe(200);
+  });
 });
 
 // ─── POST /api/v1/trust-receipts/:id/consume ─────────────────────────────
@@ -730,6 +869,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       error: consumeError,
     });
     mockGetGuardedClient.mockReturnValue(client);
+    return client;
   }
 
   function genericQuorumFixture({
@@ -891,6 +1031,70 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
     );
 
     expect(selectAuditEvents).toHaveBeenCalledWith('event_type, actor_id, after_state, created_at');
+    expect(res.status).toBe(200);
+  });
+
+  it('blocks same-organization peer consumption without receipt.consume', async () => {
+    authedAs('user_peer', { permissions: ['read', 'write'] });
+    setupConsume([{
+      event_type: 'guard.trust_receipt.created',
+      actor_id: 'user_owner',
+      after_state: {
+        organization_id: 'org_1',
+        action_hash: 'a',
+        expires_at: new Date(Date.now() + 1e6).toISOString(),
+        signoff_required: false,
+      },
+    }]);
+
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).type).toContain('receipt_not_found');
+  });
+
+  it('allows same-organization peer consumption with receipt.consume', async () => {
+    authedAs('user_executor', { permissions: ['receipt.consume'] });
+    setupConsume([{
+      event_type: 'guard.trust_receipt.created',
+      actor_id: 'user_owner',
+      after_state: {
+        organization_id: 'org_1',
+        action_hash: 'a',
+        expires_at: new Date(Date.now() + 1e6).toISOString(),
+        signoff_required: false,
+      },
+    }]);
+
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  it('lets a least-privilege Cloud receipt.consume key consume a same-tenant receipt', async () => {
+    mockAuthenticateCloudRequest.mockResolvedValue({
+      tenantId: 'org_1', environment: 'production', permissions: ['receipt.consume'], keyId: 'key-consumer',
+    });
+    setupConsume([{
+      event_type: 'guard.trust_receipt.created',
+      actor_id: 'user_owner',
+      after_state: {
+        organization_id: 'org_1', action_type: 'deploy_production', action_hash: 'a',
+        expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: false,
+      },
+    }]);
+
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }, 'ept_live_consumer'),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
     expect(res.status).toBe(200);
   });
 
@@ -1275,6 +1479,31 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
     expect(body.consumed_by_system).toBe('benefits_core');
   });
 
+  it('never converts an observe-mode receipt into an authorization consume record', async () => {
+    authedAs('user_1');
+    const client = setupConsume([{
+      event_type: 'guard.trust_receipt.created',
+      actor_id: 'user_1',
+      after_state: {
+        action_hash: 'a',
+        expires_at: new Date(Date.now() + 1e6).toISOString(),
+        signoff_required: false,
+        decision: 'observe',
+        observed_decision: 'deny',
+        enforcement_mode: 'observe',
+      },
+    }]);
+
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'benefits_core' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).type).toContain('observe_receipt_not_authority');
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['23505', 'trust_receipt_already_consumed', 409, 'receipt_already_consumed'],
     ['28000', 'trust_receipt_expired', 410, 'receipt_expired'],
@@ -1348,6 +1577,128 @@ describe('GET /api/v1/trust-receipts/:id/evidence', () => {
     expect(body.consume.consumed_by_system).toBe('benefits_core');
     expect(body.timeline.length).toBe(4);
     expect(body.schema_version).toBe('ep-guard-evidence-v1');
+  });
+
+  it('does not sign an observed hard deny as authorized even with a historical consume event', async () => {
+    authedAs('user_1');
+    const canonicalAction = {
+      organization_id: 'org_1', actor_id: 'user_1', action_type: 'deploy_production',
+      target_resource_id: 'prod', nonce: 'n', requested_at: '2026-04-26T00:00:00Z',
+    };
+    const events = [
+      {
+        event_type: 'guard.trust_receipt.created', actor_id: 'user_1', actor_type: 'principal',
+        action: 'create', before_state: null, created_at: '2026-04-26T00:00:00Z',
+        after_state: {
+          organization_id: 'org_1', action_type: 'deploy_production', decision: 'observe',
+          observed_decision: 'deny', enforcement_mode: 'observe', policy_id: 'p1', policy_hash: 'h1',
+          action_hash: 'a1', signoff_required: false, receipt_status: 'issued',
+          expires_at: new Date(Date.now() + 1e6).toISOString(), canonical_action: canonicalAction,
+        },
+      },
+      {
+        event_type: 'guard.trust_receipt.consumed', actor_id: 'user_1', created_at: '2026-04-26T00:01:00Z',
+        after_state: { consumed_at: '2026-04-26T00:01:00Z', consumed_by_system: 'legacy' },
+      },
+    ];
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: events, error: null } },
+    }));
+
+    const res = await readEvidence(req(), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.signed).toBe(false);
+    expect(body.document).toBeNull();
+    expect(body.policy).toMatchObject({ decision: 'observe', observed_decision: 'deny' });
+  });
+
+  it('hides evidence from a same-organization peer without receipt.evidence', async () => {
+    authedAs('user_peer', { permissions: ['read', 'write'] });
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: {
+        resolve: {
+          data: [{
+            event_type: 'guard.trust_receipt.created',
+            actor_id: 'user_owner',
+            actor_type: 'principal',
+            action: 'create',
+            before_state: null,
+            after_state: {
+              organization_id: 'org_1',
+              action_type: 'benefit_bank_account_change',
+              action_hash: 'a1',
+              expires_at: new Date(Date.now() + 1e6).toISOString(),
+              signoff_required: true,
+            },
+            created_at: '2026-07-18T00:00:00Z',
+          }],
+          error: null,
+        },
+      },
+    }));
+
+    const res = await readEvidence(req(), {
+      params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }),
+    });
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).type).toContain('receipt_not_found');
+  });
+
+  it('allows a same-organization peer with receipt.evidence to export evidence', async () => {
+    authedAs('user_auditor', { permissions: ['receipt.evidence'] });
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: {
+        resolve: {
+          data: [{
+            event_type: 'guard.trust_receipt.created',
+            actor_id: 'user_owner',
+            actor_type: 'principal',
+            action: 'create',
+            before_state: null,
+            after_state: {
+              organization_id: 'org_1',
+              action_type: 'benefit_bank_account_change',
+              action_hash: 'a1',
+              expires_at: new Date(Date.now() + 1e6).toISOString(),
+              signoff_required: false,
+            },
+            created_at: '2026-07-18T00:00:00Z',
+          }],
+          error: null,
+        },
+      },
+    }));
+
+    const res = await readEvidence(req(), {
+      params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }),
+    });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('lets a least-privilege Cloud receipt.evidence key export same-tenant evidence', async () => {
+    mockAuthenticateCloudRequest.mockResolvedValue({
+      tenantId: 'org_1', environment: 'production', permissions: ['receipt.evidence'], keyId: 'key-auditor',
+    });
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: [{
+        event_type: 'guard.trust_receipt.created', actor_id: 'user_owner', actor_type: 'principal',
+        action: 'create', before_state: null, created_at: '2026-08-26T00:00:00Z',
+        after_state: {
+          organization_id: 'org_1', action_type: 'deploy_production', action_hash: 'a1',
+          expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: false,
+        },
+      }], error: null } },
+    }));
+
+    const res = await readEvidence(req({}, 'ept_live_evidence'), {
+      params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }),
+    });
+
+    expect(res.status).toBe(200);
   });
 
   it('hides another Cloud key payment receipt from evidence export', async () => {
@@ -1986,12 +2337,80 @@ describe('POST /api/v1/trust-receipts/:id/execution', () => {
     expect((await attestExecution(req({ executing_system: 's' }), P)).status).toBe(400);
   });
 
+  it('blocks same-organization peer execution attestation without receipt.execute', async () => {
+    authedAs('peer', { permissions: ['read', 'write'] });
+    timeline([
+      created({ actor_id: 'owner' }),
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+    ]);
+
+    const res = await attestExecution(
+      req({ executed_action: EXECUTED, executing_system: 's' }),
+      P,
+    );
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).type).toContain('receipt_not_found');
+  });
+
+  it('allows same-organization peer execution attestation with receipt.execute', async () => {
+    authedAs('executor', { permissions: ['receipt.execute'] });
+    timeline([
+      created({ actor_id: 'owner' }),
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+    ]);
+
+    const res = await attestExecution(
+      req({ executed_action: EXECUTED, executing_system: 's' }),
+      P,
+    );
+
+    expect(res.status).toBe(201);
+  });
+
+  it('lets a least-privilege Cloud receipt.execute key attest a same-tenant execution', async () => {
+    mockAuthenticateCloudRequest.mockResolvedValue({
+      tenantId: 'org_1', environment: 'production', permissions: ['receipt.execute'], keyId: 'key-executor',
+    });
+    timeline([
+      created({ actor_id: 'owner' }),
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+    ]);
+
+    const res = await attestExecution(
+      req({ executed_action: EXECUTED, executing_system: 's' }, 'ept_live_executor'),
+      P,
+    );
+
+    expect(res.status).toBe(201);
+  });
+
   it('returns 409 when the receipt was never consumed (blocked-until-consume half)', async () => {
     authedAs('sys');
     timeline([created()]);
     const res = await attestExecution(req({ executed_action: EXECUTED, executing_system: 's' }), P);
     expect(res.status).toBe(409);
     expect((await res.json()).detail).toMatch(/consumed/i);
+  });
+
+  it('refuses to use a historical observe receipt as execution authority', async () => {
+    authedAs('sys');
+    timeline([
+      created({ after_state: {
+        enforcement_mode: 'observe',
+        decision: 'observe',
+        observed_decision: 'deny',
+      } }),
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+    ]);
+
+    const res = await attestExecution(
+      req({ executed_action: EXECUTED, executing_system: 's' }),
+      P,
+    );
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).type).toContain('observe_receipt_not_authority');
   });
 
   it('attests a matching execution (binding_status: match)', async () => {

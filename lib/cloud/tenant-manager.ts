@@ -292,8 +292,14 @@ export const TENANT_API_KEY_PERMISSIONS = Object.freeze([
   'admin',
   'policy_rollout',
   'approval_request',
+  'receipt.read',
+  'receipt.evidence',
+  'receipt.consume',
+  'receipt.execute',
 ]);
 const TENANT_API_KEY_PERMISSION_SET = new Set(TENANT_API_KEY_PERMISSIONS);
+const TENANT_API_KEY_PERMISSION_ERROR =
+  `permissions must be a non-empty array containing only ${TENANT_API_KEY_PERMISSIONS.join(', ')}`;
 
 /**
  * Validate and de-duplicate an explicit tenant API-key permission grant.
@@ -303,7 +309,7 @@ const TENANT_API_KEY_PERMISSION_SET = new Set(TENANT_API_KEY_PERMISSIONS);
 export function validateTenantApiKeyPermissions(permissions) {
   if (!Array.isArray(permissions) || permissions.length === 0) {
     return {
-      error: 'permissions must be a non-empty array containing only read, write, admin, policy_rollout, or approval_request',
+      error: TENANT_API_KEY_PERMISSION_ERROR,
       status: 400,
     };
   }
@@ -312,7 +318,7 @@ export function validateTenantApiKeyPermissions(permissions) {
   for (const permission of permissions) {
     if (typeof permission !== 'string' || !TENANT_API_KEY_PERMISSION_SET.has(permission)) {
       return {
-        error: 'permissions must be a non-empty array containing only read, write, admin, policy_rollout, or approval_request',
+        error: TENANT_API_KEY_PERMISSION_ERROR,
         status: 400,
       };
     }

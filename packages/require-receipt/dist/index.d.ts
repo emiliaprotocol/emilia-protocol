@@ -136,12 +136,36 @@ export declare function validateActionRiskManifest(manifest: AnyRecord): {
     ok: boolean;
     errors: string[];
 };
+type ActionRequirementResolution = {
+    status: 'none';
+    action: null;
+} | {
+    status: 'one';
+    action: AnyRecord;
+} | {
+    status: 'ambiguous';
+    action: null;
+    action_ids: string[];
+} | {
+    status: 'conflict';
+    action: null;
+    action_ids: string[];
+};
 /**
- * Find the first manifest entry matching an action selector.
- * Selectors may use { id }, { action_type } / { action }, or protocol fields
- * such as { protocol: 'mcp', tool: 'release_payment' }.
+ * Resolve every identity carried by a selector conjunctively. Independent
+ * selector forms are redundant assertions about one action, never alternatives
+ * where the first manifest entry wins. This makes a selector such as
+ * `{ action_type: 'read.balance', tool: 'release_payment' }` an explicit
+ * conflict instead of a pass-through downgrade.
  */
-export declare function findActionRequirement(manifest: AnyRecord, selector?: Selector): any;
+export declare function resolveActionRequirement(manifest: AnyRecord, selector?: Selector): ActionRequirementResolution;
+/**
+ * Find the single manifest entry consistently named by an action selector.
+ * Selectors may use { id }, { action_type } / { action }, or protocol fields
+ * such as { protocol: 'mcp', tool: 'release_payment' }. When more than one
+ * identity form is present they must all resolve to the same entry.
+ */
+export declare function findActionRequirement(manifest: AnyRecord, selector?: Selector): AnyRecord | null;
 /**
  * Express/Connect middleware: demand a valid EMILIA receipt for the route.
  * @param {object} opts verify options + { action?: string | (req)=>string, statusCode?: 402|428 }
@@ -179,6 +203,7 @@ declare const requireReceiptExports: {
     receiptRequiredHeader: typeof receiptRequiredHeader;
     validateActionRiskManifest: typeof validateActionRiskManifest;
     findActionRequirement: typeof findActionRequirement;
+    resolveActionRequirement: typeof resolveActionRequirement;
     receiptRequiredConformance: typeof receiptRequiredConformance;
     bindExecutorAction: typeof bindExecutorAction;
     bindToolAction: typeof bindToolAction;

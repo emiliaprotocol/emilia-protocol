@@ -9,6 +9,20 @@
 import { authEntityObserveProfile } from '@/lib/auth-projections.js';
 
 /**
+ * True only for the durable, server-written pilot marker. This stricter
+ * predicate is the positive grant boundary; the broader legacy predicate
+ * below exists only so stale pilot identities continue to be denied.
+ */
+export function isServerMarkedObserveScope(auth) {
+  const entity = authEntityObserveProfile(auth);
+  if (!entity) return false;
+  const meta = entity.metadata && typeof entity.metadata === 'object' && !Array.isArray(entity.metadata)
+    ? entity.metadata
+    : null;
+  return meta?.pilot_sandbox === true && meta?.scope === 'observe';
+}
+
+/**
  * Return true for both current and pre-marker pilot identities.
  *
  * Current pilot entities carry metadata.pilot_sandbox/scope. The legacy shape

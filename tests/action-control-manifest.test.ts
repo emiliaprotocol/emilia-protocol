@@ -207,6 +207,14 @@ describe('EP Action Control Manifest v0.2', () => {
       protocol: 'mcp',
       tool: 'release_payment',
     })).toBeNull();
+    expect(resolveActionControl(manifest, {
+      action_type: 'read.status',
+      protocol: 'mcp',
+      tool: 'release_payment',
+    })).toMatchObject({
+      status: 'conflict',
+      action_ids: ['money_movement.release', 'observe.read_status'],
+    });
     expect(findActionControl(manifest, {
       action_type: 'payment.release',
       protocol: 'a2a',

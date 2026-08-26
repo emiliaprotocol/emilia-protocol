@@ -18,6 +18,11 @@
 import { scoreTemplates } from './templates-index.js';
 import { llmJSON, llmAvailable } from './llm.js';
 import { logger } from '../logger.js';
+import {
+  assertQuestionnaireWithinBudget,
+  createTrustDeskLlmBudget,
+  type TrustDeskLlmBudget,
+} from './resource-budget.js';
 
 export const BUCKET = Object.freeze({
   SOC2_OVERLAP: 'soc2_overlap',
@@ -59,7 +64,12 @@ const AI_HINT = /\b(ai|ml|model|llm|gpt|inference|embedding|agent|prompt|rag|fin
 /**
  * Classify a list of questions.
  */
-export async function classifyQuestions(questions: any[], intake: any = {}): Promise<any[]> {
+export async function classifyQuestions(
+  questions: any[],
+  intake: any = {},
+  { llmBudget }: { llmBudget?: TrustDeskLlmBudget } = {},
+): Promise<any[]> {
+  assertQuestionnaireWithinBudget(questions);
   const heuristic = questions.map((q) => ({ ...q, ...heuristicClassify(q) }));
 
   if (!llmAvailable()) {
@@ -68,7 +78,11 @@ export async function classifyQuestions(questions: any[], intake: any = {}): Pro
 
   // LLM-refine only the ambiguous tail (ai_specific / novel) to recover
   // template matches the keyword heuristic missed. Bounded concurrency.
-  const refined = await refineAmbiguous(heuristic, intake);
+  const refined = await refineAmbiguous(
+    heuristic,
+    intake,
+    llmBudget || createTrustDeskLlmBudget(),
+  );
   return refined;
 }
 
@@ -131,7 +145,11 @@ export function heuristicClassify(q: any): any {
 
 // ── LLM refinement ──────────────────────────────────────────────────────────
 
-async function refineAmbiguous(classified: any[], intake: any): Promise<any[]> {
+async function refineAmbiguous(
+  classified: any[],
+  intake: any,
+  llmBudget: TrustDeskLlmBudget,
+): Promise<any[]> {
   const TEMPLATE_IDS = ['ai-data-handling', 'prompt-injection', 'ai-subprocessors',
     'agent-access-control', 'ai-incident-response'];
 
@@ -157,6 +175,7 @@ async function refineAmbiguous(classified: any[], intake: any): Promise<any[]> {
           maxTokens: 150,
           validate: (o) =>
             o && typeof o.bucket === 'string' && Object.values(BUCKET).includes(o.bucket),
+          budget: llmBudget,
         });
         if (res.ok) {
           const matched =

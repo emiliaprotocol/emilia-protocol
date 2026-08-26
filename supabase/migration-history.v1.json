@@ -1,20 +1,24 @@
 {
   "schema_version": "EP-MIGRATION-HISTORY-v1",
-  "as_of": "2026-08-18",
-  "remote_head": "20260809063111",
+  "as_of": "2026-08-26",
+  "remote_head": "20260814070000",
   "private_remote_versions": [
     "20260723192504"
   ],
   "retroactive_pending_versions": [],
   "forward_pending_versions": [
-    "20260813010000",
-    "20260814070000",
-    "20260818090000"
+    "20260818090000",
+    "20260825130000",
+    "20260826010000",
+    "20260826120000",
+    "20260826130000"
   ],
   "deployment_sequence": [
-    "20260813010000",
-    "20260814070000",
-    "20260818090000"
+    "20260818090000",
+    "20260825130000",
+    "20260826010000",
+    "20260826120000",
+    "20260826130000"
   ],
   "requires_include_all": false,
   "remote_versions": [
@@ -214,7 +218,9 @@
     "20260805120000",
     "20260807010000",
     "20260808233000",
-    "20260809063111"
+    "20260809063111",
+    "20260813010000",
+    "20260814070000"
   ],
   "public_files": {
     "001_emilia_core_schema.sql": "f5e3c6c40fdaf54fbfc7a986f1b7cb021bfa8bee21a81bac39fe2da15f654060",
@@ -415,6 +421,10 @@
     "20260809063111_works_records.sql": "1c4bc077bfa7dc4bd3cf5667169db9be91c5ac132cef9f4816e68d403de09aa7",
     "20260813010000_gate_emergency_authority_freeze.sql": "e9261d3635ba1cae7e4b95ba293ce611d4cbe54b472e64444987e4f828df3658",
     "20260814070000_works_authority_records.sql": "71e0bc908fa946c81ffa0083ab1c021bfdbb936729be4d2113470b07699824be",
-    "20260818090000_approver_credential_signature_algorithm.sql": "3935b254545fc52e357e0cb3b05806cb10295dc3537c0b4ceb4cf33f67da8aba"
+    "20260818090000_approver_credential_signature_algorithm.sql": "3935b254545fc52e357e0cb3b05806cb10295dc3537c0b4ceb4cf33f67da8aba",
+    "20260825130000_receipt_api_key_permissions.sql": "4d6a23bf025fc1a6ae21401fa185a5f8f406ac41f43fd3117fbcbb10e80c1f65",
+    "20260826010000_pilot_observe_permission.sql": "534c56daf65a00ec2f8057a2d8f7625825b4cb92adf59ae53816fc922bd9a2b0",
+    "20260826120000_signoff_atomic_state_locks.sql": "f07b9773966c94a60e09c7d3ff88eae64d7b585c2eb6ec60a111cb5be9ef8d2f",
+    "20260826130000_continuity_challenge_atomic.sql": "c56cecfb4ac7abba1413d15212d6b762e9bfd3ab4b713bdc8bf7da2bef6836f8"
   }
 }

@@ -16,6 +16,8 @@ import {
   createEnvironment,
   listEnvironments,
   generateApiKey,
+  TENANT_API_KEY_PERMISSIONS,
+  validateTenantApiKeyPermissions,
   listApiKeys,
   revokeApiKey,
   resolveApiKey,
@@ -554,9 +556,7 @@ describe('generateApiKey', () => {
     );
 
     expect(result).toMatchObject({ status: 400 });
-    expect(result.error).toMatch(
-      /read, write, admin, policy_rollout, or approval_request/,
-    );
+    expect(result.error).toContain(TENANT_API_KEY_PERMISSIONS.join(', '));
     expect(getServiceClient).not.toHaveBeenCalled();
   });
 
@@ -639,6 +639,48 @@ describe('generateApiKey', () => {
     expect(rpc).toHaveBeenCalledWith('issue_tenant_api_key_audited', expect.objectContaining({
       p_permissions: ['approval_request'],
     }));
+  });
+
+  it.each([
+    'receipt.read',
+    'receipt.evidence',
+    'receipt.consume',
+    'receipt.execute',
+  ])('accepts %s as a bounded audited receipt capability', async (permission) => {
+    const rpc = vi.fn(async () => ({
+      data: {
+        key_id: `k-${permission}`,
+        tenant_id: 'tenant-1',
+        environment: 'production',
+        key_prefix: 'ept_live',
+        permissions: [permission],
+        expires_at: '2026-10-17T00:00:00.000Z',
+      },
+      error: null,
+    }));
+    getServiceClient.mockReturnValue({ rpc });
+
+    const result = await generateApiKey(
+      'tenant-1',
+      'production',
+      `${permission} worker`,
+      [permission],
+      {
+        expiresAt: '2026-10-17T00:00:00.000Z',
+        issuedBy: 'entity:user-1',
+      },
+    );
+
+    expect(result.api_key.permissions).toEqual([permission]);
+    expect(rpc).toHaveBeenCalledWith('issue_tenant_api_key_audited', expect.objectContaining({
+      p_permissions: [permission],
+    }));
+  });
+
+  it('keeps receipt capabilities exact instead of accepting a shared prefix', () => {
+    expect(validateTenantApiKeyPermissions(['receipt'])).toMatchObject({ status: 400 });
+    expect(validateTenantApiKeyPermissions(['receipt.admin'])).toMatchObject({ status: 400 });
+    expect(validateTenantApiKeyPermissions(['receipt.read.all'])).toMatchObject({ status: 400 });
   });
 
   it('generates unique keys on each call', async () => {

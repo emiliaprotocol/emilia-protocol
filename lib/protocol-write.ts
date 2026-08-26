@@ -472,8 +472,9 @@ const VALIDATORS: Record<string, (command: ProtocolCommand) => void> = {
   [COMMAND_TYPES.SIGNOFF_CHALLENGE_ISSUE](command: ProtocolCommand) {
     const { input } = command;
     if (!input) throw new ProtocolWriteError('input is required', { code: 'VALIDATION_ERROR', status: 400 });
-    if (!input.entity_id) throw new ProtocolWriteError('input.entity_id is required', { code: 'VALIDATION_ERROR', status: 400 });
-    if (!input.action_type) throw new ProtocolWriteError('input.action_type is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.handshakeId) throw new ProtocolWriteError('input.handshakeId is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.bindingHash) throw new ProtocolWriteError('input.bindingHash is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.expiresAt) throw new ProtocolWriteError('input.expiresAt is required', { code: 'VALIDATION_ERROR', status: 400 });
   },
 
   [COMMAND_TYPES.SIGNOFF_CHALLENGE_VIEW](command: ProtocolCommand) {
@@ -485,19 +486,26 @@ const VALIDATORS: Record<string, (command: ProtocolCommand) => void> = {
   [COMMAND_TYPES.SIGNOFF_ATTEST](command: ProtocolCommand) {
     const { input } = command;
     if (!input) throw new ProtocolWriteError('input is required', { code: 'VALIDATION_ERROR', status: 400 });
-    if (!input.challenge_id) throw new ProtocolWriteError('input.challenge_id is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.challengeId) throw new ProtocolWriteError('input.challengeId is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.humanEntityRef) throw new ProtocolWriteError('input.humanEntityRef is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.authMethod) throw new ProtocolWriteError('input.authMethod is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.assuranceLevel) throw new ProtocolWriteError('input.assuranceLevel is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.channel) throw new ProtocolWriteError('input.channel is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.ceremonyEvidenceId) throw new ProtocolWriteError('input.ceremonyEvidenceId is required', { code: 'VALIDATION_ERROR', status: 400 });
   },
 
   [COMMAND_TYPES.SIGNOFF_DENY](command: ProtocolCommand) {
     const { input } = command;
     if (!input) throw new ProtocolWriteError('input is required', { code: 'VALIDATION_ERROR', status: 400 });
-    if (!input.challenge_id) throw new ProtocolWriteError('input.challenge_id is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.challengeId) throw new ProtocolWriteError('input.challengeId is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.reason) throw new ProtocolWriteError('input.reason is required', { code: 'VALIDATION_ERROR', status: 400 });
   },
 
   [COMMAND_TYPES.SIGNOFF_CONSUME](command: ProtocolCommand) {
     const { input } = command;
     if (!input) throw new ProtocolWriteError('input is required', { code: 'VALIDATION_ERROR', status: 400 });
-    if (!input.signoff_id) throw new ProtocolWriteError('input.signoff_id is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.signoffId) throw new ProtocolWriteError('input.signoffId is required', { code: 'VALIDATION_ERROR', status: 400 });
+    if (!input.executionRef) throw new ProtocolWriteError('input.executionRef is required', { code: 'VALIDATION_ERROR', status: 400 });
   },
 
   [COMMAND_TYPES.SIGNOFF_CHALLENGE_REVOKE](command: ProtocolCommand) {
@@ -737,7 +745,13 @@ const HANDLERS: Record<string, (command: ProtocolCommand) => Promise<any>> = {
 
   async [COMMAND_TYPES.SIGNOFF_CHALLENGE_ISSUE](command: ProtocolCommand) {
     const { issueChallenge } = await import('@/lib/signoff/challenge.js');
-    const result = await issueChallenge({ ...command.input, actor: command.actor });
+    const result = await issueChallenge({
+      handshakeId: command.input.handshakeId,
+      bindingHash: command.input.bindingHash,
+      expiresAt: command.input.expiresAt,
+      metadata: command.input.metadata,
+      actor: { entity_id: resolveActorRef(command.actor, '') },
+    });
     return { result, aggregateId: result.challenge_id || 'unknown' };
   },
 
@@ -748,43 +762,79 @@ const HANDLERS: Record<string, (command: ProtocolCommand) => Promise<any>> = {
 
   async [COMMAND_TYPES.SIGNOFF_ATTEST](command: ProtocolCommand) {
     const { createAttestation } = await import('@/lib/signoff/attest.js');
-    const result = await createAttestation({ ...command.input, actor: command.actor });
-    return { result, aggregateId: command.input.challenge_id };
+    const result = await createAttestation({
+      challengeId: command.input.challengeId,
+      handshakeId: command.input.handshakeId,
+      bindingHash: command.input.bindingHash,
+      humanEntityRef: command.input.humanEntityRef,
+      authMethod: command.input.authMethod,
+      assuranceLevel: command.input.assuranceLevel,
+      channel: command.input.channel,
+      expiresAt: command.input.expiresAt,
+      attestationHash: command.input.attestationHash,
+      ceremonyEvidenceId: command.input.ceremonyEvidenceId,
+      metadata: command.input.metadata,
+      actor: { entity_id: resolveActorRef(command.actor, '') },
+    });
+    return { result, aggregateId: command.input.challengeId };
   },
 
   async [COMMAND_TYPES.SIGNOFF_DENY](command: ProtocolCommand) {
-    const { createAttestation } = await import('@/lib/signoff/attest.js');
-    const result = await createAttestation({ ...command.input, denied: true, actor: command.actor });
-    return { result, aggregateId: command.input.challenge_id };
+    const { denyChallenge } = await import('@/lib/signoff/deny.js');
+    const result = await denyChallenge({
+      challengeId: command.input.challengeId,
+      reason: command.input.reason,
+      actor: { entity_id: resolveActorRef(command.actor, '') },
+    });
+    return { result, aggregateId: command.input.challengeId };
   },
 
   async [COMMAND_TYPES.SIGNOFF_CONSUME](command: ProtocolCommand) {
     const { consumeSignoff } = await import('@/lib/signoff/consume.js');
-    const result = await consumeSignoff({ signoffId: command.input.signoff_id, bindingHash: command.input.binding_hash, executionRef: command.input.execution_ref, actor: command.actor });
-    return { result, aggregateId: command.input.signoff_id };
+    const result = await consumeSignoff({
+      signoffId: command.input.signoffId,
+      bindingHash: command.input.bindingHash,
+      executionRef: command.input.executionRef,
+      actor: { entity_id: resolveActorRef(command.actor, '') },
+    });
+    return { result, aggregateId: command.input.signoffId };
   },
 
   async [COMMAND_TYPES.SIGNOFF_CHALLENGE_REVOKE](command: ProtocolCommand) {
     const { revokeChallenge } = await import('@/lib/signoff/revoke.js');
-    const result = await revokeChallenge({ challengeId: command.input.challenge_id, reason: command.input.reason, actor: command.actor });
+    const result = await revokeChallenge({
+      challengeId: command.input.challenge_id,
+      reason: command.input.reason,
+      actor: { entity_id: resolveActorRef(command.actor, '') },
+    });
     return { result, aggregateId: command.input.challenge_id };
   },
 
   async [COMMAND_TYPES.SIGNOFF_ATTESTATION_REVOKE](command: ProtocolCommand) {
     const { revokeAttestation } = await import('@/lib/signoff/revoke.js');
-    const result = await revokeAttestation({ signoffId: command.input.attestation_id, reason: command.input.reason, actor: command.actor });
+    const result = await revokeAttestation({
+      signoffId: command.input.attestation_id,
+      reason: command.input.reason,
+      actor: { entity_id: resolveActorRef(command.actor, '') },
+    });
     return { result, aggregateId: command.input.attestation_id };
   },
 
   async [COMMAND_TYPES.SIGNOFF_CHALLENGE_EXPIRE](command: ProtocolCommand) {
-    const { emitSignoffEvent } = await import('@/lib/signoff/events.js');
-    const result = await emitSignoffEvent({ eventType: 'challenge_expired', challengeId: command.input.challenge_id });
+    const { expireChallenge } = await import('@/lib/signoff/expire.js');
+    const result = await expireChallenge({
+      challengeId: command.input.challenge_id,
+      actor: { entity_id: resolveActorRef(command.actor, '') },
+    });
     return { result, aggregateId: command.input.challenge_id };
   },
 
   async [COMMAND_TYPES.SIGNOFF_ATTESTATION_EXPIRE](command: ProtocolCommand) {
-    const { emitSignoffEvent } = await import('@/lib/signoff/events.js');
-    const result = await emitSignoffEvent({ eventType: 'attestation_expired', signoffId: command.input.attestation_id });
+    const { expireAttestation } = await import('@/lib/signoff/expire.js');
+    const result = await expireAttestation({
+      signoffId: command.input.attestation_id,
+      actor: { entity_id: resolveActorRef(command.actor, '') },
+    });
     return { result, aggregateId: command.input.attestation_id };
   },
 

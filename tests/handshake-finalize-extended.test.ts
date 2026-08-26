@@ -63,6 +63,7 @@ function buildSupabaseMock({
   handshakeError = null,
   memberCheck = null,
   updateError = null,
+  rpcData = null,
 } = {}) {
   const hsChain = makeChain({ data: handshake, error: handshakeError });
   const memberChain = {
@@ -76,6 +77,10 @@ function buildSupabaseMock({
   };
 
   return {
+    rpc: vi.fn().mockResolvedValue({
+      data: rpcData ?? (handshake ? { ...handshake, status: 'revoked' } : null),
+      error: updateError,
+    }),
     from: vi.fn((table) => {
       if (table === 'handshakes') {
         // First call is the fetch, subsequent calls are the update
@@ -246,6 +251,10 @@ describe('_handleRevokeHandshake — UNAUTHORIZED_REVOCATION', () => {
       then: (resolve) => Promise.resolve({ data: null, error: null }).then(resolve),
     };
     const db = {
+      rpc: vi.fn().mockResolvedValue({
+        data: { handshake_id: 'hs-1', status: 'revoked' },
+        error: null,
+      }),
       from: vi.fn((table) => {
         if (table === 'handshakes') {
           return {
@@ -289,6 +298,7 @@ describe('_handleRevokeHandshake — DB_ERROR on update (line 103)', () => {
       then: (resolve) => Promise.resolve({ data: null, error: { message: 'write failed' } }).then(resolve),
     };
     const db = {
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { message: 'write failed' } }),
       from: vi.fn((table) => {
         if (table === 'handshakes') {
           return {
@@ -318,6 +328,10 @@ describe('_handleRevokeHandshake — DB_ERROR on update (line 103)', () => {
       then: (resolve) => Promise.resolve({ data: null, error: null }).then(resolve),
     };
     const db = {
+      rpc: vi.fn().mockResolvedValue({
+        data: { handshake_id: 'hs-ok', status: 'revoked' },
+        error: null,
+      }),
       from: vi.fn((table) => {
         if (table === 'handshakes') {
           return {
@@ -339,6 +353,11 @@ describe('_handleRevokeHandshake — DB_ERROR on update (line 103)', () => {
     expect(res.result.status).toBe('revoked');
     expect(res.result.reason).toBe('policy violation');
     expect(res.aggregateId).toBe('hs-ok');
+    expect(db.rpc).toHaveBeenCalledWith('revoke_handshake_atomic', {
+      p_handshake_id: 'hs-ok',
+      p_reason: 'policy violation',
+      p_actor_entity_ref: 'system',
+    });
   });
 
   it('extracts actor entity_id when actor is an object', async () => {
@@ -347,6 +366,10 @@ describe('_handleRevokeHandshake — DB_ERROR on update (line 103)', () => {
       then: (resolve) => Promise.resolve({ data: null, error: null }).then(resolve),
     };
     const db = {
+      rpc: vi.fn().mockResolvedValue({
+        data: { handshake_id: 'hs-obj', status: 'revoked' },
+        error: null,
+      }),
       from: vi.fn((table) => {
         if (table === 'handshakes') {
           return {

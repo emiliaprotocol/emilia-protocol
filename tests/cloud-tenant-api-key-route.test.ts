@@ -111,6 +111,27 @@ describe('POST /api/cloud/tenants/:tenantId/api-keys', () => {
     );
   });
 
+  it.each([
+    'receipt.read',
+    'receipt.evidence',
+    'receipt.consume',
+    'receipt.execute',
+  ])('issues the exact least-privilege %s grant', async (permission) => {
+    const response = await POST(
+      request({ name: `${permission} integration`, permissions: [permission] }),
+      context(),
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockGenerateApiKey).toHaveBeenCalledWith(
+      'tenant-1',
+      'production',
+      `${permission} integration`,
+      [permission],
+      expect.objectContaining({ issuedBy: 'entity:user-1' }),
+    );
+  });
+
   it('rejects a read/write EP key before it can mint tenant privilege', async () => {
     mockAuthenticateRequest.mockResolvedValue({
       entity: { entity_id: 'user-1' },

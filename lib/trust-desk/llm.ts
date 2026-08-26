@@ -15,6 +15,7 @@
  */
 
 import { logger } from '../logger.js';
+import type { TrustDeskLlmBudget } from './resource-budget.js';
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
@@ -47,6 +48,7 @@ export function activeProvider() {
  * @param {number} [opts.maxTokens=900]
  * @param {number} [opts.temperature=0]
  * @param {(obj:any)=>boolean} [opts.validate] predicate; reject parse if false
+ * @param {TrustDeskLlmBudget} [opts.budget] request-scoped budget; required when a provider is active
  * @returns {Promise<{ok:true,data:any,provider:string,usage?:object}|{ok:false,reason:string,provider:string|null,raw?:string}>}
  */
 export async function llmJSON({
@@ -55,12 +57,14 @@ export async function llmJSON({
   maxTokens = 900,
   temperature = 0,
   validate,
+  budget,
 }: {
   system?: string;
   user?: string;
   maxTokens?: number;
   temperature?: number;
   validate?: (obj: any) => boolean;
+  budget?: TrustDeskLlmBudget;
 } = {}): Promise<
   | { ok: true; data: any; provider: string; usage?: object }
   | { ok: false; reason: string; provider: string | null; raw?: string }
@@ -68,16 +72,28 @@ export async function llmJSON({
   const provider = activeProvider();
   if (!provider) return { ok: false, reason: 'no_provider', provider: null };
 
+  // Every provider call must reserve from the engagement's shared budget.
+  // Refuse before fetch when the caller omitted accounting or exhausted it.
+  if (!budget) return { ok: false, reason: 'budget_required', provider };
+  const reservation = budget.reserve({ system, user, maxTokens });
+  if (!reservation.ok) {
+    return { ok: false, reason: `budget_exhausted:${reservation.reason}`, provider };
+  }
+  const callTimeoutMs = Math.max(1, Math.min(DEFAULT_TIMEOUT_MS, budget.remainingMs()));
+
   let raw;
   let usage;
   try {
     if (provider === 'anthropic') {
-      ({ raw, usage } = await callAnthropic({ system, user, maxTokens, temperature }));
+      ({ raw, usage } = await callAnthropic({ system, user, maxTokens, temperature, timeoutMs: callTimeoutMs }));
     } else {
-      ({ raw, usage } = await callOpenAI({ system, user, maxTokens, temperature }));
+      ({ raw, usage } = await callOpenAI({ system, user, maxTokens, temperature, timeoutMs: callTimeoutMs }));
     }
   } catch (err) {
     logger.warn('trust-desk llm: provider call failed', { provider, error: err.message });
+    if (budget.remainingMs() <= 0) {
+      return { ok: false, reason: 'budget_exhausted:llm_deadline', provider };
+    }
     return { ok: false, reason: `provider_error: ${err.message}`, provider };
   }
 
@@ -93,61 +109,74 @@ export async function llmJSON({
 
 // ── Providers ───────────────────────────────────────────────────────────────
 
-async function callAnthropic({ system, user, maxTokens, temperature }) {
-  const res = await fetchWithTimeout(ANTHROPIC_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
-      max_tokens: maxTokens,
-      temperature,
-      system,
-      messages: [{ role: 'user', content: user }],
-    }),
+async function callAnthropic({ system, user, maxTokens, temperature, timeoutMs }) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('anthropic key unavailable');
+  return withAbortTimeout(timeoutMs, async (signal) => {
+    const res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: maxTokens,
+        temperature,
+        system,
+        messages: [{ role: 'user', content: user }],
+      }),
+      signal,
+    });
+    if (!res.ok) throw new Error(`anthropic ${res.status}: ${await safeText(res)}`);
+    const json = await res.json();
+    const raw = Array.isArray(json.content)
+      ? json.content.filter((c) => c.type === 'text').map((c) => c.text).join('')
+      : '';
+    return { raw, usage: json.usage };
   });
-  if (!res.ok) throw new Error(`anthropic ${res.status}: ${await safeText(res)}`);
-  const json = await res.json();
-  const raw = Array.isArray(json.content)
-    ? json.content.filter((c) => c.type === 'text').map((c) => c.text).join('')
-    : '';
-  return { raw, usage: json.usage };
 }
 
-async function callOpenAI({ system, user, maxTokens, temperature }) {
-  const res = await fetchWithTimeout(OPENAI_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      max_tokens: maxTokens,
-      temperature,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-    }),
+async function callOpenAI({ system, user, maxTokens, temperature, timeoutMs }) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('openai key unavailable');
+  return withAbortTimeout(timeoutMs, async (signal) => {
+    const res = await fetch(OPENAI_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        max_tokens: maxTokens,
+        temperature,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      }),
+      signal,
+    });
+    if (!res.ok) throw new Error(`openai ${res.status}: ${await safeText(res)}`);
+    const json = await res.json();
+    const raw = json.choices?.[0]?.message?.content ?? '';
+    return { raw, usage: json.usage };
   });
-  if (!res.ok) throw new Error(`openai ${res.status}: ${await safeText(res)}`);
-  const json = await res.json();
-  const raw = json.choices?.[0]?.message?.content ?? '';
-  return { raw, usage: json.usage };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-async function fetchWithTimeout(url, init, timeoutMs = DEFAULT_TIMEOUT_MS) {
+async function withAbortTimeout(timeoutMs, operation) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    // The timer covers headers, error-body reads, JSON-body reads, and parsing.
+    // Clearing it when fetch() returns headers would let a slow/dripping body
+    // escape the shared request deadline.
+    return await operation(controller.signal);
   } finally {
     clearTimeout(timer);
   }

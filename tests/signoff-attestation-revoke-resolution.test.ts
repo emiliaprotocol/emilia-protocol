@@ -24,7 +24,7 @@
 //
 // Cases pinned here:
 //   1. an approved attestation is actually revoked end to end through the route
-//   2. the resolved signoff_id — never undefined — is what the UPDATE targets
+//   2. the resolved signoff_id — never undefined — is what the atomic RPC targets
 //   3. no attestation for this caller on this challenge → 404, not 500
 //   4. more than one match → 409 fail-closed, never an arbitrary pick
 //   5. an explicit signoffId belonging to a different challenge → 404
@@ -89,7 +89,7 @@ function approvedAttestation(overrides = {}) {
  * Supabase mock covering the three distinct chains revokeAttestation drives:
  *   resolve : .select('signoff_id').eq(challenge_id).eq(human_entity_ref) → list
  *   fetch   : .select('*').eq(signoff_id).maybeSingle()                   → row
- *   write   : .update({...}).eq(signoff_id).select().single()             → row
+ *   write   : .rpc('revoke_attestation_atomic', exact identifiers)        → row
  *
  * Records every predicate so a test can assert WHICH signoff_id was written —
  * the difference between a real fix and one that happens to return a row.
@@ -103,7 +103,7 @@ function makeSupabaseMock({
   updateError = null,
   order = null,
 } = {}) {
-  const calls = { resolveEq: [], fetchEq: [], updateEq: [] };
+  const calls = { resolveEq: [], fetchEq: [], updateEq: [], rpc: [] };
 
   const single = vi.fn().mockResolvedValue({ data: updated, error: updateError });
   const selectAfterUpdate = vi.fn().mockReturnValue({ single });
@@ -129,8 +129,17 @@ function makeSupabaseMock({
       }),
     })),
   }));
+  const rpc = vi.fn().mockImplementation(async (name, args) => {
+    calls.rpc.push([name, args]);
+    if (order) order.push('rpc');
+    return { data: updated, error: updateError };
+  });
 
-  return { from: vi.fn().mockImplementation(() => ({ select: selectFn, update: updateFn })), calls };
+  return {
+    from: vi.fn().mockImplementation(() => ({ select: selectFn, update: updateFn })),
+    rpc,
+    calls,
+  };
 }
 
 function revokeRequest(body) {
@@ -171,7 +180,7 @@ describe('attestation revoke — end to end through the route', () => {
     expect(json.revocation_reason).toBe('key compromise');
   });
 
-  it('targets the RESOLVED signoff_id in the write, never an undefined predicate', async () => {
+  it('targets the RESOLVED signoff_id in the atomic RPC, never an undefined identifier', async () => {
     const supabase = makeSupabaseMock({
       rows: [{ signoff_id: SIGNOFF_ID }],
       attestation: approvedAttestation(),
@@ -181,11 +190,13 @@ describe('attestation revoke — end to end through the route', () => {
 
     await callRoute({ revokeAttestation: true, reason: 'test' });
 
-    // The UPDATE must be scoped to the resolved attestation. An undefined
-    // predicate here is the difference between revoking one signature and
-    // issuing an unscoped write against the attestation table.
-    expect(supabase.calls.updateEq).toEqual([['signoff_id', SIGNOFF_ID]]);
-    expect(supabase.calls.updateEq[0][1]).toBeDefined();
+    expect(supabase.rpc).toHaveBeenCalledWith('revoke_attestation_atomic', {
+      p_signoff_id: SIGNOFF_ID,
+      p_challenge_id: CHALLENGE_ID,
+      p_actor_entity_ref: 'entity-alice',
+      p_reason: 'test',
+    });
+    expect(supabase.calls.updateEq).toEqual([]);
     // Resolution is scoped to the caller, not the challenge alone.
     expect(supabase.calls.resolveEq).toEqual([
       ['challenge_id', CHALLENGE_ID],
@@ -193,7 +204,7 @@ describe('attestation revoke — end to end through the route', () => {
     ]);
   });
 
-  it('attributes the attestation_revoked event to the resolved signoff_id', async () => {
+  it('passes event attribution to the atomic RPC with the resolved signoff_id', async () => {
     const supabase = makeSupabaseMock({
       rows: [{ signoff_id: SIGNOFF_ID }],
       attestation: approvedAttestation(),
@@ -203,20 +214,16 @@ describe('attestation revoke — end to end through the route', () => {
 
     await callRoute({ revokeAttestation: true, reason: 'test' });
 
-    expect(mockRequireSignoffEvent).toHaveBeenCalledWith(expect.objectContaining({
-      eventType: 'attestation_revoked',
-      signoffId: SIGNOFF_ID,
-      challengeId: CHALLENGE_ID,
-      actorEntityRef: 'entity-alice',
+    expect(supabase.rpc).toHaveBeenCalledWith('revoke_attestation_atomic', expect.objectContaining({
+      p_signoff_id: SIGNOFF_ID,
+      p_challenge_id: CHALLENGE_ID,
+      p_actor_entity_ref: 'entity-alice',
     }));
+    expect(mockRequireSignoffEvent).not.toHaveBeenCalled();
   });
 
-  it('writes the event BEFORE the state change (event-first ordering)', async () => {
+  it('uses one atomic RPC instead of separate event and state writes', async () => {
     const order = [];
-    mockRequireSignoffEvent.mockImplementation(async () => {
-      order.push('event');
-      return { event_id: 'ev-1' };
-    });
     const supabase = makeSupabaseMock({
       order,
       rows: [{ signoff_id: SIGNOFF_ID }],
@@ -227,7 +234,9 @@ describe('attestation revoke — end to end through the route', () => {
 
     await callRoute({ revokeAttestation: true, reason: 'test' });
 
-    expect(order).toEqual(['event', 'update']);
+    expect(order).toEqual(['rpc']);
+    expect(mockRequireSignoffEvent).not.toHaveBeenCalled();
+    expect(supabase.calls.updateEq).toEqual([]);
   });
 });
 
@@ -277,7 +286,9 @@ describe('attestation revoke — resolution refusals', () => {
 
     expect(res.status).toBe(200);
     expect(supabase.calls.resolveEq).toEqual([]);
-    expect(supabase.calls.updateEq).toEqual([['signoff_id', OTHER_SIGNOFF_ID]]);
+    expect(supabase.rpc).toHaveBeenCalledWith('revoke_attestation_atomic', expect.objectContaining({
+      p_signoff_id: OTHER_SIGNOFF_ID,
+    }));
   });
 
   it('returns 404 when an explicit signoffId belongs to a different challenge', async () => {

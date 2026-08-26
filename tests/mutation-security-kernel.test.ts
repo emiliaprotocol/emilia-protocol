@@ -423,7 +423,7 @@ describe('mutation oracles for Gate admission inputs', () => {
     }],
   };
 
-  it('pins the manifest action and tier over presenter selector aliases', async () => {
+  it('refuses presenter aliases that conflict with the manifest transport identity', async () => {
     const observed = { amount_usd: 25000, beneficiary: 'approved' };
     const gate = createGate({ manifest, allowEphemeralStore: true });
     const result = await gate.check({
@@ -440,16 +440,17 @@ describe('mutation oracles for Gate admission inputs', () => {
     expect(result).toMatchObject({
       allow: false,
       status: 428,
-      reason: 'receipt_required',
-      action: 'payment.release',
+      reason: 'manifest_selector_conflict',
+      action: 'manifest.selector_resolution',
     });
     expect(result.challenge.required).toMatchObject({
-      action: 'payment.release',
-      assurance_class: 'class_a',
+      action: 'manifest.selector_resolution',
+      assurance_class: 'quorum',
     });
     expect(result.evidence).toMatchObject({
-      action: 'payment.release',
-      required_tier: 'class_a',
+      action: 'manifest.selector_resolution',
+      required_tier: 'quorum',
+      reason: 'manifest_selector_conflict',
       observed_action_hash: hashCanonical(observed),
     });
     expect(result.evidence.business_authorization).toEqual({

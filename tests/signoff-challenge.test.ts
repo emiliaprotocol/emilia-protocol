@@ -84,10 +84,6 @@ function validParams(overrides = {}) {
     handshakeId: 'hs-1',
     actor: { entity_id: 'entity-issuer' },
     bindingHash: 'sha256-binding-abc',
-    accountableActorRef: 'entity-alice',
-    signoffPolicyId: 'policy-001',
-    requiredAssurance: 'substantial',
-    allowedMethods: ['passkey', 'secure_app'],
     expiresAt: '2099-01-01T00:00:00Z',
     ...overrides,
   };
@@ -97,53 +93,23 @@ function validParams(overrides = {}) {
 
 describe('issueChallenge — input validation', () => {
   it('throws MISSING_HANDSHAKE_ID when handshakeId is absent', async () => {
-    await expect(issueChallenge({ bindingHash: 'x', accountableActorRef: 'a', signoffPolicyId: 'p', requiredAssurance: 'low', allowedMethods: ['passkey'], expiresAt: '2099-01-01Z' }))
+    await expect(issueChallenge({ bindingHash: 'x', expiresAt: '2099-01-01Z' }))
       .rejects.toMatchObject({ code: 'MISSING_HANDSHAKE_ID', status: 400 });
   });
 
   it('throws MISSING_BINDING_HASH when bindingHash is absent', async () => {
-    await expect(issueChallenge({ handshakeId: 'hs-1', accountableActorRef: 'a', signoffPolicyId: 'p', requiredAssurance: 'low', allowedMethods: ['passkey'], expiresAt: '2099-01-01Z' }))
+    await expect(issueChallenge({ handshakeId: 'hs-1', expiresAt: '2099-01-01Z' }))
       .rejects.toMatchObject({ code: 'MISSING_BINDING_HASH', status: 400 });
-  });
-
-  it('throws MISSING_ACTOR_REF when accountableActorRef is absent', async () => {
-    await expect(issueChallenge({ handshakeId: 'hs-1', bindingHash: 'x', signoffPolicyId: 'p', requiredAssurance: 'low', allowedMethods: ['passkey'], expiresAt: '2099-01-01Z' }))
-      .rejects.toMatchObject({ code: 'MISSING_ACTOR_REF', status: 400 });
-  });
-
-  it('throws MISSING_POLICY_ID when signoffPolicyId is absent', async () => {
-    await expect(issueChallenge({ handshakeId: 'hs-1', bindingHash: 'x', accountableActorRef: 'a', requiredAssurance: 'low', allowedMethods: ['passkey'], expiresAt: '2099-01-01Z' }))
-      .rejects.toMatchObject({ code: 'MISSING_POLICY_ID', status: 400 });
-  });
-
-  it('throws INVALID_ASSURANCE_LEVEL for unrecognized requiredAssurance', async () => {
-    await expect(issueChallenge({ ...validParams(), requiredAssurance: 'ultra' }))
-      .rejects.toMatchObject({ code: 'INVALID_ASSURANCE_LEVEL', status: 400 });
-  });
-
-  it('throws INVALID_ASSURANCE_LEVEL when requiredAssurance is null', async () => {
-    await expect(issueChallenge({ ...validParams(), requiredAssurance: null }))
-      .rejects.toMatchObject({ code: 'INVALID_ASSURANCE_LEVEL', status: 400 });
-  });
-
-  it('throws MISSING_ALLOWED_METHODS when allowedMethods is empty array', async () => {
-    await expect(issueChallenge({ ...validParams(), allowedMethods: [] }))
-      .rejects.toMatchObject({ code: 'MISSING_ALLOWED_METHODS', status: 400 });
-  });
-
-  it('throws MISSING_ALLOWED_METHODS when allowedMethods is not an array', async () => {
-    await expect(issueChallenge({ ...validParams(), allowedMethods: 'passkey' }))
-      .rejects.toMatchObject({ code: 'MISSING_ALLOWED_METHODS', status: 400 });
-  });
-
-  it('throws INVALID_METHOD when allowedMethods contains unrecognized method', async () => {
-    await expect(issueChallenge({ ...validParams(), allowedMethods: ['passkey', 'sms_otp'] }))
-      .rejects.toMatchObject({ code: 'INVALID_METHOD', status: 400 });
   });
 
   it('throws MISSING_EXPIRES_AT when expiresAt is absent', async () => {
     await expect(issueChallenge({ ...validParams(), expiresAt: null }))
       .rejects.toMatchObject({ code: 'MISSING_EXPIRES_AT', status: 400 });
+  });
+
+  it('requires an authenticated issuer actor', async () => {
+    await expect(issueChallenge({ ...validParams(), actor: null }))
+      .rejects.toMatchObject({ code: 'MISSING_ACTOR', status: 401 });
   });
 });
 
@@ -199,17 +165,18 @@ describe('issueChallenge — binding DB checks', () => {
     expect(supabase.rpc).not.toHaveBeenCalled();
   });
 
-  it('throws ACCOUNTABLE_ACTOR_NOT_HANDSHAKE_PARTY when named actor is not on the handshake', async () => {
+  it('does not use a caller-supplied accountable actor', async () => {
     const supabase = makeMockSupabase({
       handshake: validHandshake(),
       parties: [{ entity_ref: 'entity-issuer', party_role: 'initiator' }],
       binding: validBinding(),
+      rpcData: { challenge_id: 'ch-derived' },
     });
     mockGetServiceClient.mockReturnValue(supabase);
 
-    await expect(issueChallenge(validParams({ accountableActorRef: 'entity-outsider' })))
-      .rejects.toMatchObject({ code: 'ACCOUNTABLE_ACTOR_NOT_HANDSHAKE_PARTY', status: 403 });
-    expect(supabase.rpc).not.toHaveBeenCalled();
+    await issueChallenge(validParams({ accountableActorRef: 'entity-outsider' }));
+    const [, args] = supabase.rpc.mock.calls[0];
+    expect(args).not.toHaveProperty('p_accountable_actor_ref');
   });
 
   it('throws DB_ERROR when binding fetch fails', async () => {
@@ -258,6 +225,25 @@ describe('issueChallenge — RPC and happy path', () => {
       .rejects.toMatchObject({ code: 'DB_ERROR', status: 500 });
   });
 
+  it.each([
+    ['SIGNOFF_BINDING_EXPIRED', 'BINDING_EXPIRED', 410],
+    ['SIGNOFF_BINDING_NOT_VERIFICATION_FINALIZED', 'BINDING_NOT_VERIFICATION_FINALIZED', 409],
+    ['SIGNOFF_AUTHORITY_ALREADY_CONSUMED', 'AUTHORITY_ALREADY_CONSUMED', 409],
+    ['SIGNOFF_POLICY_HASH_MISMATCH', 'SIGNOFF_POLICY_HASH_MISMATCH', 409],
+    ['SIGNOFF_POLICY_BLOCK_INVALID', 'SIGNOFF_POLICY_BLOCK_INVALID', 409],
+    ['SIGNOFF_ACCOUNTABLE_AUTHORITY_UNAVAILABLE', 'SIGNOFF_ACCOUNTABLE_AUTHORITY_UNAVAILABLE', 403],
+  ])('maps authority-window RPC error %s to %s/%s', async (message, code, status) => {
+    const supabase = makeMockSupabase({
+      handshake: validHandshake(),
+      binding: validBinding(),
+      rpcError: { message },
+    });
+    mockGetServiceClient.mockReturnValue(supabase);
+
+    await expect(issueChallenge(validParams()))
+      .rejects.toMatchObject({ code, status });
+  });
+
   it('returns challenge record with _protocolEventWritten on success', async () => {
     const rpcData = { challenge_id: 'ch-new', handshake_id: 'hs-1', status: 'challenge_issued' };
     const supabase = makeMockSupabase({ handshake: validHandshake(), binding: validBinding(), rpcData });
@@ -273,18 +259,30 @@ describe('issueChallenge — RPC and happy path', () => {
     const supabase = makeMockSupabase({ handshake: validHandshake(), binding: validBinding(), rpcData });
     mockGetServiceClient.mockReturnValue(supabase);
 
-    await issueChallenge(validParams({ signoffPolicyHash: 'sha256-policy-abc' }));
+    await issueChallenge(validParams({
+      accountableActorRef: 'entity-outsider',
+      signoffPolicyId: 'attacker-policy',
+      signoffPolicyHash: 'attacker-hash',
+      requiredAssurance: 'low',
+      allowedMethods: ['out_of_band'],
+    }));
 
     expect(supabase.rpc).toHaveBeenCalledWith('issue_challenge_atomic', expect.objectContaining({
       p_handshake_id: 'hs-1',
       p_binding_hash: 'sha256-binding-abc',
-      p_accountable_actor_ref: 'entity-alice',
-      p_signoff_policy_id: 'policy-001',
-      p_signoff_policy_hash: 'sha256-policy-abc',
-      p_required_assurance: 'substantial',
-      p_allowed_methods: ['passkey', 'secure_app'],
-      p_expires_at: '2099-01-01T00:00:00Z',
+      p_actor_entity_ref: 'entity-issuer',
+      p_requested_expires_at: '2099-01-01T00:00:00Z',
     }));
+    const [, rpcArgs] = supabase.rpc.mock.calls[0];
+    for (const forbidden of [
+      'p_accountable_actor_ref',
+      'p_signoff_policy_id',
+      'p_signoff_policy_hash',
+      'p_required_assurance',
+      'p_allowed_methods',
+    ]) {
+      expect(rpcArgs).not.toHaveProperty(forbidden);
+    }
   });
 
   it('passes optional metadata to RPC', async () => {
@@ -300,15 +298,15 @@ describe('issueChallenge — RPC and happy path', () => {
     }));
   });
 
-  it('uses null signoffPolicyHash by default', async () => {
+  it('never sends client-defined policy semantics', async () => {
     const rpcData = { challenge_id: 'ch-nohash', status: 'challenge_issued' };
     const supabase = makeMockSupabase({ handshake: validHandshake(), binding: validBinding(), rpcData });
     mockGetServiceClient.mockReturnValue(supabase);
 
     await issueChallenge(validParams());
 
-    expect(supabase.rpc).toHaveBeenCalledWith('issue_challenge_atomic', expect.objectContaining({
-      p_signoff_policy_hash: null,
-    }));
+    const [, args] = supabase.rpc.mock.calls[0];
+    expect(args).not.toHaveProperty('p_signoff_policy_hash');
+    expect(args).not.toHaveProperty('p_signoff_policy_id');
   });
 });

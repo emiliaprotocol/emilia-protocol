@@ -1,24 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
 // Stateless Trust Desk reviewer session.
 //
-// The bootstrap token is accepted only at the exchange endpoint. It is never
-// copied into a browser cookie; the cookie is a short-lived, HMAC-protected
-// session envelope with a fresh nonce and an explicit expiry.
+// The bootstrap token is accepted only from the bounded POST body at the
+// exchange endpoint. It is never accepted from a URL or copied into a browser
+// cookie; the cookie is a short-lived, HMAC-protected session envelope with a
+// fresh nonce and an explicit expiry.
 
 import crypto from 'node:crypto';
 import { getServiceClient } from '@/lib/supabase';
+import { getTrustDeskAuthConfig } from '@/lib/env';
 
 export const TRUST_DESK_SESSION_COOKIE = 'td_internal';
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
 const MAX_SESSION_CHARS = 4096;
 
-function secret(): string | null {
-  const value = process.env.TRUST_DESK_INTERNAL_TOKEN;
+function sessionSecret(): string | null {
+  const value = getTrustDeskAuthConfig().sessionSecret;
+  return typeof value === 'string' && Buffer.byteLength(value, 'utf8') >= 32 ? value : null;
+}
+
+function bootstrapToken(): string | null {
+  const value = getTrustDeskAuthConfig().bootstrapToken;
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
 function configuredReviewerId(): string | null {
-  const value = process.env.TRUST_DESK_REVIEWER_ID;
+  const value = getTrustDeskAuthConfig().reviewerId;
   if (typeof value !== 'string') return null;
   const reviewerId = value.trim();
   if (reviewerId.length < 3 || reviewerId.length > 200 || /[\u0000-\u001f\u007f]/.test(reviewerId)) {
@@ -44,7 +51,7 @@ function decode(value: string): any {
 }
 
 export function issueTrustDeskSession(): string | null {
-  const key = secret();
+  const key = sessionSecret();
   const reviewerId = configuredReviewerId();
   if (!key || !reviewerId) return null;
   const now = Math.floor(Date.now() / 1000);
@@ -66,7 +73,7 @@ export interface TrustDeskReviewerSession {
 export function authenticateTrustDeskReviewer(
   token: string | null | undefined,
 ): TrustDeskReviewerSession | null {
-  const key = secret();
+  const key = sessionSecret();
   if (!key || typeof token !== 'string' || token.length > MAX_SESSION_CHARS) return null;
   const parts = token.split('.');
   if (parts.length !== 3 || parts[0] !== 'tds1') return null;
@@ -108,7 +115,7 @@ export interface ConsumeTrustDeskBootstrapResult {
  * than relying on a process-local memory map.
  */
 export async function consumeTrustDeskBootstrap(token: string): Promise<ConsumeTrustDeskBootstrapResult> {
-  const key = secret();
+  const key = bootstrapToken();
   if (!key || typeof token !== 'string' || token.length === 0) {
     return { ok: false, reason: 'bootstrap_not_configured' };
   }

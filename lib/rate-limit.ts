@@ -29,6 +29,7 @@ export interface RateLimitResult {
 export const RATE_LIMITS: Record<string, { window: number; max: number }> = {
   register:      { window: 3600, max: 10 },    // 10 registrations per hour per IP
   submit:        { window: 60, max: 30 },       // 30 receipt submissions per minute per key
+  trust_desk_triage: { window: 3600, max: 10 }, // 10 unauthenticated questionnaire scans per hour per IP
   protocol_write: { window: 60, max: 60 },      // 60 handshake/signoff writes per minute per key
   protocol_read:  { window: 60, max: 120 },     // 120 protocol reads per minute per IP
   read:          { window: 60, max: 120 },      // 120 reads per minute per IP
@@ -96,6 +97,7 @@ const trustedClientIpHeader = rateLimitConfig.trustedClientIpHeader || null;
 const REDIS_TIMEOUT_MS = 3000; // 3s hard timeout — never block API responses waiting for Redis
 const FAIL_CLOSED_CATEGORIES = new Set([
   'submit',
+  'trust_desk_triage',
   'protocol_write',
   'dispute_write',
   'report_write',

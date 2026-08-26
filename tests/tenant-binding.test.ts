@@ -7,7 +7,7 @@ const bound = { entity: { entity_id: 'ent_1', organization_id: 'org_real' } };
 const unbound = { entity: { entity_id: 'ent_2' } };           // no organization_id
 const stringEntity = { entity: 'ent_3' };                      // legacy string mock
 
-describe('resolveAuthorizedOrg ” tenant/org binding', () => {
+describe('resolveAuthorizedOrg - tenant/org binding', () => {
   it('derives org from the authenticated entity, ignoring an omitted body', () => {
     expect(resolveAuthorizedOrg(bound, undefined)).toEqual({ organizationId: 'org_real' });
   });
@@ -41,11 +41,40 @@ describe('resolveAuthorizedOrg ” tenant/org binding', () => {
   });
 });
 
-describe('canReadReceipt ” read-side tenant scoping (IDOR)', () => {
+describe('canReadReceipt - actor and tenant scoping (IDOR)', () => {
   const receipt = { organizationId: 'org_real', creatorActorId: 'ent_1' };
 
-  it('lets an org-bound caller read a receipt in its OWN org', () => {
+  it('lets the creating actor read its own receipt', () => {
     expect(canReadReceipt(bound, receipt)).toBe(true);
+  });
+
+  it('blocks a same-org peer with generic read permission', () => {
+    const peer = {
+      entity: { entity_id: 'ent_peer', organization_id: 'org_real' },
+      permissions: ['read'],
+    };
+    expect(canReadReceipt(peer, receipt)).toBe(false);
+  });
+
+  it('allows a same-org peer with the explicit receipt.read capability', () => {
+    const peer = {
+      entity: { entity_id: 'ent_peer', organization_id: 'org_real' },
+      permissions: ['receipt.read'],
+    };
+    expect(canReadReceipt(peer, receipt)).toBe(true);
+  });
+
+  it('allows same-org admin without allowing cross-org admin', () => {
+    const localAdmin = {
+      entity: { entity_id: 'ent_admin', organization_id: 'org_real' },
+      permissions: ['admin'],
+    };
+    const foreignAdmin = {
+      entity: { entity_id: 'ent_admin', organization_id: 'org_attacker' },
+      permissions: ['admin'],
+    };
+    expect(canReadReceipt(localAdmin, receipt)).toBe(true);
+    expect(canReadReceipt(foreignAdmin, receipt)).toBe(false);
   });
 
   it('BLOCKS an org-bound caller from reading another orgs receipt (the IDOR)', () => {
@@ -66,7 +95,7 @@ describe('canReadReceipt ” read-side tenant scoping (IDOR)', () => {
   });
 });
 
-describe('canMutateReceipt ” read membership is not mutation authority', () => {
+describe('canMutateReceipt - read membership is not mutation authority', () => {
   const receipt = { organizationId: 'org_real', creatorActorId: 'ent_creator' };
 
   it('blocks a same-org peer without an explicit receipt capability', () => {

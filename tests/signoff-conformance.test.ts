@@ -212,12 +212,12 @@ describe('Signoff Conformance Suite', () => {
         'challenge_issued',
         'challenge_viewed',
         'challenge_expired',
-        'approved',
-        'denied',
-        'revoked',
-        'consumed',
-        'attestation_expired',
-        'attestation_revoked',
+        'challenge_revoked',
+        'signoff_approved',
+        'signoff_denied',
+        'signoff_expired',
+        'signoff_revoked',
+        'signoff_consumed',
       ];
       for (const eventType of expected) {
         expect(

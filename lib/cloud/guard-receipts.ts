@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
+import { resolveReceiptStatus } from '@/lib/guard-evidence-receipt.js';
 
 /** Minimal logger surface this module actually calls; callers may pass any logger. */
 interface GuardReceiptsLogger {
@@ -73,10 +74,11 @@ export function replayGuardReceipts(events, allowedReceiptIds, tenantId, environ
     if (!created) continue;
     const base = created.after_state || {};
 
-    let status = base.receipt_status || 'issued';
-    if (eventsAsc.some((event) => event.event_type === 'guard.trust_receipt.consumed')) status = 'consumed';
-    else if (findBoundSignoffDecision(eventsAsc, created, 'guard.signoff.rejected')) status = 'rejected';
-    else if (findBoundSignoffDecision(eventsAsc, created, 'guard.signoff.approved')) status = 'approved_pending_consume';
+    const status = resolveReceiptStatus(base, {
+      consumed: eventsAsc.find((event) => event.event_type === 'guard.trust_receipt.consumed'),
+      rejected: findBoundSignoffDecision(eventsAsc, created, 'guard.signoff.rejected'),
+      approved: findBoundSignoffDecision(eventsAsc, created, 'guard.signoff.approved'),
+    });
 
     receipts.push({
       receipt_id: receiptId,

@@ -20,6 +20,7 @@ import pg from 'pg';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'node:crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -40,6 +41,18 @@ const TENANT_API_KEY_ISSUE_MIGRATION_FILE = path.join(
   __dirname,
   '../supabase/migrations/20260719123600_tenant_api_key_audited_issue.sql',
 );
+const RECEIPT_API_KEY_PERMISSIONS_MIGRATION_FILE = path.join(
+  __dirname,
+  '../supabase/migrations/20260825130000_receipt_api_key_permissions.sql',
+);
+const HANDSHAKE_CONSUME_MIGRATION_FILE = path.join(
+  __dirname,
+  '../supabase/migrations/085_consume_atomic_mark_binding.sql',
+);
+const SIGNOFF_LIFECYCLE_MIGRATION_FILE = path.join(
+  __dirname,
+  '../supabase/migrations/20260826120000_signoff_atomic_state_locks.sql',
+);
 const SIGNOFF_REQUEST_UNIQUENESS_MIGRATION_FILE = path.join(
   __dirname,
   '../supabase/migrations/20260719124500_signoff_request_uniqueness.sql',
@@ -53,6 +66,39 @@ const TRUST_RECEIPT_CONSUME_MIGRATION_FILE = path.join(
   '../supabase/migrations/20260719125500_trust_receipt_atomic_consume.sql',
 );
 const SKIP = !process.env.INTEGRATION_POSTGRES;
+
+const SIGNOFF_POLICY_ID = '77777777-7777-4777-8777-777777777777';
+const SIGNOFF_AUTHORITY_ID = '88888888-8888-4888-8888-888888888888';
+const SIGNOFF_ORGANIZATION_ID = 'org-signoff';
+const SIGNOFF_AUTHORITY_CLASS = 'treasury_officer';
+const SIGNOFF_ACTION_TYPE = 'wire_transfer';
+const SIGNOFF_POLICY_RULES = {
+  accountable_signoff: {
+    accountable_role: 'responder',
+    action_types: [SIGNOFF_ACTION_TYPE],
+    allowed_methods: ['passkey'],
+    authority_class: SIGNOFF_AUTHORITY_CLASS,
+    max_ttl_seconds: 300,
+    organization_id: SIGNOFF_ORGANIZATION_ID,
+    required: true,
+    required_assurance: 'substantial',
+  },
+};
+
+function canonicalPolicy(value) {
+  if (Array.isArray(value)) return value.map(canonicalPolicy);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [
+      key,
+      canonicalPolicy(value[key]),
+    ]));
+  }
+  return value;
+}
+
+const SIGNOFF_POLICY_HASH = crypto.createHash('sha256')
+  .update(JSON.stringify(canonicalPolicy(SIGNOFF_POLICY_RULES)), 'utf8')
+  .digest('hex');
 
 // ---------------------------------------------------------------------------
 // Connection helpers
@@ -76,6 +122,23 @@ async function query(sql, params) {
   return getPool().query(sql, params);
 }
 
+async function waitForBlockedQuery(fragment, timeoutMs = 3_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const { rows } = await query(
+      `SELECT COALESCE(bool_or(wait_event_type = 'Lock'), false) AS blocked
+       FROM pg_stat_activity
+       WHERE datname = current_database()
+         AND pid <> pg_backend_pid()
+         AND query LIKE '%' || $1 || '%'`,
+      [fragment],
+    );
+    if (rows[0].blocked) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`query did not reach a lock wait: ${fragment}`);
+}
+
 // ---------------------------------------------------------------------------
 // Test lifecycle
 // ---------------------------------------------------------------------------
@@ -92,6 +155,43 @@ beforeAll(async () => {
   await query(authorityMigration);
   const tenantKeyMigration = fs.readFileSync(TENANT_API_KEY_ISSUE_MIGRATION_FILE, 'utf8');
   await query(tenantKeyMigration);
+  const receiptKeyMigration = fs.readFileSync(
+    RECEIPT_API_KEY_PERMISSIONS_MIGRATION_FILE,
+    'utf8',
+  );
+  await query(receiptKeyMigration);
+  const handshakeConsumeMigration = fs.readFileSync(
+    HANDSHAKE_CONSUME_MIGRATION_FILE,
+    'utf8',
+  );
+  await query(handshakeConsumeMigration);
+  const signoffLifecycleMigration = fs.readFileSync(
+    SIGNOFF_LIFECYCLE_MIGRATION_FILE,
+    'utf8',
+  );
+  await query(signoffLifecycleMigration);
+  await query(
+    `INSERT INTO handshake_policies
+       (policy_id, policy_key, version, mode, status, rules)
+     VALUES ($1, 'accountable-signoff-test', 1, 'mutual', 'active', $2::jsonb)`,
+    [SIGNOFF_POLICY_ID, JSON.stringify(SIGNOFF_POLICY_RULES)],
+  );
+  await query(
+    `INSERT INTO authorities
+       (authority_id, key_id, public_key, role, status, organization_id,
+        subject_type, subject_ref, assurance_class, action_scopes, policy_hash)
+     VALUES (
+       $1, 'signoff-authority-key', 'test-public-key', $2, 'active', $3,
+       'human_approver', 'entity-alice', 'A', ARRAY[$4]::text[], $5
+     )`,
+    [
+      SIGNOFF_AUTHORITY_ID,
+      SIGNOFF_AUTHORITY_CLASS,
+      SIGNOFF_ORGANIZATION_ID,
+      SIGNOFF_ACTION_TYPE,
+      SIGNOFF_POLICY_HASH,
+    ],
+  );
   const signoffRequestMigration = fs.readFileSync(
     SIGNOFF_REQUEST_UNIQUENESS_MIGRATION_FILE,
     'utf8',
@@ -133,39 +233,119 @@ async function insertReceipt(entityId, submittedBy = 'submitter-1', previousHash
   return rows[0];
 }
 
-async function insertHandshake() {
+async function insertHandshake({
+  policyId = SIGNOFF_POLICY_ID,
+  policyHash = SIGNOFF_POLICY_HASH,
+  policyVersion = 1,
+  actionType = SIGNOFF_ACTION_TYPE,
+} = {}) {
   const nonce = `nonce-${Math.random().toString(36).slice(2)}`;
   const { rows } = await query(
-    `INSERT INTO handshakes (nonce, status) VALUES ($1, 'verified') RETURNING handshake_id`,
-    [nonce],
+    `INSERT INTO handshakes
+       (nonce, status, verified_at, policy_id, policy_hash,
+        policy_version_number, action_type)
+     VALUES ($1, 'verified', now(), $2, $3, $4, $5)
+     RETURNING handshake_id`,
+    [nonce, policyId, policyHash, policyVersion, actionType],
   );
-  return rows[0].handshake_id;
+  const handshakeId = rows[0].handshake_id;
+  await query(
+    `INSERT INTO handshake_parties
+       (handshake_id, entity_ref, party_role, verified_status)
+     VALUES
+       ($1, 'entity-issuer', 'initiator', 'verified'),
+       ($1, 'entity-alice', 'responder', 'verified'),
+       ($1, 'entity-bob', 'verifier', 'verified')`,
+    [handshakeId],
+  );
+  return handshakeId;
 }
 
-async function insertBinding(handshakeId, { consumed = false } = {}) {
+async function insertBinding(
+  handshakeId,
+  {
+    consumed = false,
+    verificationFinalized = false,
+    policyHash = SIGNOFF_POLICY_HASH,
+  } = {},
+) {
+  const finalized = consumed || verificationFinalized;
   const { rows } = await query(
-    `INSERT INTO handshake_bindings (handshake_id, payload_hash, nonce, expires_at, consumed_at)
-     VALUES ($1, $2, $3, now() + interval '1 hour', $4) RETURNING id`,
-    [handshakeId, 'phash-abc', `bnonce-${Math.random().toString(36).slice(2)}`,
-     consumed ? new Date() : null],
+    `INSERT INTO handshake_bindings
+       (handshake_id, payload_hash, binding_hash, policy_hash, nonce, expires_at,
+        consumed_at, consumed_by, consumed_for)
+     VALUES ($1, $2, 'bhash-xyz', $3, $4, now() + interval '1 hour', $5, $6, $7)
+     RETURNING id`,
+    [handshakeId, 'phash-abc', policyHash,
+     `bnonce-${Math.random().toString(36).slice(2)}`,
+     finalized ? new Date() : null,
+     finalized ? 'entity-verifier' : null,
+     finalized ? `handshake_verified:${handshakeId}` : null],
   );
   return rows[0].id;
 }
 
-async function insertChallenge(bindingId) {
+async function insertChallenge(
+  bindingId,
+  { expiresAt = new Date(Date.now() + 10 * 60 * 1000) } = {},
+) {
   const { rows } = await query(
-    `INSERT INTO signoff_challenges (handshake_id, binding_hash, status, expires_at)
-     VALUES ($1, $2, 'challenge_issued', now() + interval '10 minutes') RETURNING challenge_id`,
-    [bindingId, 'bhash-xyz'],
+    `INSERT INTO signoff_challenges
+       (handshake_id, binding_hash, accountable_actor_ref,
+        signoff_policy_id, signoff_policy_hash, required_assurance,
+        allowed_methods, required_authority_class, authority_organization_id,
+        authority_id, status, expires_at)
+     VALUES (
+       $1, $2, 'entity-alice', $3, $4, 'substantial', ARRAY['passkey']::text[],
+       $5, $6, $7, 'challenge_issued', $8
+     )
+     RETURNING challenge_id`,
+    [
+      bindingId,
+      'bhash-xyz',
+      SIGNOFF_POLICY_ID,
+      SIGNOFF_POLICY_HASH,
+      SIGNOFF_AUTHORITY_CLASS,
+      SIGNOFF_ORGANIZATION_ID,
+      SIGNOFF_AUTHORITY_ID,
+      expiresAt,
+    ],
   );
   return rows[0].challenge_id;
 }
 
-async function insertAttestation(challengeId, bindingId) {
+async function insertCeremonyEvidence(challengeId, {
+  actor = 'entity-alice',
+  authorityId = SIGNOFF_AUTHORITY_ID,
+  authMethod = 'passkey',
+  assuranceLevel = 'substantial',
+  channel = 'web',
+} = {}) {
   const { rows } = await query(
-    `INSERT INTO signoff_attestations (challenge_id, handshake_id, binding_hash, auth_method)
-     VALUES ($1, $2, $3, 'passkey') RETURNING signoff_id`,
-    [challengeId, bindingId, 'bhash-xyz'],
+    `INSERT INTO signoff_ceremony_evidence
+       (challenge_id, human_entity_ref, authority_id, auth_method,
+        assurance_level, channel, evidence_hash, verified_at, expires_at)
+     VALUES (
+       $1, $2, $3, $4, $5, $6,
+       'ceremony-hash-' || pg_catalog.gen_random_uuid()::text,
+       now(), now() + interval '5 minutes'
+     )
+     RETURNING evidence_id`,
+    [challengeId, actor, authorityId, authMethod, assuranceLevel, channel],
+  );
+  return rows[0].evidence_id;
+}
+
+async function insertAttestation(
+  challengeId,
+  bindingId,
+  { expiresAt = new Date(Date.now() + 60 * 60 * 1000) } = {},
+) {
+  const { rows } = await query(
+    `INSERT INTO signoff_attestations
+       (challenge_id, handshake_id, binding_hash, auth_method, expires_at)
+     VALUES ($1, $2, $3, 'passkey', $4) RETURNING signoff_id`,
+    [challengeId, bindingId, 'bhash-xyz', expiresAt],
   );
   return rows[0].signoff_id;
 }
@@ -328,6 +508,62 @@ async function consumeTrustReceiptAsServiceRole({
   }
 }
 
+async function issueTenantApiKeyAsServiceRole(permission, suffix = 0) {
+  const client = await getPool().connect();
+  try {
+    await client.query('SET ROLE service_role');
+    return await client.query(
+      `SELECT public.issue_tenant_api_key_audited(
+         $1::uuid, 'production', $2::text, 'ept_live', $3::text,
+         ARRAY[$4::text], now() + interval '30 days', $5::text
+       ) AS api_key`,
+      [
+        ROLLOUT_TENANT_ID,
+        suffix.toString(16).padStart(64, '0'),
+        `${permission}-${suffix}`,
+        permission,
+        `entity:receipt-integration-${suffix}`,
+      ],
+    );
+  } finally {
+    await client.query('RESET ROLE').catch(() => {});
+    client.release();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ── 0. Tenant API-key receipt capabilities are exactly mintable ─────────────
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP)('DB invariant: receipt API-key grants are exact', () => {
+  it.each([
+    ['receipt.read', 1],
+    ['receipt.evidence', 2],
+    ['receipt.consume', 3],
+    ['receipt.execute', 4],
+  ])('audits issuance of the %s capability', async (permission, suffix) => {
+    const result = await issueTenantApiKeyAsServiceRole(permission, suffix);
+
+    expect(result.rows[0].api_key.permissions).toEqual([permission]);
+    const { rows } = await query(
+      `SELECT actor_id, after_state -> 'permissions' AS permissions
+       FROM audit_events
+       WHERE event_type = 'cloud.tenant_api_key.issued'
+         AND target_id = $1`,
+      [result.rows[0].api_key.key_id],
+    );
+    expect(rows).toEqual([{
+      actor_id: `entity:receipt-integration-${suffix}`,
+      permissions: [permission],
+    }]);
+  });
+
+  it('rejects a broader receipt-prefixed permission', async () => {
+    await expect(issueTenantApiKeyAsServiceRole('receipt.admin', 5))
+      .rejects.toThrow('invalid_tenant_api_key_issue');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // ── 1. Receipts: append-only ─────────────────────────────────────────────────
 // ---------------------------------------------------------------------------
@@ -479,10 +715,10 @@ describe.skipIf(SKIP)('DB invariant: signoff attestations are consumed at most o
 });
 
 // ---------------------------------------------------------------------------
-// ── 4. Signoff challenge status: forward-only transitions ────────────────────
+// ── 4. Signoff lifecycle state machines and immutable trust fields ──────────
 // ---------------------------------------------------------------------------
 
-describe.skipIf(SKIP)('DB invariant: signoff challenge status is forward-only', () => {
+describe.skipIf(SKIP)('DB invariant: signoff lifecycle permits only exact state edges', () => {
   it('allows forward transitions: issued → viewed → approved', async () => {
     const hId = await insertHandshake();
     const bId = await insertBinding(hId);
@@ -493,7 +729,12 @@ describe.skipIf(SKIP)('DB invariant: signoff challenge status is forward-only', 
       [cId],
     );
     await query(
-      `UPDATE signoff_challenges SET status = 'approved' WHERE challenge_id = $1`,
+      `UPDATE signoff_challenges
+       SET status = 'approved',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'approved_at', pg_catalog.transaction_timestamp()
+           )
+       WHERE challenge_id = $1`,
       [cId],
     );
 
@@ -509,7 +750,12 @@ describe.skipIf(SKIP)('DB invariant: signoff challenge status is forward-only', 
     const cId = await insertChallenge(bId);
 
     await query(
-      `UPDATE signoff_challenges SET status = 'approved' WHERE challenge_id = $1`, [cId],
+      `UPDATE signoff_challenges
+       SET status = 'approved',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'approved_at', pg_catalog.transaction_timestamp()
+           )
+       WHERE challenge_id = $1`, [cId],
     );
 
     await expect(
@@ -517,7 +763,7 @@ describe.skipIf(SKIP)('DB invariant: signoff challenge status is forward-only', 
         `UPDATE signoff_challenges SET status = 'challenge_issued' WHERE challenge_id = $1`,
         [cId],
       ),
-    ).rejects.toThrow('SIGNOFF_BACKWARD_TRANSITION');
+    ).rejects.toThrow('SIGNOFF_CHALLENGE_TRANSITION_INVALID');
   });
 
   it('blocks backward transition: consumed → approved', async () => {
@@ -526,10 +772,17 @@ describe.skipIf(SKIP)('DB invariant: signoff challenge status is forward-only', 
     const cId = await insertChallenge(bId);
 
     await query(
-      `UPDATE signoff_challenges SET status = 'approved' WHERE challenge_id = $1`, [cId],
+      `UPDATE signoff_challenges
+       SET status = 'approved',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'approved_at', pg_catalog.transaction_timestamp()
+           )
+       WHERE challenge_id = $1`, [cId],
     );
     await query(
-      `UPDATE signoff_challenges SET status = 'consumed' WHERE challenge_id = $1`, [cId],
+      `UPDATE signoff_challenges
+       SET status = 'consumed', consumed_at = pg_catalog.transaction_timestamp()
+       WHERE challenge_id = $1`, [cId],
     );
 
     await expect(
@@ -537,7 +790,7 @@ describe.skipIf(SKIP)('DB invariant: signoff challenge status is forward-only', 
         `UPDATE signoff_challenges SET status = 'approved' WHERE challenge_id = $1`,
         [cId],
       ),
-    ).rejects.toThrow('SIGNOFF_BACKWARD_TRANSITION');
+    ).rejects.toThrow('SIGNOFF_CHALLENGE_TRANSITION_INVALID');
   });
 
   it('allows terminal denial: issued → denied', async () => {
@@ -546,7 +799,13 @@ describe.skipIf(SKIP)('DB invariant: signoff challenge status is forward-only', 
     const cId = await insertChallenge(bId);
 
     await query(
-      `UPDATE signoff_challenges SET status = 'denied' WHERE challenge_id = $1`, [cId],
+      `UPDATE signoff_challenges
+       SET status = 'denied',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'denied_at', pg_catalog.transaction_timestamp(),
+             'denial_reason', 'accountable actor refused'
+           )
+       WHERE challenge_id = $1`, [cId],
     );
     const { rows } = await query(
       `SELECT status FROM signoff_challenges WHERE challenge_id = $1`, [cId],
@@ -560,7 +819,11 @@ describe.skipIf(SKIP)('DB invariant: signoff challenge status is forward-only', 
     const cId = await insertChallenge(bId);
 
     await query(
-      `UPDATE signoff_challenges SET status = 'revoked' WHERE challenge_id = $1`, [cId],
+      `UPDATE signoff_challenges
+       SET status = 'revoked',
+           revoked_at = pg_catalog.transaction_timestamp(),
+           revocation_reason = 'authority withdrawn'
+       WHERE challenge_id = $1`, [cId],
     );
     const { rows } = await query(
       `SELECT status FROM signoff_challenges WHERE challenge_id = $1`, [cId],
@@ -588,19 +851,1158 @@ describe.skipIf(SKIP)('DB invariant: signoff challenge status is forward-only', 
     const cId = await insertChallenge(bId);
 
     await query(
-      `UPDATE signoff_challenges SET status = 'approved' WHERE challenge_id = $1`, [cId],
+      `UPDATE signoff_challenges
+       SET status = 'approved',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'approved_at', pg_catalog.transaction_timestamp()
+           )
+       WHERE challenge_id = $1`, [cId],
     );
     await expect(
       query(
         `UPDATE signoff_challenges SET status = 'challenge_viewed' WHERE challenge_id = $1`,
         [cId],
       ),
-    ).rejects.toThrow('SIGNOFF_BACKWARD_TRANSITION');
+    ).rejects.toThrow('SIGNOFF_CHALLENGE_TRANSITION_INVALID');
+  });
+
+  it('rejects pending-to-consumed and mutually exclusive terminal transitions', async () => {
+    const issuedBinding = await insertBinding(await insertHandshake());
+    const issuedChallenge = await insertChallenge(issuedBinding);
+    await expect(query(
+      `UPDATE signoff_challenges
+       SET status = 'consumed', consumed_at = pg_catalog.transaction_timestamp()
+       WHERE challenge_id = $1`,
+      [issuedChallenge],
+    )).rejects.toThrow('SIGNOFF_CHALLENGE_TRANSITION_INVALID');
+
+    const deniedBinding = await insertBinding(await insertHandshake());
+    const deniedChallenge = await insertChallenge(deniedBinding);
+    await query(
+      `UPDATE signoff_challenges
+       SET status = 'denied',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'denied_at', pg_catalog.transaction_timestamp(),
+             'denial_reason', 'refused'
+           )
+       WHERE challenge_id = $1`,
+      [deniedChallenge],
+    );
+    await expect(query(
+      `UPDATE signoff_challenges
+       SET status = 'approved',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'approved_at', pg_catalog.transaction_timestamp()
+           )
+       WHERE challenge_id = $1`,
+      [deniedChallenge],
+    )).rejects.toThrow('SIGNOFF_CHALLENGE_TRANSITION_INVALID');
+
+    const approvedBinding = await insertBinding(await insertHandshake());
+    const approvedChallenge = await insertChallenge(approvedBinding);
+    await query(
+      `UPDATE signoff_challenges
+       SET status = 'approved',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'approved_at', pg_catalog.transaction_timestamp()
+           )
+       WHERE challenge_id = $1`,
+      [approvedChallenge],
+    );
+    for (const terminal of ['denied', 'revoked']) {
+      await expect(query(
+        `UPDATE signoff_challenges SET status = $2 WHERE challenge_id = $1`,
+        [approvedChallenge, terminal],
+      )).rejects.toThrow('SIGNOFF_CHALLENGE_TRANSITION_INVALID');
+    }
+  });
+
+  it('makes challenge and attestation authority facts immutable', async () => {
+    const bindingId = await insertBinding(await insertHandshake());
+    const challengeId = await insertChallenge(bindingId);
+    await expect(query(
+      `UPDATE signoff_challenges
+       SET accountable_actor_ref = 'entity-attacker'
+       WHERE challenge_id = $1`,
+      [challengeId],
+    )).rejects.toThrow('SIGNOFF_CHALLENGE_TRUST_FIELDS_IMMUTABLE');
+
+    const signoffId = await insertAttestation(challengeId, bindingId);
+    await expect(query(
+      `UPDATE signoff_attestations
+       SET auth_method = 'out_of_band'
+       WHERE signoff_id = $1`,
+      [signoffId],
+    )).rejects.toThrow('SIGNOFF_ATTESTATION_TRUST_FIELDS_IMMUTABLE');
+
+    await expect(query(
+      `DELETE FROM signoff_attestations WHERE signoff_id = $1`,
+      [signoffId],
+    )).rejects.toThrow('SIGNOFF_ATTESTATION_DELETE_FORBIDDEN');
+    await expect(query(
+      `DELETE FROM signoff_challenges WHERE challenge_id = $1`,
+      [challengeId],
+    )).rejects.toThrow('SIGNOFF_CHALLENGE_DELETE_FORBIDDEN');
+  });
+
+  it('does not allow attestation terminal states to switch', async () => {
+    const bindingId = await insertBinding(await insertHandshake());
+    const challengeId = await insertChallenge(bindingId);
+    const expiredSignoffId = await insertAttestation(challengeId, bindingId);
+    await query(
+      `UPDATE signoff_attestations SET status = 'expired' WHERE signoff_id = $1`,
+      [expiredSignoffId],
+    );
+    await expect(query(
+      `UPDATE signoff_attestations
+       SET status = 'revoked', revoked_at = pg_catalog.transaction_timestamp(),
+           revocation_reason = 'late revocation'
+       WHERE signoff_id = $1`,
+      [expiredSignoffId],
+    )).rejects.toThrow('SIGNOFF_ATTESTATION_TRANSITION_INVALID');
+
+    const revokedSignoffId = await insertAttestation(challengeId, bindingId);
+    await query(
+      `UPDATE signoff_attestations
+       SET status = 'revoked', revoked_at = pg_catalog.transaction_timestamp(),
+           revocation_reason = 'withdrawn'
+       WHERE signoff_id = $1`,
+      [revokedSignoffId],
+    );
+    await expect(query(
+      `UPDATE signoff_attestations SET status = 'expired' WHERE signoff_id = $1`,
+      [revokedSignoffId],
+    )).rejects.toThrow('SIGNOFF_ATTESTATION_TRANSITION_INVALID');
+  });
+
+  it('removes direct service-role lifecycle writes while retaining reads and RPC execution', async () => {
+    const { rows } = await query(
+      `SELECT
+         pg_catalog.has_table_privilege('service_role', 'public.signoff_challenges', 'SELECT') AS challenge_select,
+         pg_catalog.has_table_privilege('service_role', 'public.signoff_challenges', 'INSERT') AS challenge_insert,
+         pg_catalog.has_table_privilege('service_role', 'public.signoff_challenges', 'UPDATE') AS challenge_update,
+         pg_catalog.has_table_privilege('service_role', 'public.signoff_attestations', 'INSERT') AS attestation_insert,
+         pg_catalog.has_table_privilege('service_role', 'public.signoff_attestations', 'UPDATE') AS attestation_update,
+         pg_catalog.has_table_privilege('service_role', 'public.signoff_consumptions', 'INSERT') AS consumption_insert,
+         pg_catalog.has_function_privilege(
+           'service_role',
+           'public.issue_challenge_atomic(uuid,uuid,text,text,timestamptz,jsonb)',
+           'EXECUTE'
+         ) AS issue_execute`,
+    );
+    expect(rows[0]).toEqual({
+      challenge_select: true,
+      challenge_insert: false,
+      challenge_update: false,
+      attestation_insert: false,
+      attestation_update: false,
+      consumption_insert: false,
+      issue_execute: true,
+    });
   });
 });
 
 // ---------------------------------------------------------------------------
-// ── 5. Handshake nonce uniqueness ───────────────────────────────────────────
+// ── 5. Signoff lifecycle transitions are serialized under row locks ────────
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP)('DB invariant: competing signoff transitions are atomic', () => {
+  async function pendingChallenge() {
+    const handshakeId = await insertHandshake();
+    const bindingId = await insertBinding(handshakeId, { verificationFinalized: true });
+    const challengeId = await insertChallenge(bindingId);
+    return { handshakeId, bindingId, challengeId };
+  }
+
+  async function approvedAttestation() {
+    const ids = await pendingChallenge();
+    const signoffId = crypto.randomUUID();
+    const ceremonyEvidenceId = await insertCeremonyEvidence(ids.challengeId);
+    const { rows } = await query(
+      `SELECT public.approve_attestation_atomic(
+         $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+         'passkey', 'substantial', 'web', now() + interval '4 minutes',
+         'attestation-hash', pg_catalog.jsonb_build_object(
+           'ceremony_evidence_id', $4::text
+         )
+       ) AS result`,
+      [signoffId, ids.challengeId, ids.bindingId, ceremonyEvidenceId],
+    );
+    expect(rows[0].result.status).toBe('approved');
+    return { ...ids, signoffId };
+  }
+
+  it('atomically expires a due challenge and records exactly one canonical event', async () => {
+    const handshakeId = await insertHandshake();
+    const bindingId = await insertBinding(handshakeId, { verificationFinalized: true });
+    const challengeId = await insertChallenge(bindingId, {
+      expiresAt: new Date(Date.now() - 1_000),
+    });
+
+    const { rows: expired } = await query(
+      `SELECT public.expire_challenge_atomic($1::uuid, 'system') AS result`,
+      [challengeId],
+    );
+    expect(expired[0].result.status).toBe('expired');
+
+    const { rows } = await query(
+      `SELECT
+         (SELECT status FROM signoff_challenges WHERE challenge_id = $1) AS status,
+         (SELECT count(*)::int FROM signoff_events
+            WHERE challenge_id = $1 AND event_type = 'challenge_expired') AS events,
+         (SELECT actor_entity_ref FROM signoff_events
+            WHERE challenge_id = $1 AND event_type = 'challenge_expired') AS actor`,
+      [challengeId],
+    );
+    expect(rows[0]).toEqual({ status: 'expired', events: 1, actor: 'system' });
+
+    await expect(query(
+      `SELECT public.expire_challenge_atomic($1::uuid, 'system')`,
+      [challengeId],
+    )).rejects.toThrow('SIGNOFF_CHALLENGE_NOT_EXPIRABLE');
+    const { rows: replay } = await query(
+      `SELECT count(*)::int AS count FROM signoff_events
+       WHERE challenge_id = $1 AND event_type = 'challenge_expired'`,
+      [challengeId],
+    );
+    expect(replay[0].count).toBe(1);
+  });
+
+  it('refuses premature challenge expiry without changing state or writing an event', async () => {
+    const bindingId = await insertBinding(await insertHandshake(), {
+      verificationFinalized: true,
+    });
+    const challengeId = await insertChallenge(bindingId);
+
+    await expect(query(
+      `SELECT public.expire_challenge_atomic($1::uuid, 'system')`,
+      [challengeId],
+    )).rejects.toThrow('SIGNOFF_CHALLENGE_NOT_EXPIRED');
+
+    const { rows } = await query(
+      `SELECT
+         (SELECT status FROM signoff_challenges WHERE challenge_id = $1) AS status,
+         (SELECT count(*)::int FROM signoff_events
+            WHERE challenge_id = $1 AND event_type = 'challenge_expired') AS events`,
+      [challengeId],
+    );
+    expect(rows[0]).toEqual({ status: 'challenge_issued', events: 0 });
+  });
+
+  it('atomically expires a due attestation while preserving the approved challenge history', async () => {
+    const bindingId = await insertBinding(await insertHandshake(), {
+      verificationFinalized: true,
+    });
+    const challengeId = await insertChallenge(bindingId);
+    await query(
+      `UPDATE signoff_challenges
+       SET status = 'approved',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'approved_at', pg_catalog.transaction_timestamp()
+           )
+       WHERE challenge_id = $1`,
+      [challengeId],
+    );
+    const signoffId = await insertAttestation(challengeId, bindingId, {
+      expiresAt: new Date(Date.now() - 1_000),
+    });
+
+    const { rows: expired } = await query(
+      `SELECT public.expire_attestation_atomic($1::uuid, 'system') AS result`,
+      [signoffId],
+    );
+    expect(expired[0].result.status).toBe('expired');
+
+    const { rows } = await query(
+      `SELECT
+         (SELECT status FROM signoff_attestations WHERE signoff_id = $1) AS status,
+         (SELECT status FROM signoff_challenges WHERE challenge_id = $2) AS challenge_status,
+         (SELECT count(*)::int FROM signoff_events
+            WHERE signoff_id = $1 AND event_type = 'signoff_expired') AS events,
+         (SELECT actor_entity_ref FROM signoff_events
+            WHERE signoff_id = $1 AND event_type = 'signoff_expired') AS actor`,
+      [signoffId, challengeId],
+    );
+    expect(rows[0]).toEqual({
+      status: 'expired',
+      challenge_status: 'approved',
+      events: 1,
+      actor: 'system',
+    });
+
+    await expect(query(
+      `SELECT public.expire_attestation_atomic($1::uuid, 'system')`,
+      [signoffId],
+    )).rejects.toThrow('SIGNOFF_ATTESTATION_NOT_EXPIRABLE');
+  });
+
+  it('refuses premature attestation expiry without changing state or writing an event', async () => {
+    const bindingId = await insertBinding(await insertHandshake(), {
+      verificationFinalized: true,
+    });
+    const challengeId = await insertChallenge(bindingId);
+    await query(
+      `UPDATE signoff_challenges
+       SET status = 'approved',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'approved_at', pg_catalog.transaction_timestamp()
+           )
+       WHERE challenge_id = $1`,
+      [challengeId],
+    );
+    const signoffId = await insertAttestation(challengeId, bindingId);
+
+    await expect(query(
+      `SELECT public.expire_attestation_atomic($1::uuid, 'system')`,
+      [signoffId],
+    )).rejects.toThrow('SIGNOFF_ATTESTATION_NOT_EXPIRED');
+
+    const { rows } = await query(
+      `SELECT
+         (SELECT status FROM signoff_attestations WHERE signoff_id = $1) AS status,
+         (SELECT count(*)::int FROM signoff_events
+            WHERE signoff_id = $1 AND event_type = 'signoff_expired') AS events`,
+      [signoffId],
+    );
+    expect(rows[0]).toEqual({ status: 'approved', events: 0 });
+  });
+
+  it('rolls both expiry state transitions back when the canonical event cannot be written', async () => {
+    const challengeBindingId = await insertBinding(await insertHandshake(), {
+      verificationFinalized: true,
+    });
+    const challengeId = await insertChallenge(challengeBindingId, {
+      expiresAt: new Date(Date.now() - 1_000),
+    });
+
+    const attestationBindingId = await insertBinding(await insertHandshake(), {
+      verificationFinalized: true,
+    });
+    const attestationChallengeId = await insertChallenge(attestationBindingId);
+    await query(
+      `UPDATE signoff_challenges
+       SET status = 'approved',
+           metadata = metadata || pg_catalog.jsonb_build_object(
+             'approved_at', pg_catalog.transaction_timestamp()
+           )
+       WHERE challenge_id = $1`,
+      [attestationChallengeId],
+    );
+    const signoffId = await insertAttestation(
+      attestationChallengeId,
+      attestationBindingId,
+      { expiresAt: new Date(Date.now() - 1_000) },
+    );
+
+    await query(`
+      CREATE OR REPLACE FUNCTION reject_signoff_expiry_event_for_test()
+      RETURNS trigger LANGUAGE plpgsql AS $test$
+      BEGIN
+        IF NEW.event_type IN ('challenge_expired', 'signoff_expired') THEN
+          RAISE EXCEPTION 'TEST_EXPIRY_EVENT_REJECTED';
+        END IF;
+        RETURN NEW;
+      END;
+      $test$;
+      CREATE TRIGGER reject_signoff_expiry_event_for_test
+        BEFORE INSERT ON signoff_events
+        FOR EACH ROW EXECUTE FUNCTION reject_signoff_expiry_event_for_test();
+    `);
+    try {
+      await expect(query(
+        `SELECT public.expire_challenge_atomic($1::uuid, 'system')`,
+        [challengeId],
+      )).rejects.toThrow('TEST_EXPIRY_EVENT_REJECTED');
+      await expect(query(
+        `SELECT public.expire_attestation_atomic($1::uuid, 'system')`,
+        [signoffId],
+      )).rejects.toThrow('TEST_EXPIRY_EVENT_REJECTED');
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT status FROM signoff_challenges WHERE challenge_id = $1) AS challenge_status,
+           (SELECT status FROM signoff_attestations WHERE signoff_id = $2) AS attestation_status,
+           (SELECT count(*)::int FROM signoff_events
+              WHERE challenge_id = $1 AND event_type = 'challenge_expired') AS challenge_events,
+           (SELECT count(*)::int FROM signoff_events
+              WHERE signoff_id = $2 AND event_type = 'signoff_expired') AS attestation_events`,
+        [challengeId, signoffId],
+      );
+      expect(rows[0]).toEqual({
+        challenge_status: 'challenge_issued',
+        attestation_status: 'approved',
+        challenge_events: 0,
+        attestation_events: 0,
+      });
+    } finally {
+      await query(`DROP TRIGGER IF EXISTS reject_signoff_expiry_event_for_test ON signoff_events`);
+      await query(`DROP FUNCTION IF EXISTS reject_signoff_expiry_event_for_test()`);
+    }
+  });
+
+  it('matches the application policy hash and prevents in-place mutation of a pinned version', async () => {
+    const { rows: hashed } = await query(
+      `SELECT public.signoff_policy_rules_hash($1::jsonb) AS policy_hash`,
+      [JSON.stringify(SIGNOFF_POLICY_RULES)],
+    );
+    expect(hashed[0].policy_hash).toBe(SIGNOFF_POLICY_HASH);
+
+    await insertHandshake();
+    await expect(query(
+      `UPDATE handshake_policies
+       SET rules = pg_catalog.jsonb_set(
+         rules,
+         '{accountable_signoff,required_assurance}',
+         '"low"'::jsonb
+       )
+       WHERE policy_id = $1`,
+      [SIGNOFF_POLICY_ID],
+    )).rejects.toThrow('SIGNOFF_PINNED_POLICY_IMMUTABLE');
+
+    const { rows } = await query(
+      `SELECT rules FROM handshake_policies WHERE policy_id = $1`,
+      [SIGNOFF_POLICY_ID],
+    );
+    expect(rows[0].rules).toEqual(SIGNOFF_POLICY_RULES);
+  });
+
+  it('derives actor, policy, assurance, methods, authority, and TTL from authoritative rows', async () => {
+    const handshakeId = await insertHandshake();
+    const bindingId = await insertBinding(handshakeId, { verificationFinalized: true });
+    const challengeId = crypto.randomUUID();
+    const { rows } = await query(
+      `SELECT public.issue_challenge_atomic(
+         $1::uuid, $2::uuid, 'bhash-xyz', 'entity-issuer',
+         now() + interval '30 minutes',
+         '{"accountableActorRef":"entity-attacker","requiredAssurance":"low","allowedMethods":["out_of_band"]}'::jsonb
+       ) AS challenge`,
+      [challengeId, handshakeId],
+    );
+
+    expect(rows[0].challenge).toMatchObject({
+      challenge_id: challengeId,
+      handshake_id: bindingId,
+      binding_hash: 'bhash-xyz',
+      accountable_actor_ref: 'entity-alice',
+      signoff_policy_id: SIGNOFF_POLICY_ID,
+      signoff_policy_hash: SIGNOFF_POLICY_HASH,
+      required_assurance: 'substantial',
+      allowed_methods: ['passkey'],
+      required_authority_class: SIGNOFF_AUTHORITY_CLASS,
+      authority_organization_id: SIGNOFF_ORGANIZATION_ID,
+      authority_id: SIGNOFF_AUTHORITY_ID,
+      status: 'challenge_issued',
+    });
+    expect(new Date(rows[0].challenge.expires_at).getTime())
+      .toBeLessThanOrEqual(Date.now() + 301_000);
+
+    const { rows: events } = await query(
+      `SELECT detail FROM signoff_events
+       WHERE challenge_id = $1 AND event_type = 'challenge_issued'`,
+      [challengeId],
+    );
+    expect(events[0].detail).toMatchObject({
+      accountable_actor_ref: 'entity-alice',
+      signoff_policy_id: SIGNOFF_POLICY_ID,
+      signoff_policy_hash: SIGNOFF_POLICY_HASH,
+      required_assurance: 'substantial',
+      allowed_methods: ['passkey'],
+      required_authority_class: SIGNOFF_AUTHORITY_CLASS,
+      authority_id: SIGNOFF_AUTHORITY_ID,
+    });
+  });
+
+  it('refuses a legacy hash drift and a malformed authoritative signoff block', async () => {
+    const driftedHash = 'f'.repeat(64);
+    const driftedHandshakeId = await insertHandshake({ policyHash: driftedHash });
+    await insertBinding(driftedHandshakeId, {
+      verificationFinalized: true,
+      policyHash: driftedHash,
+    });
+
+    await expect(query(
+      `SELECT public.issue_challenge_atomic(
+         $1::uuid, $2::uuid, 'bhash-xyz', 'entity-issuer',
+         now() + interval '5 minutes', '{}'::jsonb
+       )`,
+      [crypto.randomUUID(), driftedHandshakeId],
+    )).rejects.toThrow('SIGNOFF_POLICY_HASH_MISMATCH');
+
+    const malformedPolicyId = crypto.randomUUID();
+    const malformedRules = { accountable_signoff: { required: false } };
+    const malformedHash = crypto.createHash('sha256')
+      .update(JSON.stringify(canonicalPolicy(malformedRules)), 'utf8')
+      .digest('hex');
+    await query(
+      `INSERT INTO handshake_policies
+         (policy_id, policy_key, version, mode, status, rules)
+       VALUES ($1, $2, 1, 'mutual', 'active', $3::jsonb)`,
+      [malformedPolicyId, `malformed-${malformedPolicyId}`, JSON.stringify(malformedRules)],
+    );
+    const malformedHandshakeId = await insertHandshake({
+      policyId: malformedPolicyId,
+      policyHash: malformedHash,
+    });
+    await insertBinding(malformedHandshakeId, {
+      verificationFinalized: true,
+      policyHash: malformedHash,
+    });
+
+    await expect(query(
+      `SELECT public.issue_challenge_atomic(
+         $1::uuid, $2::uuid, 'bhash-xyz', 'entity-issuer',
+         now() + interval '5 minutes', '{}'::jsonb
+       )`,
+      [crypto.randomUUID(), malformedHandshakeId],
+    )).rejects.toThrow('SIGNOFF_POLICY_BLOCK_INVALID');
+  });
+
+  it('requires fresh one-time ceremony evidence and ignores forged method or assurance claims', async () => {
+    const { bindingId, challengeId } = await pendingChallenge();
+    const missingEvidenceSignoffId = crypto.randomUUID();
+    await expect(query(
+      `SELECT public.approve_attestation_atomic(
+         $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+         'passkey', 'high', 'web', now() + interval '4 minutes',
+         'caller-claimed-passkey', '{}'::jsonb
+       )`,
+      [missingEvidenceSignoffId, challengeId, bindingId],
+    )).rejects.toThrow('SIGNOFF_CEREMONY_EVIDENCE_REQUIRED');
+
+    const ceremonyEvidenceId = await insertCeremonyEvidence(challengeId);
+    await expect(query(
+      `SELECT public.approve_attestation_atomic(
+         $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+         'out_of_band', 'low', 'web', now() + interval '4 minutes',
+         'forged-weaker-claims', pg_catalog.jsonb_build_object(
+           'ceremony_evidence_id', $4::text
+         )
+       )`,
+      [crypto.randomUUID(), challengeId, bindingId, ceremonyEvidenceId],
+    )).rejects.toThrow('SIGNOFF_CHALLENGE_METHOD_NOT_ALLOWED');
+
+    await expect(query(
+      `SELECT public.approve_attestation_atomic(
+         $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+         'passkey', 'low', 'web', now() + interval '4 minutes',
+         'forged-assurance', pg_catalog.jsonb_build_object(
+           'ceremony_evidence_id', $4::text
+         )
+       )`,
+      [crypto.randomUUID(), challengeId, bindingId, ceremonyEvidenceId],
+    )).rejects.toThrow('SIGNOFF_CHALLENGE_ASSURANCE_INSUFFICIENT');
+
+    const validSignoffId = crypto.randomUUID();
+    const { rows } = await query(
+      `SELECT public.approve_attestation_atomic(
+         $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+         'passkey', 'substantial', 'web', now() + interval '4 minutes',
+         'server-bound-attestation', pg_catalog.jsonb_build_object(
+           'ceremony_evidence_id', $4::text
+         )
+       ) AS attestation`,
+      [validSignoffId, challengeId, bindingId, ceremonyEvidenceId],
+    );
+    expect(rows[0].attestation).toMatchObject({
+      signoff_id: validSignoffId,
+      human_entity_ref: 'entity-alice',
+      auth_method: 'passkey',
+      assurance_level: 'substantial',
+      ceremony_evidence_id: ceremonyEvidenceId,
+      status: 'approved',
+    });
+  });
+
+  it('rechecks the current authority-class grant before approval', async () => {
+    const { bindingId, challengeId } = await pendingChallenge();
+    const ceremonyEvidenceId = await insertCeremonyEvidence(challengeId);
+    try {
+      await query(
+        `UPDATE authorities
+         SET status = 'revoked', revoked_at = now()
+         WHERE authority_id = $1`,
+        [SIGNOFF_AUTHORITY_ID],
+      );
+
+      await expect(query(
+        `SELECT public.approve_attestation_atomic(
+           $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+           'passkey', 'substantial', 'web', now() + interval '4 minutes',
+           'stale-authority-attestation', pg_catalog.jsonb_build_object(
+             'ceremony_evidence_id', $4::text
+           )
+         )`,
+        [crypto.randomUUID(), challengeId, bindingId, ceremonyEvidenceId],
+      )).rejects.toThrow('SIGNOFF_AUTHORITY_INVALID_OR_REVOKED');
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT count(*)::int FROM signoff_attestations WHERE challenge_id = $1) AS attestations,
+           (SELECT consumed_at IS NULL FROM signoff_ceremony_evidence WHERE evidence_id = $2) AS evidence_unused`,
+        [challengeId, ceremonyEvidenceId],
+      );
+      expect(rows[0]).toEqual({ attestations: 0, evidence_unused: true });
+    } finally {
+      await query(
+        `UPDATE authorities
+         SET status = 'active', revoked_at = NULL
+         WHERE authority_id = $1`,
+        [SIGNOFF_AUTHORITY_ID],
+      );
+    }
+  });
+
+  it('rejects expired authority and clamps challenge expiry to its binding window', async () => {
+    const handshakeId = await insertHandshake();
+    const bindingId = await insertBinding(handshakeId, { verificationFinalized: true });
+    const expiredChallengeId = crypto.randomUUID();
+    await query(
+      `UPDATE handshake_bindings SET expires_at = now() - interval '1 second' WHERE id = $1`,
+      [bindingId],
+    );
+
+    await expect(query(
+      `SELECT public.issue_challenge_atomic(
+         $1::uuid, $2::uuid, 'bhash-xyz', 'entity-issuer',
+         now() + interval '5 minutes', '{}'::jsonb
+       )`,
+      [expiredChallengeId, handshakeId],
+    )).rejects.toThrow('SIGNOFF_BINDING_EXPIRED');
+
+    await query(
+      `UPDATE handshake_bindings SET expires_at = now() + interval '1 minute' WHERE id = $1`,
+      [bindingId],
+    );
+    const { rows: clamped } = await query(
+      `SELECT public.issue_challenge_atomic(
+         $1::uuid, $2::uuid, 'bhash-xyz', 'entity-issuer',
+         now() + interval '5 minutes', '{}'::jsonb
+       ) AS result`,
+      [crypto.randomUUID(), handshakeId],
+    );
+    expect(new Date(clamped[0].result.expires_at).getTime())
+      .toBeLessThanOrEqual(Date.now() + 61_000);
+
+    const { rows } = await query(
+      `SELECT count(*)::int AS count FROM signoff_challenges WHERE challenge_id = $1`,
+      [expiredChallengeId],
+    );
+    expect(rows[0].count).toBe(0);
+  });
+
+  it('requires verification finalization and rejects already-consumed downstream authority', async () => {
+    const unfinalizedHandshakeId = await insertHandshake();
+    const unfinalizedBindingId = await insertBinding(unfinalizedHandshakeId);
+
+    await expect(query(
+      `SELECT public.issue_challenge_atomic(
+         $1::uuid, $2::uuid, 'bhash-xyz', 'entity-issuer',
+         now() + interval '5 minutes', '{}'::jsonb
+       )`,
+      [crypto.randomUUID(), unfinalizedHandshakeId],
+    )).rejects.toThrow('SIGNOFF_BINDING_NOT_VERIFICATION_FINALIZED');
+
+    await query(
+      `UPDATE handshake_bindings
+       SET consumed_at = now(), consumed_for = 'unrelated:marker'
+       WHERE id = $1`,
+      [unfinalizedBindingId],
+    );
+    await expect(query(
+      `SELECT public.issue_challenge_atomic(
+         $1::uuid, $2::uuid, 'bhash-xyz', 'entity-issuer',
+         now() + interval '5 minutes', '{}'::jsonb
+       )`,
+      [crypto.randomUUID(), unfinalizedHandshakeId],
+    )).rejects.toThrow('SIGNOFF_BINDING_NOT_VERIFICATION_FINALIZED');
+
+    const handshakeId = await insertHandshake();
+    const bindingId = await insertBinding(handshakeId, { verificationFinalized: true });
+    await query(
+      `INSERT INTO handshake_consumptions
+         (handshake_id, binding_hash, consumed_by_type, consumed_by_id)
+       VALUES ($1, 'bhash-xyz', 'external_execution', 'already-consumed')`,
+      [handshakeId],
+    );
+
+    await expect(query(
+      `SELECT public.issue_challenge_atomic(
+         $1::uuid, $2::uuid, 'bhash-xyz', 'entity-issuer',
+         now() + interval '5 minutes', '{}'::jsonb
+       )`,
+      [crypto.randomUUID(), handshakeId],
+    )).rejects.toThrow('SIGNOFF_AUTHORITY_ALREADY_CONSUMED');
+
+    const challengeId = await insertChallenge(bindingId);
+    await expect(query(
+      `SELECT public.approve_attestation_atomic(
+         $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+         'passkey', 'substantial', 'web', now() + interval '5 minutes',
+         'attestation-hash', '{}'::jsonb
+       )`,
+      [crypto.randomUUID(), challengeId, bindingId],
+    )).rejects.toThrow('SIGNOFF_AUTHORITY_ALREADY_CONSUMED');
+
+    await query(
+      `DELETE FROM handshake_consumptions WHERE handshake_id = $1`,
+      [handshakeId],
+    );
+  });
+
+  it('rejects approval of a pre-existing challenge after its binding expires', async () => {
+    const { bindingId, challengeId } = await pendingChallenge();
+    await query(
+      `UPDATE handshake_bindings SET expires_at = now() - interval '1 second' WHERE id = $1`,
+      [bindingId],
+    );
+
+    await expect(query(
+      `SELECT public.approve_attestation_atomic(
+         $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+         'passkey', 'substantial', 'web', now() + interval '5 minutes',
+         'attestation-hash', '{}'::jsonb
+       )`,
+      [crypto.randomUUID(), challengeId, bindingId],
+    )).rejects.toThrow('SIGNOFF_BINDING_EXPIRED');
+
+    const { rows } = await query(
+      `SELECT count(*)::int AS count FROM signoff_attestations WHERE challenge_id = $1`,
+      [challengeId],
+    );
+    expect(rows[0].count).toBe(0);
+  });
+
+  it('rejects consumption of a legacy overlong challenge after its binding expires', async () => {
+    const { bindingId, challengeId, signoffId } = await approvedAttestation();
+    await query(
+      `UPDATE handshake_bindings SET expires_at = now() - interval '1 second' WHERE id = $1`,
+      [bindingId],
+    );
+
+    await expect(query(
+      `SELECT public.consume_signoff_atomic(
+         $1::text, 'bhash-xyz', 'execution-expired-binding',
+         $2::text, $3::text, 'entity-alice'
+       )`,
+      [signoffId, bindingId, challengeId],
+    )).rejects.toThrow('SIGNOFF_BINDING_EXPIRED');
+
+    const { rows } = await query(
+      `SELECT count(*)::int AS count FROM signoff_consumptions WHERE signoff_id = $1`,
+      [signoffId],
+    );
+    expect(rows[0].count).toBe(0);
+  });
+
+  it('allows a verification-finalized handshake to be revoked before downstream consumption', async () => {
+    const { handshakeId, bindingId } = await pendingChallenge();
+
+    const { rows: revoked } = await query(
+      `SELECT public.revoke_handshake_atomic(
+         $1::uuid, 'verified authority withdrawn', 'entity-alice'
+       ) AS result`,
+      [handshakeId],
+    );
+    expect(revoked[0].result.status).toBe('revoked');
+
+    const { rows } = await query(
+      `SELECT
+         (SELECT consumed_for FROM handshake_bindings WHERE id = $1) AS consumed_for,
+         (SELECT count(*)::int FROM handshake_consumptions WHERE handshake_id = $2) AS consumptions`,
+      [bindingId, handshakeId],
+    );
+    expect(rows[0]).toEqual({
+      consumed_for: `handshake_verified:${handshakeId}`,
+      consumptions: 0,
+    });
+  });
+
+  it('serializes approval behind handshake revocation and rejects stale authority', async () => {
+    const { handshakeId, bindingId, challengeId } = await pendingChallenge();
+    const revoker = await getPool().connect();
+    const approver = await getPool().connect();
+    try {
+      await revoker.query('BEGIN');
+      await revoker.query(
+        `SELECT public.revoke_handshake_atomic($1::uuid, 'authority withdrawn', 'entity-alice')`,
+        [handshakeId],
+      );
+
+      const approval = expect(approver.query(
+        `SELECT public.approve_attestation_atomic(
+           $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+           'passkey', 'substantial', 'web', now() + interval '5 minutes',
+           'attestation-hash', '{}'::jsonb
+         )`,
+        [crypto.randomUUID(), challengeId, bindingId],
+      )).rejects.toThrow('SIGNOFF_HANDSHAKE_NOT_VERIFIED');
+      await waitForBlockedQuery('approve_attestation_atomic');
+      await revoker.query('COMMIT');
+      await approval;
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT status FROM handshakes WHERE handshake_id = $1) AS handshake_status,
+           (SELECT count(*)::int FROM signoff_attestations WHERE challenge_id = $2) AS attestations`,
+        [handshakeId, challengeId],
+      );
+      expect(rows[0]).toEqual({ handshake_status: 'revoked', attestations: 0 });
+    } finally {
+      await revoker.query('ROLLBACK').catch(() => {});
+      revoker.release();
+      approver.release();
+    }
+  });
+
+  it('serializes signoff consumption behind handshake revocation with no partial burn', async () => {
+    const { handshakeId, bindingId, challengeId, signoffId } = await approvedAttestation();
+    const revoker = await getPool().connect();
+    const consumer = await getPool().connect();
+    try {
+      await revoker.query('BEGIN');
+      await revoker.query(
+        `SELECT public.revoke_handshake_atomic($1::uuid, 'authority withdrawn', 'entity-alice')`,
+        [handshakeId],
+      );
+
+      const consumption = expect(consumer.query(
+        `SELECT public.consume_signoff_atomic(
+           $1::text, 'bhash-xyz', 'execution-revocation-race',
+           $2::text, $3::text, 'entity-alice'
+         )`,
+        [signoffId, bindingId, challengeId],
+      )).rejects.toThrow('SIGNOFF_HANDSHAKE_NOT_VERIFIED');
+      await waitForBlockedQuery('consume_signoff_atomic');
+      await revoker.query('COMMIT');
+      await consumption;
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT count(*)::int FROM handshake_consumptions WHERE handshake_id = $1) AS handshake_consumptions,
+           (SELECT count(*)::int FROM signoff_consumptions WHERE signoff_id = $2) AS signoff_consumptions,
+           (SELECT consumed_at IS NOT NULL FROM handshake_bindings WHERE id = $3) AS binding_finalized,
+           (SELECT consumed_for FROM handshake_bindings WHERE id = $3) AS binding_consumed_for`,
+        [handshakeId, signoffId, bindingId],
+      );
+      expect(rows[0]).toEqual({
+        handshake_consumptions: 0,
+        signoff_consumptions: 0,
+        binding_finalized: true,
+        binding_consumed_for: `handshake_verified:${handshakeId}`,
+      });
+    } finally {
+      await revoker.query('ROLLBACK').catch(() => {});
+      revoker.release();
+      consumer.release();
+    }
+  });
+
+  it('serializes signoff consumption behind direct authority consumption', async () => {
+    const { handshakeId, bindingId, challengeId, signoffId } = await approvedAttestation();
+    const directConsumer = await getPool().connect();
+    const signoffConsumer = await getPool().connect();
+    try {
+      await directConsumer.query('BEGIN');
+      await directConsumer.query(
+        `SELECT * FROM public.consume_handshake_atomic(
+           $1::uuid, 'bhash-xyz', 'direct_execution', 'direct-1',
+           'entity-alice', 'execution-direct-wins'
+         )`,
+        [handshakeId],
+      );
+
+      const signoffConsumption = expect(signoffConsumer.query(
+        `SELECT public.consume_signoff_atomic(
+           $1::text, 'bhash-xyz', 'execution-signoff-loses',
+           $2::text, $3::text, 'entity-alice'
+         )`,
+        [signoffId, bindingId, challengeId],
+      )).rejects.toThrow('SIGNOFF_AUTHORITY_ALREADY_CONSUMED');
+      await waitForBlockedQuery('consume_signoff_atomic');
+      await directConsumer.query('COMMIT');
+      await signoffConsumption;
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT count(*)::int FROM handshake_consumptions WHERE handshake_id = $1) AS authority_consumptions,
+           (SELECT count(*)::int FROM signoff_consumptions WHERE signoff_id = $2) AS signoff_consumptions,
+           (SELECT consumed_for FROM handshake_bindings WHERE id = $3) AS binding_consumed_for`,
+        [handshakeId, signoffId, bindingId],
+      );
+      expect(rows[0]).toEqual({
+        authority_consumptions: 1,
+        signoff_consumptions: 0,
+        binding_consumed_for: `handshake_verified:${handshakeId}`,
+      });
+      await query(
+        `DELETE FROM handshake_consumptions WHERE handshake_id = $1`,
+        [handshakeId],
+      );
+    } finally {
+      await directConsumer.query('ROLLBACK').catch(() => {});
+      directConsumer.release();
+      signoffConsumer.release();
+    }
+  });
+
+  it('atomically burns authority, prevents replay, and defeats a losing revocation', async () => {
+    const { handshakeId, bindingId, challengeId, signoffId } = await approvedAttestation();
+    const consumer = await getPool().connect();
+    const revoker = await getPool().connect();
+    try {
+      await consumer.query('BEGIN');
+      await consumer.query(
+        `SELECT public.consume_signoff_atomic(
+           $1::text, 'bhash-xyz', 'execution-consume-wins',
+           $2::text, $3::text, 'entity-alice'
+         )`,
+        [signoffId, bindingId, challengeId],
+      );
+
+      const revocation = expect(revoker.query(
+        `SELECT public.revoke_handshake_atomic($1::uuid, 'too late', 'entity-alice')`,
+        [handshakeId],
+      )).rejects.toThrow('HANDSHAKE_ALREADY_CONSUMED');
+      await waitForBlockedQuery('revoke_handshake_atomic');
+      await consumer.query('COMMIT');
+      await revocation;
+
+      await expect(query(
+        `SELECT public.consume_signoff_atomic(
+           $1::text, 'bhash-xyz', 'execution-replay',
+           $2::text, $3::text, 'entity-alice'
+         )`,
+        [signoffId, bindingId, challengeId],
+      )).rejects.toThrow('SIGNOFF_AUTHORITY_ALREADY_CONSUMED');
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT count(*)::int FROM handshake_consumptions WHERE handshake_id = $1) AS handshake_consumptions,
+           (SELECT count(*)::int FROM signoff_consumptions WHERE signoff_id = $2) AS signoff_consumptions,
+           (SELECT consumed_at IS NOT NULL FROM handshake_bindings WHERE id = $3) AS binding_consumed,
+           (SELECT consumed_for FROM handshake_bindings WHERE id = $3) AS binding_consumed_for,
+           (SELECT status FROM handshakes WHERE handshake_id = $1) AS handshake_status`,
+        [handshakeId, signoffId, bindingId],
+      );
+      expect(rows[0]).toEqual({
+        handshake_consumptions: 1,
+        signoff_consumptions: 1,
+        binding_consumed: true,
+        binding_consumed_for: `handshake_verified:${handshakeId}`,
+        handshake_status: 'verified',
+      });
+      await query(
+        `DELETE FROM handshake_consumptions WHERE handshake_id = $1`,
+        [handshakeId],
+      );
+    } finally {
+      await consumer.query('ROLLBACK').catch(() => {});
+      consumer.release();
+      revoker.release();
+    }
+  });
+
+  it('rolls the authority burn back if a later signoff write fails', async () => {
+    const { handshakeId, bindingId, challengeId, signoffId } = await approvedAttestation();
+    await query(
+      `INSERT INTO signoff_consumptions (signoff_id, binding_hash, execution_ref)
+       VALUES ($1, 'bhash-xyz', 'legacy-divergent-row')`,
+      [signoffId],
+    );
+
+    await expect(query(
+      `SELECT public.consume_signoff_atomic(
+         $1::text, 'bhash-xyz', 'execution-must-rollback',
+         $2::text, $3::text, 'entity-alice'
+       )`,
+      [signoffId, bindingId, challengeId],
+    )).rejects.toThrow(/duplicate|unique/i);
+
+    const { rows } = await query(
+      `SELECT
+         (SELECT count(*)::int FROM handshake_consumptions WHERE handshake_id = $1) AS handshake_consumptions,
+         (SELECT consumed_at IS NOT NULL FROM handshake_bindings WHERE id = $2) AS binding_finalized,
+         (SELECT consumed_for FROM handshake_bindings WHERE id = $2) AS binding_consumed_for,
+         (SELECT status FROM signoff_attestations WHERE signoff_id = $3) AS attestation_status,
+         (SELECT count(*)::int FROM signoff_events
+           WHERE signoff_id = $3 AND event_type = 'signoff_consumed') AS consumed_events`,
+      [handshakeId, bindingId, signoffId],
+    );
+    expect(rows[0]).toEqual({
+      handshake_consumptions: 0,
+      binding_finalized: true,
+      binding_consumed_for: `handshake_verified:${handshakeId}`,
+      attestation_status: 'approved',
+      consumed_events: 0,
+    });
+  });
+
+  it('serializes approval against denial and permits exactly one terminal decision', async () => {
+    const { bindingId, challengeId } = await pendingChallenge();
+    const signoffId = crypto.randomUUID();
+    const ceremonyEvidenceId = await insertCeremonyEvidence(challengeId);
+    const approver = await getPool().connect();
+    const denier = await getPool().connect();
+    try {
+      await approver.query('BEGIN');
+      await approver.query(
+        `SELECT public.approve_attestation_atomic(
+           $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+           'passkey', 'substantial', 'web', now() + interval '4 minutes',
+           'attestation-hash', pg_catalog.jsonb_build_object(
+             'ceremony_evidence_id', $4::text
+           )
+         )`,
+        [signoffId, challengeId, bindingId, ceremonyEvidenceId],
+      );
+
+      const denial = expect(denier.query(
+        `SELECT public.deny_challenge_atomic(
+           $1::uuid, 'entity-alice', 'concurrent denial'
+         )`,
+        [challengeId],
+      )).rejects.toThrow('SIGNOFF_CHALLENGE_NOT_DENIABLE');
+      await waitForBlockedQuery('deny_challenge_atomic');
+      await approver.query('COMMIT');
+      await denial;
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT status FROM signoff_challenges WHERE challenge_id = $1) AS status,
+           (SELECT count(*)::int FROM signoff_attestations WHERE challenge_id = $1) AS attestations,
+           (SELECT array_agg(event_type ORDER BY created_at)
+              FROM signoff_events WHERE challenge_id = $1) AS events`,
+        [challengeId],
+      );
+      expect(rows[0]).toMatchObject({ status: 'approved', attestations: 1 });
+      expect(rows[0].events).toEqual(['signoff_approved']);
+    } finally {
+      await approver.query('ROLLBACK').catch(() => {});
+      approver.release();
+      denier.release();
+    }
+  });
+
+  it('prevents approval after a concurrent challenge revocation commits', async () => {
+    const { bindingId, challengeId } = await pendingChallenge();
+    const revoker = await getPool().connect();
+    const approver = await getPool().connect();
+    try {
+      await revoker.query('BEGIN');
+      await revoker.query(
+        `SELECT public.revoke_challenge_atomic(
+           $1::uuid, 'entity-alice', 'authority withdrawn'
+         )`,
+        [challengeId],
+      );
+
+      const approval = expect(approver.query(
+        `SELECT public.approve_attestation_atomic(
+           $1::uuid, $2::uuid, $3::uuid, 'bhash-xyz', 'entity-alice',
+           'passkey', 'substantial', 'web', now() + interval '5 minutes',
+           'attestation-hash', '{}'::jsonb
+         )`,
+        [crypto.randomUUID(), challengeId, bindingId],
+      )).rejects.toThrow('SIGNOFF_CHALLENGE_NOT_ATTESTABLE');
+      await waitForBlockedQuery('approve_attestation_atomic');
+      await revoker.query('COMMIT');
+      await approval;
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT status FROM signoff_challenges WHERE challenge_id = $1) AS status,
+           (SELECT count(*)::int FROM signoff_attestations WHERE challenge_id = $1) AS attestations,
+           (SELECT array_agg(event_type ORDER BY created_at)
+              FROM signoff_events WHERE challenge_id = $1) AS events`,
+        [challengeId],
+      );
+      expect(rows[0]).toMatchObject({ status: 'revoked', attestations: 0 });
+      expect(rows[0].events).toEqual(['challenge_revoked']);
+    } finally {
+      await revoker.query('ROLLBACK').catch(() => {});
+      revoker.release();
+      approver.release();
+    }
+  });
+
+  it('prevents consumption after a concurrent attestation revocation commits', async () => {
+    const { bindingId, challengeId, signoffId } = await approvedAttestation();
+    const revoker = await getPool().connect();
+    const consumer = await getPool().connect();
+    try {
+      await revoker.query('BEGIN');
+      await revoker.query(
+        `SELECT public.revoke_attestation_atomic(
+           $1::uuid, $2::uuid, 'entity-alice', 'approval withdrawn'
+         )`,
+        [signoffId, challengeId],
+      );
+
+      const consumption = expect(consumer.query(
+        `SELECT public.consume_signoff_atomic(
+           $1::text, 'bhash-xyz', 'execution-1', $2::text, $3::text, 'entity-alice'
+         )`,
+        [signoffId, bindingId, challengeId],
+      )).rejects.toThrow('SIGNOFF_ATTESTATION_NOT_CONSUMABLE');
+      await waitForBlockedQuery('consume_signoff_atomic');
+      await revoker.query('COMMIT');
+      await consumption;
+
+      const { rows } = await query(
+        `SELECT
+           (SELECT status FROM signoff_attestations WHERE signoff_id = $1) AS status,
+           (SELECT count(*)::int FROM signoff_consumptions WHERE signoff_id = $1) AS consumptions,
+           (SELECT array_agg(event_type ORDER BY created_at)
+              FROM signoff_events WHERE challenge_id = $2) AS events`,
+        [signoffId, challengeId],
+      );
+      expect(rows[0]).toMatchObject({ status: 'revoked', consumptions: 0 });
+      expect(rows[0].events).toEqual(['signoff_approved', 'signoff_revoked']);
+    } finally {
+      await revoker.query('ROLLBACK').catch(() => {});
+      revoker.release();
+      consumer.release();
+    }
+  });
+
+  it('consumption locks and requires the challenge to remain approved', async () => {
+    const { bindingId, challengeId, signoffId } = await approvedAttestation();
+    // Simulate an impossible legacy/corrupted row to prove the consume RPC's
+    // locked state predicate remains independent of the new exact-edge trigger.
+    await query(
+      `ALTER TABLE signoff_challenges
+       DISABLE TRIGGER enforce_signoff_challenge_exact_transitions`,
+    );
+    try {
+      await query(
+        `UPDATE signoff_challenges SET status = 'revoked' WHERE challenge_id = $1`,
+        [challengeId],
+      );
+    } finally {
+      await query(
+        `ALTER TABLE signoff_challenges
+         ENABLE TRIGGER enforce_signoff_challenge_exact_transitions`,
+      );
+    }
+
+    await expect(query(
+      `SELECT public.consume_signoff_atomic(
+         $1::text, 'bhash-xyz', 'execution-2', $2::text, $3::text, 'entity-alice'
+       )`,
+      [signoffId, bindingId, challengeId],
+    )).rejects.toThrow('SIGNOFF_CHALLENGE_NOT_CONSUMABLE');
+
+    const { rows } = await query(
+      `SELECT count(*)::int AS count
+       FROM signoff_consumptions WHERE signoff_id = $1`,
+      [signoffId],
+    );
+    expect(rows[0].count).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ── 6. Handshake nonce uniqueness ───────────────────────────────────────────
 // ---------------------------------------------------------------------------
 
 describe.skipIf(SKIP)('DB invariant: handshake nonces are globally unique', () => {

@@ -18,6 +18,7 @@ import { logger } from '@/lib/logger';
 import { newEngagementId, deriveSlug } from '@/lib/trust-desk/ids';
 import { putEngagement, STATUS } from '@/lib/trust-desk/store';
 import { runPipeline } from '@/lib/trust-desk/pipeline';
+import { TRUST_DESK_PUBLIC_LLM_LIMITS } from '@/lib/trust-desk/resource-budget';
 import { readEpJson } from '@/lib/http/route-body';
 import { enforceBodyByteLimit } from '@/lib/http/body-limit';
 
@@ -134,7 +135,10 @@ export async function POST(request: NextRequest): Promise<Response> {
     // Run the pipeline AFTER responding so the form gets an instant ack.
     after(async () => {
       try {
-        const result = await runPipeline({ engagement: runInput });
+        const result = await runPipeline({
+          engagement: runInput,
+          llmBudgetOptions: TRUST_DESK_PUBLIC_LLM_LIMITS,
+        });
         logger.info('trust-desk intake: pipeline finished', {
           engagement_id: engagementId,
           outcome: result.outcome,

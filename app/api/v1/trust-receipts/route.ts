@@ -295,7 +295,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({
           receipt_id: replay.target_id,
           decision: state.decision,
-          observed_decision: null,
+          observed_decision: state.observed_decision || null,
           policy_id: state.policy_id,
           policy_hash: state.policy_hash,
           action_hash: state.action_hash,
@@ -565,7 +565,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // ── Persist (best-effort; receipt is self-describing in response) ────
     let receipt_status = 'issued';
-    if (decision.signoffRequired && decision.decision === GUARD_DECISIONS.ALLOW_WITH_SIGNOFF) {
+    if (mode === ENFORCEMENT_MODES.OBSERVE) {
+      // An observe receipt is telemetry from the moment it is minted, never a
+      // positive authority state. Preserve a hard policy denial explicitly so
+      // both the creation response and later event replay tell the same truth.
+      const observedPolicyDecision = decision.observed_decision || decision.decision;
+      receipt_status = observedPolicyDecision === GUARD_DECISIONS.DENY
+        ? 'denied'
+        : (observedPolicyDecision === GUARD_DECISIONS.ALLOW
+            || observedPolicyDecision === GUARD_DECISIONS.ALLOW_WITH_SIGNOFF
+            ? 'observed'
+            : 'indeterminate');
+    } else if (decision.signoffRequired && decision.decision === GUARD_DECISIONS.ALLOW_WITH_SIGNOFF) {
       receipt_status = 'pending_signoff';
     } else if (decision.decision === GUARD_DECISIONS.DENY) {
       receipt_status = 'denied';
@@ -587,6 +598,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           policy_id: policyId,
           policy_hash: policyHash,
           decision: decision.decision,
+          observed_decision: decision.observed_decision || null,
           reasons: decision.reasons,
           enforcement_mode: mode,
           signoff_required: decision.signoffRequired,

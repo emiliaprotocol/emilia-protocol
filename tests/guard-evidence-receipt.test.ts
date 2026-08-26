@@ -131,7 +131,7 @@ describe('canonicalize', () => {
 
 describe('resolveReceiptStatus', () => {
   it('consumed wins', () => {
-    expect(resolveReceiptStatus(createdState(), { consumed: consumedEvent })).toBe('consumed');
+    expect(resolveReceiptStatus(createdState(), { approved: approvedEvent, consumed: consumedEvent })).toBe('consumed');
   });
   it('approved (no consume) → approved_pending_consume', () => {
     expect(resolveReceiptStatus(createdState(), { approved: approvedEvent })).toBe('approved_pending_consume');
@@ -144,6 +144,28 @@ describe('resolveReceiptStatus', () => {
   });
   it('deny → denied', () => {
     expect(resolveReceiptStatus(createdState({ signoff_required: false, decision: 'deny' }), {})).toBe('denied');
+  });
+  it('observed hard deny remains denied even after a consume event', () => {
+    expect(resolveReceiptStatus(createdState({
+      signoff_required: false,
+      decision: 'observe',
+      observed_decision: 'deny',
+      enforcement_mode: 'observe',
+    }), { consumed: consumedEvent })).toBe('denied');
+  });
+  it('legacy observe state without the real verdict is indeterminate', () => {
+    expect(resolveReceiptStatus(createdState({
+      signoff_required: false,
+      decision: 'observe',
+      enforcement_mode: 'observe',
+    }), {})).toBe('indeterminate');
+  });
+  it('observed signoff-required verdict remains non-authoritative telemetry', () => {
+    expect(resolveReceiptStatus(createdState({
+      decision: 'observe',
+      observed_decision: 'allow_with_signoff',
+      enforcement_mode: 'observe',
+    }), {})).toBe('observed');
   });
   it('pending falls through to receipt_status', () => {
     expect(resolveReceiptStatus(createdState(), {})).toBe('pending_signoff');
@@ -164,6 +186,27 @@ describe('signEvidenceReceipt — honesty gate (returns null, fabricates nothing
   });
   it('denied → null', () => {
     expect(signEvidenceReceipt(args({ base: createdState({ signoff_required: false, decision: 'deny' }) }))).toBeNull();
+  });
+  it('observed hard deny stays unsigned even if a historical consume event exists', () => {
+    expect(signEvidenceReceipt(args({
+      base: createdState({
+        signoff_required: false,
+        decision: 'observe',
+        observed_decision: 'deny',
+        enforcement_mode: 'observe',
+      }),
+      consumed: consumedEvent,
+    }))).toBeNull();
+  });
+  it('legacy observe receipts without observed_decision stay unsigned', () => {
+    expect(signEvidenceReceipt(args({
+      base: createdState({
+        signoff_required: false,
+        decision: 'observe',
+        enforcement_mode: 'observe',
+      }),
+      consumed: consumedEvent,
+    }))).toBeNull();
   });
   it('approved but missing canonical_action → null (no re-describing)', () => {
     const base = createdState();
@@ -222,6 +265,23 @@ describe('signEvidenceReceipt — signs + round-trip verifies under packages/ver
     expect(out).not.toBeNull();
     expect(out.document.payload.authorization.status).toBe('approved_pending_consume');
     expect(verifyReceipt(out.document, out.public_key).valid).toBe(true);
+  });
+
+  it('keeps even an observed allow outside authority-positive signed states', () => {
+    const out = signEvidenceReceipt({
+      receiptId: 'tr_observe_allow',
+      base: createdState({
+        signoff_required: false,
+        decision: 'observe',
+        observed_decision: 'allow',
+        enforcement_mode: 'observe',
+      }),
+      approved: null,
+      rejected: null,
+      consumed: null,
+      issuedAt: '2026-04-26T00:00:00Z',
+    });
+    expect(out).toBeNull();
   });
 
   it('tampering any nested field breaks the signature', () => {

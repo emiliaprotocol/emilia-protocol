@@ -55,19 +55,25 @@ export async function GET(
     const base = created.after_state;
     if (isCloudGuardPrincipal(auth)) {
       const permissions = Array.isArray(auth.permissions) ? auth.permissions : [];
-      const mayReadApproval = permissions.includes('admin')
-        || permissions.includes('approval_request');
-      if (!mayReadApproval
-          || base.action_type !== 'large_payment_release'
-          || created.actor_id !== authEntityId(auth)) {
+      const mayReadReceipts = permissions.includes('admin')
+        || permissions.includes('receipt.evidence');
+      const mayReadOwnApproval = permissions.includes('approval_request')
+        && base.action_type === 'large_payment_release'
+        && created.actor_id === authEntityId(auth);
+      if (!mayReadReceipts && !mayReadOwnApproval) {
         return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
       }
     }
 
-    // Tenant scoping (IDOR): the evidence packet exposes approver identity,
-    // amounts, policy, and the full timeline — scope it to the receipt's org
-    // (or, transitionally, its creator). Mismatch => 404.
-    if (!canReadReceipt(auth, { organizationId: base.organization_id, creatorActorId: created.actor_id })) {
+    // Evidence confidentiality: the packet exposes approver identity, amounts,
+    // policy, and the full timeline. Organization membership alone is not
+    // authority; require creator ownership or receipt.evidence/admin. Mismatch
+    // remains 404 so callers cannot enumerate receipt existence.
+    if (!canReadReceipt(
+      auth,
+      { organizationId: base.organization_id, creatorActorId: created.actor_id },
+      'receipt.evidence',
+    )) {
       return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
     }
 
@@ -137,6 +143,7 @@ export async function GET(
         id: base.policy_id,
         hash: base.policy_hash,
         decision: base.decision,
+        observed_decision: base.observed_decision ?? null,
         enforcement_mode: base.enforcement_mode,
       },
       signoff: {

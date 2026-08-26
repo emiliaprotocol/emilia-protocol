@@ -57,8 +57,9 @@ function makeMockSupabase({
     }
     return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis() };
   });
+  const rpc = vi.fn().mockResolvedValue({ data: updatedChallenge, error: updateError });
 
-  return { from };
+  return { from, rpc };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -201,42 +202,24 @@ describe('denyChallenge — happy path', () => {
     expect(result.status).toBe('denied');
   });
 
-  it('emits a denied event before updating the challenge (event-first)', async () => {
-    const callOrder = [];
-    mockRequireSignoffEvent.mockImplementation(async () => {
-      callOrder.push('event');
-      return { event_id: 'ev-deny' };
-    });
-
+  it('commits the canonical event and denial through one atomic RPC', async () => {
     const challenge = validChallenge({ status: 'challenge_issued' });
     const denied = { ...challenge, status: 'denied' };
-
-    let updateCalled = false;
-    const from = vi.fn().mockImplementation(() => ({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: challenge, error: null }) }),
-      }),
-      update: vi.fn().mockImplementation(() => {
-        callOrder.push('update');
-        updateCalled = true;
-        return {
-          eq: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: denied, error: null }),
-            }),
-          }),
-        };
-      }),
-    }));
-    mockGetServiceClient.mockReturnValue({ from });
+    const supabase = makeMockSupabase({ challenge, updatedChallenge: denied });
+    mockGetServiceClient.mockReturnValue(supabase);
 
     await denyChallenge(validParams());
 
-    expect(callOrder[0]).toBe('event');
-    expect(callOrder[1]).toBe('update');
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
+    expect(supabase.rpc).toHaveBeenCalledWith('deny_challenge_atomic', {
+      p_challenge_id: 'ch-1',
+      p_actor_entity_ref: 'entity-alice',
+      p_reason: 'User declined the action',
+    });
+    expect(mockRequireSignoffEvent).not.toHaveBeenCalled();
   });
 
-  it('calls requireSignoffEvent with correct parameters', async () => {
+  it('passes the caller reason to the atomic RPC', async () => {
     const challenge = validChallenge({ status: 'challenge_issued' });
     const denied = { ...challenge, status: 'denied' };
     const supabase = makeMockSupabase({ challenge, updatedChallenge: denied });
@@ -244,12 +227,8 @@ describe('denyChallenge — happy path', () => {
 
     await denyChallenge(validParams({ reason: 'I refuse' }));
 
-    expect(mockRequireSignoffEvent).toHaveBeenCalledWith(expect.objectContaining({
-      handshakeId: 'hs-1',
-      challengeId: 'ch-1',
-      eventType: 'denied',
-      detail: { reason: 'I refuse' },
-      actorEntityRef: 'entity-alice',
+    expect(supabase.rpc).toHaveBeenCalledWith('deny_challenge_atomic', expect.objectContaining({
+      p_reason: 'I refuse',
     }));
   });
 
@@ -261,17 +240,31 @@ describe('denyChallenge — happy path', () => {
 
     await denyChallenge({ challengeId: 'ch-1', actor: ACTOR });
 
-    expect(mockRequireSignoffEvent).toHaveBeenCalledWith(expect.objectContaining({
-      detail: { reason: 'Human denied the action' },
+    expect(supabase.rpc).toHaveBeenCalledWith('deny_challenge_atomic', expect.objectContaining({
+      p_reason: 'Human denied the action',
     }));
   });
 
-  it('throws DB_ERROR when update fails', async () => {
+  it('throws DB_ERROR when the atomic RPC fails', async () => {
     const challenge = validChallenge({ status: 'challenge_issued' });
     const supabase = makeMockSupabase({ challenge, updateError: { message: 'write failed' } });
     mockGetServiceClient.mockReturnValue(supabase);
 
     await expect(denyChallenge(validParams()))
       .rejects.toMatchObject({ code: 'DB_ERROR', status: 500 });
+  });
+
+  it.each([
+    ['SIGNOFF_CHALLENGE_NOT_FOUND', 'CHALLENGE_NOT_FOUND', 404],
+    ['SIGNOFF_CHALLENGE_ACTOR_MISMATCH', 'FORBIDDEN', 403],
+    ['SIGNOFF_CHALLENGE_NOT_DENIABLE', 'INVALID_STATE_FOR_DENIAL', 409],
+    ['SIGNOFF_CHALLENGE_EXPIRED', 'SIGNOFF_CHALLENGE_EXPIRED', 410],
+  ])('maps atomic RPC error %s to %s/%s', async (message, code, status) => {
+    const challenge = validChallenge({ status: 'challenge_issued' });
+    const supabase = makeMockSupabase({ challenge, updateError: { message } });
+    mockGetServiceClient.mockReturnValue(supabase);
+
+    await expect(denyChallenge(validParams()))
+      .rejects.toMatchObject({ code, status });
   });
 });

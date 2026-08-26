@@ -14,6 +14,9 @@ const config = [
   {
     ignores: [
       '.next/**',
+      '.vercel/**',
+      '.pytest_cache/**',
+      '.serena/**',
       'out/**',
       'coverage/**',
       'dist/**',
@@ -43,6 +46,11 @@ const config = [
 
   // Project-local rule overrides.
   {
+    // Keep plugin-backed overrides on the same source-file surface as the
+    // Next.js preset that registers those plugins. Without this scope, a
+    // generated CommonJS launcher (for example under .vercel/) can receive a
+    // react-hooks rule without receiving the react-hooks plugin definition.
+    files: ['**/*.{js,jsx,mjs,ts,tsx,mts,cts}'],
     rules: {
       'react/no-unescaped-entities': 'off',
       'react-hooks/exhaustive-deps': 'warn',

@@ -20,6 +20,9 @@ export { denyChallenge } from './deny.js';
 // ── Revocation ──────────────────────────────────────────────────────────────
 export { revokeChallenge, revokeAttestation } from './revoke.js';
 
+// ── Expiry ──────────────────────────────────────────────────────────────────
+export { expireChallenge, expireAttestation } from './expire.js';
+
 // ── Events ──────────────────────────────────────────────────────────────────
 export {
   emitSignoffEvent,

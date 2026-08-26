@@ -29,7 +29,10 @@ const MAX_EXPIRY_DAYS = 90;
  * Body: {
  *   name: string,
  *   environment?: 'development' | 'staging' | 'production',
- *   permissions?: ('read' | 'write' | 'admin' | 'policy_rollout')[],
+ *   permissions?: (
+ *     'read' | 'write' | 'admin' | 'policy_rollout' | 'approval_request' |
+ *     'receipt.read' | 'receipt.evidence' | 'receipt.consume' | 'receipt.execute'
+ *   )[],
  *   expires_in_days?: number
  * }
  *

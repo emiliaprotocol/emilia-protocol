@@ -158,7 +158,7 @@ describe('government-launch red-team regressions', () => {
     expect(entityInsert.organization_id).toBe(body.sandbox_id);
     expect(entityInsert.api_key_hash).toBe(keyInsert.key_hash);
     expect(entityInsert.private_key_encrypted).toMatch(/^epenc:v1:/);
-    expect(keyInsert.permissions).toEqual([]);
+    expect(keyInsert.permissions).toEqual(['observe']);
     expect(body.try_now.curl).toContain(`"organization_id":"${body.sandbox_id}"`);
   });
 

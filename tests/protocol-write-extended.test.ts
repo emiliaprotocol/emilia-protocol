@@ -129,20 +129,28 @@ beforeEach(() => {
 // ── Signoff validators ────────────────────────────────────────────────────────
 
 describe('signoff validators', () => {
-  it('rejects signoff_challenge_issue without entity_id', async () => {
+  it('rejects signoff_challenge_issue without handshakeId', async () => {
     await expect(protocolWrite({
       type: COMMAND_TYPES.SIGNOFF_CHALLENGE_ISSUE,
-      input: { action_type: 'install' },
+      input: { bindingHash: 'sha256:binding', expiresAt: '2099-01-01T00:00:00Z' },
       actor: { id: 'op_1' },
-    })).rejects.toThrow('input.entity_id is required');
+    })).rejects.toThrow('input.handshakeId is required');
   });
 
-  it('rejects signoff_challenge_issue without action_type', async () => {
+  it('rejects signoff_challenge_issue without bindingHash', async () => {
     await expect(protocolWrite({
       type: COMMAND_TYPES.SIGNOFF_CHALLENGE_ISSUE,
-      input: { entity_id: 'ent_1' },
+      input: { handshakeId: 'hs_1', expiresAt: '2099-01-01T00:00:00Z' },
       actor: { id: 'op_1' },
-    })).rejects.toThrow('input.action_type is required');
+    })).rejects.toThrow('input.bindingHash is required');
+  });
+
+  it('rejects signoff_challenge_issue without expiresAt', async () => {
+    await expect(protocolWrite({
+      type: COMMAND_TYPES.SIGNOFF_CHALLENGE_ISSUE,
+      input: { handshakeId: 'hs_1', bindingHash: 'sha256:binding' },
+      actor: { id: 'op_1' },
+    })).rejects.toThrow('input.expiresAt is required');
   });
 
   it('rejects signoff_challenge_view without challenge_id', async () => {
@@ -158,7 +166,21 @@ describe('signoff validators', () => {
       type: COMMAND_TYPES.SIGNOFF_ATTEST,
       input: {},
       actor: { id: 'op_1' },
-    })).rejects.toThrow('input.challenge_id is required');
+    })).rejects.toThrow('input.challengeId is required');
+  });
+
+  it('rejects signoff_attest without server ceremony evidence', async () => {
+    await expect(protocolWrite({
+      type: COMMAND_TYPES.SIGNOFF_ATTEST,
+      input: {
+        challengeId: 'ch_1',
+        humanEntityRef: 'entity-alice',
+        authMethod: 'passkey',
+        assuranceLevel: 'substantial',
+        channel: 'web',
+      },
+      actor: { entity_id: 'entity-alice' },
+    })).rejects.toThrow('input.ceremonyEvidenceId is required');
   });
 
   it('rejects signoff_deny without challenge_id', async () => {
@@ -166,7 +188,7 @@ describe('signoff validators', () => {
       type: COMMAND_TYPES.SIGNOFF_DENY,
       input: {},
       actor: { id: 'op_1' },
-    })).rejects.toThrow('input.challenge_id is required');
+    })).rejects.toThrow('input.challengeId is required');
   });
 
   it('rejects signoff_consume without signoff_id', async () => {
@@ -174,7 +196,15 @@ describe('signoff validators', () => {
       type: COMMAND_TYPES.SIGNOFF_CONSUME,
       input: {},
       actor: { id: 'op_1' },
-    })).rejects.toThrow('input.signoff_id is required');
+    })).rejects.toThrow('input.signoffId is required');
+  });
+
+  it('rejects signoff_consume without executionRef', async () => {
+    await expect(protocolWrite({
+      type: COMMAND_TYPES.SIGNOFF_CONSUME,
+      input: { signoffId: 'so_1' },
+      actor: { entity_id: 'entity-alice' },
+    })).rejects.toThrow('input.executionRef is required');
   });
 
   it('rejects signoff_challenge_revoke without challenge_id', async () => {
