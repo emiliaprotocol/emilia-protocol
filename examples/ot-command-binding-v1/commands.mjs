@@ -28,6 +28,34 @@
 import { hashCanonical } from '../../packages/gate/index.js';
 export const OT_COMMAND_BINDING_VERSION = 'EP-OT-COMMAND-BINDING-v1';
 /**
+ * DNP3 CROB control-octet fields used by this profile.
+ *
+ * These values follow the maintained Step Function DNP3 implementation at
+ * commit 562071e42b2ce1408e0930414f14afa181f444af:
+ * `dnp3/src/app/control_types.rs` and `dnp3/src/app/control_enums.rs`.
+ * QUEUE is obsolete and MUST be zero. CLEAR remains a current, independently
+ * material bit and is preserved in the canonical action.
+ */
+export const DNP3_CONTROL_FLAGS = Object.freeze({
+    CLEAR: 0x20,
+    QUEUE_OBSOLETE: 0x10,
+});
+/** Human-readable labels for complete CROB operation-type octets with TCC=NUL. */
+export const DNP3_CONTROL_CODES = Object.freeze({
+    NUL: 0x00,
+    PULSE_ON: 0x01,
+    PULSE_OFF: 0x02,
+    LATCH_ON: 0x03,
+    LATCH_OFF: 0x04,
+});
+/** Trip-close code bits within a CROB control octet. */
+export const DNP3_TRIP_CLOSE_CODES = Object.freeze({
+    NUL: 0x00,
+    CLOSE: 0x40,
+    TRIP: 0x80,
+    RESERVED: 0xc0,
+});
+/**
  * What each transport can and cannot carry, and the binding mode that follows
  * from it. `metadata_octets_available` is the count this example's encoder
  * leaves free for anything that is not a protocol-defined field.
@@ -70,6 +98,14 @@ export const TRANSPORT_PROFILES = Object.freeze({
                 index_max: 0xff,
             }),
             application_control_flags: Object.freeze({ FIR: 1, FIN: 1, CON: 0, UNS: 0 }),
+            control_octet: Object.freeze({
+                operation_type_mask: 0x0f,
+                queue_obsolete_mask: DNP3_CONTROL_FLAGS.QUEUE_OBSOLETE,
+                clear_mask: DNP3_CONTROL_FLAGS.CLEAR,
+                trip_close_mask: 0xc0,
+                queue_rule: 'reject',
+                clear_rule: 'preserve-as-material-command-semantics',
+            }),
             request_status: 0,
         }),
         envelope_capacity: 'fixed-object-space',
@@ -121,7 +157,7 @@ export function modbusWriteRegisterAction({ site, device, unitId, protocolAddres
         transport: 'modbus-tcp',
         site: requireString(site, 'site'),
         device: requireString(device, 'device'),
-        unit_id: requireSafeInt(unitId, 'unitId', 0, 247),
+        unit_id: requireSafeInt(unitId, 'unitId', 1, 247),
         function_code: 0x06,
         protocol_address: requireSafeInt(protocolAddress, 'protocolAddress', 0, 0xffff),
         value: requireSafeInt(value, 'value', 0, 0xffff),
@@ -133,6 +169,11 @@ export function modbusWriteRegisterAction({ site, device, unitId, protocolAddres
  * This is modeled so the profile can state its normalization choice: FC 0x06
  * and FC 0x10 with quantity one can produce the same register effect, but this
  * profile treats the native encodings as distinct authorities.
+ *
+ * `values` is an ordered list of 16-bit register values. The canonical action
+ * and wire digest bind that order exactly. They do not infer a device's word
+ * order, byte swapping, scalar type, scale, unit, or other semantic grouping.
+ * A site profile must resolve those facts before constructing this action.
  */
 export function modbusWriteMultipleRegistersAction({ site, device, unitId, protocolAddress, values, }) {
     if (!Array.isArray(values) || values.length < 1 || values.length > 123) {
@@ -144,7 +185,7 @@ export function modbusWriteMultipleRegistersAction({ site, device, unitId, proto
         transport: 'modbus-tcp',
         site: requireString(site, 'site'),
         device: requireString(device, 'device'),
-        unit_id: requireSafeInt(unitId, 'unitId', 0, 247),
+        unit_id: requireSafeInt(unitId, 'unitId', 1, 247),
         function_code: 0x10,
         protocol_address: requireSafeInt(protocolAddress, 'protocolAddress', 0, 0xffff),
         quantity: normalizedValues.length,
@@ -168,7 +209,7 @@ export function dnp3ControlRelayAction({ site, device, outstationAddress, index,
         group: 12,
         variation: 1,
         index: requireSafeInt(index, 'index', 0, 0xff),
-        control_octet: requireSafeInt(controlOctet, 'controlOctet', 0, 0xff),
+        control_octet: requireDnp3ControlOctet(controlOctet),
         operation_count: requireSafeInt(operationCount, 'operationCount', 1, 0xff),
         on_time_ms: requireSafeInt(onTimeMs, 'onTimeMs', 0, 0xffffffff),
         off_time_ms: requireSafeInt(offTimeMs, 'offTimeMs', 0, 0xffffffff),
@@ -223,7 +264,7 @@ function requireMappedModbusUnit(unitId, link) {
     if (link?.unit_id === undefined) {
         throw new TypeError('Modbus unit id mapping is required from conduit device context');
     }
-    const mappedUnitId = requireSafeInt(link.unit_id, 'link.unit_id', 0, 247);
+    const mappedUnitId = requireSafeInt(link.unit_id, 'link.unit_id', 1, 247);
     if (unitId !== mappedUnitId) {
         throw new TypeError('Modbus unit id does not match conduit device context');
     }
@@ -240,12 +281,13 @@ export function encodeModbusWriteRegister(action, { transactionId = 1 } = {}) {
         throw new TypeError('encodeModbusWriteRegister requires a modbus-tcp write-single-register action');
     }
     const protocolAddress = requireSafeInt(action.protocol_address, 'protocolAddress', 0, 0xffff);
+    const unitId = requireSafeInt(action.unit_id, 'unitId', 1, 247);
     requireSafeInt(transactionId, 'transactionId', 0, 0xffff);
     const frame = Buffer.alloc(MODBUS_FC06_ADU_OCTETS);
     frame.writeUInt16BE(transactionId, 0); // MBAP transaction id
     frame.writeUInt16BE(0, 2); // MBAP protocol id
     frame.writeUInt16BE(6, 4); // MBAP length: unit id + 5-octet PDU
-    frame.writeUInt8(action.unit_id, 6); // MBAP unit id
+    frame.writeUInt8(unitId, 6); // MBAP unit id
     frame.writeUInt8(MODBUS_FC_WRITE_SINGLE_REGISTER, 7);
     frame.writeUInt16BE(protocolAddress, 8);
     frame.writeUInt16BE(action.value, 10);
@@ -304,7 +346,7 @@ export function encodeModbusWriteMultipleRegisters(action, { transactionId = 1 }
         throw new TypeError('Modbus byte count does not match quantity');
     }
     const protocolAddress = requireSafeInt(action.protocol_address, 'protocolAddress', 0, 0xffff);
-    const unitId = requireSafeInt(action.unit_id, 'unitId', 0, 247);
+    const unitId = requireSafeInt(action.unit_id, 'unitId', 1, 247);
     requireSafeInt(transactionId, 'transactionId', 0, 0xffff);
     const values = action.values.map((value, index) => (requireSafeInt(value, `values[${index}]`, 0, 0xffff)));
     const frame = Buffer.alloc(MODBUS_MBAP_OCTETS + MODBUS_FC16_FIXED_PDU_OCTETS + byteCount);
@@ -364,16 +406,10 @@ export function decodeModbusWriteMultipleRegisters(hex, link) {
 // ---------------------------------------------------------------------------
 // DNP3
 // ---------------------------------------------------------------------------
-/** Human-readable labels for common complete CROB control-field octets. */
-export const DNP3_CONTROL_CODES = Object.freeze({
-    NUL: 0x00,
-    PULSE_ON: 0x01,
-    PULSE_OFF: 0x02,
-    LATCH_ON: 0x03,
-    LATCH_OFF: 0x04,
-});
 const DNP3_FC_DIRECT_OPERATE = 0x05;
 const DNP3_FC_DIRECT_OPERATE_NO_ACK = 0x06;
+const DNP3_OPERATION_TYPE_MASK = 0x0f;
+const DNP3_TRIP_CLOSE_MASK = 0xc0;
 /** Application control (1) + function code (1). */
 const DNP3_APPLICATION_HEADER_OCTETS = 2;
 /** Group (1) + variation (1) + qualifier (1) + count (1) + index (1). */
@@ -381,6 +417,19 @@ const DNP3_OBJECT_HEADER_OCTETS = 5;
 /** Control code (1) + count (1) + on-time (4) + off-time (4) + status (1). */
 const DNP3_CROB_OCTETS = 11;
 const DNP3_FRAGMENT_OCTETS = DNP3_APPLICATION_HEADER_OCTETS + DNP3_OBJECT_HEADER_OCTETS + DNP3_CROB_OCTETS;
+function requireDnp3ControlOctet(value) {
+    const controlOctet = requireSafeInt(value, 'controlOctet', 0, 0xff);
+    if ((controlOctet & DNP3_CONTROL_FLAGS.QUEUE_OBSOLETE) !== 0) {
+        throw new TypeError('DNP3 CROB QUEUE bit is obsolete and unsupported by this profile');
+    }
+    if ((controlOctet & DNP3_TRIP_CLOSE_MASK) === DNP3_TRIP_CLOSE_CODES.RESERVED) {
+        throw new TypeError('DNP3 CROB trip-close code is reserved');
+    }
+    if ((controlOctet & DNP3_OPERATION_TYPE_MASK) > DNP3_CONTROL_CODES.LATCH_OFF) {
+        throw new TypeError('DNP3 CROB operation type is not defined');
+    }
+    return controlOctet;
+}
 /**
  * Encode the DNP3 application fragment for a direct-operate of one CROB.
  *
@@ -393,6 +442,7 @@ export function encodeDnp3ControlRelay(action, { sequence = 0 } = {}) {
         throw new TypeError('encodeDnp3ControlRelay requires a dnp3 group 12 variation 1 action');
     }
     requireSafeInt(sequence, 'sequence', 0, 0x0f);
+    const controlOctet = requireDnp3ControlOctet(action.control_octet);
     const fragment = Buffer.alloc(DNP3_FRAGMENT_OCTETS);
     fragment.writeUInt8(0xc0 | sequence, 0); // FIR | FIN | sequence
     fragment.writeUInt8(action.application_function, 1);
@@ -401,7 +451,7 @@ export function encodeDnp3ControlRelay(action, { sequence = 0 } = {}) {
     fragment.writeUInt8(0x17, 4); // 1-octet count, 1-octet index prefix
     fragment.writeUInt8(1, 5); // one object follows
     fragment.writeUInt8(action.index, 6);
-    fragment.writeUInt8(action.control_octet, 7); // complete CROB control field
+    fragment.writeUInt8(controlOctet, 7); // complete CROB control field
     fragment.writeUInt8(action.operation_count, 8);
     fragment.writeUInt32LE(action.on_time_ms, 9);
     fragment.writeUInt32LE(action.off_time_ms, 13);
@@ -519,6 +569,8 @@ export default {
     TRANSPORT_PROFILES,
     BOUND_FIELDS,
     DNP3_CONTROL_CODES,
+    DNP3_CONTROL_FLAGS,
+    DNP3_TRIP_CLOSE_CODES,
     commandDigest,
     commandDigestHex,
     modbusWriteRegisterAction,

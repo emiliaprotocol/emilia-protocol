@@ -127,6 +127,70 @@ test('Modbus FC 0x10 quantity one has a native wire encode/decode round trip', (
         unit_id: fc10.unit_id,
     }), fc10);
 });
+test('Modbus FC 0x10 binds a wide ordered register pair without inventing scalar semantics', () => {
+    const base = EXACT_COMMANDS['modbus-tcp'];
+    const ordered = modbusWriteMultipleRegistersAction({
+        site: base.site,
+        device: base.device,
+        unitId: base.unit_id,
+        protocolAddress: 0x0010,
+        values: [0x1234, 0xabcd],
+    });
+    const reversed = modbusWriteMultipleRegistersAction({
+        site: base.site,
+        device: base.device,
+        unitId: base.unit_id,
+        protocolAddress: 0x0010,
+        values: [0xabcd, 0x1234],
+    });
+    const encoded = commandCodecs.encodeModbusWriteMultipleRegisters(ordered, { transactionId: 9 });
+    assert.equal(encoded.hex, '00090000000b031000100002041234abcd');
+    assert.deepEqual(commandCodecs.decodeModbusWriteMultipleRegisters(encoded.hex, {
+        site: ordered.site,
+        device: ordered.device,
+        unit_id: ordered.unit_id,
+    }), ordered);
+    assert.notEqual(commandDigest(ordered), commandDigest(reversed));
+});
+test('Modbus v1 rejects broadcast unit id zero in actions, encoders, and decoders', () => {
+    const base = EXACT_COMMANDS['modbus-tcp'];
+    assert.throws(() => modbusWriteRegisterAction({
+        site: base.site,
+        device: base.device,
+        unitId: 0,
+        protocolAddress: base.protocol_address,
+        value: base.value,
+    }), /unitId must be an integer in \[1, 247\]/);
+    assert.throws(() => modbusWriteMultipleRegistersAction({
+        site: base.site,
+        device: base.device,
+        unitId: 0,
+        protocolAddress: base.protocol_address,
+        values: [base.value],
+    }), /unitId must be an integer in \[1, 247\]/);
+    const fc06WithBroadcastUnit = { ...base, unit_id: 0 };
+    assert.throws(() => encodeModbusWriteRegister(fc06WithBroadcastUnit), /unitId must be an integer in \[1, 247\]/);
+    const fc10 = modbusWriteMultipleRegistersAction({
+        site: base.site,
+        device: base.device,
+        unitId: base.unit_id,
+        protocolAddress: base.protocol_address,
+        values: [base.value],
+    });
+    assert.throws(() => commandCodecs.encodeModbusWriteMultipleRegisters({ ...fc10, unit_id: 0 }), /unitId must be an integer in \[1, 247\]/);
+    for (const [encoded, decode] of [
+        [encodeModbusWriteRegister(base), decodeModbusWriteRegister],
+        [commandCodecs.encodeModbusWriteMultipleRegisters(fc10), commandCodecs.decodeModbusWriteMultipleRegisters],
+    ]) {
+        const frame = Buffer.from(encoded.hex, 'hex');
+        frame.writeUInt8(0, 6);
+        assert.throws(() => decode(frame.toString('hex'), {
+            site: base.site,
+            device: base.device,
+            unit_id: 0,
+        }), /link\.unit_id must be an integer in \[1, 247\]/);
+    }
+});
 test('Modbus FC 0x10 refuses malformed quantity and byte-count fields', () => {
     const valid = Buffer.from('000100000009031000000001020001', 'hex');
     const missingQuantity = Buffer.from(valid);
@@ -193,6 +257,56 @@ test('a DNP3 CROB digest binds the complete control octet, timing, count, and fu
     ]) {
         assert.notEqual(commandDigest(dnp3ControlRelayAction({ ...link, index: 7, ...variant })), commandDigest(base));
     }
+});
+test('DNP3 v1 rejects obsolete QUEUE and invalid control-code components', () => {
+    const base = EXACT_COMMANDS.dnp3;
+    for (const [name, controlOctet, reason] of [
+        ['obsolete QUEUE', 0x13, /QUEUE bit is obsolete/],
+        ['reserved trip-close code', 0xc3, /trip-close code is reserved/],
+        ['unknown operation type', 0x05, /operation type is not defined/],
+    ]) {
+        assert.throws(() => dnp3ControlRelayAction({
+            site: base.site,
+            device: base.device,
+            outstationAddress: base.outstation_address,
+            index: base.index,
+            applicationFunction: base.application_function,
+            controlOctet,
+            operationCount: base.operation_count,
+            onTimeMs: base.on_time_ms,
+            offTimeMs: base.off_time_ms,
+        }), reason, name);
+        assert.throws(() => encodeDnp3ControlRelay({ ...base, control_octet: controlOctet }), reason, `${name} encoder path`);
+        const fragment = Buffer.from(encodeDnp3ControlRelay(base).hex, 'hex');
+        fragment.writeUInt8(controlOctet, 7);
+        assert.throws(() => decodeDnp3ControlRelay(fragment.toString('hex'), {
+            site: base.site,
+            device: base.device,
+            outstation_address: base.outstation_address,
+        }), reason, `${name} decoder path`);
+    }
+});
+test('DNP3 CLEAR remains a current, separately bound operation', () => {
+    const base = EXACT_COMMANDS.dnp3;
+    const clearLatchOn = dnp3ControlRelayAction({
+        site: base.site,
+        device: base.device,
+        outstationAddress: base.outstation_address,
+        index: base.index,
+        applicationFunction: base.application_function,
+        controlOctet: 0x23,
+        operationCount: base.operation_count,
+        onTimeMs: base.on_time_ms,
+        offTimeMs: base.off_time_ms,
+    });
+    assert.notEqual(commandDigest(clearLatchOn), commandDigest(base));
+    const encoded = encodeDnp3ControlRelay(clearLatchOn);
+    assert.equal(Buffer.from(encoded.hex, 'hex').readUInt8(7), 0x23);
+    assert.deepEqual(decodeDnp3ControlRelay(encoded.hex, {
+        site: clearLatchOn.site,
+        device: clearLatchOn.device,
+        outstation_address: clearLatchOn.outstation_address,
+    }), clearLatchOn);
 });
 for (const hostile of [
     { name: 'FIN cleared', offset: 0, value: 0x80, reason: /application control/ },
