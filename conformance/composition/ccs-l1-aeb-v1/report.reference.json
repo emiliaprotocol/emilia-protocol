@@ -2,42 +2,41 @@
   "@version": "CCS-L1-AEB-COMPOSITION-REPORT-v1",
   "profile": "ccs-l1-aeb-v1",
   "pins": {
-    "ccs_distribution": "1.1.19",
-    "ccs_sdist_sha256": "b540635098ccea4b9e5ccdfc016ad144a4efe4a7d21a0f351fca5b48c00b08c7",
-    "ccs_wheel_sha256": "762b99b3968be8c138da037ef6db15473cf6911616088d42d7b9997f16a2c3e4",
-    "ccs_upstream_stale_reference_vector_sha256": "5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f",
-    "ccs_emilia_derived_reference_vector_sha256": "ce2594c18b6ccbfed0fb09b64fd0fb1d2534b13ae7ccd024367f3d86ff0f6a12",
-    "ccs_source_lock": "ccs-verifier-pypi-1.1.19-github-v1.1.19@4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6-ed25519-l1",
+    "ccs_distribution": "1.1.20",
+    "ccs_sdist_sha256": "551c60eb416dac34567009b3b75fd1f501d4874bebeed68de21ceab1a7e0463f",
+    "ccs_wheel_sha256": "fd718d885a04383a0a520f9bf06de258d6ff9b4f049cddc358b58c3b2a33db9d",
+    "ccs_reference_vector_sha256": "f4ba98ba9eb8f2a74a7b9065ed7919541ae7a58e2b4811dd0f1967408c4cd975",
+    "ccs_source_lock": "ccs-verifier-pypi-1.1.20-github-v1.1.20@8c95600f661028acc74056d5829e0a0f7db0ab0b-ed25519-l1",
     "ccs_upstream_repository": "https://github.com/DSHCorrectover/ccs-verifier",
-    "ccs_upstream_tag": "v1.1.19",
-    "ccs_upstream_tag_object_sha": "bdd79fa8257b764cffa5bceb458330ce01bc41ce",
-    "ccs_upstream_commit_sha": "4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6",
-    "adapter_id": "native:ccs-pypi-ed25519-l1-1.1.19",
+    "ccs_upstream_tag": "v1.1.20",
+    "ccs_upstream_tag_object_sha": "c6a35839a26c228cab9c1b827aab814fa4d14945",
+    "ccs_upstream_tag_kind": "annotated-unsigned",
+    "ccs_upstream_tag_gpg_signed": false,
+    "ccs_upstream_commit_sha": "8c95600f661028acc74056d5829e0a0f7db0ab0b",
+    "adapter_id": "native:ccs-pypi-ed25519-l1-1.1.20",
     "adapter_version": "1",
-    "mapping_profile_digest": "sha256:478d783d4f03f87b5d06b9c025b22a00d88e9f0c4155f514216298da3e2c557c"
+    "mapping_profile_digest": "sha256:150bfa6a745a504c13ac473e0afc148a084a9939bc37512bcf81ad20dcdacf61"
   },
   "checks": [
     {
-      "id": "CCS-1.1.19-SOURCE-PIN",
+      "id": "CCS-1.1.20-SOURCE-PIN",
       "layer": "CCS",
-      "description": "The exact upstream tag, commit, PyPI 1.1.19 artifacts, upstream-stale 1.1.14 vector, and EMILIA-derived 1.1.19 vector are pinned without relabeling provenance.",
+      "description": "The exact upstream vector, annotated tag object, commit, and PyPI 1.1.20 artifacts are pinned without treating the unsigned tag as publisher authentication.",
       "passed": true,
       "observed": {
-        "distribution": "1.1.19",
-        "derived_provenance": "EMILIA-derived",
-        "source_lock": "ccs-verifier-pypi-1.1.19-github-v1.1.19@4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6-ed25519-l1",
+        "distribution": "1.1.20",
+        "source_lock": "ccs-verifier-pypi-1.1.20-github-v1.1.20@8c95600f661028acc74056d5829e0a0f7db0ab0b-ed25519-l1",
         "upstream_repository": "https://github.com/DSHCorrectover/ccs-verifier",
-        "upstream_tag": "v1.1.19",
-        "upstream_tag_object_sha": "bdd79fa8257b764cffa5bceb458330ce01bc41ce",
-        "upstream_commit_sha": "4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6",
-        "upstream_stale_package_version": "1.1.14",
-        "upstream_stale_rule_version": "1.1.14",
-        "upstream_stale_vector_sha256": "5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f",
-        "emilia_derived_vector_sha256": "ce2594c18b6ccbfed0fb09b64fd0fb1d2534b13ae7ccd024367f3d86ff0f6a12"
+        "upstream_tag": "v1.1.20",
+        "upstream_tag_object_sha": "c6a35839a26c228cab9c1b827aab814fa4d14945",
+        "upstream_tag_kind": "annotated-unsigned",
+        "upstream_tag_gpg_signed": false,
+        "upstream_commit_sha": "8c95600f661028acc74056d5829e0a0f7db0ab0b",
+        "upstream_reference_vector_sha256": "f4ba98ba9eb8f2a74a7b9065ed7919541ae7a58e2b4811dd0f1967408c4cd975"
       }
     },
     {
-      "id": "CCS-1.1.19-ED25519-ACCEPT",
+      "id": "CCS-1.1.20-ED25519-ACCEPT",
       "layer": "CCS",
       "description": "The reference L1 signature verifies and its issuer key is accepted only under the relying-party pin.",
       "passed": true,
@@ -47,63 +46,63 @@
       }
     },
     {
-      "id": "CCS-1.1.19-SIGNATURE-TAMPER",
+      "id": "CCS-1.1.20-SIGNATURE-TAMPER",
       "layer": "CCS",
       "description": "A signature mutation is refused before semantic mapping.",
       "passed": true,
       "observed": {
         "native_verification": "FAILED",
         "acceptance": "REJECTED",
-        "evidence_digest": "sha256:908f1e6837fc96a5d40b289be63e40994356427cc16a14f9a7de9da80a285107",
+        "evidence_digest": "sha256:26fef4c2c4b6d400906dc326b2e22c13c42adebfecf974c565c0d7455f05a8fc",
         "status_digest": "sha256:dfa31cf8d333771d05f1e0a94727299039f238668613b351ae4b008a3e9f8e5f",
         "evidence_role": "machine-policy-decision",
         "subject": {
           "id": "system:ccs-reference-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:908f1e6837fc96a5d40b289be63e40994356427cc16a14f9a7de9da80a285107",
+        "replay_unit": "sha256:26fef4c2c4b6d400906dc326b2e22c13c42adebfecf974c565c0d7455f05a8fc",
         "reasons": [
           "ccs:l1_signature_invalid"
         ]
       }
     },
     {
-      "id": "CCS-1.1.19-UNTRUSTED-ISSUER",
+      "id": "CCS-1.1.20-UNTRUSTED-ISSUER",
       "layer": "CCS",
       "description": "A self-consistent receipt not matching the relying-party key pin is rejected.",
       "passed": true,
       "observed": {
         "native_verification": "VERIFIED",
         "acceptance": "REJECTED",
-        "evidence_digest": "sha256:5befd56d4baf2f16bf1d2c5869b91b572f2511f176f8ab518405854e8d86db8e",
+        "evidence_digest": "sha256:6ba5111b4083ba34aa46275491dc67cc06a7654d62d72ed894f1f28cce531c09",
         "status_digest": "sha256:dfa31cf8d333771d05f1e0a94727299039f238668613b351ae4b008a3e9f8e5f",
         "evidence_role": "machine-policy-decision",
         "subject": {
           "id": "system:ccs-reference-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:5befd56d4baf2f16bf1d2c5869b91b572f2511f176f8ab518405854e8d86db8e",
+        "replay_unit": "sha256:6ba5111b4083ba34aa46275491dc67cc06a7654d62d72ed894f1f28cce531c09",
         "reasons": [
           "ccs:l1_untrusted_signing_key"
         ]
       }
     },
     {
-      "id": "CCS-1.1.19-EXPIRY",
+      "id": "CCS-1.1.20-EXPIRY",
       "layer": "CCS",
       "description": "A correctly signed receipt past expires_at is rejected.",
       "passed": true,
       "observed": {
         "native_verification": "VERIFIED",
         "acceptance": "REJECTED",
-        "evidence_digest": "sha256:5befd56d4baf2f16bf1d2c5869b91b572f2511f176f8ab518405854e8d86db8e",
+        "evidence_digest": "sha256:6ba5111b4083ba34aa46275491dc67cc06a7654d62d72ed894f1f28cce531c09",
         "status_digest": "sha256:dfa31cf8d333771d05f1e0a94727299039f238668613b351ae4b008a3e9f8e5f",
         "evidence_role": "machine-policy-decision",
         "subject": {
           "id": "system:ccs-reference-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:5befd56d4baf2f16bf1d2c5869b91b572f2511f176f8ab518405854e8d86db8e",
+        "replay_unit": "sha256:6ba5111b4083ba34aa46275491dc67cc06a7654d62d72ed894f1f28cce531c09",
         "reasons": [
           "ccs:l1_receipt_expired"
         ]
@@ -143,14 +142,14 @@
       "observed": {
         "native_verification": "VERIFIED",
         "acceptance": "INDETERMINATE",
-        "evidence_digest": "sha256:5befd56d4baf2f16bf1d2c5869b91b572f2511f176f8ab518405854e8d86db8e",
+        "evidence_digest": "sha256:6ba5111b4083ba34aa46275491dc67cc06a7654d62d72ed894f1f28cce531c09",
         "status_digest": "sha256:25edd534f3b9f9d779802deaa0a0af2c05074c0cd45b3a2a2dcbba44e308262f",
         "evidence_role": "machine-policy-decision",
         "subject": {
           "id": "system:ccs-reference-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:c03caa8b5dc9f5e81c7fd95ec2a50f6f5fd777a665355c43389c5572bf7ff649",
+        "replay_unit": "sha256:457a759cdddbe6b27663d26876b4a6fc676dd86ac47be0f0b7d4568525ee07ec",
         "reasons": [
           "status_unavailable"
         ]
@@ -160,11 +159,11 @@
   "passed": true,
   "known_limits": [
     "The reference signing seed and key are public test material and are not a production trust anchor.",
-    "The 1.1.19 source distribution bundles a stale 1.1.14 reference vector. Its exact bytes remain separately pinned; the adapter input is an explicitly labeled EMILIA-derived 1.1.19 fixture regenerated from the public seed, not an upstream vector.",
+    "The pinned v1.1.20 tag is annotated but not GPG-signed. The tag object and target commit are exact byte pins, not cryptographic publisher authentication.",
     "CCS supplies machine-policy-decision evidence, not human authorization, provider admission, or effect proof.",
     "AEB reconstructs the exact action from the executor and checks the signed action, tool, and args_digest; it does not trust an action string as a CAID.",
     "A passing report reproduces the EMILIA reference adapter and is not independent implementation, deployment, certification, IETF adoption, or endorsement."
   ],
-  "implementation_status_markdown": "The runner reproduced 8/8 source-locked CCS 1.1.19 to AEB checks. It verified the pinned Ed25519 L1 receipt and mapped its signed action, tool, and full argument digest to one executor-constructed CAID. This is a reproduction of the EMILIA reference adapter, not an independent implementation or IETF endorsement.",
-  "report_digest": "sha256:24aae47b96854fe5f02d4d30cf67f724a0bfc663af338cb394409fdde40f3980"
+  "implementation_status_markdown": "The runner reproduced 8/8 source-locked CCS 1.1.20 to AEB checks. It verified the pinned Ed25519 L1 receipt and mapped its signed action, tool, and full argument digest to one executor-constructed CAID. This is a reproduction of the EMILIA reference adapter, not an independent implementation or IETF endorsement.",
+  "report_digest": "sha256:5ba22b1d2fe2b1ca2209546454fa3ba124478a3e4d0acbae8fc871ea2bf7e454"
 }

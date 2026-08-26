@@ -18,20 +18,20 @@ entry.
 ## Current runnable profiles
 
 The current public-key profile is source-locked to
-`ccs-verifier==1.1.19`, upstream tag object
-`bdd79fa8257b764cffa5bceb458330ce01bc41ce`, and commit
-`4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6`. It verifies an explicitly labeled
-EMILIA-derived Ed25519 L1 receipt regenerated from that exact source lock and
-the upstream public deterministic seed under a
+`ccs-verifier==1.1.20`, upstream tag object
+`c6a35839a26c228cab9c1b827aab814fa4d14945`, and commit
+`8c95600f661028acc74056d5829e0a0f7db0ab0b`. It verifies the exact upstream
+Ed25519 L1 reference receipt under a
 relying-party-pinned issuer key and checks its audience, expiry, rule version,
 action, and tool. AEB reconstructs the exact imminent action at the executor
 and compares the signed full `args_digest` before deriving the CAID.
 
-The 1.1.19 source archive still bundles a stale vector whose package and rule
-versions are 1.1.14. The profile preserves and hash-checks the exact upstream
-bytes without relabeling them; the EMILIA-derived fixture and stale-upstream
-boundary are separately hash-pinned and reproducible from a checked-in
-generator.
+The 1.1.20 vector's top-level package version and signed rule version both
+identify 1.1.20. The profile hash-checks the complete upstream wrapper, not
+only its inner receipt. The tag is annotated but not GPG-signed; the source
+lock therefore records exact tag and commit bytes without claiming
+cryptographic publisher authentication. The 1.1.19 audit and fixtures remain
+as historical evidence of the corrected stale-vector issue.
 
 Run its eight pinned and hostile cases with:
 
@@ -41,7 +41,7 @@ npm run conformance:composition:ccs-l1-aeb
 
 The older local-HMAC profile below remains source-locked for historical
 reproduction and for the existing CCS + OASNT two-leg runner. It is not
-silently relabeled as 1.1.19.
+silently relabeled as 1.1.20.
 
 The legacy runnable adapter is source-locked to the PyPI distribution labeled
 `ccs-verifier==1.1.0` whose installed runtime reports version `0.4.1`. It
@@ -91,11 +91,11 @@ provider admission is refused.
 
 ## Post-effect evidence is not pre-action policy evidence
 
-The CCS drafts describe `response_hash` and `outcome_status` concepts. The
-current PyPI runtime does not emit those fields. This profile rejects unknown
-fields and does not map any CCS label to AEB's provider/effect lifecycle.
-Provider execution, failure, and indeterminate outcome remain separate,
-authenticated observations after provider entry.
+The current L1 receipt carries `response_hash` as signed issuer data, but this
+profile does not treat that field as authenticated evidence of the provider or
+effect lifecycle. It does not map any CCS label to AEB's provider/effect
+lifecycle. Provider execution, failure, and indeterminate outcome remain
+separate, authenticated observations after provider entry.
 
 ## Publication and reference boundary
 

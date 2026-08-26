@@ -4,7 +4,7 @@
     "draft_url": "https://www.ietf.org/archive/id/draft-correctover-ccs-05.txt",
     "draft_sha256": "c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9",
     "codeberg_reference_commit": "a5cddf5093724ab149059ce1f2d507b5d0aeb36d",
-    "pypi_reference_version": "1.1.19"
+    "pypi_reference_version": "1.1.20"
   },
   "live_run": {
     "command": {

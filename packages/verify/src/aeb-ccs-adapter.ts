@@ -3,7 +3,8 @@
  * Source-locked CCS adapters for AEB-ADAPTER-v1.
  *
  * The package-backed profile verifies the Ed25519 L1 receipt contract shipped
- * by ccs-verifier 1.1.19 using a regenerated, source-locked reference fixture.
+ * by ccs-verifier 1.1.20 using its exact upstream, source-locked reference
+ * fixture.
  * A separate adapter implements the 22-field v1.3 shape source-locked to
  * draft-correctover-ccs-05. The historical 1.1.0 profile remains available
  * only for reproducing the older HMAC result shape; none of these byte
@@ -46,19 +47,18 @@ export const CCS_AEB_TRUST_ROOT_VERSION = 'AEB-CCS-PYPI-HMAC-ROOT-v1';
 export const CCS_CAID_MAPPING_VERSION = 'AEB-CCS-TOOL-ACTION-MAPPING-v1';
 export const CCS_CAID_MAPPER_ID = 'mapper:ccs-pypi-tool-action-v1';
 
-export const CCS_L1_PYPI_DISTRIBUTION_VERSION = '1.1.19';
-export const CCS_L1_PYPI_SDIST_SHA256 = 'b540635098ccea4b9e5ccdfc016ad144a4efe4a7d21a0f351fca5b48c00b08c7';
-export const CCS_L1_PYPI_WHEEL_SHA256 = '762b99b3968be8c138da037ef6db15473cf6911616088d42d7b9997f16a2c3e4';
+export const CCS_L1_PYPI_DISTRIBUTION_VERSION = '1.1.20';
+export const CCS_L1_PYPI_SDIST_SHA256 = '551c60eb416dac34567009b3b75fd1f501d4874bebeed68de21ceab1a7e0463f';
+export const CCS_L1_PYPI_WHEEL_SHA256 = 'fd718d885a04383a0a520f9bf06de258d6ff9b4f049cddc358b58c3b2a33db9d';
 export const CCS_L1_UPSTREAM_REPOSITORY = 'https://github.com/DSHCorrectover/ccs-verifier';
-export const CCS_L1_UPSTREAM_TAG = 'v1.1.19';
-export const CCS_L1_UPSTREAM_TAG_OBJECT_SHA = 'bdd79fa8257b764cffa5bceb458330ce01bc41ce';
-export const CCS_L1_UPSTREAM_COMMIT_SHA = '4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6';
-export const CCS_L1_UPSTREAM_STALE_REFERENCE_VECTOR_SHA256 = '5260e619c010d36729c57c5e8814613215e65e09abfba8a6a1d93f07e919762f';
-export const CCS_L1_EMILIA_DERIVED_REFERENCE_VECTOR_SHA256 = 'ce2594c18b6ccbfed0fb09b64fd0fb1d2534b13ae7ccd024367f3d86ff0f6a12';
-/** @deprecated Use the explicitly provenance-labeled EMILIA-derived constant. */
-export const CCS_L1_REFERENCE_VECTOR_SHA256 = CCS_L1_EMILIA_DERIVED_REFERENCE_VECTOR_SHA256;
-export const CCS_L1_PYPI_SOURCE_LOCK = 'ccs-verifier-pypi-1.1.19-github-v1.1.19@4c5e6c7a9670be0a417414f8b8f41ff4d5df0aa6-ed25519-l1';
-export const CCS_L1_AEB_ADAPTER_ID = 'native:ccs-pypi-ed25519-l1-1.1.19';
+export const CCS_L1_UPSTREAM_TAG = 'v1.1.20';
+export const CCS_L1_UPSTREAM_TAG_OBJECT_SHA = 'c6a35839a26c228cab9c1b827aab814fa4d14945';
+export const CCS_L1_UPSTREAM_COMMIT_SHA = '8c95600f661028acc74056d5829e0a0f7db0ab0b';
+export const CCS_L1_UPSTREAM_TAG_KIND = 'annotated-unsigned';
+export const CCS_L1_UPSTREAM_TAG_GPG_SIGNED = false;
+export const CCS_L1_REFERENCE_VECTOR_SHA256 = 'f4ba98ba9eb8f2a74a7b9065ed7919541ae7a58e2b4811dd0f1967408c4cd975';
+export const CCS_L1_PYPI_SOURCE_LOCK = 'ccs-verifier-pypi-1.1.20-github-v1.1.20@8c95600f661028acc74056d5829e0a0f7db0ab0b-ed25519-l1';
+export const CCS_L1_AEB_ADAPTER_ID = 'native:ccs-pypi-ed25519-l1-1.1.20';
 export const CCS_L1_AEB_ADAPTER_VERSION = '1';
 export const CCS_L1_AEB_CONFIG_VERSION = 'AEB-CCS-PYPI-ED25519-CONFIG-v1';
 export const CCS_L1_AEB_TRUST_ROOT_VERSION = 'AEB-CCS-PYPI-ED25519-ROOT-v1';
@@ -1095,7 +1095,7 @@ function fallbackL1(input: Omit<AebAdapterInput, 'profile'>, pins: ParsedL1Pins)
   };
 }
 
-/** Build a source-locked CCS 1.1.19 Ed25519 L1 adapter from relying-party pins. */
+/** Build a source-locked CCS 1.1.20 Ed25519 L1 adapter from relying-party pins. */
 export function createCcsPyPiL1AebAdapter(constructorPins: {
   config: CcsL1AebAdapterConfig;
   trust_roots: readonly CcsL1Ed25519TrustRoot[];
@@ -1188,14 +1188,14 @@ export function createCcsPyPiL1AebAdapter(constructorPins: {
 
 /**
  * CCS-05 calls the extended receipt shape "v1.3", while the latest public
- * ccs-verifier package (1.1.19) still emits its distinct receipt_version 1.1
+ * ccs-verifier package (1.1.20) still emits its distinct receipt_version 1.1
  * shape. This profile is therefore source-locked to the Internet-Draft bytes
  * and intentionally does not relabel the package-backed adapter above.
  */
 export const CCS_V13_DRAFT_URL = 'https://www.ietf.org/archive/id/draft-correctover-ccs-05.txt';
 export const CCS_V13_DRAFT_SHA256 = 'c91f0fa31b1b9e5e2dfe79b99f3b554075d3a44d5309406e748b728f86767cb9';
 export const CCS_V13_REFERENCE_CODEBERG_COMMIT = 'a5cddf5093724ab149059ce1f2d507b5d0aeb36d';
-export const CCS_V13_REFERENCE_PYPI_VERSION = '1.1.19';
+export const CCS_V13_REFERENCE_PYPI_VERSION = '1.1.20';
 export const CCS_V13_SOURCE_LOCK = 'draft-correctover-ccs-05-v1.3-c91f0fa31b1b9e5';
 export const CCS_V13_AEB_ADAPTER_ID = 'native:ccs-05-v1.3-ed25519';
 export const CCS_V13_AEB_ADAPTER_VERSION = '1';

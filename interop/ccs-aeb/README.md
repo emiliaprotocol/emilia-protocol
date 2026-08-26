@@ -9,27 +9,28 @@ The separate
 package implements the 22-field receipt shape described by
 `draft-correctover-ccs-05`, runs a local protected operation, emits a signed
 sample set, and maps the full parameter digest to an executor-constructed CAID.
-It remains separate because the latest public `ccs-verifier==1.1.19` package
+It remains separate because the latest public `ccs-verifier==1.1.20` package
 still emits the distinct receipt-version 1.1 contract.
 
-## CCS 1.1.19 public-key profile
+## CCS 1.1.20 public-key profile
 
-The current public-key runner is source-locked to the upstream `v1.1.19` tag,
-its exact tag object and commit, both PyPI artifacts, the exact stale vector
-shipped in the source distribution, and a separately labeled deterministic
-EMILIA-derived fixture. It verifies the derived fixture's L1 Ed25519 signature
-and relying-party issuer pin, then joins the signed full argument digest to the
-executor-owned action before deriving a CAID.
+The current public-key runner is source-locked to the upstream `v1.1.20` tag,
+its exact annotated tag object and target commit, both PyPI artifacts, and the
+exact upstream reference vector. The tag is not GPG-signed, so these byte pins
+do not claim cryptographic publisher authentication. The runner verifies the
+fixture's L1 Ed25519 signature and relying-party issuer pin, then joins the
+signed full argument digest to the executor-owned action before deriving a
+CAID.
 
-The 1.1.19 source archive still bundles a stale reference vector labeled and
-signed as 1.1.14. EMILIA does not relabel those bytes. The
-[1.1.19 release audit](./CCS-1.1.19-L1-AUDIT.md) records that upstream issue,
-the exact source coordinates, both fixture hashes, and the deterministic
-generator/reproduction boundary.
+The [1.1.20 release audit](./CCS-1.1.20-L1-AUDIT.md) records the corrected
+release, exact source coordinates, upstream vector, non-finite-number
+hardening, and verification boundary. The
+[1.1.19 release audit](./CCS-1.1.19-L1-AUDIT.md) and its two fixtures remain as
+historical evidence of the stale-vector issue that 1.1.20 corrected.
 
 This directory contains runnable, source-locked compositions between CCS
 artifacts and the EMILIA Action Evidence Boundary (AEB). The public-key profile
-above uses the EMILIA-derived 1.1.19 fixture; the historical local-HMAC profile
+above uses the exact upstream 1.1.20 fixture; the historical local-HMAC profile
 below uses the artifact actually emitted by `ccs-verifier==1.1.0`.
 
 The composition keeps four claims separate:
@@ -131,11 +132,12 @@ stated local-HMAC assumptions. It would not establish IETF adoption, CCS
 conformance beyond the pinned source revision, EMILIA certification, complete
 mediation, or successful provider effect.
 
-The next positive interoperability target is a corrected CCS package that
-actually exports its public-key L1 receipt implementation. That revision needs
-one unambiguous signed-byte definition, full material-action digest coverage,
-issuer and audience binding, freshness, and a replay identity. AEB can then
-consume the native result without changing CCS's semantics.
+The next positive interoperability target was a corrected CCS package that
+exported its public-key L1 receipt implementation. CCS 1.1.1 met that package
+availability target, and later pinned releases retain the native L1 path. The
+remaining target is independent reproduction of the composition under one
+unambiguous signed-byte definition, full material-action digest coverage,
+issuer and audience binding, freshness, and a replay identity.
 
 CCS 1.1.1 subsequently closed the missing-module and version mismatch. The
 separate [1.1.1 L1 release audit](./CCS-1.1.1-L1-AUDIT.md) records the remaining

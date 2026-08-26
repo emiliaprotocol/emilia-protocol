@@ -114,7 +114,7 @@ export default defineConfig({
       // The WAG composition suite is also a portable node:test program.
       // CI runs it through `npm run conformance:composition:wag`.
       'conformance/composition/wag-aeb-v1/run.test.mts',
-      // The CCS 1.1.19 L1/AEB composition suite is likewise a portable
+      // The CCS 1.1.20 L1/AEB composition suite is likewise a portable
       // node:test program executed by its dedicated conformance command.
       'conformance/composition/ccs-l1-aeb-v1/run.test.mts',
       // The CCS-05 v1.3/AEB independent implementation uses the same portable
