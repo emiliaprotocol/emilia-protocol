@@ -26,6 +26,12 @@ const DOC_SECTIONS = [
     href: '/quickstart',
   },
   {
+    eyebrow: 'Local deployment',
+    title: 'EMILIA Host',
+    desc: 'Put Gate beside provider credentials for an activated HTTP or MCP consequence path.',
+    href: '/host',
+  },
+  {
     eyebrow: 'Developer on-ramp',
     title: 'Protect an MCP tool',
     desc: 'Require authorization evidence before a consequential MCP tool call reaches its executor.',
@@ -71,6 +77,7 @@ const DOC_SECTIONS = [
 
 const SYSTEM = [
   ['Gate', 'Mediates configured consequential actions at the executor boundary.', '/gate'],
+  ['Host', 'Deploys Gate locally beside a credential-owning HTTP or MCP adapter.', '/host'],
   ['Approver Apps', 'Capture the human decision and return action-bound evidence.', '/product/accountable-signoff'],
   ['Protocol', 'Defines portable formats and open verification rules.', '/protocol'],
   ['Assurance', 'Re-performs the evidence and packages reproducible records.', '/assurance'],

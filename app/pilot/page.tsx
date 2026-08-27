@@ -7,7 +7,7 @@
  * Replaces the mailto: CTA (a dead button on machines with no mail handler —
  * i.e. most government workstations). Four fields, honeypot spam guard,
  * graceful fallback to the team@ address if the API is unreachable.
- * ?v=gov|fin|health preselects the workflow. A closed source parameter carries
+ * ?v=gov|fin|health|host preselects the workflow. A closed source parameter carries
  * first-party campaign attribution into the durable intake record.
  */
 
@@ -27,7 +27,12 @@ const WORKFLOWS = [
   ['other', 'Another irreversible agent action'],
 ];
 
-const PRESELECT = { gov: 'benefit_account_change', fin: 'beneficiary_change', health: 'payer_adverse_determination' };
+const PRESELECT = {
+  gov: 'benefit_account_change',
+  fin: 'beneficiary_change',
+  health: 'payer_adverse_determination',
+  host: 'other',
+} as const;
 
 function publicRecordReturn(artifactId: string): { href: string; label: string } {
   const encoded = encodeURIComponent(artifactId);
@@ -59,11 +64,14 @@ export default function PilotPage(): React.ReactElement {
       if (cancelled) return;
       const params = new URLSearchParams(window.location.search);
       const v = params.get('v');
+      const preselectedWorkflow = v && Object.hasOwn(PRESELECT, v)
+        ? PRESELECT[v as keyof typeof PRESELECT]
+        : null;
       const source = params.get('source') === 'private_equity' ? 'private_equity' : 'direct';
       const artifactId = params.get('artifact_id')?.trim().slice(0, 80) ?? '';
       setForm((f) => ({
         ...f,
-        ...(v && PRESELECT[v] ? { workflow: PRESELECT[v] } : {}),
+        ...(preselectedWorkflow ? { workflow: preselectedWorkflow } : {}),
         ...(artifactId ? { artifact_id: artifactId } : {}),
         source,
       }));

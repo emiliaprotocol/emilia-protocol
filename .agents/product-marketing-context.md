@@ -1,6 +1,6 @@
 # Product Marketing Context
 
-*Last updated: 2026-08-22*
+*Last updated: 2026-08-27*
 
 ## Product Overview
 
@@ -15,7 +15,7 @@
 | Surface | Role | Commercial status |
 | --- | --- | --- |
 | **EMILIA Authority Brain / Authority Map** | Free local product experience that discovers visible agent-action surfaces, proposes consequence classifications, names blind spots, and routes the owner to protect one action | Apache-2.0 acquisition surface; scanner proposes and never claims enforcement |
-| **EMILIA Gate** | Commercial enforcement product at the executor or system-of-record boundary | Primary product |
+| **EMILIA Gate** | Commercial enforcement product at the executor or system-of-record boundary, including the EMILIA Host local deployment form | Primary product |
 | **EMILIA Protocol** | Open verification and evidence substrate: formats, exact-action binding, verifier, conformance, and interoperability | Apache-2.0 public infrastructure |
 | **EMILIA Approver** | Native apps and embeddable SDKs that capture a device-bound human decision over the exact action | Included capture surface for Gate deployments |
 | **EMILIA Assurance Plane** | Managed verification, re-performance, conformance reporting, deployment evidence, reliance packets, and evidence operations | Paid service layer; not an audit opinion or accredited certification |
@@ -23,6 +23,8 @@
 **Product category:** Authority control plane for autonomous work.
 
 **Product metaphor:** EMILIA Gate is the consequence firewall at the executor boundary. This describes the enforcement product, not the company category.
+
+**EMILIA Host:** The private local deployment form of Gate for activated covered HTTP and MCP paths at a credential-owning provider boundary. The current surface is an HTTP local service alpha over an owner-permissioned Unix socket, HTTP and MCP SDK protection, and governed pilots. The local service is not a general HTTP reverse proxy. Host is not a sixth product, prompt or model classifier, general network appliance, automatic output of Scan, Consequence Ledger reconciliation, or proof that an external effect occurred. Its prevention claim applies only to paths actually routed through the activated boundary.
 
 **Operating posture:** AI workers need authority, not constant supervision. A human click is one possible authority source, not the default execution model. Customers may install a durable, bounded mandate and allow unattended work inside it. Fresh human or institutional authority is required only when the customer requires per-occurrence review or when authority is missing, expired, widened, renewed, or used to authorize a separate remedy.
 
@@ -114,7 +116,7 @@ Payer and other clinical workflows, government disbursement, code and cloud admi
 
 | Persona | Cares about | Challenge | Value promised |
 | --- | --- | --- | --- |
-| AI platform engineer | Fast integration and deterministic behavior | Existing agents can reach privileged tools directly | One MCP or HTTP guard with machine-readable refusal and retry |
+| AI platform engineer | Fast integration and deterministic behavior | Existing agents can reach privileged tools directly | One MCP or HTTP guard, or the local Host deployment form, with machine-readable refusal and bounded retry behavior |
 | Security architect / CISO | Complete mediation, key ownership, replay resistance, and auditability | Identity and permissions do not prove approval of the exact action | Executor-side enforcement under customer-pinned policy and trust roots |
 | Controller / treasury / AP leader | Controlled vendor changes and payment releases | Credentials and workflow logs do not prove that the exact financial action met the required approval path | Exact-action admission under customer-owned authority, with portable evidence and explicit uncertainty |
 | Compliance / legal leader | Reproducible evidence and honest scope | Operator-controlled logs are difficult to rely on across boundaries | Portable evidence plus explicit assumptions, limitations, and refusal reasons |
@@ -129,6 +131,7 @@ Payer and other clinical workflows, government disbursement, code and cloud admi
 
 - IAM, OAuth, and workload identity establish identity or delegated scope, not exact-action human authorization.
 - Prompt filters and AI firewalls inspect model inputs and outputs, not the final executor-side mutation.
+- EMILIA Host uses the familiar AI agent firewall search language but differentiates immediately: it does not classify prompts or model intent; it verifies exact customer authority beside the credential-owning provider adapter.
 - Workflow approval tools often retain operator-controlled records that are difficult for an outside party to verify independently.
 - Logs describe what the operator says occurred after the fact; they do not necessarily prevent the action.
 - Closed vendor attestations make the customer trust the same party that operates the control.
@@ -212,7 +215,7 @@ Payer and other clinical workflows, government disbursement, code and cloud admi
 - "Complete mediation at the system of record."
 - "EMILIA operates the control; the customer controls the authority, credentials, and evidence."
 
-**Words to use:** authority control plane, autonomous work, machine workforce, operating mandate, unit of work, consequence firewall, exact action, executor boundary, system of record, complete mediation, customer-pinned trust, evidence challenge, one-time consumption, re-performance, scoped conformance, independent verification.
+**Words to use:** authority control plane, autonomous work, machine workforce, operating mandate, unit of work, consequence firewall, EMILIA Host, exact action, executor boundary, credential-owning provider boundary, system of record, complete mediation, customer-pinned trust, evidence challenge, one-time consumption, re-performance, scoped conformance, independent verification.
 
 **Words to avoid:** universal trust, AI safety solved, impossible to bypass, proof of comprehension, proof an external effect occurred from a local log, automatic rollback, fully independent implementations, certified deployment, compliant by default, guaranteed legality, statute-mandated EMILIA, Visa network for AI actions.
 

@@ -444,9 +444,14 @@ export default function GatePage() {
               complete-mediation or customer-deployment claim; only actions forced through its
               adapter receive this control.
             </p>
-            <a href="/pilot?v=gate" className="ep-cta" style={{ ...cta.primary, display: 'inline-flex', marginTop: 22 }}>
-              Design a bounded-authority pilot &rarr;
-            </a>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 22 }}>
+              <a href="/host" className="ep-cta" style={{ ...cta.primary, display: 'inline-flex' }}>
+                See the local Host deployment &rarr;
+              </a>
+              <a href="/pilot?v=gate" style={cta.secondary}>
+                Design a bounded-authority pilot
+              </a>
+            </div>
           </div>
         </section>
 

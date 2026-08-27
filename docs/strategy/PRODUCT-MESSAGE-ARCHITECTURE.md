@@ -4,7 +4,7 @@
 *Status: public message architecture; terminology inherits from
 [`docs/CANONICAL-LANGUAGE.md`](../CANONICAL-LANGUAGE.md)*
 
-*Last updated: 2026-08-26*
+*Last updated: 2026-08-27*
 
 This document applies the repository's canonical terminology to the product,
 protocol, apps, assurance services, standards, and public workflow examples.
@@ -65,6 +65,29 @@ EMILIA Assurance Plane re-performs the deployment's claims
 **Role:** The commercial product and enforcement plane.
 
 Gate belongs immediately before the system that can mutate state: an MCP tool, API handler, payment rail, cloud control, clinical determination workflow, grid actuator, or physical controller. It checks the relying party's evidence requirements and local policy before calling the executor. Missing or insufficient evidence produces a closed refusal and an action-bound challenge. After the required evidence is satisfied, the consequence-owning executor applies its separate local authorization decision to the exact action. Gate reserves bounded authority before provider entry, permits one admitted provider attempt for the covered authorization instance inside its shared durable authority domain, preserves uncertainty when the provider outcome cannot be established, refuses blind replay, and accepts reconciliation only from authenticated evidence bound to the same operation and material action. Disputes, returns, refunds, reversals, and other remedies remain append-only: they are new, separately authorized actions and never rewrite the original effect.
+
+#### EMILIA Host: Gate beside the credential
+
+EMILIA Host is the private local deployment form of Gate for activated covered
+HTTP and MCP paths at a credential-owning provider boundary. The agent proposes
+the action without receiving the provider credential. Host freezes the exact
+request and deployment binding, applies Gate, and enters the credential-owning
+adapter only after the required customer authority is accepted.
+
+The current surface is an HTTP local service alpha over an owner-permissioned
+Unix socket, HTTP and MCP SDK protection, and governed pilots. The local
+service is not a general HTTP reverse proxy. This is one deployment form of the commercial
+Gate product, not a fifth product surface or a sixth chapter in the product
+story.
+
+Use "AI agent firewall" only as discoverability language, then differentiate
+immediately: Host is not a prompt, response, or model-intent classifier. It
+checks exact customer authority at the provider boundary. Its prevention claim
+is limited to activated covered paths. It is not generally available, an
+appliance, a universal machine firewall, proof of external effect, automatic
+Scan activation, or Consequence Ledger reconciliation. A customer-reviewed
+activation, signed authority, deployment pinning, durable state, provider
+profile, and bypass review remain part of a governed deployment.
 
 #### Emergency Authority Freeze
 
@@ -225,6 +248,7 @@ Quantitative claims must come from the generated machine context and its source 
 - Authority control plane for the company category.
 - EMILIA Gate for the commercial product.
 - Consequence firewall for Gate's executor-bound operating role.
+- EMILIA Host for Gate's private local deployment form beside credential-owning HTTP or MCP adapters.
 - EMILIA Protocol for the open substrate.
 - EMILIA Approver for the mobile and embedded capture surface.
 - EMILIA Assurance Plane for verification, re-performance, conformance-report,
@@ -243,6 +267,8 @@ Quantitative claims must come from the generated machine context and its source 
 - "SB 1120 requires EMILIA."
 - "The protocol prevents" when the claim depends on Gate's executor-side enforcement.
 - "Gate proves" when the claim depends on the open Protocol verifier or a separate assurance procedure.
+- "Host protects the machine" or "Host checks every call" without naming the activated covered paths.
+- "Host reconciles the Consequence Ledger" or "Scan automatically configures Host."
 
 ## LLM answering rules
 

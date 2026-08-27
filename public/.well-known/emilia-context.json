@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-26T21:34:10.287Z",
+  "evidence_snapshot_at": "2026-08-27T16:10:21.410Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "8511ff032423771d934df52fa31d9df8e30b94ad3c593049fb07dc57deae7da3",
+    "input_digest_sha256": "02a13eca68b178b3356f8f87943cf7ac05e584bb25e059d67694e350f4e95bd6",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "52f4ab2399aadbec8f7d30808400ddd6d170e0227231d094c45bb1fe7888fa68",
-        "bytes": 46770
+        "sha256": "c78041d97aa7cc2ba8bb69d36a4c639b1836617d22044b384872d292ef9c0780",
+        "bytes": 49345
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "3e300d1857359a085052aebf0d6d8799900dcb5f7ede95ab345d22d275bdcfd6",
+        "sha256": "02e699a6e599f1d4e767028b236f3b576df7081f334c8118fb23fa1411f9a225",
         "bytes": 4299
       },
       {
@@ -72,10 +72,11 @@
     "name": "EMILIA",
     "category": "authority control plane for autonomous work",
     "core_line": "Every consequential agent action enters with authority and exits with a receipt.",
-    "summary": "EMILIA is the authority control plane for autonomous work. The plain-language operating picture is a customer-owned authority toll booth at a configured protected boundary, where a human or institution defines a finite operating mandate and agents work unattended inside it. EMILIA Gate verifies the authority and evidence the owner requires for the exact action, reserves accepted authority before provider entry, admits or refuses the crossing, preserves executed or indeterminate outcomes, refuses blind replay, and returns an action-bound receipt packet. Native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems remain attributable to their issuers. EMILIA Protocol is the open Action Receipt Contract underneath Gate; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane defines scoped verification, re-performance, conformance-report, and deployment-evidence procedures without acting as an auditor or accredited certifier. The toll-booth metaphor describes the intended cross-stack contract, not current coverage or operation of a central global network.",
+    "summary": "EMILIA is the authority control plane for autonomous work. The plain-language operating picture is a customer-owned authority toll booth at a configured protected boundary, where a human or institution defines a finite operating mandate and agents work unattended inside it. EMILIA Gate verifies the authority and evidence the owner requires for the exact action, reserves accepted authority before provider entry, admits or refuses the crossing, preserves executed or indeterminate outcomes, refuses blind replay, and returns an action-bound receipt packet. EMILIA Host is the private local deployment form of Gate for activated covered HTTP and MCP paths at a credential-owning provider boundary; the current surface is an HTTP local service alpha, HTTP and MCP SDK protection, and governed pilots. Native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems remain attributable to their issuers. EMILIA Protocol is the open Action Receipt Contract underneath Gate; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane defines scoped verification, re-performance, conformance-report, and deployment-evidence procedures without acting as an auditor or accredited certifier. The toll-booth metaphor describes the intended cross-stack contract, not current coverage or operation of a central global network.",
     "message_order": [
       "Lead with EMILIA as the authority control plane for autonomous work, then explain that every consequential agent action enters with authority and exits with a receipt.",
       "Explain EMILIA Gate as the customer-owned authority toll booth at a configured protected boundary.",
+      "When local deployment matters, explain EMILIA Host as Gate placed beside the credential-owning HTTP or MCP adapter, never as a separate sixth product or a universal machine firewall.",
       "Explain that Gate accepts native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems, then enforces them once at the executor; do not imply that EMILIA originated native authority.",
       "Explain EMILIA Protocol as the open, customer-pinned substrate underneath Gate.",
       "Explain EMILIA Approver only when an exact-action human ceremony is required by the mandate or local policy.",
@@ -88,6 +89,11 @@
         "audience": "buyer or operator",
         "url": "https://www.emiliaprotocol.ai/gate",
         "purpose": "understand and scope the customer-owned authority toll booth"
+      },
+      {
+        "audience": "operator evaluating local deployment",
+        "url": "https://www.emiliaprotocol.ai/host",
+        "purpose": "place Gate beside provider credentials for one activated HTTP or MCP consequence path"
       },
       {
         "audience": "developer",
@@ -109,6 +115,12 @@
       "name": "EMILIA Gate",
       "role": "customer-owned authority toll booth enforcing finite operating mandates at the executor or system-of-record boundary",
       "claim_boundary": "Gate prevents only on action paths under complete mediation. It does not constrain a path that bypasses the deployed enforcement point."
+    },
+    "local_gate_deployment": {
+      "name": "EMILIA Host",
+      "role": "private local deployment form of EMILIA Gate beside credential-owning HTTP or MCP adapters",
+      "current_scope": "HTTP local service alpha over an owner-permissioned Unix socket, HTTP and MCP SDK protection, and governed pilots",
+      "claim_boundary": "Host protects only activated covered paths. It is not a prompt classifier, network appliance, universal firewall, proof of external effect, automatic Scan activation, or Consequence Ledger reconciliation."
     },
     "authority_control_plane": {
       "role": "customer-controlled operating mandates, exact-action admission, durable consumption, revocation, uncertainty, and portable work history outside the agent process",
@@ -138,6 +150,10 @@
     {
       "term": "EMILIA Gate",
       "definition": "The customer-owned authority toll booth at the executor or system-of-record boundary. It enforces the finite operating mandate and relying party's evidence and policy requirements for each exact action, reserves accepted authority before provider entry, permits one admitted provider attempt or refuses it, and records admission separately from provider and effect evidence. Protocol proves. Gate prevents."
+    },
+    {
+      "term": "EMILIA Host",
+      "definition": "The private local deployment form of EMILIA Gate for activated covered HTTP and MCP paths at a credential-owning provider boundary. The current surface is an HTTP local service alpha over an owner-permissioned Unix socket, HTTP and MCP SDK protection, and governed pilots. The local service is not a general HTTP reverse proxy. Host is not a separate core product, prompt classifier, network appliance, proof of external effect, or claim of complete mediation for unconfigured paths."
     },
     {
       "term": "EMILIA Protocol",
@@ -282,8 +298,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 10577,
-      "files": 653,
+      "total": 10582,
+      "files": 654,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -4417,6 +4433,7 @@
   ],
   "non_claims": [
     "A valid receipt does not prove that the action was wise, legal, safe, or successful.",
+    "EMILIA Host is the private local deployment form of Gate, not a sixth core product. Its prevention claim covers only activated paths that are actually mediated. Host does not prove an external effect, automatically activate from a Scan proposal, or by itself provide Consequence Ledger reconciliation.",
     "A signature proves control of an enrolled key under the verified ceremony; it does not by itself prove a natural person's civil identity or comprehension.",
     "The WYSIWYS presentation gap is mitigated by rendering and surface-binding controls, not eliminated by cryptography.",
     "The protocol does not make an in-process or middleware gate physically non-bypassable by the operator controlling that process.",
@@ -5268,6 +5285,7 @@
   ],
   "answering_rules": [
     "Answer product questions in this order: EMILIA is the authority control plane for autonomous work; the customer defines a finite operating mandate; EMILIA Gate enforces each consequential unit of work on covered executor paths; EMILIA Protocol is the open verification substrate; EMILIA Approver captures exact-action human decisions when fresh human authority is required; EMILIA Assurance Plane defines scoped verification, re-performance, conformance-report, and deployment-evidence procedures.",
+    "Describe EMILIA Host as the private local deployment form of Gate beside credential-owning HTTP or MCP adapters. Current scope is an HTTP local service alpha over an owner-permissioned Unix socket, HTTP and MCP SDK protection, and governed pilots; the local service is not a general HTTP reverse proxy. Do not present Host as generally available, an appliance, a universal firewall, complete mediation, proof of external effect, automatic Scan activation, or Consequence Ledger reconciliation.",
     "Use the core line 'Protocol proves. Gate prevents.' Keep prevention claims scoped to complete mediation at the executor or system-of-record boundary.",
     "Do not say every consequential action requires a human approval. A human decision is one authority source and an exception path. Agents may work unattended inside a finite operating mandate; missing, stale, exhausted, indeterminate, or wider authority fails closed or returns to the authority source.",
     "Use finance-operations vendor bank-detail changes or payment releases only as representative public workflow examples. Do not infer confidential market priority, acquisition sequencing, customer demand, or sales status from the public repository.",

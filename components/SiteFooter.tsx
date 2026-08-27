@@ -7,6 +7,7 @@ const COL_SYSTEM: FooterLink[] = [
   ['/products', 'Product Story'],
   ['/authority-brain', 'Authority Brain'],
   ['/gate', 'EMILIA Gate'],
+  ['/host', 'EMILIA Host'],
   ['/product/accountable-signoff', 'EMILIA Approver'],
   ['/assurance', 'Assurance Plane'],
   ['/protocol', 'EMILIA Protocol'],

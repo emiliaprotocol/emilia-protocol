@@ -174,6 +174,29 @@ export function ProductStoryHub(): React.ReactElement {
         </div>
       </section>
 
+      <section className={styles.hostDeployment} aria-labelledby="host-deployment-title">
+        <div className={`${styles.shell} ${styles.hostDeploymentGrid}`}>
+          <div>
+            <div className={styles.chapter}>Deploy chapter 02 where the credential lives</div>
+            <h2 id="host-deployment-title">Host is a deployment form of Gate, not a sixth core product.</h2>
+            <p>
+              The agent proposes the action without holding the provider credential. EMILIA Host
+              places Gate beside the credential-owning HTTP or MCP adapter and refuses an activated
+              covered path unless the exact customer authority is accepted.
+            </p>
+          </div>
+          <div className={styles.hostDeploymentCard}>
+            <span>EMILIA GATE / LOCAL DEPLOYMENT / PRIVATE ALPHA</span>
+            <strong>Agent request → Host + Gate → credential-owning adapter</strong>
+            <p>
+              Current surface: HTTP local service alpha, HTTP and MCP SDK protection, and governed pilots.
+              Prevention remains limited to activated covered paths.
+            </p>
+            <Link href="/host">See EMILIA Host <span aria-hidden="true">→</span></Link>
+          </div>
+        </div>
+      </section>
+
       <section className={styles.serviceSection} aria-labelledby="services-title">
         <div className={`${styles.shell} ${styles.serviceGrid}`}>
           <div className={styles.scenarioCopy}>

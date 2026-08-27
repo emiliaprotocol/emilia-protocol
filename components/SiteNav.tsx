@@ -22,6 +22,7 @@ const PRODUCT_NAV_KEYS = new Set([
   'brain',
   'authority-brain',
   'gate',
+  'host',
   'approver',
   'assurance',
 ]);
