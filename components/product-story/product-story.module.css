@@ -389,6 +389,75 @@
   background: #1c1917;
 }
 
+.hostDeployment {
+  padding: 76px 32px;
+  border-bottom: 1px solid #e7e5e4;
+  background: #f5f5f4;
+}
+
+.hostDeploymentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 64px;
+  align-items: center;
+}
+
+.hostDeployment h2 {
+  margin: 14px 0 18px;
+  color: #0c0a09;
+  font: 700 clamp(30px, 4vw, 48px)/1.06 'IBM Plex Sans', sans-serif;
+  letter-spacing: -1.4px;
+}
+
+.hostDeployment p {
+  color: #57534e;
+  font-size: 15px;
+  line-height: 1.72;
+}
+
+.hostDeploymentCard {
+  padding: 28px;
+  border: 1px solid #292524;
+  border-top: 4px solid #b08d35;
+  border-radius: 8px;
+  background: #1c1917;
+  box-shadow: 0 24px 65px rgba(12, 10, 9, 0.16);
+  color: #fafaf9;
+}
+
+.hostDeploymentCard > span {
+  color: #f2d58a;
+  font: 600 9px/1.5 'IBM Plex Mono', monospace;
+  letter-spacing: 1.3px;
+}
+
+.hostDeploymentCard strong {
+  display: block;
+  margin-top: 34px;
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.hostDeploymentCard p {
+  color: rgba(250, 250, 249, 0.66);
+  font-size: 13px;
+}
+
+.hostDeploymentCard a {
+  display: inline-flex;
+  gap: 10px;
+  margin-top: 14px;
+  color: #f2d58a;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hostDeploymentCard a:focus-visible {
+  outline: 3px solid #f2d58a;
+  outline-offset: 3px;
+}
+
 .serviceSection .chapter,
 .serviceSection .scenarioCopy h2 {
   color: #f2d58a;
@@ -501,6 +570,7 @@
 @media (max-width: 900px) {
   .heroGrid,
   .serviceGrid,
+  .hostDeploymentGrid,
   .calloutGrid {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -1221,7 +1221,43 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertLess(cleanup, source_manifest)
         self.assertNotIn("git clean -fdx --", builder)
 
-    def test_actuator_image_carries_its_exact_caid_runtime_dependency(self) -> None:
+    def test_runtime_images_pin_fixed_openssl_and_actuator_carries_exact_caid(self) -> None:
+        patched_openssl = (
+            "apk add --no-cache --upgrade "
+            "libcrypto3=3.5.8-r0 libssl3=3.5.8-r0"
+        )
+        for relative_path in (
+            "Dockerfile",
+            "Dockerfile.gate",
+            "Dockerfile.consequence-control",
+            "Dockerfile.consequence-actuator",
+            "deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release",
+            "witness/Dockerfile",
+        ):
+            self.assertIn(
+                patched_openssl,
+                (ROOT / relative_path).read_text(),
+                f"{relative_path} must install the fixed Alpine OpenSSL libraries",
+            )
+
+        for relative_path in ("Dockerfile", "witness/Dockerfile"):
+            runtime_image = (ROOT / relative_path).read_text()
+            for unused_runtime_tool in (
+                "/usr/local/lib/node_modules/npm",
+                "/usr/local/lib/node_modules/corepack",
+                "/opt/yarn-v1.22.22",
+                "/usr/local/bin/npm",
+                "/usr/local/bin/npx",
+                "/usr/local/bin/corepack",
+                "/usr/local/bin/yarn",
+                "/usr/local/bin/yarnpkg",
+            ):
+                self.assertIn(
+                    unused_runtime_tool,
+                    runtime_image,
+                    f"{relative_path} must remove unused runtime tool {unused_runtime_tool}",
+                )
+
         dockerfile = (
             ROOT
             / "deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release"

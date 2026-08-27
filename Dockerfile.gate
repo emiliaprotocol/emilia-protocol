@@ -61,7 +61,9 @@ LABEL org.opencontainers.image.title="EMILIA Gate BYOC reference image" \
       io.emilia.governed.proof-stats.sha256="${EMILIA_PROOF_STATS_SHA256}" \
       io.emilia.governed.conformance.sha256="${EMILIA_CONFORMANCE_MANIFEST_SHA256}"
 
-RUN addgroup -S -g 10001 gate \
+# The digest-pinned base predates Alpine's CVE-2026-14456 fix.
+RUN apk add --no-cache --upgrade libcrypto3=3.5.8-r0 libssl3=3.5.8-r0 \
+    && addgroup -S -g 10001 gate \
     && adduser -S -D -H -u 10001 -G gate gate \
     && mkdir -p /app/config /tmp \
     && chown -R 10001:10001 /app /tmp \

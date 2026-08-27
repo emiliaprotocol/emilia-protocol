@@ -142,6 +142,7 @@ export default async function McpPage() {
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/guides/require-receipt" className="ep-cta" style={cta.primary}>Protect an MCP tool &rarr;</Link>
+            <Link href="/host" className="ep-cta-secondary" style={cta.secondary}>Put Gate beside the credential</Link>
             <Link href="/scan" className="ep-cta-secondary" style={cta.secondary}>Scan your surface first</Link>
           </div>
           <Image
@@ -171,6 +172,10 @@ export default async function McpPage() {
               <p style={{ fontSize: 14, lineHeight: 1.68, color: color.t2, margin: '14px 0 0' }}>Expose receipt and passkey verification tools to Claude Desktop, Cursor, Cline, Continue, or another MCP client. Installing this server alone does not mediate another tool&rsquo;s executor path.</p>
             </div>
           </div>
+          <p style={{ fontSize: 13.5, lineHeight: 1.65, color: color.t2, margin: '18px 0 0' }}>
+            Need the local boundary to hold provider credentials for activated HTTP and MCP paths?{' '}
+            <Link href="/host" style={{ color: color.gold }}>EMILIA Host is the private local deployment form of Gate &rarr;</Link>
+          </p>
         </C>
       </section>
 
