@@ -1218,6 +1218,8 @@ jobs:
         run: node scripts/check-repository-boundary.js
       - name: Verify staged Internet-Draft packet bytes
         run: npm run check:standards-staged
+      - name: Verify AE Challenge 08 submission packet
+        run: npm run check:ae-challenge-08
       - name: Check docs for leaked secrets
         run: node scripts/check-docs-secrets.js
 
