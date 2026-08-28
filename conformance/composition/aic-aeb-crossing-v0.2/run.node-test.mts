@@ -16,7 +16,7 @@ test("all AIC crossing cases pass and match the committed deterministic report",
   );
   assert.equal(report.profile, PROFILE);
   assert.equal(report.passed, true, JSON.stringify(report, null, 2));
-  assert.equal(report.cases.length, 10);
+  assert.equal(report.cases.length, 13);
   assert.equal(report.results_digest, reference.results_digest);
   assert.deepEqual(await buildReferenceReport(), reference);
 });
@@ -42,14 +42,19 @@ test("hostile native inputs fail before a crossing authority is emitted", async 
   ]) assert.equal(byId[id].passed, true, id);
 });
 
-test("strict JWT-SVID projection changes typ only by requiring a new signature and rejects lost authority semantics", async () => {
+test("exact action, admission domain, and source-status substitutions all refuse", async () => {
   const report = await runProfile();
   const byId = Object.fromEntries(report.cases.map((entry) => [entry.id, entry]));
-  assert.equal(byId["STRICT-JWT-SVID-PROJECTION"].passed, true);
-  assert.equal(byId["JWT-SVID-MULTIPLE-AUDIENCE-REFUSED"].passed, true);
-  assert.equal(byId["JWT-SVID-AUTHORITY-SEMANTIC-LOSS"].passed, true);
-  assert.match(report.known_limits.join(" "), /unsigned typ=JWT projection/);
-  assert.match(report.known_limits.join(" "), /does not preserve AIC authority/);
+  for (const id of [
+    "EXACT-ACTION-SUBSTITUTION-REFUSED",
+    "RELYING-PARTY-DOMAIN-SUBSTITUTION-REFUSED",
+    "STATUS-OBSERVATION-TIME-REFUSALS",
+    "NON-CURRENT-SOURCE-STATUS-REFUSED",
+    "NATIVE-VALIDITY-WINDOW-REFUSED",
+    "SIGNED-CROSSING-RP-SUBSTITUTION-REFUSED",
+  ]) assert.equal(byId[id].passed, true, id);
+  assert.match(report.known_limits.join(" "), /binds one exact action/);
+  assert.match(report.known_limits.join(" "), /explicit source-status observation time/);
 });
 
 test("the report carries exact source revisions and calls an external run a reproduction", async () => {
@@ -61,6 +66,6 @@ test("the report carries exact source revisions and calls an external run a repr
   });
   assert.equal(report.source_lock.varwof.repositories.length, 3);
   assert.equal(report.source_lock.drafts.length, 2);
-  assert.match(report.reproduction_statement, /10\/10/);
-  assert.match(report.reproduction_statement, /not independent AIC or JWT-SVID interoperability/);
+  assert.match(report.reproduction_statement, /13\/13/);
+  assert.match(report.reproduction_statement, /not independent AIC interoperability/);
 });

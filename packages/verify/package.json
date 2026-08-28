@@ -191,6 +191,10 @@
       "types": "./dist/aeb-ccs-adapter.d.ts",
       "import": "./aeb-ccs-adapter.js"
     },
+    "./aeb-ccs-v14-adapter": {
+      "types": "./dist/aeb-ccs-v14-adapter.d.ts",
+      "import": "./aeb-ccs-v14-adapter.js"
+    },
     "./aeb-chap-adapter": {
       "types": "./dist/aeb-chap-adapter.d.ts",
       "import": "./aeb-chap-adapter.js"
@@ -320,6 +324,7 @@
     "aeb-oasnt-adapter.js",
     "aeb-wag-adapter.js",
     "aeb-ccs-adapter.js",
+    "aeb-ccs-v14-adapter.js",
     "aeb-chap-adapter.js",
     "aeb-psea-adapter.js",
     "fido-ap2-bridge.js",

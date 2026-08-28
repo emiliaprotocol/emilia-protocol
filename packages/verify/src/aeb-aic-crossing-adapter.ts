@@ -29,6 +29,12 @@ export const AIC_JWT_JKT_CROSSING_MAPPING_PROFILE =
   'EP-AEB-CROSSING-AIC-JWT-JKT-v1';
 export const AIC_X509_SPKI_CROSSING_MAPPING_PROFILE =
   'EP-AEB-CROSSING-AIC-X509-SPKI-v1';
+export const AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE =
+  'EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2';
+export const AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE =
+  'EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2';
+export const AIC_ADMISSION_DOMAIN_VERSION =
+  'EP-AIC-ADMISSION-DOMAIN-v1';
 export const AIC_JWT_SVID_PROJECTION_VERSION =
   'EP-AIC-JWT-SVID-PROJECTION-v1';
 
@@ -62,6 +68,33 @@ interface AicCrossingCommonInput {
   validity: CrossingValidity;
 }
 
+export interface AicCrossingExactAction {
+  caid: string;
+  action_digest: AebDigest;
+}
+
+export interface AicCrossingAdmissionDomain {
+  relying_party_id: string;
+  audience: string;
+  executor_id: string;
+  state_domain_id: string;
+}
+
+export interface AicCrossingRequestBinding {
+  action_projection_profile_id: string;
+  action_projection_profile_digest: AebDigest;
+  requested_capability_digest: AebDigest;
+  projected_action: AicCrossingExactAction;
+  projected_admission_domain_digest: AebDigest;
+}
+
+export interface AicCrossingRelyingPartyContext {
+  action: AicCrossingExactAction;
+  admission_domain: AicCrossingAdmissionDomain;
+  evaluated_at: string;
+  max_status_age_seconds: number;
+}
+
 export interface AicJwtJktCrossingInput extends AicCrossingCommonInput {
   native_typ: 'aic+jwt';
   principal_binding: AicRfc7638JktBinding;
@@ -71,6 +104,14 @@ export interface AicX509SpkiCrossingInput extends AicCrossingCommonInput {
   native_type: 'AIC-X509';
   certificate_serial: string;
   principal_binding: AicX509SpkiBinding;
+}
+
+export interface AicJwtJktBoundCrossingInput extends AicJwtJktCrossingInput {
+  request_binding: AicCrossingRequestBinding;
+}
+
+export interface AicX509SpkiBoundCrossingInput extends AicX509SpkiCrossingInput {
+  request_binding: AicCrossingRequestBinding;
 }
 
 export type AicJwtSvidProjectionPurpose =
@@ -130,6 +171,7 @@ export type AicJwtSvidProjectionResult =
 type Obj = Record<string, unknown>;
 
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
+const CAID_RE = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const IDENTIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9:_.@/#-]{0,511}$/;
 const BASE64URL_RE = /^[A-Za-z0-9_-]+$/;
 const CERTIFICATE_SERIAL_RE = /^[0-9A-F]{2,128}$/;
@@ -152,6 +194,28 @@ const X509_INPUT_KEYS = new Set([
   'native_type',
   'certificate_serial',
   'principal_binding',
+]);
+const BOUND_JWT_INPUT_KEYS = new Set([...JWT_INPUT_KEYS, 'request_binding']);
+const BOUND_X509_INPUT_KEYS = new Set([...X509_INPUT_KEYS, 'request_binding']);
+const REQUEST_BINDING_KEYS = new Set([
+  'action_projection_profile_id',
+  'action_projection_profile_digest',
+  'requested_capability_digest',
+  'projected_action',
+  'projected_admission_domain_digest',
+]);
+const ACTION_KEYS = new Set(['caid', 'action_digest']);
+const ADMISSION_DOMAIN_KEYS = new Set([
+  'relying_party_id',
+  'audience',
+  'executor_id',
+  'state_domain_id',
+]);
+const RP_CONTEXT_KEYS = new Set([
+  'action',
+  'admission_domain',
+  'evaluated_at',
+  'max_status_age_seconds',
 ]);
 const BINDING_KEYS = new Set([
   'kind',
@@ -232,6 +296,46 @@ function validValidity(value: unknown): value is CrossingValidity {
     && instant(value.not_before)
     && instant(value.not_after)
     && Date.parse(value.not_before) < Date.parse(value.not_after);
+}
+
+function validAction(value: unknown): value is AicCrossingExactAction {
+  return isRecord(value)
+    && exactKeys(value, ACTION_KEYS)
+    && typeof value.caid === 'string'
+    && CAID_RE.test(value.caid)
+    && digest(value.action_digest);
+}
+
+function validAdmissionDomain(value: unknown): value is AicCrossingAdmissionDomain {
+  return isRecord(value)
+    && exactKeys(value, ADMISSION_DOMAIN_KEYS)
+    && identifier(value.relying_party_id)
+    && identifier(value.audience)
+    && identifier(value.executor_id)
+    && identifier(value.state_domain_id);
+}
+
+function validRequestBinding(value: unknown): value is AicCrossingRequestBinding {
+  return isRecord(value)
+    && exactKeys(value, REQUEST_BINDING_KEYS)
+    && identifier(value.action_projection_profile_id)
+    && digest(value.action_projection_profile_digest)
+    && digest(value.requested_capability_digest)
+    && validAction(value.projected_action)
+    && digest(value.projected_admission_domain_digest);
+}
+
+function validRelyingPartyContext(
+  value: unknown,
+): value is AicCrossingRelyingPartyContext {
+  return isRecord(value)
+    && exactKeys(value, RP_CONTEXT_KEYS)
+    && validAction(value.action)
+    && validAdmissionDomain(value.admission_domain)
+    && instant(value.evaluated_at)
+    && Number.isSafeInteger(value.max_status_age_seconds)
+    && Number(value.max_status_age_seconds) >= 0
+    && Number(value.max_status_age_seconds) <= 86_400;
 }
 
 function validTrustSet(value: unknown): value is AebDigest[] {
@@ -353,6 +457,86 @@ function authorityFrom(
   };
 }
 
+function boundDisposition(
+  input: AicCrossingCommonInput & { request_binding: AicCrossingRequestBinding },
+  context: AicCrossingRelyingPartyContext,
+): string | null {
+  const trust = trustDisposition(input);
+  if (trust) return trust;
+  if (input.status.value !== 'CURRENT') return 'aic_status_not_current';
+
+  const evaluatedAt = Date.parse(context.evaluated_at);
+  const observedAt = Date.parse(input.status.checked_at);
+  if (observedAt > evaluatedAt) return 'aic_status_observation_future';
+  if (evaluatedAt - observedAt > context.max_status_age_seconds * 1_000) {
+    return 'aic_status_observation_stale';
+  }
+  if (evaluatedAt < Date.parse(input.validity.not_before)
+    || evaluatedAt > Date.parse(input.validity.not_after)) {
+    return 'aic_validity_window_mismatch';
+  }
+  if (input.request_binding.projected_action.caid !== context.action.caid
+    || input.request_binding.projected_action.action_digest
+      !== context.action.action_digest) {
+    return 'aic_action_projection_mismatch';
+  }
+  const expectedAdmissionDomainDigest = digestAebTyped(
+    context.admission_domain,
+    AIC_ADMISSION_DOMAIN_VERSION,
+  );
+  if (input.request_binding.projected_admission_domain_digest
+    !== expectedAdmissionDomainDigest) {
+    return 'aic_admission_domain_mismatch';
+  }
+  return null;
+}
+
+function boundAuthorityFrom(
+  input: AicCrossingCommonInput & { request_binding: AicCrossingRequestBinding },
+  context: AicCrossingRelyingPartyContext,
+  native: {
+    adapterId: string;
+    mappingProfile: string;
+    nativeProfile: string;
+    binding: AicRfc7638JktBinding | AicX509SpkiBinding;
+    replayContext: Obj;
+    instanceContext: Obj;
+  },
+): CrossingNativeAuthority {
+  const actionAndDomain = {
+    requested_capability_digest: input.request_binding.requested_capability_digest,
+    action_projection_profile_id:
+      input.request_binding.action_projection_profile_id,
+    action_projection_profile_digest:
+      input.request_binding.action_projection_profile_digest,
+    action: context.action,
+    admission_domain: context.admission_domain,
+  };
+  const authority = authorityFrom(input, {
+    ...native,
+    replayContext: {
+      ...native.replayContext,
+      action_and_domain: actionAndDomain,
+    },
+    instanceContext: {
+      ...native.instanceContext,
+      action_and_domain: actionAndDomain,
+      source_status: input.status,
+      evaluated_at: context.evaluated_at,
+    },
+  });
+  return {
+    ...authority,
+    constraints_digest: digestAebTyped(
+      {
+        native_constraints_digest: input.constraints_digest,
+        ...actionAndDomain,
+      },
+      `${native.mappingProfile}:bound-constraints`,
+    ),
+  };
+}
+
 export function mapAicJwtJktCrossingAuthority(
   input: AicJwtJktCrossingInput,
 ): CrossingAuthorityMappingResult {
@@ -409,6 +593,78 @@ export function mapAicX509SpkiCrossingAuthority(
       replayContext: {
         certificate_serial: input.certificate_serial,
       },
+      instanceContext: {
+        certificate_serial: input.certificate_serial,
+        hash_alg: input.principal_binding.hash_alg,
+      },
+    }),
+  };
+}
+
+export function mapAicJwtJktBoundCrossingAuthority(
+  input: AicJwtJktBoundCrossingInput,
+  context: AicCrossingRelyingPartyContext,
+): CrossingAuthorityMappingResult {
+  if (!isRecord(input)
+    || !exactKeys(input, BOUND_JWT_INPUT_KEYS)
+    || !commonValid(input)
+    || !validRequestBinding(input.request_binding)
+    || !validRelyingPartyContext(context)) {
+    return { ok: false, reason: 'mapping_input_invalid' };
+  }
+  if (input.native_typ !== 'aic+jwt' || !validJktBinding(input.principal_binding)) {
+    return { ok: false, reason: 'aic_native_type_confusion' };
+  }
+  if (input.principal_binding.claimed_key_hash
+    !== input.principal_binding.presented_key_hash) {
+    return { ok: false, reason: 'aic_principal_binding_mismatch' };
+  }
+  const disposition = boundDisposition(input, context);
+  if (disposition) return { ok: false, reason: disposition };
+  return {
+    ok: true,
+    authority: boundAuthorityFrom(input, context, {
+      adapterId: 'native:aic-jwt-rfc7638-jkt-bound',
+      mappingProfile: AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
+      nativeProfile: 'AIC-JWT-RFC7638-JKT',
+      binding: input.principal_binding,
+      replayContext: { typ: input.native_typ },
+      instanceContext: { typ: input.native_typ },
+    }),
+  };
+}
+
+export function mapAicX509SpkiBoundCrossingAuthority(
+  input: AicX509SpkiBoundCrossingInput,
+  context: AicCrossingRelyingPartyContext,
+): CrossingAuthorityMappingResult {
+  if (!isRecord(input)
+    || !exactKeys(input, BOUND_X509_INPUT_KEYS)
+    || !commonValid(input)
+    || !validRequestBinding(input.request_binding)
+    || !validRelyingPartyContext(context)) {
+    return { ok: false, reason: 'mapping_input_invalid' };
+  }
+  if (input.native_type !== 'AIC-X509' || !validSpkiBinding(input.principal_binding)) {
+    return { ok: false, reason: 'aic_native_type_confusion' };
+  }
+  if (!CERTIFICATE_SERIAL_RE.test(input.certificate_serial)) {
+    return { ok: false, reason: 'mapping_input_invalid' };
+  }
+  if (input.principal_binding.claimed_key_hash
+    !== input.principal_binding.presented_key_hash) {
+    return { ok: false, reason: 'aic_principal_binding_mismatch' };
+  }
+  const disposition = boundDisposition(input, context);
+  if (disposition) return { ok: false, reason: disposition };
+  return {
+    ok: true,
+    authority: boundAuthorityFrom(input, context, {
+      adapterId: 'native:aic-x509-spki-bound',
+      mappingProfile: AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE,
+      nativeProfile: 'AIC-X509-SPKI',
+      binding: input.principal_binding,
+      replayContext: { certificate_serial: input.certificate_serial },
       instanceContext: {
         certificate_serial: input.certificate_serial,
         hash_alg: input.principal_binding.hash_alg,

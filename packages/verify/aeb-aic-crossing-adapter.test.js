@@ -4,10 +4,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { digestAebTyped } from './dist/aeb-adapter-contract.js';
-import { AIC_JWT_JKT_CROSSING_MAPPING_PROFILE, AIC_JWT_SVID_PROJECTION_VERSION, AIC_X509_SPKI_CROSSING_MAPPING_PROFILE, mapAicJwtJktCrossingAuthority, mapAicX509SpkiCrossingAuthority, projectAicJwtToStrictJwtSvid, } from './dist/aeb-aic-crossing-adapter.js';
+import { AIC_JWT_JKT_CROSSING_MAPPING_PROFILE, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE, AIC_JWT_SVID_PROJECTION_VERSION, AIC_X509_SPKI_CROSSING_MAPPING_PROFILE, mapAicJwtJktCrossingAuthority, mapAicJwtJktBoundCrossingAuthority, mapAicX509SpkiCrossingAuthority, projectAicJwtToStrictJwtSvid, } from './dist/aeb-aic-crossing-adapter.js';
 const NOW = '2026-08-26T18:00:00Z';
 const DIGEST = (octet) => `sha256:${octet.repeat(32)}`;
 const TRUST_ANCHOR = DIGEST('11');
+const ACTION = {
+    caid: 'caid:1:finance.vendor-account-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    action_digest: DIGEST('77'),
+};
+const ADMISSION_DOMAIN = {
+    relying_party_id: 'rp:example-finance',
+    audience: 'erp:vendor-master',
+    executor_id: 'executor:erp-production',
+    state_domain_id: 'state-domain:finance-primary',
+};
 function common() {
     return {
         native_verification: 'VERIFIED',
@@ -55,6 +65,71 @@ function x509Input() {
         },
     };
 }
+function boundContext() {
+    return {
+        action: ACTION,
+        admission_domain: ADMISSION_DOMAIN,
+        evaluated_at: NOW,
+        max_status_age_seconds: 60,
+    };
+}
+function boundJwtInput() {
+    return {
+        ...jwtInput(),
+        request_binding: {
+            action_projection_profile_id: 'AIC-EXACT-ACTION-PROJECTION-v1',
+            action_projection_profile_digest: DIGEST('88'),
+            requested_capability_digest: DIGEST('99'),
+            projected_action: ACTION,
+            projected_admission_domain_digest: digestAebTyped(ADMISSION_DOMAIN, 'EP-AIC-ADMISSION-DOMAIN-v1'),
+        },
+    };
+}
+test('bound mapping requires the same exact action and relying-party admission domain', () => {
+    const result = mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), boundContext());
+    assert.equal(result.ok, true, JSON.stringify(result));
+    if (!result.ok)
+        return;
+    assert.equal(result.authority.mapping_profile_id, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE);
+    const substitutedAction = mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), {
+        ...boundContext(),
+        action: { ...ACTION, action_digest: DIGEST('aa') },
+    });
+    assert.deepEqual(substitutedAction, {
+        ok: false,
+        reason: 'aic_action_projection_mismatch',
+    });
+    const substitutedDomain = mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), {
+        ...boundContext(),
+        admission_domain: {
+            ...ADMISSION_DOMAIN,
+            relying_party_id: 'rp:attacker-controlled',
+        },
+    });
+    assert.deepEqual(substitutedDomain, {
+        ok: false,
+        reason: 'aic_admission_domain_mismatch',
+    });
+});
+test('bound mapping fails closed on non-current, stale, future, or out-of-window source status', () => {
+    assert.deepEqual(mapAicJwtJktBoundCrossingAuthority({
+        ...boundJwtInput(),
+        status: { ...boundJwtInput().status, value: 'REVOKED' },
+    }, boundContext()), { ok: false, reason: 'aic_status_not_current' });
+    assert.deepEqual(mapAicJwtJktBoundCrossingAuthority({
+        ...boundJwtInput(),
+        status: { ...boundJwtInput().status, checked_at: '2026-08-26T17:58:00Z' },
+    }, boundContext()), { ok: false, reason: 'aic_status_observation_stale' });
+    assert.deepEqual(mapAicJwtJktBoundCrossingAuthority({
+        ...boundJwtInput(),
+        status: { ...boundJwtInput().status, checked_at: '2026-08-26T18:00:01Z' },
+    }, boundContext()), { ok: false, reason: 'aic_status_observation_future' });
+    assert.deepEqual(mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), {
+        ...boundContext(),
+        evaluated_at: '2026-08-26T18:06:00Z',
+        max_status_age_seconds: 600,
+    }), { ok: false, reason: 'aic_validity_window_mismatch' });
+});
 test('pure-JSON RFC 7638 jkt and X.509 SPKI remain distinct native mappings', () => {
     const jwt = mapAicJwtJktCrossingAuthority(jwtInput());
     const x509 = mapAicX509SpkiCrossingAuthority(x509Input());

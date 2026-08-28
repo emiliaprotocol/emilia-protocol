@@ -1,0 +1,115 @@
+{
+  "@version": "CCS-V1.4-AEB-GITHUB-REFERENCE-REPORT-v1",
+  "profile": "CCS-V1.4-AEB-GITHUB-CONSEQUENCE-v0.1",
+  "source_lock": {
+    "source": "ccs-v1.4.0-conformance-github@a3503b2bc48922f92a28c372003885a0831da02b",
+    "repository": "https://github.com/DSHCorrectover/ccs-conformance-vectors",
+    "commit": "a3503b2bc48922f92a28c372003885a0831da02b",
+    "manifest_sha256": "3e77eae3045eb2bc824c52b8d022b75029beaf56623841ce7c035a99e65a2ddd"
+  },
+  "cases": [
+    {
+      "id": "CCS-V1.4-PUBLIC-VECTOR-PIN",
+      "category": "source",
+      "passed": true,
+      "expected": "byte-pinned public vector with valid Ed25519 and companion hashes",
+      "observed": {
+        "raw_sha256": "889855dc9fcebdb642bd7e0f369651015781b4c004227aef510feb1fb7cb4361",
+        "signature_valid": true,
+        "args_digest_valid": true,
+        "response_hash_valid": true
+      }
+    },
+    {
+      "id": "CCS-ALLOW-PLUS-EMILIA-AUTHORITY",
+      "category": "positive",
+      "passed": true,
+      "expected": "one provider entry after CCS evidence, exact-action AEB evaluation, and separate local authority",
+      "observed": {
+        "state": "EXECUTED",
+        "provider_calls": 1
+      }
+    },
+    {
+      "id": "CCS-TAMPER-REFUSED",
+      "category": "hostile",
+      "passed": true,
+      "expected": "signed artifact mutation refused before provider entry",
+      "observed": {
+        "state": "REFUSED",
+        "reason": "exact_action_binding_mismatch",
+        "provider_calls": 0
+      }
+    },
+    {
+      "id": "WRONG-RELYING-PARTY-REFUSED",
+      "category": "hostile",
+      "passed": true,
+      "expected": "evaluation pinned for another relying party refused before provider entry",
+      "observed": {
+        "state": "REFUSED",
+        "reason": "evaluation_not_rederivable",
+        "provider_calls": 0
+      }
+    },
+    {
+      "id": "STALE-STATUS-REFUSED",
+      "category": "hostile",
+      "passed": true,
+      "expected": "stale status refused before provider entry",
+      "observed": {
+        "state": "REFUSED",
+        "reason": "current_status_not_fresh:artifact:ccs-v14-github-allow",
+        "provider_calls": 0
+      }
+    },
+    {
+      "id": "ACTION-SUBSTITUTION-REFUSED",
+      "category": "hostile",
+      "passed": true,
+      "expected": "approved issue 538 cannot be substituted with issue 539",
+      "observed": {
+        "state": "REFUSED",
+        "reason": "exact_action_binding_mismatch",
+        "provider_calls": 0
+      }
+    },
+    {
+      "id": "MISSING-EMILIA-AUTHORITY-REFUSED",
+      "category": "boundary",
+      "passed": true,
+      "expected": "CCS ALLOW alone cannot enter the provider",
+      "observed": {
+        "state": "REFUSED",
+        "reason": "local_authorization_denied",
+        "provider_calls": 0
+      }
+    },
+    {
+      "id": "INDETERMINATE-BLOCKS-BLIND-RETRY",
+      "category": "boundary",
+      "passed": true,
+      "expected": "one provider entry, INDETERMINATE result, and no blind second entry",
+      "observed": {
+        "first": "INDETERMINATE",
+        "retry": "REFUSED",
+        "provider_calls": 1
+      }
+    }
+  ],
+  "passed": true,
+  "composition": {
+    "evidence": "CCS v1.4 Ed25519 receipt and full tool-argument digest",
+    "exact_action": "CAID over executor-owned GitHub issue-update parameters",
+    "authority": "separate relying-party local_authorize decision",
+    "consequence_boundary": "AEB verification, durable one-time consumption, and counted provider entry"
+  },
+  "known_limits": [
+    "This is an EMILIA independent composition fixture, not a Correctover product certification.",
+    "The public vector proves source-compatible verification only; it does not authorize execution.",
+    "The GitHub provider is a test stub. No live issue or external account is changed.",
+    "At-most-one provider entry is not exactly-once physical effect.",
+    "An INDETERMINATE result requires authenticated reconciliation; blind retry remains prohibited."
+  ],
+  "results_digest": "sha256:ad2256f5c22f0c8c6a185f7ce5675955db8019789bd42b04bbd47ab5227166f6"
+}

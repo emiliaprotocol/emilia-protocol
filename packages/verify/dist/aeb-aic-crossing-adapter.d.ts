@@ -16,6 +16,9 @@ import { type AebDigest } from './aeb-adapter-contract.js';
 import { type CrossingAuthorityMappingResult, type CrossingNativeStatus, type CrossingNativeVerification, type CrossingValidity } from './aeb-crossing-record.js';
 export declare const AIC_JWT_JKT_CROSSING_MAPPING_PROFILE = "EP-AEB-CROSSING-AIC-JWT-JKT-v1";
 export declare const AIC_X509_SPKI_CROSSING_MAPPING_PROFILE = "EP-AEB-CROSSING-AIC-X509-SPKI-v1";
+export declare const AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE = "EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2";
+export declare const AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE = "EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2";
+export declare const AIC_ADMISSION_DOMAIN_VERSION = "EP-AIC-ADMISSION-DOMAIN-v1";
 export declare const AIC_JWT_SVID_PROJECTION_VERSION = "EP-AIC-JWT-SVID-PROJECTION-v1";
 export type AicSpkiHashAlgorithm = 'sha-256' | 'sha-384' | 'sha-512';
 export interface AicRfc7638JktBinding {
@@ -43,6 +46,29 @@ interface AicCrossingCommonInput {
     status: CrossingNativeStatus;
     validity: CrossingValidity;
 }
+export interface AicCrossingExactAction {
+    caid: string;
+    action_digest: AebDigest;
+}
+export interface AicCrossingAdmissionDomain {
+    relying_party_id: string;
+    audience: string;
+    executor_id: string;
+    state_domain_id: string;
+}
+export interface AicCrossingRequestBinding {
+    action_projection_profile_id: string;
+    action_projection_profile_digest: AebDigest;
+    requested_capability_digest: AebDigest;
+    projected_action: AicCrossingExactAction;
+    projected_admission_domain_digest: AebDigest;
+}
+export interface AicCrossingRelyingPartyContext {
+    action: AicCrossingExactAction;
+    admission_domain: AicCrossingAdmissionDomain;
+    evaluated_at: string;
+    max_status_age_seconds: number;
+}
 export interface AicJwtJktCrossingInput extends AicCrossingCommonInput {
     native_typ: 'aic+jwt';
     principal_binding: AicRfc7638JktBinding;
@@ -51,6 +77,12 @@ export interface AicX509SpkiCrossingInput extends AicCrossingCommonInput {
     native_type: 'AIC-X509';
     certificate_serial: string;
     principal_binding: AicX509SpkiBinding;
+}
+export interface AicJwtJktBoundCrossingInput extends AicJwtJktCrossingInput {
+    request_binding: AicCrossingRequestBinding;
+}
+export interface AicX509SpkiBoundCrossingInput extends AicX509SpkiCrossingInput {
+    request_binding: AicCrossingRequestBinding;
 }
 export type AicJwtSvidProjectionPurpose = 'WORKLOAD_IDENTITY_ONLY' | 'AIC_AUTHORITY';
 export interface AicJwtSvidProjectionInput {
@@ -106,6 +138,8 @@ export type AicJwtSvidProjectionResult = {
 };
 export declare function mapAicJwtJktCrossingAuthority(input: AicJwtJktCrossingInput): CrossingAuthorityMappingResult;
 export declare function mapAicX509SpkiCrossingAuthority(input: AicX509SpkiCrossingInput): CrossingAuthorityMappingResult;
+export declare function mapAicJwtJktBoundCrossingAuthority(input: AicJwtJktBoundCrossingInput, context: AicCrossingRelyingPartyContext): CrossingAuthorityMappingResult;
+export declare function mapAicX509SpkiBoundCrossingAuthority(input: AicX509SpkiBoundCrossingInput, context: AicCrossingRelyingPartyContext): CrossingAuthorityMappingResult;
 export declare function projectAicJwtToStrictJwtSvid(input: AicJwtSvidProjectionInput): AicJwtSvidProjectionResult;
 export {};
 //# sourceMappingURL=aeb-aic-crossing-adapter.d.ts.map

@@ -507,7 +507,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "c7a87d9eb7912bafe2cb7828fb80ff7e8b61feda31fba12357967ec6fcc63fe5"
+      "sha256": "00e85b49485d7594db074bd6a92932fb7a3710d08f70a0846943a0ff7b93940e"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1054,8 +1054,16 @@
       "sha256": "19f4ad5c4cad003f7955cebdd1f8675d85941f75ac6ffc168f6a296897704668"
     },
     {
+      "path": "packages/verify/dist/aeb-aic-crossing-adapter.js",
+      "sha256": "bc40d656ed61497ebb52bbfd50f65184959196b759b4fb0b55eacdc1d233fd26"
+    },
+    {
       "path": "packages/verify/dist/aeb-aps-adapter.js",
       "sha256": "4fa18a0bfd4bf7bbfab96be86c9173b961725f15700ec802aa1bcd4445cf60a9"
+    },
+    {
+      "path": "packages/verify/dist/aeb-ccs-v14-adapter.js",
+      "sha256": "24b08b8e3b46f52f58d203f7193f5102d2bbedeb1611d15adfb34b74a4209b33"
     },
     {
       "path": "packages/verify/dist/aeb-chap-adapter.js",
@@ -1067,7 +1075,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-crossing-record.js",
-      "sha256": "da5192549826461030bb977983823d01979342625de5508970a664a8e60ed650"
+      "sha256": "1276b8f5463fbc472ceff7b9fd09890cd397c73f328d9bf8a21164a571b17c62"
     },
     {
       "path": "packages/verify/dist/aeb-discovery-permit-adapter.js",
@@ -1191,7 +1199,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "24a38bfeb2eb98bf2f6d4f47000265efc9c97ab71a50bd0a92e5e03ccf805a86"
+      "sha256": "b9fe8f6324771ac3b84991e47db32f4ce0df5d1765601de81e7cff82803e4a28"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1339,7 +1347,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "b98f02b992726287f0a692845991035ec203693e8dbd2e8a53009164ae21705d"
+      "sha256": "5039be72e2a75d88ee6a79326beafa4b0241e38bb2f6a86125a0274cd450065c"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

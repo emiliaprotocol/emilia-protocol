@@ -17,14 +17,14 @@ import { fileURLToPath } from "node:url";
 import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
 
 import {
-  AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
-  AIC_JWT_SVID_PROJECTION_VERSION,
-  AIC_X509_SPKI_CROSSING_MAPPING_PROFILE,
-  mapAicJwtJktCrossingAuthority,
-  mapAicX509SpkiCrossingAuthority,
-  projectAicJwtToStrictJwtSvid,
-  type AicJwtJktCrossingInput,
-  type AicX509SpkiCrossingInput,
+  AIC_ADMISSION_DOMAIN_VERSION,
+  AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
+  AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE,
+  mapAicJwtJktBoundCrossingAuthority,
+  mapAicX509SpkiBoundCrossingAuthority,
+  type AicCrossingRelyingPartyContext,
+  type AicJwtJktBoundCrossingInput,
+  type AicX509SpkiBoundCrossingInput,
 } from "../../../packages/verify/aeb-aic-crossing-adapter.js";
 import {
   AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS,
@@ -34,10 +34,13 @@ import {
   type CrossingNativeAuthority,
   type CrossingRefereeAxes,
 } from "../../../packages/verify/aeb-crossing-record.js";
-import { canonicalizeAeb } from "../../../packages/verify/aeb-adapter-contract.js";
+import {
+  canonicalizeAeb,
+  digestAebTyped,
+} from "../../../packages/verify/aeb-adapter-contract.js";
 import { loadDefaultAgilityMldsaBackend } from "../../../packages/verify/pq-signature-agility.js";
 
-export const PROFILE = "EP-AIC-AEB-CROSSING-COMPOSITION-v0.1";
+export const PROFILE = "EP-AIC-AEB-CROSSING-COMPOSITION-v0.2";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REFERENCE_PATH = resolve(HERE, "report.reference.json");
 const SOURCE_LOCK = JSON.parse(
@@ -105,6 +108,29 @@ const BOUNDARY = Object.freeze({
   executor_id: "executor:erp-production",
   state_domain_id: "state-domain:finance-primary",
 });
+const REQUEST_BINDING = Object.freeze({
+  action_projection_profile_id: "AIC-EXACT-ACTION-PROJECTION-v1",
+  action_projection_profile_digest: MAPPING_PROFILE_DIGEST,
+  requested_capability_digest: sha256(canonicalizeAeb({
+    scheme: "varwof/core",
+    id: "finance.vendor-account-change",
+    params: {
+      vendor_id: "vendor-0042",
+      account_fingerprint: "acct:7e8c",
+    },
+  })) as `sha256:${string}`,
+  projected_action: ACTION,
+  projected_admission_domain_digest: digestAebTyped(
+    BOUNDARY,
+    AIC_ADMISSION_DOMAIN_VERSION,
+  ),
+});
+const RP_CONTEXT = Object.freeze({
+  action: ACTION,
+  admission_domain: BOUNDARY,
+  evaluated_at: NOW,
+  max_status_age_seconds: 60,
+}) satisfies AicCrossingRelyingPartyContext;
 const REQUIREMENTS = Object.freeze({
   admission_digest: `sha256:${"22".repeat(32)}` as const,
   review_digest: `sha256:${"33".repeat(32)}` as const,
@@ -149,8 +175,8 @@ function result(
 }
 
 function jktInput(
-  overrides: Partial<AicJwtJktCrossingInput> = {},
-): AicJwtJktCrossingInput {
+  overrides: Partial<AicJwtJktBoundCrossingInput> = {},
+): AicJwtJktBoundCrossingInput {
   return {
     native_verification: "VERIFIED",
     native_typ: "aic+jwt",
@@ -177,13 +203,14 @@ function jktInput(
       not_before: "2026-08-26T18:55:00Z",
       not_after: "2026-08-26T19:05:00Z",
     },
+    request_binding: REQUEST_BINDING,
     ...overrides,
   };
 }
 
 function x509Input(
-  overrides: Partial<AicX509SpkiCrossingInput> = {},
-): AicX509SpkiCrossingInput {
+  overrides: Partial<AicX509SpkiBoundCrossingInput> = {},
+): AicX509SpkiBoundCrossingInput {
   return {
     native_verification: "VERIFIED",
     native_type: "AIC-X509",
@@ -211,18 +238,19 @@ function x509Input(
       not_before: "2026-08-26T18:55:00Z",
       not_after: "2026-08-26T19:05:00Z",
     },
+    request_binding: REQUEST_BINDING,
     ...overrides,
   };
 }
 
 function mapJkt(input = jktInput()): CrossingNativeAuthority {
-  const mapped = mapAicJwtJktCrossingAuthority(input);
+  const mapped = mapAicJwtJktBoundCrossingAuthority(input, RP_CONTEXT);
   assert.equal(mapped.ok, true, JSON.stringify(mapped));
   return mapped.authority;
 }
 
 function mapX509(input = x509Input()): CrossingNativeAuthority {
-  const mapped = mapAicX509SpkiCrossingAuthority(input);
+  const mapped = mapAicX509SpkiBoundCrossingAuthority(input, RP_CONTEXT);
   assert.equal(mapped.ok, true, JSON.stringify(mapped));
   return mapped.authority;
 }
@@ -277,7 +305,7 @@ export async function buildReferenceReport() {
   cases.push(result(
     "AIC-JWT-JKT-CROSSING",
     "positive",
-    jkt.mapping_profile_id === AIC_JWT_JKT_CROSSING_MAPPING_PROFILE
+    jkt.mapping_profile_id === AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE
       && jktCheck.verified
       && jktCheck.execution_authorizing === false,
     "RFC7638 jkt maps, receipt verifies, and remains non-authorizing",
@@ -294,7 +322,7 @@ export async function buildReferenceReport() {
   cases.push(result(
     "AIC-X509-SPKI-CROSSING",
     "positive",
-    x509.mapping_profile_id === AIC_X509_SPKI_CROSSING_MAPPING_PROFILE
+    x509.mapping_profile_id === AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE
       && x509Check.verified
       && x509Check.execution_authorizing === false,
     "X.509 SPKI maps, receipt verifies, and remains non-authorizing",
@@ -321,14 +349,14 @@ export async function buildReferenceReport() {
     },
   ));
 
-  const mismatch = mapAicJwtJktCrossingAuthority(jktInput({
+  const mismatch = mapAicJwtJktBoundCrossingAuthority(jktInput({
     principal_binding: {
       kind: "RFC7638_JKT",
       hash_alg: "jkt",
       claimed_key_hash: JKT,
       presented_key_hash: "K".repeat(43),
     },
-  }));
+  }), RP_CONTEXT);
   cases.push(result(
     "PRINCIPAL-BINDING-MISMATCH",
     "hostile",
@@ -337,9 +365,9 @@ export async function buildReferenceReport() {
     { ok: mismatch.ok, reason: mismatch.ok ? null : mismatch.reason },
   ));
 
-  const untrusted = mapAicX509SpkiCrossingAuthority(x509Input({
+  const untrusted = mapAicX509SpkiBoundCrossingAuthority(x509Input({
     trusted_issuer_trust_anchor_digests: [`sha256:${"a2".repeat(32)}`],
-  }));
+  }), RP_CONTEXT);
   cases.push(result(
     "UNTRUSTED-ISSUER",
     "hostile",
@@ -348,10 +376,10 @@ export async function buildReferenceReport() {
     { ok: untrusted.ok, reason: untrusted.ok ? null : untrusted.reason },
   ));
 
-  const confused = mapAicJwtJktCrossingAuthority({
+  const confused = mapAicJwtJktBoundCrossingAuthority({
     ...jktInput(),
     native_typ: "JWT",
-  } as unknown as AicJwtJktCrossingInput);
+  } as unknown as AicJwtJktBoundCrossingInput, RP_CONTEXT);
   cases.push(result(
     "NATIVE-TYPE-CONFUSION",
     "hostile",
@@ -360,12 +388,12 @@ export async function buildReferenceReport() {
     { ok: confused.ok, reason: confused.ok ? null : confused.reason },
   ));
 
-  const failed = mapAicJwtJktCrossingAuthority(jktInput({
+  const failed = mapAicJwtJktBoundCrossingAuthority(jktInput({
     native_verification: "FAILED",
-  }));
-  const indeterminate = mapAicX509SpkiCrossingAuthority(x509Input({
+  }), RP_CONTEXT);
+  const indeterminate = mapAicX509SpkiBoundCrossingAuthority(x509Input({
     native_verification: "INDETERMINATE",
-  }));
+  }), RP_CONTEXT);
   cases.push(result(
     "NATIVE-VERIFICATION-REFUSAL",
     "hostile",
@@ -379,93 +407,163 @@ export async function buildReferenceReport() {
     },
   ));
 
-  const projectionInput = {
-    source: jktInput(),
-    purpose: "WORKLOAD_IDENTITY_ONLY" as const,
-    audience: ["spiffe://example.org/workload-api"],
-    issued_at: 1787770500,
-    not_before: 1787770500,
-    expires_at: 1787770800,
-    token_id: "jwt-svid:aic-projection:0001",
-    projected_algorithm: "ES256" as const,
-    projected_key_id: "jwt-svid-key-2026-08",
-    has_constraints: true,
-    delegation_mode: "representative" as const,
-    has_delegation_assertion: true,
-    confirmation_key_present: true,
-  };
-  const projected = projectAicJwtToStrictJwtSvid(projectionInput);
-  cases.push(result(
-    "STRICT-JWT-SVID-PROJECTION",
-    "positive",
-    projected.ok
-      && projected.projection["@version"] === AIC_JWT_SVID_PROJECTION_VERSION
-      && projected.projection.protected_header.typ === "JWT"
-      && typeof projected.projection.payload.aud === "string"
-      && projected.projection.new_signature_required
-      && projected.projection.compact_token === null
-      && projected.projection.authorization_decision === false,
-    "new typ=JWT TBS projection with one aud and no authority",
-    projected.ok ? {
-      version: projected.projection["@version"],
-      typ: projected.projection.protected_header.typ,
-      audience: projected.projection.payload.aud,
-      new_signature_required: projected.projection.new_signature_required,
-      compact_token: projected.projection.compact_token,
-      authorization_decision: projected.projection.authorization_decision,
-      omitted_source_members: projected.projection.omitted_source_members,
-    } : { reason: projected.reason },
-  ));
-
-  const multipleAudience = projectAicJwtToStrictJwtSvid({
-    ...projectionInput,
-    audience: ["spiffe://example.org/a", "spiffe://example.org/b"],
-  });
-  cases.push(result(
-    "JWT-SVID-MULTIPLE-AUDIENCE-REFUSED",
-    "hostile",
-    !multipleAudience.ok
-      && multipleAudience.reason === "jwt_svid_single_audience_required",
-    "jwt_svid_single_audience_required",
+  const actionMismatch = mapAicJwtJktBoundCrossingAuthority(
+    jktInput(),
     {
-      ok: multipleAudience.ok,
-      reason: multipleAudience.ok ? null : multipleAudience.reason,
+      ...RP_CONTEXT,
+      action: {
+        ...ACTION,
+        action_digest: `sha256:${"01".repeat(32)}`,
+      },
+    },
+  );
+  cases.push(result(
+    "EXACT-ACTION-SUBSTITUTION-REFUSED",
+    "hostile",
+    !actionMismatch.ok
+      && actionMismatch.reason === "aic_action_projection_mismatch",
+    "aic_action_projection_mismatch",
+    {
+      ok: actionMismatch.ok,
+      reason: actionMismatch.ok ? null : actionMismatch.reason,
     },
   ));
 
-  const semanticLoss = projectAicJwtToStrictJwtSvid({
-    ...projectionInput,
-    purpose: "AIC_AUTHORITY",
-  });
+  const wrongDomain = mapAicJwtJktBoundCrossingAuthority(
+    jktInput(),
+    {
+      ...RP_CONTEXT,
+      admission_domain: {
+        ...BOUNDARY,
+        relying_party_id: "rp:other-company",
+      },
+    },
+  );
   cases.push(result(
-    "JWT-SVID-AUTHORITY-SEMANTIC-LOSS",
+    "RELYING-PARTY-DOMAIN-SUBSTITUTION-REFUSED",
     "hostile",
-    !semanticLoss.ok && semanticLoss.reason === "aic_jwt_svid_semantic_loss",
-    "aic_jwt_svid_semantic_loss",
-    { ok: semanticLoss.ok, reason: semanticLoss.ok ? null : semanticLoss.reason },
+    !wrongDomain.ok
+      && wrongDomain.reason === "aic_admission_domain_mismatch",
+    "aic_admission_domain_mismatch",
+    {
+      ok: wrongDomain.ok,
+      reason: wrongDomain.ok ? null : wrongDomain.reason,
+    },
+  ));
+
+  const stale = mapAicJwtJktBoundCrossingAuthority(jktInput({
+    status: {
+      value: "CURRENT",
+      checked_at: "2026-08-26T18:58:00Z",
+      source_head_digest: `sha256:${"b4".repeat(32)}`,
+    },
+  }), RP_CONTEXT);
+  const future = mapAicJwtJktBoundCrossingAuthority(jktInput({
+    status: {
+      value: "CURRENT",
+      checked_at: "2026-08-26T19:00:01Z",
+      source_head_digest: `sha256:${"b4".repeat(32)}`,
+    },
+  }), RP_CONTEXT);
+  cases.push(result(
+    "STATUS-OBSERVATION-TIME-REFUSALS",
+    "hostile",
+    !stale.ok && stale.reason === "aic_status_observation_stale"
+      && !future.ok && future.reason === "aic_status_observation_future",
+    "stale and future observations both refuse",
+    {
+      stale: stale.ok ? null : stale.reason,
+      future: future.ok ? null : future.reason,
+    },
+  ));
+
+  const revoked = mapAicX509SpkiBoundCrossingAuthority(x509Input({
+    status: {
+      value: "REVOKED",
+      checked_at: NOW,
+      source_head_digest: `sha256:${"c4".repeat(32)}`,
+    },
+  }), RP_CONTEXT);
+  const unavailable = mapAicX509SpkiBoundCrossingAuthority(x509Input({
+    status: {
+      value: "UNAVAILABLE",
+      checked_at: NOW,
+      source_head_digest: `sha256:${"c4".repeat(32)}`,
+    },
+  }), RP_CONTEXT);
+  cases.push(result(
+    "NON-CURRENT-SOURCE-STATUS-REFUSED",
+    "hostile",
+    !revoked.ok && revoked.reason === "aic_status_not_current"
+      && !unavailable.ok && unavailable.reason === "aic_status_not_current",
+    "revoked and unavailable source status both refuse",
+    {
+      revoked: revoked.ok ? null : revoked.reason,
+      unavailable: unavailable.ok ? null : unavailable.reason,
+    },
+  ));
+
+  const outOfWindow = mapAicJwtJktBoundCrossingAuthority(
+    jktInput(),
+    {
+      ...RP_CONTEXT,
+      evaluated_at: "2026-08-26T19:06:00Z",
+      max_status_age_seconds: 600,
+    },
+  );
+  cases.push(result(
+    "NATIVE-VALIDITY-WINDOW-REFUSED",
+    "hostile",
+    !outOfWindow.ok
+      && outOfWindow.reason === "aic_validity_window_mismatch",
+    "aic_validity_window_mismatch",
+    {
+      ok: outOfWindow.ok,
+      reason: outOfWindow.ok ? null : outOfWindow.reason,
+    },
+  ));
+
+  const rpSubstitutedRecord = structuredClone(jktRecord);
+  rpSubstitutedRecord.body.boundary.relying_party_id = "rp:other-company";
+  const rpSubstitutedCheck = await verify(rpSubstitutedRecord);
+  cases.push(result(
+    "SIGNED-CROSSING-RP-SUBSTITUTION-REFUSED",
+    "boundary",
+    !rpSubstitutedCheck.verified
+      && ["contract_digest_mismatch", "signature_invalid"].includes(
+        rpSubstitutedCheck.reason ?? "",
+      ),
+    "signed record substitution refuses",
+    {
+      verified: rpSubstitutedCheck.verified,
+      reason: rpSubstitutedCheck.reason,
+    },
   ));
 
   const base = {
-    "@version": "AIC-AEB-CROSSING-REFERENCE-REPORT-v0.1",
+    "@version": "AIC-AEB-CROSSING-REFERENCE-REPORT-v0.2",
     profile: PROFILE,
     crossing_record_version: AEB_CROSSING_RECORD_VERSION,
     required_algorithms: [...AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS],
     mappings: [
-      AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
-      AIC_X509_SPKI_CROSSING_MAPPING_PROFILE,
+      AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
+      AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE,
     ],
-    jwt_svid_projection: AIC_JWT_SVID_PROJECTION_VERSION,
+    action_projection: MAPPING_PROFILE.action_projection,
+    admission_domain: MAPPING_PROFILE.admission_domain,
+    source_status: MAPPING_PROFILE.source_status,
     source_lock: SOURCE_LOCK,
     source_lock_digest: sha256(canonicalizeAeb(SOURCE_LOCK)),
     mapping_profile_digest: sha256(canonicalizeAeb(MAPPING_PROFILE)),
     cases,
     passed: cases.every((entry) => entry.passed),
     known_limits: [
-      "This run exercises the EMILIA reference adapter and crossing-record implementation; it is not an independent implementation of AIC-JWT, AIC-X509, or JWT-SVID.",
+      "This run exercises the EMILIA reference adapter and crossing-record implementation; it is not an independent implementation of AIC-JWT or AIC-X509.",
       "The adapter consumes a native verifier result; it does not reimplement AIC signature, certificate-path, delegation, capability, constraint, or status validation.",
+      "The pinned action-projection profile must be applied to the same capability request that the native verifier evaluated; unknown schemes, unmapped material parameters, and ambiguous projections must refuse upstream.",
+      "The profile binds one exact action and one relying-party admission domain; changing the action, relying party, audience, executor, or state domain requires a new evaluation.",
+      "status.checked_at is the explicit source-status observation time. CURRENT status is accepted only within the pinned freshness limit and native validity window; revoked, unavailable, stale, future, or otherwise non-current observations refuse.",
       "RFC 7638 JWK thumbprints and X.509 SPKI hashes remain separate native mappings and are never treated as interchangeable proof.",
-      "The strict JWT-SVID output is an unsigned typ=JWT projection requiring a new JWT-SVID signature; changing a native aic+jwt header would invalidate its source signature.",
-      "The JWT-SVID projection preserves bounded workload identity fields only; it deliberately does not preserve AIC authority, delegation, constraint, confirmation-key, or full capability semantics.",
       "A verified crossing record is evidence of one past relying-party boundary decision and never authorizes another action.",
       "Passing these checks does not establish IETF adoption, certification, production deployment, independent interoperability, or employer endorsement.",
     ],
@@ -477,7 +575,7 @@ export async function runProfile(
   runner = {
     name: "EMILIA reference runner",
     affiliation: "EMILIA Protocol",
-    revision: "aic-aeb-crossing-v0.1",
+    revision: "aic-aeb-crossing-v0.2",
     executed_at: NOW,
   },
 ) {
@@ -486,7 +584,7 @@ export async function runProfile(
   return {
     ...reference,
     runner,
-    reproduction_statement: `${runner.name} (${runner.affiliation}) reproduced ${passed}/${reference.cases.length} AIC crossing checks at ${runner.revision}. This is a reproduction of the EMILIA reference composition, not independent AIC or JWT-SVID interoperability, IETF adoption, certification, or employer endorsement.`,
+    reproduction_statement: `${runner.name} (${runner.affiliation}) reproduced ${passed}/${reference.cases.length} AIC crossing checks at ${runner.revision}. This is a reproduction of the EMILIA reference composition, not independent AIC interoperability, IETF adoption, certification, or employer endorsement.`,
   };
 }
 
@@ -507,7 +605,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const report = await runProfile({
     name: argument("--runner-name") ?? "EMILIA reference runner",
     affiliation: argument("--runner-affiliation") ?? "EMILIA Protocol",
-    revision: argument("--runner-revision") ?? "aic-aeb-crossing-v0.1",
+    revision: argument("--runner-revision") ?? "aic-aeb-crossing-v0.2",
     executed_at: argument("--executed-at") ?? NOW,
   });
   const output = argument("--output");

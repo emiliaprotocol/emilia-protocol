@@ -1,0 +1,56 @@
+{
+  "@version": "EP-AIC-AEB-CROSSING-MAPPING-v0.2",
+  "crossing_record": "EP-AEB-CROSSING-RECORD-v1",
+  "native_mappings": [
+    {
+      "id": "EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2",
+      "native_profile": "AIC-JWT-RFC7638-JKT",
+      "principal_binding": "RFC7638_JKT",
+      "hash_alg": "jkt"
+    },
+    {
+      "id": "EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2",
+      "native_profile": "AIC-X509-SPKI",
+      "principal_binding": "X509_SPKI",
+      "hash_algs": ["sha-256", "sha-384", "sha-512"]
+    }
+  ],
+  "action_projection": {
+    "id": "AIC-EXACT-ACTION-PROJECTION-v1",
+    "unknown_scheme": "REFUSE",
+    "unmapped_material_parameter": "REFUSE",
+    "required_relation": "EXACT_MATCH",
+    "committed_members": [
+      "requested_capability_digest",
+      "caid",
+      "action_digest"
+    ]
+  },
+  "admission_domain": {
+    "id": "EP-AIC-ADMISSION-DOMAIN-v1",
+    "committed_members": [
+      "relying_party_id",
+      "audience",
+      "executor_id",
+      "state_domain_id"
+    ],
+    "required_relation": "EXACT_MATCH"
+  },
+  "source_status": {
+    "required_value": "CURRENT",
+    "observation_member": "status.checked_at",
+    "source_head_member": "status.source_head_digest",
+    "maximum_age_seconds": 60,
+    "future_observation": "REFUSE",
+    "missing_or_non_current": "REFUSE",
+    "outside_native_validity": "REFUSE"
+  },
+  "rules": {
+    "native_verification_required": "VERIFIED",
+    "relying_party_trust_anchor_pin_required": true,
+    "principal_binding_exact_match_required": true,
+    "carrier_types_are_not_interchangeable": true,
+    "crossing_contract_binds_relying_party_id": true,
+    "crossing_record_is_execution_authority": false
+  }
+}

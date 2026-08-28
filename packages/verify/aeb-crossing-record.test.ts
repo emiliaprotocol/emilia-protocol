@@ -10,6 +10,7 @@ import {
   AEB_CROSSING_RECORD_VERSION,
   BCR_CROSSING_MAPPING_PROFILE,
   WIMSE_OAUTH_CROSSING_MAPPING_PROFILE,
+  crossingRecordContractDigest,
   issueAebCrossingRecord,
   mapBcrCrossingAuthority,
   mapWimseOAuthCrossingAuthority,
@@ -237,6 +238,27 @@ test("different native authority systems produce different records accepted by t
   assert.notEqual(wimse.body.contract_digest, bcr.body.contract_digest);
   assert.equal((await verify(wimse)).verified, true);
   assert.equal((await verify(bcr)).verified, true);
+});
+
+test("the contract digest binds the relying-party admission domain", () => {
+  const authority = wimseAuthority();
+  const common = {
+    native_authority: authority,
+    action: ACTION,
+    requirements: REQUIREMENTS,
+  };
+  const finance = crossingRecordContractDigest({
+    ...common,
+    boundary: BOUNDARY,
+  });
+  const attacker = crossingRecordContractDigest({
+    ...common,
+    boundary: {
+      ...BOUNDARY,
+      relying_party_id: "rp:attacker-controlled",
+    },
+  });
+  assert.notEqual(finance, attacker);
 });
 
 test("signature stripping and algorithm-set narrowing both refuse", async () => {

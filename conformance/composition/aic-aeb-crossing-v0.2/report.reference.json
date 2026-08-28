@@ -1,5 +1,26 @@
 {
-  "@version": "AIC-AEB-CROSSING-REFERENCE-REPORT-v0.1",
+  "@version": "AIC-AEB-CROSSING-REFERENCE-REPORT-v0.2",
+  "action_projection": {
+    "committed_members": [
+      "requested_capability_digest",
+      "caid",
+      "action_digest"
+    ],
+    "id": "AIC-EXACT-ACTION-PROJECTION-v1",
+    "required_relation": "EXACT_MATCH",
+    "unknown_scheme": "REFUSE",
+    "unmapped_material_parameter": "REFUSE"
+  },
+  "admission_domain": {
+    "committed_members": [
+      "relying_party_id",
+      "audience",
+      "executor_id",
+      "state_domain_id"
+    ],
+    "id": "EP-AIC-ADMISSION-DOMAIN-v1",
+    "required_relation": "EXACT_MATCH"
+  },
   "cases": [
     {
       "category": "positive",
@@ -11,7 +32,7 @@
           "ML-DSA-65"
         ],
         "execution_authorizing": false,
-        "mapping_profile": "EP-AEB-CROSSING-AIC-JWT-JKT-v1",
+        "mapping_profile": "EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2",
         "verified": true
       },
       "passed": true
@@ -26,7 +47,7 @@
           "ML-DSA-65"
         ],
         "execution_authorizing": false,
-        "mapping_profile": "EP-AEB-CROSSING-AIC-X509-SPKI-v1",
+        "mapping_profile": "EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2",
         "verified": true
       },
       "passed": true
@@ -37,9 +58,9 @@
       "id": "NATIVE-BINDINGS-REMAIN-DISTINCT",
       "observed": {
         "instances_differ": true,
-        "jkt_profile": "EP-AEB-CROSSING-AIC-JWT-JKT-v1",
+        "jkt_profile": "EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2",
         "profiles_differ": true,
-        "x509_profile": "EP-AEB-CROSSING-AIC-X509-SPKI-v1"
+        "x509_profile": "EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2"
       },
       "passed": true
     },
@@ -84,74 +105,91 @@
       "passed": true
     },
     {
-      "category": "positive",
-      "expected": "new typ=JWT TBS projection with one aud and no authority",
-      "id": "STRICT-JWT-SVID-PROJECTION",
+      "category": "hostile",
+      "expected": "aic_action_projection_mismatch",
+      "id": "EXACT-ACTION-SUBSTITUTION-REFUSED",
       "observed": {
-        "audience": "spiffe://example.org/workload-api",
-        "authorization_decision": false,
-        "compact_token": null,
-        "new_signature_required": true,
-        "omitted_source_members": [
-          "iss",
-          "aic.principal",
-          "aic.capabilities",
-          "aic.delegation_mode",
-          "aic.constraints",
-          "da",
-          "cnf"
-        ],
-        "typ": "JWT",
-        "version": "EP-AIC-JWT-SVID-PROJECTION-v1"
+        "ok": false,
+        "reason": "aic_action_projection_mismatch"
       },
       "passed": true
     },
     {
       "category": "hostile",
-      "expected": "jwt_svid_single_audience_required",
-      "id": "JWT-SVID-MULTIPLE-AUDIENCE-REFUSED",
+      "expected": "aic_admission_domain_mismatch",
+      "id": "RELYING-PARTY-DOMAIN-SUBSTITUTION-REFUSED",
       "observed": {
         "ok": false,
-        "reason": "jwt_svid_single_audience_required"
+        "reason": "aic_admission_domain_mismatch"
       },
       "passed": true
     },
     {
       "category": "hostile",
-      "expected": "aic_jwt_svid_semantic_loss",
-      "id": "JWT-SVID-AUTHORITY-SEMANTIC-LOSS",
+      "expected": "stale and future observations both refuse",
+      "id": "STATUS-OBSERVATION-TIME-REFUSALS",
+      "observed": {
+        "future": "aic_status_observation_future",
+        "stale": "aic_status_observation_stale"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "revoked and unavailable source status both refuse",
+      "id": "NON-CURRENT-SOURCE-STATUS-REFUSED",
+      "observed": {
+        "revoked": "aic_status_not_current",
+        "unavailable": "aic_status_not_current"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_validity_window_mismatch",
+      "id": "NATIVE-VALIDITY-WINDOW-REFUSED",
       "observed": {
         "ok": false,
-        "reason": "aic_jwt_svid_semantic_loss"
+        "reason": "aic_validity_window_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "boundary",
+      "expected": "signed record substitution refuses",
+      "id": "SIGNED-CROSSING-RP-SUBSTITUTION-REFUSED",
+      "observed": {
+        "reason": "contract_digest_mismatch",
+        "verified": false
       },
       "passed": true
     }
   ],
   "crossing_record_version": "EP-AEB-CROSSING-RECORD-v1",
-  "jwt_svid_projection": "EP-AIC-JWT-SVID-PROJECTION-v1",
   "known_limits": [
-    "This run exercises the EMILIA reference adapter and crossing-record implementation; it is not an independent implementation of AIC-JWT, AIC-X509, or JWT-SVID.",
+    "This run exercises the EMILIA reference adapter and crossing-record implementation; it is not an independent implementation of AIC-JWT or AIC-X509.",
     "The adapter consumes a native verifier result; it does not reimplement AIC signature, certificate-path, delegation, capability, constraint, or status validation.",
+    "The pinned action-projection profile must be applied to the same capability request that the native verifier evaluated; unknown schemes, unmapped material parameters, and ambiguous projections must refuse upstream.",
+    "The profile binds one exact action and one relying-party admission domain; changing the action, relying party, audience, executor, or state domain requires a new evaluation.",
+    "status.checked_at is the explicit source-status observation time. CURRENT status is accepted only within the pinned freshness limit and native validity window; revoked, unavailable, stale, future, or otherwise non-current observations refuse.",
     "RFC 7638 JWK thumbprints and X.509 SPKI hashes remain separate native mappings and are never treated as interchangeable proof.",
-    "The strict JWT-SVID output is an unsigned typ=JWT projection requiring a new JWT-SVID signature; changing a native aic+jwt header would invalidate its source signature.",
-    "The JWT-SVID projection preserves bounded workload identity fields only; it deliberately does not preserve AIC authority, delegation, constraint, confirmation-key, or full capability semantics.",
     "A verified crossing record is evidence of one past relying-party boundary decision and never authorizes another action.",
     "Passing these checks does not establish IETF adoption, certification, production deployment, independent interoperability, or employer endorsement."
   ],
-  "mapping_profile_digest": "sha256:3ae3ad16d914131181b3669995326426b11fd0d715e98ac3dcb022a17ea75639",
+  "mapping_profile_digest": "sha256:d4bf7231c6961e41c02fe0ceaa4b40bb395c2c84f915e84d8f994738fdeb1eae",
   "mappings": [
-    "EP-AEB-CROSSING-AIC-JWT-JKT-v1",
-    "EP-AEB-CROSSING-AIC-X509-SPKI-v1"
+    "EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2",
+    "EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2"
   ],
   "passed": true,
-  "profile": "EP-AIC-AEB-CROSSING-COMPOSITION-v0.1",
+  "profile": "EP-AIC-AEB-CROSSING-COMPOSITION-v0.2",
   "required_algorithms": [
     "Ed25519",
     "ML-DSA-65"
   ],
-  "results_digest": "sha256:dacf0009addd1665336cf3c4b61cf50949113fc4058003ee6c4936e165358b3f",
+  "results_digest": "sha256:801fae499adb36489d8a9098b3ed509748309a8a27a0d79d606f45f9c6b1ec4f",
   "source_lock": {
-    "@version": "AIC-AEB-CROSSING-SOURCE-LOCK-v0.1",
+    "@version": "AIC-AEB-CROSSING-SOURCE-LOCK-v0.2",
     "drafts": [
       {
         "bounded_sections": [
@@ -182,41 +220,50 @@
             {
               "path": "ts/aicjwt.ts",
               "sha256": "2e5c59b60ce86a309003be8f6e5df8aaeae96e81027b0c3a7cba9e561545c097",
-              "url": "https://raw.githubusercontent.com/varwof/aic-jwt/5c17d408d413469d66c7917e838ff66a109792cb/ts/aicjwt.ts"
+              "url": "https://raw.githubusercontent.com/varwof/aic-jwt/a3499b07bbe858a79d95ab98f9134f44238cb8cf/ts/aicjwt.ts"
             }
           ],
           "repository": "https://github.com/varwof/aic-jwt",
-          "revision": "5c17d408d413469d66c7917e838ff66a109792cb"
+          "revision": "a3499b07bbe858a79d95ab98f9134f44238cb8cf"
         },
         {
           "inspected_files": [
             {
               "path": "aicjwt/validate.go",
               "sha256": "9d85b2212d1ffbc4f76fc7d300d764f93845d6ced35636687619b476b742c9e3",
-              "url": "https://raw.githubusercontent.com/varwof/types/21bb3f637564c2fae6c854fb21ce26d66a9190d5/aicjwt/validate.go"
+              "url": "https://raw.githubusercontent.com/varwof/types/20120ce2551d9a8c70db8ff8ff016fcb0f15c561/aicjwt/validate.go"
             },
             {
               "path": "aicjwt/keyhash.go",
               "sha256": "081a75b736e2236920dca5509325e3cb3873802d5bade70e549be56dc89cd94d",
-              "url": "https://raw.githubusercontent.com/varwof/types/21bb3f637564c2fae6c854fb21ce26d66a9190d5/aicjwt/keyhash.go"
+              "url": "https://raw.githubusercontent.com/varwof/types/20120ce2551d9a8c70db8ff8ff016fcb0f15c561/aicjwt/keyhash.go"
             }
           ],
           "repository": "https://github.com/varwof/types",
-          "revision": "21bb3f637564c2fae6c854fb21ce26d66a9190d5"
+          "revision": "20120ce2551d9a8c70db8ff8ff016fcb0f15c561"
         },
         {
           "inspected_files": [
             {
               "path": "credential_bundle.go",
               "sha256": "4c69c00e4e3f8f9ad8c7082f61b6bcee4ddb68ec250cef3eafce49fbc1bd4edc",
-              "url": "https://raw.githubusercontent.com/varwof/gateway-core/93fbd426ca4349dbbfc195638408a763ad28778e/credential_bundle.go"
+              "url": "https://raw.githubusercontent.com/varwof/gateway-core/eed23087d737b24865e45993fedc67f455375856/credential_bundle.go"
             }
           ],
           "repository": "https://github.com/varwof/gateway-core",
-          "revision": "93fbd426ca4349dbbfc195638408a763ad28778e"
+          "revision": "eed23087d737b24865e45993fedc67f455375856"
         }
       ]
     }
   },
-  "source_lock_digest": "sha256:045d5c4b8360051b1dbe3f4864e4b85292f1bdd905b18e5f47020ff6c7d41eff"
+  "source_lock_digest": "sha256:3e04148c6e27df60ec175ba3b2e672f606040c9429e0784f07da97bf711976d8",
+  "source_status": {
+    "future_observation": "REFUSE",
+    "maximum_age_seconds": 60,
+    "missing_or_non_current": "REFUSE",
+    "observation_member": "status.checked_at",
+    "outside_native_validity": "REFUSE",
+    "required_value": "CURRENT",
+    "source_head_member": "status.source_head_digest"
+  }
 }

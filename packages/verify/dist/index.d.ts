@@ -29,6 +29,7 @@ export * from './aadp-authorization-artifact.js';
 export * from './policy-decision-evidence.js';
 export * from './aeb-native-adapters.js';
 export * from './aeb-oasnt-adapter.js';
+export * from './aeb-ccs-v14-adapter.js';
 export * from './aeb-chap-adapter.js';
 export * from './aeb-psea-adapter.js';
 export * from './fido-ap2-bridge.js';
@@ -345,5 +346,5 @@ export declare function evaluateAgentBinding(context: any, opts?: Obj): Obj;
 export { resolveOperatorKeys, verifyFederatedReceiptOffline, verifyFederatedReceipt, } from './federation.js';
 export { verifyQuorum } from './quorum.js';
 export { AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS, AEB_CROSSING_RECORD_VERSION, BCR_CROSSING_ADAPTER, BCR_CROSSING_MAPPING_PROFILE, WIMSE_OAUTH_CROSSING_ADAPTER, WIMSE_OAUTH_CROSSING_MAPPING_PROFILE, crossingRecordContractDigest, crossingRecordDigest, crossingRecordSignedBytes, issueAebCrossingRecord, mapBcrCrossingAuthority, mapWimseOAuthCrossingAuthority, verifyAebCrossingRecord, } from './aeb-crossing-record.js';
-export { AIC_JWT_JKT_CROSSING_MAPPING_PROFILE, AIC_JWT_SVID_PROJECTION_VERSION, AIC_X509_SPKI_CROSSING_MAPPING_PROFILE, mapAicJwtJktCrossingAuthority, mapAicX509SpkiCrossingAuthority, projectAicJwtToStrictJwtSvid, } from './aeb-aic-crossing-adapter.js';
+export { AIC_JWT_JKT_CROSSING_MAPPING_PROFILE, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE, AIC_JWT_SVID_PROJECTION_VERSION, AIC_ADMISSION_DOMAIN_VERSION, AIC_X509_SPKI_CROSSING_MAPPING_PROFILE, AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE, mapAicJwtJktCrossingAuthority, mapAicJwtJktBoundCrossingAuthority, mapAicX509SpkiCrossingAuthority, mapAicX509SpkiBoundCrossingAuthority, projectAicJwtToStrictJwtSvid, } from './aeb-aic-crossing-adapter.js';
 //# sourceMappingURL=index.d.ts.map
