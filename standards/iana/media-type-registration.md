@@ -1,9 +1,10 @@
 # IANA media type registrations — EMILIA Protocol
 
 Registration templates per RFC 6838, Section 5.6. The current receipts draft
-carries both active standards-tree registration requests. The former AE
-Challenge media-type request is retained below only as process history; current
-revision -05 retains the -03 withdrawal and uses RFC 9457
+carries two standards-tree registration requests. The AE Challenge section
+separately prepares a direct vendor-tree request for a bare serialized
+object and preserves the withdrawn standards-tree request as process history.
+The current HTTP binding continues to use RFC 9457
 `application/problem+json`.
 
 **Consistency rule applied throughout:** every string below is taken verbatim
@@ -14,7 +15,31 @@ do not yet have.
 
 ---
 
-## 1. application/authorization-evidence-challenge+json
+## 1. application/vnd.emilia.authorization-evidence-challenge+json
+
+**Status: VENDOR-TREE REGISTRATION PACKAGE READY; NOT YET REGISTERED.**
+
+On 2026-08-29 the project intentionally reopened the vendor-tree route that
+IANA offered in ticket #1456851. This is a new request, independent of the
+closed standards-tree tickets #1456611 and #1456851. It does not revive the
+withdrawn HTTP media type and does not imply IETF review or endorsement.
+
+The vendor type labels only the bare transport-neutral AE-CHALLENGE-v1 JSON
+object under a separately specified carrier or presentation profile. It **MUST NOT** label the HTTP refusal
+defined by draft-schrock-ae-challenge-07; that response remains
+application/problem+json and nests the object in evidence_challenge.
+The stable serialization specification and live-form field map are:
+
+- standards/iana/ae-challenge-vendor-binding.md
+- standards/iana/ae-challenge-vendor-registration-form.md
+
+The complete RFC 6838 registration fields live in the form-copy file so this
+tracker cannot silently diverge from the application.
+
+---
+
+## Historical withdrawn standards-tree request:
+application/authorization-evidence-challenge+json
 
 **Status: RETIRED BY AE CHALLENGE -03; DO NOT FILE.** IANA
 closed ticket #1456851 on 2026-08-07 without a merits decision because the
@@ -23,7 +48,7 @@ Independent Stream document can be processed when it reaches IETF conflict
 review. The type is not registered. Revision -02 was published on 2026-08-07
 with the full permanent standards-tree template and Independent Stream
 metadata. An Independent Stream request based on that revision was sent; the
-current -05 revision is published and retains the media-type withdrawal while
+current -07 revision is published and retains the media-type withdrawal while
 Independent Stream review continues.
 The string was fixed by revision -02 text:
 `draft-schrock-ae-challenge-02`, Section 2, specifies that

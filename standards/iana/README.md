@@ -6,9 +6,11 @@ the then-current public draft corpus and updated as publication paths become
 known. Current published source is under `standards/posted/`; submission
 packets for unposted revisions are under `standards/staged/`.
 
-**The rule this directory lives by:** a registration is prepared *for* a
-string only where a draft's own text carries that string, citing that draft.
-Where a draft only anticipates a registration, the template is marked
+**The rule this directory lives by:** a registration is prepared for a string
+only where a public specification carries that exact string. Standards-tree
+requests cite the responsible draft. A vendor-tree request may cite a stable
+vendor serialization specification and must not be represented as an IETF
+allocation. Where a draft only anticipates a standards registration, the template is marked
 **PROPOSED, requires draft text in next rev** and must not be filed until a
 revision backs it. Nothing here invents a name that contradicts posted text.
 
@@ -18,8 +20,14 @@ revision backs it. Nothing here invents a name that contradicts posted text.
   the transport-neutral AE Challenge HTTP binding.
 - `media-type-registration.md` — the active RFC 6838 §5.6 templates for
   `application/ep-authorization-receipt+json` and
-  `application/ep-authorization-bundle+json`, plus the retired AE Challenge
-  media-type request retained as process history.
+  `application/ep-authorization-bundle+json`, the prepared AE Challenge
+  vendor-tree request, and the retired standards-tree request retained as
+  process history.
+- `ae-challenge-vendor-binding.md` — Version 1 media-type serialization
+  specification for the bare AE-CHALLENGE-v1 object; despite the historical
+  filename, it is not a complete carrier binding.
+- `ae-challenge-vendor-registration-form.md` — exact IANA form copy for
+  `application/vnd.emilia.authorization-evidence-challenge+json`.
 - `well-known-uri-registration.md` — RFC 8615 template for
   `agent-action-control.json`, which a published draft already requests.
 - `http-field-registration.md` — RFC 9110 §16.3.1 templates for
@@ -32,6 +40,7 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 |---|---|---|---|---|---|---|
 | 1 | `agent-action-control.json` | Well-Known URIs | draft-schrock-agent-action-manifest-00 (§3, §9) | **Requests registration** (fields in §9) | READY-ON-POST | Draft live on datatracker [verify posting after the 2026-07-06 batch upload] |
 | 2 | `authorization-evidence-required` | HTTP Problem Types | draft-schrock-ae-challenge-07 (§3, §6; published 2026-08-10) | **Requests registration** under Specification Required; reuses `application/problem+json` | CARRIED-BY-DRAFT | Continue focused HTTP and Independent Stream review; do not file a conflicting direct request |
+| 2a | `application/vnd.emilia.authorization-evidence-challenge+json` | Media Types (vendor tree) | draft-schrock-ae-challenge-07 (§2, §2.7, §2.8, §5) plus EMILIA serialization specification | **Bare object only; not the draft's HTTP carrier** | READY-FOR-IANA-FORM | Confirm public serialization-specification URL, then submit direct vendor-tree request |
 | 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-12 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 4 | `application/ep-authorization-bundle+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-12 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 5 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
@@ -60,15 +69,21 @@ registry, not IANA's.
   registration with the Independent Stream document after focused HTTP
   review; do not reopen tickets #1456851 or #1456611.
 
-### Media types (entries 3-4)
+### Media types (entries 2a, 3-4)
 
 - **Registry pages:** <https://www.iana.org/assignments/media-types> and, where
   a provisional path is appropriate,
   <https://www.iana.org/assignments/provisional-standard-media-types>.
 - **Community review (RFC 6838 §5.1):** post the completed template to the
   **media-types@iana.org** mailing list for review before or alongside the
-  request. For standards-tree names this review is expected.
-- **Receipt media types:** revision -11 requests
+  request. For standards-tree names this review is expected; for the vendor
+  request it is useful but not mandatory.
+- **AE Challenge vendor type:** file the completed direct request for
+  `application/vnd.emilia.authorization-evidence-challenge+json` only after
+  its serialization specification resolves publicly. The type labels the bare core
+  object. It does not replace the draft's `application/problem+json` HTTP
+  response, and registration would not represent IETF endorsement.
+- **Receipt media types:** revision -12 requests
   `application/ep-authorization-receipt+json` and
   `application/ep-authorization-bundle+json`, and carries complete templates
   for both. Process them with the Standards Track document; do not revive the
@@ -103,19 +118,20 @@ registry, not IANA's.
 ## Order of operations
 
 1. Verify each backing draft is live on Datatracker before citing it to IANA.
-2. For entry 2, continue Agent2Agent, AgentProto, HTTP-specific, and
-   Independent Stream review of the published AE Challenge -06. The
-   only IANA allocation is Specification Required; do not reopen the retired
-   media-type tickets or file a vendor-tree substitute.
-3. **File entry 1** (`agent-action-control.json`) only after re-verifying its
+2. For entry 2, continue focused review of the published AE Challenge -07 and
+   process the HTTP Problem Type with its publication path.
+3. For entry 2a, publish the Version 1 serialization specification, verify its exact URL,
+   and file a new vendor-tree request. Do not reopen the retired standards-tree
+   tickets or describe the vendor type as the draft's HTTP carrier.
+4. **File entry 1** (`agent-action-control.json`) only after re-verifying its
    current backing-draft and registry state. Optional heads-up to
    wellknown-uri-review@ietf.org first.
-4. Process entries 3 and 4 with Authorization Receipts through its Standards
+5. Process entries 3 and 4 with Authorization Receipts through its Standards
    Track publication path; do not file parallel direct requests.
-5. **Everything else waits for draft text.** When a revision commits to a
+6. **Everything else waits for draft text.** When a revision commits to a
    PROPOSED entry, update its template here to cite the new revision, flip
    the tracker row, then file.
-6. After any filing, record the IANA ticket/outcome in the tracker row.
+7. After any filing, record the IANA ticket/outcome in the tracker row.
 
 ## Honesty register (applies to every template here)
 
