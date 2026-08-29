@@ -1,19 +1,21 @@
-# Zenodo v3 metadata
+# Zenodo v4 upload metadata
+
+Status: prepared, not uploaded or published.
 
 ## Record lineage
 
-- Version DOI: `10.5281/zenodo.21968577`
-- Previous version DOI: `10.5281/zenodo.21520973`
+- New version DOI: not assigned
+- Previous version DOI: `10.5281/zenodo.21968577`
 - All-versions concept DOI: `10.5281/zenodo.21520972`
 - Resource type: Publication / Preprint
-- Version: `v3`
-- Publication date: `2026-08-16`
+- Version: `v4`
+- Publication date: set to the actual Zenodo publication date at upload
 - License: Creative Commons Attribution 4.0 International
 - Copyright: Copyright (C) 2026 Iman Schrock / EMILIA Protocol, Inc.
 
 ## Title
 
-Action-Bound Injective Authorization under Signer Harvesting
+Authorization Non-Amplification under Chosen-Context Signer Harvesting
 
 ## Creator
 
@@ -21,20 +23,49 @@ Schrock, Iman; EMILIA Protocol, Inc.; ORCID `0009-0004-0290-5433`
 
 ## Description
 
-This preprint defines Action-Bound Injective Authorization (ABIA) for an authorization collector that may solicit genuine signatures on many semantic contexts and later choose which artifacts to present. The experiment records semantic signing events, not only raw byte queries, so a non-injective context transplant remains visible even when the accepted bytes were previously signed. A game-based reduction separates exact-context authenticity and 2-of-2 quorum binding from stateful, completely mediated single-use admission. Four necessity propositions and nine deliberately weakened symbolic variants identify the load-bearing assumptions. Four Tamarin models check the corresponding symbolic properties. The paper states a narrow trace-prefix authenticity result across later key reveal and proves that ordinary signatures alone do not provide offline anti-backdating. It does not claim a new signature primitive, trusted rendering, human identity, exactly-once physical execution, or security of a particular deployment. This is an unrefereed technical preprint.
+This preprint studies authorization non-amplification (ANA), a
+per-issued-instance trace property connecting genuine cryptographic approval
+events to provider-entry cardinality. Its adversary controls an authorization
+collector, chooses semantic contexts subject to a closed grammar, obtains
+genuine signatures from uncompromised certified keys, and controls artifact
+storage, scheduling, and presentation.
+
+The paper separates ANA from EUF-CMA security, nonce freshness, byte-level
+authenticity under noninjective encodings, and signer-to-collector injective
+agreement. It gives a compiler from an EUF-CMA signature scheme, a
+collision-resistant hash, injective typed encoding, and ideal issue-and-consume
+and mediation resources. The finite multi-user
+reduction ranges over the complete enrolled-key universe. A real-resource
+corollary charges registry and mediation failures explicitly rather than
+treating them as cryptographic advantages.
+
+Four Tamarin theories supply bounded symbolic case studies and deliberately
+weakened comparisons. They are not a computational proof or a verification of a
+deployed database. The result concerns admission, not human identity, display
+fidelity, policy wisdom, semantic reissuance across fresh authorization
+instances, or exactly-once physical effects. This is an unrefereed technical
+preprint.
 
 ## Keywords
 
-action-bound authorization; signer harvesting; digital signatures; replay resistance; semantic contexts; injective encoding; Tamarin; formal verification; quorum authorization; single-use admission
+authorization non-amplification; chosen-context signer harvesting; digital
+signatures; replay; injective agreement; stateful authorization; Tamarin; formal
+verification; multi-user security; complete mediation
 
 ## Files
 
-- `action-bound-injective-authorization-v3.pdf`
-- `action-bound-injective-authorization-v3-artifacts.zip`
+- `authorization-non-amplification-v4.pdf`
+- optional `authorization-non-amplification-v4-artifacts.zip`
 - `ZENODO.md`
 
 ## Exact PDF
 
-- Pages: 19
-- Bytes: 172,068
-- SHA-256: `f158dbcd36f8831cc8f39aa7d37cfd505679483b57b29bb33dc676a9af75867e`
+- Pages: 15
+- Bytes: 152,612
+- SHA-256: `3f86f29129f0ed4b1b2d502b7b9a6e62a7a311b022d19ea3eed9e3462992990d`
+
+## Upload boundary
+
+Reopen the uploaded PDF and compare its digest before publishing the record.
+Do not add a DOI or mark this record published until Zenodo returns and resolves
+the final identifier.
