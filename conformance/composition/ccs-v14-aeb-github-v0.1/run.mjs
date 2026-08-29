@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
+// Generated from run.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 // @ts-nocheck -- executable conformance runner imports built JavaScript package surfaces.
 /** CCS v1.4 public vectors to one governed GitHub issue-update consequence. */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterPinDigest, canonicalizeAeb, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, } from '../../../packages/verify/aeb-adapter-contract.js';
@@ -558,7 +560,8 @@ export async function runProfile(runner = {
 }) {
     return { ...(await buildReferenceReport()), runner };
 }
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1]
+    && realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {
     const report = await buildReferenceReport();
     if (process.argv.includes('--reference')) {
         writeFileSync(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`);
