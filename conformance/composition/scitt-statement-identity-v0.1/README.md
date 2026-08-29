@@ -35,11 +35,39 @@ as `same_signing_input_different_envelope`, not as payload tampering.
 ## Run
 
 ```sh
-npm --prefix packages/verify run build
-npm run build:standalone-runtimes
-node --test conformance/composition/scitt-statement-identity-v0.1/run.node-test.mjs
-node conformance/composition/scitt-statement-identity-v0.1/run.mjs --check
+npm run conformance:composition:scitt-statement-identity
 ```
+
+For an independent handoff with no EMILIA package imports, copy these six
+files into an otherwise empty directory:
+
+- `run.standalone.mjs`
+- `vectors.reference.json`
+- `report.reference.json`
+- `source-lock.json`
+- `standalone.manifest.json`
+- `THIRD_PARTY_NOTICES.txt`
+
+Then run:
+
+```sh
+node run.standalone.mjs --check
+```
+
+The standalone runner requires only Node.js 20.19 or newer and imports only
+Node built-ins. It is generated from the same tested runner. The repository
+test requires exact source/bundle report equality after parsing, then copies
+the six-file handoff into a fresh temporary directory with
+no repository parent and no `node_modules` and reruns all twelve cases there.
+`standalone.manifest.json` pins the generated entrypoint, every bundled source
+input, each support file, the builder, and the builder version.
+
+`vectors.reference.json` exposes the raw fixture needed for an independent
+implementation: both exact tagged `COSE_Sign1` byte strings, the P-256 public
+JWK, protected header, payload, RFC 9052 `Sig_structure`, both IEEE P1363
+signatures, the three expected digests, and the expected pair classification.
+The source and standalone runners reconstruct those bytes and refuse any drift
+before evaluating the report.
 
 The static public key and signatures are conformance fixtures only. Raw P-256
 verification establishes only that the two ES256 signatures verify over the

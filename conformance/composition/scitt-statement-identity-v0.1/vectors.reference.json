@@ -1,0 +1,28 @@
+{
+  "@version": "EP-SCITT-STATEMENT-IDENTITY-VECTORS-v1",
+  "profile": "EP-SCITT-STATEMENT-IDENTITY-v0.1",
+  "fixture": {
+    "description": "One RFC 9943-shaped ES256 signing input with a high-S and canonical low-S ECDSA signature pair",
+    "public_jwk": {
+      "kty": "EC",
+      "x": "axfR8uEsQkf4vOblY6RA8ncDfYEt6zOg9KE5RdiYwpY",
+      "y": "T-NC4v4af5uO5-tKfA-eFivOM1drMV7Oy7ZAaDe_UfU",
+      "crv": "P-256"
+    },
+    "protected_bstr_base64url": "pAEmA3gYYXBwbGljYXRpb24vZXhhbXBsZStqc29uBFVzY2l0dC1pZGVudGl0eS1wMjU2LTEPogF4HGh0dHBzOi8vaXNzdWVyLmV4YW1wbGUvc2NpdHQCeCF1cm46ZXhhbXBsZTpzY2l0dC1pZGVudGl0eS1wMjU2OjE",
+    "payload_bstr_base64url": "eyJjbGFpbSI6Im9uZSBzaWduaW5nIGlucHV0LCB0d28gdmFsaWQgZW52ZWxvcGVzIiwic2VxdWVuY2UiOjF9",
+    "sig_structure_base64url": "hGpTaWduYXR1cmUxWHqkASYDeBhhcHBsaWNhdGlvbi9leGFtcGxlK2pzb24EVXNjaXR0LWlkZW50aXR5LXAyNTYtMQ-iAXgcaHR0cHM6Ly9pc3N1ZXIuZXhhbXBsZS9zY2l0dAJ4IXVybjpleGFtcGxlOnNjaXR0LWlkZW50aXR5LXAyNTY6MUBYP3siY2xhaW0iOiJvbmUgc2lnbmluZyBpbnB1dCwgdHdvIHZhbGlkIGVudmVsb3BlcyIsInNlcXVlbmNlIjoxfQ",
+    "signature_a_base64url": "8bROu_-rarrAsfzFu5oDi-LzZJYbr2gnTUCH-yqhUAr1cRohP2Vb3J1RFYwwELP7rq2grUIsASfBeVlhNelD2Q",
+    "signature_b_base64url": "8bROu_-rarrAsfzFu5oDi-LzZJYbr2gnTUCH-yqhUAoKjuXdwJqkJGKu6nPP70wEDjlaAGTrnV0yQHFhxnnheA",
+    "cose_sign1_a_base64url": "0oRYeqQBJgN4GGFwcGxpY2F0aW9uL2V4YW1wbGUranNvbgRVc2NpdHQtaWRlbnRpdHktcDI1Ni0xD6IBeBxodHRwczovL2lzc3Vlci5leGFtcGxlL3NjaXR0AnghdXJuOmV4YW1wbGU6c2NpdHQtaWRlbnRpdHktcDI1NjoxoFg_eyJjbGFpbSI6Im9uZSBzaWduaW5nIGlucHV0LCB0d28gdmFsaWQgZW52ZWxvcGVzIiwic2VxdWVuY2UiOjF9WEDxtE67_6tqusCx_MW7mgOL4vNklhuvaCdNQIf7KqFQCvVxGiE_ZVvcnVEVjDAQs_uuraCtQiwBJ8F5WWE16UPZ",
+    "cose_sign1_b_base64url": "0oRYeqQBJgN4GGFwcGxpY2F0aW9uL2V4YW1wbGUranNvbgRVc2NpdHQtaWRlbnRpdHktcDI1Ni0xD6IBeBxodHRwczovL2lzc3Vlci5leGFtcGxlL3NjaXR0AnghdXJuOmV4YW1wbGU6c2NpdHQtaWRlbnRpdHktcDI1NjoxoFg_eyJjbGFpbSI6Im9uZSBzaWduaW5nIGlucHV0LCB0d28gdmFsaWQgZW52ZWxvcGVzIiwic2VxdWVuY2UiOjF9WEDxtE67_6tqusCx_MW7mgOL4vNklhuvaCdNQIf7KqFQCgqO5d3AmqQkYq7qc8_vTAQOOVoAZOudXTJAcWHGeeF4"
+  },
+  "expected": {
+    "signature_a_valid": true,
+    "signature_b_valid": true,
+    "statement_entry_digest_a": "sha256:ba36963493c183eea6c8f71e492121d49d14c1f0338574a6171b1312c763b4e1",
+    "statement_entry_digest_b": "sha256:be2becd5536416c02adec625fff8aca3b75beb691543d458935bfce7ea857ef0",
+    "signing_input_digest": "sha256:c4b229193fd4f871f431daf6f6bc7c5cab5f13896c42b7fc3a7397a3ff67dd86",
+    "classification": "same_signing_input_different_envelope"
+  }
+}

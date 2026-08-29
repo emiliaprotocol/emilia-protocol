@@ -41,6 +41,11 @@ test('EP authorization identity remains separate and the report is pinned', () =
 
 test('the SCITT identity composition runner is mandatory in CI', () => {
   const workflow = readFileSync(resolve(HERE, '../../../.github/workflows/ci.yml'), 'utf8');
+  const packageJson = JSON.parse(readFileSync(resolve(HERE, '../../../package.json'), 'utf8'));
   assert.match(workflow, /npm run conformance:composition:scitt-statement-identity/);
   assert.match(workflow, /npm run conformance:composition:scitt-capsule-seam/);
+  assert.match(
+    packageJson.scripts['conformance:composition:scitt-statement-identity'],
+    /npm run check:scitt-statement-identity-standalone/,
+  );
 });

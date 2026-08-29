@@ -12,7 +12,7 @@
  */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildEpScittSignedStatement, deriveScittStatementIdentityLayers, verifyEpScittSignedStatement, } from '../../../packages/verify/scitt-statement.js';
@@ -23,15 +23,14 @@ const REPORT_VERSION = 'EP-SCITT-STATEMENT-IDENTITY-REFERENCE-REPORT-v1';
 const COSE_SIGN1_TAG = 0xd2;
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REFERENCE_PATH = resolve(HERE, 'report.reference.json');
+const VECTORS_PATH = resolve(HERE, 'vectors.reference.json');
 const UTF8 = new TextEncoder();
-const P256_PUBLIC_JWK = Object.freeze({
-    kty: 'EC',
-    x: 'axfR8uEsQkf4vOblY6RA8ncDfYEt6zOg9KE5RdiYwpY',
-    y: 'T-NC4v4af5uO5-tKfA-eFivOM1drMV7Oy7ZAaDe_UfU',
-    crv: 'P-256',
-});
-const P256_SIGNATURE_A = Buffer.from('8bROu_-rarrAsfzFu5oDi-LzZJYbr2gnTUCH-yqhUAr1cRohP2Vb3J1RFYwwELP7rq2grUIsASfBeVlhNelD2Q', 'base64url');
-const P256_SIGNATURE_B = Buffer.from('8bROu_-rarrAsfzFu5oDi-LzZJYbr2gnTUCH-yqhUAoKjuXdwJqkJGKu6nPP70wEDjlaAGTrnV0yQHFhxnnheA', 'base64url');
+function readPinnedP256Vector() {
+    const vector = JSON.parse(readFileSync(VECTORS_PATH, 'utf8'));
+    assert.equal(vector['@version'], 'EP-SCITT-STATEMENT-IDENTITY-VECTORS-v1');
+    assert.equal(vector.profile, PROFILE);
+    return vector;
+}
 function must(result, label) {
     assert.equal(result.ok, true, `${label}: ${result.reason}`);
     return result.value;
@@ -116,6 +115,10 @@ function buildEpFixture() {
     };
 }
 export function runProfile() {
+    const vector = readPinnedP256Vector();
+    const P256_PUBLIC_JWK = Object.freeze(vector.fixture.public_jwk);
+    const P256_SIGNATURE_A = Buffer.from(vector.fixture.signature_a_base64url, 'base64url');
+    const P256_SIGNATURE_B = Buffer.from(vector.fixture.signature_b_base64url, 'base64url');
     const p256CwtClaims = new Map([
         [1, 'https://issuer.example/scitt'],
         [2, 'urn:example:scitt-identity-p256:1'],
@@ -127,15 +130,25 @@ export function runProfile() {
         [15, p256CwtClaims],
     ]);
     const protectedBytes = must(encodeDeterministicCbor8949(p256Protected), 'P-256 protected header');
-    const payload = UTF8.encode('{"claim":"one signing input, two valid envelopes","sequence":1}');
+    assert.equal(Buffer.from(protectedBytes).toString('base64url'), vector.fixture.protected_bstr_base64url, 'pinned protected header drifted');
+    const payload = Buffer.from(vector.fixture.payload_bstr_base64url, 'base64url');
     const signingInput = sigStructure(protectedBytes, payload);
+    assert.equal(Buffer.from(signingInput).toString('base64url'), vector.fixture.sig_structure_base64url, 'pinned Sig_structure drifted');
     const publicKey = crypto.createPublicKey({ key: P256_PUBLIC_JWK, format: 'jwk' });
     const statementA = taggedCoseSign1(protectedBytes, payload, P256_SIGNATURE_A);
     const statementB = taggedCoseSign1(protectedBytes, payload, P256_SIGNATURE_B);
+    assert.equal(Buffer.from(statementA).toString('base64url'), vector.fixture.cose_sign1_a_base64url, 'pinned COSE_Sign1 A drifted');
+    assert.equal(Buffer.from(statementB).toString('base64url'), vector.fixture.cose_sign1_b_base64url, 'pinned COSE_Sign1 B drifted');
     const identityA = identity(statementA);
     const identityB = identity(statementB);
     const verifiesA = crypto.verify('sha256', signingInput, { key: publicKey, dsaEncoding: 'ieee-p1363' }, P256_SIGNATURE_A);
     const verifiesB = crypto.verify('sha256', signingInput, { key: publicKey, dsaEncoding: 'ieee-p1363' }, P256_SIGNATURE_B);
+    assert.equal(verifiesA, vector.expected.signature_a_valid);
+    assert.equal(verifiesB, vector.expected.signature_b_valid);
+    assert.equal(identityA.statement_entry_digest, vector.expected.statement_entry_digest_a);
+    assert.equal(identityB.statement_entry_digest, vector.expected.statement_entry_digest_b);
+    assert.equal(identityA.signing_input_digest, vector.expected.signing_input_digest);
+    assert.equal(classifyPair(statementA, statementB), vector.expected.classification);
     const changedPayload = UTF8.encode('{"claim":"substituted payload","sequence":1}');
     const payloadTwin = taggedCoseSign1(protectedBytes, changedPayload, P256_SIGNATURE_A);
     const changedProtected = must(encodeDeterministicCbor8949(new Map([
@@ -283,5 +296,7 @@ function main() {
     if (!report.passed)
         process.exitCode = 1;
 }
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+if (process.argv[1]
+    && realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {
     main();
+}
