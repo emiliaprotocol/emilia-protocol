@@ -1,40 +1,89 @@
-# Focused IACR ePrint revision
+# Authorization Non-Amplification, preprint v4
 
-This directory contains the focused authorization-protocol revision prepared after the IACR ePrint rejections of temporary submissions `xxxx/111011` and `xxxx/111097`.
+This directory contains the rebuilt cryptology manuscript prepared after the
+IACR ePrint editors rejected temporary submissions `xxxx/111011`,
+`xxxx/111097`, and the jointly reconsidered `xxxx/111261` for an insufficiently
+clear contribution to cryptology and an incomplete security argument.
 
-The revision removes implementation totals, standards status, product narrative, and evidence-graph material that obscured the security result. The paper presents Action-Bound Injective Authorization as a protocol property against a signer-harvesting collector, expands the concrete reduction into games G0 through G4 with an explicit per-key forger, adds named attacks and necessity propositions, proves a separate 2-of-2 quorum corollary, and separates the cryptographic reduction from the linearizable admission assumption.
+Version 4 is not a prose revision of the rejected paper. It replaces the ABIA
+formulation with **authorization non-amplification (ANA)**: a finite,
+multi-user chosen-context experiment that counts provider entries attributed to
+one issued authorization instance. The paper gives:
 
-The 16 August correction makes the transplantation game semantic rather than byte-only. The signing interface is now `SignCtx(j,x)` and the experiment records `(j,x,m(x))`, so a different context that maps to the same bytes remains a transplant instead of disappearing into the EUF-CMA query table. The later-reveal result is named and scoped as trace-prefix authenticity, not forward integrity. The related-work section now covers secure formats, transparency overlays, forward-secure audit logs, and formal web-authorization analysis.
+- an exact issuance, signing, reveal, admission, consumption, and entry game;
+- separations from EUF-CMA security, nonce freshness, byte-level authenticity,
+  and signer-to-collector injective agreement;
+- a compiler from EUF-CMA signatures, collision resistance, injective typed
+  encoding, exact issue-and-consume state, and complete mediation;
+- a reduction over every enrolled challenge key, rather than a policy chosen
+  after the adversary wins;
+- a real-resource corollary that charges registry and mediation failures
+  explicitly; and
+- four bounded Tamarin case studies, presented as symbolic evidence rather than
+  as a computational or deployment proof.
+
+The closest predecessors are discussed directly. Anonymous counting tokens
+limit token issuance per client and message; multisignatures authenticate a
+common document under several certified keys; object-capability and agent-memory
+work use other non-amplification properties; and CapLease addresses semantic
+reissuance above a single token. ANA's bounded delta is the multi-signer
+issuance-to-provider-entry witness under a chosen-context collector.
+
+## Current state
+
+- Manuscript: rebuilt and independently audited
+- Two deterministic PDF builds: byte-identical
+- Focused receipt and quorum Tamarin reruns: green on 29 August 2026
+- Composed Tamarin rerun: 20 positive obligations and eight required negative
+  controls passed on 29 August 2026
+- IACR ePrint: upload-ready, not submitted
+- Peer review: planned for IEEE CSF 2027, not submitted
+- Zenodo v4: metadata prepared, not published
+
+Neither a local green build nor an ePrint posting would constitute peer review.
 
 ## Build
 
-Prerequisites: Tectonic and Poppler's `pdftotext`.
+Prerequisites: Tectonic, Node.js, and Poppler's `pdftotext`.
 
 ```sh
-SOURCE_DATE_EPOCH=1786752000 tectonic --keep-logs --outdir build main.tex
-cp build/main.pdf main.pdf
+SOURCE_DATE_EPOCH=1786752000 tectonic --keep-logs --outdir build-a main.tex
+SOURCE_DATE_EPOCH=1786752000 tectonic --keep-logs --outdir build-b main.tex
+cmp build-a/main.pdf build-b/main.pdf
+cp build-a/main.pdf main.pdf
 node check.mjs
 ```
 
-## Evidence scope
+## Symbolic evidence
 
-The paper cites the four existing repository models:
+The manuscript cites these committed theories and pinned runners:
 
 - `formal/tamarin/ep_receipt_core.spthy`
 - `formal/tamarin/ep_quorum_core.spthy`
 - `formal/tamarin/ep_reliance_composed.spthy`
 - `formal/tamarin/ep_six_claim_composed.spthy`
+- `formal/tamarin/run-receipt-core.sh`
+- `formal/tamarin/run-quorum.sh`
+- `formal/tamarin/run-composed.sh`
 
-The exact machine-checked results are recorded in `formal/PROOF_STATUS.md`, `formal/tamarin/README.md`, and [`VERIFICATION.md`](VERIFICATION.md). The repository-pinned rerun scripts use Tamarin 1.10.0 and Maude 3.4 in Docker.
+The exact model and runner digests, machine verdicts, scope, and reproduction
+commands are pinned in [`VERIFICATION.md`](VERIFICATION.md). The models assume
+the linear state transitions they represent. They do not prove the paper's
+computational theorem, a concrete database, or exactly-once physical effects.
 
-All three pinned runners were executed again on 16 August 2026. The receipt-core runner verified five obligations, including the 12-step later-reveal prefix lemma, and reproduced the deliberate 11-step falsification without consumption. All five quorum-core obligations verified. The composed runner verified 20 positive obligations and reproduced all eight deliberate negative controls.
+## Submission files
 
-## Publication state
-
-This manuscript is the published v3 successor to the live Zenodo v2 record `10.5281/zenodo.21520973`, under the all-versions concept DOI `10.5281/zenodo.21520972`. Zenodo published version DOI `10.5281/zenodo.21968577` on 16 August 2026. The rejected IACR ePrint PDF was not reused.
+- [`IACR-SUBMISSION.md`](IACR-SUBMISSION.md): exact ePrint form copy and state
+- [`CSF-2027-SUBMISSION-PLAN.md`](CSF-2027-SUBMISSION-PLAN.md): peer-review plan
+- [`ZENODO.md`](ZENODO.md): staged v4 archive metadata
 
 ## Final artifact
 
-The final PDF is 19 pages and 172,068 bytes. Two clean builds made with the command above were byte-identical.
+The final v4 PDF is 15 pages and 152,612 bytes. Two clean builds were
+byte-identical.
 
-`SHA-256: f158dbcd36f8831cc8f39aa7d37cfd505679483b57b29bb33dc676a9af75867e`
+`SHA-256: 3f86f29129f0ed4b1b2d502b7b9a6e62a7a311b022d19ea3eed9e3462992990d`
+
+The v3 predecessor remains archived at
+[`10.5281/zenodo.21968577`](https://doi.org/10.5281/zenodo.21968577). Version 4
+has not yet received a Zenodo DOI or an IACR ePrint identifier.

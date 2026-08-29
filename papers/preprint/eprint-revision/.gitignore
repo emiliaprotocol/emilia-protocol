@@ -1,3 +1,5 @@
 /build/
 /build-a/
 /build-b/
+/build-*/
+/render-*/

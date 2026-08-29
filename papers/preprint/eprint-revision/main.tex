@@ -2,7 +2,6 @@
 \documentclass[10pt]{article}
 
 \usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
 \usepackage{lmodern}
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm}
@@ -23,1233 +22,1003 @@
 \newtheorem{lemma}{Lemma}
 \newtheorem{definition}{Definition}
 \newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\Adv}{\mathsf{Adv}}
 \newcommand{\Enc}{\mathsf{Enc}}
 \newcommand{\Sign}{\mathsf{Sign}}
 \newcommand{\Verify}{\mathsf{Verify}}
-\newcommand{\Register}{\mathsf{RegisterFresh}}
-\newcommand{\Consume}{\mathsf{ConsumeIfUnused}}
-\newcommand{\ABIA}{\mathsf{ABIA}}
+\newcommand{\Issue}{\mathsf{Issue}}
+\newcommand{\Admit}{\mathsf{Admit}}
+\newcommand{\ANA}{\mathsf{ANA}}
+\newcommand{\Entry}{\mathsf{Entry}}
+\newcommand{\Signed}{\mathsf{Signed}}
 \DefineVerbatimEnvironment{protocol}{Verbatim}{fontsize=\footnotesize,frame=single,framesep=4pt}
 
 \hypersetup{
-  pdftitle={Action-Bound Injective Authorization under Signer Harvesting},
+  pdftitle={Authorization Non-Amplification under Chosen-Context Signer Harvesting},
   pdfauthor={Iman Schrock},
-  pdfsubject={Cryptographic protocols},
-  pdfkeywords={authorization, digital signatures, replay, signer harvesting, formal verification}
+  pdfsubject={Cryptographic authorization protocols},
+  pdfkeywords={authorization, digital signatures, replay, signer harvesting, injective agreement, formal verification}
 }
 
-\title{Action-Bound Injective Authorization\\under Signer Harvesting}
+\title{Authorization Non-Amplification\\
+under Chosen-Context Signer Harvesting}
 \author{Iman Schrock\\
 EMILIA Protocol, Inc.\\
 \texttt{team@emiliaprotocol.ai}\\
 ORCID: \href{https://orcid.org/0009-0004-0290-5433}{0009-0004-0290-5433}}
-\date{Preprint v3. August 2026.\\
-\href{https://doi.org/10.5281/zenodo.21968577}{doi:10.5281/zenodo.21968577}}
+\date{Preprint v4. August 2026.}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-A valid signature proves that a key signed a message. It does not, by itself,
-prove that an authorization collector bound the signature to the action later
-admitted, that two collected signatures belong to one approval ceremony, or that
-the same authorization was admitted at most once. These gaps matter when the
-collector renders requests, solicits signatures, and retains the audit record,
-and is itself adversarial. We define Action-Bound Injective Authorization (ABIA),
-a protocol property for this signer-harvesting setting. An approver signs a
-closed encoding of an exact action and an independently issued authorization
-instance. An enforcement domain admits the authorization only through a
-linearizable consume-if-unused transition. We give explicit transplantation,
-duplicate-admission, and quorum-substitution games. We prove that a successful
-transplantation or quorum substitution yields a signature forgery or hash
-collision, while duplicate admission yields an atomicity failure or enforcement
-bypass. The result deliberately separates cryptographic authenticity from the
-state-service assumption and does not claim exactly-once physical execution. We
-also characterize four load-bearing assumptions by concrete attacks, state the
-exact trace-prefix authenticity retained across a later key reveal, and prove
-that ordinary signatures alone cannot support offline anti-backdating. We show
-how Ed25519 and ML-DSA context strings instantiate the construction. Four
-Tamarin models check the corresponding symbolic properties against an attacker
-that can solicit honest signatures on arbitrary contexts. Nine deliberately
-weakened variants produce concrete counterexample traces without weakening the
-signature primitive.
+A signature limits who could have produced a message. It does not limit how
+many consequential actions that message can unlock. This distinction is easy to
+miss in authorization systems whose collector may solicit genuine signatures on
+adaptively chosen requests, retain the resulting artifacts, and present them to
+multiple executors.
+
+We study \emph{authorization non-amplification} (ANA), a per-issued-instance
+trace property connecting cryptographic approval events to provider-entry
+cardinality. An entry must map to one exact issued context and, for every
+required key not yet revealed, to a prior signature on that context's exact
+slot message. No issued instance may map to more than one entry. ANA is not
+implied by EUF-CMA security or by signer-to-collector Lowe-style injective
+agreement: replaying one valid artifact preserves both while violating ANA with
+probability one.
+
+We define a finite multi-user chosen-context experiment and give a compiler
+from an EUF-CMA signature scheme, a collision-resistant hash, an injective typed
+encoding, and ideal issue-and-consume and mediation resources. An unwitnessed
+entry yields a signature forgery or hash collision; duplicate entry is excluded
+by the linear resources. A real-resource refinement bound exposes registry and
+mediation failures as separate trace events rather than cryptographic
+advantages. Four Tamarin models provide symbolic case studies and nine
+deliberately weakened comparisons. The result concerns admission, not human
+identity, display fidelity, policy wisdom, or exactly-once physical effects.
 \end{abstract}
 
 \section{Introduction}
 
-Per-transaction signatures are an old and useful idea. Payment cards,
-hardware wallets, transaction-signing authenticators, and authorization tokens
-all bind some request data to a cryptographic authenticator. The security question
-studied here begins one layer later: what may an enforcement point infer when the
-service that assembled the request, displayed it for approval, collected the
-signature, and retained the resulting record is adversarial?
+Digital signatures answer a message-authenticity question: did a holder of a
+particular key sign these bytes? Consequential authorization adds a cardinality
+question: how many provider entries may those bytes authorize? The second answer
+is not contained in the first.
 
-Suppose an operator can ask an honest approver to sign arbitrarily many valid
-requests. This is stronger than an attacker that merely steals a bearer token and
-different from an attacker that extracts the approver's key. The operator may
-harvest genuine signatures, replay them, splice signatures from different
-approval ceremonies, alter unsigned labels, or present the same authorization to
-concurrent executors. EUF-CMA security rules out a new signature on a message that
-was never signed. It does not define which application fields must be in that
-message, whether two signatures refer to the same ceremony, or whether a valid
-authorization may be admitted twice.
+Consider a service that asks an enrolled approver to sign a transfer, release,
+deployment, or control action. The service may be honest, but the security
+boundary should survive a compromised collector. Such a collector can request
+many genuine signatures, choose the order in which requests are shown, retain
+old artifacts, combine signatures obtained at different times, and race the
+same artifact through several executors. None of those operations requires a
+signature forgery.
 
-We call the missing protocol property ABIA, short for \emph{Action-Bound
-Injective Authorization}. ``Action-bound'' means that every accepted approval signs
-a closed, injective encoding of the exact action, policy commitment, initiator,
-audience, authorization instance, validity data, and approver slot. ``Injective''
-means that, within one enforcement domain, one authorization instance can precede
-at most one admitted provider attempt. The second property is stateful. A
-signature cannot make a distributed consume operation linearizable.
+This paper studies that collector as the adversary. The adversary chooses the
+semantic authorization context, subject to a closed typed grammar, and obtains
+genuine signatures from uncompromised pinned keys. It also controls transport,
+storage, scheduling, and presentation. The intended guarantee is deliberately
+narrow: if an executor crosses a provider boundary, the exact admitted action
+must have one prior issued authorization instance and, for each then-unrevealed
+required key, a prior signing event on the exact slot message; one issued
+instance must not account for two entries.
 
-The construction uses only standard signatures and hashes. It is not a new
-signature primitive. Its contribution is a protocol experiment and a reduction
-that keep three failure classes separate:
+We call the guarantee \emph{authorization non-amplification} (ANA). For a trace
+$T$, let
+\[
+  \operatorname{amp}_T(d,u)=
+  |\{e:e=\Entry(d,u,h,\tau,c,S)\text{ occurs in }T\}|.
+\]
+The cardinality clause is $\operatorname{amp}_T(d,u)\leq 1$ for every issued
+instance key $(d,u)$; this is replay prevention at the provider-entry boundary.
+The witness clause is separate: it relates each entry to one exact trusted
+issuance record and to every exact slot-message signing event required by the
+policy recorded in that issuance.
+
+The contribution is a finite multi-user chosen-context experiment in which the
+adversary wins by causing an unwitnessed provider entry or by using one issued
+instance for two entries. We prove a compiler in an ideal-resource model and a
+refinement bound that exposes concrete registry and mediation failures. ANA is
+not a new correspondence logic. It is a security game for a particular
+cross-role correspondence---from issuance and signer events to executor
+entry---under chosen-context collection, adaptive reveal, and concurrent
+admission. The proof separates three obligations that are often collapsed:
 
 \begin{enumerate}[leftmargin=*]
-\item \textbf{Transplantation.} An accepted action was not the context signed by
-an uncompromised required key.
-\item \textbf{Duplicate admission.} The same authorization instance precedes two
-provider-entry events in one enforcement domain.
-\item \textbf{Quorum substitution.} A 2-of-2 admission succeeds without two
-distinct pinned approver keys signing the same base authorization, or with the
-initiator occupying an approver slot.
+\item \textbf{Message authenticity.} Every unrevealed required key signed the
+exact accepted typed context.
+\item \textbf{Authorization-instance coherence.} Every required signature and
+the executor refer to the same independently issued context and pinned policy.
+This does not claim that approvers were contemporaneous or mutually aware.
+\item \textbf{Non-amplification.} The trusted issue-and-consume record that
+witnesses one provider entry cannot witness another.
 \end{enumerate}
 
-The main theorem bounds the first and third events by signature unforgeability and
-hash collision resistance. The second event is impossible only under complete
-mediation by a linearizable register-and-consume interface. This division is the
-point of the result. Systems often describe a signed token as ``single-use'' even
-though its single-use property exists only in an enforcement service. ABIA names
-that service and carries its failure probability as a separate term.
+The distinction is cryptographically useful. EUF-CMA counts previously unsigned
+messages; ANA counts admitted actions. Lowe's injective agreement is
+parameterized by roles and agreed data and relates protocol runs between
+peers~\cite{lowe97}; ANA uses standard correspondence machinery but relates
+authorization evidence to an executor's provider-entry events.
+Section~\ref{sec:separations} proves that EUF-CMA and a signer-to-collector
+agreement claim do not supply the missing entry bound.
 
-The paper contributes:
-
-\begin{itemize}[leftmargin=*]
-\item a signer-harvesting experiment in which the adversarial operator can obtain
-valid signatures on adaptively chosen authorization contexts;
-\item a closed protocol interface for single-approver and 2-of-2 authorization;
-\item a reduction that separates exact-context authenticity from single-use
-admission and from complete provider mediation;
-\item necessity results for injective encoding, consume-if-unused state,
-initiator binding and exclusion, and fresh non-recreatable registration;
-\item a precise separation between trace-prefix authenticity after a later key
-reveal and the stronger offline anti-backdating property that ordinary
-signatures alone cannot provide;
-\item symbolic confirmation in Tamarin, including negative models that expose
-same-authorization replay, stale registry views, downgrade, authority expansion,
-profile substitution, and action-key substitution when their checks are removed;
-and
-\item an explicit boundary: ABIA proves neither human identity nor rendering
-fidelity, policy correctness, log completeness, or downstream physical effects.
-\end{itemize}
-
-\section{Attacks and Necessary Conditions}
-
-The following attacks explain why ordinary signature security does not imply
-ABIA. Every accepted signature in these traces is genuine and verifies. The
-attacker changes only application encoding, ceremony binding, or mutable state.
-Four traces are central to the proof, and a fifth shows how the same failure
-appears in a generic approval workflow.
-
-\subsection{Context transplant under non-injective encoding}
-
-Suppose distinct typed contexts $x\neq x'$ have the same accepted byte encoding.
-The operator asks an honest approver to sign $x$ and later presents the returned
-signature with $x'$. The verifier reconstructs the same bytes, so the signature
-verifies even though a security-relevant field changed.
-
-\begin{protocol}
-Operator -> Approver:  display x; request Sign(Enc(x))
-Approver -> Operator:  sigma = Sign(sk, Enc(x))
-Operator -> Executor:  present (x', sigma), x' != x
-Executor:               Enc(x') = Enc(x); Verify = true; accept x'
-\end{protocol}
-
-This is not an EUF-CMA forgery because the accepted message bytes were queried to
-the signing oracle. It is an application-language failure. A closed, injective
-encoding prevents the equality above; collision resistance additionally prevents
-two distinct canonical actions from sharing the action digest embedded in the
-slot message.
-
-\subsection{Replay without admission state}
-
-An approver signs message $m$ once and the operator sends the same valid artifact
-to two executors. Both verify it and enter the provider.
-
-\begin{protocol}
-Operator -> Approver:  request Sign(m)
-Approver -> Operator:  (m, sigma)
-Operator -> Executor1: (m, sigma)        Executor1 -> Provider: entry(u)
-Operator -> Executor2: (m, sigma)        Executor2 -> Provider: entry(u)
-\end{protocol}
-
-Neither acceptance is a forgery. A nonce inside $m$ is insufficient unless shared
-state remembers and atomically consumes it. Per-process caches fail when executors
-race or restart. The 11-step Tamarin counterexample reproduces this trace by
-removing only the linear \code{AdmissionAvailable} input.
-
-\subsection{Quorum splicing without a shared instance}
-
-Suppose two approver slots sign the same action and policy but no common
-authorization instance. The operator starts ceremonies $C_1$ and $C_2$, obtains a
-slot-1 signature from $C_1$ and a slot-2 signature from $C_2$, and combines them.
-
-\begin{protocol}
-Operator -> Approver1: Sign(action, policy, slot1, C1)
-Approver1 -> Operator: sigma1
-Operator -> Approver2: Sign(action, policy, slot2, C2)
-Approver2 -> Operator: sigma2
-Operator -> Executor:  (sigma1, sigma2) as one alleged quorum
-\end{protocol}
-
-Both signatures are genuine, but no two approvers joined one ceremony. A fresh
-shared instance $q$, independently issued and included in both slot messages,
-turns ceremony membership into byte equality checked by the verifier. Per-slot
-nonces remain distinct and do not replace $q$.
-
-\subsection{Initiator substitution without signed separation of duties}
-
-Suppose self-approval is checked against an unsigned initiator label. The operator
-collects genuine approvals under label $i$, changes the label to $i'$, and asks the
-executor to apply separation of duties to the changed value.
-
-\begin{protocol}
-Operator -> Approvers: Sign(action, q, slots); unsigned initiator = i
-Approvers -> Operator: sigma1, sigma2
-Operator:              replace unsigned i by i'
-Operator -> Executor:  (i', sigma1, sigma2); one approver = i'
-Executor:               signatures verify under the substituted label
-\end{protocol}
-
-The historical Tamarin model found this attack directly. Binding $i$ into every
-slot message makes relabeling a signed-message change. The executor must also
-exclude the signed initiator from every approver slot; binding without exclusion
-would faithfully authorize self-approval.
-
-\subsection{Stale registry-view laundering}
-
-An operator obtains valid approvals under an old authority view $h_0$. The
-registry later publishes $h_1$, which revokes or narrows that authority. If the
-executor checks only an operator-presented or unpinned view, the old evidence can
-be evaluated as though $h_0$ were still current.
-
-\Needspace{7\baselineskip}
-\begin{protocol}
-Registry:               publish h0; later publish h1 that revokes authority
-Operator -> Approvers:  collect signatures bound to h0
-Operator -> Executor:   present signatures plus stale view h0
-Executor:               accept because no exact current-head check is required
-\end{protocol}
-
-The composed Tamarin comparison falsifies current-view acceptance in 20 steps.
-The repair is not to distrust the signatures. It is to bind the relied-upon
-authority material and require the executor's independently pinned current view.
-
-\subsection{Generic approval-workflow transplant}
-
-A common workflow records that a user clicked ``approve'' and then signs or logs
-a token containing a request identifier, user identifier, and boolean decision.
-The consequential action bytes remain in an operator-controlled database row.
-
-\begin{protocol}
-Operator -> User:       display action a and an Approve button
-User -> Backend:        approve(request_id = R)
-Backend -> Operator:    token = Sign(sk, R, user, approved)
-Operator:               change database row R from a to a'
-Operator -> Executor:   (R, a', token); signature verifies
-\end{protocol}
-
-This pattern loses the transplantation game immediately: the signed token never
-commits to the canonical action the executor will submit. No vendor assumption is
-needed. The minimal repair is to derive the action at the enforcement boundary,
-place its canonical commitment and the policy, initiator, audience, and fresh
-authorization instance inside the signed message, and atomically consume the
-registered admission key.
-
-\subsection{Nine machine-found separations}
-
-The current artifacts retain nine deliberately weakened comparisons. Each changes
-one relied-upon check while leaving the ideal signature algebra unchanged.
-
-\small
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.27\textwidth}>{\raggedright\arraybackslash}p{0.28\textwidth}>{\raggedright\arraybackslash}X@{}}
-\toprule
-Attack name & Omitted check & Machine-found consequence \\
-\midrule
-Focused Double Acceptance & checked acceptance consumes state & one genuine receipt is accepted twice in the focused model \\
-Composed Double Entry & provider entry consumes shared state & one genuine authorization reaches provider entry twice after full composition \\
-Stale Head Laundering & exact current registry head & revoked or narrowed authority is accepted under an old view \\
-Class Downgrade & minimum assurance class & weaker evidence is accepted for a stronger class \\
-Denial Becomes Authority & denial non-authorization & a signed denial is treated as positive authority \\
-Scope Expansion & authority-scope pin & an action outside the signed scope is admitted \\
-Profile Swap & complete profile pin & a different verification profile is substituted \\
-Phantom Challenge & registration before exposure & an unregistered challenge is accepted \\
-Action-Key Swap & canonical action-key binding & evidence for one action keys provider entry for another \\
-\bottomrule
-\end{tabularx}
-\normalsize
-
-The 11-step focused replay occurs in Single Approval. The 31-step no-consumption
-trace and 20-step stale-view trace occur in Composed Reliance. The remaining six
-paired traces occur in Enforcement Obligations in 14--16 steps. The two replay
-lemmas expose the same missing state transition at different composition depths,
-so the artifacts contain nine falsified comparisons but eight attack classes.
-The initiator-relabeling attack is retained as repaired design history because
-the strict current quorum model now binds the initiator.
-
-\subsection{Necessity results}
-
-The same traces give tightness results for the protocol assumptions.
-
-\begin{proposition}[Injective encoding is necessary]
-If the accepted authorization language admits distinct security contexts
-$x\neq x'$ with identical signed bytes, then an operator with one honest
-signature on $x$ wins transplantation for $x'$ with probability one.
-\end{proposition}
-
-\begin{proof}
-Query the honest signer on the common byte string and present the returned
-signature with $x'$. Verification succeeds on the same bytes. The contexts differ,
-so transplantation holds, but EUF-CMA is not violated because that byte string was
-queried.
-\end{proof}
-
-\begin{proposition}[Consume-if-unused is necessary]
-If two provider-entry paths can verify the same authorization without sharing one
-linearizable consume-if-unused transition, an operator can win duplicate admission
-using one genuine receipt and no cryptographic break.
-\end{proposition}
-
-\begin{proof}
-Deliver the receipt concurrently to the two paths. Both cryptographic checks are
-identical and succeed. Without shared atomic state, neither path observes that the
-other admitted the same key.
-\end{proof}
-
-\begin{proposition}[Signed initiator exclusion is necessary]
-If the initiator is not bound into every slot message, an operator can relabel a
-valid quorum before the separation-of-duties check. If the initiator is bound but
-not excluded from approver slots, the protocol accepts self-approval directly.
-\end{proposition}
-
-\begin{proof}
-The first case is the relabeling trace above. In the second, ask the signed
-initiator to occupy a required slot and present the resulting valid signature;
-all checks other than exclusion succeed.
-\end{proof}
-
-\begin{proposition}[Fresh non-recreatable registration is necessary]
-If an operator may register an attacker-chosen stale instance, or recreate
-$\textsc{unused}$ for a consumed admission key, then it can reuse previously
-collected signatures to obtain a new successful consume and provider entry.
-\end{proposition}
-
-\begin{proof}
-Keep the original signed slots. Reintroduce their shared instance or reset its
-admission key to $\textsc{unused}$, then present the unchanged signatures. The
-verifier reconstructs the original signed messages and the recreated state makes
-the consume succeed. No forgery or collision is required.
-\end{proof}
-
-These attacks are minimal. They require no key extraction or failure of the
-signature primitive. They differ only in protocol bindings and shared state,
-which is why those assumptions appear as first-class objects in the definition
-and theorem.
-
-\section{Preliminaries and Assumptions}
-
-\subsection{Signatures and encoding}
-
-Let $\mathsf{Sig}=(\mathsf{Kg},\Sign,\Verify)$ be a digital signature scheme.
-For each approver $j$, $(sk_j,pk_j)\leftarrow\mathsf{Kg}(1^\lambda)$. We use the
-standard EUF-CMA experiment and write
-$\Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B)$ for the probability
-that adversary $\mathcal B$ produces a valid signature on a message not submitted
-to its signing oracle.
-
-Let $H:\{0,1\}^*\rightarrow\{0,1\}^\kappa$ be collision resistant. Let
-$\Enc$ be a deterministic, injective encoding on a closed typed schema. ``Closed''
-means that a parser rejects unknown members, missing required members, duplicate
-members, values outside the declared types, and non-canonical representations.
-The proof needs injectivity, not a particular wire format. A conforming
-implementation may use a canonical encoding such as deterministic CBOR or JCS
-over a closed JSON profile, provided it establishes the same property.
-
-Domain-separation labels are literal protocol constants and are included in every
-encoded tuple. All equality checks below are byte equality after strict parsing;
-display strings and workflow identifiers are not security inputs.
-
-\subsection{Authorization context}
-
-A canonical action $a$ contains an action type and every material parameter the
-executor will use. Let $p$ be a commitment to the exact policy version, $i$ the
-initiator identifier, $r$ the relying-party audience, and $q$ a fresh shared
-authorization instance. The base context is
-
-\[
-  b=(a,p,i,r,q).
-\]
-
-For approver slot $v$, let $n_v$ be a fresh slot nonce and $w_v$ a closed validity
-object containing issuance and expiration bounds. The slot context is
-$x_v=(b,v,n_v,w_v)$ and the signed message is
-
-\[
-m_{b,v}=\Enc(\code{ABIA-SIGN-v1},H(\Enc(a)),p,i,r,q,v,n_v,w_v).
-\]
-We write $m(x_v)=m_{b,v}$ for this deterministic mapping from a well-typed
-semantic slot context to its signed byte string.
-
-The shared $q$ binds all slot signatures to one ceremony. Distinct $n_v$ values
-keep the slot contexts distinct. The relying party or another trusted component
-for enforcement domain $d$ issues $q$ and durably registers the corresponding
-admission key
-
-\[
-u_b=H(\Enc(\code{ABIA-ADMIT-v1},d,H(\Enc(a)),p,i,r,q)).
-\]
-
-The adversarial operator may relay $q$. It cannot cause acceptance under an
-unregistered $q$, choose a replacement $q$, or recreate a consumed registration.
-
-\subsection{Linearizable admission service}
-
-For each domain $d$, the admission service exports:
+The paper makes five concrete contributions:
 
 \begin{itemize}[leftmargin=*]
-\item $\Register_d(u)$, which atomically creates state
-$u\mapsto\textsc{unused}$ if no state for $u$ has ever existed; and
-\item $\Consume_d(u)$, which atomically changes
-$u\mapsto\textsc{unused}$ to $u\mapsto\textsc{admitted}$ and returns success, or
-returns failure without entering a provider for every other state.
+\item a finite multi-user, chosen-authorization-context experiment with explicit
+issuance, signing, reveal, verification, consumption, and provider-entry events;
+\item a witness-based ANA definition that combines exact semantic coverage,
+pinned-policy fidelity, and an injective map from entries to issued instances;
+\item a compiler from standard signatures and hashes plus an ideal exact
+issue-and-consume resource and a one-use mediator;
+\item a reduction whose multi-user sum ranges over every enrolled challenge key,
+not merely the keys selected by a winning policy, together with exact query and
+runtime accounting; and
+\item separation results and machine-checked case studies showing why a random
+nonce, an authentic signature, or signer-to-collector injective agreement does
+not by itself make an authorization single-use at the provider boundary.
 \end{itemize}
 
-Operations are linearizable and durable. No transition recreates
-$\textsc{unused}$ for the same key. \emph{Complete mediation} means that every
-entry into a provider in $d$ is preceded by a successful $\Consume_d(u)$ for
-the same request. These are system assumptions, not consequences of signature
-security.
+The strongest claims stop at provider entry. A provider may fail, time out, or
+perform an effect whose acknowledgement is lost. ANA therefore forbids a blind
+retry after an indeterminate entry, but it does not claim exactly-once physical
+execution. It also does not prove that a key belongs to a particular person or
+that a display faithfully represented the signed action.
 
-\section{Protocol}
+\section{Setting and Syntax}
+\label{sec:syntax}
 
-The following algorithms define the analyzed 2-of-2 profile. The single-approver
-profile uses one slot and the same admission interface.
+\subsection{Signature and hash assumptions}
+
+Let $\mathsf{Sig}=(\mathsf{Kg},\Sign,\Verify)$ be a signature scheme. For each
+enrolled index $j\in[N]$, the challenger samples
+$(sk_j,pk_j)\leftarrow\mathsf{Kg}(1^\lambda)$. We use standard existential
+unforgeability under adaptive chosen-message attack and write
+$\Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B)$ for the success
+probability of a forger $\mathcal B$~\cite{gmr88}.
+
+Let $H:\{0,1\}^*\rightarrow\{0,1\}^\kappa$ be collision resistant. We write
+$\Adv^{\mathrm{cr}}_H(\mathcal C)$ for the probability that $\mathcal C$ outputs
+two different inputs with the same digest.
+
+\subsection{Typed authorization language}
+
+An action $a$ is a value in a closed typed action grammar. Its encoding
+$\Enc_A(a)$ is deterministic and injective. A parser rejects unknown members,
+missing required members, duplicate members, invalid types, non-canonical
+numbers, and invalid text encodings. A transport such as deterministic CBOR or
+JCS can implement the wire representation, but the security premise is the
+injectivity of the complete typed profile, not the name of the transport.
+
+A pinned-slot policy is an ordered vector of length $1\leq t\leq N$,
+\[
+  \Pi=((s_1,z_1,pk_{j_1}),\ldots,(s_t,z_t,pk_{j_t})),
+\]
+where slot labels $s_k$, enrolled principal identifiers $z_k$, and keys
+$pk_{j_k}$ are pairwise distinct and every pair $(z_k,pk_{j_k})$ belongs to the
+certified enrollment relation defined below. This paper proves the all-of-$t$ policy. It
+does not silently generalize the theorem to arbitrary threshold or monotone
+access structures.
+
+Let $p$ be an immutable policy-version commitment, $i$ the initiating principal,
+$r$ the relying-party audience, $d$ the enforcement domain, and $q$ a
+$\lambda$-bit instance chosen without replacement by a trusted issuer for the
+lifetime of the experiment. Define
+\[
+  h=H(\Enc(\code{ANA-ACTION-v1},\Enc_A(a))),\qquad
+  c=(d,h,p,i,r,\Pi,q).
+\]
+The context encoding $\Enc_C(c)$ and the outer message encoding below are
+deterministic and injective on their closed grammars. No slot nonce is needed:
+$q$ gives instance uniqueness and $s_k$ separates slots. The signed message for
+slot $s_k$ is
+\[
+ m(c,s_k)=\Enc(\code{ANA-SIGN-v1},c,s_k).
+\]
+The admission key is
+\[
+ u=H(\Enc(\code{ANA-ADMIT-v1},c)).
+\]
+Including $d$ in $c$ prevents a signature gathered for one enforcement domain
+from crossing into another. Including $\Pi$ makes the complete set of pinned
+slots and keys part of every signature. Including $i$ permits an executor to
+enforce separation against the issuer-recorded initiator identifier rather than
+against a mutable label.
+
+\subsection{Certified-key model}
+
+The challenger fixes the certified enrollment relation
+$\mathsf{Cert}=\{(z_j,pk_j):j\in[N]\}$ before the game. Principal identifiers
+and canonical public-key encodings are unique in this relation; key generation
+is repeated if it produces a duplicate encoding. The challenger rejects a
+policy containing a pair outside $\mathsf{Cert}$, a duplicate key, duplicate
+identifier, or duplicate slot. This prevents a collector from relabeling
+$pk_j$ as another enrolled principal. Enrollment, proof of possession, and the
+binding from an identifier to a natural person are outside the theorem. The
+result speaks about distinct enrolled keys and identifiers, not distinct human
+wills.
+
+The challenger also fixes a trusted audience function $\mathsf{Aud}$ before
+play. $\mathsf{Aud}(d)$ is the authenticated relying-party identity expected at
+enforcement domain $d$. The collector cannot modify this value. An issued
+context may carry any audience selected through the chosen-context interface,
+but it is admissible at $d$ only when its signed $r$ equals $\mathsf{Aud}(d)$.
+
+The experiment lets the adversary choose the field $i$ in an issuance query and
+therefore proves only that no approver identifier equals the
+\emph{issuer-recorded} $i$. A deployment claiming initiator--approver separation
+must authenticate the initiating principal and require the trusted issuer to set
+$i$ from that authenticated identity. It must not copy $i$ from an untrusted
+collector.
+
+An adversary may reveal $sk_j$. Authenticity for key $j$ ends at the first reveal
+event. A later reveal does not alter a previously ordered trace prefix. This is a
+weak-corruption model, not forward security or offline anti-backdating.
+
+\section{Exact Issue, Consume, and Mediation Resources}
+\label{sec:resources}
+
+The cryptographic proof uses two explicit stateful resources. Writing them down
+prevents a verbal ``single-use'' claim from entering the theorem as an unstated
+database assumption.
+
+\subsection{Exact issue-and-consume resource}
+
+For each domain $d$, resource $\mathcal F_{\mathrm{IC}}$ stores a durable map
+$R_d$. Each value contains the complete immutable context, not merely a status
+bit.
 
 \begin{protocol}
-Issue_d(a, p, i, r):
-    repeat q <- {0,1}^lambda
-    u <- H(Enc("ABIA-ADMIT-v1", d, H(Enc(a)), p, i, r, q))
-    until RegisterFresh_d(u) returns success
-    return (b = (a,p,i,r,q), u)
+Register(d, u, c):
+    if u has ever appeared in R_d: return false
+    R_d[u] <- (context=c, status=unused)
+    emit Registered(d,u,c)
+    return true
 
-Approve(sk_j, b, v_j, n_j, w_j):
-    m_j <- Enc("ABIA-SIGN-v1", H(Enc(a)), p, i, r,
-               q, v_j, n_j, w_j)
-    return (v_j, n_j, w_j, Sign(sk_j, m_j))
+Lookup(d, u):
+    return R_d[u] or bottom
 
-VerifySlot(pk_j, b, v_j, n_j, w_j, sigma_j):
-    reject unless all inputs parse under the closed schema
-    reject unless w_j is current under the relying party's clock policy
-    m_j <- Enc("ABIA-SIGN-v1", H(Enc(a)), p, i, r,
-               q, v_j, n_j, w_j)
-    return Verify(pk_j, m_j, sigma_j)
-
-VerifyAndConsume_d(b, slots[1], slots[2]):
-    reject unless q equals the independently issued instance
-    reject unless both slots contain the same base context b
-    reject unless ids, pinned keys, slots, and nonces are pairwise distinct
-    reject if either approver id equals initiator i
-    reject unless VerifySlot succeeds for both pinned keys
-    u <- H(Enc("ABIA-ADMIT-v1", d, H(Enc(a)), p, i, r, q))
-    reject unless ConsumeIfUnused_d(u) returns success
-    emit ProviderEntry(d, u, a)
+ConsumeExact(d, u, c):
+    if R_d[u] != (context=c, status=unused): return bottom
+    allocate a never-before-used ideal handle tau
+    R_d[u].status <- consumed
+    emit Consumed(d,u,c,tau)
+    return tau
 \end{protocol}
 
-The executor constructs $a$ from the operation it is about to submit. It does not
-accept an operator-supplied label as the action. The policy commitment $p$ is an
-exact digest or equivalent immutable identifier, not merely a policy name. The
-audience $r$ prevents a signature collected for one relying party from being
-accepted by another relying party that uses different trust and policy inputs.
+Calls are linearizable and durable. No transition recreates \code{unused}. A
+successful consume is therefore both an exact issuance lookup and a one-time
+state transition. The resource refuses a caller that presents the right $u$ with
+different context bytes.
 
-The protocol emits \code{ProviderEntry}, not \code{EffectOccurred}. If the
-provider accepts a request and its acknowledgement is lost, the outcome is
-indeterminate. The executor must reconcile using provider state or an idempotency
-interface. ABIA does not authorize a blind retry.
+\subsection{One-use provider mediator}
 
-\section{Signature Instantiations and Context Strings}
+Resource $\mathcal F_{\mathrm{MED}}$ is the only interface that can emit a
+provider-entry event. On input $(d,u,c,S,\tau)$ it checks for one unmatched prior
+$\mathsf{Consumed}(d,u,c,\tau)$ event and parses action digest $h$ from $c$. It
+marks $\tau$ used, emits $\Entry(d,u,h,\tau,c,S)$ once, and refuses every other
+call. Carrying the accepted evidence set $S$ in the trace event makes the
+security predicate well defined; it need not be sent to the external provider.
+This is complete mediation at the modeled boundary.
 
-ABIA is signature-scheme agnostic, but two current instantiations clarify the
-role of cryptographic context strings.
+The resource models entry, not effect. A successful call means that the request
+crossed the boundary. It says nothing about what the provider later did.
 
-With Ed25519, the approver signs the complete $m_{b,v}$ byte string using the
-Ed25519 algorithm in RFC~8032~\cite{rfc8032}. The literal
-\code{ABIA-SIGN-v1} remains inside the injective application encoding. RFC~8032
-also defines Ed25519ctx, but deployments need not depend on that variant because
-many interfaces expose only pure Ed25519. In either case, the verifier reconstructs
-the complete application message rather than signing an operator-provided digest
-with an unsigned description beside it.
+\section{Security Experiment}
+\label{sec:experiment}
 
-FIPS~204 standardizes ML-DSA and HashML-DSA and permits a context string of at
-most 255 bytes~\cite{fips204}. An ML-DSA profile may set that string to the ASCII
-bytes \code{ABIA-SIGN-v1} and require the verifier to use the same value. This
-provides cryptographic domain separation. It does not, by itself, bind the
-canonical action, policy, initiator, audience, ceremony instance, slot, nonce, or
-validity object, and it carries no single-use state. Those fields still belong in
-$m_{b,v}$, and \code{ConsumeIfUnused} remains necessary.
+\subsection{Oracle interface and budgets}
 
-Thus the standardized context parameter and ABIA solve different problems. The
-former separates uses of one signature primitive across protocols. The latter
-defines the full typed statement authorized in this protocol and composes that
-statement with admission state. Treating an ML-DSA context string as a substitute
-for the application message would lose the transplantation game while every
-signature continued to verify.
+Experiment $\mathsf{Exp}^{\ANA}_{\mathcal A}(1^\lambda)$ fixes $N$ enrolled keys
+and gives their public descriptions to $\mathcal A$. The adversary makes at most
+$Q_I$ issuance queries, $Q_{S,j}$ signing queries to key $j$, $Q_A$ admission
+queries, and $Q_R$ reveal queries. It controls their interleaving and may invoke
+admission concurrently.
 
-\section{Security Experiments}
-\label{sec:experiments}
+The challenger provides four oracles.
 
-The challenger generates and pins all approver keys, initializes the admission
-service for domain $d$, and gives every public key to adversary $\mathcal A$. The
-adversary controls the network, operator, request transport, signature collector,
-and artifact presenter. It may:
+\begin{description}[leftmargin=2.3cm,style=nextline]
+\item[$\Issue(d,a,p,i,r,\Pi)$.]
+Validate the closed action, require every policy pair to be in
+$\mathsf{Cert}$, and refuse if an approver identifier equals $i$. Sample $q$
+uniformly from the issuer's
+as-yet-unused values in $\{0,1\}^\lambda$, construct $c$ and $u$, and call
+$\mathcal F_{\mathrm{IC}}.\mathsf{Register}(d,u,c)$. Refuse if the instance
+space is exhausted or registration fails. Emit $\mathsf{Issued}(d,u,c,a)$ and
+return $(u,c)$.
 
-\begin{itemize}[leftmargin=*]
-\item adaptively query $\mathsf{SignCtx}_j(x)$ for any well-typed slot context
-$x$ under any uncompromised approver key $j$;
-\item request issuance of honest authorization instances for chosen
-$(a,p,i,r)$ tuples;
-\item replay, suppress, reorder, and splice every returned artifact;
-\item invoke verification and admission concurrently; and
-\item reveal designated approver keys, after which no authenticity claim is made
-for that key.
-\end{itemize}
+\item[$\mathsf{SignCtx}(j,d,u,s)$.]
+Look up $(d,u)$ and require an unused exact context $c$ whose policy assigns
+$(s,z_j,pk_j)$ to slot $s$. Compute $m(c,s)$, emit
+$\Signed(j,d,u,c,s,m(c,s))$, and return $\Sign(sk_j,m(c,s))$. Thus the adversary
+chooses every semantic field except the issuer's fresh $q$, may obtain signatures
+on arbitrarily many chosen issued contexts, and may later discard or splice the
+artifacts.
 
-On a query $\mathsf{SignCtx}_j(x)$, the challenger strictly parses $x$, computes
-the protocol message $m(x)$, records $\mathsf{Signed}(j,x,m(x))$, and returns
-$\Sign(sk_j,m(x))$. Malformed or out-of-schema contexts are rejected. This
-semantic-context oracle models signer harvesting without assuming that an honest
-approver signs only a desirable action. The theorem asks a narrower question: if
-a context is accepted under an unrevealed key, did that exact semantic context
-appear in a prior signing event? Recording $x$ as well as $m(x)$ is essential:
-otherwise a non-injective encoding transplant would be mislabeled as an ordinary
-signing query on the same byte string.
+\item[$\mathsf{Reveal}(j)$.]
+Emit $\mathsf{Revealed}(j)$ and return $sk_j$. Repeated calls have no additional
+effect.
 
-\subsection{Trace events and corruption timing}
+\item[$\Admit(d,u,a,S)$.]
+Run the construction in Section~\ref{sec:construction}, where $S$ is the set of
+presented slot signatures and the executor obtains its expected audience from
+the trusted function $\mathsf{Aud}(d)$. Return its result.
+\end{description}
 
-The experiment records the following ordered events:
-\[
-\begin{aligned}
-&\mathsf{Issued}(d,b,u_b), &&
-\mathsf{Signed}(j,x_v,m_{b,v}),\\
-&\mathsf{Consumed}(d,u_b), &&
-\mathsf{ProviderEntry}(d,u_b,a).
-\end{aligned}
-\]
-An issued event occurs only after successful fresh registration of $u_b$ and
-before any honest signing query for that authorization instance is answered. A
-consumed event is recorded at the linearization point of a successful consume
-operation. A provider-entry event is recorded immediately before crossing the
-provider boundary and only after all cryptographic, policy, and state checks have
-succeeded.
+Malformed queries are refused without emitting a security event. The challenger
+records a totally ordered trace of oracle calls and resource linearization
+points. This ordering is part of the experiment; the paper does not claim an
+offline verifier can reconstruct it after key compromise.
 
-Key $j$ is unrevealed for an acceptance if no $\mathsf{Reveal}(j)$ event precedes
-that acceptance. A later reveal does not retroactively erase the trace relation;
-the theorem is about acceptance-time authenticity. Conversely, once a reveal has
-occurred, the experiment makes no claim for later signatures under that key. This
-is the conventional weak-corruption boundary needed by the per-key EUF-CMA
-reduction. Forward-secure signatures could strengthen the post-compromise story,
-but they are not assumed here.
+\subsection{Entry witness}
 
-The operator controls scheduling. It may interleave issuance, signing queries,
-verification, and consume calls across arbitrarily many authorizations and may
-delay a genuine signature until its validity window is nearly exhausted. The
-challenger gives it no trusted session channel between approvers. Shared ceremony
-membership therefore comes only from equality of the independently issued $q$
-inside each signed context, not from network ordering or an operator-provided
-session label.
+Let $e=\Entry(d,u,h,\tau,c,S)$ occur at trace position $t_e$. The event has an
+\emph{exact authorization witness} if there is a unique prior
+$\mathsf{Issued}(d,u,c,a)$ event satisfying all of the following:
 
-The model treats a provider boundary as an abstract event. Complete mediation
-requires every such event to be preceded by a successful consume on the same
-$(d,u_b,a)$ relation. It does not require the provider to complete, acknowledge,
-or produce the intended downstream effect. Those later events are outside the
-ABIA experiment.
+\begin{enumerate}[leftmargin=*]
+\item $c=(d,H(\Enc(\code{ANA-ACTION-v1},\Enc_A(a))),p,i,r,\Pi,q)$ and its
+action digest equals $h$;
+\item for every $(s_k,z_k,pk_{j_k})\in\Pi$ whose key was not revealed before
+$t_e$, a prior event
+$\Signed(j_k,d,u,c,s_k,m(c,s_k))$ exists;
+\item $S$ contains exactly one pair $(s_k,\sigma_k)$ for every slot in $\Pi$,
+each $\sigma_k$ verifies under its pinned key on the exact message $m(c,s_k)$,
+the signed audience satisfies $r=\mathsf{Aud}(d)$, the policy entries are
+pairwise distinct, and no $z_k$ equals
+the signed initiator $i$; and
+\item one prior $\mathsf{Consumed}(d,u,c,\tau)$ event exists and $\tau$ witnesses
+no other provider entry.
+\end{enumerate}
 
-\subsection{Trace-prefix authenticity and the anti-backdating boundary}
+The witness does not say that the approvers met, signed simultaneously, knew
+about one another, or perceived a faithful display. It proves common
+authorization-instance coherence over $c$.
 
-The following corollary fixes the temporal scope of the authenticity experiment.
-It is a trace-prefix statement, not a forward-secure logging or offline
-anti-backdating property: a key reveal after an already recorded acceptance does
-not change which exact context had to be signed before that acceptance.
+\begin{definition}[Authorization non-amplification]
+Adversary $\mathcal A$ wins the ANA experiment if either:
 
-\begin{lemma}[Trace-prefix authenticity]
-Suppose an acceptance under pinned key $pk_j$ occurs at trace position $t_a$, no
-reveal of $sk_j$ precedes $t_a$, and a reveal occurs later at $t_r>t_a$. Except
-with probability bounded by
-$\Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B_j)+
-\Adv^{\mathrm{cr}}_H(\mathcal C_H)$, a
-$\mathsf{Signed}(j,x^*,m(x^*))$ event for the exact accepted slot context occurred
-before $t_a$.
-\end{lemma}
+\begin{enumerate}[leftmargin=*]
+\item an entry occurs without an exact authorization witness; or
+\item two distinct entries in the same enforcement domain contain the same
+admission key $u$.
+\end{enumerate}
 
-\begin{proof}
-Stop the experiment at $t_a$. The later reveal is outside this prefix and cannot
-affect its distribution. If the accepted message was not produced by a prior
-semantic-context query before $t_a$, the pair is an EUF-CMA forgery for $j$. If
-the same bytes were produced for another recorded context, injective outer
-encoding and collision resistance make that context equal to the accepted
-context. The later
-reveal changes what the adversary can sign after $t_r$, but it cannot insert a
-new signing event into the already ordered prefix.
-\end{proof}
+Its advantage is
+$\Adv^{\mathrm{ana}}_{\mathcal A}=\Pr[\mathsf{Exp}^{\ANA}_{\mathcal A}=1]$.
+\end{definition}
 
-The Single Approval Tamarin model checks the symbolic counterpart in the named
-later-reveal lemma: an acceptance before a later \code{RevealLtk} has prior
-user-verification and signing events over the exact accepted context.
+This definition intentionally gives no authenticity guarantee for a slot whose
+secret key was revealed before entry. The second, cardinality clause remains in
+force regardless of key reveal.
 
-\begin{proposition}[Offline anti-backdating is impossible here]
-Ordinary signatures and a signer-asserted timestamp do not let an offline verifier
-distinguish a receipt genuinely signed before key reveal from one minted after
-reveal with an earlier timestamp inside its signed message.
+\section{Separations from Standard Notions}
+\label{sec:separations}
+
+These results locate the new property. They do not claim that EUF-CMA or
+injective agreement is weak; they show that those notions answer different
+questions.
+
+\begin{proposition}[Stateless replay impossibility]
+Let a complete authorization system expose a stateless admission algorithm
+whose acceptance of a valid artifact does not change any state shared with a
+later call. If the same artifact can reach the provider boundary twice, then the
+system cannot satisfy ANA. For a deterministic complete verifier, the ANA
+adversary wins with probability one and produces no signature forgery.
 \end{proposition}
 
 \begin{proof}
-After learning $sk_j$, the adversary runs the honest signing algorithm on a
-message containing any claimed earlier time. The resulting pair has the same
-verification relation as a pair produced before compromise. An offline verifier
-given only $(m,\sigma,pk_j)$ has no independent event ordering with which to
-separate the two cases.
+Obtain one valid artifact through the system's issuance and signing interfaces,
+then submit it to two admission calls. Statelessness leaves the second call in
+the same relevant verification state as the first, so completeness makes both
+calls accept and emit entries. Every signature was returned by an authorized
+signing interface, yet two entries use the same issued instance. Thus EUF-CMA,
+even with perfect message authentication, cannot supply the missing entry
+bound. A probabilistic verifier with independent fresh coins and one-call
+acceptance probability $p$ yields the same violation with probability at least
+$p^2$.
 \end{proof}
 
-A stronger anti-backdating claim needs an independently witnessed acceptance
-before the reveal, such as inclusion in an append-only signed checkpoint with
-trusted ordering, or a forward-secure signature scheme whose erased epoch keys
-cannot be reconstructed after compromise. Neither mechanism is assumed in ABIA,
-so the paper makes the prefix claim and not the stronger offline claim.
+\begin{proposition}[A signed random nonce is insufficient]
+Adding a fresh nonce to the signed message does not imply ANA if executors do not
+share an atomic consume transition for that nonce.
+\end{proposition}
 
-\begin{definition}[Transplantation]
-$\mathcal A$ wins $\mathsf{Transplant}$ if the verifier accepts
-$x^*=(b^*,v^*,n^*,w^*)$ under an unrevealed pinned key $j$, but no event
-$\mathsf{Signed}(j,x^*,m(x^*))$ precedes that acceptance. A signing event for a
-different semantic context $x\neq x^*$ does not defeat the winning condition,
-even if a defective encoding maps $x$ and $x^*$ to the same bytes.
-\end{definition}
+\begin{proof}
+Replay the complete message, nonce, and genuine signature to two stateless
+executors. Freshness distinguishes the message from other messages; it does not
+make either executor learn that the other has accepted it.
+\end{proof}
 
-\begin{definition}[Duplicate admission]
-$\mathcal A$ wins $\mathsf{Duplicate}$ if two distinct provider-entry events in
-the same domain $d$ are both labeled by the same admission key $u_b$.
-\end{definition}
+\begin{proposition}[Byte unforgeability does not imply semantic coverage]
+If two distinct typed contexts $x\neq x'$ have the same accepted signed-byte
+encoding, an adversary wins the witness clause using one genuine signing query
+and no EUF-CMA forgery.
+\end{proposition}
 
-\begin{definition}[Quorum substitution]
-$\mathcal A$ wins $\mathsf{QuorumSub}$ if a 2-of-2 provider entry occurs while at
-least one of the following is true: fewer than two distinct pinned approver
-identifiers and keys were accepted; a required unrevealed key has no prior
-signing event for its exact accepted slot context; the two slots do not share
-byte-identical $b$; or the
-signed initiator occupies an approver slot.
-\end{definition}
+\begin{proof}
+Ask the signer to sign the common byte string while the semantic record is $x$,
+then present the signature with $x'$. Verification succeeds on the queried bytes,
+but there is no exact prior semantic signing event for $x'$.
+\end{proof}
 
-The combined experiment $\ABIA$ returns one if any of the three events occurs.
-Let $\mathsf{AtomicityFail}_d$ denote any violation of the register-and-consume
-contract, and let $\mathsf{MediationBypass}_d$ denote a provider entry that did not
-pass through that contract.
+\begin{proposition}[Signer-to-collector injective agreement does not imply ANA]
+Lowe-style injective agreement between an approver and a collector does not
+imply ANA at an executor boundary.
+\end{proposition}
 
-\section{Security Argument}
+\begin{proof}
+Take any protocol in which each completed collector run
+has a unique matching approver run on data $c$. After the collector completes,
+wrap its accepted transcript in an executor API that emits a provider entry on
+every call. Replaying that transcript to the API does not create a second
+collector completion or a second approver run, so the original injective-
+agreement relation remains true. The wrapper nevertheless emits two entries for
+one authorization and violates ANA.
+\end{proof}
+
+\begin{proposition}[ANA does not imply agreement among approvers]
+ANA does not imply mutual or injective agreement among the approvers.
+\end{proposition}
+
+\begin{proof}
+Approvers may sign sequentially through the chosen-context
+oracle without communicating or knowing one another. The issue-and-consume
+resource can still give the resulting entry an exact injective witness. ANA
+therefore establishes neither mutual awareness nor a peer-to-peer agreement
+run.
+\end{proof}
+
+The executor event is the missing endpoint in the first construction. ANA can
+be written as an injective correspondence from provider entries to issue,
+consume, and signing events. The chosen-context experiment turns that cross-role
+correspondence into a computational target and identifies the state and
+mediation resources needed to realize it.
+
+\section{Construction}
+\label{sec:construction}
+
+The following compiler realizes the experiment for any all-of-$t$ pinned-slot
+policy.
+
+\begin{protocol}
+Issue(d, a, p, i, r, Pi):
+    validate the closed action grammar and certified pinned-slot policy
+    require 1 <= |Pi| <= N
+    reject if an approver id in Pi equals initiator id i
+    q <- uniform unused value in the issuer's {0,1}^lambda instance set
+    h <- H(Enc("ANA-ACTION-v1",Enc_A(a)))
+    c <- (d,h,p,i,r,Pi,q)
+    u <- H(Enc("ANA-ADMIT-v1",c))
+    reject unless F_IC.Register(d,u,c) = true
+    emit Issued(d,u,c,a)
+    return (u,c)
+
+Approve(sk_j, d, u, c, s_j):
+    reject unless F_IC.Lookup(d,u) = (c,unused)
+    reject unless Pi in c assigns (s_j,z_j,pk_j)
+    m_j <- Enc("ANA-SIGN-v1",c,s_j)
+    sigma_j <- Sign(sk_j,m_j)
+    emit Signed(j,d,u,c,s_j,m_j)
+    return (s_j,sigma_j)
+
+Admit(d, u, a, S):
+    (c,status) <- F_IC.Lookup(d,u); reject unless status = unused
+    parse c as (d_c,h,p,i,r,Pi,q) under the closed grammar
+    reject unless d_c = d
+    reject unless r = Aud(d)
+    reject unless h = H(Enc("ANA-ACTION-v1",Enc_A(a)))
+    reject unless Pi has unique slots, ids, and certified pinned keys
+    reject if an approver id in Pi equals initiator i
+    for each (s_j,z_j,pk_j) in Pi:
+        require exactly one (s_j,sigma_j) in S
+        m_j <- Enc("ANA-SIGN-v1",c,s_j)
+        reject unless Verify(pk_j,m_j,sigma_j) = true
+    tau <- F_IC.ConsumeExact(d,u,c); reject if tau = bottom
+    return F_MED.Enter(d,u,c,S,tau)
+\end{protocol}
+
+The executor constructs $a$ from the operation it is about to submit. It does
+not accept a descriptive action label as a substitute for the provider request.
+The policy commitment $p$ identifies an immutable policy version. The audience
+$r$ prevents a signature collected for one relying party from being presented
+as authority for another. The complete policy $\Pi$ is signed, so a collector
+cannot add, remove, or replace a required slot after gathering signatures.
+When a deployment uses $i$ for separation of duties, the trusted issuer must
+derive it from the authenticated initiating principal as described above.
+
+The construction places validity windows and clocks outside the core theorem.
+A deployment may add a typed validity object to $c$ and refuse it under a defined
+trusted-time policy. Merely writing a timestamp into $c$ would not prove clock
+correctness or anti-backdating, so the core claim does not depend on one.
+
+\section{Security Analysis}
+\label{sec:proof}
 
 \begin{lemma}[Exact-context binding]
-Conditioned on no collision in $H$ and injectivity of $\Enc$, equality of two
-valid slot messages implies equality of their action, policy commitment,
-initiator, audience, authorization instance, slot, slot nonce, and validity
-object.
+Conditioned on no collision in $H$, equality of two valid slot-message byte
+strings implies equality of their enforcement domain, action, policy
+commitment, initiator, audience, pinned-slot policy, authorization instance,
+and slot.
 \end{lemma}
 
 \begin{proof}
-The outer encodings carry the same domain-separation label and parse under one
-closed schema. Injectivity therefore gives equality of every encoded field. In
-particular, the action digests are equal. If the canonical action encodings were
-different, they would form a collision in $H$; conditioned on no such collision,
-the actions are equal. All remaining fields occur directly in the injective outer
-encoding and are therefore equal.
+Injectivity of the outer closed encoding gives equality of the literal domain
+label, both contexts, and the slot. Equality of the contexts gives equality of
+every directly encoded field and of the action digests. If the canonical action
+encodings differed, the equal digests would be a collision in $H$.
 \end{proof}
 
-\begin{lemma}[Transplantation reduction]
-For every transplantation adversary $\mathcal A$, there are EUF-CMA forgers
-$\mathcal B_j$ and a collision finder $\mathcal C_H$ such that
-\[
-\Pr[\mathsf{Transplant}_{\mathcal A}=1]
-\leq \sum_j \Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B_j)
-+\Adv^{\mathrm{cr}}_H(\mathcal C_H).
-\]
+\begin{lemma}[Functional completeness]
+Assume signature correctness and the ideal resources. If $\Issue$ returns
+$(u,c)$, every slot in the nonempty policy is approved through $\mathsf{SignCtx}$
+while the record remains unused, and $\Admit$ is called with the issued action
+and those signatures at domain $d$ with the issued $r=\mathsf{Aud}(d)$, then
+the first admission emits one provider entry.
+Every later admission for the same $(d,u)$ is refused.
 \end{lemma}
 
 \begin{proof}
-The reduction is made explicit in the game sequence below. In short, an accepted
-signature under unrevealed key $pk_j$ either has no prior semantic signing event,
-in which case its message is an EUF-CMA forgery for $j$, or has a recorded query
-on the same bytes. In the latter case the exact-context-binding lemma makes the accepted
-context equal to the signed context unless a hash collision occurred. A union
-bound over the pinned required keys and the collision event gives the inequality.
+Signature correctness makes every pinned verification succeed. The issued
+action reproduces the digest in $c$, and the certified policy satisfies the
+deterministic structural checks. The first exact consume therefore returns a
+fresh mediator token, which the mediator accepts once. The consume changes the
+record to \code{consumed}, so a later lookup or consume cannot reach entry.
 \end{proof}
 
-\begin{lemma}[Injective admission]
-Conditioned on linearizability, durable state, and complete mediation in domain
-$d$, $\Pr[\mathsf{Duplicate}_{\mathcal A}=1]=0$.
+\begin{lemma}[Ideal non-amplification]
+With $\mathcal F_{\mathrm{IC}}$ and $\mathcal F_{\mathrm{MED}}$, two provider
+entries in one domain cannot contain the same admission key $u$.
 \end{lemma}
 
 \begin{proof}
-By complete mediation, both provider entries must follow successful
-$\Consume_d(u_b)$ operations. Linearizability places those calls in a total order
-consistent with real time. The first success changes the only state for $u_b$ from
-$\textsc{unused}$ to $\textsc{admitted}$. No allowed transition recreates
-$\textsc{unused}$, so the second call cannot also succeed. A duplicate entry thus
-implies either a state-service failure or a path around the service.
+Every entry consumes one fresh mediator token produced by a successful
+$\mathsf{ConsumeExact}(d,u,c)$. Linearizability totally orders consumes for
+$u$. The first success changes the unique exact record from \code{unused} to
+\code{consumed}; no rule recreates \code{unused}. A second consume for $u$
+cannot succeed. The mediator also refuses reuse of the first token.
 \end{proof}
 
-\subsection{Game sequence}
-
-We now give the hybrids underlying the concrete bound. Each game returns one if
-the real ABIA experiment returns one, except where the game explicitly aborts.
-The challenger records every semantic signing query as a triple $(j,x,m(x))$ and every issued
-authorization as $(d,a,p,i,r,q,u_b)$. It also records the linearization point and
-return value of every register and consume operation. This bookkeeping is not
-visible to the adversary.
-
-\paragraph{Game $G_0$: the real experiment.}
-The challenger runs the protocol and adversary exactly as defined in
-Section~\ref{sec:experiments}.
-Thus
+\begin{theorem}[ANA compiler]
+Let $\mathsf{Sig}$ be EUF-CMA secure, $H$ collision resistant, and the declared
+typed encodings injective. For every probabilistic polynomial-time adversary
+$\mathcal A$ using at most $N$ enrolled keys, $Q_I$ issuance queries,
+$Q_{S,j}$ signing queries to key $j$, $Q_A$ admission queries, and $Q_R$ reveal
+queries, there are collision finder $\mathcal C_H$ and EUF-CMA forgers
+$\mathcal B_1,\ldots,\mathcal B_N$ such that
 \[
-  \Pr[G_0=1]=\Pr[\ABIA_{\mathcal A}=1].
+ \Adv^{\mathrm{ana}}_{\mathcal A}
+ \leq
+ \Adv^{\mathrm{cr}}_H(\mathcal C_H)
+ +\sum_{j=1}^{N}
+   \Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B_j).
+\]
+Forger $\mathcal B_j$ makes at most $Q_{S,j}$ signing-oracle queries. Its
+simulation generates $N-1$ key pairs, locally answers at most
+$\sum_{\ell\neq j}Q_{S,\ell}$ signing queries, performs at most $NQ_A$
+signature verifications, and adds polynomial encoding, hashing, policy, and
+table work in the stated query bounds. The sum is over the complete enrolled
+key universe fixed before play, not a policy selected after a win.
+\end{theorem}
+
+\begin{proof}
+We use four games.
+
+\emph{Game $G_0$.} Run the real ANA experiment with the ideal state resources.
+
+\emph{Game $G_1$.} Domain-separate the action and admission-key inputs as in the
+construction and record every input on which the challenger evaluates $H$.
+Abort if two distinct recorded inputs have the same digest. A challenger that
+outputs the first such pair is $\mathcal C_H$, so
+\[
+ |\Pr[G_0=1]-\Pr[G_1=1]|
+ \leq\Adv^{\mathrm{cr}}_H(\mathcal C_H).
 \]
 
-\paragraph{Game $G_1$: exclude action-hash collisions.}
-The challenger aborts if two distinct canonical action encodings appearing in
-recorded signing contexts or accepted contexts have the same hash. An algorithm $\mathcal C_H$
-that runs $G_0$ and outputs the first such pair is a collision finder. Therefore
-\[
-  \left|\Pr[G_0=1]-\Pr[G_1=1]\right|
-  \leq \Adv^{\mathrm{cr}}_H(\mathcal C_H).
-\]
-Conditioned on no abort, equality of action digests implies equality of canonical
-action encodings. Together with injectivity of $\Enc$, equality of signed-message
-bytes implies equality of every field in the slot context.
+\emph{Game $G_2$.} For each $j\in[N]$, abort if an entry's evidence set contains
+a required valid signature under $pk_j$, no reveal of $j$ precedes the entry,
+and the signing
+table contains no exact prior row $(j,d,u,c,s,m(c,s))$ for that accepted slot.
+Construct $\mathcal B_j$ by embedding its EUF-CMA challenge key as $pk_j$,
+generating every other key, and forwarding each $\mathsf{SignCtx}$ query for
+$j$ to its signing oracle. It simulates issuance, other signers, the resources,
+and all public checks exactly. A reveal of $j$ ends the experiment's
+authenticity claim for that key, so the fixed-$j$ reduction may abort on that
+reveal without losing a winning event to which the definition applies.
 
-\paragraph{Game $G_2$: exclude accepted semantically unsigned contexts.}
-For each unrevealed pinned key $j$, the challenger aborts if verification accepts
-$(x^*,m^*,\sigma)$ under $pk_j$ while $(j,x^*,m^*)$ is absent from the
-signing-query table. Under the $G_1$ condition and injectivity of the outer
-encoding, absence of that triple also means that no query under $j$ produced
-$m^*$: a different recorded context with the same message would contradict the
-exact-context-binding lemma.
-The reduction for one slot is the following explicit algorithm.
+If the $G_2$ bad event occurs first, the accepted signature verifies on message
+$m^*=m(c^*,s^*)$. No exact signing row exists. A query on the same bytes under
+a different semantic context would contradict exact-context binding in $G_1$.
+Thus $m^*$ was not submitted to the EUF-CMA oracle, and the accepted pair is a
+forgery. A union bound over the key universe gives
+\[
+ |\Pr[G_1=1]-\Pr[G_2=1]|
+ \leq\sum_{j=1}^{N}
+ \Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B_j).
+\]
+
+\emph{Game $G_3$.} Associate every accepted unrevealed slot with its exact prior
+signing-table row. This changes no probability. The exact issue lookup fixes one
+context $c$ for $u$; outer-encoding injectivity and the $G_1$ condition make the
+accepted action and every signed field equal to that context. The deterministic
+checks enforce the trusted audience, unique pinned keys and slots, and exclusion
+of the signed initiator. Hence every entry has the required cryptographic witness.
+
+Finally, ideal non-amplification rules out two entries with the same $(d,u)$. No ANA
+winning condition remains in $G_3$, so $\Pr[G_3=1]=0$. Summing the game
+differences proves the bound. The stated query and runtime costs follow directly
+from the simulation.
+\end{proof}
+
+\subsection{Concrete interpretation}
+
+If every per-key EUF-CMA advantage is at most $\epsilon_{\mathrm{sig}}$ and the
+hash-collision advantage is at most $\epsilon_H$, the theorem gives
+\[
+ \Adv^{\mathrm{ana}}_{\mathcal A}
+ \leq N\epsilon_{\mathrm{sig}}+\epsilon_H.
+\]
+The $N$ factor is deliberately conservative. It avoids a post-selected two-key
+bound when an adversary can range over many enrolled keys and policies.
+
+The theorem is not a durability proof for a database or a code-level proof of
+complete mediation. The next corollary states exactly what a real deployment
+must add.
+
+\subsection{Real-resource refinement}
+
+Let $R$ and $M$ be probabilistic polynomial-time implementations of the
+issue-and-consume and mediation interfaces. Experiment
+$\mathsf{Exp}^{\ANA,\mathrm{real}}_{\mathcal A,R,M}(1^\lambda)$ is the ANA
+experiment of Section~\ref{sec:experiment} with $R$ and $M$ substituted for the
+ideal resources. It records their registration, consume, and provider-entry
+events in the same ordered trace and applies the same ANA winning predicate.
+Write $\Adv^{\mathrm{ana,real}}_{\mathcal A,R,M}$ for its winning probability.
+In that experiment, define:
+
+\begin{itemize}[leftmargin=*]
+\item $\mathsf{RegistryBreak}$ to occur if a successful consume lacks one exact
+prior registration $(d,u,c)$, if one $u$ is registered for two different
+contexts, or if two consumes for the same $u$ both succeed; and
+\item $\mathsf{MediationBreak}$ to occur if a provider entry lacks one unmatched
+prior successful consume token bound to the same $(d,u,c)$ with the same action
+digest $h$, or if one token
+witnesses two entries.
+\end{itemize}
+
+These are trace events in a stated experiment, not undefined labels for
+``something went wrong.'' Their probabilities must be justified by a refinement
+proof, transactional implementation argument, or measured fault model for the
+deployment.
+
+\begin{corollary}[Deployment composition]
+Replacing the ideal resources by implementations $R$ and $M$ gives
+\[
+ \Adv^{\mathrm{ana,real}}_{\mathcal A,R,M}
+ \leq \Adv^{\mathrm{cr}}_H(\mathcal C_H)
+ +\sum_{j=1}^{N}\Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B_j)
+ +\Pr_{\mathsf{Exp}^{\ANA,\mathrm{real}}_{\mathcal A,R,M}}[\mathsf{RegistryBreak}]
+ +\Pr_{\mathsf{Exp}^{\ANA,\mathrm{real}}_{\mathcal A,R,M}}[\mathsf{MediationBreak}].
+\]
+\end{corollary}
+
+\begin{proof}
+Conditioned on neither implementation event, the observed issue, consume, and
+entry trace satisfies the two ideal-resource safety relations used in the
+compiler theorem. Apply that theorem and then a union bound over the two
+implementation events.
+\end{proof}
+
+The corollary keeps operational correctness visible. It would be misleading to
+call either implementation probability negligible merely because the
+signatures are cryptographically strong.
+
+\section{Trace-Prefix Authenticity and Backdating}
+
+\begin{lemma}[Trace-prefix authenticity]
+Suppose an entry whose evidence set contains a required valid signature under
+$pk_j$ occurs at position $t_e$, no
+reveal of $sk_j$ precedes $t_e$, and a reveal occurs later. Except with
+probability bounded by the corresponding EUF-CMA and collision advantages, the
+exact signing event for the accepted slot precedes $t_e$.
+\end{lemma}
+
+\begin{proof}
+Stop the experiment at $t_e$. The later reveal is outside the prefix and does
+not change its distribution. The $G_1$--$G_2$ argument from the compiler theorem
+then gives the exact prior signing event.
+\end{proof}
+
+\begin{proposition}[Ordinary signatures do not prove offline anti-backdating]
+After learning $sk_j$, an adversary can create a valid signature on a message
+containing an earlier claimed timestamp. An offline verifier given only
+$(m,\sigma,pk_j)$ cannot distinguish it from a signature produced before
+compromise.
+\end{proposition}
+
+\begin{proof}
+The adversary runs the honest signing algorithm after compromise. The timestamp
+is only signed data; it is not an independently ordered event. Both signatures
+satisfy the same verification relation.
+\end{proof}
+
+Forward-secure signatures or an independently witnessed append-only checkpoint
+can support a stronger statement. Neither is part of the ANA compiler.
+
+\section{Symbolic Case Studies}
+\label{sec:symbolic}
+
+Four public Tamarin theories~\cite{tamarin} test concrete single-approval, 2-of-2, and composed
+instances against a Dolev--Yao adversary that controls the network and can solicit
+honest signatures on chosen authorization contexts. The theories are not a
+substitute for the computational theorem: they idealize signatures and typed
+encoding, and their linear facts assume the state transitions they represent.
+
+The two focused models report the following exact machine results with Tamarin
+1.10.0 and Maude 3.4:
 
 \begin{protocol}
-Forger B_j(pk*, Sign*):
-    set pk_j <- pk*; generate (sk_k, pk_k) for every k != j
-    initialize the ABIA experiment and run A on all public inputs
-    on A.SignCtx(j, x):
-        reject unless x is well-typed; m <- m(x)
-        record (j,x,m); return Sign*(m)
-    on A.SignCtx(k, x), k!=j:
-        reject unless x is well-typed; m <- m(x)
-        record (k,x,m); return Sign(sk_k,m)
-    on A.Reveal(k), k!=j:  return sk_k
-    on A.Reveal(j):        abort this fixed-j reduction
-    on accepted (x*,m*,sigma) under pk_j before Reveal(j):
-        if (j,x*,m*) is absent from the query table:
-            assert no row (j,x,m*) exists, by G1 and exact-context binding
-            output (m*,sigma)
-        otherwise continue the simulation
+executable_honest_receipt: verified (9 steps)
+core_authenticity_uv_gated: verified (11 steps)
+acceptance_prefix_integrity_after_later_reveal: verified (12 steps)
+no_replay_across_actions: verified (11 steps)
+injective_acceptance_with_consumption: verified (11 steps)
+unchecked_acceptance_is_injective: falsified (11 steps)
+
+executable_quorum: verified (13 steps)
+quorum_requires_two_distinct_uv_gated_signatures: verified (27 steps)
+initiator_cannot_self_approve: verified (4 steps)
+no_single_signer_fills_quorum: verified (4 steps)
+commit_requires_signature_over_that_action: verified (8 steps)
 \end{protocol}
 
-Registration, consumption, scheduling, and all public computations are simulated
-exactly. The fixed-$j$ simulation is perfect up to either the first reveal of
-$j$ or the accepted-unqueried event. A reveal before that event removes $j$ from
-the experiment's authenticity claim. If the event occurs first, $\mathcal B_j$
-stops immediately, so it never needs to reveal the EUF-CMA challenge secret. The
-message was not queried to its EUF-CMA oracle and the signature verifies, which
-is a valid forgery. This is exactly where the semantic query record matters: an
-equal-byte query from a different context is ruled out by the encoding and hash
-conditions rather than silently counted as authorization of $x^*$.
+The deliberately false receipt lemma removes the linear consumption input and
+finds the expected trace: one genuine artifact is accepted twice. An earlier
+quorum variant omitted the initiator from the signed context. Its counterexample
+used an original initiator who was also an approver, then substituted a distinct
+unsigned initiator so the self-approval check passed. Binding the initiator into
+the signed context removes that trace. This corrects a common but important
+misdescription of the attack: the substituted initiator is not the approver.
 
-The standard multi-user union bound gives
-\[
-  \left|\Pr[G_1=1]-\Pr[G_2=1]\right|
-  \leq \sum_j
-  \Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B_j).
-\]
-The sum includes only unrevealed keys required by the accepted policy. A key
-reveal removes that key from the authenticity claim instead of asking the
-reduction to simulate a forbidden reveal of its challenge secret.
-
-\paragraph{Game $G_3$: replace accepted slots by recorded exact contexts.}
-In $G_2$, every accepted slot under an unrevealed key has a matching recorded
-triple $(j,x^*,m(x^*))$. The challenger now associates that slot with the
-corresponding semantic query. This is a conceptual rewrite and changes no
-probability. By the closed-schema checks, injectivity of $\Enc$, and the
-no-collision condition from $G_1$, the recorded query and accepted slot agree on
-the action, policy commitment, initiator, audience, authorization instance, slot,
-slot nonce, and validity object. Transplantation is therefore impossible in
-$G_3$.
-
-\paragraph{Game $G_4$: condition on the admission contract.}
-The challenger aborts on $\mathsf{AtomicityFail}_d$ or
-$\mathsf{MediationBypass}_d$. This changes the success probability by at most
-\[
-  \Pr[\mathsf{AtomicityFail}_d\lor\mathsf{MediationBypass}_d].
-\]
-In $G_4$, every provider entry follows a successful consume operation. If two
-entries carried the same $u_b$, their successful consumes would be ordered by
-linearizability. The first moves the unique durable state for $u_b$ from
-$\textsc{unused}$ to $\textsc{admitted}$; the second cannot succeed. Duplicate
-admission is therefore impossible.
-
-The verifier's deterministic distinctness, shared-base-context, pinned-key, and
-initiator-exclusion checks remain. In $G_3$ every accepted unrevealed slot has an
-exact recorded semantic signing event, so those checks also make quorum substitution
-impossible. Hence $\Pr[G_4=1]=0$.
+The composed theories add exact action identity, current registry view,
+revocation state, issuer pinning, authority scope, profile pins, one-time
+consumption, and entry. Nine weakened comparisons produce these attack classes:
 
 \begin{table}[ht]
 \centering
-\caption{Advantage accounting for the game sequence.}
+\caption{Machine-found separations with ideal signatures unchanged.}
 \small
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.15\textwidth}>{\raggedright\arraybackslash}p{0.28\textwidth}>{\raggedright\arraybackslash}p{0.24\textwidth}>{\raggedright\arraybackslash}X@{}}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.28\textwidth}>{\raggedright\arraybackslash}p{0.30\textwidth}>{\raggedright\arraybackslash}X@{}}
 \toprule
-Transition & Bad event & Reduction or assumption & Probability charge \\
+Comparison & Removed check & Counterexample consequence \\
 \midrule
-$G_0\to G_1$ & distinct canonical actions share one digest & collision finder $\mathcal C_H$ & $\Adv_H^{\mathrm{cr}}(\mathcal C_H)$ \\
-$G_1\to G_2$ & an unrevealed required key accepts a context without its exact signing event & one explicit forger $\mathcal B_j$ per required key & $\sum_j\Adv_{\mathsf{Sig}}^{\mathrm{euf\mbox{-}cma}}(\mathcal B_j)$ \\
-$G_2\to G_3$ & associate accepted slots with recorded semantic contexts & injectivity and the $G_1$ condition & $0$ \\
-$G_3\to G_4$ & atomic state fails or provider entry bypasses mediation & deployment contract & $\Pr[\mathsf{AtomicityFail}_d\lor\mathsf{MediationBypass}_d]$ \\
-$G_4$ & any ABIA winning condition remains & deterministic verifier checks & $0$ \\
+Focused double acceptance & linear consumption & one genuine approval accepted twice \\
+Composed double entry & shared consume fact & one authorization reaches entry twice \\
+Stale-head laundering & exact current registry head & narrowed authority accepted under an old view \\
+Class downgrade & minimum assurance class & weaker evidence satisfies a stronger class \\
+Denial becomes authority & denial non-authorization & signed denial treated as permission \\
+Scope expansion & authority-scope pin & out-of-scope action admitted \\
+Profile swap & complete profile pin & different verification profile substituted \\
+Phantom challenge & registration before exposure & unregistered challenge accepted \\
+Action-key swap & canonical action-key binding & evidence for one action keys entry for another \\
 \bottomrule
 \end{tabularx}
 \normalsize
 \end{table}
 
-Each $\mathcal B_j$ makes exactly the signing-oracle queries that $\mathcal A$
-makes for key $j$ and adds only key generation for the other slots, protocol
-simulation, and table lookups. There is no guessing loss beyond the displayed
-multi-user sum because the analysis defines one reduction per required key and
-applies a union bound.
-
-\subsection{Simulation and state boundaries}
-
-The signature reduction does not simulate the admission service
-cryptographically. Register and consume are ordinary oracle calls in the
-experiment, and their failure probability remains an explicit term. This is
-intentional. Replacing that term with a negligible cryptographic advantage would
-silently assume the conclusion that concurrent single-use admission is correct.
-
-The reduction also does not treat expiration, policy selection, identity proofing,
-or display fidelity as signature properties. The verifier checks the closed
-validity object and pinned policy inputs before acceptance, but the correctness of
-those inputs belongs to the relying party. Likewise, a signature over action $a$
-does not prove that a human was shown a faithful rendering of $a$. The experiment
-only establishes which bytes were signed and which action the executor admitted.
-
-\begin{lemma}[Quorum binding]
-Conditioned on no signature forgery or hash collision, the 2-of-2 verification
-algorithm cannot satisfy $\mathsf{QuorumSub}$ for unrevealed required keys.
-\end{lemma}
-
-\begin{proof}
-The algorithm checks identifier, key, slot, and nonce distinctness and rejects the
-signed initiator in either approver slot. It checks byte equality of the base
-context before verifying one signature for each pinned slot key. If a required
-slot context has no prior semantic signing event under that key, its accepted
-signature is a forgery. If both events exist, exact-context binding makes both signed slot
-contexts equal to the accepted contexts. The explicit base-context check then
-makes both signatures authorize the same action, policy, initiator, audience, and
-authorization instance. The explicit distinctness and initiator-exclusion checks
-rule out the remaining winning conditions.
-\end{proof}
-
-\begin{theorem}[ABIA composition]
-Let $\mathsf{Sig}$ be EUF-CMA secure, $H$ collision resistant, and $\Enc$
-injective on the closed authorization schema. Consider any probabilistic
-polynomial-time adversary $\mathcal A$ in the signer-harvesting experiment.
-There are forgers $\mathcal B_j$ and a collision finder $\mathcal C_H$ such that
-\[
-\Pr[\ABIA_{\mathcal A}=1] \leq
-\sum_j \Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B_j)
-+\Adv^{\mathrm{cr}}_H(\mathcal C_H)
-+\Pr[\mathsf{AtomicityFail}_d\lor\mathsf{MediationBypass}_d].
-\]
-For the 2-of-2 profile, the sum ranges over the two unrevealed pinned approver
-keys required by the accepted policy.
-\end{theorem}
-
-\begin{proof}
-Games $G_0$ and $G_1$ differ only on an action-hash collision. Games $G_1$ and
-$G_2$ differ only on an accepted context under an unrevealed pinned key without
-an exact prior semantic signing event. The reductions above bound
-those differences by the collision and per-key EUF-CMA advantages. Game $G_3$ is
-identical to $G_2$ but uses exact-context binding to name the matching semantic
-signing events, so transplantation and the signature-dependent quorum conditions cannot
-occur. Game $G_4$ additionally conditions on successful atomic admission and
-complete mediation, which excludes duplicate admission. The verifier's remaining
-quorum conditions are deterministic checks. Thus $G_4$ has zero success
-probability, and summing the game differences proves the inequality.
-\end{proof}
-
-\begin{theorem}[2-of-2 quorum corollary]
-Suppose the 2-of-2 verifier admits base authorization $b$ with slot records
-$x_1,x_2$ under distinct pinned keys $pk_1,pk_2$, neither key was revealed, and
-neither approver identifier equals the signed initiator. Except with probability
-bounded by
-\[
-  \Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B_1)
-  +\Adv^{\mathrm{euf\mbox{-}cma}}_{\mathsf{Sig}}(\mathcal B_2)
-  +\Adv^{\mathrm{cr}}_H(\mathcal C_H),
-\]
-both pinned keys previously signed their assigned slot contexts over the same
-action, policy commitment, initiator, audience, and authorization instance. No
-single key or signed initiator fills both slots.
-\end{theorem}
-
-\begin{proof}
-Apply Games $G_1$ through $G_3$ to the two required slots. In $G_2$, an accepted
-slot without a matching semantic signing event is a forgery under that slot's
-key. In $G_3$, each matching event binds the exact accepted slot fields. The verifier
-checks byte equality of $b$, distinct slot identifiers, distinct approver
-identifiers, distinct pinned keys, distinct nonces, and exclusion of the signed
-initiator. Those deterministic checks give the stated 2-of-2 property. The
-admission-service term is absent because this corollary concerns quorum
-authenticity, not single-use provider entry.
-\end{proof}
-
-\subsection{Concrete loss and interpretation}
-
-Let $N$ be the number of unrevealed pinned keys that may be required by an
-accepted policy. If every per-key EUF-CMA advantage is at most
-$\epsilon_{\mathrm{sig}}$, the collision advantage is at most
-$\epsilon_H$, and the measured or assumed probability of either admission
-failure event is at most $\epsilon_{\mathrm{state}}$, the theorem gives
-\[
-  \Pr[\ABIA_{\mathcal A}=1]
-  \leq N\epsilon_{\mathrm{sig}}+\epsilon_H+\epsilon_{\mathrm{state}}.
-\]
-The signature reduction preserves the adversary's signing-query count for the
-embedded key and adds only the cost of protocol simulation and table lookups.
-There is no hidden claim that $\epsilon_{\mathrm{state}}$ is negligible. It is a
-deployment term whose justification must come from the implementation of the
-shared admission domain, including its concurrency, durability, and bypass
-controls.
-
-The bound is deliberately conservative in two ways. First, it uses a union bound
-over required keys even when policy structure may make simultaneous failures
-necessary. Second, it charges any detected action-hash collision once, regardless
-of whether the collision would satisfy all remaining acceptance checks. Those
-choices keep the reduction independent of one signature algorithm and one policy
-cardinality. The price is a simple bound rather than a tight system-specific one.
-
-The theorem gives at most one admitted provider attempt per authorization inside
-$d$. It does not establish that the provider performed a physical effect, that an
-effect occurred exactly once, or that a second independent domain will reject the
-same authorization. Cross-domain single use requires a shared linearizable
-admission service or an equivalent coordination protocol.
-
-\section{Symbolic Analysis}
-
-The computational proof isolates the assumptions. Four Tamarin models check the
-same bindings under a Dolev-Yao network attacker. The models use Tamarin's
-signing theory, so verification follows from the signing equations rather than
-from an axiom saying that a signature is valid. The adversary controls the
-network, learns all public keys, may reveal a device key through an explicit
-rule, and may ask an honest approver to sign arbitrary attacker-chosen contexts.
-
-User verification is a linear precondition to signing. Admission availability is
-also a linear fact and checked acceptance consumes it. No trace restriction states
-that acceptance is unique. This use of linear state follows the security-API
-tradition: mutable authorization state is part of the model, not an informal note
-outside it.
-
-\subsection{Four models and checked obligations}
-
-The filenames remain available with the artifact, but we use descriptive names
-in the paper so that the result does not depend on project terminology.
-
-\small
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.18\textwidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.18\textwidth}>{\raggedright\arraybackslash}p{0.20\textwidth}@{}}
-\toprule
-Model & Question & Strict result & Unsafe comparison \\
-\midrule
-Single Approval & Does acceptance imply a prior user-verified signature over the exact context, remain bound before a later reveal, and is checked acceptance injective? & 1 witness and 4 all-traces lemmas verified & replay without consumption, falsified in 11 steps \\
-Quorum & Does 2-of-2 require two distinct pinned signers over the same action and ceremony, excluding the initiator? & 1 witness and 4 all-traces lemmas verified & historical initiator-relabeling trace when initiator binding was absent \\
-Composed Reliance & Do exact action, profile, audience, authority view, issuer, quorum, and consumption remain bound through provider entry? & 1 witness and 9 all-traces lemmas verified & replay in 31 steps; stale registry view in 20 steps \\
-Enforcement Obligations & Do downgrade refusal, denial non-authorization, scope and profile pinning, challenge consumption, and action-keyed entry hold together? & 2 witnesses and 8 all-traces lemmas verified & 6 weakened lemmas falsified in 14--16 steps \\
-\bottomrule
-\end{tabularx}
-\normalsize
-
-Across the four models, 25 all-traces obligations and five executable witnesses
-verify. Nine deliberately weakened current-model comparisons produce attack
-traces. The earlier quorum falsification is retained as design history but is not
-counted among those nine current-model comparisons.
-
-\subsection{Symbolic-to-computational correspondence}
-
-The symbolic and computational analyses are not independent feature lists. The
-table identifies which Tamarin state or event realizes each object in the games.
-
-\small
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.29\textwidth}>{\raggedright\arraybackslash}p{0.29\textwidth}>{\raggedright\arraybackslash}X@{}}
-\toprule
-Tamarin object & Computational object & Shared security meaning \\
-\midrule
-\code{Human\_Sign\_Receipt}, \code{Signed} & $\mathsf{SignCtx}_j(x)$ query and semantic query-table row & the attacker may harvest genuine signatures on chosen contexts \\
-\code{Eq(verify(...),true)} under \code{PinnedKey} & $\Verify(pk_j,m,\sigma)$ under a pinned slot key & accepted bytes verify for the required key \\
-\code{UV} before \code{Signed} & approver-side signing precondition & user verification gates signing, but does not prove rendering fidelity \\
-\code{RevealLtk} ordered before or after \code{Accept} & weak-corruption boundary at acceptance & later reveal does not alter the accepted prefix; earlier reveal removes authenticity \\
-\code{AdmissionAvailable} as a linear fact & successful $\Register_d(u)$ with state $\textsc{unused}$ & one fresh authorization instance has one consumable admission state \\
-\code{AcceptChecked} consuming that fact & successful $\Consume_d(u)$ before provider entry & injectivity comes from mutable state, not signature algebra \\
-Core authenticity and cross-action lemmas & Games $G_1$--$G_3$ & exact accepted context has a prior semantic signing event \\
-Later-reveal prefix lemma & trace-prefix authenticity lemma & a later key reveal does not rewrite the already recorded trace prefix \\
-Injective checked-acceptance lemma & Game $G_4$ & one registered key precedes at most one checked admission \\
-Unchecked-injectivity comparison & $\mathsf{Duplicate}$ without the state contract & removing consumption yields a concrete replay \\
-Quorum commit and distinct-slot lemmas & $\mathsf{QuorumSub}$ and its corollary & two distinct pinned keys sign one byte-identical base authorization, excluding the initiator \\
-\bottomrule
-\end{tabularx}
-\normalsize
-
-The correspondence has one deliberate asymmetry. Injectivity of the application
-encoding and computational hardness of collisions are assumptions in the symbolic
-model's term algebra, while Games $G_0$--$G_3$ expose and charge them explicitly.
-Conversely, Tamarin explores arbitrary symbolic interleavings, while the
-computational theorem carries state failure and mediation bypass as external
-probability terms.
-
-\subsection{Single approval and quorum}
-
-In Single Approval, the request rule creates one
-\code{AdmissionAvailable} fact for a fresh context. Checked acceptance consumes
-it. The exact tool results are:
-
-\begin{protocol}
-executable_honest_receipt (exists-trace): verified (9 steps)
-core_authenticity_uv_gated (all-traces): verified (11 steps)
-acceptance_prefix_integrity_after_later_reveal (all-traces): verified (12 steps)
-no_replay_across_actions (all-traces): verified (11 steps)
-injective_acceptance_with_consumption (all-traces): verified (11 steps)
-unchecked_acceptance_is_injective (all-traces): falsified - found trace (11 steps)
-\end{protocol}
-
-The unsafe rule changes only one thing: it accepts without consuming the linear
-fact. The attacker delivers one genuine signature twice. No signature forgery or
-key reveal occurs. This is the symbolic counterpart of the admission-service term
-in Theorem 1.
-
-Quorum enrolls two distinct approver identities under two pinned keys. Each
-signature binds the action, initiator, shared authorization instance, slot, and
-nonce. Commitment requires both signatures over the same base context and excludes
-the initiator. Its five current lemmas verify in 4--27 steps:
-
-\begin{protocol}
-executable_quorum (exists-trace): verified (13 steps)
-quorum_requires_two_distinct_uv_gated_signatures (all-traces): verified (27 steps)
-initiator_cannot_self_approve (all-traces): verified (4 steps)
-no_single_signer_fills_quorum (all-traces): verified (4 steps)
-commit_requires_signature_over_that_action (all-traces): verified (8 steps)
-\end{protocol}
-
-An earlier revision
-omitted the initiator from the signed tuple. Tamarin then found a trace in which
-two honest signatures collected under one initiator label were committed under
-another. Adding the initiator to the signed context restored the original lemmas;
-no lemma was weakened.
-
-\subsection{Composed models}
-
-Composed Reliance places challenge issuance, exact action identity, profile and
-audience, initiator, two distinct approvals, scoped authority, an exact registry
-view, revocation status, issuer pinning, consumption, and provider entry in one
-trace. Its strict path includes the following results:
-
-\begin{protocol}
-execution_requires_full_composition: verified (101 steps)
-no_issuer_laundering: verified (785 steps)
-no_cross_action_profile_or_audience_replay: verified (41 steps)
-execution_has_honest_approvals_or_prior_compromise: verified (178 steps)
-injective_execution_with_consumption: verified (250 steps)
-\end{protocol}
-
-Seven additional sanity or binding lemmas also verify. Removing consumption
-produces a 31-step duplicate-entry trace. Removing exact registry-head binding
-produces a 20-step stale-view trace.
-
-Enforcement Obligations isolates six relied-upon checks and two sanity
-properties. The strict model verifies downgrade refusal, signed-denial
-non-authorization, authority-scope pinning, complete profile pinning,
-registration-before-exposure and one-time challenge use, canonical action-keyed
-provider entry, and fail-closed reservation. Six paired rules each omit one check.
-Tamarin finds the corresponding downgrade, denial-as-authorization, authority
-expansion, profile substitution, unregistered-challenge, and action-key
-substitution traces in 14--16 steps.
-
-These composed models are confirmation and separation tests, not additional
-cryptographic theorems. They show that the declared bindings survive symbolic
-composition and that removing each load-bearing check admits an attack while the
-signature algebra stays ideal.
-
-\subsection{Mechanized-analysis boundary}
-
-The four models abstract WebAuthn internals, canonical parsers, natural-person
-identity, trusted rendering, clocks, database durability, directory publication,
-transparency-log completeness, and provider effects. A symbolic exact registry
-view does not prove how that view was published. A linear fact models an atomic
-state transition but does not prove a particular database implementation. The
-models establish properties of the specified protocol under these declared
-abstractions, not security of a deployment.
+The focused models correspond to the compiler's exact-signature and
+non-amplification obligations. The composed models test additional EMILIA
+reliance checks, which are outside the computational theorem.
 
 \section{Relation to Prior Work}
+\label{sec:related}
 
-\paragraph{FIDO2 and WebAuthn security.}
-Barbosa, Boldyreva, Chen, and Warinschi give a modular computational analysis of
-WebAuthn and CTAP2 and prove authentication properties under their stated client,
-token, and corruption models~\cite{fido2provable}. Guan et al. model WebAuthn and
-CTAP2 together in ProVerif, while Schrempp gives a Tamarin model with an explicit
-human role~\cite{fido2symbolic,fido2human}. Those works analyze authentication,
-credential use, and the authenticator-client-relying-party ceremony. ABIA starts
-after that interface: it assumes an enrolled signing key and asks what an executor
-may infer when the operator that chooses, renders, collects, stores, and presents
-action approvals is adversarial. Prior FIDO2 ceremony results do not define
-single-use provider admission for an action authorization. The flat delta is:
-ABIA makes the operator the signature-harvesting adversary and separates exact
-signed-action authenticity from stateful single-use admission.
+\paragraph{Authentication and injective agreement.}
+Bellare and Rogaway's matching-conversation model and Lowe's hierarchy make
+session correspondence explicit; Lowe distinguishes aliveness, weak agreement,
+non-injective agreement, and injective agreement between protocol participants
+~\cite{bellarerogaway93,lowe97}.
+ANA borrows the discipline of explicit correspondence events but changes the
+relation being counted: provider entries must map injectively to trusted issued
+authorization instances. Proposition~4 shows a protocol can preserve
+signer-to-collector injective agreement while a downstream executor amplifies
+one completed run into several entries. Proposition~5 shows that ANA permits
+asynchronous signers who never establish mutual agreement. We do not claim a
+new general logic of correspondence assertions. The new object is the
+chosen-context authorization experiment and its exact executor-entry witness.
 
-\paragraph{Transaction authorization.}
-Work on smart-card payment protocols already distinguishes cryptographic proof of
-critical transaction data from a reusable authentication event and observes that
-publicly verifiable signatures provide different dispute evidence than shared-key
-MACs~\cite{herreweghen99}. Hardware-wallet designs such as Notary focus on trusted
-transaction display and correct device behavior~\cite{notary20}. The earlier
-``see what you sign'' line makes trustworthy input and output part of binding
-electronic signatures to human intent~\cite{weber98}. ABIA assumes no solution to
-that display problem. Its narrower contribution is the collector-adversarial
-experiment and the separation between exact signed context, ceremony binding, and
-stateful single-use admission after signatures have been collected.
+\paragraph{Computational authorization proofs.}
+Wang et al. give a computationally sound mechanized analysis of TPM~2.0
+authorization protocols~\cite{tpm20auth}. Barbosa et al. give a modular
+computational analysis of WebAuthn and CTAP2~\cite{fido2provable}; Guan et al.
+and Schrempp study FIDO2 symbolically, including a human role
+~\cite{fido2symbolic,fido2human}. Those works analyze the security of their
+authorization or authentication ceremonies. ANA assumes an enrolled signature
+interface and places the collector under chosen-context adversarial control. Its
+proof target also includes executor entry, and its failure measure is the number
+of entries attributable to one issued authorization.
 
-\paragraph{Security APIs and mutable protocol state.}
-Formal analyses of PKCS\#11 show why mutable global state belongs inside a
-security model: API safety can change when key attributes and permitted operations
-change over time~\cite{pkcs11state}. ABIA uses the same broad methodological
-lesson, although for a different goal. The linear admission fact is not a
-cryptographic primitive. It represents the state transition that makes an
-otherwise replayable valid authorization single-use. The positive and negative
-Tamarin models keep the signature theory fixed and change only that state input.
+\paragraph{Agent authorization gateways and records.}
+OAP intercepts tool calls before execution and produces signed audit records
+~\cite{oap26}. aiAuthZ moves identity- and policy-bound authorization off the
+agent host and uses an atomic single-use nonce store~\cite{aiauthz26}.
+AgentBound describes receipts binding an action to delegation, policy, and
+semantic artifacts~\cite{agentbound26}. Llamb\'i-Morillas and
+Fern\'andez-Fern\'andez formalize principal, request, context, and policy binding
+and identify request-to-runtime execution binding as an open research problem
+~\cite{cva26}. These works establish that pre-action gateways, operation
+binding, and signed records predate ANA. ANA's narrower cryptographic delta is a
+multi-user EUF-CMA/collision-resistance reduction and an exact multi-signer
+entry witness against a collector allowed to harvest chosen-context signatures.
 
-\paragraph{Policy-aware signatures.}
+\paragraph{Transaction authorization and trusted display.}
+Van Herreweghen and Wille analyze which Internet-payment security requirements
+an EMV deployment does and does not meet~\cite{herreweghen99}. ``See what you sign'' makes
+trusted input and output part of binding a signature to human intent
+~\cite{weber98}; Notary builds a trusted device for transaction approval
+~\cite{notary20}. ANA does not solve the display problem. It ensures that the
+executor cannot accept a different typed action from the one covered by the
+signature and cannot admit the same issued instance twice.
+
+\paragraph{Stateful authorization.}
+Formal analyses of PKCS\#11 show that mutable state can be integral to a security
+claim~\cite{pkcs11state}. StatefulAuth protects authorization policies that
+depend on request history~\cite{statefulauth}. Macaroons provide decentralized
+attenuation through contextual caveats~\cite{macaroons}. ANA focuses on a
+different state relation: exact issue-and-consume state must injectively connect
+one signed authorization to one provider entry under concurrent presentation.
+
+The need for spent-artifact state is classical rather than new. Online digital
+cash prevents double spending through a bank's spent-coin state, while offline
+schemes detect it after deposit~\cite{chaumcash90}. Linearizability supplies the
+concurrent-object semantics used by the ideal consume operation
+~\cite{linearizability90}, and complete mediation supplies the reference-monitor
+principle behind the executor boundary~\cite{saltzerschroeder75}. ANA's
+contribution is not the observation that replay needs state. It is the
+cryptographic experiment connecting malicious chosen-context collection,
+multi-signer typed evidence, exact issuance, and the provider-entry event.
+
+Anonymous counting tokens let an issuer enforce a per-client issuance rate,
+including one token per client per message, while retaining the privacy goals of
+anonymous tokens~\cite{act23}. That is an issuance-side cryptographic limit.
+ANA does not provide anonymity and assumes a trusted issuer has already created
+an instance; its question is whether a malicious collector can turn the exact
+multi-signer evidence for that instance into more than one provider entry.
+
+SUDP gives an operation-bound, authenticator-backed single-use grant redeemed by
+a custodian so the agent never receives a reusable secret~\cite{sudp26}.
+Krenn and Lor\"unser use smart-contract state to enforce a user-defined bound on
+delegated signature invocations~\cite{singleusesig22}. Both demonstrate that
+single use can be built with a stateful redemption boundary. ANA differs in the
+adversary and witness: a malicious collector may harvest signatures for many
+issued contexts, and each executor entry must point to the exact multi-signer
+context and policy that survived that collection.
+
+Lie and Marsh define ledger-authenticator unforgeability for reactive
+authorization judged against a finalized transcript, with adaptive corruption
+and a multi-user QROM bound~\cite{ledgerauth26}. ANA has no ledger, finality, or
+quantum-random-oracle claim. Its trace order comes from the experiment, and its
+later-reveal result is only prefix authenticity. In return, ANA makes
+multi-signer exact-action artifacts and the non-ledger executor admission event
+the object of the reduction.
+
+Xu et al. identify \emph{semantic replay}: a system can consume every token once
+and still issue fresh identifiers against the same underlying confirmation until
+its action-level budget is exceeded~\cite{caplease26}. Their CapLease construction
+uses durable token-independent state to bound reissuance, admission, and recovery.
+That result is complementary and sets an important boundary on this paper. ANA
+is per issued instance $(d,u)$; it does not stop a trusted issuer from creating a new
+$(d,u')$ for semantically equivalent authority. ANA instead gives a computational
+chosen-context account of the evidence needed for one issued instance: exact
+issuer registration, prior signing events on every exact pinned-slot message for
+each then-unrevealed required key, and an injective
+map to provider entry. A system that needs a budget spanning several issued
+instances must compose ANA with a durable action- or confirmation-level ledger.
+
+\paragraph{Policy-aware and threshold cryptography.}
 Policy-Compliant Signatures make policy satisfaction part of an enhanced
-signature primitive and provide privacy and composable-security notions for
-attribute policies~\cite{pcs21}. Attribute-based signatures similarly hide the
-signer's identity behind an attribute predicate~\cite{abs08}. ABIA provides
-neither attribute privacy nor a new signature primitive. It uses ordinary
-signatures under explicitly pinned keys and studies replay, ceremony splicing,
-initiator substitution, and single-use admission by an external state service.
-These are orthogonal properties. A policy-compliant or attribute-based signature
-could replace the ordinary slot signature, but the admission theorem would still
-require the state-service assumption.
+signature primitive, and attribute-based signatures hide signers behind
+attribute predicates~\cite{pcs21,abs08}. Bellare and Neven formalize
+multisignatures in which several certified public keys jointly authenticate one
+common document~\cite{bellareneven06}; threshold signatures likewise can make
+several shares verify as one signature. ANA instead uses ordinary signatures under
+explicitly pinned keys and exposes each required slot. Replacing those signatures
+with a policy-aware or threshold primitive would not remove the need for exact
+issuance and one-time consumption at the executor boundary.
 
-\paragraph{Capabilities and least privilege.}
-SPKI/SDSI, PolicyMaker, and KeyNote established public-key authorization and trust
-management for distributed systems~\cite{spki,keynote}. Macaroons add contextual
-caveats and decentralized attenuation to bearer credentials~\cite{macaroons}.
-StatefulAuth allows client-defined authorization policies to depend on protected
-request history~\cite{statefulauth}. These systems primarily decide what a
-principal or bearer token may do. ABIA asks a different evidence question: whether
-an accepted action is exactly the action signed by required approver keys under a
-collector that may harvest honest signatures, and whether one such authorization
-preceded at most one provider entry. StatefulAuth is especially close in
-recognizing that authorization properties can require protected state. ABIA makes
-the stronger atomicity and complete-mediation assumptions explicit because a
-history integrity tag alone does not serialize concurrent consumption.
+\paragraph{Non-amplification terminology.}
+The phrase \emph{non-amplification} has prior uses with different counted
+objects. Maffeis, Mitchell, and Taly require ``No Authority Amplification'' as
+part of authority safety for object-capability isolation~\cite{maffeis10}.
+Xu et al. use \emph{source-authority non-amplification} to prevent lossy agent
+memory consolidation from increasing the trust assigned to source
+information~\cite{memoryna26}. Neither property counts provider entries per
+issued authorization instance. We use ANA as a descriptive name for the trace
+property in Definition~1, not as a claim of priority over those terms.
 
-\paragraph{Formal protocol analysis.}
-Tamarin and related symbolic tools have been used extensively for authentication
-and key-exchange protocols~\cite{tamarin,dy}. Our use of Tamarin is conventional.
-The contribution is the adversary query pattern and the paired positive and
-negative models: the attacker may collect signatures on arbitrary contexts, and
-the same ideal signing theory is used on both sides of each separation result.
+\paragraph{Concrete formats.}
+Comparse lifts bit-string security arguments to typed protocol messages under
+verified format conditions~\cite{comparse}. ANA relies on the same lesson. Its
+transplantation separation explains why a byte-level signing oracle is
+insufficient when the application accepts two semantic contexts as the same
+bytes. This paper states typed-encoding injectivity as a premise; it does not
+claim a new verified parser framework.
 
-\paragraph{Secure formats and semantic messages.}
-Comparse treats concrete protocol formats as part of the security argument and
-lifts bit-string assumptions to typed messages whose encodings satisfy explicit
-format properties~\cite{comparse}. ABIA relies on the same core lesson: the
-semantic authorization context must remain visible to the experiment, and a
-byte-level signing query is not enough to define transplantation. We assume a
-closed injective format rather than contributing a new verified parser framework.
+\paragraph{Logs and temporal evidence.}
+Transparency overlays and forward-secure audit logs can provide independently
+checkable ordering and post-compromise evidence~\cite{transparencyoverlays,secureauditlogs}.
+ANA's trace-prefix lemma uses the experiment's event order and makes no offline
+anti-backdating claim. A deployment that needs that stronger property must add
+one of those mechanisms.
 
-\paragraph{Transparency, audit logs, and temporal evidence.}
-Transparency overlays formalize append-only, externally checkable views using
-signatures and dynamic list commitments, while forward-secure audit-log schemes
-protect whole logs and verifiable excerpts after later compromise
-~\cite{transparencyoverlays,secureauditlogs}. Those mechanisms can supply the
-independent ordering evidence that ABIA intentionally omits. The trace-prefix
-lemma only conditions on the experiment's already ordered events; it must not be
-read as a transparency, secure-logging, or offline anti-backdating construction.
+\section{Limitations and Ethics}
 
-\paragraph{Web authorization and replay.}
-The formal analysis of the OpenID FAPI 2.0 family shows how strong web attackers,
-sender-constrained tokens, and replay-relevant protocol details belong in an
-authorization proof tied to a standardization process~\cite{fapi2formal}. ABIA
-studies a different boundary: an operator that can solicit genuine signatures on
-many semantic action contexts. Its state term concerns atomic single-use provider
-admission, not OAuth token presentation.
+The certified-key model does not prove that an enrolled key belongs to a named
+person or that two keys represent independent people. It proves distinct pinned
+credentials. Directory governance, identity proofing, collusion, coercion, and
+one-person-many-credentials attacks remain separate.
 
-\section{Limitations}
+The collector may render action $X$ while causing a signing device to sign
+the digest of action $Y$. ANA requires the admitted action to reproduce that
+signed digest and prevents the artifact from authorizing a different action
+$Z$ absent a hash collision. The signature alone does not reveal $Y$, and the
+property cannot prove what the approver saw. High-consequence deployments need
+a trusted or independently authored display path.
 
-ABIA proves that an unrevealed enrolled key signed an exact context. It does not
-prove that the key belongs to a particular natural person. That claim depends on
-directory governance and identity proofing. Pairwise-distinct enrolled identifiers
-also do not prove two independent human wills.
+The theorem covers a finite enrolled key universe and all-of-$t$ pinned-slot
+policies. It does not cover arbitrary threshold policies, dynamic key-directory
+updates, clock synchronization, policy authorship, or transparency-log
+consistency. It assumes the executor derives the canonical action from the
+operation it is about to submit.
 
-The operator may render action $X$ while causing the signing device to sign action
-$Y$. ABIA makes $Y$ recoverable and prevents the resulting signature from being
-used for $Z$, but it cannot prove what the approver perceived. High-consequence
-deployments need a trusted or independently authored display path. This is a
-separate assumption, not a consequence of canonical encoding.
+The pair $(d,u)$ is the unit counted by ANA. If an issuer creates a fresh
+$(d,u')$ from the same human confirmation or an equivalent action, both instances
+may each be admitted once without violating ANA. Preventing that semantic replay
+requires durable state and a budget above the per-instance registry
+~\cite{caplease26}; it is not implied by this compiler.
 
-The theorem assumes the executor constructs the action from the operation it will
-submit and that every provider entry passes through the admission service. An
-operator able to bypass that executor is outside the enforcement claim and appears
-as $\mathsf{MediationBypass}_d$ in the bound.
+The work analyzes synthetic protocol traces and public formal artifacts. It
+does not probe third-party systems, collect personal data, or release an exploit
+against a deployed service. The negative models remove one check at a time to
+show why that check is load-bearing. Their publication lowers risk by making the
+assumptions auditable; it does not provide a turnkey compromise of an external
+system.
 
-The proof covers one domain and the stated single-approver and 2-of-2 profiles. It
-does not cover arbitrary threshold policies, key-directory publication,
-revocation history, transparency-log consistency, clock synchronization, or
-provider-side effects. A lost provider acknowledgement produces an indeterminate
-outcome. Retrying safely requires provider reconciliation or a provider-enforced
-idempotency key.
+Most importantly, provider entry is not physical truth. An entry may have no
+effect, one effect, or an effect whose acknowledgement is lost. When the outcome
+is indeterminate, ANA keeps the authorization consumed and requires separate
+authenticated reconciliation. It does not authorize a blind retry.
 
 \section{Conclusion}
 
-A signed authorization has two different security obligations. The signature and
-closed encoding bind the authorization to an exact context. A linearizable,
-completely mediated state transition binds that authorization to at most one
-admitted provider attempt. Neither obligation implies the other. ABIA formalizes
-their composition against an operator that may harvest genuine signatures on
-arbitrary contexts. Its proof reduces context substitution to standard
-cryptographic failures and leaves duplicate admission honestly attached to the
-state service that enforces it. The Tamarin counterexamples show the same
-boundary operationally: ideal signatures do not stop replay when consumption is
-removed, and they do not stop initiator relabeling when the initiator is not
-signed.
+Cryptographic authorization needs a unit of account. EUF-CMA counts new signed
+messages. Consequential systems also need to count admitted actions. ANA makes
+that second count explicit: each provider entry needs an exact issuance witness
+and, for each then-unrevealed required key, an exact-message signing-event
+witness; no issued authorization may witness two entries.
+
+The proof assigns separate obligations to the cryptographic, encoding, state,
+and mediation layers. Signatures and collision resistance bind the exact
+semantic statement. A closed typed encoding prevents semantic transplant.
+Exact issue-and-consume state and complete mediation bound the number of
+entries.
+
+matching signer run and still replay its output through a downstream executor.
+The core distinction is the role boundary. A collector may have one unique
+matching signer run and still replay its output through a downstream executor.
+matching signer run and still replay its output through a downstream executor.
+Conversely, an entry may have an exact injective authorization witness even when
+approvers never communicate. The ANA experiment makes that cross-layer target
+precise and proves a compiler for it; it does not present ordinary signature
+unforgeability or peer authentication under a new name.
 
 \section*{Artifact Availability}
 
-This manuscript is archived as version v3 of the single-use authorization-receipt
-preprint series at
-\href{https://doi.org/10.5281/zenodo.21968577}{Zenodo record 21968577}.
-It succeeds the shorter symbolic-analysis version at
-\href{https://doi.org/10.5281/zenodo.21520973}{Zenodo record 21520973}; the
-all-versions concept DOI is
-\href{https://doi.org/10.5281/zenodo.21520972}{10.5281/zenodo.21520972}.
-
-The four Tamarin theories, replay traces, exact tool summaries, and pinned rerun
-scripts are available in the public repository:
-\url{https://github.com/emiliaprotocol/emilia-protocol}. The theory files are:
+The four Tamarin case-study theories, rerun scripts, and pinned tool summaries
+are available at \url{https://github.com/emiliaprotocol/emilia-protocol}. They
+are not a mechanized refinement proof of the compiler in this paper. The
+relevant theories are:
 
 \begin{protocol}
 formal/tamarin/ep_receipt_core.spthy
@@ -1258,32 +1027,37 @@ formal/tamarin/ep_reliance_composed.spthy
 formal/tamarin/ep_six_claim_composed.spthy
 \end{protocol}
 
-The protocol definition, games, and proofs in this paper are self-contained; no
-implementation or Internet-Draft is required to evaluate the result.
+The v3 predecessor is archived at
+\href{https://doi.org/10.5281/zenodo.21968577}{doi:10.5281/zenodo.21968577}.
+The v4 source and PDF are released with this preprint. Version v4 changes the
+security target, state experiment, issuance interface,
+multi-user reduction, nonce model, and prior-work comparison. It is not a
+cosmetic revision of that record.
 
 \begin{thebibliography}{99}
 
 \bibitem{gmr88}
 S. Goldwasser, S. Micali, and R. Rivest,
 ``A Digital Signature Scheme Secure Against Adaptive Chosen-Message Attacks,''
-\emph{SIAM Journal on Computing}, 17(2), 1988.
+\emph{SIAM Journal on Computing}, 17(2), pp. 281--308, 1988.
 
-\bibitem{dy}
-D. Dolev and A. C. Yao,
-``On the Security of Public Key Protocols,''
-\emph{IEEE Transactions on Information Theory}, 29(2), 1983.
+\bibitem{lowe97}
+G. Lowe,
+``A Hierarchy of Authentication Specifications,''
+\emph{10th IEEE Computer Security Foundations Workshop}, pp. 31--43, 1997.
+\url{https://doi.org/10.1109/CSFW.1997.596782}.
 
-\bibitem{rfc8032}
-S. Josefsson and I. Liusvaara,
-``Edwards-Curve Digital Signature Algorithm (EdDSA),''
-RFC 8032, January 2017.
-\url{https://www.rfc-editor.org/rfc/rfc8032}.
+\bibitem{bellarerogaway93}
+M. Bellare and P. Rogaway,
+``Entity Authentication and Key Distribution,''
+\emph{CRYPTO 1993}, LNCS 773, pp. 232--249, 1994.
+\url{https://www.cs.ucdavis.edu/~rogaway/papers/eakd-abstract.html}.
 
-\bibitem{fips204}
-National Institute of Standards and Technology,
-``Module-Lattice-Based Digital Signature Standard,''
-FIPS 204, August 2024.
-\url{https://doi.org/10.6028/NIST.FIPS.204}.
+\bibitem{tpm20auth}
+W. Wang, Y. Qin, and D. Feng,
+``Automated Proof for Authorization Protocols of TPM 2.0 in Computational
+Model,'' \emph{ISPEC 2014}, LNCS 8434, pp. 144--158, 2014.
+\url{https://doi.org/10.1007/978-3-319-06320-1_12}.
 
 \bibitem{fido2provable}
 M. Barbosa, A. Boldyreva, S. Chen, and B. Warinschi,
@@ -1303,27 +1077,11 @@ L. Schrempp,
 Master's thesis, ETH Zurich, 2023.
 \url{https://doi.org/10.3929/ethz-b-000610315}.
 
-\bibitem{pkcs11state}
-S. Delaune, S. Kremer, and G. Steel,
-``Formal Security Analysis of PKCS\#11 and Proprietary Extensions,''
-\emph{Journal of Computer Security}, 18(6), pp. 1211--1245, 2010.
-\url{https://doi.org/10.3233/JCS-2009-0394}.
-
-\bibitem{tamarin}
-S. Meier, B. Schmidt, C. Cremers, and D. Basin,
-``The TAMARIN Prover for the Symbolic Analysis of Security Protocols,''
-\emph{CAV 2013}, LNCS 8044, pp. 696--701, 2013.
-
 \bibitem{herreweghen99}
-E. Van Herreweghen and N. Ferguson,
-``Security Mechanisms in EMV,''
+E. Van Herreweghen and U. Wille,
+``Risks and Potentials of Using EMV for Internet Payments,''
 \emph{USENIX Workshop on Smartcard Technology}, 1999.
-
-\bibitem{notary20}
-A. Athalye, A. Belay, M. F. Kaashoek, R. Morris, and N. Zeldovich,
-``Notary: A Device for Secure Transaction Approval,''
-\emph{27th ACM Symposium on Operating Systems Principles}, pp. 97--113, 2019.
-\url{https://doi.org/10.1145/3341301.3359661}.
+\url{https://www.usenix.org/conference/usenix-workshop-smartcard-technology/risks-and-potentials-using-emv-internet-payments}.
 
 \bibitem{weber98}
 A. Weber,
@@ -1332,35 +1090,131 @@ A. Weber,
 LNCS 1430, pp. 509--520, 1998.
 \url{https://doi.org/10.1007/BFb0056995}.
 
-\bibitem{pcs21}
-C. Badertscher, C. Matt, and H. Waldner,
-``Policy-Compliant Signatures,''
-\emph{TCC 2021}, LNCS 13043, pp. 299--329, 2021.
-\url{https://eprint.iacr.org/2021/1234}.
+\bibitem{notary20}
+A. Athalye, A. Belay, M. F. Kaashoek, R. Morris, and N. Zeldovich,
+``Notary: A Device for Secure Transaction Approval,''
+\emph{27th ACM Symposium on Operating Systems Principles}, pp. 97--113, 2019.
+\url{https://doi.org/10.1145/3341301.3359661}.
 
-\bibitem{abs08}
-H. Maji, M. Prabhakaran, and M. Rosulek,
-``Attribute-Based Signatures: Achieving Attribute-Privacy and
-Collusion-Resistance,'' Cryptology ePrint Archive, Paper 2008/328, 2008.
+\bibitem{pkcs11state}
+S. Delaune, S. Kremer, and G. Steel,
+``Formal Security Analysis of PKCS\#11 and Proprietary Extensions,''
+\emph{Journal of Computer Security}, 18(6), pp. 1211--1245, 2010.
+\url{https://doi.org/10.3233/JCS-2009-0394}.
 
-\bibitem{spki}
-C. M. Ellison, B. Frantz, B. Lampson, R. Rivest, B. Thomas, and T. Ylonen,
-``SPKI Certificate Theory,'' RFC 2693, 1999.
-
-\bibitem{keynote}
-M. Blaze, J. Feigenbaum, and A. D. Keromytis,
-``KeyNote: Trust Management for Public-Key Infrastructures,''
-RFC 2704, 1999.
+\bibitem{statefulauth}
+L. Cao, L. Meng, D. Stefan, and E. Fernandes,
+``Stateful Least Privilege Authorization for the Cloud,''
+\emph{33rd USENIX Security Symposium}, pp. 3477--3494, 2024.
 
 \bibitem{macaroons}
 A. Birgisson, J. G. Politz, U. Erlingsson, A. Taly, M. Vrable, and M. Lentczner,
 ``Macaroons: Cookies with Contextual Caveats for Decentralized Authorization in
 the Cloud,'' \emph{NDSS}, 2014.
 
-\bibitem{statefulauth}
-L. Cao, L. Meng, D. Stefan, and E. Fernandes,
-``Stateful Least Privilege Authorization for the Cloud,''
-\emph{33rd USENIX Security Symposium}, pp. 3477--3495, 2024.
+\bibitem{caplease26}
+J. Xu, L. Fan, Z. Wang, X. Li, and H. Liu,
+``Beyond Single-Use Tokens: Durable Authorization State for Replay-Resistant
+LLM Agent Actions,'' arXiv:2608.01710, 2026.
+\url{https://arxiv.org/abs/2608.01710}.
+
+\bibitem{oap26}
+U. Uchibeke,
+\emph{Before the Tool Call: Deterministic Pre-Action Authorization for
+Autonomous AI Agents}, arXiv:2603.20953, 2026.
+\url{https://arxiv.org/abs/2603.20953}.
+
+\bibitem{aiauthz26}
+S. V. Kodathala,
+\emph{aiAuthZ: Off-Host, Identity-Bound Authorization for AI Agents},
+arXiv:2607.05518, 2026.
+\url{https://arxiv.org/abs/2607.05518}.
+
+\bibitem{agentbound26}
+A. Kaul, Q. Lan, and P. Gupta,
+\emph{Behavioral Governance for Autonomous AI Agents: The AgentBound Framework},
+arXiv:2606.30970, 2026.
+\url{https://arxiv.org/abs/2606.30970}.
+
+\bibitem{cva26}
+M. Llamb\'i-Morillas and D. Fern\'andez-Fern\'andez,
+\emph{Cryptographically Verifiable Authorization for Autonomous AI Agents: A
+Falsifiable Hypothesis and Proof-of-Concept}, arXiv:2607.21325, 2026.
+\url{https://arxiv.org/abs/2607.21325}.
+
+\bibitem{chaumcash90}
+D. Chaum, A. Fiat, and M. Naor,
+\emph{Untraceable Electronic Cash}, CRYPTO 1988, LNCS 403,
+pp. 319--327, 1990.
+\url{https://doi.org/10.1007/0-387-34799-2_25}.
+
+\bibitem{act23}
+F. Benhamouda, M. Raykova, and K. Seth,
+``Anonymous Counting Tokens,''
+\emph{ASIACRYPT 2023, Part II}, pp. 245--278, 2023.
+\url{https://doi.org/10.1007/978-981-99-8724-5_8}.
+\url{https://eprint.iacr.org/2023/320}.
+
+\bibitem{linearizability90}
+M. P. Herlihy and J. M. Wing,
+\emph{Linearizability: A Correctness Condition for Concurrent Objects},
+ACM Transactions on Programming Languages and Systems, 12(3),
+pp. 463--492, 1990.
+\url{https://doi.org/10.1145/78969.78972}.
+
+\bibitem{saltzerschroeder75}
+J. H. Saltzer and M. D. Schroeder,
+\emph{The Protection of Information in Computer Systems},
+Proceedings of the IEEE, 63(9), pp. 1278--1308, 1975.
+\url{https://doi.org/10.1109/PROC.1975.9939}.
+
+\bibitem{sudp26}
+X. Yu, H. Geng, X. Zeng, and W. Knottenbelt,
+\emph{SUDP: Secret-Use Delegation Protocol for Agentic Systems},
+arXiv:2604.24920, 2026.
+\url{https://arxiv.org/abs/2604.24920}.
+
+\bibitem{singleusesig22}
+S. Krenn and T. Lor\"unser,
+\emph{Single-Use Delegatable Signatures Based on Smart Contracts},
+\emph{ARES 2021}, pp. 1--7, 2021.
+\url{https://doi.org/10.1145/3465481.3469192}.
+
+\bibitem{bellareneven06}
+M. Bellare and G. Neven,
+``Multi-Signatures in the Plain Public-Key Model and a General Forking Lemma,''
+\emph{ACM CCS 2006}, pp. 390--399, 2006.
+\url{https://doi.org/10.1145/1180405.1180453}.
+
+\bibitem{maffeis10}
+S. Maffeis, J. C. Mitchell, and A. Taly,
+``Object Capabilities and Isolation of Untrusted Web Applications,''
+\emph{31st IEEE Symposium on Security and Privacy}, pp. 125--140, 2010.
+\url{https://doi.org/10.1109/SP.2010.16}.
+
+\bibitem{memoryna26}
+J. Xu, Y. Xiao, W. Shao, H. Liu, and X. Li,
+``Memory Provenance Laundering in LLM Agents: A Non-Amplification Firewall for
+Persistent Memory,'' arXiv:2607.29167, 2026.
+\url{https://arxiv.org/abs/2607.29167}.
+
+\bibitem{ledgerauth26}
+M. Lie and B. Marsh,
+\emph{Finality Before Disclosure for Ledger Authenticators in the Quantum
+Random Oracle Model}, arXiv:2608.18605, 2026.
+\url{https://arxiv.org/abs/2608.18605}.
+
+\bibitem{pcs21}
+C. Badertscher, C. Matt, and H. Waldner,
+``Policy-Compliant Signatures,''
+\emph{TCC 2021}, LNCS 13044, pp. 350--381, 2021.
+\url{https://doi.org/10.1007/978-3-030-90456-2_12}.
+\url{https://eprint.iacr.org/2021/1234}.
+
+\bibitem{abs08}
+H. Maji, M. Prabhakaran, and M. Rosulek,
+``Attribute-Based Signatures: Achieving Attribute-Privacy and
+Collusion-Resistance,'' Cryptology ePrint Archive, Paper 2008/328, 2008.
 
 \bibitem{comparse}
 T. Wallez, J. Protzenko, and K. Bhargavan,
@@ -1380,12 +1234,10 @@ G. Hartung,
 \emph{CT-RSA}, 2016.
 \url{https://doi.org/10.1007/978-3-319-29485-8_11}.
 
-\bibitem{fapi2formal}
-P. Hosseyni, R. K\"usters, and T. W\"urtele,
-``Formal Security Analysis of the OpenID FAPI 2.0 Family of Protocols:
-Accompanying a Standardization Process,''
-\emph{ACM Transactions on Privacy and Security}, 2024.
-\url{https://eprint.iacr.org/2024/1540}.
+\bibitem{tamarin}
+S. Meier, B. Schmidt, C. Cremers, and D. Basin,
+``The TAMARIN Prover for the Symbolic Analysis of Security Protocols,''
+\emph{CAV 2013}, LNCS 8044, pp. 696--701, 2013.
 
 \end{thebibliography}
 
