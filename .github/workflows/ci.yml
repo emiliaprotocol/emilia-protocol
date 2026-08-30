@@ -475,7 +475,7 @@ jobs:
           python-version: '3.12'
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.7'
+          go-version: '1.27.0'
       - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - run: npm ci --ignore-scripts
       - name: Prove generated Node 20 runtimes match their TypeScript sources
@@ -733,18 +733,18 @@ jobs:
           npm ci --ignore-scripts
           npm pack ./packages/verify --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/verify-pack.json"
           VERIFY_TARBALL=$(node -e "const r=require(process.argv[1]); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)" "$RUNNER_TEMP/verify-pack.json")
+          cp mcp-server/package.json "$RUNNER_TEMP/mcp-server-package.json"
+          cp mcp-server/package-lock.json "$RUNNER_TEMP/mcp-server-package-lock.json"
           cd mcp-server
+          npm install --ignore-scripts --save-exact "$RUNNER_TEMP/$VERIFY_TARBALL"
           npm ci --ignore-scripts
-          rm -rf node_modules/@emilia-protocol/verify
-          mkdir -p node_modules/@emilia-protocol/verify
-          tar -xzf "$RUNNER_TEMP/$VERIFY_TARBALL" \
-            --strip-components=1 \
-            -C node_modules/@emilia-protocol/verify
       - name: Verify npm pack succeeds
         working-directory: mcp-server
         run: |
           npm run build
           git diff --exit-code -- bundle.js
+          cp "$RUNNER_TEMP/mcp-server-package.json" package.json
+          cp "$RUNNER_TEMP/mcp-server-package-lock.json" package-lock.json
           npm pack
       - name: Smoke test — verify entry point loads
         working-directory: mcp-server
@@ -790,21 +790,192 @@ jobs:
   # ── Job 11: Python SDK ──────────────────────────────────────────
   sdk-python:
     runs-on: ubuntu-latest
-    env:
-      PYTHONPATH: ${{ github.workspace }}/sdks/python/src
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
-      - name: Install hash-locked SDK test dependencies
-        working-directory: sdks/python
-        run: python -m pip install --require-hashes -r "$GITHUB_WORKSPACE/.github/workflow-requirements/python-sdk-test.txt"
-      - name: Verify import
-        run: python -c "from emilia_protocol import EPClient; print('Python SDK import OK')"
-      - name: Run tests
-        working-directory: sdks/python
-        run: python -m pytest tests/ -v
+      - name: Build the Python SDK wheel
+        run: |
+          python -m pip wheel --no-deps \
+            --wheel-dir "$RUNNER_TEMP/python-sdk-dist" \
+            sdks/python
+          WHEEL_COUNT=$(find "$RUNNER_TEMP/python-sdk-dist" -maxdepth 1 -name 'emilia_protocol-*.whl' | wc -l)
+          test "$WHEEL_COUNT" -eq 1
+      - name: Install the exact wheel in a clean environment
+        run: |
+          python -m venv "$RUNNER_TEMP/python-sdk-venv"
+          "$RUNNER_TEMP/python-sdk-venv/bin/python" -m pip install \
+            --no-deps "$RUNNER_TEMP"/python-sdk-dist/emilia_protocol-*.whl
+      - name: Test the installed wheel
+        env:
+          EMILIA_SDK_WHEEL_TEST: '1'
+        run: |
+          "$RUNNER_TEMP/python-sdk-venv/bin/python" -m unittest discover \
+            -s sdks/python/tests -v
+
+  # ── Job 11a: Installed PyPI wheels across declared Python floors ──
+  # Every public Python distribution is built as a wheel and tested from an
+  # isolated staging tree. The package source is deliberately absent from that
+  # tree, so an import can only succeed through the installed wheel.
+  pypi-installed-wheels:
+    name: PyPI wheel ${{ matrix.distribution }} (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - distribution: emilia-protocol
+            python: '3.10'
+            path: sdks/python
+            tests: sdks/python/tests
+            wheel_glob: emilia_protocol-*.whl
+            import_module: emilia_protocol
+          - distribution: emilia-protocol
+            python: '3.12'
+            path: sdks/python
+            tests: sdks/python/tests
+            wheel_glob: emilia_protocol-*.whl
+            import_module: emilia_protocol
+          - distribution: emilia-verify
+            python: '3.10'
+            path: packages/python-verify
+            tests: packages/python-verify/tests
+            wheel_glob: emilia_verify-*.whl
+            import_module: emilia_verify
+          - distribution: emilia-verify
+            python: '3.12'
+            path: packages/python-verify
+            tests: packages/python-verify/tests
+            wheel_glob: emilia_verify-*.whl
+            import_module: emilia_verify
+          - distribution: emilia-crewai
+            python: '3.10'
+            path: packages/crewai
+            tests: packages/crewai/tests
+            wheel_glob: emilia_crewai-*.whl
+            import_module: emilia_crewai
+          - distribution: emilia-crewai
+            python: '3.12'
+            path: packages/crewai
+            tests: packages/crewai/tests
+            wheel_glob: emilia_crewai-*.whl
+            import_module: emilia_crewai
+          - distribution: ep-verify
+            python: '3.10'
+            path: packages/ep-verify-py
+            tests: packages/ep-verify-py/tests
+            wheel_glob: ep_verify-*.whl
+            import_module: ep_verify
+          - distribution: ep-verify
+            python: '3.12'
+            path: packages/ep-verify-py
+            tests: packages/ep-verify-py/tests
+            wheel_glob: ep_verify-*.whl
+            import_module: ep_verify
+          - distribution: langchain-emilia
+            python: '3.10'
+            path: integrations/langchain-emilia
+            tests: integrations/langchain-emilia/tests
+            wheel_glob: langchain_emilia-*.whl
+            import_module: langchain_emilia
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Build release wheel
+        env:
+          PACKAGE_PATH: ${{ matrix.path }}
+          WHEEL_GLOB: ${{ matrix.wheel_glob }}
+        run: |
+          set -euo pipefail
+          DIST="$RUNNER_TEMP/pypi-dist"
+          mkdir -p "$DIST"
+          python -m pip wheel --no-deps --wheel-dir "$DIST" "$PACKAGE_PATH"
+          WHEEL_COUNT=$(find "$DIST" -maxdepth 1 -name "$WHEEL_GLOB" | wc -l)
+          test "$WHEEL_COUNT" -eq 1
+      - name: Install exact wheel in a clean environment
+        env:
+          DISTRIBUTION: ${{ matrix.distribution }}
+          PYTHON_VERSION: ${{ matrix.python }}
+          WHEEL_GLOB: ${{ matrix.wheel_glob }}
+        run: |
+          set -euo pipefail
+          DIST="$RUNNER_TEMP/pypi-dist"
+          VENV="$RUNNER_TEMP/pypi-wheel-venv"
+          python -m venv "$VENV"
+
+          if [[ "$PYTHON_VERSION" == "3.10" ]]; then
+            REQUIREMENTS=.github/workflow-requirements/pypi-wheel-test.txt
+          else
+            REQUIREMENTS=.github/workflow-requirements/release.txt
+          fi
+          "$VENV/bin/python" -m pip install \
+            --require-hashes \
+            -r "$REQUIREMENTS"
+
+          # Test the thin adapters against emilia-verify from this checkout,
+          # not whichever build happens to be live on PyPI.
+          if [[ "$DISTRIBUTION" == "emilia-crewai" || "$DISTRIBUTION" == "ep-verify" ]]; then
+            python -m pip wheel --no-deps \
+              --wheel-dir "$DIST" packages/python-verify
+            "$VENV/bin/python" -m pip install \
+              --no-deps "$DIST"/emilia_verify-*.whl
+          fi
+
+          TARGET_WHEEL=$(find "$DIST" -maxdepth 1 -name "$WHEEL_GLOB" -print -quit)
+          "$VENV/bin/python" -m pip install --no-deps "$TARGET_WHEEL"
+      - name: Stage tests without package source
+        env:
+          DISTRIBUTION: ${{ matrix.distribution }}
+          TESTS_PATH: ${{ matrix.tests }}
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/pypi-wheel-tests"
+          mkdir -p "$STAGE/$(dirname "$TESTS_PATH")"
+          cp -R "$GITHUB_WORKSPACE/$TESTS_PATH" "$STAGE/$TESTS_PATH"
+
+          # Preserve only non-package fixtures referenced by the real suites.
+          if [[ "$DISTRIBUTION" == "emilia-verify" ]]; then
+            mkdir -p "$STAGE/conformance"
+            cp -R "$GITHUB_WORKSPACE/conformance/vectors" "$STAGE/conformance/vectors"
+          elif [[ "$DISTRIBUTION" == "emilia-protocol" ]]; then
+            mkdir -p "$STAGE/sdks/python" "$STAGE/docs/api" \
+              "$STAGE/app/api" "$STAGE/app/api/trust" "$STAGE/app/api/v1/signoffs"
+            cp "$GITHUB_WORKSPACE/sdks/python/route-contract.json" "$STAGE/sdks/python/"
+            cp "$GITHUB_WORKSPACE/openapi.yaml" "$STAGE/"
+            cp "$GITHUB_WORKSPACE/docs/api/govguard-v1.yaml" "$STAGE/docs/api/"
+            cp -R "$GITHUB_WORKSPACE/app/api/handshake" "$STAGE/app/api/handshake"
+            cp -R "$GITHUB_WORKSPACE/app/api/trust/gate" "$STAGE/app/api/trust/gate"
+            cp -R "$GITHUB_WORKSPACE/app/api/v1/signoffs/request" "$STAGE/app/api/v1/signoffs/request"
+            mkdir -p "$STAGE/app/api/v1"
+            cp -R "$GITHUB_WORKSPACE/app/api/v1/trust-receipts" "$STAGE/app/api/v1/trust-receipts"
+          fi
+      - name: Prove import origin and run installed-wheel tests
+        env:
+          DISTRIBUTION: ${{ matrix.distribution }}
+          IMPORT_MODULE: ${{ matrix.import_module }}
+          TESTS_PATH: ${{ matrix.tests }}
+          EMILIA_SDK_WHEEL_TEST: '1'
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/pypi-wheel-tests"
+          VENV="$RUNNER_TEMP/pypi-wheel-venv"
+          MODULE_FILE=$(cd "$STAGE" && "$VENV/bin/python" -c \
+            'import importlib, os; print(importlib.import_module(os.environ["IMPORT_MODULE"]).__file__)')
+          case "$MODULE_FILE" in
+            "$GITHUB_WORKSPACE"/*|"$STAGE"/*)
+              echo "Package import escaped the installed wheel: $MODULE_FILE" >&2
+              exit 1
+              ;;
+          esac
+          cd "$STAGE"
+          "$VENV/bin/python" -m pytest -q --import-mode=importlib "$TESTS_PATH"
+          "$VENV/bin/python" -c \
+            'import importlib.metadata, os; print(os.environ["DISTRIBUTION"], importlib.metadata.version(os.environ["DISTRIBUTION"]))'
 
   # ── Job 11b: Cross-language conformance ──────────────────────────
   # Proves the JavaScript, Python, and Go reference verifiers all agree with
@@ -824,7 +995,7 @@ jobs:
           python-version: '3.11'
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.7'
+          go-version: '1.27.0'
       # The JavaScript invariant lane drives the real Gate runtime. Gate uses
       # the repository-local Verify SDK for algorithm-agile signatures, so the
       # locked root graph must be present even though the cross-language vector
@@ -1036,11 +1207,33 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install hash-locked test dependencies
-        run: python -m pip install --require-hashes -r .github/workflow-requirements/langchain-test.txt
+        run: |
+          python -m venv "$RUNNER_TEMP/langchain-emilia-venv"
+          "$RUNNER_TEMP/langchain-emilia-venv/bin/python" -m pip install \
+            --require-hashes -r .github/workflow-requirements/langchain-test.txt
+      - name: Build and install the exact wheel
+        run: |
+          python -m pip wheel --no-deps \
+            --wheel-dir "$RUNNER_TEMP/langchain-emilia-dist" \
+            integrations/langchain-emilia
+          "$RUNNER_TEMP/langchain-emilia-venv/bin/python" -m pip install \
+            --no-deps "$RUNNER_TEMP"/langchain-emilia-dist/langchain_emilia-*.whl
       - name: Tests (digest parity, gate semantics, fail-closed tool wrapping)
-        env:
-          PYTHONPATH: ${{ github.workspace }}/integrations/langchain-emilia
-        run: pytest -q integrations/langchain-emilia/tests
+        run: |
+          STAGE="$RUNNER_TEMP/langchain-emilia-tests"
+          mkdir -p "$STAGE/integrations/langchain-emilia"
+          cp -R integrations/langchain-emilia/tests "$STAGE/integrations/langchain-emilia/tests"
+          cd "$STAGE"
+          MODULE_FILE=$("$RUNNER_TEMP/langchain-emilia-venv/bin/python" -c \
+            'import langchain_emilia; print(langchain_emilia.__file__)')
+          case "$MODULE_FILE" in
+            "$GITHUB_WORKSPACE"/*|"$STAGE"/*)
+              echo "langchain_emilia did not load from the installed wheel: $MODULE_FILE" >&2
+              exit 1
+              ;;
+          esac
+          "$RUNNER_TEMP/langchain-emilia-venv/bin/python" -m pytest \
+            -q --import-mode=importlib integrations/langchain-emilia/tests
 
   # ── Executor-bound approval gate red-team regression ─────────────
   # Re-runs the executor-side offline-verification attacks and genuine controls.

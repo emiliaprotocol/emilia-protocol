@@ -7,9 +7,10 @@
 //
 // Builds the demo receipt (lib/demo-receipt.js) — same code path the
 // production /r/example page and /api/demo/trust-receipts/.../evidence
-// endpoint use — and feeds it through the published @emilia-protocol/
-// verify@1.0.1 verifier. Both signer and verifier use the recursive
-// canonical-JSON algorithm; the signature must validate.
+// endpoint use — and feeds it through the current verifier source checked out
+// at packages/verify/index.js. Both signer and verifier use the recursive
+// canonical-JSON algorithm; the signature must validate. This script validates
+// repository-local source and makes no registry-release claim.
 //
 // Also exercises the regression case the v1.0.0 shallow bug allowed:
 // tamper a deeply-nested field (claim.context.change.after_bank_hash)
@@ -22,7 +23,7 @@ import { verifyReceipt } from '../packages/verify/index.js';
 const r = getDemoReceipt();
 console.log('═'.repeat(72));
 console.log('Demo receipt round-trip — sign with lib/demo-receipt.js,');
-console.log('verify with @emilia-protocol/verify@1.0.1');
+console.log('verify with current repository-local packages/verify/index.js');
 console.log('═'.repeat(72));
 console.log('\n1. Honest verify (untampered document):');
 const honest = verifyReceipt(r.document, r.public_key);

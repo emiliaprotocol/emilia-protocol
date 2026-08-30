@@ -433,10 +433,16 @@ export type GuardActionType =
   | 'benefit_bank_account_change'
   | 'benefit_address_change'
   | 'caseworker_override'
+  | 'gov.vendor_payment_destination_change'
+  | 'gov.disbursement_release'
+  | 'gov.grant_disbursement'
+  | 'gov.provider_enrollment_change'
+  | 'gov.eligibility_override'
   | 'vendor_bank_account_change'
   | 'beneficiary_creation'
   | 'large_payment_release'
-  | 'ai_agent_payment_action';
+  | 'ai_agent_payment_action'
+  | 'policy_rollout';
 
 export type GuardDecision = 'allow' | 'observe' | 'allow_with_signoff' | 'deny';
 export type GuardEnforcementMode = 'observe' | 'warn' | 'enforce';
@@ -454,7 +460,7 @@ export interface GuardQuorumApprover {
 }
 
 export interface GuardQuorumPolicy {
-  mode?: 'threshold' | 'all';
+  mode?: 'threshold' | 'ordered';
   required: number;
   approvers: GuardQuorumApprover[];
 }
@@ -462,7 +468,7 @@ export interface GuardQuorumPolicy {
 export interface CreateTrustReceiptParams {
   /** Optional cross-check; the API derives the authorized organization from the authenticated key. */
   organizationId?: string;
-  actionType: GuardActionType | string;
+  actionType: GuardActionType;
   targetResourceId: string;
   policyId?: string;
   enforcementMode?: GuardEnforcementMode;
@@ -694,16 +700,6 @@ export interface LineageResult {
   }>;
 }
 
-/** Result of a batch receipt submission. */
-export interface BatchReceiptResult {
-  results: Array<{
-    entity_id: string;
-    success: boolean;
-    receipt_id?: string;
-    error?: string;
-  }>;
-}
-
 /** Result of a bilateral receipt confirmation. */
 export interface ConfirmReceiptResult {
   receipt_id: string;
@@ -719,7 +715,7 @@ export interface TrustPolicyDefinition {
   min_confidence?: ConfidenceTier;
 }
 
-/** Public proof metrics from /api/stats. */
+/** Authenticated operator metrics from /api/stats. */
 export interface EPStats {
   total_entities: number;
   trust_surfaces: number;

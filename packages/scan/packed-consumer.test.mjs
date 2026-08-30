@@ -14,7 +14,9 @@ import {
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 
-const MCP_GUARD_VERSION = '0.5.0';
+const MCP_GUARD_VERSION = '0.6.0';
+const REQUIRE_RECEIPT_VERSION = '0.8.1';
+const VERIFY_VERSION = '3.21.0';
 const REGISTRY_CUTOFF = '2026-08-16T23:59:59.000Z';
 
 function run(command, args, options = {}) {
@@ -44,6 +46,30 @@ test('packed scan installs the audited guard and refuses hostile generated actio
   assert.equal(packEntries.length, 1);
   assert.equal(typeof packEntries[0]?.filename, 'string');
   const scanTarball = join(packs, packEntries[0].filename);
+  const guardPack = JSON.parse(run('npm', [
+    'pack',
+    join(import.meta.dirname, '..', 'mcp-guard'),
+    '--json',
+    '--pack-destination',
+    packs,
+  ]));
+  const guardTarball = join(packs, guardPack[0].filename);
+  const requireReceiptPack = JSON.parse(run('npm', [
+    'pack',
+    join(import.meta.dirname, '..', 'require-receipt'),
+    '--json',
+    '--pack-destination',
+    packs,
+  ]));
+  const requireReceiptTarball = join(packs, requireReceiptPack[0].filename);
+  const verifyPack = JSON.parse(run('npm', [
+    'pack',
+    join(import.meta.dirname, '..', 'verify'),
+    '--json',
+    '--pack-destination',
+    packs,
+  ]));
+  const verifyTarball = join(packs, verifyPack[0].filename);
 
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
   run('npm', [
@@ -52,7 +78,9 @@ test('packed scan installs the audited guard and refuses hostile generated actio
     '--no-audit',
     '--no-fund',
     scanTarball,
-    `@emilia-protocol/mcp-guard@${MCP_GUARD_VERSION}`,
+    guardTarball,
+    requireReceiptTarball,
+    verifyTarball,
   ], {
     cwd: consumer,
     env: { ...process.env, npm_config_before: REGISTRY_CUTOFF },
@@ -66,6 +94,16 @@ test('packed scan installs the audited guard and refuses hostile generated actio
     'utf8',
   ));
   assert.equal(installedGuardPackage.version, MCP_GUARD_VERSION);
+  const installedRequireReceiptPackage = JSON.parse(readFileSync(
+    join(installedRoot, '@emilia-protocol', 'require-receipt', 'package.json'),
+    'utf8',
+  ));
+  assert.equal(installedRequireReceiptPackage.version, REQUIRE_RECEIPT_VERSION);
+  const installedVerifyPackage = JSON.parse(readFileSync(
+    join(installedRoot, '@emilia-protocol', 'verify', 'package.json'),
+    'utf8',
+  ));
+  assert.equal(installedVerifyPackage.version, VERIFY_VERSION);
 
   const scanBin = join(consumer, 'node_modules', '.bin', 'scan');
   const consumerEntries = readdirSync(consumer).sort();

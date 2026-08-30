@@ -4,6 +4,7 @@
 // that make a carried receipt into a bound one.
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -13,6 +14,11 @@ import {
   resolveRequestBytes,
   selectMaterialMetadata,
 } from './binding.mjs';
+
+test('package metadata pins the current receipt gate release line', () => {
+  const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+  assert.equal(packageJson.dependencies['@emilia-protocol/require-receipt'], '^0.8.1');
+});
 
 const METHOD = '/emilia.payments.v1.Payments/ReleasePayment';
 const TARGET = 'payments.internal.example:443';

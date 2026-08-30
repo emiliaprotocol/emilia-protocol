@@ -10,7 +10,7 @@ No EP account, no API key. Just math.
 
 ## Install
 ```bash
-pip install emilia-verify        # once published
+pip install emilia-verify
 # or, from the repo:  pip install packages/python-verify
 ```
 

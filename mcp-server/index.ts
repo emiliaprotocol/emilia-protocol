@@ -1597,7 +1597,7 @@ function formatEvaluation(data) {
 // Server
 // =============================================================================
 
-export const MCP_SERVER_VERSION = '2.1.1';
+export const MCP_SERVER_VERSION = '2.1.2';
 
 const server = new Server(
   { name: 'emilia-protocol', version: MCP_SERVER_VERSION },

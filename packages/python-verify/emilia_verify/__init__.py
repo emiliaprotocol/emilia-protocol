@@ -743,19 +743,48 @@ def _hex_of(h: Any) -> str:
 # ±hh:mm). No-timezone ("2026-07-01T12:00:00") and date-only ("2026-07-01") forms
 # are REJECTED — they are ambiguous (UTC vs local) and must never satisfy a
 # validity window. Single profile, parsed and rejected identically by JS/Py/Go.
-_RFC3339_OFFSET = _re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$")
+_RFC3339_OFFSET = _re.compile(
+    r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})"
+    r"(?:\.(\d{1,9}))?(?:Z|([+-])(\d{2}):(\d{2}))$"
+)
 _FULL_REVOKER_KEY_ID = _re.compile(r"^ep:revoker-key:sha256:[0-9a-f]{64}$")
 _LEGACY_REVOKER_KEY_ID = _re.compile(r"^(?!ep:revoker-key:sha256:)[A-Za-z0-9._:#-]{1,128}$")
 
 
 def _instant_ms(s: Any):
     import datetime as _dt
-    if not isinstance(s, str) or not _RFC3339_OFFSET.match(s):
+    if not isinstance(s, str):
+        return None
+    match = _RFC3339_OFFSET.fullmatch(s)
+    if not match:
+        return None
+    year, month, day, hour, minute, second = (
+        int(value) for value in match.groups()[:6]
+    )
+    fraction, sign, offset_hour, offset_minute = match.groups()[6:]
+    if offset_hour is not None and (
+        int(offset_hour) > 23 or int(offset_minute) > 59
+    ):
         return None
     try:
-        return _dt.datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp() * 1000
-    except Exception:
+        local = _dt.datetime(
+            year, month, day, hour, minute, second, tzinfo=_dt.timezone.utc
+        )
+        offset = _dt.timedelta()
+        if sign is not None:
+            offset = _dt.timedelta(
+                hours=int(offset_hour), minutes=int(offset_minute)
+            )
+            if sign == "-":
+                offset = -offset
+        utc = local - offset
+        epoch = _dt.datetime(1970, 1, 1, tzinfo=_dt.timezone.utc)
+        delta = utc - epoch
+    except (OverflowError, ValueError):
         return None
+    whole_ms = (delta.days * 86_400 + delta.seconds) * 1_000
+    fractional_ms = int((fraction or "").ljust(3, "0")[:3] or "0")
+    return whole_ms + fractional_ms
 
 
 def _ed25519_verify(data: bytes, pub_b64u: Any, sig_b64u: Any) -> bool:

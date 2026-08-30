@@ -4,8 +4,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { _resetConsumed, guardAction, requireReceiptForOpenAITool, runToolCalls, withGuard, } from './index.js';
 import { mintReceipt as hostedMintReceipt } from './receipt.js';
+test('package metadata pins the current optional verifier release line', () => {
+    const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+    assert.equal(packageJson.version, '0.5.0');
+    assert.equal(packageJson.peerDependencies['@emilia-protocol/verify'], '^3.21.0');
+});
 function canonicalize(value) {
     if (value === null || value === undefined)
         return JSON.stringify(value);

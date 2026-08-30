@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/attest",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Bind relying-party-pinned identity bytes and subject to a work-product hash in a signed EP receipt; no identity, authority, or execution overclaim.",
   "license": "Apache-2.0",
   "type": "module",
@@ -17,14 +17,15 @@
     "dist",
     "src",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@emilia-protocol/issue": "^0.4.0",
-    "@emilia-protocol/verify": "^3.10.0"
+    "@emilia-protocol/issue": "0.7.0",
+    "@emilia-protocol/verify": "3.21.0"
   },
   "keywords": [
     "emilia-protocol",

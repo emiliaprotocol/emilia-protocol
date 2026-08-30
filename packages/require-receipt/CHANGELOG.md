@@ -3,6 +3,17 @@
 
 All notable changes to `@emilia-protocol/require-receipt` are documented here.
 
+## 0.8.1 (2026-08-30)
+
+### Security
+
+- Refuse contradictory selector identities instead of falling through to a
+  legacy first-match classification.
+- Bind executor-observed action material to the actual invocation arguments so
+  an approved observation cannot authorize a different execution.
+- Preserve detached argument custody across callbacks and fail closed on
+  selector or action-binding ambiguity.
+
 ## 0.8.0 (2026-08-05)
 
 ### Security

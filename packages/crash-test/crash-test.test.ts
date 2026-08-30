@@ -21,6 +21,13 @@ function run(args) {
 }
 
 describe('crash-test relying-party trust boundary', () => {
+  it('ships the current verifier baseline and release metadata', () => {
+    const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+    assert.equal(packageJson.version, '0.4.2');
+    assert.equal(packageJson.dependencies['@emilia-protocol/verify'], '^3.21.0');
+    assert.ok(packageJson.files.includes('CHANGELOG.md'));
+  });
+
   before(() => {
     cwd = mkdtempSync(resolve(tmpdir(), 'emilia-crash-test-'));
     const generated = run([]);

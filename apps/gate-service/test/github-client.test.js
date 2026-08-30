@@ -1,8 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGithubRestConnector } from '../src/github-client.js';
+import { readFileSync } from 'node:fs';
+import {
+  createGithubRestConnector,
+  DEFAULT_GITHUB_USER_AGENT,
+  GATE_SERVICE_VERSION,
+} from '../src/github-client.js';
 import { REPOSITORY } from './helpers.js';
+
+test('GitHub REST connector derives its default identity from the service package', async () => {
+  const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(GATE_SERVICE_VERSION, packageJson.version);
+  assert.equal(DEFAULT_GITHUB_USER_AGENT, `emilia-gate-service/${packageJson.version}`);
+
+  let observedUserAgent;
+  const connector = createGithubRestConnector({
+    token: 'github-test-secret',
+    fetchImpl: async (_url, options) => {
+      observedUserAgent = options.headers['User-Agent'];
+      return new Response(JSON.stringify(REPOSITORY), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    },
+  });
+  await connector.getRepository({ owner: 'acme', repo: 'prod' });
+  assert.equal(observedUserAgent, DEFAULT_GITHUB_USER_AGENT);
+});
 
 test('GitHub REST connector performs one GET and one idempotency-aware DELETE with mocked fetch', async () => {
   const calls = [];

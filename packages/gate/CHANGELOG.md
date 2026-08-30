@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.24.0 (2026-08-30)
+
 ### Security
 
 - Restrict the Action Escrow human-facing milestone, amount, currency, payee,

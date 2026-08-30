@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-30T01:13:45.766Z",
+  "evidence_snapshot_at": "2026-08-30T17:13:03.533Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "d4cb297e2d990885185359d37458b17aa1c8cacc8b18ffeee6edca88d0e02152",
+    "input_digest_sha256": "16125c2830ea06c9aa0285f0200f6e872bfcd925af1f9dc0f6249ac1c55319e8",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "743c7abf1770f76d7c6a9cd8bcda75eb4f6670701f0c3875b435081b7e4b07d4",
+        "sha256": "255f27708f43abdd10f0edd98a58b16abcec9e28b34818a5f9af7b8095cfd6fe",
         "bytes": 4299
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "ae9f1a3e6a016b08125666654c477ab68a55532bc845e515c10568f881accefd",
+        "sha256": "5618cdcc561845220dbaf59633b9efb83bd38a0a75d22a06fa1f2a53e8d83bc8",
         "bytes": 6361
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "56d311fa0549b0f31256cdc709560b6df1b8b3b5c1b3b6c102f2447868bb3ab9",
-        "bytes": 251460
+        "sha256": "cabb11967ff45b2d6a595be155ed95371d89c307bc3da276cf76353095f236e0",
+        "bytes": 251616
       },
       {
         "path": "security/security-case.json",
-        "sha256": "858401ee61d42166fa5dde251334d515af2059b45bc0603689e25effa744cf71",
-        "bytes": 385871
+        "sha256": "957bd0978725330ed8a61e04bd16ca094fef322655c433456c3297bf067db307",
+        "bytes": 386020
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -303,8 +303,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 10589,
-      "files": 655,
+      "total": 10606,
+      "files": 658,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -313,7 +313,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "2f528567d1cc89accd874353d0c412da2c866d271ba3972d12a98a94cc668639",
+      "manifest_sha256": "5c3c3bf3bd52f0dafe7a4599f7d744a432a65296cc6fc238de5658b85fb54de8",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -345,7 +345,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "94631ce647e1cf0052a9f2cb7bd513ecd4a50f20f3d5b84f7b1f1e90ac8704f9",
+        "evidenceSha256": "d4e4319879e01f11bbbc99c8737eeab08b21a828dc7f848d8889c13a9c8133a5",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -415,7 +415,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "0a740af1d925227a86bf30217ff234889ce555542df731d42ac9a9dcd3ae40ab"
+      "evidence_bundle_sha256": "7ff0001992a1bfbc2588c56e08c8101cb5db7d677db9fa70c8245e3185184de4"
     },
     "caid": {
       "core_vectors": 48,
@@ -2896,7 +2896,7 @@
     },
     {
       "claim_id": "go-module-release-is-tag-and-proxy-bound",
-      "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared minimum Go toolchain. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
+      "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared release toolchain. A separate Linux CI matrix tests the Go 1.21 language-compatibility floor. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
       "acceptance_roots": [
         "the checked-in Go module release identity",
         "the FutureEnterprises owner identity",
@@ -2937,8 +2937,8 @@
           "reason": "Release workflow verification is a repository control implemented in JavaScript."
         },
         "go": {
-          "status": "covered",
-          "evidence": "packages/go-verify/signoff_compatibility_test.go"
+          "status": "not_applicable",
+          "reason": "Go release-chain enforcement is a repository control implemented in JavaScript and GitHub Actions; the Go module tests verifier behavior, not registry tag or proxy state."
         }
       },
       "vectors": [

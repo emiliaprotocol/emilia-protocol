@@ -41,8 +41,8 @@ write('package.json', `${JSON.stringify({
         verify: 'node verify-receipt.mjs receipt.json relying-party-trust.json',
     },
     dependencies: {
-        '@emilia-protocol/issue': '0.6.1',
-        '@emilia-protocol/verify': '3.10.0',
+        '@emilia-protocol/issue': '0.7.0',
+        '@emilia-protocol/verify': '3.21.0',
     },
 }, null, 2)}\n`);
 write('demo.mjs', `import { writeFileSync } from 'node:fs';

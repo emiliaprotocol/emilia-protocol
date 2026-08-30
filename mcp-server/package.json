@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/mcp-server",
   "mcpName": "io.github.emiliaprotocol/mcp-server",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "A focused MCP front door for consequential agent actions: request exact-action approval, poll signoff, and verify the resulting receipt.",
   "main": "bundle.js",
   "type": "module",
@@ -12,6 +12,7 @@
     "bundle.js",
     "auto-receipt.js",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
@@ -20,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^3.20.3"
+    "@emilia-protocol/verify": "^3.21.0"
   },
   "overrides": {
     "@hono/node-server": "2.0.10",

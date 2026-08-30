@@ -24,7 +24,6 @@ import type {
   InstallPreflightResult,
   PrincipalLookupResult,
   LineageResult,
-  BatchReceiptResult,
   ConfirmReceiptResult,
   TrustPolicyDefinition,
   EPStats,
@@ -52,7 +51,7 @@ import type {
 
 import { EPError } from './types.js';
 
-const SDK_VERSION = '1.0.0';
+const SDK_VERSION = '0.11.0';
 const DEFAULT_BASE_URL = 'https://emiliaprotocol.ai';
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -230,6 +229,7 @@ export class EPClient {
   async trustProfile(entityId: string): Promise<EntityTrustProfile> {
     return this.request<EntityTrustProfile>(
       `/api/trust/profile/${encodeURIComponent(entityId)}`,
+      { auth: true },
     );
   }
 
@@ -256,6 +256,7 @@ export class EPClient {
   ): Promise<TrustEvaluation> {
     return this.request<TrustEvaluation>('/api/trust/evaluate', {
       method: 'POST',
+      auth: true,
       body: {
         entity_id: entityId,
         policy,
@@ -290,6 +291,7 @@ export class EPClient {
   }): Promise<TrustGateResult> {
     return this.request<TrustGateResult>('/api/trust/gate', {
       method: 'POST',
+      auth: true,
       body: {
         entity_id: options.entityId,
         action: options.action,
@@ -316,7 +318,10 @@ export class EPClient {
   async domainScore(entityId: string, domains?: TrustDomain[]): Promise<DomainScoreResult> {
     return this.request<DomainScoreResult>(
       `/api/trust/domain-score/${encodeURIComponent(entityId)}`,
-      { params: domains?.length ? { domains: domains.join(',') } : undefined },
+      {
+        auth: true,
+        params: domains?.length ? { domains: domains.join(',') } : undefined,
+      },
     );
   }
 
@@ -344,6 +349,7 @@ export class EPClient {
   ): Promise<InstallPreflightResult> {
     return this.request<InstallPreflightResult>('/api/trust/install-preflight', {
       method: 'POST',
+      auth: true,
       body: {
         entity_id: entityId,
         policy: policy ?? 'standard',
@@ -410,6 +416,7 @@ export class EPClient {
     minConfidence?: string,
   ): Promise<{ entities: EntitySearchResult[] }> {
     return this.request('/api/entities/search', {
+      auth: true,
       params: {
         q: query,
         type: entityType,
@@ -432,6 +439,7 @@ export class EPClient {
     entityType?: EntityType,
   ): Promise<{ leaderboard: LeaderboardEntry[] }> {
     return this.request('/api/leaderboard', {
+      auth: true,
       params: {
         limit: Math.min(limit, 50),
         type: entityType,
@@ -470,29 +478,6 @@ export class EPClient {
       method: 'POST',
       auth: true,
       body: input,
-    });
-  }
-
-  /**
-   * Submit multiple receipts atomically. Maximum 50 per call.
-   *
-   * Each result in the response array indicates success or failure for that
-   * receipt independently — partial success is possible.
-   *
-   * @example
-   * ```typescript
-   * const result = await ep.batchSubmit([
-   *   { entity_id: 'merchant-a', transaction_ref: 'tx-1', transaction_type: 'purchase', agent_behavior: 'completed' },
-   *   { entity_id: 'merchant-b', transaction_ref: 'tx-2', transaction_type: 'service', agent_behavior: 'completed' },
-   * ]);
-   * result.results.forEach(r => console.log(r.entity_id, r.success ? 'ok' : r.error));
-   * ```
-   */
-  async batchSubmit(receipts: SubmitReceiptInput[]): Promise<BatchReceiptResult> {
-    return this.request<BatchReceiptResult>('/api/receipts/batch', {
-      method: 'POST',
-      auth: true,
-      body: { receipts: receipts.slice(0, 50) },
     });
   }
 
@@ -963,6 +948,7 @@ export class EPClient {
   async principalLookup(principalId: string): Promise<PrincipalLookupResult> {
     return this.request<PrincipalLookupResult>(
       `/api/identity/principal/${encodeURIComponent(principalId)}`,
+      { auth: true },
     );
   }
 
@@ -983,6 +969,7 @@ export class EPClient {
   async lineage(entityId: string): Promise<LineageResult> {
     return this.request<LineageResult>(
       `/api/identity/lineage/${encodeURIComponent(entityId)}`,
+      { auth: true },
     );
   }
 
@@ -1004,7 +991,7 @@ export class EPClient {
    * ```
    */
   async listPolicies(): Promise<{ policies: TrustPolicyDefinition[] }> {
-    return this.request('/api/policies');
+    return this.request('/api/policies', { auth: true });
   }
 
   // --------------------------------------------------------------------------
@@ -1012,7 +999,7 @@ export class EPClient {
   // --------------------------------------------------------------------------
 
   /**
-   * Public proof metrics — entity count, test count, tool count, policy count.
+   * Authenticated operator metrics — entity count, test count, tool count, policy count.
    *
    * @example
    * ```typescript
@@ -1021,7 +1008,7 @@ export class EPClient {
    * ```
    */
   async stats(): Promise<EPStats> {
-    return this.request<EPStats>('/api/stats');
+    return this.request<EPStats>('/api/stats', { auth: true });
   }
 
   /**
@@ -1131,15 +1118,4 @@ export class EPClient {
     });
   }
 
-  /**
-   * Legacy: get the 0-100 compatibility score for an entity.
-   *
-   * Prefer `trustProfile()` for all new integrations. This endpoint exists
-   * for backward compatibility only.
-   *
-   * @deprecated Use trustProfile() instead.
-   */
-  async legacyScore(entityId: string): Promise<{ entity_id: string; score: number }> {
-    return this.request(`/api/score/${encodeURIComponent(entityId)}`);
-  }
 }

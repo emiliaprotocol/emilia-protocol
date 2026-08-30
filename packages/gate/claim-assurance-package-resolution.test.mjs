@@ -39,7 +39,7 @@ test('packed Gate accepts an injected packed Verify evaluator in a blank consume
 
     const gatePackage = JSON.parse(fs.readFileSync(path.join(installedGate, 'package.json'), 'utf8'));
     const verifyPackage = JSON.parse(fs.readFileSync(path.join(installedVerify, 'package.json'), 'utf8'));
-    assert.equal(gatePackage.dependencies['@emilia-protocol/verify'], '3.20.3');
+    assert.equal(gatePackage.dependencies['@emilia-protocol/verify'], '3.21.0');
     assert.ok(gatePackage.exports['./claim-assurance']);
     assert.ok(verifyPackage.exports['./claim-assurance']);
 

@@ -3,8 +3,14 @@
 /* eslint-disable */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { scan, classifyOperation, scanMcpManifest, scanOpenApi, badgeSvg, generatePullRequest, aggregate } from './index.js';
 import { REPRESENTATIVE_CORPUS } from './corpus.js';
+test('package metadata pins the current verifier release line', () => {
+    const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+    assert.equal(packageJson.version, '0.5.2');
+    assert.equal(packageJson.dependencies['@emilia-protocol/verify'], '^3.21.0');
+});
 test('classifies the high-risk families', () => {
     assert.equal(classifyOperation({ name: 'release_payment' }).family, 'money_movement');
     assert.equal(classifyOperation({ name: 'delete_customer_data' }).family, 'data_destruction');

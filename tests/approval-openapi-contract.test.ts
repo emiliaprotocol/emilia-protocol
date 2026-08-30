@@ -370,15 +370,19 @@ describe('EP-APPROVAL-v1 acquisition OpenAPI contract', () => {
   });
 });
 
-describe('GovGuard plain signoff schema source contract', () => {
+describe('GovGuard signoff schema source contract', () => {
   const slim = SPECS.find(({ relativePath }) =>
     relativePath === 'docs/api/govguard-v1.yaml').spec;
 
-  it('requires approver_id for the slim single-signoff request', () => {
+  it('requires a receipt and makes approver_id conditional for quorum fan-out', () => {
     expect(slim.components.schemas.RequestSignoffRequest.required)
-      .toEqual(['receipt_id', 'approver_id']);
+      .toEqual(['receipt_id']);
     expect(slim.components.schemas.RequestSignoffRequest.description)
-      .toContain('Single-signoff');
+      .toContain('quorum');
+    expect(slim.components.schemas.RequestSignoffRequest.properties.approver_id.description)
+      .toContain('stored receipt has no quorum policy');
+    expect(slim.components.schemas.RequestSignoffRequest.properties.approver_id['x-emilia-conditionally-required'])
+      .toBe('stored_receipt.quorum_policy is absent');
   });
 
   it.each([

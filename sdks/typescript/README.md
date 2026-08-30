@@ -129,7 +129,7 @@ await guardedRelease({ id: 'payment_123', amount: 82000, currency: 'USD' });
 
 | Variable | Description | Default |
 |---|---|---|
-| `EP_API_KEY` | Your EP API key (`ep_live_...`). Required for write operations. | — |
+| `EP_API_KEY` | Your EP API key (`ep_live_...`). Required for protected reads and write operations. | — |
 | `EP_BASE_URL` | Override the API base URL (useful for local dev). | `https://emiliaprotocol.ai` |
 
 You can also pass these directly to the constructor:
@@ -206,7 +206,8 @@ EP enforces a mandatory due process pipeline for every negative trust event:
 
 #### `ep.trustProfile(entityId)`
 
-Get an entity's full trust profile. This is the canonical EP read surface.
+Get the authenticated entity's full trust profile. This protected read is
+self-scoped by the server (operators may use their broader authorized scope).
 
 ```typescript
 const profile = await ep.trustProfile('merchant-xyz');
@@ -248,8 +249,6 @@ if (profile.anomaly) {
   console.warn(profile.anomaly.alert); // "Sudden drop: 23 points in 7 days"
 }
 
-// Legacy score (fallback only — prefer trust_profile for decisions)
-console.log(profile.compat_score); // 91
 ```
 
 ---
@@ -408,7 +407,7 @@ console.log(api_key);          // "ep_live_..." — store this securely!
 
 #### `ep.searchEntities(query, entityType?, minConfidence?)`
 
-Search for entities by name, capability, or category.
+Search for entities by name, capability, or category. Requires an API key.
 
 ```typescript
 const { entities } = await ep.searchEntities('payment', 'agent', 'confident');
@@ -420,7 +419,7 @@ for (const e of entities) {
 
 #### `ep.leaderboard(limit?, entityType?)`
 
-Get the leaderboard of top-trusted entities.
+Get the evidence/confidence-ordered entity leaderboard. Requires an API key.
 
 ```typescript
 // Top 5 merchants
@@ -461,32 +460,6 @@ const { receipt } = await ep.submitReceipt({
 
 console.log(receipt.receipt_id);   // "ep_rcpt_..."
 console.log(receipt.receipt_hash); // SHA-256 hash
-```
-
-#### `ep.batchSubmit(receipts)`
-
-Submit up to 50 receipts in a single atomic call. Partial success is possible.
-
-```typescript
-const result = await ep.batchSubmit([
-  {
-    entity_id: 'merchant-a',
-    transaction_ref: 'tx-001',
-    transaction_type: 'purchase',
-    agent_behavior: 'completed',
-  },
-  {
-    entity_id: 'merchant-b',
-    transaction_ref: 'tx-002',
-    transaction_type: 'service',
-    agent_behavior: 'completed',
-  },
-]);
-
-result.results.forEach(r => {
-  if (r.success) console.log(`${r.entity_id}: receipt ${r.receipt_id}`);
-  else console.error(`${r.entity_id}: ${r.error}`);
-});
 ```
 
 #### `ep.confirmReceipt(receiptId, confirm)`
@@ -713,7 +686,7 @@ policies.forEach(p => {
 
 #### `ep.stats()`
 
-Public proof metrics.
+Authenticated operator proof metrics.
 
 ```typescript
 const stats = await ep.stats();
@@ -729,15 +702,6 @@ Health check.
 ```typescript
 const health = await ep.health();
 console.log(health.status); // "ok"
-```
-
-#### `ep.legacyScore(entityId)` (deprecated)
-
-Returns the 0-100 legacy compatibility score. Prefer `trustProfile()` for all new code.
-
-```typescript
-const { score } = await ep.legacyScore('merchant-xyz');
-console.log(score); // 91
 ```
 
 ---

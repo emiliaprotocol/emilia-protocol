@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/crash-test",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Offline authorization-evidence demonstration: verify an exact-action quorum under relying-party-pinned policy, approver keys, WebAuthn scope, and operator key, then refuse tampering and self-anchored trust.",
   "license": "Apache-2.0",
   "type": "module",
@@ -12,6 +12,7 @@
   "files": [
     "crash-test.mjs",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {
@@ -21,7 +22,7 @@
     "test": "node --test crash-test.test.js"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^3.10.0"
+    "@emilia-protocol/verify": "^3.21.0"
   },
   "keywords": [
     "emilia-protocol",

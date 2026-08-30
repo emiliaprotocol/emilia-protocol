@@ -3,6 +3,18 @@
 
 All notable changes to `@emilia-protocol/mobile` are documented here.
 
+## 0.3.0 (2026-08-30)
+
+### Added
+
+- Add relying-party WebAuthn verification mode and transport-neutral mobile
+  authorization bundles for exact-action ceremonies.
+
+### Security
+
+- Apply bounded strict-JSON validation and preserve relying-party trust pins
+  across enrollment, presentation, and verification paths.
+
 ## 0.2.4 (2026-08-01)
 
 ### Release

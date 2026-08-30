@@ -1958,7 +1958,7 @@
     },
     {
       "claim_id": "go-module-release-is-tag-and-proxy-bound",
-      "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared minimum Go toolchain. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
+      "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared release toolchain. A separate Linux CI matrix tests the Go 1.21 language-compatibility floor. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
       "acceptance_roots": ["the checked-in Go module release identity", "the FutureEnterprises owner identity", "the registry-publishing-approval environment", "the workflow-dispatched refs/heads/main commit", "pinned GitHub Action revisions", "an active GitHub update-and-deletion ruleset for refs/tags/packages/go-verify/v*", "GitHub tag-ref authority", "proxy.golang.org and sum.golang.org"],
       "enforcement_path": [
         { "language": "javascript", "file": "scripts/check-release-chain.mjs", "symbol": "discoverReleaseSurfaces", "exported": true },
@@ -1973,7 +1973,7 @@
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "tests/release-chain-coverage.test.ts" },
         "python": { "status": "not_applicable", "reason": "Release workflow verification is a repository control implemented in JavaScript." },
-        "go": { "status": "covered", "evidence": "packages/go-verify/signoff_compatibility_test.go" }
+        "go": { "status": "not_applicable", "reason": "Go release-chain enforcement is a repository control implemented in JavaScript and GitHub Actions; the Go module tests verifier behavior, not registry tag or proxy state." }
       },
       "vectors": [
         { "suite": "security/vectors.v1.json", "case_id": "accept_go_tag_proxy_chain", "polarity": "positive", "expect": { "valid": true } },
@@ -1993,9 +1993,9 @@
       ],
       "operational_evidence": [
         { "file": ".github/workflows/publish-go-verify.yml", "contains": ["actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961", "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6", "ref: ${{ github.sha }}", "persist-credentials: false", "--expected-commit \"$GITHUB_SHA\"", "go-version-file: packages/go-verify/go.mod", "refs/tags/packages/go-verify/v*", "rules.has('deletion') && rules.has('update')", "github.rest.git.createRef", "p.Origin?.[key]", "p.GoModSum", "diff -ru packages/go-verify \"$PROXY_DIR\"", "release-artifacts/go-verify-proxy.zip"] },
-        { "file": "packages/go-verify/go-release.json", "contains": ["EP-GO-MODULE-RELEASE-v1", "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "packages/go-verify/v2.4.4"] },
-        { "file": "release/release-packages.v1.json", "contains": ["github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "publish-go-verify.yml", "go_tag"] },
-        { "file": "packages/go-verify/signoff_compatibility_test.go", "contains": ["func(map[string]any, string, string) SignoffResult", "func(map[string]any, string) QuorumResult"] }
+        { "file": ".github/workflows/go-verify.yml", "contains": ["go-version: ['1.21.13', '1.27.0']", "go vet ./...", "go test -v ./..."] },
+        { "file": "packages/go-verify/go-release.json", "contains": ["EP-GO-MODULE-RELEASE-v1", "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "packages/go-verify/v2.4.5"] },
+        { "file": "release/release-packages.v1.json", "contains": ["github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "publish-go-verify.yml", "go_tag"] }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "GitHub job permissions, environment approvals, VCS refs, Go proxy behavior, and checksum-database state are operational controls." }

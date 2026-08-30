@@ -1,9 +1,39 @@
 {
   "@version": "EP-RELEASE-PACKAGE-REGISTRY-v1",
   "packages": [
-    { "package": "@emilia-protocol/cli", "ecosystem": "npm", "path": "cli", "workflow": "publish-cli.yml", "tag_prefix": "cli-v", "mode": "npm_reusable" },
+    {
+      "package": "@emilia-protocol/cli",
+      "ecosystem": "npm",
+      "path": "cli",
+      "workflow": "publish-cli.yml",
+      "tag_prefix": "cli-v",
+      "mode": "npm_reusable",
+      "registry_dependency_tarballs": [
+        {
+          "spec": "@emilia-protocol/verify@3.21.0",
+          "sha256": "e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265"
+        }
+      ]
+    },
     { "package": "@emilia-protocol/create-ep-app", "ecosystem": "npm", "path": "create-ep-app", "workflow": "publish-create-ep-app.yml", "tag_prefix": "create-ep-app-v", "mode": "npm_reusable" },
-    { "package": "@emilia-protocol/attest", "ecosystem": "npm", "path": "packages/attest", "workflow": "publish-attest.yml", "tag_prefix": "attest-v", "mode": "npm_reusable" },
+    {
+      "package": "@emilia-protocol/attest",
+      "ecosystem": "npm",
+      "path": "packages/attest",
+      "workflow": "publish-attest.yml",
+      "tag_prefix": "attest-v",
+      "mode": "npm_reusable",
+      "registry_dependency_tarballs": [
+        {
+          "spec": "@emilia-protocol/issue@0.7.0",
+          "sha256": "0fbb002ae0d4a2ea6d39caed442ce7d81779c1ab016313654ffc40da06b117fb"
+        },
+        {
+          "spec": "@emilia-protocol/verify@3.21.0",
+          "sha256": "e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265"
+        }
+      ]
+    },
     { "package": "@emilia-protocol/crash-test", "ecosystem": "npm", "path": "packages/crash-test", "workflow": "publish-crash-test.yml", "tag_prefix": "crash-test-v", "mode": "npm_reusable" },
     { "package": "ep-verify", "ecosystem": "npm", "path": "packages/ep-verify", "workflow": "publish-ep-verify-npm.yml", "tag_prefix": "ep-verify-npm-v", "mode": "npm_reusable" },
     {
@@ -15,8 +45,8 @@
       "mode": "npm_reusable",
       "registry_dependency_tarballs": [
         {
-          "spec": "@emilia-protocol/verify@3.17.1",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "spec": "@emilia-protocol/verify@3.21.0",
+          "sha256": "e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265"
         }
       ]
     },
@@ -31,12 +61,12 @@
       "mode": "npm_reusable",
       "registry_dependency_tarballs": [
         {
-          "spec": "@emilia-protocol/require-receipt@0.8.0",
-          "sha256": "f25baabd302fd8ce31cd3ae8791eeddda58efe6d1aa2324474f6e0e0bcb635f2"
+          "spec": "@emilia-protocol/require-receipt@0.8.1",
+          "sha256": "0d4a0a0b8f0ab7775d0c90eb91b57cfcd5e159e52844af35ada0ded5351a7bef"
         },
         {
-          "spec": "@emilia-protocol/verify@3.20.3",
-          "sha256": "df14fd5791f8d69fe01be84fc926cb16b491b3a4b3bea33d50b5af9b648ef848"
+          "spec": "@emilia-protocol/verify@3.21.0",
+          "sha256": "e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265"
         }
       ]
     },
