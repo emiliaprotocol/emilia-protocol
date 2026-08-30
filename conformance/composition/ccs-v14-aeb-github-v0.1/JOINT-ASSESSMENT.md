@@ -1,8 +1,8 @@
 # Joint Interoperability Assessment — CCS v1.4 receipt as EMILIA pre-admission evidence
 
-**Status:** DRAFT v2 for joint review — not for publication until both parties approve the exact bytes.
+**Status:** DRAFT v3 for joint review — not final and must not be merged or represented as jointly approved until both parties approve the exact bytes.
 **Date:** 2026-08-29
-**Revision:** v3 supersedes v2 (2026-08-30): two factual corrections per EMILIA review — bundle-scope counts in section 3 now reflect the full pinned bundle (489 manifest-covered files, 64 expected-outcome cases), and section 4 describes Correctover's receipt check as package-independent. Artifact pins, the eight composition outcomes, and all claim boundaries are unchanged.
+**Revision:** v3 supersedes v2 (2026-08-30): per joint review — (a) bundle-scope counts in section 3 reflect the full pinned bundle (489 manifest-covered files, 64 expected-outcome cases); (b) the Correctover checker is described as a standalone package-independent check that operates without importing the CCS verifier package; (c) wording aligned for the public repository. Vectors, the eight composition outcomes, artifact pins, and all product boundaries are unchanged.
 **Parties:**
 - **EMILIA Protocol, Inc.** — Iman Schrock (`team@emiliaprotocol.ai`)
 - **Correctover** — Guigui Wang (`wangguigui@correctover.com`)
@@ -46,14 +46,14 @@ the six-file handoff has no `node_modules` and no repository parent at run time.
 EMILIA pinned commit `a3503b2` and ran the published v1.4 bundle in a fresh environment:
 
 - The manifest covered all **489** non-manifest vector files in the pinned bundle.
-- The CCS-code-independent Python checker classified all **64** expected-outcome
+- The standalone package-independent Python checker classified all **64** expected-outcome
   conformance cases as expected.
 - Regenerating the vectors reproduced the committed bundle **byte-for-byte**.
-- EMILIA also pinned the posted `draft-correctover-ccs-08` text (153,156 bytes,
-  sha256 `fbac2a025f11baec104687ee04ba5c9fb0dad1b5bbb5ad38494965565a977cd3`).
+- EMILIA also pinned the published CCS v1.4 specification text used for comparison
+  (153,156 bytes, sha256 `fbac2a025f11baec104687ee04ba5c9fb0dad1b5bbb5ad38494965565a977cd3`).
   That pin **anchors the specification version used for comparison**; the pin itself
-  does not validate the bundle, and it is not a claim of full -08 conformance or of
-  completed composition.
+  does not validate the bundle, and it is not a claim of full specification conformance
+  or of completed composition.
 
 ## 4. Correctover-side verification (performed by Correctover)
 
@@ -69,9 +69,10 @@ no repository checkout, no `node_modules`, Node v22:
 - The produced `results_digest` was
   `sha256:ad2256f5c22f0c8c6a185f7ce5675955db8019789bd42b04bbd47ab5227166f6`,
   **byte-identical to `report.reference.json`**.
-- Correctover then re-verified the receipt with a package-independent Python check —
-  standard library plus `cryptography` plus RFC 8785 JCS, **zero lines of EMILIA code
-  and zero imports from the CCS verifier package**: 30 fields, 64-byte Ed25519 signature,
+- Correctover then re-verified the receipt with the **standalone package-independent**
+  Python check — standard library plus `cryptography` plus JCS (JSON Canonicalization
+  Scheme), operating **without importing the CCS verifier package** and with zero lines
+  of EMILIA code: 30 fields, 64-byte Ed25519 signature,
   32-byte key, 1221-byte JCS signing input → **valid**.
 - Two negative controls — a flipped signature byte, and the verdict changed from
   `allow` to `deny` — were **both correctly rejected**.

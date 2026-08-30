@@ -56,8 +56,11 @@ The runner exercises eight deterministic cases:
 The upstream receipt is a 30-field CCS L1 receipt signed with Ed25519 over the
 JCS (JSON Canonicalization Scheme) canonicalization of the 29 unsigned fields (1221-byte signing
 input). Any standard-library + Ed25519 + JCS verifier can validate it without
-importing CCS code. The CCS-code-independent conformance checker
+importing CCS code. The Correctover check used here is a **standalone
+package-independent** checker that operates **without importing the CCS
+verifier package**. The standalone package-independent conformance checker
 ([`checkers/independent_checker.py`](https://github.com/DSHCorrectover/ccs-conformance-vectors/blob/a3503b2bc48922f92a28c372003885a0831da02b/checkers/independent_checker.py),
-MIT license; Python standard library plus `cryptography` and `jcs` only) lives
+MIT license; Python standard library plus `cryptography` and `jcs` only, and
+it operates **without importing the CCS verifier package**) lives
 in the pinned CCS bundle repository at bundle commit [`a3503b2`](https://github.com/DSHCorrectover/ccs-conformance-vectors/commit/a3503b2bc48922f92a28c372003885a0831da02b),
 not in this repository. It independently verifies the pinned bundle.
