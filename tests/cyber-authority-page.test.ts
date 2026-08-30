@@ -35,10 +35,18 @@ describe('Authority for AI Defenders public campaign', () => {
   });
 
   it('shows the exact-action control story without becoming a threat detector', () => {
+    expect(page).toContain('On completely mediated credential-owning paths, EMILIA controls exact administrative actions');
     expect(page).toContain('Your security product detects the threat and proposes the response.');
     expect(page).toContain('at the credential-owning boundary');
-    expect(page).toContain('Inside the mandate: one attempt. Outside it: refuse.');
+    expect(page).toContain('one covered provider attempt per accepted');
+    expect(page).toContain('Concept illustration · completely mediated credential path');
     expect(page).toContain('It is not a threat detector.');
+    expect(page).toContain('/cyber-authority/authority-for-ai-defenders.webp');
+    expect(page).toContain('Disable this one work account.');
+    expect(page).toContain('Exact action. Exact target. One permission.');
+    expect(page).toContain('Admit, refuse, or stop and check.');
+    expect(page).toContain('What was asked. What EMILIA decided. What is actually known.');
+    expect(page).toMatch(/<figcaption>[\s\S]*storyReceipt[\s\S]*<\/figcaption>/);
     expect(page).toContain('EMILIA controls covered consequences. It does not decide what the threat is.');
     expect(page).not.toContain('EMILIA stops cyberattacks');
     expect(page).not.toMatch(/EMILIA prevents ransomware|EMILIA protects every/i);
@@ -46,6 +54,7 @@ describe('Authority for AI Defenders public campaign', () => {
 
   it('keeps the prevention and outcome claims inside the covered boundary', () => {
     expect(page).toContain('Gate prevents only on completely mediated covered paths.');
+    expect(page).toContain('Gate treats the outcome as INDETERMINATE');
     expect(page).toContain('Alternate credentials, direct provider calls, unprotected tools');
     expect(page).toContain('Physical effect or provider success without authenticated outcome evidence.');
     expect(page).toContain('Production activation is');
