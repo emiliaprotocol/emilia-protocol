@@ -519,7 +519,6 @@ export function validatePypiDirect(text, label) {
     'npm run security-case:emit',
     'npm run conformance:manifest',
     'verify-reproducible-wheel.mjs',
-    'python -m pytest',
     'subject-path: ${{ steps.build.outputs.wheel }}',
     'subject-path: ${{ steps.build.outputs.sdist }}',
     RELEASE_ACTION_REFS.attest,
@@ -528,6 +527,10 @@ export function validatePypiDirect(text, label) {
     'cmp "${{ steps.build.outputs.sdist }}" "$REGISTRY_SDIST"',
     'scripts/require-release-approval.mjs',
   ], label);
+  if (!text.includes('python -m pytest')
+    && !text.includes('-m unittest discover')) {
+    throw new Error(`${label} is missing an installed-distribution Python test command`);
+  }
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.checkout, `${label} checkout action`);
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.attest, `${label} attestation action`);
   requireOnlyActionRef(text, RELEASE_ACTION_REFS.pypiPublish, `${label} publish action`);

@@ -5,6 +5,8 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 3.21.0 (2026-08-30)
+
 - Added source-locked local OASNT-CAID-01 lifecycle and namespace-separation
   vectors over the OASNT-02 native verifier. The cases cover refusal without
   replay-unit consumption, release after `NOT_COMMITTED`, permanent

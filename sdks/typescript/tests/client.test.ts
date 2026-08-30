@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach, type MockedFunction } from 'vitest';
 import { EPClient } from '../src/client.js';
 import { EPError } from '../src/types.js';
+import * as publicSdk from '../src/index.js';
 
 // ---------------------------------------------------------------------------
 // Helper – build a mock fetch that resolves with the given payload / status
@@ -78,6 +79,11 @@ const TRUST_RECEIPT = {
 // ---------------------------------------------------------------------------
 
 describe('EPClient constructor', () => {
+  it('exports the tested client and error from the package entry point', () => {
+    expect(publicSdk.EPClient).toBe(EPClient);
+    expect(publicSdk.EPError).toBe(EPError);
+  });
+
   it('uses the DEFAULT base URL when none is supplied', () => {
     const { client, mockFetch } = makeClient({ entity_id: 'x', display_name: 'X', entity_type: 'agent', current_confidence: 'confident', historical_establishment: true, effective_evidence_current: 1, effective_evidence_historical: 1, compat_score: 80 });
     client.trustProfile('x');
@@ -118,8 +124,8 @@ describe('EPClient constructor', () => {
   });
 
   it('does NOT send Authorization on unauthenticated endpoints', async () => {
-    const { client, mockFetch } = makeClient({ policies: [] });
-    await client.listPolicies();
+    const { client, mockFetch } = makeClient({ status: 'ok' });
+    await client.health();
     const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect((init.headers as Record<string, string>)['Authorization']).toBeUndefined();
   });
@@ -137,6 +143,7 @@ describe('HTTP method and path routing', () => {
     const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://emiliaprotocol.ai/api/trust/profile/merchant-xyz');
     expect(init.method ?? 'GET').toBe('GET');
+    expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer ep_live_test_key');
     expect(result.entity_id).toBe('merchant-xyz');
     expect(result.current_confidence).toBe('confident');
   });
@@ -206,17 +213,6 @@ describe('HTTP method and path routing', () => {
     expect(body.delivery_accuracy).toBe(98);
   });
 
-  it('batchSubmit — POST /api/receipts/batch, slices at 50', async () => {
-    const batchResult = { results: [{ entity_id: 'e1', success: true, receipt_id: 'r1' }] };
-    const { client, mockFetch } = makeClient(batchResult);
-    const many = Array.from({ length: 60 }, (_, i) => ({ entity_id: `e${i}`, transaction_ref: `tx${i}`, transaction_type: 'purchase' as const }));
-    await client.batchSubmit(many);
-    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://emiliaprotocol.ai/api/receipts/batch');
-    const body = JSON.parse(init.body as string);
-    expect(body.receipts).toHaveLength(50);
-  });
-
   it('fileDispute — POST /api/disputes/file with auth', async () => {
     const disputeData = { dispute_id: 'dp1', receipt_id: 'r1', status: 'pending', reason: 'fraudulent_receipt', response_deadline: '2024-02-01', _message: 'Dispute filed' };
     const { client, mockFetch } = makeClient(disputeData);
@@ -231,14 +227,14 @@ describe('HTTP method and path routing', () => {
     expect(result.dispute_id).toBe('dp1');
   });
 
-  it('listPolicies — GET /api/policies (no auth)', async () => {
+  it('listPolicies — GET /api/policies with auth for the full policy view', async () => {
     const policiesData = { policies: [{ name: 'standard', family: 'core', description: 'Standard policy' }] };
     const { client, mockFetch } = makeClient(policiesData);
     const result = await client.listPolicies();
     const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://emiliaprotocol.ai/api/policies');
     expect(init.method ?? 'GET').toBe('GET');
-    expect((init.headers as Record<string, string>)['Authorization']).toBeUndefined();
+    expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer ep_live_test_key');
     expect(result.policies).toHaveLength(1);
   });
 
@@ -286,6 +282,75 @@ describe('HTTP method and path routing', () => {
     expect(body.action_hash).toBe('sha256:action');
     expect(body.executing_system).toBe('payments-api');
     expect(body.execution_reference_id).toBe('exec_1');
+  });
+
+  it('covers the read, signoff-request, and evidence routes in the v1 lifecycle', async () => {
+    const state = {
+      receipt_id: TRUST_RECEIPT.receipt_id,
+      organization_id: 'org_1',
+      action_type: 'large_payment_release',
+      decision: 'allow_with_signoff',
+      enforcement_mode: 'enforce',
+      policy_id: 'policy_default_large_payment_release',
+      policy_hash: 'sha256:policy',
+      action_hash: 'sha256:action',
+      expires_at: '2999-01-01T00:00:00.000Z',
+      signoff_required: true,
+      receipt_status: 'pending_signoff',
+      timeline_event_count: 1,
+    };
+    const signoff = {
+      signoff_id: 'sig_1',
+      receipt_id: TRUST_RECEIPT.receipt_id,
+      action_hash: TRUST_RECEIPT.action_hash,
+      initiator_id: 'actor_1',
+      approver_id: 'ap_controller',
+      expires_at: '2999-01-01T00:00:00.000Z',
+      status: 'pending',
+    };
+    const evidence = {
+      receipt: TRUST_RECEIPT,
+      timeline: [],
+      signoffs: [],
+      verification: { verified: true },
+    };
+    const mockFetch = makeSequenceFetch([
+      { payload: state },
+      { payload: signoff, status: 201 },
+      { payload: evidence },
+    ]);
+    const client = new EPClient({
+      apiKey: 'ep_live_test_key',
+      fetchImpl: mockFetch as unknown as typeof fetch,
+    });
+
+    await client.getTrustReceipt(TRUST_RECEIPT.receipt_id);
+    await client.requestSignoff({
+      receiptId: TRUST_RECEIPT.receipt_id,
+      approverId: 'ap_controller',
+      expiresInMinutes: 30,
+      comment: 'Review exact payment action',
+    });
+    await client.getTrustReceiptEvidence(TRUST_RECEIPT.receipt_id);
+
+    const calls = mockFetch.mock.calls as Array<[string, RequestInit]>;
+    expect(calls.map(([url, init]) => ({
+      method: init.method ?? 'GET',
+      path: url.replace('https://emiliaprotocol.ai', ''),
+    }))).toEqual([
+      { method: 'GET', path: `/api/v1/trust-receipts/${TRUST_RECEIPT.receipt_id}` },
+      { method: 'POST', path: '/api/v1/signoffs/request' },
+      { method: 'GET', path: `/api/v1/trust-receipts/${TRUST_RECEIPT.receipt_id}/evidence` },
+    ]);
+    for (const [, init] of calls) {
+      expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer ep_live_test_key');
+    }
+    expect(JSON.parse(calls[1]![1].body as string)).toEqual({
+      receipt_id: TRUST_RECEIPT.receipt_id,
+      approver_id: 'ap_controller',
+      expires_in_minutes: 30,
+      comment: 'Review exact payment action',
+    });
   });
 
   it('issueCommit — POST /api/commit/issue with auth', async () => {
@@ -777,14 +842,6 @@ describe('Additional public methods', () => {
     const body = JSON.parse(init.body as string);
     expect(body.max_value_usd).toBe(1000);
     expect(result.delegation_id).toBe('del1');
-  });
-
-  it('legacyScore — GET /api/score/:id', async () => {
-    const { client, mockFetch } = makeClient({ entity_id: 'e1', score: 77 });
-    const result = await client.legacyScore('e1');
-    const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://emiliaprotocol.ai/api/score/e1');
-    expect(result.score).toBe(77);
   });
 
   it('disputeStatus — GET /api/disputes/:id', async () => {

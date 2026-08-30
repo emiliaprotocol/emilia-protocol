@@ -494,7 +494,10 @@ paths:
           - `warn`    — return decision, allow caller to act
           - `enforce` — fail closed if policy denies or signoff missing
 
-        **Receipt expiry:** 24 hours from creation.
+        The organization is derived from the authenticated principal. A supplied
+        `organization_id` is only a cross-check and must match that binding.
+        Callers may request a shorter TTL; the server applies an action- and
+        credential-specific maximum (including shorter control-plane windows).
       operationId: createTrustReceipt
       security:
         - BearerAuth: []
@@ -505,6 +508,12 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateTrustReceiptRequest'
       responses:
+        '200':
+          description: Existing durable receipt recovered for the same acquisition idempotency binding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
         '201':
           description: Receipt created
           content:
@@ -516,7 +525,13 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Forbidden — actor_id in body does not match authenticated entity
+          description: Tenant, actor, Cloud capability, or authority binding failed
+        '409':
+          description: Acquisition idempotency binding conflicts with durable state
+        '422':
+          description: Quorum policy is missing or weaker than the organization-pinned template
+        '503':
+          description: Required quorum-template, authority, or durable evidence dependency is unavailable
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -541,7 +556,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TrustReceipt'
+                $ref: '#/components/schemas/TrustReceiptState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -582,6 +599,43 @@ paths:
         '410':
           description: Receipt expired
 
+  /api/v1/trust-receipts/{receiptId}/execution:
+    post:
+      tags: [Trust Receipts]
+      summary: Bind the observed execution to consumed authority
+      description: |
+        Records what executed after the receipt has been consumed. The route
+        rejects an unconsumed, observe-mode, or already-attested receipt. When
+        the stored receipt carries `execution_binding.required=true`, callers
+        must supply an independent `observed_action`; a mismatch is recorded as
+        execution drift and refused with 409.
+      operationId: attestTrustReceiptExecution
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionAttestationRequest'
+      responses:
+        '201':
+          description: Execution attestation recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionAttestationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Receipt is not consumable for execution, was already attested, or observed execution mismatched authority
+
   /api/v1/trust-receipts/{receiptId}/evidence:
     get:
       tags: [Trust Receipts]
@@ -612,11 +666,11 @@ paths:
       tags: [Signoffs]
       summary: Open a signoff request against a pending receipt
       description: |
-        Opens a single named-human-accountability request against a receipt
-        whose policy required signoff. This slim single-signoff schema requires
-        `approver_id`; quorum roster fan-out is outside this schema. Returns a
-        `signoff_id` bound to the receipt's `action_hash`. Approval window
-        defaults to 4 hours; configurable via `expires_in_minutes` (max 1440).
+        Opens review against a receipt whose policy required signoff.
+        `approver_id` is required for a single-signoff receipt. When the stored
+        receipt carries a quorum policy, the server fans out one request per
+        already-bound roster member and ignores caller-selected approvers.
+        The approval window defaults to 4 hours and is capped by receipt expiry.
       operationId: requestSignoff
       security:
         - BearerAuth: []
@@ -627,6 +681,12 @@ paths:
             schema:
               $ref: '#/components/schemas/RequestSignoffRequest'
       responses:
+        '200':
+          description: Existing signoff request recovered for the same acquisition binding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignoffRequest'
         '201':
           description: Signoff request opened
           content:
@@ -637,6 +697,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           description: Receipt does not require signoff, or signoff already requested
+        '422':
+          description: Stored quorum roster is invalid
 
   /api/v1/signoffs/{signoffId}/approve:
     post:
@@ -1506,13 +1568,49 @@ components:
           type: array
           items: { type: string }
 
+    GuardQuorumApprover:
+      type: object
+      additionalProperties: false
+      required: [role, approver]
+      properties:
+        role:
+          type: string
+          minLength: 1
+        approver:
+          type: string
+          minLength: 1
+
+    GuardQuorumPolicy:
+      type: object
+      additionalProperties: false
+      required: [mode, required, approvers]
+      properties:
+        mode:
+          type: string
+          enum: [threshold, ordered]
+        required:
+          type: integer
+          minimum: 1
+        approvers:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/GuardQuorumApprover'
+        distinct_humans:
+          type: boolean
+          default: true
+        window_sec:
+          type: integer
+          minimum: 1
+          default: 900
+
     CreateTrustReceiptRequest:
       type: object
-      required: [organization_id, action_type, target_resource_id]
+      required: [action_type, target_resource_id]
       properties:
         organization_id:
           type: string
-          description: Tenant identifier
+          description: Optional cross-check; the tenant is derived from the authenticated principal.
           example: org_demo_treasury
         action_type:
           type: string
@@ -1529,6 +1627,7 @@ components:
             - beneficiary_creation
             - large_payment_release
             - ai_agent_payment_action
+            - policy_rollout
         target_resource_id:
           type: string
           description: Identifier of the resource the action operates on
@@ -1539,6 +1638,8 @@ components:
             Optional. If supplied, must match the authenticated entity.
             The authoritative actor identity is always the auth context.
         actor_role:
+          type: string
+        actor_department:
           type: string
         target_changed_fields:
           type: array
@@ -1566,6 +1667,20 @@ components:
           type: string
           enum: [observe, warn, enforce]
           default: enforce
+        mode:
+          type: string
+          enum: [observe, warn, enforce]
+          deprecated: true
+          description: Backward-compatible alias for enforcement_mode.
+        strict_evidence:
+          type: boolean
+          default: false
+        expires_in_sec:
+          type: integer
+          minimum: 60
+          description: Requested TTL; the server applies the action- and credential-specific maximum.
+        quorum_policy:
+          $ref: '#/components/schemas/GuardQuorumPolicy'
 
     TrustReceipt:
       type: object
@@ -1624,6 +1739,46 @@ components:
         canonical_action:
           type: object
           description: The exact canonical action — caller must use this verbatim at consume.
+        authority:
+          type: object
+          description: Scoped-authority verdict and enforcement treatment bound into the receipt.
+        execution_binding:
+          type: object
+          description: Server-computed executor-boundary observation contract.
+
+    TrustReceiptState:
+      type: object
+      required:
+        - receipt_id
+        - organization_id
+        - action_type
+        - decision
+        - enforcement_mode
+        - policy_id
+        - policy_hash
+        - action_hash
+        - expires_at
+        - signoff_required
+        - receipt_status
+        - timeline_event_count
+      properties:
+        receipt_id:
+          type: string
+          pattern: '^tr_[a-f0-9]{32}$'
+        organization_id: { type: string }
+        action_type: { type: string }
+        decision: { type: string }
+        enforcement_mode: { type: string, enum: [observe, warn, enforce] }
+        policy_id: { type: string }
+        policy_hash: { type: string }
+        action_hash: { type: string }
+        before_state_hash: { type: string, nullable: true }
+        after_state_hash: { type: string, nullable: true }
+        expires_at: { type: string, format: date-time }
+        signoff_required: { type: boolean }
+        receipt_status: { type: string }
+        signoff_key_class: { type: string, nullable: true, enum: [A, C] }
+        timeline_event_count: { type: integer, minimum: 1 }
 
     ConsumeTrustReceiptRequest:
       type: object
@@ -1654,6 +1809,54 @@ components:
         execution_reference_id:
           type: string
           nullable: true
+
+    ExecutionAttestationRequest:
+      type: object
+      required: [executed_action, executing_system]
+      properties:
+        executed_action:
+          type: object
+          description: Canonical action object that actually ran.
+        observed_action:
+          type: object
+          description: |
+            Material action independently observed at the executor or
+            system-of-record boundary. Required when the stored receipt carries
+            `execution_binding.required=true`; otherwise the route falls back
+            to `executed_action`.
+          x-emilia-conditionally-required: execution_binding.required=true
+        executing_system:
+          type: string
+        execution_id:
+          type: string
+        executed_at:
+          type: string
+          format: date-time
+
+    ExecutionAttestationResponse:
+      type: object
+      required:
+        - receipt_id
+        - status
+        - binding_status
+        - executed_action_hash
+        - approved_action_hash
+        - execution_binding_check
+        - execution_integrity
+      properties:
+        receipt_id:
+          type: string
+          pattern: '^tr_[a-f0-9]{32}$'
+        status:
+          type: string
+          enum: [executed]
+        binding_status:
+          type: string
+          enum: [match, drift]
+        executed_action_hash: { type: string }
+        approved_action_hash: { type: string }
+        execution_binding_check: { type: object }
+        execution_integrity: { type: object }
 
     EvidencePacket:
       type: object
@@ -1991,8 +2194,8 @@ components:
 
     RequestSignoffRequest:
       type: object
-      description: Single-signoff request; quorum roster fan-out is outside this slim schema.
-      required: [receipt_id, approver_id]
+      description: Single-signoff or server-bound quorum request.
+      required: [receipt_id]
       properties:
         receipt_id:
           type: string
@@ -2002,7 +2205,8 @@ components:
           minLength: 3
           maxLength: 128
           pattern: '^[A-Za-z0-9:_.@-]{3,128}$'
-          description: Intended approver bound to this single signoff
+          description: Required only when the stored receipt has no quorum policy.
+          x-emilia-conditionally-required: stored_receipt.quorum_policy is absent
         comment:
           type: string
           maxLength: 500
@@ -2014,6 +2218,7 @@ components:
 
     SignoffRequest:
       type: object
+      required: [receipt_id, action_hash, initiator_id, expires_at, status]
       properties:
         signoff_id: { type: string }
         receipt_id: { type: string }
@@ -2023,6 +2228,21 @@ components:
         expires_at:
           type: string
           format: date-time
+        quorum:
+          type: object
+          properties:
+            mode: { type: string, enum: [threshold, ordered] }
+            required: { type: integer, minimum: 1 }
+            count: { type: integer, minimum: 1 }
+        signoffs:
+          type: array
+          items:
+            type: object
+            required: [signoff_id, role, approver_id]
+            properties:
+              signoff_id: { type: string }
+              role: { type: string }
+              approver_id: { type: string }
         status:
           type: string
           enum: [pending]

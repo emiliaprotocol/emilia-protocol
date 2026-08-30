@@ -475,7 +475,7 @@ jobs:
           python-version: '3.12'
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.7'
+          go-version: '1.27.0'
       - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - run: npm ci --ignore-scripts
       - name: Prove generated Node 20 runtimes match their TypeScript sources
@@ -790,21 +790,29 @@ jobs:
   # ── Job 11: Python SDK ──────────────────────────────────────────
   sdk-python:
     runs-on: ubuntu-latest
-    env:
-      PYTHONPATH: ${{ github.workspace }}/sdks/python/src
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
-      - name: Install hash-locked SDK test dependencies
-        working-directory: sdks/python
-        run: python -m pip install --require-hashes -r "$GITHUB_WORKSPACE/.github/workflow-requirements/python-sdk-test.txt"
-      - name: Verify import
-        run: python -c "from emilia_protocol import EPClient; print('Python SDK import OK')"
-      - name: Run tests
-        working-directory: sdks/python
-        run: python -m pytest tests/ -v
+      - name: Build the Python SDK wheel
+        run: |
+          python -m pip wheel --no-deps \
+            --wheel-dir "$RUNNER_TEMP/python-sdk-dist" \
+            sdks/python
+          WHEEL_COUNT=$(find "$RUNNER_TEMP/python-sdk-dist" -maxdepth 1 -name 'emilia_protocol-*.whl' | wc -l)
+          test "$WHEEL_COUNT" -eq 1
+      - name: Install the exact wheel in a clean environment
+        run: |
+          python -m venv "$RUNNER_TEMP/python-sdk-venv"
+          "$RUNNER_TEMP/python-sdk-venv/bin/python" -m pip install \
+            --no-deps "$RUNNER_TEMP"/python-sdk-dist/emilia_protocol-*.whl
+      - name: Test the installed wheel
+        env:
+          EMILIA_SDK_WHEEL_TEST: '1'
+        run: |
+          "$RUNNER_TEMP/python-sdk-venv/bin/python" -m unittest discover \
+            -s sdks/python/tests -v
 
   # ── Job 11b: Cross-language conformance ──────────────────────────
   # Proves the JavaScript, Python, and Go reference verifiers all agree with
@@ -824,7 +832,7 @@ jobs:
           python-version: '3.11'
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.7'
+          go-version: '1.27.0'
       # The JavaScript invariant lane drives the real Gate runtime. Gate uses
       # the repository-local Verify SDK for algorithm-agile signatures, so the
       # locked root graph must be present even though the cross-language vector

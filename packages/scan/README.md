@@ -110,7 +110,7 @@ accepts MCP tool lists and generates a `withMcpGuard` wrap. OpenAPI remains a
 passive scan/manifest surface in this release: the command refuses to generate
 a verification-only HTTP middleware until durable one-use consumption is wired.
 Generated integration instructions install the audited runtime exactly with
-`npm install --save-exact @emilia-protocol/mcp-guard@0.5.0`.
+`npm install --save-exact @emilia-protocol/mcp-guard@0.6.0`.
 
 It does exactly three things, and never more:
 

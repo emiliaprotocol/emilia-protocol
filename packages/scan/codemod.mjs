@@ -26,7 +26,7 @@ let strictJsonGate;
 try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
 catch { ({ strictJsonGate } = await import('../verify/strict-json.js')); }
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
-const MCP_GUARD_INSTALL_SPEC = '@emilia-protocol/mcp-guard@0.5.0';
+const MCP_GUARD_INSTALL_SPEC = '@emilia-protocol/mcp-guard@0.6.0';
 
 function lstatIfPresent(target) {
   try { return fs.lstatSync(target); }

@@ -5,6 +5,8 @@ All notable changes to `@emilia-protocol/mcp-guard` are documented here.
 
 ## Unreleased
 
+## 0.6.0 (2026-08-30)
+
 ### Security
 
 - Keep the exact bound execution arguments private from consent, signoff,

@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/fire-drill",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Static declaration scanner for high-risk MCP/OpenAPI actions. Detects required receipt inputs without claiming runtime verification, consumption, or EG-1 enforcement.",
   "license": "Apache-2.0",
   "type": "module",
@@ -26,7 +26,8 @@
     "corpus.mjs",
     "ingest.mjs",
     "registry-index.json",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

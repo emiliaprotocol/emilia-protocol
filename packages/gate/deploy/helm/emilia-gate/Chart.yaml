@@ -17,10 +17,10 @@ description: >-
 type: application
 deprecated: true
 # Chart version (the packaging), independent of the gate's app version.
-version: 0.1.0
+version: 0.1.1
 # Version of @emilia-protocol/gate this chart tracks; used as the default
 # image tag when .Values.image.tag is empty.
-appVersion: "0.10.0"
+appVersion: "0.24.0"
 kubeVersion: ">=1.23.0-0"
 home: https://emiliaprotocol.ai
 sources:

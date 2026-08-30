@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+## 0.4.3 (2026-08-30)
+
+- Generate exact installs for `@emilia-protocol/mcp-guard@0.6.0`, keeping Scan
+  handoff scaffolds aligned with the current customer-owned protection API.
+
 ## 0.4.2 (2026-08-21)
 
 - Reissue the source-discovery release with npm 12-compatible packed-consumer

@@ -38,6 +38,8 @@ tags:
     description: Experimental / legacy install-preflight surfaces; not the primary company wedge
   - name: Receipts
     description: Transaction receipt submission and verification
+  - name: Trust Receipts
+    description: Authenticated pre-action receipt creation, state, one-time consumption, execution evidence, and export
   - name: Rx Reliance
     description: Pharmacy reliance verdicts and profile pinning (EP-NCPDP-RX-RELIANCE-PROFILE-v1)
   - name: Entities
@@ -64,6 +66,8 @@ tags:
     description: Health, stats, audit, and operational endpoints
   - name: Signoff
     description: Accountable Signoff — named human ownership for high-risk actions requiring explicit attestation
+  - name: Signoffs
+    description: Named-human or quorum review requests bound to an exact pending Trust Receipt
   - name: Mobile Approval
     description: Native passkey approval, platform attestation, pairing, and exact-action ceremonies
   - name: GRACE
@@ -113,6 +117,7 @@ paths:
         volume, confidence, or dispute internals.
       security:
         - BearerAuth: []
+        - {}
       parameters:
         - name: entityId
           in: path
@@ -148,6 +153,11 @@ paths:
       description: |
         The PRIMARY canonical decision surface. Evaluates an entity against a
         structured trust policy and returns a trust decision with detailed reasoning.
+        A bearer credential is required for real entities. Anonymous use is
+        limited to the fixed synthetic demo entity and a 4 KiB request body.
+      security:
+        - BearerAuth: []
+        - {}
       requestBody:
         required: true
         content:
@@ -179,7 +189,11 @@ paths:
       description: |
         EP-SX: Should I install this plugin/app/package/extension? Evaluates
         publisher verification, permission risk, provenance, and incident history
-        against host-specific policies.
+        against host-specific policies. A bearer credential is required for real
+        entities; anonymous use is limited to the fixed synthetic demo entity.
+      security:
+        - BearerAuth: []
+        - {}
       requestBody:
         required: true
         content:
@@ -208,7 +222,10 @@ paths:
         high-stakes action. Evaluates effective evidence, dispute rate, and
         establishment status against the specified policy. Optionally verifies
         a delegation. High-value transactions (>$10k) are auto-escalated to
-        strict policy thresholds.
+        strict policy thresholds. Authentication is mandatory. Without an
+        accepted delegation, `entity_id` must identify the authenticated entity.
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -295,6 +312,7 @@ paths:
         Returns only the claim verdict and public metadata. Commitment root and
         salt are deliberately omitted so the verifier learns nothing about the
         underlying receipt set.
+      security: []
       parameters:
         - name: proof_id
           in: query
@@ -318,7 +336,10 @@ paths:
       summary: Get domain-specific trust scores
       description: |
         Returns trust scores broken down by domain (financial, code_execution,
-        communication, etc.) for the specified entity.
+        communication, etc.) for the specified entity. The caller must
+        authenticate as the requested entity; this is not a public directory.
+      security:
+        - BearerAuth: []
       parameters:
         - name: entityId
           in: path
@@ -346,6 +367,10 @@ paths:
                     type: object
                     additionalProperties:
                       type: number
+        '401':
+          description: Missing or invalid API key
+        '403':
+          description: Authenticated entity does not match the requested entity
 
   # ===========================================================================
   # Receipts
@@ -874,6 +899,196 @@ paths:
         '503':
           description: Evidence write failed in enforce or strict-evidence mode.
 
+  /api/v1/trust-receipts:
+    post:
+      tags: [Trust Receipts]
+      summary: Create a pre-action Trust Receipt
+      description: |
+        Evaluates one exact proposed action and records an authenticated,
+        tenant-bound pre-action receipt. The organization is derived from the
+        authenticated principal. A supplied `organization_id` is only a
+        cross-check and must match that bound organization. Observe-mode
+        receipts are telemetry and cannot later be consumed as authority.
+      operationId: createTrustReceipt
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrustReceiptRequest'
+      responses:
+        '200':
+          description: Existing durable receipt recovered for the same acquisition idempotency binding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+        '201':
+          description: Trust Receipt created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+        '400':
+          description: Request is malformed or an action field is invalid.
+        '401':
+          description: Missing or invalid bearer credential.
+        '403':
+          description: Tenant, actor, Cloud capability, or authority binding failed.
+        '409':
+          description: Acquisition idempotency binding conflicts with durable state.
+        '422':
+          description: Submitted quorum is below the organization-pinned template, or a required quorum is missing.
+        '503':
+          description: Required quorum-template, authority, or durable evidence dependency is unavailable.
+
+  /api/v1/trust-receipts/{receiptId}:
+    get:
+      tags: [Trust Receipts]
+      summary: Read current Trust Receipt state
+      description: |
+        Replays the append-only receipt event stream. The creating actor may
+        read its receipt; a same-organization peer needs `receipt.read` or
+        `admin`. Unauthorized and cross-tenant lookups return 404 to avoid
+        disclosing whether the receipt exists.
+      operationId: getTrustReceipt
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      responses:
+        '200':
+          description: Current receipt state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceiptState'
+        '400':
+          description: Malformed receipt identifier.
+        '401':
+          description: Missing or invalid bearer credential.
+        '404':
+          description: Receipt unavailable to this caller.
+
+  /api/v1/trust-receipts/{receiptId}/consume:
+    post:
+      tags: [Trust Receipts]
+      summary: Consume exact-action authority once
+      description: |
+        Atomically consumes a non-observe receipt for the exact issued
+        `action_hash`. Any required Class-A signoff, quorum, live approver
+        authority, tenant status, and organization-pinned quorum floor are
+        rechecked before the consume record commits. Policy-rollout receipts
+        are consumed only by the separate atomic activation endpoint.
+      operationId: consumeTrustReceipt
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsumeTrustReceiptRequest'
+      responses:
+        '200':
+          description: Receipt consumed once.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsumeTrustReceiptResponse'
+        '400':
+          description: Receipt id, action hash, or executing system is missing or malformed.
+        '401':
+          description: Missing or invalid bearer credential.
+        '403':
+          description: Required signoff, quorum, credential, or authority check failed.
+        '404':
+          description: Receipt unavailable to this caller.
+        '409':
+          description: Receipt is not consumable, was already consumed, or does not match the exact action.
+        '410':
+          description: Receipt expired.
+        '423':
+          description: Organization-wide execution suspension is active.
+        '503':
+          description: A quorum, credential, authority, or durable consume dependency is unavailable.
+
+  /api/v1/trust-receipts/{receiptId}/evidence:
+    get:
+      tags: [Trust Receipts]
+      summary: Export the receipt evidence packet
+      description: |
+        Returns the authenticated receipt timeline, policy, signoff, consume,
+        and optional signed EP-RECEIPT-v1 document. A creator may export its
+        receipt; a same-organization peer needs `receipt.evidence` or `admin`.
+        The packet is evidence, not proof that an external effect occurred.
+      operationId: getTrustReceiptEvidence
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      responses:
+        '200':
+          description: Tenant-scoped evidence packet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceiptEvidence'
+        '401':
+          description: Missing or invalid bearer credential.
+        '404':
+          description: Receipt unavailable to this caller.
+
+  /api/v1/signoffs/request:
+    post:
+      tags: [Signoffs]
+      summary: Open signoff review for a pending Trust Receipt
+      description: |
+        The authenticated receipt creator opens review for an unexpired receipt.
+        `approver_id` is required for a single-signoff receipt. When the receipt
+        carries a quorum policy, the server ignores a caller-selected roster and
+        fans out one request per approver already bound into that receipt.
+      operationId: requestSignoff
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestSignoffRequest'
+      responses:
+        '200':
+          description: Existing signoff request recovered for the same acquisition binding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignoffRequest'
+        '201':
+          description: Single or quorum signoff request opened.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignoffRequest'
+        '400':
+          description: Receipt or approver input is missing or malformed.
+        '401':
+          description: Missing or invalid bearer credential.
+        '403':
+          description: Caller did not create the receipt or lacks the required Cloud capability.
+        '404':
+          description: Receipt unavailable to this caller.
+        '409':
+          description: Signoff is not required, already exists, or an acquisition replay binding conflicts.
+        '410':
+          description: Receipt expired.
+        '422':
+          description: Stored quorum roster is invalid.
+
   /api/v1/trust-receipts/{receiptId}/execution:
     post:
       tags: [Receipts]
@@ -903,6 +1118,14 @@ paths:
                 executed_action:
                   type: object
                   description: Canonical action object that actually ran.
+                observed_action:
+                  type: object
+                  description: |
+                    Material action independently observed at the executor or
+                    system-of-record boundary. Required when the stored receipt
+                    carries `execution_binding.required=true`; otherwise the
+                    route falls back to `executed_action`.
+                  x-emilia-conditionally-required: execution_binding.required=true
                 executing_system:
                   type: string
                   description: System or adapter that executed the mutation.
@@ -1349,6 +1572,11 @@ paths:
     get:
       tags: [Entities]
       summary: Search entities
+      description: |
+        Search the tenant-visible entity directory. This rich directory surface
+        requires a bearer credential and is not an anonymous reconnaissance API.
+      security:
+        - BearerAuth: []
       parameters:
         - name: q
           in: query
@@ -1366,6 +1594,8 @@ paths:
       responses:
         '200':
           description: Search results
+        '401':
+          description: Missing or invalid API key
 
   /api/entities/{entityId}/auto-receipt:
     get:
@@ -1787,7 +2017,9 @@ paths:
     get:
       tags: [Identity]
       summary: Look up a principal
-      description: Returns the principal record by ID. Public endpoint.
+      description: Returns the principal record to that principal or an authenticated operator.
+      security:
+        - BearerAuth: []
       parameters:
         - name: principalId
           in: path
@@ -1797,6 +2029,10 @@ paths:
       responses:
         '200':
           description: Principal record
+        '401':
+          description: Authentication required
+        '403':
+          description: Caller is neither this principal nor an operator
         '404':
           description: Principal not found
 
@@ -1810,7 +2046,10 @@ paths:
         not just machines: "can I trust the human who authorized this agent?"
 
         Includes grade (excellent/good/fair/poor), outcome rates, average agent
-        confidence, and recent delegation signals. Public endpoint.
+        confidence, and recent delegation signals. Available only to that
+        principal or an authenticated operator.
+      security:
+        - BearerAuth: []
       parameters:
         - name: principalId
           in: path
@@ -1824,6 +2063,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DelegationJudgmentResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: Caller is neither this principal nor an operator
         '404':
           description: Principal not found
 
@@ -1834,7 +2077,9 @@ paths:
       description: |
         Lists all agents this principal has ever authorized, with their trust
         profiles and per-agent outcome summaries derived from delegation signals.
-        Public endpoint.
+        Available only to that principal or an authenticated operator.
+      security:
+        - BearerAuth: []
       parameters:
         - name: principalId
           in: path
@@ -1855,6 +2100,10 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/AuthorizedAgent'
+        '401':
+          description: Authentication required
+        '403':
+          description: Caller is neither this principal nor an operator
         '404':
           description: Principal not found
 
@@ -1864,7 +2113,10 @@ paths:
       summary: Get entity lineage
       description: |
         Returns the identity lineage for an entity — the chain of continuity
-        claims and identity transitions over time.
+        claims and identity transitions over time. Available only to that entity
+        or an authenticated operator.
+      security:
+        - BearerAuth: []
       parameters:
         - name: entityId
           in: path
@@ -1874,6 +2126,10 @@ paths:
       responses:
         '200':
           description: Entity lineage
+        '401':
+          description: Authentication required
+        '403':
+          description: Caller is neither this entity nor an operator
 
   /api/identity/bind:
     post:
@@ -1881,7 +2137,8 @@ paths:
       summary: Create an identity binding
       description: |
         Binds a principal to an external identity (e.g. GitHub account,
-        email address, domain). Requires authentication.
+        email address, domain). The submitted `principal_id` must exactly match
+        the authenticated entity.
       security:
         - BearerAuth: []
       requestBody:
@@ -1905,6 +2162,8 @@ paths:
           description: Binding created
         '401':
           description: Authentication required
+        '403':
+          description: principal_id does not match the authenticated entity
 
   /api/identity/continuity:
     post:
@@ -1913,7 +2172,8 @@ paths:
       description: |
         Files a claim that an old entity ID should be linked to a new entity ID
         (e.g. platform migration, rebrand). Trust history can be carried forward
-        upon approval. Entities with active disputes are frozen from continuity claims.
+        upon approval. Entities with active disputes are frozen from continuity
+        claims. The successor must authenticate the filing as `new_entity_id`.
       security:
         - BearerAuth: []
       requestBody:
@@ -1937,40 +2197,49 @@ paths:
           description: Continuity claim filed
         '401':
           description: Authentication required
+        '403':
+          description: The authenticated successor does not match new_entity_id
 
   /api/identity/continuity/challenge:
     post:
       tags: [Identity]
       summary: Challenge a continuity claim
       description: |
-        Challenge a pending continuity claim. No authentication required —
-        anyone can challenge to prevent trust laundering.
+        Challenge a pending continuity claim. The challenger identity and
+        administrator status are derived from the bearer credential; callers
+        cannot assert either value in the body.
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [continuity_id, challenger_type, reason]
+              required: [continuity_id, reason]
               properties:
                 continuity_id:
                   type: string
-                challenger_type:
-                  type: string
-                  description: Type of challenger (e.g. "counterparty", "operator", "public")
                 reason:
                   type: string
+                evidence:
+                  type: object
+                  description: Optional challenge evidence; challenger identity remains server-derived.
       responses:
         '201':
           description: Challenge filed
+        '401':
+          description: Authentication required
+        '403':
+          description: Credential does not identify a challenger entity
 
   /api/identity/continuity/resolve:
     post:
       tags: [Identity]
       summary: Resolve a continuity claim (operator only)
       description: |
-        Operator resolves a continuity claim. Requires authentication.
-        Decision determines whether trust history is carried forward.
+        A named authenticated caller with `dispute.review` resolves a continuity
+        claim. The decision determines whether trust history is carried forward.
       security:
         - BearerAuth: []
       requestBody:
@@ -1993,15 +2262,19 @@ paths:
           description: Continuity claim resolved
         '401':
           description: Authentication required
+        '403':
+          description: Named caller or dispute.review permission is missing
 
   /api/identity/verify:
     post:
       tags: [Identity]
       summary: Verify an identity binding
       description: |
-        Verifies a previously created identity binding. Requires authentication.
+        Verifies a previously created identity binding. Requires a short-lived,
+        named operator token whose role grants `binding.verify`; an ordinary
+        entity bearer or anonymous shared secret is insufficient.
       security:
-        - BearerAuth: []
+        - OperatorAuth: []
       requestBody:
         required: true
         content:
@@ -2017,6 +2290,8 @@ paths:
           description: Binding verification result
         '401':
           description: Authentication required
+        '403':
+          description: Named operator identity or binding.verify permission is missing
 
   # ===========================================================================
   # Needs (Agent Marketplace)
@@ -2977,13 +3252,27 @@ paths:
   /api/stats:
     get:
       tags: [System]
-      summary: Operator proof metrics
-      description: Authenticated operator metrics. Not exposed anonymously.
+      summary: Proof and network metrics
+      description: |
+        With `view=public`, returns a deliberately bucketed, reconnaissance-safe
+        anonymous projection. Without that exact query value, a bearer credential
+        is required and the route returns exact live metrics.
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - name: view
+          in: query
+          required: false
+          description: Select the anonymous bucketed public projection.
+          schema:
+            type: string
+            enum: [public]
       responses:
         '401':
           description: Missing or invalid API key
         '200':
-          description: Authenticated stats
+          description: Exact authenticated metrics or the bucketed public projection.
           content:
             application/json:
               schema:
@@ -7197,6 +7486,14 @@ components:
       schema:
         type: string
         pattern: '^tr_[a-f0-9]{32}$'
+    ReceiptId:
+      name: receiptId
+      in: path
+      required: true
+      description: Trust Receipt ID
+      schema:
+        type: string
+        pattern: '^tr_[a-f0-9]{32}$'
     ReleaseLockId:
       name: lockId
       in: path
@@ -8969,6 +9266,316 @@ components:
           type: number
         evidence:
           type: object
+
+    GuardQuorumApprover:
+      type: object
+      additionalProperties: false
+      required: [role, approver]
+      properties:
+        role:
+          type: string
+          minLength: 1
+          description: Approval role this roster seat satisfies.
+        approver:
+          type: string
+          minLength: 1
+          description: Named approver identity bound to this roster seat.
+
+    GuardQuorumPolicy:
+      type: object
+      additionalProperties: false
+      required: [mode, required, approvers]
+      properties:
+        mode:
+          type: string
+          enum: [threshold, ordered]
+        required:
+          type: integer
+          minimum: 1
+          description: Number of roster approvals required.
+        approvers:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/GuardQuorumApprover'
+        distinct_humans:
+          type: boolean
+          default: true
+        window_sec:
+          type: integer
+          minimum: 1
+          default: 900
+
+    CreateTrustReceiptRequest:
+      type: object
+      required: [action_type, target_resource_id]
+      properties:
+        organization_id:
+          type: string
+          description: |
+            Optional tenant cross-check. The authoritative organization is
+            derived from the authenticated principal and this value, when
+            supplied, must match it.
+        action_type:
+          type: string
+          enum:
+            - benefit_bank_account_change
+            - benefit_address_change
+            - caseworker_override
+            - gov.vendor_payment_destination_change
+            - gov.disbursement_release
+            - gov.grant_disbursement
+            - gov.provider_enrollment_change
+            - gov.eligibility_override
+            - vendor_bank_account_change
+            - beneficiary_creation
+            - large_payment_release
+            - ai_agent_payment_action
+            - policy_rollout
+        target_resource_id:
+          type: string
+        actor_id:
+          type: string
+          description: Optional cross-check that must match the authenticated entity.
+        actor_role:
+          type: string
+        actor_department:
+          type: string
+        target_changed_fields:
+          type: array
+          items: { type: string }
+        amount:
+          type: number
+        currency:
+          type: string
+        risk_flags:
+          type: array
+          items: { type: string }
+        before_state:
+          type: object
+          description: Pre-action state used to derive the stored hash; plaintext is not retained in the receipt event.
+        after_state:
+          type: object
+          description: Proposed post-action state used to derive the stored hash.
+        policy_id:
+          type: string
+        enforcement_mode:
+          type: string
+          enum: [observe, warn, enforce]
+          default: enforce
+        mode:
+          type: string
+          enum: [observe, warn, enforce]
+          deprecated: true
+          description: Backward-compatible alias for enforcement_mode.
+        strict_evidence:
+          type: boolean
+          default: false
+        expires_in_sec:
+          type: integer
+          minimum: 60
+          description: Requested TTL; the server applies the action- and credential-specific maximum.
+        quorum_policy:
+          $ref: '#/components/schemas/GuardQuorumPolicy'
+
+    TrustReceipt:
+      type: object
+      required:
+        - receipt_id
+        - decision
+        - policy_id
+        - policy_hash
+        - action_hash
+        - expires_at
+        - signoff_required
+        - receipt_status
+        - enforcement_mode
+        - evidence_status
+        - authority
+        - reasons
+        - canonical_action
+        - execution_binding
+      properties:
+        receipt_id:
+          type: string
+          pattern: '^tr_[a-f0-9]{32}$'
+        decision:
+          type: string
+          enum: [allow, observe, allow_with_signoff, deny]
+        observed_decision:
+          type: string
+          nullable: true
+        policy_id: { type: string }
+        policy_hash: { type: string }
+        action_hash: { type: string }
+        before_state_hash: { type: string, nullable: true }
+        after_state_hash: { type: string, nullable: true }
+        nonce: { type: string }
+        expires_at: { type: string, format: date-time }
+        signoff_required: { type: boolean }
+        required_assurance: { type: string, nullable: true, enum: [A] }
+        signoff_request_id: { type: string, nullable: true }
+        risk_flags:
+          type: array
+          items: { type: string }
+        receipt_status:
+          type: string
+          enum: [issued, pending_signoff, observed, denied]
+        enforcement_mode:
+          type: string
+          enum: [observe, warn, enforce]
+        evidence_status:
+          type: string
+          enum: [durable, degraded]
+        authority:
+          type: object
+          description: Scoped-authority verdict and enforcement treatment bound into the receipt.
+        reasons:
+          type: array
+          items: { type: string }
+        canonical_action:
+          type: object
+          description: Exact canonical action the consumer must bind at execution.
+        execution_binding:
+          type: object
+          description: Server-computed executor-boundary observation contract.
+
+    TrustReceiptState:
+      type: object
+      required:
+        - receipt_id
+        - organization_id
+        - action_type
+        - decision
+        - enforcement_mode
+        - policy_id
+        - policy_hash
+        - action_hash
+        - expires_at
+        - signoff_required
+        - receipt_status
+        - timeline_event_count
+      properties:
+        receipt_id: { type: string, pattern: '^tr_[a-f0-9]{32}$' }
+        organization_id: { type: string }
+        action_type: { type: string }
+        decision: { type: string }
+        enforcement_mode: { type: string, enum: [observe, warn, enforce] }
+        policy_id: { type: string }
+        policy_hash: { type: string }
+        action_hash: { type: string }
+        before_state_hash: { type: string, nullable: true }
+        after_state_hash: { type: string, nullable: true }
+        expires_at: { type: string, format: date-time }
+        signoff_required: { type: boolean }
+        receipt_status: { type: string }
+        signoff_key_class: { type: string, nullable: true, enum: [A, C] }
+        timeline_event_count: { type: integer, minimum: 1 }
+
+    ConsumeTrustReceiptRequest:
+      type: object
+      required: [action_hash, executing_system]
+      properties:
+        action_hash:
+          type: string
+          description: Must exactly match the action_hash issued with the receipt.
+        executing_system:
+          type: string
+        execution_reference_id:
+          type: string
+          nullable: true
+
+    ConsumeTrustReceiptResponse:
+      type: object
+      required: [receipt_id, status, consumed_at, consumed_by_system, execution_reference_id]
+      properties:
+        receipt_id: { type: string, pattern: '^tr_[a-f0-9]{32}$' }
+        status: { type: string, enum: [consumed] }
+        consumed_at: { type: string, format: date-time }
+        consumed_by_system: { type: string }
+        execution_reference_id: { type: string, nullable: true }
+
+    TrustReceiptEvidence:
+      type: object
+      required:
+        - document
+        - public_key
+        - signed
+        - verify_with
+        - receipt_id
+        - organization_id
+        - actor
+        - action
+        - policy
+        - signoff
+        - consume
+        - replay_attempts
+      properties:
+        document:
+          type: object
+          nullable: true
+          description: Optional signed EP-RECEIPT-v1 document.
+        public_key: { type: string, nullable: true }
+        signed: { type: boolean }
+        verify_with: { type: string, enum: ['@emilia-protocol/verify'] }
+        receipt_id: { type: string, pattern: '^tr_[a-f0-9]{32}$' }
+        organization_id: { type: string }
+        actor: { type: object }
+        action: { type: object }
+        policy: { type: object }
+        signoff: { type: object }
+        consume: { type: object }
+        replay_attempts: { type: integer, minimum: 0 }
+
+    RequestSignoffRequest:
+      type: object
+      required: [receipt_id]
+      properties:
+        receipt_id:
+          type: string
+          pattern: '^tr_[a-f0-9]{32}$'
+        approver_id:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: '^[A-Za-z0-9:_.@-]{3,128}$'
+          description: Required only when the stored receipt has no quorum policy.
+          x-emilia-conditionally-required: stored_receipt.quorum_policy is absent
+        comment:
+          type: string
+          maxLength: 500
+        expires_in_minutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 240
+
+    SignoffRequest:
+      type: object
+      required: [receipt_id, action_hash, initiator_id, expires_at, status]
+      properties:
+        signoff_id: { type: string, pattern: '^sig_[a-f0-9]{32}$' }
+        receipt_id: { type: string, pattern: '^tr_[a-f0-9]{32}$' }
+        action_hash: { type: string }
+        initiator_id: { type: string }
+        approver_id: { type: string }
+        expires_at: { type: string, format: date-time }
+        quorum:
+          type: object
+          properties:
+            mode: { type: string, enum: [threshold, ordered] }
+            required: { type: integer, minimum: 1 }
+            count: { type: integer, minimum: 1 }
+        signoffs:
+          type: array
+          items:
+            type: object
+            required: [signoff_id, role, approver_id]
+            properties:
+              signoff_id: { type: string, pattern: '^sig_[a-f0-9]{32}$' }
+              role: { type: string }
+              approver_id: { type: string }
+        status: { type: string, enum: [pending] }
 
     GovGuardPrecheckRequest:
       type: object

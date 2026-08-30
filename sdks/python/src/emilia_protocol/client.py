@@ -1,1013 +1,703 @@
-"""EMILIA Protocol — Async HTTP Client."""
+"""Synchronous, zero-dependency client for the supported EMILIA API surface."""
+
 from __future__ import annotations
 
+import ipaddress
+import json
 import os
-from typing import Any, Optional
+import re
+import urllib.error
+import urllib.request
+from copy import deepcopy
+from typing import Any, Callable, Dict, List, Mapping, Optional, Union
+from urllib.parse import quote, urlsplit
 
-import httpx
-
+from ._version import __version__
 from .types import (
-    AgentBehavior,
-    DisputeReason,
-    EntityTrustProfile,
-    EntityType,
-    EPError,
-    ReportType,
-    TransactionType,
-    TrustContext,
-    TrustDomain,
-    TrustPolicy,
+    AttestExecutionParams,
+    ConsumeTrustReceiptParams,
+    ConsumeTrustReceiptResult,
+    CreateTrustReceiptParams,
+    ExecutionAttestation,
+    GateParams,
+    GateResult,
+    Handshake,
+    InitiateHandshakeParams,
+    MutationObservationContext,
+    Party,
+    Presentation,
+    PresentParams,
+    ReceiptContext,
+    RequestSignoffParams,
+    RequireReceiptParams,
+    RequireReceiptResult,
+    RevokeResult,
+    SignoffRequest,
+    SignoffRequiredContext,
+    TrustReceipt,
+    TrustReceiptState,
+    VerificationResult,
 )
 
-_SDK_VERSION = "1.0.0"
-_DEFAULT_BASE_URL = "https://emiliaprotocol.ai"
+
+DEFAULT_BASE_URL = "https://emiliaprotocol.ai"
+_RECEIPT_ID = re.compile(r"^tr_[a-f0-9]{32}$")
+_ACTION_HASH = re.compile(r"^sha256:[a-f0-9]{64}$")
+
+
+class EPError(Exception):
+    """An HTTP, transport, configuration, or response-contract failure."""
+
+    def __init__(
+        self,
+        message: str,
+        status: Optional[int] = None,
+        code: Optional[str] = None,
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
+
+
+def _normalize_base_url(base_url: str, allow_insecure_http: bool) -> str:
+    """Validate the caller-selected authority boundary for API credentials."""
+    if not isinstance(base_url, str) or not base_url.strip():
+        raise ValueError("base_url must be a non-empty absolute URL")
+
+    candidate = base_url.strip().rstrip("/")
+    if any(ord(char) < 0x20 or ord(char) == 0x7F for char in candidate):
+        raise ValueError("base_url must not contain control characters")
+
+    parsed = urlsplit(candidate)
+    if parsed.scheme not in ("https", "http") or not parsed.netloc or not parsed.hostname:
+        raise ValueError("base_url must be an absolute http(s) URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("base_url must not contain embedded credentials")
+    if parsed.query or parsed.fragment:
+        raise ValueError("base_url must not contain a query string or fragment")
+
+    if parsed.scheme == "http" and not allow_insecure_http:
+        hostname = parsed.hostname.rstrip(".").lower()
+        is_loopback = hostname == "localhost" or hostname.endswith(".localhost")
+        if not is_loopback:
+            try:
+                is_loopback = ipaddress.ip_address(hostname).is_loopback
+            except ValueError:
+                is_loopback = False
+        if not is_loopback:
+            raise ValueError(
+                "cleartext remote base_url refused; use HTTPS or set "
+                "allow_insecure_http=True explicitly"
+            )
+
+    return candidate
+
+
+def _problem_code(payload: Mapping[str, Any]) -> Optional[str]:
+    code = payload.get("code")
+    if isinstance(code, str) and code:
+        return code
+    problem_type = payload.get("type")
+    if isinstance(problem_type, str) and problem_type:
+        return problem_type.rstrip("/").rsplit("/", 1)[-1] or None
+    return None
+
+
+def _problem_message(payload: Mapping[str, Any], status: int) -> str:
+    for key in ("detail", "error", "title"):
+        value = payload.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return "EP API error: {0}".format(status)
+
+
+def _object_response(data: Any, operation: str) -> Dict[str, Any]:
+    if not isinstance(data, dict):
+        raise EPError(
+            "{0} returned a non-object JSON response".format(operation),
+            code="invalid_response",
+        )
+    return data
 
 
 class EPClient:
-    """Async client for the EMILIA Protocol API.
+    """Blocking client for handshakes, trust gate, and v1 receipt enforcement.
 
-    The client is designed to be used as an async context manager so that the
-    underlying connection pool is properly closed when you are done:
-
-    .. code-block:: python
-
-        async with EPClient(api_key="ep_live_...") as ep:
-            profile = await ep.trust_profile("merchant-xyz")
-            print(profile.current_confidence)
-
-    For one-shot synchronous use in scripts, wrap with ``asyncio.run()``:
-
-    .. code-block:: python
-
-        import asyncio, emilia_protocol as ep
-
-        async def main():
-            async with ep.EPClient(api_key="ep_live_...") as client:
-                return await client.trust_profile("merchant-xyz")
-
-        profile = asyncio.run(main())
-
-    Parameters
-    ----------
-    api_key:
-        Your EP API key (``ep_live_...``).  Falls back to the ``EP_API_KEY``
-        environment variable when omitted.
-    base_url:
-        Override the EP API base URL.  Defaults to ``https://emiliaprotocol.ai``.
-    timeout:
-        Per-request timeout in seconds.  Defaults to 30 s.
+    The client uses only the Python standard library. Requests that can mutate
+    server state are never retried automatically. ``retries`` applies only to
+    GET requests, because replaying a failed POST can duplicate state.
     """
 
     def __init__(
         self,
-        *,
+        base_url: Optional[str] = None,
         api_key: Optional[str] = None,
-        base_url: str = _DEFAULT_BASE_URL,
-        timeout: float = 30.0,
+        timeout: int = 10,
+        retries: int = 2,
+        allow_insecure_http: bool = False,
     ) -> None:
-        self.api_key: str = api_key or os.environ.get("EP_API_KEY", "")
-        self.base_url: str = base_url.rstrip("/")
-        self._client = httpx.AsyncClient(
-            base_url=self.base_url,
-            timeout=timeout,
-            headers={"User-Agent": f"emilia-protocol-python/{_SDK_VERSION}"},
-        )
+        selected_url = base_url or os.environ.get("EP_BASE_URL") or DEFAULT_BASE_URL
+        self._base_url = _normalize_base_url(selected_url, allow_insecure_http)
+        self._api_key = api_key if api_key is not None else os.environ.get("EP_API_KEY", "")
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        if retries < 0:
+            raise ValueError("retries must be non-negative")
+        self._timeout = timeout
+        self._retries = retries
 
-    # ------------------------------------------------------------------
-    # Context manager
-    # ------------------------------------------------------------------
-
-    async def __aenter__(self) -> "EPClient":
-        return self
-
-    async def __aexit__(self, *args: Any) -> None:
-        await self.close()
-
-    async def close(self) -> None:
-        """Close the underlying HTTP connection pool."""
-        await self._client.aclose()
-
-    # ------------------------------------------------------------------
-    # Internal request helper
-    # ------------------------------------------------------------------
-
-    async def _request(
+    def _request(
         self,
         method: str,
         path: str,
-        *,
+        body: Optional[Mapping[str, Any]] = None,
         auth: bool = False,
-        params: Optional[dict[str, str]] = None,
-        body: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
-        """Execute an HTTP request and return the parsed JSON body.
+    ) -> Any:
+        method = method.upper()
+        if not path.startswith("/") or path.startswith("//"):
+            raise ValueError("path must be an origin-relative API path")
+        if auth and not self._api_key:
+            raise EPError(
+                "This endpoint requires an EMILIA API key",
+                code="missing_api_key",
+            )
 
-        Parameters
-        ----------
-        method:  HTTP verb (``"GET"``, ``"POST"``, …).
-        path:    API path starting with ``/``.
-        auth:    When ``True`` and an API key is set, send ``Authorization: Bearer``.
-        params:  URL query parameters.
-        body:    Request body serialised as JSON.
-
-        Raises
-        ------
-        EPError
-            On non-2xx responses, timeouts, or network failures.
-        """
-        headers: dict[str, str] = {}
-        if auth and self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        # Remove None values from body to avoid sending nulls for unset fields
+        headers: Dict[str, str] = {
+            "Accept": "application/json",
+            "User-Agent": "emilia-protocol-python/{0}".format(__version__),
+        }
         if body is not None:
-            body = {k: v for k, v in body.items() if v is not None}
+            headers["Content-Type"] = "application/json"
+        if auth:
+            headers["Authorization"] = "Bearer {0}".format(self._api_key)
 
-        try:
-            response = await self._client.request(
-                method,
-                path,
+        data_bytes = (
+            json.dumps(dict(body), separators=(",", ":"), allow_nan=False).encode("utf-8")
+            if body is not None
+            else None
+        )
+        retry_budget = self._retries if method in ("GET", "HEAD") else 0
+        last_error: Optional[EPError] = None
+
+        for _attempt in range(retry_budget + 1):
+            request = urllib.request.Request(
+                "{0}{1}".format(self._base_url, path),
+                data=data_bytes,
                 headers=headers,
-                params=params,
-                json=body if body else None,
+                method=method,
             )
-            data: dict[str, Any] = response.json()
-            if not response.is_success:
-                raise EPError(
-                    data.get("error", f"EP API error: {response.status_code}"),
-                    status=response.status_code,
-                    code=data.get("code"),
+            try:
+                # The constructor validates the caller-selected URL and refuses
+                # cleartext remote credential transport unless explicitly enabled.
+                with urllib.request.urlopen(  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+                    request,
+                    timeout=self._timeout,
+                ) as response:
+                    raw = response.read().decode("utf-8")
+                    if not raw:
+                        return {}
+                    try:
+                        return json.loads(raw)
+                    except (json.JSONDecodeError, ValueError) as error:
+                        raise EPError(
+                            "EP API returned invalid JSON",
+                            code="invalid_response",
+                        ) from error
+            except urllib.error.HTTPError as error:
+                try:
+                    raw_body = (
+                        error.read().decode("utf-8", errors="replace")
+                        if error.fp
+                        else ""
+                    )
+                finally:
+                    error.close()
+                try:
+                    parsed = json.loads(raw_body) if raw_body else {}
+                except (json.JSONDecodeError, ValueError):
+                    parsed = {}
+                payload = parsed if isinstance(parsed, dict) else {}
+                current = EPError(
+                    _problem_message(payload, error.code),
+                    status=error.code,
+                    code=_problem_code(payload),
                 )
-            return data
-        except EPError:
-            raise
-        except httpx.TimeoutException as exc:
-            raise EPError(f"Request timed out: {exc}") from exc
-        except httpx.RequestError as exc:
-            raise EPError(f"Request failed: {exc}") from exc
+                if error.code < 500 or retry_budget == 0:
+                    raise current
+                last_error = current
+            except urllib.error.URLError as error:
+                current = EPError(str(error.reason), code="network_error")
+                if retry_budget == 0:
+                    raise current
+                last_error = current
+            except EPError:
+                raise
+            except Exception as error:
+                current = EPError(str(error), code="network_error")
+                if retry_budget == 0:
+                    raise current
+                last_error = current
 
-    # ==================================================================
-    # Trust Profile & Evaluation
-    # ==================================================================
+        if last_error is not None:
+            raise last_error
+        raise EPError("Unknown transport error", code="network_error")
 
-    async def trust_profile(self, entity_id: str) -> EntityTrustProfile:
-        """Get an entity's full trust profile (canonical read surface).
+    # ------------------------------------------------------------------
+    # Handshake and trust gate
+    # ------------------------------------------------------------------
 
-        This is the primary method for checking trust before transacting with
-        any counterparty or installing any software.  It returns behavioral
-        rates, signal breakdowns, provenance composition, consistency,
-        anomaly alerts, current confidence, historical establishment, and
-        dispute summary.
-
-        Parameters
-        ----------
-        entity_id:
-            Entity ID slug (e.g. ``"merchant-xyz"``) or UUID.
-
-        Returns
-        -------
-        EntityTrustProfile
-            Parsed trust profile dataclass.
-
-        Example
-        -------
-        .. code-block:: python
-
-            profile = await ep.trust_profile("merchant-xyz")
-            if profile.current_confidence == "established":
-                print("Safe to transact.")
-        """
-        data = await self._request("GET", f"/api/trust/profile/{entity_id}")
-        return EntityTrustProfile.from_dict(data)
-
-    async def trust_evaluate(
+    def initiate_handshake(
         self,
-        entity_id: str,
-        policy: TrustPolicy = "standard",
-        context: Optional[TrustContext] = None,
-    ) -> dict[str, Any]:
-        """Evaluate an entity against a named trust policy.
+        mode: str,
+        policy_id: str,
+        parties: List[Union[Party, Mapping[str, str]]],
+        binding: Optional[Mapping[str, Any]] = None,
+        interaction_id: Optional[str] = None,
+        payload: Optional[Mapping[str, Any]] = None,
+        binding_ttl_ms: Optional[int] = None,
+        idempotency_key: Optional[str] = None,
+        action_type: Optional[str] = None,
+        resource_ref: Optional[str] = None,
+        intent_ref: Optional[str] = None,
+    ) -> Handshake:
+        normalized_parties: List[Party] = []
+        for party in parties:
+            if isinstance(party, Party):
+                normalized_parties.append(party)
+                continue
+            entity_ref = party.get("entity_ref") or party.get("entityRef")
+            role = party.get("role")
+            normalized_parties.append(Party(str(entity_ref or ""), str(role or "")))
+        params = InitiateHandshakeParams(
+            mode=mode,
+            policy_id=policy_id,
+            parties=normalized_parties,
+            payload=deepcopy(dict(payload)) if payload is not None else None,
+            binding=deepcopy(dict(binding)) if binding is not None else None,
+            interaction_id=interaction_id,
+            binding_ttl_ms=binding_ttl_ms,
+            idempotency_key=idempotency_key,
+            action_type=action_type,
+            resource_ref=resource_ref,
+            intent_ref=intent_ref,
+        )
+        data = _object_response(
+            self._request("POST", "/api/handshake", params.to_dict(), auth=True),
+            "initiate_handshake",
+        )
+        return Handshake.from_dict(data)
 
-        Returns a Trust Decision (allow/review/deny) with specific failure reasons. Use this
-        to make routing and payment decisions.
+    def get_handshake(self, handshake_id: str) -> Handshake:
+        data = _object_response(
+            self._request(
+                "GET",
+                "/api/handshake/{0}".format(quote(handshake_id, safe="")),
+                auth=True,
+            ),
+            "get_handshake",
+        )
+        return Handshake.from_dict(data)
 
-        Parameters
-        ----------
-        entity_id:
-            Entity ID to evaluate.
-        policy:
-            ``"strict"`` (high-value), ``"standard"`` (normal),
-            ``"permissive"`` (low-risk), or ``"discovery"`` (allow unevaluated).
-        context:
-            Optional :class:`TrustContext` for context-aware evaluation
-            (e.g. ``{"category": "furniture", "geo": "US-CA"}``).
+    def present(
+        self,
+        handshake_id: str,
+        party_role: str,
+        presentation_type: str,
+        claims: Mapping[str, Any],
+        issuer_ref: Optional[str] = None,
+        issuer_proof: Optional[Mapping[str, Any]] = None,
+        disclosure_mode: Optional[str] = None,
+    ) -> Presentation:
+        params = PresentParams(
+            party_role=party_role,
+            presentation_type=presentation_type,
+            claims=deepcopy(dict(claims)),
+            issuer_ref=issuer_ref,
+            issuer_proof=deepcopy(dict(issuer_proof)) if issuer_proof is not None else None,
+            disclosure_mode=disclosure_mode,
+        )
+        data = _object_response(
+            self._request(
+                "POST",
+                "/api/handshake/{0}/present".format(quote(handshake_id, safe="")),
+                params.to_dict(),
+                auth=True,
+            ),
+            "present",
+        )
+        return Presentation.from_dict(data)
 
-        Example
-        -------
-        .. code-block:: python
+    def verify(self, handshake_id: str) -> VerificationResult:
+        data = _object_response(
+            self._request(
+                "POST",
+                "/api/handshake/{0}/verify".format(quote(handshake_id, safe="")),
+                auth=True,
+            ),
+            "verify",
+        )
+        return VerificationResult.from_dict(data)
 
-            result = await ep.trust_evaluate(
-                "merchant-xyz",
-                policy="strict",
-                context={"category": "electronics", "value_band": "high"},
-            )
-            if result["decision"] == "allow":
-                proceed()
-        """
-        body: dict[str, Any] = {"entity_id": entity_id, "policy": policy}
-        if context:
-            body["context"] = dict(context)
-        return await self._request("POST", "/api/trust/evaluate", body=body)
+    def revoke_handshake(self, handshake_id: str, reason: str) -> RevokeResult:
+        data = _object_response(
+            self._request(
+                "POST",
+                "/api/handshake/{0}/revoke".format(quote(handshake_id, safe="")),
+                {"reason": reason},
+                auth=True,
+            ),
+            "revoke_handshake",
+        )
+        return RevokeResult.from_dict(data)
 
-    async def trust_gate(
+    def gate(
         self,
         entity_id: str,
         action: str,
-        policy: TrustPolicy = "standard",
+        policy: str = "standard",
         value_usd: Optional[float] = None,
         delegation_id: Optional[str] = None,
-    ) -> dict[str, Any]:
-        """Pre-action trust gate — call before any high-stakes action.
-
-        A lightweight check that combines policy evaluation with action-specific
-        context. Recommended for agent decision loops where you want a single
-        authoritative go/no-go before executing an action.
-
-        Parameters
-        ----------
-        entity_id:
-            The entity being evaluated.
-        action:
-            Semantic action label (e.g. ``"purchase"``, ``"file_upload"``).
-        policy:
-            Trust policy to apply.
-        value_usd:
-            Monetary value of the action, used for value-band gating.
-        delegation_id:
-            If the agent is acting under a delegation, supply the delegation ID
-            to gate-check the delegation's scope as well.
-
-        Example
-        -------
-        .. code-block:: python
-
-            gate = await ep.trust_gate(
-                "merchant-xyz", action="purchase", value_usd=450.00
-            )
-            if gate["decision"] == "allow":
-                await checkout()
-        """
-        return await self._request(
-            "POST",
-            "/api/trust/gate",
-            body={
-                "entity_id": entity_id,
-                "action": action,
-                "policy": policy,
-                "value_usd": value_usd,
-                "delegation_id": delegation_id,
-            },
+        handshake_id: Optional[str] = None,
+        resource_ref: Optional[str] = None,
+        intent_ref: Optional[str] = None,
+    ) -> GateResult:
+        params = GateParams(
+            entity_id=entity_id,
+            action=action,
+            policy=policy,
+            value_usd=value_usd,
+            delegation_id=delegation_id,
+            handshake_id=handshake_id,
+            resource_ref=resource_ref,
+            intent_ref=intent_ref,
         )
-
-    async def domain_score(
-        self,
-        entity_id: str,
-        domains: Optional[list[TrustDomain]] = None,
-    ) -> dict[str, Any]:
-        """Get domain-specific trust scores for an entity.
-
-        Parameters
-        ----------
-        entity_id:
-            Entity ID to score.
-        domains:
-            Optional list of :data:`TrustDomain` values to filter by.
-            When omitted all domains are returned.
-
-        Example
-        -------
-        .. code-block:: python
-
-            scores = await ep.domain_score(
-                "my-agent", domains=["financial", "delegation"]
-            )
-        """
-        params: dict[str, str] = {}
-        if domains:
-            params["domains"] = ",".join(domains)
-        return await self._request(
-            "GET", f"/api/trust/domain-score/{entity_id}", params=params
+        data = _object_response(
+            self._request("POST", "/api/trust/gate", params.to_dict(), auth=True),
+            "gate",
         )
+        return GateResult.from_dict(data)
 
-    async def install_preflight(
-        self,
-        entity_id: str,
-        policy: Optional[str] = None,
-        context: Optional[dict[str, str]] = None,
-    ) -> dict[str, Any]:
-        """EP-SX pre-action enforcement (experimental) — should I install this software entity?
+    # ------------------------------------------------------------------
+    # v1 trust-receipt lifecycle
+    # ------------------------------------------------------------------
 
-        Evaluates a software entity against a software-specific trust policy.
-        Returns ``allow`` / ``review`` / ``deny`` with specific reasons covering
-        publisher verification, permissions, provenance, and trust history.
-
-        Parameters
-        ----------
-        entity_id:
-            Software entity ID, e.g. ``"github_app:acme/code-helper"`` or
-            ``"npm_package:lodash"``.
-        policy:
-            Software policy name: ``"github_private_repo_safe_v1"``,
-            ``"npm_buildtime_safe_v1"``, ``"browser_extension_safe_v1"``,
-            ``"mcp_server_safe_v1"``, or any standard EP policy.
-            Defaults to ``"standard"``.
-        context:
-            Install context metadata, e.g.
-            ``{"host": "mcp", "permission_class": "bounded_external_access"}``.
-
-        Example
-        -------
-        .. code-block:: python
-
-            result = await ep.install_preflight(
-                "mcp-server-ep-v1",
-                policy="mcp_server_safe_v1",
-                context={"host": "mcp", "permission_class": "bounded_external_access"},
-            )
-            if result["decision"] == "deny":
-                raise RuntimeError(result["reasons"])
-        """
-        body: dict[str, Any] = {
-            "entity_id": entity_id,
-            "policy": policy or "standard",
-        }
-        if context:
-            body["context"] = context
-        return await self._request("POST", "/api/trust/install-preflight", body=body)
-
-    # ==================================================================
-    # Entities
-    # ==================================================================
-
-    async def register_entity(
-        self,
-        entity_id: str,
-        display_name: str,
-        entity_type: EntityType,
-        description: str,
-        capabilities: Optional[list[str]] = None,
-    ) -> dict[str, Any]:
-        """Register a new entity. Public — no API key required.
-
-        Returns the newly created entity together with its first API key.
-        **Save the API key immediately — it will not be shown again.**
-
-        Parameters
-        ----------
-        entity_id:
-            Lowercase slug with hyphens, e.g. ``"my-cool-agent"``.
-        display_name:
-            Human-readable name.
-        entity_type:
-            One of the :data:`EntityType` literals.
-        description:
-            Short description of what the entity does.
-        capabilities:
-            Optional list of capability tags.
-
-        Example
-        -------
-        .. code-block:: python
-
-            result = await ep.register_entity(
-                entity_id="my-agent-v1",
-                display_name="My Agent",
-                entity_type="agent",
-                description="Handles e-commerce checkout flows.",
-                capabilities=["checkout", "purchase"],
-            )
-            api_key = result["api_key"]  # save this!
-        """
-        return await self._request(
-            "POST",
-            "/api/entities/register",
-            body={
-                "entity_id": entity_id,
-                "display_name": display_name,
-                "entity_type": entity_type,
-                "description": description,
-                "capabilities": capabilities,
-            },
+    def create_trust_receipt(self, params: CreateTrustReceiptParams) -> TrustReceipt:
+        data = _object_response(
+            self._request(
+                "POST",
+                "/api/v1/trust-receipts",
+                params.to_dict(),
+                auth=True,
+            ),
+            "create_trust_receipt",
         )
+        return TrustReceipt.from_dict(data)
 
-    async def search_entities(
-        self,
-        query: str,
-        entity_type: Optional[EntityType] = None,
-    ) -> dict[str, Any]:
-        """Search entities by name, capability, or category.
-
-        Parameters
-        ----------
-        query:
-            Free-text search query.
-        entity_type:
-            Optional :data:`EntityType` filter.
-
-        Example
-        -------
-        .. code-block:: python
-
-            results = await ep.search_entities("shopify checkout", entity_type="merchant")
-        """
-        params: dict[str, str] = {"q": query}
-        if entity_type:
-            params["type"] = entity_type
-        return await self._request("GET", "/api/entities/search", params=params)
-
-    async def leaderboard(
-        self,
-        limit: int = 10,
-        entity_type: Optional[EntityType] = None,
-    ) -> dict[str, Any]:
-        """Get top entities ranked by trust confidence.
-
-        Parameters
-        ----------
-        limit:
-            Maximum number of entities to return (capped at 50).
-        entity_type:
-            Optional :data:`EntityType` filter.
-
-        Example
-        -------
-        .. code-block:: python
-
-            top = await ep.leaderboard(limit=20, entity_type="merchant")
-        """
-        params: dict[str, str] = {"limit": str(min(limit, 50))}
-        if entity_type:
-            params["type"] = entity_type
-        return await self._request("GET", "/api/leaderboard", params=params)
-
-    # ==================================================================
-    # Receipts
-    # ==================================================================
-
-    async def submit_receipt(
-        self,
-        entity_id: str,
-        transaction_ref: str,
-        transaction_type: TransactionType,
-        agent_behavior: Optional[AgentBehavior] = None,
-        delivery_accuracy: Optional[float] = None,
-        product_accuracy: Optional[float] = None,
-        price_integrity: Optional[float] = None,
-        return_processing: Optional[float] = None,
-        claims: Optional[dict[str, bool]] = None,
-        evidence: Optional[dict[str, Any]] = None,
-        context: Optional[TrustContext] = None,
-    ) -> dict[str, Any]:
-        """Submit a transaction receipt to the EP ledger. Requires an API key.
-
-        Receipts are append-only, cryptographically hashed, and chain-linked.
-        ``agent_behavior`` is the strongest Phase 1 signal.
-
-        Parameters
-        ----------
-        entity_id:
-            Entity being evaluated.
-        transaction_ref:
-            External transaction reference (required, must be unique per entity).
-        transaction_type:
-            One of the :data:`TransactionType` literals.
-        agent_behavior:
-            Observable behavioral outcome — the strongest trust signal.
-        delivery_accuracy:
-            0–100 delivery accuracy score.
-        product_accuracy:
-            0–100 product accuracy score.
-        price_integrity:
-            0–100 price integrity score.
-        return_processing:
-            0–100 return processing score.
-        claims:
-            Structured boolean claims, e.g.
-            ``{"delivered": True, "on_time": True, "price_honored": True}``.
-        evidence:
-            Supporting evidence references.
-        context:
-            :class:`TrustContext` for context-aware scoring.
-
-        Example
-        -------
-        .. code-block:: python
-
-            receipt = await ep.submit_receipt(
-                entity_id="merchant-xyz",
-                transaction_ref="order-8812",
-                transaction_type="purchase",
-                agent_behavior="completed",
-                delivery_accuracy=97,
-                price_integrity=100,
-                claims={"delivered": True, "price_honored": True},
-            )
-            print(receipt["receipt"]["receipt_id"])
-        """
-        body: dict[str, Any] = {
-            "entity_id": entity_id,
-            "transaction_ref": transaction_ref,
-            "transaction_type": transaction_type,
-            "agent_behavior": agent_behavior,
-            "delivery_accuracy": delivery_accuracy,
-            "product_accuracy": product_accuracy,
-            "price_integrity": price_integrity,
-            "return_processing": return_processing,
-            "claims": claims,
-            "evidence": evidence,
-            "context": dict(context) if context else None,
-        }
-        return await self._request("POST", "/api/receipts/submit", auth=True, body=body)
-
-    async def batch_submit(
-        self, receipts: list[dict[str, Any]]
-    ) -> dict[str, Any]:
-        """Submit up to 50 receipts atomically.
-
-        Parameters
-        ----------
-        receipts:
-            List of receipt dicts (same shape as :meth:`submit_receipt` body).
-            Silently capped at 50.
-
-        Example
-        -------
-        .. code-block:: python
-
-            result = await ep.batch_submit([
-                {"entity_id": "merchant-a", "transaction_ref": "t1", ...},
-                {"entity_id": "merchant-b", "transaction_ref": "t2", ...},
-            ])
-        """
-        return await self._request(
-            "POST",
-            "/api/receipts/batch",
-            auth=True,
-            body={"receipts": receipts[:50]},
+    def get_trust_receipt(self, receipt_id: str) -> TrustReceiptState:
+        data = _object_response(
+            self._request(
+                "GET",
+                "/api/v1/trust-receipts/{0}".format(quote(receipt_id, safe="")),
+                auth=True,
+            ),
+            "get_trust_receipt",
         )
+        return TrustReceiptState.from_dict(data)
 
-    async def verify_receipt(self, receipt_id: str) -> dict[str, Any]:
-        """Verify a receipt against the on-chain Merkle root.
+    def request_signoff(self, params: RequestSignoffParams) -> SignoffRequest:
+        data = _object_response(
+            self._request(
+                "POST",
+                "/api/v1/signoffs/request",
+                params.to_dict(),
+                auth=True,
+            ),
+            "request_signoff",
+        )
+        return SignoffRequest.from_dict(data)
 
-        Parameters
-        ----------
-        receipt_id:
-            Receipt ID (``ep_rcpt_...``).
-
-        Example
-        -------
-        .. code-block:: python
-
-            v = await ep.verify_receipt("ep_rcpt_abc123")
-            assert v["verified"]
-        """
-        return await self._request("GET", f"/api/verify/{receipt_id}")
-
-    # ==================================================================
-    # Disputes & Appeals
-    # ==================================================================
-
-    async def file_dispute(
+    def consume_trust_receipt(
         self,
         receipt_id: str,
-        reason: DisputeReason,
-        description: Optional[str] = None,
-        evidence: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
-        """File a dispute against a receipt. Requires an API key.
-
-        Any affected party can challenge a receipt.  The submitter has 7 days
-        to respond.
-
-        Parameters
-        ----------
-        receipt_id:
-            Receipt ID to dispute (``ep_rcpt_...``).
-        reason:
-            One of the :data:`DisputeReason` literals.
-        description:
-            Human-readable explanation of the dispute.
-        evidence:
-            Supporting evidence references.
-
-        Example
-        -------
-        .. code-block:: python
-
-            dispute = await ep.file_dispute(
-                receipt_id="ep_rcpt_abc123",
-                reason="fraudulent_receipt",
-                description="This receipt was not submitted by us.",
-            )
-            print(dispute["dispute_id"])
-        """
-        return await self._request(
-            "POST",
-            "/api/disputes/file",
-            auth=True,
-            body={
-                "receipt_id": receipt_id,
-                "reason": reason,
-                "description": description,
-                "evidence": evidence,
-            },
+        params: ConsumeTrustReceiptParams,
+    ) -> ConsumeTrustReceiptResult:
+        data = _object_response(
+            self._request(
+                "POST",
+                "/api/v1/trust-receipts/{0}/consume".format(
+                    quote(receipt_id, safe="")
+                ),
+                params.to_dict(),
+                auth=True,
+            ),
+            "consume_trust_receipt",
         )
+        return ConsumeTrustReceiptResult.from_dict(data)
 
-    async def dispute_status(self, dispute_id: str) -> dict[str, Any]:
-        """Get the current status of a dispute. Public — transparency is a protocol value.
-
-        Parameters
-        ----------
-        dispute_id:
-            Dispute ID (``ep_disp_...``).
-
-        Example
-        -------
-        .. code-block:: python
-
-            status = await ep.dispute_status("ep_disp_xyz")
-            print(status["status"])   # "pending", "upheld", "reversed", ...
-        """
-        return await self._request("GET", f"/api/disputes/{dispute_id}")
-
-    async def appeal_dispute(
+    def attest_execution(
         self,
-        dispute_id: str,
-        reason: str,
-        evidence: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
-        """Appeal a dispute resolution. Requires an API key.
+        receipt_id: str,
+        params: AttestExecutionParams,
+    ) -> ExecutionAttestation:
+        data = _object_response(
+            self._request(
+                "POST",
+                "/api/v1/trust-receipts/{0}/execution".format(
+                    quote(receipt_id, safe="")
+                ),
+                params.to_dict(),
+                auth=True,
+            ),
+            "attest_execution",
+        )
+        return ExecutionAttestation.from_dict(data)
 
-        Only dispute participants can appeal.  The dispute must be in an
-        ``upheld``, ``reversed``, or ``dismissed`` state.
-
-        "Trust must never be more powerful than appeal."
-
-        Parameters
-        ----------
-        dispute_id:
-            The dispute ID to appeal.
-        reason:
-            Why the resolution should be reconsidered (minimum 10 characters).
-        evidence:
-            Optional supporting evidence.
-
-        Example
-        -------
-        .. code-block:: python
-
-            appeal = await ep.appeal_dispute(
-                dispute_id="ep_disp_xyz",
-                reason="The resolution ignored the delivery confirmation screenshot.",
-                evidence={"screenshot_url": "https://..."},
-            )
-        """
-        return await self._request(
-            "POST",
-            "/api/disputes/appeal",
-            auth=True,
-            body={
-                "dispute_id": dispute_id,
-                "reason": reason,
-                "evidence": evidence,
-            },
+    def get_trust_receipt_evidence(self, receipt_id: str) -> Dict[str, Any]:
+        return _object_response(
+            self._request(
+                "GET",
+                "/api/v1/trust-receipts/{0}/evidence".format(
+                    quote(receipt_id, safe="")
+                ),
+                auth=True,
+            ),
+            "get_trust_receipt_evidence",
         )
 
-    async def report_trust_issue(
+    @staticmethod
+    def _validate_created_receipt(
+        receipt: TrustReceipt,
+        has_quorum_policy: bool = False,
+    ) -> None:
+        if not _RECEIPT_ID.fullmatch(receipt.receipt_id):
+            raise EPError(
+                "Receipt creation returned a missing or malformed receipt_id",
+                code="invalid_receipt_response",
+            )
+        if not _ACTION_HASH.fullmatch(receipt.action_hash):
+            raise EPError(
+                "Receipt creation returned a missing or malformed action_hash",
+                code="invalid_receipt_response",
+            )
+        if not receipt.canonical_action:
+            raise EPError(
+                "Receipt creation returned no canonical action",
+                code="invalid_receipt_response",
+            )
+        if receipt.enforcement_mode != "enforce":
+            raise EPError(
+                "Only enforce-mode receipts can authorize require_receipt",
+                status=409,
+                code="receipt_not_authority",
+            )
+        if receipt.evidence_status != "durable":
+            raise EPError(
+                "Enforce-mode receipt evidence was not confirmed durable",
+                status=503,
+                code="evidence_not_durable",
+            )
+        if receipt.decision == "deny" or receipt.receipt_status == "denied":
+            raise EPError(
+                "EMILIA denied the action before execution",
+                status=403,
+                code="receipt_denied",
+            )
+        if receipt.signoff_required:
+            valid = receipt.receipt_status == "pending_signoff" and receipt.decision in (
+                "allow",
+                "allow_with_signoff",
+            )
+        elif has_quorum_policy:
+            # A caller-selected quorum is stored as an independent consume
+            # condition. The creation response can remain an issued/allow
+            # receipt even though the quorum ceremony is still required.
+            valid = receipt.receipt_status == "issued" and receipt.decision == "allow"
+        else:
+            valid = receipt.receipt_status == "issued" and receipt.decision == "allow"
+        if not valid:
+            raise EPError(
+                "Receipt creation returned a non-consumable state",
+                status=409,
+                code="receipt_not_consumable",
+            )
+
+    @staticmethod
+    def _validate_consumption(
+        receipt: TrustReceipt,
+        consume: ConsumeTrustReceiptResult,
+    ) -> None:
+        if consume.receipt_id != receipt.receipt_id or consume.status != "consumed":
+            raise EPError(
+                "Receipt consumption was not confirmed",
+                code="invalid_consume_response",
+            )
+
+    def require_receipt(
         self,
-        entity_id: str,
-        report_type: ReportType,
-        description: str,
-        contact_email: Optional[str] = None,
-    ) -> dict[str, Any]:
-        """Report a trust issue as a human. No authentication required.
+        params: RequireReceiptParams,
+        mutate: Callable[[ReceiptContext], Any],
+    ) -> RequireReceiptResult[Any]:
+        """Run a mutation only after durable, one-time receipt consumption.
 
-        For when someone is wrongly downgraded, harmed by a trusted entity,
-        or observes fraudulent behaviour.  EP must never make trust more
-        powerful than appeal.
-
-        Parameters
-        ----------
-        entity_id:
-            Entity the report is about.
-        report_type:
-            One of the :data:`ReportType` literals.
-        description:
-            What happened.
-        contact_email:
-            Optional email address for EP follow-up.
-
-        Example
-        -------
-        .. code-block:: python
-
-            report = await ep.report_trust_issue(
-                entity_id="merchant-xyz",
-                report_type="harmed_by_trusted_entity",
-                description="They charged me twice and won't refund.",
-                contact_email="alice@example.com",
+        A signoff callback can wait for an external human ceremony, but its
+        return value is not authority. The server's consume endpoint remains the
+        authoritative gate. After mutation, no execution evidence is emitted
+        unless the caller supplies an independently observed action.
+        """
+        if not callable(mutate):
+            raise TypeError("mutate must be callable")
+        if params.enforcement_mode != "enforce":
+            raise EPError(
+                "require_receipt supports enforce mode only",
+                code="enforce_mode_required",
             )
-        """
-        return await self._request(
-            "POST",
-            "/api/disputes/report",
-            body={
-                "entity_id": entity_id,
-                "report_type": report_type,
-                "description": description,
-                "contact_email": contact_email,
-            },
-        )
 
-    # ==================================================================
-    # Delegation
-    # ==================================================================
+        receipt = self.create_trust_receipt(params.to_create_params())
+        has_quorum_policy = params.quorum_policy is not None
+        self._validate_created_receipt(receipt, has_quorum_policy)
+        approved_action = deepcopy(receipt.canonical_action)
 
-    async def create_delegation(
-        self,
-        principal_id: str,
-        agent_entity_id: str,
-        scope: list[str],
-        max_value_usd: Optional[float] = None,
-        expires_at: Optional[str] = None,
-        constraints: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
-        """Create a delegation: authorise an agent to act on behalf of a principal.
-
-        Requires an API key.
-
-        Parameters
-        ----------
-        principal_id:
-            The principal granting delegation.
-        agent_entity_id:
-            The agent entity being delegated to.
-        scope:
-            List of permitted action types, e.g. ``["purchase", "file_upload"]``.
-        max_value_usd:
-            Monetary ceiling for the delegation.
-        expires_at:
-            ISO-8601 expiry timestamp.
-        constraints:
-            Additional structured constraints.
-
-        Example
-        -------
-        .. code-block:: python
-
-            delegation = await ep.create_delegation(
-                principal_id="ep_principal_abc",
-                agent_entity_id="my-agent-v1",
-                scope=["purchase"],
-                max_value_usd=500.00,
-                expires_at="2026-12-31T23:59:59Z",
+        signoff: Optional[SignoffRequest] = None
+        if receipt.signoff_required or has_quorum_policy:
+            if not has_quorum_policy and not params.approver_id:
+                raise EPError(
+                    "Receipt requires signoff; pass approver_id",
+                    status=409,
+                    code="missing_approver_id",
+                )
+            signoff = self.request_signoff(
+                RequestSignoffParams(
+                    receipt_id=receipt.receipt_id,
+                    approver_id=params.approver_id,
+                    expires_in_minutes=params.signoff_expires_in_minutes,
+                    comment=params.signoff_comment,
+                )
             )
-            delegation_id = delegation["delegation_id"]
-        """
-        return await self._request(
-            "POST",
-            "/api/delegations/create",
-            auth=True,
-            body={
-                "principal_id": principal_id,
-                "agent_entity_id": agent_entity_id,
-                "scope": scope,
-                "max_value_usd": max_value_usd,
-                "expires_at": expires_at,
-                "constraints": constraints,
-            },
-        )
-
-    async def verify_delegation(
-        self,
-        delegation_id: str,
-        action_type: Optional[str] = None,
-    ) -> dict[str, Any]:
-        """Verify a delegation is valid — and optionally that it covers a specific action.
-
-        Parameters
-        ----------
-        delegation_id:
-            Delegation ID to verify.
-        action_type:
-            Optional action type to check against the delegation's scope.
-
-        Example
-        -------
-        .. code-block:: python
-
-            result = await ep.verify_delegation(
-                "ep_del_abc123", action_type="purchase"
+            if (
+                signoff.receipt_id != receipt.receipt_id
+                or signoff.status != "pending"
+            ):
+                raise EPError(
+                    "Signoff request was not confirmed",
+                    code="invalid_signoff_response",
+                )
+            if has_quorum_policy:
+                valid_signoffs = bool(signoff.signoffs) and all(
+                    isinstance(item, Mapping) and bool(item.get("signoff_id"))
+                    for item in signoff.signoffs
+                )
+                if not valid_signoffs or not signoff.quorum:
+                    raise EPError(
+                        "Quorum signoff requests were not confirmed",
+                        code="invalid_signoff_response",
+                    )
+            elif not signoff.signoff_id:
+                raise EPError(
+                    "Signoff request was not confirmed",
+                    code="invalid_signoff_response",
+                )
+            if params.on_signoff_required is None:
+                raise EPError(
+                    "Receipt requires external human signoff before execution",
+                    status=409,
+                    code="signoff_required",
+                )
+            callback_result = params.on_signoff_required(
+                SignoffRequiredContext(deepcopy(receipt), deepcopy(signoff))
             )
-            assert result["valid"]
-        """
-        params: dict[str, str] = {}
-        if action_type:
-            params["action_type"] = action_type
-        return await self._request(
-            "GET",
-            f"/api/delegations/{delegation_id}/verify",
-            params=params,
+            callback_rejected = callback_result is False or (
+                isinstance(callback_result, Mapping)
+                and callback_result.get("approved") is False
+            )
+            if callback_rejected:
+                raise EPError(
+                    "Human signoff was not approved",
+                    status=403,
+                    code="signoff_rejected",
+                )
+
+        consume = self.consume_trust_receipt(
+            receipt.receipt_id,
+            ConsumeTrustReceiptParams(
+                action_hash=receipt.action_hash,
+                executing_system=params.executing_system,
+                execution_reference_id=params.execution_reference_id,
+            ),
+        )
+        self._validate_consumption(receipt, consume)
+
+        result = mutate(
+            ReceiptContext(
+                receipt=deepcopy(receipt),
+                consume=deepcopy(consume),
+                canonical_action=deepcopy(approved_action),
+            )
         )
 
-    # ==================================================================
-    # Identity Continuity (EP-IX)
-    # ==================================================================
-
-    async def principal_lookup(self, principal_id: str) -> dict[str, Any]:
-        """Look up a principal — the enduring actor behind entities.
-
-        Returns bindings, controlled entities, and continuity history.
-
-        Parameters
-        ----------
-        principal_id:
-            Principal ID, e.g. ``"ep_principal_abc"``.
-
-        Example
-        -------
-        .. code-block:: python
-
-            principal = await ep.principal_lookup("ep_principal_abc")
-            for entity in principal["entities"]:
-                print(entity["entity_id"])
-        """
-        return await self._request(
-            "GET", f"/api/identity/principal/{principal_id}"
+        lifecycle = RequireReceiptResult(
+            result=result,
+            receipt=receipt,
+            signoff=signoff,
+            consume=consume,
         )
 
-    async def lineage(self, entity_id: str) -> dict[str, Any]:
-        """Get entity lineage — predecessors, successors, and continuity history.
+        if params.observed_action is not None:
+            try:
+                observation = (
+                    params.observed_action(
+                        MutationObservationContext(
+                            receipt=deepcopy(receipt),
+                            consume=deepcopy(consume),
+                            canonical_action=deepcopy(approved_action),
+                            result=result,
+                        )
+                    )
+                    if callable(params.observed_action)
+                    else params.observed_action
+                )
+                if not isinstance(observation, Mapping) or not observation:
+                    raise EPError(
+                        "observed_action must be a non-empty mapping",
+                        code="invalid_observed_action",
+                    )
+                execution_id = (
+                    params.execution_id(result)
+                    if callable(params.execution_id)
+                    else params.execution_id
+                )
+                execution = self.attest_execution(
+                    receipt.receipt_id,
+                    AttestExecutionParams(
+                        executed_action=deepcopy(approved_action),
+                        observed_action=deepcopy(dict(observation)),
+                        executing_system=params.executing_system,
+                        execution_id=execution_id,
+                    ),
+                )
+                if (
+                    execution.receipt_id != receipt.receipt_id
+                    or execution.status != "executed"
+                    or execution.binding_status != "match"
+                ):
+                    raise EPError(
+                        "Execution attestation was not confirmed as an exact match",
+                        code="invalid_execution_response",
+                    )
+                lifecycle.execution = execution
+                lifecycle.execution_status = "attested"
+            except Exception as error:  # post-mutation: report uncertainty, never invite replay
+                lifecycle.execution_status = "indeterminate"
+                lifecycle.execution_error = str(error)
+                lifecycle.do_not_retry = True
+        else:
+            lifecycle.execution_status = "unobserved"
+            lifecycle.do_not_retry = True
 
-        Use to check whether an entity has suspicious continuity gaps or
-        attempted whitewashing of a poor trust history.
+        if params.fetch_evidence:
+            try:
+                lifecycle.evidence = self.get_trust_receipt_evidence(receipt.receipt_id)
+            except Exception as error:  # execution may already have happened
+                lifecycle.evidence_error = str(error)
+                lifecycle.do_not_retry = True
 
-        Parameters
-        ----------
-        entity_id:
-            Entity ID to retrieve lineage for.
-
-        Example
-        -------
-        .. code-block:: python
-
-            lineage = await ep.lineage("merchant-xyz-v2")
-            for pred in lineage.get("predecessors", []):
-                print(pred["from"], pred["reason"])
-        """
-        return await self._request(
-            "GET", f"/api/identity/lineage/{entity_id}"
-        )
-
-    # ==================================================================
-    # Policies
-    # ==================================================================
-
-    async def list_policies(self) -> dict[str, Any]:
-        """List all available trust policies with their requirements and families.
-
-        Use to discover which policy to evaluate an entity against.
-
-        Example
-        -------
-        .. code-block:: python
-
-            policies = await ep.list_policies()
-            for p in policies["policies"]:
-                print(p["name"], p["family"])
-        """
-        return await self._request("GET", "/api/policies")
-
-    # ==================================================================
-    # EP Commit
-    # ==================================================================
-
-    async def issue_commit(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Issue a signed EP Commit before a high-stakes action.
-
-        The commit binds the agent to a specific action type, entity, and policy
-        before execution. Returns ``{ "decision": ..., "commit": { ... } }``.
-
-        Parameters
-        ----------
-        params:
-            Dict with ``action_type`` (required), ``entity_id`` (required), and
-            optional keys: ``principal_id``, ``counterparty_entity_id``,
-            ``delegation_id``, ``scope``, ``max_value_usd``, ``context``, ``policy``.
-
-        Example
-        -------
-        .. code-block:: python
-
-            result = await ep.issue_commit({
-                "action_type": "transact",
-                "entity_id": "payment-agent-v2",
-                "max_value_usd": 500,
-                "policy": "strict",
-            })
-            if result["decision"] != "allow":
-                raise RuntimeError("Commit denied")
-            commit_id = result["commit"]["commit_id"]
-        """
-        return await self._request(
-            "POST", "/api/commit/issue", auth=True, body=params
-        )
-
-    async def verify_commit(self, commit_id: str) -> dict[str, Any]:
-        """Verify a commit's signature, status, and validity.
-
-        Parameters
-        ----------
-        commit_id:
-            Commit ID (``epc_...``).
-
-        Example
-        -------
-        .. code-block:: python
-
-            result = await ep.verify_commit("epc_abc123")
-            assert result["valid"]
-        """
-        return await self._request(
-            "POST", "/api/commit/verify", body={"commit_id": commit_id}
-        )
-
-    async def get_commit_status(self, commit_id: str) -> dict[str, Any]:
-        """Get the current state of a commit. Requires an API key.
-
-        Returns ``{ "commit": { ... } }`` where the nested commit object
-        contains ``commit_id``, ``status``, ``action_type``, etc.
-
-        Parameters
-        ----------
-        commit_id:
-            Commit ID (``epc_...``).
-
-        Example
-        -------
-        .. code-block:: python
-
-            result = await ep.get_commit_status("epc_abc123")
-            print(result["commit"]["status"])  # "active", "revoked", "expired", "fulfilled"
-        """
-        return await self._request("GET", f"/api/commit/{commit_id}", auth=True)
-
-    async def revoke_commit(
-        self, commit_id: str, reason: str
-    ) -> dict[str, Any]:
-        """Revoke an active commit before it is fulfilled or expires.
-
-        Parameters
-        ----------
-        commit_id:
-            Commit ID to revoke (``epc_...``).
-        reason:
-            Reason for revocation.
-
-        Example
-        -------
-        .. code-block:: python
-
-            await ep.revoke_commit("epc_abc123", "Action no longer needed")
-        """
-        return await self._request(
-            "POST",
-            f"/api/commit/{commit_id}/revoke",
-            auth=True,
-            body={"reason": reason},
-        )
-
-    async def bind_receipt_to_commit(
-        self, commit_id: str, receipt_id: str
-    ) -> dict[str, Any]:
-        """Bind a post-action receipt to a commit, completing the commit-execute-receipt cycle.
-
-        Parameters
-        ----------
-        commit_id:
-            Commit ID to bind to (``epc_...``).
-        receipt_id:
-            Receipt ID to bind (``ep_rcpt_...``).
-
-        Example
-        -------
-        .. code-block:: python
-
-            await ep.bind_receipt_to_commit("epc_abc123", "ep_rcpt_xyz789")
-        """
-        return await self._request(
-            "POST",
-            f"/api/commit/{commit_id}/receipt",
-            auth=True,
-            body={"receipt_id": receipt_id},
-        )
+        return lifecycle

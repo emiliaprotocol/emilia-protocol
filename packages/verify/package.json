@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/verify",
-  "version": "3.20.3",
+  "version": "3.21.0",
   "description": "Zero-dependency offline verification for EMILIA authorization receipts: Ed25519 receipts, Merkle anchors, WebAuthn device signoffs, and multi-party quorum. Runs in Node, browsers, and edge runtimes.",
   "license": "Apache-2.0",
   "type": "module",

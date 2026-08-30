@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "routes": [
+    {
+      "client_method": "initiate_handshake",
+      "method": "POST",
+      "path": "/api/handshake",
+      "spec": "openapi.yaml"
+    },
+    {
+      "client_method": "get_handshake",
+      "method": "GET",
+      "path": "/api/handshake/{handshakeId}",
+      "spec": "openapi.yaml"
+    },
+    {
+      "client_method": "present",
+      "method": "POST",
+      "path": "/api/handshake/{handshakeId}/present",
+      "spec": "openapi.yaml"
+    },
+    {
+      "client_method": "verify",
+      "method": "POST",
+      "path": "/api/handshake/{handshakeId}/verify",
+      "spec": "openapi.yaml"
+    },
+    {
+      "client_method": "revoke_handshake",
+      "method": "POST",
+      "path": "/api/handshake/{handshakeId}/revoke",
+      "spec": "openapi.yaml"
+    },
+    {
+      "client_method": "gate",
+      "method": "POST",
+      "path": "/api/trust/gate",
+      "spec": "openapi.yaml"
+    },
+    {
+      "client_method": "create_trust_receipt",
+      "method": "POST",
+      "path": "/api/v1/trust-receipts",
+      "spec": "openapi.yaml",
+      "focused_spec": "docs/api/govguard-v1.yaml"
+    },
+    {
+      "client_method": "get_trust_receipt",
+      "method": "GET",
+      "path": "/api/v1/trust-receipts/{receiptId}",
+      "spec": "openapi.yaml",
+      "focused_spec": "docs/api/govguard-v1.yaml"
+    },
+    {
+      "client_method": "request_signoff",
+      "method": "POST",
+      "path": "/api/v1/signoffs/request",
+      "spec": "openapi.yaml",
+      "focused_spec": "docs/api/govguard-v1.yaml"
+    },
+    {
+      "client_method": "consume_trust_receipt",
+      "method": "POST",
+      "path": "/api/v1/trust-receipts/{receiptId}/consume",
+      "spec": "openapi.yaml",
+      "focused_spec": "docs/api/govguard-v1.yaml"
+    },
+    {
+      "client_method": "attest_execution",
+      "method": "POST",
+      "path": "/api/v1/trust-receipts/{receiptId}/execution",
+      "spec": "openapi.yaml",
+      "focused_spec": "docs/api/govguard-v1.yaml"
+    },
+    {
+      "client_method": "get_trust_receipt_evidence",
+      "method": "GET",
+      "path": "/api/v1/trust-receipts/{receiptId}/evidence",
+      "spec": "openapi.yaml",
+      "focused_spec": "docs/api/govguard-v1.yaml"
+    }
+  ]
+}
