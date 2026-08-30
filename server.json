@@ -3,7 +3,7 @@
   "name": "io.github.emiliaprotocol/mcp-server",
   "title": "Emilia Protocol",
   "description": "Exact-action approval for consequential agent actions: request, track, and verify signed receipts.",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "repository": {
     "url": "https://github.com/emiliaprotocol/emilia-protocol",
     "source": "github"
@@ -14,7 +14,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@emilia-protocol/mcp-server",
-      "version": "2.1.1",
+      "version": "2.1.2",
       "transport": {
         "type": "stdio"
       },

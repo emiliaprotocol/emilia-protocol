@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from github-client.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
+import { readFileSync } from 'node:fs';
 import { strictJsonGate } from '../../../packages/require-receipt/strict-json.js';
 const DEFAULT_BASE_URL = 'https://api.github.com';
 const DEFAULT_API_VERSION = '2026-03-10';
 const DEFAULT_MAX_RESPONSE_BYTES = 512 * 1024;
 const SAFE_HEADER_VALUE = /^[\x20-\x7e]+$/;
+const packageVersion = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+if (typeof packageVersion !== 'string' || !/^\d+\.\d+\.\d+$/.test(packageVersion)) {
+    throw new Error('gate-service package version is invalid');
+}
+export const GATE_SERVICE_VERSION = packageVersion;
+export const DEFAULT_GITHUB_USER_AGENT = `emilia-gate-service/${GATE_SERVICE_VERSION}`;
 function isAbort(error) {
     const err = error;
     return err?.name === 'AbortError' || err?.name === 'TimeoutError' || err?.code === 'ABORT_ERR';
@@ -121,7 +128,7 @@ export class GithubConnectorError extends Error {
  *   maxResponseBytes?: number
  * }} [options]
  */
-export function createGithubRestConnector({ token, baseUrl = DEFAULT_BASE_URL, apiVersion = DEFAULT_API_VERSION, userAgent = 'emilia-gate-service/0.1.0', fetchImpl = globalThis.fetch, maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES, } = {}) {
+export function createGithubRestConnector({ token, baseUrl = DEFAULT_BASE_URL, apiVersion = DEFAULT_API_VERSION, userAgent = DEFAULT_GITHUB_USER_AGENT, fetchImpl = globalThis.fetch, maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES, } = {}) {
     requireText(token, 'token', 4096);
     requireText(apiVersion, 'apiVersion', 32);
     requireText(userAgent, 'userAgent', 256);

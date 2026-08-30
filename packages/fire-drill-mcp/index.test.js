@@ -2,11 +2,16 @@
 // Generated from index.test.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
-import { handleToolRequest } from './index.js';
+import { FIRE_DRILL_MCP_VERSION, handleToolRequest } from './index.js';
 const call = (name, args = {}) => handleToolRequest({ params: { name, arguments: args } });
 const body = (result) => JSON.parse(result.content[0].text);
 describe('fire-drill MCP input and claim boundaries', () => {
+    it('advertises the package release version', () => {
+        const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+        assert.equal(FIRE_DRILL_MCP_VERSION, packageJson.version);
+    });
     it('reports declaration coverage without claiming EG-1 enforcement', async () => {
         const result = await call('fire_drill_scan', {
             target: { tools: [{

@@ -1553,7 +1553,7 @@ function formatEvaluation(data) {
 // =============================================================================
 // Server
 // =============================================================================
-export const MCP_SERVER_VERSION = '2.1.1';
+export const MCP_SERVER_VERSION = '2.1.2';
 const server = new Server({ name: 'emilia-protocol', version: MCP_SERVER_VERSION }, { capabilities: { tools: {}, resources: {}, prompts: {} } });
 // The default surface is one protected-action front door. Identity, handshake,
 // commit, delegation, and registry/reputation tools remain implemented, but an
