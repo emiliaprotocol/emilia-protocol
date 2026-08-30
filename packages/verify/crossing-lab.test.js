@@ -111,7 +111,9 @@ test('reviewed Scan seed creates an explicit unsealed three-file workspace', () 
     assert.equal(JSON.parse(readFileSync(join(target, 'artifact.json'), 'utf8')).source_seed_sha256, rawSeedDigest);
     assert.match(readFileSync(join(target, 'adapter.mjs'), 'utf8'), /scan_crossing_workspace_unsealed/);
     assert.throws(() => sealCrossingLab(target), /invalid Crossing Lab workspace schema/);
-    assert.throws(() => runCrossingLab(target), /invalid Crossing Lab workspace schema/);
+    assert.throws(() => runCrossingLab(target), CROSSING_LAB_RUNTIME_SUPPORTED
+        ? /invalid Crossing Lab workspace schema/
+        : /requires a Node permission runtime with --allow-net support/);
 });
 test('Scan seed refuses action, profile, and reviewed-manifest substitution', () => {
     const cases = [
