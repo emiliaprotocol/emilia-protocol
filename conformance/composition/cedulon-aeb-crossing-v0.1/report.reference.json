@@ -1,0 +1,85 @@
+{
+  "@version": "EMILIA-CEDULON-AEB-CROSSING-REPORT-v0.1",
+  "source_lock_digest": "sha256:73ba749c31ecc3e7ca46ed72bea3ff33633473e1961adea231487f42143a1405",
+  "action_definition_digest": "sha256:48e5b7764b8b7f3bc0217db9ea2fc4491ddcf631bf91815a5b4fd8aff904a30d",
+  "mapping_profile_digest": "sha256:1beae1ad6e8067867043d53c8ee49ece8917d69a7f6f2a5afc9da5b051bec16e",
+  "workspace_digest": "sha256:3633b5cb60b5a92b81aad70f1ba2dd2eac9f2a7a7c2623060449c77c38000094",
+  "adapter_module_digest": "sha256:779caa2b62686d3813ea56d18be652c2c515a332c6d866da3b8d9036a6618375",
+  "crossing_lab_report_digest": "sha256:d5600ab396858858bd5f44c020e954c9fff2012f2d59a613280d2b523a13dcf3",
+  "rows": {
+    "native-artifact-through": {
+      "passed": true,
+      "native_verification": "VERIFIED",
+      "acceptance": "ACCEPTED",
+      "mapping": "MATCH",
+      "freshness": "FRESH",
+      "satisfaction": "SATISFIED",
+      "evaluation_valid": true
+    },
+    "exact-action-substitution-refused": {
+      "passed": true,
+      "native_verification": "VERIFIED",
+      "acceptance": "ACCEPTED",
+      "mapping": "MISMATCH",
+      "freshness": "FRESH",
+      "satisfaction": "UNSATISFIED",
+      "evaluation_valid": false
+    },
+    "trust-root-substitution-refused": {
+      "passed": true,
+      "native_verification": "FAILED",
+      "acceptance": "REJECTED",
+      "mapping": "MISMATCH",
+      "freshness": "FRESH",
+      "satisfaction": "UNSATISFIED",
+      "evaluation_valid": false
+    },
+    "stale-status-is-indeterminate": {
+      "passed": true,
+      "native_verification": "VERIFIED",
+      "acceptance": "ACCEPTED",
+      "mapping": "MATCH",
+      "freshness": "STALE",
+      "satisfaction": "INDETERMINATE",
+      "evaluation_valid": false
+    },
+    "unavailable-status-is-indeterminate": {
+      "passed": true,
+      "native_verification": "VERIFIED",
+      "acceptance": "INDETERMINATE",
+      "mapping": "MATCH",
+      "freshness": "UNAVAILABLE",
+      "satisfaction": "INDETERMINATE",
+      "evaluation_valid": false
+    },
+    "replay-identity-is-wrapper-independent": {
+      "passed": true,
+      "native_verification": "VERIFIED",
+      "acceptance": "ACCEPTED",
+      "mapping": "MATCH",
+      "freshness": "FRESH",
+      "satisfaction": "SATISFIED",
+      "evaluation_valid": true
+    }
+  },
+  "harness": {
+    "harness-refuses-unknown-native-output": true,
+    "harness-refuses-unknown-mapping-output": true,
+    "strict-json-refuses-duplicate-members": true,
+    "workspace-pin-drift-refused-before-adapter": true
+  },
+  "native_replay_unit": "sha256:dbae226f1c5280b53c85b038a83793407c25851029b0e349c3aabc004d563fdd",
+  "claim_boundary": {
+    "native_artifact": "Cedulon Decision Token",
+    "evidence_role": "machine-policy-decision",
+    "pre_settlement": true,
+    "authorization": false,
+    "human_approval": false,
+    "settlement_or_payment_finality": false,
+    "rail_completeness": false,
+    "cross_relying_party_audience_binding": false,
+    "certification": false
+  },
+  "profile_passed": true,
+  "report_digest": "sha256:ddd3a6ed70872049b02b15f9928bb208dacd3bdf23dd8450d144b26c83be18b6"
+}

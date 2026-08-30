@@ -1,0 +1,61 @@
+{
+  "@version": "EMILIA-CEDULON-SOURCE-LOCK-v0.1",
+  "checked_at": "2026-08-30T18:00:00Z",
+  "draft": {
+    "name": "draft-dogru-cedulon-04",
+    "url": "https://www.ietf.org/archive/id/draft-dogru-cedulon-04.txt",
+    "sha256": "661755c600aede25451ce3a67df4a45d0d964c7b9196dc725dd310723eb8a49f"
+  },
+  "implementation": {
+    "repository": "https://github.com/dogrucanemek-alt/cedulon.git",
+    "tag": "v0.7.0",
+    "tag_object": "7c99d286236d88279ff2203f9b5e0fda5e651199",
+    "commit": "4a5eab26dde9edbd71db01f6253cc0a7aff72a37",
+    "tree": "46b187f77284e3e05649830dfe63da2b45fda2ed",
+    "files": [
+      {
+        "path": "packages/core/src/decision-token.ts",
+        "blob": "6470378dc0c24bc20fb7bc0481eca596985bd681",
+        "sha256": "04301bb79d6f5f6b6ee877d0140cb89837352514d3b20916bd0b811cdc6bae44"
+      },
+      {
+        "path": "packages/core/src/policy.ts",
+        "blob": "d54d58964094c74652a1c5b62e3bb7bb721d9109",
+        "sha256": "3afdda16faad331d9789a90edbe1db567776821a7b4f46e08a6e6cc732d95b97"
+      },
+      {
+        "path": "packages/cose/src/cose.ts",
+        "blob": "b61e502729348146ff1c216a07a836fe6a71bed5",
+        "sha256": "2f597bce8f0b19ae10139426438f6948ff83676dde405eba5c141fa5a66bd367"
+      },
+      {
+        "path": "packages/cose/src/cbor.ts",
+        "blob": "49e01f0b72d38df72dbee0d2067315733097488e",
+        "sha256": "7d7ea4b8edc5d41fbcb13d4236d461d40d2cea9b010604bcef0121fae1092e04"
+      }
+    ]
+  },
+  "packages": [
+    {
+      "name": "@cedulon/core",
+      "version": "0.7.0",
+      "tarball": "https://registry.npmjs.org/@cedulon/core/-/core-0.7.0.tgz",
+      "integrity": "sha512-6ZrWW/+u8ucpjfi9HU4LzGoYYTPnmIqsKYOVdncElaHQvW8sjyzFFTU3e3ZuKQ4KgLohvn31Exb5EYn7H2+UgA=="
+    },
+    {
+      "name": "@cedulon/cose",
+      "version": "0.7.0",
+      "tarball": "https://registry.npmjs.org/@cedulon/cose/-/cose-0.7.0.tgz",
+      "integrity": "sha512-sXtduUZXrZOb3w56/onnKkXVHJ9y5lUYfCwn4oADzJ/tiir+mUUSAGWjGMBOPGiqXdkSWfWPXuT+cuRIiY89vA=="
+    }
+  ],
+  "scope": {
+    "native_input": "Cedulon Decision Token",
+    "implementation_subset": "tokens with non-null tool and manifestHash",
+    "known_v0_7_0_gaps_closed_here": [
+      "token-carried issuer key is never a trust root",
+      "the actual COSE_Sign1 unprotected map must be empty"
+    ],
+    "not_upgraded_to": "post-v0.7.0 repository head"
+  }
+}

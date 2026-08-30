@@ -1,0 +1,199 @@
+{
+  "@version": "EMILIA-CROSSING-LAB-LOCAL-WORKSPACE-v1",
+  "adapter": {
+    "id": "pinto:cbap1-contestability-binding",
+    "version": "0.1.0",
+    "module": "adapter.mjs",
+    "module_digest": "sha256:b5536489a2fabcb45c058ff83824dae6ac4dc523a8b80ebc2eaa5416ecc1074c"
+  },
+  "artifact": "artifact.json",
+  "artifact_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
+  "config": {
+    "@version": "AEB-ADAPTER-v1",
+    "relying_party_id": "rp:pinto-cbap1-lab",
+    "evaluator_keys": {
+      "crossing-lab:self-test": {
+        "public_key": "MCowBQYDK2VwAyEAc_kUSHs4ymdA65GF3OV8C3PDWhelodqfOvCmFe-6oUI"
+      }
+    },
+    "registry": {
+      "@version": "EP-EVIDENCE-REGISTRY-v1",
+      "registry_id": "registry:pinto-cbap1-lab",
+      "epoch": 1,
+      "entries": {
+        "mapping:pinto:cbap1-account-suspension": {
+          "kind": "mapping-profile",
+          "version": "1",
+          "status": "active",
+          "definition": {
+            "profile_id": "pinto:cbap1-account-suspension",
+            "native_protocol": "draft-pinto-agent-authz-contestability-00#CBAP-1",
+            "claim_scope": "historical-contestability-binding-only",
+            "profile_digest": "sha256:fedc6d2beb4ecea22ae762b070fe063519f46e5b776fd04d482a38785a825d5d"
+          },
+          "definition_digest": "sha256:20e203796fd5afd97fe88838fcad1b163a73c0d62a12117b6f86a1ebfcf2fa05"
+        },
+        "role:contestability-binding": {
+          "kind": "evidence-role",
+          "version": "1",
+          "status": "active",
+          "definition": {
+            "role": "contestability-binding",
+            "subject_kinds": [
+              "system"
+            ],
+            "authorization_semantics": false
+          },
+          "definition_digest": "sha256:2739b576fd8377bfb15fd55ccefe38211ab3388f6baa2a14347de59b1642fdbf"
+        }
+      },
+      "registry_digest": "sha256:637c8346af8b5bdf4213d6bebb44a645ee677ac01415881bce00dd3fb30dfb52"
+    },
+    "accepted_mappers": [
+      "pinto:cbap1-direct-action-mapper"
+    ],
+    "adapters": {
+      "pinto:cbap1-contestability-binding": {
+        "version": "0.1.0",
+        "trust_roots": [
+          {
+            "control_domain": "domain:pinto-fixture:executor",
+            "kid": "executor:cbap1",
+            "public_key": "pAEBAzIgBiFYIJoVgsxiO9Ch2QADNxAwUvP2j6F2nh6GceRlKb2WlVUO",
+            "role": "executor"
+          },
+          {
+            "control_domain": "domain:pinto-fixture:forum",
+            "kid": "forum:cbap1",
+            "public_key": "pAEBAzIgBiFYIM0Njrbp0t8G95dVV9staN_QNV0Y28Qcl2WwwwKnBc9O",
+            "role": "forum"
+          },
+          {
+            "control_domain": "domain:pinto-fixture:issuer",
+            "kid": "issuer:cbap1",
+            "public_key": "pAEBAzIgBiFYIE8VOOln01r1geLM3LcWc9o6Ri6FFHnRzEcH5qYaPoZS",
+            "role": "issuer"
+          }
+        ],
+        "config": {
+          "@version": "PINTO-CBAP1-ADAPTER-CONFIG-v0.1",
+          "authorization_trust_profile_digest": "sha256:30b171e07d763922f7914864b19d23dcbda786030d50495cd1dafea49ddf92f8",
+          "cbap_profile": "CBAP-1",
+          "claim_scope": "historical-contestability-binding-only",
+          "expected_abp_digest": "sha256:8d446b2763be237fc5e6dfed8eabafec7a82bfcbf948d58e873b1f347491876c",
+          "source_txt_sha256": "6a879935dc516df39e7cb95fdc8c45f982165869981d93763746911826b0b052",
+          "subject_system_id": "system:account-platform"
+        },
+        "config_digest": "sha256:c2828b3106cc3bafc04416fcdd8276b302ed6e828af9930bc12aac0d042b4d26",
+        "max_status_age_sec": 300
+      }
+    },
+    "profiles": {
+      "pinto:cbap1-account-suspension": {
+        "version": "0.1.0",
+        "definition": {
+          "@version": "PINTO-CBAP1-AEB-MAPPING-v0.1",
+          "native_protocol": "draft-pinto-agent-authz-contestability-00#CBAP-1",
+          "native_revision": "00",
+          "native_binding_mode": "direct",
+          "action_encoding": "JCS-UTF8",
+          "action_type": "account.suspend.1",
+          "material_fields": [
+            "account_ref",
+            "action_type",
+            "policy_event_ref"
+          ],
+          "evidence_role": "contestability-binding",
+          "claim_scope": "historical-contestability-binding-only",
+          "native_result_axes": [
+            "binding",
+            "pre_execution_evidence",
+            "discoverability",
+            "forum_acknowledgement",
+            "forum_operational_status",
+            "selection_provenance",
+            "access_binding",
+            "notice_evidence",
+            "retrievability",
+            "filing_window_status",
+            "policy_freshness",
+            "declared_effect",
+            "effect_acceptance",
+            "effect_trigger",
+            "effect_ordering",
+            "effect_application",
+            "reasons"
+          ],
+          "excluded_native_features": [
+            "active_effects",
+            "class_manifest",
+            "companion_binding",
+            "external_selection",
+            "multiparty_selection",
+            "notices",
+            "same_object_scitt"
+          ]
+        },
+        "registry_entry_ref": "mapping:pinto:cbap1-account-suspension",
+        "mapper_id": "pinto:cbap1-direct-action-mapper",
+        "resolver": {
+          "id": "pinto:cbap1-jcs-action-resolver",
+          "version": "0.1.0",
+          "implementation_digest": "sha256:2e167cd9235a0e81aa64daa31d63f1e3aa643810bde8a567cb21cfedcef6e6d7"
+        },
+        "semantic_equivalence": {
+          "assertion": "EQUIVALENT_UNDER_PROFILE",
+          "loss_policy": "NO_MATERIAL_FIELD_LOSS",
+          "omitted_material_fields": [],
+          "omitted_nonmaterial_fields": []
+        },
+        "profile_digest": "sha256:fedc6d2beb4ecea22ae762b070fe063519f46e5b776fd04d482a38785a825d5d"
+      }
+    },
+    "requirements": {
+      "requirement:historical-contestability-binding": {
+        "@version": "AEB-REQUIREMENT-v1",
+        "all_of": [
+          "contestability-binding"
+        ],
+        "terms": [
+          {
+            "type": "one-time-consumption"
+          }
+        ]
+      }
+    }
+  },
+  "evaluated_at": "2026-08-30T00:00:00Z",
+  "evaluation": {
+    "operation_id": "operation:pinto-cbap1:historical-001",
+    "consumption_nonce": "nonce:pinto-cbap1:aeb-001",
+    "initiator_id": "reviewer:crossing-lab",
+    "executor_id": "executor:historical-verifier",
+    "requirement_ref": "requirement:historical-contestability-binding",
+    "profile_id": "pinto:cbap1-account-suspension",
+    "artifact_ref": "artifact:pinto-cbap1:001",
+    "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+    "status": {
+      "checked_at": "2026-08-29T23:59:00Z",
+      "expires_at": "2026-08-30T12:00:00Z",
+      "revocation_checked": true,
+      "revoked": false,
+      "consumed": false,
+      "unavailable": false
+    },
+    "status_digest": "sha256:892edc5a331e8456aabe8862afcc5cf1a1e2bd71b390475afed9e37d7d3ae0a1"
+  },
+  "expected_action": {
+    "account_ref": "account:alice",
+    "action_type": "account.suspend.1",
+    "policy_event_ref": "policy-event:risk-2026-08-29-001"
+  },
+  "expected_action_digest": "sha256:583f036629ee9c38330efa6e722f63e86bcfc0a0c5019baddfc15969f07c9559",
+  "hostile_expected_action": {
+    "account_ref": "account:alice",
+    "action_type": "account.suspend.1",
+    "policy_event_ref": "policy-event:substituted"
+  },
+  "hostile_expected_action_digest": "sha256:f10978c512317059f2902d1b39eab93d7886f1b45f63db46070c5102cdaa5872"
+}

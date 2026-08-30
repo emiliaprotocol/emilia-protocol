@@ -1,0 +1,233 @@
+{
+  "@version": "EMILIA-CROSSING-LAB-LOCAL-WORKSPACE-v1",
+  "adapter": {
+    "id": "cedulon:decision-token",
+    "version": "0.1.0",
+    "module": "adapter.mjs",
+    "module_digest": "sha256:779caa2b62686d3813ea56d18be652c2c515a332c6d866da3b8d9036a6618375"
+  },
+  "artifact": "artifact.json",
+  "artifact_digest": "sha256:c2706cc925ccb1a70b90a7438207ed1a62ad81d3e7b3b51b0bca7eda3fb00da1",
+  "config": {
+    "@version": "AEB-ADAPTER-v1",
+    "relying_party_id": "rp:cedulon-demo-deployment",
+    "evaluator_keys": {
+      "crossing-lab:self-test": {
+        "public_key": "MCowBQYDK2VwAyEAc_kUSHs4ymdA65GF3OV8C3PDWhelodqfOvCmFe-6oUI"
+      }
+    },
+    "registry": {
+      "@version": "EP-EVIDENCE-REGISTRY-v1",
+      "registry_id": "registry:cedulon-aeb-crossing-v0.1",
+      "epoch": 1,
+      "entries": {
+        "mapping:cedulon:decision-token-payment-attempt": {
+          "kind": "mapping-profile",
+          "version": "1",
+          "status": "active",
+          "definition": {
+            "profile_digest": "sha256:51f1d37394fbfc293323ad44ad93b6d2ca6059cd91be375544be27a58f232cf7"
+          },
+          "definition_digest": "sha256:70f9036830d5f021349e51f43c0e9b097c93cb7a3699613f9979415d076de7db"
+        },
+        "role:machine-policy-decision": {
+          "kind": "evidence-role",
+          "version": "1",
+          "status": "active",
+          "definition": {
+            "role": "machine-policy-decision",
+            "subject_kinds": [
+              "system"
+            ]
+          },
+          "definition_digest": "sha256:c5423693760594b01821636f190ead94fc6081d40e206f3d70723860df3e394c"
+        }
+      },
+      "registry_digest": "sha256:11cb46a9f6a9b080ae8d5375c1c21119de47032a8ad6a2bcfbc6c69411ca90e5"
+    },
+    "accepted_mappers": [
+      "cedulon:decision-token-to-payment-attempt"
+    ],
+    "adapters": {
+      "cedulon:decision-token": {
+        "version": "0.1.0",
+        "trust_roots": [
+          {
+            "key_id": "cedulon:pdp:fixture-1",
+            "algorithm": "Ed25519",
+            "public_key": "MCowBQYDK2VwAyEA11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+          }
+        ],
+        "config": {
+          "@version": "CEDULON-AEB-ADAPTER-CONFIG-v0.1",
+          "authority_boundary": "PRE_SETTLEMENT_MACHINE_POLICY_DECISION",
+          "consumer_deployment_id": "deployment:cedulon-demo",
+          "issuer_key_id": "cedulon:pdp:fixture-1",
+          "replay_identities": [
+            "singleUseId",
+            "nonce"
+          ],
+          "settlement_boundary": "NO_SPEND_RECEIPT_OR_RAIL_EXTRACT_AS_AUTHORITY",
+          "subject_id": "system:cedulon-pdp:fixture-1"
+        },
+        "config_digest": "sha256:cfcfe88f256cf044e5b406382d3c1e79963fd419118ae151623d44ffacb0e77e",
+        "max_status_age_sec": 300
+      }
+    },
+    "profiles": {
+      "cedulon:decision-token-payment-attempt": {
+        "version": "0.1.0",
+        "definition": {
+          "@version": "CEDULON-DECISION-TOKEN-TO-CAID-v0.1",
+          "native_protocol": "draft-dogru-cedulon-04",
+          "native_artifact": "Decision Token",
+          "source_media_type": "application/cedulon-decision+cbor",
+          "source_profile": "Cedulon-v0.7.0-compatible-strict-subset",
+          "projection": "six-field-request",
+          "action_type": "cedulon.payment.attempt.1",
+          "suite": "jcs-sha256",
+          "field_map": [
+            {
+              "source": "request.amount",
+              "target": "amount",
+              "transform": "copy"
+            },
+            {
+              "source": "request.currency",
+              "target": "currency",
+              "transform": "copy"
+            },
+            {
+              "source": "request.payee",
+              "target": "payee",
+              "transform": "copy"
+            },
+            {
+              "source": "request.tool",
+              "target": "tool",
+              "transform": "copy"
+            },
+            {
+              "source": "request.nonce",
+              "target": "nonce",
+              "transform": "copy"
+            },
+            {
+              "source": "request.manifestHash",
+              "target": "manifest_hash",
+              "transform": "copy"
+            }
+          ],
+          "definitions": [
+            {
+              "action_type": "cedulon.payment.attempt.1",
+              "status": "active",
+              "risk_class": "irreversible-financial",
+              "summary": "Attempt one Cedulon-gated payment using the exact six fields evaluated by the PDP.",
+              "required_fields": [
+                {
+                  "name": "amount",
+                  "type": "amount-string",
+                  "notes": "minor units; Cedulon decimal string syntax"
+                },
+                {
+                  "name": "currency",
+                  "type": "string"
+                },
+                {
+                  "name": "payee",
+                  "type": "string"
+                },
+                {
+                  "name": "tool",
+                  "type": "string"
+                },
+                {
+                  "name": "nonce",
+                  "type": "string"
+                },
+                {
+                  "name": "manifest_hash",
+                  "type": "string",
+                  "notes": "lowercase hexadecimal SHA-256 of signed manifest COSE bytes"
+                }
+              ],
+              "optional_fields": [],
+              "digest_notes": "All six Cedulon requestHash fields are material. This v0.1 subset refuses null tool or manifestHash.",
+              "references": [
+                "draft-dogru-cedulon-04 Sections 7.1, 8, and 16.6"
+              ]
+            }
+          ]
+        },
+        "registry_entry_ref": "mapping:cedulon:decision-token-payment-attempt",
+        "mapper_id": "cedulon:decision-token-to-payment-attempt",
+        "resolver": {
+          "id": "cedulon:decision-token-to-payment-attempt",
+          "version": "0.1.0",
+          "implementation_digest": "sha256:ec4eefab1048a15333b53383007f1f40617befd77d908c08a228b4fe915eae84"
+        },
+        "semantic_equivalence": {
+          "assertion": "EQUIVALENT_UNDER_PROFILE",
+          "loss_policy": "NO_MATERIAL_FIELD_LOSS",
+          "omitted_material_fields": [],
+          "omitted_nonmaterial_fields": []
+        },
+        "profile_digest": "sha256:51f1d37394fbfc293323ad44ad93b6d2ca6059cd91be375544be27a58f232cf7"
+      }
+    },
+    "requirements": {
+      "requirement:cedulon-machine-policy-decision": {
+        "@version": "AEB-REQUIREMENT-v1",
+        "all_of": [
+          "machine-policy-decision"
+        ],
+        "terms": [
+          {
+            "type": "one-time-consumption"
+          }
+        ]
+      }
+    }
+  },
+  "evaluated_at": "2027-02-01T12:00:00Z",
+  "evaluation": {
+    "operation_id": "operation:cedulon-payment-attempt:001",
+    "consumption_nonce": "aeb:cedulon-payment-attempt:001",
+    "initiator_id": "agent:cedulon-demo",
+    "executor_id": "executor:cedulon-settlement-demo",
+    "requirement_ref": "requirement:cedulon-machine-policy-decision",
+    "profile_id": "cedulon:decision-token-payment-attempt",
+    "artifact_ref": "artifact:cedulon-decision-token:001",
+    "caid": "caid:1:cedulon.payment.attempt.1:jcs-sha256:E0F6ihHvw-I9PIjt204lM5wqFmcUqrRZ1ByFlww8nR4",
+    "status": {
+      "checked_at": "2027-02-01T11:59:00Z",
+      "expires_at": "2027-02-01T12:04:00Z",
+      "revocation_checked": true,
+      "revoked": false,
+      "consumed": false,
+      "unavailable": false
+    },
+    "status_digest": "sha256:deef0f80dfc7710b44bee039da5821d3f0fb21080b836313fe2cd5ed06e6501e"
+  },
+  "expected_action": {
+    "action_type": "cedulon.payment.attempt.1",
+    "amount": "125000",
+    "currency": "USD",
+    "payee": "merchant:cedulon-demo",
+    "tool": "x402.settle",
+    "nonce": "3b5b3d6fb7e449b4a7cb6f7c552d7e3c",
+    "manifest_hash": "92d1541a242777213ecf5cd1196e5f8c8cfc169b83427103ea62a57236da2fa3"
+  },
+  "expected_action_digest": "sha256:13417a8a11efc3e23d3c88eddb4e25339c2a166714aab459d41c85970c3c9d1e",
+  "hostile_expected_action": {
+    "action_type": "cedulon.payment.attempt.1",
+    "amount": "125001",
+    "currency": "USD",
+    "payee": "merchant:cedulon-demo",
+    "tool": "x402.settle",
+    "nonce": "3b5b3d6fb7e449b4a7cb6f7c552d7e3c",
+    "manifest_hash": "92d1541a242777213ecf5cd1196e5f8c8cfc169b83427103ea62a57236da2fa3"
+  },
+  "hostile_expected_action_digest": "sha256:e0cb8fbb8061bbddbf4c08f62fb9523ea0d0283cda3a48834a71d65ba3723bb5"
+}

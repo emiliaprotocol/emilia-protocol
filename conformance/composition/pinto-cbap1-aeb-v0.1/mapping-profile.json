@@ -1,0 +1,66 @@
+{
+  "@version": "PINTO-CBAP1-AEB-MAPPING-RECORD-v0.1",
+  "profile_id": "pinto:cbap1-account-suspension",
+  "adapter_id": "pinto:cbap1-contestability-binding",
+  "native_protocol": "draft-pinto-agent-authz-contestability-00#CBAP-1",
+  "source_lock": "source-lock.json",
+  "source_txt_sha256": "6a879935dc516df39e7cb95fdc8c45f982165869981d93763746911826b0b052",
+  "mapping": {
+    "native_action": "CBAP-1 bundle label 7 action-bytes",
+    "canonical_action": "JCS UTF-8 object",
+    "caid_profile": "caid:1:account.suspend.1:jcs-sha256",
+    "action_type": "account.suspend.1",
+    "material_fields": [
+      "account_ref",
+      "action_type",
+      "policy_event_ref"
+    ],
+    "omitted_material_fields": [],
+    "omitted_nonmaterial_fields": [],
+    "semantic_equivalence": "EQUIVALENT_UNDER_PROFILE",
+    "loss_policy": "NO_MATERIAL_FIELD_LOSS"
+  },
+  "aeb_role": {
+    "evidence_role": "contestability-binding",
+    "subject_kind": "system",
+    "claim_scope": "historical-contestability-binding-only",
+    "authorization_semantics": false
+  },
+  "native_positive_result": {
+    "binding": "valid",
+    "pre_execution_evidence": "executor_attested",
+    "discoverability": "complete",
+    "forum_acknowledgement": "valid_exact",
+    "forum_operational_status": "not_checked",
+    "selection_provenance": "unilateral",
+    "access_binding": "valid",
+    "notice_evidence": "not_claimed",
+    "retrievability": "not_checked",
+    "filing_window_status": "open",
+    "policy_freshness": "indeterminate",
+    "declared_effect": "none",
+    "effect_acceptance": "not_required",
+    "effect_trigger": "not_applicable",
+    "effect_ordering": "not_applicable",
+    "effect_application": "not_applicable",
+    "reasons": []
+  },
+  "excluded": [
+    "active_effects",
+    "class_manifest",
+    "companion_binding",
+    "external_selection",
+    "multiparty_selection",
+    "notices",
+    "pre_execution_authority",
+    "same_object_scitt"
+  ],
+  "non_claims": [
+    "CBAP-1 author endorsement",
+    "independent implementation",
+    "native specification correctness",
+    "production deployment",
+    "security certification",
+    "authorization to execute the mapped action"
+  ]
+}
