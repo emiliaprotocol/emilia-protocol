@@ -135,8 +135,8 @@ identity chain.
 
 ## 8. Signatures
 
-This report is jointly authored. It is not published until both parties approve the
-exact bytes.
+This report is jointly authored. It is not final or jointly approved until both
+parties approve the exact bytes.
 
 - Iman Schrock — EMILIA Protocol, Inc. — _________________ (date)
 - Guigui Wang — Correctover — _________________ (date)
