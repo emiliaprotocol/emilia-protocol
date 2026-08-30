@@ -12,7 +12,7 @@ toolchain go1.27.0
 
 require (
 	github.com/cloudflare/circl v1.6.5
-	github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2 v2.4.4
+	github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2 v2.4.5
 )
 
 require golang.org/x/sys v0.47.0 // indirect
