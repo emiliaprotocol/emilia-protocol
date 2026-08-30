@@ -204,8 +204,10 @@ The reviewed shortcut creates `emilia/scan-adoption-handoff.json` and
 workspace at `emilia-crossing-lab/`. Creation is no-replace: an existing regular
 file, symlink, hard link, seed, or workspace is never followed or overwritten.
 The verification command makes no network request and never invokes the
-supplied consequential handler. The Lab initializer is loaded locally from
-`@emilia-protocol/verify` after RR-1 passes.
+supplied consequential handler. After RR-1 passes, Scan resolves the Lab
+initializer from its exact `@emilia-protocol/verify@3.21.0` dependency and
+passes that local module to the generated verifier. A separate consumer-level
+Verify installation is not required.
 
 The seed binds the candidate launch profile and its published action contract,
 the exact Verify 3.21.0 initializer version, exact reviewed-manifest bytes,

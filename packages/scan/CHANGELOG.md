@@ -42,10 +42,14 @@
 - Refuse action, profile, or manifest substitution, unsafe links, partial
   overwrite, and attempts to run or seal the generated draft workspace as if it
   were an adapter compatibility result.
+- Resolve the Lab initializer from Scan's exact Verify 3.21.0 dependency and
+  pass that file URL to the reviewed child process, overriding ambient input.
+  A clean `npx` consumer no longer depends on accidental package hoisting or a
+  separate Verify installation.
 
 ### Changed
 
-- Rebaseline offline receipt checks on `@emilia-protocol/verify` `^3.21.0` and
+- Rebaseline offline receipt checks on `@emilia-protocol/verify` `3.21.0` and
   generate exact installs for `@emilia-protocol/mcp-guard@0.6.0`.
 
 ## 0.4.3 (2026-08-30)
