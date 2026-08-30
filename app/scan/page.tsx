@@ -53,7 +53,8 @@ const codeBox: React.CSSProperties = {
 const SCAN_INSTALL_SPEC = `@emilia-protocol/scan@${scanPackage.version}`;
 const PROTECT_COMMAND = `npx ${SCAN_INSTALL_SPEC} protect ./tools.json --action sendWire --apply --verify`;
 const SAMPLE_COMMAND = `npx ${SCAN_INSTALL_SPEC} protect --sample --action sendWire --apply --verify`;
-const REVIEW_COMMAND = `npx ${SCAN_INSTALL_SPEC} protect ./tools.json --action sendWire --reviewed`;
+const REVIEW_COMMAND = `npx ${SCAN_INSTALL_SPEC} protect ./tools.json --action sendWire --reviewed \\
+  --crossing-profile ccs-wang-draft08-v13`;
 const INSTALL_COMMAND = `npm install --save-exact @emilia-protocol/mcp-guard@${mcpGuardPackage.version}`;
 
 const LADDER = [

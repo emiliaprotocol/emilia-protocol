@@ -618,7 +618,7 @@ test('selected-action Gate Starter is two-stage, blocks every unselected runtime
   const authorityMap = readFileSync(join(starter, 'authority-map.html'), 'utf8');
   assert.match(authorityMap, /EMILIA Authority Brain/);
   assert.doesNotMatch(authorityMap, /--apply --verify/);
-  assert.match(authorityMap, /--action 'sendWire' --reviewed/);
+  assert.match(authorityMap, /--action 'sendWire' --reviewed --crossing-profile [^\"]*launch-profile/);
   assert.match(authorityMap, /Review-pending in this Gate Starter/);
   assert.match(authorityMap, /Do not overwrite this starter with --force/);
   assert.doesNotMatch(authorityMap, /https?:\/\//i);

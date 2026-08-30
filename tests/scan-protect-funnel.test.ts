@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const root = resolve(import.meta.dirname, '..');
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
+const flattenShellCommand = (source: string) => source.replace(/\\\s*/g, ' ').replace(/\s+/g, ' ');
 
 describe('scan to protected MCP boundary funnel', () => {
   const homepage = read('app/HomePageClient.tsx');
@@ -35,7 +36,9 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(scan).toContain('npx ${SCAN_INSTALL_SPEC} protect ./tools.json --action sendWire --apply --verify');
     expect(scan).toContain('npm install --save-exact @emilia-protocol/mcp-guard@${mcpGuardPackage.version}');
     expect(scan).toContain('npx ${SCAN_INSTALL_SPEC} protect --sample --action sendWire --apply --verify');
-    expect(scan).toContain('npx ${SCAN_INSTALL_SPEC} protect ./tools.json --action sendWire --reviewed');
+    expect(flattenShellCommand(scan)).toContain(
+      'npx ${SCAN_INSTALL_SPEC} protect ./tools.json --action sendWire --reviewed --crossing-profile ccs-wang-draft08-v13',
+    );
     expect(scan).toContain('Activate this boundary in production');
     expect(scan).toContain('href="/pilot"');
     expect(scan).toContain('href="/mcp"');
@@ -47,7 +50,9 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(guard).toContain('href="/scan"');
     expect(guide).toContain('npm install --save-exact @emilia-protocol/mcp-guard@0.6.0');
     expect(guide).toContain('npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action release_payment --apply --verify');
-    expect(guide).toContain('npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action release_payment --reviewed');
+    expect(flattenShellCommand(guide)).toContain(
+      'npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action release_payment --reviewed --crossing-profile ccs-wang-draft08-v13',
+    );
     expect(guide).toContain('durable provenance ledger');
     expect(guide).toContain('shared atomic consumption store');
     expect(guard).not.toContain('due process, proven');
@@ -90,8 +95,12 @@ describe('scan to protected MCP boundary funnel', () => {
 
   it('makes the passive scanner discoverable without bloating global navigation', () => {
     expect(sitemap).toContain("{ path: '/scan'");
+    expect(repositoryReadme).toContain('npm install --save-exact @emilia-protocol/mcp-guard@0.6.0');
+    expect(repositoryReadme).not.toContain('@emilia-protocol/mcp-guard@0.5.0');
     expect(repositoryReadme).toContain('npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --apply --verify');
-    expect(repositoryReadme).toContain('npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --reviewed');
+    expect(flattenShellCommand(repositoryReadme)).toContain(
+      'npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --reviewed --crossing-profile ccs-wang-draft08-v13',
+    );
     expect(repositoryReadme).toContain('durable provenance ledger');
     expect(repositoryReadme).toContain('shared atomic consumption store');
     expect(repositoryReadme).not.toContain('const guarded = withMcpGuard(handleTool, {');

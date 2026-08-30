@@ -4,7 +4,7 @@
 //   npx @emilia-protocol/scan@0.5.0 protect <actions.json|--sample> [--out ./emilia]
 //     [--action <selected-tool>] [--apply] [--verify] [--force]
 //   npx @emilia-protocol/scan@0.5.0 protect <actions.json|--sample> [--out ./emilia]
-//     --action <selected-tool> --reviewed
+//     --action <selected-tool> --reviewed --crossing-profile <launch-profile>
 //
 // Turns a scan into drop-in files: a proposed action-control manifest, a local
 // Authority Map, and a guard module you review before importing it at the
