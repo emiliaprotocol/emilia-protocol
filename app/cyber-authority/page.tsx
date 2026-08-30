@@ -2,6 +2,7 @@
 
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
+import Image from 'next/image';
 import Link from 'next/link';
 import SiteFooter from '@/components/SiteFooter';
 import SiteNav from '@/components/SiteNav';
@@ -12,7 +13,7 @@ import css from './cyber-authority.module.css';
 const PAGE_URL = 'https://www.emiliaprotocol.ai/cyber-authority';
 const PAGE_TITLE = 'Authority Controls for AI Security Actions | EMILIA';
 const PAGE_DESCRIPTION =
-  'EMILIA controls exact administrative actions proposed by AI defenders at a credential-owning boundary, refusing wider or replayed actions and preserving explicit uncertainty.';
+  'On completely mediated credential-owning paths, EMILIA controls exact administrative actions proposed by AI defenders, refusing wider or replayed requests and preserving explicit uncertainty.';
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -66,7 +67,7 @@ const FAQ = [
   {
     question: 'What happens when a provider result is uncertain?',
     answer:
-      'If the provider may have received an admitted action but its effect cannot be established, Gate records INDETERMINATE, keeps the authority consumed, and refuses blind retry until authenticated action-bound reconciliation.',
+      'If the provider may have received an admitted action but its effect cannot be established, Gate treats the outcome as INDETERMINATE, keeps the authority consumed, and refuses blind retry until authenticated action-bound reconciliation.',
   },
   {
     question: 'Can an agent bypass EMILIA Gate?',
@@ -74,9 +75,9 @@ const FAQ = [
       'Gate prevents only on completely mediated covered paths. Alternate credentials, direct provider calls, unprotected tools, and other executor routes remain outside coverage until they are removed or separately mediated.',
   },
   {
-    question: 'Who is the first customer for this solution?',
+    question: 'Who is the initial target buyer for this solution?',
     answer:
-      'The initial customer is a cybersecurity vendor, MSSP, SOAR or EDR platform, or critical-infrastructure integrator already deploying automated remediation. EMILIA adds a customer-owned exact-action authority boundary; it does not replace the customer\'s security product.',
+      'We are inviting cybersecurity vendors, MSSPs, SOAR or EDR platforms, and critical-infrastructure integrators already deploying automated remediation. EMILIA adds a customer-owned exact-action authority boundary; it does not replace the customer\'s security product.',
   },
 ] as const;
 
@@ -176,7 +177,7 @@ const STEPS = [
   {
     number: '02',
     title: 'Pin the customer mandate',
-    body: 'The customer defines the exact operation, target, limits, evidence, expiry, and exception path. The agent cannot widen it.',
+    body: 'The customer defines the exact operation, target, limits, evidence, expiry, and exception path. Gate refuses a wider action on the covered path.',
   },
   {
     number: '03',
@@ -221,7 +222,8 @@ export default async function CyberAuthorityPage(): Promise<React.ReactElement> 
                   change the customer&apos;s system.
                 </p>
                 <p className={css.heroRule}>
-                  Inside the mandate: one attempt. Outside it: refuse. Outcome unknown: stop and reconcile.
+                  On a completely mediated credential path: one covered provider attempt per accepted
+                  authorization. Outside the mandate: refuse. Outcome unknown: stop and reconcile.
                 </p>
                 <div className={css.heroActions}>
                   <a className={css.primaryButton} href="#authority-drill">Run the authority drill</a>
@@ -232,34 +234,39 @@ export default async function CyberAuthorityPage(): Promise<React.ReactElement> 
                 </p>
               </div>
 
-              <div className={css.boundaryGraphic} aria-label="A proposed security response crosses EMILIA Gate before the credential-owning provider">
-                <div className={css.graphicHeader}>
-                  <span>ONE DEFENSIVE ACTION</span>
-                  <span>COMPLETELY MEDIATED PATH</span>
+              <figure className={css.storyGraphic}>
+                <p className={css.storyConcept}>Concept illustration · completely mediated credential path</p>
+                <div className={css.storyImageFrame}>
+                  <Image
+                    src="/cyber-authority/authority-for-ai-defenders.webp"
+                    width={2720}
+                    height={1536}
+                    sizes="(max-width: 980px) 90vw, 48vw"
+                    alt="A friendly AI brings a permission card to EMILIA Gate before one action reaches a server, where a receipt records the decision"
+                    loading="eager"
+                  />
                 </div>
-                <div className={css.signalCard}>
-                  <span>AI DEFENDER PROPOSES</span>
-                  <strong>Disable service identity</strong>
-                  <code>svc-billing-prod</code>
-                  <small>No identity-provider credential</small>
-                </div>
-                <div className={css.graphicArrow} aria-hidden="true">↓</div>
-                <div className={css.gateCard}>
-                  <div className={css.gateTop}><span>EMILIA GATE</span><strong>EXACT ACTION</strong></div>
-                  <ul>
-                    <li><span>01</span> Target matches customer mandate</li>
-                    <li><span>02</span> Required evidence is current</li>
-                    <li><span>03</span> Authority has not been consumed</li>
-                  </ul>
-                  <div className={css.gateDecision}>ADMIT · REFUSE · INDETERMINATE</div>
-                </div>
-                <div className={css.graphicArrow} aria-hidden="true">↓</div>
-                <div className={css.executorCard}>
-                  <span>CREDENTIAL-OWNING ADAPTER</span>
-                  <strong>Identity provider</strong>
-                  <small>One admitted provider attempt, then an action-bound record</small>
-                </div>
-              </div>
+                <figcaption>
+                  <div className={css.storySteps}>
+                    <div>
+                      <span>1</span>
+                      <p><strong>AI asks</strong><small>Disable this one work account.</small></p>
+                    </div>
+                    <div>
+                      <span>2</span>
+                      <p><strong>EMILIA checks</strong><small>Exact action. Exact target. One permission.</small></p>
+                    </div>
+                    <div>
+                      <span>3</span>
+                      <p><strong>The door answers</strong><small>Admit, refuse, or stop and check.</small></p>
+                    </div>
+                  </div>
+                  <p className={css.storyReceipt}>
+                    <span>Decision receipt</span>
+                    What was asked. What EMILIA decided. What is actually known.
+                  </p>
+                </figcaption>
+              </figure>
             </div>
           </div>
         </section>
@@ -292,8 +299,8 @@ export default async function CyberAuthorityPage(): Promise<React.ReactElement> 
         <section className={css.buyers} aria-labelledby="buyers-title">
           <div className={css.shell}>
             <div className={css.sectionHeading}>
-              <p className={css.eyebrow}>The first buyers</p>
-              <h2 id="buyers-title">Sell through the teams already putting AI defenders into customer environments.</h2>
+              <p className={css.eyebrow}>Who we are inviting</p>
+              <h2 id="buyers-title">Start with teams already putting AI defenders into customer environments.</h2>
               <p>EMILIA is an authority component inside their deployment, not a replacement SOC or security platform.</p>
             </div>
             <div className={css.buyerGrid}>
