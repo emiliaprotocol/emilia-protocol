@@ -56,15 +56,42 @@ test('renders a self-contained Authority Brain from the real scanActions report'
   assert.equal(model.actions[0].confidence, 'medium');
   assert.equal(model.actions[0].authoritySource, 'not established by static scan');
   assert.equal(model.actions[0].provenance, 'declared MCP metadata · deterministic local classification');
-  assert.match(model.actions[0].protectCommand, /scan protect '\.\/tools\.json' --apply/);
-  assert.equal(model.actions[0].verifyCommand, 'node emilia/verify-setup.mjs');
-  assert.match(model.actions[0].handoffCommand, /--reviewed-manifest-digest 'sha256:<reviewed-digest>'/);
+  assert.match(model.actions[0].protectCommand, /scan@0\.5\.0 protect '\.\/tools\.json' --action 'sendWire' --apply --verify/);
+  assert.equal(model.actions[0].verifyCommand, null);
+  assert.match(model.actions[0].handoffCommand, /scan@0\.5\.0 protect '\.\/tools\.json'/);
   assert.match(model.actions[0].handoffCommand, /--action 'sendWire'/);
+  assert.match(model.actions[0].handoffCommand, /--reviewed$/);
   assert.deepEqual(model.blindSpots, [
     'Runtime-registered tools are not visible.',
     'Whether every execution path reaches a credential-owning Gate. Complete mediation must be verified after integration.',
     'Whether your organization will fail closed on denial. That is an owner decision, not a scanner setting.',
   ]);
+});
+
+test('an embedded selected-action map suppresses regeneration and exposes only its reviewed handoff', () => {
+  const report = mcpReport([
+    { name: 'sendWire', description: 'Send an outgoing wire transfer' },
+    { name: 'deployToProduction', description: 'Ship the current build to production' },
+    { name: 'getAccountBalance', description: 'Read the current balance' },
+  ]);
+  const html = renderAuthorityBrain(report, {
+    inputReference: './tools.json',
+    outputDirectory: 'emilia',
+    starterSelectedTool: 'sendWire',
+  });
+  const model = embeddedModel(html);
+  const selected = model.actions.find((action) => action.name === 'sendWire');
+  const pending = model.actions.find((action) => action.name === 'deployToProduction');
+
+  assert.equal(selected.protectCommand, null);
+  assert.equal(selected.starterSelectedAction, true);
+  assert.match(selected.handoffCommand, /scan@0\.5\.0 protect '\.\/tools\.json' --action 'sendWire' --reviewed$/);
+  assert.equal(pending.protectCommand, null);
+  assert.equal(pending.handoffCommand, null);
+  assert.equal(pending.starterReviewPending, true);
+  assert.match(html, /Finish the reviewed handoff/);
+  assert.match(html, /Review-pending in this Gate Starter/);
+  assert.doesNotMatch(JSON.stringify(model), /--apply --verify/);
 });
 
 test('embeds hostile names and descriptions as inert data without leaking arbitrary tool fields', () => {
@@ -110,26 +137,27 @@ test('pasteable commands keep hostile paths and visible action names inert under
   const action = model.actions[0];
   const env = { ...process.env, PATH: `${bin}:/usr/bin:/bin` };
 
-  assert.equal(action.protectCommand.includes(actionName), false,
-    'scan protect does not take a selected action name and must not interpolate one');
   const protect = spawnSync('/bin/sh', ['-c', action.protectCommand], { cwd: dir, env });
   assert.equal(protect.status, 0, protect.stderr?.toString());
   assert.deepEqual(protect.stdout.toString().split('\0').filter(Boolean), [
-    '@emilia-protocol/scan',
+    '@emilia-protocol/scan@0.5.0',
     'protect',
     inputReference,
+    '--action',
+    actionName,
     '--apply',
+    '--verify',
   ]);
 
   const handoff = spawnSync('/bin/sh', ['-c', action.handoffCommand], { cwd: dir, env });
   assert.equal(handoff.status, 0, handoff.stderr?.toString());
   assert.deepEqual(handoff.stdout.toString().split('\0').filter(Boolean), [
-    'emilia/verify-setup.mjs',
-    '--emit-handoff',
-    '--reviewed-manifest-digest',
-    'sha256:<reviewed-digest>',
+    '@emilia-protocol/scan@0.5.0',
+    'protect',
+    inputReference,
     '--action',
     actionName,
+    '--reviewed',
   ]);
   for (const injected of [
     'injected-input',
@@ -216,7 +244,7 @@ test('normalizes a leading-dash input path and withholds an unusable leading-das
   const html = renderAuthorityBrain(report, { inputReference: '-tools.json' });
   const action = embeddedModel(html).actions[0];
 
-  assert.equal(action.protectCommand, "npx @emilia-protocol/scan protect './-tools.json' --apply");
+  assert.equal(action.protectCommand, null);
   assert.equal(action.handoffCommand, null);
   assert.match(action.handoffLimitation, /leading-dash tool name/);
   assert.match(html, /Reviewed handoff unavailable for this declared name/);
@@ -239,7 +267,7 @@ test('contains no external request surface and makes no false protection claim',
   assert.doesNotMatch(html, /<(?:script|link|iframe)[^>]+(?:src|href)\s*=/i);
   assert.doesNotMatch(html, /<img[^>]+src=["'](?!data:image\/png;base64,)/i);
   assert.match(html, /Nothing is enforced by this dashboard/);
-  assert.match(html, /Review and install the generated Gate at the credential-owning dispatch boundary/);
+  assert.match(html, /Neither command installs production enforcement/);
   assert.match(html, /Copy was unavailable; the command is selected/);
   assert.doesNotMatch(html, /you are protected/i);
 });
@@ -398,7 +426,7 @@ test('brain CLI generates real MCP and OpenAPI dashboards from bounded JSON inpu
   assert.equal(mcpModel.source, 'mcp');
   assert.equal(mcpModel.actions.length, 2);
   assert.equal(mcpModel.actions[0].protectCommand,
-    "npx @emilia-protocol/scan protect 'tools.json' --apply");
+    "npx @emilia-protocol/scan@0.5.0 protect 'tools.json' --action 'sendWire' --apply --verify");
 
   const openapi = spawnSync(process.execPath, [cli, 'brain', 'openapi.json', '--out', 'openapi-brain.html'], {
     cwd: dir,
@@ -424,7 +452,7 @@ test('brain --sample creates the default dashboard and requires explicit force t
   const model = embeddedModel(readFileSync(output, 'utf8'));
   assert.equal(model.source, 'mcp');
   assert.equal(model.inputMode, 'sample');
-  assert.match(model.actions.find((action) => action.name === 'sendWire').protectCommand, /scan protect --sample --apply/);
+  assert.match(model.actions.find((action) => action.name === 'sendWire').protectCommand, /scan@0\.5\.0 protect --sample --action 'sendWire' --apply --verify/);
 
   const refused = spawnSync(process.execPath, [cli, 'brain', '--sample'], { cwd: dir, encoding: 'utf8' });
   assert.notEqual(refused.status, 0);

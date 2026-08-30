@@ -19,12 +19,14 @@ const codeBox: React.CSSProperties = {
   whiteSpace: 'pre',
 };
 
-const PROTECT = `# inspect first; this makes no change
-npx @emilia-protocol/scan protect ./tools.json
+const PROTECT = `# install the exact local runtime used by the generated check
+npm install --save-exact @emilia-protocol/mcp-guard@0.6.0
 
-# create the reviewed manifest, wrapper, and local refusal check
-npx @emilia-protocol/scan protect ./tools.json --apply
-node emilia/verify-setup.mjs`;
+# prepare one selected action and run the bounded local RR-1 check
+npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action release_payment --apply --verify
+
+# only after reading the generated map and manifest, bind the reviewed bytes
+npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action release_payment --reviewed`;
 
 const MANIFEST = `{
   "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",
@@ -267,10 +269,12 @@ export default function RequireReceiptGuide() {
           <div style={styles.eyebrow}>STEP 0 · GENERATE A REVIEWABLE START</div>
           <h2 style={{ ...styles.h2, maxWidth: 760 }}>Turn a declared tool list into a bounded integration.</h2>
           <p style={{ ...styles.body, maxWidth: 760 }}>
-            The first command is a dry run. After you review its classifications, the second creates
-            a manifest, production wrapper, and synthetic local refusal check. The local check proves
-            only that its handler was not called. Production still requires a durable provenance ledger,
-            a shared atomic consumption store, pinned keys, and a wrapper on every path to the real credential.
+            Install the exact runtime, then create a Gate Starter for one declared consequential tool.
+            Its synthetic RR-1 check exercises missing authority, exact admission, argument mutation,
+            replay, and an unscanned runtime tool without calling the real provider. Only after reading
+            the generated map and manifest does the separate review command create an owner-only handoff.
+            Production still requires a durable provenance ledger, a shared atomic consumption store,
+            pinned keys, and a wrapper on every path to the real credential.
           </p>
           <pre style={codeBox}>{PROTECT}</pre>
         </section>

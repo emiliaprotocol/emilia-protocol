@@ -6,23 +6,23 @@ consequential actions. Point it at what your agent can do; it tells you what
 should require authorization evidence, and hands you proposed config to review.
 
 ```bash
-npx @emilia-protocol/scan brain ./tools.json       # local, interactive Authority Map
-npx @emilia-protocol/scan brain --sample           # generate the built-in demonstration
+npx @emilia-protocol/scan@0.5.0 brain ./tools.json       # local, interactive Authority Map
+npx @emilia-protocol/scan@0.5.0 brain --sample           # generate the built-in demonstration
 
-npx @emilia-protocol/scan authority               # local config-derived authority inventory
-npx @emilia-protocol/scan source ./src             # passive source registration discovery
-npx @emilia-protocol/scan diff --baseline reviewed-source.json ./src
-npx @emilia-protocol/scan --sample                 # classify the built-in surface
-npx @emilia-protocol/scan ./tools.json             # classify your MCP tool list
-npx @emilia-protocol/scan ./openapi.json           # classify your HTTP API surface
+npx @emilia-protocol/scan@0.5.0 authority               # local config-derived authority inventory
+npx @emilia-protocol/scan@0.5.0 source ./src             # passive source registration discovery
+npx @emilia-protocol/scan@0.5.0 diff --baseline reviewed-source.json ./src
+npx @emilia-protocol/scan@0.5.0 --sample                 # classify the built-in surface
+npx @emilia-protocol/scan@0.5.0 ./tools.json             # classify your MCP tool list
+npx @emilia-protocol/scan@0.5.0 ./openapi.json           # classify your HTTP API surface
 
-# generate reviewed protection files (dry-run by default)
-npx @emilia-protocol/scan protect ./tools.json
-npx @emilia-protocol/scan protect ./tools.json --apply
-node emilia/verify-setup.mjs                       # synthetic local 4-case RR-1 check
-node emilia/verify-setup.mjs --emit-handoff \
-  --reviewed-manifest-digest 'sha256:<reviewed-digest>' \
-  --action '<reviewed-tool-name>'                  # replace placeholders after review
+# generate one selected-action Gate Starter (dry-run by default)
+npx @emilia-protocol/scan@0.5.0 protect ./tools.json
+npm install --save-exact @emilia-protocol/mcp-guard@0.6.0
+npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --apply --verify
+
+# after reading emilia/authority-map.html and action-control.manifest.json
+npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --reviewed
 ```
 
 ## Source discovery and reviewed diffs
@@ -34,8 +34,8 @@ relative path, line, framework, parser version, confidence, exact file digest,
 and registration-line digest. Dynamic names remain explicit unresolved entries.
 
 ```bash
-npx @emilia-protocol/scan source ./src --json --out source-review.json
-npx @emilia-protocol/scan diff --baseline source-review.json ./src --json
+npx @emilia-protocol/scan@0.5.0 source ./src --json --out source-review.json
+npx @emilia-protocol/scan@0.5.0 diff --baseline source-review.json ./src --json
 ```
 
 The source report contains a non-authorizing
@@ -55,7 +55,7 @@ produce a reviewed action-control manifest, or create or consume authority.
 
 ## Local Authority Map
 
-**See where your AI can act. Put a human in control before it matters.**
+**See where your AI can act. Put the owner's authority at the boundary.**
 
 `scan brain` runs the real static scanner and writes
 `emilia-authority-brain.html`, a responsive, interactive Authority Map that
@@ -70,13 +70,13 @@ such as credential and argument objects are not copied into the dashboard.
 
 ```bash
 # Default: owner-only ./emilia-authority-brain.html; refuses overwrite
-npx @emilia-protocol/scan brain ./tools.json
+npx @emilia-protocol/scan@0.5.0 brain ./tools.json
 
 # The output must remain one direct-child .html file in the current directory
-npx @emilia-protocol/scan brain ./tools.json --out authority-map.html
+npx @emilia-protocol/scan@0.5.0 brain ./tools.json --out authority-map.html
 
 # Explicit replacement of one existing regular, single-link output file
-npx @emilia-protocol/scan brain ./tools.json --out authority-map.html --force
+npx @emilia-protocol/scan@0.5.0 brain ./tools.json --out authority-map.html --force
 ```
 
 Output is staged completely before installation and created with mode `0600`.
@@ -85,17 +85,18 @@ non-regular output paths are refused, as is silent overwrite. Forced replacement
 uses a no-replace install; if another file appears during replacement, it is not
 overwritten and the displaced original remains recoverable as a named backup.
 
-For a consequential MCP action, **Protect this action** selects the action and
-offers copyable versions of the existing `scan protect <input> --apply` and
-reviewed-action handoff commands, with the synthetic local refusal check between
-them. The action name is needed only by the handoff command; supported action
-names and input paths are POSIX-quoted as hostile values. Source-confusing
-control and bidirectional characters are refused. A leading-dash input filename
-is normalized to a relative path; a leading-dash action name remains visible but
-its unusable handoff command is withheld until the tool is renamed. The
-interaction does not edit the input or install a control. Review and place the
-generated Gate at the credential-owning dispatch boundary before making an
-enforcement claim.
+For a consequential MCP action, **Protect this action** offers two copyable
+commands. The first creates one selected-action Gate Starter and runs the
+synthetic four-case RR-1 check. The second is deliberately separate: only after
+the owner reads the generated map and manifest does it bind the current bytes
+into the reviewed handoff. The owner never has to calculate or copy a digest.
+Supported action names, input paths, and output paths are POSIX-quoted as
+hostile values. Source-confusing control and bidirectional characters are
+refused. A leading-dash input filename is normalized to a relative path; a
+leading-dash action name remains visible but its unusable selected-action
+commands are withheld until the tool is renamed. The interaction does not edit
+the input or install a control. Review and place the generated Gate at the
+credential-owning dispatch boundary before making an enforcement claim.
 
 OpenAPI dashboards are deliberately passive-only until a durable, one-use HTTP
 admission edge is wired. They show the route-level proposal and the limitation;
@@ -106,22 +107,38 @@ proposal, not an owner review, protected deployment, certification, or proof of
 complete mediation.
 
 `scan protect` (also available as the legacy `emilia-harden` bin) currently
-accepts MCP tool lists and generates a `withMcpGuard` wrap. OpenAPI remains a
+accepts MCP tool lists and generates a self-contained local Authority Map plus a
+`withMcpGuard` wrap. OpenAPI remains a
 passive scan/manifest surface in this release: the command refuses to generate
 a verification-only HTTP middleware until durable one-use consumption is wired.
 Generated integration instructions install the audited runtime exactly with
 `npm install --save-exact @emilia-protocol/mcp-guard@0.6.0`.
+Each generated directory also contains an owner-only
+`.emilia-gate-starter.json` marker that binds all five generated artifacts and
+states `not_activated`. `--force` can replace only an exact, owner-only starter
+whose marker and file digests still verify. It refuses arbitrary directories,
+extra files, changed files, and reserved roots such as `.git` and
+`node_modules`. Protection output names are restricted to portable direct-child
+slugs made from letters, numbers, dots, underscores, and hyphens.
 
-It does exactly three things, and never more:
+It does exactly four things, and never more:
 
 1. **Scan** the actions it can see (MCP tool list, OpenAPI spec, or a plain list).
 2. **Classify** each one against the same risk packs the EMILIA Gate ships:
    money movement, bank-detail changes, production deploys, IAM grants, data
    export, record deletion, decision overrides. Each match carries an assurance
    tier (`class_a` or `quorum`) and the fields the receipt must bind.
-3. **Protect one declared MCP surface** — emit a proposed `agent-action-control`
-   manifest, a production wrapper, integration instructions, and a local
-   synthetic four-case receipt-required check. You still review and install the wrapper.
+3. **Package one selected consequential MCP action** — atomically emit a local
+   Authority Map, proposed `agent-action-control` manifest, production wrapper,
+   integration instructions, and local synthetic four-case receipt-required
+   check. Every other visible consequential action remains review-pending and
+   is refused by the selected-action wrapper before receipt processing. Runtime
+   tools absent from the declared surface are refused at the same boundary even
+   if they carry an otherwise exact synthetic receipt; only the selected action
+   and explicitly visible read-only tools can reach the underlying guard.
+4. **Bind an explicit owner review** — after the generated bytes are visible,
+   validate the unchanged manifest against the current input, rerun RR-1, and
+   emit the privacy-bounded handoff without asking the owner to copy a digest.
 
 The MCP production wrapper requires a durable provenance ledger and a shared
 atomic consumption store. It refuses to initialize without both. The generated
@@ -136,9 +153,30 @@ real-world effect.
 ## Machine-readable adoption handoff
 
 `verify-setup.mjs` is read-only by default. It prints the exact manifest and
-generated-scaffold digests after the local refusal check. Once you have reviewed
-`action-control.manifest.json`, you can acknowledge those exact bytes and select
-which visible consequential MCP tools may appear in a local handoff:
+generated-scaffold digests after the local refusal check. The primary path is
+two-stage so generation can never silently become owner review:
+
+```bash
+# Install the exact audited local runtime once. The scanner never auto-installs.
+npm install --save-exact @emilia-protocol/mcp-guard@0.6.0
+
+# Stage 1: create the Gate Starter and run RR-1. No handoff is emitted.
+npx @emilia-protocol/scan@0.5.0 protect ./tools.json \
+  --action deleteCustomer --apply --verify
+
+# Read emilia/authority-map.html and emilia/action-control.manifest.json.
+
+# Stage 2: validate the existing unchanged bytes and emit the reviewed handoff.
+npx @emilia-protocol/scan@0.5.0 protect ./tools.json \
+  --action deleteCustomer --reviewed
+```
+
+The second command does not regenerate or overwrite the Gate Starter. It fails
+if the current input no longer produces the exact existing manifest or declared
+control-surface digest, if the action is not the starter's selected
+consequential action, or if RR-1 fails. If review required an edit, keep the
+explicit digest path so the edited bytes, rather than a fresh scanner proposal,
+are acknowledged:
 
 ```bash
 node emilia/verify-setup.mjs \
@@ -160,6 +198,9 @@ The JSON contract is `EP-SCAN-ADOPTION-HANDOFF-v2`:
 - `generated_scaffold` lists SHA-256 digests for `guard.mjs`,
   `verify-setup.mjs`, and `INTEGRATION.md`. Its aggregate SHA-256 is computed
   over the UTF-8 bytes of `JSON.stringify(files)` in that fixed order.
+  `authority-map.html` is installed atomically beside the runtime files but is
+  deliberately outside this v2 binding; a future contract can bind presentation
+  artifacts without silently changing the published v2 digest semantics.
 - `selected_actions` contains only explicitly selected, discovered,
   receipt-required MCP actions: manifest id, MCP selector, action type,
   assurance class, and `receipt_required: true`.
@@ -184,9 +225,9 @@ attestation or an `EP-ACTION-REFUSAL-STATEMENT-v1` artifact.
 The `authority` command is a separate passive diagnostic:
 
 ```bash
-npx @emilia-protocol/scan authority
-npx @emilia-protocol/scan authority --json
-npx @emilia-protocol/scan authority --out authority-report.json
+npx @emilia-protocol/scan@0.5.0 authority
+npx @emilia-protocol/scan@0.5.0 authority --json
+npx @emilia-protocol/scan@0.5.0 authority --out authority-report.json
 ```
 
 It reads bounded local configuration files to inventory supported agent

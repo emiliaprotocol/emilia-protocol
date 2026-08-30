@@ -92,7 +92,7 @@ export default function HomePage(): React.ReactElement {
                 cross-stack; each Gate remains customer-owned and local to its configured boundary.
               </p>
               <div className="ep-home-calm-actions">
-                <Link href="/authority-brain" className="ep-home-hero-primary">Map my agent</Link>
+                <Link href="/scan#run-local" className="ep-home-hero-primary">Map and prepare one action</Link>
                 <Link href="/pilot" className="ep-home-hero-secondary">Protect one workflow →</Link>
               </div>
             </motion.div>
@@ -390,7 +390,7 @@ export default function HomePage(): React.ReactElement {
             </motion.div>
             <motion.div className="ep-home-grid-cta" {...reveal(0.08)} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 42 }}>
               {[
-                ['Free', 'Run Authority Brain locally', 'See supported declared surfaces and explicit blind spots.', '/authority-brain'],
+                ['Free', 'Create a local Gate Starter', 'Map the declared surface and prepare one consequential action.', '/scan#run-local'],
                 ['Pilot', 'Protect one workflow', `${PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · ${PROTECTED_WORKFLOW_PILOT.durationLabel}`, '/pilot'],
                 ['Diligence', 'Inspect every claim', 'Open code, conformance, threat models, and bounded proof.', '/security'],
               ].map(([kind, title, body, href]) => (

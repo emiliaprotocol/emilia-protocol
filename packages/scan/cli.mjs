@@ -5,7 +5,8 @@
 //   node packages/scan/cli.mjs --sample
 //   node packages/scan/cli.mjs brain <actions.json | openapi.json>
 //   node packages/scan/cli.mjs brain --sample
-//   node packages/scan/cli.mjs protect <actions.json | openapi.json> [--apply]
+//   node packages/scan/cli.mjs protect <actions.json | openapi.json>
+//     [--action <tool>] [--apply] [--verify]
 //
 // Ingests MCP tool lists ([{name, description, annotations}] or {tools:[...]}) or
 // an OpenAPI spec, classifies, and prints an HONEST report. Enforces nothing on
@@ -14,7 +15,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { scanActions, KNOWN_CATEGORIES } from './index.js';
 import { readBoundedRegularFile } from './safe-file.mjs';
-import { renderAuthorityBrain, writeAuthorityBrain } from './brain.mjs';
+import { renderAuthorityBrain, SCAN_INSTALL_SPEC, writeAuthorityBrain } from './brain.mjs';
 
 let strictJsonGate;
 try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
@@ -92,7 +93,7 @@ if (args[0] === 'authority') {
 } else if (args[0] === 'protect') {
   // Reuse the hardener in-process. This launches no configured server and makes
   // no network request; it only reads the supplied declaration and, with
-  // --apply, creates a reviewed scaffold under the selected output directory.
+  // --apply, creates a proposed Gate Starter under the selected output directory.
   process.argv = [process.argv[0], fileURLToPath(new URL('./codemod.mjs', import.meta.url)), ...args.slice(1)];
   await import('./codemod.mjs');
 } else if (args[0] === 'brain') {
@@ -206,7 +207,7 @@ if (args[0] === 'authority') {
     input = { actions: SAMPLE, source: 'mcp', blindSpots: ['This is the built-in sample. Real scans see only statically-listed tools; runtime-registered tools and value-dependent risk are invisible.'] };
   } else {
     const file = positionals[0];
-    if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample | source <directory> | diff --baseline <file> <directory> | brain <input|--sample> | protect <input> [--apply]'); process.exit(2); }
+    if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample | source <directory> | diff --baseline <file> <directory> | brain <input|--sample> | protect <input> [--action tool] [--apply] [--verify]'); process.exit(2); }
     const raw = readBoundedRegularFile(file, MAX_INPUT_BYTES);
     input = ingest(raw.toString('utf8'));
   }
@@ -241,8 +242,8 @@ if (args[0] === 'authority') {
 
   console.log(`\n${C.b}Next (nothing is enforced until you do this)${C.r}`);
   console.log('  1. Review the classifications above; downgrade any false positive, and confirm each REVIEW item.');
-  console.log('  2. Generate the reviewed protection scaffold (still a dry-run):');
-  console.log(`     ${C.dim}npx @emilia-protocol/scan protect <this-input>${C.r}`);
+  console.log('  2. Generate the proposed Gate Starter (still a dry-run):');
+  console.log(`     ${C.dim}npx ${SCAN_INSTALL_SPEC} protect <this-input>${C.r}`);
   console.log('  3. Apply and integrate it at the credential-owning dispatch boundary. Until that boundary, durable state, and pinned keys exist, NOTHING is enforced.');
 
   if (emitPath) {

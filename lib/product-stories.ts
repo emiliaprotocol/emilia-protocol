@@ -52,7 +52,7 @@ export const PRODUCT_STORIES: readonly ProductStory[] = [
     job: 'Map declared action surfaces and blind spots so the customer can choose what needs authority.',
     boundary:
       'Authority Brain does not inspect every hidden path, decide policy, or block an action. Its scanner proposes. The customer decides.',
-    primaryCta: { label: 'Run the local scan', href: '/authority-brain#run-local' },
+    primaryCta: { label: 'Run the local scan', href: '/scan#run-local' },
     proofCta: { label: 'See the mapping limits', href: '/authority-brain#honesty-heading' },
   },
   {

@@ -236,26 +236,53 @@ test('scan and protect reject unknown options with usage status', () => {
   }
 });
 
-test('protect installs one direct-child scaffold atomically and force replaces the directory as a unit', () => {
+test('protect installs atomically and force replaces only an exact generated Gate Starter', () => {
   const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-atomic-'));
   const nested = spawnSync(process.execPath, [
     join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample', '--out', 'nested/emilia', '--apply',
   ], { cwd: dir, encoding: 'utf8' });
   assert.notEqual(nested.status, 0);
-  assert.match(`${nested.stdout}${nested.stderr}`, /refusing nested output directory/i);
+  assert.match(`${nested.stdout}${nested.stderr}`, /portable direct-child slug|refusing nested output directory/i);
   assert.equal(existsSync(join(dir, 'nested')), false);
 
-  mkdirSync(join(dir, 'emilia'));
-  writeFileSync(join(dir, 'emilia', 'stale.txt'), 'must disappear only under explicit force');
-  const replaced = spawnSync(process.execPath, [
+  mkdirSync(join(dir, 'emilia'), { mode: 0o700 });
+  writeFileSync(join(dir, 'emilia', 'stale.txt'), 'must never be treated as a generated Gate Starter');
+  const arbitrary = spawnSync(process.execPath, [
     join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample', '--out', 'emilia', '--apply', '--force',
   ], { cwd: dir, encoding: 'utf8' });
+  assert.notEqual(arbitrary.status, 0);
+  assert.match(`${arbitrary.stdout}${arbitrary.stderr}`, /Gate Starter marker|current Gate Starter marker schema/i);
+  assert.equal(readFileSync(join(dir, 'emilia', 'stale.txt'), 'utf8'), 'must never be treated as a generated Gate Starter');
+
+  const first = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample', '--out', 'starter', '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`);
+  const replaced = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample', '--out', 'starter', '--apply', '--force',
+  ], { cwd: dir, encoding: 'utf8' });
   assert.equal(replaced.status, 0, `${replaced.stdout}\n${replaced.stderr}`);
-  assert.equal(existsSync(join(dir, 'emilia', 'stale.txt')), false);
-  assert.deepEqual(readdirSync(join(dir, 'emilia')).sort(), [
-    'INTEGRATION.md', 'action-control.manifest.json', 'guard.mjs', 'verify-setup.mjs',
+  assert.deepEqual(readdirSync(join(dir, 'starter')).sort(), [
+    '.emilia-gate-starter.json',
+    'INTEGRATION.md', 'action-control.manifest.json', 'authority-map.html', 'guard.mjs', 'verify-setup.mjs',
   ]);
-  assert.equal(readdirSync(dir).some((entry) => entry.startsWith('.emilia.')), false);
+  assert.equal(statSync(join(dir, 'starter', '.emilia-gate-starter.json')).mode & 0o077, 0);
+  assert.equal(readdirSync(dir).some((entry) => entry.startsWith('.starter.')), false);
+});
+
+test('protect refuses reserved roots case-insensitively even with force and preserves their bytes', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-reserved-'));
+  for (const out of ['.git', '.HG', '.SvN', 'NODE_MODULES']) {
+    const target = join(dir, out);
+    mkdirSync(target);
+    writeFileSync(join(target, 'keep.txt'), `preserve:${out}`);
+    const run = spawnSync(process.execPath, [
+      join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample', '--out', out, '--apply', '--force',
+    ], { cwd: dir, encoding: 'utf8' });
+    assert.equal(run.status, 64, `${out}\n${run.stdout}\n${run.stderr}`);
+    assert.match(`${run.stdout}${run.stderr}`, /reserved output directory/i);
+    assert.equal(readFileSync(join(target, 'keep.txt'), 'utf8'), `preserve:${out}`);
+  }
 });
 
 test('scan protect routes to the dry-run hardener without writing files', () => {
@@ -268,6 +295,7 @@ test('scan protect routes to the dry-run hardener without writing files', () => 
   assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
   assert.match(run.stdout, /DRY RUN — nothing written/);
   assert.match(run.stdout, /would create: emilia\/guard\.mjs/);
+  assert.match(run.stdout, /would create: emilia\/authority-map\.html/);
   assert.match(run.stdout, /would create: emilia\/verify-setup\.mjs/);
   assert.equal(spawnSync(process.execPath, ['-e', "import('node:fs').then(fs => process.exit(fs.existsSync('emilia') ? 1 : 0))"], {
     cwd: dir,
@@ -552,6 +580,239 @@ test('generated MCP protection separates durable production state from the expli
   assert.match(`${productionDemo.stdout}${productionDemo.stderr}`, /demo guard is unavailable in production/);
 });
 
+test('selected-action Gate Starter is two-stage, blocks every unselected runtime tool, and emits no handoff before review', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-selected-starter-'));
+  const input = join(dir, 'tools.json');
+  writeFileSync(input, JSON.stringify([
+    { name: 'sendWire', description: 'Send an outgoing wire transfer' },
+    { name: 'deployToProduction', description: 'Ship the current build to production' },
+    { name: 'getAccountBalance', description: 'Read the current balance' },
+  ]));
+  installLocalMcpGuard(dir);
+
+  const apply = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'),
+    'protect',
+    input,
+    '--action',
+    'sendWire',
+    '--apply',
+    '--verify',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(apply.status, 0, `${apply.stdout}\n${apply.stderr}`);
+  assert.match(apply.stdout, /EMILIA RR-1 CHECK: PASS — 4\/4/);
+  assert.match(apply.stdout, /refused an exact synthetic receipt for an unscanned runtime tool/i);
+
+  const starter = join(dir, 'emilia');
+  const handoffPath = join(starter, 'scan-adoption-handoff.json');
+  assert.equal(existsSync(handoffPath), false, 'generation plus RR-1 must not silently become owner review');
+  assert.deepEqual(readdirSync(starter).sort(), [
+    '.emilia-gate-starter.json',
+    'INTEGRATION.md',
+    'action-control.manifest.json',
+    'authority-map.html',
+    'guard.mjs',
+    'verify-setup.mjs',
+  ]);
+  const authorityMap = readFileSync(join(starter, 'authority-map.html'), 'utf8');
+  assert.match(authorityMap, /EMILIA Authority Brain/);
+  assert.doesNotMatch(authorityMap, /--apply --verify/);
+  assert.match(authorityMap, /--action 'sendWire' --reviewed/);
+  assert.match(authorityMap, /Review-pending in this Gate Starter/);
+  assert.match(authorityMap, /Do not overwrite this starter with --force/);
+  assert.doesNotMatch(authorityMap, /https?:\/\//i);
+
+  const guardPath = join(starter, 'guard.mjs');
+  const imported = await import(`${new URL(`file://${guardPath}`).href}?selected=${Date.now()}`);
+  assert.match(imported.protectionSelection.declared_surface_sha256, /^sha256:[0-9a-f]{64}$/);
+  assert.deepEqual(imported.protectionSelection.selected_tools, ['sendWire']);
+  assert.deepEqual(imported.protectionSelection.visible_read_only_tools, ['getAccountBalance']);
+  assert.deepEqual(imported.protectionSelection.review_pending_tools, ['deployToProduction']);
+
+  let calls = 0;
+  const guarded = imported.guardDispatchDemo(async (name) => {
+    calls += 1;
+    return { executed: name };
+  });
+  const pending = await guarded('deployToProduction', {
+    __ep: { receipt: { syntactically: 'present-but-must-not-be-processed' } },
+  });
+  assert.equal(pending.code, 'emilia_owner_review_required');
+  const unseen = await guarded('__runtime_only_tool__', {
+    __ep: { receipt: { syntactically: 'present-but-must-not-be-processed' } },
+  });
+  assert.equal(unseen.code, 'emilia_owner_review_required');
+  assert.equal(calls, 0, 'unselected and unseen tools must be refused before their handler');
+  assert.deepEqual(await guarded('getAccountBalance', {}), { executed: 'getAccountBalance' });
+  assert.equal(calls, 1, 'only the explicitly visible read-only action may bypass receipt processing');
+
+  const protectedBytes = new Map(
+    readdirSync(starter).map((leaf) => [leaf, readFileSync(join(starter, leaf))]),
+  );
+  const reviewed = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'),
+    'protect',
+    input,
+    '--action',
+    'sendWire',
+    '--reviewed',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(reviewed.status, 0, `${reviewed.stdout}\n${reviewed.stderr}`);
+  assert.match(reviewed.stdout, /Reviewed handoff created without changing the Gate Starter/);
+  const handoff = JSON.parse(readFileSync(handoffPath, 'utf8'));
+  assert.deepEqual(handoff.selected_actions.map((action) => action.selector.tool), ['sendWire']);
+  for (const [leaf, bytes] of protectedBytes) {
+    assert.deepEqual(readFileSync(join(starter, leaf)), bytes, `reviewed shortcut rewrote ${leaf}`);
+  }
+  const handoffBytes = readFileSync(handoffPath);
+  const overwrite = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'),
+    'protect', input, '--action', 'sendWire', '--reviewed',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.notEqual(overwrite.status, 0);
+  assert.match(`${overwrite.stdout}${overwrite.stderr}`, /refusing to overwrite existing handoff/i);
+  assert.deepEqual(readFileSync(handoffPath), handoffBytes);
+});
+
+test('selected-action shortcut refuses unknown, read-only, multiple, and unavailable verification requests before writes', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-selected-refusals-'));
+  const input = join(dir, 'tools.json');
+  writeFileSync(input, JSON.stringify([
+    { name: 'sendWire', description: 'Send an outgoing wire transfer' },
+    { name: 'deployToProduction', description: 'Ship the current build to production' },
+    { name: 'getAccountBalance', description: 'Read the current balance' },
+  ]));
+  const run = (...extra) => spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'), 'protect', input, ...extra,
+  ], { cwd: dir, encoding: 'utf8' });
+
+  const unknown = run('--action', 'notDeclared', '--apply');
+  assert.equal(unknown.status, 64);
+  assert.match(`${unknown.stdout}${unknown.stderr}`, /not one visible consequential MCP tool/);
+
+  const readOnly = run('--action', 'getAccountBalance', '--apply');
+  assert.equal(readOnly.status, 64);
+  assert.match(`${readOnly.stdout}${readOnly.stderr}`, /not one visible consequential MCP tool/);
+
+  const multiple = run('--action', 'sendWire', '--action', 'deployToProduction', '--apply');
+  assert.equal(multiple.status, 64);
+  assert.match(`${multiple.stdout}${multiple.stderr}`, /exactly one --action may be selected/);
+
+  const controlAction = run('--action', 'sendWire\u001b[2J', '--apply');
+  assert.equal(controlAction.status, 64);
+  assert.match(`${controlAction.stdout}${controlAction.stderr}`, /source-confusing characters/);
+  assert.equal(`${controlAction.stdout}${controlAction.stderr}`.includes('\u001b'), false,
+    'control-bearing action must not be echoed to the terminal');
+
+  const noAction = run('--apply', '--verify');
+  assert.equal(noAction.status, 64);
+  assert.match(`${noAction.stdout}${noAction.stderr}`, /--verify requires exactly one --action/);
+
+  const missingRuntime = run('--action', 'sendWire', '--apply', '--verify');
+  assert.equal(missingRuntime.status, 1);
+  assert.match(`${missingRuntime.stdout}${missingRuntime.stderr}`, /npm install --save-exact @emilia-protocol\/mcp-guard@0\.5\.0/);
+  assert.equal(existsSync(join(dir, 'emilia')), false, 'failed verification preflight must not write a partial starter');
+
+  const hostileOutput = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'),
+    'protect',
+    input,
+    '--out',
+    "x';globalThis.__emiliaInjected=1;'",
+    '--action',
+    'sendWire',
+    '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(hostileOutput.status, 64);
+  assert.match(`${hostileOutput.stdout}${hostileOutput.stderr}`, /portable direct-child slug/i);
+  assert.equal(readdirSync(dir).some((entry) => entry.includes('__emiliaInjected')), false);
+
+  writeFileSync(input, JSON.stringify([
+    { name: 'sendWire', description: 'Send an outgoing wire transfer' },
+    { name: 'sendWire', description: 'A second declaration is ambiguous' },
+  ]));
+  const ambiguous = run('--action', 'sendWire', '--apply');
+  assert.notEqual(ambiguous.status, 0);
+  assert.match(`${ambiguous.stdout}${ambiguous.stderr}`, /duplicate action name/i);
+  assert.equal(existsSync(join(dir, 'emilia')), false);
+});
+
+test('reviewed shortcut refuses manifest drift, wrong selected action, and handoff overwrite without changing existing bytes', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-reviewed-shortcut-safety-'));
+  const input = join(dir, 'tools.json');
+  writeFileSync(input, JSON.stringify([
+    { name: 'sendWire', description: 'Send an outgoing wire transfer' },
+    { name: 'deployToProduction', description: 'Ship the current build to production' },
+  ]));
+  installLocalMcpGuard(dir);
+  const cli = join(import.meta.dirname, 'cli.mjs');
+  const apply = spawnSync(process.execPath, [
+    cli, 'protect', input, '--action', 'sendWire', '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(apply.status, 0, `${apply.stdout}\n${apply.stderr}`);
+
+  const guardPath = join(dir, 'emilia', 'guard.mjs');
+  const originalGuard = readFileSync(guardPath);
+  writeFileSync(guardPath, `${originalGuard.toString('utf8')}\n// reviewed edit\n`);
+  const runtimeDrift = spawnSync(process.execPath, [
+    cli, 'protect', input, '--action', 'sendWire', '--reviewed',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.notEqual(runtimeDrift.status, 0);
+  assert.match(`${runtimeDrift.stdout}${runtimeDrift.stderr}`, /generated file digest changed: guard\.mjs/i);
+  assert.equal(existsSync(join(dir, 'emilia', 'scan-adoption-handoff.json')), false);
+  writeFileSync(guardPath, originalGuard);
+
+  const wrong = spawnSync(process.execPath, [
+    cli, 'protect', input, '--action', 'deployToProduction', '--reviewed',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.notEqual(wrong.status, 0);
+  assert.match(`${wrong.stdout}${wrong.stderr}`, /does not match the generated Gate Starter/);
+  assert.equal(existsSync(join(dir, 'emilia', 'scan-adoption-handoff.json')), false);
+
+  writeFileSync(input, JSON.stringify([
+    { name: 'sendWire', description: 'Send an outgoing wire transfer' },
+    { name: 'deployToProduction', description: 'Ship the current build to production' },
+    { name: 'getAccountBalance', description: 'Read the current balance' },
+  ]));
+  const surfaceDrift = spawnSync(process.execPath, [
+    cli, 'protect', input, '--action', 'sendWire', '--reviewed',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.notEqual(surfaceDrift.status, 0);
+  assert.match(`${surfaceDrift.stdout}${surfaceDrift.stderr}`, /declared surface does not match the generated Gate Starter/);
+  assert.equal(existsSync(join(dir, 'emilia', 'scan-adoption-handoff.json')), false);
+  writeFileSync(input, JSON.stringify([
+    { name: 'sendWire', description: 'Send an outgoing wire transfer' },
+    { name: 'deployToProduction', description: 'Ship the current build to production' },
+  ]));
+
+  const manifestPath = join(dir, 'emilia', 'action-control.manifest.json');
+  const originalManifest = readFileSync(manifestPath);
+  writeFileSync(manifestPath, `${originalManifest.toString('utf8').trim()}\n \n`);
+  const drift = spawnSync(process.execPath, [
+    cli, 'protect', input, '--action', 'sendWire', '--reviewed',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.notEqual(drift.status, 0);
+  assert.match(`${drift.stdout}${drift.stderr}`, /generated file digest changed: action-control\.manifest\.json|existing manifest is not the current scanner proposal/);
+  assert.equal(existsSync(join(dir, 'emilia', 'scan-adoption-handoff.json')), false);
+});
+
+test('reviewed shortcut cannot relabel a legacy surface-wide scaffold as a selected-action Gate Starter', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-reviewed-legacy-refusal-'));
+  installLocalMcpGuard(dir);
+  const cli = join(import.meta.dirname, 'cli.mjs');
+  const apply = spawnSync(process.execPath, [
+    cli, 'protect', '--sample', '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(apply.status, 0, `${apply.stdout}\n${apply.stderr}`);
+
+  const reviewed = spawnSync(process.execPath, [
+    cli, 'protect', '--sample', '--action', 'sendWire', '--reviewed',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.notEqual(reviewed.status, 0);
+  assert.match(`${reviewed.stdout}${reviewed.stderr}`, /requires an existing selected-action Gate Starter/);
+  assert.equal(existsSync(join(dir, 'emilia', 'scan-adoption-handoff.json')), false);
+});
+
 test('scan-to-adoption handoff binds reviewed bytes and explicit consequential actions without ambient data', () => {
   const dir = mkdtempSync(join(tmpdir(), 'emilia-handoff-contract-'));
   const input = join(dir, 'tools.json');
@@ -721,7 +982,7 @@ test('handoff emission requires review acknowledgement, consequential selection,
 
   const unreviewed = run('--action', 'deleteCustomer');
   assert.notEqual(unreviewed.status, 0);
-  assert.match(`${unreviewed.stdout}${unreviewed.stderr}`, /reviewed manifest digest is required/i);
+  assert.match(`${unreviewed.stdout}${unreviewed.stderr}`, /reviewed manifest digest or --acknowledge-reviewed-manifest is required/i);
 
   const missingDigestValue = run('--reviewed-manifest-digest', '-h');
   assert.notEqual(missingDigestValue.status, 0);

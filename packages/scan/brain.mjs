@@ -8,6 +8,13 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 export const DEFAULT_BRAIN_OUTPUT = 'emilia-authority-brain.html';
+export const SCAN_PACKAGE_VERSION = JSON.parse(
+  fs.readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+).version;
+if (typeof SCAN_PACKAGE_VERSION !== 'string' || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(SCAN_PACKAGE_VERSION)) {
+  throw new TypeError('Authority Brain requires a canonical Scan package version.');
+}
+export const SCAN_INSTALL_SPEC = `@emilia-protocol/scan@${SCAN_PACKAGE_VERSION}`;
 
 const STANDARD_BLIND_SPOTS = Object.freeze([
   'Whether every execution path reaches a credential-owning Gate. Complete mediation must be verified after integration.',
@@ -135,22 +142,53 @@ function assertReport(report) {
   }
 }
 
-function buildModel(report, { inputReference }) {
+function buildModel(report, {
+  inputReference,
+  outputDirectory = 'emilia',
+  starterSelectedTool = null,
+}) {
   assertReport(report);
   assertText(inputReference, 'scanner input reference', {
     maxLength: MAX_INPUT_REFERENCE_LENGTH,
     commandSafe: true,
   });
+  assertText(outputDirectory, 'protection output directory', {
+    maxLength: MAX_INPUT_REFERENCE_LENGTH,
+    commandSafe: true,
+  });
+  if (starterSelectedTool !== null) {
+    assertText(starterSelectedTool, 'Gate Starter selected tool', {
+      maxLength: 256,
+      commandSafe: true,
+    });
+    const selectedMatches = report.results.filter(({ action, classification }) => (
+      action.name === starterSelectedTool && classification.receipt_required === true
+    ));
+    if (report.source !== 'mcp' || selectedMatches.length !== 1) {
+      throw new TypeError('Authority Brain requires one visible consequential MCP action for a selected Gate Starter.');
+    }
+  }
 
   const sample = inputReference === '--sample';
   const commandInputReference = !sample && inputReference.startsWith('-')
     ? `./${inputReference}`
     : inputReference;
   const protectTarget = sample ? '--sample' : posixQuote(commandInputReference);
-  const protectCommand = `npx @emilia-protocol/scan protect ${protectTarget} --apply`;
+  const outputOption = outputDirectory === 'emilia' ? '' : ` --out ${posixQuote(outputDirectory)}`;
   const actions = report.results.map(({ action, classification }, index) => {
     const isMcp = report.source === 'mcp';
     const receiptRequired = classification.receipt_required === true;
+    const selectedInStarter = starterSelectedTool !== null
+      && action.name === starterSelectedTool;
+    const reviewPendingInStarter = starterSelectedTool !== null
+      && receiptRequired
+      && !selectedInStarter;
+    const baseCommandEligible = isMcp
+      && receiptRequired
+      && !action.name.startsWith('-');
+    const generationEligible = baseCommandEligible && starterSelectedTool === null;
+    const handoffEligible = baseCommandEligible
+      && (starterSelectedTool === null || selectedInStarter);
     const sourceDetail = report.source === 'openapi'
       ? `${String(action.http_method || '').toUpperCase()} ${String(action.route_path || '')}`
       : report.source === 'mcp' ? 'MCP tool' : 'declared action';
@@ -175,14 +213,18 @@ function buildModel(report, { inputReference }) {
         ? classification.required_fields.map(String)
         : receiptRequired ? ['action_type'] : [],
       lifecycleState: 'proposal',
-      protectCommand: isMcp && receiptRequired ? protectCommand : null,
-      verifyCommand: isMcp && receiptRequired ? 'node emilia/verify-setup.mjs' : null,
-      handoffCommand: isMcp && receiptRequired && !action.name.startsWith('-')
-        ? `node emilia/verify-setup.mjs --emit-handoff --reviewed-manifest-digest ${posixQuote('sha256:<reviewed-digest>')} --action ${posixQuote(action.name)}`
+      protectCommand: generationEligible
+        ? `npx ${SCAN_INSTALL_SPEC} protect ${protectTarget}${outputOption} --action ${posixQuote(action.name)} --apply --verify`
         : null,
-      handoffLimitation: isMcp && receiptRequired && action.name.startsWith('-')
-        ? 'The reviewed-action handoff cannot safely select a leading-dash tool name. Rename that declared tool before emitting a handoff.'
+      verifyCommand: null,
+      handoffCommand: handoffEligible
+        ? `npx ${SCAN_INSTALL_SPEC} protect ${protectTarget}${outputOption} --action ${posixQuote(action.name)} --reviewed`
         : null,
+      handoffLimitation: isMcp && receiptRequired && !reviewPendingInStarter && action.name.startsWith('-')
+        ? 'The selected-action Gate Starter cannot safely select a leading-dash tool name. Rename that declared tool before generating the starter.'
+        : null,
+      starterReviewPending: reviewPendingInStarter,
+      starterSelectedAction: selectedInStarter,
     };
   });
 
@@ -470,14 +512,25 @@ export function renderAuthorityBrain(report, options) {
           passive.append(element('strong', '', 'OpenAPI is passive-only until the durable admission edge is wired.'));
           passive.append(element('p', '', 'This map can inform review, but it does not generate a verification-only HTTP middleware or claim one-use enforcement.'));
           path.append(passive);
-        } else if (action.protectCommand) {
+        } else if (action.starterReviewPending) {
+          const pending = element('div', 'passive');
+          pending.append(element('strong', '', 'Review-pending in this Gate Starter.'));
+          pending.append(element('p', '', 'This action is refused by the generated wrapper. Return to a fresh scan and choose a different direct-child --out directory before creating a separately reviewed Gate Starter for it. Do not overwrite this starter with --force.'));
+          path.append(pending);
+        } else if (action.protectCommand || action.handoffCommand || action.handoffLimitation) {
           const commands = element('div', 'commands');
-          commands.append(element('h3', '', 'Protect this action'));
-          commands.append(element('p', '', 'The first command generates the existing scaffold for this declared MCP surface; the reviewed handoff selects this action. The click itself does not enforce. Review and install the generated Gate at the credential-owning dispatch boundary.'));
-          commands.append(commandBlock('1 · Generate surface scaffold', action.protectCommand));
-          commands.append(commandBlock('2 · Run synthetic local refusal check', action.verifyCommand));
+          commands.append(element('h3', '', action.starterSelectedAction ? 'Finish the reviewed handoff' : 'Protect this action'));
+          if (action.protectCommand) {
+            commands.append(element('p', '', 'The first command creates one selected-action Gate Starter and runs its synthetic local check. It emits no reviewed handoff. Read the generated map and manifest before running the second command. Neither command installs production enforcement.'));
+            commands.append(commandBlock('1 · Create Gate Starter + run RR-1', action.protectCommand));
+          }
           if (action.handoffCommand) {
-            commands.append(commandBlock('3 · After review, emit selected-action handoff', action.handoffCommand));
+            if (action.starterSelectedAction) {
+              commands.append(element('p', '', 'This starter is already generated for this action. After reading this map and the manifest, the command below revalidates the unchanged bytes, reruns RR-1, and emits the reviewed handoff without overwriting the starter.'));
+            }
+            commands.append(commandBlock(action.starterSelectedAction
+              ? 'After review · Bind current bytes into the handoff'
+              : '2 · After review, bind current bytes into the handoff', action.handoffCommand));
           } else if (action.handoffLimitation) {
             const limitation = element('div', 'passive');
             limitation.append(element('strong', '', 'Reviewed handoff unavailable for this declared name.'));
