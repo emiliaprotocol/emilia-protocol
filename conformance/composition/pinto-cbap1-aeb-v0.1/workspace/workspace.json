@@ -4,7 +4,7 @@
     "id": "pinto:cbap1-contestability-binding",
     "version": "0.1.0",
     "module": "adapter.mjs",
-    "module_digest": "sha256:ec3f10656991f4a15a1c2d162244358ea824751b2d939d459141d7bc5fa0fb4f"
+    "module_digest": "sha256:b5536489a2fabcb45c058ff83824dae6ac4dc523a8b80ebc2eaa5416ecc1074c"
   },
   "artifact": "artifact.json",
   "artifact_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",

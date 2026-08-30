@@ -38,6 +38,11 @@ const WORKSPACE = join(HERE, 'workspace');
 const ZERO = `sha256:${'0'.repeat(64)}`;
 const LAB_EVALUATOR_PUBLIC_SPKI = 'MCowBQYDK2VwAyEAc_kUSHs4ymdA65GF3OV8C3PDWhelodqfOvCmFe-6oUI';
 
+/** @param {Array<[number, unknown]>} entries */
+function cborMap(entries) {
+  return new Map(entries);
+}
+
 // Published test-only keys. They carry no production identity or authority.
 const KEYS = Object.freeze({
   issuer: Object.freeze({
@@ -85,7 +90,7 @@ function policy(uri, body) {
 }
 
 function publicCoseKey(jwk) {
-  return encodeDeterministicCbor(new Map([
+  return encodeDeterministicCbor(cborMap([
     [1, 1],
     [3, -19],
     [-1, 6],
@@ -151,7 +156,7 @@ function buildNativeBundle() {
   const roots = trustRoots();
   const trustDigestString = authorizationTrustProfileDigest(roots);
   const trustDigest = Buffer.from(trustDigestString.slice(7), 'hex');
-  const terms = new Map([
+  const terms = cborMap([
     [1, authorizationId],
     [2, EXPECTED_ABP_DIGEST_BYTES],
     [3, trustDigest],
@@ -173,7 +178,7 @@ function buildNativeBundle() {
     terms.get(1), terms.get(2), terms.get(3), terms.get(4), terms.get(5),
     terms.get(6), terms.get(7), terms.get(8), terms.get(9), terms.get(10),
   ];
-  const exactAcceptancePayload = new Map([
+  const exactAcceptancePayload = cborMap([
     [1, 1],
     [2, 2],
     [3, hCbap1('agent-contestation-forum-terms-v1', forumTerms)],
@@ -185,7 +190,7 @@ function buildNativeBundle() {
     [9, KEYS.forum.kid],
   ]);
   const exactAcceptanceCose = makeCoseSign1ForFixture(exactAcceptancePayload, KEYS.forum.kid, KEYS.forum.private_jwk);
-  const cpoPayload = new Map([
+  const cpoPayload = cborMap([
     [1, 1],
     [2, 1],
     [3, terms],
@@ -195,7 +200,7 @@ function buildNativeBundle() {
   ]);
   const cpoCose = makeCoseSign1ForFixture(cpoPayload, KEYS.issuer.kid, KEYS.issuer.private_jwk);
   const cpoDigest = sha256(cpoCose);
-  const authorizationPayload = new Map([
+  const authorizationPayload = cborMap([
     [1, 1],
     [2, 3],
     [3, authorizationId],
@@ -209,7 +214,7 @@ function buildNativeBundle() {
   ]);
   const authorizationCose = makeCoseSign1ForFixture(authorizationPayload, KEYS.issuer.kid, KEYS.issuer.private_jwk);
   const authorizationDigest = sha256(authorizationCose);
-  const verificationPayload = new Map([
+  const verificationPayload = cborMap([
     [1, 1],
     [2, 4],
     [3, authorizationDigest],
@@ -222,7 +227,7 @@ function buildNativeBundle() {
     [10, KEYS.executor.kid],
   ]);
   const verificationCose = makeCoseSign1ForFixture(verificationPayload, KEYS.executor.kid, KEYS.executor.private_jwk);
-  const executionPayload = new Map([
+  const executionPayload = cborMap([
     [1, 1],
     [2, 5],
     [3, authorizationDigest],
@@ -235,7 +240,7 @@ function buildNativeBundle() {
     [10, KEYS.executor.kid],
   ]);
   const executionCose = makeCoseSign1ForFixture(executionPayload, KEYS.executor.kid, KEYS.executor.private_jwk);
-  const bundle = new Map([
+  const bundle = cborMap([
     [1, 1],
     [2, cpoCose],
     [3, exactAcceptanceCose],

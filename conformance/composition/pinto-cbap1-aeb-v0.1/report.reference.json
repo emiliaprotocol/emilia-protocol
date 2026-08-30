@@ -49,11 +49,11 @@
   },
   "crossing_lab": {
     "@version": "EMILIA-CROSSING-LAB-LOCAL-REPORT-v1",
-    "workspace_digest": "sha256:75d2d5bc307e8437baf52fefcf2f1142063eebeaac5f3313201186ce4bf6b1b1",
+    "workspace_digest": "sha256:f947415d4a9779ac19b29caaa0613e793f9efde9c986839664552ee1222da88e",
     "adapter": {
       "id": "pinto:cbap1-contestability-binding",
       "version": "0.1.0",
-      "module_digest": "sha256:ec3f10656991f4a15a1c2d162244358ea824751b2d939d459141d7bc5fa0fb4f"
+      "module_digest": "sha256:b5536489a2fabcb45c058ff83824dae6ac4dc523a8b80ebc2eaa5416ecc1074c"
     },
     "evaluated_at": "2026-08-30T00:00:00Z",
     "adapter_rows": [
@@ -696,7 +696,7 @@
       "native_specification_correctness",
       "native_protocol_equivalence"
     ],
-    "report_digest": "sha256:2b382ccd215203aaefdca7b92294f117e9d593cde16bd759cb837539b01e5961"
+    "report_digest": "sha256:272eb1b8838c9fe6ebfef3aa980cf1c350c20f8637b9b695e155658ce3eb8567"
   },
-  "report_digest": "sha256:f8313d12096184487cc9c355c533209b3d8beb38e4463e6d9b39a85c80fedd1d"
+  "report_digest": "sha256:cce041eb44d05f5456193baf2a4a43ad21098b0b8cb04954f4d204d67539cc24"
 }

@@ -117,6 +117,17 @@ function requestFor(command) {
   };
 }
 
+/**
+ * @param {{
+ *   command: any;
+ *   verdict: string;
+ *   blockReason: string;
+ *   response: any;
+ *   nonce: string;
+ *   sequence: number;
+ *   actionOverride?: string;
+ * }} input
+ */
 function makeReceipt({ command, verdict, blockReason, response, nonce, sequence, actionOverride }) {
   const fullParamsHash = sha256Hex(jcs(command.params));
   const base = {
@@ -172,7 +183,14 @@ function mappingDefinition() {
   };
 }
 
+/**
+ * @param {string} id
+ * @param {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebRegistryEntryKind} kind
+ * @param {unknown} definition
+ * @returns {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebRegistryEntry}
+ */
 function registryEntry(id, kind, definition) {
+  /** @type {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebRegistryEntry} */
   const entry = { kind, version: '1', status: 'active', definition, definition_digest: digestAeb(null) };
   entry.definition_digest = registryEntryDigest(id, entry);
   return entry;
@@ -221,6 +239,7 @@ function buildWorkspace() {
     parameters: { tool: f.command.tool, arguments: { left: 19, right: 24 } },
   };
   const definition = mappingDefinition();
+  /** @type {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebPinnedProfile} */
   const profile = {
     version: MAPPING_VERSION,
     definition,
@@ -248,6 +267,7 @@ function buildWorkspace() {
       { role: 'machine-policy-decision', subject_kinds: ['system'] },
     ),
   };
+  /** @type {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebUnifiedRegistry} */
   const registry = {
     '@version': 'EP-EVIDENCE-REGISTRY-v1',
     registry_id: 'registry:ccs-wang-draft08-crossing-lab',

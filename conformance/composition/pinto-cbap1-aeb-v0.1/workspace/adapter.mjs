@@ -469,8 +469,7 @@ function parseSigned(bytes, role, validatePayload, reason, roots) {
     if (!crypto.verify(null, sigStructure, key, signature)) throw new TypeError('signature invalid');
     return { bytes: Buffer.from(bytes), payload, kid: signerLabel, protectedBytes, payloadBytes };
   } catch {
-    const error = new Error(reason);
-    error.cbapReason = reason;
+    const error = Object.assign(new Error(reason), { cbapReason: reason });
     throw error;
   }
 }
@@ -478,15 +477,13 @@ function parseSigned(bytes, role, validatePayload, reason, roots) {
 function parseBundle(bytes) {
   let bundle;
   try { bundle = decodeDeterministicCbor(bytes); } catch {
-    const error = new Error('outer_encoding_invalid');
-    error.cbapReason = 'outer_encoding_invalid';
+    const error = Object.assign(new Error('outer_encoding_invalid'), { cbapReason: 'outer_encoding_invalid' });
     throw error;
   }
   if (!exactMap(bundle, [1, 2, 3, 4, 5, 6, 7, 8]) || bundle.get(1) !== 1
       || ![2, 3, 4, 5, 6, 7].every((label) => byteString(bundle.get(label)))
       || !Array.isArray(bundle.get(8))) {
-    const error = new Error('bundle_schema_invalid');
-    error.cbapReason = 'bundle_schema_invalid';
+    const error = Object.assign(new Error('bundle_schema_invalid'), { cbapReason: 'bundle_schema_invalid' });
     throw error;
   }
   return bundle;
@@ -506,8 +503,7 @@ function parsePolicySet(value) {
     }
     return policies;
   } catch {
-    const error = new Error('policy_set_invalid');
-    error.cbapReason = 'policy_set_invalid';
+    const error = Object.assign(new Error('policy_set_invalid'), { cbapReason: 'policy_set_invalid' });
     throw error;
   }
 }
@@ -522,8 +518,7 @@ function parseVerificationTime(value) {
     if (parsed < 0n || parsed > MAX_UINT64) throw new TypeError('time out of range');
     return parsed;
   } catch {
-    const error = new Error('verification_time_invalid');
-    error.cbapReason = 'verification_time_invalid';
+    const error = Object.assign(new Error('verification_time_invalid'), { cbapReason: 'verification_time_invalid' });
     throw error;
   }
 }
@@ -702,7 +697,9 @@ export function computeProfileCaid(action) {
 }
 
 export function makeCoseSign1ForFixture(payload, kid, privateJwk) {
-  const protectedBytes = encodeDeterministicCbor(new Map([[1, -19], [4, Buffer.from(kid, 'utf8')]]));
+  /** @type {Map<number, unknown>} */
+  const protectedHeaders = new Map(/** @type {Array<[number, unknown]>} */ ([[1, -19], [4, Buffer.from(kid, 'utf8')]]));
+  const protectedBytes = encodeDeterministicCbor(protectedHeaders);
   const payloadBytes = encodeDeterministicCbor(payload);
   const sigStructure = encodeDeterministicCbor(['Signature1', protectedBytes, Buffer.alloc(0), payloadBytes]);
   const privateKey = crypto.createPrivateKey({ key: privateJwk, format: 'jwk' });
