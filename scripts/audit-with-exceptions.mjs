@@ -2,16 +2,6 @@
 //
 // Expiring audit-exception gate.
 //
-// Some advisories have no fixed direct release even after a supported parent
-// graph repair appears. The current secure-app example is `image-size`: every
-// direct release remains in range, while @expo/metro 56.0.2 moves to Metro
-// 0.84.5 and removes the dependency. That wrapper was published on August 21
-// and is quarantined by the app's seven-day minimum release age until August
-// 28 at 13:24:45 UTC. The temporary exception expires August 29. The immutable
-// record below is shared with the app regression so these facts cannot drift.
-// Lowering the audit level or blanket-ignoring the advisory would hide the next
-// real finding too.
-//
 // This gate keeps the detection floor where it is and requires every accepted
 // advisory to be named in an exception file with a written reachability
 // justification, evidence about the direct package and any parent-graph
@@ -33,17 +23,6 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute, join, resolve } from 'node:path';
-
-// Delete this record with the two secure-app exceptions after the eligible
-// supported graph has landed and raw npm audit is clean.
-export const SECURE_APP_IMAGE_SIZE_HOLD = Object.freeze({
-  package: '@expo/metro',
-  fixed_version: '56.0.2',
-  fixed_metro_version: '0.84.5',
-  published_at: '2026-08-21T13:24:45.109Z',
-  eligible_at: '2026-08-28T13:24:45.109Z',
-  exception_expires_on: '2026-08-29',
-});
 
 const DAY_MS = 86_400_000;
 

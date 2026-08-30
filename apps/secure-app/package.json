@@ -17,15 +17,17 @@
     "install": {
       "exclude": [
         "expo",
-        "expo-asset"
+        "expo-asset",
+        "expo-secure-store",
+        "react-native"
       ]
     }
   },
   "dependencies": {
     "@noble/curves": "2.3.0",
     "@noble/hashes": "2.3.0",
-    "expo": "~57.0.13",
-    "expo-asset": "~57.0.11",
+    "expo": "~57.0.15",
+    "expo-asset": "~57.0.13",
     "expo-local-authentication": "~57.0.2",
     "expo-screen-capture": "~57.0.2",
     "expo-secure-store": "~57.0.1",
@@ -34,7 +36,9 @@
     "react-native": "0.86.2"
   },
   "overrides": {
+    "@expo/metro": "56.0.2",
     "brace-expansion": "5.0.9",
+    "metro": "0.84.5",
     "nanoid": "3.3.18",
     "postcss": "8.5.25",
     "uuid": "11.1.1"

@@ -98,23 +98,10 @@ npm run audit:dependencies
 Detection stays at `--audit-level=low`. Nothing is downgraded and nothing is
 blanket-ignored.
 
-The current lock reports five high-severity package entries, but they resolve
-to two `image-size` denial-of-service advisories on one build-only path:
-`expo 57.0.13 -> @expo/metro 56.0.0 -> metro 0.84.4 -> image-size 1.2.1`.
-Metro is the build-time React Native bundler and is not shipped in the device
-bundle. No app source imports Metro or `image-size`, the app has no image
-assets, and paired-inbox input cannot reach the affected ICNS, JXL, or HEIF
-parsers. The bounded exposure is a hung build job if an attacker first lands a
-hostile image in the trusted source/build input boundary.
-
-A supported graph repair now exists. `@expo/metro 56.0.2` pins `metro 0.84.5`,
-which removes the `image-size` edge. That Expo wrapper was published at
-2026-08-21T13:24:45.109Z, so this app's `.npmrc` supply-chain policy
-(`min-release-age=7`) does not permit it until 2026-08-28T13:24:45.109Z. The two
-temporary exceptions expire on 2026-08-29, the first UTC date after the repair
-becomes eligible. At that point the supported graph must be installed, the
-lock must contain Metro 0.84.5 with no `image-size`, both exceptions must be
-deleted, and raw `npm audit --json` must report zero high or critical findings.
+The lock pins the supported `@expo/metro 56.0.2` and `metro 0.84.5` graph. Metro
+0.84.5 removes the vulnerable `image-size` dependency. The graph entered this
+boundary only after clearing the app's seven-day release quarantine, and raw
+`npm audit --json` reports no known vulnerabilities.
 
 The gate in `../../scripts/audit-with-exceptions.mjs` handles a bounded hold
 without going quiet. Every advisory it lets through must be named in
@@ -142,8 +129,9 @@ The gate fails, with a named reason, when any of these hold:
 | `audit_report_invalid` | `npm audit` produced nothing usable. The gate fails instead of reading an empty report as "clean". |
 | `invalid_usage` | The gate was invoked with a bad prefix, flag, or severity floor. A misconfigured gate fails rather than passing. |
 
-On success it prints each accepted advisory, its justification, and the days
-remaining before expiry, and warns when fewer than 21 days are left.
+On success it reports a clean audit or prints each accepted advisory, its
+justification, and the days remaining before expiry. It warns when fewer than
+21 days are left.
 
 The gate's own behaviour is covered by `lib/audit-gate.test.mjs`, which runs
 under `npm test` alongside the protocol tests.
