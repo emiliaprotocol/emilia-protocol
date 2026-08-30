@@ -128,6 +128,11 @@ export default defineConfig({
       // external authors can execute them without adopting Vitest.
       'conformance/composition/jesske-ai-enablement-v0.1/run.test.mjs',
       'conformance/composition/caplease-emilia-v0.1/run.test.mjs',
+      // Crossing Lab launch profiles are also portable node:test programs.
+      // Their dedicated conformance commands execute them directly on Node.
+      'conformance/composition/ccs-draft08-v13-crossing-lab-v1/run.test.mjs',
+      'conformance/composition/cedulon-aeb-crossing-v0.1/run.test.mjs',
+      'conformance/composition/pinto-cbap1-aeb-v0.1/run.test.mjs',
       // The public forgery corpus deliberately uses node:test so the pinned
       // bounty command runs without Vitest. CI executes it explicitly below.
       'tests/verifier-forgery/**',
