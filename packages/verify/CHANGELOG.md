@@ -7,6 +7,18 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## 3.21.0 (2026-08-30)
 
+- Added the AEB Crossing Lab local adapter workbench. It scaffolds, seals, and
+  runs one bundled deterministic `AebAdapter` through the canonical
+  `evaluateAebEvidence` path under a real pinned `AEB-ADAPTER-v1`
+  configuration. The local report preserves native verification, relying-party
+  acceptance, exact-action mapping, freshness, and evidence satisfaction as
+  separate axes; repeats identical calls to refuse nondeterministic adapters;
+  and exercises explicit action substitution, trust substitution, stale and
+  unavailable status, and wrapper-independent replay identity. Reports use a
+  published fixed self-test signer and are adapter compatibility self-tests,
+  not native-specification validation, independent interoperability,
+  certification, authorization, deployment evidence, or execution evidence.
+
 - Added source-locked local OASNT-CAID-01 lifecycle and namespace-separation
   vectors over the OASNT-02 native verifier. The cases cover refusal without
   replay-unit consumption, release after `NOT_COMMITTED`, permanent

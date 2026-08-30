@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-30T17:13:03.533Z",
+  "evidence_snapshot_at": "2026-08-30T19:37:41.831Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "16125c2830ea06c9aa0285f0200f6e872bfcd925af1f9dc0f6249ac1c55319e8",
+    "input_digest_sha256": "823330627a3d61b3cb89b2b1d3cbf6a5f9086c1d2124e7063eb51e72a84421dc",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "44ad37fcac35e357f6fdc11a906840a22e823e41b2cce4b7bac0d78ce9c66f55",
-        "bytes": 50386
+        "sha256": "bc272b80c6f898d302735a417a31152921ced83cd9a20709370f95ad37809d15",
+        "bytes": 51076
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "255f27708f43abdd10f0edd98a58b16abcec9e28b34818a5f9af7b8095cfd6fe",
+        "sha256": "839ed2055f0483e8810f65b8d7f20637c4fd1de789d1d9b061fd42682f54db1a",
         "bytes": 4299
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "5618cdcc561845220dbaf59633b9efb83bd38a0a75d22a06fa1f2a53e8d83bc8",
+        "sha256": "a6582e41cae1b2972063ebabe915ebfbb337a0d3ba9108d1e9a328cc05429cae",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "957bd0978725330ed8a61e04bd16ca094fef322655c433456c3297bf067db307",
+        "sha256": "90878dddf34bbbffb2e6bb0a8d8397fda035f5867654adb95eeecace9007db0d",
         "bytes": 386020
       },
       {
@@ -113,7 +113,7 @@
       {
         "audience": "protocol implementer",
         "url": "https://github.com/emiliaprotocol/emilia-protocol",
-        "purpose": "inspect the open verifier, formats, vectors, and reference implementations"
+        "purpose": "inspect the open verifier, formats, vectors, reference implementations, and the local AEB Crossing Lab adapter workbench"
       }
     ],
     "commercial_product": {
@@ -187,6 +187,10 @@
     {
       "term": "Action Evidence Boundary (AEB)",
       "definition": "The relying-party contract that keeps native verification, exact-action matching, evidence satisfaction, local authorization, one-time consumption, and executed or indeterminate outcome distinct. AEB joins independently verified evidence under pinned mappings and requirements; it never authorizes by itself."
+    },
+    {
+      "term": "EMILIA Crossing Lab",
+      "definition": "An open, offline developer workbench over the existing AEB adapter contract. It scaffolds, locally seals, and hostile-tests one bundled deterministic native adapter under relying-party-pinned trust, mapping, status, and evidence requirements. Its local report keeps native verification, acceptance, exact-action mapping, freshness, and satisfaction separate. It is an adapter compatibility self-test, not a new wire protocol, native-specification validation, independent interoperability evidence, certification, authorization, deployment evidence, or execution evidence."
     },
     {
       "term": "Trust Program",
@@ -313,7 +317,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "5c3c3bf3bd52f0dafe7a4599f7d744a432a65296cc6fc238de5658b85fb54de8",
+      "manifest_sha256": "7b0417ebfb7effd15fef8daca2d0fad3cf22e217c1a4db7bdb7d5c1ee3d45e88",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -415,7 +419,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "7ff0001992a1bfbc2588c56e08c8101cb5db7d677db9fa70c8245e3185184de4"
+      "evidence_bundle_sha256": "2dff01295dc3f11bd657d69764939bcf05e38f4935fd2d245d33583035f52187"
     },
     "caid": {
       "core_vectors": 48,

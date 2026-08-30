@@ -99,6 +99,35 @@ and unsigned gateway headers are not trusted.
 durable, ownership-fenced store contract implemented by
 `@emilia-protocol/gate`.
 
+#### Crossing Lab adapter workbench
+
+`emilia-verify crossing-lab` scaffolds, seals, and runs a native `AebAdapter`
+entirely offline. The workspace carries a real `AEB-ADAPTER-v1` pinned
+configuration, one native artifact, a pinned status snapshot whose native
+authentication is the adapter/integrator's responsibility, an exact expected
+action, an explicit reviewed hostile action, a CAID mapping profile, and a
+named evidence requirement:
+
+```sh
+npx @emilia-protocol/verify crossing-lab init ./my-native-protocol
+npx @emilia-protocol/verify crossing-lab seal ./my-native-protocol
+npx @emilia-protocol/verify crossing-lab run ./my-native-protocol \
+  --out ./crossing-lab-report.json
+```
+
+Every adapter row comes from the canonical `evaluateAebEvidence` evaluator and
+retains its signed `AEB-EVALUATION-v1`. The signature uses a fixed published
+self-test key and provides no evaluator or operator attribution. The adapter
+runs in a bounded child with no ambient network, write, or child-process
+permission. Custom dependencies must first be bundled into the one pinned ESM
+adapter file. The Crossing Lab subcommand requires Node 26 or another Node
+permission runtime that recognizes `--allow-net`; it refuses older runtimes as
+an operational error. The report is a
+deterministic local adapter compatibility self-test, not certification,
+authorization, native-specification correctness, independent interoperability,
+deployment evidence, or execution evidence. See
+[`docs/AEB-CROSSING-LAB.md`](../../docs/AEB-CROSSING-LAB.md).
+
 `@emilia-protocol/verify/aeb-acceptance-profile` publishes the relying party's
 content-addressed foreign-proof allowlist, exact AEB configuration,
 requirement, registry, action type, and required evidence roles. The same

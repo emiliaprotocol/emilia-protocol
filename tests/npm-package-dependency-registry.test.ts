@@ -64,7 +64,7 @@ describe('npm internal dependency registry guard', () => {
           },
           {
             spec: '@emilia-protocol/verify@3.21.0',
-            sha256: 'e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265',
+            sha256: 'fb60903a33c49a7952646ddc3ca65c9c44706dbb41051feb7d5ef47e946774ed',
           },
         ],
       },
@@ -74,7 +74,7 @@ describe('npm internal dependency registry guard', () => {
         version: '0.1.4',
         expectedPins: [{
           spec: '@emilia-protocol/verify@3.21.0',
-          sha256: 'e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265',
+          sha256: 'fb60903a33c49a7952646ddc3ca65c9c44706dbb41051feb7d5ef47e946774ed',
         }],
       },
       {
@@ -83,7 +83,7 @@ describe('npm internal dependency registry guard', () => {
         version: '0.2.7',
         expectedPins: [{
           spec: '@emilia-protocol/verify@3.21.0',
-          sha256: 'e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265',
+          sha256: 'fb60903a33c49a7952646ddc3ca65c9c44706dbb41051feb7d5ef47e946774ed',
         }],
       },
       {
@@ -97,7 +97,7 @@ describe('npm internal dependency registry guard', () => {
           },
           {
             spec: '@emilia-protocol/verify@3.21.0',
-            sha256: 'e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265',
+            sha256: 'fb60903a33c49a7952646ddc3ca65c9c44706dbb41051feb7d5ef47e946774ed',
           },
         ],
       },

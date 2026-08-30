@@ -102,6 +102,24 @@ jobs:
           path: test-results/
           retention-days: 14
 
+  # Crossing Lab refuses Node permission runtimes that cannot govern network
+  # access. Keep its real adapter execution on a runtime exposing --allow-net;
+  # the main Node 24 suite separately exercises the operational refusal path.
+  crossing-lab-node26:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Rebuild and run the permission-bounded Crossing Lab suite
+        run: |
+          npm --prefix packages/verify run build
+          npm run check:standalone-runtimes
+          node --test packages/verify/crossing-lab.test.js packages/verify/crossing-lab-cli.test.js
+
   # ── Job 1b: Consequence Firewall product + deployment ───────────
   gate-product:
     # The release-image builder normally executes the governed security case,
