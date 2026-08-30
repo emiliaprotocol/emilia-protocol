@@ -9,7 +9,11 @@
 
 import { describe, it, expect, vi, beforeEach, type MockedFunction } from 'vitest';
 import { EPClient } from '../src/client.js';
-import { EPError } from '../src/types.js';
+import {
+  EPError,
+  type GuardActionType,
+  type GuardQuorumPolicy,
+} from '../src/types.js';
 import * as publicSdk from '../src/index.js';
 
 // ---------------------------------------------------------------------------
@@ -72,6 +76,16 @@ const TRUST_RECEIPT = {
     action_type: 'large_payment_release',
     target_resource_id: 'payment_123',
   },
+};
+
+const POLICY_ROLLOUT_ACTION: GuardActionType = 'policy_rollout';
+const ORDERED_QUORUM: GuardQuorumPolicy = {
+  mode: 'ordered',
+  required: 2,
+  approvers: [
+    { role: 'controller', approver: 'ap_controller' },
+    { role: 'treasurer', approver: 'ap_treasurer' },
+  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -262,6 +276,27 @@ describe('HTTP method and path routing', () => {
     expect(body.after_state.amount).toBe(82000);
     expect(body.target_changed_fields).toEqual(['amount']);
     expect(body.risk_flags).toEqual(['amount_threshold']);
+  });
+
+  it('serializes the runtime policy-rollout action and ordered quorum contract', async () => {
+    const { client, mockFetch } = makeClient(TRUST_RECEIPT);
+    await client.createTrustReceipt({
+      actionType: POLICY_ROLLOUT_ACTION,
+      targetResourceId: 'policy_rollout_123',
+      quorumPolicy: ORDERED_QUORUM,
+    });
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.action_type).toBe('policy_rollout');
+    expect(body.quorum_policy).toEqual({
+      mode: 'ordered',
+      required: 2,
+      approvers: [
+        { role: 'controller', approver: 'ap_controller' },
+        { role: 'treasurer', approver: 'ap_treasurer' },
+      ],
+    });
   });
 
   it('consumeTrustReceipt — POST /api/v1/trust-receipts/:id/consume with action hash', async () => {

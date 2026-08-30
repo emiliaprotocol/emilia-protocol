@@ -441,7 +441,8 @@ export type GuardActionType =
   | 'vendor_bank_account_change'
   | 'beneficiary_creation'
   | 'large_payment_release'
-  | 'ai_agent_payment_action';
+  | 'ai_agent_payment_action'
+  | 'policy_rollout';
 
 export type GuardDecision = 'allow' | 'observe' | 'allow_with_signoff' | 'deny';
 export type GuardEnforcementMode = 'observe' | 'warn' | 'enforce';
@@ -459,7 +460,7 @@ export interface GuardQuorumApprover {
 }
 
 export interface GuardQuorumPolicy {
-  mode?: 'threshold' | 'all';
+  mode?: 'threshold' | 'ordered';
   required: number;
   approvers: GuardQuorumApprover[];
 }
