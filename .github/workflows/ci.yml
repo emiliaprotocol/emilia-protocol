@@ -733,18 +733,18 @@ jobs:
           npm ci --ignore-scripts
           npm pack ./packages/verify --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/verify-pack.json"
           VERIFY_TARBALL=$(node -e "const r=require(process.argv[1]); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)" "$RUNNER_TEMP/verify-pack.json")
+          cp mcp-server/package.json "$RUNNER_TEMP/mcp-server-package.json"
+          cp mcp-server/package-lock.json "$RUNNER_TEMP/mcp-server-package-lock.json"
           cd mcp-server
+          npm install --ignore-scripts --save-exact "$RUNNER_TEMP/$VERIFY_TARBALL"
           npm ci --ignore-scripts
-          rm -rf node_modules/@emilia-protocol/verify
-          mkdir -p node_modules/@emilia-protocol/verify
-          tar -xzf "$RUNNER_TEMP/$VERIFY_TARBALL" \
-            --strip-components=1 \
-            -C node_modules/@emilia-protocol/verify
       - name: Verify npm pack succeeds
         working-directory: mcp-server
         run: |
           npm run build
           git diff --exit-code -- bundle.js
+          cp "$RUNNER_TEMP/mcp-server-package.json" package.json
+          cp "$RUNNER_TEMP/mcp-server-package-lock.json" package-lock.json
           npm pack
       - name: Smoke test — verify entry point loads
         working-directory: mcp-server
