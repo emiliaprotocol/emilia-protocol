@@ -15,6 +15,7 @@ const COL_SYSTEM: FooterLink[] = [
 
 const COL_SOLUTIONS: FooterLink[] = [
   ['/use-cases', 'All Solutions'],
+  ['/cyber-authority', 'AI Defender Authority'],
   ['/private-equity', 'Private Equity'],
   ['/financial', 'Finance Operations'],
   ['/use-cases/enterprise', 'Code and Cloud'],

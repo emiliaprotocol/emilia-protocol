@@ -448,6 +448,8 @@ function renderIndex() {
         '## Start Here',
         '',
         `- [Repository](${REPO_URL}): Apache-2.0 source, tests, formal models, and examples.`,
+        `- [EMILIA Gate](${BASE_URL}/gate): Customer-owned exact-action authority control at a configured executor boundary.`,
+        `- [Authority for AI Defenders](${BASE_URL}/cyber-authority): Bounded authority for one automated security action at a credential-owning boundary.`,
         `- [Quickstart](${BASE_URL}/quickstart): Integrate an enforcement wrapper.`,
         `- [Verify](${BASE_URL}/verify): Verify a receipt in the browser.`,
         `- [Model-to-Matter](${BASE_URL}/model-to-matter): Executor-side clearance for model-directed physical actions.`,

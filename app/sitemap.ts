@@ -51,6 +51,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/health/program-integrity', priority: 0.9, changeFrequency: 'weekly' },
     { path: '/finguard',              priority: 0.85, changeFrequency: 'monthly' },
     { path: '/private-equity',        priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/cyber-authority',       priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/blog/ai-defenders-need-action-authority', priority: 0.8, changeFrequency: 'monthly' },
     { path: '/grace',                 priority: 0.85, changeFrequency: 'monthly' },
     { path: '/grace/flex-passport',   priority: 0.85, changeFrequency: 'monthly' },
     { path: '/grace/live',            priority: 0.8, changeFrequency: 'weekly' },
