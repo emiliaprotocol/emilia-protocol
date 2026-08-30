@@ -18,7 +18,6 @@ import { fileURLToPath } from 'node:url';
 import {
   AuditGateError,
   FAILURE,
-  SECURE_APP_IMAGE_SIZE_HOLD,
   collectLiveAdvisories,
   evaluate,
   loadExceptions,
@@ -336,23 +335,18 @@ test('an unsupported severity floor is a usage failure, not a clean report', () 
 
 test('the committed exception file satisfies the enforced schema', () => {
   const exceptions = loadExceptions(join(SECURE_APP, 'audit-exceptions.json'));
-  assert.ok(exceptions.length > 0, 'the committed file should describe the accepted advisories');
+  assert.deepEqual(exceptions, [], 'the repaired dependency graph should need no active exceptions');
   for (const exception of exceptions) {
     assert.ok(exception.expiresOn > exception.acceptedOn);
     assert.ok(exception.affectedPackages.size > 0);
   }
 });
 
-test('the committed image-size acceptance expires on the first UTC date after the supported Metro repair clears quarantine', () => {
-  const document = JSON.parse(readFileSync(join(SECURE_APP, 'audit-exceptions.json'), 'utf8'));
-  assert.equal(document.exceptions.length, 2);
-  const { exception_expires_on: expiresOn, ...upstreamFix } = SECURE_APP_IMAGE_SIZE_HOLD;
-
-  for (const exception of document.exceptions) {
-    assert.equal(exception.accepted_on, '2026-08-25');
-    assert.equal(exception.expires_on, expiresOn);
-    assert.deepEqual(exception.upstream_fix, upstreamFix);
-  }
+test('the committed Metro repair removes the vulnerable image-size edge', () => {
+  const lockfile = JSON.parse(readFileSync(join(SECURE_APP, 'package-lock.json'), 'utf8'));
+  assert.equal(lockfile.packages['node_modules/@expo/metro'].version, '56.0.2');
+  assert.equal(lockfile.packages['node_modules/metro'].version, '0.84.5');
+  assert.equal(lockfile.packages['node_modules/image-size'], undefined);
 });
 
 test('the gate passes against the real dependency tree', () => {
@@ -362,5 +356,5 @@ test('the gate passes against the real dependency tree', () => {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   assert.match(stdout, /AUDIT GATE PASS/);
-  assert.match(stdout, /day\(s\) remaining/);
+  assert.match(stdout, /no advisories observed/);
 });

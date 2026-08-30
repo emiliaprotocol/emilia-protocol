@@ -3,19 +3,35 @@
   "entries": [
     {
       "package": "expo",
-      "accepted_spec": "~57.0.13",
-      "accepted_version": "57.0.13",
-      "doctor_required_version": "57.0.15",
-      "required_version_published_at": "2026-08-20T10:50:11.540Z",
-      "eligible_at": "2026-08-27T10:50:11.540Z"
+      "accepted_spec": "~57.0.15",
+      "accepted_version": "57.0.15",
+      "doctor_required_version": "57.0.18",
+      "required_version_published_at": "2026-08-28T10:48:19.967Z",
+      "eligible_at": "2026-09-04T10:48:19.967Z"
     },
     {
       "package": "expo-asset",
-      "accepted_spec": "~57.0.11",
-      "accepted_version": "57.0.11",
-      "doctor_required_version": "57.0.13",
-      "required_version_published_at": "2026-08-20T10:48:59.047Z",
-      "eligible_at": "2026-08-27T10:48:59.047Z"
+      "accepted_spec": "~57.0.13",
+      "accepted_version": "57.0.13",
+      "doctor_required_version": "57.0.15",
+      "required_version_published_at": "2026-08-26T20:01:59.848Z",
+      "eligible_at": "2026-09-02T20:01:59.848Z"
+    },
+    {
+      "package": "expo-secure-store",
+      "accepted_spec": "~57.0.1",
+      "accepted_version": "57.0.1",
+      "doctor_required_version": "57.0.2",
+      "required_version_published_at": "2026-08-26T19:59:00.097Z",
+      "eligible_at": "2026-09-02T19:59:00.097Z"
+    },
+    {
+      "package": "react-native",
+      "accepted_spec": "0.86.2",
+      "accepted_version": "0.86.2",
+      "doctor_required_version": "0.86.3",
+      "required_version_published_at": "2026-08-24T16:16:06.034Z",
+      "eligible_at": "2026-08-31T16:16:06.034Z"
     }
   ]
 }

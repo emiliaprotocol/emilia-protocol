@@ -58,5 +58,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     exceptions: read('expo-quarantine-exceptions.json'),
     now,
   });
-  console.log(`Expo quarantine active for ${packages.join(', ')}`);
+  console.log(packages.length > 0
+    ? `Expo quarantine active for ${packages.join(', ')}`
+    : 'No Expo quarantine exceptions active.');
 }
