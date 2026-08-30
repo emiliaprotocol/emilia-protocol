@@ -5,4 +5,5 @@
 
 - Derive the MCP implementation version from the package manifest so the
   runtime handshake cannot silently advertise stale release metadata.
-
+- Rebaseline on `@emilia-protocol/fire-drill` `^0.5.2` and
+  `@emilia-protocol/verify` `^3.21.0`.

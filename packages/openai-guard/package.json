@@ -34,7 +34,7 @@
     "@emilia-protocol/require-receipt": "^0.8.1"
   },
   "peerDependencies": {
-    "@emilia-protocol/verify": "^3.10.0"
+    "@emilia-protocol/verify": "^3.21.0"
   },
   "peerDependenciesMeta": {
     "@emilia-protocol/verify": {

@@ -7,6 +7,7 @@
 
 - Generate exact installs for `@emilia-protocol/mcp-guard@0.6.0`, keeping Scan
   handoff scaffolds aligned with the current customer-owned protection API.
+- Rebaseline offline receipt checks on `@emilia-protocol/verify` `^3.21.0`.
 
 ## 0.4.2 (2026-08-21)
 

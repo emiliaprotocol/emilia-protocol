@@ -19,6 +19,11 @@ import { createDemoClassAAssuranceProof, dispatch } from './example-dangerous-ac
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(readFileSync(resolve(HERE, 'agent-actions.json'), 'utf8'));
+const PACKAGE_METADATA = JSON.parse(readFileSync(resolve(HERE, 'package.json'), 'utf8'));
+
+test('kit pins the current receipt gate release line', () => {
+  assert.equal(PACKAGE_METADATA.dependencies['@emilia-protocol/require-receipt'], '^0.8.1');
+});
 
 // These conformance checks are self-contained: each receipt is minted with a
 // fresh key, so we run the gate in explicit NON-PRODUCTION inline mode. In

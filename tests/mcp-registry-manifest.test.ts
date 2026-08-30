@@ -9,6 +9,7 @@ const readJson = (path: string): Record<string, any> =>
 
 const manifest = readJson('server.json');
 const packageManifest = readJson('mcp-server/package.json');
+const mcpPage = readFileSync(resolve(ROOT, 'app/mcp/page.tsx'), 'utf8');
 
 describe('official MCP Registry manifest', () => {
   it('stays aligned with the published npm package identity and version', () => {
@@ -24,5 +25,9 @@ describe('official MCP Registry manifest', () => {
 
   it('keeps the server description inside the Registry schema limit', () => {
     expect(manifest.description.length).toBeLessThanOrEqual(100);
+  });
+
+  it('keeps the public MCP page structured-data version aligned', () => {
+    expect(mcpPage).toContain(`softwareVersion: '${packageManifest.version}'`);
   });
 });

@@ -11,6 +11,8 @@ describe('fire-drill MCP input and claim boundaries', () => {
   it('advertises the package release version', () => {
     const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
     assert.equal(FIRE_DRILL_MCP_VERSION, packageJson.version);
+    assert.equal(packageJson.dependencies['@emilia-protocol/fire-drill'], '^0.5.2');
+    assert.equal(packageJson.dependencies['@emilia-protocol/verify'], '^3.21.0');
   });
 
   it('reports declaration coverage without claiming EG-1 enforcement', async () => {
