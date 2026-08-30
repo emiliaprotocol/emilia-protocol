@@ -86,10 +86,6 @@ jobs:
       - name: Install JavaScript test tooling
         run: npm ci --ignore-scripts
 
-      - name: Test Python verifier
-        working-directory: packages/python-verify
-        run: python -m pytest tests -q
-
       - name: Require owner approval bound to tag, package, version, and main
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
@@ -112,7 +108,8 @@ jobs:
       - name: Build twice and retain the exact reproducible artifacts
         id: build
         run: |
-          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
           node scripts/verify-reproducible-wheel.mjs packages/python-verify \
             --emit release-artifacts/python-verify-reproducible.json \
             --outdir release-artifacts
@@ -121,6 +118,35 @@ jobs:
           test -n "$WHEEL" && test -n "$SDIST"
           echo "wheel=$WHEEL" >> "$GITHUB_OUTPUT"
           echo "sdist=$SDIST" >> "$GITHUB_OUTPUT"
+
+      - name: Test the exact wheel in an isolated environment
+        run: |
+          TEST_ROOT="$RUNNER_TEMP/python-verify-wheel-test"
+          python -m venv "$TEST_ROOT/venv"
+          "$TEST_ROOT/venv/bin/python" -m pip install --require-hashes \
+            -r "$GITHUB_WORKSPACE/.github/workflow-requirements/release.txt"
+          "$TEST_ROOT/venv/bin/python" -m pip install \
+            --no-deps --force-reinstall "${{ steps.build.outputs.wheel }}"
+          mkdir -p "$TEST_ROOT/repository/packages/python-verify"
+          cp -R packages/python-verify/tests \
+            "$TEST_ROOT/repository/packages/python-verify/tests"
+          cp -R conformance "$TEST_ROOT/repository/conformance"
+          "$TEST_ROOT/venv/bin/python" - <<'PY'
+          import os
+          from pathlib import Path
+          import emilia_verify
+
+          origin = Path(emilia_verify.__file__).resolve()
+          workspace = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+          if origin.is_relative_to(workspace):
+              raise SystemExit(f"refusing source-tree verifier import: {origin}")
+          print(f"testing installed verifier wheel from {origin}")
+          PY
+          (
+            cd "$TEST_ROOT"
+            PATH="$TEST_ROOT/venv/bin:$PATH" python -m pytest \
+              --import-mode=importlib repository/packages/python-verify/tests -q
+          )
 
       - name: Check exact distributions
         run: python -m twine check release-artifacts/python-verify/*.whl release-artifacts/python-verify/*.tar.gz
@@ -165,7 +191,7 @@ jobs:
         run: |
           VERSION=$(python -c "import tomllib; print(tomllib.load(open('packages/python-verify/pyproject.toml','rb'))['project']['version'])")
           mkdir -p registry-copy
-          for attempt in {1..36}; do
+          for _attempt in {1..36}; do
             if python -m pip download --no-cache-dir --no-deps --only-binary=:all: --dest registry-copy "emilia-verify==$VERSION" \
               && python -m pip download --no-cache-dir --no-deps --no-binary=:all: --no-build-isolation --dest registry-copy "emilia-verify==$VERSION"; then
               break

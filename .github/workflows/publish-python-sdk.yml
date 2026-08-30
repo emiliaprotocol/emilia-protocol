@@ -104,7 +104,8 @@ jobs:
       - name: Build twice and retain the exact reproducible artifacts
         id: build
         run: |
-          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
           node scripts/verify-reproducible-wheel.mjs sdks/python \
             --emit release-artifacts/python-sdk-reproducible.json \
             --outdir release-artifacts
@@ -114,13 +115,24 @@ jobs:
           echo "wheel=$WHEEL" >> "$GITHUB_OUTPUT"
           echo "sdist=$SDIST" >> "$GITHUB_OUTPUT"
 
-      - name: Smoke-test the exact wheel in a clean environment
+      - name: Test the exact wheel in an isolated environment
         env:
           EMILIA_SDK_WHEEL_TEST: '1'
         run: |
           python -m venv "$RUNNER_TEMP/python-sdk-release-venv"
           "$RUNNER_TEMP/python-sdk-release-venv/bin/python" -m pip install \
             --no-deps "${{ steps.build.outputs.wheel }}"
+          "$RUNNER_TEMP/python-sdk-release-venv/bin/python" - <<'PY'
+          import os
+          from pathlib import Path
+          import emilia_protocol
+
+          origin = Path(emilia_protocol.__file__).resolve()
+          workspace = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+          if origin.is_relative_to(workspace):
+              raise SystemExit(f"refusing source-tree SDK import: {origin}")
+          print(f"testing installed SDK wheel from {origin}")
+          PY
           "$RUNNER_TEMP/python-sdk-release-venv/bin/python" -m unittest discover \
             -s sdks/python/tests -v
 
@@ -166,7 +178,7 @@ jobs:
         run: |
           VERSION=$(python -c "import tomllib; print(tomllib.load(open('sdks/python/pyproject.toml','rb'))['project']['version'])")
           mkdir -p registry-copy
-          for attempt in {1..36}; do
+          for _attempt in {1..36}; do
             if python -m pip download --no-cache-dir --no-deps --only-binary=:all: --dest registry-copy "emilia-protocol==$VERSION" \
               && python -m pip download --no-cache-dir --no-deps --no-binary=:all: --no-build-isolation --dest registry-copy "emilia-protocol==$VERSION"; then
               break
