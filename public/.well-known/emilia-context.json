@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-30T22:34:44.670Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "7d28ce0bcee51815db4967143164c01a653d89bf41944111bc51ce4e7a076e49",
+    "input_digest_sha256": "47b7f538e1a832101776c4feb302fef115b903c25522d76f77b638562a1bde7b",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -22,7 +22,7 @@
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "a6582e41cae1b2972063ebabe915ebfbb337a0d3ba9108d1e9a328cc05429cae",
+        "sha256": "f6dbb7fc47827a105309f74b1dcab9a34eaf6fab1c700f40e3a496fd568ec37f",
         "bytes": 6361
       },
       {
@@ -317,7 +317,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "7b0417ebfb7effd15fef8daca2d0fad3cf22e217c1a4db7bdb7d5c1ee3d45e88",
+      "manifest_sha256": "50cb9d5c1bbb7e4452651ae4a13f613419239471209ecba0abbb1036e77d9d12",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
