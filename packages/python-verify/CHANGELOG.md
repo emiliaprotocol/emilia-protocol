@@ -11,6 +11,9 @@
   Python release toolchain. Verifier behavior and public APIs are unchanged.
 - Set the supported Python floor to 3.10 so runtime metadata and the pinned
   build toolchain describe the same supported interpreter line.
+- Parse the full one-through-nine-digit RFC 3339 fractional-second profile on
+  Python 3.10 instead of relying on interpreter-version-specific
+  `datetime.fromisoformat` behavior.
 
 ## 2.8.3 (2026-08-01)
 
